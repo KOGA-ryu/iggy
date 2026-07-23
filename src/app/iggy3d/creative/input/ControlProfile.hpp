@@ -32,6 +32,7 @@ enum class CreativeControlRebindStatus : std::uint8_t {
   MultipleConflicts,
   InvalidGroup,
   ReservedAction,
+  RequiredAction,
   InvalidKey,
   DeviceMismatch,
   InvalidProfile,
@@ -66,6 +67,11 @@ struct CreativeControlProfile {
   std::size_t bindingCount = 0;
   std::size_t groupCount = 0;
 
+  std::array<CreativeControllerCommandChord,
+             kCreativeControllerCommandChordCapacity>
+      controllerCommands{};
+  std::size_t controllerCommandCount = 0;
+
   CreativeStickProfile movementStick{};
   CreativeStickProfile lookStick{};
   float mouseLookSensitivity = 0.12F;
@@ -80,6 +86,11 @@ struct CreativeControlProfile {
 
   [[nodiscard]] std::span<CreativeInputBinding> bindingSpan() noexcept {
     return {bindings.data(), bindingCount};
+  }
+
+  [[nodiscard]] std::span<const CreativeControllerCommandChord>
+  controllerCommandSpan() const noexcept {
+    return {controllerCommands.data(), controllerCommandCount};
   }
 };
 
@@ -96,10 +107,16 @@ struct CreativeControlBindingRow {
   CreativeControlDevice device = CreativeControlDevice::KeyboardMouse;
   CreativeInputBindingActivation activation =
       CreativeInputBindingActivation::Press;
+  bool controllerCommandLayer = false;
+  CreativeInputKey layerModifier = CreativeInputKey::Unbound;
 };
 
+inline constexpr std::size_t kCreativeControlBindingRowCapacity =
+    kCreativeInputBindingCapacity + kCreativeControllerCommandChordCapacity;
+
 struct CreativeControlBindingList {
-  std::array<CreativeControlBindingRow, kCreativeInputBindingCapacity> rows{};
+  std::array<CreativeControlBindingRow, kCreativeControlBindingRowCapacity>
+      rows{};
   std::size_t count = 0;
   bool capacityExceeded = false;
 
@@ -193,6 +210,11 @@ auditCreativeControlReachability(
     std::span<const CreativeInputBinding> bindings,
     std::span<const CreativeControlReachabilityRequirement>
         requirements) noexcept;
+[[nodiscard]] CreativeControlReachabilityAuditResult
+auditCreativeControlReachability(
+    const CreativeControlProfile& profile,
+    std::span<const CreativeControlReachabilityRequirement>
+        requirements) noexcept;
 [[nodiscard]] const CreativeInputBinding* creativeControlGroupBinding(
     const CreativeControlProfile& profile,
     std::uint16_t group) noexcept;
@@ -209,6 +231,10 @@ auditCreativeControlReachability(
     CreativeInputModifierMask requiredAllModifiers,
     CreativeInputModifierMask requiredAnyModifiers,
     CreativeInputModifierMask allowedModifiers) noexcept;
+[[nodiscard]] bool applyStoredCreativeControllerCommand(
+    CreativeControlProfile& profile,
+    CreativeInputActionId action,
+    CreativeInputKey trigger) noexcept;
 [[nodiscard]] bool adjustCreativeControlSetting(
     CreativeControlProfile& profile,
     CreativeControlSettingId setting,

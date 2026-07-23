@@ -488,7 +488,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   result.inputFrame = inputFrame;
   result.routedInput =
       creative::routeCreativeInput(editor.inputRouterState, inputFrame,
-                                   editor.controlProfile.bindingSpan());
+                                   editor.controlProfile.bindingSpan(),
+                                   editor.controlProfile.controllerCommandSpan());
   const creative::CreativeStickSignal moveStick =
       creative::creativeControllerStick(
           controller, creative::CreativeControllerStick::Left,

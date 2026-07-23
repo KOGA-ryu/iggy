@@ -196,15 +196,16 @@ enum class CreativeInputKey : std::uint8_t {
   Count,
 };
 
-// Fixed system-command layer for gamepads. Holding the modifier temporarily
-// replaces ordinary gamepad actions with these semantic commands; the router
-// consumes the physical chord so tool, flight, and menu bindings cannot also
-// fire. These commands remain device-independent after routing.
+// System-command layer for gamepads. Holding the reserved modifier temporarily
+// replaces ordinary gamepad actions with profile-owned semantic commands; the
+// router consumes the physical chord so tool, flight, and menu bindings cannot
+// also fire. These commands remain device-independent after routing.
 struct CreativeControllerCommandChord {
   CreativeInputKey trigger = CreativeInputKey::Unbound;
   CreativeInputActionId action = CreativeInputActionId::Undo;
 };
 
+inline constexpr std::size_t kCreativeControllerCommandChordCapacity = 3U;
 inline constexpr CreativeInputKey kCreativeControllerCommandModifier =
     CreativeInputKey::GamepadStart;
 
@@ -398,7 +399,9 @@ void setCreativeInputKey(CreativeInputFrame& frame,
     CreativeInputRouterState& state,
     const CreativeInputFrame& frame,
     std::span<const CreativeInputBinding> bindings =
-        defaultCreativeInputBindings());
+        defaultCreativeInputBindings(),
+    std::span<const CreativeControllerCommandChord> controllerCommands =
+        defaultCreativeControllerCommandChords());
 
 // Whether a routed action is present this frame.
 [[nodiscard]] bool creativeInputRouteContains(

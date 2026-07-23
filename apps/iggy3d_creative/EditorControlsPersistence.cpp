@@ -1,5 +1,7 @@
 #include "EditorControls.hpp"
 
+#include <algorithm>
+#include <array>
 #include <fstream>
 #include <iomanip>
 #include <limits>
@@ -12,6 +14,8 @@ namespace cr = iggy3d::creative;
 namespace {
 
 constexpr std::string_view kControlFileHeader =
+    "iggy3d_creative_controls 3";
+constexpr std::string_view kLegacyV2ControlFileHeader =
     "iggy3d_creative_controls 2";
 constexpr std::string_view kLegacyControlFileHeader =
     "iggy3d_creative_controls 1";
@@ -79,7 +83,8 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
   std::string header;
   std::getline(input, header);
   const bool legacyV1 = header == kLegacyControlFileHeader;
-  if (header != kControlFileHeader && !legacyV1) {
+  const bool legacyV2 = header == kLegacyV2ControlFileHeader;
+  if (header != kControlFileHeader && !legacyV2 && !legacyV1) {
     receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
     return receipt;
   }
@@ -87,6 +92,8 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
   cr::CreativeControlProfile candidate =
       cr::makeDefaultCreativeControlProfile();
   PlaytestWindowPreferences playtestSection;
+  std::array<bool, cr::kCreativeControllerCommandChordCapacity>
+      commandRowsSeen{};
   bool inPlaytestSection = false;
   std::string line;
   while (std::getline(input, line)) {
@@ -129,6 +136,32 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
     } else if (kind == "menu_repeat") {
       row >> candidate.menuRepeatDelayMilliseconds >>
           candidate.menuRepeatIntervalMilliseconds;
+    } else if (kind == "controller_command") {
+      std::string actionName;
+      std::string keyName;
+      row >> actionName >> keyName;
+      cr::CreativeInputActionId action = cr::CreativeInputActionId::Count;
+      cr::CreativeInputKey key = cr::CreativeInputKey::Count;
+      if (!cr::parseCreativeInputActionId(actionName, action) ||
+          !cr::parseCreativeInputKey(keyName, key)) {
+        receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
+        return receipt;
+      }
+      std::size_t commandIndex = candidate.controllerCommandCount;
+      for (std::size_t index = 0U;
+           index < candidate.controllerCommandCount; ++index) {
+        if (candidate.controllerCommands[index].action == action) {
+          commandIndex = index;
+          break;
+        }
+      }
+      if (commandIndex >= candidate.controllerCommandCount ||
+          commandRowsSeen[commandIndex] ||
+          !cr::applyStoredCreativeControllerCommand(candidate, action, key)) {
+        receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
+        return receipt;
+      }
+      commandRowsSeen[commandIndex] = true;
     } else if (kind == "bind") {
       std::string actionName;
       std::string deviceName;
@@ -190,7 +223,12 @@ CreativeEditorControlPersistenceReceipt parseControlProfileStream(
       return receipt;
     }
   }
-  if (!input.eof() || !cr::isValidCreativeControlProfile(candidate)) {
+  const bool allCommandRowsPresent =
+      std::all_of(commandRowsSeen.begin(), commandRowsSeen.end(),
+                  [](bool seen) { return seen; });
+  if (!input.eof() ||
+      (header == kControlFileHeader && !allCommandRowsPresent) ||
+      !cr::isValidCreativeControlProfile(candidate)) {
     receipt.status = CreativeEditorControlPersistenceStatus::Invalid;
     return receipt;
   }
@@ -227,6 +265,11 @@ CreativeEditorControlPersistenceReceipt serializeControlProfileStream(
          << (profile.lookStick.invertY ? 1 : 0) << '\n';
   output << "menu_repeat " << profile.menuRepeatDelayMilliseconds << ' '
          << profile.menuRepeatIntervalMilliseconds << '\n';
+  for (const cr::CreativeControllerCommandChord& command :
+       profile.controllerCommandSpan()) {
+    output << "controller_command " << cr::toString(command.action) << ' '
+           << cr::toString(command.trigger) << '\n';
+  }
   for (std::size_t group = 0; group < profile.groupCount; ++group) {
     if (cr::creativeControlActionIsReserved(profile.groupActions[group])) {
       continue;

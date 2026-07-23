@@ -33,7 +33,7 @@ constexpr std::array kPs5Settings{
 };
 
 static_assert(cr::kCreativeControlSettingCount + 1U +
-                      cr::kCreativeInputBindingCapacity + 5U <=
+                      cr::kCreativeControlBindingRowCapacity + 5U <=
               cr::kCreativeUiWidgetCapacity);
 
 }  // namespace
@@ -406,6 +406,9 @@ void cycleConflictPolicy(CreativeEditorControlsState& state,
     const cr::CreativeControlBindingRow& binding =
         state.bindingList.rows[row - staticRowCount(state)];
     std::string label = actionDisplayLabel(binding.action);
+    if (binding.controllerCommandLayer) {
+      label.append(" command");
+    }
     std::string value =
         state.capturing && binding.group == state.captureGroup
             ? "LISTENING"

@@ -648,10 +648,11 @@ void appendContextHints(HintSpecBuffer& buffer,
 }
 
 [[nodiscard]] cr::CreativeActionHintFrame
-controllerCommandLayerHints() noexcept {
+controllerCommandLayerHints(
+    const cr::CreativeControlProfile& profile) noexcept {
   cr::CreativeActionHintFrame frame;
   for (const cr::CreativeControllerCommandChord& chord :
-       cr::defaultCreativeControllerCommandChords()) {
+       profile.controllerCommandSpan()) {
     if (frame.count >= frame.hints.size()) {
       frame.capacityExceeded = true;
       frame.count = 0U;
@@ -690,7 +691,7 @@ cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
   if (controllerCommandLayerActive &&
       inputContext == cr::CreativeInputContext::EditorViewport &&
       activeDevice == cr::CreativeControlDevice::Gamepad) {
-    return controllerCommandLayerHints();
+    return controllerCommandLayerHints(editor.controlProfile);
   }
   HintSpecBuffer specs;
   if (inputContext == cr::CreativeInputContext::EditorViewport) {

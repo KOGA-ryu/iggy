@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <string_view>
@@ -238,7 +239,7 @@ bool resolverUsesLiveBindingsAndBoundedPairs() {
   rebind.group = groupFor(profile, cr::CreativeInputActionId::AcceptAction,
                           cr::CreativeControlDevice::Gamepad);
   rebind.trigger = cr::CreativeInputKey::GamepadBack;
-  rebind.conflictPolicy = cr::CreativeControlConflictPolicy::Replace;
+  rebind.conflictPolicy = cr::CreativeControlConflictPolicy::Swap;
   const cr::CreativeControlRebindReceipt rebound =
       cr::rebindCreativeControl(profile, rebind);
   frame = cr::resolveCreativeActionHints(
@@ -1231,6 +1232,29 @@ bool controllerCommandLayerReplacesTheViewportRibbon() {
       findHint(hints, cr::CreativeInputActionId::Save);
   const cr::CreativeUiWidgetFrame widgets =
       buildCreativeEditorActionHintWidgetFrame(hints, 1280U, 720U);
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(editor.controlProfile);
+  const auto undoRow = std::find_if(
+      rows.items().begin(), rows.items().end(),
+      [](const cr::CreativeControlBindingRow& row) {
+        return row.controllerCommandLayer &&
+               row.action == cr::CreativeInputActionId::Undo;
+      });
+  if (undoRow == rows.items().end()) {
+    return expect(false, "command-layer Undo row exists");
+  }
+  const cr::CreativeControlRebindReceipt rebound =
+      cr::rebindCreativeControl(
+          editor.controlProfile,
+          {undoRow->group, cr::CreativeInputKey::GamepadDpadDown,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Swap});
+  const cr::CreativeActionHintFrame reboundHints =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false, true);
+  const cr::CreativeActionHint* reboundUndo =
+      findHint(reboundHints, cr::CreativeInputActionId::Undo);
 
   return expect(hints.count == 3U && !hints.invalidInput &&
                     !hints.capacityExceeded && !hints.textTruncated,
@@ -1247,6 +1271,9 @@ bool controllerCommandLayerReplacesTheViewportRibbon() {
                     save->chord.view() == "Options+D-pad Up" &&
                     save->label.view() == "Save",
                 "command ribbon exposes the Save chord") &&
+         expect(rebound.changed && reboundUndo != nullptr &&
+                    reboundUndo->chord.view() == "Options+D-pad Down",
+                "command ribbon reads the live rebound profile") &&
          expect(widgets.visualCount == 12U && widgetTextFits(widgets),
                 "command ribbon uses the standard non-overlapping widget "
                 "projection");

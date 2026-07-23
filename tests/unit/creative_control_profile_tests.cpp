@@ -430,44 +430,165 @@ bool controllerCommandLayerRequiresAFreshTriggerPress() {
                 "a fresh trigger press after Options emits the command");
 }
 
+bool controllerCommandsAreProfileOwnedAndConflictSafe() {
+  cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(profile);
+  const cr::CreativeControlBindingRow* undo =
+      findRow(rows, cr::CreativeInputActionId::Undo,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* redo =
+      findRow(rows, cr::CreativeInputActionId::Redo,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* save =
+      findRow(rows, cr::CreativeInputActionId::Save,
+              cr::CreativeControlDevice::Gamepad);
+  if (undo == nullptr || redo == nullptr || save == nullptr) {
+    return expect(false, "PS5 command rows exist in the control profile");
+  }
+
+  const cr::CreativeControlRebindReceipt rebound =
+      cr::rebindCreativeControl(
+          profile,
+          {undo->group, cr::CreativeInputKey::GamepadDpadDown,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Swap});
+  cr::CreativeInputRouterState router;
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, true);
+  static_cast<void>(cr::routeCreativeInput(
+      router, frame, profile.bindingSpan(),
+      profile.controllerCommandSpan()));
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadDown, true);
+  const cr::CreativeInputRouteResult routed =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan(),
+                             profile.controllerCommandSpan());
+
+  cr::CreativeControlProfile rejected =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlRebindReceipt reject =
+      cr::rebindCreativeControl(
+          rejected,
+          {undo->group, cr::CreativeInputKey::GamepadDpadRight,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Reject});
+  cr::CreativeControlProfile replaced =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlRebindReceipt replace =
+      cr::rebindCreativeControl(
+          replaced,
+          {undo->group, cr::CreativeInputKey::GamepadDpadRight,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Replace});
+  cr::CreativeControlProfile swapped =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlRebindReceipt swap =
+      cr::rebindCreativeControl(
+          swapped,
+          {undo->group, cr::CreativeInputKey::GamepadDpadRight,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Swap});
+  cr::CreativeControlProfile unbound =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlRebindReceipt remove =
+      cr::rebindCreativeControl(
+          unbound,
+          {undo->group, cr::CreativeInputKey::Unbound,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Reject});
+  cr::CreativeControlProfile reserved =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlRebindReceipt stealModifier =
+      cr::rebindCreativeControl(
+          reserved,
+          {undo->group, cr::kCreativeControllerCommandModifier,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Swap});
+
+  return expect(undo->controllerCommandLayer &&
+                    redo->controllerCommandLayer &&
+                    save->controllerCommandLayer &&
+                    cr::creativeControlBindingDisplayLabel(
+                        *undo, cr::CreativeInputPlatform::MacOS) ==
+                        "Options+D-pad Left",
+                "PS5 tab presents command chords through the shared row model") &&
+         expect(rebound.status == cr::CreativeControlRebindStatus::Applied &&
+                    rebound.changed &&
+                    profile.controllerCommands[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadDown,
+                "an unused PS5 trigger rebinds the live command profile") &&
+         expect(routed.actionCount == 1U &&
+                    routed.actions[0].action ==
+                        cr::CreativeInputActionId::Undo &&
+                    !cr::creativeInputRouteContains(
+                        routed, cr::CreativeInputActionId::QuickEditNext),
+                "router consumes the rebound command without leaking its "
+                "ordinary D-pad action") &&
+         expect(reject.status == cr::CreativeControlRebindStatus::Conflict &&
+                    !reject.changed,
+                "Reject preserves both conflicting document commands") &&
+         expect(replace.status ==
+                        cr::CreativeControlRebindStatus::RequiredAction &&
+                    !replace.changed,
+                "Replace cannot make a required command unreachable") &&
+         expect(swap.status == cr::CreativeControlRebindStatus::Applied &&
+                    swapped.controllerCommands[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadRight &&
+                    swapped.controllerCommands[1].trigger ==
+                        cr::CreativeInputKey::GamepadDpadLeft,
+                "Swap exchanges complete command-layer triggers") &&
+         expect(remove.status ==
+                        cr::CreativeControlRebindStatus::RequiredAction &&
+                    stealModifier.status ==
+                        cr::CreativeControlRebindStatus::ReservedAction,
+                "required commands and the Options escape layer fail closed");
+}
+
 bool requiredPs5ActionsRemainReachable() {
   const cr::CreativeControlProfile profile =
       cr::makeDefaultCreativeControlProfile();
   const std::span<const cr::CreativeControlReachabilityRequirement>
       requirements = cr::defaultCreativeGamepadReachabilityRequirements();
   const cr::CreativeControlReachabilityAuditResult defaults =
-      cr::auditCreativeControlReachability(profile.bindingSpan(), requirements);
+      cr::auditCreativeControlReachability(profile, requirements);
 
-  std::vector<cr::CreativeInputBinding> withoutAccept(
-      profile.bindingSpan().begin(), profile.bindingSpan().end());
+  cr::CreativeControlProfile withoutAccept = profile;
   const auto accept = std::find_if(
-      withoutAccept.begin(), withoutAccept.end(),
+      withoutAccept.bindingSpan().begin(), withoutAccept.bindingSpan().end(),
       [](const cr::CreativeInputBinding& binding) {
         return binding.action == cr::CreativeInputActionId::AcceptAction &&
                binding.context == cr::CreativeInputContext::EditorViewport &&
                binding.trigger == cr::CreativeInputKey::GamepadConfirm;
       });
-  if (accept == withoutAccept.end()) {
+  if (accept == withoutAccept.bindingSpan().end()) {
     return expect(false, "PS5 viewport accept binding exists");
   }
   const std::size_t acceptIndex =
-      static_cast<std::size_t>(std::distance(withoutAccept.begin(), accept));
-  withoutAccept.erase(accept);
+      static_cast<std::size_t>(
+          std::distance(withoutAccept.bindingSpan().begin(), accept));
+  withoutAccept.bindings[acceptIndex].trigger = cr::CreativeInputKey::Unbound;
   const cr::CreativeControlReachabilityAuditResult removed =
       cr::auditCreativeControlReachability(withoutAccept, requirements);
 
-  std::vector<cr::CreativeInputBinding> wrongDevice(
-      profile.bindingSpan().begin(), profile.bindingSpan().end());
-  wrongDevice[acceptIndex].trigger = cr::CreativeInputKey::Enter;
+  cr::CreativeControlProfile wrongDevice = profile;
+  wrongDevice.bindings[acceptIndex].trigger = cr::CreativeInputKey::Enter;
   const cr::CreativeControlReachabilityAuditResult deviceMismatch =
       cr::auditCreativeControlReachability(wrongDevice, requirements);
 
-  std::vector<cr::CreativeInputBinding> wrongActivation(
-      profile.bindingSpan().begin(), profile.bindingSpan().end());
-  wrongActivation[acceptIndex].activation =
+  cr::CreativeControlProfile wrongActivation = profile;
+  wrongActivation.bindings[acceptIndex].activation =
       cr::CreativeInputBindingActivation::Press;
   const cr::CreativeControlReachabilityAuditResult activationMismatch =
       cr::auditCreativeControlReachability(wrongActivation, requirements);
+
+  cr::CreativeControlProfile missingUndo = profile;
+  missingUndo.controllerCommands[0].trigger = cr::CreativeInputKey::Unbound;
+  const cr::CreativeControlReachabilityAuditResult missingCommand =
+      cr::auditCreativeControlReachability(missingUndo, requirements);
 
   const std::array invalidRequirements{
       cr::CreativeControlReachabilityRequirement{
@@ -477,8 +598,7 @@ bool requiredPs5ActionsRemainReachable() {
           cr::CreativeInputBindingActivation::Press},
   };
   const cr::CreativeControlReachabilityAuditResult invalid =
-      cr::auditCreativeControlReachability(profile.bindingSpan(),
-                                            invalidRequirements);
+      cr::auditCreativeControlReachability(profile, invalidRequirements);
 
   const auto missingAccept = [](const auto& audit) {
     return audit.issueCount == 1U &&
@@ -504,11 +624,53 @@ bool requiredPs5ActionsRemainReachable() {
                 "keyboard replacement does not satisfy PS5 reachability") &&
          expect(missingAccept(activationMismatch),
                 "press binding does not satisfy continuous held action") &&
+         expect(missingCommand.issueCount == 1U &&
+                    missingCommand.issues[0].requirement.action ==
+                        cr::CreativeInputActionId::Undo,
+                "missing command-layer Undo fails the same reachability audit") &&
          expect(invalid.issueCount == 1U &&
                     invalid.issues[0].kind ==
                         cr::CreativeControlReachabilityIssueKind::
                             InvalidRequirement,
                 "invalid release requirement fails closed");
+}
+
+bool requiredPs5BindingsCannotBeDisplacedInteractively() {
+  cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(profile);
+  const cr::CreativeControlBindingRow* accept =
+      findRow(rows, cr::CreativeInputActionId::AcceptAction,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* frame =
+      findRow(rows, cr::CreativeInputActionId::FrameContext3D,
+              cr::CreativeControlDevice::Gamepad);
+  if (accept == nullptr || frame == nullptr) {
+    return expect(false, "required PS5 rows exist");
+  }
+  const cr::CreativeControlRebindReceipt receipt =
+      cr::rebindCreativeControl(
+          profile,
+          {accept->group, frame->trigger,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Replace});
+  const cr::CreativeInputBinding* retainedAccept =
+      cr::creativeControlGroupBinding(profile, accept->group);
+  const cr::CreativeInputBinding* retainedFrame =
+      cr::creativeControlGroupBinding(profile, frame->group);
+
+  return expect(receipt.status ==
+                        cr::CreativeControlRebindStatus::RequiredAction &&
+                    !receipt.changed,
+                "Replace reports when it would strand a required PS5 action") &&
+         expect(retainedAccept != nullptr && retainedFrame != nullptr &&
+                    retainedAccept->trigger ==
+                        cr::CreativeInputKey::GamepadConfirm &&
+                    retainedFrame->trigger ==
+                        cr::CreativeInputKey::GamepadBack &&
+                    cr::isValidCreativeControlProfile(profile),
+                "failed reachability edits preserve the complete profile");
 }
 
 bool conflictPoliciesRejectReplaceAndSwapDeterministically() {
@@ -821,7 +983,9 @@ int main() {
   ok = controllerCommandLayerIsExclusiveAndEdgeTriggered() && ok;
   ok = controllerCommandLayerPreservesOptionsTapAndCancelsSafely() && ok;
   ok = controllerCommandLayerRequiresAFreshTriggerPress() && ok;
+  ok = controllerCommandsAreProfileOwnedAndConflictSafe() && ok;
   ok = requiredPs5ActionsRemainReachable() && ok;
+  ok = requiredPs5BindingsCannotBeDisplacedInteractively() && ok;
   ok = conflictPoliciesRejectReplaceAndSwapDeterministically() && ok;
   ok = barePressBindingsCannotShadowHeldActions() && ok;
   ok = deviceAndReservedBoundariesFailClosed() && ok;

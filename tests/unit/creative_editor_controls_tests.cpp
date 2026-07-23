@@ -72,14 +72,23 @@ bool profileRoundTripPreservesBindingsAndTuning() {
   const cr::CreativeControlBindingRow* paste =
       findRow(rows, cr::CreativeInputActionId::PasteClipboard,
               cr::CreativeControlDevice::KeyboardMouse);
-  if (copy == nullptr || paste == nullptr) {
-    return expect(false, "copy and paste rows exist");
+  const cr::CreativeControlBindingRow* controllerUndo =
+      findRow(rows, cr::CreativeInputActionId::Undo,
+              cr::CreativeControlDevice::Gamepad);
+  if (copy == nullptr || paste == nullptr || controllerUndo == nullptr) {
+    return expect(false, "copy, paste, and PS5 Undo rows exist");
   }
   const cr::CreativeControlRebindReceipt swapped = cr::rebindCreativeControl(
       source,
       {paste->group, cr::CreativeInputKey::C,
        cr::kCreativeInputModifierCommand,
        cr::CreativeControlConflictPolicy::Swap});
+  const cr::CreativeControlRebindReceipt commandRebound =
+      cr::rebindCreativeControl(
+          source,
+          {controllerUndo->group, cr::CreativeInputKey::GamepadDpadDown,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Swap});
   static_cast<void>(cr::adjustCreativeControlSetting(
       source, cr::CreativeControlSettingId::LookDeadzone, 3));
   static_cast<void>(cr::adjustCreativeControlSetting(
@@ -106,12 +115,19 @@ bool profileRoundTripPreservesBindingsAndTuning() {
   std::error_code error;
   std::filesystem::remove_all(root, error);
 
-  return expect(swapped.changed, "source binding swap applied") &&
+  return expect(swapped.changed && commandRebound.changed,
+                "source binding and PS5 command rebinds apply") &&
          expect(serializedReceipt.accepted && !serialized.empty() &&
+                    serialized.starts_with("iggy3d_creative_controls 3\n") &&
+                    serialized.find(
+                        "controller_command Undo GamepadDpadDown\n") !=
+                        std::string::npos &&
                     parsedReceipt.accepted &&
                     parsed.lookStick.deadzone == source.lookStick.deadzone &&
                     parsed.lookStick.invertY == source.lookStick.invertY &&
-                    parsed.menuRepeatDelayMilliseconds == 375U,
+                    parsed.menuRepeatDelayMilliseconds == 375U &&
+                    parsed.controllerCommands[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadDown,
                 "pure control codec round trips without filesystem IO") &&
          expect(saved.status ==
                     app::CreativeEditorControlPersistenceStatus::Saved &&
@@ -128,10 +144,67 @@ bool profileRoundTripPreservesBindingsAndTuning() {
          expect(loaded.lookStick.deadzone == source.lookStick.deadzone &&
                     loaded.lookStick.invertY == source.lookStick.invertY &&
                     loaded.menuRepeatDelayMilliseconds == 375U &&
-                    loaded.menuRepeatIntervalMilliseconds == 90U,
-                "controller and repeat tuning survive round trip") &&
+                    loaded.menuRepeatIntervalMilliseconds == 90U &&
+                    loaded.controllerCommands[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadDown,
+                "controller commands and repeat tuning survive round trip") &&
          expect(cr::isValidCreativeControlProfile(loaded),
                 "loaded profile remains valid");
+}
+
+bool legacyV2DefaultsCommandsAndMalformedV3FailsAtomically() {
+  cr::CreativeControlProfile legacy =
+      cr::makeDefaultCreativeControlProfile();
+  const app::CreativeEditorControlPersistenceReceipt legacyReceipt =
+      app::parseCreativeEditorControlProfile(
+          "iggy3d_creative_controls 2\n"
+          "gamepad_sensitivity 2.75\n",
+          legacy);
+
+  const cr::CreativeControlProfile defaults =
+      cr::makeDefaultCreativeControlProfile();
+  std::string malformed;
+  const app::CreativeEditorControlPersistenceReceipt encoded =
+      app::serializeCreativeEditorControlProfile(defaults, malformed);
+  constexpr std::string_view kSaveRow =
+      "controller_command Save GamepadDpadUp\n";
+  const std::size_t saveRow = malformed.find(kSaveRow);
+  if (!encoded.accepted || saveRow == std::string::npos) {
+    return expect(false, "default v3 command rows serialize");
+  }
+  malformed.replace(
+      saveRow, kSaveRow.size(),
+      "controller_command Save GamepadDpadLeft\n");
+  cr::CreativeControlProfile live = defaults;
+  live.gamepadLookSensitivity = 4.2F;
+  const app::CreativeEditorControlPersistenceReceipt malformedReceipt =
+      app::parseCreativeEditorControlProfile(malformed, live);
+
+  std::string missing;
+  static_cast<void>(
+      app::serializeCreativeEditorControlProfile(defaults, missing));
+  const std::size_t missingRow = missing.find(kSaveRow);
+  missing.erase(missingRow, kSaveRow.size());
+  const app::CreativeEditorControlPersistenceReceipt missingReceipt =
+      app::parseCreativeEditorControlProfile(missing, live);
+
+  return expect(legacyReceipt.accepted &&
+                    legacy.gamepadLookSensitivity == 2.75F &&
+                    legacy.controllerCommandCount ==
+                        cr::kCreativeControllerCommandChordCapacity &&
+                    legacy.controllerCommands[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadLeft,
+                "v2 profiles gain the default command layer on load") &&
+         expect(!malformedReceipt.accepted &&
+                    malformedReceipt.status ==
+                        app::CreativeEditorControlPersistenceStatus::Invalid &&
+                    live.gamepadLookSensitivity == 4.2F,
+                "duplicate persisted command triggers fail atomically") &&
+         expect(!missingReceipt.accepted &&
+                    missingReceipt.status ==
+                        app::CreativeEditorControlPersistenceStatus::Invalid &&
+                    live.gamepadLookSensitivity == 4.2F,
+                "v3 profiles require every command row");
 }
 
 bool missingAndMalformedFilesDoNotReplaceLiveProfile() {
@@ -462,6 +535,13 @@ bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
   const bool selectedPs5 = app::selectCreativeEditorControlsTab(
       editor, cr::CreativeControlDevice::Gamepad);
   const std::size_t ps5Count = editor.controls.bindingList.count;
+  const std::size_t ps5CommandCount =
+      static_cast<std::size_t>(std::count_if(
+          editor.controls.bindingList.items().begin(),
+          editor.controls.bindingList.items().end(),
+          [](const cr::CreativeControlBindingRow& row) {
+            return row.controllerCommandLayer;
+          }));
   const bool ps5Only = std::all_of(
       editor.controls.bindingList.items().begin(),
       editor.controls.bindingList.items().end(),
@@ -488,7 +568,9 @@ bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
                 "controls tabs accept only real device transitions") &&
          expect(ps5Count > 0U && keyboardCount > 0U &&
                     ps5Count + keyboardCount == all.count && ps5Only &&
-                    keyboardOnly,
+                    keyboardOnly &&
+                    ps5CommandCount ==
+                        cr::kCreativeControllerCommandChordCapacity,
                 "keyboard and PS5 tabs partition configurable bindings") &&
          expect(editor.controls.activeDevice ==
                         cr::CreativeControlDevice::KeyboardMouse &&
@@ -504,6 +586,7 @@ bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
 int main() {
   bool ok = true;
   ok = profileRoundTripPreservesBindingsAndTuning() && ok;
+  ok = legacyV2DefaultsCommandsAndMalformedV3FailsAtomically() && ok;
   ok = missingAndMalformedFilesDoNotReplaceLiveProfile() && ok;
   ok = activationShadowFileDoesNotReplaceLiveProfile() && ok;
   ok = legacySquarePickMigratesWithoutDiscardingProfileTuning() && ok;

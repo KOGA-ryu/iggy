@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string>
 
 namespace iggy3d::creative {
@@ -10,6 +11,11 @@ namespace {
 constexpr CreativeInputModifierMask kAllModifiers =
     kCreativeInputModifierShift | kCreativeInputModifierControl |
     kCreativeInputModifierAlt | kCreativeInputModifierCommand;
+constexpr std::uint16_t kControllerCommandGroupBase =
+    static_cast<std::uint16_t>(kCreativeInputBindingCapacity);
+static_assert(kCreativeInputBindingCapacity +
+                  kCreativeControllerCommandChordCapacity <=
+              std::numeric_limits<std::uint16_t>::max());
 
 using ReachabilityRequirement = CreativeControlReachabilityRequirement;
 using Action = CreativeInputActionId;
@@ -24,6 +30,9 @@ constexpr ReachabilityRequirement requireGamepad(
 }
 
 constexpr std::array kDefaultGamepadReachabilityRequirements{
+    requireGamepad(Action::Undo, Context::EditorViewport),
+    requireGamepad(Action::Redo, Context::EditorViewport),
+    requireGamepad(Action::Save, Context::EditorViewport),
     requireGamepad(Action::ToggleCatalog, Context::EditorViewport),
     requireGamepad(Action::ToggleToolWheel, Context::EditorViewport),
     requireGamepad(Action::QuickEditPrevious, Context::EditorViewport),
@@ -179,6 +188,18 @@ static_assert(kDefaultGamepadReachabilityRequirements.size() <=
          deviceForKey(binding.trigger) == requirement.device;
 }
 
+[[nodiscard]] bool commandSatisfies(
+    const CreativeControllerCommandChord& command,
+    const ReachabilityRequirement& requirement) noexcept {
+  return command.trigger != CreativeInputKey::Unbound &&
+         command.trigger != CreativeInputKey::Count &&
+         creativeInputKeyIsGamepad(command.trigger) &&
+         command.action == requirement.action &&
+         requirement.context == Context::EditorViewport &&
+         requirement.device == CreativeControlDevice::Gamepad &&
+         requirement.activation == Activation::Press;
+}
+
 void appendReachabilityIssue(
     CreativeControlReachabilityAuditResult& result,
     CreativeControlReachabilityIssueKind kind,
@@ -203,6 +224,44 @@ void appendReachabilityIssue(
 
 [[nodiscard]] bool validModifiers(CreativeInputModifierMask modifiers) noexcept {
   return (modifiers & ~kAllModifiers) == 0U;
+}
+
+[[nodiscard]] bool controllerCommandIndexForGroup(
+    std::uint16_t group,
+    std::size_t& index) noexcept {
+  if (group < kControllerCommandGroupBase) {
+    return false;
+  }
+  index = static_cast<std::size_t>(group - kControllerCommandGroupBase);
+  return index < kCreativeControllerCommandChordCapacity;
+}
+
+[[nodiscard]] bool validControllerCommands(
+    const CreativeControlProfile& profile) noexcept {
+  const std::span<const CreativeControllerCommandChord> defaults =
+      defaultCreativeControllerCommandChords();
+  if (defaults.size() != kCreativeControllerCommandChordCapacity ||
+      profile.controllerCommandCount != defaults.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < profile.controllerCommandCount;
+       ++index) {
+    const CreativeControllerCommandChord& command =
+        profile.controllerCommands[index];
+    if (command.action != defaults[index].action ||
+        command.trigger == CreativeInputKey::Unbound ||
+        command.trigger == CreativeInputKey::Count ||
+        command.trigger == kCreativeControllerCommandModifier ||
+        !creativeInputKeyIsGamepad(command.trigger)) {
+      return false;
+    }
+    for (std::size_t previous = 0U; previous < index; ++previous) {
+      if (profile.controllerCommands[previous].trigger == command.trigger) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 [[nodiscard]] CreativeInputModifierMask modifierForKey(
@@ -294,6 +353,78 @@ void appendModifier(std::string& label,
   }
 }
 
+[[nodiscard]] CreativeControlRebindReceipt rebindControllerCommand(
+    CreativeControlProfile& profile,
+    const CreativeControlRebindRequest& request,
+    std::size_t commandIndex) noexcept {
+  CreativeControlRebindReceipt receipt;
+  receipt.group = request.group;
+  receipt.requestedTrigger = request.trigger;
+  const CreativeControllerCommandChord& current =
+      profile.controllerCommands[commandIndex];
+  receipt.previousTrigger = current.trigger;
+
+  if (request.conflictPolicy == CreativeControlConflictPolicy::Count ||
+      request.modifiers != kCreativeInputModifierNone ||
+      request.trigger == CreativeInputKey::Count) {
+    receipt.status = CreativeControlRebindStatus::InvalidKey;
+    return receipt;
+  }
+  if (request.trigger == CreativeInputKey::Unbound) {
+    receipt.status = CreativeControlRebindStatus::RequiredAction;
+    return receipt;
+  }
+  if (!creativeInputKeyIsGamepad(request.trigger)) {
+    receipt.status = CreativeControlRebindStatus::DeviceMismatch;
+    return receipt;
+  }
+  if (request.trigger == kCreativeControllerCommandModifier) {
+    receipt.status = CreativeControlRebindStatus::ReservedAction;
+    return receipt;
+  }
+  if (request.trigger == current.trigger) {
+    receipt.status = CreativeControlRebindStatus::NoChange;
+    return receipt;
+  }
+
+  std::size_t conflictIndex = profile.controllerCommandCount;
+  for (std::size_t index = 0U; index < profile.controllerCommandCount;
+       ++index) {
+    if (index != commandIndex &&
+        profile.controllerCommands[index].trigger == request.trigger) {
+      conflictIndex = index;
+      break;
+    }
+  }
+  if (conflictIndex < profile.controllerCommandCount) {
+    receipt.conflictGroups[0] = static_cast<std::uint16_t>(
+        kControllerCommandGroupBase + conflictIndex);
+    receipt.conflictCount = 1U;
+    if (request.conflictPolicy == CreativeControlConflictPolicy::Reject) {
+      receipt.status = CreativeControlRebindStatus::Conflict;
+      return receipt;
+    }
+    if (request.conflictPolicy == CreativeControlConflictPolicy::Replace) {
+      receipt.status = CreativeControlRebindStatus::RequiredAction;
+      return receipt;
+    }
+  }
+
+  CreativeControlProfile candidate = profile;
+  candidate.controllerCommands[commandIndex].trigger = request.trigger;
+  if (conflictIndex < candidate.controllerCommandCount) {
+    candidate.controllerCommands[conflictIndex].trigger = current.trigger;
+  }
+  if (!validControllerCommands(candidate)) {
+    receipt.status = CreativeControlRebindStatus::InvalidProfile;
+    return receipt;
+  }
+  profile = candidate;
+  receipt.status = CreativeControlRebindStatus::Applied;
+  receipt.changed = true;
+  return receipt;
+}
+
 template <typename Value>
 [[nodiscard]] bool adjustClamped(Value& value,
                                  Value step,
@@ -347,6 +478,7 @@ std::string_view toString(CreativeControlRebindStatus status) noexcept {
       return "MultipleConflicts";
     case CreativeControlRebindStatus::InvalidGroup: return "InvalidGroup";
     case CreativeControlRebindStatus::ReservedAction: return "ReservedAction";
+    case CreativeControlRebindStatus::RequiredAction: return "RequiredAction";
     case CreativeControlRebindStatus::InvalidKey: return "InvalidKey";
     case CreativeControlRebindStatus::DeviceMismatch: return "DeviceMismatch";
     case CreativeControlRebindStatus::InvalidProfile: return "InvalidProfile";
@@ -398,6 +530,12 @@ CreativeControlProfile makeDefaultCreativeControlProfile() {
   profile.bindingCount =
       std::min(defaults.size(), profile.bindings.size());
   std::copy_n(defaults.begin(), profile.bindingCount, profile.bindings.begin());
+  const std::span<const CreativeControllerCommandChord> commandDefaults =
+      defaultCreativeControllerCommandChords();
+  profile.controllerCommandCount =
+      std::min(commandDefaults.size(), profile.controllerCommands.size());
+  std::copy_n(commandDefaults.begin(), profile.controllerCommandCount,
+              profile.controllerCommands.begin());
 
   for (std::size_t index = 0; index < profile.bindingCount; ++index) {
     std::size_t group = profile.groupCount;
@@ -436,7 +574,7 @@ bool isValidCreativeControlProfile(
       profile.bindingCount > profile.bindings.size() ||
       profile.groupCount == 0U ||
       profile.groupCount > profile.groupActions.size() ||
-      !validProfileTuning(profile)) {
+      !validProfileTuning(profile) || !validControllerCommands(profile)) {
     return false;
   }
   for (std::size_t index = 0; index < profile.bindingCount; ++index) {
@@ -457,16 +595,43 @@ bool isValidCreativeControlProfile(
   }
   const CreativeInputBindingAuditResult audit =
       auditCreativeInputBindings(profile.bindingSpan());
-  return !audit.bindingCapacityExceeded && audit.conflictCount == 0U;
+  if (audit.bindingCapacityExceeded || audit.conflictCount != 0U) {
+    return false;
+  }
+  const CreativeControlReachabilityAuditResult reachability =
+      auditCreativeControlReachability(
+          profile, defaultCreativeGamepadReachabilityRequirements());
+  return reachability.issueCount == 0U &&
+         !reachability.bindingCapacityExceeded &&
+         !reachability.requirementCapacityExceeded;
 }
 
 CreativeControlBindingList buildCreativeControlBindingList(
     const CreativeControlProfile& profile) noexcept {
   CreativeControlBindingList result;
   if (profile.bindingCount > profile.bindings.size() ||
-      profile.groupCount > profile.groupActions.size()) {
+      profile.groupCount > profile.groupActions.size() ||
+      profile.controllerCommandCount > profile.controllerCommands.size()) {
     result.capacityExceeded = true;
     return result;
+  }
+  for (std::size_t index = 0U; index < profile.controllerCommandCount;
+       ++index) {
+    if (result.count >= result.rows.size()) {
+      result.capacityExceeded = true;
+      return result;
+    }
+    const CreativeControllerCommandChord& command =
+        profile.controllerCommands[index];
+    CreativeControlBindingRow& row = result.rows[result.count++];
+    row.group =
+        static_cast<std::uint16_t>(kControllerCommandGroupBase + index);
+    row.action = command.action;
+    row.trigger = command.trigger;
+    row.device = CreativeControlDevice::Gamepad;
+    row.activation = CreativeInputBindingActivation::Press;
+    row.controllerCommandLayer = true;
+    row.layerModifier = kCreativeControllerCommandModifier;
   }
   for (std::size_t group = 0; group < profile.groupCount; ++group) {
     if (creativeControlActionIsReserved(profile.groupActions[group])) {
@@ -536,6 +701,56 @@ CreativeControlReachabilityAuditResult auditCreativeControlReachability(
   return result;
 }
 
+CreativeControlReachabilityAuditResult auditCreativeControlReachability(
+    const CreativeControlProfile& profile,
+    std::span<const CreativeControlReachabilityRequirement>
+        requirements) noexcept {
+  CreativeControlReachabilityAuditResult result;
+  result.bindingCapacityExceeded =
+      profile.bindingCount > kCreativeInputBindingCapacity ||
+      profile.controllerCommandCount >
+          kCreativeControllerCommandChordCapacity;
+  result.requirementCapacityExceeded =
+      requirements.size() > kCreativeControlReachabilityRequirementCapacity;
+  const std::span<const CreativeInputBinding> bindings{
+      profile.bindings.data(),
+      std::min(profile.bindingCount, kCreativeInputBindingCapacity)};
+  const std::span<const CreativeControllerCommandChord> commands{
+      profile.controllerCommands.data(),
+      std::min(profile.controllerCommandCount,
+               kCreativeControllerCommandChordCapacity)};
+  requirements = requirements.first(std::min(
+      requirements.size(), kCreativeControlReachabilityRequirementCapacity));
+
+  for (std::size_t requirementIndex = 0U;
+       requirementIndex < requirements.size(); ++requirementIndex) {
+    const CreativeControlReachabilityRequirement& requirement =
+        requirements[requirementIndex];
+    if (!validReachabilityRequirement(requirement)) {
+      appendReachabilityIssue(
+          result, CreativeControlReachabilityIssueKind::InvalidRequirement,
+          requirementIndex, requirement);
+      continue;
+    }
+    const bool bindingFound = std::any_of(
+        bindings.begin(), bindings.end(),
+        [&requirement](const CreativeInputBinding& binding) {
+          return bindingSatisfies(binding, requirement);
+        });
+    const bool commandFound = std::any_of(
+        commands.begin(), commands.end(),
+        [&requirement](const CreativeControllerCommandChord& command) {
+          return commandSatisfies(command, requirement);
+        });
+    if (!bindingFound && !commandFound) {
+      appendReachabilityIssue(
+          result, CreativeControlReachabilityIssueKind::MissingBinding,
+          requirementIndex, requirement);
+    }
+  }
+  return result;
+}
+
 const CreativeInputBinding* creativeControlGroupBinding(
     const CreativeControlProfile& profile,
     std::uint16_t group) noexcept {
@@ -569,6 +784,12 @@ CreativeControlRebindReceipt rebindCreativeControl(
   receipt.requestedTrigger = request.trigger;
   if (!isValidCreativeControlProfile(profile)) {
     return receipt;
+  }
+  std::size_t controllerCommandIndex = 0U;
+  if (controllerCommandIndexForGroup(request.group,
+                                     controllerCommandIndex)) {
+    return rebindControllerCommand(profile, request,
+                                   controllerCommandIndex);
   }
   const CreativeInputBinding* current =
       creativeControlGroupBinding(profile, request.group);
@@ -676,6 +897,13 @@ CreativeControlRebindReceipt rebindCreativeControl(
     }
   }
 
+  const CreativeControlReachabilityAuditResult reachability =
+      auditCreativeControlReachability(
+          candidate, defaultCreativeGamepadReachabilityRequirements());
+  if (reachability.issueCount != 0U) {
+    receipt.status = CreativeControlRebindStatus::RequiredAction;
+    return receipt;
+  }
   if (!isValidCreativeControlProfile(candidate)) {
     receipt.status = CreativeControlRebindStatus::InvalidProfile;
     return receipt;
@@ -705,6 +933,26 @@ bool applyStoredCreativeControlChord(
   setGroupChord(profile, group, trigger, requiredAllModifiers,
                 requiredAnyModifiers, allowedModifiers);
   return true;
+}
+
+bool applyStoredCreativeControllerCommand(
+    CreativeControlProfile& profile,
+    CreativeInputActionId action,
+    CreativeInputKey trigger) noexcept {
+  if (trigger == CreativeInputKey::Unbound ||
+      trigger == CreativeInputKey::Count ||
+      trigger == kCreativeControllerCommandModifier ||
+      !creativeInputKeyIsGamepad(trigger)) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < profile.controllerCommandCount;
+       ++index) {
+    if (profile.controllerCommands[index].action == action) {
+      profile.controllerCommands[index].trigger = trigger;
+      return true;
+    }
+  }
+  return false;
 }
 
 bool adjustCreativeControlSetting(CreativeControlProfile& profile,
@@ -800,6 +1048,11 @@ std::string creativeControlBindingDisplayLabel(
                      : row.requiredAnyModifiers;
   }
   std::string label;
+  if (row.controllerCommandLayer &&
+      row.layerModifier != CreativeInputKey::Unbound) {
+    label.append(creativeControlKeyDisplayLabel(row.layerModifier));
+    label.push_back('+');
+  }
   appendModifier(label, modifiers, kCreativeInputModifierControl, "Ctrl");
   appendModifier(label, modifiers, kCreativeInputModifierCommand, "Cmd");
   appendModifier(label, modifiers, kCreativeInputModifierAlt, "Alt");

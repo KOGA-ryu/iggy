@@ -19,6 +19,8 @@ constexpr std::array kControllerCommandChords{
     CreativeControllerCommandChord{CreativeInputKey::GamepadDpadUp,
                                    CreativeInputActionId::Save},
 };
+static_assert(kControllerCommandChords.size() ==
+              kCreativeControllerCommandChordCapacity);
 
 [[nodiscard]] std::size_t keyIndex(CreativeInputKey key) noexcept {
   return static_cast<std::size_t>(key);
@@ -107,7 +109,8 @@ void routeControllerCommandLayer(
     CreativeInputRouterState& state,
     const CreativeInputFrame& frame,
     CreativeInputRouteResult& result,
-    std::array<bool, kCreativeInputActionCount>& actionActivationEdge) {
+    std::array<bool, kCreativeInputActionCount>& actionActivationEdge,
+    std::span<const CreativeControllerCommandChord> controllerCommands) {
   const bool modifierDown =
       creativeInputKeyDown(frame, kCreativeControllerCommandModifier);
   const bool modifierWasDown =
@@ -142,8 +145,16 @@ void routeControllerCommandLayer(
       }
     }
 
-    for (const CreativeControllerCommandChord& chord :
-         kControllerCommandChords) {
+    controllerCommands = controllerCommands.first(std::min(
+        controllerCommands.size(), kCreativeControllerCommandChordCapacity));
+    for (const CreativeControllerCommandChord& chord : controllerCommands) {
+      if (chord.trigger == CreativeInputKey::Unbound ||
+          chord.trigger == CreativeInputKey::Count ||
+          chord.trigger == kCreativeControllerCommandModifier ||
+          !creativeInputKeyIsGamepad(chord.trigger) ||
+          actionIndex(chord.action) >= kCreativeInputActionCount) {
+        continue;
+      }
       const bool triggerDown = creativeInputKeyDown(frame, chord.trigger);
       const bool triggerWasDown = keyWasDown(state, chord.trigger);
       const std::size_t action = actionIndex(chord.action);
@@ -647,7 +658,8 @@ void creativeInputRouteRemove(CreativeInputRouteResult& route,
 CreativeInputRouteResult routeCreativeInput(
     CreativeInputRouterState& state,
     const CreativeInputFrame& frame,
-    std::span<const CreativeInputBinding> bindings) {
+    std::span<const CreativeInputBinding> bindings,
+    std::span<const CreativeControllerCommandChord> controllerCommands) {
   CreativeInputRouteResult result;
   result.context = frame.context;
   result.bindingCapacityExceeded =
@@ -657,7 +669,8 @@ CreativeInputRouteResult routeCreativeInput(
       std::min(bindings.size(), kCreativeInputBindingCapacity);
   std::array<std::size_t, kCreativeInputBindingCapacity> activeBindings{};
   std::array<bool, kCreativeInputActionCount> actionActivationEdge{};
-  routeControllerCommandLayer(state, frame, result, actionActivationEdge);
+  routeControllerCommandLayer(state, frame, result, actionActivationEdge,
+                              controllerCommands);
   std::size_t activeBindingCount = 0;
   for (std::size_t index = 0; index < bindingCount; ++index) {
     if (bindings[index].context == frame.context &&
