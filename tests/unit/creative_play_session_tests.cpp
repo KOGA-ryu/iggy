@@ -888,6 +888,203 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
                 "pickup feedback is authored-name aware and sandbox isolated");
 }
 
+bool persistentAuthoredLootCanBeCollectedOnSeparatePresses() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(false, 924U);
+
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::LootPoint;
+  request.name = "Arrow Bundle";
+  request.transform.position = {0.0, 1.65, -0.4};
+  request.hasTransformOverride = true;
+  request.hasLootPointSettingsOverride = true;
+  request.lootPoint.itemId = "arrow_bundle";
+  request.lootPoint.itemCount = 1U;
+  request.lootPoint.deactivateOnCollect = false;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const std::uint64_t authoredRevision = document.revision();
+
+  app::CreativePlaySession mode;
+  if (!created.accepted || !start(mode, document, catalog).accepted ||
+      !mode.sandbox.has_value()) {
+    return expect(false, "persistent pickup setup starts");
+  }
+
+  const app::CreativePlayTickReceipt firstPressed =
+      tickAt(mode, document, 1U, {false, true});
+  const app::CreativePlayTickReceipt firstExecuted =
+      tickAt(mode, document, 50'000'001U, {false, true});
+  static_cast<void>(tickAt(mode, document, 100'000'001U, {}));
+  const app::CreativePlayTickReceipt secondPressed =
+      tickAt(mode, document, 150'000'001U, {false, true});
+  const app::CreativePlayTickReceipt secondExecuted =
+      tickAt(mode, document, 200'000'001U, {false, true});
+
+  const cr::CreativeRuntimeInteractableState* state =
+      cr::findCreativeRuntimeInteractableByObjectId(
+          *mode.sandbox, created.objectId);
+  const iggy3d::EntityState* entity =
+      state == nullptr
+          ? nullptr
+          : mode.sandbox->session.state().world.findById(state->entity);
+  const iggy3d::PlayerInventory* inventory = iggy3d::findInventory(
+      mode.sandbox->session.state().inventory, 0U);
+  const bool collectedTwice =
+      inventory != nullptr &&
+      std::any_of(
+          inventory->stacks.begin(), inventory->stacks.end(),
+          [](const iggy3d::InventoryStack& stack) {
+            return stack.itemId == "arrow_bundle" && stack.count == 2U;
+          });
+  return expect(firstPressed.actionSubmitted &&
+                    firstExecuted.interactionEffectsApplied == 1U &&
+                    firstExecuted.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            PickupAcquired,
+                "persistent pickup accepts the first press") &&
+         expect(secondPressed.actionSubmitted &&
+                    secondPressed.interactionEffectsApplied == 1U &&
+                    secondPressed.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            PickupAcquired &&
+                    !secondExecuted.actionSubmitted &&
+                    secondExecuted.interactionEffectsApplied == 0U,
+                "persistent pickup accepts a later distinct press") &&
+         expect(state != nullptr && !state->pickupConsumed &&
+                    entity != nullptr && entity->active && collectedTwice,
+                "persistent pickup remains active and grants each quantity") &&
+         expect(document.revision() == authoredRevision,
+                "persistent pickup runtime state stays sandbox-only");
+}
+
+bool authoredLootAndExitCompleteAPlayableObjectiveLoop() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(false, 923U);
+
+  cr::CreativeDocumentCreateRequest lootRequest;
+  lootRequest.kind = cr::CreativeObjectKind::LootPoint;
+  lootRequest.name = "Estate Key Ring";
+  lootRequest.transform.position = {0.0, 1.65, -0.4};
+  lootRequest.hasTransformOverride = true;
+  lootRequest.hasLootPointSettingsOverride = true;
+  lootRequest.lootPoint.itemId = "estate_key";
+  lootRequest.lootPoint.itemCount = 2U;
+  const cr::CreativeDocumentCreateReceipt loot =
+      document.createObject(lootRequest);
+
+  cr::CreativeDocumentCreateRequest exitRequest;
+  exitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+  exitRequest.name = "Estate Gate";
+  exitRequest.transform.position = {0.0, 1.65, -0.4};
+  exitRequest.hasTransformOverride = true;
+  exitRequest.hasExitPointSettingsOverride = true;
+  exitRequest.exitPoint.requiredItemId = "estate_key";
+  exitRequest.exitPoint.requiredItemCount = 2U;
+  const cr::CreativeDocumentCreateReceipt exit =
+      document.createObject(exitRequest);
+  const std::uint64_t authoredRevision = document.revision();
+
+  app::CreativePlaySession mode;
+  if (!loot.accepted || !exit.accepted ||
+      !start(mode, document, catalog).accepted ||
+      !mode.sandbox.has_value()) {
+    return expect(false, "authored objective loop starts");
+  }
+  const auto lootState = std::find_if(
+      mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
+      [&loot](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == loot.objectId;
+      });
+  const auto exitState = std::find_if(
+      mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
+      [&exit](const cr::CreativeRuntimeInteractableState& state) {
+        return state.definition.objectId == exit.objectId;
+      });
+  if (lootState == mode.sandbox->interactables.end() ||
+      exitState == mode.sandbox->interactables.end()) {
+    return expect(false, "authored objective loop has runtime owners");
+  }
+
+  const app::CreativePlayTickReceipt pickupPressed =
+      tickAt(mode, document, 1U, {false, true});
+  const app::CreativePlayTickReceipt pickupExecuted =
+      tickAt(mode, document, 50'000'001U, {false, true});
+  const app::CreativePlayTickReceipt released =
+      tickAt(mode, document, 100'000'001U, {});
+  const std::string exitPrompt = mode.target.actionPrompt;
+  const app::CreativePlayTargetStatus releasedTargetStatus =
+      mode.target.status;
+  const std::string releasedTargetStableName = mode.target.stableName;
+  const app::CreativePlayTickReceipt exitPressed =
+      tickAt(mode, document, 150'000'001U, {false, true});
+  const app::CreativePlayTickReceipt exitExecuted =
+      tickAt(mode, document, 200'000'001U, {false, true});
+
+  const iggy3d::PlayerInventory* inventory = iggy3d::findInventory(
+      mode.sandbox->session.state().inventory, 0U);
+  const bool inventoryContainsRequirement =
+      inventory != nullptr &&
+      std::any_of(
+          inventory->stacks.begin(), inventory->stacks.end(),
+          [](const iggy3d::InventoryStack& stack) {
+            return stack.itemId == "estate_key" && stack.count == 2U;
+          });
+  const iggy3d::EntityState* lootEntity =
+      mode.sandbox->session.state().world.findById(lootState->entity);
+  const iggy3d::EntityState* exitEntity =
+      mode.sandbox->session.state().world.findById(exitState->entity);
+  return expect(lootState->definition.itemCount == 2U &&
+                    lootState->definition.itemId == "estate_key" &&
+                    exitState->definition.requiredItemId == "estate_key" &&
+                    exitState->definition.requiredItemCount == 2U &&
+                    exitState->definition.objectiveId ==
+                        cr::makeCreativeExitObjectiveId(exit.objectId),
+                "authored quantities and deterministic objective id reach Play") &&
+         expect(pickupPressed.actionSubmitted &&
+                    pickupExecuted.interactionEffectsApplied == 1U &&
+                    pickupExecuted.interactionEffect ==
+                        cr::CreativeRuntimeInteractionEffectStatus::
+                            PickupAcquired &&
+                    inventoryContainsRequirement && lootEntity != nullptr &&
+                    !lootEntity->active,
+                "one authored pickup interaction grants the full quantity") &&
+         expect(released.active,
+                "Play remains active after collecting objective loot") &&
+         expect(exitPrompt == "EXIT",
+                std::string("completed pickup reveals EXIT prompt, got ") +
+                    exitPrompt) &&
+         expect(releasedTargetStableName ==
+                    exitState->definition.stableName,
+                "exit target carries a valid stable runtime identity") &&
+         expect(exitPressed.actionSubmitted,
+                std::string("completed pickup admits an exit interaction, "
+                            "target status ") +
+                    std::string(app::toString(releasedTargetStatus))) &&
+         expect(exitPressed.interactionEffectsApplied == 1U,
+                "satisfied exit publishes one interaction effect") &&
+         expect(exitPressed.interactionEffect ==
+                    cr::CreativeRuntimeInteractionEffectStatus::
+                        ObjectiveCompleted,
+                std::string("satisfied exit reports objective completion, "
+                            "got ") +
+                    std::string(cr::toString(
+                        exitPressed.interactionEffect))) &&
+         expect(exitEntity != nullptr && !exitEntity->active,
+                "satisfied exit deactivates its runtime target") &&
+         expect(exitState->objectiveCompleted,
+                "satisfied exit marks its runtime owner complete") &&
+         expect(!exitExecuted.actionSubmitted &&
+                    exitExecuted.interactionEffectsApplied == 0U,
+                "held exit input cannot complete the objective twice") &&
+         expect(mode.sandbox->session.state().outcome ==
+                    iggy3d::SessionOutcome::Victory &&
+                    mode.lastInteractionEffect.displayName == "Estate Gate",
+                "authored exit objective resolves to Victory feedback") &&
+         expect(document.revision() == authoredRevision,
+                "objective runtime state never mutates authored content");
+}
+
 bool movingPlatformAdvancesThroughEditorPlayTick() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument(false, 922U);
@@ -1043,6 +1240,8 @@ int main() {
                   desktopPlayLaunchesWithoutOwningSession() &&
                   invalidMapAndTuningFailClosed() &&
                   authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() &&
+                  persistentAuthoredLootCanBeCollectedOnSeparatePresses() &&
+                  authoredLootAndExitCompleteAPlayableObjectiveLoop() &&
                   movingPlatformAdvancesThroughEditorPlayTick() &&
                   occupiedPlatformRestoreIsHandledInsidePlay();
   if (!ok) {

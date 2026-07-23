@@ -1081,6 +1081,16 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     } else if (codecVersion < 28U) {
       object.npcSpawn = {};
     }
+    if (parsed && codecVersion >= 29U) {
+      parsed = reader.readHex(object.lootPoint.itemId) &&
+               reader.readUnsigned(object.lootPoint.itemCount) &&
+               reader.readBool(object.lootPoint.deactivateOnCollect) &&
+               reader.readHex(object.exitPoint.requiredItemId) &&
+               reader.readUnsigned(object.exitPoint.requiredItemCount);
+    } else if (codecVersion < 29U) {
+      object.lootPoint = {};
+      object.exitPoint = {};
+    }
     parsed = parsed && reader.readSize(tagCount) &&
              tagCount <= kCreativeWorldLayoutCodecMaxRecords - totalTagCount;
     const bool finite = std::isfinite(object.boundsCells.min.x) &&
@@ -1136,9 +1146,19 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     const bool validNpcSpawn =
         npcActor ? isValidCreativeNpcSpawnSettings(object.npcSpawn)
                  : object.npcSpawn == CreativeNpcSpawnSettings{};
+    const CreativeObjectKind objectKind =
+        static_cast<CreativeObjectKind>(kind);
+    const bool validLootPoint =
+        objectKind == CreativeObjectKind::LootPoint
+            ? isValidCreativeLootPointSettings(object.lootPoint)
+            : object.lootPoint == CreativeLootPointSettings{};
+    const bool validExitPoint =
+        objectKind == CreativeObjectKind::ExitPoint
+            ? isValidCreativeExitPointSettings(object.exitPoint)
+            : object.exitPoint == CreativeExitPointSettings{};
     if (!parsed || !finite || !validScale || !validAssetBounds ||
         !validBoundsModePose || !validBridgeMode || !validPlayerSpawn ||
-        !validNpcSpawn) {
+        !validNpcSpawn || !validLootPoint || !validExitPoint) {
       return false;
     }
     object.kind = static_cast<CreativeObjectKind>(kind);

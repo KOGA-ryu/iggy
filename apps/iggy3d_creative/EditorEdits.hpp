@@ -216,4 +216,20 @@ setNpcSpawnSettingsWithUndo(
     cr::CreativeNpcSpawnSettings settings,
     std::string_view source);
 
+[[nodiscard]] cr::CreativeDocumentMutationReceipt
+setLootPointSettingsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    cr::CreativeLootPointSettings settings,
+    std::string_view source);
+
+[[nodiscard]] cr::CreativeDocumentMutationReceipt
+setExitPointSettingsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    cr::CreativeExitPointSettings settings,
+    std::string_view source);
+
 }  // namespace iggy3d_creative_app

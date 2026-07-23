@@ -177,6 +177,9 @@ CreativePlayTarget resolveModeTarget(
       case iggy3d::creative::CreativeRuntimeInteractableKind::Pickup:
         result.actionPrompt = "PICK UP";
         break;
+      case iggy3d::creative::CreativeRuntimeInteractableKind::Objective:
+        result.actionPrompt = "EXIT";
+        break;
     }
   } else if (result.friendly && result.supportsInteract) {
     result.actionPrompt = "INTERACT";

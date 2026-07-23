@@ -18,6 +18,7 @@ namespace {
       return CreativeObjectKind::MovingPlatform;
     case CreativeRuntimeInteractableKind::Control:
     case CreativeRuntimeInteractableKind::Pickup:
+    case CreativeRuntimeInteractableKind::Objective:
       return std::nullopt;
   }
   return std::nullopt;

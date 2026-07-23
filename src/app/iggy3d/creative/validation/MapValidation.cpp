@@ -4,7 +4,9 @@
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -308,6 +310,48 @@ void appendLogicTargetCollisionDiagnostics(
   }
 }
 
+void appendObjectiveDiagnostics(const CreativeDocument& document,
+                                bool includeHidden,
+                                DiagnosticCollector& diagnostics) {
+  std::unordered_map<std::string, std::uint64_t> availableItems;
+  for (const CreativeObject& object : document.objects()) {
+    if (object.kind != CreativeObjectKind::LootPoint ||
+        !includedObject(document, object, includeHidden)) {
+      continue;
+    }
+    const std::string itemId = effectiveCreativeLootPointItemId(object);
+    std::uint64_t& count = availableItems[itemId];
+    if (!object.lootPoint.deactivateOnCollect) {
+      count = std::numeric_limits<std::uint64_t>::max();
+      continue;
+    }
+    const std::uint64_t increment = object.lootPoint.itemCount;
+    count = increment > std::numeric_limits<std::uint64_t>::max() - count
+                ? std::numeric_limits<std::uint64_t>::max()
+                : count + increment;
+  }
+  for (const CreativeObject& object : document.objects()) {
+    if (object.kind != CreativeObjectKind::ExitPoint ||
+        object.exitPoint.requiredItemId.empty() ||
+        !includedObject(document, object, includeHidden)) {
+      continue;
+    }
+    const auto available =
+        availableItems.find(object.exitPoint.requiredItemId);
+    const std::uint64_t availableCount =
+        available == availableItems.end() ? 0U : available->second;
+    if (availableCount < object.exitPoint.requiredItemCount) {
+      diagnostics.add(
+          CreativeMapDiagnosticSeverity::Error,
+          CreativeMapDiagnosticCode::ExitRequirementUnresolved,
+          object.id,
+          object.exitPoint.requiredItemId,
+          "creative_map_exit_requirement_unresolved",
+          availableCount);
+    }
+  }
+}
+
 }  // namespace
 
 std::string_view toString(CreativeMapValidationStatus status) noexcept {
@@ -404,6 +448,8 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
       return "logic_link_invalid";
     case CreativeMapDiagnosticCode::ConflictingPressurePlates:
       return "conflicting_pressure_plates";
+    case CreativeMapDiagnosticCode::ExitRequirementUnresolved:
+      return "exit_requirement_unresolved";
     case CreativeMapDiagnosticCode::DiagnosticCapacityExceeded:
       return "diagnostic_capacity_exceeded";
   }
@@ -513,6 +559,7 @@ CreativeMapEvaluationResult evaluateCreativeMap(
   }
 
   appendLogicDiagnostics(document, diagnostics);
+  appendObjectiveDiagnostics(document, request.includeHidden, diagnostics);
 
   CreativeRoomBakeRequest bakeRequest;
   bakeRequest.document = &document;

@@ -23,7 +23,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 28U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 29U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -313,6 +313,8 @@ struct CreativeWorldLayoutObject {
   CreativeBridgeSourceRecipe bridge;
   CreativePlayerSpawnSettings playerSpawn{};
   CreativeNpcSpawnSettings npcSpawn{};
+  CreativeLootPointSettings lootPoint{};
+  CreativeExitPointSettings exitPoint{};
 };
 
 struct CreativeWorldLayoutTerrainProfile {

@@ -65,6 +65,12 @@ CreativeMutationApplyReceipt applyPlayerSpawnSettingsMutation(
 CreativeMutationApplyReceipt applyNpcSpawnSettingsMutation(
     CreativeObject& object,
     const NpcSpawnSettingsMutation& mutation);
+CreativeMutationApplyReceipt applyLootPointSettingsMutation(
+    CreativeObject& object,
+    const LootPointSettingsMutation& mutation);
+CreativeMutationApplyReceipt applyExitPointSettingsMutation(
+    CreativeObject& object,
+    const ExitPointSettingsMutation& mutation);
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
 CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
 CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);
@@ -378,6 +384,12 @@ void translateStoredPath(CreativeObject& object, CreativeVec3 delta) noexcept {
     case CreativeMutationKind::SetNpcSpawnSettings:
         return applyNpcSpawnSettingsMutation(
             object, std::get<NpcSpawnSettingsMutation>(value));
+    case CreativeMutationKind::SetLootPointSettings:
+        return applyLootPointSettingsMutation(
+            object, std::get<LootPointSettingsMutation>(value));
+    case CreativeMutationKind::SetExitPointSettings:
+        return applyExitPointSettingsMutation(
+            object, std::get<ExitPointSettingsMutation>(value));
 
     case CreativeMutationKind::SetReferenceSource:
         return applyReferenceSourceMutation(object, mutationKind, std::get<ReferenceSourceMutation>(value));
@@ -837,6 +849,48 @@ CreativeMutationApplyReceipt applyNpcSpawnSettingsMutation(
     return makeAppliedReceipt(
         object, CreativeMutationKind::SetNpcSpawnSettings,
         "npc spawn settings changed");
+}
+
+CreativeMutationApplyReceipt applyLootPointSettingsMutation(
+    CreativeObject& object,
+    const LootPointSettingsMutation& mutation) {
+    if (object.kind != CreativeObjectKind::LootPoint ||
+        !isValidCreativeLootPointSettings(mutation.settings)) {
+        return rejectMutation(
+            object, CreativeMutationKind::SetLootPointSettings,
+            CreativeMutationApplyStatus::Rejected,
+            "loot point settings are invalid");
+    }
+    if (object.lootPoint == mutation.settings) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetLootPointSettings,
+            "loot point settings already match requested value");
+    }
+    object.lootPoint = mutation.settings;
+    return makeAppliedReceipt(
+        object, CreativeMutationKind::SetLootPointSettings,
+        "loot point settings changed");
+}
+
+CreativeMutationApplyReceipt applyExitPointSettingsMutation(
+    CreativeObject& object,
+    const ExitPointSettingsMutation& mutation) {
+    if (object.kind != CreativeObjectKind::ExitPoint ||
+        !isValidCreativeExitPointSettings(mutation.settings)) {
+        return rejectMutation(
+            object, CreativeMutationKind::SetExitPointSettings,
+            CreativeMutationApplyStatus::Rejected,
+            "exit point settings are invalid");
+    }
+    if (object.exitPoint == mutation.settings) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetExitPointSettings,
+            "exit point settings already match requested value");
+    }
+    object.exitPoint = mutation.settings;
+    return makeAppliedReceipt(
+        object, CreativeMutationKind::SetExitPointSettings,
+        "exit point settings changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

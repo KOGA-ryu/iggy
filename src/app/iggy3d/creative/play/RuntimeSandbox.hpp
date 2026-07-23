@@ -44,6 +44,7 @@ struct CreativeRuntimeScenarioSummary {
   std::size_t controlEntityCount = 0;
   std::size_t automaticControlEntityCount = 0;
   std::size_t pickupEntityCount = 0;
+  std::size_t objectiveEntityCount = 0;
   std::size_t ignoredAnchorCount = 0;
   // Unique authored PatrolRoute objects and their normalized waypoint data.
   std::size_t patrolWaypointCount = 0;

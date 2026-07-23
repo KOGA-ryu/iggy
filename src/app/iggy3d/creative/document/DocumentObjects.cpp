@@ -121,6 +121,16 @@ CreativeObject resolveCreativeDocumentCreateObject(
       npcActor && request.hasNpcSpawnSettingsOverride
           ? request.npcSpawn
           : CreativeNpcSpawnSettings{};
+  const CreativeLootPointSettings lootPoint =
+      request.kind == CreativeObjectKind::LootPoint &&
+              request.hasLootPointSettingsOverride
+          ? request.lootPoint
+          : CreativeLootPointSettings{};
+  const CreativeExitPointSettings exitPoint =
+      request.kind == CreativeObjectKind::ExitPoint &&
+              request.hasExitPointSettingsOverride
+          ? request.exitPoint
+          : CreativeExitPointSettings{};
 
   CreativeObject object;
   object.id = objectId;
@@ -149,6 +159,8 @@ CreativeObject resolveCreativeDocumentCreateObject(
   object.window = window;
   object.playerSpawn = playerSpawn;
   object.npcSpawn = npcSpawn;
+  object.lootPoint = lootPoint;
+  object.exitPoint = exitPoint;
   return object;
 }
 
@@ -387,6 +399,28 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
   if (npcActor && !isValidCreativeNpcSpawnSettings(npcSpawn)) {
     setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
                     "npc_spawn_settings_invalid");
+    return receipt;
+  }
+  const CreativeLootPointSettings lootPoint =
+      request.kind == CreativeObjectKind::LootPoint &&
+              request.hasLootPointSettingsOverride
+          ? request.lootPoint
+          : CreativeLootPointSettings{};
+  if (request.kind == CreativeObjectKind::LootPoint &&
+      !isValidCreativeLootPointSettings(lootPoint)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "loot_point_settings_invalid");
+    return receipt;
+  }
+  const CreativeExitPointSettings exitPoint =
+      request.kind == CreativeObjectKind::ExitPoint &&
+              request.hasExitPointSettingsOverride
+          ? request.exitPoint
+          : CreativeExitPointSettings{};
+  if (request.kind == CreativeObjectKind::ExitPoint &&
+      !isValidCreativeExitPointSettings(exitPoint)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "exit_point_settings_invalid");
     return receipt;
   }
 

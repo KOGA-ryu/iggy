@@ -14,8 +14,8 @@ namespace {
 
 constexpr Aabb3 kControlBounds{{-0.25F, -0.25F, -0.25F},
                                {0.25F, 0.25F, 0.25F}};
-constexpr Aabb3 kPickupBounds{{-0.30F, -0.30F, -0.30F},
-                              {0.30F, 0.30F, 0.30F}};
+constexpr Aabb3 kPointActionBounds{{-0.30F, -0.30F, -0.30F},
+                                   {0.30F, 0.30F, 0.30F}};
 
 [[nodiscard]] std::string stableObjectName(CreativeObjectId objectId) {
   return "creative_object_" + std::to_string(objectId);
@@ -38,6 +38,8 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
       return CreativeRuntimeInteractableKind::Control;
     case CreativeObjectKind::LootPoint:
       return CreativeRuntimeInteractableKind::Pickup;
+    case CreativeObjectKind::ExitPoint:
+      return CreativeRuntimeInteractableKind::Objective;
     default:
       return std::nullopt;
   }
@@ -166,9 +168,10 @@ interactableKindFor(CreativeObjectKind kind) noexcept {
   }
   transform = identityTransform3();
   transform.position = position.value;
-  localBounds = kind == CreativeRuntimeInteractableKind::Pickup
-                    ? kPickupBounds
-                    : kControlBounds;
+  const bool pointAction =
+      kind == CreativeRuntimeInteractableKind::Pickup ||
+      kind == CreativeRuntimeInteractableKind::Objective;
+  localBounds = pointAction ? kPointActionBounds : kControlBounds;
   return isFinite(transform) && isValid(localBounds);
 }
 
@@ -261,10 +264,17 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
                 object.kind == CreativeObjectKind::PressurePlate
             ? definition.stableName
             : std::string{};
-    definition.itemId =
-        *kind == CreativeRuntimeInteractableKind::Pickup
-            ? "creative_loot_" + std::to_string(object.id)
-            : std::string{};
+    if (*kind == CreativeRuntimeInteractableKind::Pickup) {
+      definition.itemId = effectiveCreativeLootPointItemId(object);
+      definition.itemCount = object.lootPoint.itemCount;
+      definition.deactivateOnSuccess =
+          object.lootPoint.deactivateOnCollect;
+    } else if (*kind == CreativeRuntimeInteractableKind::Objective) {
+      definition.objectiveId = makeCreativeExitObjectiveId(object.id);
+      definition.requiredItemId = object.exitPoint.requiredItemId;
+      definition.requiredItemCount = object.exitPoint.requiredItemCount;
+      definition.deactivateOnSuccess = true;
+    }
 
     const bool automaticSource =
         runtime_interactables_internal::automaticSourceMode(definition.logicSourceMode);
@@ -342,6 +352,9 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
         break;
       case CreativeRuntimeInteractableKind::Pickup:
         ++result.pickupCount;
+        break;
+      case CreativeRuntimeInteractableKind::Objective:
+        ++result.objectiveCount;
         break;
     }
     result.definitions.push_back(std::move(definition));

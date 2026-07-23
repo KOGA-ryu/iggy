@@ -180,10 +180,11 @@ bool writeLegacyObjectLine(std::ostringstream& output,
   for (std::string token; fields >> token;) {
     tokens.push_back(std::move(token));
   }
-  // v25 inserts bridge source state, v27 appends player-spawn state, and v28
-  // appends NPC-spawn state after scale. None exists in this legacy record.
+  // v25 inserts bridge source state, v27 appends player-spawn state, v28
+  // appends NPC-spawn state, and v29 appends objective state after scale. None
+  // exists in this legacy record.
   constexpr std::size_t kBridgeFieldsBegin = 27U;
-  constexpr std::size_t kCurrentExtensionFieldsEnd = 58U;
+  constexpr std::size_t kCurrentExtensionFieldsEnd = 63U;
   if (tokens.size() <= kCurrentExtensionFieldsEnd) {
     return false;
   }
@@ -261,7 +262,7 @@ std::string versionTwentySixTextWithoutPlayerSpawnFields(std::string encoded) {
       tokens.push_back(std::move(token));
     }
     constexpr std::size_t kPlayerSpawnFieldsBegin = 49U;
-    constexpr std::size_t kPostVersionTwentySixFieldsEnd = 58U;
+    constexpr std::size_t kPostVersionTwentySixFieldsEnd = 63U;
     if (tokens.size() <= kPostVersionTwentySixFieldsEnd) {
       return {};
     }
@@ -306,12 +307,58 @@ std::string versionTwentySevenTextWithoutNpcSpawnFields(std::string encoded) {
       tokens.push_back(std::move(token));
     }
     constexpr std::size_t kNpcSpawnFieldsBegin = 53U;
-    constexpr std::size_t kNpcSpawnFieldsEnd = 58U;
-    if (tokens.size() <= kNpcSpawnFieldsEnd) {
+    constexpr std::size_t kPostVersionTwentySevenFieldsEnd = 63U;
+    if (tokens.size() <= kPostVersionTwentySevenFieldsEnd) {
       return {};
     }
     tokens.erase(tokens.begin() + kNpcSpawnFieldsBegin,
-                 tokens.begin() + kNpcSpawnFieldsEnd);
+                 tokens.begin() + kPostVersionTwentySevenFieldsEnd);
+    for (std::size_t index = 0U; index < tokens.size(); ++index) {
+      output << (index == 0U ? "" : " ") << tokens[index];
+    }
+    output << '\n';
+  }
+  return output.str();
+}
+
+std::string versionTwentyEightTextWithoutObjectiveFields(
+    std::string encoded) {
+  const std::string currentHeader =
+      "IGGY3D_WORLD_LAYOUT " +
+      std::to_string(cr::kCreativeWorldLayoutCodecVersion);
+  const std::size_t header = encoded.find(currentHeader);
+  if (header == std::string::npos) {
+    return {};
+  }
+  encoded.replace(header, currentHeader.size(), "IGGY3D_WORLD_LAYOUT 28");
+
+  const std::string currentLayout =
+      "L " + std::to_string(cr::kCreativeWorldLayoutSchemaVersion) + " ";
+  const std::size_t layout = encoded.find(currentLayout);
+  if (layout == std::string::npos) {
+    return {};
+  }
+  encoded.replace(layout, currentLayout.size(), "L 28 ");
+
+  std::istringstream lines(encoded);
+  std::ostringstream output;
+  for (std::string line; std::getline(lines, line);) {
+    if (!line.starts_with("Y ")) {
+      output << line << '\n';
+      continue;
+    }
+    std::istringstream fields(line);
+    std::vector<std::string> tokens;
+    for (std::string token; fields >> token;) {
+      tokens.push_back(std::move(token));
+    }
+    constexpr std::size_t kObjectiveFieldsBegin = 58U;
+    constexpr std::size_t kObjectiveFieldsEnd = 63U;
+    if (tokens.size() <= kObjectiveFieldsEnd) {
+      return {};
+    }
+    tokens.erase(tokens.begin() + kObjectiveFieldsBegin,
+                 tokens.begin() + kObjectiveFieldsEnd);
     for (std::size_t index = 0U; index < tokens.size(); ++index) {
       output << (index == 0U ? "" : " ") << tokens[index];
     }
@@ -1322,6 +1369,100 @@ bool npcSpawnSettingsRoundTripAndVersionTwentySevenDefaults() {
                 "invalid npc spawn settings fail encode") &&
          expect(!invalidNonActorResult.accepted,
                 "non-actor object cannot carry npc spawn settings");
+}
+
+bool objectiveSettingsRoundTripAndVersionTwentyEightDefaults() {
+  cr::CreativeWorldLayout source;
+  source.stableKey = "objective_codec";
+
+  cr::CreativeWorldLayoutObject loot;
+  loot.kind = cr::CreativeObjectKind::LootPoint;
+  loot.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  loot.stableKey = "loot.estate_key";
+  loot.name = "Estate Key";
+  loot.pointCells = {2.0, 0.25, -3.0};
+  loot.lootPoint = {
+      .itemId = "estate_key",
+      .itemCount = 3U,
+      .deactivateOnCollect = false,
+  };
+  source.objects.push_back(loot);
+
+  cr::CreativeWorldLayoutObject exit;
+  exit.kind = cr::CreativeObjectKind::ExitPoint;
+  exit.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  exit.stableKey = "exit.estate";
+  exit.name = "Estate Exit";
+  exit.pointCells = {8.0, 0.25, 6.0};
+  exit.exitPoint = {
+      .requiredItemId = "estate_key",
+      .requiredItemCount = 2U,
+  };
+  source.objects.push_back(exit);
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      encoded.accepted
+          ? cr::decodeCreativeWorldLayout(encoded.encodedText)
+          : cr::CreativeWorldLayoutDecodeResult{};
+  const cr::CreativeWorldLayoutEncodeResult reencoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+  const std::string legacyText =
+      encoded.accepted
+          ? versionTwentyEightTextWithoutObjectiveFields(encoded.encodedText)
+          : std::string{};
+  const cr::CreativeWorldLayoutDecodeResult migrated =
+      cr::decodeCreativeWorldLayout(legacyText);
+
+  cr::CreativeWorldLayout invalidLoot = source;
+  invalidLoot.objects[0].lootPoint.itemCount = 0U;
+  const cr::CreativeWorldLayoutEncodeResult invalidLootResult =
+      cr::encodeCreativeWorldLayout(invalidLoot);
+  cr::CreativeWorldLayout invalidExit = source;
+  invalidExit.objects[1].exitPoint.requiredItemCount = 0U;
+  const cr::CreativeWorldLayoutEncodeResult invalidExitResult =
+      cr::encodeCreativeWorldLayout(invalidExit);
+  cr::CreativeWorldLayout invalidOwner = source;
+  invalidOwner.objects[0].kind = cr::CreativeObjectKind::Prop;
+  const cr::CreativeWorldLayoutEncodeResult invalidOwnerResult =
+      cr::encodeCreativeWorldLayout(invalidOwner);
+
+  return expect(encoded.accepted && decoded.accepted && reencoded.accepted,
+                "objective codec operations accepted") &&
+         expect(encoded.encodedText == reencoded.encodedText &&
+                    decoded.layout.objects.size() == 2U,
+                "objective codec is byte deterministic") &&
+         expect(decoded.layout.objects[0].pointCells.x == loot.pointCells.x &&
+                    decoded.layout.objects[0].pointCells.y ==
+                        loot.pointCells.y &&
+                    decoded.layout.objects[0].pointCells.z ==
+                        loot.pointCells.z &&
+                    decoded.layout.objects[0].lootPoint == loot.lootPoint &&
+                    decoded.layout.objects[1].pointCells.x ==
+                        exit.pointCells.x &&
+                    decoded.layout.objects[1].pointCells.y ==
+                        exit.pointCells.y &&
+                    decoded.layout.objects[1].pointCells.z ==
+                        exit.pointCells.z &&
+                    decoded.layout.objects[1].exitPoint == exit.exitPoint,
+                "objective poses and settings round trip") &&
+         expect(!legacyText.empty() && migrated.accepted &&
+                    migrated.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    migrated.layout.objects.size() == 2U &&
+                    migrated.layout.objects[0].lootPoint ==
+                        cr::CreativeLootPointSettings{} &&
+                    migrated.layout.objects[1].exitPoint ==
+                        cr::CreativeExitPointSettings{},
+                "version-twenty-eight objectives receive safe defaults") &&
+         expect(!invalidLootResult.accepted,
+                "invalid loot settings fail encode") &&
+         expect(!invalidExitResult.accepted,
+                "invalid exit settings fail encode") &&
+         expect(!invalidOwnerResult.accepted,
+                "non-loot object cannot carry loot settings");
 }
 
 bool sourceFingerprintUsesExactVersionedEncoding() {
@@ -2665,6 +2806,7 @@ int main() {
   const bool ok = deterministicRoundTripPreservesEveryTable() &&
                   playerSpawnSettingsRoundTripAndVersionTwentySixDefaults() &&
                   npcSpawnSettingsRoundTripAndVersionTwentySevenDefaults() &&
+                  objectiveSettingsRoundTripAndVersionTwentyEightDefaults() &&
                   sourceFingerprintUsesExactVersionedEncoding() &&
                   roofAperturesRoundTripAndVersionNineteenMigratesEmpty() &&
                   directTopologyHostDoesNotInventACardinalRoomSide() &&

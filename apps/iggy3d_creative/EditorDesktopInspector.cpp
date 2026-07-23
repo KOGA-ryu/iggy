@@ -430,6 +430,8 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
   draft.movingPlatform = object.movingPlatform;
   draft.playerSpawn = object.playerSpawn;
   draft.npcSpawn = object.npcSpawn;
+  draft.lootPoint = object.lootPoint;
+  draft.exitPoint = object.exitPoint;
   draft.movingPlatformWaypointIndex = 0U;
   draft.movingPlatformWaypointDwellSeconds =
       object.pathPoints.empty() ? 0.0 : object.pathPoints.front().dwellSeconds;
@@ -612,6 +614,131 @@ void appendNpcSpawnFields(CreativeDesktopInspectorDraft& draft,
     ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
                        "Profile is not available in the current runtime");
   }
+}
+
+void appendLootPointFields(CreativeDesktopInspectorDraft& draft,
+                           const cr::CreativeObject& object,
+                           bool fieldsDisabled,
+                           CreativeDesktopCommandFrame& commands) {
+  if (object.kind != cr::CreativeObjectKind::LootPoint) {
+    return;
+  }
+  const auto commit = [&]() {
+    if (!cr::isValidCreativeLootPointSettings(draft.lootPoint)) {
+      draft.validation =
+          "Item ID must be empty or a valid identifier; count must be 1-65535";
+      return;
+    }
+    draft.validation.clear();
+    commands.push(
+        CreativeDesktopCommandId::SetLootPointSettings,
+        CreativeDesktopLootPointPayload{object.id, draft.lootPoint});
+  };
+
+  ImGui::SeparatorText("Loot");
+  ImGui::BeginDisabled(fieldsDisabled);
+  const bool itemCommitted = creativeDesktopInputTextStdString(
+      "Item ID", &draft.lootPoint.itemId,
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (itemCommitted || ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  constexpr std::uint32_t kCountStep = 1U;
+  constexpr std::uint32_t kCountFastStep = 10U;
+  ImGui::InputScalar("Count", ImGuiDataType_U32,
+                     &draft.lootPoint.itemCount, &kCountStep,
+                     &kCountFastStep, "%u");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  if (ImGui::Checkbox("Remove after collection",
+                      &draft.lootPoint.deactivateOnCollect)) {
+    commit();
+  }
+  ImGui::EndDisabled();
+
+  const std::string effectiveId =
+      draft.lootPoint.itemId.empty()
+          ? cr::makeCreativeAutomaticLootItemId(object.id)
+          : draft.lootPoint.itemId;
+  ImGui::TextDisabled("Effective item: %s", effectiveId.c_str());
+}
+
+void appendExitPointFields(CreativeDesktopInspectorDraft& draft,
+                           const cr::CreativeDocument& document,
+                           const cr::CreativeObject& object,
+                           bool fieldsDisabled,
+                           CreativeDesktopCommandFrame& commands) {
+  if (object.kind != cr::CreativeObjectKind::ExitPoint) {
+    return;
+  }
+  const auto commit = [&]() {
+    if (!cr::isValidCreativeExitPointSettings(draft.exitPoint)) {
+      draft.validation =
+          "Required item and count must both be empty/zero or both be set";
+      return;
+    }
+    draft.validation.clear();
+    commands.push(
+        CreativeDesktopCommandId::SetExitPointSettings,
+        CreativeDesktopExitPointPayload{object.id, draft.exitPoint});
+  };
+
+  ImGui::SeparatorText("Exit Objective");
+  ImGui::BeginDisabled(fieldsDisabled);
+  const char* sourceLabel = draft.exitPoint.requiredItemId.empty()
+                                ? "No item required"
+                                : draft.exitPoint.requiredItemId.c_str();
+  if (ImGui::BeginCombo("Loot requirement", sourceLabel)) {
+    const bool noRequirement = draft.exitPoint.requiredItemId.empty();
+    if (ImGui::Selectable("No item required", noRequirement) &&
+        !noRequirement) {
+      draft.exitPoint.requiredItemId.clear();
+      draft.exitPoint.requiredItemCount = 0U;
+      commit();
+    }
+    for (const cr::CreativeObject& candidate : document.objects()) {
+      if (candidate.kind != cr::CreativeObjectKind::LootPoint ||
+          !cr::creativeObjectEffectivelyVisible(document, candidate.id)) {
+        continue;
+      }
+      const std::string itemId =
+          cr::effectiveCreativeLootPointItemId(candidate);
+      const bool selected = itemId == draft.exitPoint.requiredItemId;
+      const std::string label =
+          candidate.name.empty() ? itemId
+                                 : candidate.name + " (" + itemId + ")";
+      if (ImGui::Selectable(label.c_str(), selected) && !selected) {
+        draft.exitPoint.requiredItemId = itemId;
+        draft.exitPoint.requiredItemCount =
+            std::max<std::uint32_t>(draft.exitPoint.requiredItemCount, 1U);
+        commit();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  const bool itemCommitted = creativeDesktopInputTextStdString(
+      "Required item ID", &draft.exitPoint.requiredItemId,
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (itemCommitted || ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  constexpr std::uint32_t kCountStep = 1U;
+  constexpr std::uint32_t kCountFastStep = 10U;
+  ImGui::InputScalar("Required count", ImGuiDataType_U32,
+                     &draft.exitPoint.requiredItemCount, &kCountStep,
+                     &kCountFastStep, "%u");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  ImGui::EndDisabled();
+  const std::string objectiveId =
+      cr::makeCreativeExitObjectiveId(object.id);
+  ImGui::TextDisabled("Objective: %s", objectiveId.c_str());
 }
 
 void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
@@ -937,6 +1064,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   }
   appendPlayerSpawnFields(draft, object, fieldsDisabled, commands);
   appendNpcSpawnFields(draft, document, object, fieldsDisabled, commands);
+  appendLootPointFields(draft, object, fieldsDisabled, commands);
+  appendExitPointFields(draft, document, object, fieldsDisabled, commands);
   appendMovingPlatformFields(draft, object, preview, pathEdit, fieldsDisabled,
                              commands);
 

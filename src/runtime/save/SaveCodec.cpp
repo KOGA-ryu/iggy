@@ -390,6 +390,23 @@ private:
            formatDoubleLossless(object.npcInitialAlertLevel));
       lineString(prefix + "npcSpawn.spawnPolicy", object.npcSpawnPolicy);
     }
+    if (envelope_.creativeDocument.version >=
+            kSaveCreativeDocumentObjectiveVersion &&
+        object.kind == "LootPoint") {
+      lineString(prefix + "lootPoint.itemId", object.lootItemId);
+      line(prefix + "lootPoint.itemCount",
+           unsignedText(object.lootItemCount));
+      lineBool(prefix + "lootPoint.deactivateOnCollect",
+               object.lootDeactivateOnCollect);
+    }
+    if (envelope_.creativeDocument.version >=
+            kSaveCreativeDocumentObjectiveVersion &&
+        object.kind == "ExitPoint") {
+      lineString(prefix + "exitPoint.requiredItemId",
+                 object.exitRequiredItemId);
+      line(prefix + "exitPoint.requiredItemCount",
+           unsignedText(object.exitRequiredItemCount));
+    }
   }
 
   void writeCreativeTerrainHeightField(

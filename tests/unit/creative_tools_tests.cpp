@@ -2280,6 +2280,99 @@ bool clipboardPreservesNpcSpawnSettings() {
                 "clipboard still applies the requested placement offset");
 }
 
+bool clipboardRemapsAutomaticLootRequirementsOnly() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Objective Clipboard");
+  static_cast<void>(document.assignId(28U));
+
+  cr::CreativeDocumentCreateRequest autoLootRequest;
+  autoLootRequest.kind = cr::CreativeObjectKind::LootPoint;
+  autoLootRequest.name = "Automatic Loot";
+  const cr::CreativeDocumentCreateReceipt autoLoot =
+      document.createObject(autoLootRequest);
+
+  cr::CreativeDocumentCreateRequest autoExitRequest;
+  autoExitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+  autoExitRequest.name = "Automatic Exit";
+  autoExitRequest.hasExitPointSettingsOverride = true;
+  autoExitRequest.exitPoint.requiredItemId =
+      cr::makeCreativeAutomaticLootItemId(autoLoot.objectId);
+  autoExitRequest.exitPoint.requiredItemCount = 1U;
+  const cr::CreativeDocumentCreateReceipt autoExit =
+      document.createObject(autoExitRequest);
+
+  cr::CreativeDocumentCreateRequest explicitLootRequest;
+  explicitLootRequest.kind = cr::CreativeObjectKind::LootPoint;
+  explicitLootRequest.name = "Estate Key";
+  explicitLootRequest.hasLootPointSettingsOverride = true;
+  explicitLootRequest.lootPoint.itemId = "estate_key";
+  explicitLootRequest.lootPoint.itemCount = 2U;
+  const cr::CreativeDocumentCreateReceipt explicitLoot =
+      document.createObject(explicitLootRequest);
+
+  cr::CreativeDocumentCreateRequest explicitExitRequest;
+  explicitExitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+  explicitExitRequest.name = "Estate Exit";
+  explicitExitRequest.hasExitPointSettingsOverride = true;
+  explicitExitRequest.exitPoint.requiredItemId = "estate_key";
+  explicitExitRequest.exitPoint.requiredItemCount = 2U;
+  const cr::CreativeDocumentCreateReceipt explicitExit =
+      document.createObject(explicitExitRequest);
+
+  const std::array ids{
+      autoLoot.objectId,
+      autoExit.objectId,
+      explicitLoot.objectId,
+      explicitExit.objectId,
+  };
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(document, ids, clipboard);
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(
+          document, clipboard, cr::CreativeClipboardPasteRequest{});
+
+  const auto pastedIdFor =
+      [&pasted](cr::CreativeObjectId sourceId) -> cr::CreativeObjectId {
+    const auto found = std::find_if(
+        pasted.idRemaps.begin(), pasted.idRemaps.end(),
+        [sourceId](const cr::CreativeClipboardIdRemap& remap) {
+          return remap.sourceObjectId == sourceId;
+        });
+    return found == pasted.idRemaps.end() ? cr::kInvalidObjectId
+                                         : found->pastedObjectId;
+  };
+  const cr::CreativeObjectId pastedAutoLootId =
+      pastedIdFor(autoLoot.objectId);
+  const cr::CreativeObject* pastedAutoLoot =
+      document.findObject(pastedAutoLootId);
+  const cr::CreativeObject* pastedAutoExit =
+      document.findObject(pastedIdFor(autoExit.objectId));
+  const cr::CreativeObject* pastedExplicitLoot =
+      document.findObject(pastedIdFor(explicitLoot.objectId));
+  const cr::CreativeObject* pastedExplicitExit =
+      document.findObject(pastedIdFor(explicitExit.objectId));
+
+  return expect(autoLoot.accepted && autoExit.accepted &&
+                    explicitLoot.accepted && explicitExit.accepted &&
+                    copied.accepted && pasted.accepted && pasted.changed &&
+                    pasted.idRemaps.size() == ids.size(),
+                "objective objects duplicate through the clipboard") &&
+         expect(pastedAutoLoot != nullptr && pastedAutoExit != nullptr &&
+                    pastedAutoLoot->lootPoint.itemId.empty() &&
+                    pastedAutoExit->exitPoint.requiredItemId ==
+                        cr::makeCreativeAutomaticLootItemId(
+                            pastedAutoLootId),
+                "automatic loot requirement follows pasted object identity") &&
+         expect(pastedExplicitLoot != nullptr &&
+                    pastedExplicitExit != nullptr &&
+                    pastedExplicitLoot->lootPoint.itemId == "estate_key" &&
+                    pastedExplicitExit->exitPoint.requiredItemId ==
+                        "estate_key" &&
+                    pastedExplicitExit->exitPoint.requiredItemCount == 2U,
+                "explicit semantic item requirement remains stable");
+}
+
 bool selectionPlacementLocalSpaceUsesFrozenBasis() {
   const auto near = [](double actual, double expected) {
     return std::fabs(actual - expected) <= 1.0e-9;
@@ -2547,6 +2640,7 @@ int main() {
                   selectionPlacementScalePlanMatchesAtomicCommit() &&
                   selectionPlacementPivotModesSharePreviewAndCommitGeometry() &&
                   clipboardPreservesNpcSpawnSettings() &&
+                  clipboardRemapsAutomaticLootRequirementsOnly() &&
                   selectionPlacementLocalSpaceUsesFrozenBasis() &&
                   selectionPlacementCapabilitiesAreExplicitAndFailClosed() &&
                   selectionPlacementPreservesExternalAttachments() &&

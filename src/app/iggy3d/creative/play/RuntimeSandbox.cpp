@@ -158,7 +158,19 @@ bool interactableDefinitionIsValid(
     case CreativeRuntimeInteractableKind::Pickup:
       return definition.logicSourceMode ==
                  CreativeRuntimeLogicSourceMode::None &&
-             definition.roomMeshId.empty() && !definition.itemId.empty();
+             definition.roomMeshId.empty() && !definition.itemId.empty() &&
+             definition.itemCount > 0U && definition.objectiveId.empty() &&
+             definition.requiredItemId.empty() &&
+             definition.requiredItemCount == 0U;
+    case CreativeRuntimeInteractableKind::Objective:
+      return definition.logicSourceMode ==
+                 CreativeRuntimeLogicSourceMode::None &&
+             definition.roomMeshId.empty() && definition.itemId.empty() &&
+             definition.itemCount == 0U && !definition.objectiveId.empty() &&
+             ((definition.requiredItemId.empty() &&
+               definition.requiredItemCount == 0U) ||
+              (!definition.requiredItemId.empty() &&
+               definition.requiredItemCount > 0U));
   }
   return false;
 }
@@ -389,8 +401,23 @@ ScenarioEntitySeed makeInteractableEntity(
       entity.interaction.primaryEffect =
           ScenarioInteractionEffectKind::AddItemToInventory;
       entity.interaction.itemId = definition.itemId;
-      entity.interaction.itemCount = 1U;
-      entity.interaction.deactivateTargetOnSuccess = true;
+      entity.interaction.itemCount = definition.itemCount;
+      entity.interaction.deactivateTargetOnSuccess =
+          definition.deactivateOnSuccess;
+      break;
+    case CreativeRuntimeInteractableKind::Objective:
+      entity.kind = ScenarioEntityKind::Marker;
+      entity.targeting.targetable = true;
+      entity.targeting.actions = {ScenarioTargetAction::Interact,
+                                  ScenarioTargetAction::Inspect};
+      entity.interaction.kind = ScenarioInteractionKind::ObjectiveTrigger;
+      entity.interaction.primaryEffect =
+          ScenarioInteractionEffectKind::CompleteObjective;
+      entity.interaction.objectiveId = definition.objectiveId;
+      entity.interaction.requiredItemId = definition.requiredItemId;
+      entity.interaction.requiredItemCount = definition.requiredItemCount;
+      entity.interaction.deactivateTargetOnSuccess =
+          definition.deactivateOnSuccess;
       break;
   }
   return entity;
@@ -410,6 +437,17 @@ bool anchorBacksInteractable(
 ScenarioObjectiveSeed makeSandboxObjective() {
   ScenarioObjectiveSeed objective;
   objective.id = "creative_sandbox_active";
+  objective.initialStatus = ObjectiveStatusSeed::Active;
+  objective.condition = "None";
+  objective.playerSlot = 0U;
+  objective.completeStatus = ObjectiveStatusSeed::Complete;
+  return objective;
+}
+
+ScenarioObjectiveSeed makeInteractableObjective(
+    const CreativeRuntimeInteractableDefinition& definition) {
+  ScenarioObjectiveSeed objective;
+  objective.id = definition.objectiveId;
   objective.initialStatus = ObjectiveStatusSeed::Active;
   objective.condition = "None";
   objective.playerSlot = 0U;
@@ -545,6 +583,9 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
 
   for (const CreativeRuntimeInteractableDefinition& definition :
        payload.interactables) {
+    if (definition.kind == CreativeRuntimeInteractableKind::Objective) {
+      seed.objectives.push_back(makeInteractableObjective(definition));
+    }
     seed.entities.push_back(makeInteractableEntity(definition));
     switch (definition.kind) {
       case CreativeRuntimeInteractableKind::Door:
@@ -564,6 +605,9 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
         break;
       case CreativeRuntimeInteractableKind::Pickup:
         ++result.summary.pickupEntityCount;
+        break;
+      case CreativeRuntimeInteractableKind::Objective:
+        ++result.summary.objectiveEntityCount;
         break;
     }
   }

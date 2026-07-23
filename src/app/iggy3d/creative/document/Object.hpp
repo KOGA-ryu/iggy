@@ -21,7 +21,9 @@ inline constexpr std::size_t kCreativeAssetMaterialVariantNameCapacity = 64U;
 inline constexpr std::size_t kCreativePlayerProfileIdCapacity = 64U;
 inline constexpr std::size_t kCreativeSpawnGroupCapacity = 64U;
 inline constexpr std::size_t kCreativeNpcBehaviorProfileIdCapacity = 64U;
+inline constexpr std::size_t kCreativeGameplayItemIdCapacity = 64U;
 inline constexpr std::uint16_t kCreativeNpcMaximumHitPoints = 32767U;
+inline constexpr std::uint32_t kCreativeGameplayItemCountMaximum = 65535U;
 inline constexpr double kCreativePlayerSpawnMinimumValidationRadiusMeters =
     0.30;
 inline constexpr double kCreativePlayerSpawnMaximumValidationRadiusMeters =
@@ -182,6 +184,23 @@ struct CreativeNpcSpawnSettings {
   CreativeNpcSpawnPolicy spawnPolicy{CreativeNpcSpawnPolicy::AtPlayStart};
 
   bool operator==(const CreativeNpcSpawnSettings&) const = default;
+};
+
+// Empty loot item ids retain the legacy per-object identity. Explicit ids let
+// multiple authored pickups satisfy the same exit requirement.
+struct CreativeLootPointSettings {
+  std::string itemId{};
+  std::uint32_t itemCount{1U};
+  bool deactivateOnCollect{true};
+
+  bool operator==(const CreativeLootPointSettings&) const = default;
+};
+
+struct CreativeExitPointSettings {
+  std::string requiredItemId{};
+  std::uint32_t requiredItemCount{0U};
+
+  bool operator==(const CreativeExitPointSettings&) const = default;
 };
 
 enum class CreativeObjectKind {
@@ -352,6 +371,8 @@ struct CreativeObject {
   CreativeWindowSettings window{};
   CreativePlayerSpawnSettings playerSpawn{};
   CreativeNpcSpawnSettings npcSpawn{};
+  CreativeLootPointSettings lootPoint{};
+  CreativeExitPointSettings exitPoint{};
 };
 
 struct CreativeTransformedBounds {
@@ -441,6 +462,18 @@ struct CreativeTransformedBounds {
     std::string_view value) noexcept;
 [[nodiscard]] bool isValidCreativeNpcSpawnSettings(
     const CreativeNpcSpawnSettings& settings) noexcept;
+[[nodiscard]] bool isValidCreativeGameplayItemId(
+    std::string_view value) noexcept;
+[[nodiscard]] bool isValidCreativeLootPointSettings(
+    const CreativeLootPointSettings& settings) noexcept;
+[[nodiscard]] bool isValidCreativeExitPointSettings(
+    const CreativeExitPointSettings& settings) noexcept;
+[[nodiscard]] std::string makeCreativeAutomaticLootItemId(
+    CreativeObjectId objectId);
+[[nodiscard]] std::string effectiveCreativeLootPointItemId(
+    const CreativeObject& object);
+[[nodiscard]] std::string makeCreativeExitObjectiveId(
+    CreativeObjectId objectId);
 [[nodiscard]] bool isValidCreativePathPoint(
     const CreativePathPoint& point) noexcept;
 [[nodiscard]] bool isValidCreativeMovingPlatformPath(

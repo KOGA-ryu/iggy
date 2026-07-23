@@ -43,6 +43,18 @@ bool validPlacement(const CreativeObjectLibraryPlacementSpec& placement) {
        !(placement.npcSpawn == CreativeNpcSpawnSettings{}))) {
     return false;
   }
+  if ((placement.kind == CreativeObjectKind::LootPoint &&
+       !isValidCreativeLootPointSettings(placement.lootPoint)) ||
+      (placement.kind != CreativeObjectKind::LootPoint &&
+       !(placement.lootPoint == CreativeLootPointSettings{}))) {
+    return false;
+  }
+  if ((placement.kind == CreativeObjectKind::ExitPoint &&
+       !isValidCreativeExitPointSettings(placement.exitPoint)) ||
+      (placement.kind != CreativeObjectKind::ExitPoint &&
+       !(placement.exitPoint == CreativeExitPointSettings{}))) {
+    return false;
+  }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!objectHasTransform(placement.kind) ||
         !isFiniteCreativeVec3(placement.point) ||
@@ -85,6 +97,14 @@ CreativeDocumentCreateRequest createRequest(
       placement.kind == CreativeObjectKind::EnemySpawn) {
     request.hasNpcSpawnSettingsOverride = true;
     request.npcSpawn = placement.npcSpawn;
+  }
+  if (placement.kind == CreativeObjectKind::LootPoint) {
+    request.hasLootPointSettingsOverride = true;
+    request.lootPoint = placement.lootPoint;
+  }
+  if (placement.kind == CreativeObjectKind::ExitPoint) {
+    request.hasExitPointSettingsOverride = true;
+    request.exitPoint = placement.exitPoint;
   }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Bounds) {
     request.bounds = placement.bounds;

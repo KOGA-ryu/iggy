@@ -137,7 +137,8 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
     const CreativeDocument& targetDocument,
     const CreativeObject& object,
     const CreativeClipboardPasteRequest& request,
-    const std::unordered_map<CreativeObjectId, CreativeObjectId>& remaps) {
+    const std::unordered_map<CreativeObjectId, CreativeObjectId>& remaps,
+    const std::unordered_map<std::string, std::string>& itemIdRemaps) {
   const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
   CreativeDocumentCreateRequest create;
   create.kind = object.kind;
@@ -190,6 +191,19 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
       object.kind == CreativeObjectKind::EnemySpawn) {
     create.npcSpawn = object.npcSpawn;
     create.hasNpcSpawnSettingsOverride = true;
+  }
+  if (object.kind == CreativeObjectKind::LootPoint) {
+    create.lootPoint = object.lootPoint;
+    create.hasLootPointSettingsOverride = true;
+  }
+  if (object.kind == CreativeObjectKind::ExitPoint) {
+    create.exitPoint = object.exitPoint;
+    const auto itemRemap =
+        itemIdRemaps.find(create.exitPoint.requiredItemId);
+    if (itemRemap != itemIdRemaps.end()) {
+      create.exitPoint.requiredItemId = itemRemap->second;
+    }
+    create.hasExitPointSettingsOverride = true;
   }
   return create;
 }
@@ -750,11 +764,23 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       remaps.emplace(sourceId, pastedId);
       receipt.idRemaps.push_back({sourceId, pastedId});
     }
+    std::unordered_map<std::string, std::string> itemIdRemaps;
+    for (const CreativeObject& source : clipboard.objects) {
+      if (source.kind != CreativeObjectKind::LootPoint ||
+          !source.lootPoint.itemId.empty()) {
+        continue;
+      }
+      const auto remap = remaps.find(source.id);
+      if (remap != remaps.end()) {
+        itemIdRemaps.emplace(makeCreativeAutomaticLootItemId(source.id),
+                             makeCreativeAutomaticLootItemId(remap->second));
+      }
+    }
 
     for (std::size_t index : parentOrder) {
       const CreativeObject& object = placementPlan.objects[index];
       const CreativeDocumentCreateRequest createRequest =
-          makePasteRequest(staged, object, request, remaps);
+          makePasteRequest(staged, object, request, remaps, itemIdRemaps);
       if (!validPasteRequest(createRequest)) {
         receipt.failedPasteIndex = requestIndex;
         receipt.failedObjectId = object.id;

@@ -591,6 +591,58 @@ bool isValidCreativeNpcSpawnSettings(
          settings.spawnPolicy < CreativeNpcSpawnPolicy::Count;
 }
 
+bool isValidCreativeGameplayItemId(std::string_view value) noexcept {
+  if (value.empty() || value.size() > kCreativeGameplayItemIdCapacity) {
+    return false;
+  }
+  return std::all_of(value.begin(), value.end(), [](char valueByte) {
+    const unsigned char byte = static_cast<unsigned char>(valueByte);
+    return (byte >= 'a' && byte <= 'z') ||
+           (byte >= 'A' && byte <= 'Z') ||
+           (byte >= '0' && byte <= '9') || byte == '_' || byte == '-' ||
+           byte == '.';
+  });
+}
+
+bool isValidCreativeLootPointSettings(
+    const CreativeLootPointSettings& settings) noexcept {
+  return (settings.itemId.empty() ||
+          isValidCreativeGameplayItemId(settings.itemId)) &&
+         settings.itemCount > 0U &&
+         settings.itemCount <= kCreativeGameplayItemCountMaximum;
+}
+
+bool isValidCreativeExitPointSettings(
+    const CreativeExitPointSettings& settings) noexcept {
+  if (settings.requiredItemId.empty()) {
+    return settings.requiredItemCount == 0U;
+  }
+  return isValidCreativeGameplayItemId(settings.requiredItemId) &&
+         settings.requiredItemCount > 0U &&
+         settings.requiredItemCount <= kCreativeGameplayItemCountMaximum;
+}
+
+std::string makeCreativeAutomaticLootItemId(CreativeObjectId objectId) {
+  return objectId == kInvalidObjectId
+             ? std::string{}
+             : "creative_loot_" + std::to_string(objectId);
+}
+
+std::string effectiveCreativeLootPointItemId(const CreativeObject& object) {
+  if (object.kind != CreativeObjectKind::LootPoint) {
+    return {};
+  }
+  return object.lootPoint.itemId.empty()
+             ? makeCreativeAutomaticLootItemId(object.id)
+             : object.lootPoint.itemId;
+}
+
+std::string makeCreativeExitObjectiveId(CreativeObjectId objectId) {
+  return objectId == kInvalidObjectId
+             ? std::string{}
+             : "exit_creative_object_" + std::to_string(objectId);
+}
+
 bool isValidCreativePathPoint(const CreativePathPoint& point) noexcept {
   return std::isfinite(point.position.x) &&
          std::isfinite(point.position.y) &&

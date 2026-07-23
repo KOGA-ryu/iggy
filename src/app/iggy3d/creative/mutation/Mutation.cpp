@@ -36,7 +36,9 @@ enum class CreativeMutationPayloadKind {
     PathPointsOrLegacyText,
     MovingPlatformSettings,
     PlayerSpawnSettings,
-    NpcSpawnSettings
+    NpcSpawnSettings,
+    LootPointSettings,
+    ExitPointSettings
 };
 
 struct CreativeMutationMetadataRow {
@@ -205,6 +207,14 @@ constexpr std::array kCreativeMutationMetadataRows{
                      "SetNpcSpawnSettings",
                      CreativeMutationCategory::Gameplay,
                      CreativeMutationPayloadKind::NpcSpawnSettings),
+    mutationMetadata(CreativeMutationKind::SetLootPointSettings,
+                     "SetLootPointSettings",
+                     CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::LootPointSettings),
+    mutationMetadata(CreativeMutationKind::SetExitPointSettings,
+                     "SetExitPointSettings",
+                     CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::ExitPointSettings),
     mutationMetadata(CreativeMutationKind::SetCheckpointId, "SetCheckpointId", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::TextOrStringId, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
@@ -372,6 +382,10 @@ constexpr std::array kCreativeMutationMetadataRows{
         return std::holds_alternative<PlayerSpawnSettingsMutation>(value);
     case CreativeMutationPayloadKind::NpcSpawnSettings:
         return std::holds_alternative<NpcSpawnSettingsMutation>(value);
+    case CreativeMutationPayloadKind::LootPointSettings:
+        return std::holds_alternative<LootPointSettingsMutation>(value);
+    case CreativeMutationPayloadKind::ExitPointSettings:
+        return std::holds_alternative<ExitPointSettingsMutation>(value);
     }
 
     return false;
@@ -627,6 +641,18 @@ CreativeMutationPayload makePlayerSpawnSettingsPayload(
 CreativeMutationPayload makeNpcSpawnSettingsPayload(
     CreativeNpcSpawnSettings settings) {
     return CreativeMutationPayload{NpcSpawnSettingsMutation{std::move(settings)}};
+}
+
+CreativeMutationPayload makeLootPointSettingsPayload(
+    CreativeLootPointSettings settings) {
+    return CreativeMutationPayload{
+        LootPointSettingsMutation{std::move(settings)}};
+}
+
+CreativeMutationPayload makeExitPointSettingsPayload(
+    CreativeExitPointSettings settings) {
+    return CreativeMutationPayload{
+        ExitPointSettingsMutation{std::move(settings)}};
 }
 
 } // namespace iggy3d::creative

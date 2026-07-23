@@ -61,6 +61,7 @@ enum class CreativeMapDiagnosticCode : std::uint8_t {
   LogicTargetCollisionMissing,
   LogicLinkInvalid,
   ConflictingPressurePlates,
+  ExitRequirementUnresolved,
   DiagnosticCapacityExceeded,
 };
 

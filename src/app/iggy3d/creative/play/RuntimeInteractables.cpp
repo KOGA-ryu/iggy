@@ -33,6 +33,7 @@ constexpr float kAutomaticSourceOccupancyMarginMeters = 0.02F;
       return true;
     case CreativeRuntimeInteractableKind::Control:
     case CreativeRuntimeInteractableKind::Pickup:
+    case CreativeRuntimeInteractableKind::Objective:
       return false;
   }
   return false;
@@ -545,6 +546,8 @@ std::string_view toString(
       return "links_no_change";
     case CreativeRuntimeInteractionEffectStatus::PickupAcquired:
       return "pickup_acquired";
+    case CreativeRuntimeInteractionEffectStatus::ObjectiveCompleted:
+      return "objective_completed";
   }
   return "not_requested";
 }
@@ -595,6 +598,7 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   result.objectId = state.definition.objectId;
   result.displayName = state.definition.displayName;
   result.itemId = state.definition.itemId;
+  result.objectiveId = state.definition.objectiveId;
   const EntityState* runtimeTarget =
       sandbox.session.state().world.findById(target);
   if (runtimeTarget == nullptr) {
@@ -604,16 +608,34 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   }
 
   if (state.definition.kind == CreativeRuntimeInteractableKind::Pickup) {
-    if (runtimeTarget->active || state.pickupConsumed) {
+    const bool deactivatingPickup = state.definition.deactivateOnSuccess;
+    const bool runtimeStateMatches =
+        deactivatingPickup ? !runtimeTarget->active : runtimeTarget->active;
+    if (!runtimeStateMatches ||
+        (deactivatingPickup && state.pickupConsumed)) {
       result.status = CreativeRuntimeInteractionEffectStatus::UnsupportedTarget;
       result.reasonCode = "creative_runtime_pickup_not_acquired";
       return result;
     }
-    state.pickupConsumed = true;
+    state.pickupConsumed = deactivatingPickup;
     result.accepted = true;
     result.changed = true;
     result.status = CreativeRuntimeInteractionEffectStatus::PickupAcquired;
     result.reasonCode = "creative_runtime_pickup_acquired";
+    return result;
+  }
+
+  if (state.definition.kind == CreativeRuntimeInteractableKind::Objective) {
+    if (runtimeTarget->active || state.objectiveCompleted) {
+      result.status = CreativeRuntimeInteractionEffectStatus::UnsupportedTarget;
+      result.reasonCode = "creative_runtime_objective_not_completed";
+      return result;
+    }
+    state.objectiveCompleted = true;
+    result.accepted = true;
+    result.changed = true;
+    result.status = CreativeRuntimeInteractionEffectStatus::ObjectiveCompleted;
+    result.reasonCode = "creative_runtime_objective_completed";
     return result;
   }
 

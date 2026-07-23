@@ -106,6 +106,10 @@ struct CreativeDocumentCreateRequest {
   CreativePlayerSpawnSettings playerSpawn;
   bool hasNpcSpawnSettingsOverride = false;
   CreativeNpcSpawnSettings npcSpawn;
+  bool hasLootPointSettingsOverride = false;
+  CreativeLootPointSettings lootPoint;
+  bool hasExitPointSettingsOverride = false;
+  CreativeExitPointSettings exitPoint;
 };
 
 // Resolves descriptor defaults into the exact durable object shape used by

@@ -414,6 +414,14 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
     const bool validNpcSpawn =
         npcActor ? isValidCreativeNpcSpawnSettings(object.npcSpawn)
                  : object.npcSpawn == CreativeNpcSpawnSettings{};
+    const bool validLootPoint =
+        object.kind == CreativeObjectKind::LootPoint
+            ? isValidCreativeLootPointSettings(object.lootPoint)
+            : object.lootPoint == CreativeLootPointSettings{};
+    const bool validExitPoint =
+        object.kind == CreativeObjectKind::ExitPoint
+            ? isValidCreativeExitPointSettings(object.exitPoint)
+            : object.exitPoint == CreativeExitPointSettings{};
     if (object.tags.size() >
         kCreativeWorldLayoutCodecMaxRecords - totalTagCount) {
       failure = {CreativeWorldLayoutCodecStatus::CapacityExceeded,
@@ -429,6 +437,7 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
             enumValue(CreativeObjectLibraryPlacementMode::Count) ||
         !validScale || !validAssetBounds || !validBoundsModePose ||
         !validBridgeMode || !validPlayerSpawn || !validNpcSpawn ||
+        !validLootPoint || !validExitPoint ||
         !std::all_of(object.tags.begin(), object.tags.end(), validString)) {
       failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
                         : CreativeWorldLayoutCodecStatus::NonFiniteValue,
@@ -697,6 +706,11 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << object.npcSpawn.hitPoints << ' '
            << object.npcSpawn.initialAlertLevel << ' '
            << static_cast<unsigned>(enumValue(object.npcSpawn.spawnPolicy))
+           << ' ' << hexString(object.lootPoint.itemId)
+           << ' ' << object.lootPoint.itemCount
+           << ' ' << (object.lootPoint.deactivateOnCollect ? 1 : 0)
+           << ' ' << hexString(object.exitPoint.requiredItemId)
+           << ' ' << object.exitPoint.requiredItemCount
            << ' ' << object.tags.size();
     for (const std::string& tag : object.tags) {
       output << ' ' << hexString(tag);

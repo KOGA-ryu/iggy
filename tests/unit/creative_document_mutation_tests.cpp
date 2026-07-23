@@ -174,6 +174,8 @@ constexpr std::array kAuthoredMutationKinds{
     cr::CreativeMutationKind::SetDialogueId,
     cr::CreativeMutationKind::SetDangerLevel,
     cr::CreativeMutationKind::SetSafeZoneRule,
+    cr::CreativeMutationKind::SetLootPointSettings,
+    cr::CreativeMutationKind::SetExitPointSettings,
 };
 
 bool categoryPredicateMatches(cr::CreativeMutationKind kind,
@@ -1503,6 +1505,127 @@ bool setAssetAtomicallyChangesImportedRenderIdentity() {
   return ok;
 }
 
+bool lootAndExitSettingsAreDurableTypedMutations() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Objectives");
+
+  cr::CreativeDocumentCreateRequest lootRequest;
+  lootRequest.kind = cr::CreativeObjectKind::LootPoint;
+  lootRequest.name = "Estate Key";
+  const cr::CreativeDocumentCreateReceipt lootCreated =
+      document.createObject(lootRequest);
+
+  cr::CreativeDocumentCreateRequest exitRequest;
+  exitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+  exitRequest.name = "Estate Exit";
+  const cr::CreativeDocumentCreateReceipt exitCreated =
+      document.createObject(exitRequest);
+
+  const cr::CreativeObject* loot = document.findObject(lootCreated.objectId);
+  const cr::CreativeObject* exit = document.findObject(exitCreated.objectId);
+  bool ok =
+      expect(lootCreated.accepted && exitCreated.accepted,
+             "loot and exit objects create with valid defaults") &&
+      expect(loot != nullptr && loot->lootPoint.itemId.empty() &&
+                 loot->lootPoint.itemCount == 1U &&
+                 loot->lootPoint.deactivateOnCollect,
+             "loot point defaults are stable") &&
+      expect(loot != nullptr &&
+                 cr::effectiveCreativeLootPointItemId(*loot) ==
+                     cr::makeCreativeAutomaticLootItemId(loot->id),
+             "blank loot id resolves to deterministic object id") &&
+      expect(exit != nullptr && exit->exitPoint.requiredItemId.empty() &&
+                 exit->exitPoint.requiredItemCount == 0U,
+             "exit point defaults do not invent a requirement") &&
+      expect(exit != nullptr &&
+                 cr::makeCreativeExitObjectiveId(exit->id) ==
+                     "exit_creative_object_" + std::to_string(exit->id),
+             "exit objective id is deterministic") &&
+      expect(cr::canMutate(cr::CreativeObjectKind::LootPoint,
+                           cr::CreativeMutationKind::SetLootPointSettings) &&
+                 !cr::canMutate(
+                     cr::CreativeObjectKind::ExitPoint,
+                     cr::CreativeMutationKind::SetLootPointSettings) &&
+                 cr::canMutate(
+                     cr::CreativeObjectKind::ExitPoint,
+                     cr::CreativeMutationKind::SetExitPointSettings) &&
+                 !cr::canMutate(
+                     cr::CreativeObjectKind::LootPoint,
+                     cr::CreativeMutationKind::SetExitPointSettings),
+             "loot and exit settings mutations have matching-kind ownership");
+
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeLootPointSettings lootSettings{
+      .itemId = "estate_key",
+      .itemCount = 2U,
+      .deactivateOnCollect = false,
+  };
+  const cr::CreativeDocumentMutationReceipt lootApplied =
+      cr::applyDocumentMutation(
+          document, lootCreated.objectId,
+          cr::CreativeMutationKind::SetLootPointSettings,
+          cr::makeLootPointSettingsPayload(lootSettings));
+  const cr::CreativeExitPointSettings exitSettings{
+      .requiredItemId = "estate_key",
+      .requiredItemCount = 1U,
+  };
+  const cr::CreativeDocumentMutationReceipt exitApplied =
+      cr::applyDocumentMutation(
+          document, exitCreated.objectId,
+          cr::CreativeMutationKind::SetExitPointSettings,
+          cr::makeExitPointSettingsPayload(exitSettings));
+  loot = document.findObject(lootCreated.objectId);
+  exit = document.findObject(exitCreated.objectId);
+  ok =
+      expect(lootApplied.status ==
+                     cr::CreativeDocumentMutationStatus::Applied &&
+                 lootApplied.changed &&
+                 lootApplied.revisionBefore == revisionBefore &&
+                 lootApplied.revisionAfter == revisionBefore + 1U,
+             "loot settings apply as one document revision") &&
+      expect(exitApplied.status ==
+                     cr::CreativeDocumentMutationStatus::Applied &&
+                 exitApplied.changed &&
+                 exitApplied.revisionBefore == revisionBefore + 1U &&
+                 exitApplied.revisionAfter == revisionBefore + 2U,
+             "exit settings apply as one document revision") &&
+      expect(loot != nullptr && loot->lootPoint == lootSettings,
+             "loot settings persist on the authored object") &&
+      expect(exit != nullptr && exit->exitPoint == exitSettings,
+             "exit settings persist on the authored object") &&
+      ok;
+
+  const std::uint64_t revisionBeforeInvalid = document.revision();
+  cr::CreativeLootPointSettings invalidLoot = lootSettings;
+  invalidLoot.itemCount = 0U;
+  const cr::CreativeDocumentMutationReceipt invalidMutation =
+      cr::applyDocumentMutation(
+          document, lootCreated.objectId,
+          cr::CreativeMutationKind::SetLootPointSettings,
+          cr::makeLootPointSettingsPayload(invalidLoot));
+  cr::CreativeDocumentCreateRequest invalidCreate;
+  invalidCreate.kind = cr::CreativeObjectKind::ExitPoint;
+  invalidCreate.name = "Invalid Exit";
+  invalidCreate.hasExitPointSettingsOverride = true;
+  invalidCreate.exitPoint.requiredItemId = "estate_key";
+  invalidCreate.exitPoint.requiredItemCount = 0U;
+  const cr::CreativeDocumentCreateReceipt rejectedCreate =
+      document.createObject(invalidCreate);
+  loot = document.findObject(lootCreated.objectId);
+  return expect(invalidMutation.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed &&
+                !invalidMutation.changed &&
+                document.revision() == revisionBeforeInvalid,
+                "invalid loot mutation cannot advance document revision") &&
+         expect(loot != nullptr && loot->lootPoint == lootSettings,
+                "invalid loot mutation cannot partially change settings") &&
+         expect(rejectedCreate.status ==
+                    cr::CreativeDocumentCreateStatus::Rejected &&
+                !rejectedCreate.accepted && !rejectedCreate.changed &&
+                document.revision() == revisionBeforeInvalid,
+                "invalid exit create is rejected without revision drift") &&
+         ok;
+}
+
 int main() {
   const bool ok = mutationMetadataRegistryIsInternallyConsistent() &&
                   mutationStoragePolicySignalDistinguishesStoredAndFuturePlaceholders() &&
@@ -1530,6 +1653,7 @@ int main() {
                   invalidMutationRequestRejectsBeforeApply() &&
                   lockedObjectRenameRejectsThroughPipeline() &&
                   lockedObjectUnlockThenRenameApplies() &&
-                  setAssetAtomicallyChangesImportedRenderIdentity();
+                  setAssetAtomicallyChangesImportedRenderIdentity() &&
+                  lootAndExitSettingsAreDurableTypedMutations();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -1800,13 +1800,61 @@ disjoint source/target role law. This remains M2 until replacement-stable
 endpoint identity, bounded event history, and manually accepted authoring/play
 workflows exist; speculative delay or condition fields would not advance it.
 
-### G4. Triggers, Objectives, Interactables, And Encounters - Missing - Deferred
+### G4. Triggers, Objectives, Interactables, And Encounters - Current M2 Authored Objective Slice - Continue
 
-- [ ] Add typed trigger volumes and event/action configuration.
-- [ ] Add objective, checkpoint, encounter, loot, door/switch, moving-platform,
-  sound, and hazard authoring through shared logic contracts.
-- [ ] Provide reachability, dependency, missing-reference, and runtime simulation
-  diagnostics before these enter the default toolbox.
+- [x] Give LootPoint and ExitPoint durable typed settings with matching-kind
+  mutation ownership, undo/redo, direct-object and World Layout inspectors,
+  versioned save/layout migration, recipe/fingerprint transport, and
+  relationship-aware clipboard remapping.
+- [x] Run authored loot quantity and exit requirements through the real Play
+  interaction, inventory, objective, outcome, prompt, and feedback owners
+  without mutating the authored document.
+- [x] Diagnose exits whose finite requirement cannot be met by visible authored
+  loot; persistent loot is correctly treated as a repeatable source.
+- [x] Keep door, switch/button/lever, trigger-zone/pressure-plate, platform, and
+  moving-platform behavior on the typed G3 source/action graph rather than
+  creating parallel objective wiring.
+- [ ] Add checkpoints and encounter/spawn-wave orchestration only after their
+  lifecycle, reset, persistence, and deterministic runtime receipts have named
+  owners.
+- [ ] Add sound and hazard authoring only after their payloads and runtime
+  effects are semantic contracts rather than editor-only fields.
+- [ ] Add richer conditional, delayed, one-shot/repeat, and failure behavior
+  through G3's bounded execution model, then expose dependency and live event
+  traces here.
+
+The M2 checkpoint makes LootPoint and ExitPoint product capabilities rather
+than generic markers with hidden conventions. Loot owns an optional shared item
+identifier, quantity, and one-shot versus persistent collection policy. Empty
+loot identifiers retain deterministic per-object identity. Exit owns an
+optional item identifier and quantity requirement plus a deterministic
+per-object objective identity. The same settings survive direct creation,
+typed mutation, object-library and Creative recipes, authored-asset
+fingerprints, clipboard paste, World Layout compile/adopt/codec v29, and
+creative-document save v32; older data migrates to the prior no-requirement and
+single-removable-loot defaults.
+
+The direct Inspector can bind an exit to any visible document loot source or
+enter a semantic identifier manually. The World Layout source Inspector offers
+only explicit identifiers because automatic object-derived identities do not
+exist until compile. Map validation totals visible finite loot and treats
+persistent loot as repeatable, producing an object-addressable error when an
+exit requirement is impossible. Play converts loot into real inventory
+interactions and exits into real objectives; satisfying the requirement
+publishes objective-complete feedback, deactivates the exit, and resolves the
+existing `exit_` outcome rule to Victory. Separate presses can collect
+persistent loot repeatedly, while held input cannot duplicate either one-shot
+pickup or objective completion.
+
+Focused proof covers kind ownership, invalid/no-change mutation behavior,
+undo/redo, save and World Layout migration, recipe/fingerprint and clipboard
+identity, diagnostic quantities, targetability, repeatable pickups, authored
+inventory quantity, exit prompts, objective completion, Victory, and authored
+document isolation. This remains M2 rather than M3/M4 until keyboard/mouse,
+touchpad, and PS5 workflows are manually accepted, the marker presentation is
+visually polished, multiple-objective/reset behavior is exercised in production
+maps, and the deferred checkpoint, encounter, sound, hazard, and conditional
+logic contracts exist.
 
 ### G5. Playtest And Validation - Support System - Finish Before Gameplay Tools
 

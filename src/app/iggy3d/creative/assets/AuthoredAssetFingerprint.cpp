@@ -171,6 +171,15 @@ void appendDefinitionObject(FingerprintBuilder& builder,
     builder.appendString(toString(object.movingPlatform.traversalMode));
     builder.appendBool(object.movingPlatform.startsActive);
   }
+  if (object.kind == CreativeObjectKind::LootPoint) {
+    builder.appendString(object.lootPoint.itemId);
+    builder.appendUnsigned(object.lootPoint.itemCount);
+    builder.appendBool(object.lootPoint.deactivateOnCollect);
+  }
+  if (object.kind == CreativeObjectKind::ExitPoint) {
+    builder.appendString(object.exitPoint.requiredItemId);
+    builder.appendUnsigned(object.exitPoint.requiredItemCount);
+  }
   const bool hasCustomSegmentSpeed = std::any_of(
       object.pathPoints.begin(), object.pathPoints.end(),
       [](const CreativePathPoint& point) {

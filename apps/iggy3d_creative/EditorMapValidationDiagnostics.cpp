@@ -74,6 +74,10 @@ constexpr std::array kDescriptors{
         "Requested spawn group is unavailable",
         "Add an eligible spawn to the requested group."},
     CreativeEditorMapDiagnosticDescriptor{
+        Code::NpcSpawnPlanInvalid, Area::Runtime,
+        "NPC spawn plan is invalid",
+        "Repair the NPC profile, placement, or assigned patrol route."},
+    CreativeEditorMapDiagnosticDescriptor{
         Code::RoomBakeRejected, Area::Runtime, "Runtime room bake failed",
         "Repair the reported geometry or bounds failure."},
     CreativeEditorMapDiagnosticDescriptor{
@@ -134,6 +138,10 @@ constexpr std::array kDescriptors{
         Code::ConflictingPressurePlates, Area::Logic,
         "Pressure-plate triggers conflict",
         "Remove duplicate competing triggers for the same target."},
+    CreativeEditorMapDiagnosticDescriptor{
+        Code::ExitRequirementUnresolved, Area::Runtime,
+        "Exit requirement cannot be satisfied",
+        "Add visible matching loot or reduce the required item count."},
     CreativeEditorMapDiagnosticDescriptor{
         Code::DiagnosticCapacityExceeded, Area::Validation,
         "Diagnostic capacity exceeded",

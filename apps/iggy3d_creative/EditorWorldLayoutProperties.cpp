@@ -150,6 +150,18 @@ namespace {
        !(settings.npcSpawn == cr::CreativeNpcSpawnSettings{}))) {
     return false;
   }
+  if ((settings.kind == cr::CreativeObjectKind::LootPoint &&
+       !cr::isValidCreativeLootPointSettings(settings.lootPoint)) ||
+      (settings.kind != cr::CreativeObjectKind::LootPoint &&
+       !(settings.lootPoint == cr::CreativeLootPointSettings{}))) {
+    return false;
+  }
+  if ((settings.kind == cr::CreativeObjectKind::ExitPoint &&
+       !cr::isValidCreativeExitPointSettings(settings.exitPoint)) ||
+      (settings.kind != cr::CreativeObjectKind::ExitPoint &&
+       !(settings.exitPoint == cr::CreativeExitPointSettings{}))) {
+    return false;
+  }
   if (settings.usesBridgeRecipe) {
     return settings.kind == cr::CreativeObjectKind::Bridge &&
            settings.mode == cr::CreativeObjectLibraryPlacementMode::Bounds &&
@@ -182,6 +194,8 @@ namespace {
   placement.visible = settings.visible;
   placement.playerSpawn = settings.playerSpawn;
   placement.npcSpawn = settings.npcSpawn;
+  placement.lootPoint = settings.lootPoint;
+  placement.exitPoint = settings.exitPoint;
   placement.tags = current.tags;
   cr::CreativeObjectLibraryRecipeRequest request;
   request.placements.push_back(std::move(placement));
@@ -664,6 +678,8 @@ bool readCreativeEditorWorldLayoutObjectSettings(
   output.bridge = object.bridge;
   output.playerSpawn = object.playerSpawn;
   output.npcSpawn = object.npcSpawn;
+  output.lootPoint = object.lootPoint;
+  output.exitPoint = object.exitPoint;
   return true;
 }
 
@@ -698,6 +714,8 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutObjectSettings(
   object.bridge = std::move(settings.bridge);
   object.playerSpawn = std::move(settings.playerSpawn);
   object.npcSpawn = std::move(settings.npcSpawn);
+  object.lootPoint = std::move(settings.lootPoint);
+  object.exitPoint = std::move(settings.exitPoint);
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
                      objectIndex};
   detail::noteWorldLayoutSourceChange(state, "object settings updated");

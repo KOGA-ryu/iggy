@@ -23,6 +23,7 @@ enum class CreativeRuntimeInteractableKind : std::uint8_t {
   MovingPlatform,
   Control,
   Pickup,
+  Objective,
 };
 
 [[nodiscard]] bool creativeRuntimeInteractableIsLogicTarget(
@@ -53,6 +54,11 @@ struct CreativeRuntimeInteractableDefinition {
   std::string displayName;
   std::string roomMeshId;
   std::string itemId;
+  std::uint32_t itemCount = 0U;
+  std::string objectiveId;
+  std::string requiredItemId;
+  std::uint32_t requiredItemCount = 0U;
+  bool deactivateOnSuccess = false;
   Transform3 transform;
   Aabb3 localBounds;
   CreativeRuntimeDoorDefinition door;
@@ -75,6 +81,7 @@ struct CreativeRuntimeInteractableCatalog {
   std::size_t controlCount = 0U;
   std::size_t automaticControlCount = 0U;
   std::size_t pickupCount = 0U;
+  std::size_t objectiveCount = 0U;
   std::size_t explicitLogicLinkCount = 0U;
   std::size_t compatibilityLogicLinkCount = 0U;
   std::vector<CreativeRuntimeInteractableDefinition> definitions;
@@ -108,6 +115,7 @@ struct CreativeRuntimeInteractableState {
   CreativeRuntimeDoorState door;
   CreativeRuntimeMovingPlatformState movingPlatform;
   bool pickupConsumed = false;
+  bool objectiveCompleted = false;
   std::size_t occupantCount = 0U;
   CreativeRuntimeOccupancyTransition lastOccupancyTransition =
       CreativeRuntimeOccupancyTransition::None;
@@ -182,6 +190,7 @@ enum class CreativeRuntimeInteractionEffectStatus : std::uint8_t {
   LinksApplied,
   LinksNoChange,
   PickupAcquired,
+  ObjectiveCompleted,
 };
 
 struct CreativeRuntimeInteractionEffectReceipt {
@@ -196,6 +205,7 @@ struct CreativeRuntimeInteractionEffectReceipt {
   CreativeObjectId objectId = kInvalidObjectId;
   std::string displayName;
   std::string itemId;
+  std::string objectiveId;
   std::size_t affectedTargetCount = 0U;
   std::size_t affectedDoorCount = 0U;
   std::size_t affectedPlatformCount = 0U;

@@ -258,6 +258,15 @@ namespace {
     record.npcSpawnPolicy =
         std::string{creative::toString(object.npcSpawn.spawnPolicy)};
   }
+  if (object.kind == creative::CreativeObjectKind::LootPoint) {
+    record.lootItemId = object.lootPoint.itemId;
+    record.lootItemCount = object.lootPoint.itemCount;
+    record.lootDeactivateOnCollect = object.lootPoint.deactivateOnCollect;
+  }
+  if (object.kind == creative::CreativeObjectKind::ExitPoint) {
+    record.exitRequiredItemId = object.exitPoint.requiredItemId;
+    record.exitRequiredItemCount = object.exitPoint.requiredItemCount;
+  }
   return record;
 }
 
@@ -356,6 +365,23 @@ namespace {
           !creative::isValidCreativeNpcSpawnSettings(out.npcSpawn)) {
         return false;
       }
+    }
+  }
+  if (kind == creative::CreativeObjectKind::LootPoint &&
+      sectionVersion >= kSaveCreativeDocumentObjectiveVersion) {
+    out.lootPoint.itemId = record.lootItemId;
+    out.lootPoint.itemCount = record.lootItemCount;
+    out.lootPoint.deactivateOnCollect = record.lootDeactivateOnCollect;
+    if (!creative::isValidCreativeLootPointSettings(out.lootPoint)) {
+      return false;
+    }
+  }
+  if (kind == creative::CreativeObjectKind::ExitPoint &&
+      sectionVersion >= kSaveCreativeDocumentObjectiveVersion) {
+    out.exitPoint.requiredItemId = record.exitRequiredItemId;
+    out.exitPoint.requiredItemCount = record.exitRequiredItemCount;
+    if (!creative::isValidCreativeExitPointSettings(out.exitPoint)) {
+      return false;
     }
   }
   return true;

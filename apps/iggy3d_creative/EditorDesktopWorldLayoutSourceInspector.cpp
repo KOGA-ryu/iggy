@@ -1557,8 +1557,96 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
     }
   }
 
+  const bool lootPoint =
+      draft.kind == cr::CreativeObjectKind::LootPoint;
+  const bool lootSettingsValid =
+      !lootPoint || cr::isValidCreativeLootPointSettings(draft.lootPoint);
+  if (lootPoint) {
+    ImGui::SeparatorText("Loot");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Item ID##layout_object_properties",
+                  draft.lootPoint.itemId));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Count##layout_object_properties",
+                           ImGuiDataType_U32, &draft.lootPoint.itemCount));
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        ImGui::Checkbox("Remove after collection##layout_object_properties",
+                        &draft.lootPoint.deactivateOnCollect));
+    ImGui::TextDisabled(
+        "Use an explicit item ID when another layout source requires it");
+    if (!lootSettingsValid) {
+      ImGui::TextColored(
+          ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+          "Item ID or item count is invalid");
+    }
+  }
+
+  const bool exitPoint =
+      draft.kind == cr::CreativeObjectKind::ExitPoint;
+  const bool exitSettingsValid =
+      !exitPoint || cr::isValidCreativeExitPointSettings(draft.exitPoint);
+  if (exitPoint) {
+    ImGui::SeparatorText("Exit Objective");
+    bool requirementChanged = false;
+    const char* requirementLabel = draft.exitPoint.requiredItemId.empty()
+                                       ? "No item required"
+                                       : draft.exitPoint.requiredItemId.c_str();
+    if (ImGui::BeginCombo("Loot requirement##layout_object_properties",
+                          requirementLabel)) {
+      const bool noRequirement = draft.exitPoint.requiredItemId.empty();
+      if (ImGui::Selectable("No item required", noRequirement) &&
+          !noRequirement) {
+        draft.exitPoint.requiredItemId.clear();
+        draft.exitPoint.requiredItemCount = 0U;
+        requirementChanged = true;
+      }
+      for (const cr::CreativeWorldLayoutObject& candidate :
+           state.source.objects) {
+        if (candidate.kind != cr::CreativeObjectKind::LootPoint ||
+            !candidate.visible || candidate.lootPoint.itemId.empty()) {
+          continue;
+        }
+        const bool selected =
+            candidate.lootPoint.itemId == draft.exitPoint.requiredItemId;
+        const std::string label =
+            candidate.name.empty()
+                ? candidate.lootPoint.itemId
+                : candidate.name + " (" + candidate.lootPoint.itemId + ")";
+        if (ImGui::Selectable(label.c_str(), selected) && !selected) {
+          draft.exitPoint.requiredItemId = candidate.lootPoint.itemId;
+          draft.exitPoint.requiredItemCount =
+              std::max<std::uint32_t>(
+                  draft.exitPoint.requiredItemCount, 1U);
+          requirementChanged = true;
+        }
+      }
+      ImGui::EndCombo();
+    }
+    observeCreativeDesktopDiscretePropertyWidget(activity,
+                                                 requirementChanged);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Required item ID##layout_object_properties",
+                  draft.exitPoint.requiredItemId));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Required count##layout_object_properties",
+                           ImGuiDataType_U32,
+                           &draft.exitPoint.requiredItemCount));
+    if (!exitSettingsValid) {
+      ImGui::TextColored(
+          ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+          "Required item and count must both be empty/zero or both be set");
+    }
+  }
+
   finishCreativeDesktopWorldLayoutPropertyEdit(
-      activity, current, draft, spawnSettingsValid && npcSettingsValid,
+      activity, current, draft,
+      spawnSettingsValid && npcSettingsValid && lootSettingsValid &&
+          exitSettingsValid,
       "Reset object", state, objectIndex, object.stableKey, commands);
 }
 

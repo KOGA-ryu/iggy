@@ -541,7 +541,14 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
          save.npcHitPoints == object.npcSpawn.hitPoints &&
          save.npcInitialAlertLevel == object.npcSpawn.initialAlertLevel &&
          save.npcSpawnPolicy ==
-             std::string{cr::toString(object.npcSpawn.spawnPolicy)};
+             std::string{cr::toString(object.npcSpawn.spawnPolicy)} &&
+         save.lootItemId == object.lootPoint.itemId &&
+         save.lootItemCount == object.lootPoint.itemCount &&
+         save.lootDeactivateOnCollect ==
+             object.lootPoint.deactivateOnCollect &&
+         save.exitRequiredItemId == object.exitPoint.requiredItemId &&
+         save.exitRequiredItemCount ==
+             object.exitPoint.requiredItemCount;
 }
 
 bool documentObjectMatches(const cr::CreativeObject& lhs,
@@ -559,7 +566,8 @@ bool documentObjectMatches(const cr::CreativeObject& lhs,
          samePathPoints(lhs.pathPoints, rhs.pathPoints) &&
          lhs.movingPlatform == rhs.movingPlatform && lhs.door == rhs.door &&
          lhs.window == rhs.window && lhs.playerSpawn == rhs.playerSpawn &&
-         lhs.npcSpawn == rhs.npcSpawn;
+         lhs.npcSpawn == rhs.npcSpawn &&
+         lhs.lootPoint == rhs.lootPoint && lhs.exitPoint == rhs.exitPoint;
 }
 
 bool buildSectionCopiesDocumentExactly() {
@@ -1137,6 +1145,114 @@ bool npcSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() {
          expect(!rejected.receipt.accepted &&
                     rejected.document.objectCount() == 0U,
                 "current invalid npc settings fail closed");
+}
+
+bool objectiveSettingsEncodeDecodeRestoreAndLegacyDefault() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Objective Round Trip");
+  static_cast<void>(document.assignId(9008U));
+
+  cr::CreativeDocumentCreateRequest lootRequest;
+  lootRequest.kind = cr::CreativeObjectKind::LootPoint;
+  lootRequest.name = "Estate Key";
+  lootRequest.hasLootPointSettingsOverride = true;
+  lootRequest.lootPoint = {
+      .itemId = "estate_key",
+      .itemCount = 3U,
+      .deactivateOnCollect = false,
+  };
+  const cr::CreativeDocumentCreateReceipt lootCreated =
+      document.createObject(lootRequest);
+
+  cr::CreativeDocumentCreateRequest exitRequest;
+  exitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+  exitRequest.name = "Estate Exit";
+  exitRequest.hasExitPointSettingsOverride = true;
+  exitRequest.exitPoint = {
+      .requiredItemId = "estate_key",
+      .requiredItemCount = 2U,
+  };
+  const cr::CreativeDocumentCreateReceipt exitCreated =
+      document.createObject(exitRequest);
+  const cr::CreativeObject* originalLoot =
+      document.findObject(lootCreated.objectId);
+  const cr::CreativeObject* originalExit =
+      document.findObject(exitCreated.objectId);
+
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeObject* restoredLoot =
+      restored.document.findObject(lootCreated.objectId);
+  const cr::CreativeObject* restoredExit =
+      restored.document.findObject(exitCreated.objectId);
+
+  iggy3d::SaveCreativeDocumentSection legacy = built.section;
+  legacy.version = iggy3d::kSaveCreativeDocumentObjectiveVersion - 1U;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult migrated =
+      iggy3d::restoreCreativeDocumentFromSaveSection(legacy);
+  const cr::CreativeObject* migratedLoot =
+      migrated.document.findObject(lootCreated.objectId);
+  const cr::CreativeObject* migratedExit =
+      migrated.document.findObject(exitCreated.objectId);
+
+  iggy3d::SaveCreativeDocumentSection malformed = built.section;
+  if (!malformed.objects.empty()) {
+    malformed.objects.front().lootItemCount = 0U;
+  }
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult rejected =
+      iggy3d::restoreCreativeDocumentFromSaveSection(malformed);
+
+  return expect(lootCreated.accepted && exitCreated.accepted &&
+                    originalLoot != nullptr && originalExit != nullptr,
+                "objective codec setup creates durable objects") &&
+         expect(built.receipt.accepted && built.section.objects.size() == 2U,
+                "objective codec build accepted") &&
+         expect(sectionObjectMatches(built.section.objects[0], *originalLoot) &&
+                    sectionObjectMatches(built.section.objects[1],
+                                         *originalExit),
+                "objective save records own every setting") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.lootPoint."
+                        "itemId=estate_key\n") != std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.lootPoint."
+                        "itemCount=3\n") != std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.lootPoint."
+                        "deactivateOnCollect=false\n") != std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.1.exitPoint."
+                        "requiredItemId=estate_key\n") != std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.1.exitPoint."
+                        "requiredItemCount=2\n") != std::string::npos,
+                "objective settings encode explicitly") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    restored.receipt.accepted && restoredLoot != nullptr &&
+                    restoredExit != nullptr &&
+                    documentObjectMatches(*restoredLoot, *originalLoot) &&
+                    documentObjectMatches(*restoredExit, *originalExit),
+                "objective settings decode and restore exactly") &&
+         expect(migrated.receipt.accepted && migratedLoot != nullptr &&
+                    migratedExit != nullptr &&
+                    migratedLoot->lootPoint ==
+                        cr::CreativeLootPointSettings{} &&
+                    migratedExit->exitPoint ==
+                        cr::CreativeExitPointSettings{},
+                "pre-objective versions receive safe defaults") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.document.objectCount() == 0U,
+                "current invalid objective settings fail closed");
 }
 
 bool legacyMovingPlatformReceivesDefaultRouteAndSettings() {
@@ -3039,6 +3155,7 @@ int main() {
   ok = windowSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = playerSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = npcSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
+  ok = objectiveSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = legacyMovingPlatformReceivesDefaultRouteAndSettings() && ok;
   ok = restoreRejectsInvalidPathPayloads() && ok;
   ok = restoreRejectsInvalidLineEndpointPayloads() && ok;

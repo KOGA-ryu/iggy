@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -697,6 +698,84 @@ bool competingPressurePlatesFailValidation() {
                 "pressure plate validation code is stable");
 }
 
+bool exitRequirementsMustResolveToAuthoredLoot() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  const auto addObjectives = [](cr::CreativeDocument& document,
+                                std::uint32_t lootCount,
+                                bool deactivateOnCollect = true) {
+    cr::CreativeDocumentCreateRequest lootRequest;
+    lootRequest.kind = cr::CreativeObjectKind::LootPoint;
+    lootRequest.name = "Estate Key";
+    lootRequest.transform.position = {0.5, 0.25, 0.0};
+    lootRequest.hasTransformOverride = true;
+    lootRequest.hasLootPointSettingsOverride = true;
+    lootRequest.lootPoint.itemId = "estate_key";
+    lootRequest.lootPoint.itemCount = lootCount;
+    lootRequest.lootPoint.deactivateOnCollect = deactivateOnCollect;
+    const cr::CreativeDocumentCreateReceipt loot =
+        document.createObject(lootRequest);
+
+    cr::CreativeDocumentCreateRequest exitRequest;
+    exitRequest.kind = cr::CreativeObjectKind::ExitPoint;
+    exitRequest.name = "Estate Exit";
+    exitRequest.transform.position = {1.0, 0.25, 0.0};
+    exitRequest.hasTransformOverride = true;
+    exitRequest.hasExitPointSettingsOverride = true;
+    exitRequest.exitPoint.requiredItemId = "estate_key";
+    exitRequest.exitPoint.requiredItemCount = 2U;
+    const cr::CreativeDocumentCreateReceipt exit =
+        document.createObject(exitRequest);
+    return std::pair{loot, exit};
+  };
+
+  cr::CreativeDocument unresolved =
+      playableDocument("Unresolved Objective");
+  const auto [unresolvedLoot, unresolvedExit] =
+      addObjectives(unresolved, 1U);
+  const cr::CreativeMapValidationResult unresolvedResult =
+      cr::validateCreativeMap({&unresolved, &catalog});
+  const cr::CreativeMapDiagnostic* diagnostic = findDiagnostic(
+      unresolvedResult,
+      cr::CreativeMapDiagnosticCode::ExitRequirementUnresolved);
+
+  cr::CreativeDocument resolved = playableDocument("Resolved Objective");
+  const auto [resolvedLoot, resolvedExit] = addObjectives(resolved, 2U);
+  const cr::CreativeMapValidationResult resolvedResult =
+      cr::validateCreativeMap({&resolved, &catalog});
+
+  cr::CreativeDocument repeatable =
+      playableDocument("Repeatable Objective");
+  const auto [repeatableLoot, repeatableExit] =
+      addObjectives(repeatable, 1U, false);
+  const cr::CreativeMapValidationResult repeatableResult =
+      cr::validateCreativeMap({&repeatable, &catalog});
+
+  return expect(unresolvedLoot.accepted && unresolvedExit.accepted,
+                "unresolved objective fixture is authored") &&
+         expect(!unresolvedResult.passed && diagnostic != nullptr &&
+                    diagnostic->objectId == unresolvedExit.objectId &&
+                    diagnostic->subject == "estate_key" &&
+                    diagnostic->fact == 1U,
+                "exit diagnostic reports the available authored quantity") &&
+         expect(cr::toString(diagnostic->code) ==
+                    "exit_requirement_unresolved",
+                "exit requirement diagnostic code is stable") &&
+         expect(resolvedLoot.accepted && resolvedExit.accepted &&
+                    resolvedResult.accepted && resolvedResult.passed &&
+                    findDiagnostic(
+                        resolvedResult,
+                        cr::CreativeMapDiagnosticCode::
+                            ExitRequirementUnresolved) == nullptr,
+                "sufficient visible loot resolves the exit requirement") &&
+         expect(repeatableLoot.accepted && repeatableExit.accepted &&
+                    repeatableResult.accepted && repeatableResult.passed &&
+                    findDiagnostic(
+                        repeatableResult,
+                        cr::CreativeMapDiagnosticCode::
+                            ExitRequirementUnresolved) == nullptr,
+                "repeatable loot resolves every finite exit quantity");
+}
+
 bool diagnosticsStayBoundedAndDeterministic() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument("Diagnostic Capacity");
@@ -744,6 +823,7 @@ int main() {
                   disconnectedWalkableIslandFailsValidation() &&
                   invalidReachabilityConfigurationFailsClosed() &&
                   competingPressurePlatesFailValidation() &&
+                  exitRequirementsMustResolveToAuthoredLoot() &&
                   diagnosticsStayBoundedAndDeterministic();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

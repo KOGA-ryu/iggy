@@ -292,6 +292,18 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
                object.npcInitialAlertLevel);
     readString(prefix + "npcSpawn.spawnPolicy", object.npcSpawnPolicy);
   }
+  if (nextKeyIs(prefix + "lootPoint.itemId")) {
+    readString(prefix + "lootPoint.itemId", object.lootItemId);
+    readUnsigned(prefix + "lootPoint.itemCount", object.lootItemCount);
+    readBool(prefix + "lootPoint.deactivateOnCollect",
+             object.lootDeactivateOnCollect);
+  }
+  if (nextKeyIs(prefix + "exitPoint.requiredItemId")) {
+    readString(prefix + "exitPoint.requiredItemId",
+               object.exitRequiredItemId);
+    readUnsigned(prefix + "exitPoint.requiredItemCount",
+                 object.exitRequiredItemCount);
+  }
 }
 
 void Reader::readCreativeTerrainHeightField(

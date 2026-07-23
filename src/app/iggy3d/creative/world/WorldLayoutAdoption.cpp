@@ -148,6 +148,8 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
   source.visible = object.visible;
   source.playerSpawn = object.playerSpawn;
   source.npcSpawn = object.npcSpawn;
+  source.lootPoint = object.lootPoint;
+  source.exitPoint = object.exitPoint;
   if (source.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!nearZero(object.transform.rotationEulerRadians.x) ||
         !nearZero(object.transform.rotationEulerRadians.z) ||
@@ -187,6 +189,8 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
                      previous.visible != source.visible ||
                      !(previous.playerSpawn == source.playerSpawn) ||
                      !(previous.npcSpawn == source.npcSpawn) ||
+                     !(previous.lootPoint == source.lootPoint) ||
+                     !(previous.exitPoint == source.exitPoint) ||
                      !sameVec(previous.pointCells, source.pointCells) ||
                      previous.yawRadians != source.yawRadians ||
                      !sameVec(previous.scale, source.scale) ||
@@ -228,6 +232,10 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
   }
   result.changed = previous.name != source.name ||
                    previous.visible != source.visible ||
+                   !(previous.playerSpawn == source.playerSpawn) ||
+                   !(previous.npcSpawn == source.npcSpawn) ||
+                   !(previous.lootPoint == source.lootPoint) ||
+                   !(previous.exitPoint == source.exitPoint) ||
                    !sameBounds(previous.boundsCells, source.boundsCells);
   result.mode = CreativeWorldLayoutAdoptionMode::Canonicalized;
   return true;

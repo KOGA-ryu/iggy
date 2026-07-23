@@ -44,6 +44,8 @@ struct CreativeObjectLibraryPlacementSpec {
   bool visible = true;
   CreativePlayerSpawnSettings playerSpawn{};
   CreativeNpcSpawnSettings npcSpawn{};
+  CreativeLootPointSettings lootPoint{};
+  CreativeExitPointSettings exitPoint{};
   std::vector<std::string> tags;
 };
 

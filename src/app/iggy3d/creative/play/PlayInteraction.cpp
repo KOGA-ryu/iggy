@@ -208,6 +208,11 @@ void appendText(CreativePlayHudFrame& hud,
       std::snprintf(result.chars.data(), result.chars.size(), "PICKED UP %.78s",
                     effect.displayName.c_str());
       break;
+    case Status::ObjectiveCompleted:
+      std::snprintf(result.chars.data(), result.chars.size(),
+                    "OBJECTIVE COMPLETE %.69s",
+                    effect.displayName.c_str());
+      break;
     case Status::NoLinkedTarget:
       std::snprintf(result.chars.data(), result.chars.size(),
                     "NO LINKED TARGET");

@@ -857,6 +857,8 @@ struct CreativeEditorWorldLayoutObjectSettings {
   cr::CreativeBridgeSourceRecipe bridge;
   cr::CreativePlayerSpawnSettings playerSpawn{};
   cr::CreativeNpcSpawnSettings npcSpawn{};
+  cr::CreativeLootPointSettings lootPoint{};
+  cr::CreativeExitPointSettings exitPoint{};
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutObjectSettings& lhs,
@@ -890,7 +892,9 @@ struct CreativeEditorWorldLayoutObjectSettings {
            lhs.visible == rhs.visible &&
            lhs.usesBridgeRecipe == rhs.usesBridgeRecipe &&
            lhs.bridge == rhs.bridge && lhs.playerSpawn == rhs.playerSpawn &&
-           lhs.npcSpawn == rhs.npcSpawn;
+           lhs.npcSpawn == rhs.npcSpawn &&
+           lhs.lootPoint == rhs.lootPoint &&
+           lhs.exitPoint == rhs.exitPoint;
   }
 };
 

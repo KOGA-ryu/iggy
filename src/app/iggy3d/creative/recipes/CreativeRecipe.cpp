@@ -98,6 +98,21 @@ void appendNpcSpawnSettings(
   builder.appendUnsigned(static_cast<std::uint8_t>(settings.spawnPolicy));
 }
 
+void appendLootPointSettings(
+    RecipeFingerprintBuilder& builder,
+    const CreativeLootPointSettings& settings) noexcept {
+  builder.appendString(settings.itemId);
+  builder.appendUnsigned(settings.itemCount);
+  builder.appendBool(settings.deactivateOnCollect);
+}
+
+void appendExitPointSettings(
+    RecipeFingerprintBuilder& builder,
+    const CreativeExitPointSettings& settings) noexcept {
+  builder.appendString(settings.requiredItemId);
+  builder.appendUnsigned(settings.requiredItemCount);
+}
+
 void appendCreateRequest(RecipeFingerprintBuilder& builder,
                          const CreativeDocumentCreateRequest& request) noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(request.kind));
@@ -166,6 +181,14 @@ void appendCreateRequest(RecipeFingerprintBuilder& builder,
   builder.appendBool(request.hasNpcSpawnSettingsOverride);
   if (request.hasNpcSpawnSettingsOverride) {
     appendNpcSpawnSettings(builder, request.npcSpawn);
+  }
+  builder.appendBool(request.hasLootPointSettingsOverride);
+  if (request.hasLootPointSettingsOverride) {
+    appendLootPointSettings(builder, request.lootPoint);
+  }
+  builder.appendBool(request.hasExitPointSettingsOverride);
+  if (request.hasExitPointSettingsOverride) {
+    appendExitPointSettings(builder, request.exitPoint);
   }
 }
 
@@ -285,7 +308,9 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
                        const CreativeDoorSettings& door,
                        const CreativeWindowSettings& window,
                        const CreativePlayerSpawnSettings& playerSpawn,
-                       const CreativeNpcSpawnSettings& npcSpawn)
+                       const CreativeNpcSpawnSettings& npcSpawn,
+                       const CreativeLootPointSettings& lootPoint,
+                       const CreativeExitPointSettings& exitPoint)
     noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(kind));
   builder.appendString(name);
@@ -318,6 +343,8 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
   appendWindowSettings(builder, window);
   appendPlayerSpawnSettings(builder, playerSpawn);
   appendNpcSpawnSettings(builder, npcSpawn);
+  appendLootPointSettings(builder, lootPoint);
+  appendExitPointSettings(builder, exitPoint);
 }
 
 void setStatus(CreativeRecipeMaterializeReceipt& receipt,
@@ -597,6 +624,16 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
       npcActor && object.createRequest.hasNpcSpawnSettingsOverride
           ? object.createRequest.npcSpawn
           : CreativeNpcSpawnSettings{};
+  const CreativeLootPointSettings lootPoint =
+      object.createRequest.kind == CreativeObjectKind::LootPoint &&
+              object.createRequest.hasLootPointSettingsOverride
+          ? object.createRequest.lootPoint
+          : CreativeLootPointSettings{};
+  const CreativeExitPointSettings exitPoint =
+      object.createRequest.kind == CreativeObjectKind::ExitPoint &&
+              object.createRequest.hasExitPointSettingsOverride
+          ? object.createRequest.exitPoint
+          : CreativeExitPointSettings{};
 
   RecipeFingerprintBuilder builder;
   appendObjectState(
@@ -617,7 +654,8 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
       object.createRequest.tags, hasParent, parentUsesStableKey,
       parentStableKey, parentId,
       object.createRequest.attachmentSocket, object.createRequest.pathPoints,
-      movingPlatform, door, window, playerSpawn, npcSpawn);
+      movingPlatform, door, window, playerSpawn, npcSpawn, lootPoint,
+      exitPoint);
   return finishFingerprint(builder);
 }
 
@@ -634,7 +672,8 @@ std::uint64_t fingerprintCreativeRecipeObjectState(
                     hasParent ? *object.parentId : kInvalidObjectId,
                     object.attachmentSocket, object.pathPoints,
                     object.movingPlatform, object.door, object.window,
-                    object.playerSpawn, object.npcSpawn);
+                    object.playerSpawn, object.npcSpawn, object.lootPoint,
+                    object.exitPoint);
   return finishFingerprint(builder);
 }
 

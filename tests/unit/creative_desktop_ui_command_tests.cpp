@@ -1570,6 +1570,125 @@ bool npcSpawnSettingsUseTypedCommandAndOneUndoStep() {
                 "npc spawn settings redo restores edited values");
 }
 
+bool objectiveSettingsUseTypedCommandsAndOneUndoStepEach() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Objectives");
+  static_cast<void>(document.assignId(429U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  cr::CreativeDocumentCreateRequest lootCreate;
+  lootCreate.kind = cr::CreativeObjectKind::LootPoint;
+  lootCreate.name = "Estate Key";
+  const cr::CreativeObjectId lootId =
+      appState.facade.createDocumentObject(lootCreate).objectId;
+  cr::CreativeDocumentCreateRequest exitCreate;
+  exitCreate.kind = cr::CreativeObjectKind::ExitPoint;
+  exitCreate.name = "Estate Exit";
+  const cr::CreativeObjectId exitId =
+      appState.facade.createDocumentObject(exitCreate).objectId;
+  const cr::CreativeObjectId crateId = createCrate(appState.facade, 4.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const cr::CreativeLootPointSettings lootSettings{
+      .itemId = "estate_key",
+      .itemCount = 2U,
+      .deactivateOnCollect = false,
+  };
+  const cr::CreativeExitPointSettings exitSettings{
+      .requiredItemId = "estate_key",
+      .requiredItemCount = 2U,
+  };
+  const app::CreativeDesktopCommandResult lootChanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLootPointSettings, context,
+      app::CreativeDesktopLootPointPayload{lootId, lootSettings});
+  const app::CreativeDesktopCommandResult exitChanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetExitPointSettings, context,
+      app::CreativeDesktopExitPointPayload{exitId, exitSettings});
+  const cr::CreativeObject* changedLoot =
+      appState.facade.findObject(lootId);
+  const cr::CreativeObject* changedExit =
+      appState.facade.findObject(exitId);
+  const bool settingsApplied =
+      changedLoot != nullptr && changedLoot->lootPoint == lootSettings &&
+      changedExit != nullptr && changedExit->exitPoint == exitSettings;
+  const std::size_t depthAfterChanges =
+      cr::creativeUndoDepth(appState.history);
+
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetExitPointSettings, context,
+      app::CreativeDesktopExitPointPayload{exitId, exitSettings});
+  cr::CreativeLootPointSettings invalidLoot = lootSettings;
+  invalidLoot.itemCount = 0U;
+  const app::CreativeDesktopCommandResult rejected = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLootPointSettings, context,
+      app::CreativeDesktopLootPointPayload{lootId, invalidLoot});
+  const app::CreativeDesktopCommandResult wrongKind = dispatchPayload(
+      app::CreativeDesktopCommandId::SetExitPointSettings, context,
+      app::CreativeDesktopExitPointPayload{crateId, exitSettings});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::SetLootPointSettings, context,
+      app::CreativeDesktopDeletePayload{{lootId}});
+
+  const app::CreativeDesktopCommandResult undoExit =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* afterUndoExit =
+      appState.facade.findObject(exitId);
+  const cr::CreativeObject* lootAfterUndoExit =
+      appState.facade.findObject(lootId);
+  const bool exitRestored =
+      afterUndoExit != nullptr &&
+      afterUndoExit->exitPoint == cr::CreativeExitPointSettings{} &&
+      lootAfterUndoExit != nullptr &&
+      lootAfterUndoExit->lootPoint == lootSettings;
+  const app::CreativeDesktopCommandResult undoLoot =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* afterUndoLoot =
+      appState.facade.findObject(lootId);
+  const bool lootRestored =
+      afterUndoLoot != nullptr &&
+      afterUndoLoot->lootPoint == cr::CreativeLootPointSettings{};
+  const app::CreativeDesktopCommandResult redoLoot =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const app::CreativeDesktopCommandResult redoExit =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* afterRedoLoot =
+      appState.facade.findObject(lootId);
+  const cr::CreativeObject* afterRedoExit =
+      appState.facade.findObject(exitId);
+
+  return expect(lootChanged.accepted && lootChanged.changed &&
+                    exitChanged.accepted && exitChanged.changed &&
+                    settingsApplied && depthAfterChanges == 2U,
+                "objective settings commands apply one typed edit each") &&
+         expect(unchanged.accepted && !unchanged.changed &&
+                    cr::creativeUndoDepth(appState.history) == 2U,
+                "unchanged objective settings add no undo entry") &&
+         expect(!rejected.accepted && !rejected.changed,
+                "invalid objective settings are rejected") &&
+         expect(!wrongKind.accepted && !wrongKind.changed,
+                "objective settings reject nonmatching object kinds") &&
+         expect(!mismatch.accepted && !mismatch.changed &&
+                    mismatch.message ==
+                        "loot point settings: payload mismatch",
+                "objective settings reject a mismatched payload") &&
+         expect(undoExit.accepted && undoExit.changed && exitRestored &&
+                    undoLoot.accepted && undoLoot.changed && lootRestored,
+                "objective settings undo independently in command order") &&
+         expect(redoLoot.accepted && redoLoot.changed &&
+                    redoExit.accepted && redoExit.changed &&
+                    afterRedoLoot != nullptr &&
+                    afterRedoLoot->lootPoint == lootSettings &&
+                    afterRedoExit != nullptr &&
+                    afterRedoExit->exitPoint == exitSettings,
+                "objective settings redo exact typed values");
+}
+
 bool movingPlatformWaypointCommandsSelectEditAndUndo() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -7433,6 +7552,7 @@ int main() {
   ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = playerSpawnSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = npcSpawnSettingsUseTypedCommandAndOneUndoStep() && ok;
+  ok = objectiveSettingsUseTypedCommandsAndOneUndoStepEach() && ok;
   ok = movingPlatformWaypointCommandsSelectEditAndUndo() && ok;
   ok = movingPlatformPreviewCommandsStayTransient() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;

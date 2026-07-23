@@ -397,6 +397,50 @@ bool dispatchCreativeDesktopObjectCommand(
                            : receipt.message;
       break;
     }
+    case CreativeDesktopCommandId::SetLootPointSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopLootPointPayload>(command);
+      if (payload == nullptr) {
+        result.message = "loot point settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setLootPointSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_loot_point_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message =
+          result.accepted
+              ? (result.changed ? "loot point settings updated"
+                                : "loot point settings unchanged")
+              : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::SetExitPointSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopExitPointPayload>(command);
+      if (payload == nullptr) {
+        result.message = "exit point settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setExitPointSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_exit_point_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message =
+          result.accepted
+              ? (result.changed ? "exit point settings updated"
+                                : "exit point settings unchanged")
+              : receipt.message;
+      break;
+    }
     case CreativeDesktopCommandId::ToggleMovingPlatformPreview:
     case CreativeDesktopCommandId::RestartMovingPlatformPreview:
     case CreativeDesktopCommandId::SeekMovingPlatformPreview: {

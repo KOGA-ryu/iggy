@@ -282,6 +282,12 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
         objectKind == CreativeObjectKind::EnemySpawn) {
         mutations.push_back(CreativeMutationKind::SetNpcSpawnSettings);
     }
+    if (objectKind == CreativeObjectKind::LootPoint) {
+        mutations.push_back(CreativeMutationKind::SetLootPointSettings);
+    }
+    if (objectKind == CreativeObjectKind::ExitPoint) {
+        mutations.push_back(CreativeMutationKind::SetExitPointSettings);
+    }
     if (supportsImportedAssetReplacement(objectKind)) {
         mutations.push_back(CreativeMutationKind::SetAsset);
     }

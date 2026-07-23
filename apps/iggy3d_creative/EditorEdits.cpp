@@ -885,4 +885,46 @@ creative::CreativeDocumentMutationReceipt setNpcSpawnSettingsWithUndo(
   return receipt;
 }
 
+creative::CreativeDocumentMutationReceipt setLootPointSettingsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativeLootPointSettings settings,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::SetLootPointSettings,
+          creative::makeLootPointSettingsPayload(std::move(settings)));
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message));
+  return receipt;
+}
+
+creative::CreativeDocumentMutationReceipt setExitPointSettingsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativeExitPointSettings settings,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::SetExitPointSettings,
+          creative::makeExitPointSettingsPayload(std::move(settings)));
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message));
+  return receipt;
+}
+
 }  // namespace iggy3d_creative_app

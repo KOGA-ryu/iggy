@@ -55,8 +55,9 @@ inline constexpr std::uint32_t
     kSaveCreativeDocumentTerrainWatercourseVersion = 29;
 inline constexpr std::uint32_t kSaveCreativeDocumentPlayerSpawnVersion = 30;
 inline constexpr std::uint32_t kSaveCreativeDocumentNpcSpawnVersion = 31;
+inline constexpr std::uint32_t kSaveCreativeDocumentObjectiveVersion = 32;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentNpcSpawnVersion;
+    kSaveCreativeDocumentObjectiveVersion;
 inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
@@ -253,6 +254,11 @@ struct SaveCreativeDocumentObjectRecord {
   std::uint16_t npcHitPoints = 0U;
   double npcInitialAlertLevel = 0.0;
   std::string npcSpawnPolicy = "AtPlayStart";
+  std::string lootItemId;
+  std::uint32_t lootItemCount = 1U;
+  bool lootDeactivateOnCollect = true;
+  std::string exitRequiredItemId;
+  std::uint32_t exitRequiredItemCount = 0U;
 };
 
 struct SaveCreativeDocumentLogicLinkRecord {
