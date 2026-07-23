@@ -1268,6 +1268,8 @@ struct CreativeEditorWorldLayoutState {
       CreativeEditorWorldLayoutViewMode::Plan;
   CreativeEditorWorldLayoutElevationAxis elevationAxis =
       CreativeEditorWorldLayoutElevationAxis::X;
+  CreativeEditorWorldLayoutLevelEditScope elevationLevelEditScope =
+      CreativeEditorWorldLayoutLevelEditScope::Selected;
   CreativeEditorWorldLayoutElevationCache elevationCache;
   CreativeEditorWorldLayoutElevationManipulationState elevationManipulation;
   CreativeEditorWorldLayoutDiagnosticCache diagnosticCache;

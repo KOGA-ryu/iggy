@@ -858,6 +858,67 @@ bool typedSettingsCommandsGuardIdentityAndPreview() {
                 "stable keys prevent delayed property retargeting");
 }
 
+bool scopedDatumCommandIsAtomicAndIdentityGuarded() {
+  cr::CreativeAppState live = makeApp();
+  app::CreativeEditorState editor;
+  editor.worldLayout = shellState();
+  const auto added = app::applyCreativeEditorWorldLayoutLevelOperation(
+      editor.worldLayout,
+      app::CreativeEditorWorldLayoutLevelOperation::Add, 0U, 0U);
+  if (!added.accepted || !added.changed ||
+      editor.worldLayout.source.levels.size() != 2U) {
+    return expect(false, "scoped datum command fixture adds an upper level");
+  }
+  const auto preview = app::previewCreativeEditorWorldLayout(
+      editor.worldLayout, live.facade.document());
+  const std::string levelKey =
+      editor.worldLayout.source.levels[0U].stableKey;
+  const double upperBefore =
+      editor.worldLayout.source.levels[1U].floorTopLayer;
+  const std::uint64_t revisionBefore = editor.worldLayout.revision;
+  const std::size_t undoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      live, editor, std::filesystem::path{}, &saveId};
+
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(
+      app::CreativeDesktopCommandId::WorldLayoutSetLevelDatum,
+      app::CreativeDesktopWorldLayoutLevelDatumPayload{
+          0U, levelKey,
+          app::CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove,
+          1.0});
+  const app::CreativeDesktopCommandResult applied =
+      app::dispatchCreativeDesktopCommands(frame, context);
+
+  app::CreativeDesktopCommandFrame staleFrame;
+  staleFrame.push(
+      app::CreativeDesktopCommandId::WorldLayoutSetLevelDatum,
+      app::CreativeDesktopWorldLayoutLevelDatumPayload{
+          0U, "stale_level",
+          app::CreativeEditorWorldLayoutLevelEditScope::All, 2.0});
+  const app::CreativeDesktopCommandResult stale =
+      app::dispatchCreativeDesktopCommands(staleFrame, context);
+
+  return expect(preview.accepted && applied.accepted && applied.changed &&
+                    applied.worldLayoutChanged && applied.sceneChanged &&
+                    editor.worldLayout.revision == revisionBefore + 1U &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        undoBefore + 1U &&
+                    editor.worldLayout.source.levels[0U].floorTopLayer ==
+                        1.0 &&
+                    editor.worldLayout.source.levels[1U].floorTopLayer ==
+                        upperBefore + 1.0 &&
+                    !app::creativeEditorWorldLayoutPreviewActive(
+                        editor.worldLayout),
+                "scoped datum command moves one level stack in one source edit") &&
+         expect(!stale.accepted && !stale.changed &&
+                    stale.message == "layout level datum: stale target" &&
+                    editor.worldLayout.revision == revisionBefore + 1U,
+                "scoped datum command rejects stale level identity");
+}
+
 }  // namespace
 
 int main() {
@@ -873,6 +934,7 @@ int main() {
                   pointObjectManipulationCancelsAndRejectsStaleInput() &&
                   catalogObjectManipulationMovesOnlyItsPivot() &&
                   roofApertureManipulationSnapsRejectsAndCommitsOnce() &&
-                  typedSettingsCommandsGuardIdentityAndPreview();
+                  typedSettingsCommandsGuardIdentityAndPreview() &&
+                  scopedDatumCommandIsAtomicAndIdentityGuarded();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

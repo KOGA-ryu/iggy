@@ -311,6 +311,43 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelSettings(
           "creative_editor_world_layout_level_settings_updated"};
 }
 
+CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelDatum(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutLevelDatumEditRequest request) {
+  const CreativeEditorWorldLayoutLevelDatumEditPlan plan =
+      planCreativeEditorWorldLayoutLevelDatumEdit(state.source, request);
+  if (!plan.accepted) {
+    state.statusMessage =
+        plan.reasonCode ==
+                "creative_editor_world_layout_level_datum_scope_crosses_level"
+            ? "section edit would cross another building level"
+            : "level datum edit is invalid";
+    return {false, false, std::string(plan.reasonCode)};
+  }
+  if (!plan.changed) {
+    state.statusMessage = "level datum unchanged";
+    return {true, false,
+            "creative_editor_world_layout_level_datum_no_change"};
+  }
+
+  cr::CreativeWorldLayout candidate = state.source;
+  if (!applyCreativeEditorWorldLayoutLevelDatumEditPlan(candidate, plan) ||
+      cr::firstInvalidCreativeWorldLayoutLevelIndex(candidate) !=
+      cr::kInvalidCreativeWorldLayoutIndex) {
+    state.statusMessage = "section edit conflicts with building levels";
+    return {false, false,
+            "creative_editor_world_layout_level_datum_rejected"};
+  }
+
+  state.source = std::move(candidate);
+  state.activeLevelIndex = request.levelIndex;
+  detail::noteWorldLayoutSourceChange(
+      state, plan.affectedLevelCount == 1U ? "level datum updated"
+                                           : "building level stack moved");
+  return {true, true,
+          "creative_editor_world_layout_level_datum_updated"};
+}
+
 CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutRoofAperture(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,

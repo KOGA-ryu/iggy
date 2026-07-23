@@ -624,6 +624,33 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSetLevelDatum: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutLevelDatumPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout level datum: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::Level,
+              payload->levelIndex, payload->stableKey)) {
+        result.message = "layout level datum: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutLevelDatum(
+              editor.worldLayout,
+              {payload->levelIndex, payload->scope,
+               payload->floorTopLayer});
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding: {
       const auto* payload = payloadAs<
           CreativeDesktopWorldLayoutBuildingGroundingPayload>(command);

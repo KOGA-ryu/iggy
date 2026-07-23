@@ -248,6 +248,15 @@ struct CreativeDesktopWorldLayoutLevelSettingsPayload {
   CreativeEditorWorldLayoutLevelSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutLevelDatumPayload {
+  std::size_t levelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeEditorWorldLayoutLevelEditScope scope =
+      CreativeEditorWorldLayoutLevelEditScope::Selected;
+  double floorTopLayer = 0.0;
+};
+
 struct CreativeDesktopWorldLayoutRoofApertureCreatePayload {
   std::size_t levelIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -666,6 +675,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutLevelSettingsPayload,
+    CreativeDesktopWorldLayoutLevelDatumPayload,
     CreativeDesktopWorldLayoutRoofApertureCreatePayload,
     CreativeDesktopWorldLayoutRoofApertureManipulationPayload,
     CreativeDesktopWorldLayoutRoofManipulationPayload,

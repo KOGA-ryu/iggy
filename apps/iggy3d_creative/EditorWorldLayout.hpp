@@ -446,6 +446,10 @@ setCreativeEditorWorldLayoutLevelSettings(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutLevelSettings settings);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutLevelDatum(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutLevelDatumEditRequest request);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutRoofAperture(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     cr::CreativeStructuralRoofApertureKind kind);

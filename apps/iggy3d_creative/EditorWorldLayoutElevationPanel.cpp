@@ -1,8 +1,10 @@
 #include "EditorWorldLayoutElevationPanel.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <string>
 
 #include "imgui.h"
@@ -154,6 +156,134 @@ const CreativeEditorWorldLayoutElevationProjection& elevationProjection(
         {inspection.source, grid, buildingIndex, state.elevationAxis});
   }
   return state.elevationCache.projection;
+}
+
+constexpr std::array<CreativeEditorWorldLayoutLevelEditScope, 4U>
+    kLevelEditScopes = {
+        CreativeEditorWorldLayoutLevelEditScope::Selected,
+        CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove,
+        CreativeEditorWorldLayoutLevelEditScope::SelectedAndBelow,
+        CreativeEditorWorldLayoutLevelEditScope::All,
+};
+
+void drawElevationSectionControls(
+    CreativeEditorWorldLayoutState& state, bool interactionEnabled) {
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted("Level edit");
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!interactionEnabled ||
+                       state.elevationManipulation.active);
+  ImGui::PushID("section_level_edit_scope");
+  for (std::size_t index = 0U; index < kLevelEditScopes.size(); ++index) {
+    if (index > 0U) {
+      ImGui::SameLine();
+    }
+    const CreativeEditorWorldLayoutLevelEditScope scope =
+        kLevelEditScopes[index];
+    const std::string_view label =
+        creativeEditorWorldLayoutLevelEditScopeLabel(scope);
+    if (ImGui::RadioButton(label.data(),
+                           state.elevationLevelEditScope == scope)) {
+      state.elevationLevelEditScope = scope;
+    }
+  }
+  ImGui::PopID();
+  ImGui::EndDisabled();
+}
+
+bool buildElevationDatumPreview(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeGridSettings& grid,
+    std::size_t buildingIndex,
+    CreativeEditorWorldLayoutElevationProjection& output) {
+  const CreativeEditorWorldLayoutElevationManipulationState& manipulation =
+      state.elevationManipulation;
+  if (!manipulation.active || !manipulation.preview.accepted ||
+      manipulation.handle.kind !=
+          CreativeEditorWorldLayoutElevationHandleKind::LevelFloor ||
+      manipulation.handle.sourceKind !=
+          CreativeEditorWorldLayoutElevationSourceKind::Room ||
+      !manipulation.preview.levelDatumPlan.changed) {
+    return false;
+  }
+  cr::CreativeWorldLayout candidate = state.source;
+  if (!applyCreativeEditorWorldLayoutLevelDatumEditPlan(
+          candidate, manipulation.preview.levelDatumPlan)) {
+    return false;
+  }
+  output = planCreativeEditorWorldLayoutElevation(
+      {&candidate, grid, buildingIndex, state.elevationAxis});
+  return output.accepted;
+}
+
+void drawElevationSectionAnnotations(
+    ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
+    const ElevationCanvasTransform& transform,
+    const CreativeEditorWorldLayoutElevationProjection& projection,
+    const CreativeEditorWorldLayoutState& state) {
+  for (const CreativeEditorWorldLayoutSectionLevel& level :
+       projection.sectionLevels) {
+    const float datumY =
+        toElevationScreen(transform, {0.0, level.floorDatumCells}).y;
+    if (datumY < minimum.y || datumY > maximum.y) {
+      continue;
+    }
+    const bool active = state.activeLevelIndex == level.levelIndex;
+    const ImU32 datumColor =
+        active ? color({0.34F, 0.92F, 0.46F, 0.95F})
+               : color({0.55F, 0.66F, 0.74F, 0.72F});
+    drawList.AddLine({minimum.x + 4.0F, datumY},
+                     {maximum.x - 4.0F, datumY}, datumColor,
+                     active ? 1.8F : 1.0F);
+
+    char label[256];
+    const std::string_view constraint =
+        creativeEditorWorldLayoutSectionWallConstraintLabel(
+            level.partitionConstraint);
+    if (level.floorToFloorMeters > 0.0) {
+      std::snprintf(label, sizeof(label),
+                    "%s  %+.2f m  |  clear %.2f m  |  F2F %.2f m  |  %.*s",
+                    level.name.c_str(), level.floorDatumMeters,
+                    level.clearHeightMeters, level.floorToFloorMeters,
+                    static_cast<int>(constraint.size()), constraint.data());
+    } else {
+      std::snprintf(label, sizeof(label),
+                    "%s  %+.2f m  |  clear %.2f m  |  %.*s",
+                    level.name.c_str(), level.floorDatumMeters,
+                    level.clearHeightMeters,
+                    static_cast<int>(constraint.size()), constraint.data());
+    }
+    const ImVec2 textSize = ImGui::CalcTextSize(label);
+    const ImVec2 textMinimum{minimum.x + 8.0F, datumY - textSize.y - 3.0F};
+    const ImVec2 textMaximum{textMinimum.x + textSize.x + 8.0F,
+                             textMinimum.y + textSize.y + 4.0F};
+    drawList.AddRectFilled(textMinimum, textMaximum,
+                           color({0.07F, 0.08F, 0.09F, 0.88F}), 2.0F);
+    drawList.AddText({textMinimum.x + 4.0F, textMinimum.y + 2.0F},
+                     datumColor, label);
+
+    if (!active) {
+      continue;
+    }
+    const float partitionY =
+        toElevationScreen(transform, {0.0, level.partitionTopCells}).y;
+    if (partitionY >= minimum.y && partitionY <= maximum.y) {
+      drawList.AddLine({minimum.x + 8.0F, partitionY},
+                       {minimum.x + 116.0F, partitionY},
+                       color({0.96F, 0.72F, 0.28F, 0.86F}), 1.2F);
+      drawList.AddText({minimum.x + 122.0F, partitionY - 7.0F},
+                       color({0.96F, 0.72F, 0.28F, 0.92F}),
+                       "partition top");
+    }
+  }
+
+  if (state.elevationManipulation.active &&
+      !state.elevationManipulation.preview.accepted) {
+    drawList.AddText(
+        {minimum.x + 10.0F, maximum.y - 24.0F},
+        color({0.96F, 0.28F, 0.24F, 1.0F}),
+        "Invalid level position: release is blocked");
+  }
 }
 
 void drawElevationGrid(
@@ -625,6 +755,20 @@ bool queueElevationEdit(
   }
   if (edit.handle.sourceKind ==
       CreativeEditorWorldLayoutElevationSourceKind::Room) {
+    if (edit.handle.kind ==
+        CreativeEditorWorldLayoutElevationHandleKind::LevelFloor) {
+      if (edit.handle.levelIndex >= state.source.levels.size()) {
+        return false;
+      }
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSetLevelDatum,
+          CreativeDesktopWorldLayoutLevelDatumPayload{
+              edit.handle.levelIndex,
+              state.source.levels[edit.handle.levelIndex].stableKey,
+              state.elevationLevelEditScope,
+              edit.floorTopLayer});
+      return true;
+    }
     CreativeEditorWorldLayoutRoomSettings settings;
     if (!readCreativeEditorWorldLayoutRoomSettings(
             state, edit.handle.sourceIndex, settings)) {
@@ -632,8 +776,7 @@ bool queueElevationEdit(
     }
     switch (edit.handle.kind) {
       case CreativeEditorWorldLayoutElevationHandleKind::LevelFloor:
-        settings.floorTopLayer = edit.floorTopLayer;
-        break;
+        return false;
       case CreativeEditorWorldLayoutElevationHandleKind::WallTop:
         settings.wallHeightCells = edit.wallHeightCells;
         break;
@@ -812,8 +955,14 @@ void drawElevationCanvas(CreativeEditorState& editor,
       inspectCreativeEditorWorldLayout(state);
   const std::size_t buildingIndex =
       elevationBuildingIndex(state, *inspection.source);
-  const CreativeEditorWorldLayoutElevationProjection& projection =
+  const CreativeEditorWorldLayoutElevationProjection& sourceProjection =
       elevationProjection(state, grid, buildingIndex, inspection);
+  CreativeEditorWorldLayoutElevationProjection datumPreview;
+  const bool datumPreviewReady =
+      buildElevationDatumPreview(state, grid, buildingIndex, datumPreview);
+  const CreativeEditorWorldLayoutElevationProjection& projection =
+      datumPreviewReady ? datumPreview : sourceProjection;
+  drawElevationSectionControls(state, interactionEnabled);
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
                           std::max(available.y, 160.0F)};
@@ -827,15 +976,15 @@ void drawElevationCanvas(CreativeEditorState& editor,
   const ImVec2 pointerPosition{input.pointer.x, input.pointer.y};
 
   const double centerHorizontal =
-      projection.bounds.valid
-          ? (projection.bounds.minimumHorizontal +
-             projection.bounds.maximumHorizontal) *
+      sourceProjection.bounds.valid
+          ? (sourceProjection.bounds.minimumHorizontal +
+             sourceProjection.bounds.maximumHorizontal) *
                 0.5
           : 0.0;
   const double centerVertical =
-      projection.bounds.valid
-          ? (projection.bounds.minimumVertical +
-             projection.bounds.maximumVertical) *
+      sourceProjection.bounds.valid
+          ? (sourceProjection.bounds.minimumVertical +
+             sourceProjection.bounds.maximumVertical) *
                 0.5
           : 0.0;
   const auto makeTransform = [&]() {
@@ -950,6 +1099,8 @@ void drawElevationCanvas(CreativeEditorState& editor,
                           active ? 6.0F : 4.0F,
                           color({0.06F, 0.07F, 0.08F, 1.0F}), 0, 1.2F);
     }
+    drawElevationSectionAnnotations(*drawList, minimum, maximum, transform,
+                                    projection, state);
   }
   for (const cr::CreativeMeasurementAnnotation& annotation :
        measurementAnnotations.annotations) {
@@ -1033,7 +1184,8 @@ void drawElevationCanvas(CreativeEditorState& editor,
             state.revision,
             hoveredHandle,
             planCreativeEditorWorldLayoutElevationEdit(
-                state.source, projection, hoveredHandle, pointer.vertical)};
+                state.source, projection, hoveredHandle, pointer.vertical,
+                state.elevationLevelEditScope)};
         queueElevationSourceSelection(
             state, hoveredHandle.sourceKind, hoveredHandle.sourceIndex,
             hoveredHandle.levelIndex, commands);
@@ -1117,7 +1269,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
   state.elevationManipulation.preview =
       planCreativeEditorWorldLayoutElevationEdit(
           state.source, projection, state.elevationManipulation.handle,
-          pointer.vertical);
+          pointer.vertical, state.elevationLevelEditScope);
   if (input.pointer.primaryReleased) {
     static_cast<void>(queueElevationEdit(
         state, state.elevationManipulation.preview, commands));

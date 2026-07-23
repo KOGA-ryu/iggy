@@ -648,6 +648,23 @@ planCreativeEditorWorldLayoutElevation(
          facts.representativeRoomIndex,
          levelIndex,
          {facts.maximumHorizontal, partitionTopLayer}});
+    projection.sectionLevels.push_back(
+        {levelIndex,
+         facts.representativeRoomIndex,
+         level.name,
+         level.floorTopLayer,
+         dimensions.floorTopMeters,
+         dimensions.floorToFloorMeters,
+         dimensions.clearHeightMeters,
+         partitionTopLayer,
+         worldVerticalToCells(request.grid,
+                              dimensions.exteriorFacadeTopMeters),
+         dimensions.topmostOccupied,
+         dimensions.hasUpperLevel &&
+                 dimensions.wallTopMeters >=
+                     dimensions.interiorPartitionTopMeters - 1.0e-6
+             ? CreativeEditorWorldLayoutSectionWallConstraint::TopLinked
+             : CreativeEditorWorldLayoutSectionWallConstraint::FixedHeight});
     if (!cr::creativeWorldLayoutLevelIsTopmostOccupied(layout, levelIndex)) {
       continue;
     }
@@ -1054,6 +1071,15 @@ planCreativeEditorWorldLayoutElevation(
            "creative_editor_world_layout_elevation_building_empty");
     return projection;
   }
+  std::sort(
+      projection.sectionLevels.begin(), projection.sectionLevels.end(),
+      [](const CreativeEditorWorldLayoutSectionLevel& lhs,
+         const CreativeEditorWorldLayoutSectionLevel& rhs) {
+        if (lhs.floorDatumCells != rhs.floorDatumCells) {
+          return lhs.floorDatumCells < rhs.floorDatumCells;
+        }
+        return lhs.levelIndex < rhs.levelIndex;
+      });
   projection.accepted = true;
   projection.status = CreativeEditorWorldLayoutElevationStatus::Ready;
   projection.reasonCode = "creative_editor_world_layout_elevation_ready";
