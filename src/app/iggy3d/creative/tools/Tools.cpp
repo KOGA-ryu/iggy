@@ -140,15 +140,25 @@ CreativeToolDispatchReceipt dispatchToolInput(
           receipt.message = "move_drag_begin";
           break;
         case Tool::Measure:
-          if (!state.measurementActive) {
-            state.measurementActive = true;
+          if (input.pointer.button == CreativeToolPointerButton::Secondary) {
+            state.measurementActive = false;
             receipt.changedState = true;
+            emitIntent(receipt,
+                       CreativeToolIntentKind::CompleteMeasurement,
+                       state.activeTool,
+                       input.pointer);
+            receipt.message = "complete_measurement";
+          } else {
+            if (!state.measurementActive) {
+              state.measurementActive = true;
+              receipt.changedState = true;
+            }
+            emitIntent(receipt,
+                       CreativeToolIntentKind::AppendMeasurementPoint,
+                       state.activeTool,
+                       input.pointer);
+            receipt.message = "append_measurement_point";
           }
-          emitIntent(receipt,
-                     CreativeToolIntentKind::BeginMeasurement,
-                     state.activeTool,
-                     input.pointer);
-          receipt.message = "begin_measurement";
           break;
         case Tool::Navigate:
           break;
@@ -163,15 +173,7 @@ CreativeToolDispatchReceipt dispatchToolInput(
         break;
       }
       updatePointer(state, input.pointer, receipt.changedState);
-      if (state.activeTool == Tool::Measure && state.measurementActive) {
-        state.measurementActive = false;
-        receipt.changedState = true;
-        emitIntent(receipt,
-                   CreativeToolIntentKind::EndMeasurement,
-                   state.activeTool,
-                   input.pointer);
-        receipt.message = "end_measurement";
-      } else if (state.activeTool == Tool::Move && state.moveDragActive) {
+      if (state.activeTool == Tool::Move && state.moveDragActive) {
         // TD-6: release ends the drag and commits exactly one snapped Move.
         // (TV1-F entry req ii: a Release with no active drag falls through to
         // no_intent below — a harmless no-op, never a spurious move.)

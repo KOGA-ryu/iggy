@@ -146,6 +146,7 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
   const CreativeWorldLayoutObject previous = source;
   source.name = object.name;
   source.visible = object.visible;
+  source.playerSpawn = object.playerSpawn;
   if (source.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!nearZero(object.transform.rotationEulerRadians.x) ||
         !nearZero(object.transform.rotationEulerRadians.z) ||
@@ -183,6 +184,7 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
     }
     result.changed = previous.name != source.name ||
                      previous.visible != source.visible ||
+                     !(previous.playerSpawn == source.playerSpawn) ||
                      !sameVec(previous.pointCells, source.pointCells) ||
                      previous.yawRadians != source.yawRadians ||
                      !sameVec(previous.scale, source.scale) ||

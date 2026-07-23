@@ -10,11 +10,17 @@
 
 namespace iggy3d::vulkan {
 
+struct StaticMeshMaterialVariantDrawRanges {
+  std::string name;
+  std::vector<IndexedDrawRange> indexedDraws;
+};
+
 struct StaticMeshAssetDrawRanges {
   std::string assetId;
   Vec3 boundsMin{};
   Vec3 boundsMax{};
   std::vector<IndexedDrawRange> indexedDraws;
+  std::vector<StaticMeshMaterialVariantDrawRanges> materialVariants;
 };
 
 struct StaticMeshAssetAtlasCpuGeometry {

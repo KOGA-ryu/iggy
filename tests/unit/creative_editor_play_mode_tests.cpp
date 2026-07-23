@@ -813,10 +813,12 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
   const app::CreativeEditorPlayTickReceipt doorPressed = tickAt(
       doorMode, doorDocument, 1U, {false, true});
   const std::string openPrompt = doorMode.target.actionPrompt;
+  const app::CreativeEditorPlayTargetStatus openTargetStatus =
+      doorMode.target.status;
   const app::CreativeEditorPlayTickReceipt doorOpened = tickAt(
       doorMode, doorDocument, 50'000'001U, {false, true});
-  const bool openMeshRemoved =
-      doorMode.sandbox->room.staticMeshes.size() + 1U == closedMeshCount;
+  const bool doorMeshRetained =
+      doorMode.sandbox->room.staticMeshes.size() == closedMeshCount;
   const std::size_t openColliderCount =
       doorMode.sandbox->collisionSurfaces.size();
   static_cast<void>(tickAt(doorMode, doorDocument, 100'000'001U, {}));
@@ -851,23 +853,34 @@ bool authoredDoorAndPickupCompleteTheRuntimeInteractionLoop() {
                     return stack.itemId == pickupItemId && stack.count == 1U;
                   });
 
-  return expect(doorPressed.actionSubmitted && openPrompt == "OPEN",
+  return expect(openPrompt == "OPEN",
+                "closed door advertises its semantic open action") &&
+         expect(openTargetStatus == app::CreativeEditorPlayTargetStatus::Valid,
+                std::string("closed door target is actionable, got ") +
+                    std::string(app::toString(openTargetStatus))) &&
+         expect(doorPressed.actionSubmitted,
                 "door press is admitted through the semantic action path") &&
          expect(doorOpened.interactionEffectsApplied == 1U &&
                     doorOpened.interactionEffect ==
-                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpened &&
-                    doorOpened.runtimeGeometryRevision == 1U &&
-                    openMeshRemoved && openColliderCount < closedColliderCount,
-                "executed door interaction refreshes scene and collision") &&
-         expect(closePrompt == "CLOSE" &&
-                    doorClosed.interactionEffect ==
-                        cr::CreativeRuntimeInteractionEffectStatus::DoorClosed &&
-                    doorMode.targetingGeometryRevision == 2U &&
-                    doorMode.sandbox->room.staticMeshes.size() ==
-                        closedMeshCount &&
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpening &&
+                    doorOpened.runtimeGeometryRevision == 0U &&
+                    doorMeshRetained && openColliderCount == closedColliderCount,
+                "executed door interaction starts motion without deleting geometry") &&
+         expect(closePrompt == "CLOSE",
+                "moving door advertises the reverse action") &&
+         expect(doorClosed.actionSubmitted,
+                "reverse interaction is admitted while the door moves") &&
+         expect(doorClosed.interactionEffectsApplied == 1U,
+                "reverse interaction reaches the runtime effect owner") &&
+         expect(doorClosed.interactionEffect ==
+                    cr::CreativeRuntimeInteractionEffectStatus::DoorClosing,
+                "moving door remains targetable for reversal") &&
+         expect(doorMode.targetingGeometryRevision == 2U,
+                "moving door republishes targeting geometry per fixed tick") &&
+         expect(doorMode.sandbox->room.staticMeshes.size() == closedMeshCount &&
                     doorMode.sandbox->collisionSurfaces.size() ==
                         closedColliderCount,
-                "open door stays targetable and closes with restored targeting") &&
+                "moving door preserves grouped geometry cardinality") &&
          expect(doorDocument.revision() == doorRevision &&
                     doorDocument.objectCount() == doorObjectCount,
                 "door runtime state never leaks into authored content") &&
@@ -973,6 +986,7 @@ bool occupiedPlatformRestoreIsHandledInsidePlay() {
   if (!start(mode, document, catalog).accepted || !mode.sandbox.has_value()) {
     return expect(false, "occupied platform Play fixture starts");
   }
+  mode.cameraPitchDegrees = -63.435F;
   const auto platformState = std::find_if(
       mode.sandbox->interactables.begin(), mode.sandbox->interactables.end(),
       [&platform](const cr::CreativeRuntimeInteractableState& state) {
@@ -989,6 +1003,7 @@ bool occupiedPlatformRestoreIsHandledInsidePlay() {
   if (!moveRuntimeEntity(mode, {1U}, {0.0F, 0.25F, 0.0F})) {
     return expect(false, "player moves into retracted platform volume");
   }
+  mode.cameraPitchDegrees = -39.806F;
   static_cast<void>(tickAt(mode, document, 100'000'001U, {}));
   const app::CreativeEditorPlayTickReceipt blocked =
       tickAt(mode, document, 150'000'001U, {false, true});

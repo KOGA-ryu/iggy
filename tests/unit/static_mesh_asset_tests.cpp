@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <numbers>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,6 +23,43 @@ bool expect(bool condition, const char* message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+void writeLittleEndianU32(std::ofstream& output, std::uint32_t value) {
+  const std::array<char, 4> bytes{
+      static_cast<char>(value & 0xFFU),
+      static_cast<char>((value >> 8U) & 0xFFU),
+      static_cast<char>((value >> 16U) & 0xFFU),
+      static_cast<char>((value >> 24U) & 0xFFU),
+  };
+  output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+}
+
+bool writeJsonOnlyGlb(const std::filesystem::path& path,
+                      std::string document) {
+  while (document.size() % 4U != 0U) {
+    document.push_back(' ');
+  }
+  if (document.size() >
+      std::numeric_limits<std::uint32_t>::max() - 20U) {
+    return false;
+  }
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  if (!output) {
+    return false;
+  }
+  constexpr std::uint32_t kGlbMagic = 0x46546C67U;
+  constexpr std::uint32_t kGlbVersion = 2U;
+  constexpr std::uint32_t kJsonChunkType = 0x4E4F534AU;
+  const std::uint32_t jsonLength =
+      static_cast<std::uint32_t>(document.size());
+  writeLittleEndianU32(output, kGlbMagic);
+  writeLittleEndianU32(output, kGlbVersion);
+  writeLittleEndianU32(output, 20U + jsonLength);
+  writeLittleEndianU32(output, jsonLength);
+  writeLittleEndianU32(output, kJsonChunkType);
+  output.write(document.data(), static_cast<std::streamsize>(document.size()));
+  return output.good();
 }
 
 bool importsBoulderFixture() {
@@ -297,6 +335,96 @@ bool missingAssetIsVisibleAndMemoized() {
                 "instanced path retains visible missing-asset proxy");
 }
 
+bool windowMaterialsDriveDistinctGeneratedColors() {
+  iggy3d::SceneRoomProjection glazing = roomWith("creative_box_proxy");
+  glazing.meshes.front().materialId = "creative_window_glass";
+  iggy3d::SceneRoomProjection shutters = roomWith("creative_box_proxy");
+  shutters.meshes.front().materialId = "creative_window_shutter";
+  const iggy3d::vulkan::RoomMeshCpuGeometry glazingGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(glazing);
+  const iggy3d::vulkan::RoomMeshCpuGeometry shutterGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(shutters);
+
+  return expect(glazingGeometry.ready && shutterGeometry.ready &&
+                    glazingGeometry.vertices.size() == 8U &&
+                    shutterGeometry.vertices.size() == 8U,
+                "window material fixtures render") &&
+         expect(glazingGeometry.vertices.front().color[0] == 0.36F &&
+                    glazingGeometry.vertices.front().color[1] == 0.68F &&
+                    glazingGeometry.vertices.front().color[2] == 0.78F,
+                "glazing renders with cool glass color") &&
+         expect(shutterGeometry.vertices.front().color[0] == 0.38F &&
+                    shutterGeometry.vertices.front().color[1] == 0.23F &&
+                    shutterGeometry.vertices.front().color[2] == 0.12F,
+                "shutters render with timber color");
+}
+
+bool generatedSlabsPreserveVolumeMaterialAndSemanticRole() {
+  iggy3d::SceneRoomProjection room;
+  room.loaded = true;
+  room.assetId = "semantic_slab_room";
+
+  iggy3d::SceneRoomMeshItem floor;
+  floor.id = "floor";
+  floor.meshId = "creative_walkable_slab";
+  floor.role = "floor";
+  floor.semanticRole = "Floor";
+  floor.materialId = "creative_wall_stone";
+  floor.position = {0.0F, 0.25F, 0.0F};
+  floor.size = {2.0F, 0.5F, 2.0F};
+  room.meshes.push_back(floor);
+  const iggy3d::vulkan::RoomMeshCpuGeometry floorOnlyGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  iggy3d::SceneRoomMeshItem roof = floor;
+  roof.id = "roof";
+  roof.semanticRole = "Roof";
+  roof.materialId = "creative_prop";
+  roof.position = {4.0F, 3.125F, 0.0F};
+  roof.size.y = 0.25F;
+  room.meshes.push_back(roof);
+
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+  const auto countColor = [&](std::array<float, 3U> color) {
+    return static_cast<std::size_t>(std::count_if(
+        geometry.vertices.begin(), geometry.vertices.end(),
+        [&](const iggy3d::vulkan::FirstRoomVertex& vertex) {
+          return near(vertex.color[0], color[0]) &&
+                 near(vertex.color[1], color[1]) &&
+                 near(vertex.color[2], color[2]);
+        }));
+  };
+  const auto hasColoredVertexAtHeight =
+      [&](std::array<float, 3U> color, float height) {
+        return std::any_of(
+            geometry.vertices.begin(), geometry.vertices.end(),
+            [&](const iggy3d::vulkan::FirstRoomVertex& vertex) {
+              return near(vertex.color[0], color[0]) &&
+                     near(vertex.color[1], color[1]) &&
+                     near(vertex.color[2], color[2]) &&
+                     near(vertex.position[1], height);
+            });
+      };
+  constexpr std::array<float, 3U> kStone{0.43F, 0.46F, 0.48F};
+  constexpr std::array<float, 3U> kRoof{0.34F, 0.25F, 0.20F};
+
+  return expect(geometry.ready && geometry.roomFloorDrawCount == 2U,
+                "floor and roof remain separate optimized draws") &&
+         expect(floorOnlyGeometry.ready &&
+                    floorOnlyGeometry.roomGridLineDrawCount > 0U &&
+                    geometry.roomGridLineDrawCount ==
+                        floorOnlyGeometry.roomGridLineDrawCount,
+                "roof semantics do not inherit the editable floor grid") &&
+         expect(countColor(kStone) == 8U && countColor(kRoof) == 8U,
+                "optimized slabs retain material and semantic colors") &&
+         expect(hasColoredVertexAtHeight(kStone, 0.0F) &&
+                    hasColoredVertexAtHeight(kStone, 0.5F) &&
+                    hasColoredVertexAtHeight(kRoof, 3.0F) &&
+                    hasColoredVertexAtHeight(kRoof, 3.25F),
+                "optimized slabs render bottom and top faces at full thickness");
+}
+
 bool externalFloorAndWallBypassGeneratedBatching() {
   iggy3d::StaticMeshAssetCache cache;
   cache.setRoot("assets/creative");
@@ -425,6 +553,45 @@ bool generatedTraversalProfilesEmitBoundedGeometry() {
                     preview.indexedDraws[stairTargetDraw].indexCount >
                         preview.indexedDraws[stairDraw].indexCount,
                 "preview atlas owns exact generated profile draw ranges");
+}
+
+bool hipRoofProfileEmitsTaperedPanelGeometry() {
+  iggy3d::SceneRoomProjection room;
+  room.loaded = true;
+  room.assetId = "hip_roof_profile";
+  iggy3d::SceneRoomMeshItem panel;
+  panel.id = "hip_north";
+  panel.meshId = "creative_hip_roof_panel";
+  panel.role = "prop";
+  panel.materialId = "creative_structural_stone";
+  panel.position = {0.0F, 3.0F, 0.0F};
+  panel.size = {10.0F, 0.25F, std::sqrt(32.0F)};
+  panel.rotationEulerRadians = {
+      static_cast<float>(-std::numbers::pi / 4.0), 0.0F, 0.0F};
+  room.meshes.push_back(panel);
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  room.meshes[0].size.x = 2.0F;
+  const iggy3d::vulkan::RoomMeshCpuGeometry invalid =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  return expect(geometry.ready && geometry.vertices.size() == 8U &&
+                    geometry.indices.size() == 72U &&
+                    geometry.indexedDraws.size() == 1U,
+                "hip panel emits one bounded eight-vertex prism") &&
+         expect(near(geometry.vertices[0].position[0], -5.0F) &&
+                    near(geometry.vertices[1].position[0], 5.0F) &&
+                    near(geometry.vertices[2].position[0], 1.0F) &&
+                    near(geometry.vertices[3].position[0], -1.0F) &&
+                    near(geometry.vertices[4].position[0], -5.0F) &&
+                    near(geometry.vertices[5].position[0], 5.0F) &&
+                    near(geometry.vertices[6].position[0], 1.0F) &&
+                    near(geometry.vertices[7].position[0], -1.0F),
+                "hip panel narrows its high edge to the canonical ridge") &&
+         expect(!invalid.ready && invalid.vertices.empty() &&
+                    invalid.indices.empty() && invalid.indexedDraws.empty(),
+                "impossible hip taper fails atomically instead of drawing a box");
 }
 
 bool discoveryAndPreviewAtlasCoverEveryValidFixture() {
@@ -1187,6 +1354,107 @@ bool importsBase64DataUriTexture() {
                 "assets without extras receive explicit safe defaults");
 }
 
+bool importsMaterialVariantsAndRejectsDuplicateNames() {
+  constexpr std::string_view kGeometryBase64 =
+      "AAAAvwAAAL8AAAC/AAAAPwAAAL8AAAC/AAAAPwAAAD8AAAC/AAAAvwAAAD8A"
+      "AAC/AAAAvwAAAL8AAAA/AAAAPwAAAL8AAAA/AAAAPwAAAD8AAAA/AAAAvwAA"
+      "AD8AAAA/AAAAAAAAAAAAAIA/AAAAAAAAgD8AAIA/AAAAAAAAgD8AAAAAAAAA"
+      "AAAAgD8AAAAAAACAPwAAgD8AAAAAAACAPwAAAQACAAAAAgADAAQABgAFAAQABw"
+      "AGAAAAAwAHAAAABwAEAAEABQAGAAEABgACAAMAAgAGAAMABgAHAAAABAAFAAAA"
+      "BQABAA==";
+  const std::string prefix =
+      R"json({"asset":{"version":"2.0"},"extensionsUsed":["KHR_materials_variants"],"extensions":{"KHR_materials_variants":{"variants":[{"name":"Oak"},{"name":")json";
+  const std::string suffix =
+      R"json("}]}},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],"meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1,"material":0,"extensions":{"KHR_materials_variants":{"mappings":[{"material":1,"variants":[0]},{"material":2,"variants":[1]}]}}}]}],"materials":[{"name":"Default","pbrMetallicRoughness":{"baseColorFactor":[0.5,0.5,0.5,1]}},{"name":"Oak Material","pbrMetallicRoughness":{"baseColorFactor":[0.4,0.2,0.1,1]}},{"name":"Painted Material","pbrMetallicRoughness":{"baseColorFactor":[0.1,0.3,0.8,1]}}],"buffers":[{"byteLength":232,"uri":"data:application/octet-stream;base64,)json" +
+      std::string(kGeometryBase64) +
+      R"json("}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":96,"target":34962},{"buffer":0,"byteOffset":160,"byteLength":72,"target":34963}],"accessors":[{"bufferView":0,"componentType":5126,"count":8,"type":"VEC3","min":[-0.5,-0.5,-0.5],"max":[0.5,0.5,0.5]},{"bufferView":1,"componentType":5123,"count":36,"type":"SCALAR","min":[0],"max":[7]}]})json";
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_static_mesh_material_variants_test";
+  std::error_code removeError;
+  std::filesystem::remove_all(root, removeError);
+  removeError.clear();
+  std::filesystem::create_directories(root, removeError);
+  const std::filesystem::path validPath = root / "variant_fixture.glb";
+  const std::filesystem::path duplicatePath =
+      root / "duplicate_variant_fixture.gltf";
+  const std::string validDocument = prefix + "Painted" + suffix;
+  if (removeError || !writeJsonOnlyGlb(validPath, validDocument)) {
+    std::filesystem::remove_all(root, removeError);
+    return expect(false, "material variant GLB fixture written");
+  }
+  {
+    std::ofstream output(duplicatePath, std::ios::binary | std::ios::trunc);
+    output << prefix << "Oak" << suffix;
+  }
+  const iggy3d::StaticMeshImportResult imported =
+      iggy3d::importStaticMeshGlb(validPath, "variant_fixture");
+  const iggy3d::StaticMeshImportResult duplicate =
+      iggy3d::importStaticMeshGlb(duplicatePath, "duplicate_variant_fixture");
+  iggy3d::StaticMeshAssetCache cache;
+  cache.setRoot(root);
+  const iggy3d::vulkan::StaticMeshAssetAtlasCpuGeometry atlas =
+      iggy3d::vulkan::buildStaticMeshAssetAtlasCpuGeometry(&cache);
+  const auto assetDraw = std::find_if(
+      atlas.assetDraws.begin(), atlas.assetDraws.end(),
+      [](const iggy3d::vulkan::StaticMeshAssetDrawRanges& candidate) {
+        return candidate.assetId == "variant_fixture";
+      });
+  iggy3d::SceneRoomProjection room = roomWith("asset:variant_fixture");
+  room.meshes.front().materialVariant = "Painted";
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room, nullptr,
+                                               atlas.assetDraws);
+  const iggy3d::vulkan::StaticMeshMaterialVariantDrawRanges* paintedDraw =
+      assetDraw != atlas.assetDraws.end() &&
+              assetDraw->materialVariants.size() == 2U
+          ? &assetDraw->materialVariants[1]
+          : nullptr;
+  const iggy3d::vulkan::StaticMeshInstanceBatch* paintedBatch =
+      geometry.staticMeshInstanceBatches.size() == 1U
+          ? &geometry.staticMeshInstanceBatches.front()
+          : nullptr;
+  const bool rendererUsesPaintedVariant =
+      assetDraw != atlas.assetDraws.end() && paintedDraw != nullptr &&
+      assetDraw->indexedDraws.size() == 1U &&
+      paintedDraw->indexedDraws.size() == 1U && paintedBatch != nullptr &&
+      paintedDraw->indexedDraws[0].firstIndex !=
+          assetDraw->indexedDraws[0].firstIndex &&
+      paintedBatch->firstIndex == paintedDraw->indexedDraws[0].firstIndex &&
+      paintedDraw->indexedDraws[0].firstIndex < atlas.indices.size() &&
+      assetDraw->indexedDraws[0].firstIndex < atlas.indices.size() &&
+      atlas.indices[paintedDraw->indexedDraws[0].firstIndex] <
+          atlas.vertices.size() &&
+      atlas.indices[assetDraw->indexedDraws[0].firstIndex] <
+          atlas.vertices.size() &&
+      near(atlas.vertices[atlas.indices[paintedDraw->indexedDraws[0].firstIndex]]
+                   .baseColor[2],
+           0.8F) &&
+      near(atlas.vertices[atlas.indices[assetDraw->indexedDraws[0].firstIndex]]
+                   .baseColor[2],
+           0.5F);
+  std::filesystem::remove_all(root, removeError);
+
+  return expect(imported.ok() && imported.asset.materialVariants.size() == 2U,
+                "material variant names import") &&
+         expect(imported.asset.materialVariants[0].name == "Oak" &&
+                    imported.asset.materialVariants[1].name == "Painted",
+                "material variant order stays authored") &&
+         expect(imported.asset.primitives.size() == 1U &&
+                    imported.asset.primitives[0].materialIndex == 0U &&
+                    imported.asset.primitives[0].variantMaterialIndices ==
+                        std::vector<std::uint32_t>{1U, 2U},
+                "primitive variant mappings resolve to materials") &&
+         expect(atlas.valid && rendererUsesPaintedVariant,
+                "selected material variant owns the instanced renderer draw") &&
+         expect(!duplicate.ok() &&
+                    duplicate.status ==
+                        iggy3d::StaticMeshImportStatus::ValidationFailed &&
+                    duplicate.reasonCode ==
+                        "static_mesh_material_variants_invalid",
+                "duplicate material variant names fail closed");
+}
+
 bool authoringMetadataKernelIsBoundedAndFailClosed() {
   const std::array<std::string_view, 1> authored{
       R"json({"iggy_collision":"bounds","iggy_walkable":true,"iggy_category":"walkway","ignored":{"nested":[1,true,null]}})json"};
@@ -1375,6 +1643,43 @@ bool attachmentSocketMetadataKernelIsBoundedAndFailClosed() {
                 "partial and malformed sockets fail closed");
 }
 
+bool thumbnailKernelIsDeterministicBoundedAndGeometryBacked() {
+  const iggy3d::StaticMeshImportResult imported = iggy3d::importStaticMeshGlb(
+      "assets/creative/boulder_01.glb", "boulder_01");
+  if (!expect(imported.ok(), "thumbnail fixture imports")) {
+    return false;
+  }
+  const iggy3d::StaticMeshAssetThumbnail first =
+      iggy3d::buildStaticMeshAssetThumbnail(imported.asset);
+  const iggy3d::StaticMeshAssetThumbnail second =
+      iggy3d::buildStaticMeshAssetThumbnail(imported.asset);
+  const bool pixelsEqual = std::equal(
+      first.pixels.begin(), first.pixels.end(), second.pixels.begin(),
+      [](iggy3d::StaticMeshThumbnailPixel lhs,
+         iggy3d::StaticMeshThumbnailPixel rhs) {
+        return lhs.r == rhs.r && lhs.g == rhs.g && lhs.b == rhs.b &&
+               lhs.a == rhs.a;
+      });
+  const bool hasBoundsInk = std::any_of(
+      first.pixels.begin(), first.pixels.end(),
+      [](iggy3d::StaticMeshThumbnailPixel pixel) {
+        return pixel.a == 255U && pixel.b > pixel.r && pixel.g > pixel.r;
+      });
+  const iggy3d::StaticMeshAssetThumbnail empty =
+      iggy3d::buildStaticMeshAssetThumbnail({});
+  return expect(first.valid && first.coveredPixelCount > 40U &&
+                    first.coveredPixelCount <=
+                        iggy3d::kStaticMeshThumbnailPixelCount,
+                "thumbnail contains bounded geometry-backed pixels") &&
+         expect(pixelsEqual &&
+                    first.coveredPixelCount == second.coveredPixelCount,
+                "thumbnail generation is deterministic") &&
+         expect(hasBoundsInk,
+                "thumbnail overlays the exact imported bounds") &&
+         expect(!empty.valid && empty.coveredPixelCount == 0U,
+                "invalid geometry does not fabricate a thumbnail");
+}
+
 }  // namespace
 
 int main() {
@@ -1384,14 +1689,19 @@ int main() {
                   repeatedAssetsUseOneAtlasMeshAndCompactTransforms() &&
                   instanceTransformRejectsInvalidGeometry() &&
                   missingAssetIsVisibleAndMemoized() &&
+                  windowMaterialsDriveDistinctGeneratedColors() &&
+                  generatedSlabsPreserveVolumeMaterialAndSemanticRole() &&
                   externalFloorAndWallBypassGeneratedBatching() &&
                   generatedTraversalProfilesEmitBoundedGeometry() &&
+                  hipRoofProfileEmitsTaperedPanelGeometry() &&
                   discoveryAndPreviewAtlasCoverEveryValidFixture() &&
                   texturedFixtureBuildsOneCachedMaterialBinding() &&
                   importsBase64DataUriTexture() &&
+                  importsMaterialVariantsAndRejectsDuplicateNames() &&
                   authoringMetadataKernelIsBoundedAndFailClosed() &&
                   collisionPartMetadataKernelIsBoundedAndFailClosed() &&
-                  attachmentSocketMetadataKernelIsBoundedAndFailClosed();
+                  attachmentSocketMetadataKernelIsBoundedAndFailClosed() &&
+                  thumbnailKernelIsDeterministicBoundedAndGeometryBacked();
   if (!ok) {
     return 1;
   }

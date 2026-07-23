@@ -27,6 +27,7 @@ enum class CreativeEditorTerrainPaintRegionPhase : std::uint8_t {
 struct CreativeEditorTerrainPaintPreviewEdge {
   iggy3d::Vec3 start{};
   iggy3d::Vec3 end{};
+  iggy3d::RenderLineColor color{};
 };
 
 struct CreativeEditorTerrainPaintPreviewCache {
@@ -46,6 +47,18 @@ struct CreativeEditorTerrainPaintPreviewCache {
       iggy3d::creative::CreativeTerrainPaintSource::Any;
   iggy3d::creative::CreativeTerrainPaintRadius radius =
       iggy3d::creative::CreativeTerrainPaintRadius::OneCell;
+  iggy3d::creative::CreativeTerrainPaintHardness hardness =
+      iggy3d::creative::CreativeTerrainPaintHardness::Solid;
+  iggy3d::creative::CreativeTerrainPaintOpacity opacity =
+      iggy3d::creative::CreativeTerrainPaintOpacity::Percent100;
+  iggy3d::creative::CreativeTerrainPaintMask mask =
+      iggy3d::creative::CreativeTerrainPaintMask::Circle;
+  iggy3d::creative::CreativeTerrainPaintBlend blend =
+      iggy3d::creative::CreativeTerrainPaintBlend::Replace;
+  iggy3d::creative::CreativeTerrainPaintSlopeFilter slopeFilter =
+      iggy3d::creative::CreativeTerrainPaintSlopeFilter::Any;
+  iggy3d::creative::CreativeTerrainPaintHeightFilter heightFilter =
+      iggy3d::creative::CreativeTerrainPaintHeightFilter::Any;
   CreativeEditorTerrainPaintRegionPhase regionPhase =
       CreativeEditorTerrainPaintRegionPhase::Empty;
   iggy3d::creative::CreativeTerrainCoord2 target{};

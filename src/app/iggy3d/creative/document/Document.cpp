@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentInternal.hpp"
 
+#include <limits>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -48,9 +49,15 @@ CreativeDocument CreativeDocument::create(std::string name) {
 bool CreativeDocument::isValid() const noexcept {
   return valid_ && voxelField_.isValid() && terrainField_.isValid() &&
          terrainHeightField_.isValid() &&
+         validateCreativeTerrainHardEdges(terrainHardEdges_) &&
          validateCreativeTerrainOperationStack(terrainOperationStack_) &&
          (!terrainOperationStack_.operations.empty() ||
-          terrainOperationStack_.baseHeightField.cellCount() == 0U) &&
+           (terrainOperationStack_.baseHeightField.cellCount() == 0U &&
+           terrainOperationStack_.baseMaterialField.overrideCount() == 0U &&
+           terrainOperationStack_.baseHardEdges.empty())) &&
+         validateCreativePatternRecipeStore(patternRecipeStore_) &&
+         validateCreativeMeasurementAnnotationStore(
+             measurementAnnotationStore_) &&
          terrainMaterialField_.isValid();
 }
 
@@ -175,7 +182,10 @@ void CreativeDocument::reset() {
   voxelField_.clear();
   terrainField_.clear();
   terrainHeightField_.clear();
+  terrainHardEdges_.clear();
   terrainOperationStack_ = {};
+  patternRecipeStore_ = {};
+  measurementAnnotationStore_ = {};
   terrainMaterialField_.clear();
   units_ = CreativeUnits::Meters;
   gridSettings_ = {};
@@ -236,6 +246,21 @@ CreativeDocument::terrainOperationStack() const noexcept {
   return terrainOperationStack_;
 }
 
+std::span<const CreativeTerrainHardEdge> CreativeDocument::terrainHardEdges()
+    const noexcept {
+  return terrainHardEdges_;
+}
+
+const CreativePatternRecipeStore& CreativeDocument::patternRecipeStore()
+    const noexcept {
+  return patternRecipeStore_;
+}
+
+const CreativeMeasurementAnnotationStore&
+CreativeDocument::measurementAnnotationStore() const noexcept {
+  return measurementAnnotationStore_;
+}
+
 const CreativeTerrainMaterialField& CreativeDocument::terrainMaterialField()
     const noexcept {
   return terrainMaterialField_;
@@ -245,6 +270,18 @@ void CreativeDocument::markContentChanged() noexcept {
   if (valid_) {
     ++revision_;
   }
+}
+
+bool CreativeDocument::commitStagedMutation(
+    CreativeDocument&& staged) noexcept {
+  if (!valid_ || !staged.valid_ || id_ == kInvalidDocumentId ||
+      staged.id_ != id_ || staged.revision_ <= revision_ ||
+      revision_ == std::numeric_limits<std::uint64_t>::max()) {
+    return false;
+  }
+  staged.revision_ = revision_ + 1U;
+  *this = std::move(staged);
+  return true;
 }
 
 void CreativeDocument::markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept {
@@ -258,7 +295,8 @@ void CreativeDocument::markObjectMutationChanged(
 }
 
 CreativeVoxelMutationReceipt CreativeDocument::applyVoxelEdits(
-    std::span<const CreativeVoxelEdit> edits) {
+    std::span<const CreativeVoxelEdit> edits,
+    CreativeObjectDirtyFlags additionalDirtyFlags) {
   if (!valid_) {
     CreativeVoxelMutationReceipt receipt;
     receipt.requested = true;
@@ -268,7 +306,7 @@ CreativeVoxelMutationReceipt CreativeDocument::applyVoxelEdits(
     return receipt;
   }
 
-  CreativeObjectDirtyFlags dirtyFlags = 0;
+  CreativeObjectDirtyFlags dirtyFlags = additionalDirtyFlags;
   for (const CreativeVoxelEdit& edit : edits) {
     const CreativeObjectKind oldMaterial = voxelField_.materialAt(edit.cell);
     if (oldMaterial != CreativeObjectKind::Unknown) {
@@ -320,6 +358,8 @@ CreativeTerrainMutationReceipt CreativeDocument::applyTerrainControlEdits(
     }
     terrainField_ = std::move(stagedTerrain);
     terrainHeightField_ = replay.heightField;
+    terrainMaterialField_ = replay.materialField;
+    terrainHardEdges_ = replay.hardEdges;
     markObjectMutationChanged(
         dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
         documentSettingsDirtyFlags());
@@ -352,6 +392,7 @@ CreativeDocument::replaceTerrainHeightField(
       terrainHeightField_.replace(bounds, heights);
   if (receipt.changed) {
     terrainOperationStack_ = {};
+    terrainHardEdges_.clear();
     markObjectMutationChanged(
         dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
         documentSettingsDirtyFlags());
@@ -370,6 +411,38 @@ CreativeDocument::applyTerrainMaterialEdits(
     receipt.reasonCode = "creative_terrain_material_document_invalid";
     return receipt;
   }
+  if (!terrainOperationStack_.operations.empty()) {
+    CreativeTerrainMaterialField stagedBase =
+        terrainOperationStack_.baseMaterialField;
+    CreativeTerrainMaterialMutationReceipt receipt = stagedBase.apply(edits);
+    if (!receipt.accepted || !receipt.changed) {
+      return receipt;
+    }
+
+    CreativeTerrainOperationStack stagedStack = terrainOperationStack_;
+    stagedStack.baseMaterialField = std::move(stagedBase);
+    const CreativeTerrainOperationReplayResult replay =
+        replayCreativeTerrainOperations(terrainField_, stagedStack);
+    if (!replay.receipt.accepted) {
+      receipt.accepted = false;
+      receipt.changed = false;
+      receipt.status = CreativeTerrainMaterialMutationStatus::InvalidField;
+      receipt.revisionAfter = receipt.revisionBefore;
+      receipt.overrideCountAfter = receipt.overrideCountBefore;
+      receipt.changedOverrideCount = 0U;
+      receipt.reasonCode =
+          "creative_terrain_operation_material_replay_rejected";
+      return receipt;
+    }
+
+    terrainOperationStack_ = std::move(stagedStack);
+    terrainHeightField_ = replay.heightField;
+    terrainMaterialField_ = replay.materialField;
+    terrainHardEdges_ = replay.hardEdges;
+    markObjectMutationChanged(documentSettingsDirtyFlags());
+    return receipt;
+  }
+
   CreativeTerrainMaterialMutationReceipt receipt =
       terrainMaterialField_.apply(edits);
   if (receipt.changed) {

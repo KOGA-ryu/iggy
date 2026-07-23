@@ -43,6 +43,9 @@ enum class ReasoningNodeKind : std::uint8_t {
   // 14th, appended: an entity reference point (spawn/npc). §12 has no fit for an entity anchor
   // and the garden pin needs it; append-only order is preserved. Flagged to the planner.
   reference,
+  // Authored continuous-slope traversal anchors. Appended after reference to
+  // preserve every established node-kind value.
+  ramp,
 };
 
 // Full edge vocabulary from birth -- APPEND-ONLY; v1 emits `walkable` only.
@@ -56,9 +59,9 @@ enum class ReasoningEdgeKind : std::uint8_t {
   guarded,
 };
 
-// Count of ReasoningNodeKind values (append-only enum: doorway..reference). Keep in sync when a
+// Count of ReasoningNodeKind values (append-only enum: doorway..ramp). Keep in sync when a
 // kind is appended -- it sizes the per-kind summary array.
-inline constexpr std::size_t kReasoningNodeKindCount = 14;
+inline constexpr std::size_t kReasoningNodeKindCount = 15;
 
 // Count of ReasoningEdgeKind values (walkable..guarded). Sizes L5's per-edge-kind cost table.
 inline constexpr std::size_t kReasoningEdgeKindCount = 7;

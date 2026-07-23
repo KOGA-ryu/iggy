@@ -155,16 +155,73 @@ bool snapTemplateAnchor(CreativeEditorWorldLayoutPoint point,
   return true;
 }
 
+void prepareTemplatePlacementTerrain(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument* document) {
+  auto& placement = state.buildingTemplatePlacement;
+  if (document == nullptr) {
+    placement.terrainDocumentId = cr::kInvalidDocumentId;
+    placement.terrainDocumentRevision = 0U;
+    placement.terrainSurfacePrepared = true;
+    placement.terrainGrid = {};
+    placement.terrainSurface = {};
+    return;
+  }
+  if (placement.terrainSurfacePrepared &&
+      placement.terrainDocumentId == document->id() &&
+      placement.terrainDocumentRevision == document->revision()) {
+    return;
+  }
+
+  placement.terrainDocumentId = document->id();
+  placement.terrainDocumentRevision = document->revision();
+  placement.terrainSurfacePrepared = true;
+  placement.terrainGrid = document->gridSettings();
+  placement.terrainSurface = {};
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(*document, state.source);
+  if (!compiled.receipt.accepted) {
+    return;
+  }
+  cr::CreativeDocument staged = *document;
+  if ((!compiled.plan.terrainEdits.empty() &&
+       !staged.applyTerrainControlEdits(compiled.plan.terrainEdits).accepted) ||
+      (!compiled.plan.materialEdits.empty() &&
+       !staged.applyTerrainMaterialEdits(compiled.plan.materialEdits).accepted)) {
+    return;
+  }
+  placement.terrainSurface = cr::buildCreativeComposedTerrainSurfacePlan(
+      staged.terrainField(), staged.terrainHeightField(),
+      staged.terrainHardEdges());
+}
+
 CreativeEditorWorldLayoutEditReceipt rebuildTemplatePlacement(
     CreativeEditorWorldLayoutState& state,
-    cr::CreativeTerrainCoord2 anchor) {
+    cr::CreativeTerrainCoord2 anchor,
+    const cr::CreativeDocument* document) {
+  prepareTemplatePlacementTerrain(state, document);
+  const auto& placement = state.buildingTemplatePlacement;
+  const cr::CreativeTerrainSurfacePlan* terrainPointer =
+      placement.terrainSurface.accepted ? &placement.terrainSurface : nullptr;
+  state.buildingTemplatePlacement.analysis =
+      cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+          {&state.source,
+           &state.buildingTemplatePlacement.orientedTemplate,
+           anchor,
+           placement.terrainGrid,
+           terrainPointer});
   cr::CreativeWorldLayoutBuildingEditResult stamped =
       cr::stampCreativeWorldLayoutBuildingTemplate(
           state.source, state.buildingTemplatePlacement.orientedTemplate,
           {anchor, state.nextStableOrdinal, false});
   state.buildingTemplatePlacement.anchor = anchor;
-  state.buildingTemplatePlacement.previewValid = stamped.accepted;
-  state.buildingTemplatePlacement.reasonCode = stamped.reasonCode;
+  state.buildingTemplatePlacement.previewPositioned = stamped.accepted;
+  state.buildingTemplatePlacement.previewValid =
+      stamped.accepted && state.buildingTemplatePlacement.analysis.accepted;
+  state.buildingTemplatePlacement.reasonCode =
+      stamped.accepted ? state.buildingTemplatePlacement.analysis.reasonCode
+                       : stamped.reasonCode;
   if (!stamped.accepted) {
     state.buildingTemplatePlacement.candidate = {};
     state.buildingTemplatePlacement.previewBounds = {};
@@ -186,9 +243,23 @@ CreativeEditorWorldLayoutEditReceipt rebuildTemplatePlacement(
   state.buildingTemplatePlacement.resultBuildingIndex = resultBuildingIndex;
   state.buildingTemplatePlacement.nextStableOrdinal = stamped.nextStableOrdinal;
   state.buildingTemplatePlacement.candidate = std::move(stamped.edited);
-  state.statusMessage = "click the canvas to place building";
-  return {true, true,
-          "creative_editor_world_layout_building_template_preview_ready"};
+  if (state.buildingTemplatePlacement.previewValid) {
+    state.statusMessage = "building template placement is clear";
+    return {true, true,
+            "creative_editor_world_layout_building_template_preview_ready"};
+  }
+  const auto& analysis = state.buildingTemplatePlacement.analysis;
+  state.statusMessage =
+      analysis.status ==
+              cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+                  BuildingOverlap
+          ? "building template overlaps an existing building"
+      : analysis.status ==
+                cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+                    TerrainRejected
+          ? "building template terrain grounding is not valid here"
+          : std::string{analysis.reasonCode};
+  return {true, true, std::string{analysis.reasonCode}};
 }
 
 }  // namespace
@@ -567,6 +638,29 @@ updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
 }
 
 CreativeEditorWorldLayoutEditReceipt
+detachCreativeEditorWorldLayoutBuildingTemplateInstance(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex) {
+  const cr::CreativeWorldLayoutBuildingEditResult detached =
+      cr::detachCreativeWorldLayoutBuildingTemplateInstance(state.source,
+                                                            buildingIndex);
+  if (!detached.accepted) {
+    state.statusMessage = detached.reasonCode;
+    return {false, false, detached.reasonCode};
+  }
+  if (!detached.changed) {
+    state.statusMessage = "selected building is already independent";
+    return {true, false, detached.reasonCode};
+  }
+  state.source = detached.edited;
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                     buildingIndex};
+  detail::noteWorldLayoutSourceChange(state,
+                                      "building template instance detached");
+  return {true, true, detached.reasonCode};
+}
+
+CreativeEditorWorldLayoutEditReceipt
 refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
     CreativeEditorWorldLayoutState& state,
     std::size_t buildingIndex,
@@ -641,7 +735,8 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase,
     CreativeEditorWorldLayoutPoint point,
-    cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+    cr::CreativeWorldLayoutBuildingTransformOperation operation,
+    const cr::CreativeDocument* document) {
   if (phase >= CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Count) {
     return {false, false,
             "creative_editor_world_layout_building_template_phase_invalid"};
@@ -676,7 +771,7 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
     state.buildingTemplatePlacement.sourceRevision = state.revision;
     state.buildingTemplatePlacement.templateIndex = templateIndex;
     state.buildingTemplatePlacement.orientedTemplate = selectedTemplate;
-    return rebuildTemplatePlacement(state, anchor);
+    return rebuildTemplatePlacement(state, anchor, document);
   }
   if (!state.buildingTemplatePlacement.active) {
     return {false, false,
@@ -700,7 +795,8 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
     state.buildingTemplatePlacement.orientedTemplate =
         std::move(transformed.value);
     return rebuildTemplatePlacement(state,
-                                    state.buildingTemplatePlacement.anchor);
+                                    state.buildingTemplatePlacement.anchor,
+                                    document);
   }
   if (phase ==
       CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update) {
@@ -712,7 +808,7 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
     if (anchor == state.buildingTemplatePlacement.anchor) {
       return {true, false, state.buildingTemplatePlacement.reasonCode};
     }
-    return rebuildTemplatePlacement(state, anchor);
+    return rebuildTemplatePlacement(state, anchor, document);
   }
   if (!state.buildingTemplatePlacement.previewValid ||
       state.buildingTemplatePlacement.resultBuildingIndex >=

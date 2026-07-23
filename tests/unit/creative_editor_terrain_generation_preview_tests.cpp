@@ -29,7 +29,10 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-cr::CreativeTerrainGenerationResult generationFor(std::uint64_t seed) {
+cr::CreativeTerrainGenerationResult generationFor(
+    std::uint64_t seed,
+    cr::CreativeTerrainBiomeIntent biome =
+        cr::CreativeTerrainBiomeIntent::Temperate) {
   cr::CreativeTerrainGeneratorRecipe recipe;
   recipe.seed = seed;
   recipe.bounds = {{-1, -1}, 3U, 3U};
@@ -40,6 +43,7 @@ cr::CreativeTerrainGenerationResult generationFor(std::uint64_t seed) {
   recipe.persistence = 0.5;
   recipe.lacunarity = 2.0;
   recipe.slopeDamping = 0.8;
+  cr::applyCreativeTerrainBiomeIntent(recipe, biome);
   return cr::buildCreativeTerrainGenerationPlan(recipe);
 }
 
@@ -118,16 +122,40 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
       app::refreshCreativeEditorGeneratedTerrainPreview(
           previewCache, sourceCache, document,
           firstGeneration.plan.heightField,
-          firstGeneration.receipt.heightHash);
+          firstGeneration.receipt.heightHash,
+          firstGeneration.plan.materialField,
+          firstGeneration.receipt.materialHash);
 
   bool reused = true;
   for (std::uint32_t frame = 0U; frame < 300U; ++frame) {
     reused = !app::refreshCreativeEditorGeneratedTerrainPreview(
                  previewCache, sourceCache, document,
                  firstGeneration.plan.heightField,
-                 firstGeneration.receipt.heightHash) &&
+                 firstGeneration.receipt.heightHash,
+                 firstGeneration.plan.materialField,
+                 firstGeneration.receipt.materialHash) &&
              reused;
   }
+
+  const cr::CreativeTerrainGenerationResult materialGeneration =
+      generationFor(1001U, cr::CreativeTerrainBiomeIntent::Arid);
+  const bool materialOnlyRefresh =
+      app::refreshCreativeEditorGeneratedTerrainPreview(
+          previewCache, sourceCache, document,
+          materialGeneration.plan.heightField,
+          materialGeneration.receipt.heightHash,
+          materialGeneration.plan.materialField,
+          materialGeneration.receipt.materialHash);
+  const auto materialPatch = std::find_if(
+      previewCache.terrainCollisionPatches.begin(),
+      previewCache.terrainCollisionPatches.end(),
+      [](const cr::CreativeTerrainSurfacePatch& patch) {
+        return patch.coord == cr::CreativeTerrainCoord2{0, 0};
+      });
+  const bool materialPreviewMatches =
+      materialPatch != previewCache.terrainCollisionPatches.end() &&
+      materialPatch->materialWeights ==
+          materialGeneration.plan.materialField.weightsAt({0, 0});
 
   app::invalidateCreativeEditorSceneCache(sourceCache);
   const bool sourceRebuilt =
@@ -136,7 +164,9 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
       app::refreshCreativeEditorGeneratedTerrainPreview(
           previewCache, sourceCache, document,
           firstGeneration.plan.heightField,
-          firstGeneration.receipt.heightHash);
+          firstGeneration.receipt.heightHash,
+          firstGeneration.plan.materialField,
+          firstGeneration.receipt.materialHash);
 
   const cr::CreativeTerrainGenerationResult secondGeneration =
       generationFor(2002U);
@@ -144,7 +174,9 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
       app::refreshCreativeEditorGeneratedTerrainPreview(
           previewCache, sourceCache, document,
           secondGeneration.plan.heightField,
-          secondGeneration.receipt.heightHash);
+          secondGeneration.receipt.heightHash,
+          secondGeneration.plan.materialField,
+          secondGeneration.receipt.materialHash);
   const bool containsOutsideSource = std::any_of(
       previewCache.composedSurface.columns.begin(),
       previewCache.composedSurface.columns.end(),
@@ -159,7 +191,8 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
   cr::CreativeTerrainHeightField invalidCandidate;
   const bool invalidRefresh =
       app::refreshCreativeEditorGeneratedTerrainPreview(
-          previewCache, sourceCache, document, invalidCandidate, 0U);
+          previewCache, sourceCache, document, invalidCandidate, 0U,
+          cr::CreativeTerrainMaterialField{}, 0U);
 
   return expect(terrainApplied.accepted && firstGeneration.receipt.accepted &&
                     authoredApplied.accepted && authoredApplied.changed &&
@@ -170,9 +203,16 @@ bool generatedPreviewReplacesTerrainAndCachesByHeightHash() {
                         document.terrainHeightField().revision() &&
                     sourceCache.terrainHeightCellCount == 9U,
                 "normal scene cache composes authored and legacy terrain") &&
-         expect(previewCache.refreshCount == 3U && sourceRebuilt &&
+         expect(previewCache.refreshCount == 4U && sourceRebuilt &&
                     sourceRefresh && secondRefresh && reused,
                 "idle frames reuse output while source and height changes rebuild") &&
+         expect(materialOnlyRefresh && materialPreviewMatches &&
+                    materialGeneration.receipt.heightHash ==
+                        firstGeneration.receipt.heightHash &&
+                    materialGeneration.receipt.materialHash !=
+                        firstGeneration.receipt.materialHash,
+                "material-only intent changes rebuild and recolor the exact "
+                "staged preview") &&
          expect(firstGeneration.receipt.heightHash !=
                     secondGeneration.receipt.heightHash,
                 "test seeds produce distinct generated terrain") &&
@@ -258,6 +298,8 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
   const std::vector<std::uint16_t> expectedHeights(
       state.operationPreview.heightField.heights().begin(),
       state.operationPreview.heightField.heights().end());
+  const cr::CreativeTerrainMaterialField expectedMaterials =
+      state.operationPreview.materialField;
   app::CreativeEditorSceneCache sourceCache;
   const bool sourceBuilt = app::refreshCreativeEditorSceneCache(
       sourceCache, appState.facade.document());
@@ -266,7 +308,9 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
       app::refreshCreativeEditorGeneratedTerrainPreview(
           renderedPreview, sourceCache, appState.facade.document(),
           state.operationPreview.heightField,
-          state.operationPreview.receipt.replay.heightHash);
+          state.operationPreview.receipt.replay.heightHash,
+          state.operationPreview.materialField,
+          state.operationPreview.receipt.replay.materialHash);
   const bool renderedCandidateMatches = surfaceMatchesHeightField(
       renderedPreview.composedSurface, state.operationPreview.heightField);
 
@@ -280,7 +324,20 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
       std::equal(
           expectedHeights.begin(), expectedHeights.end(),
           appState.facade.document().terrainHeightField().heights().begin(),
-          appState.facade.document().terrainHeightField().heights().end());
+          appState.facade.document().terrainHeightField().heights().end()) &&
+      cr::creativeTerrainMaterialFieldsEqual(
+          appState.facade.document().terrainMaterialField(),
+          expectedMaterials);
+  const bool sceneRefreshedAfterApply =
+      app::refreshCreativeEditorSceneCache(sourceCache,
+                                           appState.facade.document());
+  bool idleSceneReused = true;
+  for (std::uint32_t frame = 0U; frame < 300U; ++frame) {
+    idleSceneReused =
+        !app::refreshCreativeEditorSceneCache(sourceCache,
+                                              appState.facade.document()) &&
+        idleSceneReused;
+  }
   const std::uint64_t undoDepthAfterApply =
       cr::creativeUndoDepth(appState.history);
   const bool undone = app::undoLastEdit(appState, "terrain_generation_undo");
@@ -295,6 +352,11 @@ bool terrainGenerationWorkflowIsAtomicAndUndoable() {
                 "apply commits the exact active preview") &&
          expect(sourceBuilt && candidateRendered && renderedCandidateMatches,
                 "rendered preview consumes the exact composed candidate") &&
+         expect(sceneRefreshedAfterApply && idleSceneReused &&
+                    sourceCache.refreshCount == 2U &&
+                    sourceCache.terrainSurfaceBuildCount == 2U,
+                "accepted generation rebuilds the scene once and idle frames "
+                "reuse it") &&
          expect(applied.operation.replay.outputCellCount ==
                         expectedHeights.size() &&
                     undoDepthAfterApply == 1U &&
@@ -496,6 +558,156 @@ bool desktopCommandsEditOrderedTerrainOperationsWithHistory() {
                 "each document operation records exactly one undo snapshot");
 }
 
+bool desktopCommandsManageProfileOperationLifecycle() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 911U);
+  app::CreativeEditorState editor;
+
+  cr::CreativeTerrainProfileRecipe profile;
+  profile.center = {4, -2};
+  profile.baseHeightCells = 12U;
+  profile.profile = cr::CreativeTerrainProfileKind::Wave;
+  profile.blend = cr::CreativeTerrainProfileBlend::Add;
+  profile.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Fill;
+  profile.direction = cr::CreativeTerrainProfileDirection::NegativeX;
+  profile.radiusCells = 8U;
+  profile.amplitudeCells = 3U;
+  profile.spacingCells = 1U;
+  profile.frequency = 1U;
+  profile.seed = 73U;
+
+  cr::CreativeTerrainOperationMutationRequest add;
+  add.kind = cr::CreativeTerrainOperationMutationKind::Add;
+  add.operationKind = cr::CreativeTerrainOperationKind::Profile;
+  add.profile = profile;
+  const cr::CreativeTerrainOperationMutationReceipt added =
+      appState.facade.applyTerrainOperationMutation(add);
+  const cr::CreativeTerrainOperationId sourceId = added.operationId;
+
+  const auto dispatch = [&](app::CreativeDesktopCommandId id,
+                            app::CreativeDesktopTerrainOperationPayload payload) {
+    app::CreativeDesktopCommandFrame frame;
+    frame.push(id, payload);
+    return app::dispatchCreativeDesktopCommands(
+        frame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  };
+  const app::CreativeDesktopCommandResult selected = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationSelect,
+      {sourceId, true, 0U});
+  const bool exactDraftLoaded =
+      editor.terrain.profile.editingOperationId == sourceId &&
+      editor.toolSettings.terrainProfileKind == profile.profile &&
+      editor.toolSettings.terrainProfileBlend == profile.blend &&
+      editor.toolSettings.terrainProfileRodPolicy == profile.rodPolicy &&
+      editor.toolSettings.terrainProfileDirection == profile.direction &&
+      editor.toolSettings.terrainProfileRadiusCells == profile.radiusCells &&
+      editor.toolSettings.terrainProfileAmplitudeCells ==
+          profile.amplitudeCells &&
+      editor.toolSettings.terrainProfileSpacingCells == profile.spacingCells &&
+      editor.toolSettings.terrainProfileFrequencyCycles == profile.frequency &&
+      editor.toolSettings.terrainProfileSeed == profile.seed;
+
+  const app::CreativeDesktopCommandResult duplicated = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationDuplicate,
+      {sourceId, true, 0U});
+  const cr::CreativeTerrainOperationId duplicateId =
+      editor.terrain.profile.editingOperationId;
+  const cr::CreativeTerrainOperation* duplicate =
+      cr::findCreativeTerrainOperation(
+          appState.facade.document().terrainOperationStack(), duplicateId);
+  const bool duplicateExact =
+      duplicate != nullptr && duplicate->profile == profile &&
+      duplicate->owner == cr::CreativeTerrainOperationOwner::Manual;
+  const app::CreativeDesktopCommandResult disabled = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationSetEnabled,
+      {duplicateId, false, 1U});
+  const app::CreativeDesktopCommandResult moved = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationMove,
+      {duplicateId, false, 0U});
+  const app::CreativeDesktopCommandResult removed = dispatch(
+      app::CreativeDesktopCommandId::TerrainOperationDelete,
+      {sourceId, true, 1U});
+  const bool deleteUndone =
+      app::undoLastEdit(appState, "terrain_profile_delete_undo");
+  const cr::CreativeTerrainOperationStack& restoredStack =
+      appState.facade.document().terrainOperationStack();
+
+  cr::clearCreativeHistory(appState.history);
+  app::CreativeDesktopCommandFrame bakeFrame;
+  bakeFrame.push(app::CreativeDesktopCommandId::TerrainOperationBakeAll);
+  const app::CreativeDesktopCommandResult baked =
+      app::dispatchCreativeDesktopCommands(
+          bakeFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const bool bakeClearedSelection =
+      editor.terrain.profile.editingOperationId ==
+      cr::kInvalidCreativeTerrainOperationId;
+  const bool bakeUndone =
+      app::undoLastEdit(appState, "terrain_profile_bake_undo");
+
+  return expect(added.accepted && selected.accepted && exactDraftLoaded,
+                "profile selection loads every exact durable setting") &&
+         expect(duplicated.accepted && duplicated.changed &&
+                    duplicateId != sourceId && duplicateExact,
+                "profile duplicate preserves its exact recipe and becomes selected") &&
+         expect(disabled.accepted && disabled.changed && moved.accepted &&
+                    moved.changed && removed.accepted && removed.changed &&
+                    deleteUndone && restoredStack.operations.size() == 2U &&
+                    restoredStack.operations.front().id == duplicateId &&
+                    !restoredStack.operations.front().enabled &&
+                    restoredStack.operations.back().id == sourceId,
+                "profile enable reorder delete and undo use the generic stack") &&
+         expect(baked.accepted && baked.changed && bakeClearedSelection &&
+                    bakeUndone &&
+                    appState.facade.document()
+                            .terrainOperationStack()
+                            .operations.size() == 2U,
+                "profile bake clears edit state and undo restores provenance");
+}
+
+bool desktopCommandBakesTerrainStackAsOneUndoableEdit() {
+  cr::CreativeAppState appState;
+  installDocument(appState, 910U);
+  app::CreativeEditorState editor;
+  editor.terrainGeneration.recipe.bounds = {{-1, -1}, 3U, 3U};
+  editor.terrainGeneration.recipe.seed = 910U;
+  static_cast<void>(app::previewCreativeEditorTerrainGeneration(
+      editor.terrainGeneration, appState.facade.document(), false));
+  const app::CreativeEditorTerrainGenerationApplyReceipt applied =
+      app::applyCreativeEditorTerrainGeneration(appState,
+                                                editor.terrainGeneration);
+  const cr::CreativeTerrainHeightField expectedHeight =
+      appState.facade.document().terrainHeightField();
+  const cr::CreativeTerrainMaterialField expectedMaterial =
+      appState.facade.document().terrainMaterialField();
+  cr::clearCreativeHistory(appState.history);
+
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(app::CreativeDesktopCommandId::TerrainOperationBakeAll);
+  const app::CreativeDesktopCommandResult baked =
+      app::dispatchCreativeDesktopCommands(
+          frame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const bool undone = app::undoLastEdit(appState, "terrain_bake_undo");
+  const bool undoRestored =
+      appState.facade.document().terrainOperationStack().operations.size() ==
+          1U &&
+      cr::creativeTerrainHeightFieldsEqual(
+          appState.facade.document().terrainHeightField(), expectedHeight) &&
+      cr::creativeTerrainMaterialFieldsEqual(
+          appState.facade.document().terrainMaterialField(), expectedMaterial);
+  const bool redone = app::redoLastEdit(appState, "terrain_bake_redo");
+
+  return expect(applied.accepted && baked.accepted && baked.changed &&
+                    baked.sceneChanged,
+                "desktop bake command routes one accepted scene edit") &&
+         expect(appState.facade.document()
+                        .terrainOperationStack()
+                        .operations.empty() &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "bake removes provenance and records exactly one undo entry") &&
+         expect(undone && undoRestored && redone,
+                "bake undo restores exact terrain and redo removes the stack");
+}
+
 bool terrainOperationDraftSurvivesUnrelatedDocumentRevision() {
   cr::CreativeAppState appState;
   installDocument(appState, 908U);
@@ -581,6 +793,8 @@ int main() {
                  desktopCommandsRouteTerrainPreviewAndApply() &&
                  sequentialGenerationPreservesEarlierRegion() &&
                  desktopCommandsEditOrderedTerrainOperationsWithHistory() &&
+                 desktopCommandsManageProfileOperationLifecycle() &&
+                 desktopCommandBakesTerrainStackAsOneUndoableEdit() &&
                  terrainOperationDraftSurvivesUnrelatedDocumentRevision() &&
                  terrainOperationFootprintTracksSelectedAndPreviewMasks()
              ? EXIT_SUCCESS

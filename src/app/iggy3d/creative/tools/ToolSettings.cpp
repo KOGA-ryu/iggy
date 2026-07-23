@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 
 #include "app/iggy3d/creative/tools/Volume.hpp"
 
@@ -40,6 +41,25 @@ template <typename Enum>
     return static_cast<Enum>(current + 1U < size ? current + 1U : current);
   }
   return static_cast<Enum>(current > 0U ? current - 1U : current);
+}
+
+template <typename UInt>
+[[nodiscard]] UInt stepUnsignedClamped(UInt value,
+                                       UInt minimum,
+                                       UInt maximum,
+                                       std::int32_t direction) noexcept {
+  if (direction > 0) {
+    return value < maximum ? static_cast<UInt>(value + 1U) : value;
+  }
+  return value > minimum ? static_cast<UInt>(value - 1U) : value;
+}
+
+[[nodiscard]] double stepDoubleClamped(double value,
+                                       double minimum,
+                                       double maximum,
+                                       std::int32_t direction) noexcept {
+  return std::clamp(value + (direction > 0 ? 1.0 : -1.0), minimum,
+                    maximum);
 }
 
 [[nodiscard]] bool sameSettings(const CreativeToolSettings& lhs,
@@ -156,6 +176,9 @@ bool isValidCreativeToolSettings(
   const bool replaceSourceValid =
       settings.replaceSourceKind == CreativeObjectKind::Unknown ||
       validReplaceSourceKind(settings.replaceSourceKind);
+  const bool eraseSourceValid =
+      settings.eraseSourceKind == CreativeObjectKind::Unknown ||
+      validReplaceSourceKind(settings.eraseSourceKind);
   const bool materialBrushReplaceSourceValid =
       settings.materialBrushReplaceSourceKind == CreativeObjectKind::Unknown ||
       creativeVolumeBrushSupported(
@@ -178,6 +201,12 @@ bool isValidCreativeToolSettings(
                    CreativeRoomFloorThickness::Count) &&
          validEnum(settings.assetPlacementMode,
                    CreativeAssetPlacementMode::Count) &&
+         validEnum(settings.assetAlignmentMode,
+                   CreativeAssetAlignmentMode::Count) &&
+         validEnum(settings.assetAttachmentMode,
+                   CreativeAssetAttachmentMode::Count) &&
+         validEnum(settings.assetScatterMask,
+                   CreativeAssetScatterMask::Count) &&
          validEnum(settings.assetScatterRadius,
                    CreativeAssetScatterRadius::Count) &&
          validEnum(settings.assetScatterDensity,
@@ -190,6 +219,8 @@ bool isValidCreativeToolSettings(
                    CreativeAssetScatterScale::Count) &&
          validEnum(settings.assetScatterSlope,
                    CreativeAssetScatterSlope::Count) &&
+         validEnum(settings.assetScatterCollision,
+                   CreativeAssetScatterCollision::Count) &&
          validEnum(settings.materialBrushShape,
                    CreativeMaterialBrushShape::Count) &&
          isValidCreativeAxis3(settings.materialBrushAxis) &&
@@ -212,11 +243,32 @@ bool isValidCreativeToolSettings(
                    CreativeConnectedFillLimit::Count) &&
          validEnum(settings.shapeBrushKind, CreativeShapeBrushKind::Count) &&
          validEnum(settings.shapeBrushAxis, CreativeShapeBrushAxis::Count) &&
+         validEnum(settings.volumeFillOverlapPolicy,
+                   CreativeVolumeFillOverlapPolicy::Count) &&
+         validEnum(settings.volumeHollowThickness,
+                   CreativeVolumeHollowThickness::Count) &&
+         validEnum(settings.volumeHollowAlignment,
+                   CreativeVolumeHollowAlignment::Count) &&
+         validEnum(settings.volumeHollowOpening,
+                   CreativeVolumeHollowOpening::Count) &&
+         validEnum(settings.volumeHollowCornerRule,
+                   CreativeVolumeHollowCornerRule::Count) &&
          replaceSourceValid &&
+         validEnum(settings.volumeReplaceMemberMask,
+                   CreativeVolumeMemberMask::Count) &&
+         eraseSourceValid &&
+         validEnum(settings.volumeEraseMemberMask,
+                   CreativeVolumeMemberMask::Count) &&
          validEnum(settings.cloneOffsetAxis,
                    CreativeCloneOffsetAxis::Count) &&
          validEnum(settings.cloneOffsetDistance,
                    CreativeCloneOffsetDistance::Count) &&
+         validEnum(settings.cloneRotation, CreativeCloneRotation::Count) &&
+         validEnum(settings.cloneMirror, CreativeCloneMirror::Count) &&
+         validEnum(settings.volumeCloneMemberMask,
+                   CreativeVolumeMemberMask::Count) &&
+         validEnum(settings.cloneVoxelOverlapPolicy,
+                   CreativeVolumeCloneVoxelOverlapPolicy::Count) &&
          validEnum(settings.arrayMode, CreativeArrayMode::Count) &&
          validEnum(settings.arrayDirection,
                    CreativeLinearArrayDirection::Count) &&
@@ -229,14 +281,24 @@ bool isValidCreativeToolSettings(
                    CreativeRadialArrayInstanceCount::Count) &&
          validEnum(settings.radialArraySweep,
                    CreativeRadialArraySweep::Count) &&
+         validEnum(settings.measurementMode, CreativeMeasurementMode::Count) &&
+         validEnum(settings.measurementAxis, CreativeMeasurementAxis::Count) &&
+         validEnum(settings.measurementSnapMode,
+                   CreativeMeasurementSnapMode::Count) &&
          validEnum(settings.terrainSculptMode,
                    CreativeTerrainSculptMode::Count) &&
          validEnum(settings.terrainSculptRadius,
                    CreativeTerrainSculptRadius::Count) &&
          validEnum(settings.terrainSculptStrength,
                    CreativeTerrainSculptStrength::Count) &&
+         settings.terrainSculptTargetHeightCells >=
+             kCreativeTerrainMinimumHeightCells &&
+         settings.terrainSculptTargetHeightCells <=
+             kCreativeTerrainMaximumHeightCells &&
          validEnum(settings.terrainSculptFalloff,
                    CreativeTerrainSculptFalloff::Count) &&
+         validEnum(settings.terrainSculptMask,
+                   CreativeTerrainSculptMask::Count) &&
          validEnum(settings.terrainPaintMode,
                    CreativeTerrainPaintMode::Count) &&
          isValidCreativeTerrainMaterial(settings.terrainPaintMaterial) &&
@@ -244,6 +306,18 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainPaintRadius::Count) &&
          validEnum(settings.terrainPaintSource,
                    CreativeTerrainPaintSource::Count) &&
+         validEnum(settings.terrainPaintHardness,
+                   CreativeTerrainPaintHardness::Count) &&
+         validEnum(settings.terrainPaintOpacity,
+                   CreativeTerrainPaintOpacity::Count) &&
+         validEnum(settings.terrainPaintMask,
+                   CreativeTerrainPaintMask::Count) &&
+         validEnum(settings.terrainPaintBlend,
+                   CreativeTerrainPaintBlend::Count) &&
+         validEnum(settings.terrainPaintSlopeFilter,
+                   CreativeTerrainPaintSlopeFilter::Count) &&
+         validEnum(settings.terrainPaintHeightFilter,
+                   CreativeTerrainPaintHeightFilter::Count) &&
          validEnum(settings.terrainRodStampMode,
                    CreativeTerrainRodStampMode::Count) &&
          validEnum(settings.terrainSeedRadius,
@@ -256,16 +330,20 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainProfileBlend::Count) &&
          validEnum(settings.terrainProfileRodPolicy,
                    CreativeTerrainProfileRodPolicy::Count) &&
-         validEnum(settings.terrainProfileRadius,
-                   CreativeTerrainProfileRadius::Count) &&
-         validEnum(settings.terrainProfileAmplitude,
-                   CreativeTerrainProfileAmplitude::Count) &&
-         validEnum(settings.terrainProfileSpacing,
-                   CreativeTerrainProfileSpacing::Count) &&
+         settings.terrainProfileRadiusCells >= 1U &&
+         settings.terrainProfileRadiusCells <=
+             kCreativeTerrainProfileMaximumRadiusCells &&
+         settings.terrainProfileAmplitudeCells >= 1U &&
+         settings.terrainProfileAmplitudeCells <=
+             kCreativeTerrainMaximumHeightCells &&
+         settings.terrainProfileSpacingCells >= 1U &&
+         settings.terrainProfileSpacingCells <=
+             kCreativeTerrainProfileMaximumSpacingCells &&
          validEnum(settings.terrainProfileDirection,
                    CreativeTerrainProfileDirection::Count) &&
-         validEnum(settings.terrainProfileFrequency,
-                   CreativeTerrainProfileFrequency::Count) &&
+         settings.terrainProfileFrequencyCycles >= 1U &&
+         settings.terrainProfileFrequencyCycles <=
+             kCreativeTerrainProfileMaximumFrequency &&
          validEnum(settings.terrainPathKind, CreativeTerrainPathKind::Count) &&
          validEnum(settings.terrainPathElevation,
                    CreativeTerrainPathElevation::Count) &&
@@ -273,10 +351,7 @@ bool isValidCreativeToolSettings(
                    CreativeTerrainPathWidth::Count) &&
          validEnum(settings.terrainPathAmplitude,
                    CreativeTerrainPathAmplitude::Count) &&
-         validEnum(settings.terrainRegionOperation,
-                   CreativeTerrainRegionOperation::Count) &&
-         validEnum(settings.terrainRegionAmount,
-                   CreativeTerrainRegionAmount::Count) &&
+         isValidCreativeTerrainRegionRecipe(settings.terrainRegionRecipe) &&
          validEnum(settings.terrainStampMode, CreativeTerrainStampMode::Count) &&
          validEnum(settings.terrainStampElevationMode,
                    CreativeTerrainStampElevationMode::Count);
@@ -360,6 +435,21 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           adjusted.assetPlacementMode, CreativeAssetPlacementMode::Count,
           direction);
       break;
+    case CreativeToolOptionId::AssetAlignmentMode:
+      adjusted.assetAlignmentMode = cycleEnum(
+          adjusted.assetAlignmentMode, CreativeAssetAlignmentMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetAttachmentMode:
+      adjusted.assetAttachmentMode = cycleEnum(
+          adjusted.assetAttachmentMode, CreativeAssetAttachmentMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterMask:
+      adjusted.assetScatterMask = cycleEnum(
+          adjusted.assetScatterMask, CreativeAssetScatterMask::Count,
+          direction);
+      break;
     case CreativeToolOptionId::AssetScatterRadius:
       adjusted.assetScatterRadius = cycleEnum(
           adjusted.assetScatterRadius, CreativeAssetScatterRadius::Count,
@@ -388,6 +478,11 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
     case CreativeToolOptionId::AssetScatterSlope:
       adjusted.assetScatterSlope = cycleEnum(
           adjusted.assetScatterSlope, CreativeAssetScatterSlope::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::AssetScatterCollision:
+      adjusted.assetScatterCollision = cycleEnum(
+          adjusted.assetScatterCollision, CreativeAssetScatterCollision::Count,
           direction);
       break;
     case CreativeToolOptionId::MaterialBrushShape:
@@ -459,6 +554,31 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.shapeBrushAxis = cycleEnum(
           adjusted.shapeBrushAxis, CreativeShapeBrushAxis::Count, direction);
       break;
+    case CreativeToolOptionId::VolumeFillOverlapPolicy:
+      adjusted.volumeFillOverlapPolicy = cycleEnum(
+          adjusted.volumeFillOverlapPolicy,
+          CreativeVolumeFillOverlapPolicy::Count, direction);
+      break;
+    case CreativeToolOptionId::VolumeHollowThickness:
+      adjusted.volumeHollowThickness = cycleEnum(
+          adjusted.volumeHollowThickness,
+          CreativeVolumeHollowThickness::Count, direction);
+      break;
+    case CreativeToolOptionId::VolumeHollowAlignment:
+      adjusted.volumeHollowAlignment = cycleEnum(
+          adjusted.volumeHollowAlignment,
+          CreativeVolumeHollowAlignment::Count, direction);
+      break;
+    case CreativeToolOptionId::VolumeHollowOpening:
+      adjusted.volumeHollowOpening = cycleEnum(
+          adjusted.volumeHollowOpening,
+          CreativeVolumeHollowOpening::Count, direction);
+      break;
+    case CreativeToolOptionId::VolumeHollowCornerRule:
+      adjusted.volumeHollowCornerRule = cycleEnum(
+          adjusted.volumeHollowCornerRule,
+          CreativeVolumeHollowCornerRule::Count, direction);
+      break;
     case CreativeToolOptionId::ReplaceSource: {
       CreativeObjectKind next = adjusted.replaceSourceKind;
       if (!nextReplaceSource(materialPalette, adjusted.replaceSourceKind,
@@ -470,6 +590,27 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.replaceSourceKind = next;
       break;
     }
+    case CreativeToolOptionId::ReplaceMemberMask:
+      adjusted.volumeReplaceMemberMask = cycleEnum(
+          adjusted.volumeReplaceMemberMask, CreativeVolumeMemberMask::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::EraseSource: {
+      CreativeObjectKind next = adjusted.eraseSourceKind;
+      if (!nextReplaceSource(materialPalette, adjusted.eraseSourceKind,
+                             direction, next)) {
+        receipt.status = CreativeToolOptionAdjustStatus::NoAvailableValue;
+        receipt.reasonCode = "creative_tool_option_material_unavailable";
+        return receipt;
+      }
+      adjusted.eraseSourceKind = next;
+      break;
+    }
+    case CreativeToolOptionId::EraseMemberMask:
+      adjusted.volumeEraseMemberMask = cycleEnum(
+          adjusted.volumeEraseMemberMask, CreativeVolumeMemberMask::Count,
+          direction);
+      break;
     case CreativeToolOptionId::CloneOffsetAxis:
       adjusted.cloneOffsetAxis = cycleEnum(
           adjusted.cloneOffsetAxis, CreativeCloneOffsetAxis::Count, direction);
@@ -478,6 +619,24 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.cloneOffsetDistance =
           cycleEnum(adjusted.cloneOffsetDistance,
                     CreativeCloneOffsetDistance::Count, direction);
+      break;
+    case CreativeToolOptionId::CloneRotation:
+      adjusted.cloneRotation = cycleEnum(
+          adjusted.cloneRotation, CreativeCloneRotation::Count, direction);
+      break;
+    case CreativeToolOptionId::CloneMirror:
+      adjusted.cloneMirror = cycleEnum(
+          adjusted.cloneMirror, CreativeCloneMirror::Count, direction);
+      break;
+    case CreativeToolOptionId::CloneMemberMask:
+      adjusted.volumeCloneMemberMask = cycleEnum(
+          adjusted.volumeCloneMemberMask, CreativeVolumeMemberMask::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::CloneVoxelOverlapPolicy:
+      adjusted.cloneVoxelOverlapPolicy = cycleEnum(
+          adjusted.cloneVoxelOverlapPolicy,
+          CreativeVolumeCloneVoxelOverlapPolicy::Count, direction);
       break;
     case CreativeToolOptionId::ArrayMode:
       adjusted.arrayMode = cycleEnum(
@@ -512,6 +671,22 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           adjusted.radialArraySweep, CreativeRadialArraySweep::Count,
           direction);
       break;
+    case CreativeToolOptionId::MeasurementMode:
+      adjusted.measurementMode = cycleEnum(
+          adjusted.measurementMode, CreativeMeasurementMode::Count, direction);
+      break;
+    case CreativeToolOptionId::MeasurementAxis:
+      adjusted.measurementAxis = cycleEnum(
+          adjusted.measurementAxis, CreativeMeasurementAxis::Count, direction);
+      break;
+    case CreativeToolOptionId::MeasurementSnapMode:
+      adjusted.measurementSnapMode = cycleEnum(
+          adjusted.measurementSnapMode, CreativeMeasurementSnapMode::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::MeasurementClosePath:
+      adjusted.measurementClosePath = !adjusted.measurementClosePath;
+      break;
     case CreativeToolOptionId::TerrainSculptMode:
       adjusted.terrainSculptMode = cycleEnum(
           adjusted.terrainSculptMode, CreativeTerrainSculptMode::Count,
@@ -527,10 +702,23 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           adjusted.terrainSculptStrength,
           CreativeTerrainSculptStrength::Count, direction);
       break;
+    case CreativeToolOptionId::TerrainSculptTargetHeight:
+      adjusted.terrainSculptTargetHeightCells =
+          static_cast<std::uint16_t>(std::clamp(
+              static_cast<int>(adjusted.terrainSculptTargetHeightCells) +
+                  direction,
+              static_cast<int>(kCreativeTerrainMinimumHeightCells),
+              static_cast<int>(kCreativeTerrainMaximumHeightCells)));
+      break;
     case CreativeToolOptionId::TerrainSculptFalloff:
       adjusted.terrainSculptFalloff =
           cycleEnum(adjusted.terrainSculptFalloff,
                     CreativeTerrainSculptFalloff::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainSculptMask:
+      adjusted.terrainSculptMask =
+          cycleEnum(adjusted.terrainSculptMask,
+                    CreativeTerrainSculptMask::Count, direction);
       break;
     case CreativeToolOptionId::TerrainPaintMode:
       adjusted.terrainPaintMode = cycleEnum(
@@ -551,6 +739,36 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
       adjusted.terrainPaintSource = cycleEnum(
           adjusted.terrainPaintSource, CreativeTerrainPaintSource::Count,
           direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintHardness:
+      adjusted.terrainPaintHardness = cycleEnum(
+          adjusted.terrainPaintHardness, CreativeTerrainPaintHardness::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintOpacity:
+      adjusted.terrainPaintOpacity = cycleEnum(
+          adjusted.terrainPaintOpacity, CreativeTerrainPaintOpacity::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintMask:
+      adjusted.terrainPaintMask = cycleEnum(
+          adjusted.terrainPaintMask, CreativeTerrainPaintMask::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintBlend:
+      adjusted.terrainPaintBlend = cycleEnum(
+          adjusted.terrainPaintBlend, CreativeTerrainPaintBlend::Count,
+          direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintSlopeFilter:
+      adjusted.terrainPaintSlopeFilter = cycleEnum(
+          adjusted.terrainPaintSlopeFilter,
+          CreativeTerrainPaintSlopeFilter::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainPaintHeightFilter:
+      adjusted.terrainPaintHeightFilter = cycleEnum(
+          adjusted.terrainPaintHeightFilter,
+          CreativeTerrainPaintHeightFilter::Count, direction);
       break;
     case CreativeToolOptionId::TerrainRodStampMode:
       adjusted.terrainRodStampMode = cycleEnum(
@@ -583,19 +801,19 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           CreativeTerrainProfileRodPolicy::Count, direction);
       break;
     case CreativeToolOptionId::TerrainProfileRadius:
-      adjusted.terrainProfileRadius = cycleEnum(
-          adjusted.terrainProfileRadius, CreativeTerrainProfileRadius::Count,
-          direction);
+      adjusted.terrainProfileRadiusCells = stepUnsignedClamped(
+          adjusted.terrainProfileRadiusCells, std::uint16_t{1U},
+          kCreativeTerrainProfileMaximumRadiusCells, direction);
       break;
     case CreativeToolOptionId::TerrainProfileAmplitude:
-      adjusted.terrainProfileAmplitude = cycleEnum(
-          adjusted.terrainProfileAmplitude,
-          CreativeTerrainProfileAmplitude::Count, direction);
+      adjusted.terrainProfileAmplitudeCells = stepUnsignedClamped(
+          adjusted.terrainProfileAmplitudeCells, std::uint16_t{1U},
+          kCreativeTerrainMaximumHeightCells, direction);
       break;
     case CreativeToolOptionId::TerrainProfileSpacing:
-      adjusted.terrainProfileSpacing = cycleEnum(
-          adjusted.terrainProfileSpacing,
-          CreativeTerrainProfileSpacing::Count, direction);
+      adjusted.terrainProfileSpacingCells = stepUnsignedClamped(
+          adjusted.terrainProfileSpacingCells, std::uint16_t{1U},
+          kCreativeTerrainProfileMaximumSpacingCells, direction);
       break;
     case CreativeToolOptionId::TerrainProfileDirection:
       adjusted.terrainProfileDirection = cycleEnum(
@@ -603,9 +821,18 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           CreativeTerrainProfileDirection::Count, direction);
       break;
     case CreativeToolOptionId::TerrainProfileFrequency:
-      adjusted.terrainProfileFrequency = cycleEnum(
-          adjusted.terrainProfileFrequency,
-          CreativeTerrainProfileFrequency::Count, direction);
+      adjusted.terrainProfileFrequencyCycles = stepUnsignedClamped(
+          adjusted.terrainProfileFrequencyCycles, std::uint8_t{1U},
+          kCreativeTerrainProfileMaximumFrequency, direction);
+      break;
+    case CreativeToolOptionId::TerrainProfileSeed:
+      if (direction > 0 &&
+          adjusted.terrainProfileSeed !=
+              std::numeric_limits<std::uint64_t>::max()) {
+        ++adjusted.terrainProfileSeed;
+      } else if (direction < 0 && adjusted.terrainProfileSeed > 0U) {
+        --adjusted.terrainProfileSeed;
+      }
       break;
     case CreativeToolOptionId::TerrainPathKind:
       adjusted.terrainPathKind = cycleEnum(
@@ -627,14 +854,46 @@ CreativeToolOptionAdjustReceipt adjustCreativeToolOption(
           direction);
       break;
     case CreativeToolOptionId::TerrainRegionOperation:
-      adjusted.terrainRegionOperation = cycleEnum(
-          adjusted.terrainRegionOperation,
-          CreativeTerrainRegionOperation::Count, direction);
+      adjusted.terrainRegionRecipe.mode = cycleEnum(
+          adjusted.terrainRegionRecipe.mode,
+          CreativeTerrainRegionMode::Count, direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionMask:
+      adjusted.terrainRegionRecipe.mask = cycleEnum(
+          adjusted.terrainRegionRecipe.mask,
+          CreativeTerrainCompositionMask::Count, direction);
       break;
     case CreativeToolOptionId::TerrainRegionAmount:
-      adjusted.terrainRegionAmount = cycleEnum(
-          adjusted.terrainRegionAmount, CreativeTerrainRegionAmount::Count,
-          direction);
+      adjusted.terrainRegionRecipe.amountCells = stepUnsignedClamped(
+          adjusted.terrainRegionRecipe.amountCells, std::uint16_t{1U},
+          kCreativeTerrainRegionMaximumAmountCells, direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionTargetHeight:
+      adjusted.terrainRegionRecipe.targetHeightCells = stepUnsignedClamped(
+          adjusted.terrainRegionRecipe.targetHeightCells,
+          kCreativeTerrainMinimumHeightCells,
+          kCreativeTerrainMaximumHeightCells, direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionNoiseRelief:
+      adjusted.terrainRegionRecipe.noiseReliefCells = stepUnsignedClamped(
+          adjusted.terrainRegionRecipe.noiseReliefCells, std::uint16_t{0U},
+          kCreativeTerrainMaximumHeightCells, direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionNoiseScale:
+      adjusted.terrainRegionRecipe.noiseScaleCells = stepDoubleClamped(
+          adjusted.terrainRegionRecipe.noiseScaleCells,
+          kCreativeTerrainGeneratorMinimumHorizontalScaleCells,
+          kCreativeTerrainGeneratorMaximumHorizontalScaleCells, direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionSeed:
+      adjusted.terrainRegionRecipe.seed = stepUnsignedClamped(
+          adjusted.terrainRegionRecipe.seed, std::uint64_t{0U},
+          std::numeric_limits<std::uint64_t>::max(), direction);
+      break;
+    case CreativeToolOptionId::TerrainRegionFeather:
+      adjusted.terrainRegionRecipe.featherCells = stepUnsignedClamped(
+          adjusted.terrainRegionRecipe.featherCells, std::uint16_t{0U},
+          kCreativeTerrainCompositionMaximumFeatherCells, direction);
       break;
     case CreativeToolOptionId::TerrainStampMode:
       adjusted.terrainStampMode = cycleEnum(
@@ -781,6 +1040,15 @@ bool tryCreativeCloneOffset(const CreativeToolSettings& settings,
       return true;
     case CreativeCloneOffsetAxis::Z:
       output.z = distance;
+      return true;
+    case CreativeCloneOffsetAxis::NegativeX:
+      output.x = -distance;
+      return true;
+    case CreativeCloneOffsetAxis::NegativeY:
+      output.y = -distance;
+      return true;
+    case CreativeCloneOffsetAxis::NegativeZ:
+      output.z = -distance;
       return true;
     case CreativeCloneOffsetAxis::Count:
       return false;

@@ -15,6 +15,9 @@
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
+#include "runtime/physics/PhysicsCollisionQueries.hpp"
+#include "runtime/ai/SegmentOcclusion.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -163,6 +166,26 @@ const iggy3d::RoomStaticMeshAsset* findMesh(
   return found == room.staticMeshes.end() ? nullptr : &*found;
 }
 
+const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
+                                          std::string_view id) {
+  const auto found = std::find_if(
+      room.anchors.begin(), room.anchors.end(),
+      [id](const iggy3d::RoomAnchorAsset& anchor) { return anchor.id == id; });
+  return found == room.anchors.end() ? nullptr : &*found;
+}
+
+bool hasWalkableEdgeBetweenKind(const iggy3d::ReasoningGraph& graph,
+                                iggy3d::ReasoningNodeKind kind) {
+  return std::any_of(
+      graph.edges.begin(), graph.edges.end(),
+      [&graph, kind](const iggy3d::ReasoningEdge& edge) {
+        return edge.kind == iggy3d::ReasoningEdgeKind::walkable &&
+               edge.from < graph.nodes.size() && edge.to < graph.nodes.size() &&
+               graph.nodes[edge.from].kind == kind &&
+               graph.nodes[edge.to].kind == kind;
+      });
+}
+
 iggy3d::RoomSpatialSurface traversalFloorSurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "traversal_floor";
@@ -180,6 +203,40 @@ iggy3d::RoomSpatialSurface traversalFloorSurface() {
   surface.collisionMask = {"actor"};
   surface.runtimeOwnerStableName = "owner.traversal_floor";
   return surface;
+}
+
+bool voxelBakePreservesMaterialIdentityAndGeometryRole() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("voxel materials");
+  const std::array edits{
+      cr::CreativeVoxelEdit{{0, 0, 0}, cr::CreativeObjectKind::Floor},
+      cr::CreativeVoxelEdit{{2, 0, 0}, cr::CreativeObjectKind::Roof},
+      cr::CreativeVoxelEdit{{4, 0, 0}, cr::CreativeObjectKind::Wall},
+  };
+  const cr::CreativeVoxelMutationReceipt applied = document.applyVoxelEdits(edits);
+  const cr::CreativeRoomBakeResult result = bake(document, nullptr);
+  const auto hasMaterialAndRole = [&](std::string_view material,
+                                      std::string_view semanticRole,
+                                      std::string_view role) {
+    return std::any_of(
+        result.room.staticMeshes.begin(), result.room.staticMeshes.end(),
+        [&](const iggy3d::RoomStaticMeshAsset& mesh) {
+          return mesh.materialId == material &&
+                 mesh.semanticRole == semanticRole && mesh.role == role;
+        });
+  };
+
+  return expect(applied.accepted && applied.changed &&
+                    result.receipt.accepted &&
+                    result.receipt.bakedVoxelCuboidCount == edits.size(),
+                "voxel material bake fixture is accepted") &&
+         expect(hasMaterialAndRole("creative_voxel_material_Floor", "Floor",
+                                   "floor") &&
+                    hasMaterialAndRole("creative_voxel_material_Roof", "Roof",
+                                       "floor"),
+                "same-role voxel surfaces retain material and semantic identity") &&
+         expect(hasMaterialAndRole("creative_voxel_material_Wall", "Wall",
+                                   "wall"),
+                "voxel meaning does not replace its coarse geometry role");
 }
 
 bool fixtureMetadataProducesHonestPhysicsSurfaces() {
@@ -351,20 +408,55 @@ bool generatedTraversalGeometryStaysInRenderCollisionParity() {
       iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, 1.0F});
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
       iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const std::vector<iggy3d::Vec3> noWaypoints;
+  const iggy3d::ReasoningGraph reasoning =
+      iggy3d::buildReasoningGraph(baked.room, noWaypoints);
+  const std::size_t stairNodeCount = static_cast<std::size_t>(std::count_if(
+      reasoning.nodes.begin(), reasoning.nodes.end(),
+      [](const iggy3d::ReasoningNode& node) {
+        return node.kind == iggy3d::ReasoningNodeKind::stair;
+      }));
+  const std::size_t rampNodeCount = static_cast<std::size_t>(std::count_if(
+      reasoning.nodes.begin(), reasoning.nodes.end(),
+      [](const iggy3d::ReasoningNode& node) {
+        return node.kind == iggy3d::ReasoningNodeKind::ramp;
+      }));
+  const std::string stairLowId =
+      "creative_object_" + std::to_string(stair.objectId) +
+      "_stair_low_anchor";
+  const std::string stairHighId =
+      "creative_object_" + std::to_string(stair.objectId) +
+      "_stair_high_anchor";
+  const std::string rampLowId =
+      "creative_object_" + std::to_string(ramp.objectId) +
+      "_ramp_low_anchor";
+  const std::string rampHighId =
+      "creative_object_" + std::to_string(ramp.objectId) +
+      "_ramp_high_anchor";
+  const iggy3d::RoomAnchorAsset* stairLow = findAnchor(baked.room, stairLowId);
+  const iggy3d::RoomAnchorAsset* stairHigh =
+      findAnchor(baked.room, stairHighId);
+  const iggy3d::RoomAnchorAsset* rampLowAnchor =
+      findAnchor(baked.room, rampLowId);
+  const iggy3d::RoomAnchorAsset* rampHighAnchor =
+      findAnchor(baked.room, rampHighId);
 
   return expect(platform.accepted && ramp.accepted && stair.accepted &&
                     baked.receipt.accepted,
                 "generated traversal objects bake") &&
          expect(platformMesh != nullptr &&
                     platformMesh->meshId == "creative_walkable_slab" &&
+                    platformMesh->semanticRole == "Platform" &&
                     platformMesh->proceduralSegmentCount == 0U &&
                     rampMesh != nullptr &&
                     rampMesh->meshId == "creative_ramp_wedge" &&
+                    rampMesh->semanticRole == "Ramp" &&
                     rampMesh->proceduralSegmentCount == 0U &&
                     stairMesh != nullptr &&
                     stairMesh->meshId == "creative_stair_steps" &&
+                    stairMesh->semanticRole == "Stair" &&
                     stairMesh->proceduralSegmentCount == 4U,
-                "room meshes carry descriptor-owned generated profiles") &&
+                "room meshes carry exact traversal meaning and generated profiles") &&
          expect(baked.room.spatialSurfaces.size() == 14U &&
                     countRole(baked.room,
                               iggy3d::RoomSpatialSurfaceRole::Walkable) == 6U &&
@@ -385,7 +477,21 @@ bool generatedTraversalGeometryStaysInRenderCollisionParity() {
                     rampMiddle.normal.y > 0.0F && rampMiddle.normal.z < 0.0F,
                 "generated ramp exposes exact sloped height and normal") &&
          expect(physics.ok && physics.colliderCount == 9U,
-                "physics consumes slab and stair boxes but skips height patch");
+                "physics consumes slab and stair boxes but skips height patch") &&
+         expect(baked.room.anchors.size() == 4U &&
+                    baked.anchorSources.size() == 4U && stairLow != nullptr &&
+                    stairHigh != nullptr && stairLow->kind == "stair" &&
+                    stairHigh->kind == "stair" &&
+                    rampLowAnchor != nullptr && rampHighAnchor != nullptr &&
+                    rampLowAnchor->kind == "ramp" &&
+                    rampHighAnchor->kind == "ramp",
+                "generated traversal objects publish stable endpoint anchors") &&
+         expect(stairNodeCount == 2U && rampNodeCount == 2U &&
+                    hasWalkableEdgeBetweenKind(
+                        reasoning, iggy3d::ReasoningNodeKind::stair) &&
+                    hasWalkableEdgeBetweenKind(
+                        reasoning, iggy3d::ReasoningNodeKind::ramp),
+                "generated stair and ramp endpoints form traversable edges");
 }
 
 bool generatedStructuralGeometryStaysInRenderCollisionParity() {
@@ -426,14 +532,18 @@ bool generatedStructuralGeometryStaysInRenderCollisionParity() {
                 "generated structural objects bake") &&
          expect(columnMesh != nullptr &&
                     columnMesh->meshId == "creative_solid_prism" &&
+                    columnMesh->semanticRole == "Column" &&
                     beamMesh != nullptr &&
                     beamMesh->meshId == "creative_solid_prism" &&
+                    beamMesh->semanticRole == "Beam" &&
                     bridgeMesh != nullptr &&
                     bridgeMesh->meshId == "creative_walkable_slab" &&
+                    bridgeMesh->semanticRole == "Bridge" &&
                     archMesh != nullptr &&
                     archMesh->meshId == "creative_open_frame" &&
+                    archMesh->semanticRole == "Arch" &&
                     archMesh->proceduralSegmentCount == 0U,
-                "room meshes carry descriptor-owned structural profiles") &&
+                "room meshes carry exact structural meaning and generated profiles") &&
          expect(baked.room.spatialSurfaces.size() == 11U &&
                     countRole(baked.room,
                               iggy3d::RoomSpatialSurfaceRole::Walkable) == 1U &&
@@ -453,6 +563,74 @@ bool generatedStructuralGeometryStaysInRenderCollisionParity() {
                 "generated arch keeps its opening clear and frame solid") &&
          expect(physics.ok && physics.colliderCount == 6U,
                 "physics consumes solid prisms bridge and three arch parts");
+}
+
+bool generatedHipRoofCollisionMatchesTaperedWeatherFace() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("generated hip roof collision");
+  constexpr double kHalfRun = 2.8284271247461903;
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::HipRoof;
+  request.name = "Hip roof panel";
+  request.transform.position = {0.0, 3.0, 0.0};
+  request.transform.rotationEulerRadians.x =
+      -std::numbers::pi_v<double> / 4.0;
+  request.hasTransformOverride = true;
+  request.bounds = {{-5.0, 2.875, -kHalfRun},
+                    {5.0, 3.125, kHalfRun}};
+  request.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const cr::CreativeRoomBakeResult baked = bake(document, nullptr);
+  const std::string surfaceId =
+      "creative_object_" + std::to_string(created.objectId) +
+      "_hip_roof_walkable";
+  const iggy3d::RoomSpatialSurface* surface =
+      findSurface(baked.room, surfaceId);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::CollisionQueryResult ridgeHit = iggy3d::querySegment(
+      surfaces, {0.0F, 7.0F, 1.8F}, {0.0F, 0.0F, 1.8F},
+      iggy3d::CollisionQueryKind::Actor);
+  const iggy3d::CollisionQueryResult oldEnvelopeMiss = iggy3d::querySegment(
+      surfaces, {4.0F, 7.0F, 1.8F}, {4.0F, 0.0F, 1.8F},
+      iggy3d::CollisionQueryKind::Actor);
+  const iggy3d::CollisionQueryResult sampledRidge =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.0F, 1.8F});
+  const iggy3d::CollisionQueryResult sampledOutside =
+      iggy3d::sampleSurfaceHeight(surfaces, {4.0F, 0.0F, 1.8F});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+
+  return expect(created.accepted && baked.receipt.accepted &&
+                    surface != nullptr &&
+                    surface->shape ==
+                        iggy3d::RoomSpatialSurfaceShape::HeightPatch &&
+                    surface->role ==
+                        iggy3d::RoomSpatialSurfaceRole::Walkable &&
+                    surface->pointsMeters.size() == 5U,
+                "hip roof bakes one exact walkable height patch") &&
+         expect(std::fabs(surface->pointsMeters[1].x + 5.0F) <= 0.001F &&
+                    std::fabs(surface->pointsMeters[2].x - 5.0F) <= 0.001F &&
+                    std::fabs(surface->pointsMeters[3].x - 1.0F) <= 0.001F &&
+                    std::fabs(surface->pointsMeters[4].x + 1.0F) <= 0.001F,
+                "hip collision narrows from eave width to canonical ridge") &&
+         expect(ridgeHit.status == iggy3d::CollisionQueryStatus::Hit &&
+                    sampledRidge.status ==
+                        iggy3d::CollisionQueryStatus::Hit &&
+                    ridgeHit.shape ==
+                        iggy3d::CollisionSurfaceShape::HeightPatch &&
+                    ridgeHit.normal.y > 0.0F,
+                "hip weather face supports exact segment and height queries") &&
+         expect(oldEnvelopeMiss.status ==
+                        iggy3d::CollisionQueryStatus::NoHit &&
+                    sampledOutside.status ==
+                        iggy3d::CollisionQueryStatus::NoHit,
+                "hip collision rejects empty space inside the old box envelope") &&
+         expect(physics.ok && physics.surfaceCount == 1U &&
+                    physics.skippedSurfaceCount == 1U &&
+                    physics.colliderCount == 0U,
+                "hip height patch never regresses into a phantom AABB");
 }
 
 bool generatedTraversalTransformsFailClosedAndStayBounded() {
@@ -731,20 +909,247 @@ bool invalidAndTiltedCompoundContractsFailClosed() {
                 "tilted compound keeps blockers but fabricates no flat tops");
 }
 
+bool hiddenHierarchyIsExcludedUnlessExplicitlyRequested() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("hidden hierarchy");
+  cr::CreativeDocumentCreateRequest parentRequest;
+  parentRequest.kind = cr::CreativeObjectKind::Group;
+  parentRequest.name = "Hidden Assembly";
+  parentRequest.visible = false;
+  parentRequest.hasVisibleOverride = true;
+  const cr::CreativeDocumentCreateReceipt parent =
+      document.createObject(parentRequest);
+
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Locally Visible Member";
+  childRequest.parentId = parent.objectId;
+  const cr::CreativeDocumentCreateReceipt child =
+      document.createObject(childRequest);
+  const cr::CreativeRoomBakeResult hidden = bake(document, nullptr);
+
+  cr::CreativeRoomBakeRequest includeHiddenRequest;
+  includeHiddenRequest.document = &document;
+  includeHiddenRequest.validateReachability = false;
+  includeHiddenRequest.includeHidden = true;
+  const cr::CreativeRoomBakeResult included =
+      cr::buildRoomAssetFromCreativeDocument(includeHiddenRequest);
+
+  return expect(parent.accepted && child.accepted,
+                "hidden room-bake hierarchy fixture created") &&
+         expect(!hidden.receipt.accepted &&
+                    hidden.receipt.status ==
+                        cr::CreativeRoomBakeStatus::NoRenderableObjects &&
+                    hidden.receipt.skippedHiddenCount == 2U &&
+                    hidden.room.staticMeshes.empty(),
+                "hidden parent excludes every descendant from normal bake") &&
+         expect(included.receipt.accepted &&
+                    findMesh(included.room, child.objectId) != nullptr,
+                "includeHidden explicitly admits the locally visible child");
+}
+
+bool windowTreatmentSeparatesCollisionFromVision() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("windows");
+  const auto addWindow = [&](double centerX,
+                             cr::CreativeWindowInsertKind treatment) {
+    cr::CreativeDocumentCreateRequest request;
+    request.kind = cr::CreativeObjectKind::Window;
+    request.name = treatment == cr::CreativeWindowInsertKind::Glazing
+                       ? "Glazing"
+                       : "Shutters";
+    request.bounds = {{centerX - 0.5, 1.0, -0.05},
+                      {centerX + 0.5, 2.0, 0.05}};
+    request.hasBoundsOverride = true;
+    request.transform.position = {centerX, 1.5, 0.0};
+    request.hasTransformOverride = true;
+    request.window.insertKind = treatment;
+    request.hasWindowSettingsOverride = true;
+    return document.createObject(request);
+  };
+  const cr::CreativeDocumentCreateReceipt glazing =
+      addWindow(0.0, cr::CreativeWindowInsertKind::Glazing);
+  const cr::CreativeDocumentCreateReceipt shutters =
+      addWindow(3.0, cr::CreativeWindowInsertKind::PairedShutters);
+  cr::CreativeDocumentCreateRequest missingAssetRequest;
+  missingAssetRequest.kind = cr::CreativeObjectKind::Window;
+  missingAssetRequest.name = "Missing Asset Shutters";
+  missingAssetRequest.assetId = "missing/window_assembly";
+  missingAssetRequest.bounds = {{5.5, 1.0, -0.05}, {6.5, 2.0, 0.05}};
+  missingAssetRequest.hasBoundsOverride = true;
+  missingAssetRequest.transform.position = {6.0, 1.5, 0.0};
+  missingAssetRequest.hasTransformOverride = true;
+  missingAssetRequest.window.insertKind =
+      cr::CreativeWindowInsertKind::PairedShutters;
+  missingAssetRequest.hasWindowSettingsOverride = true;
+  const cr::CreativeDocumentCreateReceipt missingAsset =
+      document.createObject(missingAssetRequest);
+  const cr::CreativeRoomBakeResult result = bake(document, nullptr);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(result.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const std::string glazingSurfaceId =
+      "creative_object_" + std::to_string(glazing.objectId) +
+      "_actor_blocker";
+  const std::string shutterSurfaceId =
+      "creative_object_" + std::to_string(shutters.objectId) +
+      "_actor_blocker";
+  const iggy3d::RoomSpatialSurface* glazingSurface =
+      findSurface(result.room, glazingSurfaceId);
+  const iggy3d::RoomSpatialSurface* shutterSurface =
+      findSurface(result.room, shutterSurfaceId);
+  const iggy3d::RoomStaticMeshAsset* glazingMesh =
+      findMesh(result.room, glazing.objectId);
+  const iggy3d::RoomStaticMeshAsset* shutterMesh =
+      findMesh(result.room, shutters.objectId);
+  const iggy3d::RoomStaticMeshAsset* missingAssetMesh =
+      findMesh(result.room, missingAsset.objectId);
+  bool glazingStartsInside = false;
+  const bool glazingPhysicallyHit = iggy3d::segmentHitsAnyPhysicsAabb(
+      physics.colliders, {0.0F, 1.5F, -1.0F}, {0.0F, 1.5F, 1.0F}, 0.0F,
+      &glazingStartsInside);
+  const iggy3d::SegmentOcclusionVerdict glazingVision =
+      iggy3d::segmentOcclusion(physics.colliders, {0.0F, 1.5F, -1.0F},
+                               {0.0F, 1.5F, 1.0F}, 0.0F);
+  const iggy3d::SegmentOcclusionVerdict shutterVision =
+      iggy3d::segmentOcclusion(physics.colliders, {3.0F, 1.5F, -1.0F},
+                               {3.0F, 1.5F, 1.0F}, 0.0F);
+  const iggy3d::SegmentOcclusionVerdict missingAssetVision =
+      iggy3d::segmentOcclusion(physics.colliders, {6.0F, 1.5F, -1.0F},
+                               {6.0F, 1.5F, 1.0F}, 0.0F);
+
+  return expect(glazing.accepted && shutters.accepted && missingAsset.accepted &&
+                    result.receipt.accepted && physics.ok,
+                "window treatments reach room and physics bake") &&
+         expect(glazingSurface != nullptr &&
+                    glazingSurface->blocksActor &&
+                    !glazingSurface->blocksVision,
+                "glazing blocks movement without claiming opacity") &&
+         expect(shutterSurface != nullptr && shutterSurface->blocksActor &&
+                    shutterSurface->blocksVision,
+                "shutters block movement and vision") &&
+         expect(glazingMesh != nullptr && shutterMesh != nullptr &&
+                    glazingMesh->materialId == "creative_window_glass" &&
+                    shutterMesh->materialId == "creative_window_shutter" &&
+                    glazingMesh->semanticRole == "Window" &&
+                    shutterMesh->semanticRole == "Window",
+                "window treatment owns distinct render material semantics") &&
+         expect(glazingPhysicallyHit && !glazingStartsInside &&
+                    glazingVision == iggy3d::SegmentOcclusionVerdict::Clear,
+                "glazing physical collider remains transparent to sight") &&
+         expect(shutterVision ==
+                    iggy3d::SegmentOcclusionVerdict::Blocked,
+                "closed shutters occlude sight") &&
+         expect(missingAssetMesh != nullptr &&
+                    missingAssetMesh->meshId == "creative_box_proxy" &&
+                    result.receipt.skippedMissingAssetMetadataCount == 1U &&
+                    missingAssetVision ==
+                        iggy3d::SegmentOcclusionVerdict::Blocked,
+                "missing shutter asset keeps a visible and semantic fallback");
+}
+
+bool authoredTerrainHardEdgeAddsOnlyTheInternalCliffBlocker() {
+  cr::CreativeTerrainHeightField field;
+  const std::array<std::uint16_t, 2U> heights{2U, 6U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt replaced =
+      field.replace({{0, 0}, 2U, 1U}, heights);
+  cr::CreativeTerrainField legacy;
+  const cr::CreativeTerrainSurfacePlan smoothSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(legacy, field);
+  const std::array hardEdges{cr::canonicalCreativeTerrainHardEdge({0, 0},
+                                                                  {1, 0})};
+  const cr::CreativeTerrainSurfacePlan hardSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(legacy, field, hardEdges);
+  const cr::CreativeTerrainRenderPlan smoothRender =
+      cr::buildCreativeTerrainRenderPlan(smoothSurface, {}, 1.0);
+  const cr::CreativeTerrainRenderPlan hardRender =
+      cr::buildCreativeTerrainRenderPlan(hardSurface, {}, 1.0);
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("hard edge bake");
+  const auto bakePatches = [&](const cr::CreativeTerrainRenderPlan& render) {
+    cr::CreativeRoomBakeRequest request;
+    request.document = &document;
+    request.validateReachability = false;
+    request.usePrecomputedVoxelCuboids = true;
+    request.precomputedVoxelCuboids = smoothSurface.cuboids;
+    request.usePrecomputedTerrainSurfacePatches = true;
+    request.precomputedTerrainSurfacePatches = render.patches;
+    return cr::buildRoomAssetFromCreativeDocument(request);
+  };
+  const cr::CreativeRoomBakeResult smooth = bakePatches(smoothRender);
+  const cr::CreativeRoomBakeResult hard = bakePatches(hardRender);
+  const iggy3d::RoomSpatialSurface* hardActor = findSurface(
+      hard.room,
+      "creative_terrain_1_0_hard_edge_west_actor_blocker");
+  const iggy3d::RoomSpatialSurface* hardProjectile = findSurface(
+      hard.room,
+      "creative_terrain_1_0_hard_edge_west_projectile_blocker");
+  const iggy3d::SpatialSurfaceSet smoothSurfaces =
+      iggy3d::buildSpatialSurfaceSet(smooth.room);
+  const iggy3d::SpatialSurfaceSet hardSurfaces =
+      iggy3d::buildSpatialSurfaceSet(hard.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult smoothPhysics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(
+          {&smoothSurfaces, {}});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult hardPhysics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(
+          {&hardSurfaces, {}});
+  const bool smoothHit = iggy3d::segmentHitsAnyPhysicsAabb(
+      smoothPhysics.colliders, {0.5F, 4.0F, 0.5F},
+      {1.5F, 4.0F, 0.5F}, 0.0F, nullptr);
+  const bool hardHit = iggy3d::segmentHitsAnyPhysicsAabb(
+      hardPhysics.colliders, {0.5F, 4.0F, 0.5F},
+      {1.5F, 4.0F, 0.5F}, 0.0F, nullptr);
+  const std::array<iggy3d::Vec3, 2U> waypoints{
+      iggy3d::Vec3{0.5F, 2.0F, 0.5F},
+      iggy3d::Vec3{1.5F, 6.0F, 0.5F},
+  };
+  const iggy3d::ReasoningGraph smoothReasoning =
+      iggy3d::buildReasoningGraph(smooth.room, waypoints);
+  const iggy3d::ReasoningGraph hardReasoning =
+      iggy3d::buildReasoningGraph(hard.room, waypoints);
+
+  return expect(replaced.accepted && smoothRender.accepted &&
+                    hardRender.accepted && smooth.receipt.accepted &&
+                    hard.receipt.accepted,
+                "smooth and hard-edge terrain fixtures bake") &&
+         expect(smooth.receipt.bakedTerrainSurfacePatchCount == 2U &&
+                    hard.receipt.bakedTerrainSurfacePatchCount == 2U,
+                "hard topology does not duplicate walkable top patches") &&
+         expect(hard.receipt.bakedTerrainCliffBlockerCount ==
+                    smooth.receipt.bakedTerrainCliffBlockerCount + 2U &&
+                    hardActor != nullptr && hardActor->blocksActor &&
+                    hardProjectile != nullptr &&
+                    hardProjectile->blocksProjectile,
+                "one internal hard edge adds exactly actor and projectile blockers") &&
+         expect(smoothPhysics.ok && hardPhysics.ok && !smoothHit && hardHit,
+                "runtime segment crosses smooth join but stops at authored cliff") &&
+         expect(smoothReasoning.nodes.size() == 2U &&
+                    smoothReasoning.edges.size() == 1U &&
+                    hardReasoning.nodes.size() == 2U &&
+                    hardReasoning.edges.empty(),
+                "authored cliff removes the cross-edge reasoning connection");
+}
+
 }  // namespace
 
 int main() {
-  const bool ok = fixtureMetadataProducesHonestPhysicsSurfaces() &&
+  const bool ok = voxelBakePreservesMaterialIdentityAndGeometryRole() &&
+                  fixtureMetadataProducesHonestPhysicsSurfaces() &&
                   compoundFixtureAssetsReachRuntimePhysics() &&
                   importedStairSupportsFullBoundedRuntimeTraversal() &&
                   generatedTraversalGeometryStaysInRenderCollisionParity() &&
                   generatedStructuralGeometryStaysInRenderCollisionParity() &&
+                  generatedHipRoofCollisionMatchesTaperedWeatherFace() &&
                   generatedTraversalTransformsFailClosedAndStayBounded() &&
                   renderOnlyAndUnsafeMetadataStayVisibleWithoutPhysics() &&
                   defaultMetadataUsesBoundsButNeverInventsWalkability() &&
                   tiltedWalkableAssetDoesNotFabricateAHorizontalTop() &&
                   compoundBoundsMapResizeAndEmitIndependentWalkableTops() &&
                   compoundBoundsFollowNonuniformScaleAndYaw() &&
-                  invalidAndTiltedCompoundContractsFailClosed();
+                  invalidAndTiltedCompoundContractsFailClosed() &&
+                  hiddenHierarchyIsExcludedUnlessExplicitlyRequested() &&
+                  windowTreatmentSeparatesCollisionFromVision() &&
+                  authoredTerrainHardEdgeAddsOnlyTheInternalCliffBlocker();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

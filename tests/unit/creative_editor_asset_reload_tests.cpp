@@ -2,6 +2,7 @@
 #include "EditorAssetReplacement.hpp"
 #include "EditorEdits.hpp"
 #include "EditorPreviewFrame.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include <algorithm>
@@ -76,6 +77,7 @@ bool sameMetadata(const cr::CreativeObject& lhs,
          lhs.layerId == rhs.layerId && lhs.visible == rhs.visible &&
          lhs.locked == rhs.locked && lhs.tags == rhs.tags &&
          lhs.parentId == rhs.parentId &&
+         lhs.attachmentSocket == rhs.attachmentSocket &&
          lhs.pathPoints.size() == rhs.pathPoints.size();
 }
 
@@ -85,6 +87,10 @@ iggy3d::StaticMeshAssetCatalog replacementCatalog() {
       "asset_a", {-1.0F, 0.0F, -1.0F}, {1.0F, 2.0F, 1.0F}));
   catalog.entries.push_back(catalogEntry(
       "asset_b", {-0.5F, 0.0F, -2.0F}, {0.5F, 4.0F, 2.0F}));
+  catalog.entries[0].contentHash = 11U;
+  catalog.entries[0].materialVariants = {{{"Weathered"}}};
+  catalog.entries[1].contentHash = 22U;
+  catalog.entries[1].materialVariants = {{{"Weathered"}}, {{"Painted"}}};
   return catalog;
 }
 
@@ -94,11 +100,16 @@ cr::CreativeDocumentCreateReceipt createRichAssetObject(
     cr::CreativeVec3 pivot,
     std::string name,
     cr::CreativeLayerId layerId,
-    std::optional<cr::CreativeObjectId> parentId = std::nullopt) {
+    std::optional<cr::CreativeObjectId> parentId = std::nullopt,
+    std::string attachmentSocket = {}) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Prop;
   request.name = std::move(name);
   request.assetId = source.assetId;
+  request.assetContentHash = source.contentHash;
+  request.assetMaterialVariant =
+      source.materialVariants.empty() ? std::string{}
+                                      : source.materialVariants.front().name;
   request.transform.position = pivot;
   request.transform.rotationEulerRadians = {0.1, 0.2, 0.3};
   request.transform.scale = {1.25, 0.75, 1.5};
@@ -109,6 +120,7 @@ cr::CreativeDocumentCreateReceipt createRichAssetObject(
   request.hasLayerOverride = true;
   request.tags = {"authored", "replace-test"};
   request.parentId = parentId;
+  request.attachmentSocket = std::move(attachmentSocket);
   return document.createObject(request);
 }
 
@@ -191,6 +203,10 @@ bool boundsRefreshUpdatesOnlyNaturalAssetBounds() {
   iggy3d::StaticMeshAssetCatalog next;
   next.entries.push_back(catalogEntry(
       "prop", {-2.0F, -1.0F, -4.0F}, {2.0F, 3.0F, 4.0F}));
+  previous.entries[0].contentHash = 101U;
+  previous.entries[0].materialVariants = {{{"Legacy"}}};
+  next.entries[0].contentHash = 202U;
+  next.entries[0].materialVariants = {{{"Current"}}};
 
   cr::CreativeDocument document = cr::CreativeDocument::create("reload");
   static_cast<void>(document.assignId(7U));
@@ -205,26 +221,94 @@ bool boundsRefreshUpdatesOnlyNaturalAssetBounds() {
       createAssetObject(document, "prop", pivot, custom);
   const cr::CreativeDocumentCreateReceipt missingCreated =
       createAssetObject(document, "missing", pivot, natural);
+  document.findObject(naturalCreated.objectId)->assetContentHash = 101U;
+  document.findObject(naturalCreated.objectId)->assetMaterialVariant = "Legacy";
+  document.findObject(customCreated.objectId)->assetContentHash = 101U;
+  document.findObject(customCreated.objectId)->assetMaterialVariant = "Legacy";
   const app::CreativeAssetBoundsRefreshPlan plan =
       app::planCreativeAssetBoundsRefresh(document, previous, next);
-  if (plan.mutations.empty()) {
-    return expect(false, "natural asset emits one bounds mutation");
+  if (plan.mutations.size() != 2U) {
+    return expect(false, "natural and custom assets emit identity mutations");
   }
-  const auto* payload = std::get_if<cr::SetBoundsMutation>(
+  const auto* naturalPayload = std::get_if<cr::SetAssetMutation>(
       &plan.mutations[0].payload.value);
+  const auto* customPayload = std::get_if<cr::SetAssetMutation>(
+      &plan.mutations[1].payload.value);
   const cr::CreativeBounds expected{{8.0, 4.0, -6.0},
                                     {12.0, 8.0, 2.0}};
   return expect(naturalCreated.accepted && customCreated.accepted &&
                     missingCreated.accepted &&
                     plan.inspectedObjectCount == 3U &&
-                    plan.mutations.size() == 1U &&
+                    plan.mutations.size() == 2U &&
                     plan.mutations[0].objectId == naturalCreated.objectId &&
-                    payload != nullptr &&
-                    cr::creativeBoundsExactlyEqual(payload->bounds, expected),
-                "source-origin bounds refresh emits the exact new envelope") &&
+                    naturalPayload != nullptr &&
+                    naturalPayload->assetContentHash == 202U &&
+                    naturalPayload->assetMaterialVariant.empty() &&
+                    cr::creativeBoundsExactlyEqual(naturalPayload->bounds,
+                                                   expected),
+                "natural asset refreshes envelope version and variant") &&
+         expect(plan.mutations[1].objectId == customCreated.objectId &&
+                    customPayload != nullptr &&
+                    customPayload->assetContentHash == 202U &&
+                    customPayload->assetMaterialVariant.empty() &&
+                    cr::creativeBoundsExactlyEqual(customPayload->bounds,
+                                                   custom),
+                "custom envelope remains authored while identity advances") &&
          expect(plan.customBoundsSkippedCount == 1U &&
-                    plan.missingAssetCount == 1U,
-                "custom and missing asset bounds remain untouched");
+                    plan.missingAssetCount == 1U &&
+                    plan.boundsUpdateCount == 1U &&
+                    plan.identityUpdateCount == 2U &&
+                    plan.materialVariantResetCount == 2U,
+                "reload reports bounds identity and variant work separately");
+}
+
+bool boundsRefreshPreservesAttachmentRelationshipAndWorldPose() {
+  iggy3d::StaticMeshAssetCatalog previous;
+  previous.entries.push_back(catalogEntry(
+      "prop", {-1.0F, -2.0F, -3.0F}, {1.0F, 2.0F, 3.0F}));
+  previous.entries[0].contentHash = 101U;
+  iggy3d::StaticMeshAssetCatalog next;
+  next.entries.push_back(catalogEntry(
+      "prop", {-2.0F, -1.0F, -4.0F}, {2.0F, 3.0F, 4.0F}));
+  next.entries[0].contentHash = 202U;
+
+  cr::CreativeDocument document = cr::CreativeDocument::create("Attached Reload");
+  static_cast<void>(document.assignId(8U));
+  cr::CreativeDocumentCreateRequest hostRequest;
+  hostRequest.kind = cr::CreativeObjectKind::Prop;
+  hostRequest.name = "Socket Host";
+  hostRequest.transform.position = {20.0, 0.0, 0.0};
+  hostRequest.hasTransformOverride = true;
+  hostRequest.bounds = {{19.0, 0.0, -1.0}, {21.0, 2.0, 1.0}};
+  hostRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt host =
+      document.createObject(hostRequest);
+  const cr::CreativeDocumentCreateReceipt child = createRichAssetObject(
+      document, previous.entries[0], {10.0, 5.0, -2.0}, "Attached Prop",
+      3U, host.objectId, "fixture_socket");
+  if (!expect(host.accepted && child.accepted,
+              "attached reload fixtures created")) {
+    return false;
+  }
+  const cr::CreativeObject before = *document.findObject(child.objectId);
+
+  const app::CreativeAssetBoundsRefreshPlan plan =
+      app::planCreativeAssetBoundsRefresh(document, previous, next);
+  const cr::CreativeDocumentBatchMutationReceipt applied =
+      cr::applyDocumentMutationsAtomically(document, plan.mutations);
+  const cr::CreativeObject* after = document.findObject(child.objectId);
+  const cr::CreativeBounds expected =
+      app::creativeAssetBoundsAtPivot(next.entries[0],
+                                     before.transform.position);
+  return expect(plan.mutations.size() == 1U && applied.committed &&
+                    applied.changed && after != nullptr &&
+                    after->assetContentHash == 202U &&
+                    cr::creativeBoundsExactlyEqual(after->bounds, expected),
+                "attached asset reload advances mesh identity and bounds") &&
+         expect(sameTransform(after->transform, before.transform) &&
+                    after->parentId == host.objectId &&
+                    after->attachmentSocket == "fixture_socket",
+                "asset reload preserves attachment and exact world pose");
 }
 
 bool worldLayoutBoundsRefreshIsAtomicAndPreservesCustomSources() {
@@ -380,9 +464,12 @@ bool catalogAndHotbarPreserveStableAssetIdentity() {
   previousAsset.objectKind = cr::CreativeObjectKind::Rock;
   previousAsset.assetId = "boulder_01";
   previousAsset.label = "Boulder 01";
+  previousAsset.contentHash = 11U;
+  previousAsset.materialVariants = {{{"Mossy"}}, {{"Dry"}}};
   previousAsset.sourceBounds = {{-1.0, -1.0, -1.0}, {1.0, 1.0, 1.0}};
   cr::CreativeCatalogState previous =
-      cr::makeCreativeCatalog(palette, std::span{&previousAsset, 1U});
+      cr::makeCreativeCatalog(palette, std::span{&previousAsset, 1U}, 0U, {},
+                              app::creativeEditorCatalogToolSpecs());
   static_cast<void>(
       cr::setCreativeCatalogPage(previous, cr::CreativeCatalogPage::Assets));
   static_cast<void>(cr::setCreativeCatalogQuery(previous, "boulder"));
@@ -391,6 +478,8 @@ bool catalogAndHotbarPreserveStableAssetIdentity() {
   app::CreativeCatalogAssetDiscovery discovery;
   cr::CreativeCatalogAsset refreshed = previousAsset;
   refreshed.objectKind = cr::CreativeObjectKind::Bridge;
+  refreshed.contentHash = 22U;
+  refreshed.materialVariants = {{{"Mossy"}}, {{"Wet"}}};
   refreshed.sourceBounds = {{-2.0, -0.5, -1.0}, {2.0, 0.5, 1.0}};
   discovery.assets.push_back(refreshed);
   cr::CreativeCatalogState replacement = app::rebuildCreativeAssetCatalog(
@@ -398,12 +487,16 @@ bool catalogAndHotbarPreserveStableAssetIdentity() {
   const cr::CreativeCatalogEntry* selected =
       cr::selectedCreativeCatalogEntry(replacement);
 
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
   static_cast<void>(cr::setCreativeHotbarAsset(
-      hotbar.entries[0], previousAsset.assetId, previousAsset.sourceBounds));
+      hotbar.entries[0], previousAsset.assetId, previousAsset.sourceBounds,
+      previousAsset.contentHash, "Mossy"));
   hotbar.entries[0].objectKind = previousAsset.objectKind;
   static_cast<void>(cr::setCreativeHotbarAsset(
       hotbar.entries[1], "deleted_asset", previousAsset.sourceBounds));
+  static_cast<void>(cr::setCreativeHotbarAsset(
+      hotbar.entries[2], previousAsset.assetId, previousAsset.sourceBounds,
+      previousAsset.contentHash, "Dry"));
   const cr::CreativeHotbarEntry deletedBefore = hotbar.entries[1];
   const std::size_t changed =
       app::refreshCreativeHotbarAssetFacts(hotbar, discovery.assets);
@@ -414,17 +507,26 @@ bool catalogAndHotbarPreserveStableAssetIdentity() {
                     cr::creativeHotbarAssetId(selected->hotbarEntry) ==
                         "boulder_01",
                 "catalog page, query, open state, and asset selection survive") &&
-         expect(changed == 1U &&
+         expect(changed == 2U &&
+                    cr::creativeHotbarAssetId(hotbar.entries[0]) ==
+                        "boulder_01" &&
                     hotbar.entries[0].objectKind ==
                         cr::CreativeObjectKind::Bridge &&
+                    hotbar.entries[0].assetContentHash == 22U &&
+                    cr::creativeHotbarAssetMaterialVariant(hotbar.entries[0]) ==
+                        "Mossy" &&
                     cr::creativeBoundsExactlyEqual(
                         hotbar.entries[0].assetSourceBounds,
                         refreshed.sourceBounds) &&
+                    cr::creativeHotbarAssetMaterialVariant(hotbar.entries[2])
+                        .empty() &&
+                    cr::creativeHotbarAssetId(hotbar.entries[2]) ==
+                        "boulder_01" &&
                     hotbar.entries[1].assetId == deletedBefore.assetId &&
                     cr::creativeBoundsExactlyEqual(
                         hotbar.entries[1].assetSourceBounds,
                         deletedBefore.assetSourceBounds),
-                "surviving hotbar assets refresh while deleted IDs persist");
+                "hotbar refreshes versions preserves valid variants and clears stale ones");
 }
 
 bool replacementPreviewCommitAndUndoAreAtomic() {
@@ -435,7 +537,7 @@ bool replacementPreviewCommitAndUndoAreAtomic() {
       document, catalog.entries[0], {4.0, 1.0, -3.0}, "First", 7U);
   const cr::CreativeDocumentCreateReceipt second = createRichAssetObject(
       document, catalog.entries[0], {-2.0, 0.5, 6.0}, "Second", 9U,
-      first.objectId);
+      first.objectId, "replacement_socket");
   if (!expect(first.accepted && second.accepted,
               "replacement fixtures created")) {
     return false;
@@ -638,13 +740,24 @@ bool replacementPlansFailClosedAndCancelCleanly() {
       app::planCreativeAssetReplacement(
           document, selection, invalidBoundsCatalog,
           cr::CreativeObjectKind::Rock, "asset_b");
+  const auto* customPayload =
+      customPlan.mutations.empty()
+          ? nullptr
+          : std::get_if<cr::SetAssetMutation>(
+                &customPlan.mutations.front().payload.value);
   bool ok = expect(noChange.status ==
                        app::CreativeAssetReplacementStatus::NoChange &&
                        !noChange.accepted,
                    "identical replacement is a no-change") &&
-            expect(customPlan.status ==
-                       app::CreativeAssetReplacementStatus::CustomBounds &&
-                       lockedPlan.status ==
+            expect(customPlan.accepted &&
+                       customPlan.status ==
+                           app::CreativeAssetReplacementStatus::Ready &&
+                       customPayload != nullptr &&
+                       cr::creativeBoundsExactlyEqual(
+                           customPayload->bounds,
+                           custom.findObject(created.objectId)->bounds),
+                   "replacement preserves custom authored bounds") &&
+            expect(lockedPlan.status ==
                            app::CreativeAssetReplacementStatus::LockedObject &&
                        missingPlan.status ==
                            app::CreativeAssetReplacementStatus::MissingSourceAsset &&
@@ -712,6 +825,7 @@ int main() {
   ok = discoveryReportsValidBrokenAndFatalRoots() && ok;
   ok = deletedAssetsRemainExplicitFailures() && ok;
   ok = boundsRefreshUpdatesOnlyNaturalAssetBounds() && ok;
+  ok = boundsRefreshPreservesAttachmentRelationshipAndWorldPose() && ok;
   ok = worldLayoutBoundsRefreshIsAtomicAndPreservesCustomSources() && ok;
   ok = catalogAndHotbarPreserveStableAssetIdentity() && ok;
   ok = replacementPreviewCommitAndUndoAreAtomic() && ok;

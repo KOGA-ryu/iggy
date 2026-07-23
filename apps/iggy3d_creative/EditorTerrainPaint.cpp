@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <limits>
 #include <utility>
 
 #include "EditorEdits.hpp"
@@ -14,11 +13,6 @@
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
-
-[[nodiscard]] bool coordLess(cr::CreativeTerrainCoord2 lhs,
-                             cr::CreativeTerrainCoord2 rhs) noexcept {
-  return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
-}
 
 [[nodiscard]] bool terrainPaintTarget(const CreativeEditorState& editor,
                                       cr::CreativeTerrainCoord2& target) {
@@ -65,6 +59,12 @@ void setFeedback(CreativeEditorState& editor, bool accepted) {
   request.source = editor.toolSettings.terrainPaintSource;
   request.radiusCells = cr::creativeTerrainPaintRadiusCells(
       editor.toolSettings.terrainPaintRadius);
+  request.hardness = editor.toolSettings.terrainPaintHardness;
+  request.opacity = editor.toolSettings.terrainPaintOpacity;
+  request.mask = editor.toolSettings.terrainPaintMask;
+  request.blend = editor.toolSettings.terrainPaintBlend;
+  request.slopeFilter = editor.toolSettings.terrainPaintSlopeFilter;
+  request.heightFilter = editor.toolSettings.terrainPaintHeightFilter;
   if (request.mode == cr::CreativeTerrainPaintMode::Region) {
     const CreativeEditorTerrainPaintState& state = editor.terrainPaint;
     const cr::CreativeTerrainCoord2 first =
@@ -119,6 +119,12 @@ void setFeedback(CreativeEditorState& editor, bool accepted) {
          cache.material == previewMaterial(editor) &&
          cache.source == editor.toolSettings.terrainPaintSource &&
          cache.radius == editor.toolSettings.terrainPaintRadius &&
+         cache.hardness == editor.toolSettings.terrainPaintHardness &&
+         cache.opacity == editor.toolSettings.terrainPaintOpacity &&
+         cache.mask == editor.toolSettings.terrainPaintMask &&
+         cache.blend == editor.toolSettings.terrainPaintBlend &&
+         cache.slopeFilter == editor.toolSettings.terrainPaintSlopeFilter &&
+         cache.heightFilter == editor.toolSettings.terrainPaintHeightFilter &&
          cache.regionPhase == editor.terrainPaint.regionPhase &&
          cache.target == target &&
          cache.firstCorner == editor.terrainPaint.firstCorner &&
@@ -129,26 +135,28 @@ void setFeedback(CreativeEditorState& editor, bool accepted) {
 buildPreviewEdges(const cr::CreativeDocument& document,
                   const cr::CreativeTerrainPaintPlan& plan) {
   std::vector<CreativeEditorTerrainPaintPreviewEdge> edges;
+  if (plan.previews().size() != plan.cells().size()) {
+    return edges;
+  }
   edges.reserve(plan.cells().size() * 4U);
   const cr::CreativeGridSettings grid = document.gridSettings();
-  constexpr std::array<cr::CreativeTerrainCoord2, 4U> neighbors{{
-      {0, -1},
-      {1, 0},
-      {0, 1},
-      {-1, 0},
-  }};
-  for (cr::CreativeTerrainCoord2 coord : plan.cells()) {
+  for (std::size_t cellIndex = 0U; cellIndex < plan.cells().size(); ++cellIndex) {
+    const cr::CreativeTerrainCoord2 coord = plan.cells()[cellIndex];
     const cr::CreativeTerrainHeightSample height =
         cr::sampleCreativeTerrainHeight(document.terrainField(), coord);
     if (!height.present) {
       continue;
     }
+    const float cellSize = static_cast<float>(grid.cellSizeMeters);
+    const float inset = cellSize * 0.08F;
     const float minX = static_cast<float>(
-        grid.origin.x + coord.x * grid.cellSizeMeters);
+                           grid.origin.x + coord.x * grid.cellSizeMeters) +
+                       inset;
     const float minZ = static_cast<float>(
-        grid.origin.z + coord.z * grid.cellSizeMeters);
-    const float maxX = minX + static_cast<float>(grid.cellSizeMeters);
-    const float maxZ = minZ + static_cast<float>(grid.cellSizeMeters);
+                           grid.origin.z + coord.z * grid.cellSizeMeters) +
+                       inset;
+    const float maxX = minX + cellSize - inset * 2.0F;
+    const float maxZ = minZ + cellSize - inset * 2.0F;
     const float y = static_cast<float>(
         grid.origin.y + height.heightCells * grid.cellSizeMeters + 0.03);
     const std::array<iggy3d::Vec3, 4U> corners{{
@@ -157,26 +165,14 @@ buildPreviewEdges(const cr::CreativeDocument& document,
         {maxX, y, maxZ},
         {minX, y, maxZ},
     }};
-    for (std::size_t edge = 0U; edge < neighbors.size(); ++edge) {
-      const std::int64_t neighborX =
-          static_cast<std::int64_t>(coord.x) + neighbors[edge].x;
-      const std::int64_t neighborZ =
-          static_cast<std::int64_t>(coord.z) + neighbors[edge].z;
-      const bool representable =
-          neighborX >= std::numeric_limits<std::int32_t>::min() &&
-          neighborX <= std::numeric_limits<std::int32_t>::max() &&
-          neighborZ >= std::numeric_limits<std::int32_t>::min() &&
-          neighborZ <= std::numeric_limits<std::int32_t>::max();
-      const cr::CreativeTerrainCoord2 neighbor{
-          representable ? static_cast<std::int32_t>(neighborX) : 0,
-          representable ? static_cast<std::int32_t>(neighborZ) : 0};
-      if (representable &&
-          std::binary_search(plan.affectedCells.begin(),
-                             plan.affectedCells.end(), neighbor, coordLess)) {
-        continue;
-      }
-      edges.push_back(
-          {corners[edge], corners[(edge + 1U) % corners.size()]});
+    const cr::CreativeVec3 layerColor =
+        cr::creativeTerrainMaterialRenderColor(
+            plan.previews()[cellIndex].afterWeights);
+    for (std::size_t edge = 0U; edge < corners.size(); ++edge) {
+      edges.push_back({corners[edge], corners[(edge + 1U) % corners.size()],
+                       {static_cast<float>(layerColor.x),
+                        static_cast<float>(layerColor.y),
+                        static_cast<float>(layerColor.z), 1.0F}});
     }
   }
   return edges;
@@ -208,6 +204,12 @@ void refreshPreviewCache(const cr::CreativeDocument& document,
   cache.material = previewMaterial(editor);
   cache.source = editor.toolSettings.terrainPaintSource;
   cache.radius = editor.toolSettings.terrainPaintRadius;
+  cache.hardness = editor.toolSettings.terrainPaintHardness;
+  cache.opacity = editor.toolSettings.terrainPaintOpacity;
+  cache.mask = editor.toolSettings.terrainPaintMask;
+  cache.blend = editor.toolSettings.terrainPaintBlend;
+  cache.slopeFilter = editor.toolSettings.terrainPaintSlopeFilter;
+  cache.heightFilter = editor.toolSettings.terrainPaintHeightFilter;
   cache.regionPhase = editor.terrainPaint.regionPhase;
   cache.target = target;
   cache.firstCorner = editor.terrainPaint.firstCorner;
@@ -481,22 +483,13 @@ void appendCreativeEditorTerrainPaintOverlay(
   if (!plan.accepted) {
     return;
   }
-  constexpr std::array colors{
-      iggy3d::RenderLineColor{0.20F, 0.95F, 0.25F, 1.0F},
-      iggy3d::RenderLineColor{0.52F, 0.30F, 0.12F, 1.0F},
-      iggy3d::RenderLineColor{0.68F, 0.70F, 0.72F, 1.0F},
-      iggy3d::RenderLineColor{0.98F, 0.84F, 0.40F, 1.0F},
-  };
-  const std::size_t colorIndex = static_cast<std::size_t>(material);
-  const iggy3d::RenderLineColor color =
-      colorIndex < colors.size() ? colors[colorIndex] : colors.front();
   const std::vector<CreativeEditorTerrainPaintPreviewEdge> fallbackEdges =
       cached ? std::vector<CreativeEditorTerrainPaintPreviewEdge>{}
              : buildPreviewEdges(document, plan);
   const std::vector<CreativeEditorTerrainPaintPreviewEdge>& edges =
       cached ? editor.terrainPaint.preview.edges : fallbackEdges;
   for (const CreativeEditorTerrainPaintPreviewEdge& edge : edges) {
-    appendLine(lines, edge.start, edge.end, color, thickness);
+    appendLine(lines, edge.start, edge.end, edge.color, thickness);
   }
 }
 

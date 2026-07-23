@@ -259,6 +259,8 @@ bool affordanceKindsMapToNodes() {
       anchor("cover", {4.0F, 0.0F, 4.0F}),
       anchor("patrol_post", {5.0F, 0.0F, 5.0F}),
       anchor("monster", {6.0F, 0.0F, 6.0F}),
+      anchor("stair", {6.5F, 1.0F, 6.5F}),
+      anchor("ramp", {6.75F, 1.25F, 6.75F}),
       anchor("trap", {7.0F, 0.0F, 7.0F}),              // deck metadata -> no node
       anchor("reset_zone", {8.0F, 0.0F, 8.0F}),        // hazard socket -> no node
       anchor("totally_unknown", {9.0F, 0.0F, 9.0F}),   // unknown -> no node, no error
@@ -274,13 +276,18 @@ bool affordanceKindsMapToNodes() {
     }
     return false;
   };
-  return expect(g.nodes.size() == 6U, "only the 6 authored affordance kinds become nodes") &&
+  return expect(g.nodes.size() == 8U, "only the 8 authored affordance kinds become nodes") &&
          expect(has(iggy3d::ReasoningNodeKind::chokepoint, {1, 0, 1}), "chokepoint -> chokepoint") &&
          expect(has(iggy3d::ReasoningNodeKind::highGround, {2, 0, 2}), "high_ground -> highGround") &&
          expect(has(iggy3d::ReasoningNodeKind::hidingSpot, {3, 0, 3}), "hiding_spot -> hidingSpot") &&
          expect(has(iggy3d::ReasoningNodeKind::coverCluster, {4, 0, 4}), "cover -> coverCluster") &&
          expect(has(iggy3d::ReasoningNodeKind::patrolPost, {5, 0, 5}), "patrol_post -> patrolPost") &&
          expect(has(iggy3d::ReasoningNodeKind::reference, {6, 0, 6}), "monster -> reference") &&
+         expect(has(iggy3d::ReasoningNodeKind::stair, {6.5F, 1.0F, 6.5F}),
+                "stair -> stair") &&
+         expect(has(iggy3d::ReasoningNodeKind::ramp,
+                    {6.75F, 1.25F, 6.75F}),
+                "ramp -> ramp") &&
          expect(!has(iggy3d::ReasoningNodeKind::doorway, {7, 0, 7}),
                 "trap/reset_zone/unknown derive no node (ignore-and-continue)");
 }

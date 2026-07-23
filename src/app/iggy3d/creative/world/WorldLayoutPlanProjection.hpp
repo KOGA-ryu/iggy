@@ -22,8 +22,9 @@ enum class CreativeWorldLayoutPlanProjectionStatus : std::uint8_t {
 };
 
 enum class CreativeWorldLayoutPlanLayer : std::uint8_t {
-  Context,
+  LowerContext,
   Active,
+  UpperContext,
   Overhead,
   Count,
 };
@@ -38,11 +39,15 @@ enum class CreativeWorldLayoutPlanRole : std::uint8_t {
   SharedBoundary,
   Door,
   DoorSwing,
+  OpeningFacing,
   Window,
+  WindowShutter,
   Stair,
   Ramp,
   RoofOutline,
   RoofRidge,
+  RoofSkylight,
+  RoofClearance,
   TerrainProfile,
   TerrainPath,
   Contour,
@@ -131,17 +136,21 @@ struct CreativeWorldLayoutPlanProjectionRequest {
   std::span<const CreativeTerrainContourSegment> contours;
   double cutPlaneHeightMeters = 1.2;
   bool includeLowerLevelContext = true;
+  bool includeUpperLevelContext = false;
   bool includeRoofOverhead = true;
 };
 
 struct CreativeWorldLayoutPlanProjectionReceipt {
   std::size_t activeLevelCount = 0U;
   std::size_t contextLevelCount = 0U;
+  std::size_t lowerContextLevelCount = 0U;
+  std::size_t upperContextLevelCount = 0U;
   std::size_t roomPrimitiveCount = 0U;
   std::size_t wallPrimitiveCount = 0U;
   std::size_t openingPrimitiveCount = 0U;
   std::size_t connectorPrimitiveCount = 0U;
   std::size_t roofPrimitiveCount = 0U;
+  std::size_t roofAperturePrimitiveCount = 0U;
   std::size_t terrainPrimitiveCount = 0U;
   std::size_t contourPrimitiveCount = 0U;
   std::size_t objectPrimitiveCount = 0U;

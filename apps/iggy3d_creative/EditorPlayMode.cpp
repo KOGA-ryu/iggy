@@ -354,9 +354,10 @@ CreativeEditorPlayStartReceipt startCreativeEditorPlayMode(
   mode.target = {};
   mode.lastInteractionEffect = {};
   mode.lastAutomaticLogic = {};
+  mode.lastDoors = {};
   mode.lastMovingPlatforms = {};
   mode.processedRuntimeEventCount = 0U;
-  mode.cameraYawDegrees = 0.0F;
+  mode.cameraYawDegrees = mode.sandbox->playerSpawnYawRadians * 180.0F / kPi;
   mode.cameraPitchDegrees = 0.0F;
   resetPlayClock(mode);
   receipt.accepted = true;
@@ -375,6 +376,7 @@ iggy3d::creative::CreativeRuntimeSandboxStopReceipt stopCreativeEditorPlayMode(
   mode.target = {};
   mode.lastInteractionEffect = {};
   mode.lastAutomaticLogic = {};
+  mode.lastDoors = {};
   mode.lastMovingPlatforms = {};
   mode.processedRuntimeEventCount = 0U;
   resetPlayClock(mode);
@@ -515,6 +517,20 @@ CreativeEditorPlayTickReceipt tickCreativeEditorPlayMode(
       request.input, mode.cameraYawDegrees, mode.tuning, tickRateHz);
   while (mode.accumulatedTimeNanoseconds >= tickNanoseconds &&
          receipt.ticksAdvanced < mode.tuning.maximumCatchUpTicks) {
+    const iggy3d::creative::CreativeRuntimeDoorUpdateReceipt doors =
+        iggy3d::creative::updateCreativeRuntimeDoors(sandbox, tickRateHz);
+    mode.lastDoors = doors;
+    receipt.doors = doors.status;
+    receipt.doorsAdvanced +=
+        static_cast<std::uint32_t>(doors.movedDoorCount);
+    receipt.doorsBlocked +=
+        static_cast<std::uint32_t>(doors.blockedDoorCount);
+    if (!doors.accepted) {
+      failAndStop(mode, receipt,
+                  CreativeEditorPlayTickStatus::RuntimeTickFailed,
+                  std::string(doors.reasonCode));
+      return receipt;
+    }
     const iggy3d::creative::CreativeRuntimeMovingPlatformUpdateReceipt moving =
         iggy3d::creative::updateCreativeRuntimeMovingPlatforms(sandbox,
                                                                 tickRateHz);

@@ -3,6 +3,9 @@
 #include "app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
+#include "app/iggy3d/creative/recipes/RampRecipe.hpp"
+#include "app/iggy3d/creative/recipes/StairRecipe.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "content/assets/GeneratedGeometry.hpp"
 
 #include <algorithm>
@@ -230,6 +233,10 @@ RoomBakeObjectClassification skippedClassification(
       return "creative_stair_steps";
     case CreativeGeneratedGeometryProfile::OpenFrame:
       return "creative_open_frame";
+    case CreativeGeneratedGeometryProfile::SlopedPanel:
+      return "creative_solid_prism";
+    case CreativeGeneratedGeometryProfile::HipRoofPanel:
+      return "creative_hip_roof_panel";
     case CreativeGeneratedGeometryProfile::DescriptorDefault:
       return meshIdForRole(role);
   }
@@ -248,6 +255,35 @@ RoomBakeObjectClassification skippedClassification(
       return "creative_unsupported";
   }
   return "creative_unsupported";
+}
+
+[[nodiscard]] std::string_view materialIdForObject(
+    const CreativeObject& object,
+    BakedRoomRole role) noexcept {
+  if (object.kind == CreativeObjectKind::Window) {
+    return object.window.insertKind == CreativeWindowInsertKind::Glazing
+               ? "creative_window_glass"
+               : "creative_window_shutter";
+  }
+  CreativeStructuralMaterial material = CreativeStructuralMaterial::Blockout;
+  if (!parseCreativeStructuralMaterialTag(object.tags, material)) {
+    return materialIdForRole(role);
+  }
+  switch (material) {
+    case CreativeStructuralMaterial::Blockout:
+      return materialIdForRole(role);
+    case CreativeStructuralMaterial::Plaster:
+      return "creative_wall_plaster";
+    case CreativeStructuralMaterial::Timber:
+      return "creative_wall_timber";
+    case CreativeStructuralMaterial::Stone:
+      return "creative_wall_stone";
+    case CreativeStructuralMaterial::Brick:
+      return "creative_wall_brick";
+    case CreativeStructuralMaterial::Count:
+      break;
+  }
+  return materialIdForRole(role);
 }
 
 [[nodiscard]] std::string stableObjectId(
@@ -281,6 +317,78 @@ RoomBakeObjectClassification skippedClassification(
   anchor.positionMeters =
       creativeVec3ToCoreChecked(object.transform.position).value;
   return anchor;
+}
+
+void appendStairNavigationAnchors(CreativeRoomBakeResult& result,
+                                  const CreativeObject& object) {
+  if (object.kind != CreativeObjectKind::Stair) {
+    return;
+  }
+  CreativeStairRecipeRequest request;
+  request.authoredBounds = object.bounds;
+  request.transform = object.transform;
+  request.availableHeadroomMeters = kCreativeStairMinimumHeadroomMeters;
+  const CreativeStairRecipeResult stair = planCreativeStair(request);
+  if (!stair.accepted) {
+    return;
+  }
+  const CreativeCoreVec3Conversion lower =
+      creativeVec3ToCoreChecked(stair.lowerLanding.centerMeters);
+  const CreativeCoreVec3Conversion upper =
+      creativeVec3ToCoreChecked(stair.upperLanding.centerMeters);
+  if (!lower.converted || !upper.converted) {
+    return;
+  }
+
+  const auto append = [&](std::string_view suffix, Vec3 position) {
+    RoomAnchorAsset anchor;
+    anchor.id = stableObjectId(object, suffix);
+    anchor.kind = "stair";
+    anchor.runtimeStableName = stableObjectId(object, suffix);
+    anchor.positionMeters = position;
+    result.anchorSources.push_back({object.id, anchor.id});
+    result.room.anchors.push_back(std::move(anchor));
+  };
+  append("stair_low_anchor", lower.value);
+  append("stair_high_anchor", upper.value);
+}
+
+void appendRampNavigationAnchors(CreativeRoomBakeResult& result,
+                                 const CreativeObject& object) {
+  if (object.kind != CreativeObjectKind::Ramp) {
+    return;
+  }
+  CreativeRampRecipeRequest request;
+  request.authoredBounds = object.bounds;
+  request.transform = object.transform;
+  request.availableHeadroomMeters = kCreativeRampMinimumHeadroomMeters;
+  CreativeStructuralMaterial material = CreativeStructuralMaterial::Blockout;
+  if (parseCreativeStructuralMaterialTag(object.tags, material)) {
+    request.material = material;
+  }
+  const CreativeRampRecipeResult ramp = planCreativeRamp(request);
+  if (!ramp.accepted) {
+    return;
+  }
+  const CreativeCoreVec3Conversion lower =
+      creativeVec3ToCoreChecked(ramp.lowerLanding.centerMeters);
+  const CreativeCoreVec3Conversion upper =
+      creativeVec3ToCoreChecked(ramp.upperLanding.centerMeters);
+  if (!lower.converted || !upper.converted) {
+    return;
+  }
+
+  const auto append = [&](std::string_view suffix, Vec3 position) {
+    RoomAnchorAsset anchor;
+    anchor.id = stableObjectId(object, suffix);
+    anchor.kind = "ramp";
+    anchor.runtimeStableName = stableObjectId(object, suffix);
+    anchor.positionMeters = position;
+    result.anchorSources.push_back({object.id, anchor.id});
+    result.room.anchors.push_back(std::move(anchor));
+  };
+  append("ramp_low_anchor", lower.value);
+  append("ramp_high_anchor", upper.value);
 }
 
 void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
@@ -330,7 +438,9 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   mesh.meshId = useProceduralRenderFallback
                     ? std::string(generatedMeshIdForDescriptor(descriptor, role))
                     : "asset:" + object.assetId;
-  mesh.materialId = std::string(materialIdForRole(role));
+  mesh.materialId = std::string(materialIdForObject(object, role));
+  mesh.materialVariant = object.assetMaterialVariant;
+  mesh.semanticRole = std::string(serializedObjectKindId(object.kind));
   mesh.role = std::string(roleName(role));
   const CreativeTransformedBounds resolved =
       resolveCreativeObjectBounds(object);
@@ -357,9 +467,10 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
 [[nodiscard]] RoomBakeObjectClassification classifyRoomBakeObject(
     const CreativeObject& object,
     const CreativeObjectDescriptor& descriptor,
+    bool effectivelyVisible,
     bool includeHidden,
     const StaticMeshAssetCatalog* assetCatalog) noexcept {
-  if (!object.visible && !includeHidden) {
+  if (!effectivelyVisible && !includeHidden) {
     return skippedClassification(RoomBakeObjectDecision::SkipHidden, false);
   }
 
@@ -503,6 +614,8 @@ void applySkipClassification(CreativeRoomBakeReceipt& receipt,
   policy.maxCells = 1'000'000;
   policy.meshId = std::string(meshIdForRole(BakedRoomRole::Floor));
   policy.materialId = std::string(materialIdForRole(BakedRoomRole::Floor));
+  policy.semanticRole =
+      std::string(serializedObjectKindId(CreativeObjectKind::Floor));
   policy.role = std::string(roleName(BakedRoomRole::Floor));
   return policy;
 }
@@ -553,8 +666,11 @@ void appendRoomBakeObjects(CreativeRoomBakeResult& result,
   std::size_t documentIndex = 0;
   for (const CreativeObject& object : document.objects()) {
     const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
+    const bool effectivelyVisible =
+        creativeObjectEffectivelyVisible(document, object.id);
     const RoomBakeObjectClassification classification =
-        classifyRoomBakeObject(object, descriptor, includeHidden,
+        classifyRoomBakeObject(object, descriptor, effectivelyVisible,
+                               includeHidden,
                                assetCatalog);
     if (classification.countedAsConsidered) {
       ++result.receipt.consideredObjectCount;
@@ -606,6 +722,8 @@ void appendRoomBakeObjects(CreativeRoomBakeResult& result,
                           *entry.object,
                           *entry.descriptor,
                           entry.classification);
+    appendStairNavigationAnchors(result, *entry.object);
+    appendRampNavigationAnchors(result, *entry.object);
   }
 }
 

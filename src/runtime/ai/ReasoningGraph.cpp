@@ -49,6 +49,14 @@ bool nodeKindForAnchor(const std::string& anchorKind, ReasoningNodeKind& out) {
     out = ReasoningNodeKind::patrolPost;
     return true;
   }
+  if (anchorKind == "stair") {
+    out = ReasoningNodeKind::stair;
+    return true;
+  }
+  if (anchorKind == "ramp") {
+    out = ReasoningNodeKind::ramp;
+    return true;
+  }
   return false;
 }
 
@@ -88,6 +96,7 @@ std::string_view reasoningNodeKindName(ReasoningNodeKind kind) {
     case ReasoningNodeKind::soundSource: return "soundSource";
     case ReasoningNodeKind::lastKnownPosition: return "lastKnownPosition";
     case ReasoningNodeKind::reference: return "reference";
+    case ReasoningNodeKind::ramp: return "ramp";
   }
   return "unknown";
 }

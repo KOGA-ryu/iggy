@@ -62,6 +62,8 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
          kind == CreativeObjectKind::Ceiling ||
          kind == CreativeObjectKind::Roof ||
          kind == CreativeObjectKind::GableRoof ||
+         kind == CreativeObjectKind::HipRoof ||
+         kind == CreativeObjectKind::Window ||
          kind == CreativeObjectKind::Stair || kind == CreativeObjectKind::Ramp;
 }
 
@@ -74,6 +76,11 @@ void setGeometryStatus(CreativeRectangularRoomGeometryPlan& plan,
     CreativeBuildingOpeningKind kind) noexcept {
   return kind == CreativeBuildingOpeningKind::Door ||
          kind == CreativeBuildingOpeningKind::Window;
+}
+
+[[nodiscard]] bool validOpeningFacing(
+    CreativeBuildingOpeningFacing facing) noexcept {
+  return facing < CreativeBuildingOpeningFacing::Count;
 }
 
 [[nodiscard]] double openingPoseNormalSign(
@@ -151,21 +158,35 @@ void appendGeneratedRequest(CreativeBuildingRecipeResult& result,
                             const CreativeBuildingRecipeRequest& request,
                             CreativeObjectKind kind, std::string stableKey,
                             CreativeDocumentCreateRequest createRequest,
-                            bool hasCreatedRoot) {
+                            bool hasCreatedRoot,
+                            std::optional<std::size_t> parentObjectIndex =
+                                std::nullopt,
+                            bool doorPart = false,
+                            bool windowPart = false) {
   CreativeRecipeObjectPlan object;
   object.createRequest = std::move(createRequest);
   object.role = CreativeRecipeObjectRole::Generated;
   object.stableKey = std::move(stableKey);
-  setRecipeParent(object, request, hasCreatedRoot);
+  if (parentObjectIndex.has_value()) {
+    object.parentObjectIndex = parentObjectIndex;
+  } else {
+    setRecipeParent(object, request, hasCreatedRoot);
+  }
   result.plan.objects.push_back(std::move(object));
   ++result.receipt.generatedObjectCount;
-  if (kind == CreativeObjectKind::Wall) {
+  if (doorPart) {
+    ++result.receipt.doorPartObjectCount;
+  }
+  if (windowPart) {
+    ++result.receipt.windowPartObjectCount;
+  }
+  if (kind == CreativeObjectKind::Wall && !doorPart && !windowPart) {
     ++result.receipt.wallObjectCount;
   } else if (kind == CreativeObjectKind::Door) {
     ++result.receipt.doorObjectCount;
   } else if (kind == CreativeObjectKind::Window) {
     ++result.receipt.windowObjectCount;
-  } else {
+  } else if (!doorPart && !windowPart) {
     ++result.receipt.boxObjectCount;
   }
 }
@@ -187,6 +208,170 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
       hasCreatedRoot);
 }
 
+[[nodiscard]] std::string_view doorPartStableSuffix(
+    CreativeDoorPartKind kind) noexcept {
+  switch (kind) {
+    case CreativeDoorPartKind::MinimumJamb:
+      return "frame.minimum_jamb";
+    case CreativeDoorPartKind::MaximumJamb:
+      return "frame.maximum_jamb";
+    case CreativeDoorPartKind::Header:
+      return "frame.header";
+    case CreativeDoorPartKind::PrimaryLeaf:
+      return "insert";
+    case CreativeDoorPartKind::SecondaryLeaf:
+      return "leaf.secondary";
+    case CreativeDoorPartKind::PrimaryLowerHinge:
+      return "hardware.primary.hinge.lower";
+    case CreativeDoorPartKind::PrimaryUpperHinge:
+      return "hardware.primary.hinge.upper";
+    case CreativeDoorPartKind::SecondaryLowerHinge:
+      return "hardware.secondary.hinge.lower";
+    case CreativeDoorPartKind::SecondaryUpperHinge:
+      return "hardware.secondary.hinge.upper";
+    case CreativeDoorPartKind::PrimaryHandle:
+      return "hardware.primary.handle";
+    case CreativeDoorPartKind::SecondaryHandle:
+      return "hardware.secondary.handle";
+    case CreativeDoorPartKind::Count:
+      break;
+  }
+  return "invalid";
+}
+
+[[nodiscard]] std::string_view doorPartNameSuffix(
+    CreativeDoorPartKind kind) noexcept {
+  switch (kind) {
+    case CreativeDoorPartKind::MinimumJamb:
+      return "Minimum Jamb";
+    case CreativeDoorPartKind::MaximumJamb:
+      return "Maximum Jamb";
+    case CreativeDoorPartKind::Header:
+      return "Frame Header";
+    case CreativeDoorPartKind::PrimaryLeaf:
+      return "";
+    case CreativeDoorPartKind::SecondaryLeaf:
+      return "Secondary Leaf";
+    case CreativeDoorPartKind::PrimaryLowerHinge:
+      return "Primary Lower Hinge";
+    case CreativeDoorPartKind::PrimaryUpperHinge:
+      return "Primary Upper Hinge";
+    case CreativeDoorPartKind::SecondaryLowerHinge:
+      return "Secondary Lower Hinge";
+    case CreativeDoorPartKind::SecondaryUpperHinge:
+      return "Secondary Upper Hinge";
+    case CreativeDoorPartKind::PrimaryHandle:
+      return "Primary Handle";
+    case CreativeDoorPartKind::SecondaryHandle:
+      return "Secondary Handle";
+    case CreativeDoorPartKind::Count:
+      break;
+  }
+  return "Invalid";
+}
+
+[[nodiscard]] std::string_view doorPartAttachmentSocket(
+    CreativeDoorPartKind kind) noexcept {
+  switch (kind) {
+    case CreativeDoorPartKind::SecondaryLeaf:
+      return "door_secondary_leaf";
+    case CreativeDoorPartKind::PrimaryLowerHinge:
+      return "door_primary_lower_hinge";
+    case CreativeDoorPartKind::PrimaryUpperHinge:
+      return "door_primary_upper_hinge";
+    case CreativeDoorPartKind::SecondaryLowerHinge:
+      return "door_secondary_lower_hinge";
+    case CreativeDoorPartKind::SecondaryUpperHinge:
+      return "door_secondary_upper_hinge";
+    case CreativeDoorPartKind::PrimaryHandle:
+      return "door_primary_handle";
+    case CreativeDoorPartKind::SecondaryHandle:
+      return "door_secondary_handle";
+    case CreativeDoorPartKind::MinimumJamb:
+    case CreativeDoorPartKind::MaximumJamb:
+    case CreativeDoorPartKind::Header:
+    case CreativeDoorPartKind::PrimaryLeaf:
+    case CreativeDoorPartKind::Count:
+      break;
+  }
+  return {};
+}
+
+[[nodiscard]] bool appendGeneratedDoor(
+    CreativeBuildingRecipeResult& result,
+    const CreativeBuildingRecipeRequest& request,
+    const CreativeBuildingOpeningSpec& opening,
+    const CreativeStructuralWallFrame& frame,
+    const CreativeStructuralWallOpeningPlan& openingPlan,
+    bool hasCreatedRoot) {
+  const CreativeDoorRecipeResult door =
+      planCreativeDoor({frame, openingPlan.cutoutBounds, opening.door});
+  if (!door.accepted) {
+    result.receipt.failedOpeningIndex = openingPlan.sourceIndex;
+    setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
+              door.reasonCode);
+    return false;
+  }
+
+  std::optional<std::size_t> primaryDoorIndex;
+  for (std::size_t index = 0U; index < door.partCount; ++index) {
+    const CreativeDoorPartPlan& part = door.parts[index];
+    CreativeDocumentCreateRequest createRequest = makeBoxRequest(
+        part.objectKind,
+        part.kind == CreativeDoorPartKind::PrimaryLeaf
+            ? opening.name
+            : opening.name + " " +
+                  std::string(doorPartNameSuffix(part.kind)),
+        part.closedBounds, request.visible,
+        mergedTags(request.tags, opening.tags));
+    createRequest.transform = part.closedTransform;
+    createRequest.hasTransformOverride = true;
+    const bool isLeaf = part.kind == CreativeDoorPartKind::PrimaryLeaf ||
+                        part.kind == CreativeDoorPartKind::SecondaryLeaf;
+    if (isLeaf && opening.hasInsertAssetSourceBounds) {
+      const CreativeBuildingOpeningAssetFitPlan fit =
+          planCreativeBuildingOpeningAssetFit(
+              {opening.insertAssetSourceBoundsMeters, part.closedBounds, frame,
+               CreativeBuildingOpeningPose::Closed, opening.facing});
+      if (!fit.accepted) {
+        result.receipt.failedOpeningIndex = openingPlan.sourceIndex;
+        setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
+                  fit.reasonCode);
+        return false;
+      }
+      createRequest.assetId = opening.insertAssetId;
+      createRequest.bounds = fit.authoredBoundsMeters;
+      createRequest.transform = fit.transform;
+    }
+    if (part.kind == CreativeDoorPartKind::PrimaryLeaf) {
+      createRequest.hasDoorSettingsOverride = true;
+      createRequest.door = opening.door;
+    }
+    const bool isMovingChild =
+        part.leafIndex != kCreativeDoorNoLeaf &&
+        part.kind != CreativeDoorPartKind::PrimaryLeaf;
+    if (isMovingChild) {
+      if (!primaryDoorIndex.has_value()) {
+        setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidPlan,
+                  "creative_door_primary_leaf_missing");
+        return false;
+      }
+      createRequest.attachmentSocket =
+          std::string(doorPartAttachmentSocket(part.kind));
+    }
+    appendGeneratedRequest(
+        result, request, part.objectKind,
+        opening.stableKey + "." +
+            std::string(doorPartStableSuffix(part.kind)),
+        std::move(createRequest), hasCreatedRoot,
+        isMovingChild ? primaryDoorIndex : std::nullopt, true);
+    if (part.kind == CreativeDoorPartKind::PrimaryLeaf) {
+      primaryDoorIndex = result.plan.objects.size() - 1U;
+    }
+  }
+  return primaryDoorIndex.has_value();
+}
+
 [[nodiscard]] bool appendGeneratedOpeningInsert(
     CreativeBuildingRecipeResult& result,
     const CreativeBuildingRecipeRequest& request,
@@ -194,44 +379,104 @@ void appendGeneratedObject(CreativeBuildingRecipeResult& result,
     const CreativeStructuralWallFrame& frame,
     const CreativeStructuralWallOpeningPlan& openingPlan,
     bool hasCreatedRoot) {
-  const CreativeObjectKind kind =
-      opening.kind == CreativeBuildingOpeningKind::Door
-          ? CreativeObjectKind::Door
-          : CreativeObjectKind::Window;
-  if (!opening.hasInsertAssetSourceBounds) {
-    appendGeneratedObject(result, request, kind,
-                          opening.stableKey + ".insert", opening.name,
-                          openingPlan.insertBounds, hasCreatedRoot,
-                          opening.tags);
-    return true;
+  if (opening.kind == CreativeBuildingOpeningKind::Door) {
+    return appendGeneratedDoor(result, request, opening, frame, openingPlan,
+                               hasCreatedRoot);
   }
 
-  const CreativeBuildingOpeningAssetFitPlan fit =
-      planCreativeBuildingOpeningAssetFit(
-          {opening.insertAssetSourceBoundsMeters, openingPlan.insertBounds,
-           frame, opening.pose});
-  if (!fit.accepted) {
+  const CreativeWindowRecipeResult window = planCreativeWindow(
+      {frame, openingPlan.cutoutBounds, opening.window,
+       !opening.hasInsertAssetSourceBounds});
+  if (!window.accepted ||
+      window.primaryInsertPartIndex >= window.partCount) {
     result.receipt.failedOpeningIndex = openingPlan.sourceIndex;
     setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidOpening,
-              fit.reasonCode);
+              window.reasonCode);
     return false;
   }
 
-  CreativeDocumentCreateRequest createRequest;
-  createRequest.kind = kind;
-  createRequest.name = opening.name;
-  createRequest.assetId = opening.insertAssetId;
-  createRequest.bounds = fit.authoredBoundsMeters;
-  createRequest.hasBoundsOverride = true;
-  createRequest.transform = fit.transform;
-  createRequest.hasTransformOverride = true;
-  createRequest.visible = request.visible;
-  createRequest.hasVisibleOverride = true;
-  createRequest.tags = mergedTags(request.tags, opening.tags);
-  appendGeneratedRequest(result, request, kind,
-                         opening.stableKey + ".insert",
-                         std::move(createRequest), hasCreatedRoot);
-  return true;
+  std::optional<std::size_t> primaryWindowIndex;
+  for (std::size_t index = 0U; index < window.partCount; ++index) {
+    const CreativeWindowPartPlan& part = window.parts[index];
+    std::string_view stableSuffix;
+    std::string_view nameSuffix;
+    switch (part.kind) {
+      case CreativeWindowPartKind::MinimumJamb:
+        stableSuffix = "frame.minimum_jamb";
+        nameSuffix = "Minimum Jamb";
+        break;
+      case CreativeWindowPartKind::MaximumJamb:
+        stableSuffix = "frame.maximum_jamb";
+        nameSuffix = "Maximum Jamb";
+        break;
+      case CreativeWindowPartKind::FrameSill:
+        stableSuffix = "frame.sill";
+        nameSuffix = "Frame Sill";
+        break;
+      case CreativeWindowPartKind::FrameHeader:
+        stableSuffix = "frame.header";
+        nameSuffix = "Frame Header";
+        break;
+      case CreativeWindowPartKind::PrimaryInsert:
+        stableSuffix = "insert";
+        break;
+      case CreativeWindowPartKind::SecondaryShutter:
+        stableSuffix = "shutter.secondary";
+        nameSuffix = "Secondary Shutter";
+        break;
+      case CreativeWindowPartKind::Count:
+        setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidPlan,
+                  "creative_window_part_kind_invalid");
+        return false;
+    }
+
+    CreativeDocumentCreateRequest createRequest = makeBoxRequest(
+        part.objectKind,
+        nameSuffix.empty()
+            ? opening.name
+            : opening.name + " " + std::string(nameSuffix),
+        part.bounds, request.visible,
+        mergedTags(request.tags, opening.tags));
+    if (part.kind == CreativeWindowPartKind::PrimaryInsert) {
+      createRequest.hasWindowSettingsOverride = true;
+      createRequest.window = opening.window;
+      if (opening.hasInsertAssetSourceBounds) {
+        const CreativeBuildingOpeningAssetFitPlan fit =
+            planCreativeBuildingOpeningAssetFit(
+                {opening.insertAssetSourceBoundsMeters, part.bounds, frame,
+                 CreativeBuildingOpeningPose::Closed, opening.facing});
+        if (!fit.accepted) {
+          result.receipt.failedOpeningIndex = openingPlan.sourceIndex;
+          setStatus(result.receipt,
+                    CreativeBuildingRecipeStatus::InvalidOpening,
+                    fit.reasonCode);
+          return false;
+        }
+        createRequest.assetId = opening.insertAssetId;
+        createRequest.bounds = fit.authoredBoundsMeters;
+        createRequest.transform = fit.transform;
+      }
+    }
+    const bool secondary =
+        part.kind == CreativeWindowPartKind::SecondaryShutter;
+    if (secondary) {
+      if (!primaryWindowIndex.has_value()) {
+        setStatus(result.receipt, CreativeBuildingRecipeStatus::InvalidPlan,
+                  "creative_window_primary_insert_missing");
+        return false;
+      }
+      createRequest.attachmentSocket = "window_secondary_shutter";
+    }
+    appendGeneratedRequest(
+        result, request, part.objectKind,
+        opening.stableKey + "." + std::string(stableSuffix),
+        std::move(createRequest), hasCreatedRoot,
+        secondary ? primaryWindowIndex : std::nullopt, false, true);
+    if (part.kind == CreativeWindowPartKind::PrimaryInsert) {
+      primaryWindowIndex = result.plan.objects.size() - 1U;
+    }
+  }
+  return primaryWindowIndex.has_value();
 }
 
 [[nodiscard]] std::string segmentName(const CreativeBuildingWallSpec& wall,
@@ -290,6 +535,11 @@ void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
     const CreativeBuildingOpeningSpec& opening = wall.openings[index];
     if (!validOpeningKind(opening.kind) ||
         !isCreativeStructuralWallOpeningPoseValid(opening.pose) ||
+        !validOpeningFacing(opening.facing) ||
+        (opening.kind == CreativeBuildingOpeningKind::Door &&
+         !isValidCreativeDoorSettings(opening.door)) ||
+        (opening.kind == CreativeBuildingOpeningKind::Window &&
+         !isValidCreativeWindowSettings(opening.window)) ||
         opening.stableKey.empty() || opening.name.empty() ||
         !validOpeningAsset(opening) ||
         (opening.kind == CreativeBuildingOpeningKind::Window &&
@@ -303,7 +553,10 @@ void setWallKernelFailure(CreativeBuildingRecipeReceipt& receipt,
          opening.cutoutBottomMeters, opening.cutoutHeightMeters,
          opening.includeInsert, opening.insertBottomMeters,
          opening.insertHeightMeters, opening.insertWidthMeters,
-         opening.insertThicknessMeters, opening.pose});
+         opening.insertThicknessMeters,
+         opening.kind == CreativeBuildingOpeningKind::Door
+             ? CreativeBuildingOpeningPose::Closed
+             : opening.pose});
   }
   const CreativeStructuralWallRecipeResult geometry =
       planCreativeStructuralWall({wall.start, wall.end, wall.heightMeters,
@@ -463,6 +716,8 @@ std::string_view toString(
       return "InvalidWallFrame";
     case CreativeBuildingOpeningAssetFitStatus::InvalidPose:
       return "InvalidPose";
+    case CreativeBuildingOpeningAssetFitStatus::InvalidFacing:
+      return "InvalidFacing";
     case CreativeBuildingOpeningAssetFitStatus::UnrepresentableTransform:
       return "UnrepresentableTransform";
     case CreativeBuildingOpeningAssetFitStatus::Ready:
@@ -615,10 +870,20 @@ CreativeBuildingOpeningAssetFitPlan planCreativeBuildingOpeningAssetFit(
     plan.reasonCode = "creative_building_opening_asset_pose_invalid";
     return plan;
   }
+  if (!validOpeningFacing(request.facing)) {
+    plan.status = CreativeBuildingOpeningAssetFitStatus::InvalidFacing;
+    plan.reasonCode = "creative_building_opening_asset_facing_invalid";
+    return plan;
+  }
 
   const bool open = openingPoseIsOpen(request.pose);
   CreativeVec3 targetDirection =
       open ? request.wallFrame.normal : request.wallFrame.tangent;
+  const double facingSign =
+      request.facing == CreativeBuildingOpeningFacing::PositiveNormal ? 1.0
+                                                                      : -1.0;
+  targetDirection.x *= facingSign;
+  targetDirection.z *= facingSign;
   if (open) {
     const double normalSign = openingPoseNormalSign(request.pose);
     targetDirection.x *= normalSign;

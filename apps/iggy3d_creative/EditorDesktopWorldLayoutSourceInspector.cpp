@@ -1,13 +1,18 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorDesktopWidgets.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <limits>
 #include <string>
 #include <string_view>
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/play/PlayerSpawn.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include "imgui.h"
 
@@ -65,6 +70,201 @@ void drawStableKey(std::string_view stableKey, std::string_view type) {
   ImGui::TextDisabled("%.*s  %.*s", static_cast<int>(type.size()),
                       type.data(), static_cast<int>(stableKey.size()),
                       stableKey.data());
+}
+
+void drawRetainingEdgeSettings(
+    std::string_view profileKey,
+    cr::CreativeTerrainLandformRecipe& landform,
+    bool& enabled,
+    cr::CreativeRetainingEdgeSourceRecipe& source,
+    CreativeDesktopPropertyEditActivity& activity) {
+  if (landform.edge != cr::CreativeTerrainLandformEdge::Retaining) {
+    return;
+  }
+
+  ImGui::SeparatorText("Retaining edge kit");
+  const bool enabledChanged = ImGui::Checkbox(
+      "Generate retaining walls##layout_retaining_properties", &enabled);
+  observeCreativeDesktopDiscretePropertyWidget(activity, enabledChanged);
+  if (enabledChanged && enabled) {
+    source = {};
+    source.terrainProfileKey = std::string(profileKey);
+  }
+  if (!enabled) {
+    return;
+  }
+
+  constexpr std::array selections{
+      cr::CreativeRetainingEdgeSelection::All,
+      cr::CreativeRetainingEdgeSelection::Internal,
+      cr::CreativeRetainingEdgeSelection::Perimeter};
+  constexpr std::array kits{cr::CreativeRetainingEdgeKit::Procedural,
+                            cr::CreativeRetainingEdgeKit::InfrastructureStone};
+  constexpr std::array materials{
+      cr::CreativeStructuralMaterial::Blockout,
+      cr::CreativeStructuralMaterial::Plaster,
+      cr::CreativeStructuralMaterial::Timber,
+      cr::CreativeStructuralMaterial::Stone,
+      cr::CreativeStructuralMaterial::Brick};
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo(
+          "Selection##layout_retaining_properties",
+          source.settings.selection, selections,
+          [](cr::CreativeRetainingEdgeSelection selection) {
+            switch (selection) {
+              case cr::CreativeRetainingEdgeSelection::All:
+                return std::string_view{"All hard edges"};
+              case cr::CreativeRetainingEdgeSelection::Internal:
+                return std::string_view{"Internal risers"};
+              case cr::CreativeRetainingEdgeSelection::Perimeter:
+                return std::string_view{"Perimeter"};
+              case cr::CreativeRetainingEdgeSelection::Count:
+                break;
+            }
+            return std::string_view{"Invalid"};
+          }));
+  ImGui::SetNextItemWidth(180.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Kit##layout_retaining_properties", source.settings.kit,
+                kits, [](cr::CreativeRetainingEdgeKit kit) {
+                  switch (kit) {
+                    case cr::CreativeRetainingEdgeKit::Procedural:
+                      return std::string_view{"Procedural"};
+                    case cr::CreativeRetainingEdgeKit::InfrastructureStone:
+                      return std::string_view{"Infrastructure stone"};
+                    case cr::CreativeRetainingEdgeKit::Count:
+                      break;
+                  }
+                  return std::string_view{"Invalid"};
+                }));
+  ImGui::SetNextItemWidth(140.0F);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Thickness##layout_retaining_properties",
+                         &source.settings.thicknessMeters, 0.05, 0.25,
+                         "%.2f m"));
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputDouble("Maximum height##layout_retaining_properties",
+                         &source.settings.maximumHeightMeters, 0.5, 2.0,
+                         "%.2f m"));
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Close corners##layout_retaining_properties",
+                      &source.settings.closeCorners));
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Cap open ends##layout_retaining_properties",
+                      &source.settings.capEnds));
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Material##layout_retaining_properties",
+                source.settings.material, materials,
+                [](cr::CreativeStructuralMaterial material) {
+                  return cr::toString(material);
+                }));
+
+  if (!ImGui::TreeNodeEx("Transitions##layout_retaining_properties")) {
+    return;
+  }
+  std::size_t removeIndex = cr::kCreativeRetainingEdgeTransitionCapacity;
+  constexpr std::array transitionKinds{
+      cr::CreativeRetainingEdgeTransitionKind::Stair,
+      cr::CreativeRetainingEdgeTransitionKind::Ramp};
+  for (std::size_t index = 0U;
+       index < source.settings.transitionCount; ++index) {
+    cr::CreativeRetainingEdgeTransition& transition =
+        source.settings.transitions[index];
+    ImGui::PushID(static_cast<int>(index));
+    ImGui::SeparatorText(("Transition " + std::to_string(index + 1U)).c_str());
+    bool edgeChanged = false;
+    const auto coord = [&](const char* label,
+                           cr::CreativeTerrainCoord2& value) {
+      ImGui::SetNextItemWidth(90.0F);
+      edgeChanged =
+          ImGui::InputScalar((std::string(label) + " X").c_str(),
+                             ImGuiDataType_S32, &value.x) ||
+          edgeChanged;
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(90.0F);
+      edgeChanged =
+          ImGui::InputScalar((std::string(label) + " Z").c_str(),
+                             ImGuiDataType_S32, &value.z) ||
+          edgeChanged;
+    };
+    coord("First", transition.edge.first);
+    coord("Second", transition.edge.second);
+    if (edgeChanged) {
+      const std::int64_t deltaX =
+          static_cast<std::int64_t>(transition.edge.second.x) -
+          transition.edge.first.x;
+      const std::int64_t deltaZ =
+          static_cast<std::int64_t>(transition.edge.second.z) -
+          transition.edge.first.z;
+      if (std::abs(deltaX) + std::abs(deltaZ) == 1) {
+        transition.edge = cr::canonicalCreativeTerrainHardEdge(
+            transition.edge.first, transition.edge.second);
+      }
+      observeCreativeDesktopContinuousPropertyWidget(activity, true);
+    }
+    ImGui::SetNextItemWidth(130.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Type", transition.kind, transitionKinds,
+                  [](cr::CreativeRetainingEdgeTransitionKind kind) {
+                    return kind ==
+                                   cr::CreativeRetainingEdgeTransitionKind::Stair
+                               ? std::string_view{"Stair"}
+                               : std::string_view{"Ramp"};
+                  }));
+    ImGui::SetNextItemWidth(120.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Run cells", ImGuiDataType_U16,
+                           &transition.runCells));
+    if (ImGui::SmallButton("Remove transition")) {
+      removeIndex = index;
+    }
+    ImGui::PopID();
+  }
+  if (removeIndex < source.settings.transitionCount) {
+    for (std::size_t index = removeIndex + 1U;
+         index < source.settings.transitionCount; ++index) {
+      source.settings.transitions[index - 1U] =
+          source.settings.transitions[index];
+    }
+    --source.settings.transitionCount;
+    source.settings.transitions[source.settings.transitionCount] = {};
+    observeCreativeDesktopDiscretePropertyWidget(activity, true);
+  }
+
+  ImGui::BeginDisabled(
+      source.settings.transitionCount >=
+      cr::kCreativeRetainingEdgeTransitionCapacity);
+  if (ImGui::Button("Add stair/ramp transition")) {
+    cr::CreativeTerrainCoord2 first = landform.bounds.minimum;
+    cr::CreativeTerrainCoord2 second = first;
+    if (landform.bounds.widthCells > 1U) {
+      ++second.x;
+    } else {
+      ++second.z;
+    }
+    source.settings.transitions[source.settings.transitionCount] = {
+        cr::canonicalCreativeTerrainHardEdge(first, second),
+        cr::CreativeRetainingEdgeTransitionKind::Stair,
+        3U,
+    };
+    ++source.settings.transitionCount;
+    observeCreativeDesktopDiscretePropertyWidget(activity, true);
+  }
+  ImGui::EndDisabled();
+  ImGui::TextDisabled("Transition seam must match a generated hard edge");
+  ImGui::TreePop();
 }
 
 void drawTerrainImpactSummary(
@@ -230,45 +430,143 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
       ImGui::InputScalar("Roof##layout_level_properties", ImGuiDataType_U16,
                          &draft.roofThicknessLayers));
 
-  constexpr std::array roofStyles{cr::CreativeStructuralRoofStyle::Flat,
-                                  cr::CreativeStructuralRoofStyle::Gable};
-  constexpr std::array ridgeAxes{cr::CreativeStructuralRoofRidgeAxis::X,
-                                 cr::CreativeStructuralRoofRidgeAxis::Z};
-  const auto roofStyleLabel = [](cr::CreativeStructuralRoofStyle style) {
-    return style == cr::CreativeStructuralRoofStyle::Gable ? "Gable" :
-                                                              "Flat";
-  };
-  const auto ridgeLabel = [](cr::CreativeStructuralRoofRidgeAxis axis) {
-    return axis == cr::CreativeStructuralRoofRidgeAxis::Z ? "Z axis" :
-                                                             "X axis";
-  };
   ImGui::SeparatorText("Roof shape");
-  ImGui::SetNextItemWidth(140.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity,
-      enumCombo("Style##layout_level_properties", draft.roofStyle,
-                roofStyles, roofStyleLabel));
-  ImGui::SetNextItemWidth(140.0F);
-  observeCreativeDesktopContinuousPropertyWidget(
-      activity,
-      ImGui::InputDouble("Overhang##layout_level_properties",
-                         &draft.roofOverhangCells, 0.25, 1.0, "%.2f"));
-  if (draft.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
-    ImGui::SetNextItemWidth(140.0F);
-    observeCreativeDesktopDiscretePropertyWidget(
-        activity,
-        enumCombo("Ridge##layout_level_properties", draft.roofRidgeAxis,
-                  ridgeAxes, ridgeLabel));
-    ImGui::SetNextItemWidth(140.0F);
-    observeCreativeDesktopContinuousPropertyWidget(
-        activity,
-        ImGui::InputDouble("Pitch##layout_level_properties",
-                           &draft.roofPitchDegrees, 1.0, 5.0, "%.1f deg"));
+  drawCreativeStructuralRoofSettingsWidgets(
+      draft, activity, "layout_level_roof");
+
+  const std::size_t apertureCount = static_cast<std::size_t>(std::count_if(
+      state.source.roofApertures.begin(), state.source.roofApertures.end(),
+      [levelIndex](const cr::CreativeWorldLayoutRoofAperture& aperture) {
+        return aperture.levelIndex == levelIndex;
+      }));
+  const bool topmost = cr::creativeWorldLayoutLevelIsTopmostOccupied(
+      state.source, levelIndex);
+  const bool apertureUnsupported =
+      level.roofStyle == cr::CreativeStructuralRoofStyle::Hip;
+  const bool apertureCapacityReached =
+      apertureCount >= cr::kCreativeStructuralRoofApertureCapacity;
+  ImGui::SeparatorText("Roof apertures");
+  ImGui::TextDisabled("%zu of %zu", apertureCount,
+                      cr::kCreativeStructuralRoofApertureCapacity);
+  ImGui::BeginDisabled(!topmost || apertureUnsupported ||
+                       apertureCapacityReached);
+  if (ImGui::Button("Add skylight##layout_level")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutCreateRoofAperture,
+        CreativeDesktopWorldLayoutRoofApertureCreatePayload{
+            levelIndex,
+            cr::CreativeStructuralRoofApertureKind::Skylight});
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Add chimney clearance##layout_level")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutCreateRoofAperture,
+        CreativeDesktopWorldLayoutRoofApertureCreatePayload{
+            levelIndex,
+            cr::CreativeStructuralRoofApertureKind::ChimneyClearance});
+  }
+  ImGui::EndDisabled();
+  if (!topmost) {
+    ImGui::TextDisabled("Apertures belong to the top occupied roof");
+  } else if (apertureUnsupported) {
+    ImGui::TextDisabled("Hip apertures await polygon panel support");
+  } else if (apertureCapacityReached) {
+    ImGui::TextDisabled("This roof has reached the four-aperture limit");
   }
 
   finishCreativeDesktopWorldLayoutPropertyEdit(
       activity, current, draft, true, "Reset level", state,
       levelIndex, level.stableKey, commands);
+}
+
+void drawRoofApertureInspectorForIndex(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t apertureIndex,
+    CreativeDesktopCommandFrame& commands) {
+  if (apertureIndex >= state.source.roofApertures.size()) {
+    state.roofApertureSettingsDraft = {};
+    return;
+  }
+  CreativeEditorWorldLayoutRoofApertureSettings current;
+  if (!readCreativeEditorWorldLayoutRoofApertureSettings(
+          state, apertureIndex, current)) {
+    state.roofApertureSettingsDraft = {};
+    return;
+  }
+  if (!state.roofApertureSettingsDraft.active ||
+      state.roofApertureSettingsDraft.apertureIndex != apertureIndex ||
+      state.roofApertureSettingsDraft.sourceRevision != state.revision) {
+    state.roofApertureSettingsDraft = {
+        true, apertureIndex, state.revision, current};
+  }
+  CreativeEditorWorldLayoutRoofApertureSettings& draft =
+      state.roofApertureSettingsDraft.settings;
+  const cr::CreativeWorldLayoutRoofAperture& aperture =
+      state.source.roofApertures[apertureIndex];
+  CreativeDesktopPropertyEditActivity activity;
+
+  ImGui::SeparatorText("Roof aperture");
+  drawStableKey(aperture.stableKey, "Plan-space roof opening");
+  constexpr std::array kinds{
+      cr::CreativeStructuralRoofApertureKind::Skylight,
+      cr::CreativeStructuralRoofApertureKind::ChimneyClearance};
+  ImGui::SetNextItemWidth(190.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Type##layout_roof_aperture", draft.kind, kinds,
+                [](cr::CreativeStructuralRoofApertureKind kind) {
+                  return kind ==
+                                 cr::CreativeStructuralRoofApertureKind::
+                                     Skylight
+                             ? std::string_view{"Skylight"}
+                             : std::string_view{"Chimney clearance"};
+                }));
+  if (ImGui::BeginTable("##layout_roof_aperture_bounds", 3,
+                        ImGuiTableFlags_SizingStretchSame |
+                            ImGuiTableFlags_BordersInnerV)) {
+    ImGui::TableSetupColumn("");
+    ImGui::TableSetupColumn("Min");
+    ImGui::TableSetupColumn("Max");
+    ImGui::TableHeadersRow();
+    const auto row = [&activity](const char* axis, double& minimum,
+                                 double& maximum) {
+      ImGui::PushID(axis);
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(axis);
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputDouble("##min", &minimum, 0.25, 1.0, "%.3f"));
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputDouble("##max", &maximum, 0.25, 1.0, "%.3f"));
+      ImGui::PopID();
+    };
+    row("X", draft.minimumXCells, draft.maximumXCells);
+    row("Z", draft.minimumZCells, draft.maximumZCells);
+    ImGui::EndTable();
+  }
+  const bool representable =
+      draft.kind < cr::CreativeStructuralRoofApertureKind::Count &&
+      std::isfinite(draft.minimumXCells) &&
+      std::isfinite(draft.maximumXCells) &&
+      std::isfinite(draft.minimumZCells) &&
+      std::isfinite(draft.maximumZCells) &&
+      draft.minimumXCells < draft.maximumXCells &&
+      draft.minimumZCells < draft.maximumZCells;
+  if (!representable) {
+    ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+                       "Bounds must be finite and have positive area");
+  } else {
+    ImGui::TextDisabled("Exact grid-cell bounds; roof clearance is validated");
+  }
+  finishCreativeDesktopWorldLayoutPropertyEdit(
+      activity, current, draft, representable, "Reset aperture", state,
+      apertureIndex, aperture.stableKey, commands);
 }
 
 void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
@@ -304,49 +602,239 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
                            cr::CreativeWorldLayoutTable::TerrainProfile,
                            profileIndex, profile.stableKey, commands);
   constexpr std::array kinds{cr::CreativeTerrainRecipeKind::Plateau,
+                             cr::CreativeTerrainRecipeKind::Terrace,
+                             cr::CreativeTerrainRecipeKind::Cliff,
                              cr::CreativeTerrainRecipeKind::Hill,
                              cr::CreativeTerrainRecipeKind::Valley,
                              cr::CreativeTerrainRecipeKind::Crater,
                              cr::CreativeTerrainRecipeKind::Ridge};
   ImGui::SetNextItemWidth(160.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity,
+  const bool shapeChanged =
       enumCombo("Shape##layout_profile_properties", draft.kind, kinds,
                 [](cr::CreativeTerrainRecipeKind kind) {
                   return cr::toString(kind);
-                }));
-  ImGui::SetNextItemWidth(110.0F);
-  observeCreativeDesktopContinuousPropertyWidget(
-      activity,
-      ImGui::InputScalar("Center X##layout_profile_properties",
-                         ImGuiDataType_S32, &draft.center.x));
-  ImGui::SetNextItemWidth(110.0F);
-  observeCreativeDesktopContinuousPropertyWidget(
-      activity,
-      ImGui::InputScalar("Center Z##layout_profile_properties",
-                         ImGuiDataType_S32, &draft.center.z));
-  ImGui::SetNextItemWidth(120.0F);
-  observeCreativeDesktopContinuousPropertyWidget(
-      activity,
-      ImGui::InputScalar("Base height##layout_profile_properties",
-                         ImGuiDataType_U16, &draft.baseHeightCells));
-  constexpr std::array<std::uint16_t, 3U> radii{2U, 4U, 8U};
-  constexpr std::array<std::uint16_t, 5U> amplitudes{1U, 2U, 4U, 8U, 16U};
-  constexpr std::array<std::uint16_t, 3U> spacings{1U, 2U, 4U};
-  ImGui::SetNextItemWidth(140.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity,
-      u16Combo("Radius##layout_profile_properties", draft.radiusCells, radii,
-               " cells"));
-  ImGui::SetNextItemWidth(140.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity, u16Combo("Amplitude##layout_profile_properties",
-                         draft.amplitudeCells, amplitudes, " cells"));
-  ImGui::SetNextItemWidth(140.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity,
-      u16Combo("Spacing##layout_profile_properties", draft.spacingCells,
-               spacings, " cells"));
+                });
+  observeCreativeDesktopDiscretePropertyWidget(activity, shapeChanged);
+  if (shapeChanged) {
+    cr::CreativeTerrainLandformKind landformKind =
+        cr::CreativeTerrainLandformKind::Count;
+    draft.usesLandformRecipe =
+        cr::creativeTerrainRecipeLandformKind(draft.kind, landformKind);
+    if (draft.usesLandformRecipe) {
+      draft.landform.kind = landformKind;
+      if (landformKind != cr::CreativeTerrainLandformKind::Plateau &&
+          draft.landform.baseHeightCells ==
+              draft.landform.targetHeightCells) {
+        draft.landform.targetHeightCells =
+            draft.landform.baseHeightCells <
+                    cr::kCreativeTerrainMaximumHeightCells
+                ? static_cast<std::uint16_t>(
+                      draft.landform.baseHeightCells + 1U)
+                : static_cast<std::uint16_t>(
+                      draft.landform.baseHeightCells - 1U);
+      }
+    } else {
+      draft.usesRetainingEdgeRecipe = false;
+    }
+  }
+
+  if (!draft.usesLandformRecipe &&
+      draft.kind == cr::CreativeTerrainRecipeKind::Plateau) {
+    if (ImGui::Button("Convert to bounded landform")) {
+      draft.usesLandformRecipe = true;
+      draft.landform = {};
+      draft.landform.kind = cr::CreativeTerrainLandformKind::Plateau;
+      const std::int32_t radius = draft.radiusCells;
+      draft.landform.bounds.minimum = {draft.center.x - radius,
+                                      draft.center.z - radius};
+      draft.landform.bounds.widthCells =
+          static_cast<std::uint16_t>(radius * 2);
+      draft.landform.bounds.depthCells =
+          static_cast<std::uint16_t>(radius * 2);
+      draft.landform.baseHeightCells = draft.baseHeightCells;
+      draft.landform.targetHeightCells = draft.baseHeightCells;
+      observeCreativeDesktopDiscretePropertyWidget(activity, true);
+    }
+    ImGui::TextDisabled("Legacy radial plateau; conversion is explicit");
+  }
+
+  if (draft.usesLandformRecipe) {
+    cr::CreativeTerrainLandformRecipe& landform = draft.landform;
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Min X##layout_landform_properties",
+                           ImGuiDataType_S32,
+                           &landform.bounds.minimum.x));
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Min Z##layout_landform_properties",
+                           ImGuiDataType_S32,
+                           &landform.bounds.minimum.z));
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Width##layout_landform_properties",
+                           ImGuiDataType_U16,
+                           &landform.bounds.widthCells));
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Depth##layout_landform_properties",
+                           ImGuiDataType_U16,
+                           &landform.bounds.depthCells));
+    ImGui::SetNextItemWidth(130.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Base height##layout_landform_properties",
+                           ImGuiDataType_U16,
+                           &landform.baseHeightCells));
+    ImGui::SetNextItemWidth(130.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Target height##layout_landform_properties",
+                           ImGuiDataType_U16,
+                           &landform.targetHeightCells));
+    if (landform.kind == cr::CreativeTerrainLandformKind::Terrace) {
+      ImGui::SetNextItemWidth(130.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("Terraces##layout_landform_properties",
+                             ImGuiDataType_U8,
+                             &landform.terraceCount));
+    }
+    if (landform.kind != cr::CreativeTerrainLandformKind::Plateau) {
+      constexpr std::array directions{
+          cr::CreativeTerrainLandformDirection::PositiveX,
+          cr::CreativeTerrainLandformDirection::PositiveZ,
+          cr::CreativeTerrainLandformDirection::NegativeX,
+          cr::CreativeTerrainLandformDirection::NegativeZ};
+      ImGui::SetNextItemWidth(160.0F);
+      observeCreativeDesktopDiscretePropertyWidget(
+          activity,
+          enumCombo("Direction##layout_landform_properties",
+                    landform.direction, directions,
+                    [](cr::CreativeTerrainLandformDirection direction) {
+                      return cr::toString(direction);
+                    }));
+    }
+    constexpr std::array edges{cr::CreativeTerrainLandformEdge::Slope,
+                               cr::CreativeTerrainLandformEdge::Retaining};
+    ImGui::SetNextItemWidth(160.0F);
+    const bool edgeChanged =
+        enumCombo("Edge##layout_landform_properties", landform.edge, edges,
+                  [](cr::CreativeTerrainLandformEdge edge) {
+                    return cr::toString(edge);
+                  });
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity, edgeChanged);
+    if (edgeChanged) {
+      if (landform.edge == cr::CreativeTerrainLandformEdge::Retaining) {
+        landform.edgeWidthCells = 0U;
+      } else if (landform.edgeWidthCells == 0U) {
+        landform.edgeWidthCells = 2U;
+      }
+      if (landform.edge != cr::CreativeTerrainLandformEdge::Retaining) {
+        draft.usesRetainingEdgeRecipe = false;
+      }
+    }
+    if (landform.edge == cr::CreativeTerrainLandformEdge::Slope) {
+      ImGui::SetNextItemWidth(130.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("Edge width##layout_landform_properties",
+                             ImGuiDataType_U16,
+                             &landform.edgeWidthCells));
+    }
+    ImGui::SetNextItemWidth(130.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Feather##layout_landform_properties",
+                           ImGuiDataType_U16,
+                           &landform.featherCells));
+    constexpr std::array materials{cr::CreativeTerrainMaterial::Grass,
+                                   cr::CreativeTerrainMaterial::Dirt,
+                                   cr::CreativeTerrainMaterial::Stone,
+                                   cr::CreativeTerrainMaterial::Sand};
+    ImGui::SetNextItemWidth(160.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Material##layout_landform_properties", landform.material,
+                  materials, [](cr::CreativeTerrainMaterial material) {
+                    return cr::toString(material);
+                  }));
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        ImGui::Checkbox("Paint surface##layout_landform_properties",
+                        &landform.paintSurface));
+    constexpr std::array erosionModes{
+        cr::CreativeTerrainLandformErosion::Clean,
+        cr::CreativeTerrainLandformErosion::Weathered};
+    ImGui::SetNextItemWidth(160.0F);
+    const bool erosionChanged = enumCombo(
+        "Erosion##layout_landform_properties", landform.erosion, erosionModes,
+        [](cr::CreativeTerrainLandformErosion erosion) {
+          return cr::toString(erosion);
+        });
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity, erosionChanged);
+    if (erosionChanged) {
+      if (landform.erosion == cr::CreativeTerrainLandformErosion::Clean) {
+        landform.erosionReliefCells = 0U;
+      } else if (landform.erosionReliefCells == 0U) {
+        landform.erosionReliefCells = 1U;
+      }
+    }
+    if (landform.erosion == cr::CreativeTerrainLandformErosion::Weathered) {
+      ImGui::SetNextItemWidth(130.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("Relief##layout_landform_properties",
+                             ImGuiDataType_U16,
+                             &landform.erosionReliefCells));
+      ImGui::SetNextItemWidth(160.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("Seed##layout_landform_properties",
+                             ImGuiDataType_U64, &landform.seed));
+    }
+    drawRetainingEdgeSettings(profile.stableKey, landform,
+                              draft.usesRetainingEdgeRecipe,
+                              draft.retainingEdge, activity);
+  } else {
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Center X##layout_profile_properties",
+                           ImGuiDataType_S32, &draft.center.x));
+    ImGui::SetNextItemWidth(110.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Center Z##layout_profile_properties",
+                           ImGuiDataType_S32, &draft.center.z));
+    ImGui::SetNextItemWidth(120.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Base height##layout_profile_properties",
+                           ImGuiDataType_U16, &draft.baseHeightCells));
+    constexpr std::array<std::uint16_t, 3U> radii{2U, 4U, 8U};
+    constexpr std::array<std::uint16_t, 5U> amplitudes{1U, 2U, 4U, 8U, 16U};
+    constexpr std::array<std::uint16_t, 3U> spacings{1U, 2U, 4U};
+    ImGui::SetNextItemWidth(140.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        u16Combo("Radius##layout_profile_properties", draft.radiusCells,
+                 radii, " cells"));
+    ImGui::SetNextItemWidth(140.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity, u16Combo("Amplitude##layout_profile_properties",
+                           draft.amplitudeCells, amplitudes, " cells"));
+    ImGui::SetNextItemWidth(140.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        u16Combo("Spacing##layout_profile_properties", draft.spacingCells,
+                 spacings, " cells"));
   if (draft.kind == cr::CreativeTerrainRecipeKind::Ridge) {
     constexpr std::array directions{
         cr::CreativeTerrainProfileDirection::PositiveX,
@@ -376,6 +864,7 @@ void drawTerrainProfileInspector(CreativeEditorWorldLayoutState& state,
                          (frequency == 1U ? " cycle" : " cycles");
                 }));
   ImGui::TextDisabled("Blend: Set  Rods: Fill");
+  }
 
   finishCreativeDesktopWorldLayoutPropertyEdit(
       activity, current, draft, true, "Reset terrain", state,
@@ -407,6 +896,7 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
   CreativeEditorWorldLayoutTerrainPathSettings& draft =
       state.terrainPathSettingsDraft.settings;
   const auto& path = state.source.terrainPaths[pathIndex];
+  cr::CreativeTerrainPathSourceRecipe& recipe = draft.recipe;
   CreativeDesktopPropertyEditActivity activity;
 
   ImGui::SeparatorText("Terrain path");
@@ -414,54 +904,95 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
   drawTerrainImpactSummary(state, document,
                            cr::CreativeWorldLayoutTable::TerrainPath,
                            pathIndex, path.stableKey, commands);
-  constexpr std::array kinds{cr::CreativeTerrainRecipeKind::Road,
-                             cr::CreativeTerrainRecipeKind::River,
-                             cr::CreativeTerrainRecipeKind::Ditch,
-                             cr::CreativeTerrainRecipeKind::RidgeLine};
-  constexpr std::array elevations{cr::CreativeTerrainPathElevation::Level,
+  constexpr std::array kinds{cr::CreativeTerrainPathKind::Road,
+                             cr::CreativeTerrainPathKind::River,
+                             cr::CreativeTerrainPathKind::Ridge,
+                             cr::CreativeTerrainPathKind::Trench};
+  constexpr std::array elevations{cr::CreativeTerrainPathElevation::Follow,
+                                  cr::CreativeTerrainPathElevation::Level,
                                   cr::CreativeTerrainPathElevation::Grade};
   ImGui::SetNextItemWidth(150.0F);
-  observeCreativeDesktopDiscretePropertyWidget(
-      activity,
-      enumCombo("Type##layout_path_properties", draft.kind, kinds,
-                [](cr::CreativeTerrainRecipeKind kind) {
+  const cr::CreativeTerrainPathKind previousKind = recipe.kind;
+  const bool kindChanged =
+      enumCombo("Type##layout_path_properties", recipe.kind, kinds,
+                [](cr::CreativeTerrainPathKind kind) {
                   return cr::toString(kind);
-                }));
+                });
+  if (kindChanged &&
+      (recipe.kind != cr::CreativeTerrainPathKind::River &&
+       recipe.kind != cr::CreativeTerrainPathKind::Trench) &&
+      (previousKind == cr::CreativeTerrainPathKind::River ||
+       previousKind == cr::CreativeTerrainPathKind::Trench)) {
+    recipe.watercourse = {};
+  }
+  observeCreativeDesktopDiscretePropertyWidget(activity, kindChanged);
   ImGui::SetNextItemWidth(150.0F);
   observeCreativeDesktopDiscretePropertyWidget(
       activity,
-      enumCombo("Elevation##layout_path_properties", draft.elevation,
+      enumCombo("Elevation##layout_path_properties", recipe.elevation,
                 elevations, [](cr::CreativeTerrainPathElevation elevation) {
                   return cr::toString(elevation);
                 }));
-  constexpr std::array<std::uint16_t, 4U> halfWidths{0U, 1U, 2U, 3U};
-  constexpr std::array<std::uint16_t, 4U> amplitudes{1U, 2U, 4U, 8U};
+  constexpr std::array curves{cr::CreativeTerrainPathCurvePolicy::Linear,
+                              cr::CreativeTerrainPathCurvePolicy::CatmullRom};
   ImGui::SetNextItemWidth(150.0F);
-  const auto widthLabel = [](std::uint16_t halfWidth) {
-    return std::to_string(halfWidth * 2U + 1U) + " cells";
-  };
   observeCreativeDesktopDiscretePropertyWidget(
       activity,
-      enumCombo("Width##layout_path_properties", draft.halfWidthCells,
-                halfWidths, widthLabel));
+      enumCombo("Curve##layout_path_properties", recipe.curve, curves,
+                [](cr::CreativeTerrainPathCurvePolicy value) {
+                  return cr::toString(value);
+                }));
+  constexpr std::array crossSections{
+      cr::CreativeTerrainPathCrossSection::Flat,
+      cr::CreativeTerrainPathCrossSection::Crowned,
+      cr::CreativeTerrainPathCrossSection::Channel,
+      cr::CreativeTerrainPathCrossSection::Berm,
+      cr::CreativeTerrainPathCrossSection::Cut};
   ImGui::SetNextItemWidth(150.0F);
   observeCreativeDesktopDiscretePropertyWidget(
-      activity, u16Combo("Depth / rise##layout_path_properties",
-                         draft.amplitudeCells, amplitudes, " cells"));
+      activity,
+      enumCombo("Cross-section##layout_path_properties", recipe.crossSection,
+                crossSections, [](cr::CreativeTerrainPathCrossSection value) {
+                  return cr::toString(value);
+                }));
+  constexpr std::array joins{cr::CreativeTerrainPathEndpointJoin::Open,
+                             cr::CreativeTerrainPathEndpointJoin::Blend,
+                             cr::CreativeTerrainPathEndpointJoin::Intersection,
+                             cr::CreativeTerrainPathEndpointJoin::Bridge,
+                             cr::CreativeTerrainPathEndpointJoin::BuildingPad};
+  ImGui::SetNextItemWidth(150.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Start join##layout_path_properties", recipe.startJoin, joins,
+                [](cr::CreativeTerrainPathEndpointJoin value) {
+                  return cr::toString(value);
+                }));
+  ImGui::SetNextItemWidth(150.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("End join##layout_path_properties", recipe.endJoin, joins,
+                [](cr::CreativeTerrainPathEndpointJoin value) {
+                  return cr::toString(value);
+                }));
+  ImGui::SetNextItemWidth(150.0F);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Falloff##layout_path_properties",
+                         ImGuiDataType_U16, &recipe.falloffCells));
   observeCreativeDesktopDiscretePropertyWidget(
       activity,
       ImGui::Checkbox("Paint surface##layout_path_properties",
-                      &draft.paintSurface));
+                      &recipe.paintSurface));
   constexpr std::array materials{cr::CreativeTerrainMaterial::Count,
                                  cr::CreativeTerrainMaterial::Grass,
                                  cr::CreativeTerrainMaterial::Dirt,
                                  cr::CreativeTerrainMaterial::Stone,
                                  cr::CreativeTerrainMaterial::Sand};
-  ImGui::BeginDisabled(!draft.paintSurface);
+  ImGui::BeginDisabled(!recipe.paintSurface);
   ImGui::SetNextItemWidth(150.0F);
   observeCreativeDesktopDiscretePropertyWidget(
       activity,
-      enumCombo("Material##layout_path_properties", draft.material,
+      enumCombo("Material##layout_path_properties", recipe.material,
                 materials,
                 [](cr::CreativeTerrainMaterial material) -> std::string_view {
                   return material == cr::CreativeTerrainMaterial::Count
@@ -470,18 +1001,127 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
                 }));
   ImGui::EndDisabled();
 
+  if (recipe.kind == cr::CreativeTerrainPathKind::Road) {
+    ImGui::SeparatorText("Road construction");
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Shoulder##layout_path_properties",
+                           ImGuiDataType_U16,
+                           &recipe.road.shoulderWidthCells));
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Maximum grade (permille, 0 unlimited)##layout_path_properties",
+                           ImGuiDataType_U16,
+                           &recipe.road.maximumGradePermille));
+    constexpr std::array edgeTreatments{
+        cr::CreativeTerrainRoadEdgeTreatment::None,
+        cr::CreativeTerrainRoadEdgeTreatment::Curb};
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Edge treatment##layout_path_properties",
+                  recipe.road.edgeTreatment, edgeTreatments,
+                  [](cr::CreativeTerrainRoadEdgeTreatment value) {
+                    return cr::toString(value);
+                  }));
+    if (recipe.road.edgeTreatment ==
+        cr::CreativeTerrainRoadEdgeTreatment::Curb) {
+      ImGui::SetNextItemWidth(150.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputDouble("Curb width (m)##layout_path_properties",
+                             &recipe.road.edgeWidthMeters, 0.01, 0.1, "%.2f"));
+      ImGui::SetNextItemWidth(150.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputDouble("Curb height (m)##layout_path_properties",
+                             &recipe.road.edgeHeightMeters, 0.01, 0.1, "%.2f"));
+      constexpr std::array edgeMaterials{
+          cr::CreativeStructuralMaterial::Blockout,
+          cr::CreativeStructuralMaterial::Plaster,
+          cr::CreativeStructuralMaterial::Timber,
+          cr::CreativeStructuralMaterial::Stone,
+          cr::CreativeStructuralMaterial::Brick};
+      ImGui::SetNextItemWidth(150.0F);
+      observeCreativeDesktopDiscretePropertyWidget(
+          activity,
+          enumCombo("Curb material##layout_path_properties",
+                    recipe.road.edgeMaterial, edgeMaterials,
+                    [](cr::CreativeStructuralMaterial value) {
+                      return cr::toString(value);
+                    }));
+    }
+    ImGui::TextDisabled(
+        "Half width is travel surface; shoulder extends each side; grade 0 is unlimited.");
+  }
+
+  const bool watercourse = recipe.kind == cr::CreativeTerrainPathKind::River ||
+                           recipe.kind == cr::CreativeTerrainPathKind::Trench;
+  if (watercourse) {
+    ImGui::SeparatorText("Watercourse");
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Bank slope##layout_path_properties",
+                           ImGuiDataType_U16,
+                           &recipe.watercourse.bankSlopeCells));
+    constexpr std::array drainageDirections{
+        cr::CreativeTerrainWatercourseDrainageDirection::Unspecified,
+        cr::CreativeTerrainWatercourseDrainageDirection::StartToEnd,
+        cr::CreativeTerrainWatercourseDrainageDirection::EndToStart};
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Drainage##layout_path_properties",
+                  recipe.watercourse.drainageDirection, drainageDirections,
+                  [](cr::CreativeTerrainWatercourseDrainageDirection value) {
+                    return cr::toString(value);
+                  }));
+    constexpr std::array surfacePolicies{
+        cr::CreativeTerrainWaterSurfacePolicy::None,
+        cr::CreativeTerrainWaterSurfacePolicy::Reserved};
+    ImGui::SetNextItemWidth(150.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Water surface##layout_path_properties",
+                  recipe.watercourse.surfacePolicy, surfacePolicies,
+                  [](cr::CreativeTerrainWaterSurfacePolicy value) {
+                    return cr::toString(value);
+                  }));
+    if (recipe.watercourse.surfacePolicy ==
+        cr::CreativeTerrainWaterSurfacePolicy::Reserved) {
+      ImGui::SetNextItemWidth(150.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("Surface inset##layout_path_properties",
+                             ImGuiDataType_U16,
+                             &recipe.watercourse.surfaceInsetCells));
+    }
+    ImGui::TextDisabled(
+        "Half width is the bed; bank slope expands outward; reserved water is not rendered or simulated.");
+  }
+
   ImGui::SeparatorText("Control points");
-  if (ImGui::BeginTable("##layout_path_points", 4,
+  std::size_t removePoint = std::numeric_limits<std::size_t>::max();
+  std::size_t movePointFrom = std::numeric_limits<std::size_t>::max();
+  std::size_t movePointTo = std::numeric_limits<std::size_t>::max();
+  if (ImGui::BeginTable("##layout_path_points", 8,
                         ImGuiTableFlags_SizingStretchSame |
                             ImGuiTableFlags_BordersInnerV)) {
     ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28.0F);
     ImGui::TableSetupColumn("X");
     ImGui::TableSetupColumn("Z");
     ImGui::TableSetupColumn("Height");
+    ImGui::TableSetupColumn("Half width");
+    ImGui::TableSetupColumn("Depth / rise");
+    ImGui::TableSetupColumn("Bank");
+    ImGui::TableSetupColumn("Order", ImGuiTableColumnFlags_WidthFixed, 96.0F);
     ImGui::TableHeadersRow();
-    for (std::size_t index = 0U; index < draft.points.size(); ++index) {
-      cr::CreativeTerrainPathPoint& point = draft.points[index];
-      ImGui::PushID(static_cast<int>(index));
+    for (std::size_t index = 0U; index < recipe.points.size(); ++index) {
+      cr::CreativeTerrainPathSourcePoint& point = recipe.points[index];
+      ImGui::PushID(static_cast<int>(point.id));
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
       ImGui::Text("%llu", static_cast<unsigned long long>(index + 1U));
@@ -501,14 +1141,250 @@ void drawTerrainPathInspector(CreativeEditorWorldLayoutState& state,
           activity,
           ImGui::InputScalar("##height", ImGuiDataType_U16,
                              &point.heightCells));
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##width", ImGuiDataType_U16,
+                             &point.halfWidthCells));
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##amplitude", ImGuiDataType_U16,
+                             &point.amplitudeCells));
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      observeCreativeDesktopContinuousPropertyWidget(
+          activity,
+          ImGui::InputScalar("##bank", ImGuiDataType_S32,
+                             &point.bankPermille));
+      ImGui::TableNextColumn();
+      ImGui::BeginDisabled(index == 0U);
+      if (ImGui::SmallButton("Up")) {
+        movePointFrom = index;
+        movePointTo = index - 1U;
+      }
+      ImGui::EndDisabled();
+      ImGui::SameLine();
+      ImGui::BeginDisabled(index + 1U >= recipe.points.size());
+      if (ImGui::SmallButton("Down")) {
+        movePointFrom = index;
+        movePointTo = index + 1U;
+      }
+      ImGui::EndDisabled();
+      ImGui::SameLine();
+      ImGui::BeginDisabled(recipe.points.size() <= 2U);
+      if (ImGui::SmallButton("X")) {
+        removePoint = index;
+      }
+      ImGui::EndDisabled();
       ImGui::PopID();
     }
     ImGui::EndTable();
+  }
+  if (movePointFrom < recipe.points.size() &&
+      movePointTo < recipe.points.size()) {
+    std::swap(recipe.points[movePointFrom], recipe.points[movePointTo]);
+    observeCreativeDesktopDiscretePropertyWidget(activity, true);
+  }
+  if (removePoint < recipe.points.size()) {
+    const cr::CreativeTerrainPathSourcePointId removedId =
+        recipe.points[removePoint].id;
+    recipe.points.erase(recipe.points.begin() +
+                        static_cast<std::ptrdiff_t>(removePoint));
+    std::erase_if(recipe.watercourse.crossings,
+                  [removedId](
+                      const cr::CreativeTerrainWatercourseCrossing& crossing) {
+                    return crossing.pointId == removedId;
+                  });
+    observeCreativeDesktopDiscretePropertyWidget(activity, true);
+  }
+  const bool canAddPoint =
+      recipe.points.size() < cr::kCreativeTerrainPathPointCapacity &&
+      recipe.nextPointId <
+          std::numeric_limits<cr::CreativeTerrainPathSourcePointId>::max();
+  ImGui::BeginDisabled(!canAddPoint);
+  if (ImGui::Button("Add point##layout_path_properties") && canAddPoint) {
+    cr::CreativeTerrainPathSourcePoint point = recipe.points.back();
+    point.id = recipe.nextPointId++;
+    if (point.coord.x < std::numeric_limits<std::int32_t>::max()) {
+      ++point.coord.x;
+    } else {
+      --point.coord.x;
+    }
+    recipe.points.push_back(point);
+    observeCreativeDesktopDiscretePropertyWidget(activity, true);
+  }
+  ImGui::EndDisabled();
+
+  if (watercourse) {
+    ImGui::SeparatorText("Crossings");
+    for (std::size_t pointIndex = 0U; pointIndex < recipe.points.size();
+         ++pointIndex) {
+      const cr::CreativeTerrainPathSourcePoint& point =
+          recipe.points[pointIndex];
+      auto crossing = std::find_if(
+          recipe.watercourse.crossings.begin(),
+          recipe.watercourse.crossings.end(),
+          [&point](const cr::CreativeTerrainWatercourseCrossing& candidate) {
+            return candidate.pointId == point.id;
+          });
+      bool enabled = crossing != recipe.watercourse.crossings.end();
+      ImGui::PushID(static_cast<int>(point.id));
+      const bool canEnable =
+          enabled ||
+          (recipe.watercourse.crossings.size() <
+               cr::kCreativeTerrainWatercourseCrossingCapacity &&
+           recipe.watercourse.nextCrossingId <
+               std::numeric_limits<
+                   cr::CreativeTerrainWatercourseCrossingId>::max());
+      ImGui::BeginDisabled(!canEnable);
+      if (ImGui::Checkbox("##watercourse_crossing", &enabled)) {
+        if (enabled) {
+          recipe.watercourse.crossings.push_back(
+              {recipe.watercourse.nextCrossingId++, point.id, 1U, 1U, 2U});
+        } else {
+          recipe.watercourse.crossings.erase(crossing);
+        }
+        observeCreativeDesktopDiscretePropertyWidget(activity, true);
+      }
+      ImGui::EndDisabled();
+      ImGui::SameLine();
+      ImGui::Text("Point %llu (%d, %d)",
+                  static_cast<unsigned long long>(pointIndex + 1U),
+                  point.coord.x, point.coord.z);
+      crossing = std::find_if(
+          recipe.watercourse.crossings.begin(),
+          recipe.watercourse.crossings.end(),
+          [&point](const cr::CreativeTerrainWatercourseCrossing& candidate) {
+            return candidate.pointId == point.id;
+          });
+      if (crossing != recipe.watercourse.crossings.end()) {
+        ImGui::Indent();
+        ImGui::SetNextItemWidth(96.0F);
+        observeCreativeDesktopContinuousPropertyWidget(
+            activity,
+            ImGui::InputScalar("Bank clearance", ImGuiDataType_U16,
+                               &crossing->bankClearanceCells));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(96.0F);
+        observeCreativeDesktopContinuousPropertyWidget(
+            activity,
+            ImGui::InputScalar("Deck clearance", ImGuiDataType_U16,
+                               &crossing->deckClearanceCells));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(96.0F);
+        observeCreativeDesktopContinuousPropertyWidget(
+            activity,
+            ImGui::InputScalar("Approach length", ImGuiDataType_U16,
+                               &crossing->approachLengthCells));
+        ImGui::Unindent();
+      }
+      ImGui::PopID();
+    }
+    ImGui::TextDisabled(
+        "Crossings derive bank and approach frames from stable path points; bridge generation is separate.");
   }
 
   finishCreativeDesktopWorldLayoutPropertyEdit(
       activity, current, draft, true, "Reset path", state,
       pathIndex, path.stableKey, commands);
+}
+
+void drawBridgeRecipeInspector(
+    CreativeEditorWorldLayoutObjectSettings& draft,
+    CreativeDesktopPropertyEditActivity& activity) {
+  cr::CreativeBridgeSettings& settings = draft.bridge.settings;
+  ImGui::SeparatorText("Bridge recipe");
+  ImGui::TextDisabled("Attached path: %s",
+                      draft.bridge.watercoursePathKey.c_str());
+  ImGui::TextDisabled("Crossing id: %u",
+                      static_cast<unsigned>(draft.bridge.crossingId));
+  ImGui::TextDisabled(
+      "Placement follows the crossing; the plan footprint is not movable.");
+
+  const auto inputMeters = [&](const char* label, double& value,
+                               double step = 0.05) {
+    ImGui::SetNextItemWidth(160.0F);
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity, ImGui::InputDouble(label, &value, step, step * 5.0, "%.2f m"));
+  };
+  inputMeters("Deck width##layout_bridge_properties",
+              settings.deckWidthMeters);
+  inputMeters("Deck thickness##layout_bridge_properties",
+              settings.deckThicknessMeters);
+  inputMeters("Elevation offset##layout_bridge_properties",
+              settings.deckElevationOffsetMeters);
+  inputMeters("Maximum span##layout_bridge_properties",
+              settings.maximumSpanMeters, 0.5);
+  inputMeters("Minimum clearance##layout_bridge_properties",
+              settings.minimumClearanceMeters);
+
+  constexpr std::array supportStyles{
+      cr::CreativeBridgeSupportStyle::None,
+      cr::CreativeBridgeSupportStyle::PierPairs};
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      enumCombo("Supports##layout_bridge_properties", settings.supportStyle,
+                supportStyles, [](cr::CreativeBridgeSupportStyle style) {
+                  return style == cr::CreativeBridgeSupportStyle::None
+                             ? std::string_view("None")
+                             : std::string_view("Pier pairs");
+                }));
+  if (settings.supportStyle == cr::CreativeBridgeSupportStyle::PierPairs) {
+    inputMeters("Support spacing##layout_bridge_properties",
+                settings.supportSpacingMeters, 0.25);
+    inputMeters("Support width##layout_bridge_properties",
+                settings.supportWidthMeters);
+    inputMeters("Support depth##layout_bridge_properties",
+                settings.supportDepthMeters);
+  }
+
+  observeCreativeDesktopDiscretePropertyWidget(
+      activity,
+      ImGui::Checkbox("Rails##layout_bridge_properties", &settings.rails));
+  if (settings.rails) {
+    inputMeters("Rail height##layout_bridge_properties",
+                settings.railHeightMeters);
+    inputMeters("Rail thickness##layout_bridge_properties",
+                settings.railThicknessMeters);
+  }
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Maximum approach grade (permille)##layout_bridge_properties",
+                         ImGuiDataType_U16,
+                         &settings.maximumApproachGradePermille));
+  ImGui::SetNextItemWidth(160.0F);
+  observeCreativeDesktopContinuousPropertyWidget(
+      activity,
+      ImGui::InputScalar("Approach falloff##layout_bridge_properties",
+                         ImGuiDataType_U16,
+                         &settings.approachFalloffCells));
+
+  constexpr std::array materials{
+      cr::CreativeStructuralMaterial::Blockout,
+      cr::CreativeStructuralMaterial::Plaster,
+      cr::CreativeStructuralMaterial::Timber,
+      cr::CreativeStructuralMaterial::Stone,
+      cr::CreativeStructuralMaterial::Brick};
+  const auto materialField = [&](const char* label,
+                                 cr::CreativeStructuralMaterial& material) {
+    ImGui::SetNextItemWidth(160.0F);
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity, enumCombo(label, material, materials,
+                            [](cr::CreativeStructuralMaterial value) {
+                              return cr::toString(value);
+                            }));
+  };
+  materialField("Deck material##layout_bridge_properties",
+                settings.materials.deck);
+  materialField("Support material##layout_bridge_properties",
+                settings.materials.supports);
+  materialField("Rail material##layout_bridge_properties",
+                settings.materials.rails);
 }
 
 void drawObjectInspector(CreativeEditorWorldLayoutState& state,
@@ -539,59 +1415,115 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
   drawStableKey(object.stableKey, cr::toString(object.kind));
   observeCreativeDesktopContinuousPropertyWidget(
       activity, inputText("Name##layout_object_properties", draft.name));
-  observeCreativeDesktopContinuousPropertyWidget(
-      activity,
-      inputText("Asset ID##layout_object_properties", draft.assetId));
   observeCreativeDesktopDiscretePropertyWidget(
       activity,
       ImGui::Checkbox("Visible##layout_object_properties", &draft.visible));
-  ImGui::TextDisabled("Placement: %s",
-                      cr::toString(draft.mode).data());
-  if (draft.mode == cr::CreativeObjectLibraryPlacementMode::Bounds) {
-    ImGui::SeparatorText("Bounds in grid cells");
-    drawVec3Table("##layout_object_bounds", "Min", draft.boundsCells.min,
-                  activity, "Max", &draft.boundsCells.max);
+  if (draft.usesBridgeRecipe) {
+    drawBridgeRecipeInspector(draft, activity);
   } else {
-    ImGui::SeparatorText("Point in grid cells");
-    drawVec3Table("##layout_object_point", "Point", draft.pointCells,
-                  activity);
-    if (draft.hasAssetSourceBounds) {
-      constexpr double kRadiansToDegrees =
-          57.295779513082320876798154814105;
-      constexpr double kDegreesToRadians =
-          0.01745329251994329576923690768489;
-      double yawDegrees = draft.yawRadians * kRadiansToDegrees;
-      const bool yawChanged = ImGui::InputDouble(
-          "Yaw##layout_object_properties", &yawDegrees, 15.0, 90.0,
-          "%.1f deg");
-      if (yawChanged) {
-        draft.yawRadians = yawDegrees * kDegreesToRadians;
-      }
-      observeCreativeDesktopContinuousPropertyWidget(activity, yawChanged);
-      drawVec3Table("##layout_object_scale", "Scale", draft.scale,
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Asset ID##layout_object_properties", draft.assetId));
+    ImGui::TextDisabled("Placement: %s",
+                        cr::toString(draft.mode).data());
+    if (draft.mode == cr::CreativeObjectLibraryPlacementMode::Bounds) {
+      ImGui::SeparatorText("Bounds in grid cells");
+      drawVec3Table("##layout_object_bounds", "Min", draft.boundsCells.min,
+                    activity, "Max", &draft.boundsCells.max);
+    } else {
+      ImGui::SeparatorText("Point in grid cells");
+      drawVec3Table("##layout_object_point", "Point", draft.pointCells,
                     activity);
-      const cr::CreativeBoundsMetrics sourceBounds =
-          cr::measureCreativeBounds(draft.assetSourceBoundsMeters);
-      if (sourceBounds.valid) {
-        ImGui::TextDisabled("Catalog bounds: %.2f x %.2f x %.2f m",
-                            sourceBounds.size.x, sourceBounds.size.y,
-                            sourceBounds.size.z);
+      if (draft.hasAssetSourceBounds ||
+          draft.kind == cr::CreativeObjectKind::SpawnPoint) {
+        constexpr double kRadiansToDegrees =
+            57.295779513082320876798154814105;
+        constexpr double kDegreesToRadians =
+            0.01745329251994329576923690768489;
+        double yawDegrees = draft.yawRadians * kRadiansToDegrees;
+        const bool yawChanged = ImGui::InputDouble(
+            "Yaw##layout_object_properties", &yawDegrees, 15.0, 90.0,
+            "%.1f deg");
+        if (yawChanged) {
+          draft.yawRadians = yawDegrees * kDegreesToRadians;
+        }
+        observeCreativeDesktopContinuousPropertyWidget(activity, yawChanged);
+      }
+      if (draft.hasAssetSourceBounds) {
+        drawVec3Table("##layout_object_scale", "Scale", draft.scale,
+                      activity);
+        const cr::CreativeBoundsMetrics sourceBounds =
+            cr::measureCreativeBounds(draft.assetSourceBoundsMeters);
+        if (sourceBounds.valid) {
+          ImGui::TextDisabled("Catalog bounds: %.2f x %.2f x %.2f m",
+                              sourceBounds.size.x, sourceBounds.size.y,
+                              sourceBounds.size.z);
+        }
       }
     }
   }
 
+  const bool spawnSettingsValid =
+      draft.kind != cr::CreativeObjectKind::SpawnPoint ||
+      cr::isValidCreativePlayerSpawnSettings(draft.playerSpawn);
+  if (draft.kind == cr::CreativeObjectKind::SpawnPoint) {
+    ImGui::SeparatorText("Player Spawn");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Player profile##layout_object_properties",
+                  draft.playerSpawn.playerProfileId));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Spawn group##layout_object_properties",
+                  draft.playerSpawn.spawnGroup));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputDouble("Clearance radius##layout_object_properties",
+                           &draft.playerSpawn.validationRadiusMeters, 0.05,
+                           0.25, "%.2f m"));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Fallback priority##layout_object_properties",
+                           ImGuiDataType_U16,
+                           &draft.playerSpawn.fallbackPriority));
+    ImGui::TextDisabled("Lower priority wins; ties use object id");
+    ImGui::TextDisabled("Facing follows Yaw");
+    if (!spawnSettingsValid) {
+      ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+                         "Profile/group identifiers or clearance radius are invalid");
+    } else if (!cr::isSupportedCreativePlayerProfileId(
+                   draft.playerSpawn.playerProfileId)) {
+      ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
+                         "Profile is not available in the current runtime");
+    }
+  }
+
   finishCreativeDesktopWorldLayoutPropertyEdit(
-      activity, current, draft, true, "Reset object", state,
+      activity, current, draft, spawnSettingsValid, "Reset object", state,
       objectIndex, object.stableKey, commands);
 }
 
 }  // namespace
+
+void drawCreativeEditorWorldLayoutRoofApertureInspector(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t apertureIndex,
+    CreativeDesktopCommandFrame& commands) {
+  drawRoofApertureInspectorForIndex(state, apertureIndex, commands);
+}
 
 void drawCreativeEditorWorldLayoutSourceInspector(
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands) {
   drawLevelInspector(state, commands);
+  if (state.selection.kind ==
+      CreativeEditorWorldLayoutSelectionKind::RoofAperture) {
+    drawCreativeEditorWorldLayoutRoofApertureInspector(
+        state, state.selection.index, commands);
+  } else {
+    state.roofApertureSettingsDraft = {};
+  }
   drawTerrainProfileInspector(state, document, commands);
   drawTerrainPathInspector(state, document, commands);
   drawObjectInspector(state, commands);

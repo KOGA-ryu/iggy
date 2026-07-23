@@ -1,7 +1,9 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
@@ -15,6 +17,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <limits>
+#include <span>
 #include <string>
 #include <utility>
 
@@ -58,6 +61,30 @@ ImGuiMouseCursor rectHandleCursor(
   return ImGuiMouseCursor_Arrow;
 }
 
+ImGuiMouseCursor terrainRegionHandleCursor(
+    CreativeEditorWorldLayoutTerrainRegionHandle handle) noexcept {
+  switch (handle) {
+    case CreativeEditorWorldLayoutTerrainRegionHandle::Body:
+      return ImGuiMouseCursor_ResizeAll;
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MinimumX:
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MaximumX:
+      return ImGuiMouseCursor_ResizeEW;
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MinimumZ:
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MaximumZ:
+      return ImGuiMouseCursor_ResizeNS;
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MinimumXMinimumZ:
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MaximumXMaximumZ:
+      return ImGuiMouseCursor_ResizeNWSE;
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MaximumXMinimumZ:
+    case CreativeEditorWorldLayoutTerrainRegionHandle::MinimumXMaximumZ:
+      return ImGuiMouseCursor_ResizeNESW;
+    case CreativeEditorWorldLayoutTerrainRegionHandle::None:
+    case CreativeEditorWorldLayoutTerrainRegionHandle::Count:
+      break;
+  }
+  return ImGuiMouseCursor_Hand;
+}
+
 void queueGesture(CreativeDesktopCommandFrame& commands,
                   CreativeEditorWorldLayoutGesturePhase phase,
                   CreativeEditorWorldLayoutPoint point = {}) {
@@ -73,6 +100,26 @@ void queueRoomManipulation(
       CreativeDesktopCommandId::WorldLayoutManipulateRoom,
       CreativeDesktopWorldLayoutRoomManipulationPayload{phase, point,
                                                         toleranceCells});
+}
+
+void queueRoomBoundaryManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoomBoundaryManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoomBoundary,
+      CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload{
+          phase, point, toleranceCells});
+}
+
+void queueRoomCornerManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoomCornerManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoomCorner,
+      CreativeDesktopWorldLayoutRoomCornerManipulationPayload{
+          phase, point, toleranceCells});
 }
 
 void queueVerticalConnectorManipulation(
@@ -125,6 +172,65 @@ void queueOpeningManipulation(
           phase, point, toleranceCells});
 }
 
+void queueRoofApertureManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoofApertureManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
+      CreativeDesktopWorldLayoutRoofApertureManipulationPayload{
+          phase, point, toleranceCells});
+}
+
+void queueRoofManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoofManipulationPhase phase,
+    CreativeEditorWorldLayoutRoofTarget target,
+    double coordinateCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoof,
+      CreativeDesktopWorldLayoutRoofManipulationPayload{
+          phase, target, coordinateCells});
+}
+
+double planRoofHandleCoordinate(
+    CreativeEditorWorldLayoutRoofHandleKind handle,
+    CreativeEditorWorldLayoutPoint point) noexcept {
+  switch (handle) {
+    case CreativeEditorWorldLayoutRoofHandleKind::NorthEave:
+      return -point.z;
+    case CreativeEditorWorldLayoutRoofHandleKind::EastEave:
+      return point.x;
+    case CreativeEditorWorldLayoutRoofHandleKind::SouthEave:
+      return point.z;
+    case CreativeEditorWorldLayoutRoofHandleKind::WestEave:
+      return -point.x;
+    case CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight:
+      return point.z;
+    case CreativeEditorWorldLayoutRoofHandleKind::None:
+    case CreativeEditorWorldLayoutRoofHandleKind::Count:
+      break;
+  }
+  return 0.0;
+}
+
+ImGuiMouseCursor roofHandleCursor(
+    CreativeEditorWorldLayoutRoofHandleKind handle) noexcept {
+  switch (handle) {
+    case CreativeEditorWorldLayoutRoofHandleKind::NorthEave:
+    case CreativeEditorWorldLayoutRoofHandleKind::SouthEave:
+    case CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight:
+      return ImGuiMouseCursor_ResizeNS;
+    case CreativeEditorWorldLayoutRoofHandleKind::EastEave:
+    case CreativeEditorWorldLayoutRoofHandleKind::WestEave:
+      return ImGuiMouseCursor_ResizeEW;
+    case CreativeEditorWorldLayoutRoofHandleKind::None:
+    case CreativeEditorWorldLayoutRoofHandleKind::Count:
+      break;
+  }
+  return ImGuiMouseCursor_Arrow;
+}
+
 void queuePlanSourceSelection(
     CreativeDesktopCommandFrame& commands,
     const CreativeEditorWorldLayoutState& state,
@@ -138,6 +244,71 @@ void queuePlanSourceSelection(
           hit.sourceLevelIndex});
 }
 
+CreativeEditorSelectionComposition selectionComposition(
+    bool additive, bool toggle) noexcept {
+  if (toggle) {
+    return CreativeEditorSelectionComposition::Toggle;
+  }
+  return additive ? CreativeEditorSelectionComposition::Add
+                  : CreativeEditorSelectionComposition::Replace;
+}
+
+bool queuePlanObjectSelection(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& currentSelection,
+    std::span<const cr::CreativeWorldLayoutSourceRef> sources,
+    CreativeEditorSelectionComposition composition,
+    CreativeDesktopCommandFrame& commands) {
+  CreativeEditorObjectSelectionPlan plan =
+      planCreativeEditorWorldLayoutObjectSelection(
+          state, document, currentSelection, sources, composition);
+  if (!plan.accepted) {
+    state.statusMessage = plan.overflowed
+                              ? "selection exceeds the 4096-object limit"
+                              : "selection source is unavailable";
+    return false;
+  }
+  commands.push(CreativeDesktopCommandId::SelectObjects,
+                CreativeDesktopSelectPayload{std::move(plan.objectIds),
+                                             plan.primaryObjectId});
+  return true;
+}
+
+ImU32 planRegionColor(CreativeEditorDraftingRole role,
+                      std::uint8_t alpha) noexcept {
+  const CreativeEditorDraftingColor tint =
+      creativeEditorDraftingStyle(role).tint;
+  return IM_COL32(tint.r, tint.g, tint.b, alpha);
+}
+
+void drawPlanRegionSelection(
+    ImDrawList& drawList, ImVec2 minimum, ImVec2 maximum,
+    const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutPlanRegionSelectionGesture& gesture) {
+  if (!gesture.active) {
+    return;
+  }
+  const ImVec2 anchor =
+      toScreen(transform, gesture.anchor.x, gesture.anchor.z);
+  const ImVec2 current =
+      toScreen(transform, gesture.current.x, gesture.current.z);
+  const ImVec2 regionMinimum{std::min(anchor.x, current.x),
+                             std::min(anchor.y, current.y)};
+  const ImVec2 regionMaximum{std::max(anchor.x, current.x),
+                             std::max(anchor.y, current.y)};
+  const CreativeEditorDraftingRole role =
+      gesture.current.x >= gesture.anchor.x
+          ? CreativeEditorDraftingRole::SelectedOverlay
+          : CreativeEditorDraftingRole::HoverOverlay;
+  drawList.PushClipRect(minimum, maximum, true);
+  drawList.AddRectFilled(regionMinimum, regionMaximum,
+                         planRegionColor(role, 28U));
+  drawList.AddRect(regionMinimum, regionMaximum,
+                   planRegionColor(role, 230U), 0.0F, 0, 1.5F);
+  drawList.PopClipRect();
+}
+
 bool queuePlanSourceInteraction(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands,
@@ -147,15 +318,47 @@ bool queuePlanSourceInteraction(
     return false;
   }
   if (hit.table == cr::CreativeWorldLayoutTable::Object) {
-    static_cast<void>(beginCreativeEditorWorldLayoutObjectManipulation(
-        state, hit.sourceIndex, point));
+    const CreativeEditorWorldLayoutEditReceipt begun =
+        beginCreativeEditorWorldLayoutObjectManipulation(
+            state, hit.sourceIndex, point);
+    if (!begun.accepted) {
+      return false;
+    }
+    // The manipulation owns the immediate 2D state. The queued semantic
+    // selection synchronizes its generated 3D members without restarting the
+    // already-active drag.
+    queuePlanSourceSelection(commands, state, hit);
     return true;
   }
   queuePlanSourceSelection(commands, state, hit);
   switch (hit.table) {
     case cr::CreativeWorldLayoutTable::Room:
-      queueRoomManipulation(
-          commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      if (state.source.roomBoundaries.empty()) {
+        queueRoomManipulation(
+            commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+            point, toleranceCells);
+      } else {
+        const CreativeEditorWorldLayoutRoomCornerTarget corner =
+            findCreativeEditorWorldLayoutRoomCornerTarget(
+                state, hit.sourceIndex, point, toleranceCells);
+        if (corner.topologyVertexIndex !=
+            cr::kInvalidCreativeWorldLayoutIndex) {
+          queueRoomCornerManipulation(
+              commands,
+              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Begin,
+              point, toleranceCells);
+        } else {
+          queueRoomBoundaryManipulation(
+              commands,
+              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin,
+              point, toleranceCells);
+        }
+      }
+      break;
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      queueRoomBoundaryManipulation(
+          commands,
+          CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin,
           point, toleranceCells);
       break;
     case cr::CreativeWorldLayoutTable::VerticalConnector:
@@ -177,6 +380,12 @@ bool queuePlanSourceInteraction(
     case cr::CreativeWorldLayoutTable::Opening:
       queueOpeningManipulation(
           commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
+          point, toleranceCells);
+      break;
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      queueRoofApertureManipulation(
+          commands,
+          CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
           point, toleranceCells);
       break;
     case cr::CreativeWorldLayoutTable::None:
@@ -206,7 +415,9 @@ void queueBuildingTemplatePlacement(
 void queueLayoutManipulationCancel(
     CreativeEditorWorldLayoutState& state,
     CreativeDesktopCommandFrame& commands) {
-  if (state.elevationManipulation.active) {
+  if (state.planRegionSelection.active) {
+    state.planRegionSelection = {};
+  } else if (state.elevationManipulation.active) {
     state.elevationManipulation = {};
   } else if (state.objectManipulation.active) {
     static_cast<void>(
@@ -224,6 +435,15 @@ void queueLayoutManipulationCancel(
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel, {},
         0.25);
+  } else if (state.roofManipulation.active) {
+    queueRoofManipulation(
+        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+        state.roofManipulation.target, 0.0);
+  } else if (state.roofApertureManipulation.active) {
+    queueRoofApertureManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel, {},
+        0.25);
   } else if (state.verticalConnectorManipulation.active) {
     queueVerticalConnectorManipulation(
         commands,
@@ -240,6 +460,16 @@ void queueLayoutManipulationCancel(
   } else if (state.roomManipulation.active) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel, {},
+        0.25);
+  } else if (state.roomCornerManipulation.active) {
+    queueRoomCornerManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Cancel, {},
+        0.25);
+  } else if (state.roomBoundaryManipulation.active) {
+    queueRoomBoundaryManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Cancel, {},
         0.25);
   } else if (state.boxManipulation.active) {
     queueBoxManipulation(
@@ -296,14 +526,9 @@ bool selectedBuildingContains(
 }
 
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
-  return tool == CreativeEditorWorldLayoutTool::BuildingShell ||
-         tool == CreativeEditorWorldLayoutTool::Room ||
-         tool == CreativeEditorWorldLayoutTool::Floor ||
-         tool == CreativeEditorWorldLayoutTool::Wall ||
-         creativeEditorWorldLayoutToolIsVerticalConnector(tool) ||
-         tool == CreativeEditorWorldLayoutTool::Road ||
-         tool == CreativeEditorWorldLayoutTool::Ditch ||
-         tool == CreativeEditorWorldLayoutTool::Bridge;
+  return describeCreativeEditorWorldLayoutTool(tool)
+             .worldLayoutInputProfile ==
+         CreativeEditorWorldLayoutInputProfile::Drag;
 }
 
 // Compact canvas navigation only. Authoring parameters stay in Properties and
@@ -411,6 +636,15 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     }
     ImGui::SameLine();
     if (drawCreativeEditorWorldLayoutGlyphButton(
+            "##world_layout_upper_context",
+            CreativeEditorToolGlyph::UpperLevelContext, kTileSize,
+            state.planUpperLevelContextVisible,
+            "Show the nearest upper floor as context")) {
+      state.planUpperLevelContextVisible =
+          !state.planUpperLevelContextVisible;
+    }
+    ImGui::SameLine();
+    if (drawCreativeEditorWorldLayoutGlyphButton(
             "##world_layout_roof_overhead",
             CreativeEditorToolGlyph::RoofVisibility, kTileSize,
             state.planRoofOverheadVisible, "Show roof overhead")) {
@@ -425,8 +659,13 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
 
     if (topography.visible) {
       ImGui::Checkbox("Elevation bands", &topography.elevationBandsVisible);
-      int interval = static_cast<int>(topography.intervalCells);
       ImGui::SameLine();
+      ImGui::Checkbox("Slope bands", &topography.slopeBandsVisible);
+      ImGui::SameLine();
+      ImGui::Checkbox("Labels", &topography.contourLabelsVisible);
+      ImGui::SameLine();
+      ImGui::Checkbox("Cut / fill", &topography.cutFillVisible);
+      int interval = static_cast<int>(topography.intervalCells);
       ImGui::SetNextItemWidth(112.0F);
       if (ImGui::SliderInt(
               "Contour##world_layout_topography", &interval, 1,
@@ -467,12 +706,16 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
 
 void drawLayoutCanvas(CreativeEditorState& editor,
                       const cr::CreativeDocument& document,
+                      const cr::CreativeSelectionState& selection,
+                      const cr::CreativeMeasurementState& measurement,
                       CreativeDesktopCommandFrame& commands,
                       bool interactionEnabled,
                       CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
       editor.worldLayoutTopography;
+  const bool selectionToolActive =
+      state.tool == CreativeEditorWorldLayoutTool::Select;
   const bool previewActive = creativeEditorWorldLayoutPreviewActive(state);
   const cr::CreativeDocument& renderDocument =
       creativeEditorWorldLayoutRenderDocument(state, document);
@@ -543,21 +786,27 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       state.objectManipulation.active || state.buildingManipulation.active ||
       state.openingManipulation.active || state.wallManipulation.active ||
       state.verticalConnectorManipulation.active ||
-      state.roomManipulation.active || state.boxManipulation.active;
+      state.roomManipulation.active ||
+      state.roomCornerManipulation.active ||
+      state.roomBoundaryManipulation.active || state.boxManipulation.active ||
+      state.roofApertureManipulation.active || state.roofManipulation.active ||
+      state.planRegionSelection.active;
   const bool semanticHoverEnabled =
-      interactionEnabled && hovered &&
-      state.tool == CreativeEditorWorldLayoutTool::Select &&
+      interactionEnabled && hovered && selectionToolActive &&
       !topography.region.editingEnabled &&
       !state.buildingTemplatePlacement.active && !manipulationActive;
   const cr::CreativeWorldLayout& displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
-  const CreativeEditorWorldLayoutPlanHit hoveredPlanHit =
+  const CreativeEditorWorldLayoutPlanHitStack hoveredPlanStack =
       semanticHoverEnabled
-          ? hitCreativeEditorWorldLayoutPlan(
+          ? hitCreativeEditorWorldLayoutPlanStack(
                 editor.worldLayoutPlanView, state, displaySource,
                 {semanticHoverPoint.x, semanticHoverPoint.z},
                 semanticHitTolerance)
-          : CreativeEditorWorldLayoutPlanHit{};
+          : CreativeEditorWorldLayoutPlanHitStack{};
+  const CreativeEditorWorldLayoutPlanHit hoveredPlanHit =
+      hoveredPlanStack.count > 0U ? hoveredPlanStack.items.front()
+                                  : CreativeEditorWorldLayoutPlanHit{};
   if (hovered && hoverStatus != nullptr) {
     hoverStatus->present = true;
     hoverStatus->cellX = semanticHoverPoint.x;
@@ -572,16 +821,24 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     }
   }
 
+  if (state.planRegionSelection.active) {
+    state.planRegionSelection.current = semanticHoverPoint;
+  }
+
   const CreativeEditorWorldLayoutCanvasPointerGeometry pointerGeometry =
       drawCreativeEditorWorldLayoutCanvasScene(
           *ImGui::GetWindowDrawList(), minimum, maximum, transform, state,
           topography, editor.worldLayoutPlanView,
-          hoveredPlanHit.primitiveIndex, grid, io.MousePos, hovered);
+          hoveredPlanHit.primitiveIndex, grid,
+          document.measurementAnnotationStore(), measurement, io.MousePos,
+          hovered);
   const CreativeEditorWorldLayoutPoint pointerPoint =
       pointerGeometry.pointerPoint;
   const CreativeEditorWorldLayoutPoint hoveredPoint =
       pointerGeometry.hoveredPoint;
   const double handleTolerance = pointerGeometry.handleToleranceCells;
+  drawPlanRegionSelection(*ImGui::GetWindowDrawList(), minimum, maximum,
+                          transform, state.planRegionSelection);
 
   if (!interactionEnabled) {
     return;
@@ -590,14 +847,28 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   CreativeEditorWorldLayoutTerrainRegionState& terrainRegion =
       topography.region;
   if (terrainRegion.editingEnabled) {
+    const CreativeEditorWorldLayoutTerrainRegionHandle regionHandle =
+        terrainRegion.manipulation.active
+            ? terrainRegion.manipulation.handle
+            : hitCreativeEditorWorldLayoutTerrainRegionHandle(
+                  terrainRegion, hoveredPoint.x, hoveredPoint.z,
+                  handleTolerance);
     if (hovered) {
-      ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+      ImGui::SetMouseCursor(terrainRegionHandleCursor(regionHandle));
     }
     const bool cancel =
         io.AppFocusLost ||
         (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
         ImGui::IsKeyPressed(ImGuiKey_Escape);
     if (cancel) {
+      if (terrainRegion.manipulation.active) {
+        if (cancelCreativeEditorWorldLayoutTerrainRegionManipulation(
+                terrainRegion)) {
+          commands.push(
+              CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+        }
+        return;
+      }
       commands.push(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
       return;
@@ -608,16 +879,64 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     if (previewOwnedElsewhere) {
       return;
     }
-    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-      static_cast<void>(beginCreativeEditorWorldLayoutTerrainRegion(
-          terrainRegion, hoveredPoint.x, hoveredPoint.z));
+    const bool leftClicked =
+        hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    if (leftClicked && io.KeyShift) {
+      const CreativeEditorWorldLayoutTerrainAnalysisEditPlan edit =
+          planCreativeEditorWorldLayoutTerrainAnalysisEdit(
+              topography.plan, semanticHoverPoint.x, semanticHoverPoint.z,
+              semanticHitTolerance,
+              cr::CreativeTerrainAnalysisHitMode::HeightHandleOnly);
+      if (selectCreativeEditorWorldLayoutTerrainAnalysisEdit(terrainRegion,
+                                                              edit)) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+      }
+      return;
     }
-    if (terrainRegion.selecting &&
+    if (leftClicked) {
+      const CreativeEditorWorldLayoutTerrainAnalysisEditPlan edit =
+          planCreativeEditorWorldLayoutTerrainAnalysisEdit(
+              topography.plan, semanticHoverPoint.x, semanticHoverPoint.z,
+              semanticHitTolerance,
+              cr::CreativeTerrainAnalysisHitMode::ContourOnly);
+      if (edit.accepted &&
+          selectCreativeEditorWorldLayoutTerrainAnalysisEdit(terrainRegion,
+                                                              edit)) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+        return;
+      }
+    }
+    if (leftClicked) {
+      if (regionHandle !=
+          CreativeEditorWorldLayoutTerrainRegionHandle::None) {
+        static_cast<void>(
+            beginCreativeEditorWorldLayoutTerrainRegionManipulation(
+                terrainRegion, regionHandle, hoveredPoint.x, hoveredPoint.z));
+      } else {
+        static_cast<void>(beginCreativeEditorWorldLayoutTerrainRegion(
+            terrainRegion, hoveredPoint.x, hoveredPoint.z));
+      }
+    }
+    if (terrainRegion.manipulation.active &&
+        ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+      static_cast<void>(
+          updateCreativeEditorWorldLayoutTerrainRegionManipulation(
+              terrainRegion, hoveredPoint.x, hoveredPoint.z));
+    } else if (terrainRegion.selecting &&
         ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
       static_cast<void>(updateCreativeEditorWorldLayoutTerrainRegion(
           terrainRegion, hoveredPoint.x, hoveredPoint.z));
     }
-    if (terrainRegion.selecting &&
+    if (terrainRegion.manipulation.active &&
+        ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      if (finishCreativeEditorWorldLayoutTerrainRegionManipulation(
+              terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+      }
+    } else if (terrainRegion.selecting &&
         ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
       if (finishCreativeEditorWorldLayoutTerrainRegion(
               terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
@@ -655,45 +974,129 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     return;
   }
 
+  if (state.planRegionSelection.active) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+    const bool cancelSelection =
+        io.AppFocusLost || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
+        ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    if (cancelSelection) {
+      state.planRegionSelection = {};
+      return;
+    }
+    if (!ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      return;
+    }
+
+    const CreativeEditorWorldLayoutPlanRegionSelectionGesture gesture =
+        state.planRegionSelection;
+    state.planRegionSelection = {};
+    const double dragPixelsX =
+        (gesture.current.x - gesture.anchor.x) * transform.pixelsPerCell;
+    const double dragPixelsZ =
+        (gesture.current.z - gesture.anchor.z) * transform.pixelsPerCell;
+    constexpr double kRegionDragThresholdPixels = 4.0;
+    if (dragPixelsX * dragPixelsX + dragPixelsZ * dragPixelsZ <
+        kRegionDragThresholdPixels * kRegionDragThresholdPixels) {
+      if (!gesture.additive && !gesture.toggle) {
+        commands.push(
+            CreativeDesktopCommandId::WorldLayoutClearSelection);
+      }
+      return;
+    }
+
+    const CreativeEditorWorldLayoutPlanRegionSelection region =
+        selectCreativeEditorWorldLayoutPlanRegion(
+            editor.worldLayoutPlanView, state, displaySource,
+            {gesture.anchor.x, gesture.anchor.z},
+            {gesture.current.x, gesture.current.z});
+    if (!region.accepted) {
+      state.statusMessage = region.overflowed
+                                ? "region exceeds the 4096-source limit"
+                                : "region selection is unavailable";
+      return;
+    }
+    static_cast<void>(queuePlanObjectSelection(
+        state, document, selection, region.sources,
+        selectionComposition(gesture.additive, gesture.toggle), commands));
+    return;
+  }
+
   const CreativeEditorWorldLayoutOpeningTarget hoveredOpeningTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      hovered && selectionToolActive &&
               hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Opening
           ? findCreativeEditorWorldLayoutOpeningTarget(
                 state, hoveredPoint, handleTolerance)
           : CreativeEditorWorldLayoutOpeningTarget{};
   const CreativeEditorWorldLayoutWallTarget hoveredWallTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      hovered && selectionToolActive &&
               hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Wall
           ? findCreativeEditorWorldLayoutWallTarget(state, hoveredPoint,
                                                     handleTolerance)
           : CreativeEditorWorldLayoutWallTarget{};
   const CreativeEditorWorldLayoutVerticalConnectorTarget
       hoveredVerticalConnectorTarget =
-          hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+          hovered && selectionToolActive &&
                   hoveredPlanHit.table ==
                       cr::CreativeWorldLayoutTable::VerticalConnector
               ? findCreativeEditorWorldLayoutVerticalConnectorTarget(
                     state, hoveredPoint, handleTolerance)
               : CreativeEditorWorldLayoutVerticalConnectorTarget{};
   const CreativeEditorWorldLayoutRoomTarget hoveredRoomTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      hovered && selectionToolActive &&
               hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
           ? findCreativeEditorWorldLayoutRoomTarget(state, hoveredPoint,
                                                     handleTolerance)
           : CreativeEditorWorldLayoutRoomTarget{};
+  const CreativeEditorWorldLayoutRoomBoundaryTarget
+      hoveredRoomBoundaryTarget =
+          hovered && selectionToolActive &&
+                  hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
+              ? findCreativeEditorWorldLayoutRoomBoundaryTarget(
+                    state, hoveredPoint, handleTolerance)
+              : CreativeEditorWorldLayoutRoomBoundaryTarget{};
+  const CreativeEditorWorldLayoutRoomCornerTarget hoveredRoomCornerTarget =
+      hovered && selectionToolActive &&
+              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
+          ? findCreativeEditorWorldLayoutRoomCornerTarget(
+                state, hoveredPlanHit.sourceIndex, hoveredPoint,
+                handleTolerance)
+          : CreativeEditorWorldLayoutRoomCornerTarget{};
   const CreativeEditorWorldLayoutBoxTarget hoveredBoxTarget =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      hovered && selectionToolActive &&
               hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Box
           ? findCreativeEditorWorldLayoutBoxTarget(state, hoveredPoint,
                                                    handleTolerance)
           : CreativeEditorWorldLayoutBoxTarget{};
+  const CreativeEditorWorldLayoutRoofApertureTarget
+      hoveredRoofApertureTarget =
+          hovered && selectionToolActive &&
+                  hoveredPlanHit.table ==
+                      cr::CreativeWorldLayoutTable::RoofAperture
+              ? findCreativeEditorWorldLayoutRoofApertureTarget(
+                    state, hoveredPoint, handleTolerance)
+              : CreativeEditorWorldLayoutRoofApertureTarget{};
+  const std::size_t roofLevelIndex =
+      state.roofManipulation.active
+          ? state.roofManipulation.target.levelIndex
+          : state.selection.kind ==
+                    CreativeEditorWorldLayoutSelectionKind::Level
+                ? state.selection.index
+                : cr::kInvalidCreativeWorldLayoutIndex;
+  const CreativeEditorWorldLayoutRoofHandleFrame roofHandleFrame =
+      buildCreativeEditorWorldLayoutRoofHandleFrame(state, grid,
+                                                     roofLevelIndex);
+  const CreativeEditorWorldLayoutRoofTarget hoveredRoofTarget =
+      hovered && selectionToolActive
+          ? findCreativeEditorWorldLayoutPlanRoofHandle(
+                roofHandleFrame, hoveredPoint, handleTolerance)
+          : CreativeEditorWorldLayoutRoofTarget{};
   const std::size_t hoveredObjectIndex =
       hoveredPlanHit.hit &&
               hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Object
           ? hoveredPlanHit.sourceIndex
           : cr::kInvalidCreativeWorldLayoutIndex;
   const bool hoveredBuilding =
-      hovered && state.tool == CreativeEditorWorldLayoutTool::Select &&
+      hovered && selectionToolActive &&
       selectedBuildingContains(state, hoveredPoint, handleTolerance);
   if (state.objectManipulation.active) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
@@ -714,10 +1117,26 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   } else if (state.roomManipulation.active) {
     ImGui::SetMouseCursor(
         rectHandleCursor(state.roomManipulation.target.handle));
+  } else if (state.roomCornerManipulation.active) {
+    ImGui::SetMouseCursor(
+        state.roomCornerManipulation.target.northWestSouthEast
+            ? ImGuiMouseCursor_ResizeNWSE
+            : ImGuiMouseCursor_ResizeNESW);
+  } else if (state.roomBoundaryManipulation.active) {
+    ImGui::SetMouseCursor(
+        state.roomBoundaryManipulation.target.horizontal
+            ? ImGuiMouseCursor_ResizeNS
+            : ImGuiMouseCursor_ResizeEW);
   } else if (state.boxManipulation.active) {
     ImGui::SetMouseCursor(
         rectHandleCursor(state.boxManipulation.target.handle));
-  } else if (hovered && state.tool == CreativeEditorWorldLayoutTool::Select) {
+  } else if (state.roofManipulation.active) {
+    ImGui::SetMouseCursor(
+        roofHandleCursor(state.roofManipulation.target.handle));
+  } else if (state.roofApertureManipulation.active) {
+    ImGui::SetMouseCursor(
+        rectHandleCursor(state.roofApertureManipulation.target.handle));
+  } else if (hovered && selectionToolActive) {
     if (hoveredOpeningTarget.handle !=
         CreativeEditorWorldLayoutOpeningHandle::None) {
       ImGui::SetMouseCursor(
@@ -738,25 +1157,71 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     } else if (hoveredRoomTarget.handle !=
                CreativeEditorWorldLayoutRoomHandle::None) {
       ImGui::SetMouseCursor(rectHandleCursor(hoveredRoomTarget.handle));
+    } else if (hoveredRoomCornerTarget.topologyVertexIndex !=
+               cr::kInvalidCreativeWorldLayoutIndex) {
+      ImGui::SetMouseCursor(hoveredRoomCornerTarget.northWestSouthEast
+                                ? ImGuiMouseCursor_ResizeNWSE
+                                : ImGuiMouseCursor_ResizeNESW);
+    } else if (hoveredRoomBoundaryTarget.topologyEdgeIndex !=
+               cr::kInvalidCreativeWorldLayoutIndex) {
+      ImGui::SetMouseCursor(hoveredRoomBoundaryTarget.horizontal
+                                ? ImGuiMouseCursor_ResizeNS
+                                : ImGuiMouseCursor_ResizeEW);
     } else if (hoveredBoxTarget.handle !=
                CreativeEditorWorldLayoutBoxHandle::None) {
       ImGui::SetMouseCursor(rectHandleCursor(hoveredBoxTarget.handle));
+    } else if (hoveredRoofTarget.handle !=
+               CreativeEditorWorldLayoutRoofHandleKind::None) {
+      ImGui::SetMouseCursor(roofHandleCursor(hoveredRoofTarget.handle));
+    } else if (hoveredRoofApertureTarget.handle !=
+               CreativeEditorWorldLayoutRoofApertureHandle::None) {
+      ImGui::SetMouseCursor(
+          rectHandleCursor(hoveredRoofApertureTarget.handle));
     } else if (hoveredPlanHit.hit) {
       ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
   }
 
   if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-    if (state.tool == CreativeEditorWorldLayoutTool::Select) {
-      if (hoveredBuilding) {
+    if (selectionToolActive) {
+      const bool additive = io.KeyShift;
+      const bool toggle = io.KeySuper || io.KeyCtrl;
+      if ((additive || toggle) && hoveredPlanHit.hit) {
+        const cr::CreativeWorldLayoutSourceRef source{
+            hoveredPlanHit.table, hoveredPlanHit.sourceIndex};
+        static_cast<void>(queuePlanObjectSelection(
+            state, document, selection,
+            std::span<const cr::CreativeWorldLayoutSourceRef>{&source, 1U},
+            selectionComposition(additive, toggle), commands));
+      } else if ((additive || toggle) && hoveredBuilding &&
+                 state.selection.kind ==
+                     CreativeEditorWorldLayoutSelectionKind::Building) {
+        const cr::CreativeWorldLayoutSourceRef source{
+            cr::CreativeWorldLayoutTable::Building, state.selection.index};
+        static_cast<void>(queuePlanObjectSelection(
+            state, document, selection,
+            std::span<const cr::CreativeWorldLayoutSourceRef>{&source, 1U},
+            selectionComposition(additive, toggle), commands));
+      } else if (hoveredRoofTarget.handle !=
+                 CreativeEditorWorldLayoutRoofHandleKind::None) {
+        queueRoofManipulation(
+            commands, CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+            hoveredRoofTarget,
+            planRoofHandleCoordinate(hoveredRoofTarget.handle, hoveredPoint));
+      } else if (hoveredBuilding) {
         queueBuildingManipulation(
             commands,
             CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
             hoveredPoint, handleTolerance);
-      } else if (!queuePlanSourceInteraction(
-                     state, commands, hoveredPlanHit, hoveredPoint,
-                     handleTolerance)) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
+      } else if (hoveredPlanHit.hit) {
+        const CreativeEditorWorldLayoutPlanHit cycledPlanHit =
+            cycleCreativeEditorWorldLayoutPlanHit(hoveredPlanStack,
+                                                  state.selection);
+        static_cast<void>(queuePlanSourceInteraction(
+            state, commands, cycledPlanHit, hoveredPoint, handleTolerance));
+      } else {
+        state.planRegionSelection = {
+            true, pointerPoint, pointerPoint, additive, toggle};
       }
     } else if (dragTool(state.tool)) {
       queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,
@@ -797,6 +1262,31 @@ void drawLayoutCanvas(CreativeEditorState& editor,
              ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
     static_cast<void>(updateCreativeEditorWorldLayoutObjectManipulation(
         state, pointerPoint));
+  }
+
+  const bool cancelRoofManipulation =
+      state.roofManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelRoofManipulation) {
+    queueRoofManipulation(
+        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+        state.roofManipulation.target, 0.0);
+  } else if (state.roofManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueRoofManipulation(
+        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
+        state.roofManipulation.target,
+        planRoofHandleCoordinate(state.roofManipulation.target.handle,
+                                 pointerPoint));
+  } else if (state.roofManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueRoofManipulation(
+        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+        state.roofManipulation.target,
+        planRoofHandleCoordinate(state.roofManipulation.target.handle,
+                                 pointerPoint));
   }
 
   const bool cancelBuildingManipulation =
@@ -886,6 +1376,54 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         pointerPoint, handleTolerance);
   }
 
+  const bool cancelRoomBoundaryManipulation =
+      state.roomBoundaryManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelRoomBoundaryManipulation) {
+    queueRoomBoundaryManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.roomBoundaryManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueRoomBoundaryManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.roomBoundaryManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueRoomBoundaryManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Update,
+        pointerPoint, handleTolerance);
+  }
+
+  const bool cancelRoomCornerManipulation =
+      state.roomCornerManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelRoomCornerManipulation) {
+    queueRoomCornerManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.roomCornerManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueRoomCornerManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.roomCornerManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueRoomCornerManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Update,
+        pointerPoint, handleTolerance);
+  }
+
   const bool cancelVerticalConnectorManipulation =
       state.verticalConnectorManipulation.active &&
       (io.AppFocusLost ||
@@ -931,17 +1469,52 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         pointerPoint, handleTolerance);
   }
 
+  const bool cancelRoofApertureManipulation =
+      state.roofApertureManipulation.active &&
+      (io.AppFocusLost ||
+       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+       ImGui::IsKeyPressed(ImGuiKey_Escape));
+  if (cancelRoofApertureManipulation) {
+    queueRoofApertureManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
+        pointerPoint, handleTolerance);
+  } else if (state.roofApertureManipulation.active &&
+             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    queueRoofApertureManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
+        pointerPoint, handleTolerance);
+  } else if (state.roofApertureManipulation.active &&
+             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    queueRoofApertureManipulation(
+        commands,
+        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+        pointerPoint, handleTolerance);
+  }
+
   const bool cancelGesture =
       !state.objectManipulation.active && !state.buildingManipulation.active &&
       !state.openingManipulation.active && !state.wallManipulation.active &&
       !state.verticalConnectorManipulation.active &&
-      !state.roomManipulation.active && !state.boxManipulation.active &&
+      !state.roomManipulation.active &&
+      !state.roomCornerManipulation.active &&
+      !state.roomBoundaryManipulation.active &&
+      !state.boxManipulation.active &&
+      !state.roofApertureManipulation.active &&
+      !state.roofManipulation.active &&
       state.anchorActive &&
       (io.AppFocusLost ||
        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
        ImGui::IsKeyPressed(ImGuiKey_Escape));
+  const bool finishTerrainPathDraft =
+      state.terrainPathDraft.active &&
+      (ImGui::IsKeyPressed(ImGuiKey_Enter) ||
+       (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)));
   if (cancelGesture) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Cancel);
+  } else if (finishTerrainPathDraft) {
+    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit);
   } else if (dragTool(state.tool) &&
              ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
              ImGui::IsItemDeactivated()) {
@@ -972,10 +1545,12 @@ void drawCreativeEditorWorldLayoutViewControls(
 
 void drawCreativeEditorWorldLayoutCanvas(
     CreativeEditorState& editor, const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& selection,
+    const cr::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands, bool interactionEnabled,
     CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus) {
-  drawLayoutCanvas(editor, document, commands, interactionEnabled,
-                   hoverStatus);
+  drawLayoutCanvas(editor, document, selection, measurement, commands,
+                   interactionEnabled, hoverStatus);
 }
 
 }  // namespace iggy3d_creative_app

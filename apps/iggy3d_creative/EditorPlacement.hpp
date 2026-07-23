@@ -118,11 +118,16 @@ struct CreativeBrushPlacementMutationReceipt {
 enum class CreativeBrushPlacementAdmissionStatus : std::uint8_t {
   Ready,
   InvalidTarget,
+  FloorRequired,
+  WallRequired,
+  SurfaceRequired,
   UnsupportedBrush,
   InvalidGeometry,
   UnsupportedPolicy,
   FaceDisallowed,
   TargetIncompatible,
+  AttachmentUnavailable,
+  AttachmentIncompatible,
   AttachmentOccupied,
   ClearanceBlocked,
 };
@@ -180,7 +185,9 @@ initialPathPointsForAnchor(iggy3d::Vec3 cellCenter);
     const iggy3d::creative::CreativeHotbarEntry& held,
     const iggy3d::creative::CreativeGridTarget& target,
     iggy3d::creative::CreativePlacementYaw placementYaw =
-        iggy3d::creative::CreativePlacementYaw::Degrees0) noexcept;
+        iggy3d::creative::CreativePlacementYaw::Degrees0,
+    iggy3d::creative::CreativeAssetAlignmentMode alignmentMode =
+        iggy3d::creative::CreativeAssetAlignmentMode::Grid) noexcept;
 [[nodiscard]] bool applyCreativeBrushPlacementContact(
     CreativeBrushPlacementPlan& plan,
     const iggy3d::creative::CreativeGridTarget& target) noexcept;
@@ -215,7 +222,9 @@ creativeBrushHeldPreviewBounds(
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
 buildBrushCreateRequest(const CreativeBrushPlacementPlan& plan,
                         std::uint64_t ordinal,
-                        std::string_view assetId = {});
+                        std::string_view assetId = {},
+                        std::uint64_t assetContentHash = 0U,
+                        std::string_view assetMaterialVariant = {});
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateRequest
 buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
@@ -228,7 +237,9 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId =
         iggy3d::creative::kInvalidObjectId,
-    std::string_view assetId = {});
+    std::string_view assetId = {},
+    std::uint64_t assetContentHash = 0U,
+    std::string_view assetMaterialVariant = {});
 
 [[nodiscard]] CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     iggy3d::creative::Facade& facade,
@@ -237,6 +248,8 @@ buildBrushCreateRequest(iggy3d::creative::CreativeObjectKind brush,
     iggy3d::creative::CreativeObjectId parentObjectId =
         iggy3d::creative::kInvalidObjectId,
     std::string_view assetId = {},
+    std::uint64_t assetContentHash = 0U,
+    std::string_view assetMaterialVariant = {},
     const CreativePlacementClearanceCache* clearanceCache = nullptr);
 
 [[nodiscard]] iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(

@@ -65,6 +65,10 @@ void refreshWorldLayoutHierarchyCaches(
     case cr::CreativeWorldLayoutTable::Room:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Room,
                       row.sourceIndex);
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      return selected(state,
+                      CreativeEditorWorldLayoutSelectionKind::TopologyEdge,
+                      row.sourceIndex);
     case cr::CreativeWorldLayoutTable::VerticalConnector:
       return selected(
           state, CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
@@ -78,6 +82,10 @@ void refreshWorldLayoutHierarchyCaches(
     case cr::CreativeWorldLayoutTable::Opening:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Opening,
                       row.sourceIndex);
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      return selected(
+          state, CreativeEditorWorldLayoutSelectionKind::RoofAperture,
+          row.sourceIndex);
     case cr::CreativeWorldLayoutTable::Object:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Object,
                       row.sourceIndex);

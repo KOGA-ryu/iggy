@@ -56,9 +56,12 @@ static_assert(cr::kCreativeMaterialBrushStampCapacity <=
 }
 
 void rejectMaterialStroke(CreativeEditorState& editor,
-                          cr::CreativeObjectKind objectKind) {
+                          cr::CreativeObjectKind objectKind,
+                          CreativeEditorPlacementRejectionReason reason =
+                              CreativeEditorPlacementRejectionReason::
+                                  ActionRejected) {
   setCreativeEditorPlacementRejectionFeedback(
-      editor.interaction, editor.frameIndex, objectKind);
+      editor.interaction, editor.frameIndex, objectKind, {}, reason);
 }
 
 [[nodiscard]] std::string_view strokeTransactionSource(
@@ -98,28 +101,44 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   CreativeMaterialStrokeState& stroke = editor.interaction.materialStroke;
   const CreativeEditorWorldTarget& target = editor.interaction.target;
   if (stroke.capacityReached) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::CapacityReached);
     return;
   }
 
   if (kind == CreativeMaterialStrokeKind::Remove) {
     if (!target.objectHit && !target.voxelHit) {
-      rejectMaterialStroke(editor, target.objectKind);
+      rejectMaterialStroke(
+          editor, target.objectKind,
+          CreativeEditorPlacementRejectionReason::InvalidTarget);
       return;
     }
     const cr::CreativeGridCoord3 targetCell =
         target.voxelHit ? target.voxelCell : cr::CreativeGridCoord3{};
     const cr::CreativeObjectId targetObjectId =
         target.voxelHit ? cr::kInvalidObjectId : target.objectId;
+    if (targetObjectId != cr::kInvalidObjectId &&
+        creativeEditorObjectRequiresSourceEdit(appState.facade.document(),
+                                               targetObjectId)) {
+      rejectMaterialStroke(
+          editor, target.objectKind,
+          CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
+      return;
+    }
     if (strokeVisited(stroke, kind, targetCell, targetObjectId)) {
       return;
     }
     if (!ensureMaterialStrokeTransaction(appState, stroke, held.kind, kind)) {
-      rejectMaterialStroke(editor, target.objectKind);
+      rejectMaterialStroke(
+          editor, target.objectKind,
+          CreativeEditorPlacementRejectionReason::HistoryUnavailable);
       return;
     }
     if (!rememberStrokeTarget(stroke, targetCell, targetObjectId)) {
-      rejectMaterialStroke(editor, target.objectKind);
+      rejectMaterialStroke(
+          editor, target.objectKind,
+          CreativeEditorPlacementRejectionReason::CapacityReached);
       return;
     }
     bool changed = false;
@@ -130,9 +149,17 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
           appState.facade.applyVoxelEdits(std::span{&edit, 1U});
       changed = receipt.accepted && receipt.changed;
     } else {
-      const cr::CreativeDocumentRemoveReceipt receipt =
-          appState.facade.removeDocumentObject(target.objectId);
-      changed = receipt.accepted && receipt.objectRemoved && receipt.changed;
+      const cr::CreativeSemanticDeleteReceipt receipt =
+          appState.facade.deleteDocumentObjectsSemantically(
+              std::span{&targetObjectId, 1U});
+      changed = receipt.accepted && receipt.changed;
+      if (!changed && receipt.status ==
+                          cr::CreativeSemanticDeleteStatus::ExternalReference) {
+        rejectMaterialStroke(
+            editor, target.objectKind,
+            CreativeEditorPlacementRejectionReason::ExternalReference);
+        return;
+      }
     }
     if (changed) {
       ++stroke.acceptedMutationCount;
@@ -145,13 +172,19 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
 
   const cr::CreativeGridTarget& grid = target.grid;
   if (!grid.valid || held.objectKind == cr::CreativeObjectKind::Unknown) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        held.objectKind == cr::CreativeObjectKind::Unknown
+            ? CreativeEditorPlacementRejectionReason::UnsupportedBrush
+            : CreativeEditorPlacementRejectionReason::InvalidTarget);
     return;
   }
   const CreativeEditorPlacementResolution placement =
       resolveCreativeEditorPlacement(
           held, target, editor.toolSettings.placementYaw,
-          appState.facade.document(), assetCatalog, clearanceCache);
+          appState.facade.document(), assetCatalog, clearanceCache,
+          editor.toolSettings.assetAlignmentMode,
+          editor.toolSettings.assetAttachmentMode);
   const CreativeBrushPlacementAdmission& admission = placement.admission;
   const std::string_view assetId = cr::creativeHotbarAssetId(held);
   if (!admission.allowed) {
@@ -161,7 +194,9 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
   }
   if (creativeBrushPlacementAlreadyExists(
           appState.facade.document(), admission.plan, assetId)) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::Occupied);
     return;
   }
   if (strokeVisited(stroke, kind, grid.adjacentCell,
@@ -169,18 +204,24 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
     return;
   }
   if (!ensureMaterialStrokeTransaction(appState, stroke, held.kind, kind)) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::HistoryUnavailable);
     return;
   }
   if (!rememberStrokeTarget(stroke, grid.adjacentCell,
                             cr::kInvalidObjectId)) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::CapacityReached);
     return;
   }
   const std::uint64_t ordinal = editor.placedCount + 1U;
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal,
       activeCreativeEditorGroupFocusId(editor.groupFocus), assetId,
+      held.hasAssetContentHash ? held.assetContentHash : 0U,
+      cr::creativeHotbarAssetMaterialVariant(held),
       clearanceCache);
   setCreativeEditorPlacementMutationFeedback(
       editor.interaction, editor.frameIndex, receipt);
@@ -249,14 +290,20 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   if (stroke.capacityReached ||
       (kind == CreativeMaterialStrokeKind::Place &&
        !cr::creativeVolumeBrushSupported(held.objectKind))) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        stroke.capacityReached
+            ? CreativeEditorPlacementRejectionReason::CapacityReached
+            : CreativeEditorPlacementRejectionReason::UnsupportedBrush);
     return;
   }
   MaterialBrushTargetSample sample =
       materialBrushTargetSample(editor, kind);
   if (!sample.valid) {
     stroke.hasLastBrushCenter = false;
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::InvalidTarget);
     return;
   }
   if (!stroke.hasBrushAnchor) {
@@ -280,7 +327,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   if (!cr::guideCreativeMaterialBrushCenter(
           stroke.brushConfig.guide, stroke.brushAnchor, sample.center,
           constrainedCenter)) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::InvalidGeometry);
     return;
   }
   sample.center = constrainedCenter;
@@ -295,7 +344,11 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
   if (!path.accepted) {
     stroke.capacityReached =
         path.status == cr::CreativeMaterialBrushPathStatus::CapacityExceeded;
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        stroke.capacityReached
+            ? CreativeEditorPlacementRejectionReason::CapacityReached
+            : CreativeEditorPlacementRejectionReason::InvalidGeometry);
     return;
   }
 
@@ -318,7 +371,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
         cr::planCreativeMaterialBrushStamp(
             creativeMaterialBrushStampRequest(stroke.brushConfig, center));
     if (!stamp.accepted) {
-      rejectMaterialStroke(editor, held.objectKind);
+      rejectMaterialStroke(
+          editor, held.objectKind,
+          CreativeEditorPlacementRejectionReason::InvalidGeometry);
       return;
     }
     const cr::CreativeMaterialBrushSymmetryPlan symmetry =
@@ -331,7 +386,11 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
       stroke.capacityReached =
           symmetry.status ==
           cr::CreativeMaterialBrushSymmetryStatus::CapacityExceeded;
-      rejectMaterialStroke(editor, held.objectKind);
+      rejectMaterialStroke(
+          editor, held.objectKind,
+          stroke.capacityReached
+              ? CreativeEditorPlacementRejectionReason::CapacityReached
+              : CreativeEditorPlacementRejectionReason::InvalidGeometry);
       return;
     }
     includeStampBounds(symmetry.minCell, symmetry.maxCell, boundsInitialized,
@@ -350,7 +409,9 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
       }
       if (editCount >= remainingCapacity) {
         stroke.capacityReached = true;
-        rejectMaterialStroke(editor, held.objectKind);
+        rejectMaterialStroke(
+            editor, held.objectKind,
+            CreativeEditorPlacementRejectionReason::CapacityReached);
         return;
       }
       edits[editCount++] = {cell, material};
@@ -360,14 +421,18 @@ void applyMaterialBrushMutation(cr::CreativeAppState& appState,
     return;
   }
   if (!ensureMaterialStrokeTransaction(appState, stroke, held.kind, kind)) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::HistoryUnavailable);
     return;
   }
 
   const cr::CreativeVoxelMutationReceipt receipt =
       appState.facade.applyVoxelEdits({edits.data(), editCount});
   if (!receipt.accepted || !receipt.changed) {
-    rejectMaterialStroke(editor, held.objectKind);
+    rejectMaterialStroke(
+        editor, held.objectKind,
+        CreativeEditorPlacementRejectionReason::VoxelRejected);
     return;
   }
   for (std::size_t index = 0U; index < editCount; ++index) {

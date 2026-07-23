@@ -59,6 +59,9 @@ CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, Cre
 CreativeMutationApplyReceipt applyMovingPlatformSettingsMutation(
     CreativeObject& object,
     const MovingPlatformSettingsMutation& mutation);
+CreativeMutationApplyReceipt applyPlayerSpawnSettingsMutation(
+    CreativeObject& object,
+    const PlayerSpawnSettingsMutation& mutation);
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
 CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
 CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);
@@ -366,6 +369,9 @@ void translateStoredPath(CreativeObject& object, CreativeVec3 delta) noexcept {
     case CreativeMutationKind::SetMovingPlatformSettings:
         return applyMovingPlatformSettingsMutation(
             object, std::get<MovingPlatformSettingsMutation>(value));
+    case CreativeMutationKind::SetPlayerSpawnSettings:
+        return applyPlayerSpawnSettingsMutation(
+            object, std::get<PlayerSpawnSettingsMutation>(value));
 
     case CreativeMutationKind::SetReferenceSource:
         return applyReferenceSourceMutation(object, mutationKind, std::get<ReferenceSourceMutation>(value));
@@ -576,12 +582,17 @@ CreativeMutationApplyReceipt applySetAssetMutation(
                                mutation.objectKind == CreativeObjectKind::Bridge;
     const CreativeBoundsMetrics metrics = measureCreativeBounds(mutation.bounds);
     if (!supportedKind || !validStaticMeshAssetId(mutation.assetId) ||
+        !validCreativeAssetMaterialVariantName(
+            mutation.assetMaterialVariant) ||
         !metrics.valid || !isPositiveCreativeVec3(metrics.size)) {
         return rejectMutation(object, CreativeMutationKind::SetAsset,
                               CreativeMutationApplyStatus::Rejected,
                               "replacement asset payload is invalid");
     }
-    if (object.kind == mutation.objectKind && object.assetId == mutation.assetId &&
+    if (object.kind == mutation.objectKind &&
+        object.assetId == mutation.assetId &&
+        object.assetContentHash == mutation.assetContentHash &&
+        object.assetMaterialVariant == mutation.assetMaterialVariant &&
         creativeBoundsExactlyEqual(object.bounds, mutation.bounds)) {
         return makeNoChangeReceipt(
             object, CreativeMutationKind::SetAsset,
@@ -591,6 +602,8 @@ CreativeMutationApplyReceipt applySetAssetMutation(
     const CreativeObjectKind previousKind = object.kind;
     object.kind = mutation.objectKind;
     object.assetId = mutation.assetId;
+    object.assetContentHash = mutation.assetContentHash;
+    object.assetMaterialVariant = mutation.assetMaterialVariant;
     object.bounds = mutation.bounds;
     const CreativeObjectDirtyFlags dirtyFlags =
         dirtyFlagsForMutation(previousKind, CreativeMutationKind::SetAsset) |
@@ -775,6 +788,27 @@ CreativeMutationApplyReceipt applyMovingPlatformSettingsMutation(
     return makeAppliedReceipt(
         object, CreativeMutationKind::SetMovingPlatformSettings,
         "moving platform settings changed");
+}
+
+CreativeMutationApplyReceipt applyPlayerSpawnSettingsMutation(
+    CreativeObject& object,
+    const PlayerSpawnSettingsMutation& mutation) {
+    if (object.kind != CreativeObjectKind::SpawnPoint ||
+        !isValidCreativePlayerSpawnSettings(mutation.settings)) {
+        return rejectMutation(
+            object, CreativeMutationKind::SetPlayerSpawnSettings,
+            CreativeMutationApplyStatus::Rejected,
+            "player spawn settings are invalid");
+    }
+    if (object.playerSpawn == mutation.settings) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetPlayerSpawnSettings,
+            "player spawn settings already match requested value");
+    }
+    object.playerSpawn = mutation.settings;
+    return makeAppliedReceipt(
+        object, CreativeMutationKind::SetPlayerSpawnSettings,
+        "player spawn settings changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

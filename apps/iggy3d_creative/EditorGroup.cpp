@@ -3,11 +3,13 @@
 #include <SDL3/SDL_log.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include "EditorEdits.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -245,8 +247,40 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
       }
     }
   }
+  std::optional<cr::CreativeAuthoringOperationRecord> prefabOperation;
+  const cr::CreativeObject* ungroupObject =
+      appState.facade.findObject(ungroupObjectId);
+  if (ungroupObject != nullptr &&
+      ungroupObject->kind == cr::CreativeObjectKind::PrefabInstance) {
+    const cr::CreativeAuthoredAssetFingerprint fingerprint =
+        cr::fingerprintCreativeAuthoredAssetInstance(*ungroupObject);
+    const cr::CreativeHierarchySelection hierarchy =
+        cr::resolveCreativeObjectHierarchy(
+            appState.facade.document(),
+            std::span{&ungroupObjectId, 1U});
+    prefabOperation =
+        fingerprint.valid && hierarchy.accepted
+            ? cr::makeCreativeAuthoringOperationRecord(
+                  cr::CreativeAuthoringFamily::Prefab,
+                  cr::CreativeAuthoringOperationKind::Destructive,
+                  "Prefab.Detach",
+                  fingerprint.value, hierarchy.objectIds.size())
+            : std::nullopt;
+    if (!prefabOperation.has_value()) {
+      cr::CreativeGroupCommandReceipt rejected;
+      rejected.requested = true;
+      rejected.kind = cr::CreativeGroupCommandKind::Ungroup;
+      rejected.status = cr::CreativeGroupCommandStatus::UnsupportedObject;
+      rejected.groupObjectId = ungroupObjectId;
+      rejected.reasonCode = "creative_prefab_detach_operation_invalid";
+      return rejected;
+    }
+  }
   cr::CreativeDocumentHistoryTransaction transaction =
-      beginEditTransaction(appState.facade, source);
+      prefabOperation.has_value()
+          ? cr::beginCreativeHistoryTransaction(appState.facade, source,
+                                                *prefabOperation)
+          : beginEditTransaction(appState.facade, source);
   cr::CreativeGroupCommandReceipt receipt =
       ungroupObjectId != cr::kInvalidObjectId
           ? appState.facade.ungroupObject(ungroupObjectId)
@@ -265,6 +299,21 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
           static_cast<unsigned long long>(receipt.groupObjectId),
           static_cast<unsigned long long>(receipt.revisionAfter),
           std::string(receipt.reasonCode).c_str());
+  return receipt;
+}
+
+cr::CreativeGroupPivotReceipt setCreativeEditorGroupPivotWithHistory(
+    cr::CreativeAppState& appState,
+    cr::CreativeObjectId groupObjectId,
+    cr::CreativeVec3 pivot,
+    std::string_view source) {
+  cr::CreativeDocumentHistoryTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  cr::CreativeGroupPivotReceipt receipt =
+      appState.facade.setGroupPivot(groupObjectId, pivot);
+  static_cast<void>(completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade,
+      receipt.accepted && receipt.changed, receipt.reasonCode));
   return receipt;
 }
 

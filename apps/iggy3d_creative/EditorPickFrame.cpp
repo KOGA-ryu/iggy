@@ -6,6 +6,7 @@
 #include <span>
 
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 
 #include "EditorPlacement.hpp"
@@ -29,11 +30,15 @@ CreativeEditorPickFrame buildCreativeEditorPickFrame(
     bool captureMode) {
   CreativeEditorPickFrame frame;
   for (const iggy3d::creative::CreativeObject& obj : document.objects()) {
-    if (!obj.visible) {
+    const creative::CreativeObjectHierarchyState hierarchyState =
+        creative::resolveCreativeObjectHierarchyState(document, obj.id);
+    if (!hierarchyState.resolved || !hierarchyState.effectivelyVisible) {
       continue;
     }
-    const ObjectVisualPickBounds hit = buildObjectVisualPickBounds(
+    ObjectVisualPickBounds hit = buildObjectVisualPickBounds(
         obj, camera.clipFromWorld, drawableWidth, drawableHeight);
+    hit.visible = true;
+    hit.locked = hierarchyState.effectivelyLocked;
     const iggy3d::Vec3 boxMin = hit.bounds.min;
     const iggy3d::Vec3 boxMax = hit.bounds.max;
     frame.objectPickCandidates.push_back(hit);
@@ -129,7 +134,9 @@ CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
   for (iggy3d::creative::CreativeObjectId objectId :
        selection.selectedObjectIds) {
     const iggy3d::creative::CreativeObject* object = facade.findObject(objectId);
-    if (object == nullptr || !object->visible) {
+    if (object == nullptr ||
+        !creative::creativeObjectEffectivelyVisible(facade.document(),
+                                                    objectId)) {
       continue;
     }
     const VisualBounds bounds = visualBoundsForObject(*object);

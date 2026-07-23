@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/assets/AuthoredAssetInternal.hpp"
 
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 
 #include <limits>
@@ -138,7 +139,8 @@ acknowledgeCreativeAuthoredAssetInstanceSource(
   const CreativeAuthoredAssetFingerprint fingerprint =
       fingerprintCreativeAuthoredAssetDefinition(definition);
   const CreativeObject* root = document.findObject(instanceRootObjectId);
-  if (!fingerprint.valid || root == nullptr || root->locked ||
+  if (!fingerprint.valid || root == nullptr ||
+      creativeObjectEffectivelyLocked(document, instanceRootObjectId) ||
       root->kind != CreativeObjectKind::PrefabInstance ||
       root->assetId != definition.assetId) {
     return rejected;

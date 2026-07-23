@@ -176,12 +176,12 @@ void appendText(CreativeEditorPlayHudFrame& hud,
   using Status =
       iggy3d::creative::CreativeRuntimeInteractionEffectStatus;
   switch (effect.status) {
-    case Status::DoorOpened:
-      std::snprintf(result.chars.data(), result.chars.size(), "OPENED %.80s",
+    case Status::DoorOpening:
+      std::snprintf(result.chars.data(), result.chars.size(), "OPENING %.79s",
                     effect.displayName.c_str());
       break;
-    case Status::DoorClosed:
-      std::snprintf(result.chars.data(), result.chars.size(), "CLOSED %.80s",
+    case Status::DoorClosing:
+      std::snprintf(result.chars.data(), result.chars.size(), "CLOSING %.79s",
                     effect.displayName.c_str());
       break;
     case Status::CircuitOpened:
@@ -214,7 +214,10 @@ void appendText(CreativeEditorPlayHudFrame& hud,
       break;
     case Status::TargetOccupied:
       std::snprintf(result.chars.data(), result.chars.size(),
-                    "PLATFORM BLOCKED: OCCUPIED");
+                    "TARGET BLOCKED: OCCUPIED");
+      break;
+    case Status::DoorLocked:
+      std::snprintf(result.chars.data(), result.chars.size(), "DOOR LOCKED");
       break;
     case Status::NotRequested:
     case Status::TargetMissing:
@@ -477,7 +480,8 @@ CreativeEditorPlayHudFrame buildCreativeEditorPlayHud(
         iggy3d::creative::CreativeRuntimeInteractionEffectStatus;
     const auto effectStatus = mode.lastInteractionEffect.status;
     const bool warning = effectStatus == EffectStatus::NoLinkedTarget ||
-                         effectStatus == EffectStatus::TargetOccupied;
+                         effectStatus == EffectStatus::TargetOccupied ||
+                         effectStatus == EffectStatus::DoorLocked;
     appendText(hud, effectText.view(), panelX + 10, panelY + 49,
                frame.viewport.width, frame.viewport.height,
                warning ? HudColor{0.98F, 0.84F, 0.24F, 1.0F}

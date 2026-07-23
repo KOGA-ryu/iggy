@@ -37,6 +37,12 @@ void drawCreativeEditorWorldLayoutTerrainBackground(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     const CreativeEditorWorldLayoutTopographyState& topography);
 
+void drawCreativeEditorWorldLayoutTerrainAnnotations(
+    ImDrawList& drawList,
+    const CreativeEditorWorldLayoutCanvasTransform& transform,
+    const CreativeEditorWorldLayoutTopographyState& topography,
+    const cr::CreativeGridSettings& grid);
+
 void drawCreativeEditorWorldLayoutObjectSymbols(
     ImDrawList& drawList,
     const CreativeEditorWorldLayoutCanvasTransform& transform,
@@ -62,7 +68,9 @@ drawCreativeEditorWorldLayoutCanvasScene(
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorWorldLayoutPlanViewCache& planView,
     std::size_t hoveredPlanPrimitiveIndex,
-    const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
-    bool hovered);
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeMeasurementAnnotationStore& measurementAnnotations,
+    const cr::CreativeMeasurementState& measurement,
+    ImVec2 pointerPosition, bool hovered);
 
 }  // namespace iggy3d_creative_app

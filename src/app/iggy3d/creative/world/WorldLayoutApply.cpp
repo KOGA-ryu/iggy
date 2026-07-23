@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "core/hash/StableHash.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -70,6 +71,7 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
          document.terrainMaterialField().validateInvariants() &&
          plan.schemaVersion == kCreativeWorldLayoutSchemaVersion &&
          validStableKey(plan.layoutKey) &&
+         plan.sourceLayoutFingerprint != 0U &&
          document.id() == plan.sourceDocumentId &&
          document.revision() == plan.sourceDocumentRevision &&
          document.terrainField().revision() == plan.sourceTerrainRevision &&
@@ -128,6 +130,8 @@ void setStatus(CreativeWorldLayoutApplyReceipt& receipt,
   request.voxelField = document.voxelField();
   request.terrainField = document.terrainField();
   request.terrainHeightField = document.terrainHeightField();
+  request.terrainHardEdges.assign(document.terrainHardEdges().begin(),
+                                  document.terrainHardEdges().end());
   request.terrainOperationStack = document.terrainOperationStack();
   request.terrainMaterialField = document.terrainMaterialField();
   CreativeDocument validationDocument;
@@ -283,6 +287,18 @@ void restoreValidSelection(Facade& facade, SelectionSnapshot snapshot) {
     result.changed = true;
   }
 
+  for (const CreativeTerrainOperationMutationRequest& mutation :
+       plan.terrainOperationMutations) {
+    const CreativeTerrainOperationMutationReceipt operationReceipt =
+        result.document.applyTerrainOperationMutation(mutation);
+    if (!operationReceipt.accepted) {
+      result.status = CreativeWorldLayoutStatus::MutationRejected;
+      result.reasonCode = std::string(operationReceipt.reasonCode);
+      return result;
+    }
+    result.changed = result.changed || operationReceipt.changed;
+  }
+
   if (!plan.terrainEdits.empty()) {
     result.terrainReceipt =
         result.document.applyTerrainControlEdits(plan.terrainEdits);
@@ -379,6 +395,59 @@ void restoreValidSelection(Facade& facade, SelectionSnapshot snapshot) {
 
 }  // namespace
 
+std::uint64_t fingerprintCreativeWorldLayoutPlanSource(
+    const CreativeWorldLayoutPlan& plan) noexcept {
+  if (plan.schemaVersion != kCreativeWorldLayoutSchemaVersion ||
+      !validStableKey(plan.layoutKey) ||
+      plan.sourceLayoutFingerprint == 0U ||
+      plan.sourceDocumentId == kInvalidDocumentId) {
+    return 0U;
+  }
+  StableHasher hasher;
+  hasher.addString("creative_world_layout_plan_source_v1");
+  hasher.addU64(plan.schemaVersion);
+  hasher.addString(plan.layoutKey);
+  hasher.addU64(plan.sourceLayoutFingerprint);
+  hasher.addU64(plan.sourceDocumentId);
+  hasher.addU64(plan.sourceDocumentRevision);
+  hasher.addU64(plan.sourceTerrainRevision);
+  hasher.addU64(plan.sourceTerrainHeightRevision);
+  hasher.addU64(plan.sourceMaterialRevision);
+  const std::uint64_t fingerprint = hasher.value();
+  return fingerprint != 0U ? fingerprint : 0U;
+}
+
+std::uint64_t creativeWorldLayoutPlanAffectedMemberCount(
+    const CreativeWorldLayoutPlan& plan) noexcept {
+  std::uint64_t count = plan.objectDetachIds.size() +
+                        plan.objectRemoveIds.size() +
+                        plan.terrainOperationMutations.size() +
+                        plan.terrainEdits.size() +
+                        plan.materialEdits.size();
+  for (const CreativeWorldLayoutRecipePatch& patch :
+       plan.objectRecipePatches) {
+    count += static_cast<std::uint64_t>(std::count_if(
+        patch.memberActions.begin(), patch.memberActions.end(),
+        [](CreativeWorldLayoutRecipeMemberAction action) {
+          return action == CreativeWorldLayoutRecipeMemberAction::Create ||
+                 action == CreativeWorldLayoutRecipeMemberAction::Update;
+        }));
+  }
+  for (const CreativeRecipePlan& recipe : plan.objectRecipes) {
+    count += recipe.objects.size();
+  }
+  return count;
+}
+
+std::optional<CreativeAuthoringOperationRecord>
+makeCreativeWorldLayoutOperationRecord(const CreativeWorldLayoutPlan& plan) {
+  return makeCreativeAuthoringOperationRecord(
+      CreativeAuthoringFamily::Building,
+      CreativeAuthoringOperationKind::Reconcile, "WorldLayout.Apply",
+      fingerprintCreativeWorldLayoutPlanSource(plan),
+      creativeWorldLayoutPlanAffectedMemberCount(plan));
+}
+
 CreativeWorldLayoutPreviewResult previewCreativeWorldLayoutPlan(
     const CreativeDocument& document,
     const CreativeWorldLayoutPlan& plan) {
@@ -465,10 +534,19 @@ CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlanWithHistory(
     CreativeAppState& appState,
     const CreativeWorldLayoutPlan& plan,
     std::string_view source) {
+  CreativeWorldLayoutApplyReceipt receipt;
+  receipt.requested = true;
+  std::optional<CreativeAuthoringOperationRecord> operation =
+      makeCreativeWorldLayoutOperationRecord(plan);
+  if (!operation.has_value()) {
+    setStatus(receipt, CreativeWorldLayoutStatus::InvalidSchema,
+              "creative_world_layout_operation_invalid");
+    return receipt;
+  }
   CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source);
-  CreativeWorldLayoutApplyReceipt receipt =
-      applyCreativeWorldLayoutPlan(appState.facade, plan);
+      beginCreativeHistoryTransaction(appState.facade, source,
+                                      std::move(*operation));
+  receipt = applyCreativeWorldLayoutPlan(appState.facade, plan);
   if (!receipt.accepted || !receipt.changed) {
     cancelCreativeHistoryTransaction(transaction);
     return receipt;

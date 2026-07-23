@@ -39,6 +39,17 @@ cr::CreativeWorldLayout hierarchyFixture() {
   level.name = "Ground Floor";
   layout.levels.push_back(level);
 
+  cr::CreativeWorldLayoutRoofAperture aperture;
+  aperture.levelIndex = 0U;
+  aperture.kind = cr::CreativeStructuralRoofApertureKind::Skylight;
+  aperture.stableKey = "roof_skylight";
+  aperture.name = "Hall Skylight";
+  aperture.minimumXCells = 1.0;
+  aperture.maximumXCells = 2.0;
+  aperture.minimumZCells = 1.0;
+  aperture.maximumZCells = 2.0;
+  layout.roofApertures.push_back(aperture);
+
   cr::CreativeWorldLayoutRoom room;
   room.buildingIndex = 0U;
   room.levelIndex = 0U;
@@ -52,6 +63,23 @@ cr::CreativeWorldLayout hierarchyFixture() {
   orphanRoom.stableKey = "room_missing_owner";
   orphanRoom.name = "Missing Room";
   layout.rooms.push_back(orphanRoom);
+
+  cr::CreativeWorldLayoutTopologyVertex westVertex;
+  westVertex.levelIndex = 0U;
+  westVertex.stableKey = "vertex_west";
+  westVertex.position = {0, 0};
+  layout.topologyVertices.push_back(westVertex);
+  cr::CreativeWorldLayoutTopologyVertex eastVertex;
+  eastVertex.levelIndex = 0U;
+  eastVertex.stableKey = "vertex_east";
+  eastVertex.position = {6, 0};
+  layout.topologyVertices.push_back(eastVertex);
+  cr::CreativeWorldLayoutTopologyEdge topologyEdge;
+  topologyEdge.levelIndex = 0U;
+  topologyEdge.stableKey = "topology_wall_north";
+  topologyEdge.startVertexIndex = 0U;
+  topologyEdge.endVertexIndex = 1U;
+  layout.topologyEdges.push_back(topologyEdge);
 
   cr::CreativeWorldLayoutBox box;
   box.buildingIndex = 0U;
@@ -165,6 +193,12 @@ bool hierarchyProjectsOwnershipExactlyOnce() {
                                  0U);
   const auto* level = findRow(model, cr::CreativeWorldLayoutTable::Level, 0U);
   const auto* room = findRow(model, cr::CreativeWorldLayoutTable::Room, 0U);
+  const auto* topologyWall =
+      findRow(model, cr::CreativeWorldLayoutTable::TopologyEdge, 0U);
+  const auto* topologyWalls = findGroup(model, "Walls");
+  const auto* roofApertures = findGroup(model, "Roof apertures");
+  const auto* skylight = findRow(
+      model, cr::CreativeWorldLayoutTable::RoofAperture, 0U);
   const auto* roomDoor =
       findRow(model, cr::CreativeWorldLayoutTable::Opening, 0U);
   const auto* wall = findRow(model, cr::CreativeWorldLayoutTable::Wall, 0U);
@@ -181,7 +215,7 @@ bool hierarchyProjectsOwnershipExactlyOnce() {
 
   return expect(model.sourceEpoch == 3U && model.layoutRevision == 41U,
                 "hierarchy records its source identity and revision") &&
-         expect(model.sourceSymbolCount == 13U && symbols.size() == 13U,
+         expect(model.sourceSymbolCount == 15U && symbols.size() == 15U,
                 "every user-facing source symbol appears exactly once") &&
          expect(model.recoveredSymbolCount == 2U,
                 "malformed ownership is recovered rather than dropped") &&
@@ -190,6 +224,16 @@ bool hierarchyProjectsOwnershipExactlyOnce() {
                         app::kInvalidCreativeEditorWorldLayoutHierarchyRow &&
                     room->parentRow == rowIndex(model, level),
                 "building levels and rooms retain explicit ownership") &&
+         expect(topologyWall != nullptr && topologyWalls != nullptr &&
+                    topologyWalls->parentRow == rowIndex(model, level) &&
+                    topologyWall->parentRow ==
+                        rowIndex(model, topologyWalls),
+                "canonical walls appear once under their owning level") &&
+         expect(roofApertures != nullptr && skylight != nullptr &&
+                    roofApertures->parentRow == rowIndex(model, level) &&
+                    skylight->parentRow == rowIndex(model, roofApertures) &&
+                    skylight->typeLabel == "Skylight",
+                "roof apertures appear once under their owning level") &&
          expect(roomDoor != nullptr &&
                     roomDoor->parentRow == rowIndex(model, room),
                 "room-edge openings are children of their room") &&
@@ -226,6 +270,11 @@ bool hierarchyFilteringRetainsContext() {
       app::filterCreativeEditorWorldLayoutHierarchy(model, "missing room");
   const auto* unassigned = findGroup(model, "Unassigned");
   const auto* orphan = findRow(model, cr::CreativeWorldLayoutTable::Room, 1U);
+  const std::vector<std::size_t> skylight =
+      app::filterCreativeEditorWorldLayoutHierarchy(model, "hall skylight");
+  const auto* roofApertures = findGroup(model, "Roof apertures");
+  const auto* aperture = findRow(
+      model, cr::CreativeWorldLayoutTable::RoofAperture, 0U);
 
   return expect(contains(building) && contains(level) && contains(room) &&
                     contains(opening),
@@ -240,7 +289,17 @@ bool hierarchyFilteringRetainsContext() {
                 "an unmatched query yields no rows") &&
          expect(app::filterCreativeEditorWorldLayoutHierarchy(model, "")
                         .size() == model.rows.size(),
-                "an empty query returns the full deterministic model");
+                "an empty query returns the full deterministic model") &&
+         expect(std::find(skylight.begin(), skylight.end(),
+                          rowIndex(model, building)) != skylight.end() &&
+                    std::find(skylight.begin(), skylight.end(),
+                              rowIndex(model, level)) != skylight.end() &&
+                    std::find(skylight.begin(), skylight.end(),
+                              rowIndex(model, roofApertures)) !=
+                        skylight.end() &&
+                    std::find(skylight.begin(), skylight.end(),
+                              rowIndex(model, aperture)) != skylight.end(),
+                "roof aperture filtering retains the complete owner path");
 }
 
 bool hierarchyCacheUsesRevisionLaw() {
@@ -360,6 +419,42 @@ bool sourceOperationsRespectCapabilities() {
                 "stable-key guards distinguish live and stale targets");
 }
 
+bool canonicalWallSourceFocusIsExactAndNonDestructive() {
+  app::CreativeEditorWorldLayoutState state;
+  app::installCreativeEditorWorldLayout(state, hierarchyFixture());
+  const std::uint64_t expectedOrdinal =
+      1U + state.source.buildings.size() + state.source.levels.size() +
+      state.source.rooms.size() + state.source.verticalConnectors.size() +
+      state.source.roofApertures.size() +
+      state.source.topologyVertices.size() +
+      state.source.topologyEdges.size() + state.source.boxes.size() +
+      state.source.walls.size() + state.source.openings.size() +
+      state.source.objects.size() + state.source.terrainProfiles.size() +
+      state.source.terrainPaths.size();
+  const std::uint64_t revisionBefore = state.revision;
+  const app::CreativeEditorWorldLayoutEditReceipt focused =
+      app::focusCreativeEditorWorldLayoutSource(
+          state, cr::CreativeWorldLayoutTable::TopologyEdge, 0U);
+  const app::CreativeEditorWorldLayoutEditReceipt removed =
+      app::deleteCreativeEditorWorldLayoutSource(
+          state, cr::CreativeWorldLayoutTable::TopologyEdge, 0U);
+
+  return expect(focused.accepted && focused.changed &&
+                    state.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::
+                            TopologyEdge &&
+                    state.selection.index == 0U &&
+                    state.activeLevelIndex == 0U &&
+                    state.canvasPanX == -84.0F && state.canvasPanZ == 0.0F,
+                "canonical wall focus selects its exact level and midpoint") &&
+         expect(state.nextStableOrdinal == expectedOrdinal,
+                "loaded layout ordinal accounts for topology identities") &&
+         expect(!removed.accepted && !removed.changed &&
+                    state.revision == revisionBefore &&
+                    state.source.topologyEdges.size() == 1U,
+                "canonical walls cannot be deleted outside topology operations");
+}
+
 cr::CreativeAppState makeApp() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Hierarchy");
@@ -417,6 +512,7 @@ int main() {
                   hierarchyCacheUsesRevisionLaw() &&
                   sourceEpochTracksSourceReplacement() &&
                   sourceOperationsRespectCapabilities() &&
+                  canonicalWallSourceFocusIsExactAndNonDestructive() &&
                   sourceCommandsInvalidatePreviewAndRejectStaleTargets();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

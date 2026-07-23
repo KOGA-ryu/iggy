@@ -1,10 +1,12 @@
 #include "EditorDesktopCommandsInternal.hpp"
 
 #include "EditorEdits.hpp"
+#include "EditorGroup.hpp"
 #include "EditorLogicLinks.hpp"
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
+#include "EditorWorldLayout.hpp"
 
 #include <span>
 #include <string>
@@ -21,6 +23,11 @@ bool dispatchCreativeDesktopObjectCommand(
   CreativeEditorState& editor = context.editor;
   creative::CreativeAppState& activeAppState =
       activeCreativeEditorAppState(editor, appState);
+  const auto synchronizeSelection = [&]() {
+    return synchronizeCreativeEditorWorldLayoutSelection(
+        editor.worldLayout, activeAppState.facade.document(),
+        activeAppState.facade.selectionState());
+  };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
       const creative::CreativeDuplicateCommandReceipt receipt =
@@ -29,18 +36,30 @@ bool dispatchCreativeDesktopObjectCommand(
               creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate");
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      if (receipt.accepted) {
+        static_cast<void>(synchronizeSelection());
+      }
       result.message = receipt.changed ? "duplicated selection"
                                        : "nothing to duplicate";
       break;
     }
     case CreativeDesktopCommandId::DeleteSelection: {
-      const creative::CreativeDocumentRemoveReceipt receipt =
-          deleteSelectedObject(activeAppState, "desktop_delete",
-                               &activeAppState.history);
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorDeleteReceipt receipt =
+          deleteCreativeEditorSelectionWithUndo(
+              activeAppState, "desktop_delete", &activeAppState.history,
+              &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
+      result.sceneChanged = receipt.worldLayoutSourceDeleted && previewWasActive;
+      if (receipt.accepted) {
+        static_cast<void>(synchronizeSelection());
+      }
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = receipt.changed ? "deleted selection"
-                                       : "nothing to delete";
+                                       : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SelectObjects: {
@@ -52,10 +71,14 @@ bool dispatchCreativeDesktopObjectCommand(
       const creative::CreativeSelectionReceipt receipt =
           activeAppState.facade.selectTargets(payload->objectIds,
                                               payload->primaryObjectId);
-      result.accepted = true;
-      result.changed = receipt.changed;
+      const CreativeEditorSelectionSynchronizationReceipt synchronized =
+          receipt.accepted ? synchronizeSelection()
+                           : CreativeEditorSelectionSynchronizationReceipt{};
+      result.accepted = receipt.accepted && synchronized.accepted;
+      result.changed = receipt.changed || synchronized.changed;
       result.affectedObjectCount = receipt.selectedCountAfter;
-      result.message = "selection updated";
+      result.message = receipt.accepted ? "selection updated"
+                                        : std::string(receipt.message);
       break;
     }
     case CreativeDesktopCommandId::FocusObject: {
@@ -79,10 +102,40 @@ bool dispatchCreativeDesktopObjectCommand(
           activeAppState.facade.selectTargets(
               std::span<const creative::CreativeObjectId>{&objectId, 1U},
               objectId);
-      result.accepted = true;
+      const CreativeEditorSelectionSynchronizationReceipt synchronized =
+          receipt.accepted ? synchronizeSelection()
+                           : CreativeEditorSelectionSynchronizationReceipt{};
+      result.accepted = receipt.accepted && synchronized.accepted;
       result.changed = true;
       result.affectedObjectCount = receipt.selectedCountAfter;
       result.message = "object focused";
+      break;
+    }
+    case CreativeDesktopCommandId::FrameSelection3D: {
+      const creative::CreativeSelectionState& selection =
+          activeAppState.facade.selectionState();
+      if (!focusEditorCameraOnSelection(
+              editor, activeAppState.facade.document(), selection)) {
+        result.message = "frame selection: no visible selection";
+        break;
+      }
+      result.accepted = true;
+      result.changed = true;
+      result.affectedObjectCount = creative::selectedTargetCount(selection);
+      result.message = "selection framed in 3D";
+      break;
+    }
+    case CreativeDesktopCommandId::FrameAll3D: {
+      const creative::CreativeDocument& document =
+          activeAppState.facade.document();
+      if (!focusEditorCameraOnDocument(editor, document)) {
+        result.message = "frame all: no visible objects";
+        break;
+      }
+      result.accepted = true;
+      result.changed = true;
+      result.affectedObjectCount = document.objectCount();
+      result.message = "visible scene framed in 3D";
       break;
     }
     case CreativeDesktopCommandId::ClearSelection: {
@@ -90,8 +143,11 @@ bool dispatchCreativeDesktopObjectCommand(
           activeAppState.facade.selectTargets(
               std::span<const creative::CreativeObjectId>{},
               creative::kInvalidObjectId);
-      result.accepted = true;
-      result.changed = receipt.changed;
+      const CreativeEditorSelectionSynchronizationReceipt synchronized =
+          receipt.accepted ? synchronizeSelection()
+                           : CreativeEditorSelectionSynchronizationReceipt{};
+      result.accepted = receipt.accepted && synchronized.accepted;
+      result.changed = receipt.changed || synchronized.changed;
       result.affectedObjectCount = receipt.selectedCountAfter;
       result.message = "selection cleared";
       break;
@@ -172,6 +228,9 @@ bool dispatchCreativeDesktopObjectCommand(
           "desktop_delete_objects");
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      if (receipt.accepted) {
+        static_cast<void>(synchronizeSelection());
+      }
       result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = receipt.changed ? "deleted objects" : "nothing deleted";
       break;
@@ -238,6 +297,13 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "transform: payload mismatch";
         break;
       }
+      const creative::CreativeObject* object =
+          activeAppState.facade.findObject(payload->objectId);
+      if (object != nullptr &&
+          creative::creativeObjectIsHierarchyContainer(object->kind)) {
+        result.message = "transform complete hierarchy through Transform Selection";
+        break;
+      }
       const CreativeStandaloneBatchEditReceipt receipt =
           setObjectTransformWithUndo(activeAppState, activeAppState.history,
                                      payload->objectId, payload->transform,
@@ -250,6 +316,22 @@ bool dispatchCreativeDesktopObjectCommand(
                            ? (receipt.changed ? "transform set"
                                               : "transform unchanged")
                            : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::SetGroupPivot: {
+      const auto* payload = payloadAs<CreativeDesktopGroupPivotPayload>(command);
+      if (payload == nullptr) {
+        result.message = "group pivot: payload mismatch";
+        break;
+      }
+      const creative::CreativeGroupPivotReceipt receipt =
+          setCreativeEditorGroupPivotWithHistory(
+              activeAppState, payload->groupObjectId, payload->pivot,
+              "desktop_set_group_pivot");
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.affectedObjectCount = receipt.changed ? 1U : 0U;
+      result.message = receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetMovingPlatformSettings: {
@@ -270,6 +352,27 @@ bool dispatchCreativeDesktopObjectCommand(
       result.message = result.accepted
                            ? (result.changed ? "platform settings updated"
                                              : "platform settings unchanged")
+                           : receipt.message;
+      break;
+    }
+    case CreativeDesktopCommandId::SetPlayerSpawnSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopPlayerSpawnPayload>(command);
+      if (payload == nullptr) {
+        result.message = "player spawn settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setPlayerSpawnSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_player_spawn_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message = result.accepted
+                           ? (result.changed ? "player spawn settings updated"
+                                             : "player spawn settings unchanged")
                            : receipt.message;
       break;
     }

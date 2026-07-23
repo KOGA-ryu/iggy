@@ -26,7 +26,7 @@ constexpr float kAutomaticSourceOccupancyMarginMeters = 0.02F;
     bool active) noexcept {
   switch (kind) {
     case CreativeRuntimeInteractableKind::Door:
-      return !active;
+      return true;
     case CreativeRuntimeInteractableKind::Platform:
       return active;
     case CreativeRuntimeInteractableKind::MovingPlatform:
@@ -250,6 +250,7 @@ struct LogicTargetStateChange {
 struct LogicTargetPublishResult {
   bool ok = false;
   bool blocked = false;
+  bool locked = false;
   bool changed = false;
   std::string_view reasonCode = "creative_runtime_target_geometry_rejected";
 };
@@ -279,6 +280,24 @@ struct LogicTargetPublishResult {
     }
     if (change.target->targetActive == change.active && !change.reverse) {
       continue;
+    }
+    if (change.target->definition.kind ==
+        CreativeRuntimeInteractableKind::Door) {
+      const CreativeRuntimeDoorTargetBlock block =
+          creativeRuntimeDoorTargetBlock(sandbox, *change.target,
+                                         change.active);
+      if (block != CreativeRuntimeDoorTargetBlock::None) {
+        result.blocked = block == CreativeRuntimeDoorTargetBlock::Locked ||
+                         block == CreativeRuntimeDoorTargetBlock::Occupied;
+        result.locked = block == CreativeRuntimeDoorTargetBlock::Locked;
+        result.reasonCode =
+            block == CreativeRuntimeDoorTargetBlock::Locked
+                ? "creative_runtime_door_locked"
+            : block == CreativeRuntimeDoorTargetBlock::Occupied
+                ? "creative_runtime_door_occupied"
+                : "creative_runtime_door_target_invalid";
+        return result;
+      }
     }
     stateChanged = true;
     const bool geometryWasPresent = targetGeometryPresent(
@@ -326,7 +345,12 @@ struct LogicTargetPublishResult {
     sandbox.session.setReasoningGraph(std::move(reasoning));
   }
   for (const LogicTargetStateChange& change : changes) {
+    const bool changed = change.target->targetActive != change.active;
     change.target->targetActive = change.active;
+    if (changed && change.target->definition.kind ==
+                       CreativeRuntimeInteractableKind::Door) {
+      queueCreativeRuntimeDoorTransitionSound(sandbox, *change.target);
+    }
     if (change.reverse) {
       change.target->movingPlatform.travelSign =
           static_cast<std::int8_t>(
@@ -443,7 +467,9 @@ CreativeRuntimeInteractionEffectReceipt applyLogicSourceSignal(
   result.affectedTargetCount = changes.size();
   if (!published.ok) {
     result.accepted = published.blocked;
-    result.status = published.blocked
+    result.status = published.locked
+                        ? CreativeRuntimeInteractionEffectStatus::DoorLocked
+                    : published.blocked
                         ? CreativeRuntimeInteractionEffectStatus::TargetOccupied
                         : CreativeRuntimeInteractionEffectStatus::GeometryRejected;
     result.reasonCode = published.reasonCode;
@@ -501,12 +527,14 @@ std::string_view toString(
       return "no_linked_target";
     case CreativeRuntimeInteractionEffectStatus::TargetOccupied:
       return "target_occupied";
+    case CreativeRuntimeInteractionEffectStatus::DoorLocked:
+      return "door_locked";
     case CreativeRuntimeInteractionEffectStatus::GeometryRejected:
       return "geometry_rejected";
-    case CreativeRuntimeInteractionEffectStatus::DoorOpened:
-      return "door_opened";
-    case CreativeRuntimeInteractionEffectStatus::DoorClosed:
-      return "door_closed";
+    case CreativeRuntimeInteractionEffectStatus::DoorOpening:
+      return "door_opening";
+    case CreativeRuntimeInteractionEffectStatus::DoorClosing:
+      return "door_closing";
     case CreativeRuntimeInteractionEffectStatus::CircuitOpened:
       return "circuit_opened";
     case CreativeRuntimeInteractionEffectStatus::CircuitClosed:
@@ -611,7 +639,12 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   const LogicTargetPublishResult published =
       publishLogicTargetStates(sandbox, changes);
   if (!published.ok) {
-    result.status = CreativeRuntimeInteractionEffectStatus::GeometryRejected;
+    result.accepted = published.blocked;
+    result.status = published.locked
+                        ? CreativeRuntimeInteractionEffectStatus::DoorLocked
+                    : published.blocked
+                        ? CreativeRuntimeInteractionEffectStatus::TargetOccupied
+                        : CreativeRuntimeInteractionEffectStatus::GeometryRejected;
     result.reasonCode = published.reasonCode;
     return result;
   }
@@ -621,10 +654,10 @@ CreativeRuntimeInteractionEffectReceipt applyCreativeRuntimeInteractionEffect(
   result.affectedTargetCount = changes.size();
   result.affectedDoorCount = changes.size();
   result.geometryRevision = sandbox.geometryRevision;
-  result.status = open ? CreativeRuntimeInteractionEffectStatus::DoorOpened
-                       : CreativeRuntimeInteractionEffectStatus::DoorClosed;
-  result.reasonCode = open ? "creative_runtime_door_opened"
-                           : "creative_runtime_door_closed";
+  result.status = open ? CreativeRuntimeInteractionEffectStatus::DoorOpening
+                       : CreativeRuntimeInteractionEffectStatus::DoorClosing;
+  result.reasonCode = open ? "creative_runtime_door_opening"
+                           : "creative_runtime_door_closing";
   return result;
 }
 
@@ -739,7 +772,9 @@ CreativeRuntimeAutomaticLogicReceipt initializeCreativeRuntimeHoldLogic(
                         ? CreativeRuntimeAutomaticLogicStatus::EffectBlocked
                         : CreativeRuntimeAutomaticLogicStatus::EffectRejected;
     result.lastEffect =
-        published.blocked
+        published.locked
+            ? CreativeRuntimeInteractionEffectStatus::DoorLocked
+        : published.blocked
             ? CreativeRuntimeInteractionEffectStatus::TargetOccupied
             : CreativeRuntimeInteractionEffectStatus::GeometryRejected;
     result.reasonCode = published.reasonCode;
@@ -810,7 +845,9 @@ CreativeRuntimeAutomaticLogicReceipt updateCreativeRuntimeAutomaticLogic(
       result.affectedDoorCount += effect.affectedDoorCount;
       result.affectedPlatformCount += effect.affectedPlatformCount;
       if (effect.status ==
-          CreativeRuntimeInteractionEffectStatus::TargetOccupied) {
+              CreativeRuntimeInteractionEffectStatus::TargetOccupied ||
+          effect.status ==
+              CreativeRuntimeInteractionEffectStatus::DoorLocked) {
         effectBlocked = true;
         blockedReason = effect.reasonCode;
         if (source.definition.logicSourceMode ==

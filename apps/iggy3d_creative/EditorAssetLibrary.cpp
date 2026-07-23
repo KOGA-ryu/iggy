@@ -176,7 +176,6 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   state.connectedFill = std::move(editor.interaction.connectedFill);
   state.surfaceExtrude = std::move(editor.interaction.surfaceExtrude);
   state.roomPlacement = std::move(editor.interaction.roomPlacement);
-  state.moveTargetId = editor.interaction.moveTargetId;
   state.groupFocus = std::move(editor.groupFocus);
   state.pattern = std::move(editor.pattern);
   state.assetReplacement = std::move(editor.assetReplacement);
@@ -201,7 +200,6 @@ takeDocumentTransientState(CreativeEditorState& editor) {
   editor.interaction.surfaceExtrude = {};
   editor.interaction.roomPlacement = {};
   editor.interaction.movingPlatformPathEdit = {};
-  editor.interaction.moveTargetId = cr::kInvalidObjectId;
   editor.groupFocus = {};
   editor.pattern = {};
   editor.assetReplacement = {};
@@ -230,7 +228,6 @@ void restoreDocumentTransientState(CreativeEditorState& editor,
   editor.interaction.connectedFill = std::move(state.connectedFill);
   editor.interaction.surfaceExtrude = std::move(state.surfaceExtrude);
   editor.interaction.roomPlacement = std::move(state.roomPlacement);
-  editor.interaction.moveTargetId = state.moveTargetId;
   editor.groupFocus = std::move(state.groupFocus);
   editor.pattern = std::move(state.pattern);
   editor.assetReplacement = std::move(state.assetReplacement);
@@ -247,6 +244,7 @@ void restoreMapCamera(CreativeEditorState& editor) noexcept {
   editor.flyPos = session.mapFlyPosition;
   editor.yawDegrees = session.mapYawDegrees;
   editor.pitchDegrees = session.mapPitchDegrees;
+  editor.viewportFocus = session.mapViewportFocus;
 }
 
 void frameAssetWorkspace(CreativeEditorState& editor,
@@ -257,6 +255,7 @@ void frameAssetWorkspace(CreativeEditorState& editor,
     editor.flyPos = {0.0F, 4.0F, 8.0F};
     editor.yawDegrees = 0.0F;
     editor.pitchDegrees = -20.0F;
+    editor.viewportFocus = {};
     return;
   }
   const double longest =
@@ -266,6 +265,15 @@ void frameAssetWorkspace(CreativeEditorState& editor,
                    static_cast<float>(metrics.center.z + longest * 2.75)};
   editor.yawDegrees = 0.0F;
   editor.pitchDegrees = -22.0F;
+  const iggy3d::Vec3 center{static_cast<float>(metrics.center.x),
+                            static_cast<float>(metrics.center.y),
+                            static_cast<float>(metrics.center.z)};
+  const iggy3d::Vec3 eye =
+      editor.flyPos +
+      iggy3d::Vec3{0.0F, iggy3d::kProductCreativeCameraEyeHeightMeters,
+                   0.0F};
+  editor.viewportFocus = iggy3d::makeProductCreativeViewportFocus(
+      center, iggy3d::length(eye - center));
 }
 
 void refreshEditDirtyState(CreativeEditorState& editor) {
@@ -548,6 +556,7 @@ beginCreativeEditorAuthoredAssetEdit(CreativeEditorState& editor,
   session.mapFlyPosition = editor.flyPos;
   session.mapYawDegrees = editor.yawDegrees;
   session.mapPitchDegrees = editor.pitchDegrees;
+  session.mapViewportFocus = editor.viewportFocus;
   session.mapDocumentState = takeDocumentTransientState(editor);
   session.statusLabel = "creative_authored_asset_edit_ready";
   editor.assetEdit = std::move(session);

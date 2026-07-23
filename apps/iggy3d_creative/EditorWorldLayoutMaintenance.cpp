@@ -3,6 +3,7 @@
 #include "EditorWorldLayoutInternal.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomTopology.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -112,6 +113,8 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
   if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Room &&
       selected.index < state.source.rooms.size()) {
     const std::size_t removedRoom = selected.index;
+    const std::size_t buildingIndex =
+        state.source.rooms[removedRoom].buildingIndex;
     state.source.rooms.erase(state.source.rooms.begin() +
                              static_cast<std::ptrdiff_t>(removedRoom));
     std::erase_if(state.source.openings,
@@ -142,6 +145,8 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
                     }
                     return false;
                   });
+    static_cast<void>(cr::refreshCreativeWorldLayoutBuildingRoomFootprint(
+        state.source, buildingIndex));
   } else if (selected.kind ==
                  CreativeEditorWorldLayoutSelectionKind::VerticalConnector &&
              selected.index < state.source.verticalConnectors.size()) {
@@ -156,6 +161,12 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
              selected.index < state.source.openings.size()) {
     state.source.openings.erase(state.source.openings.begin() +
                                 static_cast<std::ptrdiff_t>(selected.index));
+  } else if (selected.kind ==
+                 CreativeEditorWorldLayoutSelectionKind::RoofAperture &&
+             selected.index < state.source.roofApertures.size()) {
+    state.source.roofApertures.erase(
+        state.source.roofApertures.begin() +
+        static_cast<std::ptrdiff_t>(selected.index));
   } else if (selected.kind == CreativeEditorWorldLayoutSelectionKind::Wall &&
              selected.index < state.source.walls.size()) {
     const std::size_t removedWall = selected.index;
@@ -188,29 +199,9 @@ CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSelection(
   } else if (selected.kind ==
                  CreativeEditorWorldLayoutSelectionKind::TerrainPath &&
              selected.index < state.source.terrainPaths.size()) {
-    const cr::CreativeWorldLayoutTerrainPath removed =
-        state.source.terrainPaths[selected.index];
-    if (removed.firstPointIndex > state.source.terrainPathPoints.size() ||
-        removed.pointCount >
-            state.source.terrainPathPoints.size() - removed.firstPointIndex) {
-      return {false, false,
-              "creative_editor_world_layout_path_ownership_invalid"};
-    }
-    state.source.terrainPathPoints.erase(
-        state.source.terrainPathPoints.begin() +
-            static_cast<std::ptrdiff_t>(removed.firstPointIndex),
-        state.source.terrainPathPoints.begin() +
-            static_cast<std::ptrdiff_t>(removed.firstPointIndex +
-                                        removed.pointCount));
     state.source.terrainPaths.erase(
         state.source.terrainPaths.begin() +
         static_cast<std::ptrdiff_t>(selected.index));
-    for (cr::CreativeWorldLayoutTerrainPath& path :
-         state.source.terrainPaths) {
-      if (path.firstPointIndex > removed.firstPointIndex) {
-        path.firstPointIndex -= removed.pointCount;
-      }
-    }
   } else {
     return {false, false, "creative_editor_world_layout_selection_missing"};
   }

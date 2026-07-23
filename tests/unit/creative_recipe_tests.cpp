@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "app/iggy3d/creative/recipes/AuthoringContract.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
@@ -6,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string_view>
 
 namespace {
@@ -16,6 +18,150 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool authoringFamilyContractsAreExhaustiveAndEnforceLifecycleLaws() {
+  const std::span<const cr::CreativeAuthoringContract> contracts =
+      cr::creativeAuthoringContracts();
+  const cr::CreativeAuthoringContract* terrain =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Terrain);
+  const cr::CreativeAuthoringContract* volume =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Volume);
+  const cr::CreativeAuthoringContract* road =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Road);
+  const cr::CreativeAuthoringContract* watercourse =
+      cr::findCreativeAuthoringContract(
+          cr::CreativeAuthoringFamily::Watercourse);
+  const cr::CreativeAuthoringContract* bridge =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Bridge);
+  const cr::CreativeAuthoringContract* retainingEdge =
+      cr::findCreativeAuthoringContract(
+          cr::CreativeAuthoringFamily::RetainingEdge);
+
+  auto brokenParametric = cr::kCreativeAuthoringContracts;
+  brokenParametric[static_cast<std::size_t>(
+      cr::CreativeAuthoringFamily::Terrain)]
+      .capabilities &=
+      static_cast<cr::CreativeAuthoringCapabilities>(
+          ~cr::capability(cr::CreativeAuthoringCapability::Reconcile));
+  auto brokenDestructive = cr::kCreativeAuthoringContracts;
+  brokenDestructive[static_cast<std::size_t>(
+      cr::CreativeAuthoringFamily::Volume)]
+      .capabilities |=
+      cr::capability(cr::CreativeAuthoringCapability::DurableSource);
+
+  cr::CreativeAuthoringOperationRecord record;
+  record.family = cr::CreativeAuthoringFamily::Volume;
+  record.kind = cr::CreativeAuthoringOperationKind::Apply;
+  record.lifecycle = cr::CreativeAuthoringLifecycle::Destructive;
+  record.action = "volume_fill";
+  record.requestFingerprint = 0x1234U;
+  const cr::CreativeAuthoringOperationRecord validRecord = record;
+  record.lifecycle = cr::CreativeAuthoringLifecycle::Parametric;
+  const auto factoryRecord = cr::makeCreativeAuthoringOperationRecord(
+      cr::CreativeAuthoringFamily::Terrain,
+      cr::CreativeAuthoringOperationKind::Apply, "terrain_apply", 0x5678U,
+      12U);
+  const auto reconcileRecord = cr::makeCreativeAuthoringOperationRecord(
+      cr::CreativeAuthoringFamily::Terrain,
+      cr::CreativeAuthoringOperationKind::Reconcile, "terrain_reconcile",
+      0x6789U, 4U);
+  const auto destructiveRecord = cr::makeCreativeAuthoringOperationRecord(
+      cr::CreativeAuthoringFamily::Prefab,
+      cr::CreativeAuthoringOperationKind::Destructive, "prefab_detach",
+      0x789aU, 3U);
+
+  return expect(
+             contracts.size() ==
+                     static_cast<std::size_t>(
+                         cr::CreativeAuthoringFamily::Count) &&
+                 cr::validateCreativeAuthoringContracts(contracts).valid(),
+             "authoring family table is exhaustive and valid") &&
+         expect(terrain != nullptr &&
+                    terrain->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::
+                            TerrainOperationStack &&
+                    cr::creativeAuthoringContractHas(
+                        *terrain,
+                        cr::CreativeAuthoringCapability::DurableSource) &&
+                    cr::creativeAuthoringContractHas(
+                        *terrain,
+                        cr::CreativeAuthoringCapability::Reconcile),
+                "terrain declares durable parametric ownership") &&
+         expect(road != nullptr && watercourse != nullptr &&
+                    bridge != nullptr && retainingEdge != nullptr &&
+                    road->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
+                    watercourse->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
+                    bridge->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
+                    retainingEdge->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource,
+                "structural and authored path recipe families are explicit") &&
+         expect(volume != nullptr &&
+                    volume->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    volume->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::None &&
+                    cr::creativeAuthoringContractHas(
+                        *volume,
+                        cr::CreativeAuthoringCapability::DestructiveRecord),
+                "volume declares honest destructive ownership") &&
+         expect(cr::validateCreativeAuthoringContracts(brokenParametric)
+                        .status ==
+                    cr::CreativeAuthoringContractValidationStatus::
+                        ParametricContractInvalid,
+                "parametric family cannot lose reconciliation") &&
+         expect(cr::validateCreativeAuthoringContracts(brokenDestructive)
+                        .status ==
+                    cr::CreativeAuthoringContractValidationStatus::
+                        DestructiveContractInvalid,
+                "destructive family cannot invent durable source") &&
+         expect(cr::validateCreativeAuthoringOperationRecord(validRecord) &&
+                    !cr::validateCreativeAuthoringOperationRecord(record),
+                "operation record lifecycle must match its family contract") &&
+         expect(factoryRecord.has_value() && reconcileRecord.has_value() &&
+                    destructiveRecord.has_value() &&
+                    factoryRecord->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    factoryRecord->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    factoryRecord->affectedMemberCount == 12U &&
+                    reconcileRecord->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    reconcileRecord->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    destructiveRecord->kind ==
+                        cr::CreativeAuthoringOperationKind::Destructive &&
+                    destructiveRecord->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    !cr::makeCreativeAuthoringOperationRecord(
+                         cr::CreativeAuthoringFamily::Count,
+                         cr::CreativeAuthoringOperationKind::Apply, "invalid",
+                         0x5678U, 1U)
+                         .has_value() &&
+                    !cr::makeCreativeAuthoringOperationRecord(
+                         cr::CreativeAuthoringFamily::Terrain,
+                         cr::CreativeAuthoringOperationKind::Apply, "",
+                         0x5678U, 1U)
+                         .has_value() &&
+                    !cr::makeCreativeAuthoringOperationRecord(
+                         cr::CreativeAuthoringFamily::Terrain,
+                         cr::CreativeAuthoringOperationKind::Apply,
+                         "terrain_apply", 0U, 1U)
+                         .has_value() &&
+                    !cr::makeCreativeAuthoringOperationRecord(
+                         cr::CreativeAuthoringFamily::Terrain,
+                         cr::CreativeAuthoringOperationKind::Destructive,
+                         "terrain_destroy", 0x5678U, 1U)
+                         .has_value() &&
+                    !cr::makeCreativeAuthoringOperationRecord(
+                         cr::CreativeAuthoringFamily::Volume,
+                         cr::CreativeAuthoringOperationKind::Reconcile,
+                         "volume_reconcile", 0x5678U, 1U)
+                         .has_value(),
+                "operation record factory derives phase lifecycle and fails closed");
 }
 
 cr::CreativeRecipePlan parentedRecipe() {
@@ -179,6 +325,72 @@ bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
   invalid.objects[0].createRequest.transform.position.x =
       std::numeric_limits<double>::quiet_NaN();
 
+  cr::CreativeRecipePlan doorPlan = parentedRecipe();
+  cr::CreativeDocumentCreateRequest& doorRequest =
+      doorPlan.objects[1].createRequest;
+  doorRequest.kind = cr::CreativeObjectKind::Door;
+  doorRequest.name = "Fingerprint Door";
+  doorRequest.hasDoorSettingsOverride = true;
+  doorRequest.door.leafArrangement =
+      cr::CreativeDoorLeafArrangement::Double;
+  doorRequest.door.hingeSide = cr::CreativeDoorHingeSide::MaximumEdge;
+  doorRequest.door.swingSide = cr::CreativeDoorSwingSide::NegativeNormal;
+  doorRequest.door.initialState = cr::CreativeDoorInitialState::Open;
+  doorRequest.door.gameplayLocked = true;
+  doorRequest.door.transitionSeconds = 0.8;
+  const std::uint64_t doorPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(doorPlan);
+  const std::uint64_t doorObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(doorPlan, 1U);
+  cr::CreativeRecipePlan changedDoorPlan = doorPlan;
+  changedDoorPlan.objects[1].createRequest.door.gameplayLocked = false;
+  const std::uint64_t changedDoorPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(changedDoorPlan);
+  const std::uint64_t changedDoorObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(changedDoorPlan, 1U);
+
+  cr::CreativeObject doorState;
+  doorState.id = 9U;
+  doorState.kind = cr::CreativeObjectKind::Door;
+  doorState.name = doorRequest.name;
+  doorState.door = doorRequest.door;
+  const std::uint64_t doorStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(doorState, {});
+  doorState.door.transitionSeconds = 1.25;
+  const std::uint64_t changedDoorStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(doorState, {});
+
+  cr::CreativeRecipePlan windowPlan = parentedRecipe();
+  cr::CreativeDocumentCreateRequest& windowRequest =
+      windowPlan.objects[1].createRequest;
+  windowRequest.kind = cr::CreativeObjectKind::Window;
+  windowRequest.name = "Fingerprint Window";
+  windowRequest.hasWindowSettingsOverride = true;
+  windowRequest.window.insertKind =
+      cr::CreativeWindowInsertKind::PairedShutters;
+  const std::uint64_t windowPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(windowPlan);
+  const std::uint64_t windowObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(windowPlan, 1U);
+  cr::CreativeRecipePlan changedWindowPlan = windowPlan;
+  changedWindowPlan.objects[1].createRequest.window.insertKind =
+      cr::CreativeWindowInsertKind::Glazing;
+  const std::uint64_t changedWindowPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(changedWindowPlan);
+  const std::uint64_t changedWindowObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(changedWindowPlan, 1U);
+
+  cr::CreativeObject windowState;
+  windowState.id = 10U;
+  windowState.kind = cr::CreativeObjectKind::Window;
+  windowState.name = windowRequest.name;
+  windowState.window = windowRequest.window;
+  const std::uint64_t windowStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(windowState, {});
+  windowState.window.insertKind = cr::CreativeWindowInsertKind::Glazing;
+  const std::uint64_t changedWindowStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(windowState, {});
+
   return expect(fingerprint != 0U && fingerprint == identicalFingerprint,
                 "identical recipe semantics have one fingerprint") &&
          expect(changedFingerprint != 0U &&
@@ -197,6 +409,22 @@ bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
                     staleResult.receipt.reasonCode ==
                         "creative_recipe_definition_fingerprint_stale",
                 "stale declared recipe fingerprint fails closed") &&
+         expect(doorPlanFingerprint != 0U &&
+                    doorObjectFingerprint != 0U &&
+                    changedDoorPlanFingerprint != doorPlanFingerprint &&
+                    changedDoorObjectFingerprint != doorObjectFingerprint,
+                "door lock semantics participate in plan fingerprints") &&
+         expect(doorStateFingerprint != 0U &&
+                    changedDoorStateFingerprint != doorStateFingerprint,
+                "door transition semantics participate in live fingerprints") &&
+         expect(windowPlanFingerprint != 0U &&
+                    windowObjectFingerprint != 0U &&
+                    changedWindowPlanFingerprint != windowPlanFingerprint &&
+                    changedWindowObjectFingerprint != windowObjectFingerprint,
+                "window treatment participates in plan fingerprints") &&
+         expect(windowStateFingerprint != 0U &&
+                    changedWindowStateFingerprint != windowStateFingerprint,
+                "window treatment participates in live fingerprints") &&
          expect(cr::fingerprintCreativeRecipePlan(invalid) == 0U,
                 "non-finite recipe semantics cannot be fingerprinted");
 }
@@ -263,9 +491,9 @@ bool generatedOutputFingerprintDetectsLaterSemanticRefinement() {
 
 bool historyApplyIsAtomicAndCreatesOneUndoStep() {
   cr::CreativeAppState appState = appStateWithDocument(71U);
+  const cr::CreativeRecipePlan plan = parentedRecipe();
   const cr::CreativeRecipeApplyReceipt applied =
-      cr::applyCreativeRecipeWithHistory(appState, parentedRecipe(),
-                                         "recipe_test");
+      cr::applyCreativeRecipeWithHistory(appState, plan, "recipe_test");
   const cr::CreativeObject* root = appState.facade.document().findObject(1U);
   const cr::CreativeObject* floor = appState.facade.document().findObject(2U);
   const bool hierarchyCommitted = floor != nullptr && floor->parentId == 1U;
@@ -273,6 +501,13 @@ bool historyApplyIsAtomicAndCreatesOneUndoStep() {
       root != nullptr && cr::creativeRecipeObjectHasProvenance(
                              *root, cr::CreativeRecipeKind::Building,
                              cr::CreativeRecipeObjectRole::Source, "root");
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
   const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
 
@@ -290,8 +525,22 @@ bool historyApplyIsAtomicAndCreatesOneUndoStep() {
          expect(hierarchyCommitted, "recipe hierarchy committed") &&
          expect(sourceProvenanceCommitted,
                 "recipe committed source provenance") &&
+         expect(expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Building &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    expectedOperation->action == "Building" &&
+                    expectedOperation->requestFingerprint ==
+                        cr::fingerprintCreativeRecipePlan(plan) &&
+                    expectedOperation->affectedMemberCount == 2U,
+                "recipe history records its exact family plan") &&
          expect(undone.accepted && undone.changed,
                 "recipe one-step undo accepted") &&
+         expect(undone.targetOperation == expectedOperation,
+                "recipe operation metadata survives undo") &&
          expect(appState.facade.document().objectCount() == 0U,
                 "recipe undo removes complete transaction") &&
          expect(cr::creativeRedoDepth(appState.history) == 1U,
@@ -443,6 +692,7 @@ bool invalidObjectLibraryPlacementsFailWithoutPartialPlan() {
 
 int main() {
   const bool ok =
+      authoringFamilyContractsAreExhaustiveAndEnforceLifecycleLaws() &&
       symbolicParentAndProvenanceMaterializeDeterministically() &&
       explicitObjectIdsResolveStableParentIdentity() &&
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&

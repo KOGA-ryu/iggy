@@ -132,10 +132,9 @@ CreativeSelectionReceipt setSelectedTargets(
     TargetRef primaryTarget) {
   CreativeSelectionReceipt receipt =
       makeReceipt(state, CreativeSelectionChangeKind::ReplaceSelectedTargets);
-  receipt.accepted = true;
-
   std::vector<TargetRef> normalized;
-  normalized.reserve(targets.size());
+  normalized.reserve(
+      std::min(targets.size(), kCreativeSelectionTargetCapacity));
   for (TargetRef target : targets) {
     if (!isValidTarget(target)) {
       continue;
@@ -145,9 +144,15 @@ CreativeSelectionReceipt setSelectedTargets(
           return existing.value == target.value;
         });
     if (!duplicate) {
+      if (normalized.size() >= kCreativeSelectionTargetCapacity) {
+        receipt.message = "selection_capacity_exceeded";
+        return receipt;
+      }
       normalized.push_back(target);
     }
   }
+
+  receipt.accepted = true;
 
   const bool requestedPrimaryPresent =
       isValidTarget(primaryTarget) &&
@@ -191,6 +196,11 @@ CreativeSelectionReceipt toggleSelectedTarget(CreativeSelectionState& state,
       state.selectedTargets.begin(), state.selectedTargets.end(),
       [target](TargetRef selected) { return selected.value == target.value; });
   if (found == state.selectedTargets.end()) {
+    if (state.selectedTargets.size() >= kCreativeSelectionTargetCapacity) {
+      receipt.accepted = false;
+      receipt.message = "selection_capacity_exceeded";
+      return receipt;
+    }
     state.selectedTargets.push_back(target);
     state.selectedTarget = target;
     receipt.message = "selected_target_added";

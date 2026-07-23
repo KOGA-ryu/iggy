@@ -9,7 +9,9 @@
 #include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 #include "app/iggy3d/creative/document/VoxelField.hpp"
 #include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/tools/MeasurementAnnotation.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -56,6 +58,8 @@ enum class CreativeDocumentRestoreStatus : std::uint8_t {
   InvalidTerrainField,
   InvalidTerrainHeightField,
   InvalidTerrainOperationStack,
+  InvalidPatternRecipeStore,
+  InvalidMeasurementAnnotationStore,
   InvalidTerrainMaterialField,
   InvalidNextObjectId,
   Restored,
@@ -75,6 +79,8 @@ struct CreativeDocumentCreateRequest {
   CreativeObjectKind kind = CreativeObjectKind::Unknown;
   std::string name;
   std::string assetId;
+  std::uint64_t assetContentHash = 0U;
+  std::string assetMaterialVariant;
   CreativeTransform transform;
   bool hasTransformOverride = false;
   CreativeBounds bounds;
@@ -92,6 +98,12 @@ struct CreativeDocumentCreateRequest {
   std::vector<CreativePathPoint> pathPoints;
   bool hasMovingPlatformSettingsOverride = false;
   CreativeMovingPlatformSettings movingPlatform;
+  bool hasDoorSettingsOverride = false;
+  CreativeDoorSettings door;
+  bool hasWindowSettingsOverride = false;
+  CreativeWindowSettings window;
+  bool hasPlayerSpawnSettingsOverride = false;
+  CreativePlayerSpawnSettings playerSpawn;
 };
 
 // Resolves descriptor defaults into the exact durable object shape used by
@@ -133,6 +145,7 @@ struct CreativeDocumentRemoveReceipt {
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::uint64_t removedLogicLinkCount = 0;
+  std::uint64_t detachedPatternRecipeCount = 0;
   CreativeObjectDirtyFlags removalDirtyFlags = 0;
   std::string_view message = "document_remove_not_requested";
   std::string_view reasonCode = "document_remove_not_requested";
@@ -152,7 +165,10 @@ struct CreativeDocumentRestoreRequest {
   CreativeVoxelField voxelField;
   CreativeTerrainField terrainField;
   CreativeTerrainHeightField terrainHeightField;
+  std::vector<CreativeTerrainHardEdge> terrainHardEdges;
   CreativeTerrainOperationStack terrainOperationStack;
+  CreativePatternRecipeStore patternRecipeStore;
+  CreativeMeasurementAnnotationStore measurementAnnotationStore;
   CreativeTerrainMaterialField terrainMaterialField;
 };
 
@@ -169,6 +185,8 @@ struct CreativeDocumentRestoreReceipt {
   std::uint64_t terrainControlCount = 0;
   std::uint64_t terrainHeightCellCount = 0;
   std::uint64_t terrainOperationCount = 0;
+  std::uint64_t patternRecipeCount = 0;
+  std::uint64_t measurementAnnotationCount = 0;
   std::uint64_t terrainMaterialOverrideCount = 0;
   CreativeObjectId nextObjectId = kInvalidObjectId;
   std::string_view message = "document_restore_not_requested";
@@ -235,8 +253,14 @@ class CreativeDocument {
   [[nodiscard]] const CreativeTerrainField& terrainField() const noexcept;
   [[nodiscard]] const CreativeTerrainHeightField& terrainHeightField()
       const noexcept;
+  [[nodiscard]] std::span<const CreativeTerrainHardEdge> terrainHardEdges()
+      const noexcept;
   [[nodiscard]] const CreativeTerrainOperationStack& terrainOperationStack()
       const noexcept;
+  [[nodiscard]] const CreativePatternRecipeStore& patternRecipeStore()
+      const noexcept;
+  [[nodiscard]] const CreativeMeasurementAnnotationStore&
+  measurementAnnotationStore() const noexcept;
   [[nodiscard]] const CreativeTerrainMaterialField& terrainMaterialField()
       const noexcept;
 
@@ -251,9 +275,12 @@ class CreativeDocument {
   [[nodiscard]] CreativeLogicLinkMutationReceipt removeLogicLink(
       CreativeObjectId sourceObjectId,
       CreativeObjectId targetObjectId);
+  // Publishes a validated multi-domain staging copy as one document revision.
+  [[nodiscard]] bool commitStagedMutation(CreativeDocument&& staged) noexcept;
   void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
   [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
-      std::span<const CreativeVoxelEdit> edits);
+      std::span<const CreativeVoxelEdit> edits,
+      CreativeObjectDirtyFlags additionalDirtyFlags = 0U);
   [[nodiscard]] CreativeTerrainMutationReceipt applyTerrainControlEdits(
       std::span<const CreativeTerrainControlEdit> edits);
   [[nodiscard]] CreativeTerrainHeightFieldReplaceReceipt
@@ -263,6 +290,12 @@ class CreativeDocument {
   [[nodiscard]] CreativeTerrainOperationMutationReceipt
   applyTerrainOperationMutation(
       const CreativeTerrainOperationMutationRequest& request);
+  [[nodiscard]] CreativePatternRecipeMutationReceipt
+  applyPatternRecipeMutation(
+      const CreativePatternRecipeMutationRequest& request);
+  [[nodiscard]] CreativeMeasurementAnnotationMutationReceipt
+  applyMeasurementAnnotationMutation(
+      const CreativeMeasurementAnnotationMutationRequest& request);
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
       std::span<const CreativeTerrainMaterialEdit> edits);
   [[nodiscard]] CreativeDocumentRestoreReceipt restoreForLoad(
@@ -288,6 +321,8 @@ class CreativeDocument {
   [[nodiscard]] CreativeObjectId appendObject(CreativeObject object);
   [[nodiscard]] std::size_t eraseLogicLinksForObject(
       CreativeObjectId objectId) noexcept;
+  [[nodiscard]] std::size_t erasePatternRecipesForObject(
+      CreativeObjectId objectId) noexcept;
   void markContentChanged() noexcept;
   void markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept;
 
@@ -304,7 +339,10 @@ class CreativeDocument {
   CreativeVoxelField voxelField_{};
   CreativeTerrainField terrainField_{};
   CreativeTerrainHeightField terrainHeightField_{};
+  std::vector<CreativeTerrainHardEdge> terrainHardEdges_{};
   CreativeTerrainOperationStack terrainOperationStack_{};
+  CreativePatternRecipeStore patternRecipeStore_{};
+  CreativeMeasurementAnnotationStore measurementAnnotationStore_{};
   CreativeTerrainMaterialField terrainMaterialField_{};
 
   CreativeUnits units_{CreativeUnits::Meters};

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
@@ -22,6 +23,10 @@ bool expect(bool condition, std::string_view message) {
 
 bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool near(double lhs, double rhs, double epsilon = 1.0e-9) {
+  return std::abs(lhs - rhs) <= epsilon;
 }
 
 bool sparseFieldIsCanonicalAndAtomic() {
@@ -103,6 +108,206 @@ bool fullCapacityMaterialBatchesApplyAndClearLinearly() {
                         cr::CreativeTerrainMaterialMutationStatus::
                             CapacityExceeded,
                 "over-capacity edit batch rejects before staging");
+}
+
+bool weightedFieldIsExactDeterministicAndAtomic() {
+  cr::CreativeTerrainMaterialField field;
+  const cr::CreativeTerrainMaterialWeights balanced{64U, 64U, 64U, 63U};
+  const cr::CreativeTerrainMaterialEdit weighted =
+      cr::makeCreativeTerrainMaterialWeightEdit({2, 3}, balanced);
+  const cr::CreativeTerrainMaterialMutationReceipt applied =
+      field.apply(std::span{&weighted, 1U});
+  const std::uint64_t revisionAfterApply = field.revision();
+
+  const cr::CreativeTerrainMaterialWeights invalid{64U, 64U, 64U, 64U};
+  const cr::CreativeTerrainMaterialEdit invalidEdit =
+      cr::makeCreativeTerrainMaterialWeightEdit({9, 9}, invalid);
+  const cr::CreativeTerrainMaterialMutationReceipt rejected =
+      field.apply(std::span{&invalidEdit, 1U});
+
+  const cr::CreativeTerrainMaterialWeights grass =
+      cr::creativeTerrainMaterialSolidWeights(
+          cr::CreativeTerrainMaterial::Grass);
+  const cr::CreativeTerrainMaterialEdit restore =
+      cr::makeCreativeTerrainMaterialWeightEdit({2, 3}, grass);
+  const cr::CreativeTerrainMaterialMutationReceipt restored =
+      field.apply(std::span{&restore, 1U});
+
+  return expect(cr::isValidCreativeTerrainMaterialWeights(balanced) &&
+                    cr::dominantCreativeTerrainMaterial(balanced) ==
+                        cr::CreativeTerrainMaterial::Grass,
+                "weighted material ties resolve to the first stable layer") &&
+         expect(applied.accepted && applied.changed &&
+                    field.revision() == revisionAfterApply + 1U &&
+                    weighted.material == cr::CreativeTerrainMaterial::Grass,
+                "exact weighted override applies and canonical restore mutates") &&
+         expect(rejected.status ==
+                        cr::CreativeTerrainMaterialMutationStatus::InvalidEdit &&
+                    !rejected.accepted && !rejected.changed &&
+                    rejected.revisionAfter == revisionAfterApply,
+                "invalid weight sum rejects atomically") &&
+         expect(restored.accepted && restored.changed &&
+                    field.overrideCount() == 0U &&
+                    field.weightsAt({2, 3}) == grass &&
+                    field.validateInvariants(),
+                "canonical all-grass weights erase the sparse override");
+}
+
+bool partialReplaceAndAdditivePaintingConserveWeights() {
+  const std::array columns{cr::CreativeTerrainColumn{{0, 0}, 4U}};
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPaintRequest request;
+  request.surfaceColumns = columns;
+  request.materialField = &materials;
+  request.mode = cr::CreativeTerrainPaintMode::Connected;
+  request.center = {0, 0};
+  request.material = cr::CreativeTerrainMaterial::Stone;
+  request.opacity = cr::CreativeTerrainPaintOpacity::Percent25;
+
+  const cr::CreativeTerrainPaintPlan replaced =
+      cr::buildCreativeTerrainPaintPlan(request);
+  const cr::CreativeTerrainMaterialWeights expectedReplace{191U, 0U, 64U,
+                                                            0U};
+  const cr::CreativeTerrainMaterialMutationReceipt firstApply =
+      materials.apply(replaced.items());
+
+  request.blend = cr::CreativeTerrainPaintBlend::Additive;
+  const cr::CreativeTerrainPaintPlan added =
+      cr::buildCreativeTerrainPaintPlan(request);
+  const cr::CreativeTerrainMaterialWeights expectedAdd{127U, 0U, 128U, 0U};
+  const cr::CreativeTerrainMaterialMutationReceipt secondApply =
+      materials.apply(added.items());
+  const cr::CreativeVec3 blended =
+      cr::creativeTerrainMaterialRenderColor(expectedAdd);
+
+  return expect(replaced.accepted && replaced.items().size() == 1U &&
+                    replaced.previews().size() == 1U &&
+                    replaced.previews().front().influence == 64U &&
+                    replaced.previews().front().afterWeights ==
+                        expectedReplace,
+                "25 percent replace exposes exact conserved preview weights") &&
+         expect(firstApply.accepted && firstApply.changed && added.accepted &&
+                    added.previews().front().beforeWeights == expectedReplace &&
+                    added.previews().front().afterWeights == expectedAdd,
+                "additive paint starts from the persisted weighted layer") &&
+         expect(secondApply.accepted && secondApply.changed &&
+                    materials.weightsAt({0, 0}) == expectedAdd &&
+                    cr::isValidCreativeTerrainMaterialWeights(expectedAdd),
+                "repeated additive paint conserves the 255-unit layer total") &&
+         expect(near(blended.x, (0.22 * 127.0 + 0.42 * 128.0) / 255.0) &&
+                    near(blended.y,
+                         (0.52 * 127.0 + 0.44 * 128.0) / 255.0) &&
+                    near(blended.z,
+                         (0.20 * 127.0 + 0.46 * 128.0) / 255.0),
+                "weighted layer color is a deterministic material blend");
+}
+
+bool brushMaskHardnessAndFiltersAreExact() {
+  std::vector<cr::CreativeTerrainColumn> flat;
+  for (std::int32_t z = -2; z <= 2; ++z) {
+    for (std::int32_t x = -2; x <= 2; ++x) {
+      flat.push_back({{x, z}, 4U});
+    }
+  }
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPaintRequest request;
+  request.surfaceColumns = flat;
+  request.materialField = &materials;
+  request.center = {0, 0};
+  request.material = cr::CreativeTerrainMaterial::Stone;
+  request.radiusCells = 2U;
+  request.hardness = cr::CreativeTerrainPaintHardness::Soft;
+  const cr::CreativeTerrainPaintPlan circle =
+      cr::buildCreativeTerrainPaintPlan(request);
+  request.mask = cr::CreativeTerrainPaintMask::Square;
+  const cr::CreativeTerrainPaintPlan square =
+      cr::buildCreativeTerrainPaintPlan(request);
+
+  const auto previewAt = [](const cr::CreativeTerrainPaintPlan& plan,
+                            cr::CreativeTerrainCoord2 coord) {
+    return std::find_if(
+        plan.previewCells.begin(), plan.previewCells.end(),
+        [coord](const cr::CreativeTerrainPaintCellPreview& preview) {
+          return preview.coord == coord;
+        });
+  };
+  const auto circleCenter = previewAt(circle, {0, 0});
+  const auto circleEdge = previewAt(circle, {2, 0});
+  const auto squareCorner = previewAt(square, {2, 2});
+
+  const std::array filteredColumns{
+      cr::CreativeTerrainColumn{{-1, 0}, 1U},
+      cr::CreativeTerrainColumn{{0, 0}, 1U},
+      cr::CreativeTerrainColumn{{1, 0}, 5U},
+      cr::CreativeTerrainColumn{{3, 0}, 12U},
+  };
+  const cr::CreativeTerrainMaterialEdit dirt{
+      cr::CreativeTerrainMaterialEditKind::Set, {3, 0},
+      cr::CreativeTerrainMaterial::Dirt};
+  static_cast<void>(materials.apply(std::span{&dirt, 1U}));
+  request.surfaceColumns = filteredColumns;
+  request.mode = cr::CreativeTerrainPaintMode::Region;
+  request.minimumCoord = {-1, 0};
+  request.maximumCoord = {3, 0};
+  request.source = cr::CreativeTerrainPaintSource::Grass;
+  request.slopeFilter = cr::CreativeTerrainPaintSlopeFilter::Above45Degrees;
+  request.heightFilter = cr::CreativeTerrainPaintHeightFilter::Cells1To8;
+  request.mask = cr::CreativeTerrainPaintMask::Circle;
+  request.hardness = cr::CreativeTerrainPaintHardness::Solid;
+  const cr::CreativeTerrainPaintPlan filtered =
+      cr::buildCreativeTerrainPaintPlan(request);
+
+  return expect(circle.accepted && circle.cells().size() == 13U &&
+                    square.accepted && square.cells().size() == 25U,
+                "circle and square masks own distinct exact footprints") &&
+         expect(circleCenter != circle.previewCells.end() &&
+                    circleEdge != circle.previewCells.end() &&
+                    squareCorner != square.previewCells.end() &&
+                    circleCenter->influence == 255U &&
+                    circleEdge->influence == 51U &&
+                    squareCorner->influence == 51U,
+                "soft hardness falls from an exact center to bounded edges") &&
+         expect(filtered.accepted && filtered.cells().size() == 2U &&
+                    filtered.cells()[0] == cr::CreativeTerrainCoord2{0, 0} &&
+                    filtered.cells()[1] == cr::CreativeTerrainCoord2{1, 0} &&
+                    filtered.previews().size() == 2U &&
+                    filtered.previews()[0].heightCells == 1U &&
+                    filtered.previews()[0].slopeDegrees > 45.0,
+                "source slope and height filters compose before exact preview");
+}
+
+bool invalidPaintEnumsRejectBeforePlanning() {
+  const std::array columns{cr::CreativeTerrainColumn{{0, 0}, 1U}};
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPaintRequest request;
+  request.surfaceColumns = columns;
+  request.materialField = &materials;
+  const auto invalid = [](const cr::CreativeTerrainPaintRequest& candidate) {
+    const cr::CreativeTerrainPaintPlan plan =
+        cr::buildCreativeTerrainPaintPlan(candidate);
+    return !plan.accepted && plan.cells().empty() && plan.items().empty() &&
+           plan.status == cr::CreativeTerrainPaintPlanStatus::InvalidRequest;
+  };
+  cr::CreativeTerrainPaintRequest candidate = request;
+  candidate.hardness = cr::CreativeTerrainPaintHardness::Count;
+  const bool hardness = invalid(candidate);
+  candidate = request;
+  candidate.opacity = cr::CreativeTerrainPaintOpacity::Count;
+  const bool opacity = invalid(candidate);
+  candidate = request;
+  candidate.mask = cr::CreativeTerrainPaintMask::Count;
+  const bool mask = invalid(candidate);
+  candidate = request;
+  candidate.blend = cr::CreativeTerrainPaintBlend::Count;
+  const bool blend = invalid(candidate);
+  candidate = request;
+  candidate.slopeFilter = cr::CreativeTerrainPaintSlopeFilter::Count;
+  const bool slope = invalid(candidate);
+  candidate = request;
+  candidate.heightFilter = cr::CreativeTerrainPaintHeightFilter::Count;
+  const bool height = invalid(candidate);
+  return expect(hardness && opacity && mask && blend && slope && height,
+                "every invalid weighted-paint enum rejects before planning");
 }
 
 bool brushPlansOnlyPresentSurfaceAndSkipsNoOps() {
@@ -247,9 +452,9 @@ bool renderPlanJoinsMaterialWithoutChangingGeometry() {
       cr::CreativeTerrainEditKind::Upsert, {{0, 0}, 4U, 1U}};
   static_cast<void>(terrain.apply(std::span{&control, 1U}));
   cr::CreativeTerrainMaterialField materials;
-  const cr::CreativeTerrainMaterialEdit edit{
-      cr::CreativeTerrainMaterialEditKind::Set, {0, 0},
-      cr::CreativeTerrainMaterial::Sand};
+  const cr::CreativeTerrainMaterialWeights weights{128U, 0U, 127U, 0U};
+  const cr::CreativeTerrainMaterialEdit edit =
+      cr::makeCreativeTerrainMaterialWeightEdit({0, 0}, weights);
   static_cast<void>(materials.apply(std::span{&edit, 1U}));
   const cr::CreativeTerrainSurfacePlan surface =
       cr::buildCreativeTerrainSurfacePlan(terrain);
@@ -279,12 +484,19 @@ bool renderPlanJoinsMaterialWithoutChangingGeometry() {
   return expect(plain.accepted && painted.accepted && geometryMatches,
                 "material join leaves terrain geometry unchanged") &&
          expect(center != painted.patches.end() &&
-                    center->material == cr::CreativeTerrainMaterial::Sand &&
+                    center->material == cr::CreativeTerrainMaterial::Grass &&
+                    center->materialWeights == weights &&
+                    near(center->materialColor.x,
+                         (0.22 * 128.0 + 0.42 * 127.0) / 255.0) &&
+                    near(center->materialColor.y,
+                         (0.52 * 128.0 + 0.44 * 127.0) / 255.0) &&
+                    near(center->materialColor.z,
+                         (0.20 * 128.0 + 0.46 * 127.0) / 255.0) &&
                     painted.sourceMaterialRevision == materials.revision(),
-                "render patch carries authored material and revision");
+                "render patch carries exact weighted tint and revision");
 }
 
-bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
+bool toolOptionsOwnTheCompletePaintContractWithoutNewBindings() {
   const cr::CreativeToolOptionList brushOptions =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainPaint);
@@ -310,27 +522,87 @@ bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
   const cr::CreativeToolOptionAdjustReceipt source =
       cr::adjustCreativeToolOption(
           settings, cr::CreativeToolOptionId::TerrainPaintSource, 1);
-  return expect(brushOptions.count == 3U &&
-                    brushOptions.ids[0] ==
-                        cr::CreativeToolOptionId::TerrainPaintMode &&
-                    brushOptions.ids[1] ==
-                        cr::CreativeToolOptionId::TerrainPaintMaterial &&
-                    brushOptions.ids[2] ==
-                        cr::CreativeToolOptionId::TerrainPaintRadius,
-                "brush exposes mode material and radius") &&
+  const std::array expectedBrush{
+      cr::CreativeToolOptionId::TerrainPaintMode,
+      cr::CreativeToolOptionId::TerrainPaintMaterial,
+      cr::CreativeToolOptionId::TerrainPaintRadius,
+      cr::CreativeToolOptionId::TerrainPaintSource,
+      cr::CreativeToolOptionId::TerrainPaintHardness,
+      cr::CreativeToolOptionId::TerrainPaintOpacity,
+      cr::CreativeToolOptionId::TerrainPaintMask,
+      cr::CreativeToolOptionId::TerrainPaintBlend,
+      cr::CreativeToolOptionId::TerrainPaintSlopeFilter,
+      cr::CreativeToolOptionId::TerrainPaintHeightFilter,
+  };
+  const std::array expectedArea{
+      cr::CreativeToolOptionId::TerrainPaintMode,
+      cr::CreativeToolOptionId::TerrainPaintMaterial,
+      cr::CreativeToolOptionId::TerrainPaintSource,
+      cr::CreativeToolOptionId::TerrainPaintOpacity,
+      cr::CreativeToolOptionId::TerrainPaintBlend,
+      cr::CreativeToolOptionId::TerrainPaintSlopeFilter,
+      cr::CreativeToolOptionId::TerrainPaintHeightFilter,
+  };
+  const cr::CreativeToolOptionAdjustReceipt hardness =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintHardness, 1);
+  const cr::CreativeToolOptionAdjustReceipt opacity =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintOpacity, -1);
+  const cr::CreativeToolOptionAdjustReceipt mask =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintMask, 1);
+  const cr::CreativeToolOptionAdjustReceipt blend =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintBlend, 1);
+  const cr::CreativeToolOptionAdjustReceipt slope =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintSlopeFilter, 1);
+  const cr::CreativeToolOptionAdjustReceipt height =
+      cr::adjustCreativeToolOption(
+          settings, cr::CreativeToolOptionId::TerrainPaintHeightFilter, 1);
+  return expect(brushOptions.count == expectedBrush.size() &&
+                    std::equal(brushOptions.ids.begin(),
+                               brushOptions.ids.begin() + brushOptions.count,
+                               expectedBrush.begin(), expectedBrush.end()),
+                "brush exposes the complete weighted paint contract") &&
          expect(material.changed && radius.changed && connectedMode.changed &&
                     settings.terrainPaintMaterial ==
                         cr::CreativeTerrainMaterial::Dirt &&
                     settings.terrainPaintRadius ==
                         cr::CreativeTerrainPaintRadius::FourCells,
                 "shared option router adjusts paint settings") &&
-         expect(connectedOptions.count == 2U && regionMode.changed &&
-                    regionOptions.count == 3U && source.changed &&
+         expect(connectedOptions.count == expectedArea.size() &&
+                    std::equal(connectedOptions.ids.begin(),
+                               connectedOptions.ids.begin() +
+                                   connectedOptions.count,
+                               expectedArea.begin(), expectedArea.end()) &&
+                    regionMode.changed &&
+                    regionOptions.count == expectedArea.size() &&
+                    std::equal(regionOptions.ids.begin(),
+                               regionOptions.ids.begin() + regionOptions.count,
+                               expectedArea.begin(), expectedArea.end()) &&
+                    source.changed &&
                     settings.terrainPaintMode ==
                         cr::CreativeTerrainPaintMode::Region &&
                     settings.terrainPaintSource ==
                         cr::CreativeTerrainPaintSource::Grass,
-                "connected hides radius while region exposes source filter") &&
+                "area modes hide only brush-local radius hardness and mask") &&
+         expect(hardness.changed && opacity.changed && mask.changed &&
+                    blend.changed && slope.changed && height.changed &&
+                    settings.terrainPaintHardness ==
+                        cr::CreativeTerrainPaintHardness::Soft &&
+                    settings.terrainPaintOpacity ==
+                        cr::CreativeTerrainPaintOpacity::Percent75 &&
+                    settings.terrainPaintMask ==
+                        cr::CreativeTerrainPaintMask::Square &&
+                    settings.terrainPaintBlend ==
+                        cr::CreativeTerrainPaintBlend::Additive &&
+                    settings.terrainPaintSlopeFilter ==
+                        cr::CreativeTerrainPaintSlopeFilter::UpTo5Degrees &&
+                    settings.terrainPaintHeightFilter ==
+                        cr::CreativeTerrainPaintHeightFilter::Cells1To8,
+                "shared option router adjusts every paint setting") &&
          expect(cr::creativeHeldItemIsTerrainTool(
                     cr::CreativeHeldItemKind::TerrainPaint) &&
                     !cr::creativeHeldItemUsesMaterial(
@@ -343,11 +615,15 @@ bool toolOptionsOwnMaterialAndRadiusWithoutNewBindings() {
 int main() {
   return sparseFieldIsCanonicalAndAtomic() &&
                  fullCapacityMaterialBatchesApplyAndClearLinearly() &&
+                 weightedFieldIsExactDeterministicAndAtomic() &&
+                 partialReplaceAndAdditivePaintingConserveWeights() &&
+                 brushMaskHardnessAndFiltersAreExact() &&
+                 invalidPaintEnumsRejectBeforePlanning() &&
                  brushPlansOnlyPresentSurfaceAndSkipsNoOps() &&
                  connectedAndRegionPlansAreBoundedFilteredAndCanonical() &&
                  maximumConnectedPlanAppliesAtomicallyAtTheBound() &&
                  renderPlanJoinsMaterialWithoutChangingGeometry() &&
-                 toolOptionsOwnMaterialAndRadiusWithoutNewBindings()
+                 toolOptionsOwnTheCompletePaintContractWithoutNewBindings()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

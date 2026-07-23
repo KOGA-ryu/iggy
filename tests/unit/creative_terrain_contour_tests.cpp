@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <string_view>
 
 namespace {
@@ -151,6 +152,139 @@ bool invalidSurfaceAndRequestsFailClosed() {
                 "invalid contour settings fail closed");
 }
 
+bool analysisBuildsLabelsSlopeBandsAndCutFill() {
+  const cr::CreativeTerrainSurfacePlan candidate = surface({
+      {{0, 0}, 1U},
+      {{1, 0}, 3U},
+      {{0, 1}, 1U},
+      {{1, 1}, 3U},
+  });
+  const cr::CreativeTerrainSurfacePlan reference = surface({
+      {{0, 0}, 2U},
+      {{1, 0}, 2U},
+      {{0, 1}, 1U},
+      {{1, 1}, 4U},
+  });
+  cr::CreativeTerrainAnalysisRequest request;
+  request.contours = {1U, 2U, 32U};
+  const cr::CreativeTerrainAnalysisPlan first =
+      cr::buildCreativeTerrainAnalysisPlan(candidate, request, &reference);
+  const cr::CreativeTerrainAnalysisPlan second =
+      cr::buildCreativeTerrainAnalysisPlan(candidate, request, &reference);
+
+  return expect(first.accepted &&
+                    first.status == cr::CreativeTerrainAnalysisPlanStatus::Ready &&
+                    first.hasReference && first.cells.size() == 4U,
+                "analysis retains the bounded candidate/reference union") &&
+         expect(first.contours.accepted && first.labels.size() == 1U &&
+                    first.labels.front().levelCells == 2U &&
+                    near(first.labels.front().point.x, 0.75) &&
+                    near(first.labels.front().point.z, 1.0),
+                "one deterministic label anchors the longest index contour") &&
+         expect(first.cutCellCount == 2U && first.fillCellCount == 1U &&
+                    first.cells[0].deltaCells == -1 &&
+                    first.cells[1].deltaCells == 1 &&
+                    first.cells[2].deltaCells == 0 &&
+                    first.cells[3].deltaCells == -1,
+                "signed cut and fill deltas compare exact cell truth") &&
+         expect(first.cells[0].slopeBand ==
+                        cr::CreativeTerrainSlopeBand::Extreme &&
+                    first.maximumSlopeDegrees > 63.4 &&
+                    first.maximumSlopeDegrees < 63.5,
+                "slope bands derive from deterministic local gradients") &&
+         expect(first.cells == second.cells && first.labels == second.labels,
+                "analysis output is deterministic");
+}
+
+bool analysisHitTestingPrefersContoursThenHeightHandles() {
+  cr::CreativeTerrainAnalysisRequest request;
+  request.contours = {1U, 2U, 32U};
+  const cr::CreativeTerrainAnalysisPlan analysis =
+      cr::buildCreativeTerrainAnalysisPlan(surface({
+          {{0, 0}, 1U},
+          {{1, 0}, 3U},
+          {{0, 1}, 1U},
+          {{1, 1}, 3U},
+      }), request);
+  const cr::CreativeTerrainAnalysisHit contour =
+      cr::hitCreativeTerrainAnalysis(
+          analysis, {0.79, 0.8}, 0.05,
+          cr::CreativeTerrainAnalysisHitMode::ContourThenHeightHandle);
+  const cr::CreativeTerrainAnalysisHit handle =
+      cr::hitCreativeTerrainAnalysis(
+          analysis, {0.51, 0.51}, 0.01,
+          cr::CreativeTerrainAnalysisHitMode::ContourThenHeightHandle);
+  const cr::CreativeTerrainAnalysisHit forcedHandle =
+      cr::hitCreativeTerrainAnalysis(
+          analysis, {0.79, 0.8}, 0.05,
+          cr::CreativeTerrainAnalysisHitMode::HeightHandleOnly);
+  const cr::CreativeTerrainAnalysisHit contourOnlyMiss =
+      cr::hitCreativeTerrainAnalysis(
+          analysis, {0.51, 0.51}, 0.01,
+          cr::CreativeTerrainAnalysisHitMode::ContourOnly);
+  const cr::CreativeTerrainAnalysisHit invalid =
+      cr::hitCreativeTerrainAnalysis(
+          analysis, {std::numeric_limits<double>::quiet_NaN(), 0.0}, 0.1,
+          cr::CreativeTerrainAnalysisHitMode::ContourThenHeightHandle);
+
+  return expect(contour.accepted &&
+                    contour.kind == cr::CreativeTerrainAnalysisHitKind::Contour &&
+                    contour.targetHeightCells == 2U &&
+                    contour.distanceCells < 0.05,
+                "contour proximity wins over the containing terrain cell") &&
+         expect(handle.accepted &&
+                    handle.kind ==
+                        cr::CreativeTerrainAnalysisHitKind::HeightHandle &&
+                    handle.coord == cr::CreativeTerrainCoord2{0, 0} &&
+                    handle.targetHeightCells == 1U,
+                "cell fallback exposes the exact authored height handle") &&
+         expect(forcedHandle.accepted &&
+                    forcedHandle.kind ==
+                        cr::CreativeTerrainAnalysisHitKind::HeightHandle &&
+                    forcedHandle.targetHeightCells == 1U,
+                "explicit height mode bypasses a nearby contour") &&
+         expect(!contourOnlyMiss.accepted && !invalid.accepted,
+                "disabled fallback and invalid coordinates fail closed");
+}
+
+bool analysisCapacityAndReferenceFailuresAreAtomic() {
+  const cr::CreativeTerrainSurfacePlan candidate = surface({
+      {{0, 0}, 1U},
+      {{1, 0}, 3U},
+      {{0, 1}, 1U},
+      {{1, 1}, 3U},
+  });
+  cr::CreativeTerrainAnalysisRequest smallCells;
+  smallCells.maxCellCount = 3U;
+  const cr::CreativeTerrainAnalysisPlan cellOverflow =
+      cr::buildCreativeTerrainAnalysisPlan(candidate, smallCells);
+  cr::CreativeTerrainAnalysisRequest badThresholds;
+  badThresholds.flatMaximumDegrees = 20.0;
+  badThresholds.gentleMaximumDegrees = 10.0;
+  const cr::CreativeTerrainAnalysisPlan invalidThresholds =
+      cr::buildCreativeTerrainAnalysisPlan(candidate, badThresholds);
+  cr::CreativeTerrainSurfacePlan invalidReference = surface({
+      {{1, 0}, 2U},
+      {{0, 0}, 2U},
+  });
+  const cr::CreativeTerrainAnalysisPlan badReference =
+      cr::buildCreativeTerrainAnalysisPlan(candidate, {}, &invalidReference);
+
+  return expect(!cellOverflow.accepted && cellOverflow.cells.empty() &&
+                    cellOverflow.labels.empty() &&
+                    cellOverflow.status ==
+                        cr::CreativeTerrainAnalysisPlanStatus::CapacityExceeded,
+                "analysis cell overflow rejects all output atomically") &&
+         expect(!invalidThresholds.accepted &&
+                    invalidThresholds.status ==
+                        cr::CreativeTerrainAnalysisPlanStatus::InvalidRequest,
+                "unordered slope thresholds are rejected") &&
+         expect(!badReference.accepted && badReference.cells.empty() &&
+                    badReference.status ==
+                        cr::CreativeTerrainAnalysisPlanStatus::InvalidReference,
+                "noncanonical comparison terrain cannot fabricate deltas");
+}
+
 }  // namespace
 
 int main() {
@@ -159,5 +293,8 @@ int main() {
   ok = holesAndFlatTerrainDoNotFabricateContours() && ok;
   ok = saddlesResolveDeterministicallyAndCapacityIsAtomic() && ok;
   ok = invalidSurfaceAndRequestsFailClosed() && ok;
+  ok = analysisBuildsLabelsSlopeBandsAndCutFill() && ok;
+  ok = analysisHitTestingPrefersContoursThenHeightHandles() && ok;
+  ok = analysisCapacityAndReferenceFailuresAreAtomic() && ok;
   return ok ? 0 : 1;
 }

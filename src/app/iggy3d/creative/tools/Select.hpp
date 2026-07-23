@@ -4,11 +4,14 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <span>
 #include <string_view>
 #include <vector>
 
 namespace iggy3d::creative {
+
+inline constexpr std::size_t kCreativeSelectionTargetCapacity = 4096U;
 
 enum class CreativeSelectionChangeKind : std::uint8_t {
   None,

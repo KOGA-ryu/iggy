@@ -56,15 +56,40 @@ toSaveTerrainHeightField(
 [[nodiscard]] bool toCreativeTerrainHeightField(
     const SaveCreativeDocumentTerrainHeightFieldRecord& record,
     creative::CreativeTerrainHeightField& output);
+[[nodiscard]] std::vector<SaveCreativeDocumentTerrainHardEdgeRecord>
+toSaveTerrainHardEdges(
+    std::span<const creative::CreativeTerrainHardEdge> edges);
+[[nodiscard]] bool toCreativeTerrainHardEdges(
+    std::span<const SaveCreativeDocumentTerrainHardEdgeRecord> records,
+    std::vector<creative::CreativeTerrainHardEdge>& output);
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainOperationRecord>
 toSaveTerrainOperations(
     const creative::CreativeTerrainOperationStack& stack);
 [[nodiscard]] bool toCreativeTerrainOperationStack(
     std::span<const SaveCreativeDocumentTerrainOperationRecord> records,
+    std::uint32_t sectionVersion,
     std::uint32_t stackVersion,
     creative::CreativeTerrainOperationId nextOperationId,
     const SaveCreativeDocumentTerrainHeightFieldRecord& baseHeightField,
+    std::span<const SaveCreativeDocumentTerrainHardEdgeRecord> baseHardEdges,
+    std::span<const SaveCreativeDocumentTerrainMaterialRecord> baseMaterials,
+    const creative::CreativeTerrainMaterialField& legacyFinalMaterial,
     creative::CreativeTerrainOperationStack& output);
+[[nodiscard]] std::vector<SaveCreativeDocumentPatternRecipeRecord>
+toSavePatternRecipes(const creative::CreativePatternRecipeStore& store);
+[[nodiscard]] bool toCreativePatternRecipeStore(
+    std::span<const SaveCreativeDocumentPatternRecipeRecord> records,
+    std::uint32_t storeVersion,
+    creative::CreativePatternRecipeId nextRecipeId,
+    creative::CreativePatternRecipeStore& output);
+[[nodiscard]] std::vector<SaveCreativeDocumentMeasurementAnnotationRecord>
+toSaveMeasurementAnnotations(
+    const creative::CreativeMeasurementAnnotationStore& store);
+[[nodiscard]] bool toCreativeMeasurementAnnotationStore(
+    std::span<const SaveCreativeDocumentMeasurementAnnotationRecord> records,
+    std::uint32_t storeVersion,
+    creative::CreativeMeasurementAnnotationId nextAnnotationId,
+    creative::CreativeMeasurementAnnotationStore& output);
 [[nodiscard]] std::vector<SaveCreativeDocumentTerrainMaterialRecord>
 toSaveTerrainMaterials(
     const creative::CreativeTerrainMaterialField& field);

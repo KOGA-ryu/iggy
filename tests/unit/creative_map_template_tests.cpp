@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
@@ -80,13 +81,29 @@ bool ditchHouseHasDeterministicAuthoredShape() {
       findNamed(map.document, "Front Door Open");
   const cr::CreativeObject* yardRock =
       findNamed(map.document, "House Yard Rock");
+  const cr::CreativeObject* livingFloor =
+      findNamed(map.document, "Living Floor");
+  const cr::CreativeObject* livingRoom =
+      findNamed(map.document, "Living Room");
+  const cr::CreativeObject* livingRoof =
+      findNamed(map.document, "Living Roof");
+  const cr::CreativeObject* northWallWest =
+      findNamed(map.document, "North Wall West");
+  const cr::CreativeWorldLayoutArchitecturalProfile residential =
+      cr::defaultCreativeWorldLayoutArchitecturalProfile(
+          cr::CreativeWorldLayoutArchitecturalProfileKind::Residential);
+  const auto hasDitchHouseProfileTag = [](const cr::CreativeObject* object) {
+    return object != nullptr &&
+           std::find(object->tags.begin(), object->tags.end(),
+                     "architecture_profile:ditch_house") != object->tags.end();
+  };
 
   return expect(map.accepted, "ditch house template accepted") &&
          expect(map.status == cr::CreativeMapTemplateStatus::Ready,
                 "ditch house template ready") &&
          expect(map.document.id() == 17U && map.document.name() == "Ditch House",
                 "ditch house identity") &&
-         expect(map.objectCount == 74U && map.document.objectCount() == 74U,
+         expect(map.objectCount == 132U && map.document.objectCount() == 132U,
                 "ditch house stable object count") &&
          expect(map.terrainControlCount == 169U,
                 "ditch house stable terrain control count") &&
@@ -109,12 +126,38 @@ bool ditchHouseHasDeterministicAuthoredShape() {
                 "ditch house has player and npc anchors") &&
          expect(map.primaryFloorObjectId != cr::kInvalidObjectId,
                 "ditch house primary floor exposed") &&
+         expect(livingFloor != nullptr && livingRoom != nullptr &&
+                    livingRoof != nullptr && northWallWest != nullptr &&
+                    std::fabs((livingFloor->bounds.max.y -
+                               livingFloor->bounds.min.y) -
+                              5.0 *
+                                  cr::defaultCreativeStructuralLayerThicknessMeters(
+                                      cr::CreativeObjectKind::Floor)) <=
+                        1.0e-9 &&
+                    std::fabs((livingRoom->bounds.max.y -
+                               livingRoom->bounds.min.y) -
+                              residential.floorToFloorMeters) <= 1.0e-9 &&
+                    std::fabs((livingRoof->bounds.max.y -
+                               livingRoof->bounds.min.y) -
+                              cr::defaultCreativeStructuralLayerThicknessMeters(
+                                  cr::CreativeObjectKind::Roof)) <= 1.0e-9 &&
+                    std::fabs((northWallWest->bounds.max.z -
+                               northWallWest->bounds.min.z) -
+                              cr::defaultCreativeWallGeometry()
+                                  .thicknessMeters) <= 1.0e-9 &&
+                    livingFloor->bounds.max.y == livingRoom->bounds.min.y &&
+                    livingRoom->bounds.max.y == livingRoof->bounds.min.y &&
+                    hasDitchHouseProfileTag(livingFloor) &&
+                    hasDitchHouseProfileTag(northWallWest),
+                "ditch house scale follows its named architectural profile") &&
          expect(frontDoor != nullptr &&
-                    std::fabs(frontDoor->bounds.max.x -
-                              frontDoor->bounds.min.x - 0.2) <= 1.0e-9 &&
-                    std::fabs(frontDoor->bounds.max.z -
-                              frontDoor->bounds.min.z - 1.8) <= 1.0e-9,
-                "front door is stored in its open pose") &&
+                    frontDoor->door.initialState ==
+                        cr::CreativeDoorInitialState::Open &&
+                    frontDoor->door.hingeSide ==
+                        cr::CreativeDoorHingeSide::MinimumEdge &&
+                    frontDoor->door.swingSide ==
+                        cr::CreativeDoorSwingSide::NegativeNormal,
+                "front door retains semantic open state and swing") &&
          expect(yardRock != nullptr && yardRock->assetId == "boulder_01",
                 "yard rock references imported boulder asset");
 }
@@ -165,6 +208,10 @@ bool ditchTerrainHasLowDryChannelAndRaisedHouseBank() {
 bool ditchHouseBakesToRuntimeGeometryAndAnchors() {
   const cr::CreativeMapTemplateResult map =
       cr::buildCreativeMapTemplate(cr::kDitchHouseMapTemplateId);
+  const cr::CreativeObject* livingRoof =
+      findNamed(map.document, "Living Roof");
+  const cr::CreativeObject* frontDoor =
+      findNamed(map.document, "Front Door Open");
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
   cr::CreativeRoomBakeRequest request;
@@ -181,6 +228,27 @@ bool ditchHouseBakesToRuntimeGeometryAndAnchors() {
       });
   const iggy3d::SceneProjectionResult projected =
       iggy3d::buildSceneProjection({}, &bake.room);
+  const auto stableMeshId = [](const cr::CreativeObject* object) {
+    return object == nullptr
+               ? std::string{}
+               : "creative_object_" + std::to_string(object->id);
+  };
+  const std::string roofMeshId = stableMeshId(livingRoof);
+  const std::string doorMeshId = stableMeshId(frontDoor);
+  const auto findBakedMesh = [&](std::string_view id) {
+    return std::find_if(
+        bake.room.staticMeshes.begin(), bake.room.staticMeshes.end(),
+        [id](const iggy3d::RoomStaticMeshAsset& mesh) { return mesh.id == id; });
+  };
+  const auto findProjectedMesh = [&](std::string_view id) {
+    return std::find_if(
+        projected.room.meshes.begin(), projected.room.meshes.end(),
+        [id](const iggy3d::SceneRoomMeshItem& mesh) { return mesh.id == id; });
+  };
+  const auto bakedRoof = findBakedMesh(roofMeshId);
+  const auto bakedDoor = findBakedMesh(doorMeshId);
+  const auto projectedRoof = findProjectedMesh(roofMeshId);
+  const auto projectedDoor = findProjectedMesh(doorMeshId);
   const bool boulderProjectionPresent = std::any_of(
       projected.room.meshes.begin(), projected.room.meshes.end(),
       [](const iggy3d::SceneRoomMeshItem& mesh) {
@@ -201,7 +269,23 @@ bool ditchHouseBakesToRuntimeGeometryAndAnchors() {
          expect(boulderMeshPresent,
                 "boulder asset reference survives room bake") &&
          expect(boulderProjectionPresent,
-                "boulder mesh id survives scene projection");
+                "boulder mesh id survives scene projection") &&
+         expect(livingRoof != nullptr && frontDoor != nullptr &&
+                    bakedRoof != bake.room.staticMeshes.end() &&
+                    bakedDoor != bake.room.staticMeshes.end() &&
+                    bakedRoof->semanticRole == "Roof" &&
+                    bakedDoor->semanticRole == "Door" &&
+                    !bakedRoof->materialId.empty() &&
+                    !bakedDoor->materialId.empty(),
+                "room bake preserves exact architectural meaning and material") &&
+         expect(projectedRoof != projected.room.meshes.end() &&
+                    projectedDoor != projected.room.meshes.end() &&
+                    projected.room.openingVisible &&
+                    projectedRoof->semanticRole == bakedRoof->semanticRole &&
+                    projectedDoor->semanticRole == bakedDoor->semanticRole &&
+                    projectedRoof->materialId == bakedRoof->materialId &&
+                    projectedDoor->materialId == bakedDoor->materialId,
+                "scene projection preserves architectural meaning and material");
 }
 
 bool ditchHouseSurvivesDurableSaveRoundTrip() {
@@ -233,7 +317,7 @@ bool ditchHouseSurvivesDurableSaveRoundTrip() {
              "ditch house durable save accepted") &&
       expect(opened.accepted && opened.document.id() == 23U,
              "ditch house durable save reopened") &&
-      expect(opened.document.objectCount() == 74U &&
+      expect(opened.document.objectCount() == 132U &&
                  opened.document.terrainField().controlCount() == 169U &&
                  opened.document.terrainMaterialField().overrideCount() ==
                      map.terrainMaterialOverrideCount,
@@ -272,7 +356,7 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
           ? static_cast<std::size_t>(std::count_if(
                 expanded.expanded.walls.begin(), expanded.expanded.walls.end(),
                 [](const cr::CreativeWorldLayoutWall& wall) {
-                  return wall.baseLayer == 4.0 && wall.heightCells == 44U;
+                  return wall.baseLayer == 4.0 && wall.heightCells == 10U;
                 }))
           : 0U;
   const std::size_t partitionCount =
@@ -280,7 +364,7 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
           ? static_cast<std::size_t>(std::count_if(
                 expanded.expanded.walls.begin(), expanded.expanded.walls.end(),
                 [](const cr::CreativeWorldLayoutWall& wall) {
-                  return wall.heightCells == 22U;
+                  return wall.heightCells == 5U;
                 }))
           : 0U;
   bool repeatedLevelFootprints = map.worldLayout.rooms.size() == 8U;
@@ -304,15 +388,28 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
     std::cerr << "Builder Estate generation rejected: " << map.reasonCode
               << '\n';
   }
+  if (map.objectCount != 211U || map.terrainControlCount != 111U ||
+      map.document.terrainOperationStack().operations.size() != 2U) {
+    std::cerr << "Builder Estate counts: objects=" << map.objectCount
+              << " terrain-controls=" << map.terrainControlCount
+              << " terrain-operations="
+              << map.document.terrainOperationStack().operations.size()
+              << " terrain-height-cells="
+              << map.document.terrainHeightField().cellCount() << '\n';
+  }
   return expect(map.accepted &&
                     map.status == cr::CreativeMapTemplateStatus::Ready,
                 "builder estate template accepted") &&
          expect(map.document.id() == 31U &&
                     map.document.name() == "Builder Estate",
                 "builder estate identity") &&
-         expect(map.objectCount == 109U &&
-                    map.terrainControlCount == 217U,
-                "builder estate stable authored counts") &&
+         expect(map.objectCount == 211U &&
+                    map.terrainControlCount == 111U &&
+                    map.document.terrainOperationStack().operations.size() ==
+                        2U &&
+                    map.document.terrainHeightField().cellCount() >
+                        map.terrainControlCount,
+                "builder estate stable authored terrain sources") &&
          expect(map.worldLayoutPresent &&
                     map.worldLayout.stableKey == "builder_estate_layout" &&
                     map.worldLayout.buildings.size() == 1U &&
@@ -325,9 +422,9 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
          expect(expanded.accepted && expanded.expanded.walls.size() == 8U &&
                     facadeCount == 4U && partitionCount == 4U &&
                     map.worldLayout.levels[0].floorTopLayer == 4.0 &&
-                    map.worldLayout.levels[1].floorTopLayer == 26.0 &&
-                    map.worldLayout.levels[0].wallHeightCells == 22U &&
-                    map.worldLayout.levels[1].wallHeightCells == 22U &&
+                    map.worldLayout.levels[1].floorTopLayer == 9.0 &&
+                    map.worldLayout.levels[0].wallHeightCells == 5U &&
+                    map.worldLayout.levels[1].wallHeightCells == 5U &&
                     sameRect(map.worldLayout.buildings[0].rootFootprint,
                              {{16, 28}, {64, 76}}) &&
                     repeatedLevelFootprints,
@@ -343,7 +440,8 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                 "builder estate exposes reference-map semantic counts") &&
          expect(map.worldLayout.terrainProfiles.size() == 9U &&
                     map.worldLayout.terrainPaths.size() == 2U &&
-                    map.worldLayout.terrainPathPoints.size() == 4U,
+                    map.worldLayout.terrainPaths[0].recipe.points.size() == 2U &&
+                    map.worldLayout.terrainPaths[1].recipe.points.size() == 2U,
                 "builder estate terrain stays in bounded semantic recipes") &&
          expect(firstProvenance.valid &&
                     firstProvenance.templateId ==
@@ -389,11 +487,13 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                     houseGround.heightCells == 4U &&
                     floor->bounds.max.y == 4.0 &&
                     std::fabs((floor->bounds.max.y - floor->bounds.min.y) -
-                              cr::defaultCreativeStructuralLayerThicknessMeters(
-                                  cr::CreativeObjectKind::Floor)) <= 1.0e-9,
+                              6.0 *
+                                  cr::defaultCreativeStructuralLayerThicknessMeters(
+                                      cr::CreativeObjectKind::Floor)) <=
+                        1.0e-9,
                 "builder estate floor top meets terrain with exact slab thickness") &&
-         expect(roof != nullptr && roof->bounds.min.y == 48.0 &&
-                    roof->bounds.max.y == 49.0 &&
+         expect(roof != nullptr && roof->bounds.min.y == 14.0 &&
+                    roof->bounds.max.y == 14.25 &&
                     sameVec(roof->transform.scale, {1.0, 1.0, 1.0}),
                 "builder estate roof rises from its upper-storey support plane") &&
          expect(dimensions.accepted && dimensions.occupiedLevelCount == 2U &&
@@ -401,9 +501,9 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                     dimensions.uniformWallHeight &&
                     dimensions.footprintWidthMeters == 48.0 &&
                     dimensions.footprintDepthMeters == 48.0 &&
-                    dimensions.minimumFloorToFloorMeters == 22.0 &&
-                    dimensions.exteriorFacadeHeightMeters == 44.0 &&
-                    std::fabs(dimensions.totalHeightMeters - 45.05) <= 1.0e-9,
+                    dimensions.minimumFloorToFloorMeters == 5.0 &&
+                    dimensions.exteriorFacadeHeightMeters == 10.0 &&
+                    std::fabs(dimensions.totalHeightMeters - 10.55) <= 1.0e-9,
                 "builder estate publishes its exact architectural scale") &&
          expect(encoded.accepted && repeatedEncoded.accepted &&
                     encoded.encodedText == repeatedEncoded.encodedText &&
@@ -443,14 +543,14 @@ bool builderEstateBakesAndSurvivesWorldLayoutRoundTrip() {
   const bool ok =
       expect(map.accepted && bake.receipt.accepted,
              "builder estate room bake accepted") &&
-      expect(bake.receipt.bakedAnchorCount == 2U &&
+      expect(bake.receipt.bakedAnchorCount == 4U &&
                  bake.receipt.bakedStaticMeshCount > 0U &&
                  bake.receipt.bakedSpatialSurfaceCount > 0U,
              "builder estate bakes geometry collision and anchors") &&
       expect(saved.accepted && saved.worldLayoutPresent,
              "builder estate durable save includes world layout") &&
       expect(opened.accepted && opened.worldLayoutPresent &&
-                 opened.document.objectCount() == 109U &&
+                 opened.document.objectCount() == 211U &&
                  opened.worldLayout.buildings.size() == 1U &&
                  opened.worldLayout.levels.size() == 2U &&
                  opened.worldLayout.rooms.size() == 8U &&

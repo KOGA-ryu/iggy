@@ -149,11 +149,17 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   recipe.request.storeys = settings.storeys;
   recipe.floorTopLayer = settings.shell.floorTopLayer;
   recipe.floorThicknessLayers = settings.shell.floorThicknessLayers;
+  recipe.ceilingThicknessLayers = settings.ceilingThicknessLayers;
   recipe.roofThicknessLayers = settings.shell.roofThicknessLayers;
+  recipe.architecturalProfileKind = settings.architecturalProfileKind;
+  recipe.exteriorWallMaterial = settings.exteriorWallMaterial;
+  recipe.interiorWallMaterial = settings.interiorWallMaterial;
   recipe.roofStyle = settings.shell.roofStyle;
   recipe.roofRidgeAxis = settings.shell.roofRidgeAxis;
+  recipe.roofSlopeDirection = settings.shell.roofSlopeDirection;
   recipe.roofPitchDegrees = settings.shell.roofPitchDegrees;
   recipe.roofOverhangCells = settings.shell.roofOverhangCells;
+  recipe.roofMaterial = settings.shell.roofMaterial;
   return recipe;
 }
 
@@ -165,11 +171,17 @@ CreativeEditorWorldLayoutBuildingBlockoutSettings blockoutSettings(
   settings.shell.wallHeightCells = recipe.request.wallHeightCells;
   settings.shell.wallThicknessCells = recipe.request.wallThicknessCells;
   settings.shell.floorThicknessLayers = recipe.floorThicknessLayers;
+  settings.ceilingThicknessLayers = recipe.ceilingThicknessLayers;
   settings.shell.roofThicknessLayers = recipe.roofThicknessLayers;
+  settings.architecturalProfileKind = recipe.architecturalProfileKind;
+  settings.exteriorWallMaterial = recipe.exteriorWallMaterial;
+  settings.interiorWallMaterial = recipe.interiorWallMaterial;
   settings.shell.roofStyle = recipe.roofStyle;
   settings.shell.roofRidgeAxis = recipe.roofRidgeAxis;
+  settings.shell.roofSlopeDirection = recipe.roofSlopeDirection;
   settings.shell.roofPitchDegrees = recipe.roofPitchDegrees;
   settings.shell.roofOverhangCells = recipe.roofOverhangCells;
+  settings.shell.roofMaterial = recipe.roofMaterial;
   settings.pattern = recipe.request.pattern;
   settings.connectRooms = recipe.request.connectRooms;
   settings.facade = recipe.request.facade;
@@ -203,11 +215,17 @@ bool sameBlockoutRecipe(
              rhs.request.storeys.preferredDirection &&
          lhs.floorTopLayer == rhs.floorTopLayer &&
          lhs.floorThicknessLayers == rhs.floorThicknessLayers &&
+         lhs.ceilingThicknessLayers == rhs.ceilingThicknessLayers &&
          lhs.roofThicknessLayers == rhs.roofThicknessLayers &&
+         lhs.architecturalProfileKind == rhs.architecturalProfileKind &&
+         lhs.exteriorWallMaterial == rhs.exteriorWallMaterial &&
+         lhs.interiorWallMaterial == rhs.interiorWallMaterial &&
          lhs.roofStyle == rhs.roofStyle &&
          lhs.roofRidgeAxis == rhs.roofRidgeAxis &&
+         lhs.roofSlopeDirection == rhs.roofSlopeDirection &&
          lhs.roofPitchDegrees == rhs.roofPitchDegrees &&
-         lhs.roofOverhangCells == rhs.roofOverhangCells;
+         lhs.roofOverhangCells == rhs.roofOverhangCells &&
+         lhs.roofMaterial == rhs.roofMaterial;
 }
 
 std::size_t firstBuildingLevelIndex(const cr::CreativeWorldLayout& layout,

@@ -1,11 +1,35 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
 #include <span>
+#include <string_view>
 #include <utility>
 
 namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;
+
+namespace {
+
+CreativeEditorWorldLayoutPreviewReceipt previewBuildingCandidateInEveryView(
+    CreativeEditorWorldLayoutState& state,
+    const creative::CreativeDocument& document,
+    const creative::CreativeWorldLayout& source,
+    std::string_view successMessage) {
+  CreativeEditorWorldLayoutState candidate =
+      makeCreativeEditorWorldLayoutLiveEditCandidate(state);
+  candidate.source = source;
+  ++candidate.revision;
+  CreativeEditorWorldLayoutPreviewReceipt preview =
+      previewCreativeEditorWorldLayoutLiveEditCandidate(
+          state, document, std::move(candidate),
+          {true, true,
+           "creative_editor_world_layout_building_candidate_preview"},
+          successMessage);
+  state.liveEditPreviewVisible = preview.accepted;
+  return preview;
+}
+
+}  // namespace
 
 bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
     const CreativeDesktopCommand& command,
@@ -116,20 +140,33 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       const CreativeEditorWorldLayoutEditReceipt receipt =
           applyCreativeEditorWorldLayoutBuildingTransform(
               editor.worldLayout, payload->phase, payload->operation);
+      bool exactPreviewChanged = false;
+      if (receipt.accepted &&
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTransformPhase::Preview &&
+          editor.worldLayout.buildingTransform.active &&
+          (receipt.changed || !previewWasActive)) {
+        const CreativeEditorWorldLayoutPreviewReceipt preview =
+            previewBuildingCandidateInEveryView(
+                editor.worldLayout, appState.facade.document(),
+                editor.worldLayout.buildingTransform.candidate,
+                "building transform preview ready in every view");
+        exactPreviewChanged = preview.changed;
+      } else if (receipt.accepted &&
+                 payload->phase ==
+                     CreativeEditorWorldLayoutBuildingTransformPhase::Cancel) {
+        exactPreviewChanged =
+            clearCreativeEditorWorldLayoutLiveEditPreview(editor.worldLayout);
+      }
       const bool sourceChanged =
           payload->phase ==
               CreativeEditorWorldLayoutBuildingTransformPhase::Commit &&
           receipt.changed;
-      const bool exactPreviewClosed =
-          previewWasActive &&
-          payload->phase ==
-              CreativeEditorWorldLayoutBuildingTransformPhase::Preview &&
-          receipt.accepted;
       result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      result.changed = receipt.changed || exactPreviewChanged;
       result.worldLayoutChanged = sourceChanged;
       result.sceneChanged =
-          exactPreviewClosed || (previewWasActive && sourceChanged);
+          exactPreviewChanged || (previewWasActive && sourceChanged);
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -365,6 +402,23 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutDetachBuildingTemplateInstance: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingTemplateSyncPayload>(
+              command);
+      if (payload == nullptr) {
+        result.message = "layout template detach: payload mismatch";
+        break;
+      }
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          detachCreativeEditorWorldLayoutBuildingTemplateInstance(
+              editor.worldLayout, payload->buildingIndex);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::
         WorldLayoutRefreshBuildingTemplateInstances: {
       const auto* payload =
@@ -417,21 +471,42 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       const CreativeEditorWorldLayoutEditReceipt receipt =
           applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
               editor.worldLayout, payload->phase, payload->point,
-              payload->operation);
+              payload->operation, &appState.facade.document());
+      const bool candidatePhase =
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin ||
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update ||
+          payload->phase ==
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Transform;
+      bool exactPreviewChanged = false;
+      if (receipt.accepted && candidatePhase &&
+          editor.worldLayout.buildingTemplatePlacement.active &&
+          editor.worldLayout.buildingTemplatePlacement.previewValid &&
+          (receipt.changed || !previewWasActive)) {
+        const CreativeEditorWorldLayoutPreviewReceipt preview =
+            previewBuildingCandidateInEveryView(
+                editor.worldLayout, appState.facade.document(),
+                editor.worldLayout.buildingTemplatePlacement.candidate,
+                "building template preview ready in every view");
+        exactPreviewChanged = preview.changed;
+      } else if (receipt.accepted &&
+                 ((candidatePhase &&
+                   !editor.worldLayout.buildingTemplatePlacement.previewValid) ||
+                  payload->phase ==
+                      CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel)) {
+        exactPreviewChanged =
+            clearCreativeEditorWorldLayoutLiveEditPreview(editor.worldLayout);
+      }
       const bool sourceChanged =
           payload->phase ==
               CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit &&
           receipt.changed;
-      const bool exactPreviewClosed =
-          previewWasActive &&
-          payload->phase ==
-              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin &&
-          receipt.accepted;
       result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      result.changed = receipt.changed || exactPreviewChanged;
       result.worldLayoutChanged = sourceChanged;
       result.sceneChanged =
-          exactPreviewClosed || (previewWasActive && sourceChanged);
+          exactPreviewChanged || (previewWasActive && sourceChanged);
       result.message = editor.worldLayout.statusMessage;
       break;
     }

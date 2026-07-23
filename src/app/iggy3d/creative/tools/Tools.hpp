@@ -3,21 +3,24 @@
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/ConnectedFill.hpp"
+#include "app/iggy3d/creative/tools/MeasurementTypes.hpp"
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/SurfaceExtrude.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
 #include "app/iggy3d/creative/tools/TerrainPaint.hpp"
-#include "app/iggy3d/creative/tools/TerrainRegion.hpp"
+#include "app/iggy3d/creative/recipes/TerrainRegionRecipe.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 #include "app/iggy3d/creative/tools/TerrainStamp.hpp"
+#include "app/iggy3d/creative/tools/VolumeTypes.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -40,6 +43,8 @@ enum class CreativeToolIntentKind : std::uint8_t {
   BeginMeasurement,
   UpdateMeasurement,
   EndMeasurement,
+  AppendMeasurementPoint,
+  CompleteMeasurement,
   CancelToolAction,
   PreviewPointer,
   // Move-tool drag lifecycle (TV1-G, TD-6 preview-then-commit): a press on the
@@ -161,6 +166,28 @@ enum class CreativeAssetPlacementMode : std::uint8_t {
   Count,
 };
 
+enum class CreativeAssetAlignmentMode : std::uint8_t {
+  Grid,
+  Floor,
+  Wall,
+  SurfaceNormal,
+  Free,
+  Count,
+};
+
+enum class CreativeAssetAttachmentMode : std::uint8_t {
+  BestMatch,
+  AimSocket,
+  Count,
+};
+
+enum class CreativeAssetScatterMask : std::uint8_t {
+  Circle,
+  Box,
+  Selection,
+  Count,
+};
+
 enum class CreativeAssetScatterRadius : std::uint8_t {
   TwoCells,
   FourCells,
@@ -204,10 +231,19 @@ enum class CreativeAssetScatterSlope : std::uint8_t {
   Count,
 };
 
+enum class CreativeAssetScatterCollision : std::uint8_t {
+  Avoid,
+  Allow,
+  Count,
+};
+
 enum class CreativeCloneOffsetAxis : std::uint8_t {
   X,
   Y,
   Z,
+  NegativeX,
+  NegativeY,
+  NegativeZ,
   Count,
 };
 
@@ -238,12 +274,14 @@ enum class CreativeToolOptionId : std::uint8_t {
   RoomWallThickness,
   RoomFloorThickness,
   AssetPlacementMode,
+  AssetScatterMask,
   AssetScatterRadius,
   AssetScatterDensity,
   AssetScatterSpacing,
   AssetScatterYaw,
   AssetScatterScale,
   AssetScatterSlope,
+  AssetScatterCollision,
   MaterialBrushShape,
   MaterialBrushAxis,
   MaterialBrushSize,
@@ -254,9 +292,21 @@ enum class CreativeToolOptionId : std::uint8_t {
   MaterialBrushReplaceSource,
   ShapeBrushKind,
   ShapeBrushAxis,
+  VolumeFillOverlapPolicy,
+  VolumeHollowThickness,
+  VolumeHollowAlignment,
+  VolumeHollowOpening,
+  VolumeHollowCornerRule,
   ReplaceSource,
+  ReplaceMemberMask,
+  EraseSource,
+  EraseMemberMask,
   CloneOffsetAxis,
   CloneOffsetDistance,
+  CloneRotation,
+  CloneMirror,
+  CloneMemberMask,
+  CloneVoxelOverlapPolicy,
   ArrayMode,
   ArrayDirection,
   ArrayCopyCount,
@@ -270,11 +320,19 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainSculptMode,
   TerrainSculptRadius,
   TerrainSculptStrength,
+  TerrainSculptTargetHeight,
   TerrainSculptFalloff,
+  TerrainSculptMask,
   TerrainPaintMode,
   TerrainPaintMaterial,
   TerrainPaintRadius,
   TerrainPaintSource,
+  TerrainPaintHardness,
+  TerrainPaintOpacity,
+  TerrainPaintMask,
+  TerrainPaintBlend,
+  TerrainPaintSlopeFilter,
+  TerrainPaintHeightFilter,
   TerrainRodStampMode,
   TerrainSeedRadius,
   TerrainSeedSpacing,
@@ -286,14 +344,27 @@ enum class CreativeToolOptionId : std::uint8_t {
   TerrainProfileSpacing,
   TerrainProfileDirection,
   TerrainProfileFrequency,
+  TerrainProfileSeed,
   TerrainPathKind,
   TerrainPathElevation,
   TerrainPathWidth,
   TerrainPathAmplitude,
   TerrainRegionOperation,
+  TerrainRegionMask,
   TerrainRegionAmount,
+  TerrainRegionTargetHeight,
+  TerrainRegionNoiseRelief,
+  TerrainRegionNoiseScale,
+  TerrainRegionSeed,
+  TerrainRegionFeather,
   TerrainStampMode,
   TerrainStampElevation,
+  MeasurementMode,
+  MeasurementAxis,
+  MeasurementSnapMode,
+  MeasurementClosePath,
+  AssetAlignmentMode,
+  AssetAttachmentMode,
   Count,
 };
 
@@ -303,7 +374,7 @@ enum class CreativeToolOptionValueKind : std::uint8_t {
 };
 
 using CreativeHeldItemMask = std::uint32_t;
-inline constexpr std::size_t kCreativeToolOptionCapacity = 8;
+inline constexpr std::size_t kCreativeToolOptionCapacity = 12;
 inline constexpr std::size_t kCreativeToolOptionDescriptorCount =
     static_cast<std::size_t>(CreativeToolOptionId::Count);
 
@@ -344,6 +415,12 @@ struct CreativeToolSettings {
       CreativeRoomFloorThickness::FiveCentimeters;
   CreativeAssetPlacementMode assetPlacementMode =
       CreativeAssetPlacementMode::Single;
+  CreativeAssetAlignmentMode assetAlignmentMode =
+      CreativeAssetAlignmentMode::Grid;
+  CreativeAssetAttachmentMode assetAttachmentMode =
+      CreativeAssetAttachmentMode::BestMatch;
+  CreativeAssetScatterMask assetScatterMask =
+      CreativeAssetScatterMask::Circle;
   CreativeAssetScatterRadius assetScatterRadius =
       CreativeAssetScatterRadius::FourCells;
   CreativeAssetScatterDensity assetScatterDensity =
@@ -356,6 +433,8 @@ struct CreativeToolSettings {
       CreativeAssetScatterScale::PlusMinus10Percent;
   CreativeAssetScatterSlope assetScatterSlope =
       CreativeAssetScatterSlope::Degrees30;
+  CreativeAssetScatterCollision assetScatterCollision =
+      CreativeAssetScatterCollision::Avoid;
   CreativeMaterialBrushShape materialBrushShape =
       CreativeMaterialBrushShape::Sphere;
   CreativeAxis3 materialBrushAxis = CreativeAxis3::Y;
@@ -379,10 +458,31 @@ struct CreativeToolSettings {
       CreativeConnectedFillLimit::Cells256;
   CreativeShapeBrushKind shapeBrushKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeBrushAxis = CreativeShapeBrushAxis::Y;
+  CreativeVolumeFillOverlapPolicy volumeFillOverlapPolicy =
+      CreativeVolumeFillOverlapPolicy::PreserveExisting;
+  CreativeVolumeHollowThickness volumeHollowThickness =
+      CreativeVolumeHollowThickness::OneCell;
+  CreativeVolumeHollowAlignment volumeHollowAlignment =
+      CreativeVolumeHollowAlignment::Inward;
+  CreativeVolumeHollowOpening volumeHollowOpening =
+      CreativeVolumeHollowOpening::Closed;
+  CreativeVolumeHollowCornerRule volumeHollowCornerRule =
+      CreativeVolumeHollowCornerRule::KeepEdges;
   CreativeObjectKind replaceSourceKind = CreativeObjectKind::Unknown;
+  CreativeVolumeMemberMask volumeReplaceMemberMask =
+      CreativeVolumeMemberMask::Both;
+  CreativeObjectKind eraseSourceKind = CreativeObjectKind::Unknown;
+  CreativeVolumeMemberMask volumeEraseMemberMask =
+      CreativeVolumeMemberMask::Both;
   CreativeCloneOffsetAxis cloneOffsetAxis = CreativeCloneOffsetAxis::X;
   CreativeCloneOffsetDistance cloneOffsetDistance =
       CreativeCloneOffsetDistance::OneCell;
+  CreativeCloneRotation cloneRotation = CreativeCloneRotation::Degrees0;
+  CreativeCloneMirror cloneMirror = CreativeCloneMirror::None;
+  CreativeVolumeMemberMask volumeCloneMemberMask =
+      CreativeVolumeMemberMask::Both;
+  CreativeVolumeCloneVoxelOverlapPolicy cloneVoxelOverlapPolicy =
+      CreativeVolumeCloneVoxelOverlapPolicy::RejectOccupied;
   CreativeArrayMode arrayMode = CreativeArrayMode::Linear;
   CreativeLinearArrayDirection arrayDirection =
       CreativeLinearArrayDirection::PositiveX;
@@ -395,20 +495,39 @@ struct CreativeToolSettings {
       CreativeRadialArrayInstanceCount::Eight;
   CreativeRadialArraySweep radialArraySweep =
       CreativeRadialArraySweep::Degrees360;
+  CreativeMeasurementMode measurementMode = CreativeMeasurementMode::Distance;
+  CreativeMeasurementAxis measurementAxis = CreativeMeasurementAxis::X;
+  CreativeMeasurementSnapMode measurementSnapMode =
+      CreativeMeasurementSnapMode::Auto;
+  bool measurementClosePath = false;
   CreativeTerrainSculptMode terrainSculptMode =
       CreativeTerrainSculptMode::Flatten;
   CreativeTerrainSculptRadius terrainSculptRadius =
       CreativeTerrainSculptRadius::FourCells;
   CreativeTerrainSculptStrength terrainSculptStrength =
       CreativeTerrainSculptStrength::OneCell;
+  std::uint16_t terrainSculptTargetHeightCells = 4U;
   CreativeTerrainSculptFalloff terrainSculptFalloff =
       CreativeTerrainSculptFalloff::Uniform;
+  CreativeTerrainSculptMask terrainSculptMask =
+      CreativeTerrainSculptMask::Circle;
   CreativeTerrainPaintMode terrainPaintMode = CreativeTerrainPaintMode::Brush;
   CreativeTerrainMaterial terrainPaintMaterial = CreativeTerrainMaterial::Grass;
   CreativeTerrainPaintRadius terrainPaintRadius =
       CreativeTerrainPaintRadius::TwoCells;
   CreativeTerrainPaintSource terrainPaintSource =
       CreativeTerrainPaintSource::Any;
+  CreativeTerrainPaintHardness terrainPaintHardness =
+      CreativeTerrainPaintHardness::Solid;
+  CreativeTerrainPaintOpacity terrainPaintOpacity =
+      CreativeTerrainPaintOpacity::Percent100;
+  CreativeTerrainPaintMask terrainPaintMask = CreativeTerrainPaintMask::Circle;
+  CreativeTerrainPaintBlend terrainPaintBlend =
+      CreativeTerrainPaintBlend::Replace;
+  CreativeTerrainPaintSlopeFilter terrainPaintSlopeFilter =
+      CreativeTerrainPaintSlopeFilter::Any;
+  CreativeTerrainPaintHeightFilter terrainPaintHeightFilter =
+      CreativeTerrainPaintHeightFilter::Any;
   CreativeTerrainRodStampMode terrainRodStampMode =
       CreativeTerrainRodStampMode::Single;
   CreativeTerrainSeedRadius terrainSeedRadius =
@@ -421,16 +540,13 @@ struct CreativeToolSettings {
       CreativeTerrainProfileBlend::Set;
   CreativeTerrainProfileRodPolicy terrainProfileRodPolicy =
       CreativeTerrainProfileRodPolicy::Fill;
-  CreativeTerrainProfileRadius terrainProfileRadius =
-      CreativeTerrainProfileRadius::FourCells;
-  CreativeTerrainProfileAmplitude terrainProfileAmplitude =
-      CreativeTerrainProfileAmplitude::FourCells;
-  CreativeTerrainProfileSpacing terrainProfileSpacing =
-      CreativeTerrainProfileSpacing::OneCell;
+  std::uint16_t terrainProfileRadiusCells = 4U;
+  std::uint16_t terrainProfileAmplitudeCells = 4U;
+  std::uint16_t terrainProfileSpacingCells = 1U;
   CreativeTerrainProfileDirection terrainProfileDirection =
       CreativeTerrainProfileDirection::PositiveX;
-  CreativeTerrainProfileFrequency terrainProfileFrequency =
-      CreativeTerrainProfileFrequency::OneCycle;
+  std::uint8_t terrainProfileFrequencyCycles = 1U;
+  std::uint64_t terrainProfileSeed = 0U;
   CreativeTerrainPathKind terrainPathKind = CreativeTerrainPathKind::Road;
   CreativeTerrainPathElevation terrainPathElevation =
       CreativeTerrainPathElevation::Follow;
@@ -438,10 +554,7 @@ struct CreativeToolSettings {
       CreativeTerrainPathWidth::ThreeCells;
   CreativeTerrainPathAmplitude terrainPathAmplitude =
       CreativeTerrainPathAmplitude::OneCell;
-  CreativeTerrainRegionOperation terrainRegionOperation =
-      CreativeTerrainRegionOperation::Raise;
-  CreativeTerrainRegionAmount terrainRegionAmount =
-      CreativeTerrainRegionAmount::OneCell;
+  CreativeTerrainRegionRecipe terrainRegionRecipe{};
   CreativeTerrainStampMode terrainStampMode = CreativeTerrainStampMode::Merge;
   CreativeTerrainStampElevationMode terrainStampElevationMode =
       CreativeTerrainStampElevationMode::Surface;
@@ -592,6 +705,12 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAssetPlacementMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeAssetAlignmentMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetAttachmentMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeAssetScatterMask mask) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeAssetScatterRadius radius) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAssetScatterDensity density) noexcept;
@@ -604,15 +723,40 @@ creativeToolOptionDescriptors() noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeAssetScatterSlope slope) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeAssetScatterCollision collision) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeCloneOffsetAxis axis) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeCloneOffsetDistance distance) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeCloneRotation rotation) noexcept;
+[[nodiscard]] std::string_view toString(CreativeCloneMirror mirror) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeCloneVoxelOverlapPolicy policy) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeFillOverlapPolicy policy) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeHollowThickness thickness) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeHollowAlignment alignment) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeHollowOpening opening) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeHollowCornerRule rule) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeVolumeMemberMask mask) noexcept;
 [[nodiscard]] std::string_view toString(CreativeArrayMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeMeasurementMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMeasurementAxis axis) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeMeasurementSnapMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeToolOptionAdjustStatus status) noexcept;
-[[nodiscard]] std::string_view creativeToolOptionValueLabel(
+[[nodiscard]] std::string creativeToolOptionValueLabel(
     const CreativeToolSettings& settings,
-    CreativeToolOptionId option) noexcept;
+    CreativeToolOptionId option);
 
 // O(option count + palette size), both caller-bounded. Adjustment is atomic:
 // invalid settings or unavailable values leave the input settings unchanged.

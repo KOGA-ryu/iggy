@@ -913,7 +913,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
     CreativeEditorWorldLayoutPoint point,
     cr::CreativeGridSettings grid) {
   if (state.tool != CreativeEditorWorldLayoutTool::CatalogAsset) {
-    return applyCreativeEditorWorldLayoutPoint(state, point);
+    return detail::applyWorldLayoutToolPoint(state, point, grid);
   }
   CreativeEditorWorldLayoutCatalogPlacementPlan plan =
       planCreativeEditorWorldLayoutCatalogPlacement(state, point, grid);

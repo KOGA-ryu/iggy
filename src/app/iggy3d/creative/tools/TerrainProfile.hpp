@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/document/TerrainHeightField.hpp"
 
 #include <array>
 #include <cstddef>
@@ -8,6 +8,7 @@
 #include <span>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -89,6 +90,7 @@ struct CreativeTerrainProfileRequest {
   std::uint16_t amplitudeCells = 4U;
   std::uint16_t spacingCells = 1U;
   std::uint8_t frequency = 1U;
+  std::uint64_t seed = 0U;
 };
 
 enum class CreativeTerrainProfilePlanStatus : std::uint8_t {
@@ -124,10 +126,19 @@ static_assert(std::is_standard_layout_v<CreativeTerrainProfilePlan>);
 
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileKind value) noexcept;
+[[nodiscard]] bool parseCreativeTerrainProfileKind(
+    std::string_view text,
+    CreativeTerrainProfileKind& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileBlend value) noexcept;
+[[nodiscard]] bool parseCreativeTerrainProfileBlend(
+    std::string_view text,
+    CreativeTerrainProfileBlend& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileRodPolicy value) noexcept;
+[[nodiscard]] bool parseCreativeTerrainProfileRodPolicy(
+    std::string_view text,
+    CreativeTerrainProfileRodPolicy& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileRadius value) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -136,6 +147,9 @@ static_assert(std::is_standard_layout_v<CreativeTerrainProfilePlan>);
     CreativeTerrainProfileSpacing value) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileDirection value) noexcept;
+[[nodiscard]] bool parseCreativeTerrainProfileDirection(
+    std::string_view text,
+    CreativeTerrainProfileDirection& output) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainProfileFrequency value) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -153,10 +167,91 @@ static_assert(std::is_standard_layout_v<CreativeTerrainProfilePlan>);
     CreativeTerrainProfileKind value) noexcept;
 [[nodiscard]] bool creativeTerrainProfileUsesFrequency(
     CreativeTerrainProfileKind value) noexcept;
+[[nodiscard]] bool creativeTerrainProfileUsesSeed(
+    CreativeTerrainProfileKind value) noexcept;
 
 // O(a*n) in the bounded field, where a is at most 256 candidates and n is at
 // most 256 controls. Every rejected plan exposes zero edits.
 [[nodiscard]] CreativeTerrainProfilePlan buildCreativeTerrainProfilePlan(
     const CreativeTerrainProfileRequest& request) noexcept;
+
+inline constexpr std::uint32_t kCreativeTerrainProfileRecipeVersion = 1U;
+inline constexpr std::uint16_t kCreativeTerrainProfileMaximumRadiusCells = 64U;
+inline constexpr std::uint16_t kCreativeTerrainProfileMaximumSpacingCells = 16U;
+inline constexpr std::uint8_t kCreativeTerrainProfileMaximumFrequency = 8U;
+
+// One durable mathematical elevation source. Dense operation replay evaluates
+// every affected tile from this record; spacing controls deterministic profile
+// sampling and seed controls oscillatory phase without changing the footprint.
+struct CreativeTerrainProfileRecipe {
+  std::uint32_t version = kCreativeTerrainProfileRecipeVersion;
+  CreativeTerrainCoord2 center{};
+  std::uint16_t baseHeightCells = 4U;
+  CreativeTerrainProfileKind profile = CreativeTerrainProfileKind::Hill;
+  CreativeTerrainProfileBlend blend = CreativeTerrainProfileBlend::Set;
+  CreativeTerrainProfileRodPolicy rodPolicy =
+      CreativeTerrainProfileRodPolicy::Fill;
+  CreativeTerrainProfileDirection direction =
+      CreativeTerrainProfileDirection::PositiveX;
+  std::uint16_t radiusCells = 4U;
+  std::uint16_t amplitudeCells = 4U;
+  std::uint16_t spacingCells = 1U;
+  std::uint8_t frequency = 1U;
+  std::uint64_t seed = 0U;
+
+  [[nodiscard]] friend constexpr bool operator==(
+      CreativeTerrainProfileRecipe,
+      CreativeTerrainProfileRecipe) noexcept = default;
+};
+
+enum class CreativeTerrainProfileRecipeStatus : std::uint8_t {
+  NotRequested,
+  UnsupportedVersion,
+  InvalidRecipe,
+  InvalidSource,
+  CoordinateOverflow,
+  CapacityExceeded,
+  UnderSampled,
+  NoSourceInFootprint,
+  OutputRejected,
+  Ready,
+};
+
+struct CreativeTerrainProfileRecipeReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool boundsExpanded = false;
+  CreativeTerrainProfileRecipeStatus status =
+      CreativeTerrainProfileRecipeStatus::NotRequested;
+  std::uint64_t sourceColumnCount = 0U;
+  std::uint64_t evaluatedCellCount = 0U;
+  std::uint64_t affectedCellCount = 0U;
+  std::uint64_t modifiedCellCount = 0U;
+  std::uint64_t materializedCellCount = 0U;
+  std::uint64_t outputCellCount = 0U;
+  std::uint64_t heightHash = 0U;
+  std::string_view reasonCode =
+      "creative_terrain_profile_recipe_not_requested";
+};
+
+struct CreativeTerrainProfileRecipeResult {
+  CreativeTerrainProfileRecipe recipe{};
+  CreativeTerrainHeightField heightField;
+  CreativeTerrainProfileRecipeReceipt receipt{};
+};
+
+[[nodiscard]] bool isValidCreativeTerrainProfileRecipe(
+    const CreativeTerrainProfileRecipe& recipe) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeTerrainProfileRecipeStatus status) noexcept;
+
+// O(n + r^2), bounded by the 8192-cell dense terrain capacity. The immutable
+// canonical source and authored heightfield produce the exact preview/commit
+// candidate used by operation replay; rejected recipes return no output field.
+[[nodiscard]] CreativeTerrainProfileRecipeResult
+buildCreativeTerrainProfileRecipe(
+    const CreativeTerrainHeightField& existingAuthored,
+    const CreativeTerrainSurfacePlan& canonicalSource,
+    const CreativeTerrainProfileRecipe& recipe);
 
 }  // namespace iggy3d::creative

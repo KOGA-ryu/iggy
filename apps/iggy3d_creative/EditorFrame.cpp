@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
 #include "app/iggy3d/creative/input/ActionHints.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -405,6 +406,35 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   return flyInput;
 }
 
+[[nodiscard]] bool applyCreativeEditorViewportNavigation(
+    CreativeEditorState& editor,
+    iggy3d::ProductCreativeViewportNavigationOperation operation,
+    float horizontalInput,
+    float verticalInput,
+    float viewportHeightPixels) noexcept {
+  iggy3d::ProductCreativeViewportNavigationRequest request;
+  request.config = editor.viewportNavigationConfig;
+  request.focus = editor.viewportFocus;
+  request.pose.anchorPositionMeters = editor.flyPos;
+  request.pose.yawDegrees = editor.yawDegrees;
+  request.pose.pitchDegrees = editor.pitchDegrees;
+  request.operation = operation;
+  request.horizontalInput = horizontalInput;
+  request.verticalInput = verticalInput;
+  request.viewportHeightPixels = viewportHeightPixels;
+  request.orbitDegreesPerPixel = editor.controlProfile.mouseLookSensitivity;
+  const iggy3d::ProductCreativeViewportNavigationResult result =
+      iggy3d::applyProductCreativeViewportNavigation(request);
+  if (!result.applied) {
+    return false;
+  }
+  editor.viewportFocus = result.focus;
+  editor.flyPos = result.pose.anchorPositionMeters;
+  editor.yawDegrees = result.pose.yawDegrees;
+  editor.pitchDegrees = result.pose.pitchDegrees;
+  return true;
+}
+
 }  // namespace
 
 namespace {
@@ -481,8 +511,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   // must be ignored or the shell reclaims the context and releases the capture
   // the instant the camera moves (plan DD-9).
   const bool desktopUiWantsInput = creativeDesktopUiWantsInput(
-      editor.desktopUi.viewportPointerCaptured, backend.externalUiWantsMouse(),
-      backend.externalUiWantsKeyboard());
+      editor.desktopUi.viewportPointerCaptureMode,
+      backend.externalUiWantsMouse(), backend.externalUiWantsKeyboard());
   const creative::CreativeInputContext inputContext =
       resolveCreativeEditorInputContext(captureMode, desktopUiWantsInput,
                                         applyEditorNavigation, editor);
@@ -521,10 +551,19 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
           controller, creative::CreativeControllerButton::LeftShoulder);
   result.toolWheelDirectionX = radialStick.x;
   result.toolWheelDirectionY = radialStick.y;
+  const bool viewportDollyRequested =
+      applyEditorNavigation && creativeDesktopViewportDollyRequested(
+                                   editor.desktopUi.viewportPointerCaptureMode,
+                                   inputFrame.modifiers,
+                                   window.eventState().mouseWheelY,
+                                   inputContext == creative::
+                                                       CreativeInputContext::
+                                                           EditorViewport);
   const creative::CreativeWorldInputSample worldInput =
       makeCreativeWorldInputSample(
           inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
-          !captureMode && result.windowFocused, wheelSteps);
+          !captureMode && result.windowFocused,
+          viewportDollyRequested ? 0 : wheelSteps);
   result.worldActions = creative::routeCreativeWorldActions(
       editor.interaction.actionRouter, worldInput);
   const CreativeEditorNavigationAdmission navigation =
@@ -540,9 +579,16 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   if (navigation.clearRightStickLookRearm) {
     editor.rightStickLookRearmRequired = false;
   }
+  const CreativeDesktopPointerCaptureMode pointerMode =
+      editor.desktopUi.viewportPointerCaptureMode;
+  const bool orbitGesture =
+      pointerMode == CreativeDesktopPointerCaptureMode::Orbit;
+  const bool panGesture =
+      pointerMode == CreativeDesktopPointerCaptureMode::Pan;
+  const bool viewportGesture = orbitGesture || panGesture;
   iggy3d::ProductCreativeFlyInput flyInput = makeCreativeEditorFlyInput(
       inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
-      moveStick, navigation.navigationActive,
+      moveStick, navigation.navigationActive && !viewportGesture,
       inputContext == creative::CreativeInputContext::TransformPreview,
       result.transformNudgeWheelSteps, result.transformFineNudge);
 
@@ -563,29 +609,58 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
   editor.activeControlDevice = creative::resolveCreativeActiveControlDevice(
       editor.activeControlDevice, deviceActivity);
   result.activeControlDevice = editor.activeControlDevice;
-  const float gamepadYaw = navigation.rightStickLookActive
+  const float gamepadYaw =
+      navigation.rightStickLookActive && !viewportGesture
                                ? gamepadLook.yawDegrees
                                : 0.0F;
-  const float gamepadPitch = navigation.rightStickLookActive
+  const float gamepadPitch =
+      navigation.rightStickLookActive && !viewportGesture
                                  ? gamepadLook.pitchDegrees
                                  : 0.0F;
+  const bool mouseFlyLookActive = creativeDesktopMouseLookActive(
+      editor.desktopUi.shellEnabled, pointerMode);
   result.navigationActive = navigation.navigationActive;
   result.navigationMoveRight = flyInput.moveX;
   result.navigationMoveForward = flyInput.moveY;
   result.navigationSprinting = flyInput.sprinting;
   result.navigationYawDeltaDegrees =
       navigation.navigationActive
-          ? mouseDx * editor.controlProfile.mouseLookSensitivity + gamepadYaw
+          ? (mouseFlyLookActive
+                 ? mouseDx * editor.controlProfile.mouseLookSensitivity
+                 : 0.0F) +
+                gamepadYaw
           : 0.0F;
   result.navigationPitchDeltaDegrees =
       navigation.navigationActive
-          ? -mouseDy * editor.controlProfile.mouseLookSensitivity + gamepadPitch
+          ? (mouseFlyLookActive
+                 ? -mouseDy * editor.controlProfile.mouseLookSensitivity
+                 : 0.0F) +
+                gamepadPitch
           : 0.0F;
-  if (applyEditorNavigation && navigation.navigationActive) {
+  const float viewportHeightPixels =
+      editor.desktopUi.contentViewport.height > 0U
+          ? static_cast<float>(editor.desktopUi.contentViewport.height)
+          : static_cast<float>(result.extent.height);
+  if (applyEditorNavigation && navigation.navigationActive && viewportGesture) {
+    static_cast<void>(applyCreativeEditorViewportNavigation(
+        editor,
+        orbitGesture
+            ? iggy3d::ProductCreativeViewportNavigationOperation::Orbit
+            : iggy3d::ProductCreativeViewportNavigationOperation::Pan,
+        mouseDx, mouseDy, viewportHeightPixels));
+  } else if (applyEditorNavigation && viewportDollyRequested) {
+    static_cast<void>(applyCreativeEditorViewportNavigation(
+        editor, iggy3d::ProductCreativeViewportNavigationOperation::Dolly,
+        0.0F, window.eventState().mouseWheelY, viewportHeightPixels));
+  } else if (applyEditorNavigation && navigation.navigationActive) {
     editor.yawDegrees += result.navigationYawDeltaDegrees;
     editor.pitchDegrees = std::clamp(
         editor.pitchDegrees + result.navigationPitchDeltaDegrees,
         -80.0F, 80.0F);
+    if (result.navigationYawDeltaDegrees != 0.0F ||
+        result.navigationPitchDeltaDegrees != 0.0F) {
+      editor.viewportFocus.valid = false;
+    }
   }
   flyInput.cameraYawDegrees = editor.yawDegrees;
   flyInput.cameraPitchDegrees = editor.pitchDegrees;
@@ -595,6 +670,7 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
         applyProductCreativeFlyInput(editor.flyConfig, flyInput, editor.flyPos);
     if (flyResult.applied) {
       editor.flyPos = flyResult.finalPositionMeters;
+      editor.viewportFocus.valid = false;
     }
   }
 

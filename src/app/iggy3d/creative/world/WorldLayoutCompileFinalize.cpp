@@ -17,7 +17,8 @@ void finalizeWorldLayoutCompileResult(
                              !result.plan.objectRecipePatches.empty() ||
                              !result.plan.objectRecipes.empty() ||
                              !result.plan.terrainEdits.empty() ||
-                             !result.plan.materialEdits.empty();
+                             !result.plan.materialEdits.empty() ||
+                             !result.plan.terrainOperationMutations.empty();
   if (!hasSourceSymbols && !hasOperations) {
     setStatus(result.receipt, CreativeWorldLayoutStatus::Empty,
               "creative_world_layout_empty");
@@ -41,6 +42,8 @@ void finalizeWorldLayoutCompileResult(
   result.receipt.objectRemoveCount = result.plan.objectRemoveIds.size();
   result.receipt.terrainControlEditCount = result.plan.terrainEdits.size();
   result.receipt.terrainMaterialEditCount = result.plan.materialEdits.size();
+  result.receipt.terrainOperationMutationCount =
+      result.plan.terrainOperationMutations.size();
   const bool changed = preview.status == CreativeWorldLayoutStatus::Ready;
   setStatus(result.receipt, preview.status,
             changed ? "creative_world_layout_ready"

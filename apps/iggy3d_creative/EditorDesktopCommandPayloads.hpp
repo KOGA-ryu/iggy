@@ -10,6 +10,7 @@
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/document/LogicLink.hpp"
 #include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
+#include "app/iggy3d/creative/tools/MeasurementAnnotation.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "EditorWorldLayoutState.hpp"
 
@@ -31,6 +32,12 @@ struct CreativeDesktopSaveAsPayload {
 // synchronized world-layout source from one built-in map recipe.
 struct CreativeDesktopMapTemplatePayload {
   std::string templateId;
+};
+
+struct CreativeDesktopMeasurementAnnotationPayload {
+  iggy3d::creative::CreativeMeasurementAnnotationId annotationId =
+      iggy3d::creative::kInvalidCreativeMeasurementAnnotationId;
+  std::string name;
 };
 
 // SelectObjects: replace the persistent selection with these ids. primaryObjectId
@@ -84,10 +91,22 @@ struct CreativeDesktopTransformPayload {
   bool setScale = false;
 };
 
+struct CreativeDesktopGroupPivotPayload {
+  iggy3d::creative::CreativeObjectId groupObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeVec3 pivot;
+};
+
 struct CreativeDesktopMovingPlatformPayload {
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeMovingPlatformSettings settings;
+};
+
+struct CreativeDesktopPlayerSpawnPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativePlayerSpawnSettings settings;
 };
 
 struct CreativeDesktopMovingPlatformPreviewPayload {
@@ -133,6 +152,14 @@ struct CreativeDesktopTerrainOperationPayload {
       iggy3d::creative::kInvalidCreativeTerrainOperationId;
   bool enabled = true;
   std::size_t targetIndex = 0U;
+};
+
+struct CreativeDesktopTerrainStampPayload {
+  std::string assetId;
+  std::string label;
+  iggy3d::creative::CreativeTerrainOperationId operationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  bool replaceExisting = false;
 };
 
 struct CreativeDesktopWorldLayoutToolPayload {
@@ -201,6 +228,27 @@ struct CreativeDesktopWorldLayoutLevelSettingsPayload {
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
   std::string stableKey;
   CreativeEditorWorldLayoutLevelSettings settings;
+};
+
+struct CreativeDesktopWorldLayoutRoofApertureCreatePayload {
+  std::size_t levelIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeStructuralRoofApertureKind kind =
+      iggy3d::creative::CreativeStructuralRoofApertureKind::Skylight;
+};
+
+struct CreativeDesktopWorldLayoutRoofApertureManipulationPayload {
+  CreativeEditorWorldLayoutRoofApertureManipulationPhase phase =
+      CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
+struct CreativeDesktopWorldLayoutRoofManipulationPayload {
+  CreativeEditorWorldLayoutRoofManipulationPhase phase =
+      CreativeEditorWorldLayoutRoofManipulationPhase::Begin;
+  CreativeEditorWorldLayoutRoofTarget target;
+  double coordinateCells = 0.0;
 };
 
 struct CreativeDesktopGeneratedLevelSettingsPayload {
@@ -335,9 +383,55 @@ struct CreativeDesktopGeneratedRoomSettingsPayload {
   CreativeEditorWorldLayoutRoomSettings settings;
 };
 
+struct CreativeDesktopWorldLayoutRoomSplitPayload {
+  std::size_t roomIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  iggy3d::creative::CreativeWorldLayoutRoomSplitAxis axis =
+      iggy3d::creative::CreativeWorldLayoutRoomSplitAxis::Count;
+  std::int32_t coordinate = 0;
+};
+
+struct CreativeDesktopWorldLayoutRoomMergePayload {
+  std::size_t primaryRoomIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::size_t secondaryRoomIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+};
+
+struct CreativeDesktopWorldLayoutRoomEdgeSettingsPayload {
+  iggy3d::creative::CreativeWorldLayoutRoomEdgeSettingsRequest request;
+};
+
+struct CreativeDesktopWorldLayoutWallSplitPayload {
+  std::size_t topologyEdgeIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::uint32_t offsetCells = 0U;
+};
+
+struct CreativeDesktopWorldLayoutWallMergePayload {
+  std::size_t primaryTopologyEdgeIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+  std::size_t secondaryTopologyEdgeIndex =
+      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
+};
+
 struct CreativeDesktopWorldLayoutRoomManipulationPayload {
   CreativeEditorWorldLayoutRoomManipulationPhase phase =
       CreativeEditorWorldLayoutRoomManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
+struct CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload {
+  CreativeEditorWorldLayoutRoomBoundaryManipulationPhase phase =
+      CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin;
+  CreativeEditorWorldLayoutPoint point;
+  double toleranceCells = 0.25;
+};
+
+struct CreativeDesktopWorldLayoutRoomCornerManipulationPayload {
+  CreativeEditorWorldLayoutRoomCornerManipulationPhase phase =
+      CreativeEditorWorldLayoutRoomCornerManipulationPhase::Begin;
   CreativeEditorWorldLayoutPoint point;
   double toleranceCells = 0.25;
 };
@@ -420,8 +514,15 @@ creativeDesktopWorldLayoutPropertyTable() noexcept {
                                CreativeEditorWorldLayoutLevelSettings>) {
     return iggy3d::creative::CreativeWorldLayoutTable::Level;
   } else if constexpr (std::is_same_v<Settings,
+                                      CreativeEditorWorldLayoutRoomMetadata>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::Room;
+  } else if constexpr (std::is_same_v<Settings,
                                       CreativeEditorWorldLayoutRoomSettings>) {
     return iggy3d::creative::CreativeWorldLayoutTable::Room;
+  } else if constexpr (
+      std::is_same_v<Settings,
+                     CreativeEditorWorldLayoutTopologyEdgeSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::TopologyEdge;
   } else if constexpr (
       std::is_same_v<Settings,
                      CreativeEditorWorldLayoutVerticalConnectorSettings>) {
@@ -435,6 +536,10 @@ creativeDesktopWorldLayoutPropertyTable() noexcept {
   } else if constexpr (
       std::is_same_v<Settings, CreativeEditorWorldLayoutOpeningSettings>) {
     return iggy3d::creative::CreativeWorldLayoutTable::Opening;
+  } else if constexpr (
+      std::is_same_v<Settings,
+                     CreativeEditorWorldLayoutRoofApertureSettings>) {
+    return iggy3d::creative::CreativeWorldLayoutTable::RoofAperture;
   } else if constexpr (
       std::is_same_v<Settings,
                      CreativeEditorWorldLayoutTerrainProfileSettings>) {
@@ -489,6 +594,11 @@ struct CreativeDesktopWorldLayoutAssetRepairPayload {
   std::string replacementAssetId;
 };
 
+struct CreativeDesktopWorldLayoutBuildingRepairPayload {
+  iggy3d::creative::CreativeWorldLayoutBuildingUsabilityIssue issue;
+  std::string stableKey;
+};
+
 struct CreativeDesktopWorldLayoutOpeningManipulationPayload {
   CreativeEditorWorldLayoutOpeningManipulationPhase phase =
       CreativeEditorWorldLayoutOpeningManipulationPhase::Begin;
@@ -508,18 +618,22 @@ using CreativeDesktopCommandPayload = std::variant<
     std::monostate,
     CreativeDesktopSaveAsPayload,
     CreativeDesktopMapTemplatePayload,
+    CreativeDesktopMeasurementAnnotationPayload,
     CreativeDesktopSelectPayload,
     CreativeDesktopLogicLinkPayload,
     CreativeDesktopDeletePayload,
     CreativeDesktopRenamePayload,
     CreativeDesktopObjectFlagPayload,
     CreativeDesktopTransformPayload,
+    CreativeDesktopGroupPivotPayload,
     CreativeDesktopMovingPlatformPayload,
+    CreativeDesktopPlayerSpawnPayload,
     CreativeDesktopMovingPlatformPreviewPayload,
     CreativeDesktopMovingPlatformWaypointPayload,
     CreativeDesktopAssetOpPayload,
     CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopTerrainOperationPayload,
+    CreativeDesktopTerrainStampPayload,
     CreativeDesktopWorldLayoutToolPayload,
     CreativeDesktopWorldLayoutCatalogAssetPayload,
     CreativeDesktopWorldLayoutBuildingBlockoutPayload,
@@ -530,6 +644,9 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutSourceRenamePayload,
     CreativeDesktopWorldLayoutLevelOperationPayload,
     CreativeDesktopWorldLayoutLevelSettingsPayload,
+    CreativeDesktopWorldLayoutRoofApertureCreatePayload,
+    CreativeDesktopWorldLayoutRoofApertureManipulationPayload,
+    CreativeDesktopWorldLayoutRoofManipulationPayload,
     CreativeDesktopGeneratedLevelSettingsPayload,
     CreativeDesktopWorldLayoutTerrainProfileSettingsPayload,
     CreativeDesktopWorldLayoutTerrainPathSettingsPayload,
@@ -548,7 +665,14 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutGesturePayload,
     CreativeDesktopWorldLayoutRoomSettingsPayload,
     CreativeDesktopGeneratedRoomSettingsPayload,
+    CreativeDesktopWorldLayoutRoomSplitPayload,
+    CreativeDesktopWorldLayoutRoomMergePayload,
+    CreativeDesktopWorldLayoutRoomEdgeSettingsPayload,
+    CreativeDesktopWorldLayoutWallSplitPayload,
+    CreativeDesktopWorldLayoutWallMergePayload,
     CreativeDesktopWorldLayoutRoomManipulationPayload,
+    CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload,
+    CreativeDesktopWorldLayoutRoomCornerManipulationPayload,
     CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload,
     CreativeDesktopGeneratedVerticalConnectorSettingsPayload,
     CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload,
@@ -562,6 +686,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutPropertyEditPayload,
     CreativeDesktopWorldLayoutOpeningInsertPayload,
     CreativeDesktopWorldLayoutAssetRepairPayload,
+    CreativeDesktopWorldLayoutBuildingRepairPayload,
     CreativeDesktopWorldLayoutOpeningManipulationPayload,
     CreativeDesktopWorldLayoutConfirmPayload>;
 

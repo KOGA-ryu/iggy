@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/tools/Group.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -183,6 +184,7 @@ std::string_view toString(CreativeGroupCommandStatus status) noexcept {
     case CreativeGroupCommandStatus::UnsupportedObject:
       return "UnsupportedObject";
     case CreativeGroupCommandStatus::MixedParents: return "MixedParents";
+    case CreativeGroupCommandStatus::DepthExceeded: return "DepthExceeded";
     case CreativeGroupCommandStatus::NotGroup: return "NotGroup";
     case CreativeGroupCommandStatus::CreateRejected:
       return "CreateRejected";
@@ -191,6 +193,21 @@ std::string_view toString(CreativeGroupCommandStatus status) noexcept {
     case CreativeGroupCommandStatus::RemoveRejected:
       return "RemoveRejected";
     case CreativeGroupCommandStatus::Applied: return "Applied";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeGroupPivotStatus status) noexcept {
+  switch (status) {
+    case CreativeGroupPivotStatus::NotRequested: return "NotRequested";
+    case CreativeGroupPivotStatus::InvalidDocument: return "InvalidDocument";
+    case CreativeGroupPivotStatus::MissingGroup: return "MissingGroup";
+    case CreativeGroupPivotStatus::NotGroup: return "NotGroup";
+    case CreativeGroupPivotStatus::LockedGroup: return "LockedGroup";
+    case CreativeGroupPivotStatus::InvalidPivot: return "InvalidPivot";
+    case CreativeGroupPivotStatus::NoChange: return "NoChange";
+    case CreativeGroupPivotStatus::Applied: return "Applied";
+    case CreativeGroupPivotStatus::Rejected: return "Rejected";
   }
   return "Unknown";
 }
@@ -321,9 +338,14 @@ CreativeGroupCommandReceipt groupDocumentObjectsAtomically(
              "creative_group_object_missing", objectId);
       return receipt;
     }
-    if (object->locked) {
+    const CreativeObjectHierarchyState hierarchyState =
+        resolveCreativeObjectHierarchyState(document, objectId);
+    if (!hierarchyState.resolved || hierarchyState.effectivelyLocked) {
       reject(receipt, CreativeGroupCommandStatus::LockedObject,
-             "creative_group_object_locked", objectId);
+             "creative_group_object_locked",
+             hierarchyState.lockedByObjectId != kInvalidObjectId
+                 ? hierarchyState.lockedByObjectId
+                 : objectId);
       return receipt;
     }
     if (!describeObject(object->kind).canHaveParent) {
@@ -337,6 +359,16 @@ CreativeGroupCommandReceipt groupDocumentObjectsAtomically(
     } else if (commonParent != object->parentId) {
       reject(receipt, CreativeGroupCommandStatus::MixedParents,
              "creative_group_mixed_parents", objectId);
+      return receipt;
+    }
+  }
+  for (CreativeObjectId objectId : hierarchy.objectIds) {
+    const CreativeObjectHierarchyState hierarchyState =
+        resolveCreativeObjectHierarchyState(document, objectId);
+    if (!hierarchyState.resolved ||
+        hierarchyState.depth >= kCreativeHierarchyDepthCapacity) {
+      reject(receipt, CreativeGroupCommandStatus::DepthExceeded,
+             "creative_group_depth_exceeded", objectId);
       return receipt;
     }
   }
@@ -405,9 +437,14 @@ CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
            "creative_ungroup_requires_group", groupObjectId);
     return receipt;
   }
-  if (group->locked) {
+  const CreativeObjectHierarchyState hierarchyState =
+      resolveCreativeObjectHierarchyState(document, groupObjectId);
+  if (!hierarchyState.resolved || hierarchyState.effectivelyLocked) {
     reject(receipt, CreativeGroupCommandStatus::LockedObject,
-           "creative_ungroup_group_locked", groupObjectId);
+           "creative_ungroup_group_locked",
+           hierarchyState.lockedByObjectId != kInvalidObjectId
+               ? hierarchyState.lockedByObjectId
+               : groupObjectId);
     return receipt;
   }
 
@@ -454,6 +491,61 @@ CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
   receipt.affectedObjectCount = receipt.selectionObjectIds.size();
   receipt.revisionAfter = document.revision();
   receipt.reasonCode = "creative_ungroup_applied";
+  return receipt;
+}
+
+CreativeGroupPivotReceipt setCreativeGroupPivot(
+    CreativeDocument& document,
+    CreativeObjectId groupObjectId,
+    CreativeVec3 pivot) {
+  CreativeGroupPivotReceipt receipt;
+  receipt.requested = true;
+  receipt.groupObjectId = groupObjectId;
+  receipt.pivotAfter = pivot;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  if (!document.isValid()) {
+    receipt.status = CreativeGroupPivotStatus::InvalidDocument;
+    receipt.reasonCode = "creative_group_pivot_document_invalid";
+    return receipt;
+  }
+  const CreativeObject* group = document.findObject(groupObjectId);
+  if (group == nullptr) {
+    receipt.status = CreativeGroupPivotStatus::MissingGroup;
+    receipt.reasonCode = "creative_group_pivot_group_missing";
+    return receipt;
+  }
+  receipt.pivotBefore = group->transform.position;
+  if (group->kind != CreativeObjectKind::Group) {
+    receipt.status = CreativeGroupPivotStatus::NotGroup;
+    receipt.reasonCode = "creative_group_pivot_requires_group";
+    return receipt;
+  }
+  const CreativeObjectHierarchyState hierarchyState =
+      resolveCreativeObjectHierarchyState(document, groupObjectId);
+  if (!hierarchyState.resolved || hierarchyState.effectivelyLocked) {
+    receipt.status = CreativeGroupPivotStatus::LockedGroup;
+    receipt.reasonCode = "creative_group_pivot_group_locked";
+    return receipt;
+  }
+  if (!isFiniteCreativeVec3(pivot)) {
+    receipt.status = CreativeGroupPivotStatus::InvalidPivot;
+    receipt.reasonCode = "creative_group_pivot_invalid";
+    return receipt;
+  }
+  receipt.mutationReceipt = moveDocumentObject(document, groupObjectId, pivot);
+  receipt.revisionAfter = document.revision();
+  if (!documentMutationSucceeded(receipt.mutationReceipt.status)) {
+    receipt.status = CreativeGroupPivotStatus::Rejected;
+    receipt.reasonCode = "creative_group_pivot_rejected";
+    return receipt;
+  }
+  receipt.accepted = true;
+  receipt.changed = receipt.mutationReceipt.changed;
+  receipt.status = receipt.changed ? CreativeGroupPivotStatus::Applied
+                                   : CreativeGroupPivotStatus::NoChange;
+  receipt.reasonCode = receipt.changed ? "creative_group_pivot_applied"
+                                       : "creative_group_pivot_no_change";
   return receipt;
 }
 

@@ -1,9 +1,11 @@
 
 #include "EditorEdits.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutElevation.hpp"
 #include "EditorWorldLayoutHistory.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 
 #include <algorithm>
 #include <array>
@@ -20,8 +22,10 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/input/Catalog.hpp"
+#include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 namespace app = iggy3d_creative_app;
@@ -106,8 +110,6 @@ bool floorAndWallGesturesProduceNormalizedSymbols() {
 }
 
 bool categorizedPaletteOwnsEveryBindableSemanticAction() {
-  const std::span<const app::CreativeEditorWorldLayoutPaletteEntry> entries =
-      app::creativeEditorWorldLayoutPaletteEntries();
   std::array<std::size_t, static_cast<std::size_t>(
                               app::CreativeEditorWorldLayoutPaletteCategory::Count)>
       categoryCounts{};
@@ -115,38 +117,38 @@ bool categorizedPaletteOwnsEveryBindableSemanticAction() {
                        app::CreativeEditorWorldLayoutTool::Count)>
       seenTools{};
   bool unique = true;
-  for (const app::CreativeEditorWorldLayoutPaletteEntry& entry : entries) {
-    const std::size_t category = static_cast<std::size_t>(entry.category);
-    if (category >= categoryCounts.size() || entry.label.empty()) {
+  std::size_t boundToolCount = 0U;
+  for (const app::CreativeEditorToolDescriptor& descriptor :
+       app::creativeEditorToolDescriptors()) {
+    if (descriptor.worldLayoutActivation !=
+        app::CreativeEditorWorldLayoutToolActivation::Tool) {
+      continue;
+    }
+    ++boundToolCount;
+    const std::size_t category = static_cast<std::size_t>(
+        app::creativeEditorWorldLayoutPaletteCategory(descriptor));
+    if (category >= categoryCounts.size() || descriptor.name.empty()) {
       unique = false;
       continue;
     }
     ++categoryCounts[category];
-    if (entry.activation ==
-        app::CreativeEditorWorldLayoutPaletteActivation::Tool) {
-      const std::size_t tool = static_cast<std::size_t>(entry.tool);
-      if (tool >= seenTools.size() || seenTools[tool]) {
-        unique = false;
-      } else {
-        seenTools[tool] = true;
-      }
+    const std::size_t tool =
+        static_cast<std::size_t>(descriptor.worldLayoutTool);
+    if (tool >= seenTools.size() || seenTools[tool]) {
+      unique = false;
+    } else {
+      seenTools[tool] = true;
     }
   }
-  const auto estate = std::find_if(
-      entries.begin(), entries.end(), [](const auto& entry) {
-        return entry.activation ==
-                   app::CreativeEditorWorldLayoutPaletteActivation::
-                       BuildingTemplate &&
-               entry.buildingTemplateId == cr::kBuilderEstateHouseTemplateId;
-      });
-  return expect(entries.size() == 16U && unique,
-                "world layout palette is fixed and duplicate free") &&
+  return expect(boundToolCount == seenTools.size() && unique &&
+                    std::all_of(seenTools.begin(), seenTools.end(),
+                                [](bool seen) { return seen; }),
+                "every drafting tool has one descriptor binding") &&
          expect(std::all_of(categoryCounts.begin(), categoryCounts.end(),
                             [](std::size_t count) { return count > 0U; }),
                 "every palette category owns an action") &&
-         expect(estate != entries.end() &&
-                    seenTools[static_cast<std::size_t>(
-                        app::CreativeEditorWorldLayoutTool::Select)] &&
+         expect(seenTools[static_cast<std::size_t>(
+                    app::CreativeEditorWorldLayoutTool::Select)] &&
                     seenTools[static_cast<std::size_t>(
                         app::CreativeEditorWorldLayoutTool::BuildingShell)] &&
                     seenTools[static_cast<std::size_t>(
@@ -178,17 +180,25 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
 
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Road));
-  const auto roadBegin = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4.0, 4.0});
+  const auto roadBegin =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 4.0});
+  const auto roadBend =
+      app::applyCreativeEditorWorldLayoutPoint(state, {10.0, 8.0});
+  const auto roadEnd =
+      app::applyCreativeEditorWorldLayoutPoint(state, {16.0, 4.0});
   const auto roadCommit = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {16.0, 4.0});
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {});
 
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Ditch));
-  const auto ditchBegin = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4.0, 20.0});
+  const auto ditchBegin =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 20.0});
+  const auto ditchBend =
+      app::applyCreativeEditorWorldLayoutPoint(state, {10.0, 24.0});
+  const auto ditchEnd =
+      app::applyCreativeEditorWorldLayoutPoint(state, {16.0, 20.0});
   const auto ditchCommit = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {16.0, 20.0});
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {});
 
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Bridge));
@@ -229,19 +239,30 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
       cr::decodeCreativeWorldLayout(encoded.encodedText);
 
   return expect(plateau.accepted && plateau.changed && roadBegin.accepted &&
+                    roadBend.accepted && roadEnd.accepted &&
                     roadCommit.accepted && roadCommit.changed &&
-                    ditchBegin.accepted && ditchCommit.accepted &&
+                    ditchBegin.accepted && ditchBend.accepted &&
+                    ditchEnd.accepted && ditchCommit.accepted &&
                     ditchCommit.changed && bridgeBegin.accepted &&
                     bridgeCommit.accepted && bridgeCommit.changed &&
                     selectedBoulder.accepted && boulder.accepted &&
                     player.accepted && npc.accepted,
                 "palette actions author semantic symbols") &&
          expect(state.source.terrainProfiles.size() == 1U &&
+                    state.source.terrainProfiles[0].usesLandformRecipe &&
+                    state.source.terrainProfiles[0].landform.kind ==
+                        cr::CreativeTerrainLandformKind::Plateau &&
+                    state.source.terrainProfiles[0].landform.bounds ==
+                        cr::CreativeTerrainHeightFieldBounds{{8, 6}, 8U, 8U} &&
                     state.source.terrainPaths.size() == 2U &&
-                    state.source.terrainPathPoints.size() == 4U &&
+                    state.source.terrainPaths[0].recipe.points.size() == 3U &&
+                    state.source.terrainPaths[1].recipe.points.size() == 3U &&
+                    state.source.terrainPaths[0].recipe.points[1].id == 2U &&
+                    state.source.terrainPaths[1].recipe.points[2].id == 3U &&
                     state.source.objects.size() == 4U,
-                "palette actions retain compact flat source tables") &&
+                "palette actions retain durable per-path source points") &&
          expect(state.source.objects[0].kind == cr::CreativeObjectKind::Bridge &&
+                    !state.source.objects[0].usesBridgeRecipe &&
                     state.source.objects[1].assetId == "boulder_01" &&
                     state.source.objects[1].mode ==
                         cr::CreativeObjectLibraryPlacementMode::Point &&
@@ -254,12 +275,224 @@ bool terrainAndObjectPaletteToolsCreateCompilableSymbols() {
          expect(compiled.receipt.accepted &&
                     compiled.receipt.objectRecipeCount == 4U &&
                     compiled.receipt.objectRecipeCreateCount == 4U &&
-                    compiled.receipt.objectCount == 4U,
+                    compiled.receipt.objectCount == 4U &&
+                    compiled.plan.terrainOperationMutations.size() == 3U &&
+                    compiled.plan.terrainOperationMutations[0].operationKind ==
+                        cr::CreativeTerrainOperationKind::Landform,
                 "palette source compiles independently regenerable objects") &&
          expect(encoded.accepted && decoded.accepted &&
                     decoded.layout.objects.size() == 4U &&
-                    decoded.layout.terrainPaths.size() == 2U,
+                    decoded.layout.terrainPaths.size() == 2U &&
+                    decoded.layout.terrainProfiles.size() == 1U &&
+                    decoded.layout.terrainProfiles[0].usesLandformRecipe &&
+                    decoded.layout.terrainProfiles[0].landform ==
+                        state.source.terrainProfiles[0].landform,
                 "palette source survives durable layout round trip");
+}
+
+bool bridgeToolInfersOneStableCrossingAndRejectsAmbiguity() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "bridge_attachment_layout");
+  cr::CreativeWorldLayoutTerrainPath trench;
+  trench.stableKey = "trench.main";
+  trench.recipe.kind = cr::CreativeTerrainPathKind::Trench;
+  trench.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  trench.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Cut;
+  trench.recipe.watercourse.bankSlopeCells = 1U;
+  trench.recipe.watercourse.nextCrossingId = 8U;
+  trench.recipe.watercourse.crossings = {{7U, 2U, 1U, 1U, 2U}};
+  trench.recipe.nextPointId = 4U;
+  trench.recipe.points = {
+      {1U, {-4, 0}, 4U, 1U, 1U, 0},
+      {2U, {0, 0}, 4U, 1U, 1U, 0},
+      {3U, {4, 0}, 4U, 1U, 1U, 0},
+  };
+  state.source.terrainPaths.push_back(trench);
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Bridge));
+  const auto begun = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {-2.0, -2.0});
+  const auto attached = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {2.0, 2.0});
+  const cr::CreativeWorldLayoutObject* bridge =
+      state.source.objects.size() == 1U ? &state.source.objects[0] : nullptr;
+
+  const std::uint64_t revisionBeforeOccupied = state.revision;
+  const auto occupiedBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {-2.0, -2.0});
+  const auto occupied = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {2.0, 2.0});
+
+  state.source.terrainPaths[0].recipe.watercourse.nextCrossingId = 9U;
+  state.source.terrainPaths[0].recipe.watercourse.crossings.push_back(
+      {8U, 1U, 1U, 1U, 2U});
+  const std::uint64_t revisionBeforeAmbiguous = state.revision;
+  const auto ambiguousBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {-5.0, -1.0});
+  const auto ambiguous = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {1.0, 1.0});
+
+  return expect(begun.accepted && attached.accepted && attached.changed &&
+                    bridge != nullptr && bridge->usesBridgeRecipe,
+                "bridge footprint binds one authored crossing") &&
+         expect(bridge->bridge.watercoursePathKey == "trench.main" &&
+                    bridge->bridge.crossingId == 7U &&
+                    cr::isValidCreativeBridgeSourceRecipe(bridge->bridge),
+                "bridge retains stable path and crossing identity") &&
+         expect(occupiedBegin.accepted && !occupied.accepted &&
+                    !occupied.changed &&
+                    occupied.reasonCode ==
+                        "creative_editor_world_layout_bridge_attachment_occupied" &&
+                    state.source.objects.size() == 1U &&
+                    revisionBeforeOccupied == revisionBeforeAmbiguous,
+                "bridge tool keeps one owner per crossing") &&
+         expect(ambiguousBegin.accepted && !ambiguous.accepted &&
+                    !ambiguous.changed &&
+                    ambiguous.reasonCode ==
+                        "creative_editor_world_layout_bridge_attachment_ambiguous" &&
+                    state.source.objects.size() == 1U &&
+                    state.revision == revisionBeforeAmbiguous,
+                "bridge tool rejects an ambiguous crossing footprint atomically");
+}
+
+bool terrainPathDraftCommitsAsOneSourceEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "path_draft_layout");
+  const std::uint64_t revisionBefore = state.revision;
+  const std::uint64_t undoDepthBefore =
+      app::creativeEditorWorldLayoutSourceUndoDepth(state);
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Road));
+  const auto first =
+      app::applyCreativeEditorWorldLayoutPoint(state, {1.0, 2.0});
+  const auto incomplete = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {});
+  const bool firstPointStayedTransient =
+      first.accepted && !first.changed && !incomplete.accepted &&
+      state.terrainPathDraft.active &&
+      state.terrainPathDraft.path.recipe.points.size() == 1U &&
+      state.source.terrainPaths.empty() && state.revision == revisionBefore &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) == undoDepthBefore;
+
+  const auto cancelled = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Cancel, {});
+  const bool cancelStayedTransient =
+      cancelled.accepted && cancelled.changed &&
+      !state.terrainPathDraft.active && state.source.terrainPaths.empty() &&
+      state.revision == revisionBefore &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) == undoDepthBefore;
+
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {1.0, 2.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {5.0, 4.0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {9.0, 2.0}));
+  const auto committed = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {});
+  const bool oneCommit =
+      committed.accepted && committed.changed &&
+      !state.terrainPathDraft.active && state.source.terrainPaths.size() == 1U &&
+      state.source.terrainPaths[0].recipe.points.size() == 3U &&
+      state.revision == revisionBefore + 1U &&
+      app::creativeEditorWorldLayoutSourceUndoDepth(state) ==
+          undoDepthBefore + 1U;
+
+  const cr::CreativeHistoryApplyReceipt undone =
+      app::applyCreativeEditorWorldLayoutHistory(
+          state, live, cr::CreativeHistoryDirection::Undo);
+  const bool wholePathUndone =
+      undone.accepted && undone.changed && state.source.terrainPaths.empty() &&
+      state.revision == revisionBefore &&
+      app::creativeEditorWorldLayoutSourceRedoDepth(state) == 1U;
+
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {2.0, 2.0}));
+  const auto switched = app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Wall);
+  const bool toolSwitchCancelsTransientDraft =
+      switched.accepted && switched.changed &&
+      !state.terrainPathDraft.active && !state.anchorActive &&
+      state.source.terrainPaths.empty() && state.revision == revisionBefore;
+
+  return expect(firstPointStayedTransient,
+                "incomplete path points do not mutate semantic source") &&
+         expect(cancelStayedTransient,
+                "cancelling a path draft leaves source history untouched") &&
+         expect(oneCommit,
+                "finishing a multi-point path records one source edit") &&
+         expect(wholePathUndone,
+                "one source undo removes the whole authored path") &&
+         expect(toolSwitchCancelsTransientDraft,
+                "switching tools discards an unfinished path draft");
+}
+
+bool terrainPathDraftBuildsExactTransient3dPreview() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "path_preview_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Road));
+
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {2.0, 3.0}));
+  const auto onePoint = app::previewCreativeEditorWorldLayoutTerrainPathDraft(
+      state, live.facade.document());
+  const bool incompleteHasNo3dOutput =
+      onePoint.accepted && !onePoint.changed &&
+      !app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.terrainPaths.empty();
+
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {7.0, 6.0}));
+  const auto twoPoint = app::previewCreativeEditorWorldLayoutTerrainPathDraft(
+      state, live.facade.document());
+  const std::uint64_t firstContentRevision = state.previewContentRevision;
+  const bool twoPointsBuildExactCandidate =
+      twoPoint.accepted && twoPoint.changed &&
+      app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.liveEditPreviewVisible && state.source.terrainPaths.empty() &&
+      state.previewSource.terrainPaths.size() == 1U &&
+      state.previewSource.terrainPaths[0].recipe ==
+          state.terrainPathDraft.path.recipe &&
+      state.preview.document.terrainOperationStack().operations.size() == 1U &&
+      state.preview.document.terrainOperationStack().operations[0].kind ==
+          cr::CreativeTerrainOperationKind::Path &&
+      state.preview.document.terrainOperationStack().operations[0].path ==
+          state.terrainPathDraft.path.recipe;
+
+  static_cast<void>(app::applyCreativeEditorWorldLayoutPoint(state,
+                                                              {11.0, 2.0}));
+  const auto threePoint =
+      app::previewCreativeEditorWorldLayoutTerrainPathDraft(
+          state, live.facade.document());
+  const bool bendRefreshesSameTransientCandidate =
+      threePoint.accepted && threePoint.changed &&
+      state.previewContentRevision > firstContentRevision &&
+      state.source.terrainPaths.empty() &&
+      state.previewSource.terrainPaths.size() == 1U &&
+      state.previewSource.terrainPaths[0].recipe.points.size() == 3U &&
+      state.revision == state.generatedRevision;
+
+  const auto cancelled = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Cancel, {});
+  const bool previewCleared =
+      cancelled.accepted &&
+      app::clearCreativeEditorWorldLayoutLiveEditPreview(state) &&
+      !app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.terrainPaths.empty();
+
+  return expect(incompleteHasNo3dOutput,
+                "one path point has no fabricated 3D segment") &&
+         expect(twoPointsBuildExactCandidate,
+                "two path points build the exact transient 3D recipe") &&
+         expect(bendRefreshesSameTransientCandidate,
+                "each added bend refreshes one transient path candidate") &&
+         expect(previewCleared,
+                "cancelling a path draft clears its transient 3D output");
 }
 
 bool catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() {
@@ -838,15 +1071,18 @@ bool catalogOpeningAssetsCompileAsOwnedStructuralInserts() {
                     compiledWindow.valid &&
                     doorRequest->assetId ==
                         "homestead/modular/door_leaf_1p1x2p2" &&
+                    doorRequest->hasDoorSettingsOverride &&
                     windowRequest->assetId ==
                         "homestead/modular/window_frame_1p5x1p2" &&
-                    near(compiledDoor.size.x, 1.1) &&
-                    near(compiledDoor.size.y, 2.2) &&
-                    near(compiledDoor.size.z, 0.2) &&
-                    near(compiledWindow.size.x, 1.5) &&
-                    near(compiledWindow.size.y, 1.5) &&
-                    near(compiledWindow.size.z, 0.2),
-                "compiled inserts retain asset identity and exact fitted size");
+                    windowRequest->hasWindowSettingsOverride &&
+                    windowRequest->window == cr::CreativeWindowSettings{} &&
+                    near(compiledDoor.size.x, 0.95) &&
+                    near(compiledDoor.size.y, 2.11) &&
+                    near(compiledDoor.size.z, 0.05) &&
+                    near(compiledWindow.size.x, 1.38) &&
+                    near(compiledWindow.size.y, 1.38) &&
+                    near(compiledWindow.size.z, 0.02),
+                "compiled inserts retain identity and fit their physical frames");
 }
 
 bool openingInsertReplacementPreservesSemanticOwnership() {
@@ -1467,6 +1703,10 @@ bool fourRoomBuildingRoundTripsAsOneGeneratedEdit() {
                                 [](const auto& room) {
                                   return room.buildingIndex == 0U;
                                 }) &&
+                    state.source.buildings[0].rootFootprint.minimum ==
+                        cr::CreativeTerrainCoord2{0, 0} &&
+                    state.source.buildings[0].rootFootprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 8} &&
                     sharedEdges.size() == 4U,
                 "four adjoining rooms remain one building with four shared "
                 "spans") &&
@@ -1509,13 +1749,31 @@ bool invalidRoomShellSettingsFailWithoutMutation() {
   const std::uint64_t revisionBefore = state.revision;
   const auto rejected = app::setCreativeEditorWorldLayoutRoomSettings(
       state, 0U, {{{0, 0}, {4, 4}}, 0, 3U, 2.0, 1U});
+  const bool rejectedAtomic =
+      state.revision == revisionBefore &&
+      state.source.rooms[0].wallThicknessCells ==
+          cr::kDefaultCreativeWorldLayoutWallThicknessCells;
+
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto door =
+      app::applyCreativeEditorWorldLayoutPoint(state, {2.0, 0.1});
+  app::CreativeEditorWorldLayoutRoomSettings clippedSettings;
+  const bool read = app::readCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, clippedSettings);
+  clippedSettings.wallHeightCells = 1U;
+  const std::uint64_t heightRevisionBefore = state.revision;
+  const auto clipped = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, clippedSettings);
 
   return expect(!rejected.accepted && !rejected.changed,
                 "room shell rejects walls that consume the interior") &&
-         expect(state.revision == revisionBefore &&
-                    state.source.rooms[0].wallThicknessCells ==
-                        cr::kDefaultCreativeWorldLayoutWallThicknessCells,
-                "invalid room shell settings do not mutate source truth");
+         expect(rejectedAtomic,
+                "invalid room shell settings do not mutate source truth") &&
+         expect(door.accepted && door.changed && read && !clipped.accepted &&
+                    !clipped.changed && state.revision == heightRevisionBefore &&
+                    state.source.levels[0].wallHeightCells == 3U,
+                "room settings cannot clip a hosted opening vertically");
 }
 
 bool roomMovePreviewCommitsOnceAndKeepsOpeningHosted() {
@@ -1591,6 +1849,130 @@ bool roomMovePreviewCommitsOnceAndKeepsOpeningHosted() {
                         cr::CreativeWorldLayoutRoomEdge::North &&
                     near(state.source.openings[0].centerOffsetCells, 3.0),
                 "room move preserves the opening's semantic attachment");
+}
+
+bool sharedRoomBoundaryPreviewCommitsAsOneRelationalEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "relational_room_edit");
+  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {8, 4}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const auto door =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 3.0});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Window));
+  const auto window =
+      app::applyCreativeEditorWorldLayoutPoint(state, {6.0, 0.1});
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const std::uint64_t revisionBefore = state.revision;
+  const auto began = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+      {3.9, 1.0}, 0.3);
+  const auto updated = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+      {4.9, 1.0}, 0.3);
+  const cr::CreativeWorldLayout& display =
+      app::creativeEditorWorldLayoutDisplaySource(state);
+  const bool exactPreview =
+      display.rooms[0].footprint.maximum.x == 5 &&
+      display.rooms[1].footprint.minimum.x == 5 &&
+      near(display.openings[1].centerOffsetCells, 1.0) &&
+      state.source.rooms[0].footprint.maximum.x == 4 &&
+      state.source.rooms[1].footprint.minimum.x == 4 &&
+      near(state.source.openings[1].centerOffsetCells, 2.0) &&
+      state.roomManipulation.previewEdit.roomChanges.size() == 2U &&
+      state.revision == revisionBefore;
+  const auto committed = app::applyCreativeEditorWorldLayoutRoomManipulation(
+      state, app::CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
+      {4.9, 1.0}, 0.3);
+  const bool undo = app::undoLastEdit(live, "shared-boundary-undo", &state);
+  const bool undoRestored =
+      undo && state.source.rooms[0].footprint.maximum.x == 4 &&
+      state.source.rooms[1].footprint.minimum.x == 4 &&
+      near(state.source.openings[1].centerOffsetCells, 2.0);
+  const bool redo = app::redoLastEdit(live, "shared-boundary-redo", &state);
+  app::CreativeEditorWorldLayoutState deletionState = state;
+  deletionState.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Room, 1U};
+  const auto deleted =
+      app::deleteCreativeEditorWorldLayoutSelection(deletionState);
+  const bool deletionRefreshesExtent =
+      deleted.accepted && deleted.changed &&
+      deletionState.source.rooms.size() == 1U &&
+      deletionState.source.buildings[0].rootFootprint.maximum ==
+          cr::CreativeTerrainCoord2{5, 4};
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(state.source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      cr::decodeCreativeWorldLayout(encoded.encodedText);
+  const auto preview =
+      app::previewCreativeEditorWorldLayout(state, live.facade.document());
+
+  return expect(door.accepted && door.changed && window.accepted &&
+                    window.changed && state.source.openings.size() == 2U,
+                "relational edit fixture owns an interior door and exterior window") &&
+         expect(began.accepted && began.changed && updated.accepted &&
+                    updated.changed && exactPreview,
+                "shared boundary preview moves both owners without source mutation") &&
+         expect(committed.accepted && committed.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    state.source.rooms[0].footprint.maximum.x == 5 &&
+                    state.source.rooms[1].footprint.minimum.x == 5 &&
+                    near(state.source.openings[1].centerOffsetCells, 1.0) &&
+                    state.source.buildings[0].rootFootprint.maximum ==
+                        cr::CreativeTerrainCoord2{8, 4},
+                "shared boundary and hosted openings commit as one source revision") &&
+         expect(undoRestored && redo &&
+                    state.source.rooms[0].footprint.maximum.x == 5 &&
+                    state.source.rooms[1].footprint.minimum.x == 5 &&
+                    deletionRefreshesExtent,
+                "undo redo and deletion preserve complete derived topology") &&
+         expect(encoded.accepted && decoded.accepted &&
+                    decoded.layout.rooms[0].footprint.maximum.x == 5 &&
+                    decoded.layout.rooms[1].footprint.minimum.x == 5 &&
+                    near(decoded.layout.openings[1].centerOffsetCells, 1.0) &&
+                    preview.accepted,
+                "edited topology round-trips and generates exact 3D output");
+}
+
+bool roomSettingsUseTheRelationalTopologyOwner() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "relational_room_settings");
+  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U}));
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Room));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {4, 0}));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {8, 4}));
+
+  app::CreativeEditorWorldLayoutRoomSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, settings);
+  settings.footprint.maximum.x = 5;
+  const std::uint64_t revisionBefore = state.revision;
+  const auto edited = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, settings);
+
+  return expect(read && edited.accepted && edited.changed &&
+                    state.revision == revisionBefore + 1U,
+                "room settings commit one relational source revision") &&
+         expect(state.source.rooms[0].footprint.maximum.x == 5 &&
+                    state.source.rooms[1].footprint.minimum.x == 5 &&
+                    cr::inspectCreativeWorldLayoutSharedRoomEdges(state.source)
+                            .size() == 1U,
+                "numeric room settings retain the shared boundary");
 }
 
 bool roomEdgesAndCornersResizeFromTheirOwnedSides() {
@@ -2319,6 +2701,34 @@ bool buildingTemplatesPersistPreviewAndStampOneRevision() {
       state.buildingTemplates.templates[0].bounds.minimum ==
           cr::CreativeTerrainCoord2{0, 0};
 
+  const auto blockedBegin =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+          {2.0, 3.0},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90,
+          &live.facade.document());
+  const cr::CreativeWorldLayout& blockedCandidate =
+      app::creativeEditorWorldLayoutDisplaySource(state);
+  const auto blockedCommit =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit,
+          {}, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90,
+          &live.facade.document());
+  const bool blockedPreviewVisible =
+      blockedBegin.accepted && state.buildingTemplatePlacement.active &&
+      state.buildingTemplatePlacement.previewPositioned &&
+      !state.buildingTemplatePlacement.previewValid &&
+      blockedCandidate.buildings.size() == 2U && !blockedCommit.accepted &&
+      state.revision == revisionBeforeCapture &&
+      state.buildingTemplatePlacement.analysis.status ==
+          cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+              BuildingOverlap;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+      state,
+      app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel));
+
   const auto begin =
       app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
           state,
@@ -2402,6 +2812,8 @@ bool buildingTemplatesPersistPreviewAndStampOneRevision() {
   std::filesystem::remove_all(saveRoot, error);
   return expect(capturedWithoutSourceMutation,
                 "building template capture is durable and revision-neutral") &&
+         expect(blockedPreviewVisible,
+                "overlapping template stays positioned for red preview but cannot commit") &&
          expect(previewOnly,
                 "building template movement and rotation remain candidate-only") &&
          expect(cancelRestoredSource,
@@ -2410,6 +2822,73 @@ bool buildingTemplatesPersistPreviewAndStampOneRevision() {
                 "building template stamp remaps ownership in one revision") &&
          expect(resetPreservedLibrary && durableReload,
                 "building template library survives reset and disk reload");
+}
+
+bool buildingTemplateFoundationPreviewUsesStagedLayoutTerrain() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "template_staged_terrain");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      state, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U});
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          state.source, {0U, "foundation_template", "Foundation Template"});
+  cr::CreativeWorldLayoutBuildingTemplateResult foundation;
+  if (captured.accepted) {
+    cr::CreativeWorldLayout source = captured.value.normalizedLayout;
+    source.buildings[0].groundingMode =
+        cr::CreativeWorldLayoutGroundingMode::Foundation;
+    source.buildings[0].maximumGroundReliefCells = 0U;
+    foundation = cr::loadCreativeWorldLayoutBuildingTemplate(std::move(source));
+  }
+  if (!shell.accepted || !foundation.accepted) {
+    return expect(false, "foundation template staged-terrain fixture accepted");
+  }
+
+  state.buildingTemplates.templates.push_back(foundation.value);
+  state.buildingTemplates.selectedIndex = 0U;
+  cr::CreativeWorldLayoutTerrainProfile plateau;
+  plateau.stableKey = "template_staged_plateau";
+  plateau.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  plateau.center = {12, 12};
+  plateau.baseHeightCells = 3U;
+  plateau.radiusCells = 8U;
+  plateau.spacingCells = 1U;
+  state.source.terrainProfiles.push_back(plateau);
+  ++state.revision;
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
+
+  const auto began =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+          {10.0, 10.0},
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90,
+          &live.facade.document());
+  const auto analysis = state.buildingTemplatePlacement.analysis;
+  const auto committed =
+      app::applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
+          state,
+          app::CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit,
+          {}, cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90,
+          &live.facade.document());
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(live.facade.document(), state.source);
+
+  return expect(began.accepted &&
+                    state.source.terrainProfiles.size() == 1U &&
+                    analysis.accepted &&
+                    analysis.terrainImpact ==
+                        cr::CreativeWorldLayoutBuildingTemplateTerrainImpact::
+                            Grounded &&
+                    analysis.grounding.minimumHeightCells == 3U &&
+                    analysis.grounding.maximumHeightCells == 3U,
+                "template preview uses the staged World Layout plateau") &&
+         expect(committed.accepted && committed.changed &&
+                    compiled.receipt.accepted &&
+                    compiled.receipt.groundedBuildingCount == 1U,
+                "template preview terrain outcome matches final compilation");
 }
 
 bool builtInBuildingTemplateInstallIsDurableAndIdempotent() {
@@ -2608,6 +3087,16 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
           cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll);
   const auto secondAfterForce =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+  const std::uint64_t revisionAfterForce = state.revision;
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint beforeDetach =
+      cr::fingerprintCreativeWorldLayoutBuilding(state.source, 2U);
+  const std::string detachedBuildingKey = state.source.buildings[2U].stableKey;
+  const auto detached =
+      app::detachCreativeEditorWorldLayoutBuildingTemplateInstance(state, 2U);
+  const auto secondAfterDetach =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint afterDetach =
+      cr::fingerprintCreativeWorldLayoutBuilding(state.source, 2U);
 
   app::CreativeEditorWorldLayoutBuildingTemplateLibrary reloadedLibrary;
   const auto reloaded =
@@ -2643,10 +3132,17 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
                     !skippedSafe.accepted && !skippedSafe.changed &&
                     revisionBeforeSkippedSafe == revisionBeforeForce &&
                     forced.accepted && forced.changed &&
-                    state.revision == revisionBeforeForce + 1U &&
+                    revisionAfterForce == revisionBeforeForce + 1U &&
                     secondAfterForce.state ==
                         cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
                 "safe refresh skips local work and force refresh is explicit") &&
+         expect(detached.accepted && detached.changed &&
+                    state.revision == revisionAfterForce + 1U &&
+                    state.source.buildings[2U].stableKey == detachedBuildingKey &&
+                    beforeDetach == afterDetach &&
+                    secondAfterDetach.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Unlinked,
+                "editor detach preserves refinements and removes only the template link") &&
          expect(durableUpdate,
                 "updated template fingerprint is durable on disk");
 }
@@ -2676,12 +3172,21 @@ bool openingSettingsApplyOnceAndMatchExactPreview() {
       state, 1U, windowSettings);
   doorSettings.widthCells = 1.5;
   doorSettings.heightCells = 2.5;
-  doorSettings.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromStartNegativeNormal;
+  doorSettings.door.leafArrangement =
+      cr::CreativeDoorLeafArrangement::Double;
+  doorSettings.door.hingeSide = cr::CreativeDoorHingeSide::MinimumEdge;
+  doorSettings.door.swingSide = cr::CreativeDoorSwingSide::NegativeNormal;
+  doorSettings.door.initialState = cr::CreativeDoorInitialState::Open;
+  doorSettings.door.gameplayLocked = true;
+  doorSettings.door.transitionSeconds = 0.75;
+  doorSettings.facing = cr::CreativeBuildingOpeningFacing::NegativeNormal;
   windowSettings.widthCells = 1.25;
   windowSettings.sillHeightCells = 1.0;
   windowSettings.heightCells = 1.25;
   windowSettings.includeInsert = false;
+  windowSettings.window.insertKind =
+      cr::CreativeWindowInsertKind::PairedShutters;
+  windowSettings.facing = cr::CreativeBuildingOpeningFacing::NegativeNormal;
   const std::uint64_t revisionBefore = state.revision;
   const auto doorUpdated = app::setCreativeEditorWorldLayoutOpeningSettings(
       state, 0U, doorSettings);
@@ -2694,8 +3199,7 @@ bool openingSettingsApplyOnceAndMatchExactPreview() {
   const auto badDoorResult = app::setCreativeEditorWorldLayoutOpeningSettings(
       state, 0U, badDoor);
   app::CreativeEditorWorldLayoutOpeningSettings badWindow = windowSettings;
-  badWindow.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal;
+  badWindow.heightCells = 0.0;
   const auto badWindowResult =
       app::setCreativeEditorWorldLayoutOpeningSettings(state, 1U, badWindow);
   const auto preview =
@@ -2719,20 +3223,76 @@ bool openingSettingsApplyOnceAndMatchExactPreview() {
                     state.source.openings[0].cutoutHeightCells == 2.5 &&
                     state.source.openings[0].insertWidthCells == 1.5 &&
                     state.source.openings[0].insertHeightCells == 2.5 &&
-                    state.source.openings[0].pose ==
-                        cr::CreativeBuildingOpeningPose::
-                            OpenFromStartNegativeNormal,
+                    state.source.openings[0].door == doorSettings.door &&
+                    state.source.openings[0].facing ==
+                        cr::CreativeBuildingOpeningFacing::NegativeNormal,
                 "door cutout and tracked insert dimensions stay aligned") &&
          expect(state.source.openings[1].widthCells == 1.25 &&
                     state.source.openings[1].cutoutBottomCells == 1.0 &&
                     state.source.openings[1].cutoutHeightCells == 1.25 &&
-                    !state.source.openings[1].includeInsert,
+                    state.source.openings[1].window == windowSettings.window &&
+                    !state.source.openings[1].includeInsert &&
+                    state.source.openings[1].facing ==
+                        cr::CreativeBuildingOpeningFacing::NegativeNormal,
                 "window sill, height, width, and insert presence persist") &&
          expect(!badDoorResult.accepted && !badWindowResult.accepted &&
                     state.revision == revisionBeforeInvalid,
-                "invalid door sill and window pose fail without mutation") &&
+                "invalid door sill and window dimensions fail without mutation") &&
          expect(preview.accepted && doorCount == 1U && windowCount == 0U,
                 "exact preview honors open door and omitted window insert");
+}
+
+bool concaveRoomOpeningPlacementKeepsTheExactTopologyHost() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "concave_opening_editor");
+  state.source.buildings.push_back(
+      {"building", "L Building", cr::CreativeBuildingRootMode::CreateRoom,
+       {{0, 0}, {6, 5}}, 0, 4U, true, {}});
+  state.source.levels.push_back(
+      {0U, "level", "Ground", 0.0, 4U, 1U, 1U, 1U});
+  state.source.rooms.push_back(
+      {0U, 0U, "room", "L Room", {{0, 0}, {6, 5}}, 0.25});
+  constexpr std::array<cr::CreativeTerrainCoord2, 6U> kVertices = {
+      cr::CreativeTerrainCoord2{0, 0}, cr::CreativeTerrainCoord2{6, 0},
+      cr::CreativeTerrainCoord2{6, 2}, cr::CreativeTerrainCoord2{2, 2},
+      cr::CreativeTerrainCoord2{2, 5}, cr::CreativeTerrainCoord2{0, 5}};
+  for (std::size_t index = 0U; index < kVertices.size(); ++index) {
+    state.source.topologyVertices.push_back(
+        {0U, "vertex_" + std::to_string(index), kVertices[index]});
+  }
+  constexpr std::array<std::array<std::size_t, 2U>, 6U> kEdges = {
+      std::array<std::size_t, 2U>{0U, 1U}, {1U, 2U}, {3U, 2U},
+      {3U, 4U}, {5U, 4U}, {0U, 5U}};
+  constexpr std::array<bool, 6U> kReversed = {false, false, true,
+                                               false, true, true};
+  for (std::size_t index = 0U; index < kEdges.size(); ++index) {
+    state.source.topologyEdges.push_back(
+        {0U, "edge_" + std::to_string(index), kEdges[index][0],
+         kEdges[index][1], 0.25, 4U});
+    state.source.roomBoundaries.push_back({0U, index, index, kReversed[index]});
+  }
+
+  const auto tool = app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door);
+  const auto planned = app::planCreativeEditorWorldLayoutOpeningPlacement(
+      state, {4.0, 2.1}, cr::CreativeBuildingOpeningKind::Door);
+  const std::uint64_t revisionBefore = state.revision;
+  const auto placed =
+      app::applyCreativeEditorWorldLayoutPoint(state, {4.0, 2.1});
+
+  return expect(tool.accepted && planned.accepted &&
+                    planned.opening.roomTopologyEdgeIndex == 2U &&
+                    planned.opening.roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::Count,
+                "concave placement resolves the exact inner topology edge") &&
+         expect(placed.accepted && placed.changed &&
+                    state.revision == revisionBefore + 1U &&
+                    state.source.openings.size() == 1U &&
+                    state.source.openings[0].roomTopologyEdgeIndex == 2U &&
+                    state.source.openings[0].roomEdge ==
+                        cr::CreativeWorldLayoutRoomEdge::Count &&
+                    state.source.openings[0].centerOffsetCells == 2.0,
+                "editor commit retains direct host identity and snapped offset");
 }
 
 bool openingDragAndWidthHandlesAreQuarterCellTransactional() {
@@ -3261,9 +3821,9 @@ bool rampGestureUsesTheSharedVerticalConnectorLifecycle() {
       state, app::CreativeEditorWorldLayoutTool::Ramp));
   const std::uint64_t revisionBeforeRamp = state.revision;
   const auto begin = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {2, 5});
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 2});
   const auto commit = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {4, 1});
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {7, 4});
 
   cr::CreativeAppState live = appState();
   const auto preview =
@@ -3276,6 +3836,21 @@ bool rampGestureUsesTheSharedVerticalConnectorLifecycle() {
                     return object.kind == cr::CreativeObjectKind::Ramp;
                   });
 
+  app::CreativeEditorWorldLayoutState lowHeadroomState;
+  const bool lowHeadroomSetup = prepareTwoStoreyEditorLayout(
+      lowHeadroomState, "ramp_low_headroom_layout");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      lowHeadroomState, app::CreativeEditorWorldLayoutTool::Ramp));
+  const cr::CreativeGridSettings lowHeadroomGrid{
+      {}, 0.4, {32U, 16U, 32U}};
+  const std::uint64_t lowHeadroomRevision = lowHeadroomState.revision;
+  const auto lowHeadroomBegin = app::applyCreativeEditorWorldLayoutGesture(
+      lowHeadroomState, app::CreativeEditorWorldLayoutGesturePhase::Begin,
+      {1, 2}, lowHeadroomGrid);
+  const auto lowHeadroomCommit = app::applyCreativeEditorWorldLayoutGesture(
+      lowHeadroomState, app::CreativeEditorWorldLayoutGesturePhase::Commit,
+      {7, 4}, lowHeadroomGrid);
+
   return expect(setupAccepted && begin.accepted && !begin.changed &&
                     commit.accepted && commit.changed &&
                     commit.reasonCode ==
@@ -3286,13 +3861,21 @@ bool rampGestureUsesTheSharedVerticalConnectorLifecycle() {
          expect(state.source.verticalConnectors[0].kind ==
                         cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
                     state.source.verticalConnectors[0].direction ==
-                        cr::CreativeWorldLayoutVerticalDirection::NegativeZ &&
+                        cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
                     state.source.verticalConnectors[0].stableKey.starts_with(
                         "ramp_") &&
                     state.source.verticalConnectors[0].name == "Ramp 1",
                 "ramp tool owns kind direction identity and label") &&
          expect(rampGenerated,
-                "ramp preview compiles through the shared layout recipe");
+                "ramp preview compiles through the shared layout recipe") &&
+         expect(lowHeadroomSetup && lowHeadroomBegin.accepted &&
+                    !lowHeadroomCommit.accepted &&
+                    !lowHeadroomCommit.changed &&
+                    lowHeadroomCommit.reasonCode ==
+                        "creative_ramp_headroom_insufficient" &&
+                    lowHeadroomState.source.verticalConnectors.empty() &&
+                    lowHeadroomState.revision == lowHeadroomRevision,
+                "document-grid headroom rejects ramp creation atomically");
 }
 
 bool verticalConnectorSettingsConvertAndRejectAtomically() {
@@ -3304,7 +3887,7 @@ bool verticalConnectorSettingsConvertAndRejectAtomically() {
   static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
       state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 1}));
   const auto created = app::applyCreativeEditorWorldLayoutGesture(
-      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 5});
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {7, 3});
   if (!setupAccepted || !created.accepted ||
       state.source.verticalConnectors.size() != 1U) {
     return expect(false, "vertical connector settings test setup");
@@ -3315,20 +3898,25 @@ bool verticalConnectorSettingsConvertAndRejectAtomically() {
   const bool read =
       app::readCreativeEditorWorldLayoutVerticalConnectorSettings(
           state, 0U, settings);
+  const bool readDefaultMaterial =
+      read && settings.material == cr::CreativeStructuralMaterial::Blockout;
   settings.kind = cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
   settings.direction =
-      cr::CreativeWorldLayoutVerticalDirection::NegativeZ;
+      cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  settings.material = cr::CreativeStructuralMaterial::Stone;
   const std::uint64_t revisionBeforeConvert = state.revision;
   const auto converted =
       app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
           state, 0U, settings);
   const bool convertedOnce =
-      read && converted.accepted && converted.changed &&
+      readDefaultMaterial && converted.accepted && converted.changed &&
       state.revision == revisionBeforeConvert + 1U &&
       state.source.verticalConnectors[0].kind ==
           cr::CreativeWorldLayoutVerticalConnectorKind::Ramp &&
       state.source.verticalConnectors[0].direction ==
-          cr::CreativeWorldLayoutVerticalDirection::NegativeZ &&
+          cr::CreativeWorldLayoutVerticalDirection::PositiveX &&
+      state.source.verticalConnectors[0].material ==
+          cr::CreativeStructuralMaterial::Stone &&
       state.source.verticalConnectors[0].stableKey == original.stableKey &&
       state.source.verticalConnectors[0].name == original.name &&
       state.source.verticalConnectors[0].buildingIndex ==
@@ -3349,15 +3937,26 @@ bool verticalConnectorSettingsConvertAndRejectAtomically() {
           state, 0U, settings);
   settings = {convertedSource.footprint,
               cr::CreativeWorldLayoutVerticalConnectorKind::Count,
-              convertedSource.direction};
+              convertedSource.direction,
+              convertedSource.material};
   const auto rejectedKind =
+      app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  settings = {convertedSource.footprint,
+              convertedSource.kind,
+              convertedSource.direction,
+              cr::CreativeStructuralMaterial::Count};
+  const auto rejectedMaterial =
       app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
           state, 0U, settings);
   const bool rejectedAtomically =
       !rejectedSlope.accepted && !rejectedSlope.changed &&
       rejectedSlope.reasonCode ==
-          "creative_world_layout_vertical_connector_slope_invalid" &&
+          "creative_ramp_slope_exceeds_movement_limit" &&
       !rejectedKind.accepted && !rejectedKind.changed &&
+      !rejectedMaterial.accepted && !rejectedMaterial.changed &&
+      rejectedMaterial.reasonCode ==
+          "creative_world_layout_vertical_connector_material_invalid" &&
       state.revision == revisionBeforeRejected &&
       state.source.verticalConnectors[0].footprint.minimum ==
           convertedSource.footprint.minimum &&
@@ -3365,7 +3964,8 @@ bool verticalConnectorSettingsConvertAndRejectAtomically() {
           convertedSource.footprint.maximum &&
       state.source.verticalConnectors[0].kind == convertedSource.kind &&
       state.source.verticalConnectors[0].direction ==
-          convertedSource.direction;
+          convertedSource.direction &&
+      state.source.verticalConnectors[0].material == convertedSource.material;
 
   return expect(convertedOnce,
                 "connector conversion preserves identity and commits once") &&
@@ -3383,9 +3983,18 @@ bool verticalConnectorManipulationIsTransactional() {
       state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 1}));
   const auto created = app::applyCreativeEditorWorldLayoutGesture(
       state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 5});
+  app::CreativeEditorWorldLayoutVerticalConnectorSettings settings;
+  const bool settingsRead =
+      app::readCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
+  settings.material = cr::CreativeStructuralMaterial::Stone;
+  const auto materialSet =
+      app::setCreativeEditorWorldLayoutVerticalConnectorSettings(
+          state, 0U, settings);
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Select));
-  if (!setupAccepted || !created.accepted) {
+  if (!setupAccepted || !created.accepted || !settingsRead ||
+      !materialSet.accepted) {
     return expect(false, "vertical connector manipulation test setup");
   }
 
@@ -3425,7 +4034,9 @@ bool verticalConnectorManipulationIsTransactional() {
           cr::CreativeTerrainCoord2{2, 1} &&
       state.source.verticalConnectors[0].footprint.maximum ==
           cr::CreativeTerrainCoord2{6, 5} &&
-      state.source.verticalConnectors[0].stableKey == stableKey;
+      state.source.verticalConnectors[0].stableKey == stableKey &&
+      state.source.verticalConnectors[0].material ==
+          cr::CreativeStructuralMaterial::Stone;
 
   const cr::CreativeWorldLayoutRect movedFootprint =
       state.source.verticalConnectors[0].footprint;
@@ -3634,48 +4245,30 @@ cr::CreativeWorldLayout elevationFixture() {
        "elevation_stair",
        "Main Stair",
        {{1, 2}, {5, 4}}});
-  layout.openings.push_back(
-      {cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
-       cr::kInvalidCreativeWorldLayoutIndex,
-       0U,
-       cr::CreativeWorldLayoutRoomEdge::North,
-       cr::CreativeBuildingOpeningKind::Door,
-       cr::CreativeBuildingOpeningPose::Closed,
-       "elevation_door",
-       "Front Door",
-       3.0,
-       1.0,
-       0.0,
-       2.0,
-       true,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       {},
-       {},
-       false});
-  layout.openings.push_back(
-      {cr::CreativeWorldLayoutOpeningHostKind::RoomEdge,
-       cr::kInvalidCreativeWorldLayoutIndex,
-       0U,
-       cr::CreativeWorldLayoutRoomEdge::East,
-       cr::CreativeBuildingOpeningKind::Window,
-       cr::CreativeBuildingOpeningPose::Closed,
-       "elevation_window",
-       "East Window",
-       3.0,
-       1.0,
-       1.0,
-       1.5,
-       true,
-       0.0,
-       0.0,
-       0.0,
-       0.0,
-       {},
-       {},
-       false});
+  cr::CreativeWorldLayoutOpening door;
+  door.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  door.roomIndex = 0U;
+  door.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+  door.kind = cr::CreativeBuildingOpeningKind::Door;
+  door.stableKey = "elevation_door";
+  door.name = "Front Door";
+  door.centerOffsetCells = 3.0;
+  door.widthCells = 1.0;
+  door.cutoutHeightCells = 2.0;
+  layout.openings.push_back(std::move(door));
+
+  cr::CreativeWorldLayoutOpening window;
+  window.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  window.roomIndex = 0U;
+  window.roomEdge = cr::CreativeWorldLayoutRoomEdge::East;
+  window.kind = cr::CreativeBuildingOpeningKind::Window;
+  window.stableKey = "elevation_window";
+  window.name = "East Window";
+  window.centerOffsetCells = 3.0;
+  window.widthCells = 1.0;
+  window.cutoutBottomCells = 1.0;
+  window.cutoutHeightCells = 1.5;
+  layout.openings.push_back(std::move(window));
   return layout;
 }
 
@@ -3732,9 +4325,19 @@ bool elevationProjectionUsesExactRecipeGeometry() {
       cr::defaultCreativeStructuralLayerThicknessMeters(
           cr::CreativeObjectKind::Floor) /
       grid.cellSizeMeters;
-  const double roofThicknessCells =
-      cr::defaultCreativeStructuralLayerThicknessMeters(
-          cr::CreativeObjectKind::Roof) /
+  const cr::CreativeWorldLayoutRoofPlan roofPlan =
+      cr::planCreativeWorldLayoutRoof(grid, layout, 1U);
+  const double expectedRoofMinimum =
+      (roofPlan.geometry.worldBounds.min.y - grid.origin.y) /
+      grid.cellSizeMeters;
+  const double expectedRoofMaximum =
+      (roofPlan.geometry.worldBounds.max.y - grid.origin.y) /
+      grid.cellSizeMeters;
+  const double expectedRidgeHorizontal =
+      (roofPlan.geometry.ridgeStart.z - grid.origin.z) /
+      grid.cellSizeMeters;
+  const double expectedRidgeVertical =
+      (roofPlan.geometry.ridgeStart.y - grid.origin.y) /
       grid.cellSizeMeters;
 
   return expect(projection.accepted && projection.bounds.valid,
@@ -3743,16 +4346,17 @@ bool elevationProjectionUsesExactRecipeGeometry() {
                     near(lowerFloor->minimumVertical, -floorThicknessCells) &&
                     near(lowerFloor->maximumVertical, 0.0),
                 "elevation floor uses descriptor-sized structural thickness") &&
-         expect(roofBase != projection.items.end() &&
-                    near(roofBase->minimumVertical, 8.0) &&
-                    near(roofBase->maximumVertical,
-                         8.0 + roofThicknessCells) &&
+         expect(roofPlan.accepted && roofPlan.geometry.accepted &&
+                    roofBase != projection.items.end() &&
+                    near(roofBase->minimumVertical, expectedRoofMinimum) &&
+                    near(roofBase->maximumVertical, expectedRoofMaximum) &&
                     roofSlopeCount == 2U &&
                     ridgeHandle != projection.handles.end() &&
-                    near(ridgeHandle->position.horizontal, 3.0) &&
+                    near(ridgeHandle->position.horizontal,
+                         expectedRidgeHorizontal) &&
                     near(ridgeHandle->position.vertical,
-                         11.0 + roofThicknessCells),
-                "gable elevation uses exact base thickness span and ridge") &&
+                         expectedRidgeVertical),
+                "gable elevation uses the canonical thin-panel bounds and ridge") &&
          expect(window != projection.items.end() &&
                     near(window->minimumHorizontal, 2.5) &&
                     near(window->maximumHorizontal, 3.5) &&
@@ -3766,6 +4370,396 @@ bool elevationProjectionUsesExactRecipeGeometry() {
          expect(explicitFloor != projection.items.end() &&
                     explicitWall != projection.items.end(),
                 "elevation includes explicit floor and partition symbols");
+}
+
+bool roofAperturesProjectIntoElevationFromExactClosureGeometry() {
+  const cr::CreativeGridSettings grid{{10.0, 2.0, -5.0}, 2.0,
+                                      {32, 16, 32}};
+  cr::CreativeWorldLayout layout = elevationFixture();
+  cr::CreativeWorldLayoutRoofAperture skylight;
+  skylight.levelIndex = 1U;
+  skylight.kind = cr::CreativeStructuralRoofApertureKind::Skylight;
+  skylight.stableKey = "elevation_skylight";
+  skylight.name = "Elevation Skylight";
+  skylight.minimumXCells = 1.0;
+  skylight.maximumXCells = 2.0;
+  skylight.minimumZCells = 0.5;
+  skylight.maximumZCells = 1.5;
+  layout.roofApertures.push_back(skylight);
+  cr::CreativeWorldLayoutRoofAperture clearance = skylight;
+  clearance.kind =
+      cr::CreativeStructuralRoofApertureKind::ChimneyClearance;
+  clearance.stableKey = "elevation_chimney_clearance";
+  clearance.name = "Elevation Chimney Clearance";
+  clearance.minimumXCells = 4.0;
+  clearance.maximumXCells = 5.0;
+  layout.roofApertures.push_back(clearance);
+
+  const cr::CreativeWorldLayoutRoofPlan roof =
+      cr::planCreativeWorldLayoutRoof(grid, layout, 1U);
+  const app::CreativeEditorWorldLayoutElevationProjection projection =
+      app::planCreativeEditorWorldLayoutElevation(
+          {&layout, grid, 0U,
+           app::CreativeEditorWorldLayoutElevationAxis::X});
+  const auto findItem = [&](
+                            app::CreativeEditorWorldLayoutElevationItemKind kind,
+                            std::size_t index) {
+    return std::find_if(
+        projection.items.begin(), projection.items.end(),
+        [kind, index](const auto& item) {
+          return item.kind == kind &&
+                 item.sourceKind ==
+                     app::CreativeEditorWorldLayoutElevationSourceKind::
+                         RoofAperture &&
+                 item.sourceIndex == index;
+        });
+  };
+  const auto skylightItem = findItem(
+      app::CreativeEditorWorldLayoutElevationItemKind::RoofSkylight, 0U);
+  const auto clearanceItem = findItem(
+      app::CreativeEditorWorldLayoutElevationItemKind::RoofClearance, 1U);
+  const cr::CreativeStructuralRoofApertureInsertPlan* insert = nullptr;
+  if (roof.accepted && roof.closure.insertCount == 1U) {
+    insert = &roof.closure.inserts[0];
+  }
+  const double expectedMinimum =
+      insert == nullptr
+          ? 0.0
+          : (insert->bounds.min.y - grid.origin.y) / grid.cellSizeMeters;
+  const double expectedMaximum =
+      insert == nullptr
+          ? 0.0
+          : (insert->bounds.max.y - grid.origin.y) / grid.cellSizeMeters;
+  return expect(roof.accepted && projection.accepted && insert != nullptr,
+                "elevation aperture fixture uses the accepted roof closure") &&
+         expect(skylightItem != projection.items.end() &&
+                    skylightItem->levelIndex == 1U &&
+                    near(skylightItem->minimumHorizontal, 1.0) &&
+                    near(skylightItem->maximumHorizontal, 2.0) &&
+                    near(skylightItem->minimumVertical, expectedMinimum) &&
+                    near(skylightItem->maximumVertical, expectedMaximum),
+                "skylight elevation uses the exact generated insert bounds") &&
+         expect(clearanceItem != projection.items.end() &&
+                    clearanceItem->levelIndex == 1U &&
+                    near(clearanceItem->minimumHorizontal, 4.0) &&
+                    near(clearanceItem->maximumHorizontal, 5.0) &&
+                    clearanceItem->minimumVertical <
+                        clearanceItem->maximumVertical,
+                "chimney clearance elevation preserves its authored span and roof plane");
+}
+
+bool shedAndHipElevationsUseCanonicalProfilesAndPitchHandles() {
+  const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0, {32, 16, 32}};
+  cr::CreativeWorldLayout layout = elevationFixture();
+  cr::CreativeWorldLayoutLevel& roof = layout.levels[1];
+  roof.roofPitchDegrees = 30.0;
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Shed;
+  roof.roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::PositiveX;
+  const auto shedProfile = app::planCreativeEditorWorldLayoutElevation(
+      {&layout, grid, 0U, app::CreativeEditorWorldLayoutElevationAxis::X});
+  const auto shedAlongEave = app::planCreativeEditorWorldLayoutElevation(
+      {&layout, grid, 0U, app::CreativeEditorWorldLayoutElevationAxis::Z});
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Hip;
+  roof.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  const auto hipAlongRidge = app::planCreativeEditorWorldLayoutElevation(
+      {&layout, grid, 0U, app::CreativeEditorWorldLayoutElevationAxis::X});
+  const auto hipCrossSection = app::planCreativeEditorWorldLayoutElevation(
+      {&layout, grid, 0U, app::CreativeEditorWorldLayoutElevationAxis::Z});
+
+  const auto lineCount = [](const auto& projection,
+                            app::CreativeEditorWorldLayoutElevationLineKind kind) {
+    return static_cast<std::size_t>(std::count_if(
+        projection.lines.begin(), projection.lines.end(),
+        [kind](const auto& line) { return line.kind == kind; }));
+  };
+  const auto ridgeHandle = [](const auto& projection) {
+    return std::find_if(
+        projection.handles.begin(), projection.handles.end(),
+        [](const auto& handle) {
+          return handle.kind ==
+                 app::CreativeEditorWorldLayoutElevationHandleKind::RoofRidge;
+        });
+  };
+  const auto shedHandle = ridgeHandle(shedProfile);
+  const auto hipAlongHandle = ridgeHandle(hipAlongRidge);
+  const auto hipCrossHandle = ridgeHandle(hipCrossSection);
+
+  const double support = 8.0;
+  const double shedRise = std::tan(std::numbers::pi / 6.0) * 8.0;
+  const double hipRise = std::tan(std::numbers::pi / 6.0) * 3.0;
+  return expect(shedProfile.accepted &&
+                    lineCount(shedProfile,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofSlope) == 1U &&
+                    shedHandle != shedProfile.handles.end() &&
+                    near(shedHandle->position.horizontal, 0.0) &&
+                    near(shedHandle->position.vertical, support + shedRise),
+                "shed profile exposes one exact slope and draggable high edge") &&
+         expect(shedAlongEave.accepted &&
+                    lineCount(shedAlongEave,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofRidge) == 1U &&
+                    ridgeHandle(shedAlongEave) ==
+                        shedAlongEave.handles.end(),
+                "shed eave elevation shows height without a false pitch handle") &&
+         expect(hipAlongRidge.accepted &&
+                    lineCount(hipAlongRidge,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofSlope) == 2U &&
+                    lineCount(hipAlongRidge,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofRidge) == 1U &&
+                    hipAlongHandle != hipAlongRidge.handles.end() &&
+                    near(hipAlongHandle->position.horizontal, 3.0) &&
+                    near(hipAlongHandle->position.vertical, support + hipRise),
+                "hip ridge elevation exposes two hips and shortened ridge") &&
+         expect(hipCrossSection.accepted &&
+                    lineCount(hipCrossSection,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofSlope) == 2U &&
+                    lineCount(hipCrossSection,
+                              app::CreativeEditorWorldLayoutElevationLineKind::
+                                  RoofRidge) == 0U &&
+                    hipCrossHandle != hipCrossSection.handles.end() &&
+                    near(hipCrossHandle->position.horizontal, 3.0) &&
+                    near(hipCrossHandle->position.vertical, support + hipRise),
+                "hip cross-section exposes the same canonical pitch apex");
+}
+
+bool roofHandlesAndGesturesShareExactClosureGeometry() {
+  const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0, {32, 16, 32}};
+  app::CreativeEditorWorldLayoutState state;
+  state.source = elevationFixture();
+  state.revision = 7U;
+  state.generatedRevision = 7U;
+  state.tool = app::CreativeEditorWorldLayoutTool::Select;
+  state.activeLevelIndex = 1U;
+  state.selection = {app::CreativeEditorWorldLayoutSelectionKind::Level, 1U};
+
+  const app::CreativeEditorWorldLayoutRoofHandleFrame frame =
+      app::buildCreativeEditorWorldLayoutRoofHandleFrame(state, grid, 1U);
+  const auto handle = [&](app::CreativeEditorWorldLayoutRoofHandleKind kind) {
+    return std::find_if(
+        frame.handles.begin(), frame.handles.begin() + frame.handleCount,
+        [kind](const auto& candidate) {
+          return candidate.target.handle == kind;
+        });
+  };
+  const auto north =
+      handle(app::CreativeEditorWorldLayoutRoofHandleKind::NorthEave);
+  const auto east =
+      handle(app::CreativeEditorWorldLayoutRoofHandleKind::EastEave);
+  const auto south =
+      handle(app::CreativeEditorWorldLayoutRoofHandleKind::SouthEave);
+  const auto west =
+      handle(app::CreativeEditorWorldLayoutRoofHandleKind::WestEave);
+  const auto ridge =
+      handle(app::CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight);
+  const bool exactFootprint =
+      frame.accepted && frame.handleCount == 5U &&
+      north != frame.handles.begin() + frame.handleCount &&
+      east != frame.handles.begin() + frame.handleCount &&
+      south != frame.handles.begin() + frame.handleCount &&
+      west != frame.handles.begin() + frame.handleCount &&
+      ridge != frame.handles.begin() + frame.handleCount &&
+      near(north->planPosition.x, 4.0) && near(north->planPosition.z, 0.0) &&
+      near(east->planPosition.x, 8.0) && near(east->planPosition.z, 3.0) &&
+      near(south->planPosition.x, 4.0) && near(south->planPosition.z, 6.0) &&
+      near(west->planPosition.x, 0.0) && near(west->planPosition.z, 3.0) &&
+      near(ridge->planPosition.x, 4.0) && near(ridge->planPosition.z, 3.0);
+
+  const auto northHit = app::findCreativeEditorWorldLayoutPlanRoofHandle(
+      frame, north->planPosition, 0.2);
+  const auto ridgePlanHit = app::findCreativeEditorWorldLayoutPlanRoofHandle(
+      frame, ridge->planPosition, 0.2);
+  const app::CreativeEditorWorldLayoutRoofTarget eastTarget{
+      1U, app::CreativeEditorWorldLayoutRoofHandleKind::EastEave};
+  const app::CreativeEditorWorldLayoutRoofTarget ridgeTarget{
+      1U, app::CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight};
+  const auto expanded = app::planCreativeEditorWorldLayoutRoofEdit(
+      state, grid, eastTarget, 0.37);
+  const auto contracted = app::planCreativeEditorWorldLayoutRoofEdit(
+      state, grid, eastTarget, -100.0);
+  const auto raised = app::planCreativeEditorWorldLayoutRoofEdit(
+      state, grid, ridgeTarget, 0.37);
+  cr::CreativeWorldLayout flat = state.source;
+  flat.levels[1].roofStyle = cr::CreativeStructuralRoofStyle::Flat;
+  const auto flatRidge = app::planCreativeEditorWorldLayoutRoofEdit(
+      flat, grid, ridgeTarget, 1.0);
+
+  const cr::CreativeGridSettings pickGrid{
+      {-0.4, -0.8, -0.3}, 0.1, {32, 16, 32}};
+  const auto pickFrame = app::buildCreativeEditorWorldLayoutRoofHandleFrame(
+      state, pickGrid, 1U);
+  const auto pickEast = std::find_if(
+      pickFrame.handles.begin(),
+      pickFrame.handles.begin() + pickFrame.handleCount,
+      [](const auto& candidate) {
+        return candidate.target.handle ==
+               app::CreativeEditorWorldLayoutRoofHandleKind::EastEave;
+      });
+  iggy3d::RenderCameraFrame camera;
+  camera.clipFromWorld = iggy3d::identityMat4();
+  const iggy3d::RenderContentViewport viewport{0U, 0U, 800U, 600U};
+  const cr::CreativeScreenPoint projectedEast =
+      pickEast == pickFrame.handles.begin() + pickFrame.handleCount
+          ? cr::CreativeScreenPoint{}
+          : cr::projectCreativeWorldPointToScreen(
+                camera.clipFromWorld, pickEast->worldPosition, viewport.width,
+                viewport.height);
+  const auto pickedEast = app::pickCreativeEditorWorldLayoutRoofHandleAtPixel(
+      pickFrame, camera, viewport, projectedEast.x, projectedEast.y, 2.0F);
+
+  app::CreativeEditorWorldLayoutState committedState = state;
+  const auto begin = app::applyCreativeEditorWorldLayoutRoofManipulation(
+      committedState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin, eastTarget,
+      8.0, grid);
+  const auto update = app::applyCreativeEditorWorldLayoutRoofManipulation(
+      committedState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {}, 8.37,
+      grid);
+  const bool previewOnly =
+      begin.accepted && !begin.changed && update.accepted && update.changed &&
+      committedState.roofManipulation.active &&
+      near(committedState.roofManipulation.previewSettings.roofOverhangCells,
+           0.25) &&
+      near(committedState.source.levels[1].roofOverhangCells, 0.0) &&
+      committedState.revision == 7U;
+  const auto commit = app::applyCreativeEditorWorldLayoutRoofManipulation(
+      committedState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Commit, {}, 8.37,
+      grid);
+
+  app::CreativeEditorWorldLayoutState cancelledState = state;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoofManipulation(
+      cancelledState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin, ridgeTarget,
+      0.0, grid));
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoofManipulation(
+      cancelledState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {}, 0.5,
+      grid));
+  const auto cancelled = app::applyCreativeEditorWorldLayoutRoofManipulation(
+      cancelledState,
+      app::CreativeEditorWorldLayoutRoofManipulationPhase::Cancel, {}, 0.0,
+      grid);
+
+  app::CreativeEditorWorldLayoutState staleState = state;
+  static_cast<void>(app::applyCreativeEditorWorldLayoutRoofManipulation(
+      staleState, app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+      eastTarget, 8.0, grid));
+  ++staleState.revision;
+  const auto stale = app::applyCreativeEditorWorldLayoutRoofManipulation(
+      staleState, app::CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+      {}, 8.5, grid);
+
+  return expect(exactFootprint,
+                "roof handles attach to the exact canonical footprint") &&
+         expect(northHit == north->target &&
+                    ridgePlanHit.handle ==
+                        app::CreativeEditorWorldLayoutRoofHandleKind::None,
+                "plan view picks eaves without inventing a pitch gesture") &&
+         expect(expanded.accepted && near(expanded.snappedDeltaCells, 0.25) &&
+                    near(expanded.settings.roofOverhangCells, 0.25) &&
+                    contracted.accepted &&
+                    near(contracted.settings.roofOverhangCells, 0.0),
+                "all eaves share quarter-cell symmetric overhang math") &&
+         expect(raised.accepted && raised.settings.roofPitchDegrees > 45.0 &&
+                    !flatRidge.accepted,
+                "ridge height derives pitch and flat roofs expose no ridge edit") &&
+         expect(projectedEast.valid && pickedEast.hit &&
+                    pickedEast.handleIndex < pickFrame.handleCount &&
+                    pickFrame.handles[pickedEast.handleIndex].target ==
+                        eastTarget,
+                "3D reticle picking resolves the exact canonical roof handle") &&
+         expect(previewOnly && commit.accepted && commit.changed &&
+                    !committedState.roofManipulation.active &&
+                    committedState.revision == 8U &&
+                    near(committedState.source.levels[1].roofOverhangCells,
+                         0.25),
+                "roof gesture previews transiently and commits one revision") &&
+         expect(cancelled.accepted && cancelled.changed &&
+                    !cancelledState.roofManipulation.active &&
+                    cancelledState.revision == 7U &&
+                    near(cancelledState.source.levels[1].roofPitchDegrees,
+                         45.0),
+                "roof cancel restores the exact source") &&
+         expect(!stale.accepted && !stale.changed &&
+                    !staleState.roofManipulation.active &&
+                    near(staleState.source.levels[1].roofOverhangCells, 0.0),
+                "stale roof gestures fail closed without source mutation");
+}
+
+bool directRoofManipulationPreviewsAndCommitsOneDocumentEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "direct_roof_edit");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 6}};
+  settings.shell.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  settings.shell.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  settings.shell.roofPitchDegrees = 35.0;
+  settings.facade.includeExteriorWindows = false;
+  const auto created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const auto generated = app::confirmCreativeEditorWorldLayout(state, live);
+  if (!created.accepted || !generated.accepted || state.source.levels.empty()) {
+    return expect(false, "direct roof live-edit fixture generates");
+  }
+
+  const std::size_t levelIndex = state.source.levels.size() - 1U;
+  const app::CreativeEditorWorldLayoutRoofTarget target{
+      levelIndex, app::CreativeEditorWorldLayoutRoofHandleKind::EastEave};
+  state.tool = app::CreativeEditorWorldLayoutTool::Select;
+  state.activeLevelIndex = levelIndex;
+  state.selection = {app::CreativeEditorWorldLayoutSelectionKind::Level,
+                     levelIndex};
+  const double originalOverhang =
+      state.source.levels[levelIndex].roofOverhangCells;
+  const std::uint64_t sourceRevisionBefore = state.revision;
+  const std::uint64_t documentRevisionBefore = live.facade.document().revision();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(live.history);
+  const auto begin = app::applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+      state, live, app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+      target, 8.0);
+  const auto update = app::applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+      state, live, app::CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+      {}, 8.37);
+  const bool previewOnly =
+      begin.accepted && !begin.changed && update.accepted && update.changed &&
+      update.sceneChanged && !update.worldLayoutChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.levels[levelIndex].roofOverhangCells == originalOverhang &&
+      state.previewSource.levels[levelIndex].roofOverhangCells ==
+          originalOverhang + 0.25 &&
+      state.revision == sourceRevisionBefore &&
+      live.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(live.history) == undoDepthBefore;
+  const auto committed =
+      app::applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Commit, {},
+          8.37);
+  const bool committedOnce =
+      committed.accepted && committed.changed &&
+      committed.worldLayoutChanged && committed.sceneChanged &&
+      !state.roofManipulation.active &&
+      !app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang + 0.25 &&
+      state.revision == sourceRevisionBefore + 1U &&
+      state.generatedRevision == state.revision &&
+      live.facade.document().revision() != documentRevisionBefore &&
+      cr::creativeUndoDepth(live.history) == undoDepthBefore + 1U;
+
+  return expect(previewOnly,
+                "direct 3D roof drag previews without publishing source") &&
+         expect(committedOnce,
+                "direct 3D roof release commits source scene and history once");
 }
 
 bool elevationHitTestingAndEditMathAreTransactionalInputs() {
@@ -3833,6 +4827,12 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
       layout, projection, *ridge,
       roofSlope->start.vertical +
           std::abs(roofSlope->end.horizontal - roofSlope->start.horizontal));
+  const auto sharedRoof45 = app::planCreativeEditorWorldLayoutRoofEdit(
+      layout, grid,
+      {1U, app::CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight},
+      roofSlope->start.vertical +
+          std::abs(roofSlope->end.horizontal - roofSlope->start.horizontal) -
+          ridge->position.vertical);
   const auto raisedSill = app::planCreativeEditorWorldLayoutElevationEdit(
       layout, projection, *windowBottom, 1.5);
   const auto raisedTop = app::planCreativeEditorWorldLayoutElevationEdit(
@@ -3854,8 +4854,11 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
                 "floor edit cannot cross the next occupied storey") &&
          expect(shorterWall.accepted && shorterWall.wallHeightCells == 2U,
                 "wall top snaps to whole-cell height") &&
-         expect(roof45.accepted && near(roof45.roofPitchDegrees, 45.0),
-                "roof ridge drag resolves pitch from exact rise and run") &&
+         expect(roof45.accepted && sharedRoof45.accepted &&
+                    near(roof45.roofPitchDegrees,
+                         sharedRoof45.settings.roofPitchDegrees) &&
+                    near(roof45.roofPitchDegrees, 45.0),
+                "elevation ridge uses the shared exact roof edit math") &&
          expect(raisedSill.accepted &&
                     near(raisedSill.openingSillCells, 1.5) &&
                     near(raisedSill.openingHeightCells, 1.0) &&
@@ -3873,6 +4876,86 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
                     raisedExplicitWall.accepted &&
                     raisedExplicitWall.wallHeightCells == 5U,
                 "explicit floor and wall handles share snapped elevation math");
+}
+
+bool elevationHitStackCyclesDistinctSemanticSources() {
+  app::CreativeEditorWorldLayoutElevationProjection projection;
+  projection.accepted = true;
+  const auto item = [](
+                        app::CreativeEditorWorldLayoutElevationItemKind kind,
+                        app::CreativeEditorWorldLayoutElevationSourceKind
+                            sourceKind,
+                        std::size_t sourceIndex) {
+    app::CreativeEditorWorldLayoutElevationItem result;
+    result.kind = kind;
+    result.sourceKind = sourceKind;
+    result.sourceIndex = sourceIndex;
+    result.minimumHorizontal = 0.0;
+    result.maximumHorizontal = 2.0;
+    result.minimumVertical = 0.0;
+    result.maximumVertical = 2.0;
+    return result;
+  };
+  projection.items = {
+      item(app::CreativeEditorWorldLayoutElevationItemKind::Volume,
+           app::CreativeEditorWorldLayoutElevationSourceKind::Room, 0U),
+      item(app::CreativeEditorWorldLayoutElevationItemKind::WallEnvelope,
+           app::CreativeEditorWorldLayoutElevationSourceKind::Wall, 1U),
+      item(app::CreativeEditorWorldLayoutElevationItemKind::CeilingSlab,
+           app::CreativeEditorWorldLayoutElevationSourceKind::Wall, 1U),
+  };
+
+  const auto stack = app::findCreativeEditorWorldLayoutElevationItemStack(
+      projection, {1.0, 1.0}, 0.0);
+  const auto* first = app::cycleCreativeEditorWorldLayoutElevationItem(
+      stack, app::CreativeEditorWorldLayoutElevationSourceKind::None,
+      cr::kInvalidCreativeWorldLayoutIndex);
+  const auto* second = app::cycleCreativeEditorWorldLayoutElevationItem(
+      stack, app::CreativeEditorWorldLayoutElevationSourceKind::Wall, 1U);
+  const auto* wrapped = app::cycleCreativeEditorWorldLayoutElevationItem(
+      stack, app::CreativeEditorWorldLayoutElevationSourceKind::Room, 0U);
+  const auto* singular = app::findCreativeEditorWorldLayoutElevationItem(
+      projection, {1.0, 1.0}, 0.0);
+
+  app::CreativeEditorWorldLayoutElevationProjection crowded;
+  crowded.accepted = true;
+  for (std::size_t index = 0U;
+       index < app::kCreativeEditorWorldLayoutElevationHitCapacity + 2U;
+       ++index) {
+    crowded.items.push_back(
+        item(app::CreativeEditorWorldLayoutElevationItemKind::Volume,
+             app::CreativeEditorWorldLayoutElevationSourceKind::Box, index));
+  }
+  const auto bounded = app::findCreativeEditorWorldLayoutElevationItemStack(
+      crowded, {1.0, 1.0}, 0.0);
+  const auto invalid = app::findCreativeEditorWorldLayoutElevationItemStack(
+      crowded,
+      {std::numeric_limits<double>::quiet_NaN(), 1.0}, 0.0);
+
+  return expect(stack.count == 2U && stack.testedItemCount == 3U &&
+                    stack.totalHitItemCount == 3U && !stack.truncated,
+                "elevation hit stack deduplicates one semantic source") &&
+         expect(first != nullptr &&
+                    first->sourceKind ==
+                        app::CreativeEditorWorldLayoutElevationSourceKind::Wall &&
+                    first->sourceIndex == 1U && second != nullptr &&
+                    second->sourceKind ==
+                        app::CreativeEditorWorldLayoutElevationSourceKind::Room &&
+                    second->sourceIndex == 0U && wrapped == first &&
+                    singular == first,
+                "elevation overlap selection cycles in visual order and wraps") &&
+         expect(bounded.count ==
+                        app::kCreativeEditorWorldLayoutElevationHitCapacity &&
+                    bounded.testedItemCount == crowded.items.size() &&
+                    bounded.totalHitItemCount == crowded.items.size() &&
+                    bounded.truncated && bounded.items.front() != nullptr &&
+                    bounded.items.front()->sourceIndex ==
+                        crowded.items.size() - 1U &&
+                    bounded.items[bounded.count - 1U]->sourceIndex == 2U,
+                "elevation overlap stack reports its exact fixed bound") &&
+         expect(invalid.count == 0U && invalid.testedItemCount == 0U &&
+                    invalid.totalHitItemCount == 0U && !invalid.truncated,
+                "invalid elevation hit requests fail closed");
 }
 
 bool unsynchronizedLayoutCannotBeSaved() {
@@ -3929,6 +5012,9 @@ int main() {
       floorAndWallGesturesProduceNormalizedSymbols() &&
       categorizedPaletteOwnsEveryBindableSemanticAction() &&
       terrainAndObjectPaletteToolsCreateCompilableSymbols() &&
+      bridgeToolInfersOneStableCrossingAndRejectsAmbiguity() &&
+      terrainPathDraftCommitsAsOneSourceEdit() &&
+      terrainPathDraftBuildsExactTransient3dPreview() &&
       catalogPlacementSharesOneExactTwoAndThreeDimensionalRecipe() &&
       catalogFloorSnapPlacesScaledSourceBottomOnTheFinishedFloor() &&
       catalogWallSnapUsesCanonicalActiveLevelHosts() &&
@@ -3946,6 +5032,8 @@ int main() {
       fourRoomBuildingRoundTripsAsOneGeneratedEdit() &&
       invalidRoomShellSettingsFailWithoutMutation() &&
       roomMovePreviewCommitsOnceAndKeepsOpeningHosted() &&
+      sharedRoomBoundaryPreviewCommitsAsOneRelationalEdit() &&
+      roomSettingsUseTheRelationalTopologyOwner() &&
       roomEdgesAndCornersResizeFromTheirOwnedSides() &&
       invalidRoomManipulationsRejectWithoutMutation() &&
       floorSettingsMoveAndResizeCommitOnce() &&
@@ -3954,9 +5042,11 @@ int main() {
       buildingGroupMoveDuplicateAndDeleteAreAtomic() &&
       buildingTransformPreviewsAndCommitsOneRevision() &&
       buildingTemplatesPersistPreviewAndStampOneRevision() &&
+      buildingTemplateFoundationPreviewUsesStagedLayoutTerrain() &&
       builtInBuildingTemplateInstallIsDurableAndIdempotent() &&
       buildingTemplateUpdateAndRefreshLifecycleIsExplicit() &&
       openingSettingsApplyOnceAndMatchExactPreview() &&
+      concaveRoomOpeningPlacementKeepsTheExactTopologyHost() &&
       openingDragAndWidthHandlesAreQuarterCellTransactional() &&
       openingDragPreservesSharedRoomWallOwnership() &&
       minimumWidthOpeningRetainsMoveAndResizeTargets() &&
@@ -3969,7 +5059,12 @@ int main() {
       verticalConnectorManipulationIsTransactional() &&
       verticalConnectorDirectionHandleOwnsCardinalRise() &&
       elevationProjectionUsesExactRecipeGeometry() &&
+      roofAperturesProjectIntoElevationFromExactClosureGeometry() &&
+      shedAndHipElevationsUseCanonicalProfilesAndPitchHandles() &&
+      roofHandlesAndGesturesShareExactClosureGeometry() &&
+      directRoofManipulationPreviewsAndCommitsOneDocumentEdit() &&
       elevationHitTestingAndEditMathAreTransactionalInputs() &&
+      elevationHitStackCyclesDistinctSemanticSources() &&
       unsynchronizedLayoutCannotBeSaved() &&
       unsynchronizedDraftUsesSourceHistoryBeforeDocumentHistory();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

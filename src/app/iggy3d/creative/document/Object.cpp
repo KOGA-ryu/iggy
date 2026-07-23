@@ -27,6 +27,9 @@ constexpr auto makeAllCreativeObjectKinds() noexcept {
 
 constexpr auto kAllCreativeObjectKinds = makeAllCreativeObjectKinds();
 
+constexpr std::string_view kStructuralMaterialTagPrefix =
+    "creative_structural_material:";
+
 constexpr auto kSerializedCreativeObjectKindIds =
     std::to_array<std::string_view>({
         "Unknown",
@@ -138,6 +141,7 @@ constexpr auto kSerializedCreativeObjectKindIds =
         "QuestMarker",
         "DialogueMarker",
         "GableRoof",
+        "HipRoof",
     });
 
 static_assert(kSerializedCreativeObjectKindIds.size() ==
@@ -159,6 +163,59 @@ static_assert(kSerializedCreativeObjectKindIds.size() ==
 }
 
 }  // namespace
+
+std::string_view toString(CreativeStructuralMaterial material) noexcept {
+  switch (material) {
+    case CreativeStructuralMaterial::Blockout: return "Blockout";
+    case CreativeStructuralMaterial::Plaster: return "Plaster";
+    case CreativeStructuralMaterial::Timber: return "Timber";
+    case CreativeStructuralMaterial::Stone: return "Stone";
+    case CreativeStructuralMaterial::Brick: return "Brick";
+    case CreativeStructuralMaterial::Count: break;
+  }
+  return "Unknown";
+}
+
+std::string creativeStructuralMaterialTag(
+    CreativeStructuralMaterial material) {
+  std::string tag{kStructuralMaterialTagPrefix};
+  switch (material) {
+    case CreativeStructuralMaterial::Blockout: tag += "blockout"; break;
+    case CreativeStructuralMaterial::Plaster: tag += "plaster"; break;
+    case CreativeStructuralMaterial::Timber: tag += "timber"; break;
+    case CreativeStructuralMaterial::Stone: tag += "stone"; break;
+    case CreativeStructuralMaterial::Brick: tag += "brick"; break;
+    case CreativeStructuralMaterial::Count: return {};
+  }
+  return tag;
+}
+
+bool parseCreativeStructuralMaterialTag(
+    std::span<const std::string> tags,
+    CreativeStructuralMaterial& material) noexcept {
+  for (const std::string& tag : tags) {
+    if (!tag.starts_with(kStructuralMaterialTagPrefix)) {
+      continue;
+    }
+    const std::string_view value =
+        std::string_view{tag}.substr(kStructuralMaterialTagPrefix.size());
+    if (value == "blockout") {
+      material = CreativeStructuralMaterial::Blockout;
+    } else if (value == "plaster") {
+      material = CreativeStructuralMaterial::Plaster;
+    } else if (value == "timber") {
+      material = CreativeStructuralMaterial::Timber;
+    } else if (value == "stone") {
+      material = CreativeStructuralMaterial::Stone;
+    } else if (value == "brick") {
+      material = CreativeStructuralMaterial::Brick;
+    } else {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
 
 CreativeTransformedBounds resolveCreativeTransformedBounds(
     CreativeBounds authoredBounds,
@@ -299,6 +356,165 @@ bool isValidCreativeMovingPlatformSettings(
                  CreativeMovingPlatformTraversalMode::Count);
 }
 
+std::string_view toString(
+    CreativeDoorLeafArrangement arrangement) noexcept {
+  switch (arrangement) {
+    case CreativeDoorLeafArrangement::Single:
+      return "Single";
+    case CreativeDoorLeafArrangement::Double:
+      return "Double";
+    case CreativeDoorLeafArrangement::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeDoorHingeSide side) noexcept {
+  switch (side) {
+    case CreativeDoorHingeSide::MinimumEdge:
+      return "MinimumEdge";
+    case CreativeDoorHingeSide::MaximumEdge:
+      return "MaximumEdge";
+    case CreativeDoorHingeSide::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeDoorSwingSide side) noexcept {
+  switch (side) {
+    case CreativeDoorSwingSide::NegativeNormal:
+      return "NegativeNormal";
+    case CreativeDoorSwingSide::PositiveNormal:
+      return "PositiveNormal";
+    case CreativeDoorSwingSide::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeDoorInitialState state) noexcept {
+  switch (state) {
+    case CreativeDoorInitialState::Closed:
+      return "Closed";
+    case CreativeDoorInitialState::Open:
+      return "Open";
+    case CreativeDoorInitialState::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+template <typename Enum>
+[[nodiscard]] bool parseDoorEnum(std::string_view value, Enum count,
+                                 Enum& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(count); ++index) {
+    const Enum candidate = static_cast<Enum>(index);
+    if (toString(candidate) == value) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool parseCreativeDoorLeafArrangement(
+    std::string_view value,
+    CreativeDoorLeafArrangement& output) noexcept {
+  return parseDoorEnum(value, CreativeDoorLeafArrangement::Count, output);
+}
+
+bool parseCreativeDoorHingeSide(
+    std::string_view value,
+    CreativeDoorHingeSide& output) noexcept {
+  return parseDoorEnum(value, CreativeDoorHingeSide::Count, output);
+}
+
+bool parseCreativeDoorSwingSide(
+    std::string_view value,
+    CreativeDoorSwingSide& output) noexcept {
+  return parseDoorEnum(value, CreativeDoorSwingSide::Count, output);
+}
+
+bool parseCreativeDoorInitialState(
+    std::string_view value,
+    CreativeDoorInitialState& output) noexcept {
+  return parseDoorEnum(value, CreativeDoorInitialState::Count, output);
+}
+
+bool isValidCreativeDoorSettings(
+    const CreativeDoorSettings& settings) noexcept {
+  return settings.leafArrangement < CreativeDoorLeafArrangement::Count &&
+         settings.hingeSide < CreativeDoorHingeSide::Count &&
+         settings.swingSide < CreativeDoorSwingSide::Count &&
+         settings.initialState < CreativeDoorInitialState::Count &&
+         std::isfinite(settings.transitionSeconds) &&
+         settings.transitionSeconds >= 0.05 &&
+         settings.transitionSeconds <= 10.0;
+}
+
+std::string_view toString(CreativeWindowInsertKind kind) noexcept {
+  switch (kind) {
+    case CreativeWindowInsertKind::Glazing:
+      return "Glazing";
+    case CreativeWindowInsertKind::PairedShutters:
+      return "PairedShutters";
+    case CreativeWindowInsertKind::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+bool parseCreativeWindowInsertKind(
+    std::string_view value,
+    CreativeWindowInsertKind& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(CreativeWindowInsertKind::Count);
+       ++index) {
+    const auto candidate = static_cast<CreativeWindowInsertKind>(index);
+    if (toString(candidate) == value) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool isValidCreativeWindowSettings(
+    const CreativeWindowSettings& settings) noexcept {
+  return settings.insertKind < CreativeWindowInsertKind::Count;
+}
+
+bool isValidCreativePlayerProfileId(std::string_view value) noexcept {
+  if (value.empty() || value.size() > kCreativePlayerProfileIdCapacity) {
+    return false;
+  }
+  return std::all_of(value.begin(), value.end(), [](char valueByte) {
+    const unsigned char byte = static_cast<unsigned char>(valueByte);
+    return (byte >= 'a' && byte <= 'z') ||
+           (byte >= 'A' && byte <= 'Z') ||
+           (byte >= '0' && byte <= '9') || byte == '_' || byte == '-' ||
+           byte == '.';
+  });
+}
+
+bool isValidCreativeSpawnGroup(std::string_view value) noexcept {
+  return value.size() <= kCreativeSpawnGroupCapacity &&
+         !value.empty() && isValidCreativePlayerProfileId(value);
+}
+
+bool isValidCreativePlayerSpawnSettings(
+    const CreativePlayerSpawnSettings& settings) noexcept {
+  return isValidCreativePlayerProfileId(settings.playerProfileId) &&
+         isValidCreativeSpawnGroup(settings.spawnGroup) &&
+         std::isfinite(settings.validationRadiusMeters) &&
+         settings.validationRadiusMeters >=
+             kCreativePlayerSpawnMinimumValidationRadiusMeters &&
+         settings.validationRadiusMeters <=
+             kCreativePlayerSpawnMaximumValidationRadiusMeters;
+}
+
 bool isValidCreativePathPoint(const CreativePathPoint& point) noexcept {
   return std::isfinite(point.position.x) &&
          std::isfinite(point.position.y) &&
@@ -372,6 +588,15 @@ bool validCreativeAttachmentSocketName(std::string_view value) noexcept {
                (byte >= '0' && byte <= '9') || byte == '_' || byte == '-' ||
                byte == '.';
     });
+}
+
+bool validCreativeAssetMaterialVariantName(std::string_view value) noexcept {
+    return value.size() <= kCreativeAssetMaterialVariantNameCapacity &&
+           std::all_of(value.begin(), value.end(), [](char valueByte) {
+               const unsigned char byte =
+                   static_cast<unsigned char>(valueByte);
+               return byte >= 0x20U && byte != 0x7FU;
+           });
 }
 
 std::span<const CreativeObjectKind> allCreativeObjectKinds() noexcept {

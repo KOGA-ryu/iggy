@@ -140,6 +140,12 @@ bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
                                Vec3 to,
                                float marginMeters,
                                bool* startInside);
+bool segmentOccludedByAnyPhysicsAabb(
+    std::span<const PhysicsAabbCollider> colliders,
+    Vec3 from,
+    Vec3 to,
+    float marginMeters,
+    bool* startInside);
 PhysicsSweptAabbQueryResult sweepPhysicsAabb(
     const PhysicsSweptAabbQueryRequest& request);
 PhysicsGroundCheckQueryResult checkPhysicsGround(

@@ -2,18 +2,21 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 #include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
+#include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementClearance.hpp"
+#include "EditorPlayerSpawnPreview.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -42,6 +45,7 @@ struct CreativeEditorOverlayFrameRequest {
   const iggy3d::creative::CreativeDocument* terrainDocument = nullptr;
   const iggy3d::creative::CreativeTerrainSurfacePlan* terrainSurface = nullptr;
   std::uint64_t terrainSurfaceKey = 0U;
+  const CreativePlayerSpawnPreviewGeometry* playerSpawnPreview = nullptr;
 };
 
 struct CreativeEditorOverlayFrame {
@@ -65,12 +69,22 @@ struct CreativeEditorOverlayFrame {
   std::size_t generatedScopeEdgeCount = 0;
   bool architectureScaleGuideActive = false;
   std::size_t architectureScaleGuideLineCount = 0;
+  std::size_t worldLayoutRoofHandleEdgeCount = 0;
   iggy3d::creative::CreativeWorldLayoutBuildingDimensions
       architecturalDimensions{};
   std::size_t pointMarkerEdgeCount = 0;
   std::size_t lineMarkerEdgeCount = 0;
   std::size_t pathPointHandleEdgeCount = 0;
+  std::size_t measurementEdgeCount = 0;
   std::size_t movingPlatformPathPreviewEdgeCount = 0;
+  bool playerSpawnPreviewActive = false;
+  bool playerSpawnPreviewAccepted = false;
+  iggy3d::creative::CreativePlayerSpawnStatus playerSpawnPreviewStatus =
+      iggy3d::creative::CreativePlayerSpawnStatus::NotRequested;
+  std::string_view playerSpawnPreviewReasonCode =
+      "creative_player_spawn_not_requested";
+  std::size_t playerSpawnPreviewEdgeCount = 0;
+  std::size_t playerSpawnPreviewLabelGlyphCount = 0;
   std::size_t structuralSpanEditEdgeCount = 0;
   std::size_t roomPlacementEdgeCount = 0;
   std::size_t ghostEdgeCount = 0;
@@ -87,11 +101,20 @@ struct CreativeEditorOverlayFrame {
   std::size_t terrainContourEdgeCount = 0;
   std::size_t terrainEdgeCount = 0;
   std::size_t volumeEdgeCount = 0;
+  std::size_t volumeExteriorEdgeCount = 0;
+  std::size_t volumeInteriorEdgeCount = 0;
+  std::size_t volumeChangedMemberEdgeCount = 0;
+  std::size_t volumeUnchangedMemberEdgeCount = 0;
+  std::size_t volumeProtectedMemberEdgeCount = 0;
+  std::size_t volumeDependentSourceEdgeCount = 0;
+  std::size_t volumeBlockedMemberEdgeCount = 0;
+  std::size_t volumeHandleEdgeCount = 0;
   std::size_t patternEdgeCount = 0;
   std::size_t transformPreviewEdgeCount = 0;
   std::size_t assetReplacementEdgeCount = 0;
   std::size_t assetScatterEdgeCount = 0;
   std::size_t attachmentSocketMarkerEdgeCount = 0;
+  std::size_t assetCollisionPreviewEdgeCount = 0;
   std::size_t placementFeedbackEdgeCount = 0;
   std::size_t logicLinkEdgeCount = 0;
   std::size_t logicLinkShaftCount = 0;
@@ -136,8 +159,12 @@ struct CreativeEditorSceneCache {
   std::uint64_t voxelChunkMeshBuildCount = 0;
   std::uint64_t terrainRevision = 0;
   std::uint64_t terrainHeightRevision = 0;
+  std::uint64_t terrainHeightHash = 0;
   std::uint64_t terrainHeightCellCount = 0;
+  std::uint64_t terrainHardEdgeHash = 0;
+  std::uint64_t terrainHardEdgeCount = 0;
   std::uint64_t terrainMaterialRevision = 0;
+  std::uint64_t terrainMaterialHash = 0;
   std::uint64_t terrainSurfaceBuildCount = 0;
   std::uint64_t terrainMaterialBuildCount = 0;
   iggy3d::creative::CreativeVec3 terrainGridOrigin{};
@@ -165,10 +192,20 @@ struct CreativeEditorGeneratedTerrainPreviewCache {
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t documentRevision = 0U;
   std::uint64_t heightHash = 0U;
+  std::uint64_t materialHash = 0U;
   std::uint64_t sourceSceneRefreshCount = 0U;
   std::uint64_t refreshCount = 0U;
   iggy3d::creative::CreativeVec3 terrainGridOrigin{};
   double terrainGridCellSizeMeters = 0.0;
+  bool valid = false;
+};
+
+// Renders an exact staged volume operation through the same room-bake path as
+// committed document geometry. The operation refresh key is required because
+// distinct staged previews can share the same document id and revision.
+struct CreativeEditorVolumeScenePreviewCache {
+  CreativeEditorSceneCache scene;
+  std::uint64_t operationRefreshCount = 0U;
   bool valid = false;
 };
 
@@ -187,11 +224,21 @@ void invalidateCreativeEditorSceneCache(
     CreativeEditorGeneratedTerrainPreviewCache& cache,
     const CreativeEditorSceneCache& sourceSceneCache,
     const iggy3d::creative::CreativeDocument& document,
-    const iggy3d::creative::CreativeTerrainHeightField& candidate,
+    const iggy3d::creative::CreativeTerrainHeightField& candidateHeight,
     std::uint64_t candidateHeightHash,
+    const iggy3d::creative::CreativeTerrainMaterialField& candidateMaterial,
+    std::uint64_t candidateMaterialHash,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
 void invalidateCreativeEditorGeneratedTerrainPreview(
     CreativeEditorGeneratedTerrainPreviewCache& cache) noexcept;
+
+[[nodiscard]] bool refreshCreativeEditorVolumeScenePreview(
+    CreativeEditorVolumeScenePreviewCache& cache,
+    const iggy3d::creative::CreativeDocument& stagedDocument,
+    std::uint64_t operationRefreshCount,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr);
+void invalidateCreativeEditorVolumeScenePreview(
+    CreativeEditorVolumeScenePreviewCache& cache) noexcept;
 
 void logStandaloneRoomBakeFinal(
     const StandaloneRoomBakePreviewScene& preview);

@@ -49,6 +49,10 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "InvalidTerrainHeightField";
     case CreativeDocumentRestoreStatus::InvalidTerrainOperationStack:
       return "InvalidTerrainOperationStack";
+    case CreativeDocumentRestoreStatus::InvalidPatternRecipeStore:
+      return "InvalidPatternRecipeStore";
+    case CreativeDocumentRestoreStatus::InvalidMeasurementAnnotationStore:
+      return "InvalidMeasurementAnnotationStore";
     case CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
       return "InvalidTerrainMaterialField";
     case CreativeDocumentRestoreStatus::InvalidNextObjectId:
@@ -71,6 +75,9 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   receipt.terrainHeightCellCount = request.terrainHeightField.cellCount();
   receipt.terrainOperationCount =
       request.terrainOperationStack.operations.size();
+  receipt.patternRecipeCount = request.patternRecipeStore.recipes.size();
+  receipt.measurementAnnotationCount =
+      request.measurementAnnotationStore.annotations.size();
   receipt.terrainMaterialOverrideCount =
       request.terrainMaterialField.overrideCount();
   receipt.nextObjectId = request.nextObjectId;
@@ -189,10 +196,37 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     return receipt;
   }
 
+  if (!validateCreativeTerrainHardEdges(request.terrainHardEdges)) {
+    setRestoreStatus(
+        receipt,
+        CreativeDocumentRestoreStatus::InvalidTerrainHeightField,
+        "invalid_terrain_hard_edges");
+    return receipt;
+  }
+  if (!buildCreativeComposedTerrainSurfacePlan(
+           request.terrainField, request.terrainHeightField,
+           request.terrainHardEdges)
+           .accepted) {
+    setRestoreStatus(
+        receipt, CreativeDocumentRestoreStatus::InvalidTerrainHeightField,
+        "terrain_hard_edges_do_not_match_surface");
+    return receipt;
+  }
+
+  if (!request.terrainMaterialField.validateInvariants()) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidTerrainMaterialField,
+                     "invalid_terrain_material_field");
+    return receipt;
+  }
+
   if (!validateCreativeTerrainOperationStack(
           request.terrainOperationStack) ||
       (request.terrainOperationStack.operations.empty() &&
-       request.terrainOperationStack.baseHeightField.cellCount() != 0U)) {
+       (request.terrainOperationStack.baseHeightField.cellCount() != 0U ||
+        request.terrainOperationStack.baseMaterialField.overrideCount() !=
+            0U ||
+        !request.terrainOperationStack.baseHardEdges.empty()))) {
     setRestoreStatus(
         receipt,
         CreativeDocumentRestoreStatus::InvalidTerrainOperationStack,
@@ -205,7 +239,11 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
                                         request.terrainOperationStack);
     if (!replay.receipt.accepted ||
         !creativeTerrainHeightFieldsEqual(replay.heightField,
-                                          request.terrainHeightField)) {
+                                          request.terrainHeightField) ||
+        !creativeTerrainMaterialFieldsEqual(replay.materialField,
+                                            request.terrainMaterialField) ||
+        !creativeTerrainHardEdgesEqual(replay.hardEdges,
+                                       request.terrainHardEdges)) {
       setRestoreStatus(
           receipt,
           CreativeDocumentRestoreStatus::InvalidTerrainOperationStack,
@@ -214,10 +252,21 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     }
   }
 
-  if (!request.terrainMaterialField.validateInvariants()) {
-    setRestoreStatus(receipt,
-                     CreativeDocumentRestoreStatus::InvalidTerrainMaterialField,
-                     "invalid_terrain_material_field");
+  if (!validateCreativePatternRecipeReferences(request.patternRecipeStore,
+                                                request.objects)) {
+    setRestoreStatus(
+        receipt,
+        CreativeDocumentRestoreStatus::InvalidPatternRecipeStore,
+        "invalid_pattern_recipe_store");
+    return receipt;
+  }
+
+  if (!validateCreativeMeasurementAnnotationStore(
+          request.measurementAnnotationStore)) {
+    setRestoreStatus(
+        receipt,
+        CreativeDocumentRestoreStatus::InvalidMeasurementAnnotationStore,
+        "invalid_measurement_annotation_store");
     return receipt;
   }
 
@@ -250,7 +299,10 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
   voxelField_ = request.voxelField;
   terrainField_ = request.terrainField;
   terrainHeightField_ = request.terrainHeightField;
+  terrainHardEdges_ = request.terrainHardEdges;
   terrainOperationStack_ = request.terrainOperationStack;
+  patternRecipeStore_ = request.patternRecipeStore;
+  measurementAnnotationStore_ = request.measurementAnnotationStore;
   terrainMaterialField_ = request.terrainMaterialField;
   revision_ = 0;
   dirtyFlags_ = 0;

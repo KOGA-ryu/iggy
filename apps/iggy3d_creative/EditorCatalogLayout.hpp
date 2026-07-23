@@ -55,5 +55,11 @@ struct CatalogRect {
     const CatalogLayout& layout) noexcept;
 [[nodiscard]] CatalogRect replaceSelectionButton(
     const CatalogLayout& layout) noexcept;
+[[nodiscard]] CatalogRect catalogAssetThumbnailRect(
+    const CatalogLayout& layout) noexcept;
+[[nodiscard]] CatalogRect previousAssetMaterialVariantButton(
+    const CatalogLayout& layout) noexcept;
+[[nodiscard]] CatalogRect nextAssetMaterialVariantButton(
+    const CatalogLayout& layout) noexcept;
 
 }  // namespace iggy3d_creative_app

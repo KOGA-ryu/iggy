@@ -105,6 +105,28 @@ enum class CreativeObjectShapeKind {
     MeshProxy,
 };
 
+enum class CreativeObjectRotationSupport : std::uint8_t {
+    None,
+    QuarterTurns,
+    Arbitrary,
+};
+
+enum class CreativeObjectScaleSupport : std::uint8_t {
+    None,
+    Uniform,
+    NonUniform,
+};
+
+// The representable transform surface for one object kind. This is derived
+// from descriptor storage and mutation policy so generic tools never infer
+// transform support from render geometry alone.
+struct CreativeObjectTransformCapabilities {
+    bool translate{false};
+    CreativeObjectRotationSupport rotation{CreativeObjectRotationSupport::None};
+    CreativeObjectScaleSupport scale{CreativeObjectScaleSupport::None};
+    bool mirror{false};
+};
+
 enum class CreativeSpatialProjectionProfile {
     Unknown,
     NoProjection,
@@ -141,14 +163,18 @@ enum class CreativeGeneratedGeometryProfile : std::uint8_t {
     RampWedge,
     StairSteps,
     OpenFrame,
+    SlopedPanel,
+    HipRoofPanel,
 };
 
 struct CreativeGeneratedGeometrySettings {
     CreativeGeneratedGeometryProfile profile{
         CreativeGeneratedGeometryProfile::DescriptorDefault};
     // StairSteps chooses enough bounded segments to keep each rise at or below
-    // this value. Other profiles require zero.
+    // this value and each tread at or above minimumSegmentRunMeters. Other
+    // profiles require zero for both fields.
     double maximumStepRiseMeters{0.0};
+    double minimumSegmentRunMeters{0.0};
 };
 
 enum class CreativeStructuralSurfaceAnchor : std::uint8_t {
@@ -161,7 +187,9 @@ enum class CreativeStructuralSurfaceAnchor : std::uint8_t {
 };
 
 inline constexpr std::uint16_t
-    kMaximumCreativeGeneratedGeometrySegmentCount = 32U;
+    kMaximumCreativeGeneratedGeometrySegmentCount = 96U;
+inline constexpr double kCreativeGeneratedStairMaximumRiseMeters = 0.25;
+inline constexpr double kCreativeGeneratedStairMinimumRunMeters = 0.20;
 
 enum class CreativeRuntimeAnchorSemantic {
     None,
@@ -382,5 +410,7 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] bool objectUsesCategory(CreativeObjectKind kind, CreativeObjectCategory category) noexcept;
 
 [[nodiscard]] bool descriptorAllowsMutation(CreativeObjectKind objectKind, CreativeMutationKind mutationKind) noexcept;
+[[nodiscard]] CreativeObjectTransformCapabilities
+creativeObjectTransformCapabilities(CreativeObjectKind kind) noexcept;
 
 } // namespace iggy3d::creative

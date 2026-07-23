@@ -229,6 +229,48 @@ std::size_t ownedWallOrdinal(const CreativeWorldLayout& layout,
   return ordinal;
 }
 
+bool topologyVertexOwnedByBuilding(const CreativeWorldLayout& layout,
+                                   std::size_t vertexIndex,
+                                   std::size_t buildingIndex) noexcept {
+  return vertexIndex < layout.topologyVertices.size() &&
+         layout.topologyVertices[vertexIndex].levelIndex <
+             layout.levels.size() &&
+         layout.levels[layout.topologyVertices[vertexIndex].levelIndex]
+                 .buildingIndex == buildingIndex;
+}
+
+bool topologyEdgeOwnedByBuilding(const CreativeWorldLayout& layout,
+                                 std::size_t edgeIndex,
+                                 std::size_t buildingIndex) noexcept {
+  return edgeIndex < layout.topologyEdges.size() &&
+         layout.topologyEdges[edgeIndex].levelIndex < layout.levels.size() &&
+         layout.levels[layout.topologyEdges[edgeIndex].levelIndex]
+                 .buildingIndex == buildingIndex;
+}
+
+std::size_t ownedTopologyVertexOrdinal(const CreativeWorldLayout& layout,
+                                       std::size_t buildingIndex,
+                                       std::size_t vertexIndex) noexcept {
+  std::size_t ordinal = 0U;
+  for (std::size_t index = 0U; index < vertexIndex; ++index) {
+    ordinal += topologyVertexOwnedByBuilding(layout, index, buildingIndex)
+                   ? 1U
+                   : 0U;
+  }
+  return ordinal;
+}
+
+std::size_t ownedTopologyEdgeOrdinal(const CreativeWorldLayout& layout,
+                                     std::size_t buildingIndex,
+                                     std::size_t edgeIndex) noexcept {
+  std::size_t ordinal = 0U;
+  for (std::size_t index = 0U; index < edgeIndex; ++index) {
+    ordinal += topologyEdgeOwnedByBuilding(layout, index, buildingIndex) ? 1U
+                                                                         : 0U;
+  }
+  return ordinal;
+}
+
 void appendRelativeCoord(FingerprintBuilder& builder,
                          CreativeTerrainCoord2 coord,
                          CreativeTerrainCoord2 anchor) noexcept {
@@ -241,6 +283,16 @@ void appendRelativeRect(FingerprintBuilder& builder,
                         CreativeTerrainCoord2 anchor) noexcept {
   appendRelativeCoord(builder, rect.minimum, anchor);
   appendRelativeCoord(builder, rect.maximum, anchor);
+}
+
+void appendRelativeRoofAperture(
+    FingerprintBuilder& builder,
+    const CreativeWorldLayoutRoofAperture& aperture,
+    CreativeTerrainCoord2 anchor) noexcept {
+  builder.appendDouble(aperture.minimumXCells - anchor.x);
+  builder.appendDouble(aperture.maximumXCells - anchor.x);
+  builder.appendDouble(aperture.minimumZCells - anchor.z);
+  builder.appendDouble(aperture.maximumZCells - anchor.z);
 }
 
 template <typename Range, typename Predicate>
@@ -421,8 +473,35 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendUnsigned(level.roofThicknessLayers);
     builder.appendUnsigned(static_cast<std::uint8_t>(level.roofStyle));
     builder.appendUnsigned(static_cast<std::uint8_t>(level.roofRidgeAxis));
+    builder.appendUnsigned(
+        static_cast<std::uint8_t>(level.roofSlopeDirection));
     builder.appendDouble(level.roofPitchDegrees);
     builder.appendDouble(level.roofOverhangCells);
+    builder.appendUnsigned(static_cast<std::uint8_t>(level.roofMaterial));
+  }
+
+  const std::size_t roofApertureCount = countIf(
+      layout.roofApertures,
+      [&](const CreativeWorldLayoutRoofAperture& aperture) {
+        return aperture.levelIndex < layout.levels.size() &&
+               layout.levels[aperture.levelIndex].buildingIndex ==
+                   buildingIndex;
+      });
+  if (roofApertureCount > 0U) {
+    builder.appendString("roof_apertures_v1");
+    builder.appendUnsigned(roofApertureCount);
+    for (const CreativeWorldLayoutRoofAperture& aperture :
+         layout.roofApertures) {
+      if (aperture.levelIndex >= layout.levels.size() ||
+          layout.levels[aperture.levelIndex].buildingIndex != buildingIndex) {
+        continue;
+      }
+      builder.appendUnsigned(
+          ownedLevelOrdinal(layout, buildingIndex, aperture.levelIndex));
+      builder.appendUnsigned(static_cast<std::uint8_t>(aperture.kind));
+      builder.appendString(aperture.name);
+      appendRelativeRoofAperture(builder, aperture, bounds.minimum);
+    }
   }
 
   builder.appendUnsigned(countIf(layout.rooms, [buildingIndex](const auto& room) {
@@ -454,6 +533,7 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
         ownedRoomOrdinal(layout, buildingIndex, connector.upperRoomIndex));
     builder.appendUnsigned(static_cast<std::uint8_t>(connector.kind));
     builder.appendUnsigned(static_cast<std::uint8_t>(connector.direction));
+    builder.appendUnsigned(static_cast<std::uint8_t>(connector.material));
     builder.appendString(connector.name);
     appendRelativeRect(builder, connector.footprint, bounds.minimum);
   }
@@ -503,7 +583,17 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
             : ownedWallOrdinal(layout, buildingIndex, opening.wallIndex));
     builder.appendUnsigned(static_cast<std::uint8_t>(opening.roomEdge));
     builder.appendUnsigned(static_cast<std::uint8_t>(opening.kind));
-    builder.appendUnsigned(static_cast<std::uint8_t>(opening.pose));
+    builder.appendUnsigned(static_cast<std::uint8_t>(opening.facing));
+    builder.appendUnsigned(
+        static_cast<std::uint8_t>(opening.door.leafArrangement));
+    builder.appendUnsigned(static_cast<std::uint8_t>(opening.door.hingeSide));
+    builder.appendUnsigned(static_cast<std::uint8_t>(opening.door.swingSide));
+    builder.appendUnsigned(
+        static_cast<std::uint8_t>(opening.door.initialState));
+    builder.appendBool(opening.door.gameplayLocked);
+    builder.appendDouble(opening.door.transitionSeconds);
+    builder.appendUnsigned(
+        static_cast<std::uint8_t>(opening.window.insertKind));
     builder.appendString(opening.name);
     builder.appendDouble(opening.centerOffsetCells);
     builder.appendDouble(opening.widthCells);
@@ -522,6 +612,103 @@ fingerprintCreativeWorldLayoutBuilding(const CreativeWorldLayout& layout,
     builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.x);
     builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.y);
     builder.appendDouble(opening.insertAssetSourceBoundsMeters.max.z);
+  }
+
+  const bool hasExplicitTopology =
+      std::any_of(layout.topologyEdges.begin(), layout.topologyEdges.end(),
+                  [&](const CreativeWorldLayoutTopologyEdge& edge) {
+                    return edge.levelIndex < layout.levels.size() &&
+                           layout.levels[edge.levelIndex].buildingIndex ==
+                               buildingIndex;
+                  });
+  if (hasExplicitTopology) {
+    builder.appendString("explicit_topology_v1");
+    for (const CreativeWorldLayoutRoom& room : layout.rooms) {
+      if (room.buildingIndex == buildingIndex) {
+        builder.appendUnsigned(static_cast<std::uint8_t>(room.type));
+      }
+    }
+
+    builder.appendUnsigned(countIf(
+        layout.topologyVertices,
+        [&](const CreativeWorldLayoutTopologyVertex& vertex) {
+          return vertex.levelIndex < layout.levels.size() &&
+                 layout.levels[vertex.levelIndex].buildingIndex ==
+                     buildingIndex;
+        }));
+    for (std::size_t index = 0U; index < layout.topologyVertices.size();
+         ++index) {
+      const CreativeWorldLayoutTopologyVertex& vertex =
+          layout.topologyVertices[index];
+      if (!topologyVertexOwnedByBuilding(layout, index, buildingIndex)) {
+        continue;
+      }
+      builder.appendUnsigned(
+          ownedLevelOrdinal(layout, buildingIndex, vertex.levelIndex));
+      appendRelativeCoord(builder, vertex.position, bounds.minimum);
+    }
+
+    builder.appendUnsigned(countIf(
+        layout.topologyEdges,
+        [&](const CreativeWorldLayoutTopologyEdge& edge) {
+          return edge.levelIndex < layout.levels.size() &&
+                 layout.levels[edge.levelIndex].buildingIndex ==
+                     buildingIndex;
+        }));
+    for (std::size_t index = 0U; index < layout.topologyEdges.size(); ++index) {
+      const CreativeWorldLayoutTopologyEdge& edge =
+          layout.topologyEdges[index];
+      if (!topologyEdgeOwnedByBuilding(layout, index, buildingIndex)) {
+        continue;
+      }
+      builder.appendUnsigned(
+          ownedLevelOrdinal(layout, buildingIndex, edge.levelIndex));
+      builder.appendUnsigned(ownedTopologyVertexOrdinal(
+          layout, buildingIndex, edge.startVertexIndex));
+      builder.appendUnsigned(ownedTopologyVertexOrdinal(
+          layout, buildingIndex, edge.endVertexIndex));
+      builder.appendDouble(edge.wallThicknessCells);
+      builder.appendUnsigned(edge.wallHeightCells);
+      builder.appendUnsigned(static_cast<std::uint8_t>(edge.profile));
+      builder.appendUnsigned(static_cast<std::uint8_t>(edge.material));
+      builder.appendUnsigned(static_cast<std::uint8_t>(edge.joinStyle));
+    }
+
+    builder.appendUnsigned(countIf(
+        layout.roomBoundaries,
+        [&](const CreativeWorldLayoutRoomBoundary& boundary) {
+          return boundary.roomIndex < layout.rooms.size() &&
+                 layout.rooms[boundary.roomIndex].buildingIndex ==
+                     buildingIndex;
+        }));
+    for (const CreativeWorldLayoutRoomBoundary& boundary :
+         layout.roomBoundaries) {
+      if (boundary.roomIndex >= layout.rooms.size() ||
+          layout.rooms[boundary.roomIndex].buildingIndex != buildingIndex) {
+        continue;
+      }
+      builder.appendUnsigned(
+          ownedRoomOrdinal(layout, buildingIndex, boundary.roomIndex));
+      builder.appendUnsigned(ownedTopologyEdgeOrdinal(
+          layout, buildingIndex, boundary.topologyEdgeIndex));
+      builder.appendUnsigned(boundary.order);
+      builder.appendBool(boundary.reversed);
+    }
+
+    for (const CreativeWorldLayoutOpening& opening : layout.openings) {
+      if (!openingOwnedByBuilding(layout, opening, buildingIndex)) {
+        continue;
+      }
+      const bool directEdge =
+          opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+          opening.roomTopologyEdgeIndex !=
+              kInvalidCreativeWorldLayoutIndex;
+      builder.appendBool(directEdge);
+      if (directEdge) {
+        builder.appendUnsigned(ownedTopologyEdgeOrdinal(
+            layout, buildingIndex, opening.roomTopologyEdgeIndex));
+      }
+    }
   }
 
   result.valid = builder.valid;
@@ -594,6 +781,54 @@ bool setCreativeWorldLayoutBuildingTemplateInstanceProvenance(
     const CreativeWorldLayoutBuildingTemplateInstanceProvenance& provenance) {
   return buildingIndex < layout.buildings.size() &&
          setProvenanceTags(layout.buildings[buildingIndex], provenance);
+}
+
+CreativeWorldLayoutBuildingEditResult
+detachCreativeWorldLayoutBuildingTemplateInstance(
+    const CreativeWorldLayout& source, std::size_t buildingIndex) {
+  CreativeWorldLayoutBuildingEditResult result;
+  result.requested = true;
+  result.sourceBuildingIndex = buildingIndex;
+  result.resultBuildingIndex = buildingIndex;
+  if (buildingIndex >= source.buildings.size()) {
+    result.status = CreativeWorldLayoutBuildingEditStatus::InvalidRequest;
+    result.reasonCode =
+        "creative_world_layout_building_template_detach_request_invalid";
+    return result;
+  }
+  if (!validCreativeWorldLayoutBuildingOwnership(source)) {
+    result.status = CreativeWorldLayoutBuildingEditStatus::InvalidOwnership;
+    result.reasonCode =
+        "creative_world_layout_building_template_detach_ownership_invalid";
+    return result;
+  }
+  if (!creativeWorldLayoutBuildingTemplateInstanceProvenance(source,
+                                                              buildingIndex)
+           .present) {
+    result.accepted = true;
+    result.status = CreativeWorldLayoutBuildingEditStatus::NoChange;
+    result.reasonCode =
+        "creative_world_layout_building_template_detach_no_change";
+    return result;
+  }
+
+  result.edited = source;
+  std::erase_if(result.edited.buildings[buildingIndex].tags,
+                [](const std::string& tag) {
+                  return isCreativeWorldLayoutBuildingTemplateProvenanceTag(tag);
+                });
+  if (!validCreativeWorldLayoutBuildingOwnership(result.edited)) {
+    result.edited = {};
+    result.status = CreativeWorldLayoutBuildingEditStatus::InvalidOwnership;
+    result.reasonCode =
+        "creative_world_layout_building_template_detach_result_invalid";
+    return result;
+  }
+  result.accepted = true;
+  result.changed = true;
+  result.status = CreativeWorldLayoutBuildingEditStatus::Ready;
+  result.reasonCode = "creative_world_layout_building_template_detached";
+  return result;
 }
 
 CreativeWorldLayoutBuildingTemplateOrientation

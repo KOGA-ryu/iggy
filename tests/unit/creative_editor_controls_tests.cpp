@@ -2,6 +2,7 @@
 #include "EditorCatalog.hpp"
 #include "EditorCatalogLayout.hpp"
 #include "EditorState.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorToolWheelPreferences.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
@@ -11,7 +12,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <span>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -218,7 +221,8 @@ bool toolWheelPreferenceRoundTripIsAtomic() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
   const cr::CreativeCatalogState catalog =
-      cr::makeCreativeCatalog(palette);
+      cr::makeCreativeCatalog(palette, {}, 0U, {},
+                              app::creativeEditorCatalogToolSpecs());
   cr::CreativeToolWheelState source = cr::makeCreativeToolWheel(catalog);
   const auto terrainPath = std::find_if(
       catalog.entries.begin(), catalog.entries.end(),
@@ -317,7 +321,8 @@ bool catalogOverlayFitsAndEmitsEveryCategoryTab() {
                                cr::CreativeObjectKind::Crate};
   cr::CreativeAppState appState;
   app::CreativeEditorState editor;
-  editor.catalog.model = cr::makeCreativeCatalog(palette);
+  editor.catalog.model = cr::makeCreativeCatalog(
+      palette, {}, 0U, {}, app::creativeEditorCatalogToolSpecs());
   editor.catalog.model.open = true;
 
   bool ok = true;
@@ -349,6 +354,60 @@ bool catalogOverlayFitsAndEmitsEveryCategoryTab() {
          ok;
   }
   return ok;
+}
+
+bool assetCatalogOverlayRendersCachedThumbnailAndVariantControls() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall};
+  cr::CreativeCatalogAsset asset;
+  asset.objectKind = cr::CreativeObjectKind::Prop;
+  asset.assetId = "props/test_asset";
+  asset.label = "Test Asset";
+  asset.sourceBounds = {{-1.0, 0.0, -0.5}, {1.0, 2.0, 0.5}};
+  asset.materialVariants = {{"Weathered"}};
+  asset.thumbnail.valid = true;
+  asset.thumbnail.coveredPixelCount = 2U;
+  asset.thumbnail.pixels[0] = {255U, 0U, 0U, 255U};
+  asset.thumbnail.pixels[1] = {255U, 0U, 0U, 255U};
+  cr::CreativeAppState appState;
+  app::CreativeEditorState editor;
+  editor.catalog.model = cr::makeCreativeCatalog(
+      palette, std::span{&asset, 1U}, 0U, {},
+      app::creativeEditorCatalogToolSpecs());
+  static_cast<void>(cr::setCreativeCatalogPage(
+      editor.catalog.model, cr::CreativeCatalogPage::Assets));
+  editor.catalog.model.open = true;
+  constexpr std::uint32_t width = 1280U;
+  constexpr std::uint32_t height = 720U;
+  const app::CatalogLayout layout = app::catalogLayout(width, height);
+  const app::CatalogRect thumbnail = app::catalogAssetThumbnailRect(layout);
+  const app::CatalogRect previous =
+      app::previousAssetMaterialVariantButton(layout);
+  const app::CatalogRect next = app::nextAssetMaterialVariantButton(layout);
+  std::vector<iggy3d::RenderUiRect> rects;
+  std::vector<iggy3d::DebugHudGlyphQuad> glyphs;
+  app::appendCreativeEditorCatalogOverlay(appState, editor, width, height,
+                                          rects, glyphs);
+  const bool thumbnailRun = std::any_of(
+      rects.begin(), rects.end(), [&](const iggy3d::RenderUiRect& rect) {
+        return rect.x == thumbnail.x && rect.y == thumbnail.y &&
+               rect.r == 1.0F && rect.g == 0.0F && rect.b == 0.0F &&
+               rect.width == thumbnail.width * 2U /
+                                 iggy3d::kStaticMeshThumbnailExtent;
+      });
+  const auto hasRect = [&](app::CatalogRect target) {
+    return std::any_of(
+        rects.begin(), rects.end(),
+        [&](const iggy3d::RenderUiRect& rect) {
+          return rect.x == target.x && rect.y == target.y &&
+                 rect.width == target.width && rect.height == target.height;
+        });
+  };
+  return expect(layout.showDetails && thumbnailRun,
+                "catalog renders the cached asset thumbnail without a mesh "
+                "rebuild") &&
+         expect(hasRect(previous) && hasRect(next) && !glyphs.empty(),
+                "mouse and controller material variant controls share the "
+                "asset detail surface");
 }
 
 bool deviceTabsPartitionBindingsAndResetOnlyViewState() {
@@ -409,6 +468,7 @@ int main() {
   ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
   ok = catalogOverlayFitsAndEmitsEveryCategoryTab() && ok;
+  ok = assetCatalogOverlayRendersCachedThumbnailAndVariantControls() && ok;
   ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;
   return ok ? 0 : 1;
 }

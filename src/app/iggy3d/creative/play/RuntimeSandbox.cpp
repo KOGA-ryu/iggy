@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <utility>
 
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -186,8 +187,14 @@ bool payloadShapeIsValid(
     const CreativePlayActivationPayload& payload) noexcept {
   if (payload.documentId == kInvalidDocumentId || payload.roomId.empty() ||
       payload.room.id != payload.roomId ||
+      payload.playerSpawnObjectId == kInvalidObjectId ||
       payload.playerSpawn.kind != "spawn" ||
-      !anchorIsValid(payload.playerSpawn) || payload.room.anchors.empty()) {
+      !anchorIsValid(payload.playerSpawn) || payload.room.anchors.empty() ||
+      !isValidCreativePlayerSpawnSettings(payload.playerSpawnSettings) ||
+      !isSupportedCreativePlayerProfileId(
+          payload.playerSpawnSettings.playerProfileId) ||
+      !std::isfinite(payload.playerSpawnYawRadians) ||
+      !isFinite(payload.playerSpawnCameraPositionMeters)) {
     return false;
   }
 
@@ -380,6 +387,8 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
   seed.entities.push_back(makeCombatantEntity(
       payload.playerSpawn, ScenarioEntityKind::Player, kPlayerBounds,
       kPlayerFaction, config.playerHitPoints));
+  seed.entities.back().transform.rotationEulerRadians.y =
+      payload.playerSpawnYawRadians;
   seed.objectives.push_back(makeSandboxObjective());
   result.summary.playerEntityCount = 1U;
 
@@ -501,6 +510,7 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   receipt.documentId = request.payload.documentId;
   receipt.documentRevision = request.payload.documentRevision;
   receipt.roomId = request.payload.roomId;
+  receipt.playerProfileId = request.payload.playerSpawnSettings.playerProfileId;
 
   if (request.sourceDocument == nullptr) {
     setActivationStatus(
@@ -586,6 +596,9 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   sandbox.sourceDocumentId = request.payload.documentId;
   sandbox.sourceDocumentRevision = request.payload.documentRevision;
   sandbox.roomId = request.payload.roomId;
+  sandbox.playerSpawnObjectId = request.payload.playerSpawnObjectId;
+  sandbox.playerProfileId = request.payload.playerSpawnSettings.playerProfileId;
+  sandbox.playerSpawnYawRadians = request.payload.playerSpawnYawRadians;
   sandbox.scenario = receipt.scenario;
   sandbox.reasoningGraph = receipt.reasoningGraph;
   sandbox.room = std::move(request.payload.room);
@@ -602,6 +615,15 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
   sandbox.interactables = std::move(interactableStates.states);
   sandbox.logicLinks = std::move(request.payload.logicLinks);
   sandbox.session = std::move(created.value);
+  const CreativeRuntimeDoorUpdateReceipt initializedDoors =
+      initializeCreativeRuntimeDoors(sandbox);
+  if (!initializedDoors.accepted) {
+    setActivationStatus(
+        receipt,
+        CreativeRuntimeSandboxActivationStatus::InvalidInteractables,
+        std::string(initializedDoors.reasonCode));
+    return result;
+  }
   const CreativeRuntimeAutomaticLogicReceipt initializedHoldLogic =
       initializeCreativeRuntimeHoldLogic(sandbox);
   if (!initializedHoldLogic.accepted) {

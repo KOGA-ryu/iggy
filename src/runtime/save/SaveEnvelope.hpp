@@ -31,8 +31,31 @@ inline constexpr std::uint32_t kSaveCreativeDocumentSegmentSpeedVersion = 10;
 inline constexpr std::uint32_t kSaveCreativeDocumentTerrainHeightVersion = 11;
 inline constexpr std::uint32_t kSaveCreativeDocumentTerrainOperationVersion =
     12;
+inline constexpr std::uint32_t kSaveCreativeDocumentDoorVersion = 13;
+inline constexpr std::uint32_t kSaveCreativeDocumentWindowVersion = 14;
+inline constexpr std::uint32_t kSaveCreativeDocumentPatternRecipeVersion = 15;
+inline constexpr std::uint32_t
+    kSaveCreativeDocumentMeasurementAnnotationVersion = 16;
+inline constexpr std::uint32_t kSaveCreativeDocumentAssetIdentityVersion = 17;
+inline constexpr std::uint32_t
+    kSaveCreativeDocumentTerrainMaterialWeightsVersion = 18;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainGradeVersion = 19;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainPathVersion = 20;
+inline constexpr std::uint32_t
+    kSaveCreativeDocumentTerrainOperationProvenanceVersion = 21;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainRegionVersion = 22;
+inline constexpr std::uint32_t
+    kSaveCreativeDocumentTerrainGenerationIntentVersion = 23;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainStampVersion = 24;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainProfileVersion = 25;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainLandformVersion = 26;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainHardEdgeVersion = 27;
+inline constexpr std::uint32_t kSaveCreativeDocumentTerrainRoadVersion = 28;
+inline constexpr std::uint32_t
+    kSaveCreativeDocumentTerrainWatercourseVersion = 29;
+inline constexpr std::uint32_t kSaveCreativeDocumentPlayerSpawnVersion = 30;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentTerrainOperationVersion;
+    kSaveCreativeDocumentPlayerSpawnVersion;
 inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
@@ -198,6 +221,8 @@ struct SaveCreativeDocumentObjectRecord {
   std::string kind;
   std::string name;
   std::string assetId;
+  std::uint64_t assetContentHash = 0U;
+  std::string assetMaterialVariant;
   SaveCreativeDocumentTransformRecord transform;
   SaveCreativeDocumentBoundsRecord bounds;
   std::uint64_t layerId = 0;
@@ -211,6 +236,17 @@ struct SaveCreativeDocumentObjectRecord {
   double movingPlatformSpeedMetersPerSecond = 1.5;
   std::string movingPlatformTraversalMode = "PingPong";
   bool movingPlatformStartsActive = true;
+  std::string doorLeafArrangement = "Single";
+  std::string doorHingeSide = "MinimumEdge";
+  std::string doorSwingSide = "PositiveNormal";
+  std::string doorInitialState = "Closed";
+  bool doorGameplayLocked = false;
+  double doorTransitionSeconds = 0.35;
+  std::string windowInsertKind = "Glazing";
+  std::string playerSpawnProfileId = "default";
+  std::string playerSpawnGroup = "default";
+  double playerSpawnValidationRadiusMeters = 0.45;
+  std::uint16_t playerSpawnFallbackPriority = 0U;
 };
 
 struct SaveCreativeDocumentLogicLinkRecord {
@@ -247,9 +283,40 @@ struct SaveCreativeDocumentTerrainHeightFieldRecord {
   std::vector<std::uint16_t> heights;
 };
 
+struct SaveCreativeDocumentTerrainPathPointRecord {
+  std::uint32_t id = 0U;
+  std::int32_t x = 0;
+  std::int32_t z = 0;
+  std::uint16_t heightCells = 4U;
+  std::uint16_t halfWidthCells = 1U;
+  std::uint16_t amplitudeCells = 0U;
+  std::int32_t bankPermille = 0;
+};
+
+struct SaveCreativeDocumentTerrainProtectedRegionRecord {
+  std::int32_t minimumX = 0;
+  std::int32_t minimumZ = 0;
+  std::uint16_t widthCells = 1U;
+  std::uint16_t depthCells = 1U;
+  std::string mask = "Rectangle";
+};
+
+struct SaveCreativeDocumentTerrainWatercourseCrossingRecord {
+  std::uint32_t id = 0U;
+  std::uint32_t pointId = 0U;
+  std::uint16_t bankClearanceCells = 1U;
+  std::uint16_t deckClearanceCells = 1U;
+  std::uint16_t approachLengthCells = 2U;
+};
+
+struct SaveCreativeDocumentTerrainMaterialRecord;
+
 struct SaveCreativeDocumentTerrainOperationRecord {
   std::uint64_t id = 0U;
   bool enabled = true;
+  std::string owner = "Manual";
+  std::string sourceKey;
+  std::string operationKind = "GeneratedTerrain";
   std::uint32_t generationVersion = 1U;
   std::string generatorKind;
   std::uint64_t seed = 1U;
@@ -264,16 +331,191 @@ struct SaveCreativeDocumentTerrainOperationRecord {
   double persistence = 0.5;
   double lacunarity = 2.0;
   double slopeDamping = 0.35;
+  bool paintMaterials = true;
+  std::string biomeIntent = "Temperate";
+  std::string lowlandMaterial = "Grass";
+  std::string highlandMaterial = "Stone";
+  std::uint16_t materialTransitionHeightCells = 11U;
   std::uint32_t compositionVersion = 1U;
   std::string mask;
   std::string mode;
   std::uint16_t featherCells = 4U;
+  std::vector<SaveCreativeDocumentTerrainProtectedRegionRecord>
+      protectedRegions;
+  std::uint32_t regionVersion = 1U;
+  std::int32_t regionMinimumX = 0;
+  std::int32_t regionMinimumZ = 0;
+  std::uint16_t regionWidthCells = 1U;
+  std::uint16_t regionDepthCells = 1U;
+  std::string regionMask = "Rectangle";
+  std::string regionMode = "Raise";
+  std::uint16_t regionAmountCells = 1U;
+  std::uint16_t regionTargetHeightCells = 4U;
+  std::uint16_t regionNoiseReliefCells = 4U;
+  double regionNoiseScaleCells = 12.0;
+  std::uint16_t regionFeatherCells = 0U;
+  std::uint64_t regionSeed = 1U;
+  std::uint32_t gradeVersion = 1U;
+  std::int32_t gradeStartX = 0;
+  std::int32_t gradeStartZ = 0;
+  std::int32_t gradeEndX = 1;
+  std::int32_t gradeEndZ = 0;
+  std::uint16_t gradeStartHeightCells = 4U;
+  std::uint16_t gradeEndHeightCells = 4U;
+  std::uint16_t gradeHalfWidthCells = 2U;
+  std::int32_t gradeCrossSlopePermille = 0;
+  std::uint16_t gradeFalloffCells = 2U;
+  std::uint32_t pathVersion = 1U;
+  std::string pathKind = "ROAD";
+  std::string pathElevation = "GRADE";
+  std::string pathCurve = "LINEAR";
+  std::string pathCrossSection = "FLAT";
+  std::string pathStartJoin = "OPEN";
+  std::string pathEndJoin = "OPEN";
+  std::uint16_t pathFalloffCells = 2U;
+  bool pathPaintSurface = true;
+  std::string pathMaterial = "Dirt";
+  std::uint16_t pathRoadShoulderWidthCells = 0U;
+  std::uint16_t pathRoadMaximumGradePermille = 0U;
+  std::uint8_t pathRoadEdgeTreatment = 0U;
+  double pathRoadEdgeWidthMeters = 0.15;
+  double pathRoadEdgeHeightMeters = 0.15;
+  std::uint8_t pathRoadEdgeMaterial = 3U;
+  std::uint16_t pathWatercourseBankSlopeCells = 0U;
+  std::uint8_t pathWatercourseDrainageDirection = 0U;
+  std::uint8_t pathWatercourseSurfacePolicy = 0U;
+  std::uint16_t pathWatercourseSurfaceInsetCells = 1U;
+  std::uint32_t pathWatercourseNextCrossingId = 1U;
+  std::vector<SaveCreativeDocumentTerrainWatercourseCrossingRecord>
+      pathWatercourseCrossings;
+  std::uint32_t pathNextPointId = 1U;
+  std::vector<SaveCreativeDocumentTerrainPathPointRecord> pathPoints;
+  std::uint32_t stampRecipeVersion = 1U;
+  std::uint32_t stampVersion = 2U;
+  std::string stampAssetId;
+  std::string stampLabel;
+  std::uint64_t stampAssetVersion = 1U;
+  std::uint64_t stampSourceDocumentId = 0U;
+  std::uint64_t stampSourceRevision = 0U;
+  std::uint64_t stampContentSignature = 0U;
+  std::int32_t stampSourceMinimumX = 0;
+  std::int32_t stampSourceMinimumZ = 0;
+  std::uint16_t stampMinimumHeightCells = 0U;
+  SaveCreativeDocumentTerrainHeightFieldRecord stampHeightField;
+  std::vector<SaveCreativeDocumentTerrainMaterialRecord> stampMaterials;
+  std::int32_t stampTargetMinimumX = 0;
+  std::int32_t stampTargetMinimumZ = 0;
+  std::uint8_t stampQuarterTurns = 0U;
+  bool stampMirrorX = false;
+  bool stampMirrorZ = false;
+  std::string stampMode = "MERGE";
+  std::string stampElevation = "SURFACE";
+  std::int16_t stampManualHeightOffsetCells = 0;
+  std::uint32_t profileVersion = 1U;
+  std::string profileKind = "HILL";
+  std::string profileBlend = "SET";
+  std::string profileRodPolicy = "FILL";
+  std::int32_t profileCenterX = 0;
+  std::int32_t profileCenterZ = 0;
+  std::uint16_t profileBaseHeightCells = 4U;
+  std::uint16_t profileRadiusCells = 4U;
+  std::uint16_t profileAmplitudeCells = 4U;
+  std::uint16_t profileSpacingCells = 1U;
+  std::string profileDirection = "+X";
+  std::uint8_t profileFrequency = 1U;
+  std::uint64_t profileSeed = 0U;
+  std::uint32_t landformVersion = 1U;
+  std::string landformKind = "PLATEAU";
+  std::int32_t landformMinimumX = 0;
+  std::int32_t landformMinimumZ = 0;
+  std::uint16_t landformWidthCells = 8U;
+  std::uint16_t landformDepthCells = 8U;
+  std::uint16_t landformBaseHeightCells = 1U;
+  std::uint16_t landformTargetHeightCells = 4U;
+  std::uint8_t landformTerraceCount = 4U;
+  std::string landformDirection = "POSITIVE_X";
+  std::string landformEdge = "SLOPE";
+  std::uint16_t landformEdgeWidthCells = 2U;
+  std::uint16_t landformFeatherCells = 0U;
+  bool landformPaintSurface = true;
+  std::string landformMaterial = "Grass";
+  std::string landformErosion = "CLEAN";
+  std::uint16_t landformErosionReliefCells = 0U;
+  std::uint64_t landformSeed = 1U;
+};
+
+struct SaveCreativeDocumentPatternRecipeRecord {
+  std::uint64_t id = 0U;
+  std::string kind;
+  std::vector<std::uint64_t> sourceObjectIds;
+  std::vector<std::uint64_t> generatedObjectIds;
+  std::string linearDirection;
+  std::string linearCopyCount;
+  std::string linearSpacing;
+  double linearCellSize = 1.0;
+  std::uint64_t linearMaxGeneratedObjects = 512U;
+  SaveCreativeDocumentVec3Record radialPivot;
+  std::string radialAxis;
+  std::string radialInstanceCount;
+  std::string radialSweep;
+  std::uint64_t radialMaxGeneratedObjects = 512U;
+  std::string scatterObjectKind;
+  std::string scatterAssetId;
+  std::uint64_t scatterAssetContentHash = 0U;
+  std::string scatterAssetMaterialVariant;
+  SaveCreativeDocumentBoundsRecord scatterAssetSourceBounds;
+  std::vector<SaveCreativeDocumentVec3Record> scatterPaintCenters;
+  struct Exclusion {
+    SaveCreativeDocumentVec3Record center;
+    double radiusMeters = 1.0;
+  };
+  std::vector<Exclusion> scatterExclusions;
+  std::string scatterMask;
+  std::string scatterYaw;
+  double scatterBaseYawRadians = 0.0;
+  double scatterRadiusMeters = 4.0;
+  double scatterSpacingMeters = 2.0;
+  double scatterDensityFraction = 0.65;
+  double scatterScaleVariation = 0.10;
+  double scatterMaximumSlopeRadians = 0.5235987755982988;
+  bool scatterProjectToTerrainSurface = false;
+  bool scatterAvoidCollisions = true;
+  std::uint64_t scatterSeed = 0U;
+  std::uint64_t scatterMaxGeneratedObjects = 512U;
+};
+
+struct SaveCreativeDocumentMeasurementAnnotationPointRecord {
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
+  std::string snapKind;
+};
+
+struct SaveCreativeDocumentMeasurementAnnotationRecord {
+  std::uint64_t id = 0U;
+  std::string name;
+  std::string mode;
+  std::string axis;
+  bool closePath = false;
+  std::vector<SaveCreativeDocumentMeasurementAnnotationPointRecord> points;
 };
 
 struct SaveCreativeDocumentTerrainMaterialRecord {
   std::int32_t x = 0;
   std::int32_t z = 0;
   std::string material;
+  bool hasWeights = false;
+  std::uint16_t grassWeight = 0U;
+  std::uint16_t dirtWeight = 0U;
+  std::uint16_t stoneWeight = 0U;
+  std::uint16_t sandWeight = 0U;
+};
+
+struct SaveCreativeDocumentTerrainHardEdgeRecord {
+  std::int32_t firstX = 0;
+  std::int32_t firstZ = 0;
+  std::int32_t secondX = 0;
+  std::int32_t secondZ = 0;
 };
 
 struct SaveCreativeDocumentSection {
@@ -302,10 +544,22 @@ struct SaveCreativeDocumentSection {
   std::vector<SaveCreativeDocumentVoxelChunkRecord> voxelChunks;
   std::vector<SaveCreativeDocumentTerrainControlRecord> terrainControls;
   SaveCreativeDocumentTerrainHeightFieldRecord terrainHeightField;
+  std::vector<SaveCreativeDocumentTerrainHardEdgeRecord> terrainHardEdges;
   std::uint32_t terrainOperationStackVersion = 1U;
   std::uint64_t nextTerrainOperationId = 1U;
   SaveCreativeDocumentTerrainHeightFieldRecord terrainOperationBaseHeightField;
+  std::vector<SaveCreativeDocumentTerrainHardEdgeRecord>
+      terrainOperationBaseHardEdges;
+  std::vector<SaveCreativeDocumentTerrainMaterialRecord>
+      terrainOperationBaseMaterials;
   std::vector<SaveCreativeDocumentTerrainOperationRecord> terrainOperations;
+  std::uint32_t patternRecipeStoreVersion = 2U;
+  std::uint64_t nextPatternRecipeId = 1U;
+  std::vector<SaveCreativeDocumentPatternRecipeRecord> patternRecipes;
+  std::uint32_t measurementAnnotationStoreVersion = 1U;
+  std::uint64_t nextMeasurementAnnotationId = 1U;
+  std::vector<SaveCreativeDocumentMeasurementAnnotationRecord>
+      measurementAnnotations;
   std::vector<SaveCreativeDocumentTerrainMaterialRecord> terrainMaterials;
 };
 

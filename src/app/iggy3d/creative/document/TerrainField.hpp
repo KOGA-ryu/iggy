@@ -16,6 +16,8 @@ class CreativeTerrainMaterialField;
 
 inline constexpr std::size_t kCreativeTerrainControlCapacity = 256U;
 inline constexpr std::size_t kCreativeTerrainRenderPatchCapacity = 8192U;
+inline constexpr std::size_t kCreativeTerrainHardEdgeCapacity =
+    kCreativeTerrainRenderPatchCapacity * 4U;
 inline constexpr std::uint16_t kCreativeTerrainMinimumHeightCells = 1U;
 inline constexpr std::uint16_t kCreativeTerrainMaximumHeightCells = 64U;
 inline constexpr std::uint16_t kCreativeTerrainMinimumRadiusCells = 1U;
@@ -28,6 +30,41 @@ struct CreativeTerrainCoord2 {
   [[nodiscard]] friend constexpr bool operator==(
       CreativeTerrainCoord2,
       CreativeTerrainCoord2) noexcept = default;
+};
+
+// Canonical topology seam between two cardinally adjacent terrain cells. The
+// endpoints are sorted by Z then X, making a bounded vector of these edges a
+// deterministic set. Height samples stay independent: this record says that
+// the shared boundary must not be smoothed.
+struct CreativeTerrainHardEdge {
+  CreativeTerrainCoord2 first{};
+  CreativeTerrainCoord2 second{};
+
+  [[nodiscard]] friend constexpr bool operator==(
+      CreativeTerrainHardEdge,
+      CreativeTerrainHardEdge) noexcept = default;
+};
+
+struct CreativeTerrainColumn;
+
+[[nodiscard]] CreativeTerrainHardEdge canonicalCreativeTerrainHardEdge(
+    CreativeTerrainCoord2 first,
+    CreativeTerrainCoord2 second) noexcept;
+[[nodiscard]] bool isValidCreativeTerrainHardEdge(
+    CreativeTerrainHardEdge edge) noexcept;
+[[nodiscard]] bool validateCreativeTerrainHardEdges(
+    std::span<const CreativeTerrainHardEdge> edges) noexcept;
+[[nodiscard]] bool validateCreativeTerrainHardEdgesForSurface(
+    std::span<const CreativeTerrainColumn> columns,
+    std::span<const CreativeTerrainHardEdge> edges) noexcept;
+
+struct CreativeTerrainPatchRegion {
+  CreativeTerrainCoord2 minimum{};
+  CreativeTerrainCoord2 maximum{};
+
+  [[nodiscard]] friend constexpr bool operator==(
+      CreativeTerrainPatchRegion,
+      CreativeTerrainPatchRegion) noexcept = default;
 };
 
 enum class CreativeTerrainMaterial : std::uint8_t {
@@ -172,6 +209,7 @@ struct CreativeTerrainSurfacePlan {
   std::uint64_t contributionCount = 0;
   std::vector<CreativeTerrainColumn> columns;
   std::vector<CreativeVoxelCuboid> cuboids;
+  std::vector<CreativeTerrainHardEdge> hardEdges;
   std::string_view reasonCode = "creative_terrain_surface_not_requested";
 };
 
@@ -181,6 +219,13 @@ struct CreativeTerrainSurfacePatch {
   CreativeVec3 center{};
   // Counter-clockwise from the minimum X/Z corner when viewed from above.
   std::array<CreativeVec3, 4U> corners{};
+  std::array<std::uint8_t,
+             static_cast<std::size_t>(CreativeTerrainMaterial::Count)>
+      materialWeights{255U, 0U, 0U, 0U};
+  CreativeVec3 materialColor{0.22, 0.52, 0.20};
+  // South, east, north, west bits. A bit is owned only by the higher patch;
+  // the lower neighboring patch supplies the bottom edge at render/bake time.
+  std::uint8_t hardEdgeMask = 0U;
 };
 
 enum class CreativeTerrainRenderPlanStatus : std::uint8_t {
@@ -221,6 +266,11 @@ struct CreativeTerrainMutationPreviewReceipt {
       CreativeTerrainMutationPreviewStatus::NotRequested;
   CreativeTerrainMutationReceipt mutation{};
   CreativeTerrainRenderPlan render{};
+  bool regionLimited = false;
+  CreativeTerrainCoord2 regionMinimum{};
+  CreativeTerrainCoord2 regionMaximum{};
+  std::uint64_t sampledColumnCoordinateCount = 0U;
+  std::uint64_t candidatePatchCoordinateCount = 0U;
   std::string_view reasonCode = "creative_terrain_preview_not_requested";
 };
 
@@ -275,6 +325,16 @@ struct CreativeTerrainMutationPreviewReceipt {
     double cellSize,
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
 
+// Exact bounded render of only the inclusive patch region. Support columns one
+// cell beyond the region are sampled so boundary corner heights match a full
+// terrain render, while work remains proportional to the requested area.
+[[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainRenderPlan(
+    const CreativeTerrainField& field,
+    CreativeTerrainPatchRegion region,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
+
 // Applies a proposed edit batch to a copy of the field and renders that copy.
 // The source field is never mutated, so editor previews and commit plans can
 // share one fail-closed apply-and-render contract.
@@ -282,6 +342,15 @@ struct CreativeTerrainMutationPreviewReceipt {
 buildCreativeTerrainMutationPreview(
     const CreativeTerrainField& field,
     std::span<const CreativeTerrainControlEdit> edits,
+    CreativeVec3 gridOrigin,
+    double cellSize,
+    std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);
+
+[[nodiscard]] CreativeTerrainMutationPreviewReceipt
+buildCreativeTerrainMutationPreview(
+    const CreativeTerrainField& field,
+    std::span<const CreativeTerrainControlEdit> edits,
+    CreativeTerrainPatchRegion region,
     CreativeVec3 gridOrigin,
     double cellSize,
     std::size_t maxPatchCount = kCreativeTerrainRenderPatchCapacity);

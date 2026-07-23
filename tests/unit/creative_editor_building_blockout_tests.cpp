@@ -9,7 +9,9 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomOperations.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
 #include <algorithm>
@@ -123,6 +125,25 @@ bool sharedMaterializerOwnsCompleteAtomicBlockout() {
   const cr::CreativeWorldLayoutBuildingEditResult rejected =
       cr::materializeCreativeWorldLayoutBuildingBlockout(source, invalid, 7U);
 
+  cr::CreativeWorldLayoutBuildingBlockoutRecipe invalidCeiling = recipe;
+  invalidCeiling.ceilingThicknessLayers = 0U;
+  const cr::CreativeWorldLayoutBuildingEditResult rejectedCeiling =
+      cr::materializeCreativeWorldLayoutBuildingBlockout(source, invalidCeiling,
+                                                         7U);
+
+  cr::CreativeWorldLayoutBuildingBlockoutRecipe invalidProfile = recipe;
+  invalidProfile.architecturalProfileKind =
+      cr::CreativeWorldLayoutArchitecturalProfileKind::Count;
+  const cr::CreativeWorldLayoutBuildingEditResult rejectedProfile =
+      cr::materializeCreativeWorldLayoutBuildingBlockout(source, invalidProfile,
+                                                         7U);
+
+  cr::CreativeWorldLayoutBuildingBlockoutRecipe invalidMaterial = recipe;
+  invalidMaterial.exteriorWallMaterial = cr::CreativeStructuralMaterial::Count;
+  const cr::CreativeWorldLayoutBuildingEditResult rejectedMaterial =
+      cr::materializeCreativeWorldLayoutBuildingBlockout(
+          source, invalidMaterial, 7U);
+
   return expect(materialized.accepted && materialized.changed &&
                     materialized.resultBuildingIndex == 0U &&
                     materialized.nextStableOrdinal > 7U,
@@ -150,7 +171,24 @@ bool sharedMaterializerOwnsCompleteAtomicBlockout() {
                         "creative_world_layout_building_blockout_storey_count_"
                         "invalid" &&
                     source.buildings.empty(),
-                "invalid shared recipes publish no partial candidate");
+                "invalid shared recipes publish no partial candidate") &&
+         expect(!rejectedCeiling.accepted && !rejectedCeiling.changed &&
+                    rejectedCeiling.edited.buildings.empty() &&
+                    rejectedCeiling.reasonCode ==
+                        "creative_world_layout_building_blockout_recipe_invalid",
+                "zero ceiling thickness publishes no partial candidate") &&
+         expect(!rejectedProfile.accepted && !rejectedProfile.changed &&
+                    rejectedProfile.edited.buildings.empty() &&
+                    rejectedProfile.reasonCode ==
+                        "creative_world_layout_building_blockout_recipe_invalid",
+                "invalid architecture profile publishes no partial candidate") &&
+         expect(!rejectedMaterial.accepted && !rejectedMaterial.changed &&
+                    rejectedMaterial.edited.buildings.empty() &&
+                    rejectedMaterial.reasonCode ==
+                        "creative_world_layout_building_blockout_recipe_invalid",
+                "invalid wall material publishes no partial candidate") &&
+         expect(source.buildings.empty(),
+                "all invalid recipe failures leave the source unchanged");
 }
 
 bool plannerOwnsEveryPresetAndOddSplit() {
@@ -969,7 +1007,20 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   app::resetCreativeEditorWorldLayout(state, "blockout_provenance");
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings =
       gridBlockout();
-  settings.shell.footprint = {{0, 0}, {12, 12}};
+  settings.shell.footprint = {{0, 0}, {16, 16}};
+  settings.shell.roofStyle = cr::CreativeStructuralRoofStyle::Shed;
+  settings.shell.roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::NegativeX;
+  settings.shell.roofPitchDegrees = 37.0;
+  settings.shell.roofOverhangCells = 0.5;
+  settings.shell.roofMaterial = cr::CreativeStructuralMaterial::Stone;
+  settings.shell.wallHeightCells = 5U;
+  settings.shell.floorThicknessLayers = 6U;
+  settings.architecturalProfileKind =
+      cr::CreativeWorldLayoutArchitecturalProfileKind::Grand;
+  settings.ceilingThicknessLayers = 2U;
+  settings.exteriorWallMaterial = cr::CreativeStructuralMaterial::Brick;
+  settings.interiorWallMaterial = cr::CreativeStructuralMaterial::Timber;
   settings.facade.entranceOffsetCells = 0.5;
   settings.storeys.count = 2U;
   const app::CreativeEditorWorldLayoutEditReceipt created =
@@ -989,6 +1040,33 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
           ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(decoded.layout,
                                                                0U)
           : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  const cr::CreativeWorldLayoutRoomCompileResult styledExpansion =
+      cr::expandCreativeWorldLayoutRooms(state.source);
+  bool wallStylesApplied = styledExpansion.accepted;
+  bool sawExterior = false;
+  bool sawInterior = false;
+  for (const cr::CreativeWorldLayoutWall& wall :
+       styledExpansion.expanded.walls) {
+    if (wall.profile == cr::CreativeWorldLayoutWallProfile::Exterior) {
+      sawExterior = true;
+      wallStylesApplied =
+          wallStylesApplied &&
+          wall.material == cr::CreativeStructuralMaterial::Brick;
+    } else if (wall.profile ==
+               cr::CreativeWorldLayoutWallProfile::Interior) {
+      sawInterior = true;
+      wallStylesApplied =
+          wallStylesApplied &&
+          wall.material == cr::CreativeStructuralMaterial::Timber;
+    }
+  }
+  wallStylesApplied = wallStylesApplied && sawExterior && sawInterior &&
+                      std::all_of(
+                          state.source.levels.begin(),
+                          state.source.levels.end(),
+                          [](const cr::CreativeWorldLayoutLevel& level) {
+                            return level.ceilingThicknessLayers == 2U;
+                          });
   cr::CreativeWorldLayout malformed = decoded.layout;
   if (decoded.accepted && !malformed.buildings.empty()) {
     const auto provenanceTag = std::find_if(
@@ -1002,6 +1080,64 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   }
   const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt malformedSync =
       cr::inspectCreativeWorldLayoutBuildingBlockoutSync(malformed, 0U);
+
+  app::CreativeEditorWorldLayoutState legacyState;
+  app::resetCreativeEditorWorldLayout(legacyState, "blockout_provenance_v1");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings legacySettings =
+      gridBlockout();
+  legacySettings.shell.footprint = {{16, 0}, {28, 12}};
+  const app::CreativeEditorWorldLayoutEditReceipt legacyCreated =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(legacyState,
+                                                           legacySettings);
+  constexpr std::string_view versionPrefix =
+      "iggy3d.world_layout.building_blockout.version=";
+  constexpr std::string_view slopeDirectionPrefix =
+      "iggy3d.world_layout.building_blockout.roof_slope_direction=";
+  constexpr std::string_view materialPrefix =
+      "iggy3d.world_layout.building_blockout.roof_material=";
+  constexpr std::string_view ceilingPrefix =
+      "iggy3d.world_layout.building_blockout.ceiling_thickness=";
+  constexpr std::string_view architecturePrefix =
+      "iggy3d.world_layout.building_blockout.architectural_profile=";
+  constexpr std::string_view exteriorMaterialPrefix =
+      "iggy3d.world_layout.building_blockout.exterior_wall_material=";
+  constexpr std::string_view interiorMaterialPrefix =
+      "iggy3d.world_layout.building_blockout.interior_wall_material=";
+  cr::CreativeWorldLayout version2Layout = legacyState.source;
+  if (legacyCreated.accepted && !legacyState.source.buildings.empty()) {
+    std::vector<std::string>& tags = legacyState.source.buildings[0].tags;
+    std::erase_if(tags, [&](const std::string& tag) {
+      return tag.starts_with(slopeDirectionPrefix) ||
+             tag.starts_with(materialPrefix) || tag.starts_with(ceilingPrefix) ||
+             tag.starts_with(architecturePrefix) ||
+             tag.starts_with(exteriorMaterialPrefix) ||
+             tag.starts_with(interiorMaterialPrefix);
+    });
+    for (std::string& tag : tags) {
+      if (tag.starts_with(versionPrefix)) {
+        tag = std::string{versionPrefix} + "1";
+      }
+    }
+  }
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt legacySync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(legacyState.source,
+                                                         0U);
+  if (legacyCreated.accepted && !version2Layout.buildings.empty()) {
+    std::vector<std::string>& tags = version2Layout.buildings[0].tags;
+    std::erase_if(tags, [&](const std::string& tag) {
+      return tag.starts_with(ceilingPrefix) ||
+             tag.starts_with(architecturePrefix) ||
+             tag.starts_with(exteriorMaterialPrefix) ||
+             tag.starts_with(interiorMaterialPrefix);
+    });
+    for (std::string& tag : tags) {
+      if (tag.starts_with(versionPrefix)) {
+        tag = std::string{versionPrefix} + "2";
+      }
+    }
+  }
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt version2Sync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(version2Layout, 0U);
   const cr::CreativeWorldLayoutBuildingTemplateResult captured =
       cr::captureCreativeWorldLayoutBuildingTemplate(
           state.source, {0U, "blockout_capture", "Blockout Capture"});
@@ -1016,6 +1152,10 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
 
   cr::CreativeWorldLayout refined = decoded.layout;
   if (!decoded.accepted || refined.rooms.empty()) {
+    if (!decoded.accepted) {
+      std::cerr << "decode reason: " << decoded.reasonCode
+                << " line=" << decoded.failedLine << '\n';
+    }
     return expect(false,
                   "blockout source codec returns the generated room rows");
   }
@@ -1031,17 +1171,77 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
          expect(read && sameRect(restored.shell.footprint,
                                  settings.shell.footprint) &&
                     restored.pattern == settings.pattern &&
+                    restored.shell.roofStyle == settings.shell.roofStyle &&
+                    restored.shell.roofSlopeDirection ==
+                        settings.shell.roofSlopeDirection &&
+                    restored.shell.roofPitchDegrees ==
+                        settings.shell.roofPitchDegrees &&
+                    restored.shell.roofOverhangCells ==
+                        settings.shell.roofOverhangCells &&
+                    restored.shell.roofMaterial ==
+                        settings.shell.roofMaterial &&
+                    restored.architecturalProfileKind ==
+                        settings.architecturalProfileKind &&
+                    restored.ceilingThicknessLayers == 2U &&
+                    restored.exteriorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Brick &&
+                    restored.interiorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Timber &&
                     restored.facade.entranceOffsetCells == 0.5 &&
                     restored.storeys.count == 2U,
                 "editor reloads the complete blockout recipe") &&
          expect(encoded.accepted && decoded.accepted &&
                     decodedSync.state ==
                         cr::CreativeWorldLayoutBuildingBlockoutSyncState::
-                            Current,
+                            Current &&
+                    decodedSync.provenance.recipe.version ==
+                        cr::kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+                    decodedSync.provenance.recipe.roofSlopeDirection ==
+                        cr::CreativeStructuralRoofSlopeDirection::NegativeX &&
+                    decodedSync.provenance.recipe.roofMaterial ==
+                        cr::CreativeStructuralMaterial::Stone &&
+                    decodedSync.provenance.recipe.ceilingThicknessLayers == 2U &&
+                    decodedSync.provenance.recipe.architecturalProfileKind ==
+                        cr::CreativeWorldLayoutArchitecturalProfileKind::Grand &&
+                    decodedSync.provenance.recipe.exteriorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Brick &&
+                    decodedSync.provenance.recipe.interiorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Timber,
                 "blockout recipe and baseline survive source codec round trip") &&
+         expect(wallStylesApplied,
+                "one recipe styles exterior facades, interior partitions, and ceilings") &&
          expect(malformedSync.state ==
                     cr::CreativeWorldLayoutBuildingBlockoutSyncState::Invalid,
                 "duplicate provenance fields fail closed as invalid") &&
+         expect(legacyCreated.accepted && legacySync.accepted &&
+                    legacySync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                            Current &&
+                    legacySync.provenance.recipe.version ==
+                        cr::kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+                    legacySync.provenance.recipe.roofSlopeDirection ==
+                        cr::CreativeStructuralRoofSlopeDirection::PositiveZ &&
+                    legacySync.provenance.recipe.roofMaterial ==
+                        cr::CreativeStructuralMaterial::Blockout &&
+                    legacySync.provenance.recipe.ceilingThicknessLayers == 1U &&
+                    legacySync.provenance.recipe.architecturalProfileKind ==
+                        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom &&
+                    legacySync.provenance.recipe.exteriorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Blockout &&
+                    legacySync.provenance.recipe.interiorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Blockout,
+                "version-one blockout provenance migrates with historical roof defaults") &&
+         expect(version2Sync.accepted &&
+                    version2Sync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current &&
+                    version2Sync.provenance.recipe.version ==
+                        cr::kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+                    version2Sync.provenance.recipe.ceilingThicknessLayers == 1U &&
+                    version2Sync.provenance.recipe.exteriorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Blockout &&
+                    version2Sync.provenance.recipe.interiorWallMaterial ==
+                        cr::CreativeStructuralMaterial::Blockout,
+                "version-two blockout provenance migrates with wall-style defaults") &&
          expect(templateOwnsNoBlockoutRecipe,
                 "captured templates do not retain competing blockout ownership") &&
          expect(refinedSync.accepted &&
@@ -1250,6 +1450,64 @@ bool blockoutProvenanceFollowsMoveDuplicateAndTransform() {
                 "rotation remaps blockout axes, facade, roof, and stairs");
 }
 
+bool blockoutPresetOpensIntoAnArbitraryCanonicalFloorPlan() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "blockout_arbitrary_topology");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {12, 12}};
+  settings.pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
+  settings.connectRooms = false;
+  settings.facade.includeEntrance = false;
+  settings.facade.includeExteriorWindows = false;
+  settings.exteriorWallMaterial = cr::CreativeStructuralMaterial::Stone;
+  settings.interiorWallMaterial = cr::CreativeStructuralMaterial::Timber;
+  const app::CreativeEditorWorldLayoutEditReceipt created =
+      app::createCreativeEditorWorldLayoutBuildingBlockout(state, settings);
+  const cr::CreativeWorldLayoutRoomOperationResult split =
+      cr::splitCreativeWorldLayoutRoom(
+          state.source,
+          {0U, cr::CreativeWorldLayoutRoomSplitAxis::X, 3,
+           "fifth_room", "Fifth Room"});
+  const cr::CreativeWorldLayoutRoomGraph graph =
+      split.accepted ? cr::buildCreativeWorldLayoutRoomGraph(split.edited)
+                     : cr::CreativeWorldLayoutRoomGraph{};
+  bool stylesRight = split.accepted && graph.accepted &&
+                     graph.sourceWasExplicit;
+  bool sawExterior = false;
+  bool sawInterior = false;
+  for (const cr::CreativeWorldLayoutTopologyEdge& edge : graph.edges) {
+    if (edge.profile == cr::CreativeWorldLayoutWallProfile::Exterior) {
+      sawExterior = true;
+      stylesRight = stylesRight &&
+                    edge.material == cr::CreativeStructuralMaterial::Stone;
+    } else if (edge.profile ==
+               cr::CreativeWorldLayoutWallProfile::Interior) {
+      sawInterior = true;
+      stylesRight = stylesRight &&
+                    edge.material == cr::CreativeStructuralMaterial::Timber;
+    } else {
+      stylesRight = false;
+    }
+  }
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt sync =
+      split.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingBlockoutSync(split.edited,
+                                                               0U)
+          : cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt{};
+  return expect(created.accepted && state.source.rooms.size() == 4U,
+                "four-room preset stages one editable starter plan") &&
+         expect(split.accepted && split.changed &&
+                    split.edited.rooms.size() == 5U,
+                "the starter plan can exceed the four-room preset ceiling") &&
+         expect(stylesRight && sawExterior && sawInterior,
+                "canonical topology preserves exterior and partition style") &&
+         expect(sync.state ==
+                    cr::CreativeWorldLayoutBuildingBlockoutSyncState::
+                        LocallyModified,
+                "arbitrary floor-plan edits become explicit refinements");
+}
+
 bool desktopCommandRoutesTypedBlockoutRequest() {
   cr::CreativeAppState live = makeAppState();
   app::CreativeEditorState editor;
@@ -1347,6 +1605,7 @@ int main() {
                   editorRegeneratesBlockoutWithStableIdentityAndOneHistoryStep() &&
                   blockoutUpdateRejectsConflictAndOverlapAtomically() &&
                   blockoutProvenanceFollowsMoveDuplicateAndTransform() &&
+                  blockoutPresetOpensIntoAnArbitraryCanonicalFloorPlan() &&
                   desktopCommandRoutesTypedBlockoutRequest();
   if (!ok) {
     return 1;

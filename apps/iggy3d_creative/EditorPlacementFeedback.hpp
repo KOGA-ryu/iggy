@@ -28,6 +28,32 @@ enum class CreativeEditorPlacementFeedbackStatus : std::uint8_t {
   Rejected,
 };
 
+enum class CreativeEditorPlacementRejectionReason : std::uint8_t {
+  None,
+  ActionRejected,
+  InvalidTarget,
+  FloorRequired,
+  WallRequired,
+  SurfaceRequired,
+  UnsupportedBrush,
+  InvalidGeometry,
+  UnsupportedPolicy,
+  FaceDisallowed,
+  TargetIncompatible,
+  AttachmentUnavailable,
+  AttachmentIncompatible,
+  AttachmentOccupied,
+  ClearanceBlocked,
+  Occupied,
+  InvalidPlan,
+  ObjectRejected,
+  VoxelRejected,
+  SemanticSourceOwned,
+  ExternalReference,
+  CapacityReached,
+  HistoryUnavailable,
+};
+
 inline constexpr std::uint64_t kCreativeEditorPlacementFeedbackFrames = 36U;
 inline constexpr std::size_t kCreativeEditorPlacementFeedbackTextCapacity =
     48U;
@@ -50,6 +76,8 @@ struct CreativeEditorPlacementFeedback {
   iggy3d::creative::CreativeGridCoord3 voxelCell{};
   iggy3d::creative::CreativeBounds voxelBounds{};
   iggy3d::creative::CreativePlacementClearanceResult clearance{};
+  CreativeEditorPlacementRejectionReason rejectionReason =
+      CreativeEditorPlacementRejectionReason::None;
 };
 
 struct CreativeEditorPlacementFeedbackColor {
@@ -86,8 +114,10 @@ static_assert(std::is_standard_layout_v<
 struct CreativeEditorPlacementVisualizationReceipt {
   std::array<iggy3d::creative::CreativeVec3, 8U> attemptedCorners{};
   iggy3d::creative::CreativePlacementClearanceResult clearance{};
+  iggy3d::creative::CreativeTransform attemptedTransform{};
   std::uint8_t attemptedCornerCount = 0U;
   bool targetAvailable = false;
+  bool attemptedTransformAvailable = false;
 };
 
 static_assert(std::is_trivially_copyable_v<
@@ -119,7 +149,9 @@ void setCreativeEditorPlacementRejectionFeedback(
     std::uint64_t frameIndex,
     iggy3d::creative::CreativeObjectKind objectKind,
     const iggy3d::creative::CreativePlacementClearanceResult& clearance =
-        {}) noexcept;
+        {},
+    CreativeEditorPlacementRejectionReason reason =
+        CreativeEditorPlacementRejectionReason::ActionRejected) noexcept;
 void setCreativeEditorVoxelPlacementFeedback(
     CreativeEditorInteractionState& interaction,
     std::uint64_t frameIndex,

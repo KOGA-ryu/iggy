@@ -1,5 +1,7 @@
 #include "EditorEdits.hpp"
 
+#include "EditorAttachmentPlacement.hpp"
+#include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 
 #include <SDL3/SDL_log.h>
@@ -17,8 +19,10 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace creative = iggy3d::creative;
@@ -114,6 +118,23 @@ creative::CreativeFacadeMutationReceipt toggleSelectedObjectStateWithUndo(
 
 }  // namespace
 
+bool creativeEditorObjectRequiresSourceEdit(
+    const creative::CreativeDocument& document,
+    creative::CreativeObjectId objectId) noexcept {
+  if (creative::findCreativePatternRecipeByGeneratedObject(
+          document.patternRecipeStore(), objectId) != nullptr) {
+    return false;
+  }
+  const creative::CreativeObject* object = document.findObject(objectId);
+  if (object == nullptr) {
+    return false;
+  }
+  return std::any_of(
+      object->tags.begin(), object->tags.end(), [](const std::string& tag) {
+        return tag.starts_with("creative_world_layout:");
+      });
+}
+
 void clearEditHistory(StandaloneEditHistory& history,
                       std::string_view source) {
   const std::uint64_t undoBefore = creative::creativeUndoDepth(history);
@@ -181,67 +202,109 @@ bool redoLastEdit(creative::CreativeAppState& appState,
                                source, worldLayout);
 }
 
-creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
+creative::CreativeSemanticDeleteReceipt deleteSelectedObjectsWithUndo(
     creative::CreativeAppState& appState,
     std::string_view source,
     StandaloneEditHistory* history) {
-  const creative::Id selectedId =
-      appState.facade.selectionState().selectedTarget.value;
+  const std::vector<creative::CreativeObjectId> selectedIds =
+      gatherDesktopTargetIds(appState, {});
   const std::uint64_t objectCountBefore =
       static_cast<std::uint64_t>(appState.facade.document().objectCount());
-  if (selectedId == 0U) {
+  if (selectedIds.empty()) {
     SDL_Log("iggy3d_creative: DELETE no selection source='%s' "
             "objectCount=%llu",
             std::string(source).c_str(),
             static_cast<unsigned long long>(objectCountBefore));
     return {};
   }
-
-  const auto objectId = static_cast<creative::CreativeObjectId>(selectedId);
-  const creative::CreativeObject* object = appState.facade.findObject(objectId);
-  if (object == nullptr) {
-    SDL_Log("iggy3d_creative: DELETE missing selection source='%s' "
-            "objectId=%llu objectCount=%llu",
-            std::string(source).c_str(),
-            static_cast<unsigned long long>(objectId),
-            static_cast<unsigned long long>(objectCountBefore));
-    return {};
-  }
-
-  const creative::CreativeObjectKind kind = object->kind;
   const std::uint64_t undoDepthBefore =
       history != nullptr ? creative::creativeUndoDepth(*history) : 0U;
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentRemoveReceipt receipt =
-      appState.facade.removeDocumentObject(objectId);
+  creative::CreativeSemanticDeleteReceipt receipt =
+      appState.facade.deleteDocumentObjectsSemantically(selectedIds);
   if (history != nullptr) {
     (void)completeEditTransaction(*history, std::move(transaction),
                                   appState.facade,
-                                  receipt.accepted && receipt.objectRemoved &&
-                                      receipt.changed,
+                                  receipt.accepted && receipt.changed,
                                   receipt.reasonCode);
   }
   const std::uint64_t objectCountAfter =
       static_cast<std::uint64_t>(appState.facade.document().objectCount());
   const creative::Id selectionAfter =
       appState.facade.selectionState().selectedTarget.value;
-  SDL_Log("iggy3d_creative: DELETE removed objectId=%llu kind='%s' "
-          "accepted=%d changed=%d removed=%d status='%s' reasonCode='%s' "
+  SDL_Log("iggy3d_creative: DELETE selection requested=%llu removed=%llu "
+          "recipes=%llu accepted=%d changed=%d status='%s' reasonCode='%s' "
           "objectCountBefore=%llu objectCountAfter=%llu selectionAfter=%u "
           "undoDepthBefore=%llu undoDepthAfter=%llu",
-          static_cast<unsigned long long>(objectId),
-          std::string(creative::toString(kind)).c_str(),
+          static_cast<unsigned long long>(receipt.requestedObjectCount),
+          static_cast<unsigned long long>(receipt.removedObjectCount),
+          static_cast<unsigned long long>(receipt.removedPatternRecipeCount),
           receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
-          receipt.objectRemoved ? 1 : 0,
           std::string(creative::toString(receipt.status)).c_str(),
-          std::string(receipt.reasonCode).c_str(),
+          receipt.reasonCode.c_str(),
           static_cast<unsigned long long>(objectCountBefore),
           static_cast<unsigned long long>(objectCountAfter), selectionAfter,
           static_cast<unsigned long long>(undoDepthBefore),
           static_cast<unsigned long long>(
               history != nullptr ? creative::creativeUndoDepth(*history) : 0U));
   return receipt;
+}
+
+CreativeEditorDeleteReceipt deleteCreativeEditorSelectionWithUndo(
+    creative::CreativeAppState& appState,
+    std::string_view source,
+    StandaloneEditHistory* history,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  CreativeEditorDeleteReceipt outcome;
+  const std::vector<creative::CreativeObjectId> selectedIds =
+      gatherDesktopTargetIds(appState, {});
+  if (selectedIds.empty()) {
+    outcome.reasonCode = "creative_editor_delete_selection_empty";
+    return outcome;
+  }
+
+  if (worldLayout != nullptr) {
+    creative::CreativeObjectId primaryObjectId = creative::kInvalidObjectId;
+    if (appState.facade.selectionState().selectedTarget.value !=
+        creative::kInvalidId) {
+      primaryObjectId = static_cast<creative::CreativeObjectId>(
+          appState.facade.selectionState().selectedTarget.value);
+    }
+    const creative::CreativeSemanticSelectionSetResolution resolution =
+        creative::resolveCreativeSemanticSelectionSet(
+            appState.facade.document(), selectedIds, primaryObjectId,
+            &worldLayout->source);
+    if (resolution.accepted &&
+        resolution.primaryOwner ==
+            creative::CreativeSemanticSelectionOwner::WorldLayoutSource) {
+      const CreativeEditorSelectionSynchronizationReceipt synchronized =
+          synchronizeCreativeEditorWorldLayoutSelection(
+              *worldLayout, appState.facade.document(),
+              appState.facade.selectionState(),
+              resolution.commonWorldLayoutSource);
+      if (!synchronized.accepted || !synchronized.sourceSelected) {
+        outcome.reasonCode = std::string(synchronized.reasonCode);
+        return outcome;
+      }
+      const CreativeEditorWorldLayoutEditReceipt deleted =
+          deleteCreativeEditorWorldLayoutSelection(*worldLayout);
+      outcome.accepted = deleted.accepted;
+      outcome.changed = deleted.changed;
+      outcome.worldLayoutSourceDeleted = deleted.changed;
+      outcome.affectedObjectCount = selectedIds.size();
+      outcome.reasonCode = deleted.reasonCode;
+      return outcome;
+    }
+  }
+
+  const creative::CreativeSemanticDeleteReceipt deleted =
+      deleteSelectedObjectsWithUndo(appState, source, history);
+  outcome.accepted = deleted.accepted;
+  outcome.changed = deleted.changed;
+  outcome.affectedObjectCount = deleted.removedObjectCount;
+  outcome.reasonCode = deleted.reasonCode;
+  return outcome;
 }
 
 creative::CreativeTransformCommandReceipt transformSelectedObjectsWithUndo(
@@ -340,6 +403,32 @@ creative::CreativeDocumentMutationReceipt detachObjectWithUndo(
           static_cast<unsigned long long>(receipt.revisionBefore),
           static_cast<unsigned long long>(receipt.revisionAfter),
           receipt.message.c_str());
+  return receipt;
+}
+
+CreativeEditorObjectReattachmentReceipt reattachObjectWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    const CreativeEditorObjectReattachmentPlan& plan,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  CreativeEditorObjectReattachmentReceipt receipt =
+      applyCreativeEditorObjectReattachment(
+          appState.facade.documentForPersistence(), plan);
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.accepted && receipt.changed, toString(receipt.status)));
+  SDL_Log("iggy3d_creative: REATTACH source='%s' objectId=%llu targetId=%llu "
+          "accepted=%d changed=%d revisionBefore=%llu revisionAfter=%llu "
+          "status='%s'",
+          std::string(source).c_str(),
+          static_cast<unsigned long long>(receipt.sourceObjectId),
+          static_cast<unsigned long long>(receipt.targetObjectId),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          std::string(toString(receipt.status)).c_str());
   return receipt;
 }
 
@@ -443,11 +532,11 @@ CreativeStandaloneBatchEditReceipt deleteObjectsWithUndo(
   const std::uint64_t depthBefore = creative::creativeUndoDepth(history);
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  const creative::CreativeHierarchyBatchRemoveReceipt receipt =
-      appState.facade.removeDocumentObjectsAtomically(targets);
+  const creative::CreativeSemanticDeleteReceipt receipt =
+      appState.facade.deleteDocumentObjectsSemantically(targets);
   outcome.accepted = receipt.accepted;
   outcome.changed = receipt.changed;
-  outcome.affectedObjectCount = receipt.removedObjectIds.size();
+  outcome.affectedObjectCount = receipt.removedObjectCount;
   outcome.message = std::string(receipt.reasonCode);
   (void)completeEditTransaction(history, std::move(transaction),
                                 appState.facade, outcome.changed,
@@ -746,6 +835,27 @@ creative::CreativeDocumentMutationReceipt setMovingPlatformSettingsWithUndo(
           appState.facade.documentForPersistence(), objectId,
           creative::CreativeMutationKind::SetMovingPlatformSettings,
           creative::makeMovingPlatformSettingsPayload(settings));
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message));
+  return receipt;
+}
+
+creative::CreativeDocumentMutationReceipt setPlayerSpawnSettingsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativePlayerSpawnSettings settings,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::SetPlayerSpawnSettings,
+          creative::makePlayerSpawnSettingsPayload(std::move(settings)));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
       receipt.status == creative::CreativeDocumentMutationStatus::Applied &&

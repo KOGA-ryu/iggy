@@ -12,8 +12,6 @@
 namespace iggy3d::creative {
 namespace {
 
-inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
-
 [[nodiscard]] bool coordLess(CreativeTerrainCoord2 lhs,
                              CreativeTerrainCoord2 rhs) noexcept {
   return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
@@ -96,7 +94,7 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
     CreativeTerrainHeightFieldBounds bounds,
     std::uint16_t featherCells) noexcept {
   if (featherCells == 0U) {
-    return kMaximumMaskWeight;
+    return kCreativeTerrainCompositionMaximumMaskWeight;
   }
   const std::uint32_t distance = std::min({
       static_cast<std::uint32_t>(x), static_cast<std::uint32_t>(z),
@@ -104,10 +102,11 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
       static_cast<std::uint32_t>(bounds.depthCells - 1U - z),
   });
   if (distance >= featherCells) {
-    return kMaximumMaskWeight;
+    return kCreativeTerrainCompositionMaximumMaskWeight;
   }
   return static_cast<std::uint32_t>(
-      (static_cast<std::uint64_t>(distance + 1U) * kMaximumMaskWeight) /
+      (static_cast<std::uint64_t>(distance + 1U) *
+       kCreativeTerrainCompositionMaximumMaskWeight) /
       (static_cast<std::uint64_t>(featherCells) + 1U));
 }
 
@@ -125,31 +124,15 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
     return 0U;
   }
   if (featherCells == 0U) {
-    return kMaximumMaskWeight;
+    return kCreativeTerrainCompositionMaximumMaskWeight;
   }
   const double inwardDistance =
       (1.0 - radial) * std::min(radiusX, radiusZ);
   const double normalized = std::clamp(
       inwardDistance / static_cast<double>(featherCells), 0.0, 1.0);
   return static_cast<std::uint32_t>(
-      std::llround(normalized * kMaximumMaskWeight));
-}
-
-[[nodiscard]] std::uint32_t maskWeight(
-    CreativeTerrainCompositionMask mask,
-    std::uint16_t x,
-    std::uint16_t z,
-    CreativeTerrainHeightFieldBounds bounds,
-    std::uint16_t featherCells) noexcept {
-  switch (mask) {
-    case CreativeTerrainCompositionMask::Rectangle:
-      return rectangleMaskWeight(x, z, bounds, featherCells);
-    case CreativeTerrainCompositionMask::Ellipse:
-      return ellipseMaskWeight(x, z, bounds, featherCells);
-    case CreativeTerrainCompositionMask::Count:
-      break;
-  }
-  return 0U;
+      std::llround(normalized *
+                   kCreativeTerrainCompositionMaximumMaskWeight));
 }
 
 [[nodiscard]] std::uint16_t smoothTarget(
@@ -213,10 +196,65 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
                                         std::uint16_t target,
                                         std::uint32_t weight) noexcept {
   const std::uint64_t weighted =
-      static_cast<std::uint64_t>(source) * (kMaximumMaskWeight - weight) +
+      static_cast<std::uint64_t>(source) *
+          (kCreativeTerrainCompositionMaximumMaskWeight - weight) +
       static_cast<std::uint64_t>(target) * weight +
-      kMaximumMaskWeight / 2U;
-  return static_cast<std::uint16_t>(weighted / kMaximumMaskWeight);
+      kCreativeTerrainCompositionMaximumMaskWeight / 2U;
+  return static_cast<std::uint16_t>(
+      weighted / kCreativeTerrainCompositionMaximumMaskWeight);
+}
+
+[[nodiscard]] CreativeTerrainMaterialWeights blendMaterialWeights(
+    const CreativeTerrainMaterialWeights& source,
+    const CreativeTerrainMaterialWeights& target,
+    std::uint32_t weight) noexcept {
+  std::array<std::uint32_t, kCreativeTerrainMaterialCount> remainders{};
+  CreativeTerrainMaterialWeights output{};
+  std::uint32_t assigned = 0U;
+  for (std::size_t index = 0U; index < output.size(); ++index) {
+    const std::uint64_t numerator =
+        static_cast<std::uint64_t>(source[index]) *
+            (kCreativeTerrainCompositionMaximumMaskWeight - weight) +
+        static_cast<std::uint64_t>(target[index]) * weight;
+    output[index] = static_cast<std::uint8_t>(
+        numerator / kCreativeTerrainCompositionMaximumMaskWeight);
+    remainders[index] = static_cast<std::uint32_t>(
+        numerator % kCreativeTerrainCompositionMaximumMaskWeight);
+    assigned += output[index];
+  }
+  while (assigned < kCreativeTerrainMaterialWeightTotal) {
+    std::size_t best = 0U;
+    for (std::size_t index = 1U; index < remainders.size(); ++index) {
+      if (remainders[index] > remainders[best]) {
+        best = index;
+      }
+    }
+    ++output[best];
+    remainders[best] = 0U;
+    ++assigned;
+  }
+  return output;
+}
+
+[[nodiscard]] bool protectedByRecipe(
+    CreativeTerrainCoord2 coord,
+    const CreativeTerrainCompositionRecipe& recipe) noexcept {
+  for (std::size_t index = 0U; index < recipe.protectedRegionCount; ++index) {
+    const CreativeTerrainCompositionProtectedRegion& region =
+        recipe.protectedRegions[index];
+    if (!insideBounds(coord, region.bounds)) {
+      continue;
+    }
+    const auto localX = static_cast<std::uint16_t>(
+        static_cast<std::int64_t>(coord.x) - region.bounds.minimum.x);
+    const auto localZ = static_cast<std::uint16_t>(
+        static_cast<std::int64_t>(coord.z) - region.bounds.minimum.z);
+    if (creativeTerrainCompositionMaskWeight(
+            region.mask, localX, localZ, region.bounds, 0U) > 0U) {
+      return true;
+    }
+  }
+  return false;
 }
 
 [[nodiscard]] std::uint64_t heightFieldHash(
@@ -233,15 +271,68 @@ inline constexpr std::uint32_t kMaximumMaskWeight = 65535U;
   return hasher.value();
 }
 
+[[nodiscard]] std::uint64_t materialFieldHash(
+    const CreativeTerrainMaterialField& field) noexcept {
+  iggy3d::StableHasher hasher;
+  for (const CreativeTerrainMaterialOverride& value : field.overrides()) {
+    hasher.addI64(value.coord.x);
+    hasher.addI64(value.coord.z);
+    for (const std::uint8_t weight : value.weights) {
+      hasher.addU64(weight);
+    }
+  }
+  return hasher.value();
+}
+
 }  // namespace
+
+std::uint32_t creativeTerrainCompositionMaskWeight(
+    CreativeTerrainCompositionMask mask,
+    std::uint16_t localX,
+    std::uint16_t localZ,
+    CreativeTerrainHeightFieldBounds bounds,
+    std::uint16_t featherCells) noexcept {
+  if (!isValidCreativeTerrainHeightFieldBounds(bounds) ||
+      localX >= bounds.widthCells || localZ >= bounds.depthCells ||
+      featherCells > kCreativeTerrainCompositionMaximumFeatherCells) {
+    return 0U;
+  }
+  switch (mask) {
+    case CreativeTerrainCompositionMask::Rectangle:
+      return rectangleMaskWeight(localX, localZ, bounds, featherCells);
+    case CreativeTerrainCompositionMask::Ellipse:
+      return ellipseMaskWeight(localX, localZ, bounds, featherCells);
+    case CreativeTerrainCompositionMask::Count:
+      break;
+  }
+  return 0U;
+}
 
 bool isValidCreativeTerrainCompositionRecipe(
     const CreativeTerrainCompositionRecipe& recipe) noexcept {
-  return recipe.version == kCreativeTerrainCompositionRecipeVersion &&
-         recipe.mask < CreativeTerrainCompositionMask::Count &&
-         recipe.mode < CreativeTerrainCompositionMode::Count &&
-         recipe.featherCells <=
-             kCreativeTerrainCompositionMaximumFeatherCells;
+  if (recipe.version != kCreativeTerrainCompositionRecipeVersion ||
+      recipe.mask >= CreativeTerrainCompositionMask::Count ||
+      recipe.mode >= CreativeTerrainCompositionMode::Count ||
+      recipe.featherCells >
+          kCreativeTerrainCompositionMaximumFeatherCells ||
+      recipe.protectedRegionCount >
+          kCreativeTerrainCompositionProtectedRegionCapacity) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < recipe.protectedRegionCount; ++index) {
+    const CreativeTerrainCompositionProtectedRegion& region =
+        recipe.protectedRegions[index];
+    if (!isValidCreativeTerrainHeightFieldBounds(region.bounds) ||
+        region.mask >= CreativeTerrainCompositionMask::Count) {
+      return false;
+    }
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      if (recipe.protectedRegions[prior] == region) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 std::string_view toString(CreativeTerrainCompositionMask mask) noexcept {
@@ -320,6 +411,8 @@ std::string_view toString(CreativeTerrainCompositionStatus status) noexcept {
       return "InvalidMode";
     case CreativeTerrainCompositionStatus::InvalidFeather:
       return "InvalidFeather";
+    case CreativeTerrainCompositionStatus::InvalidProtectedRegion:
+      return "InvalidProtectedRegion";
     case CreativeTerrainCompositionStatus::InvalidSource:
       return "InvalidSource";
     case CreativeTerrainCompositionStatus::InvalidGeneration:
@@ -336,8 +429,137 @@ std::string_view toString(CreativeTerrainCompositionStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(
+    CreativeTerrainProtectedRegionMutationStatus status) noexcept {
+  switch (status) {
+    case CreativeTerrainProtectedRegionMutationStatus::NotRequested:
+      return "NotRequested";
+    case CreativeTerrainProtectedRegionMutationStatus::InvalidRecipe:
+      return "InvalidRecipe";
+    case CreativeTerrainProtectedRegionMutationStatus::InvalidRegion:
+      return "InvalidRegion";
+    case CreativeTerrainProtectedRegionMutationStatus::Duplicate:
+      return "Duplicate";
+    case CreativeTerrainProtectedRegionMutationStatus::CapacityExceeded:
+      return "CapacityExceeded";
+    case CreativeTerrainProtectedRegionMutationStatus::NotFound:
+      return "NotFound";
+    case CreativeTerrainProtectedRegionMutationStatus::NoChange:
+      return "NoChange";
+    case CreativeTerrainProtectedRegionMutationStatus::Applied:
+      return "Applied";
+  }
+  return "Unknown";
+}
+
+CreativeTerrainProtectedRegionMutationReceipt
+addCreativeTerrainCompositionProtectedRegion(
+    CreativeTerrainCompositionRecipe& recipe,
+    CreativeTerrainCompositionProtectedRegion region) noexcept {
+  CreativeTerrainProtectedRegionMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.countBefore = recipe.protectedRegionCount;
+  receipt.countAfter = receipt.countBefore;
+  if (!isValidCreativeTerrainCompositionRecipe(recipe)) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::InvalidRecipe;
+    receipt.reasonCode = "creative_terrain_protected_region_recipe_invalid";
+    return receipt;
+  }
+  if (!isValidCreativeTerrainHeightFieldBounds(region.bounds) ||
+      region.mask >= CreativeTerrainCompositionMask::Count) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::InvalidRegion;
+    receipt.reasonCode = "creative_terrain_protected_region_invalid";
+    return receipt;
+  }
+  for (std::size_t index = 0U; index < recipe.protectedRegionCount; ++index) {
+    if (recipe.protectedRegions[index] == region) {
+      receipt.accepted = true;
+      receipt.status = CreativeTerrainProtectedRegionMutationStatus::Duplicate;
+      receipt.regionIndex = index;
+      receipt.reasonCode = "creative_terrain_protected_region_duplicate";
+      return receipt;
+    }
+  }
+  if (recipe.protectedRegionCount >=
+      kCreativeTerrainCompositionProtectedRegionCapacity) {
+    receipt.status =
+        CreativeTerrainProtectedRegionMutationStatus::CapacityExceeded;
+    receipt.reasonCode = "creative_terrain_protected_region_capacity_exceeded";
+    return receipt;
+  }
+  receipt.regionIndex = recipe.protectedRegionCount;
+  recipe.protectedRegions[recipe.protectedRegionCount++] = region;
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeTerrainProtectedRegionMutationStatus::Applied;
+  receipt.countAfter = recipe.protectedRegionCount;
+  receipt.reasonCode = "creative_terrain_protected_region_added";
+  return receipt;
+}
+
+CreativeTerrainProtectedRegionMutationReceipt
+removeCreativeTerrainCompositionProtectedRegion(
+    CreativeTerrainCompositionRecipe& recipe,
+    std::size_t regionIndex) noexcept {
+  CreativeTerrainProtectedRegionMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.regionIndex = regionIndex;
+  receipt.countBefore = recipe.protectedRegionCount;
+  receipt.countAfter = receipt.countBefore;
+  if (!isValidCreativeTerrainCompositionRecipe(recipe)) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::InvalidRecipe;
+    receipt.reasonCode = "creative_terrain_protected_region_recipe_invalid";
+    return receipt;
+  }
+  if (regionIndex >= recipe.protectedRegionCount) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::NotFound;
+    receipt.reasonCode = "creative_terrain_protected_region_not_found";
+    return receipt;
+  }
+  for (std::size_t index = regionIndex + 1U;
+       index < recipe.protectedRegionCount; ++index) {
+    recipe.protectedRegions[index - 1U] = recipe.protectedRegions[index];
+  }
+  --recipe.protectedRegionCount;
+  recipe.protectedRegions[recipe.protectedRegionCount] = {};
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeTerrainProtectedRegionMutationStatus::Applied;
+  receipt.countAfter = recipe.protectedRegionCount;
+  receipt.reasonCode = "creative_terrain_protected_region_removed";
+  return receipt;
+}
+
+CreativeTerrainProtectedRegionMutationReceipt
+clearCreativeTerrainCompositionProtectedRegions(
+    CreativeTerrainCompositionRecipe& recipe) noexcept {
+  CreativeTerrainProtectedRegionMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.countBefore = recipe.protectedRegionCount;
+  receipt.countAfter = receipt.countBefore;
+  if (!isValidCreativeTerrainCompositionRecipe(recipe)) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::InvalidRecipe;
+    receipt.reasonCode = "creative_terrain_protected_region_recipe_invalid";
+    return receipt;
+  }
+  receipt.accepted = true;
+  if (recipe.protectedRegionCount == 0U) {
+    receipt.status = CreativeTerrainProtectedRegionMutationStatus::NoChange;
+    receipt.reasonCode = "creative_terrain_protected_region_clear_no_change";
+    return receipt;
+  }
+  recipe.protectedRegions = {};
+  recipe.protectedRegionCount = 0U;
+  receipt.changed = true;
+  receipt.status = CreativeTerrainProtectedRegionMutationStatus::Applied;
+  receipt.countAfter = 0U;
+  receipt.reasonCode = "creative_terrain_protected_regions_cleared";
+  return receipt;
+}
+
 CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
     const CreativeTerrainHeightField& existingAuthored,
+    const CreativeTerrainMaterialField& existingMaterial,
     const CreativeTerrainSurfacePlan& canonicalSource,
     const CreativeTerrainGenerationResult& generation,
     const CreativeTerrainCompositionRecipe& recipe) {
@@ -371,7 +593,15 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
         "creative_terrain_composition_feather_invalid";
     return result;
   }
+  if (!isValidCreativeTerrainCompositionRecipe(recipe)) {
+    result.receipt.status =
+        CreativeTerrainCompositionStatus::InvalidProtectedRegion;
+    result.receipt.reasonCode =
+        "creative_terrain_composition_protected_region_invalid";
+    return result;
+  }
   if (!existingAuthored.validateInvariants() ||
+      !existingMaterial.validateInvariants() ||
       !validCanonicalSource(canonicalSource)) {
     result.receipt.status = CreativeTerrainCompositionStatus::InvalidSource;
     result.receipt.reasonCode = "creative_terrain_composition_source_invalid";
@@ -380,6 +610,7 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
   if (!generation.receipt.accepted ||
       generation.receipt.status != CreativeTerrainGenerationStatus::Ready ||
       !generation.plan.heightField.validateInvariants() ||
+      !generation.plan.materialField.validateInvariants() ||
       generation.plan.heightField.cellCount() == 0U) {
     result.receipt.status =
         CreativeTerrainCompositionStatus::InvalidGeneration;
@@ -447,6 +678,8 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
 
   std::vector<std::uint16_t> heights;
   heights.reserve(static_cast<std::size_t>(outputCellCount));
+  std::vector<CreativeTerrainMaterialEdit> materialEdits;
+  materialEdits.reserve(static_cast<std::size_t>(outputCellCount));
   for (std::uint16_t outputZ = 0U; outputZ < outputBounds.depthCells;
        ++outputZ) {
     for (std::uint16_t outputX = 0U; outputX < outputBounds.widthCells;
@@ -460,6 +693,9 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
           outputX;
       const std::uint16_t sourceHeight = sourceHeights[outputIndex];
       std::uint16_t outputHeight = sourceHeight;
+      const CreativeTerrainMaterialWeights sourceMaterial =
+          existingMaterial.weightsAt(coord);
+      CreativeTerrainMaterialWeights outputMaterial = sourceMaterial;
       if (insideBounds(coord, generatedBounds)) {
         const std::uint16_t generatedX = static_cast<std::uint16_t>(
             static_cast<std::int64_t>(coord.x) - generatedBounds.minimum.x);
@@ -469,17 +705,28 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
             static_cast<std::size_t>(generatedZ) * generatedBounds.widthCells +
             generatedX;
         const std::uint32_t weight =
-            maskWeight(recipe.mask, generatedX, generatedZ, generatedBounds,
-                       recipe.featherCells);
+            creativeTerrainCompositionMaskWeight(
+                recipe.mask, generatedX, generatedZ, generatedBounds,
+                recipe.featherCells);
         if (weight > 0U) {
           ++result.receipt.maskedCellCount;
-          if (weight < kMaximumMaskWeight) {
+          if (weight < kCreativeTerrainCompositionMaximumMaskWeight) {
             ++result.receipt.featheredCellCount;
           }
-          const std::uint16_t target = compositionTarget(
-              recipe.mode, sourceHeight, generated.heights()[generatedIndex],
-              sourceHeights, outputBounds, outputX, outputZ);
-          outputHeight = blendHeight(sourceHeight, target, weight);
+          if (protectedByRecipe(coord, recipe)) {
+            ++result.receipt.protectedCellCount;
+          } else {
+            const std::uint16_t target = compositionTarget(
+                recipe.mode, sourceHeight,
+                generated.heights()[generatedIndex], sourceHeights,
+                outputBounds, outputX, outputZ);
+            outputHeight = blendHeight(sourceHeight, target, weight);
+            if (generation.plan.recipe.paintMaterials) {
+              outputMaterial = blendMaterialWeights(
+                  sourceMaterial,
+                  generation.plan.materialField.weightsAt(coord), weight);
+            }
+          }
         }
       }
       if (outputHeight == sourceHeight) {
@@ -489,6 +736,16 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
       }
       if (!insideBounds(coord, existingBounds) && sourceHeight != 0U) {
         ++result.receipt.materializedSourceCellCount;
+      }
+      if (outputMaterial != sourceMaterial) {
+        ++result.receipt.materialModifiedCellCount;
+        materialEdits.push_back(
+            outputMaterial == creativeTerrainMaterialSolidWeights(
+                                  CreativeTerrainMaterial::Grass)
+                ? CreativeTerrainMaterialEdit{
+                      CreativeTerrainMaterialEditKind::Clear, coord, {}, {}}
+                : makeCreativeTerrainMaterialWeightEdit(coord,
+                                                       outputMaterial));
       }
       heights.push_back(outputHeight);
     }
@@ -502,12 +759,37 @@ CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
         "creative_terrain_composition_output_rejected";
     return result;
   }
+  result.materialField = existingMaterial;
+  if (!materialEdits.empty()) {
+    const CreativeTerrainMaterialMutationReceipt materialReplacement =
+        result.materialField.apply(materialEdits);
+    if (!materialReplacement.accepted) {
+      result.heightField.clear();
+      result.materialField = {};
+      result.receipt.status =
+          CreativeTerrainCompositionStatus::OutputRejected;
+      result.receipt.reasonCode =
+          "creative_terrain_composition_material_output_rejected";
+      return result;
+    }
+  }
   result.receipt.accepted = true;
   result.receipt.status = CreativeTerrainCompositionStatus::Ready;
   result.receipt.outputCellCount = outputCellCount;
   result.receipt.heightHash = heightFieldHash(outputBounds, heights);
+  result.receipt.materialHash = materialFieldHash(result.materialField);
   result.receipt.reasonCode = "creative_terrain_composition_ready";
   return result;
+}
+
+CreativeTerrainCompositionResult composeCreativeTerrainGeneration(
+    const CreativeTerrainHeightField& existingAuthored,
+    const CreativeTerrainSurfacePlan& canonicalSource,
+    const CreativeTerrainGenerationResult& generation,
+    const CreativeTerrainCompositionRecipe& recipe) {
+  return composeCreativeTerrainGeneration(
+      existingAuthored, CreativeTerrainMaterialField{}, canonicalSource,
+      generation, recipe);
 }
 
 }  // namespace iggy3d::creative

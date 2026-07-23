@@ -110,6 +110,7 @@ enum class CreativeMutationKind {
 
     // Navigation / movement authoring
     SetSpawnFacing,
+    SetPlayerSpawnSettings,
     SetCheckpointId,
     SetNavCost,
     SetPatrolRoute,
@@ -199,6 +200,8 @@ struct SetBoundsMutation {
 struct SetAssetMutation {
     CreativeObjectKind objectKind{CreativeObjectKind::Unknown};
     std::string assetId{};
+    std::uint64_t assetContentHash{0U};
+    std::string assetMaterialVariant{};
     CreativeBounds bounds{};
 };
 
@@ -259,6 +262,10 @@ struct MovingPlatformSettingsMutation {
     CreativeMovingPlatformSettings settings{};
 };
 
+struct PlayerSpawnSettingsMutation {
+    CreativePlayerSpawnSettings settings{};
+};
+
 struct ObjectKindMutation {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
 };
@@ -291,6 +298,7 @@ struct CreativeMutationPayload {
         StringIdMutation,
         PathPointsMutation,
         MovingPlatformSettingsMutation,
+        PlayerSpawnSettingsMutation,
         ObjectKindMutation>;
 
     Value value{};
@@ -368,7 +376,9 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeAssetPayload(
     CreativeObjectKind objectKind,
     std::string assetId,
-    CreativeBounds bounds);
+    CreativeBounds bounds,
+    std::uint64_t assetContentHash = 0U,
+    std::string assetMaterialVariant = {});
 [[nodiscard]] CreativeMutationPayload makeScalarPayload(double value);
 [[nodiscard]] CreativeMutationPayload makeParentPayload(CreativeObjectId parentId);
 [[nodiscard]] CreativeMutationPayload makeAttachPayload(CreativeObjectId targetId, std::string socket);
@@ -378,5 +388,7 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints);
 [[nodiscard]] CreativeMutationPayload makeMovingPlatformSettingsPayload(
     CreativeMovingPlatformSettings settings);
+[[nodiscard]] CreativeMutationPayload makePlayerSpawnSettingsPayload(
+    CreativePlayerSpawnSettings settings);
 
 } // namespace iggy3d::creative

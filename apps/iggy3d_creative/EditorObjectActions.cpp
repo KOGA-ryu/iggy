@@ -5,10 +5,12 @@
 #include <vector>
 
 #include "EditorAuthoredAssets.hpp"
+#include "EditorAttachmentPlacement.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
 #include "EditorTransform.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 namespace iggy3d_creative_app {
@@ -49,6 +51,7 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -65,6 +68,8 @@ bool creativeEditorCommandIsObjectAction(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -80,6 +85,7 @@ void refreshCreativeEditorObjectActionContext(
   state.contextGroupId = cr::kInvalidObjectId;
   state.contextPrimaryObjectId = cr::kInvalidObjectId;
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
+  state.contextPrimaryAssetId.clear();
   state.contextContainerKind = cr::CreativeObjectKind::Unknown;
   state.contextContainerAssetId.clear();
   state.contextAttachmentParentId = cr::kInvalidObjectId;
@@ -132,7 +138,10 @@ void refreshCreativeEditorObjectActionContext(
       state.contextAllResettable = false;
       continue;
     }
-    state.contextAllUnlocked = state.contextAllUnlocked && !object->locked;
+    state.contextAllUnlocked =
+        state.contextAllUnlocked &&
+        !cr::creativeObjectEffectivelyLocked(appState.facade.document(),
+                                             object->id);
     state.contextAllMovable =
         state.contextAllMovable &&
         cr::descriptorAllowsMutation(object->kind, cr::CreativeMutationKind::Move);
@@ -161,8 +170,14 @@ void refreshCreativeEditorObjectActionContext(
     return;
   }
   state.contextPrimaryObjectKind = object->kind;
-  state.contextPrimaryVisible = object->visible;
-  state.contextPrimaryLocked = object->locked;
+  state.contextPrimaryAssetId = object->assetId;
+  const cr::CreativeObjectHierarchyState primaryState =
+      cr::resolveCreativeObjectHierarchyState(appState.facade.document(),
+                                              object->id);
+  state.contextPrimaryVisible =
+      primaryState.resolved && primaryState.effectivelyVisible;
+  state.contextPrimaryLocked =
+      !primaryState.resolved || primaryState.effectivelyLocked;
   if (state.contextSelectionCount != 1U) {
     return;
   }
@@ -250,6 +265,15 @@ bool creativeEditorObjectActionEnabled(
              state.contextAttachmentParentId != cr::kInvalidObjectId &&
              !state.contextAttachmentSocket.empty() &&
              !state.contextPrimaryLocked;
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
+      return state.contextSelectionCount == 1U &&
+             state.contextPrimaryObjectId != cr::kInvalidObjectId &&
+             !state.contextPrimaryAssetId.empty() &&
+             state.contextAttachmentAimAvailable &&
+             state.contextAttachmentAimTargetId != cr::kInvalidObjectId &&
+             state.contextAttachmentAimTargetId !=
+                 state.contextPrimaryObjectId &&
+             !state.contextPrimaryLocked;
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return state.contextSelectionCount > 1U && state.contextAllUnlocked;
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -277,6 +301,8 @@ bool creativeEditorObjectActionEnabled(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
     case CreativeEditorToolOptionsCommandId::Count:
       return false;
   }
@@ -300,6 +326,8 @@ std::string_view creativeEditorObjectActionLabel(
       return "LOCK";
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
       return "DETACH";
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
+      return "REATTACH";
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return "GROUP";
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -321,6 +349,8 @@ std::string_view creativeEditorObjectActionLabel(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID ACTION";
   }
@@ -355,6 +385,11 @@ std::string creativeEditorObjectActionValueLabel(
       return state.contextAttachmentSocket.empty()
                  ? "NOT ATTACHED"
                  : "FROM " + state.contextAttachmentSocket;
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
+      return state.contextAttachmentAimAvailable
+                 ? "TO OBJECT #" +
+                       std::to_string(state.contextAttachmentAimTargetId)
+                 : "AIM AT SOCKET HOST";
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return state.contextSelectionCount > 1U
                  ? std::to_string(state.contextSelectionCount) + " OBJECTS"
@@ -406,6 +441,8 @@ std::string creativeEditorObjectActionValueLabel(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
     case CreativeEditorToolOptionsCommandId::Count:
       return "INVALID";
   }
@@ -415,7 +452,9 @@ std::string creativeEditorObjectActionValueLabel(
 bool activateCreativeEditorObjectAction(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
-    CreativeEditorToolOptionsCommandId command) {
+    CreativeEditorToolOptionsCommandId command,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* placementClearanceCache) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
   if (!creativeEditorObjectActionEnabled(editor, state, command)) {
     return false;
@@ -426,7 +465,8 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::TransformSelection:
       accepted = beginCreativeEditorSelectionTransformPreview(
           appState, editor.transform, "object_actions_transform",
-          CreativeEditorTransformAnchorPolicy::FixedSource);
+          CreativeEditorTransformAnchorPolicy::FixedSource,
+          &editor.worldLayout);
       break;
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
       cr::CreativeTransformCommandRequest reset;
@@ -445,8 +485,9 @@ bool activateCreativeEditorObjectAction(
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
-      accepted = deleteSelectedObject(appState, "object_actions_delete",
-                                      &appState.history)
+      accepted = deleteCreativeEditorSelectionWithUndo(
+                     appState, "object_actions_delete", &appState.history,
+                     &editor.worldLayout)
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
@@ -468,6 +509,37 @@ bool activateCreativeEditorObjectAction(
                                "object_actions_detach")
               .status);
       break;
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment: {
+      if (assetCatalog == nullptr) {
+        editor.catalog.statusLabel = "REATTACH: ASSET CATALOG UNAVAILABLE";
+        break;
+      }
+      const CreativeEditorObjectReattachmentPlan plan =
+          planCreativeEditorObjectReattachment(
+              appState.facade.document(), *assetCatalog,
+              state.contextPrimaryObjectId,
+              state.contextAttachmentAimTargetId,
+              state.contextAttachmentAimPoint,
+              cr::CreativeAssetAttachmentMode::AimSocket,
+              placementClearanceCache);
+      if (!plan.accepted) {
+        editor.catalog.statusLabel =
+            "REATTACH: " +
+            std::string(plan.status ==
+                                CreativeEditorObjectReattachmentStatus::SnapRejected
+                            ? cr::toString(plan.snap.status)
+                            : toString(plan.status));
+        break;
+      }
+      const CreativeEditorObjectReattachmentReceipt receipt =
+          reattachObjectWithUndo(appState, appState.history, plan,
+                                 "object_actions_reattach");
+      accepted = receipt.accepted;
+      editor.catalog.statusLabel =
+          accepted ? "REATTACHED TO " + std::string(plan.snap.targetSocket)
+                   : "REATTACH: " + std::string(toString(receipt.status));
+      break;
+    }
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       accepted = applyCreativeEditorGroupCommandWithHistory(
@@ -579,6 +651,8 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
     case CreativeEditorToolOptionsCommandId::Count:
       break;
   }

@@ -27,8 +27,9 @@ namespace {
               editor.toolSettings.terrainSculptRadius),
           cr::creativeTerrainSculptStrengthCells(
               editor.toolSettings.terrainSculptStrength),
-          editor.terrain.sculpt.targetHeightCells,
-          editor.toolSettings.terrainSculptFalloff};
+          editor.toolSettings.terrainSculptTargetHeightCells,
+          editor.toolSettings.terrainSculptFalloff,
+          editor.toolSettings.terrainSculptMask};
 }
 
 void setSculptFeedback(CreativeEditorState& editor, bool accepted) noexcept {
@@ -43,6 +44,7 @@ void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
   sculpt.preview.valid = false;
   sculpt.preview.renderAccepted = false;
   sculpt.preview.patches.clear();
+  sculpt.preview.contours = {};
 }
 
 [[nodiscard]] bool previewKeyMatches(
@@ -55,25 +57,105 @@ void invalidateSculptPreview(CreativeTerrainSculptState& sculpt) noexcept {
          cache.center == center &&
          cache.mode == editor.toolSettings.terrainSculptMode &&
          cache.falloff == editor.toolSettings.terrainSculptFalloff &&
+         cache.mask == editor.toolSettings.terrainSculptMask &&
          cache.radiusCells == cr::creativeTerrainSculptRadiusCells(
                                   editor.toolSettings.terrainSculptRadius) &&
          cache.strengthCells == cr::creativeTerrainSculptStrengthCells(
                                     editor.toolSettings.terrainSculptStrength) &&
+         cache.contourIntervalCells == editor.terrain.contours.intervalCells &&
+         cache.contourMajorEvery == editor.terrain.contours.majorEvery &&
          (!cr::creativeTerrainSculptUsesTargetHeight(cache.mode) ||
           cache.targetHeightCells ==
-              editor.terrain.sculpt.targetHeightCells);
+              editor.toolSettings.terrainSculptTargetHeightCells);
 }
 
-[[nodiscard]] bool insideBrush(cr::CreativeTerrainCoord2 center,
-                               cr::CreativeTerrainCoord2 coord,
-                               std::uint16_t radiusCells) noexcept {
-  const std::int64_t dx = static_cast<std::int64_t>(center.x) - coord.x;
-  const std::int64_t dz = static_cast<std::int64_t>(center.z) - coord.z;
-  const std::int64_t radius = radiusCells;
-  if (dx < -radius || dx > radius || dz < -radius || dz > radius) {
-    return false;
+[[nodiscard]] cr::CreativeTerrainContourPlan buildSculptContourPlan(
+    const cr::CreativeTerrainField& source,
+    const cr::CreativeTerrainSculptPlan& sculpt,
+    std::uint16_t intervalCells,
+    std::uint16_t majorEvery) {
+  if (!sculpt.dirtyRegion.valid || sculpt.items().empty()) {
+    return {};
   }
-  return dx * dx + dz * dz <= radius * radius;
+  cr::CreativeTerrainField preview = source;
+  const cr::CreativeTerrainMutationReceipt mutation = preview.apply(
+      sculpt.items());
+  if (!mutation.accepted) {
+    return {};
+  }
+
+  cr::CreativeTerrainSurfacePlan surface;
+  surface.requested = true;
+  surface.sourceRevision = preview.revision();
+  const cr::CreativeTerrainCoord2 minimum = sculpt.dirtyRegion.minimum;
+  const cr::CreativeTerrainCoord2 maximum = sculpt.dirtyRegion.maximum;
+  surface.columns.reserve(static_cast<std::size_t>(
+      sculpt.dirtyRegion.candidatePatchCount));
+  for (std::int64_t z = minimum.z; z <= maximum.z; ++z) {
+    for (std::int64_t x = minimum.x; x <= maximum.x; ++x) {
+      const cr::CreativeTerrainHeightSample sample =
+          cr::sampleCreativeTerrainHeight(
+              preview, {static_cast<std::int32_t>(x),
+                        static_cast<std::int32_t>(z)});
+      if (!sample.present) {
+        continue;
+      }
+      surface.contributionCount += sample.contributingControlCount;
+      surface.columns.push_back({sample.coord, sample.heightCells});
+    }
+  }
+  surface.accepted = true;
+  surface.status = surface.columns.empty()
+                       ? cr::CreativeTerrainSurfacePlanStatus::Empty
+                       : cr::CreativeTerrainSurfacePlanStatus::Ready;
+  surface.reasonCode = surface.columns.empty()
+                           ? "creative_terrain_sculpt_contours_empty"
+                           : "creative_terrain_sculpt_contours_ready";
+  return cr::buildCreativeTerrainContourPlan(
+      surface, {intervalCells, majorEvery,
+                cr::kCreativeTerrainContourSegmentCapacity});
+}
+
+void appendSculptSquareOutline(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
+    cr::CreativeGridSettings grid,
+    cr::CreativeTerrainCoord2 center,
+    std::uint16_t radiusCells,
+    iggy3d::RenderLineColor color,
+    float thickness) {
+  const double minimumX =
+      grid.origin.x +
+      static_cast<double>(static_cast<std::int64_t>(center.x) - radiusCells) *
+          grid.cellSizeMeters;
+  const double minimumZ =
+      grid.origin.z +
+      static_cast<double>(static_cast<std::int64_t>(center.z) - radiusCells) *
+          grid.cellSizeMeters;
+  const double edgeCells = static_cast<double>(radiusCells * 2U + 1U);
+  const double maximumX = minimumX + edgeCells * grid.cellSizeMeters;
+  const double maximumZ = minimumZ + edgeCells * grid.cellSizeMeters;
+  const double y = grid.origin.y + grid.cellSizeMeters * 0.12;
+  const std::array<cr::CreativeVec3, 4U> corners{{
+      {minimumX, y, minimumZ},
+      {maximumX, y, minimumZ},
+      {maximumX, y, maximumZ},
+      {minimumX, y, maximumZ},
+  }};
+  for (std::size_t index = 0U; index < corners.size(); ++index) {
+    const cr::CreativeCoreVec3Conversion start =
+        cr::creativeVec3ToCoreChecked(corners[index]);
+    const cr::CreativeCoreVec3Conversion end =
+        cr::creativeVec3ToCoreChecked(corners[(index + 1U) % corners.size()]);
+    if (!start.converted || !end.converted) {
+      continue;
+    }
+    iggy3d::RenderCreativeWireframeDebugLine line;
+    line.start = start.value;
+    line.end = end.value;
+    line.color = color;
+    line.thickness = thickness;
+    lines.push_back(line);
+  }
 }
 
 [[nodiscard]] cr::CreativeDocumentHistoryTransaction& ensureSculptTransaction(
@@ -194,8 +276,9 @@ CreativeEditorTerrainSculptReceipt sampleCreativeEditorTerrainSculptHeight(
   }
   receipt.accepted = true;
   receipt.changed =
-      editor.terrain.sculpt.targetHeightCells != sample.heightCells;
-  editor.terrain.sculpt.targetHeightCells = sample.heightCells;
+      editor.toolSettings.terrainSculptTargetHeightCells !=
+      sample.heightCells;
+  editor.toolSettings.terrainSculptTargetHeightCells = sample.heightCells;
   receipt.reasonCode = "creative_editor_terrain_sculpt_height_sampled";
   invalidateSculptPreview(editor.terrain.sculpt);
   setSculptFeedback(editor, true);
@@ -258,10 +341,13 @@ std::string creativeEditorTerrainSculptQuickEditLabel(
       editor.toolSettings.terrainSculptStrength)));
   label.append(" | FALLOFF ");
   label.append(cr::toString(editor.toolSettings.terrainSculptFalloff));
+  label.append(" | MASK ");
+  label.append(cr::toString(editor.toolSettings.terrainSculptMask));
   if (cr::creativeTerrainSculptUsesTargetHeight(
           editor.toolSettings.terrainSculptMode)) {
     label.append(" | TARGET ");
-    label.append(std::to_string(editor.terrain.sculpt.targetHeightCells));
+    label.append(std::to_string(
+        editor.toolSettings.terrainSculptTargetHeightCells));
   }
   return label;
 }
@@ -349,30 +435,37 @@ bool refreshCreativeEditorTerrainSculptPreview(
   cache.center = center;
   cache.mode = editor.toolSettings.terrainSculptMode;
   cache.falloff = editor.toolSettings.terrainSculptFalloff;
+  cache.mask = editor.toolSettings.terrainSculptMask;
   cache.radiusCells = cr::creativeTerrainSculptRadiusCells(
       editor.toolSettings.terrainSculptRadius);
   cache.strengthCells = cr::creativeTerrainSculptStrengthCells(
       editor.toolSettings.terrainSculptStrength);
-  cache.targetHeightCells = state.sculpt.targetHeightCells;
+  cache.targetHeightCells = editor.toolSettings.terrainSculptTargetHeightCells;
+  cache.contourIntervalCells = editor.terrain.contours.intervalCells;
+  cache.contourMajorEvery = editor.terrain.contours.majorEvery;
   cache.plan = planCreativeEditorTerrainSculpt(document, editor, center);
-  if (!cache.plan.accepted) {
+  if (!cache.plan.accepted || !cache.plan.dirtyRegion.valid ||
+      cache.plan.items().empty()) {
     return true;
   }
 
   const cr::CreativeGridSettings grid = document.gridSettings();
   const cr::CreativeTerrainMutationPreviewReceipt preview =
       cr::buildCreativeTerrainMutationPreview(
-          document.terrainField(), cache.plan.items(), grid.origin,
-          grid.cellSizeMeters);
+          document.terrainField(), cache.plan.items(),
+          {cache.plan.dirtyRegion.minimum, cache.plan.dirtyRegion.maximum},
+          grid.origin, grid.cellSizeMeters);
   if (!preview.accepted) {
     return true;
   }
-  cache.patches.reserve(preview.render.patches.size());
-  for (const cr::CreativeTerrainSurfacePatch& patch : preview.render.patches) {
-    if (insideBrush(center, patch.coord, cache.radiusCells)) {
-      cache.patches.push_back(patch);
-    }
-  }
+  cache.sampledColumnCoordinateCount =
+      preview.sampledColumnCoordinateCount;
+  cache.candidatePatchCoordinateCount =
+      preview.candidatePatchCoordinateCount;
+  cache.patches = preview.render.patches;
+  cache.contours = buildSculptContourPlan(
+      document.terrainField(), cache.plan, cache.contourIntervalCells,
+      cache.contourMajorEvery);
   cache.renderAccepted = true;
   return true;
 }
@@ -391,10 +484,16 @@ void appendCreativeEditorTerrainSculptOverlay(
   constexpr iggy3d::RenderLineColor rejected{1.0F, 0.20F, 0.18F, 1.0F};
   const iggy3d::RenderLineColor outlineColor =
       preview.plan.accepted && preview.renderAccepted ? admitted : rejected;
-  appendCreativeEditorTerrainFootprintOutline(
-      wireLines, document.gridSettings(),
-      {preview.center, preview.targetHeightCells, preview.radiusCells},
-      outlineColor, wireThickness * 1.25F);
+  if (preview.mask == cr::CreativeTerrainSculptMask::Square) {
+    appendSculptSquareOutline(wireLines, document.gridSettings(),
+                              preview.center, preview.radiusCells,
+                              outlineColor, wireThickness * 1.25F);
+  } else {
+    appendCreativeEditorTerrainFootprintOutline(
+        wireLines, document.gridSettings(),
+        {preview.center, preview.targetHeightCells, preview.radiusCells},
+        outlineColor, wireThickness * 1.25F);
+  }
   if (!preview.renderAccepted) {
     return;
   }
@@ -402,6 +501,8 @@ void appendCreativeEditorTerrainSculptOverlay(
     appendCreativeEditorTerrainPatchSlopeTriangles(
         wireLines, patch, wireThickness * 0.75F);
   }
+  static_cast<void>(appendCreativeEditorTerrainContourPlan(
+      document, preview.contours, wireThickness * 0.85F, wireLines));
 }
 
 }  // namespace iggy3d_creative_app

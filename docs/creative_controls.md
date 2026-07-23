@@ -178,7 +178,7 @@ Physical input is translated into these stable actions before a tool sees it:
 | `Pick` | Sample target or active tool's tertiary operation |
 | `HotbarSlot` / `HotbarNext` / `HotbarPrevious` | Select held material/tool |
 | `ToggleCatalog` | Open or close searchable object and tool inventory |
-| `CatalogAssignToolWheel` | Assign the highlighted catalog tool to a wheel sector |
+| `CatalogContextAction` | Assign a highlighted tool to a wheel sector, or cycle an asset's Equip/Replace/Manage action |
 | `ToggleToolWheel` | Open or close the radial creator-tool selector |
 | `ToggleTransformControls` | Open or close controls for the active selection preview |
 | `TransformControlPrevious` / `TransformControlNext` | Select a visible transform operation |
@@ -201,7 +201,7 @@ Initial tool grammar:
 | Object select | Select/toggle target | No action | Select/toggle target | Cancel active action | Sample material |
 | Transform | Fast ground-plane drag | Begin transform preview | Fast ground-plane drag | Cancel active drag | Sample material |
 | Selection wand | Set corner 1 | Set corner 2 | Advance corner 1/2 | Clear selection | Expand selection |
-| Fill/Hollow | Start corner 1 | Set corner 2 and commit | Advance start/commit | Clear selection | Sample material |
+| Fill/Hollow | Advance corner/preview/apply | Advance corner/preview/apply | Advance corner/preview/apply | Clear selection | Sample material |
 | Replace/Erase/Clone | No action | Apply region | Apply region | Clear selection | Sample material |
 | Linear array | Select target | Apply preview | Select if empty, otherwise apply | Cancel active action | Sample material |
 
@@ -322,8 +322,13 @@ The data, generation, cache, and future smooth-surface seams are specified in
   visibility. Locked objects, missing source assets, unsupported object kinds,
   and objects with custom resized bounds are rejected without a partial edit.
 - Fill and Hollow expose Shape, Axis, and Material beside the selected catalog
-  row. Left/right or controller D-pad left/right cycles the bounded presets:
-  Box, Line, Ellipsoid, and Cylinder X/Y/Z. The values are a draft until Equip;
+  row. Fill also exposes Overlap: Preserve leaves occupied cells unchanged,
+  while Replace changes occupied cells to the selected material. Hollow adds
+  1/2/4-cell shell thickness, Inward/Outward alignment, Closed/- End/+ End/Both
+  Ends openings, and Keep Edges/Cut Through corner behavior. Left/right or
+  controller D-pad left/right cycles the focused bounded preset. Shape presets
+  are Box, Line, Ellipsoid, and Cylinder X/Y/Z; Hollow rejects Line because a
+  one-dimensional path has no interior. The values are a draft until Equip;
   closing the catalog does not silently change the held tool.
 - The catalog has Build and Actions pages. Brackets or controller L1/R1 change
   pages, and either tab can be clicked. Actions exposes Undo, Redo,
@@ -373,7 +378,8 @@ The data, generation, cache, and future smooth-surface seams are specified in
   Cylinder shape, X/Y/Z cylinder axis, 1/3/5-cell size, Solid/Shell body,
   Free/Line X/Line Y/Line Z/Plane X/Plane Y/Plane Z brush guides,
   Off/Mirror X/Mirror Y/Mirror Z/Mirror XZ symmetry, and Add Only/Replace/
-  Overwrite occupancy masks, Replace
+  Overwrite occupancy masks, Volume Fill Preserve Existing/Replace Existing,
+  Replace
   Brush source filtering by material or Any, volume
   Replace source filtering by material or Any, Clone offsets on X/Y/Z at
   1/2/4/8 cells, Connected Fill limits of 64/128/256/512 cells, Surface
@@ -420,13 +426,83 @@ The data, generation, cache, and future smooth-surface seams are specified in
   status row names mode, constraint, base/fine step, signed XYZ displacement,
   quarter-turn angle, and mirror flags. Above 512 source objects, each side
   collapses to one aggregate wire box so aiming remains bounded.
-- Fill and Hollow are self-contained held tools. Primary starts or replaces
-  corner 1 at the crosshair; aiming updates the exact bounded preview; Secondary
-  sets corner 2 and commits once. A second Secondary cannot recommit the finished
-  region until another Primary starts a new gesture. Cylinders choose X/Y/Z
-  extrusion. A one-cell cylinder is a disk and a one-cell-thick box is a wall
-  plane. The selection wand remains available for Replace, Erase, Clone, and
-  explicit region editing, but it is not a prerequisite for Fill or Hollow.
+- Fill and Hollow are self-contained held tools with a deliberate three-action
+  workflow. The first action records corner 1, aiming moves the live second
+  corner, and the second action freezes an exact preview without changing the
+  document, revision, or history. The third action applies that staged result
+  as one history transaction. The finished region stays selected for revision;
+  the next world action begins a fresh shape at the current aim instead of
+  replaying the old commit. Cancel clears the preview without mutation.
+  Cylinders choose X/Y/Z extrusion. A one-cell cylinder is a disk and a
+  one-cell-thick box is a wall plane. Fill's Preserve policy leaves occupied
+  voxel and legacy volume cells unchanged. Replace recolors occupied cells and
+  atomically migrates tagged legacy volume cells. For Hollow, Inward treats the
+  selected bounds as the exterior and requires every dimension to exceed twice
+  the requested thickness. Outward treats the selected bounds as the cavity
+  and expands the shell with checked coordinates. Openings follow the selected
+  shape axis: negative end, positive end, or both. Keep Edges preserves cells
+  shared with a closed face, producing a framed opening; Cut Through removes
+  the complete end slab including its edge and corner cells. Invalid shell
+  dimensions and coordinate overflow show a red rejection envelope and do not
+  mutate. Output is ordinary editable voxel content rather than a misleading
+  parametric recipe: the region and Hollow settings remain available for the
+  next revision, and committed cells can also be revised through Volume Select,
+  Material Brush, Replace, or Erase. The selection wand remains available for
+  those explicit region edits but is not a prerequisite for Fill or Hollow.
+- Volume Replace applies the held material to a completed reusable region. Tool
+  Options selects an exact source material or `ANY`, plus `VOXELS`, `OBJECTS`,
+  or `BOTH` member domains. Object-domain replacement is limited to exact tagged
+  legacy volume cells; it never recolors ordinary props or generated recipe
+  children. Mint outlines identify members that will change, gray outlines
+  identify matching members already using the target material, and the normal
+  operation-colored box remains the selection envelope. Replacement counts and
+  exclusions are computed before apply. Compatible legacy objects keep their
+  object IDs and metadata, mixed voxel/object edits commit atomically, and the
+  complete operation is one undo step.
+- Volume Erase removes eligible content from a completed reusable region. Tool
+  Options selects an exact source material/object kind or `ANY`, plus `VOXELS`,
+  `OBJECTS`, or `BOTH` member domains. Red outlines identify exact members that
+  will be deleted. Amber outlines identify World Layout or Pattern-owned output
+  that is protected from direct deletion, and yellow outlines identify source
+  objects on which that protected output depends. A locked member, an external
+  child, or a logic link crossing the region rejects the complete operation and
+  exposes the blocker instead of partially deleting content. Compatible object
+  and voxel deletions publish one document revision and one undo step; undo
+  restores both domains exactly.
+- Volume Clone duplicates eligible content from a completed reusable region.
+  Tool Options selects one of the six signed X/Y/Z offset directions, a positive
+  distance, quarter-turn rotation, X/Z mirror state, `VOXELS`, `OBJECTS`, or
+  `BOTH` member domains, and Reject/Preserve/Replace voxel-overlap behavior. The
+  preview renders the exact staged target geometry: mint members will be
+  created, gray voxels will remain unchanged under Preserve, amber members are
+  protected, yellow members are semantic sources, and red members block the
+  operation. Object hierarchy, internal logic links, and supported Pattern
+  relationships receive deterministic new IDs. Pattern relationships support
+  translation clones; rotation or mirroring rejects rather than flattening the
+  editable recipe. One accepted mixed object/voxel clone publishes one document
+  revision and one undo step.
+- Terrain Paint edits surface appearance without changing authored terrain
+  heights, patch corners, collision, or the immutable grid. It is available in
+  the Experimental Tools catalog while the wider terrain workflow remains in
+  integration. Brush mode uses X/right mouse to paint, Circle/left mouse to
+  blend back toward the sparse Grass default, and Square/middle mouse to sample
+  the aimed cell's dominant material. A held Brush gesture repeats every 200 ms
+  and commits one grouped undo record. Connected mode applies once to the
+  bounded four-neighbor component of the seed's dominant material. Region mode
+  records two corners and applies the exact filtered rectangle on the third
+  confirmation.
+  Tool Options exposes Grass/Dirt/Stone/Sand, Brush/Connected/Region, source
+  material or Any, 25/50/75/100 percent opacity, Replace/Additive blend,
+  slope bands, and height bands. Brush additionally exposes 1/2/4/8-cell
+  radius, Soft/50/75/Solid hardness, and Circle/Square mask. Each affected cell
+  stores four deterministic byte weights whose sum is exactly 255; one-hot
+  Grass remains represented by no sparse override. Replace interpolates toward
+  the selected layer, while Additive raises it and proportionally renormalizes
+  the others. The preview draws one inset swatch per affected cell in the exact
+  post-operation blended color, making mask, falloff, opacity, and filters
+  visible before commit. The renderer consumes that same blend without a
+  geometry rebuild. Save-section version 18 preserves exact weights, while
+  version 17 material records load as compatible one-hot layers.
 - The center ray resolves the nearest visible object, hit face, horizontal player
   facing, occupied grid cell, adjacent placement cell, and placement anchor.
 - Directional authored objects use descriptor-owned orientation: side placement
@@ -553,13 +629,20 @@ The data, generation, cache, and future smooth-surface seams are specified in
   content remains Copy-only.
 - The crosshair, target cell, hotbar selection, placement ghost, placement
   receipt feedback, and volume outline provide visible state. Above the hotbar,
-  the held-tool label names operation, shape, cylinder axis, material, and
-  whether corner 1 or a completed region is active. Mutations use the existing
+  the held-tool label names operation and its relevant shape, axis, material,
+  source filter, member mask, and region phase. Mutations use the existing
   history transactions.
 - Manual structural materials and accepted Fill/Hollow cells share the same
-  sparse voxel field. Interactive Fill/Hollow previews fail closed above 512
-  candidate/generated cells. The red outline appears before commit so an
-  accidental distant second corner cannot start unexpectedly large work.
+  sparse voxel field. Their valid preview is the exact staged document rendered
+  through the normal room bake, including the selected material; it is not an
+  approximate wire proxy and it does not enter room geometry, revision, or
+  history before confirmation. Hollow overlays the operation-colored exterior
+  envelope and a pale cavity envelope from the same checked bounds used by
+  commit. Unchanged aim and unchanged Hollow settings reuse the staged operation
+  and scene caches; changing thickness, alignment, opening, or corner behavior
+  invalidates the preview exactly once. Interactive Fill/Hollow previews fail
+  closed above 512 candidate/generated cells. The red outline appears before
+  apply so an accidental distant corner cannot start unexpectedly large work.
   Accepted bulk cells live in 16-cubed voxel chunks and render through
   dirty-chunk greedy cuboids rather than one document object and mesh per cell.
 - Save, new, and load use platform command `S`, `N`, and `O`. No `F`, `F5`, or
@@ -587,8 +670,8 @@ The data, generation, cache, and future smooth-surface seams are specified in
   brute-force picker before raising scene-size targets.
 - Randomized rotated/non-uniform object face-normal parity, including edge and
   corner ties and rays that start inside a visual bound.
-- Large-volume latency and preview-density thresholds near the 16,384-object
-  operation limit.
+- Large-volume latency and preview-density thresholds near the 512-cell editor
+  limit, including all shape, cylinder-axis, and overlap-policy permutations.
 - Randomized shape-brush symmetry and endpoint-reversal parity, especially even
   extents, diagonal 3D lines, thin ellipsoids, cylinder-axis permutations, and
   selections immediately above both planner limits.

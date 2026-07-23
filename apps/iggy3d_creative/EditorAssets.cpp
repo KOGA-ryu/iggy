@@ -14,6 +14,7 @@
 #include "EditorEdits.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
@@ -155,10 +156,16 @@ CreativeCatalogAssetDiscovery discoverCreativeCatalogAssets(
         assetObjectKind(source.assetId, source.authoringMetadata.categoryId);
     asset.assetId = source.assetId;
     asset.label = source.label;
+    asset.contentHash = source.contentHash;
     asset.sourceBounds =
         {{source.boundsMin.x, source.boundsMin.y, source.boundsMin.z},
          {source.boundsMax.x, source.boundsMax.y, source.boundsMax.z}};
     asset.authoringMetadata = source.authoringMetadata;
+    asset.collisionParts = source.collisionParts;
+    asset.attachmentSockets = source.attachmentSockets;
+    asset.materialVariants = source.materialVariants;
+    asset.materialCount = source.materialCount;
+    asset.thumbnail = source.thumbnail;
     output.assets.push_back(std::move(asset));
   }
   for (const iggy3d::StaticMeshAssetCatalogFailure& source :
@@ -217,20 +224,41 @@ CreativeAssetBoundsRefreshPlan planCreativeAssetBoundsRefresh(
     }
     const cr::CreativeBounds expectedPrevious =
         creativeAssetBoundsAtPivot(*previous, object.transform.position);
-    if (!cr::creativeBoundsExactlyEqual(object.bounds, expectedPrevious)) {
+    const bool naturalBounds =
+        cr::creativeBoundsExactlyEqual(object.bounds, expectedPrevious);
+    if (!naturalBounds) {
       ++plan.customBoundsSkippedCount;
-      continue;
     }
     const cr::CreativeBounds expectedNext =
         creativeAssetBoundsAtPivot(*next, object.transform.position);
-    if (cr::creativeBoundsExactlyEqual(object.bounds, expectedNext)) {
+    const cr::CreativeBounds replacementBounds =
+        naturalBounds ? expectedNext : object.bounds;
+    const bool variantRetained =
+        object.assetMaterialVariant.empty() ||
+        iggy3d::findStaticMeshMaterialVariantIndex(
+            next->materialVariants, object.assetMaterialVariant)
+            .has_value();
+    const std::string_view replacementVariant =
+        variantRetained ? std::string_view(object.assetMaterialVariant)
+                        : std::string_view{};
+    const bool boundsChanged = !cr::creativeBoundsExactlyEqual(
+        object.bounds, replacementBounds);
+    const bool identityChanged = object.assetContentHash != next->contentHash;
+    const bool variantChanged =
+        object.assetMaterialVariant != replacementVariant;
+    if (!boundsChanged && !identityChanged && !variantChanged) {
       continue;
     }
     cr::CreativeMutationRequest mutation;
     mutation.objectId = object.id;
-    mutation.kind = cr::CreativeMutationKind::SetBounds;
-    mutation.payload = cr::makeBoundsPayload(expectedNext);
+    mutation.kind = cr::CreativeMutationKind::SetAsset;
+    mutation.payload = cr::makeAssetPayload(
+        object.kind, object.assetId, replacementBounds, next->contentHash,
+        std::string(replacementVariant));
     plan.mutations.push_back(std::move(mutation));
+    plan.boundsUpdateCount += boundsChanged ? 1U : 0U;
+    plan.identityUpdateCount += identityChanged ? 1U : 0U;
+    plan.materialVariantResetCount += variantChanged ? 1U : 0U;
   }
   return plan;
 }
@@ -302,13 +330,27 @@ std::size_t refreshCreativeHotbarAssetFacts(
     if (asset == nullptr) {
       continue;
     }
+    const std::string_view currentVariant =
+        cr::creativeHotbarAssetMaterialVariant(entry);
+    const bool variantRetained =
+        currentVariant.empty() ||
+        iggy3d::findStaticMeshMaterialVariantIndex(asset->materialVariants,
+                                                   currentVariant)
+            .has_value();
+    const std::string_view refreshedVariant =
+        variantRetained ? currentVariant : std::string_view{};
     const bool changed = entry.objectKind != asset->objectKind ||
                          !entry.hasAssetBounds ||
+                         entry.assetContentHash != asset->contentHash ||
+                         currentVariant != refreshedVariant ||
                          !cr::creativeBoundsExactlyEqual(
                              entry.assetSourceBounds, asset->sourceBounds);
+    const std::string stableAssetId(assetId);
+    const std::string stableVariant(refreshedVariant);
     entry.objectKind = asset->objectKind;
-    static_cast<void>(
-        cr::setCreativeHotbarAsset(entry, assetId, asset->sourceBounds));
+    static_cast<void>(cr::setCreativeHotbarAsset(
+        entry, stableAssetId, asset->sourceBounds, asset->contentHash,
+        stableVariant));
     changedCount += changed ? 1U : 0U;
   }
   return changedCount;
@@ -321,7 +363,7 @@ cr::CreativeCatalogState rebuildCreativeAssetCatalog(
     std::string_view selectedAssetId) {
   cr::CreativeCatalogState replacement = cr::makeCreativeCatalog(
       materialPalette, discovery.assets, discovery.failures.size(),
-      discovery.failures);
+      discovery.failures, creativeEditorCatalogToolSpecs());
   restoreCatalogState(previous, selectedAssetId, replacement);
   return replacement;
 }
@@ -392,8 +434,20 @@ CreativeEditorAssetReloadReceipt reloadCreativeEditorAssets(
   receipt.missingWorldLayoutAssetCount =
       worldLayoutBoundsPlan.missingAssetCount;
 
-  receipt.refreshedObjectBoundsCount =
+  const std::size_t refreshedObjectCount =
       applyAssetBoundsRefresh(request.appState, boundsPlan);
+  receipt.refreshedObjectBoundsCount =
+      refreshedObjectCount == boundsPlan.mutations.size()
+          ? boundsPlan.boundsUpdateCount
+          : 0U;
+  receipt.refreshedObjectIdentityCount =
+      refreshedObjectCount == boundsPlan.mutations.size()
+          ? boundsPlan.identityUpdateCount
+          : 0U;
+  receipt.resetObjectMaterialVariantCount =
+      refreshedObjectCount == boundsPlan.mutations.size()
+          ? boundsPlan.materialVariantResetCount
+          : 0U;
   receipt.customBoundsSkippedCount = boundsPlan.customBoundsSkippedCount;
   receipt.refreshedHotbarSlotCount = refreshCreativeHotbarAssetFacts(
       request.editor.interaction.hotbar, discovery.assets);

@@ -9,7 +9,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutCodecVersion = 11U;
+inline constexpr std::uint32_t kCreativeWorldLayoutCodecVersion = 27U;
 inline constexpr std::size_t kCreativeWorldLayoutCodecMaxEncodedBytes =
     8U * 1024U * 1024U;
 inline constexpr std::size_t kCreativeWorldLayoutCodecMaxRecords = 65535U;
@@ -58,5 +58,7 @@ struct CreativeWorldLayoutDecodeResult {
     const CreativeWorldLayout& layout);
 [[nodiscard]] CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     std::string_view encodedText);
+[[nodiscard]] std::uint64_t fingerprintCreativeWorldLayout(
+    const CreativeWorldLayout& layout);
 
 }  // namespace iggy3d::creative

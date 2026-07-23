@@ -32,6 +32,101 @@ namespace {
   return base;
 }
 
+[[nodiscard]] bool variantUsesDefaultMaterials(
+    const StaticMeshAsset& asset,
+    std::size_t variantIndex) noexcept {
+  return std::all_of(
+      asset.primitives.begin(), asset.primitives.end(),
+      [variantIndex](const StaticMeshPrimitive& primitive) {
+        return resolveStaticMeshPrimitiveMaterialIndex(primitive, variantIndex) ==
+               primitive.materialIndex;
+      });
+}
+
+[[nodiscard]] bool appendAssetDrawFamily(
+    const StaticMeshAsset& asset,
+    std::optional<std::size_t> variantIndex,
+    const StaticMeshMaterialTextureResources* materialTextures,
+    StaticMeshAssetAtlasCpuGeometry& geometry,
+    std::vector<IndexedDrawRange>& draws) {
+  for (const StaticMeshPrimitive& primitive : asset.primitives) {
+    if (primitive.indexCount == 0U || primitive.indexCount % 3U != 0U ||
+        primitive.firstIndex > asset.indices.size() ||
+        primitive.indexCount > asset.indices.size() - primitive.firstIndex ||
+        geometry.indices.size() >
+            std::numeric_limits<std::uint32_t>::max() - primitive.indexCount ||
+        geometry.vertices.size() >
+            std::numeric_limits<std::uint32_t>::max() - primitive.indexCount) {
+      return false;
+    }
+
+    const std::uint32_t materialIndex =
+        resolveStaticMeshPrimitiveMaterialIndex(primitive, variantIndex);
+    IndexedDrawRange draw;
+    draw.firstIndex = static_cast<std::uint32_t>(geometry.indices.size());
+    const StaticMeshMaterial* material =
+        materialIndex < asset.materials.size()
+            ? &asset.materials[materialIndex]
+            : nullptr;
+    if (primitive.hasTexcoord0 && material != nullptr &&
+        material->baseColorImageIndex != kInvalidStaticMeshImageIndex &&
+        materialTextures != nullptr) {
+      draw.materialTextureIndex = findStaticMeshMaterialTextureIndex(
+          materialTextures->materialBindings, asset.id, materialIndex);
+    }
+    const Vec3 baseColor = importedMaterialBaseColor(asset, materialIndex);
+    for (std::uint32_t triangle = 0U; triangle < primitive.indexCount;
+         triangle += 3U) {
+      std::uint32_t sourceIndices[3]{};
+      Vec3 positions[3]{};
+      for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
+        sourceIndices[corner] =
+            asset.indices[primitive.firstIndex + triangle + corner];
+        if (sourceIndices[corner] >= asset.vertices.size()) {
+          return false;
+        }
+        positions[corner] = asset.vertices[sourceIndices[corner]].position;
+      }
+      const Vec3 faceNormal = normalized(
+          cross(positions[1] - positions[0], positions[2] - positions[0]));
+      if (!isFinite(faceNormal)) {
+        return false;
+      }
+      for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
+        float u = 0.0F;
+        float v = 0.0F;
+        if (draw.materialTextureIndex != kInvalidMaterialTextureIndex) {
+          const StaticMeshVertex& source =
+              asset.vertices[sourceIndices[corner]];
+          const float scaledU = source.uv[0] * material->baseColorUvScale[0];
+          const float scaledV = source.uv[1] * material->baseColorUvScale[1];
+          const float cosine =
+              std::cos(material->baseColorUvRotationRadians);
+          const float sine = std::sin(material->baseColorUvRotationRadians);
+          u = material->baseColorUvOffset[0] + cosine * scaledU - sine * scaledV;
+          v = material->baseColorUvOffset[1] + sine * scaledU + cosine * scaledV;
+          if (!std::isfinite(u) || !std::isfinite(v)) {
+            return false;
+          }
+        }
+        const Vec3 position = positions[corner];
+        const std::uint32_t vertexIndex =
+            static_cast<std::uint32_t>(geometry.vertices.size());
+        geometry.vertices.push_back(
+            {{position.x, position.y, position.z},
+             {u, v},
+             {baseColor.x, baseColor.y, baseColor.z},
+             {faceNormal.x, faceNormal.y, faceNormal.z}});
+        geometry.indices.push_back(vertexIndex);
+      }
+    }
+    draw.indexCount =
+        static_cast<std::uint32_t>(geometry.indices.size()) - draw.firstIndex;
+    draws.push_back(draw);
+  }
+  return true;
+}
+
 }  // namespace
 
 bool buildStaticMeshInstanceTransform(
@@ -109,85 +204,22 @@ StaticMeshAssetAtlasCpuGeometry buildStaticMeshAssetAtlasCpuGeometry(
     assetDraw.assetId = asset->id;
     assetDraw.boundsMin = asset->boundsMin;
     assetDraw.boundsMax = asset->boundsMax;
-    for (const StaticMeshPrimitive& primitive : asset->primitives) {
-      if (primitive.indexCount == 0U || primitive.indexCount % 3U != 0U ||
-          primitive.firstIndex > asset->indices.size() ||
-          primitive.indexCount >
-              asset->indices.size() - primitive.firstIndex ||
-          result.indices.size() >
-              std::numeric_limits<std::uint32_t>::max() -
-                  primitive.indexCount ||
-          result.vertices.size() >
-              std::numeric_limits<std::uint32_t>::max() -
-                  primitive.indexCount) {
+    if (!appendAssetDrawFamily(*asset, std::nullopt, materialTextures, result,
+                               assetDraw.indexedDraws)) {
+      return {};
+    }
+    assetDraw.materialVariants.reserve(asset->materialVariants.size());
+    for (std::size_t variantIndex = 0U;
+         variantIndex < asset->materialVariants.size(); ++variantIndex) {
+      StaticMeshMaterialVariantDrawRanges variantDraw;
+      variantDraw.name = asset->materialVariants[variantIndex].name;
+      if (variantUsesDefaultMaterials(*asset, variantIndex)) {
+        variantDraw.indexedDraws = assetDraw.indexedDraws;
+      } else if (!appendAssetDrawFamily(*asset, variantIndex, materialTextures,
+                                        result, variantDraw.indexedDraws)) {
         return {};
       }
-
-      IndexedDrawRange draw;
-      draw.firstIndex = static_cast<std::uint32_t>(result.indices.size());
-      const StaticMeshMaterial* material =
-          primitive.materialIndex < asset->materials.size()
-              ? &asset->materials[primitive.materialIndex]
-              : nullptr;
-      if (primitive.hasTexcoord0 && material != nullptr &&
-          material->baseColorImageIndex != kInvalidStaticMeshImageIndex &&
-          materialTextures != nullptr) {
-        draw.materialTextureIndex = findStaticMeshMaterialTextureIndex(
-            materialTextures->materialBindings, asset->id,
-            primitive.materialIndex);
-      }
-      const Vec3 baseColor =
-          importedMaterialBaseColor(*asset, primitive.materialIndex);
-      for (std::uint32_t triangle = 0U;
-           triangle < primitive.indexCount; triangle += 3U) {
-        std::uint32_t sourceIndices[3]{};
-        Vec3 positions[3]{};
-        for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
-          sourceIndices[corner] =
-              asset->indices[primitive.firstIndex + triangle + corner];
-          if (sourceIndices[corner] >= asset->vertices.size()) {
-            return {};
-          }
-          positions[corner] = asset->vertices[sourceIndices[corner]].position;
-        }
-        const Vec3 faceNormal = normalized(
-            cross(positions[1] - positions[0], positions[2] - positions[0]));
-        if (!isFinite(faceNormal)) {
-          return {};
-        }
-        for (std::uint32_t corner = 0U; corner < 3U; ++corner) {
-          float u = 0.0F;
-          float v = 0.0F;
-          if (draw.materialTextureIndex != kInvalidMaterialTextureIndex) {
-            const StaticMeshVertex& source =
-                asset->vertices[sourceIndices[corner]];
-            const float scaledU = source.uv[0] * material->baseColorUvScale[0];
-            const float scaledV = source.uv[1] * material->baseColorUvScale[1];
-            const float cosine =
-                std::cos(material->baseColorUvRotationRadians);
-            const float sine = std::sin(material->baseColorUvRotationRadians);
-            u = material->baseColorUvOffset[0] + cosine * scaledU -
-                sine * scaledV;
-            v = material->baseColorUvOffset[1] + sine * scaledU +
-                cosine * scaledV;
-            if (!std::isfinite(u) || !std::isfinite(v)) {
-              return {};
-            }
-          }
-          const Vec3 position = positions[corner];
-          const std::uint32_t vertexIndex =
-              static_cast<std::uint32_t>(result.vertices.size());
-          result.vertices.push_back(
-              {{position.x, position.y, position.z},
-               {u, v},
-               {baseColor.x, baseColor.y, baseColor.z},
-               {faceNormal.x, faceNormal.y, faceNormal.z}});
-          result.indices.push_back(vertexIndex);
-        }
-      }
-      draw.indexCount =
-          static_cast<std::uint32_t>(result.indices.size()) - draw.firstIndex;
-      assetDraw.indexedDraws.push_back(draw);
+      assetDraw.materialVariants.push_back(std::move(variantDraw));
     }
     if (!assetDraw.indexedDraws.empty()) {
       result.assetDraws.push_back(std::move(assetDraw));

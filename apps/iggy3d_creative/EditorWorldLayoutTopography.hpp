@@ -39,8 +39,7 @@ struct CreativeEditorWorldLayoutTopographyPlan {
   std::uint64_t terrainHeightRevision = 0U;
   std::uint16_t minimumHeightCells = 0U;
   std::uint16_t maximumHeightCells = 0U;
-  std::vector<cr::CreativeTerrainColumn> columns;
-  cr::CreativeTerrainContourPlan contours;
+  cr::CreativeTerrainAnalysisPlan analysis;
   std::string_view reasonCode =
       "creative_editor_world_layout_topography_not_requested";
 };
@@ -54,49 +53,82 @@ struct CreativeEditorWorldLayoutTopographySample {
   double slopeMagnitude = 0.0;
   double slopeDegrees = 0.0;
   std::uint8_t neighborSampleCount = 0U;
-};
-
-enum class CreativeEditorWorldLayoutTerrainRegionOperation : std::uint8_t {
-  Flatten,
-  Raise,
-  Lower,
-  Smooth,
-  Noise,
-  Count,
+  cr::CreativeTerrainSlopeBand slopeBand =
+      cr::CreativeTerrainSlopeBand::Unavailable;
+  cr::CreativeTerrainCutFillKind cutFill =
+      cr::CreativeTerrainCutFillKind::Unchanged;
+  std::int16_t deltaCells = 0;
 };
 
 struct CreativeEditorWorldLayoutTerrainRegionRecipePlan {
   bool requested = false;
   bool accepted = false;
-  cr::CreativeTerrainGeneratorRecipe generation;
-  cr::CreativeTerrainCompositionRecipe composition;
+  cr::CreativeTerrainRegionRecipe recipe;
   std::string_view reasonCode =
       "creative_editor_world_layout_terrain_region_not_requested";
 };
+
+struct CreativeEditorWorldLayoutTerrainAnalysisEditPlan {
+  bool requested = false;
+  bool accepted = false;
+  cr::CreativeTerrainAnalysisHit hit;
+  cr::CreativeTerrainRegionRecipe recipe;
+  std::string_view reasonCode =
+      "creative_editor_world_layout_terrain_analysis_edit_not_requested";
+};
+
+enum class CreativeEditorWorldLayoutTerrainRegionHandle : std::uint8_t {
+  None,
+  Body,
+  MinimumX,
+  MaximumX,
+  MinimumZ,
+  MaximumZ,
+  MinimumXMinimumZ,
+  MaximumXMinimumZ,
+  MinimumXMaximumZ,
+  MaximumXMaximumZ,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutTerrainRegionManipulation {
+  bool active = false;
+  bool changed = false;
+  CreativeEditorWorldLayoutTerrainRegionHandle handle =
+      CreativeEditorWorldLayoutTerrainRegionHandle::None;
+  cr::CreativeTerrainCoord2 pointerStart{};
+  cr::CreativeTerrainHeightFieldBounds boundsStart{};
+};
+
+[[nodiscard]] constexpr cr::CreativeTerrainRegionRecipe
+makeCreativeEditorWorldLayoutTerrainRegionRecipe() noexcept {
+  cr::CreativeTerrainRegionRecipe recipe;
+  recipe.mode = cr::CreativeTerrainRegionMode::Flatten;
+  recipe.targetHeightCells = 8U;
+  return recipe;
+}
 
 struct CreativeEditorWorldLayoutTerrainRegionState {
   bool editingEnabled = false;
   bool selecting = false;
   bool regionValid = false;
   bool ownsPreview = false;
-  CreativeEditorWorldLayoutTerrainRegionOperation operation =
-      CreativeEditorWorldLayoutTerrainRegionOperation::Flatten;
-  cr::CreativeTerrainCompositionMask mask =
-      cr::CreativeTerrainCompositionMask::Rectangle;
+  cr::CreativeTerrainRegionRecipe recipe =
+      makeCreativeEditorWorldLayoutTerrainRegionRecipe();
   cr::CreativeTerrainCoord2 anchor{};
   cr::CreativeTerrainCoord2 cursor{};
-  cr::CreativeTerrainHeightFieldBounds bounds{};
-  std::uint16_t targetHeightCells = 8U;
-  std::uint16_t noiseReliefCells = 4U;
-  double noiseScaleCells = 12.0;
-  std::uint16_t featherCells = 0U;
-  std::uint64_t seed = 1U;
+  CreativeEditorWorldLayoutTerrainRegionManipulation manipulation;
+  cr::CreativeTerrainOperationId editingOperationId =
+      cr::kInvalidCreativeTerrainOperationId;
   std::string statusMessage = "terrain region ready";
 };
 
 struct CreativeEditorWorldLayoutTopographyState {
   bool visible = true;
   bool elevationBandsVisible = true;
+  bool slopeBandsVisible = false;
+  bool cutFillVisible = true;
+  bool contourLabelsVisible = true;
   std::uint16_t intervalCells = 2U;
   std::uint16_t majorEvery = 5U;
   CreativeEditorWorldLayoutTerrainRegionState region;
@@ -116,8 +148,6 @@ struct CreativeEditorWorldLayoutTopographyState {
 
 [[nodiscard]] std::string_view toString(
     CreativeEditorWorldLayoutTopographyStatus status) noexcept;
-[[nodiscard]] std::string_view toString(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept;
 
 [[nodiscard]] bool beginCreativeEditorWorldLayoutTerrainRegion(
     CreativeEditorWorldLayoutTerrainRegionState& state,
@@ -134,9 +164,40 @@ struct CreativeEditorWorldLayoutTopographyState {
 void clearCreativeEditorWorldLayoutTerrainRegionSelection(
     CreativeEditorWorldLayoutTerrainRegionState& state) noexcept;
 
+[[nodiscard]] bool setCreativeEditorWorldLayoutTerrainRegionBounds(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    cr::CreativeTerrainHeightFieldBounds bounds) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutTerrainRegionHandle
+hitCreativeEditorWorldLayoutTerrainRegionHandle(
+    const CreativeEditorWorldLayoutTerrainRegionState& state,
+    double xCells,
+    double zCells,
+    double toleranceCells) noexcept;
+[[nodiscard]] bool beginCreativeEditorWorldLayoutTerrainRegionManipulation(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    CreativeEditorWorldLayoutTerrainRegionHandle handle,
+    double xCells,
+    double zCells) noexcept;
+[[nodiscard]] bool updateCreativeEditorWorldLayoutTerrainRegionManipulation(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    double xCells,
+    double zCells) noexcept;
+[[nodiscard]] bool finishCreativeEditorWorldLayoutTerrainRegionManipulation(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    double xCells,
+    double zCells) noexcept;
+[[nodiscard]] bool cancelCreativeEditorWorldLayoutTerrainRegionManipulation(
+    CreativeEditorWorldLayoutTerrainRegionState& state) noexcept;
+
 [[nodiscard]] CreativeEditorWorldLayoutTerrainRegionRecipePlan
 planCreativeEditorWorldLayoutTerrainRegion(
     const CreativeEditorWorldLayoutTerrainRegionState& state) noexcept;
+
+[[nodiscard]] bool selectCreativeEditorWorldLayoutTerrainRegionOperation(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    CreativeEditorTerrainGenerationState& terrainGeneration,
+    const cr::CreativeDocument& document,
+    cr::CreativeTerrainOperationId operationId);
 
 [[nodiscard]] CreativeEditorTerrainGenerationPreviewReceipt
 previewCreativeEditorWorldLayoutTerrainRegion(
@@ -181,5 +242,22 @@ sampleCreativeEditorWorldLayoutTopography(
     const CreativeEditorWorldLayoutTopographyPlan& plan,
     double xCells,
     double zCells) noexcept;
+
+// Resolves a display-space contour or height handle into the same durable
+// Region recipe edited by both Creative frontends. No render primitive is ever
+// mutated directly.
+[[nodiscard]] CreativeEditorWorldLayoutTerrainAnalysisEditPlan
+planCreativeEditorWorldLayoutTerrainAnalysisEdit(
+    const CreativeEditorWorldLayoutTopographyPlan& plan,
+    double xCells,
+    double zCells,
+    double contourToleranceCells,
+    cr::CreativeTerrainAnalysisHitMode mode) noexcept;
+
+// Adopts a headless analysis selection as a new Region operation draft. This
+// is the sole state transition shared by plan-view contour/height gestures.
+[[nodiscard]] bool selectCreativeEditorWorldLayoutTerrainAnalysisEdit(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    const CreativeEditorWorldLayoutTerrainAnalysisEditPlan& edit) noexcept;
 
 }  // namespace iggy3d_creative_app

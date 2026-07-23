@@ -1,5 +1,7 @@
 #include "runtime/save/SaveCodecReader.hpp"
 
+#include <limits>
+
 namespace iggy3d::save_codec_detail {
 
 // branch-gate-relocation: BG-1238 from=src/runtime/save/SaveCodec.cpp
@@ -227,6 +229,13 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
   readString(prefix + "name", object.name);
   if (nextKeyIs(prefix + "assetId")) {
     readString(prefix + "assetId", object.assetId);
+    if (nextKeyIs(prefix + "assetContentHash")) {
+      readUnsigned(prefix + "assetContentHash", object.assetContentHash);
+    }
+    if (nextKeyIs(prefix + "assetMaterialVariant")) {
+      readString(prefix + "assetMaterialVariant",
+                 object.assetMaterialVariant);
+    }
   }
   readCreativeVec3(prefix + "transform.position",
                    object.transform.position);
@@ -254,6 +263,25 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
                object.movingPlatformTraversalMode);
     readBool(prefix + "movingPlatform.startsActive",
              object.movingPlatformStartsActive);
+  }
+  if (nextKeyIs(prefix + "door.leafArrangement")) {
+    readString(prefix + "door.leafArrangement", object.doorLeafArrangement);
+    readString(prefix + "door.hingeSide", object.doorHingeSide);
+    readString(prefix + "door.swingSide", object.doorSwingSide);
+    readString(prefix + "door.initialState", object.doorInitialState);
+    readBool(prefix + "door.gameplayLocked", object.doorGameplayLocked);
+    readDouble(prefix + "door.transitionSeconds", object.doorTransitionSeconds);
+  }
+  if (nextKeyIs(prefix + "window.insertKind")) {
+    readString(prefix + "window.insertKind", object.windowInsertKind);
+  }
+  if (nextKeyIs(prefix + "playerSpawn.profileId")) {
+    readString(prefix + "playerSpawn.profileId", object.playerSpawnProfileId);
+    readString(prefix + "playerSpawn.group", object.playerSpawnGroup);
+    readDouble(prefix + "playerSpawn.validationRadiusMeters",
+               object.playerSpawnValidationRadiusMeters);
+    readUnsigned(prefix + "playerSpawn.fallbackPriority",
+                 object.playerSpawnFallbackPriority);
   }
 }
 
@@ -414,6 +442,29 @@ void Reader::readCreativeDocument() {
   }
   readCreativeTerrainHeightField("creativeDocument.terrainHeightField",
                                  section.terrainHeightField);
+  if (section.version >= kSaveCreativeDocumentTerrainHardEdgeVersion ||
+      nextKeyIs("creativeDocument.terrainHardEdge.count")) {
+    std::uint64_t hardEdgeCount = 0U;
+    readUnsigned("creativeDocument.terrainHardEdge.count", hardEdgeCount);
+    if (hardEdgeCount > 32'768U) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.terrainHardEdge.count", index_,
+                     "terrain hard edge count exceeds limit");
+      return;
+    }
+    section.terrainHardEdges.resize(static_cast<std::size_t>(hardEdgeCount));
+    for (std::size_t edgeIndex = 0U;
+         edgeIndex < section.terrainHardEdges.size(); ++edgeIndex) {
+      SaveCreativeDocumentTerrainHardEdgeRecord& edge =
+          section.terrainHardEdges[edgeIndex];
+      const std::string prefix = "creativeDocument.terrainHardEdge." +
+                                 std::to_string(edgeIndex) + ".";
+      readI32(prefix + "firstX", edge.firstX);
+      readI32(prefix + "firstZ", edge.firstZ);
+      readI32(prefix + "secondX", edge.secondX);
+      readI32(prefix + "secondZ", edge.secondZ);
+    }
+  }
   if (section.version >= kSaveCreativeDocumentTerrainOperationVersion ||
       nextKeyIs("creativeDocument.terrainOperation.version")) {
     readUnsigned("creativeDocument.terrainOperation.version",
@@ -423,6 +474,84 @@ void Reader::readCreativeDocument() {
     readCreativeTerrainHeightField(
         "creativeDocument.terrainOperation.baseHeightField",
         section.terrainOperationBaseHeightField);
+    if (section.version >= kSaveCreativeDocumentTerrainHardEdgeVersion ||
+        nextKeyIs(
+            "creativeDocument.terrainOperation.baseHardEdge.count")) {
+      std::uint64_t baseHardEdgeCount = 0U;
+      readUnsigned("creativeDocument.terrainOperation.baseHardEdge.count",
+                   baseHardEdgeCount);
+      if (baseHardEdgeCount > 32'768U) {
+        result_ = fail(
+            SaveCodecStatus::InvalidNumber,
+            "creativeDocument.terrainOperation.baseHardEdge.count", index_,
+            "terrain operation base hard edge count exceeds limit");
+        return;
+      }
+      section.terrainOperationBaseHardEdges.resize(
+          static_cast<std::size_t>(baseHardEdgeCount));
+      for (std::size_t edgeIndex = 0U;
+           edgeIndex < section.terrainOperationBaseHardEdges.size();
+           ++edgeIndex) {
+        SaveCreativeDocumentTerrainHardEdgeRecord& edge =
+            section.terrainOperationBaseHardEdges[edgeIndex];
+        const std::string prefix =
+            "creativeDocument.terrainOperation.baseHardEdge." +
+            std::to_string(edgeIndex) + ".";
+        readI32(prefix + "firstX", edge.firstX);
+        readI32(prefix + "firstZ", edge.firstZ);
+        readI32(prefix + "secondX", edge.secondX);
+        readI32(prefix + "secondZ", edge.secondZ);
+      }
+    }
+    if (nextKeyIs(
+            "creativeDocument.terrainOperation.baseMaterial.count")) {
+      std::uint64_t baseMaterialCount = 0U;
+      readUnsigned("creativeDocument.terrainOperation.baseMaterial.count",
+                   baseMaterialCount);
+      if (baseMaterialCount > 8192U) {
+        result_ = fail(
+            SaveCodecStatus::InvalidNumber,
+            "creativeDocument.terrainOperation.baseMaterial.count", index_,
+            "terrain operation base material count exceeds limit");
+        return;
+      }
+      section.terrainOperationBaseMaterials.resize(
+          static_cast<std::size_t>(baseMaterialCount));
+      for (std::size_t materialIndex = 0U;
+           materialIndex < section.terrainOperationBaseMaterials.size();
+           ++materialIndex) {
+        SaveCreativeDocumentTerrainMaterialRecord& material =
+            section.terrainOperationBaseMaterials[materialIndex];
+        const std::string prefix =
+            "creativeDocument.terrainOperation.baseMaterial." +
+            std::to_string(materialIndex) + ".";
+        readI32(prefix + "x", material.x);
+        readI32(prefix + "z", material.z);
+        readString(prefix + "material", material.material);
+        readBool(prefix + "weightsPresent", material.hasWeights);
+        if (material.hasWeights) {
+          std::uint64_t grassWeight = 0U;
+          std::uint64_t dirtWeight = 0U;
+          std::uint64_t stoneWeight = 0U;
+          std::uint64_t sandWeight = 0U;
+          readUnsigned(prefix + "grassWeight", grassWeight);
+          readUnsigned(prefix + "dirtWeight", dirtWeight);
+          readUnsigned(prefix + "stoneWeight", stoneWeight);
+          readUnsigned(prefix + "sandWeight", sandWeight);
+          if (grassWeight > 255U || dirtWeight > 255U ||
+              stoneWeight > 255U || sandWeight > 255U) {
+            result_ = fail(SaveCodecStatus::InvalidNumber,
+                           prefix + "grassWeight", index_,
+                           "terrain material weight exceeds byte range");
+            return;
+          }
+          material.grassWeight = static_cast<std::uint16_t>(grassWeight);
+          material.dirtWeight = static_cast<std::uint16_t>(dirtWeight);
+          material.stoneWeight = static_cast<std::uint16_t>(stoneWeight);
+          material.sandWeight = static_cast<std::uint16_t>(sandWeight);
+        }
+      }
+    }
     std::uint64_t operationCount = 0U;
     readUnsigned("creativeDocument.terrainOperation.count", operationCount);
     constexpr std::uint64_t kMaxCreativeTerrainOperationCount = 64U;
@@ -443,6 +572,14 @@ void Reader::readCreativeDocument() {
                                  std::to_string(operationIndex) + ".";
       readUnsigned(prefix + "id", operation.id);
       readBool(prefix + "enabled", operation.enabled);
+      if (section.version >=
+          kSaveCreativeDocumentTerrainOperationProvenanceVersion) {
+        readString(prefix + "owner", operation.owner);
+        readString(prefix + "sourceKey", operation.sourceKey);
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainGradeVersion) {
+        readString(prefix + "kind", operation.operationKind);
+      }
       readUnsigned(prefix + "generation.version",
                    operation.generationVersion);
       readString(prefix + "generation.kind", operation.generatorKind);
@@ -465,12 +602,532 @@ void Reader::readCreativeDocument() {
                  operation.lacunarity);
       readDouble(prefix + "generation.slopeDamping",
                  operation.slopeDamping);
+      if (section.version >=
+          kSaveCreativeDocumentTerrainGenerationIntentVersion) {
+        readBool(prefix + "generation.paintMaterials",
+                 operation.paintMaterials);
+        readString(prefix + "generation.biomeIntent",
+                   operation.biomeIntent);
+        readString(prefix + "generation.lowlandMaterial",
+                   operation.lowlandMaterial);
+        readString(prefix + "generation.highlandMaterial",
+                   operation.highlandMaterial);
+        readUnsigned(prefix + "generation.materialTransitionHeightCells",
+                     operation.materialTransitionHeightCells);
+      }
       readUnsigned(prefix + "composition.version",
                    operation.compositionVersion);
       readString(prefix + "composition.mask", operation.mask);
       readString(prefix + "composition.mode", operation.mode);
       readUnsigned(prefix + "composition.featherCells",
                    operation.featherCells);
+      if (section.version >=
+          kSaveCreativeDocumentTerrainGenerationIntentVersion) {
+        std::uint64_t protectedRegionCount = 0U;
+        readUnsigned(prefix + "composition.protectedRegion.count",
+                     protectedRegionCount);
+        constexpr std::uint64_t kMaximumProtectedRegionCount = 16U;
+        if (protectedRegionCount > kMaximumProtectedRegionCount) {
+          result_ = fail(
+              SaveCodecStatus::InvalidNumber,
+              prefix + "composition.protectedRegion.count", index_,
+              "terrain protected region count exceeds limit");
+          return;
+        }
+        operation.protectedRegions.resize(
+            static_cast<std::size_t>(protectedRegionCount));
+        for (std::size_t protectedIndex = 0U;
+             protectedIndex < operation.protectedRegions.size();
+             ++protectedIndex) {
+          SaveCreativeDocumentTerrainProtectedRegionRecord& region =
+              operation.protectedRegions[protectedIndex];
+          const std::string protectedPrefix =
+              prefix + "composition.protectedRegion." +
+              std::to_string(protectedIndex) + ".";
+          readI32(protectedPrefix + "minimumX", region.minimumX);
+          readI32(protectedPrefix + "minimumZ", region.minimumZ);
+          readUnsigned(protectedPrefix + "widthCells", region.widthCells);
+          readUnsigned(protectedPrefix + "depthCells", region.depthCells);
+          readString(protectedPrefix + "mask", region.mask);
+        }
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainRegionVersion) {
+        readUnsigned(prefix + "region.version", operation.regionVersion);
+        readI32(prefix + "region.minimumX", operation.regionMinimumX);
+        readI32(prefix + "region.minimumZ", operation.regionMinimumZ);
+        readUnsigned(prefix + "region.widthCells",
+                     operation.regionWidthCells);
+        readUnsigned(prefix + "region.depthCells",
+                     operation.regionDepthCells);
+        readString(prefix + "region.mask", operation.regionMask);
+        readString(prefix + "region.mode", operation.regionMode);
+        readUnsigned(prefix + "region.amountCells",
+                     operation.regionAmountCells);
+        readUnsigned(prefix + "region.targetHeightCells",
+                     operation.regionTargetHeightCells);
+        readUnsigned(prefix + "region.noiseReliefCells",
+                     operation.regionNoiseReliefCells);
+        readDouble(prefix + "region.noiseScaleCells",
+                   operation.regionNoiseScaleCells);
+        readUnsigned(prefix + "region.featherCells",
+                     operation.regionFeatherCells);
+        readUnsigned(prefix + "region.seed", operation.regionSeed);
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainGradeVersion) {
+        readUnsigned(prefix + "grade.version", operation.gradeVersion);
+        readI32(prefix + "grade.startX", operation.gradeStartX);
+        readI32(prefix + "grade.startZ", operation.gradeStartZ);
+        readI32(prefix + "grade.endX", operation.gradeEndX);
+        readI32(prefix + "grade.endZ", operation.gradeEndZ);
+        readUnsigned(prefix + "grade.startHeightCells",
+                     operation.gradeStartHeightCells);
+        readUnsigned(prefix + "grade.endHeightCells",
+                     operation.gradeEndHeightCells);
+        readUnsigned(prefix + "grade.halfWidthCells",
+                     operation.gradeHalfWidthCells);
+        readI32(prefix + "grade.crossSlopePermille",
+                operation.gradeCrossSlopePermille);
+        readUnsigned(prefix + "grade.falloffCells",
+                     operation.gradeFalloffCells);
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainPathVersion ||
+          nextKeyIs(prefix + "path.version")) {
+        readUnsigned(prefix + "path.version", operation.pathVersion);
+        readString(prefix + "path.kind", operation.pathKind);
+        readString(prefix + "path.elevation", operation.pathElevation);
+        readString(prefix + "path.curve", operation.pathCurve);
+        readString(prefix + "path.crossSection", operation.pathCrossSection);
+        readString(prefix + "path.startJoin", operation.pathStartJoin);
+        readString(prefix + "path.endJoin", operation.pathEndJoin);
+        readUnsigned(prefix + "path.falloffCells",
+                     operation.pathFalloffCells);
+        readBool(prefix + "path.paintSurface", operation.pathPaintSurface);
+        readString(prefix + "path.material", operation.pathMaterial);
+        if (section.version >= kSaveCreativeDocumentTerrainRoadVersion) {
+          readUnsigned(prefix + "path.road.shoulderWidthCells",
+                       operation.pathRoadShoulderWidthCells);
+          readUnsigned(prefix + "path.road.maximumGradePermille",
+                       operation.pathRoadMaximumGradePermille);
+          readUnsigned(prefix + "path.road.edgeTreatment",
+                       operation.pathRoadEdgeTreatment);
+          readDouble(prefix + "path.road.edgeWidthMeters",
+                     operation.pathRoadEdgeWidthMeters);
+          readDouble(prefix + "path.road.edgeHeightMeters",
+                     operation.pathRoadEdgeHeightMeters);
+          readUnsigned(prefix + "path.road.edgeMaterial",
+                       operation.pathRoadEdgeMaterial);
+        }
+        if (section.version >=
+            kSaveCreativeDocumentTerrainWatercourseVersion) {
+          readUnsigned(prefix + "path.watercourse.bankSlopeCells",
+                       operation.pathWatercourseBankSlopeCells);
+          readUnsigned(prefix + "path.watercourse.drainageDirection",
+                       operation.pathWatercourseDrainageDirection);
+          readUnsigned(prefix + "path.watercourse.surfacePolicy",
+                       operation.pathWatercourseSurfacePolicy);
+          readUnsigned(prefix + "path.watercourse.surfaceInsetCells",
+                       operation.pathWatercourseSurfaceInsetCells);
+          readUnsigned(prefix + "path.watercourse.nextCrossingId",
+                       operation.pathWatercourseNextCrossingId);
+          std::uint64_t crossingCount = 0U;
+          readUnsigned(prefix + "path.watercourse.crossing.count",
+                       crossingCount);
+          constexpr std::uint64_t kMaxCreativeTerrainWatercourseCrossingCount =
+              32U;
+          if (crossingCount >
+              kMaxCreativeTerrainWatercourseCrossingCount) {
+            result_ = fail(
+                SaveCodecStatus::InvalidNumber,
+                prefix + "path.watercourse.crossing.count", index_,
+                "terrain watercourse crossing count exceeds limit");
+            return;
+          }
+          operation.pathWatercourseCrossings.resize(
+              static_cast<std::size_t>(crossingCount));
+          for (std::size_t crossingIndex = 0U;
+               crossingIndex < operation.pathWatercourseCrossings.size();
+               ++crossingIndex) {
+            SaveCreativeDocumentTerrainWatercourseCrossingRecord& crossing =
+                operation.pathWatercourseCrossings[crossingIndex];
+            const std::string crossingPrefix =
+                prefix + "path.watercourse.crossing." +
+                std::to_string(crossingIndex) + ".";
+            readUnsigned(crossingPrefix + "id", crossing.id);
+            readUnsigned(crossingPrefix + "pointId", crossing.pointId);
+            readUnsigned(crossingPrefix + "bankClearanceCells",
+                         crossing.bankClearanceCells);
+            readUnsigned(crossingPrefix + "deckClearanceCells",
+                         crossing.deckClearanceCells);
+            readUnsigned(crossingPrefix + "approachLengthCells",
+                         crossing.approachLengthCells);
+          }
+        }
+        readUnsigned(prefix + "path.nextPointId",
+                     operation.pathNextPointId);
+        std::uint64_t pointCount = 0U;
+        readUnsigned(prefix + "path.point.count", pointCount);
+        constexpr std::uint64_t kMaxCreativeTerrainPathPointCount = 32U;
+        if (pointCount > kMaxCreativeTerrainPathPointCount) {
+          result_ = fail(SaveCodecStatus::InvalidNumber,
+                         prefix + "path.point.count", index_,
+                         "terrain path point count exceeds limit");
+          return;
+        }
+        operation.pathPoints.resize(static_cast<std::size_t>(pointCount));
+        for (std::size_t pointIndex = 0U;
+             pointIndex < operation.pathPoints.size(); ++pointIndex) {
+          SaveCreativeDocumentTerrainPathPointRecord& point =
+              operation.pathPoints[pointIndex];
+          const std::string pointPrefix =
+              prefix + "path.point." + std::to_string(pointIndex) + ".";
+          readUnsigned(pointPrefix + "id", point.id);
+          readI32(pointPrefix + "x", point.x);
+          readI32(pointPrefix + "z", point.z);
+          readUnsigned(pointPrefix + "heightCells", point.heightCells);
+          readUnsigned(pointPrefix + "halfWidthCells",
+                       point.halfWidthCells);
+          readUnsigned(pointPrefix + "amplitudeCells",
+                       point.amplitudeCells);
+          readI32(pointPrefix + "bankPermille", point.bankPermille);
+        }
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainStampVersion) {
+        readUnsigned(prefix + "stamp.recipeVersion",
+                     operation.stampRecipeVersion);
+        readUnsigned(prefix + "stamp.version", operation.stampVersion);
+        readString(prefix + "stamp.assetId", operation.stampAssetId);
+        readString(prefix + "stamp.label", operation.stampLabel);
+        readUnsigned(prefix + "stamp.assetVersion",
+                     operation.stampAssetVersion);
+        readUnsigned(prefix + "stamp.sourceDocumentId",
+                     operation.stampSourceDocumentId);
+        readUnsigned(prefix + "stamp.sourceRevision",
+                     operation.stampSourceRevision);
+        readUnsigned(prefix + "stamp.contentSignature",
+                     operation.stampContentSignature);
+        readI32(prefix + "stamp.sourceMinimumX",
+                operation.stampSourceMinimumX);
+        readI32(prefix + "stamp.sourceMinimumZ",
+                operation.stampSourceMinimumZ);
+        readUnsigned(prefix + "stamp.minimumHeightCells",
+                     operation.stampMinimumHeightCells);
+        readCreativeTerrainHeightField(prefix + "stamp.height",
+                                       operation.stampHeightField);
+        std::uint64_t materialCount = 0U;
+        readUnsigned(prefix + "stamp.material.count", materialCount);
+        constexpr std::uint64_t kMaximumStampMaterialCount = 8192U;
+        if (materialCount > kMaximumStampMaterialCount) {
+          result_ = fail(SaveCodecStatus::InvalidNumber,
+                         prefix + "stamp.material.count", index_,
+                         "terrain stamp material count exceeds limit");
+          return;
+        }
+        operation.stampMaterials.resize(
+            static_cast<std::size_t>(materialCount));
+        for (std::size_t materialIndex = 0U;
+             materialIndex < operation.stampMaterials.size();
+             ++materialIndex) {
+          SaveCreativeDocumentTerrainMaterialRecord& material =
+              operation.stampMaterials[materialIndex];
+          const std::string materialPrefix =
+              prefix + "stamp.material." + std::to_string(materialIndex) + ".";
+          readI32(materialPrefix + "x", material.x);
+          readI32(materialPrefix + "z", material.z);
+          readString(materialPrefix + "material", material.material);
+          readBool(materialPrefix + "weightsPresent", material.hasWeights);
+          if (material.hasWeights) {
+            readUnsigned(materialPrefix + "grassWeight",
+                         material.grassWeight);
+            readUnsigned(materialPrefix + "dirtWeight", material.dirtWeight);
+            readUnsigned(materialPrefix + "stoneWeight",
+                         material.stoneWeight);
+            readUnsigned(materialPrefix + "sandWeight", material.sandWeight);
+          }
+        }
+        readI32(prefix + "stamp.targetMinimumX",
+                operation.stampTargetMinimumX);
+        readI32(prefix + "stamp.targetMinimumZ",
+                operation.stampTargetMinimumZ);
+        readUnsigned(prefix + "stamp.quarterTurns",
+                     operation.stampQuarterTurns);
+        readBool(prefix + "stamp.mirrorX", operation.stampMirrorX);
+        readBool(prefix + "stamp.mirrorZ", operation.stampMirrorZ);
+        readString(prefix + "stamp.mode", operation.stampMode);
+        readString(prefix + "stamp.elevation", operation.stampElevation);
+        std::int32_t manualHeightOffset = 0;
+        readI32(prefix + "stamp.manualHeightOffsetCells", manualHeightOffset);
+        if (manualHeightOffset < std::numeric_limits<std::int16_t>::min() ||
+            manualHeightOffset > std::numeric_limits<std::int16_t>::max()) {
+          result_ = fail(SaveCodecStatus::InvalidNumber,
+                         prefix + "stamp.manualHeightOffsetCells", index_,
+                         "terrain stamp height offset exceeds int16 range");
+          return;
+        }
+        operation.stampManualHeightOffsetCells =
+            static_cast<std::int16_t>(manualHeightOffset);
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainProfileVersion) {
+        readUnsigned(prefix + "profile.version", operation.profileVersion);
+        readString(prefix + "profile.kind", operation.profileKind);
+        readString(prefix + "profile.blend", operation.profileBlend);
+        readString(prefix + "profile.rodPolicy",
+                   operation.profileRodPolicy);
+        readI32(prefix + "profile.centerX", operation.profileCenterX);
+        readI32(prefix + "profile.centerZ", operation.profileCenterZ);
+        readUnsigned(prefix + "profile.baseHeightCells",
+                     operation.profileBaseHeightCells);
+        readUnsigned(prefix + "profile.radiusCells",
+                     operation.profileRadiusCells);
+        readUnsigned(prefix + "profile.amplitudeCells",
+                     operation.profileAmplitudeCells);
+        readUnsigned(prefix + "profile.spacingCells",
+                     operation.profileSpacingCells);
+        readString(prefix + "profile.direction", operation.profileDirection);
+        readUnsigned(prefix + "profile.frequency",
+                     operation.profileFrequency);
+        readUnsigned(prefix + "profile.seed", operation.profileSeed);
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainLandformVersion) {
+        readUnsigned(prefix + "landform.version", operation.landformVersion);
+        readString(prefix + "landform.kind", operation.landformKind);
+        readI32(prefix + "landform.minimumX", operation.landformMinimumX);
+        readI32(prefix + "landform.minimumZ", operation.landformMinimumZ);
+        readUnsigned(prefix + "landform.widthCells",
+                     operation.landformWidthCells);
+        readUnsigned(prefix + "landform.depthCells",
+                     operation.landformDepthCells);
+        readUnsigned(prefix + "landform.baseHeightCells",
+                     operation.landformBaseHeightCells);
+        readUnsigned(prefix + "landform.targetHeightCells",
+                     operation.landformTargetHeightCells);
+        readUnsigned(prefix + "landform.terraceCount",
+                     operation.landformTerraceCount);
+        readString(prefix + "landform.direction",
+                   operation.landformDirection);
+        readString(prefix + "landform.edge", operation.landformEdge);
+        readUnsigned(prefix + "landform.edgeWidthCells",
+                     operation.landformEdgeWidthCells);
+        readUnsigned(prefix + "landform.featherCells",
+                     operation.landformFeatherCells);
+        readBool(prefix + "landform.paintSurface",
+                 operation.landformPaintSurface);
+        readString(prefix + "landform.material", operation.landformMaterial);
+        readString(prefix + "landform.erosion", operation.landformErosion);
+        readUnsigned(prefix + "landform.erosionReliefCells",
+                     operation.landformErosionReliefCells);
+        readUnsigned(prefix + "landform.seed", operation.landformSeed);
+      }
+    }
+  }
+  if (section.version >= kSaveCreativeDocumentPatternRecipeVersion ||
+      nextKeyIs("creativeDocument.patternRecipe.version")) {
+    readUnsigned("creativeDocument.patternRecipe.version",
+                 section.patternRecipeStoreVersion);
+    readUnsigned("creativeDocument.patternRecipe.nextId",
+                 section.nextPatternRecipeId);
+    std::uint64_t recipeCount = 0U;
+    readUnsigned("creativeDocument.patternRecipe.count", recipeCount);
+    constexpr std::uint64_t kMaxCreativePatternRecipeCount = 64U;
+    constexpr std::uint64_t kMaxCreativePatternObjectCount = 512U;
+    if (recipeCount > kMaxCreativePatternRecipeCount) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.patternRecipe.count", index_,
+                     "pattern recipe count exceeds limit");
+      return;
+    }
+    section.patternRecipes.resize(static_cast<std::size_t>(recipeCount));
+    for (std::size_t recipeIndex = 0U;
+         recipeIndex < section.patternRecipes.size(); ++recipeIndex) {
+      SaveCreativeDocumentPatternRecipeRecord& recipe =
+          section.patternRecipes[recipeIndex];
+      const std::string prefix = "creativeDocument.patternRecipe." +
+                                 std::to_string(recipeIndex) + ".";
+      readUnsigned(prefix + "id", recipe.id);
+      readString(prefix + "kind", recipe.kind);
+      std::uint64_t sourceCount = 0U;
+      readUnsigned(prefix + "source.count", sourceCount);
+      if (sourceCount > kMaxCreativePatternObjectCount) {
+        result_ = fail(SaveCodecStatus::InvalidNumber,
+                       prefix + "source.count", index_,
+                       "pattern source count exceeds limit");
+        return;
+      }
+      recipe.sourceObjectIds.resize(static_cast<std::size_t>(sourceCount));
+      for (std::size_t objectIndex = 0U;
+           objectIndex < recipe.sourceObjectIds.size(); ++objectIndex) {
+        readUnsigned(prefix + "source." + std::to_string(objectIndex) +
+                         ".objectId",
+                     recipe.sourceObjectIds[objectIndex]);
+      }
+      std::uint64_t generatedCount = 0U;
+      readUnsigned(prefix + "generated.count", generatedCount);
+      if (generatedCount > kMaxCreativePatternObjectCount) {
+        result_ = fail(SaveCodecStatus::InvalidNumber,
+                       prefix + "generated.count", index_,
+                       "pattern generated count exceeds limit");
+        return;
+      }
+      recipe.generatedObjectIds.resize(
+          static_cast<std::size_t>(generatedCount));
+      for (std::size_t objectIndex = 0U;
+           objectIndex < recipe.generatedObjectIds.size(); ++objectIndex) {
+        readUnsigned(prefix + "generated." + std::to_string(objectIndex) +
+                         ".objectId",
+                     recipe.generatedObjectIds[objectIndex]);
+      }
+      readString(prefix + "linear.direction", recipe.linearDirection);
+      readString(prefix + "linear.copyCount", recipe.linearCopyCount);
+      readString(prefix + "linear.spacing", recipe.linearSpacing);
+      readDouble(prefix + "linear.cellSize", recipe.linearCellSize);
+      readUnsigned(prefix + "linear.maxGeneratedObjects",
+                   recipe.linearMaxGeneratedObjects);
+      readDouble(prefix + "radial.pivot.x", recipe.radialPivot.x);
+      readDouble(prefix + "radial.pivot.y", recipe.radialPivot.y);
+      readDouble(prefix + "radial.pivot.z", recipe.radialPivot.z);
+      readString(prefix + "radial.axis", recipe.radialAxis);
+      readString(prefix + "radial.instanceCount",
+                 recipe.radialInstanceCount);
+      readString(prefix + "radial.sweep", recipe.radialSweep);
+      readUnsigned(prefix + "radial.maxGeneratedObjects",
+                   recipe.radialMaxGeneratedObjects);
+      if (section.patternRecipeStoreVersion >= 2U) {
+        readString(prefix + "scatter.objectKind", recipe.scatterObjectKind);
+        readString(prefix + "scatter.assetId", recipe.scatterAssetId);
+        readUnsigned(prefix + "scatter.assetContentHash",
+                     recipe.scatterAssetContentHash);
+        readString(prefix + "scatter.assetMaterialVariant",
+                   recipe.scatterAssetMaterialVariant);
+        readDouble(prefix + "scatter.assetSourceBounds.min.x",
+                   recipe.scatterAssetSourceBounds.min.x);
+        readDouble(prefix + "scatter.assetSourceBounds.min.y",
+                   recipe.scatterAssetSourceBounds.min.y);
+        readDouble(prefix + "scatter.assetSourceBounds.min.z",
+                   recipe.scatterAssetSourceBounds.min.z);
+        readDouble(prefix + "scatter.assetSourceBounds.max.x",
+                   recipe.scatterAssetSourceBounds.max.x);
+        readDouble(prefix + "scatter.assetSourceBounds.max.y",
+                   recipe.scatterAssetSourceBounds.max.y);
+        readDouble(prefix + "scatter.assetSourceBounds.max.z",
+                   recipe.scatterAssetSourceBounds.max.z);
+        std::uint64_t paintCenterCount = 0U;
+        readUnsigned(prefix + "scatter.paintCenter.count", paintCenterCount);
+        if (paintCenterCount > 32U) {
+          result_ = fail(SaveCodecStatus::InvalidNumber,
+                         prefix + "scatter.paintCenter.count", index_,
+                         "scatter paint center count exceeds limit");
+          return;
+        }
+        recipe.scatterPaintCenters.resize(
+            static_cast<std::size_t>(paintCenterCount));
+        for (std::size_t centerIndex = 0U;
+             centerIndex < recipe.scatterPaintCenters.size(); ++centerIndex) {
+          SaveCreativeDocumentVec3Record& center =
+              recipe.scatterPaintCenters[centerIndex];
+          const std::string centerPrefix = prefix + "scatter.paintCenter." +
+                                           std::to_string(centerIndex) + ".";
+          readDouble(centerPrefix + "x", center.x);
+          readDouble(centerPrefix + "y", center.y);
+          readDouble(centerPrefix + "z", center.z);
+        }
+        std::uint64_t exclusionCount = 0U;
+        readUnsigned(prefix + "scatter.exclusion.count", exclusionCount);
+        if (exclusionCount > 64U) {
+          result_ = fail(SaveCodecStatus::InvalidNumber,
+                         prefix + "scatter.exclusion.count", index_,
+                         "scatter exclusion count exceeds limit");
+          return;
+        }
+        recipe.scatterExclusions.resize(
+            static_cast<std::size_t>(exclusionCount));
+        for (std::size_t exclusionIndex = 0U;
+             exclusionIndex < recipe.scatterExclusions.size();
+             ++exclusionIndex) {
+          SaveCreativeDocumentPatternRecipeRecord::Exclusion& exclusion =
+              recipe.scatterExclusions[exclusionIndex];
+          const std::string exclusionPrefix =
+              prefix + "scatter.exclusion." +
+              std::to_string(exclusionIndex) + ".";
+          readDouble(exclusionPrefix + "center.x", exclusion.center.x);
+          readDouble(exclusionPrefix + "center.y", exclusion.center.y);
+          readDouble(exclusionPrefix + "center.z", exclusion.center.z);
+          readDouble(exclusionPrefix + "radiusMeters",
+                     exclusion.radiusMeters);
+        }
+        readString(prefix + "scatter.mask", recipe.scatterMask);
+        readString(prefix + "scatter.yaw", recipe.scatterYaw);
+        readDouble(prefix + "scatter.baseYawRadians",
+                   recipe.scatterBaseYawRadians);
+        readDouble(prefix + "scatter.radiusMeters",
+                   recipe.scatterRadiusMeters);
+        readDouble(prefix + "scatter.spacingMeters",
+                   recipe.scatterSpacingMeters);
+        readDouble(prefix + "scatter.densityFraction",
+                   recipe.scatterDensityFraction);
+        readDouble(prefix + "scatter.scaleVariation",
+                   recipe.scatterScaleVariation);
+        readDouble(prefix + "scatter.maximumSlopeRadians",
+                   recipe.scatterMaximumSlopeRadians);
+        readBool(prefix + "scatter.projectToTerrainSurface",
+                 recipe.scatterProjectToTerrainSurface);
+        readBool(prefix + "scatter.avoidCollisions",
+                 recipe.scatterAvoidCollisions);
+        readUnsigned(prefix + "scatter.seed", recipe.scatterSeed);
+        readUnsigned(prefix + "scatter.maxGeneratedObjects",
+                     recipe.scatterMaxGeneratedObjects);
+      }
+    }
+  }
+  if (section.version >= kSaveCreativeDocumentMeasurementAnnotationVersion ||
+      nextKeyIs("creativeDocument.measurementAnnotation.version")) {
+    readUnsigned("creativeDocument.measurementAnnotation.version",
+                 section.measurementAnnotationStoreVersion);
+    readUnsigned("creativeDocument.measurementAnnotation.nextId",
+                 section.nextMeasurementAnnotationId);
+    std::uint64_t annotationCount = 0U;
+    readUnsigned("creativeDocument.measurementAnnotation.count",
+                 annotationCount);
+    constexpr std::uint64_t kMaxCreativeMeasurementAnnotationCount = 256U;
+    constexpr std::uint64_t kMaxCreativeMeasurementAnnotationPointCount = 256U;
+    if (annotationCount > kMaxCreativeMeasurementAnnotationCount) {
+      result_ = fail(SaveCodecStatus::InvalidNumber,
+                     "creativeDocument.measurementAnnotation.count", index_,
+                     "measurement annotation count exceeds limit");
+      return;
+    }
+    section.measurementAnnotations.resize(
+        static_cast<std::size_t>(annotationCount));
+    for (std::size_t annotationIndex = 0U;
+         annotationIndex < section.measurementAnnotations.size();
+         ++annotationIndex) {
+      SaveCreativeDocumentMeasurementAnnotationRecord& annotation =
+          section.measurementAnnotations[annotationIndex];
+      const std::string prefix = "creativeDocument.measurementAnnotation." +
+                                 std::to_string(annotationIndex) + ".";
+      readUnsigned(prefix + "id", annotation.id);
+      readString(prefix + "name", annotation.name);
+      readString(prefix + "mode", annotation.mode);
+      readString(prefix + "axis", annotation.axis);
+      readBool(prefix + "closePath", annotation.closePath);
+      std::uint64_t pointCount = 0U;
+      readUnsigned(prefix + "point.count", pointCount);
+      if (pointCount > kMaxCreativeMeasurementAnnotationPointCount) {
+        result_ = fail(SaveCodecStatus::InvalidNumber,
+                       prefix + "point.count", index_,
+                       "measurement annotation point count exceeds limit");
+        return;
+      }
+      annotation.points.resize(static_cast<std::size_t>(pointCount));
+      for (std::size_t pointIndex = 0U;
+           pointIndex < annotation.points.size(); ++pointIndex) {
+        SaveCreativeDocumentMeasurementAnnotationPointRecord& point =
+            annotation.points[pointIndex];
+        const std::string pointPrefix =
+            prefix + "point." + std::to_string(pointIndex) + ".";
+        readDouble(pointPrefix + "x", point.x);
+        readDouble(pointPrefix + "y", point.y);
+        readDouble(pointPrefix + "z", point.z);
+        readString(pointPrefix + "snapKind", point.snapKind);
+      }
     }
   }
   if (nextKeyIs("creativeDocument.terrainMaterial.count")) {
@@ -492,6 +1149,30 @@ void Reader::readCreativeDocument() {
       readI32(p + "x", material.x);
       readI32(p + "z", material.z);
       readString(p + "material", material.material);
+      if (nextKeyIs(p + "weightsPresent")) {
+        readBool(p + "weightsPresent", material.hasWeights);
+        if (material.hasWeights) {
+          std::uint64_t grassWeight = 0U;
+          std::uint64_t dirtWeight = 0U;
+          std::uint64_t stoneWeight = 0U;
+          std::uint64_t sandWeight = 0U;
+          readUnsigned(p + "grassWeight", grassWeight);
+          readUnsigned(p + "dirtWeight", dirtWeight);
+          readUnsigned(p + "stoneWeight", stoneWeight);
+          readUnsigned(p + "sandWeight", sandWeight);
+          if (grassWeight > 255U || dirtWeight > 255U || stoneWeight > 255U ||
+              sandWeight > 255U) {
+            result_ = fail(SaveCodecStatus::InvalidNumber,
+                           p + "grassWeight", index_,
+                           "terrain material weight exceeds byte range");
+            return;
+          }
+          material.grassWeight = static_cast<std::uint16_t>(grassWeight);
+          material.dirtWeight = static_cast<std::uint16_t>(dirtWeight);
+          material.stoneWeight = static_cast<std::uint16_t>(stoneWeight);
+          material.sandWeight = static_cast<std::uint16_t>(sandWeight);
+        }
+      }
     }
   }
 }

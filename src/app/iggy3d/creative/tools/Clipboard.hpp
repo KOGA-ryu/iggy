@@ -10,6 +10,7 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 namespace iggy3d::creative {
 
@@ -32,6 +33,11 @@ enum class CreativeClipboardExternalParentPolicy : std::uint8_t {
   PreserveIfPresent,
 };
 
+enum class CreativeClipboardCopyMode : std::uint8_t {
+  SemanticClosure,
+  ExactObjects,
+};
+
 enum class CreativeDuplicateCommandStatus : std::uint8_t {
   NotRequested,
   EmptySelection,
@@ -41,6 +47,17 @@ enum class CreativeDuplicateCommandStatus : std::uint8_t {
   Rejected,
 };
 
+enum class CreativeSemanticDeleteStatus : std::uint8_t {
+  NotRequested,
+  EmptySelection,
+  InvalidDocument,
+  InvalidHierarchy,
+  MissingObject,
+  ExternalReference,
+  RemoveRejected,
+  Deleted,
+};
+
 struct CreativeClipboard {
   CreativeDocumentId sourceDocumentId = kInvalidDocumentId;
   std::uint64_t sourceRevision = 0;
@@ -48,11 +65,20 @@ struct CreativeClipboard {
   CreativeVec3 placementAnchor{};
   std::vector<CreativeObject> objects;
   std::vector<CreativeLogicLink> logicLinks;
+  // Recipes are copied only when a generated member is selected. The copy
+  // closure then carries every source and generated object required to keep
+  // that relationship editable after a stable-ID remap.
+  std::vector<CreativePatternRecipe> patternRecipes;
 };
 
 struct CreativeClipboardIdRemap {
   CreativeObjectId sourceObjectId = kInvalidObjectId;
   CreativeObjectId pastedObjectId = kInvalidObjectId;
+};
+
+struct CreativeClipboardPatternRecipeIdRemap {
+  CreativePatternRecipeId sourceRecipeId = kInvalidCreativePatternRecipeId;
+  CreativePatternRecipeId pastedRecipeId = kInvalidCreativePatternRecipeId;
 };
 
 struct CreativeClipboardCopyReceipt {
@@ -62,12 +88,18 @@ struct CreativeClipboardCopyReceipt {
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t copiedObjectCount = 0;
   std::uint64_t copiedLogicLinkCount = 0;
+  std::uint64_t copiedPatternRecipeCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::string reasonCode = "creative_clipboard_not_requested";
 };
 
 struct CreativeClipboardPasteRequest {
   CreativeVec3 offset{1.0, 0.0, 1.0};
+  CreativeSelectionPlacementPivotMode pivotMode =
+      CreativeSelectionPlacementPivotMode::SharedAnchor;
+  CreativeSelectionPlacementCoordinateSpace coordinateSpace =
+      CreativeSelectionPlacementCoordinateSpace::World;
+  CreativeVec3 coordinateBasisEulerRadians{};
   CreativeVec3 scaleFactor{1.0, 1.0, 1.0};
   std::uint8_t quarterTurns = 0;
   bool mirrorX = false;
@@ -90,10 +122,12 @@ struct CreativeClipboardPasteReceipt {
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t pastedObjectCount = 0;
   std::uint64_t pastedLogicLinkCount = 0;
+  std::uint64_t pastedPatternRecipeCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::vector<CreativeClipboardIdRemap> idRemaps;
+  std::vector<CreativeClipboardPatternRecipeIdRemap> patternRecipeIdRemaps;
   std::vector<CreativeObjectId> pastedObjectIds;
   std::string reasonCode = "creative_clipboard_not_requested";
 };
@@ -112,11 +146,14 @@ struct CreativeClipboardBatchPasteReceipt {
   std::uint64_t pastedObjectCount = 0;
   std::uint64_t requestedLogicLinkCount = 0;
   std::uint64_t pastedLogicLinkCount = 0;
+  std::uint64_t requestedPatternRecipeCount = 0;
+  std::uint64_t pastedPatternRecipeCount = 0;
   std::size_t failedPasteIndex = kInvalidCreativeClipboardPasteIndex;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::vector<CreativeClipboardIdRemap> idRemaps;
+  std::vector<CreativeClipboardPatternRecipeIdRemap> patternRecipeIdRemaps;
   std::vector<CreativeObjectId> pastedObjectIds;
   std::string reasonCode = "creative_clipboard_batch_not_requested";
 };
@@ -128,12 +165,32 @@ struct CreativeClipboardCutReceipt {
   CreativeClipboardStatus status = CreativeClipboardStatus::NotRequested;
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t cutObjectCount = 0;
+  std::uint64_t cutPatternRecipeCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   CreativeClipboardCopyReceipt copyReceipt;
   std::vector<CreativeDocumentRemoveReceipt> removeReceipts;
   std::string reasonCode = "creative_clipboard_not_requested";
+};
+
+// Product-level delete receipt. Generated pattern members expand to their
+// complete recipe closure, while ordinary roots expand only through hierarchy.
+// The command is atomic and never writes the user's clipboard.
+struct CreativeSemanticDeleteReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeSemanticDeleteStatus status =
+      CreativeSemanticDeleteStatus::NotRequested;
+  std::uint64_t requestedObjectCount = 0;
+  std::uint64_t removedObjectCount = 0;
+  std::uint64_t removedPatternRecipeCount = 0;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::vector<CreativeObjectId> removedObjectIds;
+  std::string reasonCode = "creative_semantic_delete_not_requested";
 };
 
 struct CreativeDuplicateCommandRequest {
@@ -149,6 +206,7 @@ struct CreativeDuplicateCommandReceipt {
       CreativeDuplicateCommandStatus::NotRequested;
   std::uint64_t requestedObjectCount = 0;
   std::uint64_t duplicatedObjectCount = 0;
+  std::uint64_t duplicatedPatternRecipeCount = 0;
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
@@ -163,6 +221,8 @@ struct CreativeDuplicateCommandReceipt {
     CreativeClipboardStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeDuplicateCommandStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeSemanticDeleteStatus status) noexcept;
 [[nodiscard]] bool creativeClipboardEmpty(
     const CreativeClipboard& clipboard) noexcept;
 void clearCreativeClipboard(CreativeClipboard& clipboard) noexcept;
@@ -170,7 +230,9 @@ void clearCreativeClipboard(CreativeClipboard& clipboard) noexcept;
 [[nodiscard]] CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
     const CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
-    CreativeClipboard& outClipboard);
+    CreativeClipboard& outClipboard,
+    CreativeClipboardCopyMode mode =
+        CreativeClipboardCopyMode::SemanticClosure);
 
 // O(n log n) for stable parent ordering, plus O(n) average hash lookups and one
 // full document copy for atomic commit. Internal parent IDs are always remapped.
@@ -194,6 +256,14 @@ pasteCreativeClipboardBatchAtomically(
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
     CreativeClipboard& outClipboard);
+
+// Resolves complete hierarchy roots, then applies the same semantic closure as
+// Cut into a private discard buffer. Crossing logic links or recipe references
+// reject before the staged document is installed.
+[[nodiscard]] CreativeSemanticDeleteReceipt
+deleteDocumentObjectsSemanticallyAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds);
 
 // Resolves hierarchy roots, copies the complete hierarchy once, and remaps
 // internal parents through the clipboard's atomic paste path.

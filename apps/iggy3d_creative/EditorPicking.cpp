@@ -98,6 +98,9 @@ indexedCandidateIdsForRay(
 
   iggy3d::AabbGridIndex index;
   for (const ObjectVisualPickBounds& candidate : candidates) {
+    if (!candidate.visible) {
+      continue;
+    }
     const iggy3d::Aabb3 bounds = aabbFromVisualBounds(candidate.bounds);
     if (!iggy3d::isValid(bounds)) {
       unindexedIds.push_back(candidate.id);
@@ -140,28 +143,80 @@ indexedCandidateIdsForRay(
   return ids;
 }
 
-void narrowPickCandidate(ObjectVisualPickResult& result,
-                         const ObjectVisualPickBounds& candidate,
-                         WorldRay ray) {
-  float entryDistance = std::numeric_limits<float>::max();
+[[nodiscard]] bool pickCandidateEntryDistance(
+    const ObjectVisualPickBounds& candidate,
+    WorldRay ray,
+    float& entryDistance) {
+  entryDistance = std::numeric_limits<float>::max();
   if (candidate.orientedBounds.has_value()) {
     const iggy3d::OrientedBoxRayHit hit =
         iggy3d::intersectsRay(*candidate.orientedBounds, ray.origin,
                               ray.direction,
                               std::numeric_limits<float>::max());
     if (!hit.hit) {
-      return;
+      return false;
     }
     entryDistance = hit.distanceMeters;
   } else if (!rayEntryDistanceForAabb(ray, candidate.bounds, entryDistance)) {
+    return false;
+  }
+  return true;
+}
+
+[[nodiscard]] bool pickHitLess(const ObjectVisualPickHit& lhs,
+                               const ObjectVisualPickHit& rhs) noexcept {
+  return lhs.entryDistance < rhs.entryDistance ||
+         (lhs.entryDistance == rhs.entryDistance &&
+          lhs.objectId < rhs.objectId);
+}
+
+void insertBoundedHit(ObjectVisualPickStack& stack,
+                      ObjectVisualPickHit hit) noexcept {
+  ++stack.totalHitCount;
+  stack.lockedHitCount += hit.locked ? 1U : 0U;
+  if (stack.count < stack.items.size()) {
+    stack.items[stack.count++] = hit;
+  } else {
+    stack.truncated = true;
+    if (!pickHitLess(hit, stack.items[stack.count - 1U])) {
+      return;
+    }
+    stack.items[stack.count - 1U] = hit;
+  }
+  for (std::size_t index = stack.count - 1U;
+       index > 0U && pickHitLess(stack.items[index], stack.items[index - 1U]);
+       --index) {
+    std::swap(stack.items[index], stack.items[index - 1U]);
+  }
+}
+
+void testPickCandidate(ObjectVisualPickStack& stack,
+                       const ObjectVisualPickBounds& candidate,
+                       WorldRay ray) {
+  if (!candidate.visible) {
+    ++stack.hiddenExcludedCount;
     return;
   }
-
-  ++result.hitCount;
-  if (entryDistance < result.entryDistance) {
-    result.entryDistance = entryDistance;
-    result.objectId = candidate.id;
+  ++stack.testedCount;
+  float entryDistance = std::numeric_limits<float>::max();
+  if (!pickCandidateEntryDistance(candidate, ray, entryDistance)) {
+    return;
   }
+  insertBoundedHit(stack,
+                   {candidate.id, entryDistance, candidate.locked});
+}
+
+[[nodiscard]] ObjectVisualPickResult nearestResult(
+    const ObjectVisualPickStack& stack) noexcept {
+  ObjectVisualPickResult result;
+  result.rayValid = stack.rayValid;
+  result.testedCount = stack.testedCount;
+  result.hitCount = stack.totalHitCount;
+  if (stack.count > 0U) {
+    result.objectId = stack.items[0].objectId;
+    result.entryDistance = stack.items[0].entryDistance;
+  }
+  return result;
 }
 
 }  // namespace
@@ -237,6 +292,8 @@ ObjectVisualPickBounds buildObjectVisualPickBounds(
   candidate.id = object.id;
   candidate.bounds = visualBoundsForObject(object);
   candidate.orientedBounds = orientedVisualBoxForObject(object);
+  candidate.visible = object.visible;
+  candidate.locked = object.locked;
   candidate.screenAabb = cr::projectCreativeWorldBoundsToScreen(
       clipFromWorld, candidate.bounds.min, candidate.bounds.max, widthPx,
       heightPx);
@@ -246,50 +303,73 @@ ObjectVisualPickBounds buildObjectVisualPickBounds(
 ObjectVisualPickResult pickNearestVisualBoundsObject(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray) {
-  ObjectVisualPickResult result;
-  result.rayValid = ray.valid;
+  return nearestResult(pickVisualBoundsObjectStack(candidates, ray));
+}
+
+ObjectVisualPickResult pickNearestVisualBoundsObjectBruteForce(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray) {
+  return nearestResult(
+      pickVisualBoundsObjectStackBruteForce(candidates, ray));
+}
+
+ObjectVisualPickStack pickVisualBoundsObjectStack(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray) {
+  ObjectVisualPickStack stack;
+  stack.rayValid = ray.valid;
   if (!ray.valid || !normalizeRayDirection(ray)) {
-    return result;
+    return stack;
   }
 
   bool fallbackToFullScan = false;
   const std::vector<iggy3d::AabbGridIndex::ItemId> indexedIds =
       indexedCandidateIdsForRay(candidates, ray, fallbackToFullScan);
   if (fallbackToFullScan) {
-    result.testedCount = candidates.size();
     for (const ObjectVisualPickBounds& candidate : candidates) {
-      narrowPickCandidate(result, candidate, ray);
+      testPickCandidate(stack, candidate, ray);
     }
-    return result;
+    return stack;
   }
-
   for (const ObjectVisualPickBounds& candidate : candidates) {
-    if (!std::binary_search(indexedIds.begin(), indexedIds.end(),
-                            candidate.id)) {
+    if (!candidate.visible) {
+      ++stack.hiddenExcludedCount;
       continue;
     }
-    ++result.testedCount;
-    narrowPickCandidate(result, candidate, ray);
+    if (std::binary_search(indexedIds.begin(), indexedIds.end(),
+                           candidate.id)) {
+      testPickCandidate(stack, candidate, ray);
+    }
   }
-
-  return result;
+  return stack;
 }
 
-ObjectVisualPickResult pickNearestVisualBoundsObjectBruteForce(
+ObjectVisualPickStack pickVisualBoundsObjectStackBruteForce(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray) {
-  ObjectVisualPickResult result;
-  result.rayValid = ray.valid;
-  result.testedCount = candidates.size();
+  ObjectVisualPickStack stack;
+  stack.rayValid = ray.valid;
   if (!ray.valid || !normalizeRayDirection(ray)) {
-    return result;
+    return stack;
   }
-
   for (const ObjectVisualPickBounds& candidate : candidates) {
-    narrowPickCandidate(result, candidate, ray);
+    testPickCandidate(stack, candidate, ray);
   }
+  return stack;
+}
 
-  return result;
+cr::CreativeObjectId cycleObjectVisualPick(
+    const ObjectVisualPickStack& stack,
+    cr::CreativeObjectId currentObjectId) noexcept {
+  if (stack.count == 0U) {
+    return cr::kInvalidObjectId;
+  }
+  for (std::size_t index = 0U; index < stack.count; ++index) {
+    if (stack.items[index].objectId == currentObjectId) {
+      return stack.items[(index + 1U) % stack.count].objectId;
+    }
+  }
+  return stack.items[0].objectId;
 }
 
 std::vector<PathPointHandleHit> buildPathPointHandleHits(

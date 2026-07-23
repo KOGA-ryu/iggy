@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 
 #include <algorithm>
 #include <array>
@@ -22,19 +23,45 @@ CreativeMapTemplateResult buildBuilderEstateMapTemplate(
 namespace {
 
 constexpr double kTerrainTopMeters = 3.0;
-// The ditch-house intentionally uses a heavier slab than the descriptor
-// default because it bridges the authored terrain shell.
-constexpr double kDitchHouseFloorThicknessMeters = 0.25;
-constexpr double kFloorTopMeters =
+
+const CreativeWorldLayoutArchitecturalProfile kDitchHouseArchitecturalProfile =
+    [] {
+      CreativeWorldLayoutArchitecturalProfile profile =
+          defaultCreativeWorldLayoutArchitecturalProfile(
+              CreativeWorldLayoutArchitecturalProfileKind::Custom);
+      // The bridge-supported house uses a five-layer floor slab. Its storey
+      // height and structural layer thicknesses still come from shared owners.
+      profile.floorThicknessLayers = 5U;
+      profile.ceilingThicknessLayers = 1U;
+      profile.roofThicknessLayers = 1U;
+      return profile;
+    }();
+
+const double kDitchHouseFloorThicknessMeters =
+    kDitchHouseArchitecturalProfile.floorThicknessLayers *
+    defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
+const double kDitchHouseFloorTopMeters =
     kTerrainTopMeters + kDitchHouseFloorThicknessMeters;
-constexpr double kWallTopMeters = 6.25;
-// This authored lightweight cap intentionally overrides the one-meter default
-// roof layer used by the general layout compiler.
-constexpr double kDitchHouseRoofThicknessMeters = 0.30;
-constexpr double kRoofTopMeters =
-    kWallTopMeters + kDitchHouseRoofThicknessMeters;
-constexpr double kWallHalfThickness = 0.125;
-constexpr double kInteriorWallHalfThickness = 0.1;
+const double kDitchHouseWallTopMeters =
+    kDitchHouseFloorTopMeters +
+    kDitchHouseArchitecturalProfile.floorToFloorMeters;
+const double kDitchHouseRoofThicknessMeters =
+    kDitchHouseArchitecturalProfile.roofThicknessLayers *
+    defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Roof);
+const double kDitchHouseRoofTopMeters =
+    kDitchHouseWallTopMeters + kDitchHouseRoofThicknessMeters;
+const double kDitchHouseExteriorWallThicknessMeters =
+    defaultCreativeWallGeometry().thicknessMeters;
+constexpr double kDitchHouseInteriorWallThicknessMeters = 0.20;
+
+constexpr double kDitchHouseWindowWidthMeters = 2.0;
+constexpr double kDitchHouseWindowSillMeters = 0.9;
+constexpr double kDitchHouseWindowHeightMeters = 1.1;
+constexpr double kDitchHouseDoorCutoutWidthMeters = 2.0;
+constexpr double kDitchHouseDoorCutoutHeightMeters = 3.0;
+constexpr double kDitchHouseDoorLeafWidthMeters = 1.8;
+constexpr double kDitchHouseDoorLeafHeightMeters = 2.25;
+constexpr double kDitchHouseDoorLeafThicknessMeters = 0.20;
 
 void setStatus(CreativeMapTemplateResult& result,
                CreativeMapTemplateStatus status,
@@ -91,8 +118,9 @@ void appendMarker(std::vector<CreativeDocumentCreateRequest>& requests,
     std::string name,
     double centerOffsetMeters) {
   return makeCreativeBuildingWindowOpening(
-      std::move(stableKey), std::move(name), centerOffsetMeters, 2.0, 0.9,
-      1.1);
+      std::move(stableKey), std::move(name), centerOffsetMeters,
+      kDitchHouseWindowWidthMeters, kDitchHouseWindowSillMeters,
+      kDitchHouseWindowHeightMeters);
 }
 
 [[nodiscard]] CreativeBuildingOpeningSpec ditchOpenDoor(
@@ -101,11 +129,24 @@ void appendMarker(std::vector<CreativeDocumentCreateRequest>& requests,
     double centerOffsetMeters,
     CreativeBuildingOpeningPose pose) {
   CreativeBuildingOpeningSpec opening = makeCreativeBuildingDoorOpening(
-      std::move(stableKey), std::move(name), centerOffsetMeters, 2.0, 3.0);
-  opening.pose = pose;
-  opening.insertHeightMeters = 2.25;
-  opening.insertWidthMeters = 1.8;
-  opening.insertThicknessMeters = 0.2;
+      std::move(stableKey), std::move(name), centerOffsetMeters,
+      kDitchHouseDoorCutoutWidthMeters, kDitchHouseDoorCutoutHeightMeters);
+  opening.door.initialState = pose == CreativeBuildingOpeningPose::Closed
+                                  ? CreativeDoorInitialState::Closed
+                                  : CreativeDoorInitialState::Open;
+  opening.door.hingeSide =
+      pose == CreativeBuildingOpeningPose::OpenFromEndNegativeNormal ||
+              pose == CreativeBuildingOpeningPose::OpenFromEndPositiveNormal
+          ? CreativeDoorHingeSide::MaximumEdge
+          : CreativeDoorHingeSide::MinimumEdge;
+  opening.door.swingSide =
+      pose == CreativeBuildingOpeningPose::OpenFromStartNegativeNormal ||
+              pose == CreativeBuildingOpeningPose::OpenFromEndNegativeNormal
+          ? CreativeDoorSwingSide::NegativeNormal
+          : CreativeDoorSwingSide::PositiveNormal;
+  opening.insertHeightMeters = kDitchHouseDoorLeafHeightMeters;
+  opening.insertWidthMeters = kDitchHouseDoorLeafWidthMeters;
+  opening.insertThicknessMeters = kDitchHouseDoorLeafThicknessMeters;
   return opening;
 }
 
@@ -172,81 +213,89 @@ std::vector<CreativeDocumentCreateRequest> ditchHouseObjects() {
   building.stableKey = "ditch_house";
   building.name = "Ditch House Building";
   building.rootMode = CreativeBuildingRootMode::None;
-  building.tags = {"map_template:ditch_house"};
+  building.tags = {"map_template:ditch_house",
+                   "architecture_profile:ditch_house"};
   building.boxes = {
       {CreativeObjectKind::Floor,
        "floor.living",
        "Living Floor",
        {{6.0, kTerrainTopMeters, 0.0},
-        {16.0, kFloorTopMeters, 10.0}}},
+        {16.0, kDitchHouseFloorTopMeters, 10.0}}},
       {CreativeObjectKind::Floor,
        "floor.kitchen",
        "Kitchen Floor",
        {{16.0, kTerrainTopMeters, 0.0},
-        {26.0, kFloorTopMeters, 10.0}}},
+        {26.0, kDitchHouseFloorTopMeters, 10.0}}},
       {CreativeObjectKind::Floor,
        "floor.workshop",
        "Workshop Floor",
        {{6.0, kTerrainTopMeters, -10.0},
-        {16.0, kFloorTopMeters, 0.0}}},
+        {16.0, kDitchHouseFloorTopMeters, 0.0}}},
       {CreativeObjectKind::Floor,
        "floor.bedroom",
        "Bedroom Floor",
        {{16.0, kTerrainTopMeters, -10.0},
-        {26.0, kFloorTopMeters, 0.0}}},
+        {26.0, kDitchHouseFloorTopMeters, 0.0}}},
       {CreativeObjectKind::Room,
        "room.living",
        "Living Room",
-       {{6.0, kFloorTopMeters, 0.0}, {16.0, kWallTopMeters, 10.0}}},
+       {{6.0, kDitchHouseFloorTopMeters, 0.0},
+        {16.0, kDitchHouseWallTopMeters, 10.0}}},
       {CreativeObjectKind::Room,
        "room.kitchen",
        "Kitchen",
-       {{16.0, kFloorTopMeters, 0.0}, {26.0, kWallTopMeters, 10.0}}},
+       {{16.0, kDitchHouseFloorTopMeters, 0.0},
+        {26.0, kDitchHouseWallTopMeters, 10.0}}},
       {CreativeObjectKind::Room,
        "room.workshop",
        "Workshop",
-       {{6.0, kFloorTopMeters, -10.0}, {16.0, kWallTopMeters, 0.0}}},
+       {{6.0, kDitchHouseFloorTopMeters, -10.0},
+        {16.0, kDitchHouseWallTopMeters, 0.0}}},
       {CreativeObjectKind::Room,
        "room.bedroom",
        "Bedroom",
-       {{16.0, kFloorTopMeters, -10.0}, {26.0, kWallTopMeters, 0.0}}},
+       {{16.0, kDitchHouseFloorTopMeters, -10.0},
+        {26.0, kDitchHouseWallTopMeters, 0.0}}},
       {CreativeObjectKind::Roof,
        "roof.living",
        "Living Roof",
-       {{6.0, kWallTopMeters, 0.0}, {16.0, kRoofTopMeters, 10.0}}},
+       {{6.0, kDitchHouseWallTopMeters, 0.0},
+        {16.0, kDitchHouseRoofTopMeters, 10.0}}},
       {CreativeObjectKind::Roof,
        "roof.kitchen",
        "Kitchen Roof",
-       {{16.0, kWallTopMeters, 0.0}, {26.0, kRoofTopMeters, 10.0}}},
+       {{16.0, kDitchHouseWallTopMeters, 0.0},
+        {26.0, kDitchHouseRoofTopMeters, 10.0}}},
       {CreativeObjectKind::Roof,
        "roof.workshop",
        "Workshop Roof",
-       {{6.0, kWallTopMeters, -10.0}, {16.0, kRoofTopMeters, 0.0}}},
+       {{6.0, kDitchHouseWallTopMeters, -10.0},
+        {16.0, kDitchHouseRoofTopMeters, 0.0}}},
       {CreativeObjectKind::Roof,
        "roof.bedroom",
        "Bedroom Roof",
-       {{16.0, kWallTopMeters, -10.0}, {26.0, kRoofTopMeters, 0.0}}},
+       {{16.0, kDitchHouseWallTopMeters, -10.0},
+        {26.0, kDitchHouseRoofTopMeters, 0.0}}},
   };
 
-  const double exteriorThickness = kWallHalfThickness * 2.0;
-  const double interiorThickness = kInteriorWallHalfThickness * 2.0;
-  const double wallHeight = kWallTopMeters - kFloorTopMeters;
+  const double wallHeight =
+      kDitchHouseArchitecturalProfile.floorToFloorMeters;
   building.walls = {
       {"wall.north",
        "North Wall",
-       {6.0, kFloorTopMeters, -10.0},
-       {26.0, kFloorTopMeters, -10.0},
+       {6.0, kDitchHouseFloorTopMeters, -10.0},
+       {26.0, kDitchHouseFloorTopMeters, -10.0},
        wallHeight,
-       exteriorThickness,
+       kDitchHouseExteriorWallThicknessMeters,
        {ditchWindow("window.workshop_north", "Workshop North Window", 5.0),
         ditchWindow("window.bedroom_north", "Bedroom North Window", 15.0)},
        {"North Wall West", "North Wall Center", "North Wall East"}},
       {"wall.south",
        "South Wall",
-       {6.0, kFloorTopMeters, 10.0},
-       {26.0, kFloorTopMeters, 10.0},
+       {6.0, kDitchHouseFloorTopMeters, 10.0},
+       {26.0, kDitchHouseFloorTopMeters, 10.0},
        wallHeight,
-       exteriorThickness,
+       kDitchHouseExteriorWallThicknessMeters,
        {ditchOpenDoor("door.front", "Front Door Open", 5.0,
                       CreativeBuildingOpeningPose::
                           OpenFromStartNegativeNormal),
@@ -254,28 +303,28 @@ std::vector<CreativeDocumentCreateRequest> ditchHouseObjects() {
        {"South Wall West", "South Wall Center", "South Wall East"}},
       {"wall.west",
        "West Wall",
-       {6.0, kFloorTopMeters, -10.0},
-       {6.0, kFloorTopMeters, 10.0},
+       {6.0, kDitchHouseFloorTopMeters, -10.0},
+       {6.0, kDitchHouseFloorTopMeters, 10.0},
        wallHeight,
-       exteriorThickness,
+       kDitchHouseExteriorWallThicknessMeters,
        {ditchWindow("window.workshop_west", "Workshop West Window", 5.0),
         ditchWindow("window.living_west", "Living West Window", 15.0)},
        {"West Wall North", "West Wall Center", "West Wall South"}},
       {"wall.east",
        "East Wall",
-       {26.0, kFloorTopMeters, -10.0},
-       {26.0, kFloorTopMeters, 10.0},
+       {26.0, kDitchHouseFloorTopMeters, -10.0},
+       {26.0, kDitchHouseFloorTopMeters, 10.0},
        wallHeight,
-       exteriorThickness,
+       kDitchHouseExteriorWallThicknessMeters,
        {ditchWindow("window.bedroom_east", "Bedroom East Window", 5.0),
         ditchWindow("window.kitchen_east", "Kitchen East Window", 15.0)},
        {"East Wall North", "East Wall Center", "East Wall South"}},
       {"wall.interior_long",
        "Interior Long Wall",
-       {16.0, kFloorTopMeters, -10.0},
-       {16.0, kFloorTopMeters, 10.0},
+       {16.0, kDitchHouseFloorTopMeters, -10.0},
+       {16.0, kDitchHouseFloorTopMeters, 10.0},
        wallHeight,
-       interiorThickness,
+       kDitchHouseInteriorWallThicknessMeters,
        {ditchOpenDoor("door.interior_north", "North Interior Door Open", 5.0,
                       CreativeBuildingOpeningPose::
                           OpenFromStartNegativeNormal),
@@ -286,10 +335,10 @@ std::vector<CreativeDocumentCreateRequest> ditchHouseObjects() {
         "Interior Long Wall South"}},
       {"wall.interior_cross",
        "Interior Cross Wall",
-       {6.0, kFloorTopMeters, 0.0},
-       {26.0, kFloorTopMeters, 0.0},
+       {6.0, kDitchHouseFloorTopMeters, 0.0},
+       {26.0, kDitchHouseFloorTopMeters, 0.0},
        wallHeight,
-       interiorThickness,
+       kDitchHouseInteriorWallThicknessMeters,
        {ditchOpenDoor("door.interior_west", "West Interior Door Open", 5.0,
                       CreativeBuildingOpeningPose::
                           OpenFromStartPositiveNormal),
@@ -315,35 +364,35 @@ std::vector<CreativeDocumentCreateRequest> ditchHouseObjects() {
                   std::make_move_iterator(materialized.createRequests.end()));
 
   appendBox(requests, CreativeObjectKind::Furniture, "Living Sofa",
-            {{8.0, kFloorTopMeters, 5.5}, {12.0, 4.25, 7.0}});
+            {{8.0, kDitchHouseFloorTopMeters, 5.5}, {12.0, 4.25, 7.0}});
   appendBox(requests, CreativeObjectKind::Furniture, "Living Table",
-            {{12.5, kFloorTopMeters, 4.0}, {14.5, 4.0, 6.0}});
+            {{12.5, kDitchHouseFloorTopMeters, 4.0}, {14.5, 4.0, 6.0}});
   appendBox(requests, CreativeObjectKind::Furniture, "Kitchen Counter",
-            {{17.0, kFloorTopMeters, 7.5}, {24.5, 4.25, 9.0}});
+            {{17.0, kDitchHouseFloorTopMeters, 7.5}, {24.5, 4.25, 9.0}});
   appendBox(requests, CreativeObjectKind::Furniture, "Kitchen Table",
-            {{19.0, kFloorTopMeters, 3.0}, {22.0, 4.15, 5.0}});
+            {{19.0, kDitchHouseFloorTopMeters, 3.0}, {22.0, 4.15, 5.0}});
   appendBox(requests, CreativeObjectKind::Furniture, "Workshop Bench",
-            {{8.0, kFloorTopMeters, -8.5}, {13.0, 4.3, -7.0}});
+            {{8.0, kDitchHouseFloorTopMeters, -8.5}, {13.0, 4.3, -7.0}});
   appendBox(requests, CreativeObjectKind::Crate, "Workshop Crate",
-            {{8.0, kFloorTopMeters, -3.0}, {9.5, 4.75, -1.5}});
+            {{8.0, kDitchHouseFloorTopMeters, -3.0}, {9.5, 4.75, -1.5}});
   appendBox(requests, CreativeObjectKind::Barrel, "Workshop Barrel",
-            {{12.5, kFloorTopMeters, -3.0}, {13.7, 4.45, -1.8}});
+            {{12.5, kDitchHouseFloorTopMeters, -3.0}, {13.7, 4.45, -1.8}});
   appendBox(requests, CreativeObjectKind::Furniture, "Bedroom Bed",
-            {{18.0, kFloorTopMeters, -8.5}, {22.0, 4.05, -5.5}});
+            {{18.0, kDitchHouseFloorTopMeters, -8.5}, {22.0, 4.05, -5.5}});
   appendBox(requests, CreativeObjectKind::Furniture, "Bedroom Wardrobe",
-            {{23.5, kFloorTopMeters, -8.5}, {25.0, 5.5, -6.0}});
+            {{23.5, kDitchHouseFloorTopMeters, -8.5}, {25.0, 5.5, -6.0}});
 
   appendBox(requests, CreativeObjectKind::Bridge, "Ditch Footbridge",
             {{-16.0, 2.75, 13.0}, {-4.0, kTerrainTopMeters, 15.0}});
   appendBox(requests, CreativeObjectKind::Platform, "House Approach",
             {{-4.0, 2.9, 13.0}, {11.0, 3.15, 15.0}});
   appendBox(requests, CreativeObjectKind::Platform, "Front Porch",
-            {{9.5, 3.0, 10.0}, {12.5, kFloorTopMeters, 15.0}});
+            {{9.5, 3.0, 10.0}, {12.5, kDitchHouseFloorTopMeters, 15.0}});
 
   appendMarker(requests, CreativeObjectKind::SpawnPoint, "Player Arrival",
-               {11.0, kFloorTopMeters, 13.5});
+               {11.0, kDitchHouseFloorTopMeters, 13.5});
   appendMarker(requests, CreativeObjectKind::NpcSpawn, "House Occupant",
-               {13.0, kFloorTopMeters, 7.5});
+               {13.0, kDitchHouseFloorTopMeters, 7.5});
 
   appendBox(requests, CreativeObjectKind::Rock, "Ditch Rock North",
             {{-12.5, 1.0, -20.0}, {-11.0, 2.1, -18.5}});

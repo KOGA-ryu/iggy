@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/adapters/RoomBakeObjectInternal.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/recipes/RampRecipe.hpp"
 #include "content/assets/GeneratedGeometry.hpp"
 #include "content/assets/TraversalTag.hpp"
 
@@ -134,52 +135,51 @@ void appendSpatialSurfaceSource(
   sources.push_back({objectId, surface.id, surface.sourceStaticMeshId});
 }
 
-[[nodiscard]] bool resolvedOffsetPoint(
-    const CreativeTransformedBounds& resolved,
-    CreativeVec3 offset,
-    Vec3& output) noexcept {
-  const CreativeVec3 rotated =
-      rotateCreativeVectorEulerXyz(offset, resolved.rotationEulerRadians);
-  const CreativeCoreVec3Conversion converted = creativeVec3ToCoreChecked(
-      {resolved.center.x + rotated.x, resolved.center.y + rotated.y,
-       resolved.center.z + rotated.z});
-  if (!converted.converted) {
-    return false;
-  }
-  output = converted.value;
-  return true;
-}
-
 [[nodiscard]] bool rampHeightPatchSurfaceForObject(
     const CreativeObject& object,
     const RoomBakeObjectClassification& classification,
     RoomSpatialSurface& output) {
-  const CreativeTransformedBounds& resolved = classification.transformedBounds;
-  if (!resolved.valid || !uprightRotation(resolved.rotationEulerRadians)) {
+  if (!classification.transformedBounds.valid) {
+    return false;
+  }
+  CreativeRampRecipeRequest request;
+  request.authoredBounds = object.bounds;
+  request.transform = object.transform;
+  request.availableHeadroomMeters = kCreativeRampMinimumHeadroomMeters;
+  CreativeStructuralMaterial material = CreativeStructuralMaterial::Blockout;
+  if (parseCreativeStructuralMaterialTag(object.tags, material)) {
+    request.material = material;
+  }
+  const CreativeRampRecipeResult ramp = planCreativeRamp(request);
+  if (!ramp.accepted) {
     return false;
   }
 
-  const CreativeVec3 half{resolved.size.x * 0.5, resolved.size.y * 0.5,
-                          resolved.size.z * 0.5};
+  std::array<CreativeVec3, 4U> recipeCorners = {
+      ramp.sideEdges[0].lowMeters,
+      ramp.sideEdges[0].highMeters,
+      ramp.sideEdges[1].highMeters,
+      ramp.sideEdges[1].lowMeters,
+  };
   std::array<Vec3, 4U> corners{};
-  if (!resolvedOffsetPoint(resolved, {-half.x, -half.y, -half.z}, corners[0]) ||
-      !resolvedOffsetPoint(resolved, {half.x, -half.y, -half.z}, corners[1]) ||
-      !resolvedOffsetPoint(resolved, {half.x, half.y, half.z}, corners[2]) ||
-      !resolvedOffsetPoint(resolved, {-half.x, half.y, half.z}, corners[3])) {
-    return false;
-  }
-  Vec3 normal;
-  if (!tryNormalize(cross(corners[1] - corners[0],
-                          corners[3] - corners[0]),
-                    normal)) {
-    return false;
-  }
-  if (normal.y < 0.0F) {
-    normal = normal * -1.0F;
+  CreativeVec3 centerMeters;
+  for (std::size_t index = 0U; index < corners.size(); ++index) {
+    const CreativeCoreVec3Conversion converted =
+        creativeVec3ToCoreChecked(recipeCorners[index]);
+    if (!converted.converted) {
+      return false;
+    }
+    corners[index] = converted.value;
+    centerMeters.x += recipeCorners[index].x * 0.25;
+    centerMeters.y += recipeCorners[index].y * 0.25;
+    centerMeters.z += recipeCorners[index].z * 0.25;
   }
   const CreativeCoreVec3Conversion center =
-      creativeVec3ToCoreChecked(resolved.center);
-  if (!center.converted || !isFinite(normal) || normal.y <= 0.0F) {
+      creativeVec3ToCoreChecked(centerMeters);
+  const CreativeCoreVec3Conversion normal =
+      creativeVec3ToCoreChecked(ramp.surfaceNormal);
+  if (!center.converted || !normal.converted ||
+      !isFinite(normal.value) || normal.value.y <= 0.0F) {
     return false;
   }
 
@@ -189,10 +189,108 @@ void appendSpatialSurfaceSource(
   output.role = RoomSpatialSurfaceRole::Walkable;
   output.pointsMeters = {center.value, corners[0], corners[1], corners[2],
                          corners[3]};
+  output.normal = normal.value;
+  output.traversalTags = {
+      std::string(traversalTagId(TraversalTag::Walkable))};
+  output.collisionMask = {"actor", "projectile"};
+  return true;
+}
+
+[[nodiscard]] bool slopedPanelHeightPatchSurfaceForObject(
+    const CreativeObject& object,
+    const RoomBakeObjectClassification& classification,
+    RoomSpatialSurface& output) {
+  if (!classification.transformedBounds.valid) {
+    return false;
+  }
+
+  constexpr std::array<std::size_t, 4U> kTopCornerIndices{2U, 3U, 7U, 6U};
+  std::array<Vec3, 4U> corners{};
+  CreativeVec3 centerMeters;
+  for (std::size_t index = 0U; index < corners.size(); ++index) {
+    const CreativeVec3 point =
+        classification.transformedBounds.corners[kTopCornerIndices[index]];
+    const CreativeCoreVec3Conversion converted =
+        creativeVec3ToCoreChecked(point);
+    if (!converted.converted) {
+      return false;
+    }
+    corners[index] = converted.value;
+    centerMeters.x += point.x * 0.25;
+    centerMeters.y += point.y * 0.25;
+    centerMeters.z += point.z * 0.25;
+  }
+  const CreativeCoreVec3Conversion center =
+      creativeVec3ToCoreChecked(centerMeters);
+  const CreativeCoreVec3Conversion normal = creativeVec3ToCoreChecked(
+      rotateCreativeVectorEulerXyz(
+          {0.0, 1.0, 0.0}, object.transform.rotationEulerRadians));
+  if (!center.converted || !normal.converted || !isFinite(normal.value) ||
+      normal.value.y <= 0.0F) {
+    return false;
+  }
+
+  output.id = stableObjectId(object, "sloped_panel_walkable");
+  output.sourceStaticMeshId = stableObjectId(object);
+  output.shape = RoomSpatialSurfaceShape::HeightPatch;
+  output.role = RoomSpatialSurfaceRole::Walkable;
+  output.pointsMeters = {center.value, corners[0], corners[1], corners[2],
+                         corners[3]};
+  output.normal = normal.value;
+  output.traversalTags = {
+      std::string(traversalTagId(TraversalTag::Walkable))};
+  output.collisionMask = {"actor", "projectile"};
+  return true;
+}
+
+[[nodiscard]] bool hipRoofHeightPatchSurfaceForObject(
+    const CreativeObject& object,
+    const RoomBakeObjectClassification& classification,
+    RoomSpatialSurface& output) {
+  if (!classification.transformedBounds.valid) {
+    return false;
+  }
+
+  const CreativeCoreVec3Conversion center = creativeVec3ToCoreChecked(
+      classification.transformedBounds.center);
+  const CreativeCoreVec3Conversion rotation = creativeVec3ToCoreChecked(
+      classification.transformedBounds.rotationEulerRadians);
+  if (!center.converted || !rotation.converted) {
+    return false;
+  }
+  const GeneratedHipRoofPanelLayout layout = generatedHipRoofPanelLayout(
+      classification.orientedSize, rotation.value);
+  if (!layout.valid) {
+    return false;
+  }
+
+  constexpr std::size_t kWeatherFaceFirstCorner = 4U;
+  std::array<Vec3, 4U> corners{};
+  Vec3 patchCenter{};
+  for (std::size_t index = 0U; index < corners.size(); ++index) {
+    corners[index] =
+        center.value + rotateEulerXyz(
+                           layout.corners[kWeatherFaceFirstCorner + index],
+                           rotation.value);
+    patchCenter = patchCenter + corners[index] * 0.25F;
+  }
+  const Vec3 normal =
+      rotateEulerXyz({0.0F, 1.0F, 0.0F}, rotation.value);
+  if (!isFinite(patchCenter) || !isFinite(normal) || normal.y <= 0.0F) {
+    return false;
+  }
+
+  output.id = stableObjectId(object, "hip_roof_walkable");
+  output.sourceStaticMeshId = stableObjectId(object);
+  output.shape = RoomSpatialSurfaceShape::HeightPatch;
+  output.role = RoomSpatialSurfaceRole::Walkable;
+  output.pointsMeters = {patchCenter, corners[0], corners[1], corners[2],
+                         corners[3]};
   output.normal = normal;
   output.traversalTags = {
       std::string(traversalTagId(TraversalTag::Walkable))};
   output.collisionMask = {"actor", "projectile"};
+  output.collisionThicknessMeters = classification.orientedSize.y;
   return true;
 }
 
@@ -221,16 +319,19 @@ void appendSolidBoundsSurfaces(
     RoomAsset& room,
     std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
     const CreativeObject& object,
-    const RoomBakeObjectClassification& classification) {
+    const RoomBakeObjectClassification& classification,
+    bool blocksVision = true) {
   const Vec3 normal =
       blockerNormalForRole(classification.bounds, classification.role);
   RoomSpatialSurface actor =
       actorBlockerSurfaceForObject(object, classification.bounds, normal);
+  actor.blocksVision = blocksVision;
   appendSpatialSurfaceSource(sources, object.id, actor);
   room.spatialSurfaces.push_back(std::move(actor));
 
   RoomSpatialSurface projectile =
       projectileBlockerSurfaceForObject(object, classification.bounds, normal);
+  projectile.blocksVision = blocksVision;
   appendSpatialSurfaceSource(sources, object.id, projectile);
   room.spatialSurfaces.push_back(std::move(projectile));
 }
@@ -351,6 +452,17 @@ void appendSpatialSurfaces(RoomAsset& room,
                            const RoomBakeObjectClassification& classification) {
   const BakeBounds bounds = classification.bounds;
   const BakedRoomRole role = classification.role;
+  if (object.kind == CreativeObjectKind::Window) {
+    if (!object.assetId.empty() &&
+        classification.assetSurfaces.policy ==
+            RoomBakeAssetSurfacePolicy::MissingMetadata) {
+      ++receipt.skippedMissingAssetMetadataCount;
+    }
+    appendSolidBoundsSurfaces(
+        room, sources, object, classification,
+        object.window.insertKind != CreativeWindowInsertKind::Glazing);
+    return;
+  }
   if (appendRoomBakeAssetSpatialSurfaces(
           room, sources, receipt, object, bounds, role,
           classification.assetSurfaces)) {
@@ -392,6 +504,28 @@ void appendSpatialSurfaces(RoomAsset& room,
         appendSolidBoundsSurfaces(room, sources, object, classification);
       }
       return;
+    case CreativeGeneratedGeometryProfile::SlopedPanel: {
+      RoomSpatialSurface surface;
+      if (slopedPanelHeightPatchSurfaceForObject(object, classification,
+                                                 surface)) {
+        appendSpatialSurfaceSource(sources, object.id, surface);
+        room.spatialSurfaces.push_back(std::move(surface));
+      } else {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    }
+    case CreativeGeneratedGeometryProfile::HipRoofPanel: {
+      RoomSpatialSurface surface;
+      if (hipRoofHeightPatchSurfaceForObject(object, classification,
+                                             surface)) {
+        appendSpatialSurfaceSource(sources, object.id, surface);
+        room.spatialSurfaces.push_back(std::move(surface));
+      } else {
+        appendSolidBoundsSurfaces(room, sources, object, classification);
+      }
+      return;
+    }
     case CreativeGeneratedGeometryProfile::DescriptorDefault:
       break;
   }

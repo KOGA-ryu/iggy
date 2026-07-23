@@ -24,12 +24,16 @@
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
+#include "app/iggy3d/creative/tools/Measure.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "render/debug/DebugHudText.hpp"
 
@@ -60,11 +64,21 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.generatedScopeEdgeCount = 0;
   output.architectureScaleGuideActive = false;
   output.architectureScaleGuideLineCount = 0;
+  output.worldLayoutRoofHandleEdgeCount = 0;
   output.architecturalDimensions = {};
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
   output.pathPointHandleEdgeCount = 0;
+  output.measurementEdgeCount = 0;
   output.movingPlatformPathPreviewEdgeCount = 0;
+  output.playerSpawnPreviewActive = false;
+  output.playerSpawnPreviewAccepted = false;
+  output.playerSpawnPreviewStatus =
+      cr::CreativePlayerSpawnStatus::NotRequested;
+  output.playerSpawnPreviewReasonCode =
+      "creative_player_spawn_not_requested";
+  output.playerSpawnPreviewEdgeCount = 0;
+  output.playerSpawnPreviewLabelGlyphCount = 0;
   output.structuralSpanEditEdgeCount = 0;
   output.roomPlacementEdgeCount = 0;
   output.ghostEdgeCount = 0;
@@ -80,11 +94,20 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.terrainSourceImpactClipped = false;
   output.terrainEdgeCount = 0;
   output.volumeEdgeCount = 0;
+  output.volumeExteriorEdgeCount = 0;
+  output.volumeInteriorEdgeCount = 0;
+  output.volumeChangedMemberEdgeCount = 0;
+  output.volumeUnchangedMemberEdgeCount = 0;
+  output.volumeProtectedMemberEdgeCount = 0;
+  output.volumeDependentSourceEdgeCount = 0;
+  output.volumeBlockedMemberEdgeCount = 0;
+  output.volumeHandleEdgeCount = 0;
   output.patternEdgeCount = 0;
   output.transformPreviewEdgeCount = 0;
   output.assetReplacementEdgeCount = 0;
   output.assetScatterEdgeCount = 0;
   output.attachmentSocketMarkerEdgeCount = 0;
+  output.assetCollisionPreviewEdgeCount = 0;
   output.placementFeedbackEdgeCount = 0;
   output.logicLinkEdgeCount = 0;
   output.logicLinkShaftCount = 0;
@@ -158,7 +181,8 @@ void appendCreativeEditorLogicLinks(
   }
   const cr::CreativeDocument& document = request.appState.facade.document();
   const bool connectToolHeld =
-      held.kind == cr::CreativeHeldItemKind::LogicLink;
+      cr::describeCreativeHeldItem(held.kind).interactionMode ==
+      cr::CreativeHeldItemInteractionMode::LogicLink;
   cr::CreativeObjectId selectedSourceId = cr::kInvalidObjectId;
   if (request.selection.selected != nullptr &&
       cr::creativeObjectCanSourceLogicLink(
@@ -183,15 +207,21 @@ void appendCreativeEditorLogicLinks(
     }
     const cr::CreativeObject* source = document.findObject(link.sourceObjectId);
     const cr::CreativeObject* target = document.findObject(link.targetObjectId);
-    if (source == nullptr || !source->visible) {
+    const bool sourceVisible =
+        source != nullptr &&
+        cr::creativeObjectEffectivelyVisible(document, source->id);
+    const bool targetVisible =
+        target != nullptr &&
+        cr::creativeObjectEffectivelyVisible(document, target->id);
+    if (!sourceVisible) {
       continue;
     }
-    if (target != nullptr && !target->visible) {
+    if (target != nullptr && !targetVisible) {
       continue;
     }
     const bool valid =
         cr::creativeObjectCanSourceLogicLink(source->kind) &&
-        target != nullptr && target->visible &&
+        targetVisible &&
         cr::creativeObjectCanTargetLogicLink(target->kind) &&
         cr::creativeLogicLinkActionSupported(target->kind, link.action);
     const VisualBounds sourceBounds = visualBoundsForObject(*source);
@@ -254,7 +284,8 @@ void appendCreativeEditorLogicLinks(
 
   const cr::CreativeObject* selectedSource =
       document.findObject(selectedSourceId);
-  if (selectedSource != nullptr && selectedSource->visible) {
+  if (selectedSource != nullptr &&
+      cr::creativeObjectEffectivelyVisible(document, selectedSource->id)) {
     bool sourceInvalid = false;
     for (std::size_t index = 0U; index < diagnostics.issueCount; ++index) {
       sourceInvalid =
@@ -283,7 +314,8 @@ void appendCreativeEditorLogicLinks(
   }
   const cr::CreativeObject* hovered =
       document.findObject(editor.interaction.target.objectId);
-  if (hovered == nullptr || !hovered->visible) {
+  if (hovered == nullptr ||
+      !cr::creativeObjectEffectivelyVisible(document, hovered->id)) {
     return;
   }
   if (hovered->id == editor.logicLinks.sourceObjectId) {
@@ -335,13 +367,43 @@ void appendCreativeEditorAttachmentSocketMarkers(
                          editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const std::string_view sourceAssetId = cr::creativeHotbarAssetId(held);
   if (request.captureMode || modalOpen || request.assetCatalog == nullptr ||
-      held.kind != cr::CreativeHeldItemKind::Material ||
-      sourceAssetId.empty() ||
-      creativeEditorUsesAssetScatter(held, editor.toolSettings) ||
       !editor.interaction.target.objectHit ||
       !editor.interaction.target.grid.valid) {
+    return;
+  }
+
+  std::string_view sourceAssetId;
+  cr::CreativeObjectId ignoredOccupantObjectId = cr::kInvalidObjectId;
+  cr::CreativeAttachmentSnapSelectionMode selectionMode =
+      cr::CreativeAttachmentSnapSelectionMode::BestMatch;
+  switch (held.kind) {
+    case cr::CreativeHeldItemKind::Material:
+      sourceAssetId = cr::creativeHotbarAssetId(held);
+      if (creativeEditorUsesAssetScatter(held, editor.toolSettings)) {
+        return;
+      }
+      selectionMode =
+          editor.toolSettings.assetAttachmentMode ==
+                  cr::CreativeAssetAttachmentMode::AimSocket
+              ? cr::CreativeAttachmentSnapSelectionMode::AimedSocket
+              : cr::CreativeAttachmentSnapSelectionMode::BestMatch;
+      break;
+    case cr::CreativeHeldItemKind::ObjectMove:
+      if (request.selection.selectionCount != 1U ||
+          request.selection.selected == nullptr ||
+          request.selection.selected->id ==
+              editor.interaction.target.objectId) {
+        return;
+      }
+      sourceAssetId = request.selection.selected->assetId;
+      ignoredOccupantObjectId = request.selection.selected->id;
+      selectionMode = cr::CreativeAttachmentSnapSelectionMode::AimedSocket;
+      break;
+    default:
+      return;
+  }
+  if (sourceAssetId.empty()) {
     return;
   }
 
@@ -351,36 +413,132 @@ void appendCreativeEditorAttachmentSocketMarkers(
   markerRequest.sourceAssetId = sourceAssetId;
   markerRequest.targetObjectId = editor.interaction.target.objectId;
   markerRequest.aimPoint = editor.interaction.target.grid.hitPoint;
+  markerRequest.ignoredOccupantObjectId = ignoredOccupantObjectId;
+  markerRequest.selectionMode = selectionMode;
   const cr::CreativeAttachmentSocketMarkerFrame markers =
       cr::buildCreativeAttachmentSocketMarkers(markerRequest);
   if (!markers.accepted) {
     return;
   }
 
-  constexpr float kMarkerHalfExtentMeters = 0.11F;
+  constexpr float kForwardMeters = 0.24F;
+  constexpr float kBackMeters = 0.04F;
+  constexpr float kArrowBackMeters = 0.07F;
+  constexpr float kArrowHalfWidthMeters = 0.05F;
+  constexpr float kUpMeters = 0.17F;
+  constexpr float kSideHalfExtentMeters = 0.08F;
+  constexpr float kSelectionRadiusMeters = 0.13F;
   const float thickness = std::max(0.035F, request.gizmoThickness);
   for (std::size_t index = 0U; index < markers.markerCount; ++index) {
     const cr::CreativeAttachmentSocketMarker& marker = markers.markers[index];
     const cr::CreativeCoreVec3Conversion position =
         cr::creativeVec3ToCoreChecked(marker.worldPosition);
-    if (!position.converted) {
+    const cr::CreativeCoreVec3Conversion forward =
+        cr::creativeVec3ToCoreChecked(marker.worldForward);
+    const cr::CreativeCoreVec3Conversion up =
+        cr::creativeVec3ToCoreChecked(marker.worldUp);
+    if (!position.converted || !forward.converted || !up.converted) {
       continue;
     }
     const RenderLineColor color = attachmentSocketMarkerColor(marker.state);
-    const std::array<Vec3, 3U> axes{
-        Vec3{kMarkerHalfExtentMeters, 0.0F, 0.0F},
-        Vec3{0.0F, kMarkerHalfExtentMeters, 0.0F},
-        Vec3{0.0F, 0.0F, kMarkerHalfExtentMeters}};
-    for (const Vec3 axis : axes) {
+    const Vec3 side = cross(forward.value, up.value);
+    const float markerThickness = marker.selected ? thickness * 1.5F : thickness;
+    const auto appendLine = [&](Vec3 start, Vec3 end) {
       RenderCreativeWireframeDebugLine line;
-      line.start = position.value - axis;
-      line.end = position.value + axis;
+      line.start = start;
+      line.end = end;
       line.color = color;
       line.objectId = marker.targetObjectId;
-      line.thickness = thickness;
+      line.thickness = markerThickness;
       output.combinedWireLines.push_back(line);
       ++output.attachmentSocketMarkerEdgeCount;
+    };
+
+    const Vec3 forwardTip = position.value + forward.value * kForwardMeters;
+    appendLine(position.value - forward.value * kBackMeters, forwardTip);
+    appendLine(forwardTip,
+               forwardTip - forward.value * kArrowBackMeters +
+                   side * kArrowHalfWidthMeters);
+    appendLine(forwardTip,
+               forwardTip - forward.value * kArrowBackMeters -
+                   side * kArrowHalfWidthMeters);
+    appendLine(position.value, position.value + up.value * kUpMeters);
+    appendLine(position.value - side * kSideHalfExtentMeters,
+               position.value + side * kSideHalfExtentMeters);
+
+    if (marker.selected) {
+      const Vec3 sidePoint = side * kSelectionRadiusMeters;
+      const Vec3 upPoint = up.value * kSelectionRadiusMeters;
+      appendLine(position.value + sidePoint, position.value + upPoint);
+      appendLine(position.value + upPoint, position.value - sidePoint);
+      appendLine(position.value - sidePoint, position.value - upPoint);
+      appendLine(position.value - upPoint, position.value + sidePoint);
     }
+  }
+}
+
+void appendCreativeEditorAssetCollisionPreview(
+    const CreativeEditorOverlayFrameRequest& request,
+    const CreativeEditorPlacementVisualizationReceipt* visualization,
+    CreativeEditorOverlayFrame& output) {
+  if (visualization == nullptr || !visualization->targetAvailable ||
+      !visualization->attemptedTransformAvailable ||
+      request.assetCatalog == nullptr) {
+    return;
+  }
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(request.editor.interaction.hotbar);
+  const std::string_view assetId = cr::creativeHotbarAssetId(held);
+  const StaticMeshAssetCatalogEntry* asset = request.assetCatalog->find(assetId);
+  if (asset == nullptr ||
+      asset->authoringMetadata.collisionMode == StaticMeshCollisionMode::None) {
+    return;
+  }
+
+  constexpr std::array<std::array<std::uint8_t, 2U>, 12U> kEdges{{
+      {{0U, 1U}}, {{1U, 2U}}, {{2U, 3U}}, {{3U, 0U}},
+      {{4U, 5U}}, {{5U, 6U}}, {{6U, 7U}}, {{7U, 4U}},
+      {{0U, 4U}}, {{1U, 5U}}, {{2U, 6U}}, {{3U, 7U}},
+  }};
+  const auto appendPart = [&](Vec3 minimum, Vec3 maximum) {
+    const cr::CreativeBounds localBounds{
+        {minimum.x, minimum.y, minimum.z},
+        {maximum.x, maximum.y, maximum.z}};
+    const cr::CreativeTransformedBounds transformed =
+        cr::resolveCreativeTransformedBounds(
+            localBounds, visualization->attemptedTransform);
+    if (!transformed.valid) {
+      return;
+    }
+    std::array<Vec3, 8U> corners{};
+    for (std::size_t index = 0U; index < corners.size(); ++index) {
+      const cr::CreativeCoreVec3Conversion converted =
+          cr::creativeVec3ToCoreChecked(transformed.corners[index]);
+      if (!converted.converted) {
+        return;
+      }
+      corners[index] = converted.value;
+    }
+    for (const auto& edge : kEdges) {
+      RenderCreativeWireframeDebugLine line;
+      line.start = corners[edge[0]];
+      line.end = corners[edge[1]];
+      line.color = {1.0F, 0.62F, 0.12F, 0.92F};
+      line.thickness = std::max(0.025F, request.gizmoThickness * 0.65F);
+      output.combinedWireLines.push_back(line);
+      ++output.assetCollisionPreviewEdgeCount;
+    }
+  };
+
+  if (asset->authoringMetadata.collisionMode ==
+      StaticMeshCollisionMode::CompoundBounds) {
+    for (const StaticMeshCollisionPart& part : asset->collisionParts) {
+      appendPart(part.boundsMin, part.boundsMax);
+    }
+    return;
+  }
+  if (asset->authoringMetadata.collisionMode == StaticMeshCollisionMode::Bounds) {
+    appendPart(asset->boundsMin, asset->boundsMax);
   }
 }
 
@@ -446,7 +604,8 @@ void appendCreativeEditorMovingPlatformPathPreview(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   if (request.captureMode || modalOpen ||
       request.inputContext != cr::CreativeInputContext::EditorViewport ||
-      held.kind != cr::CreativeHeldItemKind::ObjectMove ||
+      cr::describeCreativeHeldItem(held.kind).interactionMode !=
+          cr::CreativeHeldItemInteractionMode::ObjectMove ||
       !editor.interaction.movingPlatformPathEdit.available ||
       selected == nullptr ||
       selected->id != editor.interaction.movingPlatformPathEdit.objectId) {
@@ -518,6 +677,164 @@ void appendCreativeEditorMovingPlatformPathPreview(
     lines[index].objectId = objectId;
   }
   output.movingPlatformPathPreviewEdgeCount = lines.size() - before;
+}
+
+void appendCreativeEditorMeasurementGeometry(
+    const cr::CreativeMeasurementGeometry& geometry,
+    RenderLineColor lineColor, RenderLineColor pointColor,
+    CreativeEditorOverlayFrame& output) {
+  if (!geometry.visible) {
+    return;
+  }
+
+  constexpr float kPointMarkerHalfExtent = 0.075F;
+  for (std::size_t index = 0U; index < geometry.segmentCount; ++index) {
+    const cr::CreativeCoreVec3Conversion start =
+        cr::creativeVec3ToCoreChecked(
+            {geometry.segments[index].start.x,
+             geometry.segments[index].start.y,
+             geometry.segments[index].start.z});
+    const cr::CreativeCoreVec3Conversion end =
+        cr::creativeVec3ToCoreChecked(
+            {geometry.segments[index].end.x,
+             geometry.segments[index].end.y,
+             geometry.segments[index].end.z});
+    if (!start.converted || !end.converted) {
+      continue;
+    }
+    output.combinedWireLines.push_back(
+        {start.value, end.value, lineColor, 0U, 0U, 0U, 0U,
+         0.035F});
+  }
+  for (std::size_t index = 0U; index < geometry.pointCount; ++index) {
+    const cr::CreativeCoreVec3Conversion point =
+        cr::creativeVec3ToCoreChecked(
+            {geometry.points[index].x, geometry.points[index].y,
+             geometry.points[index].z});
+    if (!point.converted) {
+      continue;
+    }
+    constexpr std::array axes{
+        Vec3{kPointMarkerHalfExtent, 0.0F, 0.0F},
+        Vec3{0.0F, kPointMarkerHalfExtent, 0.0F},
+        Vec3{0.0F, 0.0F, kPointMarkerHalfExtent},
+    };
+    for (const Vec3 axis : axes) {
+      output.combinedWireLines.push_back(
+          {point.value - axis, point.value + axis, pointColor,
+           0U, 0U, 0U, 0U, 0.045F});
+    }
+  }
+}
+
+void appendCreativeEditorWorldLayoutRoofHandles(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  const CreativeEditorState& editor = request.editor;
+  const cr::CreativeHeldItemDefinition& held =
+      cr::describeCreativeHeldItem(
+          cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind);
+  if (request.captureMode ||
+      request.inputContext != cr::CreativeInputContext::EditorViewport ||
+      !held.hierarchySelectionTool ||
+      editor.worldLayout.tool != CreativeEditorWorldLayoutTool::Select) {
+    return;
+  }
+  const std::size_t levelIndex =
+      editor.worldLayout.roofManipulation.active
+          ? editor.worldLayout.roofManipulation.target.levelIndex
+          : editor.worldLayout.selection.kind ==
+                    CreativeEditorWorldLayoutSelectionKind::Level
+                ? editor.worldLayout.selection.index
+                : cr::kInvalidCreativeWorldLayoutIndex;
+  const cr::CreativeGridSettings grid =
+      request.appState.facade.document().gridSettings();
+  const CreativeEditorWorldLayoutRoofHandleFrame frame =
+      buildCreativeEditorWorldLayoutRoofHandleFrame(
+          editor.worldLayout, grid, levelIndex);
+  if (!frame.accepted) {
+    return;
+  }
+
+  const bool active = editor.worldLayout.roofManipulation.active;
+  const RenderLineColor tint =
+      active && !editor.worldLayout.roofManipulation.previewValid
+          ? RenderLineColor{1.0F, 0.18F, 0.16F, 1.0F}
+          : active ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
+                   : RenderLineColor{1.0F, 0.82F, 0.18F, 1.0F};
+  const float thickness = std::max(0.045F, request.gizmoThickness);
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const std::size_t before = lines.size();
+  for (std::size_t index = 0U;
+       index < frame.roof.geometry.edgeCount; ++index) {
+    const cr::CreativeStructuralRoofEdgePlan& edge =
+        frame.roof.geometry.edges[index];
+    const cr::CreativeCoreVec3Conversion start =
+        cr::creativeVec3ToCoreChecked(edge.startMeters);
+    const cr::CreativeCoreVec3Conversion end =
+        cr::creativeVec3ToCoreChecked(edge.endMeters);
+    if (start.converted && end.converted) {
+      lines.push_back({start.value, end.value, tint, 0U, 0U, 0U, 0U,
+                       thickness * 0.72F});
+    }
+  }
+
+  const float shaftHalfLength = static_cast<float>(std::clamp(
+      grid.cellSizeMeters * 0.24, 0.12, 0.40));
+  const float crossHalfLength = shaftHalfLength * 0.52F;
+  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
+    const CreativeEditorWorldLayoutRoofHandle& handle = frame.handles[index];
+    if (!handle.valid) {
+      continue;
+    }
+    const Vec3 position = handle.worldPosition;
+    const Vec3 axis = handle.worldAxis;
+    const Vec3 firstCross =
+        std::fabs(axis.y) > 0.5F ? Vec3{1.0F, 0.0F, 0.0F}
+                                : Vec3{0.0F, 1.0F, 0.0F};
+    const Vec3 secondCross =
+        std::fabs(axis.y) > 0.5F
+            ? Vec3{0.0F, 0.0F, 1.0F}
+            : Vec3{-axis.z, 0.0F, axis.x};
+    lines.push_back({position - axis * shaftHalfLength,
+                     position + axis * shaftHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+    lines.push_back({position - firstCross * crossHalfLength,
+                     position + firstCross * crossHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+    lines.push_back({position - secondCross * crossHalfLength,
+                     position + secondCross * crossHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+  }
+  output.worldLayoutRoofHandleEdgeCount = lines.size() - before;
+}
+
+void appendCreativeEditorMeasurementWireframe(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  if (request.captureMode) {
+    return;
+  }
+
+  constexpr RenderLineColor kSavedLineColor{0.20F, 0.70F, 0.82F, 0.90F};
+  constexpr RenderLineColor kSavedPointColor{0.30F, 0.78F, 0.40F, 0.90F};
+  constexpr RenderLineColor kTransientLineColor{0.18F, 0.90F, 1.0F, 1.0F};
+  constexpr RenderLineColor kTransientPointColor{0.32F, 1.0F, 0.42F, 1.0F};
+  const std::size_t before = output.combinedWireLines.size();
+  const cr::CreativeMeasurementAnnotationStore& annotations =
+      request.appState.facade.document().measurementAnnotationStore();
+  for (const cr::CreativeMeasurementAnnotation& annotation :
+       annotations.annotations) {
+    appendCreativeEditorMeasurementGeometry(
+        cr::buildCreativeMeasurementGeometry(annotation), kSavedLineColor,
+        kSavedPointColor, output);
+  }
+  appendCreativeEditorMeasurementGeometry(
+      cr::buildCreativeMeasurementGeometry(
+          request.appState.facade.measurementState()),
+      kTransientLineColor, kTransientPointColor, output);
+  output.measurementEdgeCount = output.combinedWireLines.size() - before;
 }
 
 }  // namespace
@@ -688,6 +1005,9 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   }
   appendCreativeEditorArchitectureScaleGuide(request, output);
   appendCreativeEditorPlacementGridOverlay(request, output);
+  appendCreativeEditorWorldLayoutRoofHandles(request, output);
+  appendCreativeEditorAssetCollisionPreview(request, placementVisualization,
+                                            output);
   const creative::CreativeObjectId focusedGroupId =
       activeCreativeEditorGroupFocusId(editor.groupFocus);
   if (focusedGroupId != creative::kInvalidObjectId) {
@@ -695,7 +1015,8 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
     VisualBounds focusedBounds{};
     for (const creative::CreativeObject& object :
          appState.facade.document().objects()) {
-      if (!object.visible ||
+      if (!creative::creativeObjectEffectivelyVisible(
+              appState.facade.document(), object.id) ||
           object.kind == creative::CreativeObjectKind::Group ||
           !creativeEditorObjectInsideActiveGroup(
               appState.facade.document(), editor.groupFocus, object.id)) {
@@ -728,7 +1049,8 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
        appState.facade.document().objects()) {
     const creative::CreativeObjectDescriptor& descriptor =
         creative::describeObject(obj.kind);
-    if (!obj.visible) {
+    if (!creative::creativeObjectEffectivelyVisible(
+            appState.facade.document(), obj.id)) {
       continue;
     }
     const bool sel = hasSelection && objectSelected(obj.id);
@@ -882,6 +1204,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
       combinedWireLines.push_back(gizmoLine);
     }
   }
+  appendCreativeEditorMeasurementWireframe(request, output);
   appendCreativeEditorMovingPlatformPathPreview(request, selected, output);
   const bool structuralEditVisible =
       !request.captureMode &&

@@ -52,6 +52,57 @@ cr::CreativeWorldLayout layout() {
           {true, true, "house_template", 0x1234U, 0x5678U,
            cr::CreativeWorldLayoutBuildingTemplateOrientation::Rotate180,
            {12, -4}}));
+  cr::CreativeWorldLayoutTerrainPath river;
+  river.stableKey = "river_1";
+  river.recipe.kind = cr::CreativeTerrainPathKind::River;
+  river.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  river.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  river.recipe.watercourse.nextCrossingId = 2U;
+  river.recipe.watercourse.crossings = {{1U, 2U, 1U, 2U, 3U}};
+  river.recipe.nextPointId = 4U;
+  river.recipe.points = {
+      {1U, {-4, 0}, 5U, 2U, 2U, 0},
+      {2U, {0, 0}, 4U, 2U, 2U, 0},
+      {3U, {4, 0}, 3U, 2U, 2U, 0},
+  };
+  result.terrainPaths.push_back(river);
+  cr::CreativeWorldLayoutObject bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  bridge.stableKey = "bridge_1";
+  bridge.name = "River Bridge";
+  bridge.boundsCells = {{-2.0, 0.0, -3.0}, {2.0, 0.35, 3.0}};
+  bridge.usesBridgeRecipe = true;
+  bridge.bridge.watercoursePathKey = river.stableKey;
+  bridge.bridge.crossingId = 1U;
+  bridge.bridge.settings.deckWidthMeters = 3.0;
+  bridge.bridge.settings.materials.deck =
+      cr::CreativeStructuralMaterial::Stone;
+  result.objects.push_back(bridge);
+  cr::CreativeWorldLayoutTerrainProfile terrace;
+  terrace.stableKey = "terrace_1";
+  terrace.kind = cr::CreativeTerrainRecipeKind::Terrace;
+  terrace.usesLandformRecipe = true;
+  terrace.landform.kind = cr::CreativeTerrainLandformKind::Terrace;
+  terrace.landform.bounds = {{0, 0}, 8U, 4U};
+  terrace.landform.baseHeightCells = 2U;
+  terrace.landform.targetHeightCells = 4U;
+  terrace.landform.terraceCount = 2U;
+  terrace.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  terrace.landform.edgeWidthCells = 0U;
+  terrace.usesRetainingEdgeRecipe = true;
+  terrace.retainingEdge.terrainProfileKey = terrace.stableKey;
+  terrace.retainingEdge.settings.selection =
+      cr::CreativeRetainingEdgeSelection::Internal;
+  terrace.retainingEdge.settings.kit =
+      cr::CreativeRetainingEdgeKit::InfrastructureStone;
+  terrace.retainingEdge.settings.transitionCount = 1U;
+  terrace.retainingEdge.settings.transitions[0] = {
+      cr::canonicalCreativeTerrainHardEdge({3, 1}, {4, 1}),
+      cr::CreativeRetainingEdgeTransitionKind::Stair,
+      3U,
+  };
+  result.terrainProfiles.push_back(terrace);
   return result;
 }
 
@@ -102,6 +153,31 @@ bool layoutTravelsInsideTheAtomicSaveEnvelope() {
                  opened.worldLayout.boxes[0].anchorLayer == 1.25 &&
                  opened.worldLayout.boxes[0].layerCount == 2U,
              "fractional structural anchor and layer count survive world save") &&
+      expect(opened.worldLayout.objects.size() == 1U &&
+                 opened.worldLayout.objects[0].usesBridgeRecipe &&
+                 opened.worldLayout.objects[0].bridge.watercoursePathKey ==
+                     "river_1" &&
+                 opened.worldLayout.objects[0].bridge.crossingId == 1U &&
+                 opened.worldLayout.objects[0]
+                         .bridge.settings.deckWidthMeters == 3.0 &&
+                 opened.worldLayout.objects[0]
+                         .bridge.settings.materials.deck ==
+                     cr::CreativeStructuralMaterial::Stone,
+             "attached bridge recipe travels inside the atomic world save") &&
+      expect(opened.worldLayout.terrainProfiles.size() == 1U &&
+                 opened.worldLayout.terrainProfiles[0]
+                     .usesRetainingEdgeRecipe &&
+                 opened.worldLayout.terrainProfiles[0]
+                         .retainingEdge.terrainProfileKey == "terrace_1" &&
+                 opened.worldLayout.terrainProfiles[0]
+                         .retainingEdge.settings.kit ==
+                     cr::CreativeRetainingEdgeKit::InfrastructureStone &&
+                 opened.worldLayout.terrainProfiles[0]
+                         .retainingEdge.settings.transitionCount == 1U &&
+                 opened.worldLayout.terrainProfiles[0]
+                         .retainingEdge.settings.transitions[0].edge ==
+                     cr::canonicalCreativeTerrainHardEdge({3, 1}, {4, 1}),
+             "retaining attachment travels inside the atomic world save") &&
       expect(provenance.valid && provenance.templateId == "house_template" &&
                  provenance.sourceFingerprint == 0x1234U &&
                  provenance.instanceBaselineFingerprint == 0x5678U &&

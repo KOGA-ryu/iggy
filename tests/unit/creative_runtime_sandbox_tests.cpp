@@ -67,8 +67,16 @@ cr::CreativeDocument playableDocument(bool includeActors = true,
       document, cr::CreativeObjectKind::Floor, "Sandbox Floor",
       {0.0, 0.0, 0.0},
       cr::CreativeBounds{{-5.0, 0.0, -5.0}, {5.0, 0.25, 5.0}}));
-  static_cast<void>(addObject(document, cr::CreativeObjectKind::SpawnPoint,
-                              "Player Spawn", {0.0, 0.25, 0.0}));
+  cr::CreativeDocumentCreateRequest spawnRequest;
+  spawnRequest.kind = cr::CreativeObjectKind::SpawnPoint;
+  spawnRequest.name = "Player Spawn";
+  spawnRequest.transform.position = {0.0, 0.25, 0.0};
+  spawnRequest.transform.rotationEulerRadians.y = 0.75;
+  spawnRequest.hasTransformOverride = true;
+  spawnRequest.playerSpawn.validationRadiusMeters = 0.65;
+  spawnRequest.playerSpawn.fallbackPriority = 3U;
+  spawnRequest.hasPlayerSpawnSettingsOverride = true;
+  static_cast<void>(document.createObject(spawnRequest));
   if (includeActors) {
     static_cast<void>(addObject(document, cr::CreativeObjectKind::NpcSpawn,
                                 "Friendly NPC", {2.0, 0.25, 0.0}));
@@ -316,8 +324,13 @@ bool pureSeedMapsPlayerAndActorPolicies() {
                 "player is first entity and owns local slot zero") &&
          expect(result.seed.entities.front().combatantEnabled &&
                     result.seed.entities.front().combatant.factionId == 1U &&
-                    result.seed.entities.front().combatant.hitPoints == 10,
-                "player combat defaults are explicit") &&
+                    result.seed.entities.front().combatant.hitPoints == 10 &&
+                    result.seed.entities.front()
+                            .transform.rotationEulerRadians.y ==
+                        payload.playerSpawnYawRadians &&
+                    payload.playerSpawnSettings.validationRadiusMeters == 0.65 &&
+                    payload.playerSpawnSettings.fallbackPriority == 3U,
+                "player profile pose and combat defaults are explicit") &&
          expect(npcAi != nullptr && npcAi->behaviorProfileId == "passive" &&
                     monsterAi != nullptr &&
                     monsterAi->behaviorProfileId == "default",
@@ -351,6 +364,12 @@ bool activationOwnsCollisionSessionAndReasoning() {
   if (!prepared.payload.has_value()) {
     return expect(false, "activation setup prepares payload");
   }
+  const cr::CreativeObjectId expectedSpawnObjectId =
+      prepared.payload->playerSpawnObjectId;
+  const std::string expectedPlayerProfileId =
+      prepared.payload->playerSpawnSettings.playerProfileId;
+  const float expectedSpawnYawRadians =
+      prepared.payload->playerSpawnYawRadians;
 
   cr::CreativeRuntimeSandboxActivationRequest request;
   request.sourceDocument = &document;
@@ -406,8 +425,16 @@ bool activationOwnsCollisionSessionAndReasoning() {
                        player->kind == iggy3d::EntityKind::Player &&
                        player->stableName == spawn->runtimeStableName &&
                        iggy3d::nearlyEqual(player->transform.position,
-                                           spawn->positionMeters),
-                   "session player starts at validated spawn") &&
+                                           spawn->positionMeters) &&
+                       player->transform.rotationEulerRadians.y ==
+                           expectedSpawnYawRadians &&
+                       sandbox.playerSpawnObjectId == expectedSpawnObjectId &&
+                       sandbox.playerProfileId == expectedPlayerProfileId &&
+                       sandbox.playerSpawnYawRadians ==
+                           expectedSpawnYawRadians &&
+                       activated.receipt.playerProfileId ==
+                           expectedPlayerProfileId,
+                   "session player consumes validated spawn identity and pose") &&
             expect(npc != nullptr && monster != nullptr &&
                        npc->kind == iggy3d::EntityKind::Npc &&
                        monster->kind == iggy3d::EntityKind::Npc,
@@ -1111,7 +1138,7 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
       sandbox.roomSpatialSurfaceOrder;
   const cr::CreativeRuntimeInteractionEffectReceipt opened =
       cr::applyCreativeRuntimeInteractionEffect(sandbox, doorEntity->id);
-  const bool doorMeshRemoved = std::none_of(
+  const bool doorMeshRetained = std::any_of(
       sandbox.room.staticMeshes.begin(), sandbox.room.staticMeshes.end(),
       [&doorStableName](const iggy3d::RoomStaticMeshAsset& mesh) {
         return mesh.id == doorStableName;
@@ -1164,17 +1191,17 @@ bool authoredInteractablesOwnExplicitCircuitsAndDynamicGeometry() {
                 "scenario entities expose deterministic interaction contracts") &&
          expect(opened.accepted && opened.changed &&
                     opened.status ==
-                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpened &&
-                    opened.geometryRevision == 1U && doorMeshRemoved &&
-                    sandbox.geometryRevision == 5U,
-                "direct door activation publishes an open geometry revision") &&
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorOpening &&
+                    opened.geometryRevision == 0U && doorMeshRetained &&
+                    sandbox.geometryRevision == 0U,
+                "direct door activation requests motion without deleting geometry") &&
          expect(closed.accepted &&
                     closed.status ==
-                        cr::CreativeRuntimeInteractionEffectStatus::DoorClosed &&
+                        cr::CreativeRuntimeInteractionEffectStatus::DoorClosing &&
                     closedMeshCount == sandbox.room.staticMeshes.size() &&
                     closedSurfaceCount == sandbox.room.spatialSurfaces.size() &&
                     closedColliderCount == sandbox.collisionSurfaces.size(),
-                "closing restores exact geometry and collision cardinality") &&
+                "closing request preserves exact geometry and collision cardinality") &&
          expect(explicitApplied.accepted && explicitApplied.changed &&
                     explicitApplied.status ==
                         cr::CreativeRuntimeInteractionEffectStatus::LinksApplied &&
@@ -1352,16 +1379,13 @@ bool retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore() {
                     disabled.affectedPlatformCount == 1U &&
                     disabled.geometryRevision == 1U && platformMeshRemoved &&
                     disabledState && coupledDoorOpened &&
-                    retractedMeshCount + platformState->targetMeshes.size() +
-                            doorState->targetMeshes.size() ==
+                    retractedMeshCount + platformState->targetMeshes.size() ==
                         enabledMeshCount &&
                     retractedSurfaceCount +
-                            platformState->targetSurfaces.size() +
-                            doorState->targetSurfaces.size() ==
+                            platformState->targetSurfaces.size() ==
                         enabledSurfaceCount &&
                     retractedColliderCount +
-                            platformState->targetSurfaces.size() +
-                            doorState->targetSurfaces.size() ==
+                            platformState->targetSurfaces.size() ==
                         enabledColliderCount,
                 "one source transitions platform and door in one revision") &&
          expect(occupied.accepted && !occupied.changed &&

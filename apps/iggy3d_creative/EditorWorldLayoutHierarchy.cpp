@@ -89,6 +89,39 @@ namespace cr = iggy3d::creative;
   return "Connector";
 }
 
+[[nodiscard]] std::string roofApertureType(
+    cr::CreativeStructuralRoofApertureKind kind) {
+  switch (kind) {
+    case cr::CreativeStructuralRoofApertureKind::Skylight:
+      return "Skylight";
+    case cr::CreativeStructuralRoofApertureKind::ChimneyClearance:
+      return "Chimney clearance";
+    case cr::CreativeStructuralRoofApertureKind::Count:
+      break;
+  }
+  return "Roof aperture";
+}
+
+[[nodiscard]] std::string topologyEdgeLabel(
+    const cr::CreativeWorldLayout& layout, std::size_t edgeIndex) {
+  if (edgeIndex >= layout.topologyEdges.size()) {
+    return "Wall";
+  }
+  const cr::CreativeWorldLayoutTopologyEdge& edge =
+      layout.topologyEdges[edgeIndex];
+  if (edge.startVertexIndex >= layout.topologyVertices.size() ||
+      edge.endVertexIndex >= layout.topologyVertices.size()) {
+    return "Wall " + std::to_string(edgeIndex + 1U);
+  }
+  const cr::CreativeTerrainCoord2 start =
+      layout.topologyVertices[edge.startVertexIndex].position;
+  const cr::CreativeTerrainCoord2 end =
+      layout.topologyVertices[edge.endVertexIndex].position;
+  return "Wall (" + std::to_string(start.x) + ", " +
+         std::to_string(start.z) + ") to (" + std::to_string(end.x) +
+         ", " + std::to_string(end.z) + ")";
+}
+
 class HierarchyBuilder {
  public:
   HierarchyBuilder(std::uint64_t sourceEpoch, std::uint64_t revision) {
@@ -181,10 +214,12 @@ buildCreativeEditorWorldLayoutHierarchy(
   HierarchyBuilder builder(sourceEpoch, layoutRevision);
   std::vector<bool> levelEmitted(layout.levels.size(), false);
   std::vector<bool> roomEmitted(layout.rooms.size(), false);
+  std::vector<bool> topologyEdgeEmitted(layout.topologyEdges.size(), false);
   std::vector<bool> connectorEmitted(layout.verticalConnectors.size(), false);
   std::vector<bool> boxEmitted(layout.boxes.size(), false);
   std::vector<bool> wallEmitted(layout.walls.size(), false);
   std::vector<bool> openingEmitted(layout.openings.size(), false);
+  std::vector<bool> roofApertureEmitted(layout.roofApertures.size(), false);
 
   for (std::size_t buildingIndex = 0U;
        buildingIndex < layout.buildings.size(); ++buildingIndex) {
@@ -211,6 +246,48 @@ buildCreativeEditorWorldLayoutHierarchy(
             labelOrFallback(level.name, "Level", levelIndex), "Level",
             level.stableKey, group);
         levelEmitted[levelIndex] = true;
+        std::vector<std::size_t> roofApertures;
+        for (std::size_t apertureIndex = 0U;
+             apertureIndex < layout.roofApertures.size(); ++apertureIndex) {
+          if (layout.roofApertures[apertureIndex].levelIndex == levelIndex) {
+            roofApertures.push_back(apertureIndex);
+          }
+        }
+        if (!roofApertures.empty()) {
+          const std::size_t aperturesGroup = builder.addGroup(
+              "Roof apertures",
+              "group:" + level.stableKey + ":roof-apertures", levelRow);
+          for (const std::size_t apertureIndex : roofApertures) {
+            const cr::CreativeWorldLayoutRoofAperture& aperture =
+                layout.roofApertures[apertureIndex];
+            const std::string type = roofApertureType(aperture.kind);
+            builder.addSymbol(
+                cr::CreativeWorldLayoutTable::RoofAperture, apertureIndex,
+                labelOrFallback(aperture.name, type, apertureIndex), type,
+                aperture.stableKey, aperturesGroup);
+            roofApertureEmitted[apertureIndex] = true;
+          }
+        }
+        std::vector<std::size_t> topologyEdges;
+        for (std::size_t edgeIndex = 0U;
+             edgeIndex < layout.topologyEdges.size(); ++edgeIndex) {
+          if (layout.topologyEdges[edgeIndex].levelIndex == levelIndex) {
+            topologyEdges.push_back(edgeIndex);
+          }
+        }
+        if (!topologyEdges.empty()) {
+          const std::size_t wallsGroup = builder.addGroup(
+              "Walls", "group:" + level.stableKey + ":walls", levelRow);
+          for (const std::size_t edgeIndex : topologyEdges) {
+            const cr::CreativeWorldLayoutTopologyEdge& edge =
+                layout.topologyEdges[edgeIndex];
+            builder.addSymbol(cr::CreativeWorldLayoutTable::TopologyEdge,
+                              edgeIndex,
+                              topologyEdgeLabel(layout, edgeIndex), "Wall",
+                              edge.stableKey, wallsGroup);
+            topologyEdgeEmitted[edgeIndex] = true;
+          }
+        }
         for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
              ++roomIndex) {
           const cr::CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
@@ -339,7 +416,7 @@ buildCreativeEditorWorldLayoutHierarchy(
     for (std::size_t index = 0U; index < layout.terrainPaths.size(); ++index) {
       const cr::CreativeWorldLayoutTerrainPath& path =
           layout.terrainPaths[index];
-      const std::string type = std::string(cr::toString(path.kind));
+      const std::string type = std::string(cr::toString(path.recipe.kind));
       builder.addSymbol(cr::CreativeWorldLayoutTable::TerrainPath, index,
                         type + " " + std::to_string(index + 1U), type,
                         path.stableKey, terrain);
@@ -363,8 +440,10 @@ buildCreativeEditorWorldLayoutHierarchy(
     return std::find(values.begin(), values.end(), false) != values.end();
   };
   if (anyMissing(levelEmitted) || anyMissing(roomEmitted) ||
+      anyMissing(topologyEdgeEmitted) ||
       anyMissing(connectorEmitted) || anyMissing(boxEmitted) ||
-      anyMissing(wallEmitted) || anyMissing(openingEmitted)) {
+      anyMissing(wallEmitted) || anyMissing(openingEmitted) ||
+      anyMissing(roofApertureEmitted)) {
     const std::size_t unassigned = builder.addGroup(
         "Unassigned", "group:unassigned",
         kInvalidCreativeEditorWorldLayoutHierarchyRow);
@@ -383,6 +462,15 @@ buildCreativeEditorWorldLayoutHierarchy(
         const auto& value = layout.rooms[index];
         builder.addSymbol(cr::CreativeWorldLayoutTable::Room, index,
                           labelOrFallback(value.name, "Room", index), "Room",
+                          value.stableKey, unassigned, recovery);
+      }
+    }
+    for (std::size_t index = 0U; index < layout.topologyEdges.size();
+         ++index) {
+      if (!topologyEdgeEmitted[index]) {
+        const auto& value = layout.topologyEdges[index];
+        builder.addSymbol(cr::CreativeWorldLayoutTable::TopologyEdge, index,
+                          topologyEdgeLabel(layout, index), "Wall",
                           value.stableKey, unassigned, recovery);
       }
     }
@@ -420,6 +508,16 @@ buildCreativeEditorWorldLayoutHierarchy(
                           labelOrFallback(value.name, "Opening", index),
                           std::string(cr::toString(value.kind)), value.stableKey,
                           unassigned, recovery);
+      }
+    }
+    for (std::size_t index = 0U; index < layout.roofApertures.size();
+         ++index) {
+      if (!roofApertureEmitted[index]) {
+        const auto& value = layout.roofApertures[index];
+        const std::string type = roofApertureType(value.kind);
+        builder.addSymbol(cr::CreativeWorldLayoutTable::RoofAperture, index,
+                          labelOrFallback(value.name, type, index), type,
+                          value.stableKey, unassigned, recovery);
       }
     }
   }

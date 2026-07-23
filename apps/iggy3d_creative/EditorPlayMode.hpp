@@ -112,6 +112,7 @@ struct CreativeEditorPlayMode {
   iggy3d::creative::CreativeRuntimeInteractionEffectReceipt
       lastInteractionEffect;
   iggy3d::creative::CreativeRuntimeAutomaticLogicReceipt lastAutomaticLogic;
+  iggy3d::creative::CreativeRuntimeDoorUpdateReceipt lastDoors;
   iggy3d::creative::CreativeRuntimeMovingPlatformUpdateReceipt
       lastMovingPlatforms;
   std::uint64_t targetingGeometryRevision = 0U;
@@ -207,6 +208,8 @@ struct CreativeEditorPlayTickReceipt {
   std::uint32_t interactionEffectsApplied = 0U;
   std::uint32_t automaticSourceTransitions = 0U;
   std::uint32_t automaticEffectsApplied = 0U;
+  std::uint32_t doorsAdvanced = 0U;
+  std::uint32_t doorsBlocked = 0U;
   std::uint32_t movingPlatformsAdvanced = 0U;
   std::uint32_t movingPlatformsBlocked = 0U;
   std::uint32_t platformRidersCarried = 0U;
@@ -220,6 +223,8 @@ struct CreativeEditorPlayTickReceipt {
       iggy3d::creative::CreativeRuntimeInteractionEffectStatus::NotRequested;
   iggy3d::creative::CreativeRuntimeAutomaticLogicStatus automaticLogic =
       iggy3d::creative::CreativeRuntimeAutomaticLogicStatus::NotRequested;
+  iggy3d::creative::CreativeRuntimeDoorUpdateStatus doors =
+      iggy3d::creative::CreativeRuntimeDoorUpdateStatus::NotRequested;
   iggy3d::creative::CreativeRuntimeMovingPlatformUpdateStatus movingPlatforms =
       iggy3d::creative::CreativeRuntimeMovingPlatformUpdateStatus::NotRequested;
   std::uint64_t runtimeGeometryRevision = 0U;

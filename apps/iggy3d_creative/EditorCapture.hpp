@@ -128,7 +128,7 @@ struct StandaloneCaptureScript {
 };
 
 using StandaloneCaptureDeleteSelectedFn =
-    std::function<cr::CreativeDocumentRemoveReceipt(std::string_view)>;
+    std::function<cr::CreativeSemanticDeleteReceipt(std::string_view)>;
 
 struct StandaloneCaptureScenarioStepRequest {
   bool enabled = false;

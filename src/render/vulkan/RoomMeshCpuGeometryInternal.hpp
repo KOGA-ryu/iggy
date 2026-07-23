@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -51,15 +52,22 @@ struct FloorDraw {
   Vec3 position;
   Vec3 size;
   Vec3 rotationEulerRadians;
+  std::string materialId;
+  std::string semanticRole;
 };
 
 struct WallBoxDraw {
   Vec3 position;
   Vec3 size;
   Vec3 rotationEulerRadians;
+  std::string materialId;
+  std::string semanticRole;
 };
 
 [[nodiscard]] Vec3 colorForRoomRole(const std::string& role);
+[[nodiscard]] Vec3 colorForRoomMaterial(std::string_view role,
+                                        std::string_view semanticRole,
+                                        std::string_view materialId);
 
 [[nodiscard]] bool appendFloorPlaneIfFits(
     std::vector<FirstRoomVertex>& vertices,
@@ -89,6 +97,15 @@ struct WallBoxDraw {
     Vec3 rotationEulerRadians = {});
 
 [[nodiscard]] bool appendRampWedgeIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians);
+
+[[nodiscard]] bool appendHipRoofPanelIfFits(
     std::vector<FirstRoomVertex>& vertices,
     std::vector<std::uint16_t>& indices,
     std::vector<IndexedDrawRange>& draws,

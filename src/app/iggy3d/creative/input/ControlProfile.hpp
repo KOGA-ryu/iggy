@@ -109,6 +109,44 @@ struct CreativeControlBindingList {
   }
 };
 
+enum class CreativeControlReachabilityIssueKind : std::uint8_t {
+  MissingBinding,
+  InvalidRequirement,
+  Count,
+};
+
+struct CreativeControlReachabilityRequirement {
+  CreativeInputActionId action = CreativeInputActionId::Count;
+  CreativeInputContext context = CreativeInputContext::Count;
+  CreativeControlDevice device = CreativeControlDevice::Count;
+  CreativeInputBindingActivation activation =
+      CreativeInputBindingActivation::Press;
+};
+
+struct CreativeControlReachabilityIssue {
+  CreativeControlReachabilityIssueKind kind =
+      CreativeControlReachabilityIssueKind::MissingBinding;
+  std::size_t requirementIndex = 0;
+  CreativeControlReachabilityRequirement requirement{};
+};
+
+inline constexpr std::size_t kCreativeControlReachabilityRequirementCapacity =
+    kCreativeInputBindingCapacity;
+
+struct CreativeControlReachabilityAuditResult {
+  std::array<CreativeControlReachabilityIssue,
+             kCreativeControlReachabilityRequirementCapacity>
+      issues{};
+  std::size_t issueCount = 0;
+  bool bindingCapacityExceeded = false;
+  bool requirementCapacityExceeded = false;
+
+  [[nodiscard]] std::span<const CreativeControlReachabilityIssue>
+  issueItems() const noexcept {
+    return {issues.data(), issueCount};
+  }
+};
+
 struct CreativeControlRebindRequest {
   std::uint16_t group = 0;
   CreativeInputKey trigger = CreativeInputKey::Unbound;
@@ -140,12 +178,21 @@ struct CreativeControlRebindReceipt {
     CreativeControlRebindStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeControlSettingId setting) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeControlReachabilityIssueKind kind) noexcept;
 
 [[nodiscard]] CreativeControlProfile makeDefaultCreativeControlProfile();
 [[nodiscard]] bool isValidCreativeControlProfile(
     const CreativeControlProfile& profile) noexcept;
 [[nodiscard]] CreativeControlBindingList buildCreativeControlBindingList(
     const CreativeControlProfile& profile) noexcept;
+[[nodiscard]] std::span<const CreativeControlReachabilityRequirement>
+defaultCreativeGamepadReachabilityRequirements() noexcept;
+[[nodiscard]] CreativeControlReachabilityAuditResult
+auditCreativeControlReachability(
+    std::span<const CreativeInputBinding> bindings,
+    std::span<const CreativeControlReachabilityRequirement>
+        requirements) noexcept;
 [[nodiscard]] const CreativeInputBinding* creativeControlGroupBinding(
     const CreativeControlProfile& profile,
     std::uint16_t group) noexcept;

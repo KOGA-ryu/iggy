@@ -161,6 +161,7 @@ enum class CreativeHeldItemKind : std::uint8_t {
   ObjectGroup,
   LogicLink,
   BuildingRoom,
+  Measure,
   Count,
 };
 
@@ -169,14 +170,20 @@ inline constexpr std::size_t kCreativeHeldItemKindCount =
 
 inline constexpr std::size_t kCreativeHotbarSlotCount = 9;
 inline constexpr std::size_t kCreativeHotbarAssetIdCapacity = 128;
+inline constexpr std::size_t kCreativeHotbarMaterialVariantCapacity =
+    kCreativeAssetMaterialVariantNameCapacity;
 
 struct CreativeHotbarEntry {
   CreativeHeldItemKind kind = CreativeHeldItemKind::Material;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   std::array<char, kCreativeHotbarAssetIdCapacity + 1U> assetId{};
+  std::uint64_t assetContentHash = 0U;
+  std::array<char, kCreativeHotbarMaterialVariantCapacity + 1U>
+      assetMaterialVariant{};
   // Imported bounds remain relative to the asset origin used as its pivot.
   CreativeBounds assetSourceBounds{};
   bool hasAssetBounds = false;
+  bool hasAssetContentHash = false;
 };
 
 struct CreativeHotbarState {
@@ -189,8 +196,6 @@ struct CreativeHotbarState {
 [[nodiscard]] bool parseCreativeHeldItemKind(
     std::string_view value,
     CreativeHeldItemKind& out) noexcept;
-[[nodiscard]] CreativeHotbarState makeDefaultCreativeHotbar(
-    std::span<const CreativeObjectKind> materialPalette) noexcept;
 [[nodiscard]] CreativeHotbarEntry& selectedCreativeHotbarEntry(
     CreativeHotbarState& hotbar) noexcept;
 [[nodiscard]] const CreativeHotbarEntry& selectedCreativeHotbarEntry(
@@ -207,10 +212,14 @@ struct CreativeHotbarState {
     const CreativeObject& object) noexcept;
 [[nodiscard]] std::string_view creativeHotbarAssetId(
     const CreativeHotbarEntry& entry) noexcept;
+[[nodiscard]] std::string_view creativeHotbarAssetMaterialVariant(
+    const CreativeHotbarEntry& entry) noexcept;
 [[nodiscard]] bool setCreativeHotbarAsset(
     CreativeHotbarEntry& entry,
     std::string_view assetId,
-    CreativeBounds sourceBounds) noexcept;
+    CreativeBounds sourceBounds,
+    std::uint64_t contentHash = 0U,
+    std::string_view materialVariant = {}) noexcept;
 void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept;
 [[nodiscard]] bool creativeHeldItemIsVolumeOperation(
     CreativeHeldItemKind kind) noexcept;

@@ -29,12 +29,23 @@ void clearPreviewFacts(CreativeEditorTerrainGenerationState& state) noexcept {
                      ? cr::CreativeTerrainOperationMutationKind::Add
                      : cr::CreativeTerrainOperationMutationKind::Update;
   request.operationId = state.editingOperationId;
-  request.generation = state.recipe;
-  request.composition = state.compositionRecipe;
+  request.operationKind = state.operationKind;
+  if (state.operationKind ==
+      cr::CreativeTerrainOperationKind::GeneratedTerrain) {
+    request.generation = state.recipe;
+    request.composition = state.compositionRecipe;
+  } else if (state.operationKind ==
+             cr::CreativeTerrainOperationKind::Region) {
+    request.region = state.regionRecipe;
+  }
   const cr::CreativeTerrainOperation* existing =
       cr::findCreativeTerrainOperation(document.terrainOperationStack(),
                                        state.editingOperationId);
   request.enabled = existing == nullptr ? true : existing->enabled;
+  request.owner = existing == nullptr
+                      ? cr::CreativeTerrainOperationOwner::Manual
+                      : existing->owner;
+  request.sourceKey = existing == nullptr ? std::string{} : existing->sourceKey;
   return request;
 }
 
@@ -58,7 +69,9 @@ bool creativeEditorTerrainGenerationPreviewMatches(
   return state.previewActive &&
          state.sourceDocumentId == document.id() &&
          state.sourceDocumentRevision == document.revision() &&
-         state.generation.receipt.accepted &&
+         (state.operationKind !=
+                  cr::CreativeTerrainOperationKind::GeneratedTerrain ||
+          state.generation.receipt.accepted) &&
          state.operationPreview.receipt.accepted;
 }
 
@@ -70,8 +83,10 @@ bool synchronizeCreativeEditorTerrainGeneration(
       cr::findCreativeTerrainOperation(document.terrainOperationStack(),
                                        state.editingOperationId);
   if (state.editingOperationId != cr::kInvalidCreativeTerrainOperationId &&
-      selected == nullptr) {
+      (selected == nullptr ||
+       selected->kind != state.operationKind)) {
     state.editingOperationId = cr::kInvalidCreativeTerrainOperationId;
+    selected = nullptr;
     changed = true;
   }
   if (state.previewActive &&
@@ -84,8 +99,13 @@ bool synchronizeCreativeEditorTerrainGeneration(
   if (selected != nullptr && !state.previewActive && !state.draftDirty &&
       (state.sourceDocumentId != document.id() ||
        state.sourceDocumentRevision != document.revision())) {
-    state.recipe = selected->generation;
-    state.compositionRecipe = selected->composition;
+    if (selected->kind ==
+        cr::CreativeTerrainOperationKind::GeneratedTerrain) {
+      state.recipe = selected->generation;
+      state.compositionRecipe = selected->composition;
+    } else if (selected->kind == cr::CreativeTerrainOperationKind::Region) {
+      state.regionRecipe = selected->region;
+    }
     state.sourceDocumentId = document.id();
     state.sourceDocumentRevision = document.revision();
     changed = true;
@@ -102,17 +122,22 @@ previewCreativeEditorTerrainGeneration(
   receipt.requested = true;
   receipt.regenerated = advanceSeed;
   if (advanceSeed) {
-    state.recipe.seed = state.recipe.seed ==
-                                std::numeric_limits<std::uint64_t>::max()
-                            ? 0U
-                            : state.recipe.seed + 1U;
+    std::uint64_t& seed =
+        state.operationKind == cr::CreativeTerrainOperationKind::Region
+            ? state.regionRecipe.seed
+            : state.recipe.seed;
+    seed = seed == std::numeric_limits<std::uint64_t>::max() ? 0U : seed + 1U;
     state.draftDirty = true;
   }
 
-  state.generation = cr::buildCreativeTerrainGenerationPlan(state.recipe);
+  state.generation =
+      state.operationKind == cr::CreativeTerrainOperationKind::GeneratedTerrain
+          ? cr::buildCreativeTerrainGenerationPlan(state.recipe)
+          : cr::CreativeTerrainGenerationResult{};
   state.operationPreview = cr::planCreativeTerrainOperationMutation(
       document.terrainField(), document.terrainHeightField(),
-      document.terrainOperationStack(), operationRequest(state, document));
+      document.terrainMaterialField(), document.terrainOperationStack(),
+      operationRequest(state, document));
   state.sourceDocumentId = document.id();
   state.sourceDocumentRevision = document.revision();
   ++state.generationCount;
@@ -120,9 +145,13 @@ previewCreativeEditorTerrainGeneration(
 
   receipt.accepted = state.operationPreview.receipt.accepted;
   receipt.previewActive = true;
-  receipt.seed = state.recipe.seed;
+  receipt.seed = state.operationKind == cr::CreativeTerrainOperationKind::Region
+                     ? state.regionRecipe.seed
+                     : state.recipe.seed;
   receipt.generationCount = state.generationCount;
-  receipt.reasonCode = !state.generation.receipt.accepted
+  receipt.reasonCode =
+      state.operationKind == cr::CreativeTerrainOperationKind::GeneratedTerrain &&
+              !state.generation.receipt.accepted
                            ? state.generation.receipt.reasonCode
                            : state.operationPreview.receipt.reasonCode;
   if (receipt.accepted) {
@@ -152,6 +181,7 @@ bool beginNewCreativeEditorTerrainOperation(
       state.editingOperationId != cr::kInvalidCreativeTerrainOperationId ||
       state.previewActive;
   clearPreviewFacts(state);
+  state.operationKind = cr::CreativeTerrainOperationKind::GeneratedTerrain;
   state.editingOperationId = cr::kInvalidCreativeTerrainOperationId;
   state.draftDirty = false;
   state.statusMessage = "New terrain operation";
@@ -169,14 +199,26 @@ bool selectCreativeEditorTerrainOperation(
     state.statusMessage = "Terrain operation unavailable";
     return false;
   }
+  if (operation->kind != cr::CreativeTerrainOperationKind::GeneratedTerrain &&
+      operation->kind != cr::CreativeTerrainOperationKind::Region) {
+    state.statusMessage = "Select grade or path handles in the 3D view";
+    return false;
+  }
   const bool changed = state.editingOperationId != operationId ||
+                       state.operationKind != operation->kind ||
                        state.recipe != operation->generation ||
                        state.compositionRecipe != operation->composition ||
+                       state.regionRecipe != operation->region ||
                        state.previewActive;
   clearPreviewFacts(state);
+  state.operationKind = operation->kind;
   state.editingOperationId = operationId;
-  state.recipe = operation->generation;
-  state.compositionRecipe = operation->composition;
+  if (operation->kind == cr::CreativeTerrainOperationKind::GeneratedTerrain) {
+    state.recipe = operation->generation;
+    state.compositionRecipe = operation->composition;
+  } else {
+    state.regionRecipe = operation->region;
+  }
   state.sourceDocumentId = document.id();
   state.sourceDocumentRevision = document.revision();
   state.draftDirty = false;
@@ -208,22 +250,36 @@ CreativeEditorTerrainOperationEditReceipt editCreativeEditorTerrainOperation(
                            : "creative_editor_terrain_operation_edited";
   if (receipt.operation.accepted) {
     clearPreviewFacts(state);
-    if (request.kind == cr::CreativeTerrainOperationMutationKind::Remove &&
-        state.editingOperationId == request.operationId) {
+    if (request.kind == cr::CreativeTerrainOperationMutationKind::BakeAll) {
+      state.editingOperationId = cr::kInvalidCreativeTerrainOperationId;
+      state.draftDirty = false;
+    } else if (request.kind ==
+                   cr::CreativeTerrainOperationMutationKind::Remove &&
+               state.editingOperationId == request.operationId) {
       state.editingOperationId = cr::kInvalidCreativeTerrainOperationId;
       state.draftDirty = false;
     } else if (request.kind ==
                cr::CreativeTerrainOperationMutationKind::Add) {
+      state.operationKind = request.operationKind;
       state.editingOperationId = receipt.operation.operationId;
-      state.recipe = request.generation;
-      state.compositionRecipe = request.composition;
+      if (request.operationKind ==
+          cr::CreativeTerrainOperationKind::GeneratedTerrain) {
+        state.recipe = request.generation;
+        state.compositionRecipe = request.composition;
+      } else if (request.operationKind ==
+                 cr::CreativeTerrainOperationKind::Region) {
+        state.regionRecipe = request.region;
+      }
       state.draftDirty = false;
     }
     state.sourceDocumentId = appState.facade.document().id();
     state.sourceDocumentRevision = appState.facade.document().revision();
   }
   state.statusMessage = receipt.accepted
-                            ? (receipt.changed ? "Terrain operation updated"
+                            ? (receipt.changed && request.kind ==
+                                                      cr::CreativeTerrainOperationMutationKind::BakeAll
+                                   ? "Terrain stack baked"
+                               : receipt.changed ? "Terrain operation updated"
                                                : "Terrain operation unchanged")
                             : "Terrain operation failed: " +
                                   std::string(receipt.reasonCode);

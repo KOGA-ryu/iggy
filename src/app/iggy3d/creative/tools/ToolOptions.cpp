@@ -55,13 +55,21 @@ constexpr CreativeHeldItemMask kSnapItems =
     kRoomItems;
 constexpr CreativeHeldItemMask kReplaceItems =
     heldItemMask(CreativeHeldItemKind::VolumeReplace);
+constexpr CreativeHeldItemMask kEraseItems =
+    heldItemMask(CreativeHeldItemKind::VolumeErase);
 constexpr CreativeHeldItemMask kShapeItems =
     heldItemMask(CreativeHeldItemKind::VolumeFill) |
+    heldItemMask(CreativeHeldItemKind::VolumeHollow);
+constexpr CreativeHeldItemMask kVolumeFillItems =
+    heldItemMask(CreativeHeldItemKind::VolumeFill);
+constexpr CreativeHeldItemMask kVolumeHollowItems =
     heldItemMask(CreativeHeldItemKind::VolumeHollow);
 constexpr CreativeHeldItemMask kCloneItems =
     heldItemMask(CreativeHeldItemKind::VolumeClone);
 constexpr CreativeHeldItemMask kArrayItems =
     heldItemMask(CreativeHeldItemKind::LinearArray);
+constexpr CreativeHeldItemMask kMeasurementItems =
+    heldItemMask(CreativeHeldItemKind::Measure);
 
 constexpr std::array kToolOptionDescriptors{
     CreativeToolOptionDescriptor{CreativeToolOptionId::MoveConstraint,
@@ -112,6 +120,10 @@ constexpr std::array kToolOptionDescriptors{
                                  "ASSET MODE",
                                  CreativeToolOptionValueKind::Choice,
                                  0U},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::AssetScatterMask,
+                                 "MASK",
+                                 CreativeToolOptionValueKind::Choice,
+                                 0U},
     CreativeToolOptionDescriptor{CreativeToolOptionId::AssetScatterRadius,
                                  "RADIUS",
                                  CreativeToolOptionValueKind::Choice,
@@ -134,6 +146,10 @@ constexpr std::array kToolOptionDescriptors{
                                  0U},
     CreativeToolOptionDescriptor{CreativeToolOptionId::AssetScatterSlope,
                                  "MAX SLOPE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 0U},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::AssetScatterCollision,
+                                 "COLLISION",
                                  CreativeToolOptionValueKind::Choice,
                                  0U},
     CreativeToolOptionDescriptor{CreativeToolOptionId::MaterialBrushShape,
@@ -177,10 +193,43 @@ constexpr std::array kToolOptionDescriptors{
                                  "SHAPE AXIS",
                                  CreativeToolOptionValueKind::Choice,
                                  kShapeItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::VolumeFillOverlapPolicy,
+        "OVERLAP",
+        CreativeToolOptionValueKind::Choice,
+        kVolumeFillItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::VolumeHollowThickness,
+                                 "SHELL",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kVolumeHollowItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::VolumeHollowAlignment,
+                                 "ALIGNMENT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kVolumeHollowItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::VolumeHollowOpening,
+                                 "OPEN ENDS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kVolumeHollowItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::VolumeHollowCornerRule,
+                                 "OPENING EDGES",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kVolumeHollowItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ReplaceSource,
                                  "REPLACE SOURCE",
                                  CreativeToolOptionValueKind::MaterialOrAny,
                                  kReplaceItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::ReplaceMemberMask,
+                                 "MEMBERS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kReplaceItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::EraseSource,
+                                 "ERASE SOURCE",
+                                 CreativeToolOptionValueKind::MaterialOrAny,
+                                 kEraseItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::EraseMemberMask,
+                                 "MEMBERS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kEraseItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::CloneOffsetAxis,
                                  "CLONE AXIS",
                                  CreativeToolOptionValueKind::Choice,
@@ -189,6 +238,21 @@ constexpr std::array kToolOptionDescriptors{
                                  "CLONE DIST",
                                  CreativeToolOptionValueKind::Choice,
                                  kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::CloneRotation,
+                                 "CLONE ROTATE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::CloneMirror,
+                                 "CLONE MIRROR",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kCloneItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::CloneMemberMask,
+                                 "MEMBERS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kCloneItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::CloneVoxelOverlapPolicy, "VOXEL OVERLAP",
+        CreativeToolOptionValueKind::Choice, kCloneItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::ArrayMode,
                                  "MODE",
                                  CreativeToolOptionValueKind::Choice,
@@ -242,8 +306,17 @@ constexpr std::array kToolOptionDescriptors{
                                  "SCULPT STRENGTH",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainSculptTargetHeight,
+        "TARGET HEIGHT",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainSculptItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptFalloff,
                                  "FALLOFF",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainSculptItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainSculptMask,
+                                 "MASK",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainSculptItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintMode,
@@ -260,6 +333,30 @@ constexpr std::array kToolOptionDescriptors{
                                  kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintSource,
                                  "REPLACE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintHardness,
+                                 "HARDNESS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintOpacity,
+                                 "OPACITY",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintMask,
+                                 "MASK",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintBlend,
+                                 "BLEND",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintSlopeFilter,
+                                 "SLOPE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainPaintItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPaintHeightFilter,
+                                 "HEIGHT",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainPaintItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRodStampMode,
@@ -310,6 +407,10 @@ constexpr std::array kToolOptionDescriptors{
         "FREQUENCY",
         CreativeToolOptionValueKind::Choice,
         kTerrainProfileItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainProfileSeed,
+                                 "SEED",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainProfileItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainPathKind,
                                  "PATH TYPE",
                                  CreativeToolOptionValueKind::Choice,
@@ -330,8 +431,35 @@ constexpr std::array kToolOptionDescriptors{
                                  "OPERATION",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRegionMask,
+                                 "MASK",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainRegionItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRegionAmount,
                                  "AMOUNT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainRegionItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainRegionTargetHeight,
+        "TARGET HEIGHT",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainRegionItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainRegionNoiseRelief,
+        "NOISE RELIEF",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainRegionItems},
+    CreativeToolOptionDescriptor{
+        CreativeToolOptionId::TerrainRegionNoiseScale,
+        "NOISE SCALE",
+        CreativeToolOptionValueKind::Choice,
+        kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRegionSeed,
+                                 "NOISE SEED",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainRegionFeather,
+                                 "FEATHER",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainRegionItems},
     CreativeToolOptionDescriptor{CreativeToolOptionId::TerrainStampMode,
@@ -342,6 +470,30 @@ constexpr std::array kToolOptionDescriptors{
                                  "STAMP HEIGHT",
                                  CreativeToolOptionValueKind::Choice,
                                  kTerrainRegionItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MeasurementMode,
+                                 "MEASURE",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMeasurementItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MeasurementAxis,
+                                 "AXIS",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMeasurementItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MeasurementSnapMode,
+                                 "ENDPOINT SNAP",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMeasurementItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::MeasurementClosePath,
+                                 "PATH",
+                                 CreativeToolOptionValueKind::Choice,
+                                 kMeasurementItems},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::AssetAlignmentMode,
+                                 "ALIGNMENT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 0U},
+    CreativeToolOptionDescriptor{CreativeToolOptionId::AssetAttachmentMode,
+                                 "ATTACHMENT",
+                                 CreativeToolOptionValueKind::Choice,
+                                 0U},
 };
 static_assert(kToolOptionDescriptors.size() ==
               kCreativeToolOptionDescriptorCount);
@@ -397,18 +549,29 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
     const bool terrainSeedOnly =
         descriptor.id == CreativeToolOptionId::TerrainSeedRadius ||
         descriptor.id == CreativeToolOptionId::TerrainSeedSpacing;
+    const bool terrainSculptTargetOnly =
+        descriptor.id == CreativeToolOptionId::TerrainSculptTargetHeight;
     const bool terrainProfileSpacingOnly =
         descriptor.id == CreativeToolOptionId::TerrainProfileSpacing;
     const bool terrainProfileDirectionOnly =
         descriptor.id == CreativeToolOptionId::TerrainProfileDirection;
     const bool terrainProfileFrequencyOnly =
         descriptor.id == CreativeToolOptionId::TerrainProfileFrequency;
+    const bool terrainProfileSeedOnly =
+        descriptor.id == CreativeToolOptionId::TerrainProfileSeed;
     const bool terrainRegionAmountOnly =
         descriptor.id == CreativeToolOptionId::TerrainRegionAmount;
+    const bool terrainRegionTargetOnly =
+        descriptor.id == CreativeToolOptionId::TerrainRegionTargetHeight;
+    const bool terrainRegionNoiseOnly =
+        descriptor.id == CreativeToolOptionId::TerrainRegionNoiseRelief ||
+        descriptor.id == CreativeToolOptionId::TerrainRegionNoiseScale ||
+        descriptor.id == CreativeToolOptionId::TerrainRegionSeed;
     const bool terrainPaintRadiusOnly =
         descriptor.id == CreativeToolOptionId::TerrainPaintRadius;
-    const bool terrainPaintSourceOnly =
-        descriptor.id == CreativeToolOptionId::TerrainPaintSource;
+    const bool terrainPaintBrushOnly =
+        descriptor.id == CreativeToolOptionId::TerrainPaintHardness ||
+        descriptor.id == CreativeToolOptionId::TerrainPaintMask;
     if ((linearOnly && settings.arrayMode != CreativeArrayMode::Linear) ||
         (radialOnly && settings.arrayMode != CreativeArrayMode::Radial) ||
         (cylinderOnly && settings.materialBrushShape !=
@@ -417,6 +580,9 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
                                          CreativeMaterialBrushMask::Replace) ||
         (terrainSeedOnly && settings.terrainRodStampMode !=
                                 CreativeTerrainRodStampMode::Seed) ||
+        (terrainSculptTargetOnly &&
+         !creativeTerrainSculptUsesTargetHeight(
+             settings.terrainSculptMode)) ||
         (terrainProfileSpacingOnly &&
          settings.terrainProfileRodPolicy !=
              CreativeTerrainProfileRodPolicy::Fill) ||
@@ -424,13 +590,21 @@ CreativeToolOptionList creativeToolOptionsForHeldItem(
          !creativeTerrainProfileUsesDirection(settings.terrainProfileKind)) ||
         (terrainProfileFrequencyOnly &&
          !creativeTerrainProfileUsesFrequency(settings.terrainProfileKind)) ||
+        (terrainProfileSeedOnly &&
+         !creativeTerrainProfileUsesSeed(settings.terrainProfileKind)) ||
         (terrainRegionAmountOnly &&
-         !creativeTerrainRegionUsesAmount(
-             settings.terrainRegionOperation)) ||
+         !creativeTerrainRegionModeUsesAmount(
+             settings.terrainRegionRecipe.mode)) ||
+        (terrainRegionTargetOnly &&
+         !creativeTerrainRegionModeUsesTargetHeight(
+             settings.terrainRegionRecipe.mode)) ||
+        (terrainRegionNoiseOnly &&
+         !creativeTerrainRegionModeUsesNoise(
+             settings.terrainRegionRecipe.mode)) ||
         (terrainPaintRadiusOnly &&
          settings.terrainPaintMode != CreativeTerrainPaintMode::Brush) ||
-        (terrainPaintSourceOnly &&
-         settings.terrainPaintMode != CreativeTerrainPaintMode::Region)) {
+        (terrainPaintBrushOnly &&
+         settings.terrainPaintMode != CreativeTerrainPaintMode::Brush)) {
       continue;
     }
     if (result.count == result.ids.size()) {

@@ -201,6 +201,38 @@ bool hiddenRoomProducesNoItemsButKeepsObjectCount() {
                 "hidden reason");
 }
 
+bool hiddenParentSuppressesLocallyVisibleChild() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest parentRequest;
+  parentRequest.kind = cr::CreativeObjectKind::Group;
+  parentRequest.name = "Hidden Parent";
+  const cr::CreativeDocumentCreateReceipt parent =
+      document.createObject(parentRequest);
+
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Locally Visible Crate";
+  childRequest.parentId = parent.objectId;
+  const cr::CreativeDocumentCreateReceipt child =
+      document.createObject(childRequest);
+  const cr::CreativeDocumentMutationReceipt hidden =
+      cr::setDocumentObjectVisible(document, parent.objectId, false);
+  const cr::CreativeObject* childObject = document.findObject(child.objectId);
+  const cr::CreativeDocumentWireframeBuildResult result =
+      cr::buildCreativeDocumentWireframeList(document, makeProjectionRequest());
+
+  return expect(parent.accepted && child.accepted && hidden.changed &&
+                    childObject != nullptr && childObject->visible,
+                "wireframe hierarchy fixture keeps local child visibility") &&
+         expect(result.receipt.objectCount == 2U &&
+                    result.receipt.visibleObjectCount == 0U &&
+                    result.receipt.hiddenObjectCount == 2U &&
+                    result.drawList.items.empty() &&
+                    result.receipt.status ==
+                        cr::CreativeDocumentWireframeStatus::NoVisibleItems,
+                "hidden parent suppresses its locally visible child");
+}
+
 bool visibilityToggleRemovesAndRestoresItem() {
   cr::CreativeDocument document;
   const cr::CreativeObjectId roomId =
@@ -739,6 +771,7 @@ int main() {
   const bool ok = emptyDocumentReturnsStableEmptyReceipt() &&
                   genericRoomCreateProducesDescriptorBoxItem() &&
                   hiddenRoomProducesNoItemsButKeepsObjectCount() &&
+                  hiddenParentSuppressesLocallyVisibleChild() &&
                   visibilityToggleRemovesAndRestoresItem() &&
                   multipleVisibleObjectsPreserveDocumentOrder() &&
                   patrolRoutePathEmitsOrderedGameplayLineSegments() &&

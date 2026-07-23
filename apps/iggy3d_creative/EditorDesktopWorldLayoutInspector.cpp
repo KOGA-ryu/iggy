@@ -285,12 +285,29 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
     }
     ImGui::TextColored(syncColor, "Instance: %s",
                        cr::toString(sync.state).data());
+    if (sync.provenance.valid) {
+      ImGui::TextDisabled("Template: %s", sync.provenance.templateId.c_str());
+      ImGui::TextDisabled(
+          "Version: %016llx  Pose: %s @ %d, %d",
+          static_cast<unsigned long long>(sync.provenance.sourceFingerprint),
+          cr::toString(sync.provenance.orientation).data(),
+          sync.provenance.anchor.x, sync.provenance.anchor.z);
+      if (sync.state ==
+              cr::CreativeWorldLayoutBuildingTemplateSyncState::LocallyModified ||
+          sync.state ==
+              cr::CreativeWorldLayoutBuildingTemplateSyncState::Conflict) {
+        ImGui::TextColored(ImVec4{0.94F, 0.52F, 0.18F, 1.0F},
+                           "Local refinements retained");
+      }
+    }
   }
 
   const bool linkedSourceAvailable =
       buildingAvailable && sync.provenance.valid &&
       sync.state !=
           cr::CreativeWorldLayoutBuildingTemplateSyncState::SourceMissing;
+  const bool linkedInstanceAvailable =
+      buildingAvailable && sync.provenance.valid;
   const bool templateActionsBlocked =
       state.buildingTransform.active || state.buildingManipulation.active ||
       state.buildingTemplatePlacement.active;
@@ -303,6 +320,18 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
             cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
                 SelectedInstance});
   }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!linkedInstanceAvailable || templateActionsBlocked);
+  if (ImGui::Button("Detach instance")) {
+    commands.push(
+        CreativeDesktopCommandId::WorldLayoutDetachBuildingTemplateInstance,
+        CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+            selectedBuilding,
+            cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                SelectedInstance});
+  }
+  ImGui::EndDisabled();
   const bool selectedNeedsRefresh =
       linkedSourceAvailable &&
       sync.state != cr::CreativeWorldLayoutBuildingTemplateSyncState::Current;
@@ -311,8 +340,8 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
           cr::CreativeWorldLayoutBuildingTemplateSyncState::LocallyModified ||
       sync.state ==
           cr::CreativeWorldLayoutBuildingTemplateSyncState::Conflict;
-  ImGui::BeginDisabled(!selectedNeedsRefresh);
-  if (ImGui::Button("Rebuild selected in 3D")) {
+  ImGui::BeginDisabled(!selectedNeedsRefresh || templateActionsBlocked);
+  if (ImGui::Button("Upgrade selected")) {
     if (selectedRefreshDestructive) {
       desktopUi.pendingBuildingTemplateRebuildIndex = selectedBuilding;
       desktopUi.pendingBuildingTemplateRebuildMode =
@@ -331,8 +360,8 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  ImGui::BeginDisabled(!linkedSourceAvailable);
-  if (ImGui::Button("Rebuild safe instances")) {
+  ImGui::BeginDisabled(!linkedSourceAvailable || templateActionsBlocked);
+  if (ImGui::Button("Upgrade safe instances")) {
     commands.push(
         CreativeDesktopCommandId::
             WorldLayoutRefreshBuildingTemplateInstances,
@@ -342,7 +371,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
                 SafeInstances});
   }
   ImGui::SameLine();
-  if (ImGui::Button("Force rebuild all...")) {
+  if (ImGui::Button("Force upgrade all...")) {
     desktopUi.pendingBuildingTemplateRebuildIndex = selectedBuilding;
     desktopUi.pendingBuildingTemplateRebuildMode =
         cr::CreativeWorldLayoutBuildingTemplateRefreshMode::ForceAll;
@@ -351,10 +380,10 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
   ImGui::EndDisabled();
 
   if (desktopUi.buildingTemplateRebuildModalOpen) {
-    ImGui::OpenPopup("Rebuild template instances##world_layout");
+    ImGui::OpenPopup("Upgrade template instances##world_layout");
     desktopUi.buildingTemplateRebuildModalOpen = false;
   }
-  if (ImGui::BeginPopupModal("Rebuild template instances##world_layout",
+  if (ImGui::BeginPopupModal("Upgrade template instances##world_layout",
                              nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
     const bool forceAll =
         desktopUi.pendingBuildingTemplateRebuildMode ==
@@ -362,9 +391,9 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
     ImGui::TextUnformatted(
         forceAll
             ? "Replace every modified instance with the current template?"
-            : "Replace this building's local changes with the current template?");
-    ImGui::TextDisabled("The rebuild is one undoable 3D edit.");
-    if (ImGui::Button(forceAll ? "Force rebuild all" : "Rebuild selected")) {
+            : "Replace this building's local refinements with the current template?");
+    ImGui::TextDisabled("The upgrade is one undoable 3D edit.");
+    if (ImGui::Button(forceAll ? "Force upgrade all" : "Upgrade selected")) {
       commands.push(
           CreativeDesktopCommandId::
               WorldLayoutRefreshBuildingTemplateInstances,
@@ -416,6 +445,14 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
     }
     ImGui::EndCombo();
   }
+  const cr::CreativeWorldLayoutBuildingTemplate& selectedTemplate =
+      library.templates[selectedTemplateIndex];
+  ImGui::TextDisabled(
+      "%s  v%016llx  %d x %d cells", selectedTemplate.templateId.c_str(),
+      static_cast<unsigned long long>(
+          selectedTemplate.sourceFingerprint.value),
+      selectedTemplate.bounds.maximum.x - selectedTemplate.bounds.minimum.x,
+      selectedTemplate.bounds.maximum.z - selectedTemplate.bounds.minimum.z);
 
   if (!state.buildingTemplatePlacement.active) {
     ImGui::BeginDisabled(
@@ -437,6 +474,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
     }
     ImGui::EndDisabled();
   } else {
+    const auto& analysis = state.buildingTemplatePlacement.analysis;
     const auto transform =
         [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
           commands.push(
@@ -446,8 +484,36 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
                       Transform,
                   {}, operation});
         };
-    ImGui::TextColored(ImVec4{0.20F, 0.78F, 0.38F, 1.0F},
-                       "Move over the canvas, then click to place");
+    const ImVec4 placementColor =
+        state.buildingTemplatePlacement.previewValid
+            ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+            : ImVec4{0.92F, 0.29F, 0.24F, 1.0F};
+    ImGui::TextColored(placementColor, "%s",
+                       state.buildingTemplatePlacement.previewValid
+                           ? "Placement clear"
+                           : "Placement blocked");
+    if (analysis.requested && analysis.bounds.valid) {
+      ImGui::TextDisabled(
+          "Footprint %d x %d | Levels %zu | Entrances %zu",
+          analysis.footprint.maximum.x - analysis.footprint.minimum.x,
+          analysis.footprint.maximum.z - analysis.footprint.minimum.z,
+          analysis.levelCount, analysis.entranceCount);
+      if (analysis.terrainImpact ==
+          cr::CreativeWorldLayoutBuildingTemplateTerrainImpact::Foundation) {
+        ImGui::TextDisabled("Terrain: foundation, relief %u cells",
+                            analysis.grounding.reliefCells);
+      } else {
+        ImGui::TextDisabled("Terrain: %s",
+                            cr::toString(analysis.terrainImpact).data());
+      }
+      if (analysis.conflictingBuildingIndex !=
+          cr::kInvalidCreativeWorldLayoutIndex) {
+        ImGui::TextColored(placementColor, "Conflict: building #%zu",
+                           analysis.conflictingBuildingIndex);
+      } else {
+        ImGui::TextDisabled("Conflict: none");
+      }
+    }
     if (ImGui::Button("Rotate left##template")) {
       transform(cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90);
     }
@@ -674,8 +740,8 @@ void drawCreativeEditorWorldLayoutStructureInspector(
       drawBuildingTemplateActions(desktopUi, state, commands);
       break;
     case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
-      drawCreativeEditorWorldLayoutVerticalConnectorInspector(state,
-                                                              commands);
+      drawCreativeEditorWorldLayoutVerticalConnectorInspector(
+          state, document, commands);
       break;
     case CreativeEditorWorldLayoutSelectionKind::Box:
       drawBoxSettings(state, commands);
@@ -686,7 +752,9 @@ void drawCreativeEditorWorldLayoutStructureInspector(
     case CreativeEditorWorldLayoutSelectionKind::None:
     case CreativeEditorWorldLayoutSelectionKind::Level:
     case CreativeEditorWorldLayoutSelectionKind::Room:
+    case CreativeEditorWorldLayoutSelectionKind::TopologyEdge:
     case CreativeEditorWorldLayoutSelectionKind::Opening:
+    case CreativeEditorWorldLayoutSelectionKind::RoofAperture:
     case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
     case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
     case CreativeEditorWorldLayoutSelectionKind::Object:

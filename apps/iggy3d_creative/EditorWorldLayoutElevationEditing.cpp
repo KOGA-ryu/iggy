@@ -1,4 +1,5 @@
 #include "EditorWorldLayoutElevation.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -63,18 +64,6 @@ bool levelOwnsRoom(const cr::CreativeWorldLayout& layout,
              layout.levels[levelIndex].buildingIndex;
 }
 
-const CreativeEditorWorldLayoutElevationLine* roofSlopeFor(
-    const CreativeEditorWorldLayoutElevationProjection& projection,
-    std::size_t levelIndex) noexcept {
-  for (const CreativeEditorWorldLayoutElevationLine& line : projection.lines) {
-    if (line.kind == CreativeEditorWorldLayoutElevationLineKind::RoofSlope &&
-        line.levelIndex == levelIndex) {
-      return &line;
-    }
-  }
-  return nullptr;
-}
-
 }  // namespace
 
 CreativeEditorWorldLayoutElevationHandle
@@ -106,21 +95,66 @@ findCreativeEditorWorldLayoutElevationItem(
     const CreativeEditorWorldLayoutElevationProjection& projection,
     CreativeEditorWorldLayoutElevationPoint point,
     double toleranceCells) noexcept {
+  const CreativeEditorWorldLayoutElevationHitStack stack =
+      findCreativeEditorWorldLayoutElevationItemStack(projection, point,
+                                                      toleranceCells);
+  return stack.count == 0U ? nullptr : stack.items[0U];
+}
+
+CreativeEditorWorldLayoutElevationHitStack
+findCreativeEditorWorldLayoutElevationItemStack(
+    const CreativeEditorWorldLayoutElevationProjection& projection,
+    CreativeEditorWorldLayoutElevationPoint point,
+    double toleranceCells) noexcept {
+  CreativeEditorWorldLayoutElevationHitStack result;
   if (!projection.accepted || !std::isfinite(point.horizontal) ||
       !std::isfinite(point.vertical) || !std::isfinite(toleranceCells) ||
       toleranceCells < 0.0) {
-    return nullptr;
+    return result;
   }
   for (auto iterator = projection.items.rbegin();
        iterator != projection.items.rend(); ++iterator) {
+    ++result.testedItemCount;
     if (point.horizontal >= iterator->minimumHorizontal - toleranceCells &&
         point.horizontal <= iterator->maximumHorizontal + toleranceCells &&
         point.vertical >= iterator->minimumVertical - toleranceCells &&
         point.vertical <= iterator->maximumVertical + toleranceCells) {
-      return &*iterator;
+      ++result.totalHitItemCount;
+      const bool duplicate = std::any_of(
+          result.items.begin(), result.items.begin() + result.count,
+          [&](const CreativeEditorWorldLayoutElevationItem* item) {
+            return item->sourceKind == iterator->sourceKind &&
+                   item->sourceIndex == iterator->sourceIndex;
+          });
+      if (duplicate) {
+        continue;
+      }
+      if (result.count == result.items.size()) {
+        result.truncated = true;
+        continue;
+      }
+      result.items[result.count++] = &*iterator;
     }
   }
-  return nullptr;
+  return result;
+}
+
+const CreativeEditorWorldLayoutElevationItem*
+cycleCreativeEditorWorldLayoutElevationItem(
+    const CreativeEditorWorldLayoutElevationHitStack& stack,
+    CreativeEditorWorldLayoutElevationSourceKind currentSourceKind,
+    std::size_t currentSourceIndex) noexcept {
+  if (stack.count == 0U) {
+    return nullptr;
+  }
+  for (std::size_t index = 0U; index < stack.count; ++index) {
+    const CreativeEditorWorldLayoutElevationItem* item = stack.items[index];
+    if (item != nullptr && item->sourceKind == currentSourceKind &&
+        item->sourceIndex == currentSourceIndex) {
+      return stack.items[(index + 1U) % stack.count];
+    }
+  }
+  return stack.items[0U];
 }
 
 CreativeEditorWorldLayoutElevationEditResult
@@ -244,28 +278,17 @@ planCreativeEditorWorldLayoutElevationEdit(
       result.wallHeightCells = static_cast<std::uint16_t>(height);
     } else if (handle.kind ==
                CreativeEditorWorldLayoutElevationHandleKind::RoofRidge) {
-      const CreativeEditorWorldLayoutElevationLine* slope =
-          roofSlopeFor(projection, handle.levelIndex);
-      if (slope == nullptr ||
-          level.roofStyle != cr::CreativeStructuralRoofStyle::Gable) {
-        result.reasonCode =
-            "creative_editor_world_layout_elevation_roof_profile_invalid";
+      const CreativeEditorWorldLayoutRoofEditPlan roofEdit =
+          planCreativeEditorWorldLayoutRoofEdit(
+              layout, {},
+              {handle.levelIndex,
+               CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight},
+              requestedVerticalCells - handle.position.vertical);
+      if (!roofEdit.accepted) {
+        result.reasonCode = roofEdit.reasonCode;
         return result;
       }
-      const double run = std::abs(slope->end.horizontal -
-                                  slope->start.horizontal);
-      const double rise = requestedVerticalCells - slope->start.vertical;
-      if (!std::isfinite(run) || !std::isfinite(rise) || run <= 0.0) {
-        result.reasonCode =
-            "creative_editor_world_layout_elevation_roof_profile_invalid";
-        return result;
-      }
-      constexpr double kRadiansToDegrees =
-          57.295779513082320876798154814105;
-      result.roofPitchDegrees = std::clamp(
-          std::atan2(std::max(0.0, rise), run) * kRadiansToDegrees,
-          cr::kMinimumCreativeStructuralRoofPitchDegrees,
-          cr::kMaximumCreativeStructuralRoofPitchDegrees);
+      result.roofPitchDegrees = roofEdit.settings.roofPitchDegrees;
     } else {
       result.reasonCode =
           "creative_editor_world_layout_elevation_room_handle_invalid";

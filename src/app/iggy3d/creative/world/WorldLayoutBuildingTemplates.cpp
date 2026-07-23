@@ -43,20 +43,31 @@ bool sameBounds(CreativeWorldLayoutBuildingBounds lhs,
 }
 
 bool templateKeysValid(const CreativeWorldLayout& layout) {
-  if (!validCreativeWorldLayoutStableKey(layout.buildings.front().stableKey)) {
-    return false;
-  }
   std::unordered_set<std::string> keys;
   const auto registerKey = [&](const auto& symbol) {
     return validCreativeWorldLayoutStableKey(symbol.stableKey) &&
            keys.insert(symbol.stableKey).second;
   };
+  if (!registerKey(layout.buildings.front())) {
+    return false;
+  }
   for (const CreativeWorldLayoutLevel& value : layout.levels) {
     if (!registerKey(value)) {
       return false;
     }
   }
   for (const CreativeWorldLayoutRoom& value : layout.rooms) {
+    if (!registerKey(value)) {
+      return false;
+    }
+  }
+  for (const CreativeWorldLayoutTopologyVertex& value :
+       layout.topologyVertices) {
+    if (!registerKey(value)) {
+      return false;
+    }
+  }
+  for (const CreativeWorldLayoutTopologyEdge& value : layout.topologyEdges) {
     if (!registerKey(value)) {
       return false;
     }
@@ -78,6 +89,12 @@ bool templateKeysValid(const CreativeWorldLayout& layout) {
     }
   }
   for (const CreativeWorldLayoutOpening& value : layout.openings) {
+    if (!registerKey(value)) {
+      return false;
+    }
+  }
+  for (const CreativeWorldLayoutRoofAperture& value :
+       layout.roofApertures) {
     if (!registerKey(value)) {
       return false;
     }
@@ -123,6 +140,18 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
     isolated.levels.push_back(std::move(level));
   }
 
+  for (const CreativeWorldLayoutRoofAperture& sourceAperture :
+       source.roofApertures) {
+    if (sourceAperture.levelIndex >= levelMap.size() ||
+        levelMap[sourceAperture.levelIndex] ==
+            kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    CreativeWorldLayoutRoofAperture aperture = sourceAperture;
+    aperture.levelIndex = levelMap[sourceAperture.levelIndex];
+    isolated.roofApertures.push_back(std::move(aperture));
+  }
+
   std::vector<std::size_t> roomMap(source.rooms.size(),
                                    kInvalidCreativeWorldLayoutIndex);
   for (std::size_t index = 0U; index < source.rooms.size(); ++index) {
@@ -134,6 +163,53 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
     room.levelIndex = levelMap[room.levelIndex];
     roomMap[index] = isolated.rooms.size();
     isolated.rooms.push_back(std::move(room));
+  }
+
+  std::vector<std::size_t> topologyVertexMap(
+      source.topologyVertices.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < source.topologyVertices.size();
+       ++index) {
+    const CreativeWorldLayoutTopologyVertex& sourceVertex =
+        source.topologyVertices[index];
+    if (levelMap[sourceVertex.levelIndex] ==
+        kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    CreativeWorldLayoutTopologyVertex vertex = sourceVertex;
+    vertex.levelIndex = levelMap[sourceVertex.levelIndex];
+    topologyVertexMap[index] = isolated.topologyVertices.size();
+    isolated.topologyVertices.push_back(std::move(vertex));
+  }
+
+  std::vector<std::size_t> topologyEdgeMap(
+      source.topologyEdges.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < source.topologyEdges.size(); ++index) {
+    const CreativeWorldLayoutTopologyEdge& sourceEdge =
+        source.topologyEdges[index];
+    if (levelMap[sourceEdge.levelIndex] == kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    CreativeWorldLayoutTopologyEdge edge = sourceEdge;
+    edge.levelIndex = levelMap[sourceEdge.levelIndex];
+    edge.startVertexIndex = topologyVertexMap[sourceEdge.startVertexIndex];
+    edge.endVertexIndex = topologyVertexMap[sourceEdge.endVertexIndex];
+    topologyEdgeMap[index] = isolated.topologyEdges.size();
+    isolated.topologyEdges.push_back(std::move(edge));
+  }
+
+  for (const CreativeWorldLayoutRoomBoundary& sourceBoundary :
+       source.roomBoundaries) {
+    if (roomMap[sourceBoundary.roomIndex] ==
+            kInvalidCreativeWorldLayoutIndex ||
+        topologyEdgeMap[sourceBoundary.topologyEdgeIndex] ==
+            kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    CreativeWorldLayoutRoomBoundary boundary = sourceBoundary;
+    boundary.roomIndex = roomMap[sourceBoundary.roomIndex];
+    boundary.topologyEdgeIndex =
+        topologyEdgeMap[sourceBoundary.topologyEdgeIndex];
+    isolated.roomBoundaries.push_back(std::move(boundary));
   }
 
   for (const CreativeWorldLayoutVerticalConnector& sourceConnector :
@@ -176,6 +252,11 @@ CreativeWorldLayout isolateBuilding(const CreativeWorldLayout& source,
     CreativeWorldLayoutOpening opening = sourceOpening;
     if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
       opening.roomIndex = roomMap[opening.roomIndex];
+      if (opening.roomTopologyEdgeIndex !=
+          kInvalidCreativeWorldLayoutIndex) {
+        opening.roomTopologyEdgeIndex =
+            topologyEdgeMap[opening.roomTopologyEdgeIndex];
+      }
     } else {
       opening.wallIndex = wallMap[opening.wallIndex];
     }
@@ -218,7 +299,6 @@ bool validCreativeWorldLayoutBuildingTemplate(
       !value.normalizedLayout.objects.empty() ||
       !value.normalizedLayout.terrainProfiles.empty() ||
       !value.normalizedLayout.terrainPaths.empty() ||
-      !value.normalizedLayout.terrainPathPoints.empty() ||
       !value.sourceFingerprint.valid ||
       value.orientation >=
           CreativeWorldLayoutBuildingTemplateOrientation::Count ||
@@ -463,6 +543,18 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
     edited.levels.push_back(std::move(level));
   }
 
+  for (CreativeWorldLayoutRoofAperture aperture :
+       positioned.roofApertures) {
+    aperture.levelIndex = levelMap[aperture.levelIndex];
+    aperture.stableKey = mintCreativeWorldLayoutStableKey(
+        edited, nextOrdinal,
+        aperture.kind == CreativeStructuralRoofApertureKind::Skylight
+            ? "skylight"
+            : "chimney_clearance");
+    aperture.name = copiedName(aperture.name, request.appendCopySuffix);
+    edited.roofApertures.push_back(std::move(aperture));
+  }
+
   std::vector<std::size_t> roomMap(positioned.rooms.size(),
                                    kInvalidCreativeWorldLayoutIndex);
   for (std::size_t index = 0U; index < positioned.rooms.size(); ++index) {
@@ -474,6 +566,41 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
     room.name = copiedName(room.name, request.appendCopySuffix);
     roomMap[index] = edited.rooms.size();
     edited.rooms.push_back(std::move(room));
+  }
+
+  std::vector<std::size_t> topologyVertexMap(
+      positioned.topologyVertices.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U;
+       index < positioned.topologyVertices.size(); ++index) {
+    CreativeWorldLayoutTopologyVertex vertex =
+        positioned.topologyVertices[index];
+    vertex.levelIndex = levelMap[vertex.levelIndex];
+    vertex.stableKey = mintCreativeWorldLayoutStableKey(
+        edited, nextOrdinal, "wall_vertex");
+    topologyVertexMap[index] = edited.topologyVertices.size();
+    edited.topologyVertices.push_back(std::move(vertex));
+  }
+
+  std::vector<std::size_t> topologyEdgeMap(
+      positioned.topologyEdges.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < positioned.topologyEdges.size();
+       ++index) {
+    CreativeWorldLayoutTopologyEdge edge = positioned.topologyEdges[index];
+    edge.levelIndex = levelMap[edge.levelIndex];
+    edge.startVertexIndex = topologyVertexMap[edge.startVertexIndex];
+    edge.endVertexIndex = topologyVertexMap[edge.endVertexIndex];
+    edge.stableKey =
+        mintCreativeWorldLayoutStableKey(edited, nextOrdinal, "wall");
+    topologyEdgeMap[index] = edited.topologyEdges.size();
+    edited.topologyEdges.push_back(std::move(edge));
+  }
+
+  for (CreativeWorldLayoutRoomBoundary boundary :
+       positioned.roomBoundaries) {
+    boundary.roomIndex = roomMap[boundary.roomIndex];
+    boundary.topologyEdgeIndex =
+        topologyEdgeMap[boundary.topologyEdgeIndex];
+    edited.roomBoundaries.push_back(std::move(boundary));
   }
 
   for (CreativeWorldLayoutVerticalConnector connector :
@@ -510,6 +637,11 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
   for (CreativeWorldLayoutOpening opening : positioned.openings) {
     if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
       opening.roomIndex = roomMap[opening.roomIndex];
+      if (opening.roomTopologyEdgeIndex !=
+          kInvalidCreativeWorldLayoutIndex) {
+        opening.roomTopologyEdgeIndex =
+            topologyEdgeMap[opening.roomTopologyEdgeIndex];
+      }
     } else {
       opening.wallIndex = wallMap[opening.wallIndex];
     }
@@ -539,6 +671,13 @@ CreativeWorldLayoutBuildingEditResult stampCreativeWorldLayoutBuildingTemplate(
           "creative_world_layout_building_template_stamp_provenance_invalid");
       return result;
     }
+  }
+
+  if (!validCreativeWorldLayoutBuildingOwnership(edited)) {
+    setEditFailure(
+        result, CreativeWorldLayoutBuildingEditStatus::InvalidOwnership,
+        "creative_world_layout_building_template_stamp_result_invalid");
+    return result;
   }
 
   result.accepted = true;

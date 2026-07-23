@@ -87,23 +87,67 @@ void clearCreativeHistory(CreativeDocumentHistory& history) noexcept {
 CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
     const Facade& facade,
     std::string_view source) {
-  return beginCreativeHistoryTransaction(facade, source, std::nullopt);
+  return beginCreativeHistoryTransaction(facade, source, std::nullopt,
+                                          std::nullopt);
 }
 
 CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
     const Facade& facade,
     std::string_view source,
     std::optional<CreativeHistorySidecar> beforeSidecar) {
+  return beginCreativeHistoryTransaction(facade, source,
+                                          std::move(beforeSidecar),
+                                          std::nullopt);
+}
+
+CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    CreativeAuthoringOperationRecord operation) {
+  return beginCreativeHistoryTransaction(facade, source, std::nullopt,
+                                          std::move(operation));
+}
+
+CreativeDocumentHistoryTransaction beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    std::optional<CreativeHistorySidecar> beforeSidecar,
+    std::optional<CreativeAuthoringOperationRecord> operation) {
   CreativeDocumentHistoryTransaction transaction;
   const CreativeDocument& document = facade.document();
   if (!document.isValid() || document.id() == kInvalidDocumentId) {
+    return transaction;
+  }
+  if (operation.has_value() &&
+      !validateCreativeAuthoringOperationRecord(*operation)) {
     return transaction;
   }
   transaction.active = true;
   transaction.before = document;
   transaction.source = source;
   transaction.beforeSidecar = std::move(beforeSidecar);
+  transaction.operation = std::move(operation);
   return transaction;
+}
+
+bool setCreativeHistoryTransactionOperation(
+    CreativeDocumentHistoryTransaction& transaction,
+    CreativeAuthoringFamily family,
+    CreativeAuthoringOperationKind kind,
+    std::string_view action,
+    std::uint64_t requestFingerprint,
+    std::uint64_t affectedMemberCount) {
+  if (!transaction.active) {
+    return false;
+  }
+  std::optional<CreativeAuthoringOperationRecord> operation =
+      makeCreativeAuthoringOperationRecord(
+          family, kind, action, requestFingerprint, affectedMemberCount);
+  if (!operation.has_value()) {
+    return false;
+  }
+  transaction.operation = std::move(operation);
+  return true;
 }
 
 CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
@@ -120,6 +164,12 @@ CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
   if (!transaction.active) {
     setRecordStatus(receipt, CreativeHistoryStatus::InactiveTransaction,
                     "creative_history_transaction_inactive");
+    return receipt;
+  }
+  if (transaction.operation.has_value() &&
+      !validateCreativeAuthoringOperationRecord(*transaction.operation)) {
+    setRecordStatus(receipt, CreativeHistoryStatus::InactiveTransaction,
+                    "creative_history_operation_invalid");
     return receipt;
   }
 
@@ -146,7 +196,8 @@ CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
   history.redoSnapshots.clear();
   appendBounded(history.undoSnapshots,
                 {std::move(transaction.before), std::move(transaction.source),
-                 std::move(transaction.beforeSidecar)},
+                 std::move(transaction.beforeSidecar),
+                 std::move(transaction.operation)},
                 history.maxDepth, &receipt.trimmedOldestUndo);
   receipt.accepted = true;
   receipt.recorded = true;
@@ -201,6 +252,7 @@ CreativeHistoryApplyReceipt applyCreativeHistory(
   receipt.documentId = sourceSnapshots.back().document.id();
   receipt.source = sourceSnapshots.back().source;
   receipt.targetSidecar = sourceSnapshots.back().sidecar;
+  receipt.targetOperation = sourceSnapshots.back().operation;
 
   CreativeDocumentHistory staged = history;
   auto& stagedSource =
@@ -209,10 +261,13 @@ CreativeHistoryApplyReceipt applyCreativeHistory(
       undo ? staged.redoSnapshots : staged.undoSnapshots;
   CreativeDocument target = stagedSource.back().document;
   const std::string source = stagedSource.back().source;
+  std::optional<CreativeAuthoringOperationRecord> operation =
+      stagedSource.back().operation;
   stagedSource.pop_back();
   if (staged.maxDepth > 0U) {
     appendBounded(stagedDestination,
-                  {facade.document(), source, std::move(currentSidecar)},
+                  {facade.document(), source, std::move(currentSidecar),
+                   std::move(operation)},
                   staged.maxDepth);
   }
 
@@ -245,6 +300,18 @@ const CreativeHistorySidecar* creativeHistoryTargetSidecar(
     return nullptr;
   }
   return &*snapshots.back().sidecar;
+}
+
+const CreativeAuthoringOperationRecord* creativeHistoryTargetOperation(
+    const CreativeDocumentHistory& history,
+    CreativeHistoryDirection direction) noexcept {
+  const auto& snapshots = direction == CreativeHistoryDirection::Undo
+                              ? history.undoSnapshots
+                              : history.redoSnapshots;
+  if (snapshots.empty() || !snapshots.back().operation.has_value()) {
+    return nullptr;
+  }
+  return &*snapshots.back().operation;
 }
 
 }  // namespace iggy3d::creative

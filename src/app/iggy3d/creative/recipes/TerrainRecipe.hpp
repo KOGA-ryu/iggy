@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
+#include "app/iggy3d/creative/recipes/TerrainLandform.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
 
@@ -23,7 +24,9 @@ enum class CreativeTerrainRecipeKind : std::uint8_t {
   Ditch = 6U,
   RidgeLine = 7U,
   Plateau = 8U,
-  Count = 9U,
+  Terrace = 9U,
+  Cliff = 10U,
+  Count = 11U,
 };
 
 enum class CreativeTerrainRecipeStatus : std::uint8_t {
@@ -129,11 +132,18 @@ struct CreativeTerrainRecipeApplyReceipt {
     CreativeTerrainRecipeKind kind) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainRecipeStatus status) noexcept;
+[[nodiscard]] bool creativeTerrainRecipeLandformKind(
+    CreativeTerrainRecipeKind kind,
+    CreativeTerrainLandformKind& output) noexcept;
+[[nodiscard]] CreativeTerrainRecipeKind creativeTerrainRecipeKind(
+    CreativeTerrainLandformKind kind) noexcept;
 
 [[nodiscard]] CreativeTerrainRecipeResult buildCreativeTerrainProfileRecipe(
     const CreativeTerrainProfileRecipeRequest& request);
 [[nodiscard]] CreativeTerrainRecipeResult buildCreativeTerrainPathRecipe(
     const CreativeTerrainPathRecipeRequest& request);
+[[nodiscard]] std::uint64_t fingerprintCreativeTerrainRecipePlan(
+    const CreativeTerrainRecipePlan& plan) noexcept;
 
 // Preview and apply consume the exact edit vectors produced by the recipe.
 // There is no second geometry path for UI or 2D-symbol prediction.

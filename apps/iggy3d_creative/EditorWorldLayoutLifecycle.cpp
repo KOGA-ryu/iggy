@@ -3,6 +3,7 @@
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 
+#include <array>
 #include <span>
 #include <string>
 #include <utility>
@@ -11,6 +12,132 @@ namespace iggy3d_creative_app {
 
 using detail::clearWorldLayoutInteraction;
 using detail::invalidateWorldLayoutPreview;
+
+namespace {
+
+struct InspectionPreviewProbe {
+  bool requested = false;
+  bool valid = false;
+  std::string_view reasonCode;
+};
+
+bool exactPreviewActive(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  return state.previewVisible && state.preview.accepted &&
+         state.preview.document.isValid() &&
+         state.previewLayoutRevision == state.revision;
+}
+
+const cr::CreativeWorldLayout* inspectionDisplaySource(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  if (exactPreviewActive(state)) {
+    return &state.previewSource;
+  }
+  if (state.roomCornerManipulation.active &&
+      state.roomCornerManipulation.previewValid &&
+      state.roomCornerManipulation.sourceRevision == state.revision &&
+      state.roomCornerManipulation.previewEdit.accepted &&
+      state.roomCornerManipulation.previewEdit.changed) {
+    return &state.roomCornerManipulation.previewEdit.edited;
+  }
+  if (state.roomBoundaryManipulation.active &&
+      state.roomBoundaryManipulation.previewValid &&
+      state.roomBoundaryManipulation.sourceRevision == state.revision &&
+      state.roomBoundaryManipulation.previewEdit.accepted &&
+      state.roomBoundaryManipulation.previewEdit.changed) {
+    return &state.roomBoundaryManipulation.previewEdit.edited;
+  }
+  if (state.roomManipulation.active &&
+      state.roomManipulation.previewValid &&
+      state.roomManipulation.sourceRevision == state.revision &&
+      state.roomManipulation.previewEdit.accepted &&
+      state.roomManipulation.target.roomIndex <
+          state.roomManipulation.previewEdit.edited.rooms.size()) {
+    return &state.roomManipulation.previewEdit.edited;
+  }
+  if (state.buildingTemplatePlacement.active &&
+      state.buildingTemplatePlacement.previewPositioned &&
+      state.buildingTemplatePlacement.sourceRevision == state.revision &&
+      state.buildingTemplatePlacement.resultBuildingIndex <
+          state.buildingTemplatePlacement.candidate.buildings.size()) {
+    return &state.buildingTemplatePlacement.candidate;
+  }
+  if (state.buildingTransform.active &&
+      state.buildingTransform.sourceRevision == state.revision &&
+      state.buildingTransform.buildingIndex <
+          state.buildingTransform.candidate.buildings.size()) {
+    return &state.buildingTransform.candidate;
+  }
+  return &state.source;
+}
+
+InspectionPreviewProbe activePreviewProbe(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  const std::array probes{
+      InspectionPreviewProbe{state.roomManipulation.active,
+                             state.roomManipulation.previewValid,
+                             state.roomManipulation.reasonCode},
+      InspectionPreviewProbe{state.roomBoundaryManipulation.active,
+                             state.roomBoundaryManipulation.previewValid,
+                             state.roomBoundaryManipulation.reasonCode},
+      InspectionPreviewProbe{state.roomCornerManipulation.active,
+                             state.roomCornerManipulation.previewValid,
+                             state.roomCornerManipulation.reasonCode},
+      InspectionPreviewProbe{state.verticalConnectorManipulation.active,
+                             state.verticalConnectorManipulation.previewValid,
+                             state.verticalConnectorManipulation.reasonCode},
+      InspectionPreviewProbe{state.boxManipulation.active,
+                             state.boxManipulation.previewValid,
+                             state.boxManipulation.reasonCode},
+      InspectionPreviewProbe{state.wallManipulation.active,
+                             state.wallManipulation.previewValid,
+                             state.wallManipulation.reasonCode},
+      InspectionPreviewProbe{state.buildingManipulation.active,
+                             state.buildingManipulation.previewValid,
+                             state.buildingManipulation.reasonCode},
+      InspectionPreviewProbe{
+          state.buildingTransform.active,
+          state.buildingTransform.active &&
+              state.buildingTransform.sourceRevision == state.revision &&
+              state.buildingTransform.buildingIndex <
+                  state.buildingTransform.candidate.buildings.size(),
+          state.buildingTransform.reasonCode},
+      InspectionPreviewProbe{
+          state.buildingTemplatePlacement.active,
+          state.buildingTemplatePlacement.previewValid,
+          state.buildingTemplatePlacement.reasonCode},
+      InspectionPreviewProbe{state.openingManipulation.active,
+                             state.openingManipulation.previewValid,
+                             state.openingManipulation.reasonCode},
+      InspectionPreviewProbe{state.roofApertureManipulation.active,
+                             state.roofApertureManipulation.previewValid,
+                             state.roofApertureManipulation.reasonCode},
+      InspectionPreviewProbe{state.roofManipulation.active,
+                             state.roofManipulation.previewValid,
+                             state.roofManipulation.reasonCode},
+      InspectionPreviewProbe{state.objectManipulation.active,
+                             state.objectManipulation.previewValid,
+                             state.objectManipulation.reasonCode},
+      InspectionPreviewProbe{state.elevationManipulation.active,
+                             state.elevationManipulation.preview.accepted,
+                             state.elevationManipulation.preview.reasonCode},
+      InspectionPreviewProbe{
+          state.terrainPathDraft.active,
+          state.terrainPathDraft.path.recipe.points.size() >= 2U,
+          "creative_editor_world_layout_path_draft_incomplete"},
+      InspectionPreviewProbe{state.anchorActive,
+                             state.gesturePreviewGridPointValid,
+                             "creative_editor_world_layout_gesture_target_invalid"},
+  };
+  for (const InspectionPreviewProbe& probe : probes) {
+    if (probe.requested) {
+      return probe;
+    }
+  }
+  return {};
+}
+
+}  // namespace
 
 void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                     std::string layoutKey) {
@@ -43,6 +170,9 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.nextStableOrdinal =
       1U + state.source.buildings.size() + state.source.levels.size() +
       state.source.rooms.size() + state.source.verticalConnectors.size() +
+      state.source.roofApertures.size() +
+      state.source.topologyVertices.size() +
+      state.source.topologyEdges.size() +
       state.source.boxes.size() + state.source.walls.size() +
       state.source.openings.size() + state.source.objects.size() +
       state.source.terrainProfiles.size() + state.source.terrainPaths.size();
@@ -86,9 +216,7 @@ bool creativeEditorWorldLayoutDirty(
 
 bool creativeEditorWorldLayoutPreviewActive(
     const CreativeEditorWorldLayoutState& state) noexcept {
-  return state.previewVisible && state.preview.accepted &&
-         state.preview.document.isValid() &&
-         state.previewLayoutRevision == state.revision;
+  return exactPreviewActive(state);
 }
 
 const cr::CreativeDocument& creativeEditorWorldLayoutRenderDocument(
@@ -100,19 +228,47 @@ const cr::CreativeDocument& creativeEditorWorldLayoutRenderDocument(
 
 const cr::CreativeWorldLayout& creativeEditorWorldLayoutDisplaySource(
     const CreativeEditorWorldLayoutState& state) noexcept {
-  if (state.buildingTemplatePlacement.active &&
-      state.buildingTemplatePlacement.previewValid &&
-      state.buildingTemplatePlacement.sourceRevision == state.revision &&
-      state.buildingTemplatePlacement.resultBuildingIndex <
-          state.buildingTemplatePlacement.candidate.buildings.size()) {
-    return state.buildingTemplatePlacement.candidate;
+  return *inspectionDisplaySource(state);
+}
+
+CreativeEditorWorldLayoutInspection inspectCreativeEditorWorldLayout(
+    const CreativeEditorWorldLayoutState& state) noexcept {
+  CreativeEditorWorldLayoutInspection inspection;
+  inspection.source = inspectionDisplaySource(state);
+  const bool exactPreview = exactPreviewActive(state);
+  const InspectionPreviewProbe probe = activePreviewProbe(state);
+  const bool previewRequested = exactPreview || probe.requested;
+  inspection.sourceKind =
+      previewRequested || inspection.source != &state.source
+          ? CreativeEditorWorldLayoutInspectionSourceKind::Preview
+          : CreativeEditorWorldLayoutInspectionSourceKind::Authored;
+  inspection.previewValidity =
+      exactPreview
+          ? CreativeEditorWorldLayoutPreviewValidity::Valid
+          : probe.requested
+                ? CreativeEditorWorldLayoutPreviewValidity::Invalid
+                : CreativeEditorWorldLayoutPreviewValidity::None;
+  inspection.contentRevision =
+      exactPreview ? state.previewContentRevision : 0U;
+  inspection.volatileSource = inspection.source != &state.source &&
+                              inspection.source != &state.previewSource;
+  inspection.reasonCode =
+      exactPreview ? state.preview.reasonCode
+                   : probe.requested
+                         ? probe.valid
+                               ? "creative_editor_world_layout_inspection_3d_preview_missing"
+                               : probe.reasonCode
+                         : "creative_editor_world_layout_inspection_authored";
+
+  const cr::CreativeWorldLayoutTable table =
+      creativeEditorWorldLayoutSelectionTable(state.selection.kind);
+  if (table != cr::CreativeWorldLayoutTable::None &&
+      !creativeEditorWorldLayoutSourceStableKey(
+           state, table, state.selection.index)
+           .empty()) {
+    inspection.authoredSource = {table, state.selection.index};
   }
-  return state.buildingTransform.active &&
-                 state.buildingTransform.sourceRevision == state.revision &&
-                 state.buildingTransform.buildingIndex <
-                     state.buildingTransform.candidate.buildings.size()
-             ? state.buildingTransform.candidate
-             : state.source;
+  return inspection;
 }
 
 CreativeEditorWorldLayoutEditReceipt cancelCreativeEditorWorldLayoutPreview(
@@ -150,6 +306,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewCreativeEditorWorldLayout(
     return receipt;
   }
   state.preview = std::move(preview);
+  state.previewSource = state.source;
   state.previewVisible = true;
   state.liveEditPreviewVisible = false;
   state.previewLayoutRevision = state.revision;

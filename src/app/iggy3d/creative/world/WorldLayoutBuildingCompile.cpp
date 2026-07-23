@@ -1,17 +1,59 @@
 #include "app/iggy3d/creative/world/WorldLayoutCompileInternal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
-
-#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
-#include "app/iggy3d/creative/recipes/TerrainGrounding.hpp"
+#include "app/iggy3d/creative/recipes/RetainingEdgeRecipe.hpp"
+#include "app/iggy3d/creative/recipes/RoadRecipe.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace iggy3d::creative::world_layout_compile {
+namespace {
+
+using HardEdgesByTerrainSource =
+    std::map<std::string, std::vector<CreativeTerrainHardEdge>, std::less<>>;
+
+[[nodiscard]] bool coordInside(
+    CreativeTerrainCoord2 coord,
+    CreativeTerrainHeightFieldBounds bounds) noexcept {
+  const std::int64_t x =
+      static_cast<std::int64_t>(coord.x) - bounds.minimum.x;
+  const std::int64_t z =
+      static_cast<std::int64_t>(coord.z) - bounds.minimum.z;
+  return x >= 0 && z >= 0 && x < bounds.widthCells &&
+         z < bounds.depthCells;
+}
+
+[[nodiscard]] HardEdgesByTerrainSource finalLandformHardEdgeOwners(
+    const CreativeDocument& document) {
+  HardEdgesByTerrainSource output;
+  const auto& operations = document.terrainOperationStack().operations;
+  // Landforms are the only operations that add hard edges, and each one first
+  // erases every seam touching its bounds. The last touching landform therefore
+  // owns a surviving seam. This reverse scan is bounded by E * 64 operations.
+  for (const CreativeTerrainHardEdge edge : document.terrainHardEdges()) {
+    for (auto operation = operations.rbegin(); operation != operations.rend();
+         ++operation) {
+      if (!operation->enabled ||
+          operation->kind != CreativeTerrainOperationKind::Landform ||
+          (!coordInside(edge.first, operation->landform.bounds) &&
+           !coordInside(edge.second, operation->landform.bounds))) {
+        continue;
+      }
+      output[operation->sourceKey].push_back(edge);
+      break;
+    }
+  }
+  return output;
+}
+
+}  // namespace
 
 bool buildWorldLayoutObjectRecipes(
     const CreativeDocument& document,
@@ -29,7 +71,8 @@ bool buildWorldLayoutObjectRecipes(
   }
   const CreativeTerrainSurfacePlan terrainSurface =
       buildCreativeComposedTerrainSurfacePlan(
-          terrainStaged.terrainField(), document.terrainHeightField());
+          terrainStaged.terrainField(), terrainStaged.terrainHeightField(),
+          terrainStaged.terrainHardEdges());
   if (!terrainSurface.accepted) {
     result.receipt.kernelReasonCode = terrainSurface.reasonCode;
     setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
@@ -37,32 +80,59 @@ bool buildWorldLayoutObjectRecipes(
     return false;
   }
 
-  const double floorLayerThickness =
-      defaultCreativeStructuralLayerThicknessMeters(CreativeObjectKind::Floor);
+  result.plan.retainingEdgePlans.clear();
+  result.receipt.retainingEdgeRecipeCount = 0U;
+  result.receipt.retainingEdgeGeneratedObjectCount = 0U;
+  const HardEdgesByTerrainSource ownedHardEdges =
+      finalLandformHardEdgeOwners(terrainStaged);
+  for (std::size_t index = 0U; index < layout.terrainProfiles.size(); ++index) {
+    const CreativeWorldLayoutTerrainProfile& profile =
+        layout.terrainProfiles[index];
+    if (!profile.usesRetainingEdgeRecipe) {
+      continue;
+    }
+    CreativeRetainingEdgeRecipeRequest request;
+    request.instanceKey = profile.stableKey;
+    request.name = profile.stableKey + " Retaining Edge";
+    request.grid = grid;
+    request.profileBounds = profile.landform.bounds;
+    request.source = profile.retainingEdge;
+    request.terrain = &terrainStaged.terrainHeightField();
+    const std::string terrainSourceKey =
+        creativeWorldLayoutTerrainLandformSourceKey(layout.stableKey,
+                                                    profile.stableKey);
+    const auto owned = ownedHardEdges.find(terrainSourceKey);
+    request.hardEdges =
+        owned == ownedHardEdges.end()
+            ? std::span<const CreativeTerrainHardEdge>{}
+            : std::span<const CreativeTerrainHardEdge>{owned->second};
+    request.tags.push_back(creativeWorldLayoutTag(layout.stableKey));
+    request.tags.push_back(creativeWorldLayoutProvenanceTag(
+        layout, CreativeWorldLayoutTable::TerrainProfile, index));
+    CreativeRetainingEdgeRecipeResult planned =
+        planCreativeRetainingEdge(request);
+    if (!planned.receipt.accepted) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::TerrainProfile;
+      result.receipt.failedIndex = index;
+      result.receipt.kernelReasonCode = planned.receipt.reasonCode;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_retaining_edge_recipe_rejected");
+      return false;
+    }
+    ++result.receipt.retainingEdgeRecipeCount;
+    result.receipt.retainingEdgeGeneratedObjectCount +=
+        planned.receipt.generatedObjectCount;
+    desiredObjectRecipes.push_back(planned.structure);
+    result.plan.retainingEdgePlans.push_back(std::move(planned));
+  }
+
   for (std::size_t index = 0U; index < buildings.size(); ++index) {
     const CreativeWorldLayoutBuilding& symbol = layout.buildings[index];
     if (symbol.groundingMode ==
         CreativeWorldLayoutGroundingMode::Foundation) {
-      double authoredGroundLayer =
-          std::numeric_limits<double>::infinity();
-      for (const CreativeWorldLayoutLevel& level : layout.levels) {
-        if (level.buildingIndex == index) {
-          const double floorThicknessLayers =
-              static_cast<double>(level.floorThicknessLayers) *
-              floorLayerThickness / grid.cellSizeMeters;
-          authoredGroundLayer =
-              std::min(authoredGroundLayer,
-                       level.floorTopLayer - floorThicknessLayers);
-        }
-      }
-      if (!std::isfinite(authoredGroundLayer)) {
-        authoredGroundLayer = static_cast<double>(symbol.rootBaseLayer);
-      }
       const CreativeTerrainGroundingPlan grounding =
-          planCreativeTerrainGrounding(
-              {&terrainSurface, symbol.rootFootprint.minimum,
-               symbol.rootFootprint.maximum, authoredGroundLayer,
-               symbol.maximumGroundReliefCells});
+          planCreativeWorldLayoutBuildingGrounding(layout, index, grid,
+                                                   terrainSurface);
       if (!grounding.accepted) {
         result.receipt.failedTable = CreativeWorldLayoutTable::Building;
         result.receipt.failedIndex = index;
@@ -154,6 +224,42 @@ bool buildWorldLayoutObjectRecipes(
   }
   for (CreativeRecipePlan& recipe : desiredLibraryRecipes) {
     desiredObjectRecipes.push_back(std::move(recipe));
+  }
+  for (std::size_t index = 0U; index < layout.terrainPaths.size(); ++index) {
+    const CreativeWorldLayoutTerrainPath& symbol = layout.terrainPaths[index];
+    if (symbol.recipe.kind != CreativeTerrainPathKind::Road ||
+        symbol.recipe.road.edgeTreatment ==
+            CreativeTerrainRoadEdgeTreatment::None) {
+      continue;
+    }
+    CreativeRoadRecipeRequest road;
+    // Recipe instance keys share the same 128-character identifier grammar as
+    // building recipes. The terrain operation source key intentionally uses a
+    // slash-delimited namespace and therefore cannot double as provenance.
+    road.instanceKey = symbol.stableKey;
+    road.name = symbol.stableKey;
+    road.grid = grid;
+    road.source = symbol.recipe;
+    road.tags.push_back(creativeWorldLayoutTag(layout.stableKey));
+    road.tags.push_back(creativeWorldLayoutProvenanceTag(
+        layout, CreativeWorldLayoutTable::TerrainPath, index));
+    CreativeRoadStructureResult structure = planCreativeRoadStructure(
+        terrainStaged.terrainHeightField(), road);
+    if (!structure.receipt.accepted) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::TerrainPath;
+      result.receipt.failedIndex = index;
+      result.receipt.kernelReasonCode =
+          std::string(structure.receipt.reasonCode);
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_road_structure_rejected");
+      return false;
+    }
+    if (!structure.plan.objects.empty()) {
+      desiredObjectRecipes.push_back(std::move(structure.plan));
+    }
+  }
+  for (const CreativeBridgeRecipeResult& bridge : result.plan.bridgePlans) {
+    desiredObjectRecipes.push_back(bridge.structure);
   }
   return true;
 }

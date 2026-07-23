@@ -3,6 +3,8 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjectionInternal.hpp"
 
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+
 #include <span>
 #include <utility>
 #include <vector>
@@ -335,8 +337,15 @@ CreativeSpatialProjectionReceipt projectObjectsToGrid(
                            "aggregate_empty");
 
   for (const CreativeObject& object : objects) {
-    CreativeSpatialProjectionReceipt receipt = projectObjectToGrid(object,
-                                                                   request);
+    const CreativeObjectHierarchyState hierarchyState =
+        resolveCreativeObjectHierarchyState(objects, object.id);
+    CreativeSpatialProjectionReceipt receipt;
+    if (!hierarchyState.resolved || !hierarchyState.effectivelyVisible) {
+      receipt.status = CreativeSpatialProjectionStatus::NoProjection;
+      receipt.message = "object_hidden";
+    } else {
+      receipt = projectObjectToGrid(object, request);
+    }
     if (!receipt.cells.empty()) {
       aggregate.cells.reserve(aggregate.cells.size() + receipt.cells.size());
       aggregate.cells.insert(aggregate.cells.end(),

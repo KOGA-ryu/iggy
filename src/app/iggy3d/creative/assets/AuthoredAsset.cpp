@@ -187,6 +187,12 @@ struct CaptureNormalization {
       rotationRadians == 0.0) {
     return true;
   }
+  // Pattern recipes currently encode cardinal linear directions and circular
+  // radial axes. Until those schemas can represent arbitrary asset transforms,
+  // reject rather than silently desynchronize the recipe from its geometry.
+  if (!clipboard.patternRecipes.empty()) {
+    return false;
+  }
   CreativeSelectionPlacementRequest request;
   request.mode = CreativeSelectionPlacementMode::Copy;
   request.sourceAnchor = anchor;
@@ -266,6 +272,11 @@ struct CaptureNormalization {
            "creative_authored_asset_geometry_invalid", copied.failedObjectId);
     return result;
   }
+  if (source.objects.size() > kCreativeAuthoredAssetObjectCapacity) {
+    reject(result, CreativeAuthoredAssetStatus::CapacityExceeded,
+           "creative_authored_asset_capacity_exceeded");
+    return result;
+  }
 
   CreativeDocument storage = CreativeDocument::create(std::string(label));
   if (!storage.assignId(definitionDocumentId)) {
@@ -320,7 +331,7 @@ struct CaptureNormalization {
   result.status = CreativeAuthoredAssetStatus::Ready;
   result.definition = std::move(loaded.definition);
   result.storageDocument = std::move(storage);
-  result.capturedObjectCount = hierarchy.objectIds.size();
+  result.capturedObjectCount = source.objects.size();
   result.reasonCode = "creative_authored_asset_captured";
   return result;
 }

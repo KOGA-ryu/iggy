@@ -8,7 +8,7 @@
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
-#include "EditorToolCapabilities.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 namespace iggy3d_creative_app {
@@ -19,12 +19,16 @@ namespace {
     cr::CreativeToolOptionId option) noexcept {
   switch (option) {
     case cr::CreativeToolOptionId::AssetPlacementMode:
+    case cr::CreativeToolOptionId::AssetAlignmentMode:
+    case cr::CreativeToolOptionId::AssetAttachmentMode:
+    case cr::CreativeToolOptionId::AssetScatterMask:
     case cr::CreativeToolOptionId::AssetScatterRadius:
     case cr::CreativeToolOptionId::AssetScatterDensity:
     case cr::CreativeToolOptionId::AssetScatterSpacing:
     case cr::CreativeToolOptionId::AssetScatterYaw:
     case cr::CreativeToolOptionId::AssetScatterScale:
     case cr::CreativeToolOptionId::AssetScatterSlope:
+    case cr::CreativeToolOptionId::AssetScatterCollision:
       return true;
     default:
       return false;
@@ -32,12 +36,14 @@ namespace {
 }
 
 constexpr std::array kAssetScatterOptions{
+    cr::CreativeToolOptionId::AssetScatterMask,
     cr::CreativeToolOptionId::AssetScatterRadius,
     cr::CreativeToolOptionId::AssetScatterDensity,
     cr::CreativeToolOptionId::AssetScatterSpacing,
     cr::CreativeToolOptionId::AssetScatterYaw,
     cr::CreativeToolOptionId::AssetScatterScale,
     cr::CreativeToolOptionId::AssetScatterSlope,
+    cr::CreativeToolOptionId::AssetScatterCollision,
 };
 
 }  // namespace
@@ -47,7 +53,7 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
     const cr::CreativeToolSettings& settings) noexcept {
   cr::CreativeToolOptionList options =
       cr::creativeToolOptionsForHeldItem(entry.kind, settings);
-  if (describeCreativeEditorToolCapability(entry.kind).optionFilterProfile !=
+  if (describeCreativeEditorHeldItemTool(entry.kind).optionFilterProfile !=
       CreativeEditorToolOptionFilterProfile::MaterialPlacement) {
     return options;
   }
@@ -83,6 +89,8 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
       }
       return filtered;
     }
+    appendOption(cr::CreativeToolOptionId::AssetAlignmentMode);
+    appendOption(cr::CreativeToolOptionId::AssetAttachmentMode);
   }
   for (std::size_t readIndex = 0U; readIndex < options.count; ++readIndex) {
     const cr::CreativeToolOptionId option = options.ids[readIndex];
@@ -101,9 +109,11 @@ cr::CreativeToolOptionList creativeEditorToolOptionsForEntry(
 CreativeEditorToolOptionsCommandList
 creativeEditorToolOptionCommandsForEntry(
     cr::CreativeHotbarEntry entry,
-    cr::CreativeObjectKind contextPrimaryObjectKind) noexcept {
+    cr::CreativeObjectKind contextPrimaryObjectKind,
+    cr::CreativePatternRecipeId contextPatternRecipeId,
+    cr::CreativePatternRecipeKind contextPatternRecipeKind) noexcept {
   CreativeEditorToolOptionsCommandList commands;
-  switch (describeCreativeEditorToolCapability(entry.kind).commandProfile) {
+  switch (describeCreativeEditorHeldItemTool(entry.kind).commandProfile) {
     case CreativeEditorToolCommandProfile::None:
       break;
     case CreativeEditorToolCommandProfile::MaterialBrush:
@@ -142,6 +152,8 @@ creativeEditorToolOptionCommandsForEntry(
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::ToggleSelectionLocked;
       commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::ReattachAttachment;
+      commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::DetachAttachment;
       commands.ids[commands.count++] =
           CreativeEditorToolOptionsCommandId::GroupSelection;
@@ -172,6 +184,15 @@ creativeEditorToolOptionCommandsForEntry(
       break;
     case CreativeEditorToolCommandProfile::Count:
       break;
+  }
+  if (contextPatternRecipeId != cr::kInvalidCreativePatternRecipeId) {
+    if (contextPatternRecipeKind ==
+        cr::CreativePatternRecipeKind::AssetScatter) {
+      commands.ids[commands.count++] =
+          CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe;
+    }
+    commands.ids[commands.count++] =
+        CreativeEditorToolOptionsCommandId::DetachPatternRecipe;
   }
   return commands;
 }
@@ -217,7 +238,7 @@ bool processCreativeEditorQuickEditAction(
     cr::CreativeInputActionId action) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+  switch (describeCreativeEditorHeldItemTool(held.kind).quickEditProfile) {
     case CreativeEditorQuickEditProfile::LogicLink:
       switch (action) {
         case cr::CreativeInputActionId::QuickEditPrevious:
@@ -296,7 +317,7 @@ std::string creativeEditorQuickEditStatusLabel(
     const CreativeEditorState& editor) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  switch (describeCreativeEditorToolCapability(held.kind).quickEditProfile) {
+  switch (describeCreativeEditorHeldItemTool(held.kind).quickEditProfile) {
     case CreativeEditorQuickEditProfile::LogicLink:
       return std::string{cr::toString(editor.logicLinks.action)};
     case CreativeEditorQuickEditProfile::TerrainControl:

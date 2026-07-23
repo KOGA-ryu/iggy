@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -68,6 +69,9 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
               cr::CreativeControlDevice::Gamepad, 1U);
   const cr::CreativeControlBindingRow* inventory =
       findRow(rows, cr::CreativeInputActionId::ToggleCatalog,
+              cr::CreativeControlDevice::Gamepad);
+  const cr::CreativeControlBindingRow* frameContext =
+      findRow(rows, cr::CreativeInputActionId::FrameContext3D,
               cr::CreativeControlDevice::Gamepad);
   const cr::CreativeControlBindingRow* runtimeAttackMouse =
       findRow(rows, cr::CreativeInputActionId::RuntimeAttack,
@@ -137,6 +141,10 @@ bool defaultsAreBoundedConflictFreeAndMinecraftShaped() {
                     inventory->trigger ==
                         cr::CreativeInputKey::GamepadInventory,
                 "Triangle remains inventory") &&
+         expect(frameContext != nullptr &&
+                    frameContext->trigger ==
+                        cr::CreativeInputKey::GamepadBack,
+                "PS5 Create frames selection or the full scene") &&
          expect(runtimeAttackMouse != nullptr &&
                     runtimeAttackMouse->trigger ==
                         cr::CreativeInputKey::MousePrimary &&
@@ -177,6 +185,87 @@ bool continuousBindingsAreQueryableWithoutEdgeEvents() {
                 "continuous action does not emit command edge") &&
          expect(!cr::creativeInputKeyConsumed(routed, cr::CreativeInputKey::W),
                 "continuous action leaves physical key available");
+}
+
+bool requiredPs5ActionsRemainReachable() {
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  const std::span<const cr::CreativeControlReachabilityRequirement>
+      requirements = cr::defaultCreativeGamepadReachabilityRequirements();
+  const cr::CreativeControlReachabilityAuditResult defaults =
+      cr::auditCreativeControlReachability(profile.bindingSpan(), requirements);
+
+  std::vector<cr::CreativeInputBinding> withoutAccept(
+      profile.bindingSpan().begin(), profile.bindingSpan().end());
+  const auto accept = std::find_if(
+      withoutAccept.begin(), withoutAccept.end(),
+      [](const cr::CreativeInputBinding& binding) {
+        return binding.action == cr::CreativeInputActionId::AcceptAction &&
+               binding.context == cr::CreativeInputContext::EditorViewport &&
+               binding.trigger == cr::CreativeInputKey::GamepadConfirm;
+      });
+  if (accept == withoutAccept.end()) {
+    return expect(false, "PS5 viewport accept binding exists");
+  }
+  const std::size_t acceptIndex =
+      static_cast<std::size_t>(std::distance(withoutAccept.begin(), accept));
+  withoutAccept.erase(accept);
+  const cr::CreativeControlReachabilityAuditResult removed =
+      cr::auditCreativeControlReachability(withoutAccept, requirements);
+
+  std::vector<cr::CreativeInputBinding> wrongDevice(
+      profile.bindingSpan().begin(), profile.bindingSpan().end());
+  wrongDevice[acceptIndex].trigger = cr::CreativeInputKey::Enter;
+  const cr::CreativeControlReachabilityAuditResult deviceMismatch =
+      cr::auditCreativeControlReachability(wrongDevice, requirements);
+
+  std::vector<cr::CreativeInputBinding> wrongActivation(
+      profile.bindingSpan().begin(), profile.bindingSpan().end());
+  wrongActivation[acceptIndex].activation =
+      cr::CreativeInputBindingActivation::Press;
+  const cr::CreativeControlReachabilityAuditResult activationMismatch =
+      cr::auditCreativeControlReachability(wrongActivation, requirements);
+
+  const std::array invalidRequirements{
+      cr::CreativeControlReachabilityRequirement{
+          cr::CreativeInputActionId::Count,
+          cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad,
+          cr::CreativeInputBindingActivation::Press},
+  };
+  const cr::CreativeControlReachabilityAuditResult invalid =
+      cr::auditCreativeControlReachability(profile.bindingSpan(),
+                                            invalidRequirements);
+
+  const auto missingAccept = [](const auto& audit) {
+    return audit.issueCount == 1U &&
+           audit.issues[0].kind ==
+               cr::CreativeControlReachabilityIssueKind::MissingBinding &&
+           audit.issues[0].requirement.action ==
+               cr::CreativeInputActionId::AcceptAction &&
+           audit.issues[0].requirement.context ==
+               cr::CreativeInputContext::EditorViewport;
+  };
+
+  return expect(requirements.size() > 70U &&
+                    requirements.size() <=
+                        cr::kCreativeControlReachabilityRequirementCapacity,
+                "PS5 release matrix is substantial and fixed-capacity") &&
+         expect(defaults.issueCount == 0U &&
+                    !defaults.bindingCapacityExceeded &&
+                    !defaults.requirementCapacityExceeded,
+                "default profile reaches every required PS5 action") &&
+         expect(missingAccept(removed),
+                "removed X binding reports one unreachable action") &&
+         expect(missingAccept(deviceMismatch),
+                "keyboard replacement does not satisfy PS5 reachability") &&
+         expect(missingAccept(activationMismatch),
+                "press binding does not satisfy continuous held action") &&
+         expect(invalid.issueCount == 1U &&
+                    invalid.issues[0].kind ==
+                        cr::CreativeControlReachabilityIssueKind::
+                            InvalidRequirement,
+                "invalid release requirement fails closed");
 }
 
 bool conflictPoliciesRejectReplaceAndSwapDeterministically() {
@@ -406,6 +495,7 @@ int main() {
   bool ok = true;
   ok = defaultsAreBoundedConflictFreeAndMinecraftShaped() && ok;
   ok = continuousBindingsAreQueryableWithoutEdgeEvents() && ok;
+  ok = requiredPs5ActionsRemainReachable() && ok;
   ok = conflictPoliciesRejectReplaceAndSwapDeterministically() && ok;
   ok = deviceAndReservedBoundariesFailClosed() && ok;
   ok = standaloneModifierKeysRemainBindable() && ok;

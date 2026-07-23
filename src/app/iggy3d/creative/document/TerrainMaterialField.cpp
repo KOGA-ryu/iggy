@@ -28,12 +28,98 @@ using ConstIterator =
   if (edit.kind == CreativeTerrainMaterialEditKind::Clear) {
     return true;
   }
-  return edit.kind == CreativeTerrainMaterialEditKind::Set &&
-         isValidCreativeTerrainMaterial(edit.material) &&
-         edit.material != CreativeTerrainMaterial::Grass;
+  if (edit.kind == CreativeTerrainMaterialEditKind::Set) {
+    return isValidCreativeTerrainMaterial(edit.material) &&
+           edit.material != CreativeTerrainMaterial::Grass;
+  }
+  return edit.kind == CreativeTerrainMaterialEditKind::SetWeights &&
+         isValidCreativeTerrainMaterialWeights(edit.weights);
+}
+
+[[nodiscard]] bool canonicalGrass(
+    const CreativeTerrainMaterialWeights& weights) noexcept {
+  return weights ==
+         creativeTerrainMaterialSolidWeights(CreativeTerrainMaterial::Grass);
+}
+
+[[nodiscard]] bool editKeepsOverride(
+    const CreativeTerrainMaterialEdit& edit) noexcept {
+  return edit.kind == CreativeTerrainMaterialEditKind::Set ||
+         (edit.kind == CreativeTerrainMaterialEditKind::SetWeights &&
+          !canonicalGrass(edit.weights));
+}
+
+[[nodiscard]] CreativeTerrainMaterialOverride overrideForEdit(
+    const CreativeTerrainMaterialEdit& edit) noexcept {
+  return edit.kind == CreativeTerrainMaterialEditKind::SetWeights
+             ? CreativeTerrainMaterialOverride{edit.coord, edit.weights}
+             : CreativeTerrainMaterialOverride{edit.coord, edit.material};
 }
 
 }  // namespace
+
+bool isValidCreativeTerrainMaterialWeights(
+    const CreativeTerrainMaterialWeights& weights) noexcept {
+  std::uint16_t total = 0U;
+  for (std::uint8_t weight : weights) {
+    total = static_cast<std::uint16_t>(total + weight);
+  }
+  return total == kCreativeTerrainMaterialWeightTotal;
+}
+
+CreativeTerrainMaterial dominantCreativeTerrainMaterial(
+    const CreativeTerrainMaterialWeights& weights) noexcept {
+  if (!isValidCreativeTerrainMaterialWeights(weights)) {
+    return CreativeTerrainMaterial::Count;
+  }
+  std::size_t dominant = 0U;
+  for (std::size_t index = 1U; index < weights.size(); ++index) {
+    if (weights[index] > weights[dominant]) {
+      dominant = index;
+    }
+  }
+  return static_cast<CreativeTerrainMaterial>(dominant);
+}
+
+CreativeVec3 creativeTerrainMaterialRenderColor(
+    const CreativeTerrainMaterialWeights& weights) noexcept {
+  constexpr std::array<CreativeVec3, kCreativeTerrainMaterialCount> colors{{
+      {0.22, 0.52, 0.20},
+      {0.42, 0.25, 0.10},
+      {0.42, 0.44, 0.46},
+      {0.78, 0.68, 0.38},
+  }};
+  if (!isValidCreativeTerrainMaterialWeights(weights)) {
+    return colors.front();
+  }
+  CreativeVec3 result{};
+  for (std::size_t index = 0U; index < weights.size(); ++index) {
+    const double amount = static_cast<double>(weights[index]) /
+                          static_cast<double>(kCreativeTerrainMaterialWeightTotal);
+    result.x += colors[index].x * amount;
+    result.y += colors[index].y * amount;
+    result.z += colors[index].z * amount;
+  }
+  return result;
+}
+
+CreativeTerrainMaterialOverride::CreativeTerrainMaterialOverride(
+    CreativeTerrainCoord2 sourceCoord,
+    CreativeTerrainMaterialWeights sourceWeights) noexcept
+    : coord(sourceCoord),
+      material(dominantCreativeTerrainMaterial(sourceWeights)),
+      weights(sourceWeights) {}
+
+CreativeTerrainMaterialEdit makeCreativeTerrainMaterialWeightEdit(
+    CreativeTerrainCoord2 coord,
+    const CreativeTerrainMaterialWeights& weights) noexcept {
+  CreativeTerrainMaterialEdit edit;
+  edit.kind = CreativeTerrainMaterialEditKind::SetWeights;
+  edit.coord = coord;
+  edit.material = dominantCreativeTerrainMaterial(weights);
+  edit.weights = weights;
+  return edit;
+}
 
 bool isValidCreativeTerrainMaterial(CreativeTerrainMaterial material) noexcept {
   return material >= CreativeTerrainMaterial::Grass &&
@@ -107,8 +193,9 @@ bool CreativeTerrainMaterialField::validateInvariants() const noexcept {
   }
   for (std::size_t index = 0U; index < overrides_.size(); ++index) {
     const CreativeTerrainMaterialOverride& value = overrides_[index];
-    if (!isValidCreativeTerrainMaterial(value.material) ||
-        value.material == CreativeTerrainMaterial::Grass ||
+    if (!isValidCreativeTerrainMaterialWeights(value.weights) ||
+        value.material != dominantCreativeTerrainMaterial(value.weights) ||
+        canonicalGrass(value.weights) ||
         (index > 0U && !coordLess(overrides_[index - 1U].coord, value.coord))) {
       return false;
     }
@@ -139,6 +226,14 @@ CreativeTerrainMaterial CreativeTerrainMaterialField::materialAt(
     CreativeTerrainCoord2 coord) const noexcept {
   const CreativeTerrainMaterialOverride* found = overrideAt(coord);
   return found == nullptr ? CreativeTerrainMaterial::Grass : found->material;
+}
+
+CreativeTerrainMaterialWeights CreativeTerrainMaterialField::weightsAt(
+    CreativeTerrainCoord2 coord) const noexcept {
+  const CreativeTerrainMaterialOverride* found = overrideAt(coord);
+  return found == nullptr
+             ? creativeTerrainMaterialSolidWeights(CreativeTerrainMaterial::Grass)
+             : found->weights;
 }
 
 CreativeTerrainMaterialMutationReceipt CreativeTerrainMaterialField::apply(
@@ -200,8 +295,8 @@ CreativeTerrainMaterialMutationReceipt CreativeTerrainMaterialField::apply(
     const CreativeTerrainMaterialEdit& edit = ordered[editIndex];
     if (overrideIndex == overrides_.size() ||
         coordLess(edit.coord, overrides_[overrideIndex].coord)) {
-      if (edit.kind == CreativeTerrainMaterialEditKind::Set) {
-        staged.push_back({edit.coord, edit.material});
+      if (editKeepsOverride(edit)) {
+        staged.push_back(overrideForEdit(edit));
         ++receipt.changedOverrideCount;
       }
       ++editIndex;
@@ -209,11 +304,12 @@ CreativeTerrainMaterialMutationReceipt CreativeTerrainMaterialField::apply(
     }
     const CreativeTerrainMaterialOverride& existing =
         overrides_[overrideIndex];
-    if (edit.kind == CreativeTerrainMaterialEditKind::Clear) {
+    if (!editKeepsOverride(edit)) {
       ++receipt.changedOverrideCount;
     } else {
-      staged.push_back({edit.coord, edit.material});
-      if (existing.material != edit.material) {
+      const CreativeTerrainMaterialOverride replacement = overrideForEdit(edit);
+      staged.push_back(replacement);
+      if (!(existing == replacement)) {
         ++receipt.changedOverrideCount;
       }
     }

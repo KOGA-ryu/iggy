@@ -23,13 +23,16 @@ CreativeDocument::applyTerrainOperationMutation(
 
   CreativeTerrainOperationMutationPlan plan =
       planCreativeTerrainOperationMutation(
-          terrainField_, terrainHeightField_, terrainOperationStack_, request);
+          terrainField_, terrainHeightField_, terrainMaterialField_,
+          terrainOperationStack_, request, nullptr, &terrainHardEdges_);
   if (!plan.receipt.accepted || !plan.receipt.changed) {
     return plan.receipt;
   }
 
   terrainOperationStack_ = std::move(plan.stack);
   terrainHeightField_ = std::move(plan.heightField);
+  terrainMaterialField_ = std::move(plan.materialField);
+  terrainHardEdges_ = std::move(plan.hardEdges);
   markObjectMutationChanged(
       dirtyFlagsForCreation(CreativeObjectKind::TerrainPatch) |
       documentSettingsDirtyFlags());

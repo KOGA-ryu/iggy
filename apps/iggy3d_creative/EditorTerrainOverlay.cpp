@@ -20,7 +20,6 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
-using terrain_detail::terrainGradePlan;
 using terrain_detail::terrainPointerCoord;
 using terrain_detail::terrainRodBounds;
 using terrain_detail::terrainSeedPlan;
@@ -110,18 +109,6 @@ void appendTerrainFootprintOutline(
       }
     }
   }
-}
-
-[[nodiscard]] cr::CreativeVec3 terrainRodTopCenter(
-    cr::CreativeGridSettings grid,
-    cr::CreativeTerrainControlPoint control) noexcept {
-  return {grid.origin.x +
-              (static_cast<double>(control.coord.x) + 0.5) *
-                  grid.cellSizeMeters,
-          grid.origin.y + control.heightCells * grid.cellSizeMeters,
-          grid.origin.z +
-              (static_cast<double>(control.coord.z) + 0.5) *
-                  grid.cellSizeMeters};
 }
 
 void appendTerrainLine(
@@ -239,66 +226,113 @@ void appendTerrainGradePreview(
     const CreativeEditorState& editor,
     float thickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines) {
+  constexpr iggy3d::RenderLineColor storedColor{0.18F, 0.58F, 0.68F, 0.75F};
   constexpr iggy3d::RenderLineColor anchorColor{0.18F, 0.82F, 0.92F, 1.0F};
   constexpr iggy3d::RenderLineColor gradeColor{0.30F, 1.0F, 0.38F, 1.0F};
+  constexpr iggy3d::RenderLineColor falloffColor{0.90F, 0.74F, 0.18F, 0.8F};
   constexpr iggy3d::RenderLineColor invalidColor{1.0F, 0.20F, 0.16F, 1.0F};
   const cr::CreativeGridSettings grid = document.gridSettings();
-  cr::CreativeTerrainCoord2 target{};
-  if (!editor.terrain.grade.anchorValid) {
-    if (!terrainPointerCoord(editor, target)) {
+  const CreativeTerrainGradeState& grade = editor.terrain.grade;
+  const auto point = [&](cr::CreativeTerrainCoord2 coord,
+                         std::uint16_t height) {
+    return cr::CreativeVec3{
+        grid.origin.x + (static_cast<double>(coord.x) + 0.5) *
+                            grid.cellSizeMeters,
+        grid.origin.y + height * grid.cellSizeMeters +
+            grid.cellSizeMeters * 0.08,
+        grid.origin.z + (static_cast<double>(coord.z) + 0.5) *
+                            grid.cellSizeMeters};
+  };
+  const auto handleBounds = [&](cr::CreativeTerrainCoord2 coord,
+                                std::uint16_t height) {
+    const cr::CreativeVec3 center = point(coord, height);
+    const double half = grid.cellSizeMeters * 0.18;
+    return cr::CreativeBounds{{center.x - half, center.y - half,
+                               center.z - half},
+                              {center.x + half, center.y + half,
+                               center.z + half}};
+  };
+  const auto appendBoundary = [&](const cr::CreativeTerrainGradeRecipe& recipe,
+                                  double offsetCells,
+                                  iggy3d::RenderLineColor color,
+                                  float lineThickness) {
+    const double dx = static_cast<double>(recipe.end.x) - recipe.start.x;
+    const double dz = static_cast<double>(recipe.end.z) - recipe.start.z;
+    const double length = std::hypot(dx, dz);
+    if (!std::isfinite(length) || length <= 0.0) {
       return;
     }
-    const cr::CreativeTerrainControlPoint* control =
-        document.terrainField().controlAt(target);
-    if (control != nullptr) {
-      appendBounds(lines, terrainRodBounds(grid, *control, 0.24), anchorColor,
-                   thickness * 1.4F);
+    const double offset = (offsetCells + 0.5) * grid.cellSizeMeters;
+    const double perpendicularX = -dz / length * offset;
+    const double perpendicularZ = dx / length * offset;
+    const cr::CreativeVec3 start = point(recipe.start,
+                                         recipe.startHeightCells);
+    const cr::CreativeVec3 end = point(recipe.end, recipe.endHeightCells);
+    const cr::CreativeVec3 startLeft{start.x + perpendicularX, start.y,
+                                     start.z + perpendicularZ};
+    const cr::CreativeVec3 startRight{start.x - perpendicularX, start.y,
+                                      start.z - perpendicularZ};
+    const cr::CreativeVec3 endLeft{end.x + perpendicularX, end.y,
+                                   end.z + perpendicularZ};
+    const cr::CreativeVec3 endRight{end.x - perpendicularX, end.y,
+                                    end.z - perpendicularZ};
+    appendTerrainLine(lines, startLeft, endLeft, color, lineThickness);
+    appendTerrainLine(lines, endLeft, endRight, color, lineThickness);
+    appendTerrainLine(lines, endRight, startRight, color, lineThickness);
+    appendTerrainLine(lines, startRight, startLeft, color, lineThickness);
+  };
+
+  for (const cr::CreativeTerrainOperation& operation :
+       document.terrainOperationStack().operations) {
+    if (operation.kind != cr::CreativeTerrainOperationKind::Grade ||
+        operation.id == grade.editingOperationId) {
+      continue;
     }
+    appendTerrainLine(lines,
+                      point(operation.grade.start,
+                            operation.grade.startHeightCells),
+                      point(operation.grade.end,
+                            operation.grade.endHeightCells),
+                      storedColor, thickness * 0.8F);
+    appendBounds(lines,
+                 handleBounds(operation.grade.start,
+                              operation.grade.startHeightCells),
+                 storedColor, thickness * 0.8F);
+    appendBounds(lines,
+                 handleBounds(operation.grade.end,
+                              operation.grade.endHeightCells),
+                 storedColor, thickness * 0.8F);
+  }
+  if (!grade.active) {
     return;
   }
 
-  const CreativeTerrainGradeState& grade = editor.terrain.grade;
-  const cr::CreativeTerrainControlPoint anchor{
-      grade.anchorCoord, grade.anchorHeightCells, grade.radiusCells};
-  if (!terrainPointerCoord(editor, target)) {
-    appendBounds(lines, terrainRodBounds(grid, anchor, 0.24), anchorColor,
-                 thickness * 1.4F);
-    return;
-  }
-  const cr::CreativeTerrainGradePlan plan = terrainGradePlan(editor, target);
-  if (!plan.accepted) {
-    const cr::CreativeTerrainControlPoint rejected{
-        target, grade.targetHeightCells, grade.radiusCells};
-    appendBounds(lines, terrainRodBounds(grid, anchor, 0.24), invalidColor,
-                 thickness * 1.4F);
-    appendBounds(lines, terrainRodBounds(grid, rejected, 0.24), invalidColor,
-                 thickness * 1.4F);
-    appendTerrainLine(lines, terrainRodTopCenter(grid, anchor),
-                      terrainRodTopCenter(grid, rejected), invalidColor,
-                      thickness * 1.2F);
-    return;
-  }
-
-  cr::CreativeVec3 previousTop{};
-  bool hasPrevious = false;
-  for (const cr::CreativeTerrainControlEdit& edit : plan.items()) {
-    appendBounds(lines, terrainRodBounds(grid, edit.control, 0.20), gradeColor,
+  const bool valid = grade.operationPreview.receipt.accepted;
+  const iggy3d::RenderLineColor activeColor = valid ? gradeColor : invalidColor;
+  appendTerrainLine(lines, point(grade.recipe.start,
+                                 grade.recipe.startHeightCells),
+                    point(grade.recipe.end, grade.recipe.endHeightCells),
+                    activeColor, thickness * 1.35F);
+  appendBoundary(grade.recipe, grade.recipe.halfWidthCells, activeColor,
                  thickness);
-    const cr::CreativeVec3 top = terrainRodTopCenter(grid, edit.control);
-    if (hasPrevious) {
-      appendTerrainLine(lines, previousTop, top, gradeColor, thickness * 1.2F);
-    }
-    previousTop = top;
-    hasPrevious = true;
+  if (grade.recipe.falloffCells > 0U) {
+    appendBoundary(grade.recipe,
+                   grade.recipe.halfWidthCells + grade.recipe.falloffCells,
+                   valid ? falloffColor : invalidColor, thickness * 0.75F);
   }
-  if (!plan.items().empty()) {
-    appendTerrainFootprintOutline(lines, grid, plan.items().front().control,
-                                  anchorColor, thickness);
-    if (plan.items().size() > 1U) {
-      appendTerrainFootprintOutline(lines, grid, plan.items().back().control,
-                                    gradeColor, thickness);
-    }
-  }
+  appendBounds(lines,
+               handleBounds(grade.recipe.start,
+                            grade.recipe.startHeightCells),
+               grade.selectedHandle == CreativeTerrainGradeHandle::Start
+                   ? activeColor
+                   : anchorColor,
+               thickness * 1.5F);
+  appendBounds(lines,
+               handleBounds(grade.recipe.end, grade.recipe.endHeightCells),
+               grade.selectedHandle == CreativeTerrainGradeHandle::End
+                   ? activeColor
+                   : anchorColor,
+               thickness * 1.5F);
 }
 
 }  // namespace

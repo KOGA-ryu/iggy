@@ -51,6 +51,12 @@ struct CreativeObjectWorldExtent {
     CreativeVec3 vector,
     CreativeAxis3 axis,
     double radians) noexcept;
+// Rodrigues rotation around an arbitrary world-space axis. A non-finite or
+// zero-length axis returns a non-finite vector so callers can fail closed.
+[[nodiscard]] CreativeVec3 rotateCreativeVectorAroundAxis(
+    CreativeVec3 vector,
+    CreativeVec3 axis,
+    double radians) noexcept;
 [[nodiscard]] CreativeVec3 rotateCreativeVectorEulerXyz(
     CreativeVec3 vector,
     CreativeVec3 radians) noexcept;
@@ -63,6 +69,10 @@ struct CreativeObjectWorldExtent {
 [[nodiscard]] CreativeVec3 composeCreativeWorldAxisRotation(
     CreativeVec3 eulerRadians,
     CreativeAxis3 axis,
+    double radians) noexcept;
+[[nodiscard]] CreativeVec3 composeCreativeWorldAxisRotation(
+    CreativeVec3 eulerRadians,
+    CreativeVec3 axis,
     double radians) noexcept;
 [[nodiscard]] double creativeSquaredDistanceFromAxis(
     CreativeVec3 point,

@@ -1,8 +1,11 @@
 #include "EditorPreviewFrame.hpp"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string>
 #include <utility>
@@ -86,12 +89,44 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
 
 [[nodiscard]] bool convertTerrainSurfacePatches(
     const cr::CreativeTerrainRenderPlan& plan,
+    double bottomY,
     std::vector<iggy3d::SceneRoomSurfacePatchItem>& output) {
   output.clear();
-  if (!plan.accepted) {
+  if (!plan.accepted || !std::isfinite(bottomY)) {
     return false;
   }
-  output.reserve(plan.patches.size());
+  struct EdgeSpec {
+    std::int32_t neighborX = 0;
+    std::int32_t neighborZ = 0;
+    std::size_t topFirst = 0U;
+    std::size_t topSecond = 0U;
+    std::size_t lowerFirst = 0U;
+    std::size_t lowerSecond = 0U;
+  };
+  constexpr std::array edges{
+      EdgeSpec{0, -1, 0U, 1U, 3U, 2U},
+      EdgeSpec{1, 0, 1U, 2U, 0U, 3U},
+      EdgeSpec{0, 1, 2U, 3U, 1U, 0U},
+      EdgeSpec{-1, 0, 3U, 0U, 2U, 1U},
+  };
+  const auto patchLess = [](const cr::CreativeTerrainSurfacePatch& patch,
+                            cr::CreativeTerrainCoord2 coord) {
+    return patch.coord.z != coord.z ? patch.coord.z < coord.z
+                                    : patch.coord.x < coord.x;
+  };
+  const auto findPatch = [&](cr::CreativeTerrainCoord2 coord)
+      -> const cr::CreativeTerrainSurfacePatch* {
+    const auto found = std::lower_bound(plan.patches.begin(),
+                                        plan.patches.end(), coord, patchLess);
+    return found != plan.patches.end() && found->coord == coord ? &*found
+                                                                : nullptr;
+  };
+  std::size_t hardFaceCount = 0U;
+  for (const cr::CreativeTerrainSurfacePatch& patch : plan.patches) {
+    hardFaceCount += static_cast<std::size_t>(
+        std::popcount(static_cast<unsigned int>(patch.hardEdgeMask)));
+  }
+  output.reserve(plan.patches.size() + hardFaceCount);
   for (const cr::CreativeTerrainSurfacePatch& patch : plan.patches) {
     iggy3d::SceneRoomSurfacePatchItem item;
     item.role = cr::creativeTerrainMaterialRenderRole(patch.material);
@@ -102,6 +137,14 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
       return false;
     }
     item.center = center.value;
+    const cr::CreativeCoreVec3Conversion tint =
+        cr::creativeVec3ToCoreChecked(patch.materialColor);
+    if (!tint.converted) {
+      output.clear();
+      return false;
+    }
+    item.tint = tint.value;
+    item.hasTint = true;
     for (std::size_t index = 0U; index < patch.corners.size(); ++index) {
       const cr::CreativeCoreVec3Conversion corner =
           cr::creativeVec3ToCoreChecked(patch.corners[index]);
@@ -113,6 +156,75 @@ refreshVoxelChunkMeshPlans(CreativeEditorSceneCache& cache,
     }
     output.push_back(item);
   }
+
+  for (const cr::CreativeTerrainSurfacePatch& patch : plan.patches) {
+    for (std::size_t edgeIndex = 0U; edgeIndex < edges.size(); ++edgeIndex) {
+      if ((patch.hardEdgeMask & (1U << edgeIndex)) == 0U) {
+        continue;
+      }
+      const EdgeSpec edge = edges[edgeIndex];
+      const std::int64_t neighborX =
+          static_cast<std::int64_t>(patch.coord.x) + edge.neighborX;
+      const std::int64_t neighborZ =
+          static_cast<std::int64_t>(patch.coord.z) + edge.neighborZ;
+      const cr::CreativeTerrainSurfacePatch* neighbor = nullptr;
+      if (neighborX >= std::numeric_limits<std::int32_t>::min() &&
+          neighborX <= std::numeric_limits<std::int32_t>::max() &&
+          neighborZ >= std::numeric_limits<std::int32_t>::min() &&
+          neighborZ <= std::numeric_limits<std::int32_t>::max()) {
+        neighbor = findPatch({static_cast<std::int32_t>(neighborX),
+                              static_cast<std::int32_t>(neighborZ)});
+      }
+
+      std::array<cr::CreativeVec3, 4U> corners{
+          patch.corners[edge.topFirst], patch.corners[edge.topSecond],
+          patch.corners[edge.topSecond], patch.corners[edge.topFirst]};
+      if (neighbor != nullptr) {
+        corners[2U] = neighbor->corners[edge.lowerSecond];
+        corners[3U] = neighbor->corners[edge.lowerFirst];
+      } else {
+        corners[2U].y = bottomY;
+        corners[3U].y = bottomY;
+      }
+
+      iggy3d::SceneRoomSurfacePatchItem item;
+      item.role = cr::creativeTerrainMaterialRenderRole(patch.material);
+      cr::CreativeVec3 center{};
+      for (const cr::CreativeVec3 corner : corners) {
+        center.x += corner.x;
+        center.y += corner.y;
+        center.z += corner.z;
+      }
+      center.x *= 0.25;
+      center.y *= 0.25;
+      center.z *= 0.25;
+      const cr::CreativeCoreVec3Conversion convertedCenter =
+          cr::creativeVec3ToCoreChecked(center);
+      const cr::CreativeCoreVec3Conversion convertedTint =
+          cr::creativeVec3ToCoreChecked(
+              {patch.materialColor.x * 0.72,
+               patch.materialColor.y * 0.72,
+               patch.materialColor.z * 0.72});
+      if (!convertedCenter.converted || !convertedTint.converted) {
+        output.clear();
+        return false;
+      }
+      item.center = convertedCenter.value;
+      item.tint = convertedTint.value;
+      item.hasTint = true;
+      for (std::size_t cornerIndex = 0U; cornerIndex < corners.size();
+           ++cornerIndex) {
+        const cr::CreativeCoreVec3Conversion converted =
+            cr::creativeVec3ToCoreChecked(corners[cornerIndex]);
+        if (!converted.converted) {
+          output.clear();
+          return false;
+        }
+        item.corners[cornerIndex] = converted.value;
+      }
+      output.push_back(item);
+    }
+  }
   return true;
 }
 
@@ -121,17 +233,27 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
   const cr::CreativeGridSettings grid = document.gridSettings();
   const cr::CreativeTerrainHeightField& heightField =
       document.terrainHeightField();
+  const std::uint64_t heightHash =
+      cr::hashCreativeTerrainHeightField(heightField);
+  const std::uint64_t hardEdgeHash =
+      cr::hashCreativeTerrainHardEdges(document.terrainHardEdges());
+  const std::uint64_t materialHash =
+      cr::hashCreativeTerrainMaterialField(document.terrainMaterialField());
   const bool geometryCurrent =
       cache.valid && cache.documentId == document.id() &&
       cache.terrainRevision == document.terrainField().revision() &&
       cache.terrainHeightRevision == heightField.revision() &&
+      cache.terrainHeightHash == heightHash &&
       cache.terrainHeightCellCount == heightField.cellCount() &&
+      cache.terrainHardEdgeHash == hardEdgeHash &&
+      cache.terrainHardEdgeCount == document.terrainHardEdges().size() &&
       cr::creativeVec3ExactlyEqual(cache.terrainGridOrigin, grid.origin) &&
       cache.terrainGridCellSizeMeters == grid.cellSizeMeters;
   const bool materialCurrent =
       cache.valid && cache.documentId == document.id() &&
       cache.terrainMaterialRevision ==
-          document.terrainMaterialField().revision();
+          document.terrainMaterialField().revision() &&
+      cache.terrainMaterialHash == materialHash;
   if (geometryCurrent && materialCurrent) {
     return;
   }
@@ -139,29 +261,33 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
     std::vector<cr::CreativeTerrainSurfacePatch> displayPatches =
         cache.terrainCollisionPatches;
     for (cr::CreativeTerrainSurfacePatch& patch : displayPatches) {
-      patch.material =
-          document.terrainMaterialField().materialAt(patch.coord);
+      const cr::CreativeTerrainMaterialWeights weights =
+          document.terrainMaterialField().weightsAt(patch.coord);
+      patch.material = cr::dominantCreativeTerrainMaterial(weights);
+      patch.materialWeights = weights;
+      patch.materialColor = cr::creativeTerrainMaterialRenderColor(weights);
     }
     cr::CreativeTerrainRenderPlan displayPlan;
     displayPlan.accepted = true;
     displayPlan.patches = std::move(displayPatches);
     static_cast<void>(convertTerrainSurfacePatches(
-        displayPlan, cache.terrainSurfacePatches));
+        displayPlan, grid.origin.y, cache.terrainSurfacePatches));
     cache.terrainMaterialRevision =
         document.terrainMaterialField().revision();
+    cache.terrainMaterialHash = materialHash;
     ++cache.terrainMaterialBuildCount;
     return;
   }
   cr::CreativeTerrainSurfacePlan plan =
       cr::buildCreativeComposedTerrainSurfacePlan(
-          document.terrainField(), heightField);
+          document.terrainField(), heightField, document.terrainHardEdges());
   cache.terrainCuboids = plan.accepted ? plan.cuboids
                                       : std::vector<cr::CreativeVoxelCuboid>{};
   const cr::CreativeTerrainRenderPlan renderPlan =
       cr::buildCreativeTerrainRenderPlan(
           plan, document.terrainMaterialField(), grid.origin,
           grid.cellSizeMeters);
-  if (convertTerrainSurfacePatches(renderPlan,
+  if (convertTerrainSurfacePatches(renderPlan, grid.origin.y,
                                    cache.terrainSurfacePatches)) {
     cache.terrainCollisionPatches = renderPlan.patches;
   } else {
@@ -169,9 +295,13 @@ void refreshTerrainSurfacePlan(CreativeEditorSceneCache& cache,
   }
   cache.terrainRevision = document.terrainField().revision();
   cache.terrainHeightRevision = heightField.revision();
+  cache.terrainHeightHash = heightHash;
   cache.terrainHeightCellCount = heightField.cellCount();
+  cache.terrainHardEdgeHash = hardEdgeHash;
+  cache.terrainHardEdgeCount = document.terrainHardEdges().size();
   cache.terrainMaterialRevision =
       document.terrainMaterialField().revision();
+  cache.terrainMaterialHash = materialHash;
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;
   cache.composedTerrainSurface = std::move(plan);
@@ -226,7 +356,8 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
       cr::buildCreativeVoxelCuboids(document.voxelField());
   const cr::CreativeTerrainSurfacePlan terrain =
       cr::buildCreativeComposedTerrainSurfacePlan(
-          document.terrainField(), document.terrainHeightField());
+          document.terrainField(), document.terrainHeightField(),
+          document.terrainHardEdges());
   std::vector<cr::CreativeTerrainSurfacePatch> terrainCollisionPatches;
   std::vector<iggy3d::SceneRoomSurfacePatchItem> terrainSurfacePatches;
   if (terrain.accepted) {
@@ -237,7 +368,8 @@ StandaloneRoomBakePreviewScene buildStandaloneRoomBakePreviewScene(
         cr::buildCreativeTerrainRenderPlan(
             terrain, document.terrainMaterialField(), grid.origin,
             grid.cellSizeMeters);
-    if (convertTerrainSurfacePatches(renderPlan, terrainSurfacePatches)) {
+    if (convertTerrainSurfacePatches(renderPlan, grid.origin.y,
+                                     terrainSurfacePatches)) {
       terrainCollisionPatches = renderPlan.patches;
     }
   }
@@ -264,8 +396,12 @@ bool refreshCreativeEditorSceneCache(
     cache.terrainSurfacePatches.clear();
     cache.terrainRevision = 0;
     cache.terrainHeightRevision = 0;
+    cache.terrainHeightHash = 0;
     cache.terrainHeightCellCount = 0;
+    cache.terrainHardEdgeHash = 0;
+    cache.terrainHardEdgeCount = 0;
     cache.terrainMaterialRevision = 0;
+    cache.terrainMaterialHash = 0;
     cache.terrainGridOrigin = {};
     cache.terrainGridCellSizeMeters = 0.0;
   }
@@ -288,15 +424,19 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
     CreativeEditorGeneratedTerrainPreviewCache& cache,
     const CreativeEditorSceneCache& sourceSceneCache,
     const cr::CreativeDocument& document,
-    const cr::CreativeTerrainHeightField& candidate,
+    const cr::CreativeTerrainHeightField& candidateHeight,
     std::uint64_t candidateHeightHash,
+    const cr::CreativeTerrainMaterialField& candidateMaterial,
+    std::uint64_t candidateMaterialHash,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
   const cr::CreativeGridSettings grid = document.gridSettings();
   const bool sourceValid =
       sourceSceneCache.valid && sourceSceneCache.documentId == document.id() &&
       sourceSceneCache.documentRevision == document.revision();
   const bool candidateValid =
-      candidate.validateInvariants() && candidate.cellCount() > 0U;
+      candidateHeight.validateInvariants() &&
+      candidateHeight.cellCount() > 0U &&
+      candidateMaterial.validateInvariants();
   if (!sourceValid || !candidateValid) {
     invalidateCreativeEditorGeneratedTerrainPreview(cache);
     return false;
@@ -304,6 +444,7 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
   if (cache.valid && cache.documentId == document.id() &&
       cache.documentRevision == document.revision() &&
       cache.heightHash == candidateHeightHash &&
+      cache.materialHash == candidateMaterialHash &&
       cache.sourceSceneRefreshCount == sourceSceneCache.refreshCount &&
       cr::creativeVec3ExactlyEqual(cache.terrainGridOrigin, grid.origin) &&
       cache.terrainGridCellSizeMeters == grid.cellSizeMeters) {
@@ -312,20 +453,21 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
 
   const cr::CreativeTerrainSurfacePlan sourceSurface =
       cr::buildCreativeComposedTerrainSurfacePlan(
-          document.terrainField(), document.terrainHeightField());
+          document.terrainField(), document.terrainHeightField(),
+          document.terrainHardEdges());
   cr::CreativeTerrainSurfacePlan composed =
       cr::replaceCreativeTerrainSurfaceRegion(
-          sourceSurface, candidate);
+          sourceSurface, candidateHeight);
   if (!composed.accepted) {
     invalidateCreativeEditorGeneratedTerrainPreview(cache);
     return false;
   }
   const cr::CreativeTerrainRenderPlan render =
       cr::buildCreativeTerrainRenderPlan(
-          composed, document.terrainMaterialField(), grid.origin,
+          composed, candidateMaterial, grid.origin,
           grid.cellSizeMeters);
   std::vector<iggy3d::SceneRoomSurfacePatchItem> surfacePatches;
-  if (!convertTerrainSurfacePatches(render, surfacePatches)) {
+  if (!convertTerrainSurfacePatches(render, grid.origin.y, surfacePatches)) {
     invalidateCreativeEditorGeneratedTerrainPreview(cache);
     return false;
   }
@@ -350,10 +492,38 @@ bool refreshCreativeEditorGeneratedTerrainPreview(
   cache.documentId = document.id();
   cache.documentRevision = document.revision();
   cache.heightHash = candidateHeightHash;
+  cache.materialHash = candidateMaterialHash;
   cache.sourceSceneRefreshCount = sourceSceneCache.refreshCount;
   cache.terrainGridOrigin = grid.origin;
   cache.terrainGridCellSizeMeters = grid.cellSizeMeters;
   ++cache.refreshCount;
+  cache.valid = true;
+  return true;
+}
+
+bool refreshCreativeEditorVolumeScenePreview(
+    CreativeEditorVolumeScenePreviewCache& cache,
+    const cr::CreativeDocument& stagedDocument,
+    std::uint64_t operationRefreshCount,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog) {
+  if (operationRefreshCount == 0U || !stagedDocument.isValid() ||
+      stagedDocument.id() == cr::kInvalidDocumentId) {
+    invalidateCreativeEditorVolumeScenePreview(cache);
+    return false;
+  }
+  if (cache.valid &&
+      cache.operationRefreshCount == operationRefreshCount) {
+    return false;
+  }
+
+  invalidateCreativeEditorSceneCache(cache.scene);
+  static_cast<void>(refreshCreativeEditorSceneCache(
+      cache.scene, stagedDocument, assetCatalog));
+  if (!cache.scene.valid || !cache.scene.preview.roomBake.receipt.accepted) {
+    invalidateCreativeEditorVolumeScenePreview(cache);
+    return false;
+  }
+  cache.operationRefreshCount = operationRefreshCount;
   cache.valid = true;
   return true;
 }
@@ -370,7 +540,10 @@ void invalidateCreativeEditorSceneCache(
   cache.terrainSurfacePatches.clear();
   cache.terrainRevision = 0;
   cache.terrainHeightRevision = 0;
+  cache.terrainHeightHash = 0;
   cache.terrainHeightCellCount = 0;
+  cache.terrainHardEdgeHash = 0;
+  cache.terrainHardEdgeCount = 0;
   cache.terrainMaterialRevision = 0;
   cache.terrainGridOrigin = {};
   cache.terrainGridCellSizeMeters = 0.0;
@@ -386,9 +559,17 @@ void invalidateCreativeEditorGeneratedTerrainPreview(
   cache.documentId = cr::kInvalidDocumentId;
   cache.documentRevision = 0U;
   cache.heightHash = 0U;
+  cache.materialHash = 0U;
   cache.sourceSceneRefreshCount = 0U;
   cache.terrainGridOrigin = {};
   cache.terrainGridCellSizeMeters = 0.0;
+  cache.valid = false;
+}
+
+void invalidateCreativeEditorVolumeScenePreview(
+    CreativeEditorVolumeScenePreviewCache& cache) noexcept {
+  invalidateCreativeEditorSceneCache(cache.scene);
+  cache.operationRefreshCount = 0U;
   cache.valid = false;
 }
 

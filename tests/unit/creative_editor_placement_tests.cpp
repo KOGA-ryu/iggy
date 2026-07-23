@@ -13,8 +13,10 @@
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorTransform.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 
 #include <algorithm>
@@ -24,6 +26,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -278,7 +281,8 @@ bool placementPlanMatchesEveryCreateRequest() {
 bool standaloneBrushPalettePopulatesEveryCatalogCategory() {
   const std::vector<cr::CreativeObjectKind> palette =
       buildBrushPaletteFromDescriptors();
-  cr::CreativeCatalogState catalog = cr::makeCreativeCatalog(palette);
+  cr::CreativeCatalogState catalog = cr::makeCreativeCatalog(
+      palette, {}, 0U, {}, creativeEditorCatalogToolSpecs());
   constexpr std::array pages{
       cr::CreativeCatalogPage::Structure,
       cr::CreativeCatalogPage::Terrain,
@@ -290,6 +294,7 @@ bool standaloneBrushPalettePopulatesEveryCatalogCategory() {
       cr::CreativeCatalogPage::Testing,
       cr::CreativeCatalogPage::Helpers,
       cr::CreativeCatalogPage::Tools,
+      cr::CreativeCatalogPage::Experimental,
   };
   bool ok = expect(!palette.empty(),
                    "standalone descriptor palette remains populated");
@@ -463,6 +468,56 @@ bool placementAdmissionOwnsPreviewAndExecutionTruth() {
                          1.0F),
                 "voxel and volume targeting use document cells while objects use snap") &&
          ok;
+}
+
+bool placedOutputIsImmediatelySelectableAndEditable() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 1000U);
+  const cr::CreativeGridTarget objectTarget = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {1.25, 0.0, 1.25}, {0.0, 1.0, 0.0}, 1.0),
+      cr::CreativePlacementTargetSource::EmptyPlane);
+  const CreativeBrushPlacementAdmission objectAdmission =
+      admitBrushPlacement(cr::CreativeObjectKind::Crate, objectTarget);
+  const CreativeBrushPlacementMutationReceipt objectPlacement =
+      applyBrushPlacement(appState.facade, objectAdmission.plan, 1U);
+  const std::array selectedIds{objectPlacement.objectId};
+  const cr::CreativeSelectionReceipt selected = appState.facade.selectTargets(
+      selectedIds, objectPlacement.objectId);
+  cr::CreativeTransformCommandRequest move;
+  move.translation = {2.0, 0.0, 0.0};
+  const cr::CreativeTransformCommandReceipt moved =
+      appState.facade.transformSelectedObjects(move);
+  const cr::CreativeObject* edited =
+      appState.facade.findObject(objectPlacement.objectId);
+
+  const cr::CreativeGridTarget voxelTarget = targetWithFacts(
+      cr::resolveCreativeGridTargetFromHit(
+          {5.25, 0.0, 1.25}, {0.0, 1.0, 0.0}, 1.0),
+      cr::CreativePlacementTargetSource::EmptyPlane);
+  const CreativeBrushPlacementAdmission voxelAdmission =
+      admitBrushPlacement(cr::CreativeObjectKind::Wall, voxelTarget);
+  const CreativeBrushPlacementMutationReceipt voxelPlacement =
+      applyBrushPlacement(appState.facade, voxelAdmission.plan, 2U);
+  const cr::CreativeVoxelEdit erase{voxelPlacement.voxelCell,
+                                    cr::CreativeObjectKind::Unknown};
+  const cr::CreativeVoxelMutationReceipt voxelEdited =
+      appState.facade.applyVoxelEdits(std::span{&erase, 1U});
+
+  return expect(objectAdmission.allowed && objectPlacement.accepted &&
+                    selected.accepted && selected.selectedCountAfter == 1U,
+                "new authored placement is selectable without a rebuild") &&
+         expect(moved.accepted && moved.changed && edited != nullptr &&
+                    near(static_cast<float>(edited->transform.position.x),
+                         static_cast<float>(objectAdmission.plan.transform.position.x +
+                                            2.0)),
+                "new authored placement accepts an immediate transform") &&
+         expect(voxelAdmission.allowed && voxelPlacement.accepted &&
+                    voxelEdited.accepted && voxelEdited.changed &&
+                    appState.facade.document().voxelField().materialAt(
+                        voxelPlacement.voxelCell) ==
+                        cr::CreativeObjectKind::Unknown,
+                "new voxel placement is addressable and editable immediately");
 }
 
 bool semanticCompatibilityOwnsPreviewMutationAndHistory() {
@@ -851,6 +906,175 @@ bool surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() {
                     sameTransform(explicitTransformPlan.transform,
                                   explicitTransform),
                 "explicit socket-style transforms supersede derived surface frames");
+}
+
+bool importedAssetAlignmentModesShareOneExactTargetContract() {
+  constexpr double kSqrtHalf = 0.70710678118654752440;
+  cr::CreativeGridTarget floorTarget = cr::resolveCreativeGridTargetFromHit(
+      {2.25, 1.0, 3.25}, {0.0, kSqrtHalf, kSqrtHalf}, 1.0);
+  floorTarget.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::Terrain,
+      cr::CreativeObjectKind::TerrainPatch);
+  const cr::CreativeVec3 originalGridAnchor = floorTarget.placementAnchor;
+  const CreativeAssetAlignmentPlan grid = resolveCreativeAssetAlignment(
+      floorTarget, cr::CreativeAssetAlignmentMode::Grid);
+  const CreativeAssetAlignmentPlan floor = resolveCreativeAssetAlignment(
+      floorTarget, cr::CreativeAssetAlignmentMode::Floor);
+
+  const auto projectToPlane = [](cr::CreativeVec3 anchor,
+                                 cr::CreativeVec3 point,
+                                 cr::CreativeVec3 normal) {
+    const cr::CreativeVec3 delta{anchor.x - point.x, anchor.y - point.y,
+                                 anchor.z - point.z};
+    const double distance = delta.x * normal.x + delta.y * normal.y +
+                            delta.z * normal.z;
+    return cr::CreativeVec3{anchor.x - normal.x * distance,
+                            anchor.y - normal.y * distance,
+                            anchor.z - normal.z * distance};
+  };
+  const cr::CreativeVec3 expectedFloorAnchor = projectToPlane(
+      originalGridAnchor, floorTarget.hitPoint, floorTarget.surfaceNormal);
+
+  cr::CreativeGridTarget wallTarget = cr::resolveCreativeGridTargetFromHit(
+      {4.0, 2.25, 3.25}, {1.0, 0.0, 0.0}, 1.0);
+  wallTarget.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::AuthoredObject,
+      cr::CreativeObjectKind::Wall, 4401U);
+  const CreativeAssetAlignmentPlan wall = resolveCreativeAssetAlignment(
+      wallTarget, cr::CreativeAssetAlignmentMode::Wall);
+  const CreativeAssetAlignmentPlan floorRejected =
+      resolveCreativeAssetAlignment(
+          wallTarget, cr::CreativeAssetAlignmentMode::Floor);
+  const CreativeAssetAlignmentPlan wallRejected =
+      resolveCreativeAssetAlignment(
+          floorTarget, cr::CreativeAssetAlignmentMode::Wall);
+
+  cr::CreativeGridTarget emptyTarget = floorTarget;
+  emptyTarget.targetFacts = cr::makeCreativePlacementTargetFacts(
+      cr::CreativePlacementTargetSource::EmptyPlane);
+  const CreativeAssetAlignmentPlan surfaceRejected =
+      resolveCreativeAssetAlignment(
+          emptyTarget, cr::CreativeAssetAlignmentMode::SurfaceNormal);
+  const CreativeAssetAlignmentPlan surface = resolveCreativeAssetAlignment(
+      floorTarget, cr::CreativeAssetAlignmentMode::SurfaceNormal);
+  const CreativeAssetAlignmentPlan free = resolveCreativeAssetAlignment(
+      emptyTarget, cr::CreativeAssetAlignmentMode::Free);
+  const CreativeAssetAlignmentPlan invalid = resolveCreativeAssetAlignment(
+      floorTarget, cr::CreativeAssetAlignmentMode::Count);
+
+  cr::CreativeHotbarEntry held{
+      cr::CreativeHeldItemKind::Material, cr::CreativeObjectKind::Prop};
+  const bool assetSet = cr::setCreativeHotbarAsset(
+      held, "alignment_fixture",
+      {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}});
+  CreativeEditorWorldTarget worldTarget;
+  worldTarget.valid = true;
+  worldTarget.grid = floorTarget;
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 145U);
+  const CreativeEditorPlacementResolution resolved =
+      resolveCreativeEditorPlacement(
+          held, worldTarget, cr::CreativePlacementYaw::Degrees0,
+          appState.facade.document(), nullptr, nullptr,
+          cr::CreativeAssetAlignmentMode::SurfaceNormal);
+  const cr::CreativeVec3 rotatedLocalUp =
+      resolved.admission.plan.orientationResolved
+          ? cr::rotateCreativeVectorEulerXyz(
+                {0.0, 1.0, 0.0},
+                resolved.admission.plan.transform.rotationEulerRadians)
+          : cr::CreativeVec3{};
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Prop);
+  editor.interaction.hotbar.entries[0] = held;
+  editor.interaction.target = worldTarget;
+  editor.toolSettings.assetAlignmentMode =
+      cr::CreativeAssetAlignmentMode::SurfaceNormal;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Accept, false, false, true), 1U);
+  const cr::CreativeObject* placed = nullptr;
+  for (const cr::CreativeObject& object : appState.facade.document().objects()) {
+    if (object.assetId == "alignment_fixture") {
+      placed = &object;
+      break;
+    }
+  }
+
+  const auto feedbackLabel = [](CreativeBrushPlacementAdmissionStatus status) {
+    CreativeEditorInteractionState interaction;
+    CreativeBrushPlacementAdmission admission;
+    admission.plan.brush = cr::CreativeObjectKind::Prop;
+    admission.status = status;
+    setCreativeEditorPlacementAdmissionRejectionFeedback(
+        interaction, 10U, admission);
+    return std::string{creativeEditorPlacementFeedbackViewModel(
+                           interaction.placementFeedback, 10U)
+                           .label.view()};
+  };
+
+  return expect(floorTarget.valid && floorTarget.resolved &&
+                    nearVec3(floorTarget.surfaceNormal,
+                             {0.0, kSqrtHalf, kSqrtHalf}) &&
+                    nearVec3(floorTarget.faceNormal, {0.0, 1.0, 0.0}),
+                "targeting preserves exact and cardinal normals separately") &&
+         expect(grid.valid &&
+                    sameVec3(grid.target.placementAnchor,
+                             originalGridAnchor) &&
+                    grid.target.anchorSnapped == floorTarget.anchorSnapped,
+                "grid alignment preserves the existing snapped target") &&
+         expect(floor.valid && floor.target.anchorSnapped &&
+                    nearVec3(floor.target.placementAnchor,
+                             expectedFloorAnchor) &&
+                    nearVec3(floor.target.placementNormal,
+                             floorTarget.surfaceNormal),
+                "floor alignment projects the grid anchor onto the exact supporting plane") &&
+         expect(wall.valid && wall.target.anchorSnapped &&
+                    std::fabs(wall.target.placementAnchor.x -
+                              wallTarget.hitPoint.x) <= 1.0e-9 &&
+                    nearVec3(wall.target.placementNormal, {1.0, 0.0, 0.0}),
+                "wall alignment retains tangential snapping on the exact wall plane") &&
+         expect(!floorRejected.valid &&
+                    floorRejected.status ==
+                        CreativeAssetAlignmentStatus::FloorRequired &&
+                    !wallRejected.valid &&
+                    wallRejected.status ==
+                        CreativeAssetAlignmentStatus::WallRequired,
+                "floor and wall modes reject incompatible surface directions") &&
+         expect(!surfaceRejected.valid &&
+                    surfaceRejected.status ==
+                        CreativeAssetAlignmentStatus::SurfaceRequired &&
+                    surface.valid && surface.orientToSurfaceNormal &&
+                    sameVec3(surface.target.placementAnchor,
+                             floorTarget.hitPoint),
+                "surface-normal mode requires real geometry and uses the raw hit") &&
+         expect(free.valid && free.target.anchorSnapped &&
+                    sameVec3(free.target.placementAnchor,
+                             emptyTarget.hitPoint) &&
+                    !free.orientToSurfaceNormal && !invalid.valid &&
+                    invalid.status == CreativeAssetAlignmentStatus::InvalidMode,
+                "free mode drops grid quantization while invalid modes fail closed") &&
+         expect(assetSet && resolved.alignment.valid &&
+                    resolved.admission.allowed &&
+                    resolved.admission.plan.surfaceFrame.valid &&
+                    nearVec3(rotatedLocalUp, floorTarget.surfaceNormal, 1.0e-6),
+                "surface-normal asset placement maps local up onto the exact hit normal") &&
+         expect(placed != nullptr &&
+                    sameTransform(placed->transform,
+                                  resolved.admission.plan.transform) &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "the live material stroke commits the same aligned transform in one undo step") &&
+         expect(feedbackLabel(
+                    CreativeBrushPlacementAdmissionStatus::FloorRequired) ==
+                    "Aim at a floor" &&
+                    feedbackLabel(
+                        CreativeBrushPlacementAdmissionStatus::WallRequired) ==
+                        "Aim at a wall" &&
+                    feedbackLabel(
+                        CreativeBrushPlacementAdmissionStatus::SurfaceRequired) ==
+                        "Aim at a surface",
+                "alignment failures expose actionable placement feedback");
 }
 
 bool quickEditOrientationFeedsPreviewAndCreatePlan() {
@@ -2311,6 +2535,1020 @@ bool editorVolumeBudgetRejectsBeforeMutation() {
                 "over-budget fill leaves document unchanged") &&
          expect(cr::creativeUndoDepth(appState.history) == 0U,
                 "over-budget fill creates no history record");
+}
+
+bool hollowVolumePreviewSettingsCacheAndHistoryStayExact() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 106U);
+  CreativeEditorState editor;
+  editor.placeBrush = cr::CreativeObjectKind::Wall;
+  editor.volume.active = true;
+  editor.volume.operation = cr::CreativeVolumeOperationKind::Hollow;
+  editor.toolSettings.shapeBrushKind = cr::CreativeShapeBrushKind::Box;
+  editor.toolSettings.shapeBrushAxis = cr::CreativeShapeBrushAxis::Y;
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {4, 4, 4}));
+
+  const auto refresh = [&]() -> const cr::CreativeVolumeOperationReceipt& {
+    return refreshCreativeEditorVolumeOperationPreview(
+        editor.volume, appState.facade.document(), editor.volume.selection,
+        editor.placeBrush, editor.toolSettings);
+  };
+
+  const cr::CreativeVolumeOperationReceipt defaultShell = refresh();
+  editor.toolSettings.volumeHollowThickness =
+      cr::CreativeVolumeHollowThickness::TwoCells;
+  const cr::CreativeVolumeOperationReceipt thickShell = refresh();
+  editor.toolSettings.volumeHollowThickness =
+      cr::CreativeVolumeHollowThickness::OneCell;
+  editor.toolSettings.volumeHollowAlignment =
+      cr::CreativeVolumeHollowAlignment::Outward;
+  const cr::CreativeVolumeOperationReceipt outwardShell = refresh();
+  editor.toolSettings.volumeHollowOpening =
+      cr::CreativeVolumeHollowOpening::PositiveEnd;
+  const cr::CreativeVolumeOperationReceipt openShell = refresh();
+  editor.toolSettings.volumeHollowCornerRule =
+      cr::CreativeVolumeHollowCornerRule::CutThrough;
+  const cr::CreativeVolumeOperationReceipt cutShell = refresh();
+  const std::uint64_t refreshCount = editor.volume.preview.refreshCount;
+  const cr::CreativeVolumeOperationReceipt repeated = refresh();
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactFirstOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeInteriorEdgeCount == 12U &&
+      overlay.volumeEdgeCount == 24U;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactReusedOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeInteriorEdgeCount == 12U &&
+      overlay.volumeEdgeCount == 24U;
+  const bool exactStagedDocument =
+      editor.volume.preview.stagedDocumentValid &&
+      editor.volume.preview.stagedDocument.voxelField().occupiedCellCount() ==
+          169U;
+
+  const cr::CreativeVolumeOperationRequest appliedRequest =
+      makeCreativeEditorVolumeOperationRequest(
+          editor.volume, editor.volume.selection, editor.placeBrush,
+          editor.toolSettings);
+
+  const cr::CreativeVolumeOperationReceipt applied =
+      applyCreativeEditorVolumeOperationWithHistory(
+          appState, editor.volume, editor.placeBrush,
+          cr::CreativeVolumeOperationKind::Hollow, editor.toolSettings,
+          "test_hollow_volume_apply");
+  const cr::CreativeAuthoringOperationRecord* storedOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      storedOperation == nullptr
+          ? std::nullopt
+          : std::optional<cr::CreativeAuthoringOperationRecord>{
+                *storedOperation};
+  const bool exactApply =
+      applied.accepted && applied.changed &&
+      applied.createdVoxelCellCount == 169U &&
+      appState.facade.document().voxelField().occupiedCellCount() == 169U &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativeAuthoringOperationRecord* redoTarget =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Redo);
+  const bool exactUndoOperation =
+      expectedOperation.has_value() && undo.targetOperation == expectedOperation &&
+      redoTarget != nullptr && *redoTarget == *expectedOperation;
+  const cr::CreativeHistoryApplyReceipt redo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const cr::CreativeHistoryApplyReceipt restoreUndo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  CreativeEditorState invalidEditor;
+  invalidEditor.placeBrush = cr::CreativeObjectKind::Wall;
+  invalidEditor.volume.active = true;
+  invalidEditor.volume.operation = cr::CreativeVolumeOperationKind::Hollow;
+  invalidEditor.toolSettings.volumeHollowThickness =
+      cr::CreativeVolumeHollowThickness::TwoCells;
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      invalidEditor.volume.selection, cr::CreativeVolumeCorner::First,
+      {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      invalidEditor.volume.selection, cr::CreativeVolumeCorner::Second,
+      {2, 2, 2}));
+  CreativeEditorOverlayFrame invalidOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, invalidEditor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      invalidOverlay);
+  const std::size_t invalidStart =
+      invalidOverlay.combinedWireLines.size() - invalidOverlay.volumeEdgeCount;
+
+  return expect(defaultShell.accepted && defaultShell.plannedCellCount == 98U &&
+                    thickShell.accepted && thickShell.plannedCellCount == 124U,
+                "hollow preview honors one-cell and two-cell shell thickness") &&
+         expect(outwardShell.accepted && outwardShell.hollowBoundsValid &&
+                    outwardShell.hollowExteriorBounds.min.x == -1 &&
+                    outwardShell.hollowExteriorBounds.max.x == 6 &&
+                    outwardShell.hollowInteriorBounds.min.x == 0 &&
+                    outwardShell.hollowInteriorBounds.max.x == 5,
+                "outward hollow preview keeps selection as its cavity") &&
+         expect(openShell.accepted && cutShell.accepted &&
+                    cutShell.plannedCellCount == 169U &&
+                    cutShell.hollowOpening ==
+                        cr::CreativeVolumeHollowOpening::PositiveEnd &&
+                    cutShell.hollowCornerRule ==
+                        cr::CreativeVolumeHollowCornerRule::CutThrough,
+                "hollow preview exposes exact opening and corner semantics") &&
+         expect(refreshCount == 5U &&
+                    editor.volume.preview.refreshCount == 5U &&
+                    repeated.plannedCellCount == 169U,
+                "every hollow setting invalidates one preview cache key") &&
+         expect(exactStagedDocument,
+                "hollow preview stages the exact shell cells") &&
+         expect(exactFirstOverlay,
+                "hollow preview draws exact exterior and interior envelopes") &&
+         expect(exactReusedOverlay,
+                "reused hollow overlay resets both envelope counters") &&
+         expect(exactApply && expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Volume &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    expectedOperation->action == "Hollow" &&
+                    expectedOperation->requestFingerprint ==
+                        cr::fingerprintCreativeVolumeOperationRequest(
+                            appliedRequest) &&
+                    expectedOperation->affectedMemberCount == 169U,
+                "hollow apply records exact destructive operation metadata") &&
+         expect(undo.accepted && undo.changed && exactUndoOperation &&
+                    redo.accepted && redo.changed &&
+                    redo.targetOperation == expectedOperation &&
+                    restoreUndo.accepted && restoreUndo.changed &&
+                    restoreUndo.targetOperation == expectedOperation &&
+                    appState.facade.document().voxelField().occupiedCellCount() ==
+                        0U &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    cr::creativeRedoDepth(appState.history) == 1U,
+                "destructive operation metadata survives undo and redo") &&
+         expect(invalidEditor.volume.preview.receipt.reasonCode ==
+                        "creative_volume_hollow_shell_does_not_fit" &&
+                    invalidOverlay.volumeExteriorEdgeCount == 12U &&
+                    invalidOverlay.volumeInteriorEdgeCount == 0U &&
+                    invalidStart < invalidOverlay.combinedWireLines.size() &&
+                    invalidOverlay.combinedWireLines[invalidStart].color.r ==
+                        1.0F &&
+                    invalidOverlay.combinedWireLines[invalidStart].color.g ==
+                        0.15F,
+                "undersized hollow previews fail closed with a red envelope");
+}
+
+bool replaceVolumePreviewClassifiesMembersAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 107U);
+
+  const auto oneCellSelection = [](cr::CreativeGridCoord3 cell) {
+    cr::CreativeVolumeSelection selected;
+    static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+        selected, cr::CreativeVolumeCorner::First, cell));
+    static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+        selected, cr::CreativeVolumeCorner::Second, cell));
+    return selected;
+  };
+  cr::CreativeVolumeOperationRequest seedWall;
+  seedWall.operation = cr::CreativeVolumeOperationKind::Fill;
+  seedWall.selection = oneCellSelection({0, 0, 0});
+  seedWall.objectKind = cr::CreativeObjectKind::Wall;
+  cr::CreativeVolumeOperationRequest seedFloor = seedWall;
+  seedFloor.selection = oneCellSelection({1, 0, 0});
+  seedFloor.objectKind = cr::CreativeObjectKind::Floor;
+  if (!appState.facade.applyVolumeOperation(seedWall).accepted ||
+      !appState.facade.applyVolumeOperation(seedFloor).accepted) {
+    return expect(false, "replace editor seed accepted");
+  }
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::VolumeReplace, cr::CreativeObjectKind::Floor};
+  editor.placeBrush = cr::CreativeObjectKind::Floor;
+  syncCreativeEditorHeldItem(appState, editor);
+  editor.toolSettings.replaceSourceKind = cr::CreativeObjectKind::Unknown;
+  editor.toolSettings.volumeReplaceMemberMask =
+      cr::CreativeVolumeMemberMask::VoxelCells;
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {1, 0, 0}));
+
+  const auto refresh = [&]() -> const cr::CreativeVolumeOperationReceipt& {
+    return refreshCreativeEditorVolumeOperationPreview(
+        editor.volume, appState.facade.document(), editor.volume.selection,
+        editor.placeBrush, editor.toolSettings);
+  };
+  const cr::CreativeVolumeOperationReceipt first = refresh();
+  const std::uint64_t firstRefreshCount = editor.volume.preview.refreshCount;
+  const cr::CreativeVolumeOperationReceipt repeated = refresh();
+  const std::uint64_t repeatedRefreshCount = editor.volume.preview.refreshCount;
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactFirstOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 12U &&
+      overlay.volumeUnchangedMemberEdgeCount == 12U &&
+      overlay.volumeEdgeCount == 36U;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactReusedOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 12U &&
+      overlay.volumeUnchangedMemberEdgeCount == 12U &&
+      overlay.volumeEdgeCount == 36U;
+
+  editor.toolSettings.replaceSourceKind = cr::CreativeObjectKind::Wall;
+  const cr::CreativeVolumeOperationReceipt sourceFiltered = refresh();
+  const std::uint64_t sourceRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.volumeReplaceMemberMask =
+      cr::CreativeVolumeMemberMask::DocumentObjects;
+  const cr::CreativeVolumeOperationReceipt objectsOnly = refresh();
+  const std::uint64_t objectRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.volumeReplaceMemberMask =
+      cr::CreativeVolumeMemberMask::VoxelCells;
+  const cr::CreativeVolumeOperationReceipt voxelsAgain = refresh();
+  const std::uint64_t voxelRefreshCount = editor.volume.preview.refreshCount;
+
+  const std::string heldStatus = creativeEditorHeldItemStatusLabel(editor);
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const cr::CreativeVolumeOperationReceipt applied =
+      applyCreativeEditorVolumeOperationWithHistory(
+          appState, editor.volume, editor.placeBrush,
+          cr::CreativeVolumeOperationKind::Replace, editor.toolSettings,
+          "test_replace_volume_apply");
+  const bool exactApply =
+      applied.accepted && applied.changed &&
+      applied.replacedVoxelCellCount == 1U &&
+      appState.facade.document().revision() == revisionBefore + 1U &&
+      appState.facade.document().voxelField().materialAt({0, 0, 0}) ==
+          cr::CreativeObjectKind::Floor &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(first.accepted && first.changed &&
+                    first.matchedVoxelCellCount == 2U &&
+                    first.replacedVoxelCellCount == 1U &&
+                    first.unchangedMaterialCellCount == 1U &&
+                    first.changedVoxelCells.size() == 1U &&
+                    sameCell(first.changedVoxelCells.front(), {0, 0, 0}) &&
+                    first.unchangedVoxelCells.size() == 1U &&
+                    sameCell(first.unchangedVoxelCells.front(), {1, 0, 0}),
+                "replace editor preview classifies exact voxel members") &&
+         expect(repeated.accepted && firstRefreshCount == 1U &&
+                    repeatedRefreshCount == 1U,
+                "unchanged replace request reuses its preview cache") &&
+         expect(exactFirstOverlay && exactReusedOverlay,
+                "replace overlay resets and renders envelope changed and unchanged") &&
+         expect(sourceFiltered.accepted && sourceFiltered.changed &&
+                    sourceFiltered.matchedVoxelCellCount == 1U &&
+                    sourceFiltered.excludedVoxelCellCount == 1U &&
+                    sourceRefreshCount == 2U,
+                "source filter invalidates and narrows replace preview") &&
+         expect(objectsOnly.accepted && !objectsOnly.changed &&
+                    objectsOnly.matchedVoxelCellCount == 0U &&
+                    objectsOnly.excludedVoxelCellCount == 2U &&
+                    objectRefreshCount == 3U,
+                "member mask invalidates and excludes voxel members") &&
+         expect(voxelsAgain.accepted && voxelsAgain.changed &&
+                    voxelRefreshCount == 4U,
+                "restoring voxel members refreshes an actionable preview") &&
+         expect(heldStatus.find("Floor | FROM Wall | VOXELS") !=
+                    std::string::npos,
+                "held replace status exposes target source and member mask") &&
+         expect(exactApply,
+                "replace applies once and creates exactly one history record") &&
+         expect(undo.accepted && undo.changed &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    appState.facade.document().voxelField().materialAt(
+                        {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                    appState.facade.document().voxelField().materialAt(
+                        {1, 0, 0}) == cr::CreativeObjectKind::Floor,
+                "replace undo restores both source materials exactly");
+}
+
+bool eraseVolumePreviewProtectsSourcesAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 108U);
+
+  const auto oneCellSelection = [](cr::CreativeGridCoord3 cell) {
+    cr::CreativeVolumeSelection selected;
+    static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+        selected, cr::CreativeVolumeCorner::First, cell));
+    static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+        selected, cr::CreativeVolumeCorner::Second, cell));
+    return selected;
+  };
+  cr::CreativeVolumeOperationRequest seedWall;
+  seedWall.operation = cr::CreativeVolumeOperationKind::Fill;
+  seedWall.selection = oneCellSelection({0, 0, 0});
+  seedWall.objectKind = cr::CreativeObjectKind::Wall;
+  cr::CreativeVolumeOperationRequest seedFloor = seedWall;
+  seedFloor.selection = oneCellSelection({1, 0, 0});
+  seedFloor.objectKind = cr::CreativeObjectKind::Floor;
+  if (!appState.facade.applyVolumeOperation(seedWall).accepted ||
+      !appState.facade.applyVolumeOperation(seedFloor).accepted) {
+    return expect(false, "erase editor seed voxels accepted");
+  }
+
+  cr::CreativeDocumentCreateRequest ordinaryRequest;
+  ordinaryRequest.kind = cr::CreativeObjectKind::Wall;
+  ordinaryRequest.name = "Ordinary wall";
+  ordinaryRequest.bounds = cr::creativeVolumeCellBounds({2, 0, 0}, 1.0, {});
+  ordinaryRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt ordinary =
+      appState.facade.createDocumentObject(ordinaryRequest);
+  cr::CreativeDocumentCreateRequest worldOwnedRequest = ordinaryRequest;
+  worldOwnedRequest.name = "World Layout wall";
+  worldOwnedRequest.bounds =
+      cr::creativeVolumeCellBounds({3, 0, 0}, 1.0, {});
+  worldOwnedRequest.tags = {"creative_world_layout:test_layout"};
+  const cr::CreativeDocumentCreateReceipt worldOwned =
+      appState.facade.createDocumentObject(worldOwnedRequest);
+  if (!ordinary.accepted || !worldOwned.accepted) {
+    return expect(false, "erase editor seed objects accepted");
+  }
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::VolumeErase, cr::CreativeObjectKind::Unknown};
+  syncCreativeEditorHeldItem(appState, editor);
+  editor.toolSettings.eraseSourceKind = cr::CreativeObjectKind::Wall;
+  editor.toolSettings.volumeEraseMemberMask =
+      cr::CreativeVolumeMemberMask::Both;
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {3, 0, 0}));
+
+  const auto refresh = [&]() -> const cr::CreativeVolumeOperationReceipt& {
+    return refreshCreativeEditorVolumeOperationPreview(
+        editor.volume, appState.facade.document(), editor.volume.selection,
+        editor.placeBrush, editor.toolSettings);
+  };
+  const cr::CreativeVolumeOperationReceipt first = refresh();
+  const std::uint64_t firstRefreshCount = editor.volume.preview.refreshCount;
+  const cr::CreativeVolumeOperationReceipt repeated = refresh();
+  const std::uint64_t repeatedRefreshCount = editor.volume.preview.refreshCount;
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactFirstOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 24U &&
+      overlay.volumeProtectedMemberEdgeCount == 12U &&
+      overlay.volumeDependentSourceEdgeCount == 0U &&
+      overlay.volumeBlockedMemberEdgeCount == 0U &&
+      overlay.volumeEdgeCount == 48U;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactReusedOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 24U &&
+      overlay.volumeProtectedMemberEdgeCount == 12U &&
+      overlay.volumeDependentSourceEdgeCount == 0U &&
+      overlay.volumeBlockedMemberEdgeCount == 0U &&
+      overlay.volumeEdgeCount == 48U;
+
+  editor.toolSettings.eraseSourceKind = cr::CreativeObjectKind::Floor;
+  const cr::CreativeVolumeOperationReceipt floorOnly = refresh();
+  const std::uint64_t sourceRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.volumeEraseMemberMask =
+      cr::CreativeVolumeMemberMask::VoxelCells;
+  const cr::CreativeVolumeOperationReceipt voxelOnly = refresh();
+  const std::uint64_t maskRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.eraseSourceKind = cr::CreativeObjectKind::Wall;
+  editor.toolSettings.volumeEraseMemberMask =
+      cr::CreativeVolumeMemberMask::Both;
+  const cr::CreativeVolumeOperationReceipt restored = refresh();
+  const std::uint64_t restoredRefreshCount = editor.volume.preview.refreshCount;
+
+  const std::string heldStatus = creativeEditorHeldItemStatusLabel(editor);
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const cr::CreativeVolumeOperationReceipt applied =
+      applyCreativeEditorVolumeOperationWithHistory(
+          appState, editor.volume, editor.placeBrush,
+          cr::CreativeVolumeOperationKind::Erase, editor.toolSettings,
+          "test_erase_volume_apply");
+  const bool exactAppliedReceipt =
+      applied.accepted && applied.changed &&
+      applied.removedVoxelCellCount == 1U &&
+      applied.removedObjectCount == 1U;
+  const bool oneRevisionAndHistory =
+      appState.facade.document().revision() == revisionBefore + 1U &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool eligibleOnlyRemoved =
+      !appState.facade.document().voxelField().occupied({0, 0, 0}) &&
+      appState.facade.document().voxelField().materialAt({1, 0, 0}) ==
+          cr::CreativeObjectKind::Floor &&
+      appState.facade.findObject(ordinary.objectId) == nullptr &&
+      appState.facade.findObject(worldOwned.objectId) != nullptr;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(first.accepted && first.changed &&
+                    first.matchedVoxelCellCount == 1U &&
+                    first.excludedVoxelCellCount == 1U &&
+                    first.matchedObjectCount == 1U &&
+                    first.excludedObjectCount == 1U &&
+                    first.protectedObjectCount == 1U &&
+                    first.removedVoxelCells.size() == 1U &&
+                    sameCell(first.removedVoxelCells.front(), {0, 0, 0}) &&
+                    first.removedObjectIds.size() == 1U &&
+                    first.removedObjectIds.front() == ordinary.objectId &&
+                    first.protectedObjectIds.size() == 1U &&
+                    first.protectedObjectIds.front() == worldOwned.objectId,
+                "erase editor preview classifies exact deletions and protection") &&
+         expect(repeated.accepted && firstRefreshCount == 1U &&
+                    repeatedRefreshCount == 1U,
+                "unchanged erase request reuses its preview cache") &&
+         expect(exactFirstOverlay && exactReusedOverlay,
+                "erase overlay resets exact removal and protected outlines") &&
+         expect(floorOnly.accepted && floorOnly.changed &&
+                    floorOnly.matchedVoxelCellCount == 1U &&
+                    floorOnly.excludedVoxelCellCount == 1U &&
+                    floorOnly.matchedObjectCount == 0U &&
+                    floorOnly.protectedObjectCount == 0U &&
+                    sourceRefreshCount == 2U,
+                "erase source filter invalidates and narrows preview") &&
+         expect(voxelOnly.accepted && voxelOnly.changed &&
+                    voxelOnly.matchedVoxelCellCount == 1U &&
+                    voxelOnly.excludedObjectCount == 2U &&
+                    maskRefreshCount == 3U,
+                "erase member mask invalidates and excludes object members") &&
+         expect(restored.accepted && restored.changed &&
+                    restoredRefreshCount == 4U,
+                "restoring erase settings refreshes actionable preview") &&
+         expect(heldStatus.find("Erase | FROM Wall | BOTH | 2 DELETE | 1 SOURCE-OWNED") !=
+                    std::string::npos,
+                "held erase status exposes filter mask deletion and protection") &&
+         expect(exactAppliedReceipt,
+                "erase apply reports exact eligible member counts") &&
+         expect(oneRevisionAndHistory,
+                "erase applies eligible members in one revision and history record") &&
+         expect(eligibleOnlyRemoved,
+                "erase apply removes eligible members and preserves exclusions") &&
+         expect(undo.accepted && undo.changed &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    appState.facade.document().voxelField().materialAt(
+                        {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
+                    appState.facade.document().voxelField().materialAt(
+                        {1, 0, 0}) == cr::CreativeObjectKind::Floor &&
+                    appState.facade.findObject(ordinary.objectId) != nullptr &&
+                    appState.facade.findObject(worldOwned.objectId) != nullptr &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "one erase undo restores all eligible and protected members");
+}
+
+bool cloneVolumePreviewTransformsCachesAndGroupsHistory() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 131U);
+  cr::CreativeVolumeOperationRequest seed;
+  seed.operation = cr::CreativeVolumeOperationKind::Fill;
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      seed.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      seed.selection, cr::CreativeVolumeCorner::Second, {0, 0, 0}));
+  seed.objectKind = cr::CreativeObjectKind::Wall;
+  const cr::CreativeVolumeOperationReceipt seededVoxel =
+      appState.facade.applyVolumeOperation(seed);
+  cr::CreativeDocumentCreateRequest objectRequest;
+  objectRequest.kind = cr::CreativeObjectKind::Crate;
+  objectRequest.name = "Clone source crate";
+  objectRequest.bounds = {{1.0, 0.0, 0.0}, {2.0, 1.0, 1.0}};
+  objectRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt seededObject =
+      appState.facade.createDocumentObject(objectRequest);
+  if (!seededVoxel.accepted || !seededObject.accepted) {
+    return expect(false, "clone editor seed accepted");
+  }
+
+  CreativeEditorState editor;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::VolumeClone, cr::CreativeObjectKind::Unknown};
+  syncCreativeEditorHeldItem(appState, editor);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {1, 0, 0}));
+
+  const auto refresh = [&]() -> const cr::CreativeVolumeOperationReceipt& {
+    return refreshCreativeEditorVolumeOperationPreview(
+        editor.volume, appState.facade.document(), editor.volume.selection,
+        editor.placeBrush, editor.toolSettings);
+  };
+  const cr::CreativeVolumeOperationReceipt first = refresh();
+  const std::uint64_t firstRefreshCount = editor.volume.preview.refreshCount;
+  const bool firstStagedDocumentValid =
+      editor.volume.preview.stagedDocumentValid;
+  const cr::CreativeVolumeOperationReceipt repeated = refresh();
+  const std::uint64_t repeatedRefreshCount = editor.volume.preview.refreshCount;
+
+  CreativeEditorVolumeScenePreviewCache scenePreview;
+  const bool sceneBuilt = refreshCreativeEditorVolumeScenePreview(
+      scenePreview, editor.volume.preview.stagedDocument,
+      editor.volume.preview.refreshCount);
+  const bool exactStagedScene =
+      sceneBuilt && scenePreview.valid &&
+      scenePreview.scene.preview.roomBake.receipt.accepted &&
+      scenePreview.scene.preview.roomBake.receipt.objectCount == 2U &&
+      scenePreview.scene.preview.roomBake.receipt.voxelCellCount == 2U;
+
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  iggy3d::FrameInput frame;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactFirstOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 24U &&
+      overlay.volumeUnchangedMemberEdgeCount == 0U &&
+      overlay.volumeProtectedMemberEdgeCount == 0U &&
+      overlay.volumeBlockedMemberEdgeCount == 0U &&
+      overlay.volumeEdgeCount == 36U;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projectionRequest,
+       1280U, 720U, 0.03F, false},
+      overlay);
+  const bool exactReusedOverlay =
+      overlay.volumeExteriorEdgeCount == 12U &&
+      overlay.volumeChangedMemberEdgeCount == 24U &&
+      overlay.volumeEdgeCount == 36U;
+
+  editor.toolSettings.cloneRotation = cr::CreativeCloneRotation::Degrees90;
+  static_cast<void>(refresh());
+  const std::uint64_t rotationRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.cloneMirror = cr::CreativeCloneMirror::X;
+  static_cast<void>(refresh());
+  const std::uint64_t mirrorRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.volumeCloneMemberMask =
+      cr::CreativeVolumeMemberMask::VoxelCells;
+  static_cast<void>(refresh());
+  const std::uint64_t memberRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.cloneVoxelOverlapPolicy =
+      cr::CreativeVolumeCloneVoxelOverlapPolicy::PreserveExisting;
+  static_cast<void>(refresh());
+  const std::uint64_t overlapRefreshCount = editor.volume.preview.refreshCount;
+  editor.toolSettings.cloneRotation = cr::CreativeCloneRotation::Degrees0;
+  editor.toolSettings.cloneMirror = cr::CreativeCloneMirror::None;
+  editor.toolSettings.volumeCloneMemberMask = cr::CreativeVolumeMemberMask::Both;
+  editor.toolSettings.cloneVoxelOverlapPolicy =
+      cr::CreativeVolumeCloneVoxelOverlapPolicy::RejectOccupied;
+  const cr::CreativeVolumeOperationReceipt restored = refresh();
+  const std::uint64_t restoredRefreshCount = editor.volume.preview.refreshCount;
+  const std::string heldStatus = creativeEditorHeldItemStatusLabel(editor);
+
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  const cr::CreativeVolumeOperationReceipt applied =
+      applyCreativeEditorVolumeOperationWithHistory(
+          appState, editor.volume, editor.placeBrush,
+          cr::CreativeVolumeOperationKind::Clone, editor.toolSettings,
+          "test_clone_volume_apply");
+  const bool oneRevisionAndHistory =
+      applied.accepted && applied.changed &&
+      applied.createdObjectCount == 1U &&
+      applied.createdVoxelCellCount == 1U &&
+      appState.facade.document().revision() == revisionBefore + 1U &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool exactAppliedTargets =
+      appState.facade.document().objectCount() == 2U &&
+      appState.facade.document().voxelField().occupiedCellCount() == 2U &&
+      appState.facade.document().voxelField().materialAt({1, 0, 0}) ==
+          cr::CreativeObjectKind::Wall;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(first.accepted && first.changed &&
+                    first.createdObjectCount == 1U &&
+                    first.createdVoxelCellCount == 1U &&
+                    firstStagedDocumentValid,
+                "clone editor preview stages exact mixed target members") &&
+         expect(repeated.accepted && firstRefreshCount == 1U &&
+                    repeatedRefreshCount == 1U,
+                "unchanged clone request reuses preview cache") &&
+         expect(exactStagedScene,
+                "clone preview scene contains exact source and target geometry") &&
+         expect(exactFirstOverlay && exactReusedOverlay,
+                "clone overlay resets exact target member outlines") &&
+         expect(rotationRefreshCount == 2U && mirrorRefreshCount == 3U &&
+                    memberRefreshCount == 4U && overlapRefreshCount == 5U &&
+                    restored.accepted && restored.changed &&
+                    restoredRefreshCount == 6U,
+                "every clone transform domain and overlap setting invalidates once") &&
+         expect(heldStatus.find(
+                    "Clone | X 1 CELL | ROTATE 0 DEG | MIRROR NONE | BOTH | VOXEL REJECT | 2 CLONE") !=
+                    std::string::npos,
+                "clone held status exposes complete operation contract") &&
+         expect(oneRevisionAndHistory,
+                "mixed clone applies in one revision and history record") &&
+         expect(exactAppliedTargets,
+                "mixed clone commits exact object and voxel targets") &&
+         expect(undo.accepted && undo.changed &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    appState.facade.document().objectCount() == 1U &&
+                    appState.facade.document().voxelField().occupiedCellCount() ==
+                        1U &&
+                    !appState.facade.document().voxelField().occupied({1, 0, 0}) &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "one clone undo restores all mixed members");
+}
+
+bool volumeRegionNameAndExactPreviewCachePersistAcrossTools() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 105U);
+  CreativeEditorVolumeState volume;
+  activateCreativeEditorVolumeMode(volume, 1.0);
+  volume.regionName = "Courtyard cut";
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      volume.selection, cr::CreativeVolumeCorner::First, {0, 0, 0}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      volume.selection, cr::CreativeVolumeCorner::Second, {1, 0, 0}));
+  cr::CreativeToolSettings settings = cr::makeDefaultCreativeToolSettings();
+
+  const cr::CreativeVolumeOperationReceipt first =
+      refreshCreativeEditorVolumeOperationPreview(
+          volume, appState.facade.document(), volume.selection,
+          cr::CreativeObjectKind::Wall, settings);
+  const std::uint64_t firstRefreshCount = volume.preview.refreshCount;
+  CreativeEditorVolumeScenePreviewCache scenePreview;
+  const bool firstSceneBuilt = refreshCreativeEditorVolumeScenePreview(
+      scenePreview, volume.preview.stagedDocument, volume.preview.refreshCount);
+  const bool exactFirstScene =
+      firstSceneBuilt &&
+      scenePreview.scene.preview.roomBake.receipt.bakedVoxelCuboidCount == 1U &&
+      scenePreview.scene.preview.roomBake.room.staticMeshes.size() == 1U &&
+      scenePreview.scene.preview.roomBake.room.staticMeshes.front().materialId ==
+          "creative_voxel_material_Wall" &&
+      near(scenePreview.scene.preview.roomBake.room.staticMeshes.front()
+               .sizeMeters.x,
+           2.0F) &&
+      near(scenePreview.scene.preview.roomBake.room.staticMeshes.front()
+               .sizeMeters.y,
+           1.0F) &&
+      near(scenePreview.scene.preview.roomBake.room.staticMeshes.front()
+               .sizeMeters.z,
+           1.0F);
+  const bool exactFirstStage =
+      volume.preview.stagedDocumentValid &&
+      appState.facade.document().voxelField().occupiedCellCount() == 0U &&
+      volume.preview.stagedDocument.voxelField().occupiedCellCount() == 2U &&
+      volume.preview.stagedDocument.voxelField().materialAt({0, 0, 0}) ==
+          cr::CreativeObjectKind::Wall;
+  bool cacheReused = true;
+  bool sceneCacheReused = true;
+  for (std::size_t frame = 0; frame < 300U; ++frame) {
+    const cr::CreativeVolumeOperationReceipt& repeated =
+        refreshCreativeEditorVolumeOperationPreview(
+            volume, appState.facade.document(), volume.selection,
+            cr::CreativeObjectKind::Wall, settings);
+    cacheReused = cacheReused && repeated.accepted && repeated.changed;
+    sceneCacheReused =
+        sceneCacheReused &&
+        !refreshCreativeEditorVolumeScenePreview(
+            scenePreview, volume.preview.stagedDocument,
+            volume.preview.refreshCount);
+  }
+  const std::uint64_t idleOperationRefreshCount = volume.preview.refreshCount;
+  const std::uint64_t idleSceneRefreshCount = scenePreview.scene.refreshCount;
+
+  static_cast<void>(cr::resizeCreativeVolumeSelectionFace(
+      volume.selection, cr::CreativeVolumeFace::PositiveX, 1));
+  const cr::CreativeVolumeOperationReceipt expanded =
+      refreshCreativeEditorVolumeOperationPreview(
+          volume, appState.facade.document(), volume.selection,
+          cr::CreativeObjectKind::Wall, settings);
+  const std::uint64_t expandedRefreshCount = volume.preview.refreshCount;
+  const bool expandedSceneBuilt = refreshCreativeEditorVolumeScenePreview(
+      scenePreview, volume.preview.stagedDocument, volume.preview.refreshCount);
+  settings.volumeFillOverlapPolicy =
+      cr::CreativeVolumeFillOverlapPolicy::ReplaceExisting;
+  const cr::CreativeVolumeOperationReceipt policyChanged =
+      refreshCreativeEditorVolumeOperationPreview(
+          volume, appState.facade.document(), volume.selection,
+          cr::CreativeObjectKind::Wall, settings);
+  const std::uint64_t policyRefreshCount = volume.preview.refreshCount;
+  const bool policySceneBuilt = refreshCreativeEditorVolumeScenePreview(
+      scenePreview, volume.preview.stagedDocument, volume.preview.refreshCount);
+  volume.operation = cr::CreativeVolumeOperationKind::Hollow;
+  settings.volumeHollowAlignment =
+      cr::CreativeVolumeHollowAlignment::Outward;
+  const cr::CreativeVolumeOperationReceipt switched =
+      refreshCreativeEditorVolumeOperationPreview(
+          volume, appState.facade.document(), volume.selection,
+          cr::CreativeObjectKind::Wall, settings);
+  const bool switchedSceneBuilt = refreshCreativeEditorVolumeScenePreview(
+      scenePreview, volume.preview.stagedDocument, volume.preview.refreshCount);
+  deactivateCreativeEditorVolumeMode(volume);
+  activateCreativeEditorVolumeMode(volume, 1.0);
+
+  return expect(first.accepted && first.changed && exactFirstStage &&
+                    cr::creativeVolumeChangedMemberCount(first) == 2U &&
+                    firstRefreshCount == 1U,
+                "volume preview owns exact staged geometry without source mutation") &&
+         expect(exactFirstScene && scenePreview.valid &&
+                    scenePreview.scene.preview.roomBake.receipt.accepted &&
+                    idleSceneRefreshCount == 1U,
+                "staged volume renders exact dimensions and material") &&
+         expect(cacheReused && sceneCacheReused &&
+                    idleOperationRefreshCount == 1U &&
+                    idleSceneRefreshCount == 1U,
+                "300 unchanged frames reuse operation and scene previews") &&
+         expect(expanded.accepted &&
+                    cr::creativeVolumeChangedMemberCount(expanded) == 3U &&
+                    expandedRefreshCount == 2U && expandedSceneBuilt,
+                "region edit invalidates the preview key") &&
+         expect(policyChanged.accepted && policyRefreshCount == 3U &&
+                    policySceneBuilt &&
+                    policyChanged.fillOverlapPolicy ==
+                        cr::CreativeVolumeFillOverlapPolicy::ReplaceExisting,
+                "overlap policy invalidates exact operation and scene previews") &&
+         expect(switched.accepted && volume.preview.refreshCount == 4U &&
+                    switchedSceneBuilt &&
+                    scenePreview.operationRefreshCount == 4U &&
+                    scenePreview.scene.refreshCount == 4U,
+                "operation switch invalidates the preview key") &&
+         expect(volume.regionName == "Courtyard cut" &&
+                    cr::creativeVolumeSelectionComplete(volume.selection),
+                "named region survives deactivation and compatible tool switch");
+}
+
+bool volumeHandlesProjectPickResizeMoveAndCancelAcrossViews() {
+  CreativeEditorVolumeState volume;
+  activateCreativeEditorVolumeMode(volume, 0.25);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      volume.selection, cr::CreativeVolumeCorner::First, {-1, -1, -1}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      volume.selection, cr::CreativeVolumeCorner::Second, {0, 0, 0}));
+  const iggy3d::RenderContentViewport content{100, 50, 400U, 300U};
+
+  iggy3d::RenderCameraFrame frontCamera;
+  frontCamera.clipFromWorld = iggy3d::identityMat4();
+  iggy3d::RenderCameraFrame planCamera;
+  planCamera.clipFromWorld = {};
+  planCamera.clipFromWorld.m[0] = 1.0F;
+  planCamera.clipFromWorld.m[6] = 1.0F;
+  planCamera.clipFromWorld.m[9] = 1.0F;
+  planCamera.clipFromWorld.m[15] = 1.0F;
+  iggy3d::RenderCameraFrame sideCamera;
+  sideCamera.clipFromWorld = {};
+  sideCamera.clipFromWorld.m[2] = 1.0F;
+  sideCamera.clipFromWorld.m[5] = 1.0F;
+  sideCamera.clipFromWorld.m[8] = 1.0F;
+  sideCamera.clipFromWorld.m[15] = 1.0F;
+  iggy3d::RenderCameraFrame perspectiveCamera;
+  perspectiveCamera.clipFromWorld = {};
+  perspectiveCamera.clipFromWorld.m[0] = 0.6F;
+  perspectiveCamera.clipFromWorld.m[2] = -0.6F;
+  perspectiveCamera.clipFromWorld.m[4] = 0.35F;
+  perspectiveCamera.clipFromWorld.m[5] = 0.7F;
+  perspectiveCamera.clipFromWorld.m[6] = 0.35F;
+  perspectiveCamera.clipFromWorld.m[15] = 1.0F;
+
+  const CreativeEditorVolumeHandleFrame front =
+      buildCreativeEditorVolumeHandleFrame(volume, frontCamera, content);
+  const CreativeEditorVolumeHandleFrame plan =
+      buildCreativeEditorVolumeHandleFrame(volume, planCamera, content);
+  const CreativeEditorVolumeHandleFrame side =
+      buildCreativeEditorVolumeHandleFrame(volume, sideCamera, content);
+  const CreativeEditorVolumeHandleFrame perspective =
+      buildCreativeEditorVolumeHandleFrame(volume, perspectiveCamera, content);
+  const auto moveHandleValid = [](const CreativeEditorVolumeHandleFrame& frame,
+                                  cr::CreativeAxis3 axis) {
+    return std::any_of(
+        frame.handles.begin(), frame.handles.end(),
+        [axis](const CreativeEditorVolumeHandle& handle) {
+          return handle.valid &&
+                 handle.kind == CreativeEditorVolumeHandleKind::MoveAxis &&
+                 handle.axis == axis;
+        });
+  };
+  const auto resizePairValid = [](const CreativeEditorVolumeHandleFrame& frame,
+                                  cr::CreativeAxis3 axis) {
+    return std::count_if(
+               frame.handles.begin(), frame.handles.end(),
+               [axis](const CreativeEditorVolumeHandle& handle) {
+                 return handle.valid &&
+                        handle.kind ==
+                            CreativeEditorVolumeHandleKind::ResizeFace &&
+                        handle.axis == axis;
+               }) == 2;
+  };
+  const CreativeEditorVolumeHandlePick positiveX =
+      pickCreativeEditorVolumeHandle(front, 350.0F, 200.0F);
+  const CreativeEditorVolumeHandlePick xShaft =
+      pickCreativeEditorVolumeHandle(front, 410.0F, 200.0F);
+
+  const cr::CreativeGridBounds3 initialBounds =
+      cr::creativeVolumeGridBounds(volume.selection);
+  const cr::CreativeVec3 down{0.0, -1.0, 0.0};
+  const bool resizeBegan = beginCreativeEditorVolumeHandleGesture(
+      volume, front.handles[1], {0.25, 2.0, 0.0}, down);
+  const bool resized = updateCreativeEditorVolumeHandleGesture(
+      volume, {0.75, 2.0, 0.0}, down);
+  const cr::CreativeVolumeRegionFacts expanded =
+      cr::inspectCreativeVolumeRegion(volume.selection);
+  const bool resizeCanceled =
+      finishCreativeEditorVolumeHandleGesture(volume, false);
+  const cr::CreativeGridBounds3 restoredBounds =
+      cr::creativeVolumeGridBounds(volume.selection);
+
+  const bool moveBegan = beginCreativeEditorVolumeHandleGesture(
+      volume, front.handles[6], {0.75, 2.0, 0.0}, down);
+  const bool moved = updateCreativeEditorVolumeHandleGesture(
+      volume, {1.25, 2.0, 0.0}, down);
+  const cr::CreativeGridBounds3 movedBounds =
+      cr::creativeVolumeGridBounds(volume.selection);
+  const bool moveCommitted =
+      finishCreativeEditorVolumeHandleGesture(volume, true);
+
+  const CreativeEditorVolumeHandleFrame movedFrame =
+      buildCreativeEditorVolumeHandleFrame(volume, frontCamera, content);
+  const bool contractionBegan = beginCreativeEditorVolumeHandleGesture(
+      volume, movedFrame.handles[1], {0.75, 2.0, 0.0}, down);
+  const bool contracted = updateCreativeEditorVolumeHandleGesture(
+      volume, {0.25, 2.0, 0.0}, down);
+  const cr::CreativeVolumeRegionFacts contractedFacts =
+      cr::inspectCreativeVolumeRegion(volume.selection);
+  const bool contractionCanceled =
+      finishCreativeEditorVolumeHandleGesture(volume, false);
+  const bool parallelRejected = !beginCreativeEditorVolumeHandleGesture(
+      volume, movedFrame.handles[6], {1.25, 0.0, 0.0}, {1.0, 0.0, 0.0});
+
+  cr::CreativeAppState appState;
+  CreativeEditorState renderEditor;
+  renderEditor.volume = CreativeEditorVolumeState{};
+  activateCreativeEditorVolumeMode(renderEditor.volume, 0.25);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      renderEditor.volume.selection, cr::CreativeVolumeCorner::First,
+      {-1, -1, -1}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      renderEditor.volume.selection, cr::CreativeVolumeCorner::Second,
+      {0, 0, 0}));
+  renderEditor.placeBrush = cr::CreativeObjectKind::Wall;
+  iggy3d::FrameInput renderFrame;
+  renderFrame.viewport = {800U, 600U, 4.0F / 3.0F};
+  renderFrame.contentViewport = content;
+  renderFrame.camera = frontCamera;
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projectionRequest;
+  CreativeEditorOverlayFrame visible;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, renderEditor, selection, gizmo, renderFrame,
+       projectionRequest, 800U, 600U, 0.03F, false},
+      visible);
+  renderEditor.toolOptions.open = true;
+  CreativeEditorOverlayFrame hidden;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, renderEditor, selection, gizmo, renderFrame,
+       projectionRequest, 800U, 600U, 0.03F, false},
+      hidden);
+
+  return expect(front.valid && plan.valid && side.valid && perspective.valid,
+                "volume handles project in orthographic and 3D views") &&
+         expect(moveHandleValid(front, cr::CreativeAxis3::X) &&
+                    moveHandleValid(front, cr::CreativeAxis3::Y) &&
+                    !moveHandleValid(front, cr::CreativeAxis3::Z) &&
+                    resizePairValid(front, cr::CreativeAxis3::X) &&
+                    resizePairValid(front, cr::CreativeAxis3::Y),
+                "front view exposes only its two visible axes") &&
+         expect(moveHandleValid(plan, cr::CreativeAxis3::X) &&
+                    !moveHandleValid(plan, cr::CreativeAxis3::Y) &&
+                    moveHandleValid(plan, cr::CreativeAxis3::Z) &&
+                    resizePairValid(plan, cr::CreativeAxis3::X) &&
+                    resizePairValid(plan, cr::CreativeAxis3::Z),
+                "plan view exposes X/Z move and face handles") &&
+         expect(!moveHandleValid(side, cr::CreativeAxis3::X) &&
+                    moveHandleValid(side, cr::CreativeAxis3::Y) &&
+                    moveHandleValid(side, cr::CreativeAxis3::Z) &&
+                    resizePairValid(side, cr::CreativeAxis3::Y) &&
+                    resizePairValid(side, cr::CreativeAxis3::Z),
+                "side view exposes Y/Z move and face handles") &&
+         expect(moveHandleValid(perspective, cr::CreativeAxis3::X) &&
+                    moveHandleValid(perspective, cr::CreativeAxis3::Y) &&
+                    moveHandleValid(perspective, cr::CreativeAxis3::Z),
+                "3D view exposes all three move axes") &&
+         expect(positiveX.hit && positiveX.index == 1U &&
+                    near(front.handles[1].pixelX, 350.0F) &&
+                    near(front.handles[1].pixelY, 200.0F),
+                "handle picking honors the offset content viewport") &&
+         expect(xShaft.hit && xShaft.index == 6U,
+                "the full visible move shaft is targetable") &&
+         expect(resizeBegan && resized && expanded.dimensions.x == 4 &&
+                    resizeCanceled && initialBounds.min.x == restoredBounds.min.x &&
+                    initialBounds.max.x == restoredBounds.max.x,
+                "face drag snaps in cells and cancel restores the region") &&
+         expect(moveBegan && moved && moveCommitted && movedBounds.min.x == 1 &&
+                    movedBounds.max.x == 3,
+                "axis drag moves and commits the whole region") &&
+         expect(contractionBegan && contracted &&
+                    contractedFacts.dimensions.x == 1 && contractionCanceled,
+                "face contraction clamps to one cell and remains cancelable") &&
+         expect(parallelRejected,
+                "parallel volume handle rays fail closed") &&
+         expect(visible.volumeEdgeCount == 12U &&
+                    visible.volumeHandleEdgeCount == 18U,
+                "volume handles render separately from the exact outline") &&
+         expect(hidden.volumeHandleEdgeCount == 0U &&
+                    hidden.volumeEdgeCount == 12U,
+                "modal surfaces hide handles without discarding the region");
+}
+
+bool volumeHandleGrabOwnsWorldActionPrecedence() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 131U);
+  CreativeEditorState editor;
+  editor.interaction.hotbar.entries[0] =
+      {cr::CreativeHeldItemKind::VolumeSelect,
+       cr::CreativeObjectKind::Unknown};
+  editor.interaction.synchronizedHeldItemKind =
+      cr::CreativeHeldItemKind::VolumeSelect;
+  activateCreativeEditorVolumeMode(editor.volume, 1.0);
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::First, {-1, -1, -1}));
+  static_cast<void>(cr::setCreativeVolumeSelectionCorner(
+      editor.volume.selection, cr::CreativeVolumeCorner::Second, {0, 0, 0}));
+  const cr::CreativeGridBounds3 initial =
+      cr::creativeVolumeGridBounds(editor.volume.selection);
+
+  iggy3d::RenderCameraFrame camera;
+  camera.worldEye = {0.0F, 2.0F, 3.0F};
+  camera.worldForward = {0.0F, 0.0F, -1.0F};
+  camera.worldUp = {0.0F, 1.0F, 0.0F};
+  camera.clipFromWorld = iggy3d::identityMat4();
+  camera.clipFromWorld.m[3] = -1.0F;
+  CreativeEditorPickFrame pickFrame;
+  const iggy3d::RenderContentViewport content{100, 50, 400U, 300U};
+  const cr::CreativeWorldActionFrame grab = actionFrame(
+      cr::CreativeWorldActionId::Primary, true, true, false);
+  processCreativeEditorWorldInteractionFrame(
+      {appState, editor, grab, cr::kCreativeInputModifierNone, camera, pickFrame,
+       content, 0U, false});
+  const bool gestureActiveAfterGrab = editor.volume.handleGesture.active;
+  const cr::CreativeGridBounds3 afterGrab =
+      cr::creativeVolumeGridBounds(editor.volume.selection);
+
+  const cr::CreativeWorldActionFrame cancel = actionFrame(
+      cr::CreativeWorldActionId::Reject, true, true, false);
+  processCreativeEditorWorldInteractionFrame(
+      {appState, editor, cancel, cr::kCreativeInputModifierNone, camera,
+       pickFrame, content, 1U, false});
+
+  return expect(gestureActiveAfterGrab &&
+                    editor.volume.selection.phase ==
+                    cr::CreativeVolumeSelectionPhase::Complete &&
+                    initial.min.x == afterGrab.min.x &&
+                    initial.max.x == afterGrab.max.x,
+                "handle grab takes precedence over resetting a volume corner") &&
+         expect(!editor.volume.handleGesture.active &&
+                    cr::creativeVolumeSelectionComplete(editor.volume.selection),
+                "Reject cancels the handle gesture through world interaction");
 }
 
 bool sceneCacheRefreshesOnlyOnDocumentRevision() {
@@ -4454,6 +5692,69 @@ bool removalStrokeDeduplicatesObjectsAndGroupsHistory() {
          ok;
 }
 
+bool removalStrokePreservesSemanticOwners() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 112U);
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Group;
+  sourceRequest.name = "Pattern source";
+  const cr::CreativeObjectId source =
+      appState.facade.createDocumentObject(sourceRequest).objectId;
+  cr::CreativeLinearArrayRequest arrayRequest;
+  arrayRequest.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt array =
+      cr::createCreativeLinearArrayAtomically(
+          appState.facade.documentForPersistence(), std::span{&source, 1U},
+          arrayRequest);
+  appState.history = {};
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Group);
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = array.generatedObjectIds().front();
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Group;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, true, true, false), 0U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, false, false, true), 1U);
+  const bool patternRemoved =
+      array.accepted && appState.facade.document().objectCount() == 0U &&
+      appState.facade.document().patternRecipeStore().recipes.empty() &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+  const bool patternRestored =
+      undoLastEdit(appState, "test_undo_pattern_remove_stroke") &&
+      appState.facade.document().objectCount() == 3U &&
+      appState.facade.document().patternRecipeStore().recipes.size() == 1U;
+
+  cr::CreativeDocumentCreateRequest generatedRequest;
+  generatedRequest.kind = cr::CreativeObjectKind::Crate;
+  generatedRequest.name = "Generated wall";
+  generatedRequest.tags = {"creative_world_layout:test_layout"};
+  const cr::CreativeObjectId generated =
+      appState.facade.createDocumentObject(generatedRequest).objectId;
+  appState.history = {};
+  editor = materialEditor(cr::CreativeObjectKind::Crate);
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = generated;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Crate;
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, true, true, false), 2U);
+  processCreativeMaterialStrokeFrame(
+      appState, editor,
+      actionFrame(cr::CreativeWorldActionId::Primary, false, false, true), 3U);
+
+  return expect(patternRemoved,
+                "remove stroke deletes an editable pattern as one closure") &&
+         expect(patternRestored,
+                "one undo restores pattern source, outputs, and recipe") &&
+         expect(appState.facade.findObject(generated) != nullptr &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    editor.interaction.placementFeedback.status ==
+                        CreativeEditorPlacementFeedbackStatus::Rejected,
+                "remove stroke fails closed on generated World Layout output");
+}
+
 bool strokeCapacityStopsAndInterruptionFinalizes() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 103U);
@@ -4884,7 +6185,7 @@ bool surfaceExtrudePreviewMutationAndRemovalStayAtomic() {
                 "app face conversion snaps finite dominant normals only");
 }
 
-bool heldShapeToolOwnsItsTwoCornerGesture() {
+bool heldShapeToolRequiresPreviewBeforeApply() {
   CreativeEditorVolumeState volume;
   volume.selection.cellSize = 1.0;
   const CreativeEditorVolumeGestureReceipt unarmed =
@@ -4910,7 +6211,7 @@ bool heldShapeToolOwnsItsTwoCornerGesture() {
   editor.volume.selection = volume.selection;
   cr::CreativeAppState appState;
 
-  return expect(!unarmed.accepted &&
+  bool ok = expect(!unarmed.accepted &&
                     unarmed.status ==
                         CreativeEditorVolumeGestureStatus::NotArmed &&
                     unarmed.phaseAfter ==
@@ -4941,8 +6242,135 @@ bool heldShapeToolOwnsItsTwoCornerGesture() {
                     appState, editor, "test_shape_enter_confirm"),
                 "generic confirm cannot bypass the shape corner gesture") &&
          expect(creativeEditorHeldItemStatusLabel(editor) ==
-                    "Hollow | CYLINDER Z | Wall | Ready",
+                    "Hollow | CYLINDER Z | Wall | 1 CELL INWARD | CLOSED | "
+                    "KEEP EDGES | Ready",
                 "held tool HUD exposes operation shape axis material and phase");
+
+  cr::CreativeAppState fillAppState;
+  installHistoryDocument(fillAppState, 703U);
+  CreativeEditorState fillEditor = materialEditor(cr::CreativeObjectKind::Wall);
+  fillEditor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::VolumeFill;
+  syncCreativeEditorHeldItem(fillAppState, fillEditor);
+  const cr::CreativeHotbarEntry fillHeld =
+      cr::selectedCreativeHotbarEntry(fillEditor.interaction.hotbar);
+  const cr::CreativeWorldActionFrame noActions;
+  const iggy3d::RenderCameraFrame camera;
+  const CreativeEditorPickFrame pickFrame;
+  const CreativeEditorWorldInteractionFrameRequest fillRequest{
+      fillAppState,
+      fillEditor,
+      noActions,
+      cr::kCreativeInputModifierNone,
+      camera,
+      pickFrame,
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U},
+      0U,
+      false};
+
+  setPlaceTarget(fillEditor, 2, 0, 3);
+  fillEditor.interaction.target.grid.targetCell = {2, 0, 3};
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, fillRequest,
+      fillHeld);
+  const bool firstCornerOnly =
+      fillEditor.volume.selection.phase ==
+          cr::CreativeVolumeSelectionPhase::FirstCorner &&
+      fillAppState.facade.document().voxelField().occupiedCellCount() == 0U &&
+      cr::creativeUndoDepth(fillAppState.history) == 0U;
+
+  setPlaceTarget(fillEditor, 4, 1, 3);
+  fillEditor.interaction.target.grid.targetCell = {4, 1, 3};
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, fillRequest,
+      fillHeld);
+  const cr::CreativeVolumeOperationReceipt exactPreview =
+      refreshCreativeEditorVolumeOperationPreview(
+          fillEditor.volume, fillAppState.facade.document(),
+          fillEditor.volume.selection, fillEditor.placeBrush,
+          fillEditor.toolSettings);
+  const bool previewOnly =
+      fillEditor.volume.selection.phase ==
+          cr::CreativeVolumeSelectionPhase::Complete &&
+      exactPreview.accepted && exactPreview.changed &&
+      cr::creativeVolumeChangedMemberCount(exactPreview) == 6U &&
+      fillEditor.volume.preview.stagedDocumentValid &&
+      fillEditor.volume.preview.stagedDocument.voxelField()
+              .occupiedCellCount() == 6U &&
+      fillAppState.facade.document().voxelField().occupiedCellCount() == 0U &&
+      cr::creativeUndoDepth(fillAppState.history) == 0U;
+
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, fillRequest,
+      fillHeld);
+  const bool appliedOnThirdAction =
+      fillEditor.volume.lastReceipt.accepted &&
+      fillEditor.volume.lastReceipt.changed &&
+      fillEditor.volume.lastReceipt.createdVoxelCellCount == 6U &&
+      fillAppState.facade.document().voxelField().occupiedCellCount() == 6U &&
+      fillEditor.volume.selection.phase ==
+          cr::CreativeVolumeSelectionPhase::Complete &&
+      cr::creativeUndoDepth(fillAppState.history) == 1U;
+  setPlaceTarget(fillEditor, 8, 0, 8);
+  fillEditor.interaction.target.grid.targetCell = {8, 0, 8};
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, fillRequest,
+      fillHeld);
+  const bool rearmedAfterApply =
+      fillEditor.volume.selection.phase ==
+          cr::CreativeVolumeSelectionPhase::FirstCorner &&
+      sameCell(fillEditor.volume.selection.firstCell, {8, 0, 8}) &&
+      fillAppState.facade.document().voxelField().occupiedCellCount() == 6U &&
+      cr::creativeUndoDepth(fillAppState.history) == 1U;
+
+  cr::CreativeAppState canceledAppState;
+  installHistoryDocument(canceledAppState, 704U);
+  CreativeEditorState canceledEditor =
+      materialEditor(cr::CreativeObjectKind::Floor);
+  canceledEditor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::VolumeFill;
+  syncCreativeEditorHeldItem(canceledAppState, canceledEditor);
+  const cr::CreativeHotbarEntry canceledHeld =
+      cr::selectedCreativeHotbarEntry(canceledEditor.interaction.hotbar);
+  const CreativeEditorWorldInteractionFrameRequest canceledRequest{
+      canceledAppState,
+      canceledEditor,
+      noActions,
+      cr::kCreativeInputModifierNone,
+      camera,
+      pickFrame,
+      iggy3d::RenderContentViewport{0, 0, 800U, 600U},
+      0U,
+      false};
+  setPlaceTarget(canceledEditor, 0, 0, 0);
+  canceledEditor.interaction.target.grid.targetCell = {0, 0, 0};
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, canceledRequest,
+      canceledHeld);
+  setPlaceTarget(canceledEditor, 1, 0, 0);
+  canceledEditor.interaction.target.grid.targetCell = {1, 0, 0};
+  dispatchCreativeEditorHeldItemWorldOperation(
+      cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume, canceledRequest,
+      canceledHeld);
+  const bool canceled =
+      cancelCreativeEditorHeldItem(canceledAppState, canceledEditor);
+
+  return expect(firstCornerOnly,
+                "first action records only the first shape corner") &&
+         expect(previewOnly,
+                "second action produces exact staged geometry without mutation") &&
+         expect(appliedOnThirdAction,
+                "third action applies the preview as one editable undo step") &&
+         expect(rearmedAfterApply,
+                "next action begins a fresh shape without repeating the commit") &&
+         expect(canceled &&
+                    canceledEditor.volume.selection.phase ==
+                        cr::CreativeVolumeSelectionPhase::Empty &&
+                    canceledAppState.facade.document().voxelField()
+                            .occupiedCellCount() == 0U &&
+                    cr::creativeUndoDepth(canceledAppState.history) == 0U,
+                "cancel discards a completed preview without mutation") &&
+         ok;
 }
 
 bool radialSelectionRearmsOnlyRightStickLook() {
@@ -5063,6 +6491,95 @@ bool importedAssetPlacementPreviewAndDocumentStayInParity() {
                 "duplicate admission distinguishes imported asset identity");
 }
 
+bool importedCollisionPreviewUsesExactOrientedParts() {
+  const iggy3d::StaticMeshAssetCatalog catalog =
+      iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
+  const iggy3d::StaticMeshAssetCatalogEntry* asset =
+      catalog.find("stealth_blockout/ramp_2x2x1");
+  if (!expect(asset != nullptr && asset->collisionParts.size() > 1U,
+              "compound collision preview fixture exists")) {
+    return false;
+  }
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 139U);
+  CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Ramp);
+  cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeBounds assetBounds{
+      {asset->boundsMin.x, asset->boundsMin.y, asset->boundsMin.z},
+      {asset->boundsMax.x, asset->boundsMax.y, asset->boundsMax.z}};
+  const bool heldSet = cr::setCreativeHotbarAsset(
+      held, asset->assetId, assetBounds, asset->contentHash);
+  setPlaceTarget(editor, 2, 0, 3);
+  editor.toolSettings.assetAlignmentMode =
+      cr::CreativeAssetAlignmentMode::SurfaceNormal;
+  editor.interaction.target.grid.surfaceNormal =
+      {0.7071067811865475, 0.7071067811865475, 0.0};
+  editor.interaction.target.grid.hitPoint = {2.25, 0.75, 3.5};
+  editor.interaction.target.grid.targetFacts =
+      cr::makeCreativePlacementTargetFacts(
+          cr::CreativePlacementTargetSource::Terrain,
+          cr::CreativeObjectKind::TerrainPatch);
+  const CreativeEditorPlacementResolution placement =
+      resolveCreativeEditorPlacement(
+          held, editor.interaction.target, editor.toolSettings.placementYaw,
+          appState.facade.document(), &catalog, nullptr,
+          editor.toolSettings.assetAlignmentMode);
+  iggy3d::FrameInput frame;
+  CreativeEditorSelectionFrame selection;
+  CreativeEditorGizmoFrame gizmo;
+  cr::CreativeSpatialProjectionRequest projection;
+  CreativeEditorOverlayFrame overlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, frame, projection, 1280U, 720U,
+       0.03F, false, cr::CreativeInputContext::EditorViewport,
+       cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      overlay);
+
+  const iggy3d::StaticMeshCollisionPart& firstPart =
+      asset->collisionParts.front();
+  const cr::CreativeTransformedBounds transformed =
+      cr::resolveCreativeTransformedBounds(
+          {{firstPart.boundsMin.x, firstPart.boundsMin.y, firstPart.boundsMin.z},
+           {firstPart.boundsMax.x, firstPart.boundsMax.y,
+            firstPart.boundsMax.z}},
+          placement.admission.plan.transform);
+  const iggy3d::Vec3 expectedStart{
+      static_cast<float>(transformed.corners[0].x),
+      static_cast<float>(transformed.corners[0].y),
+      static_cast<float>(transformed.corners[0].z)};
+  const iggy3d::Vec3 expectedEnd{
+      static_cast<float>(transformed.corners[1].x),
+      static_cast<float>(transformed.corners[1].y),
+      static_cast<float>(transformed.corners[1].z)};
+  const bool exactEdge = std::any_of(
+      overlay.combinedWireLines.begin(), overlay.combinedWireLines.end(),
+      [&](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return near(line.color.r, 1.0F) && near(line.color.g, 0.62F) &&
+               iggy3d::nearlyEqual(line.start, expectedStart) &&
+               iggy3d::nearlyEqual(line.end, expectedEnd);
+      });
+
+  editor.toolOptions.open = true;
+  iggy3d::FrameInput hiddenFrame;
+  CreativeEditorOverlayFrame hidden;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, selection, gizmo, hiddenFrame, projection, 1280U, 720U,
+       0.03F, false, cr::CreativeInputContext::ToolOptions,
+       cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      hidden);
+
+  return expect(heldSet && placement.admission.allowed && transformed.valid,
+                "oriented collision preview shares the admitted placement") &&
+         expect(overlay.assetCollisionPreviewEdgeCount ==
+                        asset->collisionParts.size() * 12U &&
+                    exactEdge,
+                "every compound collision part renders its exact transformed "
+                "edges") &&
+         expect(hidden.assetCollisionPreviewEdgeCount == 0U,
+                "modal surfaces hide collision preview geometry");
+}
+
 bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
   const iggy3d::StaticMeshAssetCatalog catalog =
       iggy3d::discoverStaticMeshAssetCatalog("assets/creative");
@@ -5126,6 +6643,8 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
       2.0 + receiver->position.x, receiver->position.y,
       3.0 + receiver->position.z};
   editor.interaction.target.grid.placerForward = {0.0, 0.0, -1.0};
+  editor.toolSettings.assetAttachmentMode =
+      cr::CreativeAssetAttachmentMode::AimSocket;
 
   const CreativeEditorPlacementResolution ready =
       resolveCreativeEditorPlacement(
@@ -5174,6 +6693,32 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
        cr::CreativeInputContext::EditorViewport,
        cr::CreativeControlDevice::KeyboardMouse, &catalog},
       occupiedOverlay);
+
+  CreativeEditorSelectionFrame moveSelection;
+  moveSelection.selectedId =
+      door != nullptr ? static_cast<cr::Id>(door->id) : cr::kInvalidId;
+  moveSelection.selected = door;
+  if (door != nullptr) {
+    moveSelection.selectedObjectIds.push_back(door->id);
+    moveSelection.selectionCount = 1U;
+    moveSelection.hasSelection = true;
+  }
+  held.kind = cr::CreativeHeldItemKind::ObjectMove;
+  iggy3d::FrameInput moveFrame;
+  CreativeEditorOverlayFrame moveOverlay;
+  buildAndAttachCreativeEditorOverlayFrame(
+      {appState, editor, moveSelection, markerGizmo, moveFrame,
+       markerProjection, 1280U, 720U, 0.03F, false,
+       cr::CreativeInputContext::EditorViewport,
+      cr::CreativeControlDevice::KeyboardMouse, &catalog},
+      moveOverlay);
+  const bool moveMarkerGreen = std::any_of(
+      moveOverlay.combinedWireLines.begin(),
+      moveOverlay.combinedWireLines.end(),
+      [&](const iggy3d::RenderCreativeWireframeDebugLine& line) {
+        return line.objectId == frameCreated.objectId &&
+               near(line.color.g, 1.0F) && near(line.color.r, 0.20F);
+      });
   editor.toolOptions.open = true;
   iggy3d::FrameInput hiddenFrame;
   CreativeEditorOverlayFrame hiddenOverlay;
@@ -5196,8 +6741,8 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
          expect(readyFrame.creativePreview.itemCount == 2U &&
                     readyFrame.creativePreview.items[0].role ==
                         iggy3d::RenderCreativePreviewRole::PlacementValid &&
-                    readyOverlay.attachmentSocketMarkerEdgeCount == 3U &&
-                    readyOverlay.combinedWireLines.size() >= 3U &&
+                    readyOverlay.attachmentSocketMarkerEdgeCount == 9U &&
+                    readyOverlay.combinedWireLines.size() >= 9U &&
                     near(readyOverlay.combinedWireLines.back().color.g, 1.0F) &&
                     near(readyOverlay.combinedWireLines.back().color.r, 0.20F),
                 "available doorway receiver renders green preview and marker") &&
@@ -5218,13 +6763,17 @@ bool doorwaySocketPreviewPlacementAndUndoStayInParity() {
                         iggy3d::RenderCreativePreviewRole::PlacementInvalid,
                 "occupied doorway receiver rejects a duplicate") &&
          expect(
-                    occupiedOverlay.attachmentSocketMarkerEdgeCount == 3U &&
-                    occupiedOverlay.combinedWireLines.size() >= 3U &&
+                    occupiedOverlay.attachmentSocketMarkerEdgeCount == 9U &&
+                    occupiedOverlay.combinedWireLines.size() >= 9U &&
                     near(occupiedOverlay.combinedWireLines.back().color.r,
                          1.0F) &&
                     near(occupiedOverlay.combinedWireLines.back().color.g,
                          0.20F),
                 "occupied doorway receiver renders a red marker") &&
+         expect(moveOverlay.attachmentSocketMarkerEdgeCount == 9U &&
+                    moveMarkerGreen,
+                "moving an attached asset shows its occupied receiver as "
+                "available for manual reattachment") &&
          expect(hiddenOverlay.attachmentSocketMarkerEdgeCount == 0U,
                 "modal tool options hide attachment socket markers");
 }
@@ -5972,6 +7521,76 @@ bool movingPlatformRouteQuickEditIsBoundedAndUndoable() {
                 "Object Move status exposes the selected route point count");
 }
 
+bool controllerFrameContextUsesSelectionThenFallsBackToScene() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 130U);
+  cr::CreativeDocumentCreateRequest leftRequest;
+  leftRequest.kind = cr::CreativeObjectKind::Crate;
+  leftRequest.transform.position = {-8.0, 0.0, 0.0};
+  leftRequest.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt left =
+      appState.facade.createDocumentObject(leftRequest);
+  cr::CreativeDocumentCreateRequest rightRequest = leftRequest;
+  rightRequest.transform.position.x = 8.0;
+  const cr::CreativeDocumentCreateReceipt right =
+      appState.facade.createDocumentObject(rightRequest);
+  if (!left.accepted || !right.accepted) {
+    return expect(false, "controller frame fixture creates two objects");
+  }
+  static_cast<void>(appState.facade.selectTargets(
+      std::span<const cr::CreativeObjectId>{&left.objectId, 1U},
+      left.objectId));
+
+  CreativeEditorState editor;
+  editor.flyPos = {40.0F, 20.0F, 40.0F};
+  cr::CreativeInputRouteResult route;
+  route.context = cr::CreativeInputContext::EditorViewport;
+  route.actions[0] = {cr::CreativeInputActionId::FrameContext3D,
+                      cr::CreativeInputKey::GamepadBack};
+  route.actionCount = 1U;
+  applyCreativeEditorCommandInput(route, appState, editor, {}, "frame_context");
+  const iggy3d::ProductCreativeViewportFocus selectionFocus =
+      editor.viewportFocus;
+  const iggy3d::Vec3 selectionCamera = editor.flyPos;
+
+  static_cast<void>(appState.facade.selectTargets(
+      std::span<const cr::CreativeObjectId>{}, cr::kInvalidObjectId));
+  editor.flyPos = {40.0F, 20.0F, 40.0F};
+  applyCreativeEditorCommandInput(route, appState, editor, {}, "frame_context");
+  const iggy3d::ProductCreativeViewportFocus sceneFocus = editor.viewportFocus;
+
+  return expect(selectionFocus.valid && sceneFocus.valid,
+                "PS5 Create establishes a reusable orbit focus") &&
+         expect(selectionCamera.x != 40.0F || selectionCamera.y != 20.0F ||
+                    selectionCamera.z != 40.0F,
+                "PS5 Create moves the camera to the selected object") &&
+         expect(sceneFocus.distanceMeters >= selectionFocus.distanceMeters,
+                "PS5 Create falls back to the wider scene when unselected");
+}
+
+bool releasedDefaultHotbarLeavesUnassignedSlotsExplicit() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall};
+  CreativeEditorState editor;
+  editor.interaction.hotbar = makeCreativeEditorDefaultHotbar(palette);
+  static_cast<void>(
+      cr::selectCreativeHotbarSlot(editor.interaction.hotbar, 2U));
+  const cr::CreativeHotbarEntry& empty =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeToolOptionList options =
+      creativeEditorToolOptionsForEntry(empty, editor.toolSettings);
+  const CreativeEditorToolOptionsCommandList commands =
+      creativeEditorToolOptionCommandsForEntry(empty);
+
+  return expect(empty.kind == cr::CreativeHeldItemKind::Count,
+                "unreleased default hotbar slots are explicit sentinels") &&
+         expect(creativeEditorHeldItemStatusLabel(editor) ==
+                    "EMPTY SLOT | OPEN CATALOG TO ASSIGN",
+                "empty slot tells the creator how to assign it") &&
+         expect(options.count == 0U && commands.count == 0U &&
+                    creativeEditorQuickEditStatusLabel(editor).empty(),
+                "empty slot exposes no fabricated settings or actions");
+}
+
 }  // namespace
 
 int main() {
@@ -5979,10 +7598,12 @@ int main() {
   ok = placementPlanMatchesEveryCreateRequest() && ok;
   ok = standaloneBrushPalettePopulatesEveryCatalogCategory() && ok;
   ok = placementAdmissionOwnsPreviewAndExecutionTruth() && ok;
+  ok = placedOutputIsImmediatelySelectableAndEditable() && ok;
   ok = semanticCompatibilityOwnsPreviewMutationAndHistory() && ok;
   ok = verticalSurfacePlacementFollowsTheAimedFace() && ok;
   ok = surfaceFramePlacementFollowsExactNormalsAndKeepsUprightPropsUpright() &&
        ok;
+  ok = importedAssetAlignmentModesShareOneExactTargetContract() && ok;
   ok = quickEditOrientationFeedsPreviewAndCreatePlan() && ok;
   ok = toolOptionsFollowTheRequestedMaterialEntry() && ok;
   ok = toolOptionsActivateSymmetryPivotCommands() && ok;
@@ -6002,6 +7623,13 @@ int main() {
   ok = authoredAnchorFeedsPreviewAdmissionAndMutation() && ok;
   ok = shapeVolumePreviewsStayBoundedAndFailClosed() && ok;
   ok = editorVolumeBudgetRejectsBeforeMutation() && ok;
+  ok = hollowVolumePreviewSettingsCacheAndHistoryStayExact() && ok;
+  ok = replaceVolumePreviewClassifiesMembersAndGroupsHistory() && ok;
+  ok = eraseVolumePreviewProtectsSourcesAndGroupsHistory() && ok;
+  ok = cloneVolumePreviewTransformsCachesAndGroupsHistory() && ok;
+  ok = volumeRegionNameAndExactPreviewCachePersistAcrossTools() && ok;
+  ok = volumeHandlesProjectPickResizeMoveAndCancelAcrossViews() && ok;
+  ok = volumeHandleGrabOwnsWorldActionPrecedence() && ok;
   ok = sceneCacheRefreshesOnlyOnDocumentRevision() && ok;
   ok = activeVolumeSelectionRebindsToLoadedDocumentGrid() && ok;
   ok = objectBoundPlacementAnchorsFollowRotatedPickGeometry() && ok;
@@ -6028,16 +7656,20 @@ int main() {
   ok = identicalPlacementAcrossGesturesIsRejected() && ok;
   ok = untrackedAndEmptyStrokesFailClosed() && ok;
   ok = removalStrokeDeduplicatesObjectsAndGroupsHistory() && ok;
+  ok = removalStrokePreservesSemanticOwners() && ok;
   ok = strokeCapacityStopsAndInterruptionFinalizes() && ok;
   ok = connectedFillPreviewMutationCacheAndHistoryStayInParity() && ok;
   ok = connectedFillLimitRejectsWithoutPartialMutation() && ok;
   ok = surfaceExtrudePreviewMutationAndRemovalStayAtomic() && ok;
-  ok = heldShapeToolOwnsItsTwoCornerGesture() && ok;
+  ok = heldShapeToolRequiresPreviewBeforeApply() && ok;
   ok = radialSelectionRearmsOnlyRightStickLook() && ok;
   ok = importedAssetPlacementPreviewAndDocumentStayInParity() && ok;
+  ok = importedCollisionPreviewUsesExactOrientedParts() && ok;
   ok = doorwaySocketPreviewPlacementAndUndoStayInParity() && ok;
   ok = movingPlatformWaypointDwellIsBoundedAndUndoable() && ok;
   ok = movingPlatformSegmentSpeedIsBoundedAndUndoable() && ok;
   ok = movingPlatformRouteQuickEditIsBoundedAndUndoable() && ok;
+  ok = controllerFrameContextUsesSelectionThenFallsBackToScene() && ok;
+  ok = releasedDefaultHotbarLeavesUnassignedSlotsExplicit() && ok;
   return ok ? 0 : 1;
 }

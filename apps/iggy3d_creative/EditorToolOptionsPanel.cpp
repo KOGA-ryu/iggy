@@ -5,13 +5,15 @@
 #include <string>
 #include <string_view>
 
+#include "EditorAssetScatter.hpp"
 #include "EditorGroup.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorMovingPlatformPreview.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
+#include "EditorPattern.hpp"
 #include "EditorState.hpp"
-#include "EditorToolCapabilities.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -91,7 +93,7 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 
 [[nodiscard]] std::string toolOptionsTargetLabel(
     const CreativeEditorToolOptionsState& state) {
-  switch (describeCreativeEditorToolCapability(state.targetEntry.kind)
+  switch (describeCreativeEditorHeldItemTool(state.targetEntry.kind)
               .displayProfile) {
     case CreativeEditorToolDisplayProfile::Selection: {
       if (state.contextSelectionCount == 0U) {
@@ -165,6 +167,31 @@ void refreshMovingPlatformWaypointContext(
           .outgoingSpeedMultiplier;
 }
 
+void refreshPatternRecipeContext(
+    const cr::CreativeAppState& appState,
+    CreativeEditorToolOptionsState& state,
+    bool loadDraft) noexcept {
+  state.contextPatternRecipeId = cr::kInvalidCreativePatternRecipeId;
+  state.contextPatternRecipeKind = cr::CreativePatternRecipeKind::Count;
+  state.contextPatternRecipeSeed = 0U;
+  state.contextPatternGeneratedObjectCount = 0U;
+  const cr::CreativePatternRecipe* recipe =
+      creativeEditorSelectedPatternRecipe(appState);
+  if (recipe == nullptr) {
+    return;
+  }
+  state.contextPatternRecipeId = recipe->id;
+  state.contextPatternRecipeKind = recipe->kind;
+  state.contextPatternGeneratedObjectCount = recipe->generatedObjectIds.size();
+  if (recipe->kind == cr::CreativePatternRecipeKind::AssetScatter) {
+    state.contextPatternRecipeSeed = recipe->scatter.seed;
+  }
+  if (loadDraft) {
+    static_cast<void>(loadCreativeEditorPatternRecipeSettings(
+        *recipe, state.draft, state.placeCellSizeDraft));
+  }
+}
+
 void adjustSelection(CreativeEditorState& editor,
                      std::int32_t direction) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
@@ -198,10 +225,15 @@ void adjustSelection(CreativeEditorState& editor,
   const cr::CreativeToolOptionAdjustReceipt receipt =
       cr::adjustCreativeToolOption(state.draft, option, direction,
                                    editor.brushPalette);
+  if (receipt.changed && option == cr::CreativeToolOptionId::SnapIncrement) {
+    state.placeCellSizeDraft =
+        cr::creativeSnapIncrementMeters(state.draft.snapIncrement);
+  }
   const bool optionSetChanged =
       option == cr::CreativeToolOptionId::ArrayMode ||
       option == cr::CreativeToolOptionId::MaterialBrushShape ||
       option == cr::CreativeToolOptionId::MaterialBrushMask ||
+      option == cr::CreativeToolOptionId::TerrainPaintMode ||
       option == cr::CreativeToolOptionId::TerrainRodStampMode ||
       option == cr::CreativeToolOptionId::TerrainProfileKind ||
       option == cr::CreativeToolOptionId::TerrainProfileRodPolicy ||
@@ -232,8 +264,7 @@ void adjustSelection(CreativeEditorState& editor,
   static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
       editor.interaction.materialBrushPresets,
       editor.interaction.hotbar, editor.toolSettings));
-  editor.placeCellSize =
-      cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
+  editor.placeCellSize = state.placeCellSizeDraft;
   syncCreativeEditorQuickEdit(editor);
   state.open = false;
   return true;
@@ -276,12 +307,21 @@ void adjustSelection(CreativeEditorState& editor,
              editor.movingPlatformPreview.available &&
              editor.movingPlatformPreview.objectId ==
                  state.contextPrimaryObjectId;
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+      return state.contextPatternRecipeId !=
+                 cr::kInvalidCreativePatternRecipeId &&
+             state.contextPatternRecipeKind ==
+                 cr::CreativePatternRecipeKind::AssetScatter;
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
+      return state.contextPatternRecipeId !=
+             cr::kInvalidCreativePatternRecipeId;
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -339,12 +379,20 @@ void adjustSelection(CreativeEditorState& editor,
                                                   : "PLAY ROUTE PREVIEW";
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       return "RESTART ROUTE PREVIEW";
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+      return "REGENERATE SCATTER";
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
+      return editor.toolOptions.contextPatternRecipeKind ==
+                     cr::CreativePatternRecipeKind::AssetScatter
+                 ? "BAKE TO INSTANCES"
+                 : "DETACH ARRAY";
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -403,12 +451,30 @@ void adjustSelection(CreativeEditorState& editor,
           editor.movingPlatformPreview));
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
       return "START OF ROUTE";
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+      {
+        char label[96];
+        std::snprintf(
+            label, sizeof(label), "SEED %016llX | %zu INSTANCES",
+            static_cast<unsigned long long>(state.contextPatternRecipeSeed),
+            state.contextPatternGeneratedObjectCount);
+        return label;
+      }
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
+      return state.contextPatternRecipeId !=
+                     cr::kInvalidCreativePatternRecipeId
+                 ? (state.contextPatternRecipeKind ==
+                            cr::CreativePatternRecipeKind::AssetScatter
+                        ? "KEEP PLACED INSTANCES"
+                        : "KEEP BAKED COPIES")
+                 : "SELECT ARRAY COPY";
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -421,6 +487,22 @@ void adjustSelection(CreativeEditorState& editor,
       return "INVALID";
   }
   return "INVALID";
+}
+
+void captureAttachmentAim(CreativeEditorToolOptionsState& state,
+                          const CreativeEditorState& editor) noexcept {
+  state.contextAttachmentAimTargetId = cr::kInvalidObjectId;
+  state.contextAttachmentAimPoint = {};
+  state.contextAttachmentAimAvailable = false;
+  const CreativeEditorWorldTarget& target = editor.interaction.target;
+  if (!target.objectHit || !target.grid.valid ||
+      target.objectId == cr::kInvalidObjectId ||
+      !cr::isFiniteCreativeVec3(target.grid.hitPoint)) {
+    return;
+  }
+  state.contextAttachmentAimTargetId = target.objectId;
+  state.contextAttachmentAimPoint = target.grid.hitPoint;
+  state.contextAttachmentAimAvailable = true;
 }
 
 void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
@@ -455,7 +537,8 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
       if (row >= state.options.count) {
         result.committed =
             activateCreativeEditorToolOptionsSelection(
-                request.appState, request.editor);
+                request.appState, request.editor, request.assetCatalog,
+                request.placementClearanceCache);
       } else if (layout.panelWidth >= 112U) {
         const std::int32_t decreaseX = panelRight - 88;
         const std::int32_t increaseX = panelRight - 48;
@@ -481,7 +564,8 @@ void processPointerInput(const CreativeEditorToolOptionsFrameRequest& request,
       result.committed =
           commandOnly
               ? activateCreativeEditorToolOptionsSelection(
-                    request.appState, request.editor)
+                    request.appState, request.editor, request.assetCatalog,
+                    request.placementClearanceCache)
               : commitOptions(request.editor);
     }
   }
@@ -501,7 +585,7 @@ bool activateCreativeEditorToolOptionsSelection(
   const std::size_t commandIndex =
       state.selectedIndex - state.options.count;
   if (commandIndex >= state.commands.count ||
-      describeCreativeEditorToolCapability(state.targetEntry.kind)
+      describeCreativeEditorHeldItemTool(state.targetEntry.kind)
               .commandProfile !=
           CreativeEditorToolCommandProfile::MaterialBrush ||
       !cr::isValidCreativeToolSettings(state.draft)) {
@@ -533,6 +617,7 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -545,6 +630,8 @@ bool activateCreativeEditorToolOptionsSelection(
     case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
     case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
     case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
       break;
     case CreativeEditorToolOptionsCommandId::Count:
       break;
@@ -554,7 +641,9 @@ bool activateCreativeEditorToolOptionsSelection(
 
 bool activateCreativeEditorToolOptionsSelection(
     cr::CreativeAppState& appState,
-    CreativeEditorState& editor) {
+    CreativeEditorState& editor,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
+    const CreativePlacementClearanceCache* placementClearanceCache) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
   if (!state.open || state.selectedIndex < state.options.count) {
     return activateCreativeEditorToolOptionsSelection(editor);
@@ -571,7 +660,8 @@ bool activateCreativeEditorToolOptionsSelection(
     return false;
   }
   if (creativeEditorCommandIsObjectAction(command)) {
-    return activateCreativeEditorObjectAction(appState, editor, command);
+    return activateCreativeEditorObjectAction(
+        appState, editor, command, assetCatalog, placementClearanceCache);
   }
 
   bool accepted = false;
@@ -617,12 +707,32 @@ bool activateCreativeEditorToolOptionsSelection(
       accepted = receipt.accepted;
       break;
     }
+    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe: {
+      const cr::CreativeAssetScatterRecipeMutationReceipt receipt =
+          regenerateCreativeEditorAssetScatterRecipeWithHistory(
+              appState, editor, state.contextPatternRecipeId,
+              placementClearanceCache, "tool_options_regenerate_scatter");
+      accepted = receipt.accepted && receipt.changed;
+      break;
+    }
+    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe: {
+      const cr::CreativePatternRecipeMutationReceipt receipt =
+          detachCreativeEditorPatternRecipeWithHistory(
+              appState, state.contextPatternRecipeId,
+              state.contextPatternRecipeKind ==
+                      cr::CreativePatternRecipeKind::AssetScatter
+                  ? "tool_options_bake_scatter_instances"
+                  : "tool_options_detach_array");
+      accepted = receipt.accepted && receipt.changed;
+      break;
+    }
     case CreativeEditorToolOptionsCommandId::TransformSelection:
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
     case CreativeEditorToolOptionsCommandId::GroupSelection:
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
@@ -668,33 +778,34 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
         request.appState, request.editor.authoredAssets, state);
     refreshMovingPlatformWaypointContext(request.appState, request.editor,
                                          state);
+    refreshPatternRecipeContext(request.appState, state, false);
     state.commands = creativeEditorToolOptionCommandsForEntry(
-        state.targetEntry, state.contextPrimaryObjectKind);
+        state.targetEntry, state.contextPrimaryObjectKind,
+        state.contextPatternRecipeId, state.contextPatternRecipeKind);
     if (state.selectedIndex >= creativeEditorToolOptionsRowCount(state)) {
       state.selectedIndex = 0U;
     }
   }
 
   if (request.openRequested && !state.open) {
-    const cr::CreativeToolOptionList options =
-        creativeEditorToolOptionsForEntry(request.requestedEntry,
-                                          request.editor.toolSettings);
-    const CreativeEditorToolOptionsCommandList commands =
-        creativeEditorToolOptionCommandsForEntry(request.requestedEntry);
-    if (options.count + commands.count > 0U &&
-        !options.capacityExceeded) {
+    state.targetEntry = request.requestedEntry;
+    state.draft = request.editor.toolSettings;
+    state.placeCellSizeDraft = request.editor.placeCellSize;
+    state.selectedIndex = 0U;
+    captureAttachmentAim(state, request.editor);
+    refreshCreativeEditorObjectActionContext(
+        request.appState, request.editor.authoredAssets, state);
+    refreshMovingPlatformWaypointContext(request.appState, request.editor,
+                                         state);
+    refreshPatternRecipeContext(request.appState, state, true);
+    state.options =
+        creativeEditorToolOptionsForEntry(state.targetEntry, state.draft);
+    state.commands = creativeEditorToolOptionCommandsForEntry(
+        state.targetEntry, state.contextPrimaryObjectKind,
+        state.contextPatternRecipeId, state.contextPatternRecipeKind);
+    if (state.options.count + state.commands.count > 0U &&
+        !state.options.capacityExceeded) {
       state.open = true;
-      state.targetEntry = request.requestedEntry;
-      state.draft = request.editor.toolSettings;
-      state.options = options;
-      state.commands = commands;
-      state.selectedIndex = 0U;
-      refreshCreativeEditorObjectActionContext(
-          request.appState, request.editor.authoredAssets, state);
-      refreshMovingPlatformWaypointContext(request.appState, request.editor,
-                                           state);
-      state.commands = creativeEditorToolOptionCommandsForEntry(
-          state.targetEntry, state.contextPrimaryObjectKind);
     }
   }
 
@@ -721,7 +832,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
         case cr::CreativeInputActionId::ToolOptionsConfirm:
           result.committed =
               activateCreativeEditorToolOptionsSelection(
-                  request.appState, request.editor);
+                  request.appState, request.editor, request.assetCatalog,
+                  request.placementClearanceCache);
           break;
         case cr::CreativeInputActionId::ToolOptionsClose:
           state.open = false;
@@ -774,7 +886,7 @@ void appendCreativeEditorToolOptionsOverlay(
   uiRects.push_back({layout.panelX, layout.panelY, layout.panelWidth,
                      layout.panelHeight, 0.05F, 0.06F, 0.07F, 0.98F});
   const bool objectActions =
-      describeCreativeEditorToolCapability(state.targetEntry.kind)
+      describeCreativeEditorHeldItemTool(state.targetEntry.kind)
           .displayProfile == CreativeEditorToolDisplayProfile::Selection;
   appendText(glyphs, objectActions ? "OBJECT ACTIONS" : "TOOL OPTIONS",
              layout.panelX + 18,

@@ -335,7 +335,7 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
     return target;
   }
 
-  const ObjectVisualPickResult pick = pickNearestVisualBoundsObject(
+  target.objectPickStack = pickVisualBoundsObjectStack(
       pickFrame.objectPickCandidates, target.ray);
   const cr::CreativeGridSettings gridSettings = document.gridSettings();
   if (!placementGrid.valid) {
@@ -357,16 +357,39 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
   terrainRequest.maxDistance = kCreativeEditorReachMeters;
   const cr::CreativeTerrainRaycastReceipt terrainPick =
       cr::raycastCreativeTerrainField(document.terrainField(), terrainRequest);
+  const ObjectVisualPickHit* nearestObject =
+      target.objectPickStack.count > 0U
+          ? &target.objectPickStack.items[0]
+          : nullptr;
   const ObjectVisualPickBounds* objectCandidate =
-      findCandidate(pickFrame, pick.objectId);
-  const bool objectInReach = objectCandidate != nullptr &&
-                             pick.entryDistance <= kCreativeEditorReachMeters;
+      nearestObject != nullptr
+          ? findCandidate(pickFrame, nearestObject->objectId)
+          : nullptr;
+  const bool objectInReach =
+      objectCandidate != nullptr && nearestObject != nullptr &&
+      nearestObject->entryDistance <= kCreativeEditorReachMeters;
   const bool terrainInReach =
       terrainPick.hit && terrainPick.distance <= kCreativeEditorReachMeters;
   const bool voxelIsNearest =
       voxelPick.hit &&
-      (!objectInReach || voxelPick.distance <= pick.entryDistance) &&
+      (!objectInReach ||
+       voxelPick.distance <= nearestObject->entryDistance) &&
       (!terrainInReach || voxelPick.distance <= terrainPick.distance);
+
+  float objectOcclusionDistance = kCreativeEditorReachMeters;
+  if (voxelPick.hit) {
+    objectOcclusionDistance = std::min(
+        objectOcclusionDistance, static_cast<float>(voxelPick.distance));
+  }
+  if (terrainPick.hit) {
+    objectOcclusionDistance = std::min(
+        objectOcclusionDistance, static_cast<float>(terrainPick.distance));
+  }
+  while (target.objectPickStack.count > 0U &&
+         target.objectPickStack.items[target.objectPickStack.count - 1U]
+                 .entryDistance > objectOcclusionDistance) {
+    --target.objectPickStack.count;
+  }
 
   if (voxelIsNearest) {
     target.grid = cr::resolveCreativeGridTargetFromHit(
@@ -384,10 +407,12 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
 
   const bool objectIsNearest =
       objectInReach &&
-      (!terrainInReach || pick.entryDistance <= terrainPick.distance);
+      (!terrainInReach ||
+       nearestObject->entryDistance <= terrainPick.distance);
   if (objectIsNearest) {
     const iggy3d::Vec3 point =
-        target.ray.origin + target.ray.direction * pick.entryDistance;
+        target.ray.origin +
+        target.ray.direction * nearestObject->entryDistance;
     const iggy3d::Vec3 normal = objectCandidate->orientedBounds.has_value()
                                     ? orientedFaceNormal(
                                           *objectCandidate->orientedBounds,
@@ -400,11 +425,12 @@ CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
         cr::creativeVec3FromCore(target.ray.direction));
     target.valid = target.grid.valid;
     target.objectHit = true;
-    target.objectId = pick.objectId;
-    target.distanceMeters = pick.entryDistance;
+    target.objectId = nearestObject->objectId;
+    target.distanceMeters = nearestObject->entryDistance;
     resolveObjectPlacementAnchor(*objectCandidate, placementGrid,
                                  previousTarget, target);
-    if (const cr::CreativeObject* object = document.findObject(pick.objectId);
+    if (const cr::CreativeObject* object =
+            document.findObject(nearestObject->objectId);
         object != nullptr) {
       target.objectKind = object->kind;
       target.grid.targetFacts = cr::makeCreativePlacementTargetFacts(

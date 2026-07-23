@@ -47,48 +47,48 @@ void setStampFeedback(CreativeEditorState& editor, bool accepted) noexcept {
   return true;
 }
 
-[[nodiscard]] cr::CreativeTerrainStampRequest stampRequest(
-    const cr::CreativeDocument& document,
+[[nodiscard]] cr::CreativeTerrainStampRecipe stampRecipe(
     const CreativeEditorState& editor,
     const cr::CreativeTerrainStamp& stamp,
-    cr::CreativeTerrainCoord2 targetMinimum) noexcept {
-  cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
-  request.destinationControls = document.terrainField().controls();
-  request.targetMinimum = targetMinimum;
-  request.quarterTurns = editor.terrain.region.stamp.quarterTurns;
-  request.mirrorX = editor.terrain.region.stamp.mirrorX;
-  request.mirrorZ = editor.terrain.region.stamp.mirrorZ;
-  request.mode = editor.toolSettings.terrainStampMode;
-  request.elevationMode = editor.toolSettings.terrainStampElevationMode;
-  const cr::CreativeTerrainHeightSample targetSurface =
-      cr::sampleCreativeTerrainHeight(document.terrainField(), targetMinimum);
-  request.targetSurfacePresent = targetSurface.present;
-  request.targetSurfaceHeightCells =
-      targetSurface.present ? targetSurface.heightCells : 0U;
-  request.manualHeightOffsetCells =
+    cr::CreativeTerrainCoord2 targetMinimum) {
+  cr::CreativeTerrainStampRecipe recipe;
+  recipe.stamp = stamp;
+  recipe.targetMinimum = targetMinimum;
+  recipe.quarterTurns = editor.terrain.region.stamp.quarterTurns;
+  recipe.mirrorX = editor.terrain.region.stamp.mirrorX;
+  recipe.mirrorZ = editor.terrain.region.stamp.mirrorZ;
+  recipe.mode = editor.toolSettings.terrainStampMode;
+  recipe.elevationMode = editor.toolSettings.terrainStampElevationMode;
+  recipe.manualHeightOffsetCells =
       editor.terrain.region.stamp.heightOffsetCells;
+  return recipe;
+}
+
+[[nodiscard]] cr::CreativeTerrainOperationMutationRequest operationRequest(
+    const cr::CreativeTerrainStampRecipe& recipe) {
+  cr::CreativeTerrainOperationMutationRequest request;
+  request.kind = cr::CreativeTerrainOperationMutationKind::Add;
+  request.owner = cr::CreativeTerrainOperationOwner::Manual;
+  request.operationKind = cr::CreativeTerrainOperationKind::Stamp;
+  request.stamp = recipe;
   return request;
 }
 
 [[nodiscard]] bool previewKeyMatches(
     const CreativeTerrainStampPreviewCache& cache,
     const cr::CreativeDocument& document,
-    const CreativeEditorState& editor,
-    const cr::CreativeTerrainStamp& stamp,
-    const cr::CreativeTerrainStampRequest& request) noexcept {
-  const CreativeTerrainStampPlacementState& state = editor.terrain.region.stamp;
+    const cr::CreativeTerrainStampRecipe& recipe) noexcept {
   return cache.valid && cache.documentId == document.id() &&
-         cache.terrainRevision == document.terrainField().revision() &&
-         cache.stampSignature == stamp.contentSignature &&
-         cache.targetMinimum == request.targetMinimum &&
-         cache.quarterTurns == state.quarterTurns &&
-         cache.mirrorX == state.mirrorX && cache.mirrorZ == state.mirrorZ &&
-         cache.mode == request.mode &&
-         cache.elevationMode == request.elevationMode &&
-         cache.targetSurfacePresent == request.targetSurfacePresent &&
-         cache.targetSurfaceHeightCells == request.targetSurfaceHeightCells &&
-         cache.manualHeightOffsetCells == request.manualHeightOffsetCells;
+         cache.documentRevision == document.revision() &&
+         cache.stampSignature == recipe.stamp.contentSignature &&
+         cache.recipe.targetMinimum == recipe.targetMinimum &&
+         cache.recipe.quarterTurns == recipe.quarterTurns &&
+         cache.recipe.mirrorX == recipe.mirrorX &&
+         cache.recipe.mirrorZ == recipe.mirrorZ &&
+         cache.recipe.mode == recipe.mode &&
+         cache.recipe.elevationMode == recipe.elevationMode &&
+         cache.recipe.manualHeightOffsetCells ==
+             recipe.manualHeightOffsetCells;
 }
 
 [[nodiscard]] std::string_view transformControlLabel(
@@ -130,9 +130,19 @@ CreativeEditorTerrainStampReceipt copyCreativeEditorTerrainRegionToStamp(
     return receipt;
   }
   const cr::CreativeDocument& document = appState.facade.document();
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), document.terrainHeightField(),
+          document.terrainHardEdges());
+  const std::uint64_t nextAssetVersion =
+      appState.terrainStamp.assetId == "terrain-stamp-clipboard"
+          ? appState.terrainStamp.assetVersion + 1U
+          : 1U;
   receipt.copy = cr::copyCreativeTerrainRegionToStamp(
-      document.id(), document.revision(), document.terrainField().controls(),
-      minimumCoord, maximumCoord, appState.terrainStamp);
+      document.id(), document.revision(), surface,
+      document.terrainMaterialField(), minimumCoord, maximumCoord,
+      "terrain-stamp-clipboard", "Terrain Clipboard", nextAssetVersion,
+      appState.terrainStamp);
   receipt.accepted = receipt.copy.accepted;
   receipt.changed = receipt.copy.accepted;
   receipt.reasonCode = receipt.copy.reasonCode;
@@ -182,28 +192,35 @@ CreativeEditorTerrainStampReceipt applyCreativeEditorTerrainStampWithHistory(
       editor.terrain, appState.facade.document(), editor,
       appState.terrainStamp));
   receipt.plan = state.preview.plan;
-  receipt.accepted = state.preview.valid && receipt.plan.accepted;
-  receipt.reasonCode = state.preview.valid
+  receipt.accepted = state.preview.valid && receipt.plan.accepted &&
+                     state.preview.operationPreview.receipt.accepted;
+  receipt.reasonCode = !state.preview.valid
+                           ? "creative_editor_terrain_stamp_target_invalid"
+                       : !receipt.plan.accepted
                            ? receipt.plan.reasonCode
-                           : "creative_editor_terrain_stamp_target_invalid";
-  if (!receipt.accepted || receipt.plan.items().empty()) {
+                           : state.preview.operationPreview.receipt.reasonCode;
+  if (!receipt.accepted) {
     setStampFeedback(editor, receipt.accepted);
     return receipt;
   }
 
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  receipt.mutation = appState.facade.applyTerrainControlEdits(
-      receipt.plan.items());
-  state.lastMutation = receipt.mutation;
-  editor.terrain.lastMutation = receipt.mutation;
-  receipt.accepted = receipt.mutation.accepted;
-  receipt.changed = receipt.mutation.changed;
-  receipt.reasonCode = receipt.mutation.reasonCode;
-  static_cast<void>(completeEditTransaction(
+  receipt.operation = appState.facade.applyTerrainOperationMutation(
+      operationRequest(state.preview.recipe));
+  state.lastMutation = receipt.operation;
+  receipt.history = completeEditTransaction(
       appState.history, std::move(transaction), appState.facade,
-      receipt.mutation.accepted && receipt.mutation.changed,
-      receipt.mutation.reasonCode));
+      receipt.operation.accepted && receipt.operation.changed,
+      receipt.operation.reasonCode);
+  receipt.changed = receipt.operation.changed;
+  receipt.accepted = receipt.operation.accepted &&
+                     (!receipt.changed || receipt.history.accepted);
+  receipt.reasonCode = !receipt.operation.accepted
+                           ? receipt.operation.reasonCode
+                       : receipt.changed && !receipt.history.accepted
+                           ? receipt.history.reasonCode
+                           : "creative_editor_terrain_stamp_applied";
   if (receipt.changed) {
     invalidateStampPreview(state);
   }
@@ -323,10 +340,10 @@ bool refreshCreativeEditorTerrainStampPreview(
     invalidateStampPreview(state);
     return false;
   }
-  const cr::CreativeTerrainStampRequest request =
-      stampRequest(document, editor, stamp, targetMinimum);
+  const cr::CreativeTerrainStampRecipe recipe =
+      stampRecipe(editor, stamp, targetMinimum);
   CreativeTerrainStampPreviewCache& cache = state.preview;
-  if (previewKeyMatches(cache, document, editor, stamp, request)) {
+  if (previewKeyMatches(cache, document, recipe)) {
     return false;
   }
 
@@ -334,54 +351,47 @@ bool refreshCreativeEditorTerrainStampPreview(
   cache = {};
   cache.valid = true;
   cache.documentId = document.id();
-  cache.terrainRevision = document.terrainField().revision();
+  cache.documentRevision = document.revision();
   cache.stampSignature = stamp.contentSignature;
   cache.buildCount = nextBuildCount;
-  cache.targetMinimum = targetMinimum;
-  cache.quarterTurns = state.quarterTurns;
-  cache.mirrorX = state.mirrorX;
-  cache.mirrorZ = state.mirrorZ;
-  cache.mode = request.mode;
-  cache.elevationMode = request.elevationMode;
-  cache.targetSurfacePresent = request.targetSurfacePresent;
-  cache.targetSurfaceHeightCells = request.targetSurfaceHeightCells;
-  cache.manualHeightOffsetCells = request.manualHeightOffsetCells;
-  cache.plan = cr::buildCreativeTerrainStampPlan(request);
+  cache.recipe = recipe;
+  const cr::CreativeTerrainSurfacePlan currentSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), document.terrainHeightField(),
+          document.terrainHardEdges());
+  cache.plan = cr::buildCreativeTerrainStampPlan(
+      document.terrainHeightField(), document.terrainMaterialField(),
+      currentSurface, cache.recipe);
   if (!cache.plan.accepted) {
     return true;
   }
 
+  cache.operationPreview = cr::planCreativeTerrainOperationMutation(
+      document.terrainField(), document.terrainHeightField(),
+      document.terrainMaterialField(), document.terrainOperationStack(),
+      operationRequest(cache.recipe));
+  if (!cache.operationPreview.receipt.accepted) {
+    return true;
+  }
+
   const cr::CreativeGridSettings grid = document.gridSettings();
-  const cr::CreativeTerrainMutationPreviewReceipt preview =
-      cr::buildCreativeTerrainMutationPreview(
-          document.terrainField(), cache.plan.items(), grid.origin,
+  const cr::CreativeTerrainSurfacePlan previewSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), cache.operationPreview.heightField,
+          cache.operationPreview.hardEdges);
+  const cr::CreativeTerrainRenderPlan preview =
+      cr::buildCreativeTerrainRenderPlan(
+          previewSurface, cache.operationPreview.materialField, grid.origin,
           grid.cellSizeMeters);
   if (!preview.accepted) {
     return true;
   }
 
-  std::uint16_t expansion = 1U;
-  for (const cr::CreativeTerrainControlPoint& control : cache.plan.controls()) {
-    expansion = std::max(expansion, control.radiusCells);
-  }
-  for (const cr::CreativeTerrainControlPoint& control :
-       document.terrainField().controls()) {
-    if (control.coord.x >= cache.plan.targetMinimum.x &&
-        control.coord.x <= cache.plan.targetMaximum.x &&
-        control.coord.z >= cache.plan.targetMinimum.z &&
-        control.coord.z <= cache.plan.targetMaximum.z) {
-      expansion = std::max(expansion, control.radiusCells);
-    }
-  }
-  const std::int64_t minimumX =
-      static_cast<std::int64_t>(cache.plan.targetMinimum.x) - expansion;
-  const std::int64_t minimumZ =
-      static_cast<std::int64_t>(cache.plan.targetMinimum.z) - expansion;
-  const std::int64_t maximumX =
-      static_cast<std::int64_t>(cache.plan.targetMaximum.x) + expansion;
-  const std::int64_t maximumZ =
-      static_cast<std::int64_t>(cache.plan.targetMaximum.z) + expansion;
-  for (const cr::CreativeTerrainSurfacePatch& patch : preview.render.patches) {
+  const std::int64_t minimumX = cache.plan.targetMinimum.x;
+  const std::int64_t minimumZ = cache.plan.targetMinimum.z;
+  const std::int64_t maximumX = cache.plan.targetMaximum.x;
+  const std::int64_t maximumZ = cache.plan.targetMaximum.z;
+  for (const cr::CreativeTerrainSurfacePatch& patch : preview.patches) {
     if (patch.coord.x >= minimumX && patch.coord.x <= maximumX &&
         patch.coord.z >= minimumZ && patch.coord.z <= maximumZ) {
       cache.patches.push_back(patch);
@@ -392,7 +402,7 @@ bool refreshCreativeEditorTerrainStampPreview(
 }
 
 void appendCreativeEditorTerrainStampOverlay(
-    const cr::CreativeDocument& document,
+    const cr::CreativeDocument&,
     const CreativeEditorState& editor,
     float wireThickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
@@ -401,25 +411,9 @@ void appendCreativeEditorTerrainStampOverlay(
   if (!preview.valid) {
     return;
   }
-  constexpr iggy3d::RenderLineColor admitted{0.20F, 1.0F, 0.35F, 1.0F};
-  constexpr iggy3d::RenderLineColor removing{1.0F, 0.46F, 0.12F, 1.0F};
-  constexpr iggy3d::RenderLineColor rejected{1.0F, 0.20F, 0.18F, 1.0F};
-  const bool accepted = preview.plan.accepted && preview.renderAccepted;
-  const cr::CreativeGridSettings grid = document.gridSettings();
-  for (const cr::CreativeTerrainControlPoint& control :
-       preview.plan.controls()) {
-    appendCreativeEditorTerrainControlGuide(
-        wireLines, grid, control, accepted ? admitted : rejected,
-        wireThickness * 1.5F);
-  }
-  if (accepted && preview.mode == cr::CreativeTerrainStampMode::Replace) {
-    for (const cr::CreativeTerrainControlEdit& edit : preview.plan.items()) {
-      if (edit.kind == cr::CreativeTerrainEditKind::Remove) {
-        appendCreativeEditorTerrainControlGuide(
-            wireLines, grid, edit.control, removing, wireThickness * 1.5F);
-      }
-    }
-  }
+  const bool accepted = preview.plan.accepted &&
+                        preview.operationPreview.receipt.accepted &&
+                        preview.renderAccepted;
   if (!accepted) {
     return;
   }

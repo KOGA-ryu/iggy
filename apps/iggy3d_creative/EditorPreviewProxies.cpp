@@ -1,5 +1,7 @@
 #include "EditorPreviewProxies.hpp"
 
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+
 #include "app/iggy3d/creative/Geometry.hpp"
 
 #include <algorithm>
@@ -249,7 +251,8 @@ std::string_view renderRoleForDescriptor(
 
 void appendPathProxyMeshesToScene(const cr::CreativeObject& object,
                                   iggy3d::SceneProjectionResult& scene,
-                                  std::string_view role) {
+                                  std::string_view role,
+                                  std::string_view semanticRole) {
   if (!validPathPoints(object.pathPoints)) {
     return;
   }
@@ -265,6 +268,7 @@ void appendPathProxyMeshesToScene(const cr::CreativeObject& object,
               std::to_string(index);
     mesh.role = std::string(role);
     mesh.materialId = "creative_object";
+    mesh.semanticRole = std::string(semanticRole);
     mesh.position = visualBoundsCenter(segmentBounds);
     mesh.size = {segmentBounds.max.x - segmentBounds.min.x,
                  segmentBounds.max.y - segmentBounds.min.y,
@@ -291,17 +295,18 @@ std::size_t appendStandalonePreviewProxiesToScene(
     iggy3d::SceneProjectionResult& scene) {
   std::size_t appended = 0;
   for (const cr::CreativeObject& obj : document.objects()) {
-    if (!obj.visible) {
+    if (!cr::creativeObjectEffectivelyVisible(document, obj.id)) {
       continue;
     }
     const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(obj.kind);
     const std::string_view role = renderRoleForDescriptor(descriptor);
+    const std::string_view semanticRole = cr::serializedObjectKindId(obj.kind);
     if (objectHasBakedStaticMeshSource(obj, bakedStaticMeshSources)) {
       continue;
     }
     if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Path) {
       const std::size_t before = scene.room.meshes.size();
-      appendPathProxyMeshesToScene(obj, scene, role);
+      appendPathProxyMeshesToScene(obj, scene, role, semanticRole);
       appended += scene.room.meshes.size() - before;
       continue;
     }
@@ -317,6 +322,7 @@ std::size_t appendStandalonePreviewProxiesToScene(
     mesh.id = "creative.preview_object_" + std::to_string(obj.id);
     mesh.role = std::string(role);
     mesh.materialId = "creative_preview_object";
+    mesh.semanticRole = std::string(semanticRole);
     mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
                      (boxMin.y + boxMax.y) * 0.5F,
                      (boxMin.z + boxMax.z) * 0.5F};

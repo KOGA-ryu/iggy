@@ -41,6 +41,15 @@ cr::CreativeTerrainGenerationResult makeGeneration(
   return result;
 }
 
+cr::CreativeTerrainMaterialField makeMaterialField(
+    std::span<const cr::CreativeTerrainMaterialEdit> edits) {
+  cr::CreativeTerrainMaterialField field;
+  if (!edits.empty()) {
+    static_cast<void>(field.apply(edits));
+  }
+  return field;
+}
+
 bool disjointRegionPreservesAuthoredAndMaterializesSourceGap() {
   constexpr cr::CreativeTerrainHeightFieldBounds existingBounds{
       {0, 0}, 2U, 2U};
@@ -154,6 +163,105 @@ bool ellipseMaskLeavesCornersUntouched() {
                     composed.receipt.maskedCellCount < heights.size() &&
                     composed.receipt.preservedCellCount >= 4U,
                 "ellipse center applies while corners remain source terrain");
+}
+
+bool protectedRegionsPreserveHeightAndMaterialTogether() {
+  constexpr cr::CreativeTerrainHeightFieldBounds bounds{{0, 0}, 3U, 1U};
+  constexpr std::array<std::uint16_t, 3U> sourceHeights{4U, 4U, 4U};
+  constexpr std::array<std::uint16_t, 3U> generatedHeights{10U, 10U, 10U};
+  const cr::CreativeTerrainHeightField existing =
+      makeField(bounds, sourceHeights);
+  const cr::CreativeTerrainSurfacePlan canonical =
+      cr::buildCreativeTerrainHeightSurfacePlan(existing);
+  cr::CreativeTerrainGenerationResult generation =
+      makeGeneration(bounds, generatedHeights);
+  constexpr std::array<cr::CreativeTerrainMaterialEdit, 3U> generatedEdits{{
+      {cr::CreativeTerrainMaterialEditKind::Set, {0, 0},
+       cr::CreativeTerrainMaterial::Stone, {}},
+      {cr::CreativeTerrainMaterialEditKind::Set, {1, 0},
+       cr::CreativeTerrainMaterial::Stone, {}},
+      {cr::CreativeTerrainMaterialEditKind::Set, {2, 0},
+       cr::CreativeTerrainMaterial::Stone, {}},
+  }};
+  generation.plan.materialField = makeMaterialField(generatedEdits);
+  constexpr cr::CreativeTerrainMaterialEdit sourceEdit{
+      cr::CreativeTerrainMaterialEditKind::Set, {1, 0},
+      cr::CreativeTerrainMaterial::Dirt, {}};
+  const cr::CreativeTerrainMaterialField existingMaterial =
+      makeMaterialField(std::span{&sourceEdit, 1U});
+  cr::CreativeTerrainCompositionRecipe recipe;
+  recipe.featherCells = 0U;
+  const cr::CreativeTerrainProtectedRegionMutationReceipt locked =
+      cr::addCreativeTerrainCompositionProtectedRegion(
+          recipe, {{{1, 0}, 1U, 1U},
+                   cr::CreativeTerrainCompositionMask::Rectangle});
+  const cr::CreativeTerrainCompositionResult composed =
+      cr::composeCreativeTerrainGeneration(existing, existingMaterial,
+                                            canonical, generation, recipe);
+
+  return expect(locked.accepted && locked.changed &&
+                    recipe.protectedRegionCount == 1U,
+                "selected terrain region enters the bounded protection set") &&
+         expect(composed.receipt.accepted &&
+                    composed.receipt.protectedCellCount == 1U &&
+                    composed.receipt.modifiedCellCount == 2U &&
+                    composed.receipt.materialModifiedCellCount == 2U,
+                "composition receipt separates protected and modified work") &&
+         expect(composed.heightField.heightAt({0, 0}) == 10U &&
+                    composed.heightField.heightAt({1, 0}) == 4U &&
+                    composed.heightField.heightAt({2, 0}) == 10U,
+                "protected region preserves source height exactly") &&
+         expect(composed.materialField.materialAt({0, 0}) ==
+                        cr::CreativeTerrainMaterial::Stone &&
+                    composed.materialField.materialAt({1, 0}) ==
+                        cr::CreativeTerrainMaterial::Dirt &&
+                    composed.materialField.materialAt({2, 0}) ==
+                        cr::CreativeTerrainMaterial::Stone,
+                "protected region preserves source material exactly");
+}
+
+bool protectedRegionMutationIsBoundedDeterministicAndRemovable() {
+  cr::CreativeTerrainCompositionRecipe recipe;
+  bool filled = true;
+  for (std::size_t index = 0U;
+       index < cr::kCreativeTerrainCompositionProtectedRegionCapacity;
+       ++index) {
+    const cr::CreativeTerrainProtectedRegionMutationReceipt receipt =
+        cr::addCreativeTerrainCompositionProtectedRegion(
+            recipe,
+            {{{static_cast<std::int32_t>(index), 0}, 1U, 1U},
+             cr::CreativeTerrainCompositionMask::Rectangle});
+    filled = filled && receipt.accepted && receipt.changed &&
+             receipt.regionIndex == index;
+  }
+  const cr::CreativeTerrainProtectedRegionMutationReceipt duplicate =
+      cr::addCreativeTerrainCompositionProtectedRegion(
+          recipe, {{{0, 0}, 1U, 1U},
+                   cr::CreativeTerrainCompositionMask::Rectangle});
+  const cr::CreativeTerrainProtectedRegionMutationReceipt overflow =
+      cr::addCreativeTerrainCompositionProtectedRegion(
+          recipe, {{{100, 0}, 1U, 1U},
+                   cr::CreativeTerrainCompositionMask::Rectangle});
+  const cr::CreativeTerrainProtectedRegionMutationReceipt removed =
+      cr::removeCreativeTerrainCompositionProtectedRegion(recipe, 3U);
+  const bool shifted =
+      recipe.protectedRegions[3U].bounds.minimum.x == 4;
+  const cr::CreativeTerrainProtectedRegionMutationReceipt cleared =
+      cr::clearCreativeTerrainCompositionProtectedRegions(recipe);
+
+  return expect(filled && duplicate.accepted && !duplicate.changed &&
+                    duplicate.status ==
+                        cr::CreativeTerrainProtectedRegionMutationStatus::Duplicate,
+                "protection set is insertion ordered and duplicate stable") &&
+         expect(!overflow.accepted &&
+                    overflow.status ==
+                        cr::CreativeTerrainProtectedRegionMutationStatus::
+                            CapacityExceeded,
+                "protection set rejects a seventeenth region atomically") &&
+         expect(removed.accepted && removed.changed && shifted &&
+                    recipe.protectedRegionCount == 0U && cleared.accepted &&
+                    cleared.changed,
+                "individual removal compacts and clear releases all locks");
 }
 
 bool raiseAndLowerAreMonotonic() {
@@ -331,6 +439,8 @@ int main() {
   return disjointRegionPreservesAuthoredAndMaterializesSourceGap() &&
                  rectangleFeatherBlendsDeterministically() &&
                  ellipseMaskLeavesCornersUntouched() &&
+                 protectedRegionsPreserveHeightAndMaterialTogether() &&
+                 protectedRegionMutationIsBoundedDeterministicAndRemovable() &&
                  raiseAndLowerAreMonotonic() &&
                  smoothUsesOneBoundedSourcePassAndPreservesHoles() &&
                  invalidInputsAndCapacityRejectAtomically()

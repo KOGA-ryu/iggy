@@ -23,17 +23,11 @@ using PlanRole = cr::CreativeWorldLayoutPlanRole;
 using SourceRef = cr::CreativeWorldLayoutPlanSourceRef;
 using Table = cr::CreativeWorldLayoutTable;
 
-bool transientCandidateActive(
-    const CreativeEditorWorldLayoutState& state) noexcept {
-  return state.buildingTransform.active ||
-         (state.buildingTemplatePlacement.active &&
-          state.buildingTemplatePlacement.previewValid);
-}
-
 CreativeEditorWorldLayoutPlanViewKey makeKey(
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutTopographyState& topography,
-    cr::CreativeGridSettings grid) noexcept {
+    cr::CreativeGridSettings grid,
+    const CreativeEditorWorldLayoutInspection& inspection) noexcept {
   CreativeEditorWorldLayoutPlanViewKey key;
   key.sourceEpoch = state.sourceEpoch;
   key.sourceRevision = state.revision;
@@ -44,8 +38,12 @@ CreativeEditorWorldLayoutPlanViewKey makeKey(
   key.gridCellSizeMeters = grid.cellSizeMeters;
   key.topographyVisible = topography.visible;
   key.lowerLevelContextVisible = state.planLowerLevelContextVisible;
+  key.upperLevelContextVisible = state.planUpperLevelContextVisible;
   key.roofOverheadVisible = state.planRoofOverheadVisible;
-  key.transientCandidate = transientCandidateActive(state);
+  key.inspectionContentRevision = inspection.contentRevision;
+  key.inspectionSourceKind = inspection.sourceKind;
+  key.previewValidity = inspection.previewValidity;
+  key.volatileSource = inspection.volatileSource;
   return key;
 }
 
@@ -68,7 +66,10 @@ DraftingRole terrainRole(cr::CreativeTerrainRecipeKind kind) noexcept {
     case cr::CreativeTerrainRecipeKind::RidgeLine:
       return DraftingRole::RidgeLine;
     case cr::CreativeTerrainRecipeKind::Plateau:
+    case cr::CreativeTerrainRecipeKind::Terrace:
       return DraftingRole::Plateau;
+    case cr::CreativeTerrainRecipeKind::Cliff:
+      return DraftingRole::Ridge;
     case cr::CreativeTerrainRecipeKind::Count:
       break;
   }
@@ -166,6 +167,20 @@ std::size_t sourceBuildingIndex(const cr::CreativeWorldLayout& layout,
                  : cr::kInvalidCreativeWorldLayoutIndex;
     case Table::Opening:
       return openingBuildingIndex(layout, index);
+    case Table::RoofAperture:
+      return index < layout.roofApertures.size() &&
+                     layout.roofApertures[index].levelIndex <
+                         layout.levels.size()
+                 ? layout.levels[layout.roofApertures[index].levelIndex]
+                       .buildingIndex
+                 : cr::kInvalidCreativeWorldLayoutIndex;
+    case Table::TopologyEdge:
+      return index < layout.topologyEdges.size() &&
+                     layout.topologyEdges[index].levelIndex <
+                         layout.levels.size()
+                 ? layout.levels[layout.topologyEdges[index].levelIndex]
+                       .buildingIndex
+                 : cr::kInvalidCreativeWorldLayoutIndex;
     case Table::None:
     case Table::Object:
     case Table::TerrainProfile:
@@ -198,9 +213,11 @@ bool selectableTable(Table table) noexcept {
     case Table::Box:
     case Table::Wall:
     case Table::Opening:
+    case Table::RoofAperture:
     case Table::Object:
     case Table::TerrainProfile:
     case Table::TerrainPath:
+    case Table::TopologyEdge:
       return true;
     case Table::None:
     case Table::TerrainPathPoint:
@@ -225,6 +242,39 @@ std::pair<Table, std::size_t> selectableSource(
   return {Table::None, cr::kInvalidCreativeWorldLayoutIndex};
 }
 
+Table selectionTable(
+    CreativeEditorWorldLayoutSelectionKind kind) noexcept {
+  switch (kind) {
+    case CreativeEditorWorldLayoutSelectionKind::Building:
+      return Table::Building;
+    case CreativeEditorWorldLayoutSelectionKind::Level:
+      return Table::Level;
+    case CreativeEditorWorldLayoutSelectionKind::Room:
+      return Table::Room;
+    case CreativeEditorWorldLayoutSelectionKind::TopologyEdge:
+      return Table::TopologyEdge;
+    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
+      return Table::VerticalConnector;
+    case CreativeEditorWorldLayoutSelectionKind::Box:
+      return Table::Box;
+    case CreativeEditorWorldLayoutSelectionKind::Wall:
+      return Table::Wall;
+    case CreativeEditorWorldLayoutSelectionKind::Opening:
+      return Table::Opening;
+    case CreativeEditorWorldLayoutSelectionKind::RoofAperture:
+      return Table::RoofAperture;
+    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
+      return Table::TerrainProfile;
+    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
+      return Table::TerrainPath;
+    case CreativeEditorWorldLayoutSelectionKind::Object:
+      return Table::Object;
+    case CreativeEditorWorldLayoutSelectionKind::None:
+      return Table::None;
+  }
+  return Table::None;
+}
+
 }  // namespace
 
 bool refreshCreativeEditorWorldLayoutPlanView(
@@ -232,25 +282,26 @@ bool refreshCreativeEditorWorldLayoutPlanView(
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutTopographyState& topography,
     cr::CreativeGridSettings grid) {
+  const CreativeEditorWorldLayoutInspection inspection =
+      inspectCreativeEditorWorldLayout(state);
   const CreativeEditorWorldLayoutPlanViewKey key =
-      makeKey(state, topography, grid);
-  if (cache.valid && cache.key == key && !transientCandidateActive(state)) {
+      makeKey(state, topography, grid, inspection);
+  if (cache.valid && cache.key == key && !inspection.volatileSource) {
     return false;
   }
 
   std::span<const cr::CreativeTerrainContourSegment> contours;
   if (topography.visible && topography.cacheValid &&
-      topography.plan.contours.accepted) {
-    contours = topography.plan.contours.segments;
+      topography.plan.analysis.contours.accepted) {
+    contours = topography.plan.analysis.contours.segments;
   }
-  const cr::CreativeWorldLayout& source =
-      creativeEditorWorldLayoutDisplaySource(state);
   cr::CreativeWorldLayoutPlanProjectionRequest request;
-  request.layout = &source;
+  request.layout = inspection.source;
   request.grid = grid;
   request.activeLevelIndex = state.activeLevelIndex;
   request.contours = contours;
   request.includeLowerLevelContext = state.planLowerLevelContextVisible;
+  request.includeUpperLevelContext = state.planUpperLevelContextVisible;
   request.includeRoofOverhead = state.planRoofOverheadVisible;
   cache.projection = cr::projectCreativeWorldLayoutPlan(request);
   cache.paintOrder.resize(cache.projection.primitives.size());
@@ -260,22 +311,27 @@ bool refreshCreativeEditorWorldLayoutPlanView(
       [&cache](std::size_t lhs, std::size_t rhs) {
         const PlanPrimitive& left = cache.projection.primitives[lhs];
         const PlanPrimitive& right = cache.projection.primitives[rhs];
-        const std::uint8_t leftOrder =
-            left.layer == cr::CreativeWorldLayoutPlanLayer::Context
-                ? creativeEditorDraftingStyle(
-                      DraftingRole::LowerLevelGhostOverlay)
-                      .drawOrder
-                : creativeEditorDraftingStyle(
-                      creativeEditorWorldLayoutPlanDraftingRole(left))
-                      .drawOrder;
-        const std::uint8_t rightOrder =
-            right.layer == cr::CreativeWorldLayoutPlanLayer::Context
-                ? creativeEditorDraftingStyle(
-                      DraftingRole::LowerLevelGhostOverlay)
-                      .drawOrder
-                : creativeEditorDraftingStyle(
-                      creativeEditorWorldLayoutPlanDraftingRole(right))
-                      .drawOrder;
+        const auto drawOrder = [](const PlanPrimitive& primitive) {
+          switch (primitive.layer) {
+            case cr::CreativeWorldLayoutPlanLayer::LowerContext:
+              return creativeEditorDraftingStyle(
+                         DraftingRole::LowerLevelGhostOverlay)
+                  .drawOrder;
+            case cr::CreativeWorldLayoutPlanLayer::UpperContext:
+              return creativeEditorDraftingStyle(
+                         DraftingRole::UpperLevelGhostOverlay)
+                  .drawOrder;
+            case cr::CreativeWorldLayoutPlanLayer::Active:
+            case cr::CreativeWorldLayoutPlanLayer::Overhead:
+            case cr::CreativeWorldLayoutPlanLayer::Count:
+              return creativeEditorDraftingStyle(
+                         creativeEditorWorldLayoutPlanDraftingRole(primitive))
+                  .drawOrder;
+          }
+          return std::uint8_t{0U};
+        };
+        const std::uint8_t leftOrder = drawOrder(left);
+        const std::uint8_t rightOrder = drawOrder(right);
         return leftOrder < rightOrder;
       });
   cache.key = key;
@@ -297,11 +353,27 @@ CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
     const CreativeEditorWorldLayoutState& state,
     const cr::CreativeWorldLayout& layout,
     cr::CreativeWorldLayoutPlanPoint point, double toleranceCells) noexcept {
+  const CreativeEditorWorldLayoutPlanHitStack stack =
+      hitCreativeEditorWorldLayoutPlanStack(cache, state, layout, point,
+                                           toleranceCells);
+  if (stack.count > 0U) {
+    return stack.items.front();
+  }
   CreativeEditorWorldLayoutPlanHit hit;
+  hit.testedPrimitiveCount = stack.testedPrimitiveCount;
+  return hit;
+}
+
+CreativeEditorWorldLayoutPlanHitStack hitCreativeEditorWorldLayoutPlanStack(
+    const CreativeEditorWorldLayoutPlanViewCache& cache,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutPlanPoint point, double toleranceCells) noexcept {
+  CreativeEditorWorldLayoutPlanHitStack stack;
   if (!cache.valid || !cache.projection.accepted || !std::isfinite(point.x) ||
       !std::isfinite(point.z) || !std::isfinite(toleranceCells) ||
       toleranceCells < 0.0) {
-    return hit;
+    return stack;
   }
 
   for (auto ordered = cache.paintOrder.rbegin();
@@ -312,13 +384,17 @@ CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
     }
     const PlanPrimitive& primitive =
         cache.projection.primitives[primitiveIndex];
-    if (primitive.layer != cr::CreativeWorldLayoutPlanLayer::Active ||
-        creativeEditorWorldLayoutPlanPrimitiveSuppressed(state, layout,
-                                                          primitive)) {
+    if (creativeEditorWorldLayoutPlanPrimitiveSuppressed(state, layout,
+                                                         primitive)) {
       continue;
     }
     const auto [table, sourceIndex] = selectableSource(state, primitive.source);
-    if (table == Table::None) {
+    const bool activeSource =
+        primitive.layer == cr::CreativeWorldLayoutPlanLayer::Active;
+    const bool roofApertureSource =
+        primitive.layer == cr::CreativeWorldLayoutPlanLayer::Overhead &&
+        table == Table::RoofAperture;
+    if (table == Table::None || (!activeSource && !roofApertureSource)) {
       continue;
     }
     const auto [offsetX, offsetZ] =
@@ -326,10 +402,25 @@ CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
     const cr::CreativeWorldLayoutPlanHitTestResult geometry =
         cr::hitTestCreativeWorldLayoutPlanPrimitive(
             primitive, {point.x - offsetX, point.z - offsetZ}, toleranceCells);
-    ++hit.testedPrimitiveCount;
+    ++stack.testedPrimitiveCount;
     if (!geometry.hit) {
       continue;
     }
+    ++stack.totalHitPrimitiveCount;
+    const bool duplicate = std::any_of(
+        stack.items.begin(), stack.items.begin() + stack.count,
+        [&](const CreativeEditorWorldLayoutPlanHit& existing) {
+          return existing.table == table &&
+                 existing.sourceIndex == sourceIndex;
+        });
+    if (duplicate) {
+      continue;
+    }
+    if (stack.count >= stack.items.size()) {
+      stack.truncated = true;
+      continue;
+    }
+    CreativeEditorWorldLayoutPlanHit& hit = stack.items[stack.count++];
     hit.hit = true;
     hit.primitiveIndex = primitiveIndex;
     hit.table = table;
@@ -338,9 +429,245 @@ CreativeEditorWorldLayoutPlanHit hitCreativeEditorWorldLayoutPlan(
         layout, table, sourceIndex, cache.projection.activeFloorTopLayer);
     hit.role = primitive.role;
     hit.distanceCells = geometry.distanceCells;
-    return hit;
+    hit.testedPrimitiveCount = stack.testedPrimitiveCount;
   }
-  return hit;
+  return stack;
+}
+
+CreativeEditorWorldLayoutPlanHit cycleCreativeEditorWorldLayoutPlanHit(
+    const CreativeEditorWorldLayoutPlanHitStack& stack,
+    CreativeEditorWorldLayoutSelection currentSelection) noexcept {
+  if (stack.count == 0U) {
+    CreativeEditorWorldLayoutPlanHit miss;
+    miss.testedPrimitiveCount = stack.testedPrimitiveCount;
+    return miss;
+  }
+  const Table table = selectionTable(currentSelection.kind);
+  for (std::size_t index = 0U; index < stack.count; ++index) {
+    if (stack.items[index].table == table &&
+        stack.items[index].sourceIndex == currentSelection.index) {
+      return stack.items[(index + 1U) % stack.count];
+    }
+  }
+  return stack.items.front();
+}
+
+CreativeEditorWorldLayoutPlanRegionSelection
+selectCreativeEditorWorldLayoutPlanRegion(
+    const CreativeEditorWorldLayoutPlanViewCache& cache,
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& layout,
+    cr::CreativeWorldLayoutPlanPoint first,
+    cr::CreativeWorldLayoutPlanPoint second,
+    double toleranceCells,
+    std::size_t sourceCapacity) {
+  CreativeEditorWorldLayoutPlanRegionSelection selection;
+  selection.requested = true;
+  selection.mode = second.x >= first.x
+                       ? cr::CreativeWorldLayoutPlanRegionMode::Window
+                       : cr::CreativeWorldLayoutPlanRegionMode::Crossing;
+  if (!cache.valid || !cache.projection.accepted || !std::isfinite(first.x) ||
+      !std::isfinite(first.z) || !std::isfinite(second.x) ||
+      !std::isfinite(second.z) || !std::isfinite(toleranceCells) ||
+      toleranceCells < 0.0 || sourceCapacity == 0U ||
+      sourceCapacity > cr::kCreativeSelectionTargetCapacity) {
+    selection.reasonCode =
+        "creative_editor_world_layout_plan_region_request_invalid";
+    return selection;
+  }
+
+  selection.sources.reserve(
+      std::min(sourceCapacity, cache.projection.primitives.size()));
+  for (const std::size_t primitiveIndex : cache.paintOrder) {
+    if (primitiveIndex >= cache.projection.primitives.size()) {
+      continue;
+    }
+    const PlanPrimitive& primitive =
+        cache.projection.primitives[primitiveIndex];
+    if (creativeEditorWorldLayoutPlanPrimitiveSuppressed(state, layout,
+                                                         primitive)) {
+      continue;
+    }
+    const auto [table, sourceIndex] = selectableSource(state, primitive.source);
+    const bool activeSource =
+        primitive.layer == cr::CreativeWorldLayoutPlanLayer::Active;
+    const bool roofApertureSource =
+        primitive.layer == cr::CreativeWorldLayoutPlanLayer::Overhead &&
+        table == Table::RoofAperture;
+    if (table == Table::None || (!activeSource && !roofApertureSource)) {
+      continue;
+    }
+
+    const auto [offsetX, offsetZ] =
+        creativeEditorWorldLayoutPlanPrimitiveOffset(state, layout, primitive);
+    const cr::CreativeWorldLayoutPlanHitTestResult geometry =
+        cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+            primitive, {first.x - offsetX, first.z - offsetZ},
+            {second.x - offsetX, second.z - offsetZ}, selection.mode,
+            toleranceCells);
+    ++selection.testedPrimitiveCount;
+    if (geometry.status ==
+            cr::CreativeWorldLayoutPlanHitTestStatus::InvalidRequest ||
+        geometry.status ==
+            cr::CreativeWorldLayoutPlanHitTestStatus::InvalidPrimitive) {
+      selection.sources.clear();
+      selection.reasonCode =
+          "creative_editor_world_layout_plan_region_geometry_invalid";
+      return selection;
+    }
+    if (!geometry.hit) {
+      continue;
+    }
+    ++selection.matchedPrimitiveCount;
+    const cr::CreativeWorldLayoutSourceRef source{table, sourceIndex};
+    if (std::find(selection.sources.begin(), selection.sources.end(), source) !=
+        selection.sources.end()) {
+      continue;
+    }
+    if (selection.sources.size() >= sourceCapacity) {
+      selection.sources.clear();
+      selection.overflowed = true;
+      selection.reasonCode =
+          "creative_editor_world_layout_plan_region_source_capacity";
+      return selection;
+    }
+    selection.sources.push_back(source);
+  }
+
+  selection.accepted = true;
+  selection.reasonCode = selection.sources.empty()
+                             ? "creative_editor_world_layout_plan_region_empty"
+                             : "creative_editor_world_layout_plan_region_ready";
+  return selection;
+}
+
+CreativeEditorObjectSelectionPlan planCreativeEditorWorldLayoutObjectSelection(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& currentSelection,
+    std::span<const cr::CreativeWorldLayoutSourceRef> sources,
+    CreativeEditorSelectionComposition composition,
+    std::size_t objectCapacity) {
+  CreativeEditorObjectSelectionPlan plan;
+  plan.requested = true;
+  plan.sourceCount = sources.size();
+  if (!document.isValid() ||
+      composition >= CreativeEditorSelectionComposition::Count ||
+      objectCapacity == 0U ||
+      objectCapacity > cr::kCreativeSelectionTargetCapacity ||
+      state.generatedRevision != state.revision) {
+    plan.reasonCode = "creative_editor_object_selection_request_invalid";
+    return plan;
+  }
+  for (const cr::CreativeWorldLayoutSourceRef source : sources) {
+    if (source.table == Table::None ||
+        source.index == cr::kInvalidCreativeWorldLayoutIndex ||
+        creativeEditorWorldLayoutSourceStableKey(state, source.table,
+                                                 source.index)
+            .empty()) {
+      plan.reasonCode = "creative_editor_object_selection_source_invalid";
+      return plan;
+    }
+  }
+
+  std::vector<cr::CreativeObjectId> sourceObjectIds;
+  sourceObjectIds.reserve(std::min(
+      objectCapacity, static_cast<std::size_t>(document.objectCount())));
+  for (const cr::CreativeObject& object : document.objects()) {
+    const bool included = std::any_of(
+        sources.begin(), sources.end(),
+        [&](cr::CreativeWorldLayoutSourceRef source) {
+          return cr::creativeWorldLayoutObjectBelongsToSource(
+              state.source, object, source.table, source.index);
+        });
+    if (!included) {
+      continue;
+    }
+    if (sourceObjectIds.size() >= objectCapacity) {
+      plan.overflowed = true;
+      plan.reasonCode = "creative_editor_object_selection_source_capacity";
+      return plan;
+    }
+    sourceObjectIds.push_back(object.id);
+  }
+
+  if (composition != CreativeEditorSelectionComposition::Replace) {
+    plan.objectIds.reserve(objectCapacity);
+    for (const cr::TargetRef target :
+         cr::selectedTargetList(currentSelection)) {
+      if (target.value == cr::kInvalidId) {
+        continue;
+      }
+      const cr::CreativeObjectId objectId =
+          static_cast<cr::CreativeObjectId>(target.value);
+      if (document.findObject(objectId) == nullptr ||
+          std::find(plan.objectIds.begin(), plan.objectIds.end(), objectId) !=
+              plan.objectIds.end()) {
+        continue;
+      }
+      if (plan.objectIds.size() >= objectCapacity) {
+        plan.overflowed = true;
+        plan.objectIds.clear();
+        plan.reasonCode = "creative_editor_object_selection_existing_capacity";
+        return plan;
+      }
+      plan.objectIds.push_back(objectId);
+    }
+  }
+
+  if (composition == CreativeEditorSelectionComposition::Replace) {
+    plan.objectIds = std::move(sourceObjectIds);
+  } else if (composition == CreativeEditorSelectionComposition::Add) {
+    for (const cr::CreativeObjectId objectId : sourceObjectIds) {
+      if (std::find(plan.objectIds.begin(), plan.objectIds.end(), objectId) !=
+          plan.objectIds.end()) {
+        continue;
+      }
+      if (plan.objectIds.size() >= objectCapacity) {
+        plan.overflowed = true;
+        plan.objectIds.clear();
+        plan.reasonCode = "creative_editor_object_selection_add_capacity";
+        return plan;
+      }
+      plan.objectIds.push_back(objectId);
+    }
+  } else {
+    for (const cr::CreativeObjectId objectId : sourceObjectIds) {
+      const auto found =
+          std::find(plan.objectIds.begin(), plan.objectIds.end(), objectId);
+      if (found != plan.objectIds.end()) {
+        plan.objectIds.erase(found);
+        continue;
+      }
+      if (plan.objectIds.size() >= objectCapacity) {
+        plan.overflowed = true;
+        plan.objectIds.clear();
+        plan.reasonCode = "creative_editor_object_selection_toggle_capacity";
+        return plan;
+      }
+      plan.objectIds.push_back(objectId);
+    }
+  }
+
+  const cr::CreativeObjectId currentPrimary =
+      currentSelection.selectedTarget.value == cr::kInvalidId
+          ? cr::kInvalidObjectId
+          : static_cast<cr::CreativeObjectId>(
+                currentSelection.selectedTarget.value);
+  if (composition != CreativeEditorSelectionComposition::Replace &&
+      std::find(plan.objectIds.begin(), plan.objectIds.end(), currentPrimary) !=
+          plan.objectIds.end()) {
+    plan.primaryObjectId = currentPrimary;
+  } else if (!plan.objectIds.empty()) {
+    plan.primaryObjectId = composition == CreativeEditorSelectionComposition::Toggle
+                               ? plan.objectIds.back()
+                               : plan.objectIds.front();
+  }
+  plan.accepted = true;
+  plan.reasonCode = plan.objectIds.empty()
+                        ? "creative_editor_object_selection_empty"
+                        : "creative_editor_object_selection_ready";
+  return plan;
 }
 
 CreativeEditorDraftingRole creativeEditorWorldLayoutPlanDraftingRole(
@@ -358,8 +685,12 @@ CreativeEditorDraftingRole creativeEditorWorldLayoutPlanDraftingRole(
       return DraftingRole::Door;
     case PlanRole::DoorSwing:
       return DraftingRole::DoorSwing;
+    case PlanRole::OpeningFacing:
+      return DraftingRole::OpeningFacing;
     case PlanRole::Window:
       return DraftingRole::Window;
+    case PlanRole::WindowShutter:
+      return DraftingRole::WindowShutter;
     case PlanRole::Stair:
       return DraftingRole::Stair;
     case PlanRole::Ramp:
@@ -368,6 +699,10 @@ CreativeEditorDraftingRole creativeEditorWorldLayoutPlanDraftingRole(
       return DraftingRole::RoofOutline;
     case PlanRole::RoofRidge:
       return DraftingRole::RoofRidge;
+    case PlanRole::RoofSkylight:
+      return DraftingRole::RoofSkylight;
+    case PlanRole::RoofClearance:
+      return DraftingRole::RoofClearance;
     case PlanRole::TerrainProfile:
     case PlanRole::TerrainPath:
       return terrainRole(primitive.terrainKind);
@@ -391,36 +726,10 @@ CreativeEditorDraftingRole creativeEditorWorldLayoutPlanDraftingRole(
 bool creativeEditorWorldLayoutPlanPrimitiveSelected(
     const CreativeEditorWorldLayoutState& state,
     const PlanPrimitive& primitive) noexcept {
-  Table table = Table::None;
-  switch (state.selection.kind) {
-    case CreativeEditorWorldLayoutSelectionKind::Room:
-      table = Table::Room;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
-      table = Table::VerticalConnector;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::Box:
-      table = Table::Box;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::Wall:
-      table = Table::Wall;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::Opening:
-      table = Table::Opening;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
-      table = Table::TerrainProfile;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
-      table = Table::TerrainPath;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::Object:
-      table = Table::Object;
-      break;
-    case CreativeEditorWorldLayoutSelectionKind::None:
-    case CreativeEditorWorldLayoutSelectionKind::Level:
-    case CreativeEditorWorldLayoutSelectionKind::Building:
-      return false;
+  const Table table = selectionTable(state.selection.kind);
+  if (table == Table::None || table == Table::Level ||
+      table == Table::Building) {
+    return false;
   }
   return sourceMatches(primitive.source, table, state.selection.index);
 }

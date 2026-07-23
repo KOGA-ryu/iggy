@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -35,6 +36,13 @@ enum class CreativeMapDiagnosticCode : std::uint8_t {
   InvalidStaticMeshMetadata,
   NoPlayerSpawn,
   MultiplePlayerSpawns,
+  PlayerSpawnSettingsInvalid,
+  PlayerSpawnProfileUnsupported,
+  PlayerSpawnOutsideWorldBounds,
+  PlayerSpawnFloorUnsupported,
+  PlayerSpawnObstructed,
+  PlayerSpawnUnreachable,
+  PlayerSpawnGroupUnavailable,
   RoomBakeRejected,
   RuntimeObjectSkipped,
   InvalidRuntimeBounds,
@@ -81,6 +89,8 @@ struct CreativeMapValidationRequest {
   const CreativeDocument* document = nullptr;
   const StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
   std::string roomId = "creative_validation";
+  std::string playerSpawnGroup =
+      std::string(kCreativeDefaultPlayerSpawnGroup);
   float reachabilityCellSizeMeters = 1.0F;
   bool includeHidden = false;
 };
@@ -97,6 +107,7 @@ struct CreativeMapValidationResult {
   std::uint64_t documentRevision = 0;
   CreativeRoomBakeReceipt roomBake;
   CreativeRoomBakeReachabilityReceipt reachability;
+  CreativePlayerSpawnResolveResult playerSpawn;
   CreativeMapValidationSummary summary;
   std::vector<CreativeMapDiagnostic> diagnostics;
 };

@@ -197,7 +197,11 @@ CreativeSelectionReceipt Facade::selectTargets(
   CreativeSelectionReceipt receipt =
       setSelectedTargets(selectionState_, targets, primary);
   state_.selected = selectionState_.selectedTarget;
-  recordCommandSuccess(stats_);
+  if (receipt.accepted) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
   return receipt;
 }
 
@@ -317,6 +321,20 @@ CreativeGroupCommandReceipt Facade::ungroupObject(
   const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
   static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
   state_.selected = selectionState_.selectedTarget;
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeGroupPivotReceipt Facade::setGroupPivot(
+    CreativeObjectId groupObjectId,
+    CreativeVec3 pivot) {
+  recordCommandAttempt(stats_);
+  CreativeGroupPivotReceipt receipt =
+      setCreativeGroupPivot(document_, groupObjectId, pivot);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -557,6 +575,194 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
   return receipt;
 }
 
+CreativeLinearArrayReceipt Facade::updateLinearArrayRecipe(
+    CreativePatternRecipeId recipeId,
+    const CreativeLinearArrayRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeLinearArrayReceipt receipt =
+      updateCreativeLinearArrayRecipeAtomically(document_, recipeId, request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.generatedObjectIds()) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  const CreativeHierarchySelection finalCopyHierarchy =
+      resolveCreativeObjectHierarchy(document_, receipt.finalCopyObjectIds());
+  const std::span<const CreativeObjectId> selectedIds =
+      finalCopyHierarchy.accepted
+          ? std::span<const CreativeObjectId>{
+                finalCopyHierarchy.rootObjectIds}
+          : receipt.finalCopyObjectIds();
+  static_cast<void>(selectTargets(
+      selectedIds,
+      selectedIds.empty() ? kInvalidObjectId : selectedIds.back()));
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeRadialArrayReceipt Facade::updateRadialArrayRecipe(
+    CreativePatternRecipeId recipeId,
+    const CreativeRadialArrayRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeRadialArrayReceipt receipt =
+      updateCreativeRadialArrayRecipeAtomically(document_, recipeId, request);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.generatedObjectIds()) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  const CreativeHierarchySelection finalCopyHierarchy =
+      resolveCreativeObjectHierarchy(document_, receipt.finalCopyObjectIds());
+  const std::span<const CreativeObjectId> selectedIds =
+      finalCopyHierarchy.accepted
+          ? std::span<const CreativeObjectId>{
+                finalCopyHierarchy.rootObjectIds}
+          : receipt.finalCopyObjectIds();
+  static_cast<void>(selectTargets(
+      selectedIds,
+      selectedIds.empty() ? kInvalidObjectId : selectedIds.back()));
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt Facade::createAssetScatterRecipe(
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    std::span<const CreativeObjectId> selectionFilterObjectIds,
+    const CreativeAssetScatterRecipe& recipe) {
+  recordCommandAttempt(stats_);
+  CreativeAssetScatterRecipeMutationReceipt receipt =
+      createCreativeAssetScatterRecipeAtomically(
+          document_, createRequests, selectionFilterObjectIds, recipe);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.generatedObjectIds) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt Facade::updateAssetScatterRecipe(
+    CreativePatternRecipeId recipeId,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    const CreativeAssetScatterRecipe& recipe) {
+  recordCommandAttempt(stats_);
+  CreativeAssetScatterRecipeMutationReceipt receipt =
+      updateCreativeAssetScatterRecipeAtomically(document_, recipeId,
+                                                 createRequests, recipe);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
+    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                       selectionState_, measurementState_,
+                                       ghostState_);
+  }
+  for (CreativeObjectId objectId : receipt.generatedObjectIds) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt Facade::removeAssetScatterRecipe(
+    CreativePatternRecipeId recipeId) {
+  recordCommandAttempt(stats_);
+  CreativeAssetScatterRecipeMutationReceipt receipt =
+      removeCreativeAssetScatterRecipeAtomically(document_, recipeId);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
+    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                       selectionState_, measurementState_,
+                                       ghostState_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt Facade::extendAssetScatterRecipe(
+    CreativePatternRecipeId recipeId,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    const CreativeAssetScatterRecipe& recipe) {
+  recordCommandAttempt(stats_);
+  CreativeAssetScatterRecipeMutationReceipt receipt =
+      extendCreativeAssetScatterRecipeAtomically(
+          document_, recipeId, createRequests, recipe);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.generatedObjectIds) {
+    recordObjectCreated(stats_);
+    const CreativeObject* object = document_.findObject(objectId);
+    if (object != nullptr && object->kind == CreativeObjectKind::Room) {
+      recordRoomCreated(stats_);
+    }
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt Facade::excludeAssetScatterOutput(
+    CreativePatternRecipeId recipeId,
+    CreativeObjectId outputObjectId,
+    const CreativeAssetScatterRecipe& recipe) {
+  recordCommandAttempt(stats_);
+  CreativeAssetScatterRecipeMutationReceipt receipt =
+      excludeCreativeAssetScatterOutputAtomically(
+          document_, recipeId, outputObjectId, recipe);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
+    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                       selectionState_, measurementState_,
+                                       ghostState_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativePatternRecipeMutationReceipt Facade::detachPatternRecipe(
+    CreativePatternRecipeId recipeId) {
+  recordCommandAttempt(stats_);
+  CreativePatternRecipeMutationReceipt receipt =
+      detachCreativePatternRecipe(document_, recipeId);
+  if (!receipt.accepted || !receipt.changed) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeClipboardCopyReceipt Facade::copySelectedObjectsToClipboard(
     CreativeClipboard& outClipboard) {
   recordCommandAttempt(stats_);
@@ -592,8 +798,8 @@ CreativeClipboardCutReceipt Facade::cutSelectedObjectsToClipboard(
     recordCommandFailure(stats_);
     return receipt;
   }
-  for (CreativeObjectId objectId : cutIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+  for (const CreativeObject& object : outClipboard.objects) {
+    invalidateRemovedObjectEditorState(object.id, state_, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }

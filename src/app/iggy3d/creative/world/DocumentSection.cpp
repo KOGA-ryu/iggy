@@ -14,20 +14,26 @@ using document_section_internal::parseUnits;
 using document_section_internal::toCreativeBounds;
 using document_section_internal::toCreativeGridSettings;
 using document_section_internal::toCreativeLogicLink;
+using document_section_internal::toCreativeMeasurementAnnotationStore;
 using document_section_internal::toCreativeObject;
+using document_section_internal::toCreativePatternRecipeStore;
 using document_section_internal::toCreativeSnapSettings;
 using document_section_internal::toCreativeTerrainField;
 using document_section_internal::toCreativeTerrainHeightField;
+using document_section_internal::toCreativeTerrainHardEdges;
 using document_section_internal::toCreativeTerrainMaterialField;
 using document_section_internal::toCreativeTerrainOperationStack;
 using document_section_internal::toCreativeVoxelField;
 using document_section_internal::toSaveBounds;
 using document_section_internal::toSaveGridSettings;
 using document_section_internal::toSaveLogicLink;
+using document_section_internal::toSaveMeasurementAnnotations;
 using document_section_internal::toSaveObject;
+using document_section_internal::toSavePatternRecipes;
 using document_section_internal::toSaveSnapSettings;
 using document_section_internal::toSaveTerrainControls;
 using document_section_internal::toSaveTerrainHeightField;
+using document_section_internal::toSaveTerrainHardEdges;
 using document_section_internal::toSaveTerrainMaterials;
 using document_section_internal::toSaveTerrainOperations;
 using document_section_internal::toSaveUnits;
@@ -154,6 +160,18 @@ void mirrorRestoreFailure(ProductCreativeDocumentSectionReceipt& receipt,
           ProductCreativeDocumentSectionStatus::InvalidTerrainOperationData,
           reason);
       return;
+    case creative::CreativeDocumentRestoreStatus::InvalidPatternRecipeStore:
+      setStatus(receipt,
+                ProductCreativeDocumentSectionStatus::InvalidPatternRecipeData,
+                reason);
+      return;
+    case creative::CreativeDocumentRestoreStatus::
+        InvalidMeasurementAnnotationStore:
+      setStatus(
+          receipt,
+          ProductCreativeDocumentSectionStatus::InvalidMeasurementAnnotationData,
+          reason);
+      return;
     case creative::CreativeDocumentRestoreStatus::InvalidTerrainMaterialField:
       setStatus(
           receipt,
@@ -229,6 +247,10 @@ std::string_view toString(
       return "InvalidTerrainData";
     case ProductCreativeDocumentSectionStatus::InvalidTerrainOperationData:
       return "InvalidTerrainOperationData";
+    case ProductCreativeDocumentSectionStatus::InvalidPatternRecipeData:
+      return "InvalidPatternRecipeData";
+    case ProductCreativeDocumentSectionStatus::InvalidMeasurementAnnotationData:
+      return "InvalidMeasurementAnnotationData";
     case ProductCreativeDocumentSectionStatus::InvalidTerrainMaterialData:
       return "InvalidTerrainMaterialData";
     case ProductCreativeDocumentSectionStatus::InvalidNextObjectId:
@@ -251,8 +273,13 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.terrainControlCount = document.terrainField().controlCount();
   receipt.terrainHeightCellCount =
       document.terrainHeightField().cellCount();
+  receipt.terrainHardEdgeCount = document.terrainHardEdges().size();
   receipt.terrainOperationCount =
       document.terrainOperationStack().operations.size();
+  receipt.patternRecipeCount =
+      document.patternRecipeStore().recipes.size();
+  receipt.measurementAnnotationCount =
+      document.measurementAnnotationStore().annotations.size();
   receipt.terrainMaterialOverrideCount =
       document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = document.nextObjectId();
@@ -313,6 +340,8 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
       toSaveTerrainControls(document.terrainField());
   result.section.terrainHeightField =
       toSaveTerrainHeightField(document.terrainHeightField());
+  result.section.terrainHardEdges =
+      toSaveTerrainHardEdges(document.terrainHardEdges());
   result.section.terrainOperationStackVersion =
       document.terrainOperationStack().version;
   result.section.nextTerrainOperationId =
@@ -320,8 +349,26 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   result.section.terrainOperationBaseHeightField =
       toSaveTerrainHeightField(
           document.terrainOperationStack().baseHeightField);
+  result.section.terrainOperationBaseHardEdges =
+      toSaveTerrainHardEdges(
+          document.terrainOperationStack().baseHardEdges);
+  result.section.terrainOperationBaseMaterials =
+      toSaveTerrainMaterials(
+          document.terrainOperationStack().baseMaterialField);
   result.section.terrainOperations =
       toSaveTerrainOperations(document.terrainOperationStack());
+  result.section.patternRecipeStoreVersion =
+      document.patternRecipeStore().version;
+  result.section.nextPatternRecipeId =
+      document.patternRecipeStore().nextRecipeId;
+  result.section.patternRecipes =
+      toSavePatternRecipes(document.patternRecipeStore());
+  result.section.measurementAnnotationStoreVersion =
+      document.measurementAnnotationStore().version;
+  result.section.nextMeasurementAnnotationId =
+      document.measurementAnnotationStore().nextAnnotationId;
+  result.section.measurementAnnotations =
+      toSaveMeasurementAnnotations(document.measurementAnnotationStore());
   result.section.terrainMaterials =
       toSaveTerrainMaterials(document.terrainMaterialField());
 
@@ -334,7 +381,11 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   receipt.terrainControlCount = document.terrainField().controlCount();
   receipt.terrainHeightCellCount =
       document.terrainHeightField().cellCount();
+  receipt.terrainHardEdgeCount = document.terrainHardEdges().size();
   receipt.terrainOperationCount = result.section.terrainOperations.size();
+  receipt.patternRecipeCount = result.section.patternRecipes.size();
+  receipt.measurementAnnotationCount =
+      result.section.measurementAnnotations.size();
   receipt.terrainMaterialOverrideCount =
       document.terrainMaterialField().overrideCount();
   receipt.nextObjectId = result.section.nextObjectId;
@@ -358,7 +409,10 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   receipt.terrainControlCount = section.terrainControls.size();
   receipt.terrainHeightCellCount =
       section.terrainHeightField.heights.size();
+  receipt.terrainHardEdgeCount = section.terrainHardEdges.size();
   receipt.terrainOperationCount = section.terrainOperations.size();
+  receipt.patternRecipeCount = section.patternRecipes.size();
+  receipt.measurementAnnotationCount = section.measurementAnnotations.size();
   receipt.terrainMaterialOverrideCount = section.terrainMaterials.size();
   receipt.nextObjectId = section.nextObjectId;
 
@@ -411,16 +465,11 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
               "invalid_terrain_height_data");
     return result;
   }
-  if (!toCreativeTerrainOperationStack(
-          section.terrainOperations,
-          section.terrainOperationStackVersion,
-          section.nextTerrainOperationId,
-          section.terrainOperationBaseHeightField,
-          request.terrainOperationStack)) {
-    setStatus(
-        receipt,
-        ProductCreativeDocumentSectionStatus::InvalidTerrainOperationData,
-        "invalid_terrain_operation_data");
+  if (!toCreativeTerrainHardEdges(section.terrainHardEdges,
+                                  request.terrainHardEdges)) {
+    setStatus(receipt,
+              ProductCreativeDocumentSectionStatus::InvalidTerrainData,
+              "invalid_terrain_hard_edge_data");
     return result;
   }
   if (!toCreativeTerrainMaterialField(section.terrainMaterials,
@@ -431,7 +480,58 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
         "invalid_terrain_material_data");
     return result;
   }
-
+  if (!toCreativeTerrainOperationStack(
+          section.terrainOperations,
+          section.version,
+          section.terrainOperationStackVersion,
+          section.nextTerrainOperationId,
+          section.terrainOperationBaseHeightField,
+          section.terrainOperationBaseHardEdges,
+          section.terrainOperationBaseMaterials,
+          request.terrainMaterialField,
+          request.terrainOperationStack)) {
+    setStatus(
+        receipt,
+        ProductCreativeDocumentSectionStatus::InvalidTerrainOperationData,
+        "invalid_terrain_operation_data");
+    return result;
+  }
+  if (section.version < kSaveCreativeDocumentTerrainHardEdgeVersion &&
+      !request.terrainOperationStack.operations.empty()) {
+    const creative::CreativeTerrainOperationReplayResult migratedReplay =
+        creative::replayCreativeTerrainOperations(
+            request.terrainField, request.terrainOperationStack);
+    if (!migratedReplay.receipt.accepted) {
+      setStatus(
+          receipt,
+          ProductCreativeDocumentSectionStatus::InvalidTerrainOperationData,
+          "invalid_legacy_terrain_operation_topology");
+      return result;
+    }
+    request.terrainHardEdges = migratedReplay.hardEdges;
+    receipt.terrainHardEdgeCount = request.terrainHardEdges.size();
+  }
+  if (!toCreativePatternRecipeStore(
+          section.patternRecipes,
+          section.patternRecipeStoreVersion,
+          section.nextPatternRecipeId,
+          request.patternRecipeStore)) {
+    setStatus(receipt,
+              ProductCreativeDocumentSectionStatus::InvalidPatternRecipeData,
+              "invalid_pattern_recipe_data");
+    return result;
+  }
+  if (!toCreativeMeasurementAnnotationStore(
+          section.measurementAnnotations,
+          section.measurementAnnotationStoreVersion,
+          section.nextMeasurementAnnotationId,
+          request.measurementAnnotationStore)) {
+    setStatus(
+        receipt,
+        ProductCreativeDocumentSectionStatus::InvalidMeasurementAnnotationData,
+        "invalid_measurement_annotation_data");
+    return result;
+  }
   if (!objectIdsAreUniqueAndNextIdIsValid(section.objects,
                                           section.nextObjectId,
                                           receipt)) {

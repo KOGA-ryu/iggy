@@ -1,8 +1,9 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
-#include "EditorToolPresentation.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -14,12 +15,31 @@
 namespace iggy3d_creative_app {
 namespace {
 
+constexpr std::array kTerrainRegionModes{
+    cr::CreativeTerrainRegionMode::Flatten,
+    cr::CreativeTerrainRegionMode::Raise,
+    cr::CreativeTerrainRegionMode::Lower,
+    cr::CreativeTerrainRegionMode::Smooth,
+    cr::CreativeTerrainRegionMode::Noise,
+    cr::CreativeTerrainRegionMode::Erase,
+};
+
+[[nodiscard]] int terrainRegionModeIndex(
+    cr::CreativeTerrainRegionMode mode) noexcept {
+  const auto found =
+      std::find(kTerrainRegionModes.begin(), kTerrainRegionModes.end(), mode);
+  return found == kTerrainRegionModes.end()
+             ? 0
+             : static_cast<int>(found - kTerrainRegionModes.begin());
+}
+
 void drawWorldLayoutTerrainTab(
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorTerrainGenerationState& terrainGeneration,
     CreativeDesktopCommandFrame& commands,
     bool unavailable) {
   CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  cr::CreativeTerrainRegionRecipe& recipe = region.recipe;
   const bool previewOwnedElsewhere =
       terrainGeneration.previewActive && !region.ownsPreview;
   ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
@@ -42,26 +62,24 @@ void drawWorldLayoutTerrainTab(
     return;
   }
 
-  constexpr std::array<const char*, 5U> operationLabels{
-      "Flatten", "Raise", "Lower", "Smooth", "Noise"};
+  constexpr std::array<const char*, 6U> operationLabels{
+      "Flatten", "Raise", "Lower", "Smooth", "Noise", "Erase"};
   bool settingsChanged = false;
-  int operation = static_cast<int>(region.operation);
+  int operation = terrainRegionModeIndex(recipe.mode);
   ImGui::SetNextItemWidth(-1.0F);
   if (ImGui::Combo("Operation##terrain_region", &operation,
                    operationLabels.data(),
                    static_cast<int>(operationLabels.size()))) {
-    region.operation =
-        static_cast<CreativeEditorWorldLayoutTerrainRegionOperation>(
-            operation);
+    recipe.mode = kTerrainRegionModes[static_cast<std::size_t>(operation)];
     settingsChanged = true;
   }
 
   constexpr std::array<const char*, 2U> maskLabels{"Rectangle", "Ellipse"};
-  int mask = static_cast<int>(region.mask);
+  int mask = static_cast<int>(recipe.mask);
   ImGui::SetNextItemWidth(-1.0F);
   if (ImGui::Combo("Shape##terrain_region", &mask, maskLabels.data(),
                    static_cast<int>(maskLabels.size()))) {
-    region.mask = static_cast<cr::CreativeTerrainCompositionMask>(mask);
+    recipe.mask = static_cast<cr::CreativeTerrainCompositionMask>(mask);
     settingsChanged = true;
   }
 
@@ -70,7 +88,8 @@ void drawWorldLayoutTerrainTab(
         CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
   }
 
-  ImGui::TextDisabled("Drag on the map to select a region.");
+  ImGui::TextDisabled(
+      "Drag region | click contour | Shift-click terrain height.");
   ImGui::EndDisabled();
 }
 
@@ -82,90 +101,121 @@ void drawWorldLayoutTerrainRegionInspector(
     CreativeDesktopCommandFrame& commands,
     bool unavailable) {
   CreativeEditorWorldLayoutTerrainRegionState& region = topography.region;
+  cr::CreativeTerrainRegionRecipe& recipe = region.recipe;
   const bool previewOwnedElsewhere =
       terrainGeneration.previewActive && !region.ownsPreview;
   ImGui::SeparatorText("Terrain region");
   ImGui::BeginDisabled(unavailable || previewOwnedElsewhere);
 
   bool settingsChanged = false;
-  const bool smooth = region.operation ==
-                      CreativeEditorWorldLayoutTerrainRegionOperation::Smooth;
-  if (smooth) {
-    ImGui::TextDisabled("Smooth runs one fixed 3x3 pass.");
-  } else {
-    const char* targetLabel = "Height##terrain_region";
-    switch (region.operation) {
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Raise:
-        targetLabel = "Raise to at least##terrain_region";
-        break;
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Lower:
-        targetLabel = "Lower to at most##terrain_region";
-        break;
-      case CreativeEditorWorldLayoutTerrainRegionOperation::Noise:
-        targetLabel = "Base height##terrain_region";
-        break;
-      default:
-        break;
+  const bool usesAmount = cr::creativeTerrainRegionModeUsesAmount(recipe.mode);
+  const bool usesTarget =
+      cr::creativeTerrainRegionModeUsesTargetHeight(recipe.mode);
+  if (usesAmount) {
+    int amount = static_cast<int>(recipe.amountCells);
+    if (ImGui::DragInt(
+            "Amount##terrain_region", &amount, 0.25F, 1,
+            static_cast<int>(cr::kCreativeTerrainRegionMaximumAmountCells),
+            "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
+      recipe.amountCells = static_cast<std::uint16_t>(amount);
+      settingsChanged = true;
     }
-    int target = static_cast<int>(region.targetHeightCells);
+    if (recipe.mode == cr::CreativeTerrainRegionMode::Smooth) {
+      ImGui::TextDisabled("Immutable 3 x 3 average, bounded by Amount.");
+    }
+  }
+  if (usesTarget) {
+    const char* targetLabel =
+        recipe.mode == cr::CreativeTerrainRegionMode::Noise
+            ? "Base height##terrain_region"
+            : "Height##terrain_region";
+    int target = static_cast<int>(recipe.targetHeightCells);
     if (ImGui::DragInt(
             targetLabel, &target, 0.25F,
             static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
             static_cast<int>(cr::kCreativeTerrainMaximumHeightCells),
             "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
-      region.targetHeightCells = static_cast<std::uint16_t>(target);
+      recipe.targetHeightCells = static_cast<std::uint16_t>(target);
       settingsChanged = true;
     }
   }
 
-  if (region.operation ==
-      CreativeEditorWorldLayoutTerrainRegionOperation::Noise) {
-    int relief = static_cast<int>(region.noiseReliefCells);
+  if (recipe.mode == cr::CreativeTerrainRegionMode::Noise) {
+    int relief = static_cast<int>(recipe.noiseReliefCells);
     if (ImGui::DragInt(
             "Relief##terrain_region", &relief, 0.25F, 0,
             static_cast<int>(cr::kCreativeTerrainMaximumHeightCells),
             "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
-      region.noiseReliefCells = static_cast<std::uint16_t>(relief);
+      recipe.noiseReliefCells = static_cast<std::uint16_t>(relief);
       settingsChanged = true;
     }
     settingsChanged =
         ImGui::DragScalar(
             "Scale##terrain_region", ImGuiDataType_Double,
-            &region.noiseScaleCells, 0.25F,
+            &recipe.noiseScaleCells, 0.25F,
             &cr::kCreativeTerrainGeneratorMinimumHorizontalScaleCells,
             &cr::kCreativeTerrainGeneratorMaximumHorizontalScaleCells,
             "%.1f cells", ImGuiSliderFlags_AlwaysClamp) ||
         settingsChanged;
     ImGui::Text("Seed: %llu",
-                static_cast<unsigned long long>(region.seed));
+                static_cast<unsigned long long>(recipe.seed));
     ImGui::SameLine();
     if (ImGui::Button("New seed##terrain_region")) {
-      region.seed = region.seed == std::numeric_limits<std::uint64_t>::max()
+      recipe.seed = recipe.seed == std::numeric_limits<std::uint64_t>::max()
                         ? 0U
-                        : region.seed + 1U;
+                        : recipe.seed + 1U;
       settingsChanged = true;
     }
   }
 
-  int feather = static_cast<int>(region.featherCells);
+  int feather = static_cast<int>(recipe.featherCells);
   if (ImGui::DragInt(
           "Feather##terrain_region", &feather, 0.25F, 0,
           static_cast<int>(
               cr::kCreativeTerrainCompositionMaximumFeatherCells),
           "%d cells", ImGuiSliderFlags_AlwaysClamp)) {
-    region.featherCells = static_cast<std::uint16_t>(feather);
+    recipe.featherCells = static_cast<std::uint16_t>(feather);
     settingsChanged = true;
   }
 
-  // A parameter change invalidates the owned preview by definition; the
-  // fresh exact preview is requested through the dispatcher, never computed
-  // by the panel.
-  if (settingsChanged && region.regionValid && !region.selecting) {
-    commands.push(
-        CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  ImGui::SeparatorText("Region");
+  if (region.regionValid) {
+    int minimumX = recipe.bounds.minimum.x;
+    int minimumZ = recipe.bounds.minimum.z;
+    int width = recipe.bounds.widthCells;
+    int depth = recipe.bounds.depthCells;
+    bool boundsChanged = ImGui::DragInt(
+        "Min X##terrain_region", &minimumX, 1.0F, 0, 0, "%d");
+    boundsChanged = ImGui::DragInt(
+                        "Min Z##terrain_region", &minimumZ, 1.0F, 0, 0, "%d") ||
+                    boundsChanged;
+    boundsChanged =
+        ImGui::DragInt("Width##terrain_region", &width, 1.0F, 1,
+                       std::numeric_limits<std::uint16_t>::max(), "%d cells",
+                       ImGuiSliderFlags_AlwaysClamp) ||
+        boundsChanged;
+    boundsChanged =
+        ImGui::DragInt("Depth##terrain_region", &depth, 1.0F, 1,
+                       std::numeric_limits<std::uint16_t>::max(), "%d cells",
+                       ImGuiSliderFlags_AlwaysClamp) ||
+        boundsChanged;
+    if (boundsChanged) {
+      const cr::CreativeTerrainHeightFieldBounds bounds{
+          {minimumX, minimumZ}, static_cast<std::uint16_t>(width),
+          static_cast<std::uint16_t>(depth)};
+      settingsChanged =
+          setCreativeEditorWorldLayoutTerrainRegionBounds(region, bounds) ||
+          settingsChanged;
+    }
   }
 
-  ImGui::SeparatorText("Region");
+  // A parameter or bounds change requests one fresh exact preview through the
+  // dispatcher; the panel never computes terrain truth itself.
+  if (settingsChanged && region.regionValid && !region.selecting &&
+      !region.manipulation.active) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+  }
+
   const CreativeEditorWorldLayoutTerrainRegionMetrics metrics =
       measureCreativeEditorWorldLayoutTerrainRegion(region);
   if (metrics.present) {
@@ -238,14 +288,14 @@ void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
   CreativeEditorWorldLayoutTopographyState& topography =
       editor.worldLayoutTopography;
   const float tile = ImGui::GetFrameHeight();
-  const CreativeEditorToolPresentation& presentation =
-      activeCreativeEditorToolPresentation(state, topography);
-  const CreativeEditorToolPresentationStatus status =
-      evaluateCreativeEditorToolPresentation(presentation, state, topography,
-                                             editor.terrainGeneration);
+  const CreativeEditorToolDescriptor& presentation =
+      activeCreativeEditorWorldLayoutToolDescriptor(state, topography);
+  const CreativeEditorToolStatus status = evaluateCreativeEditorTool(
+      presentation, state, topography, editor.terrainGeneration);
   if (presentation.options.empty() && presentation.actions.empty()) {
     std::string_view label = presentation.name;
-    if (presentation.tool == CreativeEditorWorldLayoutTool::CatalogAsset &&
+    if (presentation.worldLayoutTool ==
+            CreativeEditorWorldLayoutTool::CatalogAsset &&
         !state.catalogPlacement.label.empty()) {
       label = state.catalogPlacement.label;
     }
@@ -413,6 +463,16 @@ void drawWorldLayoutStatusBar(
   ImGui::TextDisabled("%s", line.cursor.c_str());
   ImGui::SameLine(0.0F, 16.0F);
   ImGui::TextDisabled("%s", line.zoom.c_str());
+  ImGui::SameLine(0.0F, 16.0F);
+  ImVec4 inspectionTint{0.68F, 0.72F, 0.75F, 1.0F};
+  if (line.inspection.validity ==
+      CreativeEditorWorldLayoutPreviewValidity::Valid) {
+    inspectionTint = ImVec4{0.32F, 0.95F, 0.43F, 1.0F};
+  } else if (line.inspection.validity ==
+             CreativeEditorWorldLayoutPreviewValidity::Invalid) {
+    inspectionTint = ImVec4{0.95F, 0.35F, 0.32F, 1.0F};
+  }
+  ImGui::TextColored(inspectionTint, "%s", line.inspection.text.c_str());
   if (!line.snap.empty()) {
     ImGui::SameLine(0.0F, 16.0F);
     ImGui::TextDisabled("%s", line.snap.c_str());

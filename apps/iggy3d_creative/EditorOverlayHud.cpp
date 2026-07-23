@@ -15,6 +15,7 @@
 #include "EditorTransform.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -33,6 +34,8 @@ void appendCreativeEditorVolumePreviewLabel(
     return;
   }
   CreativeEditorState& editor = request.editor;
+  const creative::CreativeHeldItemKind heldKind =
+      creative::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind;
   const creative::CreativeGridBounds3 gridBounds =
       creative::creativeVolumeGridBounds(facts.selection);
   const creative::CreativeBounds bounds =
@@ -50,38 +53,42 @@ void appendCreativeEditorVolumePreviewLabel(
   if (!screenPoint.valid) {
     return;
   }
-  char label[128];
+  char label[256];
   if (facts.terrainStamp) {
     const CreativeTerrainStampPreviewCache& preview =
         editor.terrain.region.stamp.preview;
     std::snprintf(
-        label, sizeof(label), "STAMP %s %s Y%+d | %d x %d | %u rods | %s",
-        std::string(creative::toString(preview.mode)).c_str(),
-        std::string(creative::toString(preview.elevationMode)).c_str(),
+        label, sizeof(label), "STAMP %s %s Y%+d | %d x %d | %llu cells | %s",
+        std::string(creative::toString(preview.recipe.mode)).c_str(),
+        std::string(creative::toString(preview.recipe.elevationMode)).c_str(),
         preview.plan.appliedHeightOffsetCells,
         gridBounds.max.x - gridBounds.min.x,
         gridBounds.max.z - gridBounds.min.z,
-        static_cast<unsigned>(preview.plan.finalControlCount),
+        static_cast<unsigned long long>(preview.plan.affectedCellCount),
         std::string(creative::toString(preview.plan.status)).c_str());
   } else if (facts.terrainRegion) {
     const CreativeTerrainRegionPreviewCache& preview =
         editor.terrain.region.preview;
+    const std::uint64_t candidateCellCount =
+        static_cast<std::uint64_t>(preview.recipe.bounds.widthCells) *
+        preview.recipe.bounds.depthCells;
     std::snprintf(
-        label, sizeof(label), "TERRAIN %s %d x %d | %u rods | %s",
+        label, sizeof(label), "TERRAIN %s %d x %d | %llu cells | %s",
         std::string(creative::toString(
-                        editor.toolSettings.terrainRegionOperation))
+                        editor.toolSettings.terrainRegionRecipe.mode))
             .c_str(),
         gridBounds.max.x - gridBounds.min.x,
         gridBounds.max.z - gridBounds.min.z,
-        static_cast<unsigned>(preview.plan.affectedControlCount),
-        std::string(creative::toString(preview.plan.status)).c_str());
+        static_cast<unsigned long long>(candidateCellCount),
+        std::string(creative::toString(
+                        preview.operationPreview.receipt.status))
+            .c_str());
   } else {
-    const std::uint64_t plannedCellCount =
-      facts.usesShapePlan && facts.shapePlan.accepted
-          ? facts.shapePlan.generatedCellCount
-          : facts.usesShapePlan
-                ? 0U
-                : creative::creativeVolumeCellCount(facts.selection);
+    const std::uint64_t changedMemberCount =
+        facts.hasOperationPreview
+            ? creative::creativeVolumeChangedMemberCount(
+                  facts.operationPreview)
+            : 0U;
     const std::string shapeLabel =
       facts.usesShapePlan
           ? std::string(creative::toString(editor.toolSettings.shapeBrushKind))
@@ -93,26 +100,97 @@ void appendCreativeEditorVolumePreviewLabel(
           ? " " + std::string(
                       creative::toString(editor.toolSettings.shapeBrushAxis))
           : std::string{};
+    std::string overlapLabel;
+    std::string hollowLabel;
+    std::string replaceLabel;
+    std::string eraseLabel;
+    std::string cloneLabel;
+    const CreativeEditorVolumeSettingsProfile settings =
+        describeCreativeEditorHeldItemTool(heldKind).volumeSettingsProfile;
+    switch (settings) {
+      case CreativeEditorVolumeSettingsProfile::Fill:
+        overlapLabel =
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeFillOverlapPolicy));
+        break;
+      case CreativeEditorVolumeSettingsProfile::Hollow:
+        hollowLabel =
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeHollowThickness)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeHollowAlignment)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeHollowOpening)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeHollowCornerRule));
+        break;
+      case CreativeEditorVolumeSettingsProfile::Replace:
+        replaceLabel =
+            " FROM " +
+            std::string(editor.toolSettings.replaceSourceKind ==
+                                creative::CreativeObjectKind::Unknown
+                            ? std::string_view{"ANY"}
+                            : creative::toString(
+                                  editor.toolSettings.replaceSourceKind)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeReplaceMemberMask));
+        break;
+      case CreativeEditorVolumeSettingsProfile::Erase:
+        eraseLabel =
+            " FROM " +
+            std::string(editor.toolSettings.eraseSourceKind ==
+                                creative::CreativeObjectKind::Unknown
+                            ? std::string_view{"ANY"}
+                            : creative::toString(
+                                  editor.toolSettings.eraseSourceKind)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeEraseMemberMask));
+        break;
+      case CreativeEditorVolumeSettingsProfile::Clone:
+        cloneLabel =
+            " " + std::string(creative::toString(
+                      editor.toolSettings.cloneOffsetAxis)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.cloneOffsetDistance)) +
+            " ROT " + std::string(creative::toString(
+                        editor.toolSettings.cloneRotation)) +
+            " MIR " + std::string(creative::toString(
+                        editor.toolSettings.cloneMirror)) +
+            " " + std::string(creative::toString(
+                      editor.toolSettings.volumeCloneMemberMask)) +
+            " VOXEL " + std::string(creative::toString(
+                          editor.toolSettings.cloneVoxelOverlapPolicy));
+        break;
+      case CreativeEditorVolumeSettingsProfile::None:
+      case CreativeEditorVolumeSettingsProfile::Count:
+        break;
+    }
     if (editor.volume.lastReceipt.requested) {
       std::snprintf(
-          label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells | %s",
+          label, sizeof(label),
+          "%s %s%s%s%s%s%s%s %d x %d x %d | %llu changes | %s",
           std::string(creative::toString(editor.volume.operation)).c_str(),
-          shapeLabel.c_str(), axisLabel.c_str(),
+          shapeLabel.c_str(), axisLabel.c_str(), overlapLabel.c_str(),
+          hollowLabel.c_str(), replaceLabel.c_str(), eraseLabel.c_str(),
+          cloneLabel.c_str(),
           gridBounds.max.x - gridBounds.min.x,
           gridBounds.max.y - gridBounds.min.y,
           gridBounds.max.z - gridBounds.min.z,
-          static_cast<unsigned long long>(plannedCellCount),
+          static_cast<unsigned long long>(changedMemberCount),
           std::string(creative::toString(editor.volume.lastReceipt.status))
               .c_str());
     } else {
       std::snprintf(
-          label, sizeof(label), "%s %s%s %d x %d x %d | %llu cells",
+          label, sizeof(label),
+          "%s %s%s%s%s%s%s%s %d x %d x %d | %llu changes",
           std::string(creative::toString(editor.volume.operation)).c_str(),
-          shapeLabel.c_str(), axisLabel.c_str(),
+          shapeLabel.c_str(), axisLabel.c_str(), overlapLabel.c_str(),
+          hollowLabel.c_str(), replaceLabel.c_str(), eraseLabel.c_str(),
+          cloneLabel.c_str(),
           gridBounds.max.x - gridBounds.min.x,
           gridBounds.max.y - gridBounds.min.y,
           gridBounds.max.z - gridBounds.min.z,
-          static_cast<unsigned long long>(plannedCellCount));
+          static_cast<unsigned long long>(changedMemberCount));
     }
   }
   const DebugHudLayoutResult layout = layoutDebugHudTextAt(
@@ -208,7 +286,8 @@ void appendCreativeEditorHudOverlays(
   appendCreativeEditorInteractionOverlay(
       editor, request.drawableWidth, request.drawableHeight,
       request.gizmoThickness, output.uiRects, output.glyphs,
-      output.combinedWireLines, &request.appState.facade.document());
+      output.combinedWireLines, &request.appState.facade.document(),
+      &request.appState.facade.measurementState());
   appendCreativeEditorTransformOverlay(
       editor.transform, request.drawableWidth, request.drawableHeight,
       output.uiRects, output.glyphs);

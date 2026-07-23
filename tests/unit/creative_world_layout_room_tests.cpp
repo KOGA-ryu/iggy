@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
@@ -10,6 +11,7 @@
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -118,6 +120,48 @@ cr::CreativeWorldLayout adjacentRooms() {
   door.name = "Shared Door";
   door.centerOffsetCells = 2.0;
   layout.openings.push_back(door);
+  return layout;
+}
+
+cr::CreativeWorldLayout orthogonalLRoom() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "orthogonal_l_room";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building_l";
+  building.name = "L Building";
+  building.rootFootprint = {{0, 0}, {6, 6}};
+  layout.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground_l";
+  level.name = "Ground";
+  layout.levels.push_back(level);
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = 0U;
+  room.levelIndex = 0U;
+  room.stableKey = "room_l";
+  room.name = "L Room";
+  room.footprint = {{0, 0}, {6, 6}};
+  layout.rooms.push_back(room);
+
+  const cr::CreativeTerrainCoord2 points[] = {
+      {0, 0}, {6, 0}, {6, 2}, {2, 2}, {2, 6}, {0, 6},
+  };
+  for (std::size_t index = 0U; index < std::size(points); ++index) {
+    layout.topologyVertices.push_back(
+        {0U, "l_vertex_" + std::to_string(index), points[index]});
+  }
+  const std::pair<std::size_t, std::size_t> edges[] = {
+      {0U, 1U}, {1U, 2U}, {3U, 2U},
+      {3U, 4U}, {5U, 4U}, {0U, 5U},
+  };
+  const bool reversed[] = {false, false, true, false, true, true};
+  for (std::size_t index = 0U; index < std::size(edges); ++index) {
+    layout.topologyEdges.push_back(
+        {0U, "l_edge_" + std::to_string(index), edges[index].first,
+         edges[index].second, 0.25});
+    layout.roomBoundaries.push_back({0U, index, index, reversed[index]});
+  }
   return layout;
 }
 
@@ -537,6 +581,84 @@ bool generatedRoomObjectsResolveToSemanticSources() {
                 "generated door resolves to its authored opening");
 }
 
+bool generatedWallHitResolvesExactCanonicalEdge() {
+  const cr::CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      cr::materializeCreativeWorldLayoutRoomGraph(adjacentRooms());
+  if (!materialized.accepted) {
+    return expect(false, "explicit provenance fixture materializes");
+  }
+  const cr::CreativeWorldLayout& source = materialized.edited;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Exact Wall Provenance");
+  static_cast<void>(document.assignId(9213U));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, source);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+
+  const cr::CreativeObject* condensed = nullptr;
+  std::vector<std::size_t> contributors;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    if (object.kind != cr::CreativeObjectKind::Wall) {
+      continue;
+    }
+    std::vector<std::size_t> objectContributors;
+    for (std::size_t edgeIndex = 0U;
+         edgeIndex < source.topologyEdges.size(); ++edgeIndex) {
+      const std::string tag = cr::creativeWorldLayoutProvenanceTag(
+          source, cr::CreativeWorldLayoutTable::TopologyEdge, edgeIndex);
+      if (!tag.empty() &&
+          std::find(object.tags.begin(), object.tags.end(), tag) !=
+              object.tags.end()) {
+        objectContributors.push_back(edgeIndex);
+      }
+    }
+    if (objectContributors.size() >= 2U) {
+      condensed = &object;
+      contributors = std::move(objectContributors);
+      break;
+    }
+  }
+  if (condensed == nullptr) {
+    return expect(false, "explicit adjacent walls condense for provenance");
+  }
+
+  const auto midpoint = [&](std::size_t edgeIndex) {
+    const cr::CreativeWorldLayoutTopologyEdge& edge =
+        source.topologyEdges[edgeIndex];
+    const cr::CreativeTerrainCoord2 start =
+        source.topologyVertices[edge.startVertexIndex].position;
+    const cr::CreativeTerrainCoord2 end =
+        source.topologyVertices[edge.endVertexIndex].position;
+    const cr::CreativeWorldLayoutLevel& level = source.levels[edge.levelIndex];
+    return cr::CreativeVec3{
+        (static_cast<double>(start.x) + end.x) * 0.5,
+        level.floorTopLayer + 0.5,
+        (static_cast<double>(start.z) + end.z) * 0.5};
+  };
+  const auto first = cr::resolveCreativeWorldLayoutObjectProvenance(
+      source, *condensed, midpoint(contributors[0]));
+  const auto second = cr::resolveCreativeWorldLayoutObjectProvenance(
+      source, *condensed, midpoint(contributors[1]));
+  const auto fallback =
+      cr::resolveCreativeWorldLayoutObjectProvenance(source, *condensed);
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "explicit topology provenance preview accepted") &&
+         expect(first.owned && second.owned &&
+                    first.table ==
+                        cr::CreativeWorldLayoutTable::TopologyEdge &&
+                    second.table ==
+                        cr::CreativeWorldLayoutTable::TopologyEdge &&
+                    first.index == contributors[0] &&
+                    second.index == contributors[1] &&
+                    first.contributorCount == contributors.size() &&
+                    second.contributorCount == contributors.size(),
+                "3D hit position selects the exact condensed wall segment") &&
+         expect(fallback.owned && fallback.index == contributors.front() &&
+                    fallback.contributorCount == contributors.size(),
+                "point-free wall provenance remains deterministic");
+}
+
 bool horizontalStructuralLayersUseDescriptorThickness() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Layer Layout");
   static_cast<void>(document.assignId(9202U));
@@ -720,8 +842,8 @@ bool architecturalDimensionsOwnCompilerAndOpeningScale() {
                     near(buildingDimensions.minimumFloorToFloorMeters, 3.0) &&
                     near(buildingDimensions.exteriorFacadeHeightMeters, 6.0) &&
                     near(buildingDimensions.roofBaseMeters, 8.5) &&
-                    near(buildingDimensions.roofTopMeters, 10.5) &&
-                    near(buildingDimensions.totalHeightMeters, 8.1) &&
+                    near(buildingDimensions.roofTopMeters, 9.0) &&
+                    near(buildingDimensions.totalHeightMeters, 6.6) &&
                     buildingDimensions.uniformFloorToFloor &&
                     buildingDimensions.uniformWallHeight &&
                     buildingDimensions.uniformFloorThickness,
@@ -742,9 +864,8 @@ bool architecturalDimensionsOwnCompilerAndOpeningScale() {
                          buildingDimensions.roofBaseMeters) &&
                     near(roofBounds.worldBounds.max.y,
                          buildingDimensions.roofTopMeters) &&
-                    near(windowBounds.worldBounds.min.y,
-                         sourceOpeningDimensions.insertBottomMeters),
-                "compiler geometry consumes the measured dimensions") &&
+                    near(windowBounds.worldBounds.min.y, 6.06),
+                "compiler geometry consumes measured roof dimensions and the inset window recipe") &&
          expect(!invalid.accepted &&
                     invalid.status ==
                         cr::CreativeWorldLayoutDimensionStatus::InvalidGrid,
@@ -860,12 +981,9 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
   const cr::CreativeWorldLayoutPreviewResult preview =
       cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
   std::vector<const cr::CreativeObject*> slopes;
-  const cr::CreativeObject* base = nullptr;
   for (const cr::CreativeObject& object : preview.document.objects()) {
-    if (object.kind == cr::CreativeObjectKind::GableRoof) {
+    if (object.kind == cr::CreativeObjectKind::RoofSlope) {
       slopes.push_back(&object);
-    } else if (object.kind == cr::CreativeObjectKind::Roof) {
-      base = &object;
     }
   }
 
@@ -897,7 +1015,7 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
   const cr::CreativeWorldLayoutCompileResult rejected =
       cr::buildCreativeWorldLayoutPlan(document, irregular);
 
-  return expect(roofPlan.accepted && roofPlan.geometry.partCount == 3U &&
+  return expect(roofPlan.accepted && roofPlan.geometry.partCount == 2U &&
                     roofPlan.footprint.minimum ==
                         cr::CreativeTerrainCoord2{0, 0} &&
                     roofPlan.footprint.maximum ==
@@ -906,24 +1024,24 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
                 "adjacent rooms resolve one pitched roof footprint") &&
          expect(dimensions.accepted &&
                     near(dimensions.roofBaseMeters, 3.0) &&
-                    near(dimensions.roofTopMeters, 7.0) &&
-                    near(dimensions.totalHeightMeters, 7.05),
+                    near(dimensions.roofTopMeters, 6.0) &&
+                    near(dimensions.totalHeightMeters, 6.05),
                 "building dimensions include the pitched roof envelope") &&
          expect(compiled.receipt.accepted && preview.accepted &&
-                    base != nullptr && slopes.size() == 2U,
-                "gable layout emits one base and two semantic slope objects") &&
+                    slopes.size() == 2U,
+                "gable layout emits exactly two semantic slope panels") &&
          expect(baked.receipt.accepted && firstMesh != nullptr &&
                     secondMesh != nullptr &&
-                    firstMesh->meshId == "creative_ramp_wedge" &&
-                    secondMesh->meshId == "creative_ramp_wedge",
-                "gable slopes reuse the proven generated wedge mesh") &&
+                    firstMesh->meshId == "creative_solid_prism" &&
+                    secondMesh->meshId == "creative_solid_prism",
+                "gable slopes render as thin oriented panels") &&
          expect(north.status == iggy3d::CollisionQueryStatus::Hit &&
                     ridge.status == iggy3d::CollisionQueryStatus::Hit &&
                     south.status == iggy3d::CollisionQueryStatus::Hit &&
-                    nearFloat(north.heightMeters, 5.5F) &&
-                    nearFloat(ridge.heightMeters, 7.0F) &&
-                    nearFloat(south.heightMeters, 5.5F),
-                "rendered gable slopes expose matching pitched collision") &&
+                    nearFloat(north.heightMeters, 4.5F) &&
+                    nearFloat(ridge.heightMeters, 6.0F) &&
+                    nearFloat(south.heightMeters, 4.5F),
+                "visible gable weather faces expose continuous pitched collision") &&
          expect(rotated.accepted &&
                     rotated.transformed.levels[0].roofRidgeAxis ==
                         cr::CreativeStructuralRoofRidgeAxis::Z,
@@ -933,6 +1051,282 @@ bool authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() {
                         cr::CreativeWorldLayoutTable::Level &&
                     rejected.receipt.failedIndex == 0U,
                 "non-rectangular gable footprint fails closed at its level");
+}
+
+bool authoredRoofStylesKeepStableGeneratedOwnership() {
+  struct RoofCase {
+    cr::CreativeStructuralRoofStyle style;
+    cr::CreativeStructuralRoofRidgeAxis ridgeAxis;
+    cr::CreativeStructuralRoofSlopeDirection slopeDirection;
+    std::array<cr::CreativeObjectKind, 4U> kinds;
+    std::array<std::string_view, 4U> stableKeys;
+    std::size_t count;
+  };
+  const std::array<RoofCase, 4U> cases{{
+      {cr::CreativeStructuralRoofStyle::Flat,
+       cr::CreativeStructuralRoofRidgeAxis::X,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ,
+       {cr::CreativeObjectKind::Roof, cr::CreativeObjectKind::Unknown,
+        cr::CreativeObjectKind::Unknown, cr::CreativeObjectKind::Unknown},
+       {"building_1.level_ground.roof.flat", {}, {}, {}}, 1U},
+      {cr::CreativeStructuralRoofStyle::Shed,
+       cr::CreativeStructuralRoofRidgeAxis::X,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveX,
+       {cr::CreativeObjectKind::RoofSlope,
+        cr::CreativeObjectKind::Unknown, cr::CreativeObjectKind::Unknown,
+        cr::CreativeObjectKind::Unknown},
+       {"building_1.level_ground.roof.shed", {}, {}, {}}, 1U},
+      {cr::CreativeStructuralRoofStyle::Gable,
+       cr::CreativeStructuralRoofRidgeAxis::X,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ,
+       {cr::CreativeObjectKind::RoofSlope,
+        cr::CreativeObjectKind::RoofSlope,
+        cr::CreativeObjectKind::Unknown, cr::CreativeObjectKind::Unknown},
+       {"building_1.level_ground.roof.gable.first",
+        "building_1.level_ground.roof.gable.second", {}, {}}, 2U},
+      {cr::CreativeStructuralRoofStyle::Hip,
+       cr::CreativeStructuralRoofRidgeAxis::X,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ,
+       {cr::CreativeObjectKind::HipRoof, cr::CreativeObjectKind::HipRoof,
+        cr::CreativeObjectKind::HipRoof, cr::CreativeObjectKind::HipRoof},
+       {"building_1.level_ground.roof.hip.north",
+        "building_1.level_ground.roof.hip.south",
+        "building_1.level_ground.roof.hip.west",
+        "building_1.level_ground.roof.hip.east"}, 4U},
+  }};
+
+  bool allReady = true;
+  for (const RoofCase& roofCase : cases) {
+    cr::CreativeDocument document =
+        cr::CreativeDocument::create("Roof Ownership");
+    static_cast<void>(document.assignId(9220U));
+    cr::CreativeWorldLayout layout = adjacentRooms();
+    layout.openings.clear();
+    cr::CreativeWorldLayoutLevel& level = layout.levels[0];
+    level.roofStyle = roofCase.style;
+    level.roofRidgeAxis = roofCase.ridgeAxis;
+    level.roofSlopeDirection = roofCase.slopeDirection;
+    level.roofPitchDegrees = 35.0;
+    // A non-zero authored overhang selects the canonical rectangular roof
+    // owner for Flat while preserving exact per-room surfaces by default.
+    level.roofOverhangCells = 0.5;
+    level.roofMaterial = cr::CreativeStructuralMaterial::Stone;
+
+    const cr::CreativeWorldLayoutCompileResult firstCompiled =
+        cr::buildCreativeWorldLayoutPlan(document, layout);
+    const cr::CreativeWorldLayoutCompileResult secondCompiled =
+        cr::buildCreativeWorldLayoutPlan(document, layout);
+    const cr::CreativeWorldLayoutPreviewResult firstPreview =
+        cr::previewCreativeWorldLayoutPlan(document, firstCompiled.plan);
+    const cr::CreativeWorldLayoutPreviewResult secondPreview =
+        cr::previewCreativeWorldLayoutPlan(document, secondCompiled.plan);
+
+    std::vector<const cr::CreativeObject*> firstRoofs;
+    std::vector<const cr::CreativeObject*> secondRoofs;
+    const auto collectRoofs = [](const cr::CreativeDocument& source,
+                                 std::vector<const cr::CreativeObject*>& out) {
+      for (const cr::CreativeObject& object : source.objects()) {
+        if (object.kind == cr::CreativeObjectKind::Roof ||
+            object.kind == cr::CreativeObjectKind::RoofSlope ||
+            object.kind == cr::CreativeObjectKind::HipRoof) {
+          out.push_back(&object);
+        }
+      }
+    };
+    collectRoofs(firstPreview.document, firstRoofs);
+    collectRoofs(secondPreview.document, secondRoofs);
+
+    bool caseReady = firstCompiled.receipt.accepted &&
+                     secondCompiled.receipt.accepted &&
+                     firstPreview.accepted && secondPreview.accepted &&
+                     firstRoofs.size() == roofCase.count &&
+                     secondRoofs.size() == roofCase.count;
+    for (std::size_t index = 0U;
+         caseReady && index < roofCase.count; ++index) {
+      cr::CreativeStructuralMaterial material =
+          cr::CreativeStructuralMaterial::Count;
+      const cr::CreativeWorldLayoutObjectProvenance provenance =
+          cr::resolveCreativeWorldLayoutObjectProvenance(
+              layout, *firstRoofs[index]);
+      caseReady = firstRoofs[index]->kind == roofCase.kinds[index] &&
+                  secondRoofs[index]->kind == roofCase.kinds[index] &&
+                  cr::creativeRecipeObjectStableKey(*firstRoofs[index]) ==
+                      roofCase.stableKeys[index] &&
+                  cr::creativeRecipeObjectStableKey(*secondRoofs[index]) ==
+                      roofCase.stableKeys[index] &&
+                  firstRoofs[index]->id == secondRoofs[index]->id &&
+                  provenance.owned &&
+                  provenance.table == cr::CreativeWorldLayoutTable::Level &&
+                  provenance.index == 0U &&
+                  cr::parseCreativeStructuralMaterialTag(
+                      firstRoofs[index]->tags, material) &&
+                  material == cr::CreativeStructuralMaterial::Stone;
+    }
+    if (!caseReady) {
+      std::cerr << "Roof ownership case failed: "
+                << cr::toString(roofCase.style) << '\n';
+    }
+    allReady = allReady && caseReady;
+  }
+  return expect(allReady,
+                "all authored roof styles keep stable level-owned children and material tags");
+}
+
+bool authoredRoofAperturesCompileWithStableOwnershipAndCollisionHoles() {
+  struct RoofCase {
+    cr::CreativeStructuralRoofStyle style;
+    cr::CreativeStructuralRoofSlopeDirection slopeDirection;
+  };
+  const std::array<RoofCase, 3U> cases{{
+      {cr::CreativeStructuralRoofStyle::Flat,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ},
+      {cr::CreativeStructuralRoofStyle::Shed,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ},
+      {cr::CreativeStructuralRoofStyle::Gable,
+       cr::CreativeStructuralRoofSlopeDirection::PositiveZ},
+  }};
+
+  bool allReady = true;
+  for (const RoofCase& roofCase : cases) {
+    cr::CreativeDocument document =
+        cr::CreativeDocument::create("Roof Apertures");
+    static_cast<void>(document.assignId(9230U));
+    cr::CreativeWorldLayout layout = adjacentRooms();
+    layout.openings.clear();
+    layout.levels[0].roofStyle = roofCase.style;
+    layout.levels[0].roofRidgeAxis =
+        cr::CreativeStructuralRoofRidgeAxis::X;
+    layout.levels[0].roofSlopeDirection = roofCase.slopeDirection;
+    layout.levels[0].roofPitchDegrees = 30.0;
+    layout.levels[0].roofOverhangCells = 0.5;
+    layout.roofApertures.push_back(
+        {0U, cr::CreativeStructuralRoofApertureKind::Skylight,
+         "skylight.test", "Test Skylight", 1.0, 2.0, 0.5, 1.25});
+    layout.roofApertures.push_back(
+        {0U, cr::CreativeStructuralRoofApertureKind::ChimneyClearance,
+         "chimney.test", "Test Chimney Clearance", 4.5, 5.5, 0.5, 1.25});
+
+    const cr::CreativeWorldLayoutRoofPlan roofPlan =
+        cr::planCreativeWorldLayoutRoof(document.gridSettings(), layout, 0U);
+    const cr::CreativeWorldLayoutCompileResult firstCompiled =
+        cr::buildCreativeWorldLayoutPlan(document, layout);
+    const cr::CreativeWorldLayoutCompileResult secondCompiled =
+        cr::buildCreativeWorldLayoutPlan(document, layout);
+    const cr::CreativeWorldLayoutPreviewResult firstPreview =
+        cr::previewCreativeWorldLayoutPlan(document, firstCompiled.plan);
+    const cr::CreativeWorldLayoutPreviewResult secondPreview =
+        cr::previewCreativeWorldLayoutPlan(document, secondCompiled.plan);
+
+    std::vector<const cr::CreativeObject*> firstRoofPieces;
+    std::vector<const cr::CreativeObject*> secondRoofPieces;
+    const cr::CreativeObject* skylight = nullptr;
+    for (const cr::CreativeObject& object : firstPreview.document.objects()) {
+      if (object.kind == cr::CreativeObjectKind::Roof ||
+          object.kind == cr::CreativeObjectKind::RoofSlope) {
+        firstRoofPieces.push_back(&object);
+      } else if (object.kind == cr::CreativeObjectKind::Window) {
+        skylight = &object;
+      }
+    }
+    for (const cr::CreativeObject& object : secondPreview.document.objects()) {
+      if (object.kind == cr::CreativeObjectKind::Roof ||
+          object.kind == cr::CreativeObjectKind::RoofSlope) {
+        secondRoofPieces.push_back(&object);
+      }
+    }
+
+    bool stablePieces = firstRoofPieces.size() == secondRoofPieces.size();
+    for (std::size_t index = 0U;
+         stablePieces && index < firstRoofPieces.size(); ++index) {
+      stablePieces =
+          cr::creativeRecipeObjectStableKey(*firstRoofPieces[index]) ==
+              cr::creativeRecipeObjectStableKey(*secondRoofPieces[index]) &&
+          firstRoofPieces[index]->id == secondRoofPieces[index]->id;
+    }
+    const cr::CreativeWorldLayoutObjectProvenance skylightProvenance =
+        skylight == nullptr
+            ? cr::CreativeWorldLayoutObjectProvenance{}
+            : cr::resolveCreativeWorldLayoutObjectProvenance(layout,
+                                                              *skylight);
+
+    cr::CreativeRoomBakeRequest bakeRequest;
+    bakeRequest.document = &firstPreview.document;
+    bakeRequest.validateReachability = false;
+    const cr::CreativeRoomBakeResult baked =
+        cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+    const iggy3d::SpatialSurfaceSet surfaces =
+        iggy3d::buildSpatialSurfaceSet(baked.room);
+    const iggy3d::CollisionQueryResult chimneySample =
+        iggy3d::sampleSurfaceHeight(surfaces, {5.0F, 0.0F, 0.875F});
+
+    const bool caseReady =
+        roofPlan.accepted && roofPlan.sourceApertureCount == 2U &&
+        roofPlan.closure.insertCount == 1U &&
+        roofPlan.closure.pieceCount > roofPlan.geometry.partCount &&
+        firstCompiled.receipt.accepted && secondCompiled.receipt.accepted &&
+        firstPreview.accepted && secondPreview.accepted && stablePieces &&
+        firstRoofPieces.size() == roofPlan.closure.pieceCount &&
+        skylight != nullptr &&
+        cr::creativeRecipeObjectStableKey(*skylight) ==
+            "building_1.skylight.test.insert" &&
+        skylightProvenance.owned &&
+        skylightProvenance.table ==
+            cr::CreativeWorldLayoutTable::RoofAperture &&
+        skylightProvenance.index == 0U && baked.receipt.accepted &&
+        chimneySample.status == iggy3d::CollisionQueryStatus::Hit &&
+        chimneySample.heightMeters < 2.9F;
+    if (!caseReady) {
+      std::cerr << "Roof aperture case failed: "
+                << cr::toString(roofCase.style) << '\n';
+    }
+    allReady = allReady && caseReady;
+  }
+
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Rejected Roof Apertures");
+  static_cast<void>(document.assignId(9231U));
+  cr::CreativeWorldLayout ridge = adjacentRooms();
+  ridge.openings.clear();
+  ridge.levels[0].roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  ridge.levels[0].roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  ridge.roofApertures.push_back(
+      {0U, cr::CreativeStructuralRoofApertureKind::Skylight,
+       "skylight.ridge", "Ridge Skylight", 2.0, 3.0, 1.5, 2.5});
+  const cr::CreativeWorldLayoutCompileResult ridgeRejected =
+      cr::buildCreativeWorldLayoutPlan(document, ridge);
+  cr::CreativeWorldLayout hip = ridge;
+  hip.levels[0].roofStyle = cr::CreativeStructuralRoofStyle::Hip;
+  hip.roofApertures[0].minimumZCells = 0.5;
+  hip.roofApertures[0].maximumZCells = 1.25;
+  const cr::CreativeWorldLayoutCompileResult hipRejected =
+      cr::buildCreativeWorldLayoutPlan(document, hip);
+
+  if (ridgeRejected.receipt.accepted ||
+      ridgeRejected.receipt.failedTable !=
+          cr::CreativeWorldLayoutTable::RoofAperture ||
+      ridgeRejected.receipt.failedIndex != 0U) {
+    std::cerr << "Ridge rejection: accepted="
+              << ridgeRejected.receipt.accepted << " table="
+              << cr::toString(ridgeRejected.receipt.failedTable)
+              << " index=" << ridgeRejected.receipt.failedIndex
+              << " status=" << cr::toString(ridgeRejected.receipt.status)
+              << " reason=" << ridgeRejected.receipt.reasonCode
+              << " kernel=" << ridgeRejected.receipt.kernelReasonCode
+              << '\n';
+  }
+
+  return expect(allReady,
+                "flat shed and gable apertures compile with stable source ownership and collision holes") &&
+         expect(!ridgeRejected.receipt.accepted &&
+                    ridgeRejected.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::RoofAperture &&
+                    ridgeRejected.receipt.failedIndex == 0U,
+                "ridge-crossing aperture rejects at its durable source") &&
+         expect(!hipRejected.receipt.accepted &&
+                    hipRejected.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::RoofAperture &&
+                    hipRejected.receipt.failedIndex == 0U,
+                "hip aperture deferral rejects at its durable source");
 }
 
 bool flatRoofOverhangUsesTheSharedLevelFootprint() {
@@ -972,6 +1366,54 @@ bool flatRoofOverhangUsesTheSharedLevelFootprint() {
                 "flat shared roof applies exact authored overhang");
 }
 
+bool orthogonalRoomCompilesExactHorizontalSurfaces() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("L Room");
+  static_cast<void>(document.assignId(9207U));
+  const cr::CreativeWorldLayout layout = orthogonalLRoom();
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
+
+  std::size_t floorCount = 0U;
+  std::size_t roofCount = 0U;
+  double floorArea = 0.0;
+  bool notchCovered = false;
+  for (const cr::CreativeObject& object : preview.document.objects()) {
+    if (object.kind == cr::CreativeObjectKind::Floor) {
+      ++floorCount;
+      const cr::CreativeTransformedBounds bounds =
+          cr::resolveCreativeObjectBounds(object);
+      if (bounds.valid) {
+        floorArea += (bounds.worldBounds.max.x - bounds.worldBounds.min.x) *
+                     (bounds.worldBounds.max.z - bounds.worldBounds.min.z);
+        notchCovered = notchCovered ||
+                       (5.0 > bounds.worldBounds.min.x &&
+                        5.0 < bounds.worldBounds.max.x &&
+                        5.0 > bounds.worldBounds.min.z &&
+                        5.0 < bounds.worldBounds.max.z);
+      }
+    } else if (object.kind == cr::CreativeObjectKind::Roof) {
+      ++roofCount;
+    }
+  }
+
+  cr::CreativeWorldLayout gable = layout;
+  gable.levels[0].roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  const cr::CreativeWorldLayoutRoofPlan rejectedRoof =
+      cr::planCreativeWorldLayoutRoof(document.gridSettings(), gable, 0U);
+
+  return expect(compiled.receipt.accepted && preview.accepted,
+                "orthogonal room compiles through the building recipe") &&
+         expect(floorCount == 2U && roofCount == 2U &&
+                    near(floorArea, 20.0) && !notchCovered,
+                "floor and flat roof use exact L-room surface pieces") &&
+         expect(!rejectedRoof.accepted &&
+                    rejectedRoof.status ==
+                        cr::CreativeWorldLayoutRoofStatus::NonRectangularFootprint,
+                "gable roof rejects an irregular support union instead of filling its bounds");
+}
+
 }  // namespace
 
 int main() {
@@ -982,10 +1424,14 @@ int main() {
                   invalidTopologyFailsClosed() &&
                   roomTopologyCompilesThroughExistingBuildingRecipe() &&
                   generatedRoomObjectsResolveToSemanticSources() &&
+                  generatedWallHitResolvesExactCanonicalEdge() &&
                   horizontalStructuralLayersUseDescriptorThickness() &&
                   architecturalDimensionsOwnCompilerAndOpeningScale() &&
                   occupiedLevelsGenerateCeilingsAndOneTopRoof() &&
                   authoredGableRoofCompilesThroughSharedRenderCollisionGeometry() &&
-                  flatRoofOverhangUsesTheSharedLevelFootprint();
+                  authoredRoofStylesKeepStableGeneratedOwnership() &&
+                  authoredRoofAperturesCompileWithStableOwnershipAndCollisionHoles() &&
+                  flatRoofOverhangUsesTheSharedLevelFootprint() &&
+                  orthogonalRoomCompilesExactHorizontalSurfaces();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

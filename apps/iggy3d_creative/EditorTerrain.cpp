@@ -38,18 +38,6 @@ namespace terrain_detail {
   return true;
 }
 
-[[nodiscard]] cr::CreativeTerrainGradePlan terrainGradePlan(
-    const CreativeEditorState& editor,
-    cr::CreativeTerrainCoord2 target) noexcept {
-  const CreativeTerrainGradeState& grade = editor.terrain.grade;
-  if (!grade.anchorValid) {
-    return {};
-  }
-  return cr::buildCreativeTerrainGradePlan(
-      {grade.anchorCoord, target, grade.anchorHeightCells,
-       grade.targetHeightCells, grade.radiusCells});
-}
-
 [[nodiscard]] cr::CreativeBounds terrainRodBounds(
     cr::CreativeGridSettings grid,
     cr::CreativeTerrainControlPoint control,
@@ -86,7 +74,6 @@ namespace terrain_detail {
 }  // namespace terrain_detail
 namespace {
 
-using terrain_detail::terrainGradePlan;
 using terrain_detail::terrainPointerCoord;
 using terrain_detail::terrainRodBounds;
 using terrain_detail::terrainSeedPlan;
@@ -123,10 +110,6 @@ void setFeedback(CreativeEditorState& editor, bool accepted) noexcept {
       accepted ? CreativeEditorPlacementFeedbackStatus::Placed
                : CreativeEditorPlacementFeedbackStatus::Rejected,
       editor.frameIndex);
-}
-
-void clearTerrainGradeAnchor(CreativeTerrainGradeState& grade) noexcept {
-  grade.anchorValid = false;
 }
 
 [[nodiscard]] bool terrainStrokeVisited(
@@ -321,12 +304,6 @@ bool resolveCreativeEditorTerrainGradeTarget(
   return terrainPointerCoord(editor, target);
 }
 
-cr::CreativeTerrainGradePlan planCreativeEditorTerrainGrade(
-    const CreativeEditorState& editor,
-    cr::CreativeTerrainCoord2 target) noexcept {
-  return terrainGradePlan(editor, target);
-}
-
 CreativeEditorTerrainEditReceipt applyCreativeEditorTerrainEditWithHistory(
     cr::CreativeAppState& appState,
     CreativeEditorState& editor,
@@ -458,19 +435,17 @@ void clearCreativeEditorTerrainInteraction(
   state.documentId = documentId;
   state.hoverValid = false;
   state.selectionValid = false;
-  clearTerrainGradeAnchor(state.grade);
+  state.grade = {};
   state.sculpt.preview.valid = false;
   state.sculpt.preview.renderAccepted = false;
   state.sculpt.preview.patches.clear();
+  state.sculpt.preview.contours = {};
   state.profile.baseLocked = false;
   state.profile.resolvedBaseHeightCells = state.heightCells;
   state.profile.preview.valid = false;
   state.profile.preview.renderAccepted = false;
   state.profile.preview.patches.clear();
-  state.path.pointCount = 0U;
-  state.path.preview.valid = false;
-  state.path.preview.renderAccepted = false;
-  state.path.preview.patches.clear();
+  state.path = {};
   state.region.preview.valid = false;
   state.region.preview.renderAccepted = false;
   state.region.preview.patches.clear();

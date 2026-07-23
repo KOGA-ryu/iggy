@@ -124,6 +124,7 @@ void ensureActionSelectionVisible(CreativeEditorCatalogState& catalog,
 
 void resetAssetAction(CreativeEditorCatalogState& catalog) noexcept {
   catalog.assetAction = CreativeEditorCatalogAssetAction::Equip;
+  catalog.assetMaterialVariantIndex = 0U;
   catalog.statusLabel.clear();
 }
 
@@ -159,17 +160,24 @@ void moveAssetAction(CreativeEditorCatalogState& catalog,
   if (targetSlot >= cr::kCreativeHotbarSlotCount) {
     return false;
   }
+  if (selected->category == cr::CreativeCatalogEntryCategory::Asset &&
+      editor.catalog.assetMaterialVariantIndex >
+          selected->assetMaterialVariants.size()) {
+    return false;
+  }
+  const cr::CreativeHotbarEntry resolved =
+      cr::resolveCreativeCatalogHotbarEntry(
+          *selected, editor.placeBrush,
+          editor.catalog.assetMaterialVariantIndex);
   static_cast<void>(storeSelectedCreativeMaterialBrushPreset(
       editor.interaction.materialBrushPresets,
       editor.interaction.hotbar, editor.toolSettings));
   const cr::CreativeHeldItemKind previousKind =
       editor.interaction.hotbar.entries[targetSlot].kind;
-  static_cast<void>(cr::assignSelectedCreativeCatalogEntry(
-      editor.catalog.model, editor.interaction.hotbar, slot));
-  cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  held = cr::resolveCreativeCatalogHotbarEntry(*selected, editor.placeBrush);
-  if (previousKind != held.kind) {
+  editor.interaction.hotbar.entries[targetSlot] = resolved;
+  static_cast<void>(
+      cr::selectCreativeHotbarSlot(editor.interaction.hotbar, targetSlot));
+  if (previousKind != resolved.kind) {
     clearCreativeMaterialBrushPresetSlot(
         editor.interaction.materialBrushPresets, targetSlot);
   }
@@ -474,11 +482,11 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
             cr::selectedCreativeCatalogEntry(catalog.model);
         if (selected != nullptr &&
             selected->category == cr::CreativeCatalogEntryCategory::Asset) {
-          moveAssetAction(
+          static_cast<void>(moveCreativeEditorCatalogAssetMaterialVariant(
               catalog, *selected,
               event.action == cr::CreativeInputActionId::CatalogPreviousVariant
                   ? -1
-                  : 1);
+                  : 1));
         } else if (selected != nullptr &&
             cr::creativeCatalogEntryUsesShapeSelection(*selected)) {
           const std::int32_t direction =
@@ -490,11 +498,19 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
         }
         break;
       }
-      case cr::CreativeInputActionId::CatalogAssignToolWheel:
-        if (catalog.model.page == cr::CreativeCatalogPage::Tools) {
+      case cr::CreativeInputActionId::CatalogContextAction: {
+        const cr::CreativeCatalogEntry* selected =
+            cr::selectedCreativeCatalogEntry(catalog.model);
+        if (selected != nullptr &&
+            selected->category == cr::CreativeCatalogEntryCategory::Tool) {
           static_cast<void>(beginToolWheelAssignment(catalog));
+        } else if (selected != nullptr &&
+                   selected->category ==
+                       cr::CreativeCatalogEntryCategory::Asset) {
+          moveAssetAction(catalog, *selected, 1);
         }
         break;
+      }
       case cr::CreativeInputActionId::CatalogConfirm:
         if (catalogShowsEntries(catalog.model.page)) {
           const cr::CreativeCatalogEntry* selected =
@@ -573,6 +589,21 @@ void processCatalogInput(const CreativeEditorCatalogFrameRequest& request,
   if (catalogShowsEntries(catalog.model.page)) {
     const cr::CreativeCatalogEntry* selected =
         cr::selectedCreativeCatalogEntry(catalog.model);
+    if (layout.showDetails && selected != nullptr &&
+        selected->category == cr::CreativeCatalogEntryCategory::Asset) {
+      if (contains(previousAssetMaterialVariantButton(layout), pointer.x,
+                   pointer.y)) {
+        static_cast<void>(moveCreativeEditorCatalogAssetMaterialVariant(
+            catalog, *selected, -1));
+        return;
+      }
+      if (contains(nextAssetMaterialVariantButton(layout), pointer.x,
+                   pointer.y)) {
+        static_cast<void>(moveCreativeEditorCatalogAssetMaterialVariant(
+            catalog, *selected, 1));
+        return;
+      }
+    }
     if (selected != nullptr &&
         selected->category == cr::CreativeCatalogEntryCategory::Tool &&
         layout.assignWheelX >= layout.contentX &&
@@ -662,6 +693,38 @@ CreativeEditorCatalogAssetAction moveCreativeEditorCatalogAssetAction(
       return CreativeEditorCatalogAssetAction::Equip;
   }
   return CreativeEditorCatalogAssetAction::Equip;
+}
+
+bool moveCreativeEditorCatalogAssetMaterialVariant(
+    CreativeEditorCatalogState& state,
+    const cr::CreativeCatalogEntry& entry,
+    std::int32_t direction) noexcept {
+  if (direction == 0 ||
+      entry.category != cr::CreativeCatalogEntryCategory::Asset) {
+    return false;
+  }
+  const std::size_t optionCount = entry.assetMaterialVariants.size() + 1U;
+  const cr::CreativeWrappedIndexResult next = cr::stepCreativeWrappedIndex(
+      state.assetMaterialVariantIndex, optionCount, direction);
+  if (!next.valid) {
+    return false;
+  }
+  state.assetMaterialVariantIndex = next.index;
+  state.statusLabel.clear();
+  return next.changed;
+}
+
+std::string_view creativeEditorCatalogAssetMaterialVariantLabel(
+    const CreativeEditorCatalogState& state,
+    const cr::CreativeCatalogEntry& entry) noexcept {
+  if (entry.category != cr::CreativeCatalogEntryCategory::Asset ||
+      state.assetMaterialVariantIndex == 0U) {
+    return "DEFAULT";
+  }
+  const std::size_t variantIndex = state.assetMaterialVariantIndex - 1U;
+  return variantIndex < entry.assetMaterialVariants.size()
+             ? std::string_view{entry.assetMaterialVariants[variantIndex].name}
+             : std::string_view{"DEFAULT"};
 }
 
 bool creativeEditorCatalogActionAvailable(

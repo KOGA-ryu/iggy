@@ -30,6 +30,12 @@ bool validPlacement(const CreativeObjectLibraryPlacementSpec& placement) {
       placement.mode >= CreativeObjectLibraryPlacementMode::Count) {
     return false;
   }
+  if ((placement.kind == CreativeObjectKind::SpawnPoint &&
+       !isValidCreativePlayerSpawnSettings(placement.playerSpawn)) ||
+      (placement.kind != CreativeObjectKind::SpawnPoint &&
+       !(placement.playerSpawn == CreativePlayerSpawnSettings{}))) {
+    return false;
+  }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!objectHasTransform(placement.kind) ||
         !isFiniteCreativeVec3(placement.point) ||
@@ -64,6 +70,10 @@ CreativeDocumentCreateRequest createRequest(
   request.visible = placement.visible;
   request.hasVisibleOverride = true;
   request.tags = placement.tags;
+  if (placement.kind == CreativeObjectKind::SpawnPoint) {
+    request.hasPlayerSpawnSettingsOverride = true;
+    request.playerSpawn = placement.playerSpawn;
+  }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Bounds) {
     request.bounds = placement.bounds;
     request.hasBoundsOverride = true;

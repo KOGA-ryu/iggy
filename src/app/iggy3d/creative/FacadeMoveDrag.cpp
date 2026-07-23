@@ -256,9 +256,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       receipt.locked = std::any_of(
           moveDragObjectIds_.begin(), moveDragObjectIds_.end(),
           [this](CreativeObjectId dragObjectId) {
-            const CreativeObject* selected =
-                document_.findObject(dragObjectId);
-            return selected != nullptr && selected->locked;
+            return creativeObjectEffectivelyLocked(document_, dragObjectId);
           });
       receipt.hasStartAnchor = true;
       receipt.startAnchor = moveDragStartAnchor_;
@@ -288,7 +286,8 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       const CreativeObject* object = document_.findObject(moveDragObjectId_);
       if (object != nullptr) {
         receipt.objectKind = object->kind;
-        receipt.locked = object->locked;
+        receipt.locked =
+            creativeObjectEffectivelyLocked(document_, object->id);
       }
       if (intent.pointer.hasWorldDestination) {
         // View-agnostic Move (supersedes TD-7's hardcoded screen=XY hold): the
@@ -347,9 +346,7 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       receipt.locked = std::any_of(
           dragObjectIds.begin(), dragObjectIds.end(),
           [this](CreativeObjectId dragObjectId) {
-            const CreativeObject* selected =
-                document_.findObject(dragObjectId);
-            return selected != nullptr && selected->locked;
+            return creativeObjectEffectivelyLocked(document_, dragObjectId);
           });
 
       if (!intent.pointer.hasWorldDestination) {

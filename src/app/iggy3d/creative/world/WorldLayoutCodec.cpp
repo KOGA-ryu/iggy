@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "core/hash/StableHash.hpp"
 
 namespace iggy3d::creative {
 
@@ -32,6 +33,20 @@ std::string_view toString(CreativeWorldLayoutCodecStatus status) noexcept {
       return "TrailingData";
   }
   return "Unknown";
+}
+
+std::uint64_t fingerprintCreativeWorldLayout(
+    const CreativeWorldLayout& layout) {
+  const CreativeWorldLayoutEncodeResult encoded =
+      encodeCreativeWorldLayout(layout);
+  if (!encoded.accepted) {
+    return 0U;
+  }
+  StableHasher hasher;
+  hasher.addString("creative_world_layout_source_v1");
+  hasher.addString(encoded.encodedText);
+  const std::uint64_t fingerprint = hasher.value();
+  return fingerprint != 0U ? fingerprint : 0U;
 }
 
 }  // namespace iggy3d::creative

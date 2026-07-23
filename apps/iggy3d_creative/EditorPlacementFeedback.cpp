@@ -47,6 +47,136 @@ void assignFeedbackText(
   append(detail);
 }
 
+[[nodiscard]] CreativeEditorPlacementRejectionReason rejectionReasonFor(
+    CreativeBrushPlacementAdmissionStatus status) noexcept {
+  switch (status) {
+    case CreativeBrushPlacementAdmissionStatus::InvalidTarget:
+      return CreativeEditorPlacementRejectionReason::InvalidTarget;
+    case CreativeBrushPlacementAdmissionStatus::FloorRequired:
+      return CreativeEditorPlacementRejectionReason::FloorRequired;
+    case CreativeBrushPlacementAdmissionStatus::WallRequired:
+      return CreativeEditorPlacementRejectionReason::WallRequired;
+    case CreativeBrushPlacementAdmissionStatus::SurfaceRequired:
+      return CreativeEditorPlacementRejectionReason::SurfaceRequired;
+    case CreativeBrushPlacementAdmissionStatus::UnsupportedBrush:
+      return CreativeEditorPlacementRejectionReason::UnsupportedBrush;
+    case CreativeBrushPlacementAdmissionStatus::InvalidGeometry:
+      return CreativeEditorPlacementRejectionReason::InvalidGeometry;
+    case CreativeBrushPlacementAdmissionStatus::UnsupportedPolicy:
+      return CreativeEditorPlacementRejectionReason::UnsupportedPolicy;
+    case CreativeBrushPlacementAdmissionStatus::FaceDisallowed:
+      return CreativeEditorPlacementRejectionReason::FaceDisallowed;
+    case CreativeBrushPlacementAdmissionStatus::TargetIncompatible:
+      return CreativeEditorPlacementRejectionReason::TargetIncompatible;
+    case CreativeBrushPlacementAdmissionStatus::AttachmentUnavailable:
+      return CreativeEditorPlacementRejectionReason::AttachmentUnavailable;
+    case CreativeBrushPlacementAdmissionStatus::AttachmentIncompatible:
+      return CreativeEditorPlacementRejectionReason::AttachmentIncompatible;
+    case CreativeBrushPlacementAdmissionStatus::AttachmentOccupied:
+      return CreativeEditorPlacementRejectionReason::AttachmentOccupied;
+    case CreativeBrushPlacementAdmissionStatus::ClearanceBlocked:
+      return CreativeEditorPlacementRejectionReason::ClearanceBlocked;
+    case CreativeBrushPlacementAdmissionStatus::Ready:
+      return CreativeEditorPlacementRejectionReason::ActionRejected;
+  }
+  return CreativeEditorPlacementRejectionReason::ActionRejected;
+}
+
+[[nodiscard]] CreativeEditorPlacementRejectionReason rejectionReasonFor(
+    CreativeBrushPlacementMutationStatus status) noexcept {
+  switch (status) {
+    case CreativeBrushPlacementMutationStatus::InvalidPlan:
+      return CreativeEditorPlacementRejectionReason::InvalidPlan;
+    case CreativeBrushPlacementMutationStatus::Occupied:
+      return CreativeEditorPlacementRejectionReason::Occupied;
+    case CreativeBrushPlacementMutationStatus::ClearanceRejected:
+      return CreativeEditorPlacementRejectionReason::ClearanceBlocked;
+    case CreativeBrushPlacementMutationStatus::ObjectRejected:
+      return CreativeEditorPlacementRejectionReason::ObjectRejected;
+    case CreativeBrushPlacementMutationStatus::VoxelRejected:
+      return CreativeEditorPlacementRejectionReason::VoxelRejected;
+    case CreativeBrushPlacementMutationStatus::NotRequested:
+    case CreativeBrushPlacementMutationStatus::Applied:
+      return CreativeEditorPlacementRejectionReason::ActionRejected;
+  }
+  return CreativeEditorPlacementRejectionReason::ActionRejected;
+}
+
+void assignRejectionReasonText(
+    CreativeEditorPlacementFeedbackText& output,
+    CreativeEditorPlacementRejectionReason reason) noexcept {
+  switch (reason) {
+    case CreativeEditorPlacementRejectionReason::None:
+    case CreativeEditorPlacementRejectionReason::ActionRejected:
+      assignFeedbackText(output, "Action rejected");
+      return;
+    case CreativeEditorPlacementRejectionReason::InvalidTarget:
+      assignFeedbackText(output, "No placement target");
+      return;
+    case CreativeEditorPlacementRejectionReason::FloorRequired:
+      assignFeedbackText(output, "Aim at a floor");
+      return;
+    case CreativeEditorPlacementRejectionReason::WallRequired:
+      assignFeedbackText(output, "Aim at a wall");
+      return;
+    case CreativeEditorPlacementRejectionReason::SurfaceRequired:
+      assignFeedbackText(output, "Aim at a surface");
+      return;
+    case CreativeEditorPlacementRejectionReason::UnsupportedBrush:
+      assignFeedbackText(output, "Unsupported shape");
+      return;
+    case CreativeEditorPlacementRejectionReason::InvalidGeometry:
+      assignFeedbackText(output, "Invalid geometry");
+      return;
+    case CreativeEditorPlacementRejectionReason::UnsupportedPolicy:
+      assignFeedbackText(output, "Placement mode unsupported");
+      return;
+    case CreativeEditorPlacementRejectionReason::FaceDisallowed:
+      assignFeedbackText(output, "Face not supported");
+      return;
+    case CreativeEditorPlacementRejectionReason::TargetIncompatible:
+      assignFeedbackText(output, "Incompatible target");
+      return;
+    case CreativeEditorPlacementRejectionReason::AttachmentUnavailable:
+      assignFeedbackText(output, "Aim closer to a socket");
+      return;
+    case CreativeEditorPlacementRejectionReason::AttachmentIncompatible:
+      assignFeedbackText(output, "Incompatible socket");
+      return;
+    case CreativeEditorPlacementRejectionReason::AttachmentOccupied:
+      assignFeedbackText(output, "Socket occupied");
+      return;
+    case CreativeEditorPlacementRejectionReason::ClearanceBlocked:
+      assignFeedbackText(output, "Placement blocked");
+      return;
+    case CreativeEditorPlacementRejectionReason::Occupied:
+      assignFeedbackText(output, "Target occupied");
+      return;
+    case CreativeEditorPlacementRejectionReason::InvalidPlan:
+      assignFeedbackText(output, "Invalid placement plan");
+      return;
+    case CreativeEditorPlacementRejectionReason::ObjectRejected:
+      assignFeedbackText(output, "Object could not be placed");
+      return;
+    case CreativeEditorPlacementRejectionReason::VoxelRejected:
+      assignFeedbackText(output, "Cell could not be placed");
+      return;
+    case CreativeEditorPlacementRejectionReason::SemanticSourceOwned:
+      assignFeedbackText(output, "Edit generated source");
+      return;
+    case CreativeEditorPlacementRejectionReason::ExternalReference:
+      assignFeedbackText(output, "Referenced elsewhere");
+      return;
+    case CreativeEditorPlacementRejectionReason::CapacityReached:
+      assignFeedbackText(output, "Stroke limit reached");
+      return;
+    case CreativeEditorPlacementRejectionReason::HistoryUnavailable:
+      assignFeedbackText(output, "Document not editable");
+      return;
+  }
+  assignFeedbackText(output, "Action rejected");
+}
+
 std::size_t appendBoxCornerEdges(
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines,
     const std::array<iggy3d::Vec3, 8U>& corners,
@@ -237,17 +367,23 @@ void setCreativeEditorPlacementFeedback(
   interaction.placementFeedback.objectId = objectId;
   interaction.placementFeedback.objectKind = objectKind;
   interaction.placementFeedback.frameIndex = frameIndex;
+  if (status == CreativeEditorPlacementFeedbackStatus::Rejected) {
+    interaction.placementFeedback.rejectionReason =
+        CreativeEditorPlacementRejectionReason::ActionRejected;
+  }
 }
 
 void setCreativeEditorPlacementRejectionFeedback(
     CreativeEditorInteractionState& interaction,
     std::uint64_t frameIndex,
     cr::CreativeObjectKind objectKind,
-    const cr::CreativePlacementClearanceResult& clearance) noexcept {
+    const cr::CreativePlacementClearanceResult& clearance,
+    CreativeEditorPlacementRejectionReason reason) noexcept {
   setCreativeEditorPlacementFeedback(
       interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
       frameIndex, objectKind);
   interaction.placementFeedback.clearance = clearance;
+  interaction.placementFeedback.rejectionReason = reason;
 }
 
 void setCreativeEditorVoxelPlacementFeedback(
@@ -270,7 +406,7 @@ void setCreativeEditorPlacementAdmissionRejectionFeedback(
     const CreativeBrushPlacementAdmission& admission) noexcept {
   setCreativeEditorPlacementRejectionFeedback(
       interaction, frameIndex, admission.plan.brush,
-      admission.plan.clearance);
+      admission.plan.clearance, rejectionReasonFor(admission.status));
 }
 
 void setCreativeEditorPlacementMutationFeedback(
@@ -290,7 +426,8 @@ void setCreativeEditorPlacementMutationFeedback(
     return;
   }
   setCreativeEditorPlacementRejectionFeedback(
-      interaction, frameIndex, receipt.objectKind, receipt.clearance);
+      interaction, frameIndex, receipt.objectKind, receipt.clearance,
+      rejectionReasonFor(receipt.status));
 }
 
 CreativeEditorPlacementFeedbackViewModel
@@ -355,7 +492,7 @@ creativeEditorPlacementFeedbackViewModel(
       break;
     case cr::CreativePlacementClearanceStatus::NotEvaluated:
     case cr::CreativePlacementClearanceStatus::Ready:
-      assignFeedbackText(model.label, "Action rejected");
+      assignRejectionReasonText(model.label, feedback.rejectionReason);
       break;
   }
   return model;

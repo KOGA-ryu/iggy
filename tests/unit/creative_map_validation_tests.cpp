@@ -36,6 +36,7 @@ bool addSpawn(cr::CreativeDocument& document,
               double x,
               double z,
               bool visible = true) {
+  cr::CreativePlayerSpawnSettings settings;
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::SpawnPoint;
   request.name = "Player Spawn";
@@ -43,6 +44,39 @@ bool addSpawn(cr::CreativeDocument& document,
   request.hasTransformOverride = true;
   request.visible = visible;
   request.hasVisibleOverride = true;
+  request.playerSpawn = std::move(settings);
+  request.hasPlayerSpawnSettingsOverride = true;
+  return document.createObject(request).accepted;
+}
+
+cr::CreativeDocumentCreateReceipt addConfiguredSpawn(
+    cr::CreativeDocument& document,
+    double x,
+    double z,
+    cr::CreativePlayerSpawnSettings settings) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::SpawnPoint;
+  request.name = "Player Spawn";
+  request.transform.position = {x, 0.25, z};
+  request.hasTransformOverride = true;
+  request.visible = true;
+  request.hasVisibleOverride = true;
+  request.playerSpawn = std::move(settings);
+  request.hasPlayerSpawnSettingsOverride = true;
+  return document.createObject(request);
+}
+
+bool addSpawnBlocker(cr::CreativeDocument& document,
+                     double x,
+                     double z) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Wall;
+  request.name = "Spawn Blocker";
+  request.transform.position = {x, 0.25, z};
+  request.hasTransformOverride = true;
+  request.bounds = {{x - 0.4, 0.25, z - 0.4},
+                    {x + 0.4, 2.25, z + 0.4}};
+  request.hasBoundsOverride = true;
   return document.createObject(request).accepted;
 }
 
@@ -179,7 +213,7 @@ bool connectedMapPassesWithRevisionStamp() {
                 "connected map summary ignores editor-only references");
 }
 
-bool spawnCardinalityIsExplicit() {
+bool spawnAvailabilityAndFallbacksAreExplicit() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument missing = cr::CreativeDocument::create("No Spawn");
   static_cast<void>(addFloor(missing, 0.0, 0.0));
@@ -212,20 +246,127 @@ bool spawnCardinalityIsExplicit() {
                         cr::CreativeMapDiagnosticCode::
                             ReachabilityNoUsableSeeds) != nullptr,
                 "map without a player spawn cannot pass") &&
-         expect(secondCreated && !multipleResult.passed &&
-                    multipleResult.summary.playerSpawnCount == 2U,
-                "multiple player spawns cannot pass") &&
+         expect(secondCreated && multipleResult.passed &&
+                    multipleResult.summary.playerSpawnCount == 2U &&
+                    multipleResult.playerSpawn.accepted &&
+                    multipleResult.playerSpawn.selected.objectId !=
+                        cr::kInvalidObjectId,
+                "multiple player spawns provide ordered fallbacks") &&
          expect(findDiagnostic(
                     multipleResult,
-                    cr::CreativeMapDiagnosticCode::MultiplePlayerSpawns) !=
+                    cr::CreativeMapDiagnosticCode::MultiplePlayerSpawns) ==
                     nullptr,
-                "multiple spawn diagnostic is explicit") &&
+                "fallback spawns do not emit obsolete cardinality errors") &&
          expect(hiddenSetup && !hiddenDefault.passed &&
                     hiddenDefault.summary.playerSpawnCount == 0U,
                 "hidden spawn does not satisfy normal validation") &&
          expect(hiddenIncluded.passed &&
                     hiddenIncluded.summary.playerSpawnCount == 1U,
                 "includeHidden explicitly admits hidden spawn");
+}
+
+bool playerSpawnPhysicalFailuresHaveObjectDiagnostics() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+
+  cr::CreativeDocument unsupported =
+      cr::CreativeDocument::create("Unsupported Spawn Profile");
+  static_cast<void>(addFloor(unsupported, 0.0, 0.0));
+  cr::CreativePlayerSpawnSettings unsupportedSettings;
+  unsupportedSettings.playerProfileId = "future_profile";
+  const cr::CreativeDocumentCreateReceipt unsupportedSpawn =
+      addConfiguredSpawn(unsupported, 0.0, 0.0, unsupportedSettings);
+  const cr::CreativeMapValidationResult unsupportedResult =
+      cr::validateCreativeMap({&unsupported, &catalog});
+  const cr::CreativeMapDiagnostic* unsupportedDiagnostic = findDiagnostic(
+      unsupportedResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnProfileUnsupported);
+
+  cr::CreativeDocument outside = cr::CreativeDocument::create("Outside Spawn");
+  static_cast<void>(outside.setWorldBounds(
+      {{-1.0, 0.0, -1.0}, {1.0, 3.0, 1.0}}));
+  static_cast<void>(addFloor(outside, 0.0, 0.0));
+  const cr::CreativeDocumentCreateReceipt outsideSpawn =
+      addConfiguredSpawn(outside, 0.8, 0.0, {});
+  const cr::CreativeMapValidationResult outsideResult =
+      cr::validateCreativeMap({&outside, &catalog});
+  const cr::CreativeMapDiagnostic* outsideDiagnostic = findDiagnostic(
+      outsideResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnOutsideWorldBounds);
+
+  cr::CreativeDocument noFloor =
+      cr::CreativeDocument::create("Unsupported Spawn Floor");
+  static_cast<void>(addFloor(noFloor, 0.0, 0.0, 1.0));
+  const cr::CreativeDocumentCreateReceipt noFloorSpawn =
+      addConfiguredSpawn(noFloor, 3.0, 0.0, {});
+  const cr::CreativeMapValidationResult noFloorResult =
+      cr::validateCreativeMap({&noFloor, &catalog});
+  const cr::CreativeMapDiagnostic* noFloorDiagnostic = findDiagnostic(
+      noFloorResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnFloorUnsupported);
+
+  cr::CreativeDocument obstructed = playableDocument("Obstructed Spawn");
+  const cr::CreativeObjectId obstructedSpawnId =
+      obstructed.objects().back().id;
+  const bool blockerCreated = addSpawnBlocker(obstructed, 0.0, 0.0);
+  const cr::CreativeMapValidationResult obstructedResult =
+      cr::validateCreativeMap({&obstructed, &catalog});
+  const cr::CreativeMapDiagnostic* obstructedDiagnostic = findDiagnostic(
+      obstructedResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnObstructed);
+
+  cr::CreativeDocument islands = playableDocument("Unreachable Spawn");
+  const cr::CreativeObjectId islandSpawnId = islands.objects().back().id;
+  const bool islandCreated = addFloor(islands, 12.0, 0.0, 1.0);
+  const cr::CreativeMapValidationResult islandResult =
+      cr::validateCreativeMap({&islands, &catalog});
+  const cr::CreativeMapDiagnostic* unreachableDiagnostic = findDiagnostic(
+      islandResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnUnreachable);
+
+  cr::CreativeDocument wrongGroup =
+      cr::CreativeDocument::create("Unavailable Spawn Group");
+  static_cast<void>(addFloor(wrongGroup, 0.0, 0.0));
+  cr::CreativePlayerSpawnSettings alternateGroup;
+  alternateGroup.spawnGroup = "alternate";
+  const cr::CreativeDocumentCreateReceipt alternateSpawn =
+      addConfiguredSpawn(wrongGroup, 0.0, 0.0, alternateGroup);
+  const cr::CreativeMapValidationResult wrongGroupResult =
+      cr::validateCreativeMap({&wrongGroup, &catalog});
+  const cr::CreativeMapDiagnostic* groupDiagnostic = findDiagnostic(
+      wrongGroupResult,
+      cr::CreativeMapDiagnosticCode::PlayerSpawnGroupUnavailable);
+
+  return expect(unsupportedSpawn.accepted && unsupportedDiagnostic != nullptr &&
+                    unsupportedDiagnostic->objectId ==
+                        unsupportedSpawn.objectId &&
+                    unsupportedDiagnostic->detail ==
+                        "creative_player_spawn_profile_unsupported",
+                "unsupported profile diagnostic identifies its spawn") &&
+         expect(outsideSpawn.accepted && outsideDiagnostic != nullptr &&
+                    outsideDiagnostic->objectId == outsideSpawn.objectId &&
+                    outsideDiagnostic->detail ==
+                        "creative_player_spawn_outside_world_bounds",
+                "outside-bounds diagnostic identifies its spawn") &&
+         expect(noFloorSpawn.accepted && noFloorDiagnostic != nullptr &&
+                    noFloorDiagnostic->objectId == noFloorSpawn.objectId &&
+                    noFloorDiagnostic->detail ==
+                        "creative_player_spawn_floor_unsupported",
+                "unsupported-floor diagnostic identifies its spawn") &&
+         expect(blockerCreated && obstructedDiagnostic != nullptr &&
+                    obstructedDiagnostic->objectId == obstructedSpawnId &&
+                    obstructedDiagnostic->detail ==
+                        "creative_player_spawn_obstructed",
+                "obstruction diagnostic identifies its spawn") &&
+         expect(islandCreated && unreachableDiagnostic != nullptr &&
+                    unreachableDiagnostic->objectId == islandSpawnId &&
+                    unreachableDiagnostic->detail ==
+                        "creative_player_spawn_unreachable",
+                "unreachable diagnostic identifies its spawn") &&
+         expect(alternateSpawn.accepted && groupDiagnostic != nullptr &&
+                    groupDiagnostic->objectId == cr::kInvalidObjectId &&
+                    groupDiagnostic->detail ==
+                        "creative_player_spawn_group_unavailable",
+                "unavailable group emits one map-level diagnostic");
 }
 
 bool importedAssetFailuresAreActionable() {
@@ -517,7 +658,8 @@ bool diagnosticsStayBoundedAndDeterministic() {
 int main() {
   const bool ok = missingDocumentFailsClosed() &&
                   connectedMapPassesWithRevisionStamp() &&
-                  spawnCardinalityIsExplicit() &&
+                  spawnAvailabilityAndFallbacksAreExplicit() &&
+                  playerSpawnPhysicalFailuresHaveObjectDiagnostics() &&
                   importedAssetFailuresAreActionable() &&
                   lostAssetWalkabilityIsWarningOnly() &&
                   skippedRuntimeObjectFailsValidation() &&

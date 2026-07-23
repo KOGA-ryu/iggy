@@ -4,15 +4,20 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "EditorDesktopModel.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorWorldLayout.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 #include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
-#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 // UI-4A Inspector. General object properties (zero/single/multi) sit above the
 // existing logic-link authoring, diagnostics, and Play-mode runtime monitor,
@@ -61,6 +66,98 @@ void appendHoverTooltip(const char* text) {
     ImGui::BeginTooltip();
     ImGui::TextUnformatted(text);
     ImGui::EndTooltip();
+  }
+}
+
+void appendMeasurementInspector(
+    const cr::CreativeMeasurementState& measurement,
+    const cr::CreativeMeasurementAnnotationStore& annotations,
+    bool playModeActive, CreativeDesktopCommandFrame& commands) {
+  const cr::CreativeMeasurementReadout readout =
+      cr::buildCreativeMeasurementReadout(measurement);
+  if (!readout.visible && annotations.annotations.empty()) {
+    return;
+  }
+
+  ImGui::SeparatorText("Measurement");
+  if (readout.visible) {
+    ImGui::Text("%s  |  Snap %s", cr::toString(readout.mode).data(),
+                cr::toString(readout.snapKind).data());
+    ImGui::TextDisabled("%llu points  |  %llu segments  |  %s",
+                        static_cast<unsigned long long>(readout.pointCount),
+                        static_cast<unsigned long long>(readout.segmentCount),
+                        readout.completed ? "Complete" : "Active");
+    if (!readout.valid) {
+      ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F}, "%s",
+                         cr::toString(measurement.plan.status).data());
+    } else {
+      char primary[96]{};
+      std::snprintf(primary, sizeof(primary), "%.6f %s", readout.primaryValue,
+                    readout.primaryUnit.data());
+      ImGui::SetNextItemWidth(-46.0F);
+      ImGui::InputText(readout.primaryLabel.data(), primary, sizeof(primary),
+                       ImGuiInputTextFlags_ReadOnly |
+                           ImGuiInputTextFlags_AutoSelectAll);
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Copy##measurement_primary")) {
+        ImGui::SetClipboardText(primary);
+      }
+      if (readout.hasSecondaryValue) {
+        char secondary[96]{};
+        std::snprintf(secondary, sizeof(secondary), "%.6f %s",
+                      readout.secondaryValue, readout.secondaryUnit.data());
+        ImGui::SetNextItemWidth(-46.0F);
+        ImGui::InputText(readout.secondaryLabel.data(), secondary,
+                         sizeof(secondary),
+                         ImGuiInputTextFlags_ReadOnly |
+                             ImGuiInputTextFlags_AutoSelectAll);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Copy##measurement_secondary")) {
+          ImGui::SetClipboardText(secondary);
+        }
+      }
+    }
+
+    const bool canSave =
+        !playModeActive && readout.valid && readout.completed &&
+        annotations.annotations.size() < cr::kCreativeMeasurementAnnotationCapacity;
+    ImGui::BeginDisabled(!canSave);
+    if (ImGui::Button("Save annotation")) {
+      const std::string name =
+          std::string{cr::toString(readout.mode)} + " " +
+          std::to_string(annotations.nextAnnotationId);
+      commands.push(
+          CreativeDesktopCommandId::SaveMeasurementAnnotation,
+          CreativeDesktopMeasurementAnnotationPayload{
+              cr::kInvalidCreativeMeasurementAnnotationId, name});
+    }
+    ImGui::EndDisabled();
+    if (readout.completed && annotations.annotations.size() >=
+                                 cr::kCreativeMeasurementAnnotationCapacity) {
+      ImGui::TextDisabled("Annotation capacity reached");
+    }
+  }
+
+  if (!annotations.annotations.empty()) {
+    ImGui::SeparatorText("Saved measurements");
+  }
+  for (const cr::CreativeMeasurementAnnotation& annotation :
+       annotations.annotations) {
+    ImGui::PushID(static_cast<int>(annotation.id));
+    ImGui::TextUnformatted(annotation.name.c_str());
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s  |  %llu points",
+                        cr::toString(annotation.mode).data(),
+                        static_cast<unsigned long long>(annotation.pointCount));
+    if (!playModeActive) {
+      ImGui::SameLine();
+      if (ImGui::SmallButton("Remove")) {
+        commands.push(
+            CreativeDesktopCommandId::RemoveMeasurementAnnotation,
+            CreativeDesktopMeasurementAnnotationPayload{annotation.id, {}});
+      }
+    }
+    ImGui::PopID();
   }
 }
 
@@ -423,11 +520,74 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
   draft.scale = {object.transform.scale.x, object.transform.scale.y,
                  object.transform.scale.z};
   draft.movingPlatform = object.movingPlatform;
+  draft.playerSpawn = object.playerSpawn;
   draft.movingPlatformWaypointIndex = 0U;
   draft.movingPlatformWaypointDwellSeconds =
       object.pathPoints.empty() ? 0.0 : object.pathPoints.front().dwellSeconds;
   draft.validation.clear();
   draft.valid = true;
+}
+
+void appendPlayerSpawnFields(CreativeDesktopInspectorDraft& draft,
+                             const cr::CreativeObject& object,
+                             bool fieldsDisabled,
+                             CreativeDesktopCommandFrame& commands) {
+  if (object.kind != cr::CreativeObjectKind::SpawnPoint) {
+    return;
+  }
+  const auto commit = [&]() {
+    if (!cr::isValidCreativePlayerSpawnSettings(draft.playerSpawn)) {
+      draft.validation =
+          "Profile/group IDs must be non-empty identifiers; clearance must be 0.30-4.00 m";
+      return;
+    }
+    draft.validation.clear();
+    commands.push(
+        CreativeDesktopCommandId::SetPlayerSpawnSettings,
+        CreativeDesktopPlayerSpawnPayload{object.id, draft.playerSpawn});
+  };
+
+  ImGui::SeparatorText("Player Spawn");
+  ImGui::BeginDisabled(fieldsDisabled);
+  const bool profileCommitted = creativeDesktopInputTextStdString(
+      "Player profile", &draft.playerSpawn.playerProfileId,
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (profileCommitted || ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  const bool groupCommitted = creativeDesktopInputTextStdString(
+      "Spawn group", &draft.playerSpawn.spawnGroup,
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (groupCommitted || ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  ImGui::InputDouble("Clearance radius (m)",
+                     &draft.playerSpawn.validationRadiusMeters, 0.05, 0.25,
+                     "%.2f");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+  constexpr std::uint16_t kPriorityStep = 1U;
+  constexpr std::uint16_t kPriorityFastStep = 10U;
+  if (ImGui::InputScalar("Fallback priority", ImGuiDataType_U16,
+                         &draft.playerSpawn.fallbackPriority, &kPriorityStep,
+                         &kPriorityFastStep, "%u")) {
+    commit();
+  }
+  ImGui::EndDisabled();
+
+  ImGui::TextDisabled("Lower priority wins; ties use object id");
+  ImGui::TextDisabled("Facing follows Rotation Y");
+  if (cr::isValidCreativePlayerProfileId(
+          draft.playerSpawn.playerProfileId) &&
+      !cr::isSupportedCreativePlayerProfileId(
+          draft.playerSpawn.playerProfileId)) {
+    ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
+                       "Profile is not available in the current runtime");
+  }
 }
 
 void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
@@ -625,6 +785,33 @@ void appendTransformFields(CreativeDesktopInspectorDraft& draft,
   }
 }
 
+void appendGroupPivotFields(CreativeDesktopInspectorDraft& draft,
+                            cr::CreativeObjectId groupObjectId,
+                            bool fieldsDisabled,
+                            CreativeDesktopCommandFrame& commands) {
+  ImGui::SeparatorText("Group Pivot");
+  ImGui::TextDisabled("Moves the manipulation pivot, not the members");
+  ImGui::BeginDisabled(fieldsDisabled);
+  ImGui::InputScalarN("Pivot", ImGuiDataType_Double, draft.position.data(), 3);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    const cr::CreativeVec3 pivot{draft.position[0], draft.position[1],
+                                 draft.position[2]};
+    if (cr::isFiniteCreativeVec3(pivot)) {
+      draft.validation.clear();
+      commands.push(CreativeDesktopCommandId::SetGroupPivot,
+                    CreativeDesktopGroupPivotPayload{groupObjectId, pivot});
+    } else {
+      draft.validation = "group pivot must be finite";
+    }
+  }
+  ImGui::EndDisabled();
+  if (!draft.validation.empty()) {
+    ImGui::TextColored(ImVec4{1.0F, 0.34F, 0.30F, 1.0F}, "%s",
+                       draft.validation.c_str());
+  }
+}
+
 void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
@@ -639,9 +826,11 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   refreshInspectorDraft(draft, document, object);
   draft.editing = false;  // recomputed from this frame's active items.
 
-  const cr::CreativeWorldLayoutObjectProvenance provenance =
-      cr::resolveCreativeWorldLayoutObjectProvenance(worldLayout.source,
-                                                     object);
+  const cr::CreativeSemanticSelectionResolution semanticSelection =
+      cr::resolveCreativeSemanticSelection(document, object.id,
+                                           &worldLayout.source);
+  const cr::CreativeWorldLayoutObjectProvenance& provenance =
+      semanticSelection.worldLayoutSource;
   const bool sourceSupportsAdoption =
       creativeDesktopGeneratedSourceSupportsAdoption(provenance);
   const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
@@ -667,8 +856,12 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
 
   // A locked object can still be unlocked, inspected, and navigated; only its
   // name and transform are frozen. Play freezes every document edit.
+  const cr::CreativeObjectHierarchyState hierarchyState =
+      cr::resolveCreativeObjectHierarchyState(document, object.id);
+  const bool effectivelyLocked =
+      !hierarchyState.resolved || hierarchyState.effectivelyLocked;
   const bool fieldsDisabled =
-      playModeActive || object.locked || sourceOwnedOnly;
+      playModeActive || effectivelyLocked || sourceOwnedOnly;
 
   ImGui::BeginDisabled(fieldsDisabled);
   if (creativeDesktopInputTextStdString(
@@ -697,7 +890,28 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   }
   ImGui::EndDisabled();
 
-  appendTransformFields(draft, object.id, fieldsDisabled, commands);
+  if (hierarchyState.hiddenByObjectId != cr::kInvalidObjectId &&
+      hierarchyState.hiddenByObjectId != object.id) {
+    ImGui::TextDisabled("Hidden by ancestor %llu",
+                        static_cast<unsigned long long>(
+                            hierarchyState.hiddenByObjectId));
+  }
+  if (hierarchyState.lockedByObjectId != cr::kInvalidObjectId &&
+      hierarchyState.lockedByObjectId != object.id) {
+    ImGui::TextDisabled("Locked by ancestor %llu",
+                        static_cast<unsigned long long>(
+                            hierarchyState.lockedByObjectId));
+  }
+
+  if (object.kind == cr::CreativeObjectKind::Group) {
+    appendGroupPivotFields(draft, object.id, fieldsDisabled, commands);
+  } else if (cr::creativeObjectIsHierarchyContainer(object.kind)) {
+    ImGui::SeparatorText("Transform");
+    ImGui::TextDisabled("Use Transform Selection to move the complete instance");
+  } else {
+    appendTransformFields(draft, object.id, fieldsDisabled, commands);
+  }
+  appendPlayerSpawnFields(draft, object, fieldsDisabled, commands);
   appendMovingPlatformFields(draft, object, preview, pathEdit, fieldsDisabled,
                              commands);
 
@@ -791,6 +1005,13 @@ void buildCreativeEditorDesktopInspectorPanel(
   const CreativeDesktopSelectionResolution resolved =
       resolveCreativeDesktopSelection(document, live.objectIds,
                                       live.primaryObjectId);
+
+  appendMeasurementInspector(
+      appState.facade.measurementState(), document.measurementAnnotationStore(),
+      playModeActive, commands);
+  appendCreativeDesktopActiveTransformInspector(editor, appState,
+                                                playModeActive);
+  appendCreativeDesktopVolumeInspector(editor, document, resolved.objectIds);
 
   if (resolved.objectIds.empty()) {
     ImGui::TextUnformatted("No object selected");

@@ -126,10 +126,14 @@ bool creativeBrushPlacementTargetOccupied(
 iggy3d::creative::CreativeDocumentCreateRequest buildBrushCreateRequest(
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
-    std::string_view assetId) {
+    std::string_view assetId,
+    std::uint64_t assetContentHash,
+    std::string_view assetMaterialVariant) {
   iggy3d::creative::CreativeDocumentCreateRequest request;
   request.kind = plan.brush;
   request.assetId = std::string(assetId);
+  request.assetContentHash = assetContentHash;
+  request.assetMaterialVariant = std::string(assetMaterialVariant);
   request.name = std::string(iggy3d::creative::toString(plan.brush)) +
                  " placed#" + std::to_string(ordinal);
   if (!plan.valid) {
@@ -173,6 +177,8 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObjectImpl(
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
     std::string_view assetId,
+    std::uint64_t assetContentHash,
+    std::string_view assetMaterialVariant,
     bool clearanceAlreadyValidated) {
   const bool incompatibleTarget =
       !placementPlanCompatibilityAllowsMutation(plan);
@@ -212,7 +218,8 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObjectImpl(
   const iggy3d::creative::CreativeObjectDescriptor& descriptor =
       iggy3d::creative::describeObject(plan.brush);
   iggy3d::creative::CreativeDocumentCreateRequest request =
-      buildBrushCreateRequest(plan, ordinal, assetId);
+      buildBrushCreateRequest(plan, ordinal, assetId, assetContentHash,
+                              assetMaterialVariant);
   if (!plan.hasAttachment &&
       parentObjectId != iggy3d::creative::kInvalidObjectId) {
     request.parentId = parentObjectId;
@@ -247,9 +254,11 @@ iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
     const CreativeBrushPlacementPlan& plan,
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
-    std::string_view assetId) {
+    std::string_view assetId,
+    std::uint64_t assetContentHash,
+    std::string_view assetMaterialVariant) {
   return placeBrushObjectImpl(facade, plan, ordinal, parentObjectId, assetId,
-                              false);
+                              assetContentHash, assetMaterialVariant, false);
 }
 
 iggy3d::creative::CreativeDocumentCreateReceipt placeBrushObject(
@@ -267,6 +276,8 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
     std::uint64_t ordinal,
     iggy3d::creative::CreativeObjectId parentObjectId,
     std::string_view assetId,
+    std::uint64_t assetContentHash,
+    std::string_view assetMaterialVariant,
     const CreativePlacementClearanceCache* clearanceCache) {
   CreativeBrushPlacementMutationReceipt receipt;
   receipt.requested = true;
@@ -328,7 +339,7 @@ CreativeBrushPlacementMutationReceipt applyBrushPlacement(
       }
       const iggy3d::creative::CreativeDocumentCreateReceipt objectReceipt =
           placeBrushObjectImpl(facade, plan, ordinal, parentObjectId, assetId,
-                               true);
+                               assetContentHash, assetMaterialVariant, true);
       receipt.attached = plan.hasAttachment && objectReceipt.accepted &&
                          objectReceipt.objectCreated && objectReceipt.changed;
       receipt.accepted = objectReceipt.accepted;

@@ -10,6 +10,8 @@
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "core/math/EulerRotation.hpp"
 
 namespace iggy3d_creative_app {
@@ -40,6 +42,8 @@ struct CreativePreviewGeometrySelection {
     case cr::CreativeGeneratedGeometryProfile::DescriptorDefault:
     case cr::CreativeGeneratedGeometryProfile::SolidPrism:
     case cr::CreativeGeneratedGeometryProfile::WalkableSlab:
+    case cr::CreativeGeneratedGeometryProfile::SlopedPanel:
+    case cr::CreativeGeneratedGeometryProfile::HipRoofPanel:
       return {};
     case cr::CreativeGeneratedGeometryProfile::RampWedge:
       return {RenderCreativePreviewGeometryProfile::RampWedge, 0U, true};
@@ -160,7 +164,8 @@ void appendMovingPlatformRoutePreview(
     return;
   }
   const cr::CreativeObject* object = document->findObject(preview.objectId);
-  if (object == nullptr || !object->visible ||
+  if (object == nullptr ||
+      !cr::creativeObjectEffectivelyVisible(*document, object->id) ||
       object->kind != cr::CreativeObjectKind::MovingPlatform) {
     return;
   }
@@ -214,12 +219,14 @@ attachCreativeEditorPlacementPreviews(
                          editor.transform.active;
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const cr::CreativeHeldItemDefinition& heldDefinition =
+      cr::describeCreativeHeldItem(held.kind);
   if (captureMode || modalOpen) {
     return visualization;
   }
   const CreativeEditorStructuralSpanEditState& structuralEdit =
       editor.interaction.structuralSpanEdit;
-  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+  if (heldDefinition.frameMode == cr::CreativeHeldItemFrameMode::ObjectMove &&
       structuralEdit.active) {
     const CreativeBrushPlacementPlan editPlan =
         creativeEditorStructuralSpanEditPreviewPlan(structuralEdit);
@@ -246,9 +253,13 @@ attachCreativeEditorPlacementPreviews(
     return visualization;
   }
   const bool materialPlacement =
-      held.kind == cr::CreativeHeldItemKind::Material;
+      heldDefinition.frameMode ==
+          cr::CreativeHeldItemFrameMode::MaterialStroke &&
+      heldDefinition.placeMode;
   const bool materialBrush =
-      held.kind == cr::CreativeHeldItemKind::MaterialBrush;
+      heldDefinition.frameMode ==
+          cr::CreativeHeldItemFrameMode::MaterialStroke &&
+      !heldDefinition.placeMode;
   const bool assetScatter =
       creativeEditorUsesAssetScatter(held, editor.toolSettings);
   const bool authoredAsset =
@@ -307,17 +318,35 @@ attachCreativeEditorPlacementPreviews(
       placement = resolveCreativeEditorPlacement(
           held, editor.interaction.target,
           editor.toolSettings.placementYaw, *document, assetCatalog,
-          clearanceCache);
+          clearanceCache, editor.toolSettings.assetAlignmentMode,
+          editor.toolSettings.assetAttachmentMode);
     } else {
-      placement.admission = admitBrushPlacement(
-          held, editor.interaction.target.grid,
-          editor.toolSettings.placementYaw);
+      const bool importedAsset = !cr::creativeHotbarAssetId(held).empty();
+      if (importedAsset) {
+        placement.alignment = resolveCreativeAssetAlignment(
+            editor.interaction.target.grid,
+            editor.toolSettings.assetAlignmentMode);
+      }
+      if (!importedAsset || placement.alignment.valid) {
+        const cr::CreativeGridTarget& placementTarget =
+            importedAsset ? placement.alignment.target
+                          : editor.interaction.target.grid;
+        placement.admission = admitBrushPlacement(
+            held, placementTarget, editor.toolSettings.placementYaw,
+            editor.toolSettings.assetAlignmentMode);
+      } else {
+        placement.admission.plan.brush = held.objectKind;
+        placement.admission.status = creativeAssetAlignmentAdmissionStatus(
+            placement.alignment.status);
+      }
     }
     const CreativeBrushPlacementAdmission& admission = placement.admission;
     const CreativeBrushPlacementPlan& targetPlan = admission.plan;
     visualization.targetAvailable = targetPlan.valid;
     visualization.clearance = targetPlan.clearance;
     if (targetPlan.valid) {
+      visualization.attemptedTransform = targetPlan.transform;
+      visualization.attemptedTransformAvailable = true;
       const cr::CreativeTransformedBounds transformed =
           cr::resolveCreativeTransformedBounds(targetPlan.authoredBounds,
                                                targetPlan.transform);

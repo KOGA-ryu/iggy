@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutPlanProjectionInternal.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -97,6 +98,23 @@ bool objectInVerticalBand(const CreativeWorldLayoutObject& object,
          object.pointCells.y < top - kGeometryEpsilon;
 }
 
+CreativeTerrainRecipeKind presentationKind(
+    CreativeTerrainPathKind kind) noexcept {
+  switch (kind) {
+    case CreativeTerrainPathKind::Road:
+      return CreativeTerrainRecipeKind::Road;
+    case CreativeTerrainPathKind::River:
+      return CreativeTerrainRecipeKind::River;
+    case CreativeTerrainPathKind::Ridge:
+      return CreativeTerrainRecipeKind::RidgeLine;
+    case CreativeTerrainPathKind::Trench:
+      return CreativeTerrainRecipeKind::Ditch;
+    case CreativeTerrainPathKind::Count:
+      return CreativeTerrainRecipeKind::Count;
+  }
+  return CreativeTerrainRecipeKind::Count;
+}
+
 }  // namespace
 
 bool projectTerrain(Projection& projection,
@@ -105,45 +123,135 @@ bool projectTerrain(Projection& projection,
   for (std::size_t index = 0U; index < layout.terrainProfiles.size(); ++index) {
     const CreativeWorldLayoutTerrainProfile& profile =
         layout.terrainProfiles[index];
-    if (profile.kind >= CreativeTerrainRecipeKind::Count ||
-        profile.radiusCells == 0U) {
+    if (profile.kind >= CreativeTerrainRecipeKind::Count) {
       return false;
     }
     Primitive primitive;
     primitive.role = Role::TerrainProfile;
-    primitive.kind = PrimitiveKind::Circle;
     primitive.layer = Layer::Active;
     primitive.source = source(CreativeWorldLayoutTable::TerrainProfile, index);
-    primitive.points[0] = point(profile.center);
-    primitive.pointCount = 1U;
-    primitive.radiusCells = static_cast<double>(profile.radiusCells);
+    if (profile.usesLandformRecipe) {
+      CreativeTerrainLandformKind expectedKind =
+          CreativeTerrainLandformKind::Count;
+      if (!creativeTerrainRecipeLandformKind(profile.kind, expectedKind) ||
+          expectedKind != profile.landform.kind ||
+          !isValidCreativeTerrainLandformRecipe(profile.landform)) {
+        return false;
+      }
+      const double minimumX = profile.landform.bounds.minimum.x;
+      const double minimumZ = profile.landform.bounds.minimum.z;
+      const double maximumX =
+          minimumX + profile.landform.bounds.widthCells;
+      const double maximumZ =
+          minimumZ + profile.landform.bounds.depthCells;
+      primitive.kind = PrimitiveKind::Polygon;
+      primitive.points = {{{minimumX, minimumZ},
+                           {maximumX, minimumZ},
+                           {maximumX, maximumZ},
+                           {minimumX, maximumZ}}};
+      primitive.pointCount = 4U;
+    } else {
+      if (profile.kind == CreativeTerrainRecipeKind::Terrace ||
+          profile.kind == CreativeTerrainRecipeKind::Cliff ||
+          profile.radiusCells == 0U) {
+        return false;
+      }
+      primitive.kind = PrimitiveKind::Circle;
+      primitive.points[0] = point(profile.center);
+      primitive.pointCount = 1U;
+      primitive.radiusCells = static_cast<double>(profile.radiusCells);
+    }
     primitive.terrainKind = profile.kind;
     if (!appendPrimitive(projection, primitive)) {
       return false;
     }
     ++projection.receipt.terrainPrimitiveCount;
+
+    const bool retainingDataValid =
+        profile.retainingEdge.version ==
+            kCreativeRetainingEdgeRecipeVersion &&
+        isValidCreativeRetainingEdgeSettings(
+            profile.retainingEdge.settings);
+    if (!retainingDataValid ||
+        (profile.usesRetainingEdgeRecipe &&
+         (!profile.usesLandformRecipe ||
+          profile.landform.edge != CreativeTerrainLandformEdge::Retaining ||
+          profile.retainingEdge.terrainProfileKey != profile.stableKey ||
+          !isValidCreativeRetainingEdgeSourceRecipe(
+              profile.retainingEdge)))) {
+      return false;
+    }
+    if (!profile.usesRetainingEdgeRecipe) {
+      continue;
+    }
+    for (std::size_t transitionIndex = 0U;
+         transitionIndex <
+         profile.retainingEdge.settings.transitionCount;
+         ++transitionIndex) {
+      const CreativeRetainingEdgeTransition& transition =
+          profile.retainingEdge.settings.transitions[transitionIndex];
+      const std::int64_t deltaX =
+          static_cast<std::int64_t>(transition.edge.second.x) -
+          transition.edge.first.x;
+      const std::int64_t deltaZ =
+          static_cast<std::int64_t>(transition.edge.second.z) -
+          transition.edge.first.z;
+      Point start;
+      Point end;
+      if (deltaX != 0) {
+        const double boundaryX =
+            (static_cast<double>(transition.edge.first.x) +
+             transition.edge.second.x) *
+            0.5;
+        const double centerZ = transition.edge.first.z;
+        start = {boundaryX, centerZ - 0.5};
+        end = {boundaryX, centerZ + 0.5};
+      } else if (deltaZ != 0) {
+        const double centerX = transition.edge.first.x;
+        const double boundaryZ =
+            (static_cast<double>(transition.edge.first.z) +
+             transition.edge.second.z) *
+            0.5;
+        start = {centerX - 0.5, boundaryZ};
+        end = {centerX + 0.5, boundaryZ};
+      } else {
+        return false;
+      }
+      const Role role =
+          transition.kind == CreativeRetainingEdgeTransitionKind::Stair
+              ? Role::Stair
+              : Role::Ramp;
+      if (!appendPrimitive(
+              projection,
+              segment(role, Layer::Active, primitive.source, start, end))) {
+        return false;
+      }
+      ++projection.receipt.terrainPrimitiveCount;
+    }
   }
 
   for (std::size_t pathIndex = 0U; pathIndex < layout.terrainPaths.size();
        ++pathIndex) {
     const CreativeWorldLayoutTerrainPath& path = layout.terrainPaths[pathIndex];
-    if (path.kind >= CreativeTerrainRecipeKind::Count || path.pointCount < 2U ||
-        path.firstPointIndex > layout.terrainPathPoints.size() ||
-        path.pointCount >
-            layout.terrainPathPoints.size() - path.firstPointIndex) {
+    if (!isValidCreativeTerrainPathSourceRecipe(path.recipe)) {
       return false;
     }
-    const double widthCells =
-        static_cast<double>(path.halfWidthCells) * 2.0 + 1.0;
-    for (std::size_t offset = 1U; offset < path.pointCount; ++offset) {
-      const std::size_t pointIndex = path.firstPointIndex + offset;
+    for (std::size_t pointIndex = 1U;
+         pointIndex < path.recipe.points.size(); ++pointIndex) {
+      const CreativeTerrainPathSourcePoint& start =
+          path.recipe.points[pointIndex - 1U];
+      const CreativeTerrainPathSourcePoint& end =
+          path.recipe.points[pointIndex];
       Primitive primitive = segment(
           Role::TerrainPath, Layer::Active,
           source(CreativeWorldLayoutTable::TerrainPath, pathIndex),
-          point(layout.terrainPathPoints[pointIndex - 1U].coord),
-          point(layout.terrainPathPoints[pointIndex].coord));
-      primitive.widthCells = widthCells;
-      primitive.terrainKind = path.kind;
+          point(start.coord), point(end.coord));
+      primitive.widthCells =
+          static_cast<double>(std::max(start.halfWidthCells,
+                                       end.halfWidthCells)) *
+              2.0 +
+          1.0;
+      primitive.terrainKind = presentationKind(path.recipe.kind);
       if (!appendPrimitive(projection, primitive)) {
         return false;
       }

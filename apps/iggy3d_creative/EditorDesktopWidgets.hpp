@@ -1,5 +1,8 @@
 #pragma once
 
+#include <array>
+#include <iterator>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -53,6 +56,21 @@ void buildCreativeEditorDesktopInspectorPanel(
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands);
 
+// Exact controls for the live transform preview. These mutate only the
+// transient editor session; the existing transform commit remains the sole
+// document/history boundary.
+void appendCreativeDesktopActiveTransformInspector(
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeAppState& appState,
+    bool playModeActive);
+
+// Transient named volume-region controls. Region edits do not mutate the
+// document; operation commit remains owned by the held-item dispatcher.
+void appendCreativeDesktopVolumeInspector(
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeDocument& document,
+    std::span<const iggy3d::creative::CreativeObjectId> selectedObjectIds);
+
 // Terrain generator body for the Inspector's dedicated tab. Widgets edit only
 // transient recipe state and emit semantic workflow commands; the dispatcher
 // owns preview/apply/cancel behavior and document history.
@@ -87,6 +105,14 @@ void appendCreativeDesktopGeneratedLevelSettings(
     iggy3d::creative::CreativeObjectId objectId,
     iggy3d::creative::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
+    CreativeDesktopCommandFrame& commands);
+
+// Shared canonical-wall editor used by both the 2D source Properties panel and
+// the generated-object Inspector. It emits the generic source-property
+// preview/commit commands; callers remain presentation-only.
+void appendCreativeDesktopTopologyEdgeSettings(
+    CreativeEditorWorldLayoutState& worldLayout,
+    std::size_t topologyEdgeIndex,
     CreativeDesktopCommandFrame& commands);
 
 template <typename Payload>
@@ -154,6 +180,188 @@ inline void observeCreativeDesktopDiscretePropertyWidget(
     CreativeDesktopPropertyEditActivity& activity,
     bool changed) noexcept {
   observeCreativeDesktopDiscretePropertyEdit(activity, changed);
+}
+
+template <typename RoofSettings>
+void drawCreativeStructuralRoofSettingsWidgets(
+    RoofSettings& settings,
+    CreativeDesktopPropertyEditActivity& activity,
+    const char* id) {
+  namespace cr = iggy3d::creative;
+  ImGui::PushID(id);
+
+  constexpr std::array kStyles{
+      cr::CreativeStructuralRoofStyle::Flat,
+      cr::CreativeStructuralRoofStyle::Shed,
+      cr::CreativeStructuralRoofStyle::Gable,
+      cr::CreativeStructuralRoofStyle::Hip};
+  bool styleChanged = false;
+  ImGui::SetNextItemWidth(148.0F);
+  if (ImGui::BeginCombo("Style", cr::toString(settings.roofStyle).data())) {
+    for (const cr::CreativeStructuralRoofStyle style : kStyles) {
+      const bool selected = settings.roofStyle == style;
+      if (ImGui::Selectable(cr::toString(style).data(), selected)) {
+        settings.roofStyle = style;
+        styleChanged = true;
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  observeCreativeDesktopDiscretePropertyEdit(activity, styleChanged);
+
+  ImGui::SetNextItemWidth(112.0F);
+  const bool overhangChanged = ImGui::InputDouble(
+      "Overhang", &settings.roofOverhangCells, 0.25, 1.0, "%.2f");
+  observeCreativeDesktopContinuousPropertyEdit(
+      activity, overhangChanged, ImGui::IsItemDeactivatedAfterEdit());
+
+  if (settings.roofStyle == cr::CreativeStructuralRoofStyle::Shed) {
+    constexpr std::array kDirections{
+        cr::CreativeStructuralRoofSlopeDirection::PositiveX,
+        cr::CreativeStructuralRoofSlopeDirection::NegativeX,
+        cr::CreativeStructuralRoofSlopeDirection::PositiveZ,
+        cr::CreativeStructuralRoofSlopeDirection::NegativeZ};
+    bool directionChanged = false;
+    ImGui::SetNextItemWidth(148.0F);
+    if (ImGui::BeginCombo(
+            "Direction",
+            cr::toString(settings.roofSlopeDirection).data())) {
+      for (const cr::CreativeStructuralRoofSlopeDirection direction :
+           kDirections) {
+        const bool selected = settings.roofSlopeDirection == direction;
+        if (ImGui::Selectable(cr::toString(direction).data(), selected)) {
+          settings.roofSlopeDirection = direction;
+          directionChanged = true;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    observeCreativeDesktopDiscretePropertyEdit(activity, directionChanged);
+  }
+
+  if (settings.roofStyle == cr::CreativeStructuralRoofStyle::Gable ||
+      settings.roofStyle == cr::CreativeStructuralRoofStyle::Hip) {
+    constexpr std::array kAxes{cr::CreativeStructuralRoofRidgeAxis::X,
+                               cr::CreativeStructuralRoofRidgeAxis::Z};
+    bool axisChanged = false;
+    ImGui::SetNextItemWidth(148.0F);
+    if (ImGui::BeginCombo(
+            "Ridge", cr::toString(settings.roofRidgeAxis).data())) {
+      for (const cr::CreativeStructuralRoofRidgeAxis axis : kAxes) {
+        const bool selected = settings.roofRidgeAxis == axis;
+        if (ImGui::Selectable(cr::toString(axis).data(), selected)) {
+          settings.roofRidgeAxis = axis;
+          axisChanged = true;
+        }
+        if (selected) {
+          ImGui::SetItemDefaultFocus();
+        }
+      }
+      ImGui::EndCombo();
+    }
+    observeCreativeDesktopDiscretePropertyEdit(activity, axisChanged);
+  }
+
+  if (settings.roofStyle != cr::CreativeStructuralRoofStyle::Flat) {
+    ImGui::SetNextItemWidth(112.0F);
+    const bool pitchChanged = ImGui::InputDouble(
+        "Pitch", &settings.roofPitchDegrees, 1.0, 5.0, "%.1f deg");
+    observeCreativeDesktopContinuousPropertyEdit(
+        activity, pitchChanged, ImGui::IsItemDeactivatedAfterEdit());
+  }
+
+  constexpr std::array kMaterials{
+      cr::CreativeStructuralMaterial::Blockout,
+      cr::CreativeStructuralMaterial::Plaster,
+      cr::CreativeStructuralMaterial::Timber,
+      cr::CreativeStructuralMaterial::Stone,
+      cr::CreativeStructuralMaterial::Brick};
+  bool materialChanged = false;
+  ImGui::SetNextItemWidth(148.0F);
+  if (ImGui::BeginCombo("Material", cr::toString(settings.roofMaterial).data())) {
+    for (const cr::CreativeStructuralMaterial material : kMaterials) {
+      const bool selected = settings.roofMaterial == material;
+      if (ImGui::Selectable(cr::toString(material).data(), selected)) {
+        settings.roofMaterial = material;
+        materialChanged = true;
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  observeCreativeDesktopDiscretePropertyEdit(activity, materialChanged);
+  ImGui::PopID();
+}
+
+struct CreativeDoorSettingsWidgetActivity {
+  bool discreteChanged = false;
+  bool continuousChanged = false;
+  bool continuousDeactivated = false;
+};
+
+[[nodiscard]] inline CreativeDoorSettingsWidgetActivity
+drawCreativeDoorSettingsWidgets(
+    iggy3d::creative::CreativeDoorSettings& settings,
+    const char* id) {
+  namespace cr = iggy3d::creative;
+  CreativeDoorSettingsWidgetActivity activity;
+  ImGui::PushID(id);
+
+  constexpr const char* kArrangementLabels[] = {"Single leaf", "Double leaf"};
+  int arrangement = static_cast<int>(settings.leafArrangement);
+  ImGui::SetNextItemWidth(188.0F);
+  if (ImGui::Combo("Leaves", &arrangement, kArrangementLabels,
+                   static_cast<int>(std::size(kArrangementLabels)))) {
+    settings.leafArrangement =
+        static_cast<cr::CreativeDoorLeafArrangement>(arrangement);
+    activity.discreteChanged = true;
+  }
+
+  constexpr const char* kHingeLabels[] = {"Minimum edge", "Maximum edge"};
+  int hinge = static_cast<int>(settings.hingeSide);
+  ImGui::SetNextItemWidth(188.0F);
+  if (ImGui::Combo("Primary hinge", &hinge, kHingeLabels,
+                   static_cast<int>(std::size(kHingeLabels)))) {
+    settings.hingeSide = static_cast<cr::CreativeDoorHingeSide>(hinge);
+    activity.discreteChanged = true;
+  }
+
+  constexpr const char* kSwingLabels[] = {"Side A (- normal)",
+                                           "Side B (+ normal)"};
+  int swing = static_cast<int>(settings.swingSide);
+  ImGui::SetNextItemWidth(188.0F);
+  if (ImGui::Combo("Swing side", &swing, kSwingLabels,
+                   static_cast<int>(std::size(kSwingLabels)))) {
+    settings.swingSide = static_cast<cr::CreativeDoorSwingSide>(swing);
+    activity.discreteChanged = true;
+  }
+
+  constexpr const char* kInitialStateLabels[] = {"Closed", "Open"};
+  int initialState = static_cast<int>(settings.initialState);
+  ImGui::SetNextItemWidth(188.0F);
+  if (ImGui::Combo("Initial state", &initialState, kInitialStateLabels,
+                   static_cast<int>(std::size(kInitialStateLabels)))) {
+    settings.initialState =
+        static_cast<cr::CreativeDoorInitialState>(initialState);
+    activity.discreteChanged = true;
+  }
+
+  activity.discreteChanged |=
+      ImGui::Checkbox("Gameplay locked", &settings.gameplayLocked);
+  ImGui::SetNextItemWidth(128.0F);
+  activity.continuousChanged = ImGui::InputDouble(
+      "Transition seconds", &settings.transitionSeconds, 0.05, 0.25, "%.2f");
+  activity.continuousDeactivated = ImGui::IsItemDeactivatedAfterEdit();
+  ImGui::PopID();
+  return activity;
 }
 
 [[nodiscard]] inline bool creativeDesktopWorldLayoutPropertyPreviewActive(

@@ -205,11 +205,15 @@ bool serializedObjectKindIdsAreStableAndUnique() {
       continue;
     }
 
+    const bool preservesSerializedIdentity =
+        kind == cr::CreativeObjectKind::GableRoof
+            ? serializedId == "GableRoof" && cr::toString(kind) == "RoofSlope"
+            : serializedId == cr::toString(kind);
     ok = expect(!serializedId.empty(), "serialized kind id is non-empty") &&
          expect(serializedId != "Unknown",
                 "authored kind serialized id is explicit") &&
-         expect(serializedId == cr::toString(kind),
-                "current serialized kind id preserves legacy save string") &&
+         expect(preservesSerializedIdentity,
+                "serialized kind id preserves legacy save compatibility") &&
          expect(cr::parseSerializedObjectKindId(serializedId, parsed),
                 "serialized kind id parses") &&
          expect(parsed == kind, "serialized kind id round-trips") &&
@@ -560,7 +564,7 @@ bool descriptorOwnsCanonicalStructuralDimensions() {
                 "floor descriptor owns canonical dimensions") &&
          expect(sameVec3(ceilingSize, {4.0, 0.25, 4.0}),
                 "ceiling descriptor owns canonical dimensions") &&
-         expect(sameVec3(roofSize, {5.0, 1.0, 5.0}),
+         expect(sameVec3(roofSize, {5.0, 0.25, 5.0}),
                 "roof descriptor owns canonical dimensions") &&
          expect(wall.lengthMeters == 4.0 && wall.heightMeters == 3.0 &&
                     wall.thicknessMeters == 0.25,
@@ -570,7 +574,7 @@ bool descriptorOwnsCanonicalStructuralDimensions() {
                     cr::defaultCreativeStructuralLayerThicknessMeters(
                         cr::CreativeObjectKind::Ceiling) == 0.25 &&
                     cr::defaultCreativeStructuralLayerThicknessMeters(
-                        cr::CreativeObjectKind::Roof) == 1.0 &&
+                        cr::CreativeObjectKind::Roof) == 0.25 &&
                     cr::defaultCreativeStructuralLayerThicknessMeters(
                         cr::CreativeObjectKind::Wall) == 0.0,
                 "horizontal layer thickness is descriptor-owned") &&
@@ -632,17 +636,18 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
          expect(stair.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::StairSteps &&
                     stair.generatedGeometry.maximumStepRiseMeters == 0.25 &&
+                    stair.generatedGeometry.minimumSegmentRunMeters == 0.20 &&
                     ramp.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::RampWedge &&
                     gableRoof.generatedGeometry.profile ==
-                        cr::CreativeGeneratedGeometryProfile::RampWedge &&
+                        cr::CreativeGeneratedGeometryProfile::SlopedPanel &&
                     gableRoof.occupancyKind ==
                         cr::CreativeSpatialOccupancyKind::Structural &&
                     platform.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::WalkableSlab &&
                     movingPlatform.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::WalkableSlab,
-                "descriptor rows own shared traversal and roof wedge profiles") &&
+                "descriptor rows own shared traversal and thin roof panel profiles") &&
          expect(column.generatedGeometry.profile ==
                         cr::CreativeGeneratedGeometryProfile::SolidPrism &&
                     pillar.generatedGeometry.profile ==
@@ -666,9 +671,10 @@ bool descriptorOwnsGeneratedTraversalGeometry() {
                         stair, {2.0, 2.0, 3.0}) == 8U,
                 "stair segment count follows resolved rise") &&
          expect(cr::creativeGeneratedGeometrySegmentCount(
-                    stair, {2.0, 100.0, 3.0}) ==
-                    cr::kMaximumCreativeGeneratedGeometrySegmentCount,
-                "stair segment count is bounded") &&
+                    stair, {2.0, 100.0, 3.0}) == 0U &&
+                    cr::creativeGeneratedGeometrySegmentCount(
+                        stair, {2.0, 1.0, 0.5}) == 0U,
+                "unsafe stair segment requests fail closed") &&
          expect(cr::creativeGeneratedGeometrySegmentCount(
                     ramp, {2.0, 1.0, 4.0}) == 0U &&
                     cr::creativeGeneratedGeometrySegmentCount(
@@ -938,6 +944,8 @@ bool representativeDescriptorsPinRuntimeAnchorSemantics() {
 bool representativeDescriptorsPinCapabilityFacts() {
   const cr::CreativeObjectDescriptor& wall =
       cr::describeObject(cr::CreativeObjectKind::Wall);
+  const cr::CreativeObjectDescriptor& door =
+      cr::describeObject(cr::CreativeObjectKind::Door);
   const cr::CreativeObjectDescriptor& crate =
       cr::describeObject(cr::CreativeObjectKind::Crate);
   const cr::CreativeObjectDescriptor& pointLight =
@@ -961,6 +969,14 @@ bool representativeDescriptorsPinCapabilityFacts() {
          expect(!wall.canOwnChildren, "wall cannot own children") &&
          expect(wall.isRuntimeMeaningful, "wall runtime meaningful") &&
          expect(!wall.isEditorOnly, "wall not editor-only") &&
+         expect(door.canHaveParent && door.canOwnChildren,
+                "door owns its moving leaf assembly") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Stair)
+                    .canOwnChildren,
+                "stair owns procedural rail and stringer attachments") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Ramp)
+                    .canOwnChildren,
+                "ramp owns procedural side-edge attachments") &&
          expect(crate.hasTransform, "crate has transform") &&
          expect(crate.hasBounds, "crate has bounds") &&
          expect(crate.canHaveParent, "crate can join transform groups") &&

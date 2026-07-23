@@ -150,8 +150,7 @@ bool toolSurfaceIsFullyIconified() {
           iggy3d_creative_app::CreativeEditorWorldLayoutTool::CatalogAsset);
   const auto smoothGlyph =
       iggy3d_creative_app::creativeEditorToolGlyphForTerrainRegionOperation(
-          iggy3d_creative_app::CreativeEditorWorldLayoutTerrainRegionOperation::
-              Smooth);
+          iggy3d::creative::CreativeTerrainRegionMode::Smooth);
   const auto ellipseGlyph =
       iggy3d_creative_app::creativeEditorToolGlyphForTerrainMask(
           iggy3d::creative::CreativeTerrainCompositionMask::Ellipse);
@@ -303,7 +302,8 @@ bool viewControlGlyphsJoinTheVocabulary() {
       "plan view",     "elevation view",      "3d view",
       "level up",      "level down",          "fit all",
       "fit selection", "roof visibility",     "lower level context",
-      "contours",      "dimensions",          "snap"};
+      "upper level context", "contours",       "dimensions",
+      "snap"};
   bool allPresent = true;
   for (const std::string_view expected : kViewControlNames) {
     bool found = false;
@@ -322,8 +322,8 @@ bool viewControlGlyphsJoinTheVocabulary() {
     return iggy3d_creative_app::creativeEditorToolGlyphStrokeThicknessPixels(
         1.25F, sizePixels);
   };
-  return expect(kGlyphCount == 55U,
-                "the vocabulary is the original 43 plus 12 view controls") &&
+  return expect(kGlyphCount == 56U,
+                "the vocabulary is the original 43 plus 13 view controls") &&
          expect(allPresent, "every view-control glyph is enumerated") &&
          expect(near(ladder(16.0F), 1.0F) && near(ladder(20.0F), 1.041667F) &&
                     near(ladder(24.0F), 1.25F) &&

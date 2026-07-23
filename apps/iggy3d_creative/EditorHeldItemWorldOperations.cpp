@@ -1,6 +1,9 @@
 #include "EditorInteraction.hpp"
 #include "EditorInteractionInternal.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <span>
 #include <vector>
 
@@ -9,6 +12,7 @@
 #include "EditorGizmo.hpp"
 #include "EditorGroup.hpp"
 #include "EditorLogicLinks.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPattern.hpp"
 #include "EditorRoomPlacement.hpp"
@@ -21,6 +25,7 @@
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -60,29 +65,213 @@ struct InteractionContext {
   const cr::CreativeHotbarEntry& held;
 };
 
+[[nodiscard]] cr::CreativeSelectionPlacementAxis placementAxisForGizmo(
+    GizmoAxis axis) noexcept {
+  switch (axis) {
+    case GizmoAxis::X: return cr::CreativeSelectionPlacementAxis::X;
+    case GizmoAxis::Y: return cr::CreativeSelectionPlacementAxis::Y;
+    case GizmoAxis::Z: return cr::CreativeSelectionPlacementAxis::Z;
+    case GizmoAxis::None: return cr::CreativeSelectionPlacementAxis::Count;
+  }
+  return cr::CreativeSelectionPlacementAxis::Count;
+}
+
+[[nodiscard]] bool beginTransformFromGizmoAxis(
+    const CreativeEditorWorldInteractionFrameRequest& request,
+    float targetX,
+    float targetY) {
+  if (request.gizmoFrame == nullptr ||
+      !request.editor.interaction.target.ray.valid) {
+    return false;
+  }
+  const GizmoAxisPickResult picked = pickCreativeEditorGizmoAxisAtPixel(
+      request.gizmoFrame->axisHandles, targetX, targetY);
+  if (!picked.hit) {
+    return false;
+  }
+
+  CreativeEditorSelectionTransformState& transform = request.editor.transform;
+  if (!beginCreativeEditorSelectionTransformPreview(
+          request.appState, transform, "gizmo_axis_transform_begin",
+          CreativeEditorTransformAnchorPolicy::FixedSource,
+          &request.editor.worldLayout)) {
+    return true;
+  }
+  const cr::CreativeSelectionPlacementAxis axis =
+      placementAxisForGizmo(picked.axis);
+  const auto shaft = std::find_if(
+      request.gizmoFrame->shafts.begin(), request.gizmoFrame->shafts.end(),
+      [picked](const GizmoAxisShaft& candidate) {
+        return candidate.axis == picked.axis;
+      });
+  const cr::CreativeVec3 rayOrigin =
+      cr::creativeVec3FromCore(request.editor.interaction.target.ray.origin);
+  const cr::CreativeVec3 rayDirection =
+      cr::creativeVec3FromCore(request.editor.interaction.target.ray.direction);
+  const cr::CreativeVec3 axisOrigin =
+      cr::creativeVec3FromCore(request.gizmoFrame->center);
+  const cr::CreativeVec3 axisDirection =
+      shaft != request.gizmoFrame->shafts.end()
+          ? cr::creativeVec3FromCore(shaft->tip - request.gizmoFrame->center)
+          : cr::CreativeVec3{};
+  if (!beginCreativeEditorAxisTransformPointerGesture(
+          request.appState, transform, axis, axisOrigin, axisDirection,
+          rayOrigin, rayDirection)) {
+    static_cast<void>(cancelCreativeEditorSelectionTransformPreview(
+        transform, "gizmo_axis_transform_invalid"));
+  }
+  return true;
+}
+
+[[nodiscard]] bool selectionContainsObject(
+    const cr::CreativeSelectionState& selection,
+    cr::CreativeObjectId objectId) noexcept {
+  if (selection.selectedTarget.value == static_cast<cr::Id>(objectId)) {
+    return true;
+  }
+  const std::span<const cr::TargetRef> targets =
+      cr::selectedTargetList(selection);
+  return std::any_of(
+      targets.begin(), targets.end(),
+      [objectId](cr::TargetRef target) {
+        return target.value == static_cast<cr::Id>(objectId);
+      });
+}
+
+[[nodiscard]] bool beginFreeTransformFromTarget(
+    const CreativeEditorWorldInteractionFrameRequest& request) {
+  CreativeEditorState& editor = request.editor;
+  const CreativeEditorWorldTarget& target = editor.interaction.target;
+  if (!target.objectHit || !target.grid.valid) {
+    return false;
+  }
+
+  const cr::CreativeSelectionState& selection =
+      request.appState.facade.selectionState();
+  std::vector<cr::CreativeObjectId> selectedObjectIds;
+  const std::span<const cr::TargetRef> selectedTargets =
+      cr::selectedTargetList(selection);
+  selectedObjectIds.reserve(selectedTargets.size());
+  for (cr::TargetRef selected : selectedTargets) {
+    if (selected.value != cr::kInvalidId) {
+      selectedObjectIds.push_back(
+          static_cast<cr::CreativeObjectId>(selected.value));
+    }
+  }
+  const cr::CreativeObjectId interactionRoot =
+      cr::resolveCreativeHierarchyInteractionRoot(
+          request.appState.facade.document(), selectedObjectIds,
+          target.objectId);
+  if (interactionRoot == cr::kInvalidObjectId) {
+    return false;
+  }
+  if (!selectionContainsObject(selection, interactionRoot)) {
+    const std::array selected{interactionRoot};
+    if (!request.appState.facade
+             .selectTargets(selected, interactionRoot)
+             .accepted) {
+      return false;
+    }
+  }
+  if (!beginCreativeEditorSelectionTransformPreview(
+          request.appState, editor.transform, "pointer_transform_begin",
+          CreativeEditorTransformAnchorPolicy::FixedSource,
+          &editor.worldLayout)) {
+    return false;
+  }
+  if (!beginCreativeEditorFreeTransformPointerGesture(
+          request.appState, editor.transform,
+          target.grid.placementAnchor)) {
+    static_cast<void>(cancelCreativeEditorSelectionTransformPreview(
+        editor.transform, "pointer_transform_invalid"));
+    return false;
+  }
+  return true;
+}
+
 void selectObject(InteractionContext& context) {
-  const CreativeEditorWorldTarget& target =
+  const CreativeEditorWorldTarget& aimedTarget =
       context.request.editor.interaction.target;
-  if (target.objectHit) {
-    const cr::CreativeObject* object =
-        context.request.appState.facade.document().findObject(target.objectId);
-    if (object != nullptr) {
-      if (target.grid.resolved) {
-        static_cast<void>(selectCreativeEditorWorldLayoutObjectSource(
-            context.request.editor.worldLayout, *object,
-            context.request.appState.facade.document().gridSettings(),
-            target.grid.hitPoint));
-      } else {
-        static_cast<void>(selectCreativeEditorWorldLayoutObjectSource(
-            context.request.editor.worldLayout, *object));
+  const cr::CreativeToolModifierFlags modifiers =
+      toolModifiers(context.request.modifiers);
+  CreativeEditorWorldTarget target = aimedTarget;
+  cr::CreativeWorldLayoutSourceRef preferredSource;
+  if (target.objectHit &&
+      (modifiers & cr::kCreativeToolModifierShift) == 0U &&
+      target.objectPickStack.count > 0U) {
+    const cr::CreativeObjectId currentObjectId =
+        context.request.appState.facade.selectionState().selectedTarget.value ==
+                cr::kInvalidId
+            ? cr::kInvalidObjectId
+            : static_cast<cr::CreativeObjectId>(
+                  context.request.appState.facade.selectionState()
+                      .selectedTarget.value);
+    const cr::CreativeObjectId cycled =
+        cycleObjectVisualPick(target.objectPickStack, currentObjectId);
+    if (cycled != cr::kInvalidObjectId) {
+      target.objectId = cycled;
+      for (const ObjectVisualPickHit& hit : target.objectPickStack.hits()) {
+        if (hit.objectId == cycled) {
+          target.distanceMeters = hit.entryDistance;
+          break;
+        }
       }
+    }
+  }
+  if (target.objectHit) {
+    const cr::CreativeDocument& document =
+        context.request.appState.facade.document();
+    CreativeEditorWorldLayoutState& worldLayout =
+        context.request.editor.worldLayout;
+    cr::CreativeSemanticSelectionResolution resolved;
+    const cr::CreativeGridSettings grid = document.gridSettings();
+    if (std::isfinite(grid.cellSizeMeters) && grid.cellSizeMeters > 0.0) {
+      cr::CreativeVec3 worldPoint = target.grid.hitPoint;
+      if (target.ray.valid && std::isfinite(target.distanceMeters)) {
+        worldPoint = cr::creativeVec3FromCore(
+            target.ray.origin +
+            target.ray.direction * target.distanceMeters);
+      }
+      const cr::CreativeVec3 sourcePointCells{
+          (worldPoint.x - grid.origin.x) / grid.cellSizeMeters,
+          (worldPoint.y - grid.origin.y) / grid.cellSizeMeters,
+          (worldPoint.z - grid.origin.z) / grid.cellSizeMeters,
+      };
+      resolved = cr::resolveCreativeSemanticSelection(
+          document, target.objectId, worldLayout.source, sourcePointCells);
+    } else {
+      resolved = cr::resolveCreativeSemanticSelection(
+          document, target.objectId, &worldLayout.source);
+    }
+    if (worldLayout.generatedRevision == worldLayout.revision &&
+        resolved.worldLayoutSource.owned) {
+      preferredSource = {resolved.worldLayoutSource.table,
+                         resolved.worldLayoutSource.index};
     }
   }
   static_cast<void>(
       context.request.appState.facade.setActiveTool(cr::Tool::Select));
-  static_cast<void>(context.request.appState.facade.dispatchToolInput(
-      selectionPacket(context.request.editor.interaction.target,
-                      toolModifiers(context.request.modifiers))));
+  const cr::CreativeFacadeToolDispatchReceipt selection =
+      context.request.appState.facade.dispatchToolInput(
+          selectionPacket(target, modifiers));
+  if (selection.accepted) {
+    static_cast<void>(synchronizeCreativeEditorWorldLayoutSelection(
+        context.request.editor.worldLayout,
+        context.request.appState.facade.document(),
+        context.request.appState.facade.selectionState(), preferredSource));
+  }
+}
+
+void clearObjectSelection(InteractionContext& context) {
+  const cr::CreativeSelectionReceipt cleared =
+      context.request.appState.facade.selectTargets(
+          std::span<const cr::CreativeObjectId>{}, cr::kInvalidObjectId);
+  if (cleared.accepted) {
+    static_cast<void>(synchronizeCreativeEditorWorldLayoutSelection(
+        context.request.editor.worldLayout,
+        context.request.appState.facade.document(),
+        context.request.appState.facade.selectionState()));
+  }
 }
 
 void sampleTargetMaterial(InteractionContext& context) {
@@ -204,7 +393,7 @@ void beginHeldShapeVolume(InteractionContext& context) {
   }
 }
 
-void commitHeldShapeVolume(InteractionContext& context) {
+void completeHeldShapeVolume(InteractionContext& context) {
   CreativeEditorState& editor = context.request.editor;
   const CreativeEditorVolumeGestureReceipt gesture =
       stepCreativeEditorVolumeGesture(
@@ -215,6 +404,11 @@ void commitHeldShapeVolume(InteractionContext& context) {
     setVolumeGestureFeedback(editor, false);
     return;
   }
+  clearCreativeEditorPlacementFeedback(editor.interaction);
+}
+
+void applyHeldShapeVolume(InteractionContext& context) {
+  CreativeEditorState& editor = context.request.editor;
   const cr::CreativeVolumeOperationKind operation =
       cr::creativeVolumeOperationForHeldItem(context.held.kind);
   editor.volume.operation = operation;
@@ -226,11 +420,21 @@ void commitHeldShapeVolume(InteractionContext& context) {
 }
 
 void advanceHeldShapeVolume(InteractionContext& context) {
-  if (context.request.editor.volume.selection.phase ==
-      cr::CreativeVolumeSelectionPhase::FirstCorner) {
-    commitHeldShapeVolume(context);
-  } else {
-    beginHeldShapeVolume(context);
+  switch (context.request.editor.volume.selection.phase) {
+    case cr::CreativeVolumeSelectionPhase::Empty:
+      beginHeldShapeVolume(context);
+      return;
+    case cr::CreativeVolumeSelectionPhase::FirstCorner:
+      completeHeldShapeVolume(context);
+      return;
+    case cr::CreativeVolumeSelectionPhase::Complete:
+      if (context.request.editor.volume.lastReceipt.requested &&
+          context.request.editor.volume.lastReceipt.accepted) {
+        beginHeldShapeVolume(context);
+        return;
+      }
+      applyHeldShapeVolume(context);
+      return;
   }
 }
 
@@ -386,6 +590,12 @@ void sampleTerrainRegionHeight(InteractionContext& context) {
   if (context.request.editor.terrain.region.stamp.active) {
     return;
   }
+  const CreativeEditorTerrainRegionReceipt selected =
+      selectCreativeEditorTerrainRegionOperationAtPointer(
+          context.request.appState.facade.document(), context.request.editor);
+  if (selected.accepted) {
+    return;
+  }
   static_cast<void>(sampleCreativeEditorTerrainRegionHeight(
       context.request.appState.facade.document(), context.request.editor));
 }
@@ -439,6 +649,19 @@ void cancelBuildingRoom(InteractionContext& context) {
       cancelCreativeEditorRoomPlacement(context.request.editor));
 }
 
+void appendMeasurementPoint(InteractionContext& context) {
+  static_cast<void>(
+      appendCreativeEditorMeasurementPoint(context.request));
+}
+
+void completeMeasurement(InteractionContext& context) {
+  static_cast<void>(completeCreativeEditorMeasurement(context.request));
+}
+
+void cancelMeasurement(InteractionContext& context) {
+  static_cast<void>(cancelCreativeEditorMeasurement(context.request));
+}
+
 void dispatchHeldItemWorldOperation(
     cr::CreativeHeldItemWorldOperation operation,
     InteractionContext& context) {
@@ -447,6 +670,9 @@ void dispatchHeldItemWorldOperation(
       return;
     case cr::CreativeHeldItemWorldOperation::SelectObject:
       selectObject(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::ClearSelection:
+      clearObjectSelection(context);
       return;
     case cr::CreativeHeldItemWorldOperation::SampleTargetMaterial:
       sampleTargetMaterial(context);
@@ -467,10 +693,10 @@ void dispatchHeldItemWorldOperation(
       advanceVolumeSelection(context);
       return;
     case cr::CreativeHeldItemWorldOperation::BeginShapeVolume:
-      beginHeldShapeVolume(context);
+      advanceHeldShapeVolume(context);
       return;
     case cr::CreativeHeldItemWorldOperation::CommitShapeVolume:
-      commitHeldShapeVolume(context);
+      advanceHeldShapeVolume(context);
       return;
     case cr::CreativeHeldItemWorldOperation::AdvanceShapeVolume:
       advanceHeldShapeVolume(context);
@@ -559,6 +785,15 @@ void dispatchHeldItemWorldOperation(
     case cr::CreativeHeldItemWorldOperation::CancelBuildingRoom:
       cancelBuildingRoom(context);
       return;
+    case cr::CreativeHeldItemWorldOperation::AppendMeasurementPoint:
+      appendMeasurementPoint(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CompleteMeasurement:
+      completeMeasurement(context);
+      return;
+    case cr::CreativeHeldItemWorldOperation::CancelMeasurement:
+      cancelMeasurement(context);
+      return;
     case cr::CreativeHeldItemWorldOperation::Count:
       return;
   }
@@ -592,14 +827,6 @@ void processMoveInteraction(
       request.actions, cr::CreativeWorldActionId::Primary) ||
       cr::creativeWorldActionPressed(request.actions,
                                      cr::CreativeWorldActionId::Accept);
-  const bool down = cr::creativeWorldActionDown(
-      request.actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionDown(request.actions,
-                                  cr::CreativeWorldActionId::Accept);
-  const bool released = cr::creativeWorldActionReleased(
-      request.actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionReleased(request.actions,
-                                      cr::CreativeWorldActionId::Accept);
   const bool secondaryPressed = cr::creativeWorldActionPressed(
       request.actions, cr::CreativeWorldActionId::Secondary);
 
@@ -643,79 +870,24 @@ void processMoveInteraction(
   if (secondaryPressed && !pressed &&
       beginCreativeEditorSelectionTransformPreview(
           request.appState, editor.transform,
-          "minecraft_secondary_transform_begin")) {
+          "minecraft_secondary_transform_begin",
+          CreativeEditorTransformAnchorPolicy::FollowAim,
+          &editor.worldLayout)) {
     static_cast<void>(processCreativeEditorSelectionTransformPreview(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, false,
         "minecraft_secondary_transform_begin",
-        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement)));
+        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement),
+        &editor.worldLayout, request.placementClearanceCache));
     return;
   }
 
-  if (pressed && editor.interaction.target.objectHit) {
-    std::vector<cr::CreativeObjectId> selectedObjectIds;
-    const cr::CreativeSelectionState& selection =
-        request.appState.facade.selectionState();
-    const std::span<const cr::TargetRef> selectedTargets =
-        cr::selectedTargetList(selection);
-    selectedObjectIds.reserve(selectedTargets.empty()
-                                  ? 1U
-                                  : selectedTargets.size());
-    for (cr::TargetRef target : selectedTargets) {
-      if (target.value != cr::kInvalidId) {
-        selectedObjectIds.push_back(
-            static_cast<cr::CreativeObjectId>(target.value));
-      }
+  if (pressed) {
+    if (beginTransformFromGizmoAxis(request, targetX, targetY)) {
+      return;
     }
-    if (selectedObjectIds.empty() &&
-        selection.selectedTarget.value != cr::kInvalidId) {
-      selectedObjectIds.push_back(static_cast<cr::CreativeObjectId>(
-          selection.selectedTarget.value));
-    }
-    editor.interaction.moveTargetId =
-        cr::resolveCreativeHierarchyInteractionRoot(
-            request.appState.facade.document(), selectedObjectIds,
-            editor.interaction.target.objectId);
-    CreativeEditorWorldTarget moveTarget = editor.interaction.target;
-    moveTarget.objectId = editor.interaction.moveTargetId;
-    static_cast<void>(request.appState.facade.setActiveTool(cr::Tool::Move));
-    static_cast<void>(request.appState.facade.dispatchToolInput(
-        selectionPacket(moveTarget,
-                        cr::kCreativeToolModifierNone)));
-  }
-
-  const cr::CreativeToolWorldPoint destination =
-      resolveCreativeEditorGroundPoint(request.camera);
-  if (down && editor.interaction.moveTargetId != cr::kInvalidObjectId) {
-    cr::CreativeToolInputPacket move;
-    move.kind = cr::CreativeToolInputKind::PointerMove;
-    move.pointer.button = cr::CreativeToolPointerButton::Primary;
-    move.pointer.hasWorldDestination = true;
-    move.pointer.worldDestination = destination;
-    move.pointer.moveHeldAxis = cr::CreativeToolMoveHeldAxis::Y;
-    move.pointer.moveConstraint = editor.toolSettings.moveConstraint;
-    move.pointer.hasMoveSnapStepOverride = true;
-    move.pointer.moveSnapStepOverride =
-        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
-    static_cast<void>(request.appState.facade.dispatchToolInput(move));
-  }
-
-  if (released && editor.interaction.moveTargetId != cr::kInvalidObjectId) {
-    cr::CreativeToolInputPacket release;
-    release.kind = cr::CreativeToolInputKind::PointerRelease;
-    release.pointer.button = cr::CreativeToolPointerButton::Primary;
-    release.pointer.hasWorldDestination = true;
-    release.pointer.worldDestination = destination;
-    release.pointer.moveHeldAxis = cr::CreativeToolMoveHeldAxis::Y;
-    release.pointer.moveConstraint = editor.toolSettings.moveConstraint;
-    release.pointer.hasMoveSnapStepOverride = true;
-    release.pointer.moveSnapStepOverride =
-        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement);
-    static_cast<void>(dispatchMoveReleaseWithUndo(
-        request.appState, request.appState.history, release,
-        editor.interaction.moveTargetId, "minecraft_primary_move_release"));
-    editor.interaction.moveTargetId = cr::kInvalidObjectId;
+    static_cast<void>(beginFreeTransformFromTarget(request));
   }
 }
 

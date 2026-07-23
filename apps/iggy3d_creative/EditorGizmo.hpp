@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -21,15 +22,40 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
 struct CreativeEditorSelectionFrame;
+struct CreativeEditorSelectionTransformState;
 struct CreativeMovingPlatformPathEditState;
 
-enum class GizmoAxis { None, X, Y, Z };
+enum class GizmoAxis : std::uint8_t { None, X, Y, Z };
 
 struct GizmoAxisShaft {
   GizmoAxis axis = GizmoAxis::None;
   iggy3d::Vec3 tip{0.0F, 0.0F, 0.0F};
   iggy3d::RenderLineColor color{1.0F, 1.0F, 1.0F, 1.0F};
 };
+
+struct GizmoAxisScreenHandle {
+  GizmoAxis axis = GizmoAxis::None;
+  float startX = 0.0F;
+  float startY = 0.0F;
+  float endX = 0.0F;
+  float endY = 0.0F;
+  bool valid = false;
+};
+
+struct GizmoAxisPickResult {
+  GizmoAxis axis = GizmoAxis::None;
+  float distanceSquared = 0.0F;
+  bool hit = false;
+};
+
+inline constexpr float kCreativeEditorGizmoHandleHitPaddingPixels = 12.0F;
+
+[[nodiscard]] GizmoAxisPickResult pickCreativeEditorGizmoAxisAtPixel(
+    std::span<const GizmoAxisScreenHandle> handles,
+    float pixelX,
+    float pixelY,
+    float paddingPixels =
+        kCreativeEditorGizmoHandleHitPaddingPixels) noexcept;
 
 [[nodiscard]] cr::CreativeToolMoveHeldAxis heldAxisForGrabbedAxis(
     GizmoAxis grabbed);
@@ -50,6 +76,7 @@ void logMoveDispatch(const char* phase,
 struct CreativeEditorGizmoFrame {
   iggy3d::Vec3 center{0.0F, 0.0F, 0.0F};
   std::array<GizmoAxisShaft, 3> shafts{};
+  std::array<GizmoAxisScreenHandle, 3> axisHandles{};
   std::vector<PathPointHandleHit> pathPointHandleHits;
   iggy3d::creative::CreativeObjectId selectedPathHandleObjectId =
       iggy3d::creative::kInvalidObjectId;
@@ -62,7 +89,9 @@ struct CreativeEditorGizmoFrame {
     const iggy3d::RenderCameraFrame& camera,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
-    float axisLengthMeters);
+    float axisLengthMeters,
+    iggy3d::RenderContentViewport contentViewport = {},
+    const CreativeEditorSelectionTransformState* transform = nullptr);
 
 void logCreativeEditorPathHandleCaptureFrame(
     StandaloneCaptureScript& captureScript,

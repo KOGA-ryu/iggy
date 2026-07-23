@@ -1,10 +1,13 @@
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 
+#include "app/iggy3d/creative/recipes/RampRecipe.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <numbers>
 #include <string_view>
 
 namespace iggy3d::creative {
@@ -224,12 +227,19 @@ std::int64_t rectDepth(CreativeWorldLayoutRect rect) noexcept {
 
 bool connectorFootprintForRoom(
     CreativeWorldLayoutRect room, std::uint16_t riseCells,
-    double wallThicknessCells, CreativeWorldLayoutVerticalDirection direction,
+    double wallThicknessCells, CreativeWorldLayoutVerticalConnectorKind kind,
+    CreativeWorldLayoutVerticalDirection direction,
     CreativeWorldLayoutRect& footprint) noexcept {
   const bool alongX = directionAlongX(direction);
   const std::int64_t runExtent = alongX ? rectWidth(room) : rectDepth(room);
   const std::int64_t widthExtent = alongX ? rectDepth(room) : rectWidth(room);
-  const std::int64_t runCells = riseCells;
+  std::int64_t runCells = riseCells;
+  if (kind == CreativeWorldLayoutVerticalConnectorKind::Ramp) {
+    const double maximumSlopeRadians =
+        kCreativeRampMaximumWalkableSlopeDegrees * std::numbers::pi / 180.0;
+    runCells = static_cast<std::int64_t>(std::ceil(
+        static_cast<double>(riseCells) / std::tan(maximumSlopeRadians)));
+  }
   constexpr std::int64_t kConnectorWidthCells = 1;
   const std::int64_t wallClearanceCells = std::max<std::int64_t>(
       1, static_cast<std::int64_t>(std::ceil(wallThicknessCells * 0.5)));
@@ -332,7 +342,8 @@ bool planVerticalConnector(
       CreativeWorldLayoutRect candidateFootprint;
       if (!connectorFootprintForRoom(plan.rooms[roomIndex],
                                      request.wallHeightCells,
-                                     request.wallThicknessCells, direction,
+                                     request.wallThicknessCells,
+                                     request.storeys.connectorKind, direction,
                                      candidateFootprint)) {
         continue;
       }

@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/TerrainField.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -12,10 +13,46 @@ namespace iggy3d::creative {
 
 inline constexpr std::size_t kCreativeTerrainMaterialOverrideCapacity =
     kCreativeTerrainRenderPatchCapacity;
+inline constexpr std::uint16_t kCreativeTerrainMaterialWeightTotal = 255U;
+inline constexpr std::size_t kCreativeTerrainMaterialCount =
+    static_cast<std::size_t>(CreativeTerrainMaterial::Count);
+using CreativeTerrainMaterialWeights =
+    std::array<std::uint8_t, kCreativeTerrainMaterialCount>;
+
+[[nodiscard]] constexpr CreativeTerrainMaterialWeights
+creativeTerrainMaterialSolidWeights(CreativeTerrainMaterial material) noexcept {
+  CreativeTerrainMaterialWeights weights{};
+  const std::size_t index = static_cast<std::size_t>(material);
+  if (index < weights.size()) {
+    weights[index] = static_cast<std::uint8_t>(
+        kCreativeTerrainMaterialWeightTotal);
+  }
+  return weights;
+}
+
+[[nodiscard]] bool isValidCreativeTerrainMaterialWeights(
+    const CreativeTerrainMaterialWeights& weights) noexcept;
+[[nodiscard]] CreativeTerrainMaterial dominantCreativeTerrainMaterial(
+    const CreativeTerrainMaterialWeights& weights) noexcept;
+[[nodiscard]] CreativeVec3 creativeTerrainMaterialRenderColor(
+    const CreativeTerrainMaterialWeights& weights) noexcept;
 
 struct CreativeTerrainMaterialOverride {
   CreativeTerrainCoord2 coord{};
   CreativeTerrainMaterial material = CreativeTerrainMaterial::Dirt;
+  CreativeTerrainMaterialWeights weights =
+      creativeTerrainMaterialSolidWeights(CreativeTerrainMaterial::Dirt);
+
+  constexpr CreativeTerrainMaterialOverride() noexcept = default;
+  constexpr CreativeTerrainMaterialOverride(
+      CreativeTerrainCoord2 sourceCoord,
+      CreativeTerrainMaterial sourceMaterial) noexcept
+      : coord(sourceCoord),
+        material(sourceMaterial),
+        weights(creativeTerrainMaterialSolidWeights(sourceMaterial)) {}
+  CreativeTerrainMaterialOverride(
+      CreativeTerrainCoord2 sourceCoord,
+      CreativeTerrainMaterialWeights sourceWeights) noexcept;
 
   [[nodiscard]] friend constexpr bool operator==(
       CreativeTerrainMaterialOverride,
@@ -25,6 +62,7 @@ struct CreativeTerrainMaterialOverride {
 enum class CreativeTerrainMaterialEditKind : std::uint8_t {
   Set,
   Clear,
+  SetWeights,
   Count,
 };
 
@@ -32,7 +70,12 @@ struct CreativeTerrainMaterialEdit {
   CreativeTerrainMaterialEditKind kind = CreativeTerrainMaterialEditKind::Set;
   CreativeTerrainCoord2 coord{};
   CreativeTerrainMaterial material = CreativeTerrainMaterial::Dirt;
+  CreativeTerrainMaterialWeights weights{};
 };
+
+[[nodiscard]] CreativeTerrainMaterialEdit makeCreativeTerrainMaterialWeightEdit(
+    CreativeTerrainCoord2 coord,
+    const CreativeTerrainMaterialWeights& weights) noexcept;
 
 enum class CreativeTerrainMaterialMutationStatus : std::uint8_t {
   NotRequested,
@@ -73,6 +116,8 @@ class CreativeTerrainMaterialField {
   [[nodiscard]] const CreativeTerrainMaterialOverride* overrideAt(
       CreativeTerrainCoord2 coord) const noexcept;
   [[nodiscard]] CreativeTerrainMaterial materialAt(
+      CreativeTerrainCoord2 coord) const noexcept;
+  [[nodiscard]] CreativeTerrainMaterialWeights weightsAt(
       CreativeTerrainCoord2 coord) const noexcept;
 
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt apply(

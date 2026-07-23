@@ -1,13 +1,15 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
 #include "EditorDesktopWorldLayoutInspector.hpp"
-#include "EditorToolPresentation.hpp"
+#include "EditorDesktopWidgets.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include "EditorDesktopModel.hpp"
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -54,19 +56,6 @@ void queueLevelOperation(
                                                       levelIndex});
 }
 
-std::size_t findBuildingTemplate(
-    const CreativeEditorWorldLayoutBuildingTemplateLibrary& library,
-    std::string_view templateId) noexcept {
-  const auto found = std::find_if(
-      library.templates.begin(), library.templates.end(),
-      [templateId](const cr::CreativeWorldLayoutBuildingTemplate& value) {
-        return value.templateId == templateId;
-      });
-  return found == library.templates.end()
-             ? cr::kInvalidCreativeWorldLayoutIndex
-             : static_cast<std::size_t>(found - library.templates.begin());
-}
-
 void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
                             CreativeDesktopCommandFrame& commands) {
   if (!ImGui::BeginTabBar("##world_layout_palette")) {
@@ -82,72 +71,87 @@ void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
             creativeEditorWorldLayoutPaletteCategoryLabel(category))) {
       continue;
     }
-    bool first = true;
-    for (const CreativeEditorWorldLayoutPaletteEntry& entry :
-         creativeEditorWorldLayoutPaletteEntries()) {
-      if (entry.category != category) {
-        continue;
-      }
-      if (!first) {
-        const ImGuiStyle& style = ImGui::GetStyle();
-        const float buttonWidth = ImGui::CalcTextSize(entry.label.data()).x +
-                                  (2.0F * style.FramePadding.x);
-        const float nextButtonRight = ImGui::GetItemRectMax().x +
-                                      style.ItemSpacing.x + buttonWidth;
-        const float contentRight = ImGui::GetWindowPos().x +
-                                   ImGui::GetWindowContentRegionMax().x;
-        if (nextButtonRight <= contentRight) {
-          ImGui::SameLine();
+    const auto drawTools = [&](bool experimental) {
+      bool first = true;
+      for (const CreativeEditorToolDescriptor& descriptor :
+           creativeEditorToolDescriptors()) {
+        if (descriptor.worldLayoutActivation !=
+                CreativeEditorWorldLayoutToolActivation::Tool ||
+            creativeEditorWorldLayoutPaletteCategory(descriptor) != category ||
+            creativeEditorToolExperimental(descriptor) != experimental ||
+            (!experimental && !creativeEditorToolDefaultVisible(descriptor))) {
+          continue;
         }
-      }
-      first = false;
-      const bool toolActive =
-          entry.activation == CreativeEditorWorldLayoutPaletteActivation::Tool &&
-          state.tool == entry.tool && !state.buildingTemplatePlacement.active;
-      if (toolActive) {
-        ImGui::PushStyleColor(ImGuiCol_Button,
-                              ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
-      }
-      const std::size_t templateIndex =
-          entry.activation ==
-                  CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate
-              ? findBuildingTemplate(state.buildingTemplates,
-                                     entry.buildingTemplateId)
-              : cr::kInvalidCreativeWorldLayoutIndex;
-      const bool unavailable =
-          entry.activation ==
-              CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate &&
-          templateIndex == cr::kInvalidCreativeWorldLayoutIndex;
-      ImGui::BeginDisabled(unavailable);
-      if (ImGui::Button(entry.label.data())) {
-        if (entry.activation ==
-            CreativeEditorWorldLayoutPaletteActivation::Tool) {
-          queueTool(commands, entry.tool);
-        } else {
-          if (state.tool != CreativeEditorWorldLayoutTool::Select) {
-            queueTool(commands, CreativeEditorWorldLayoutTool::Select);
+        if (!first) {
+          const ImGuiStyle& style = ImGui::GetStyle();
+          const float buttonWidth = ImGui::CalcTextSize(descriptor.name.data()).x +
+                                    (2.0F * style.FramePadding.x);
+          const float nextButtonRight = ImGui::GetItemRectMax().x +
+                                        style.ItemSpacing.x + buttonWidth;
+          const float contentRight = ImGui::GetWindowPos().x +
+                                     ImGui::GetWindowContentRegionMax().x;
+          if (nextButtonRight <= contentRight) {
+            ImGui::SameLine();
           }
-          commands.push(
-              CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
-              CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
-                  templateIndex});
-          commands.push(
-              CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
-              CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
-                  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
-                  {0.0, 0.0},
-                  cr::CreativeWorldLayoutBuildingTransformOperation::
-                      RotateRight90});
+        }
+        first = false;
+        const bool toolActive =
+            state.tool == descriptor.worldLayoutTool &&
+            !state.buildingTemplatePlacement.active;
+        if (toolActive) {
+          ImGui::PushStyleColor(ImGuiCol_Button,
+                                ImVec4{0.16F, 0.47F, 0.25F, 1.0F});
+        }
+        if (ImGui::Button(descriptor.name.data())) {
+          queueTool(commands, descriptor.worldLayoutTool);
+        }
+        if (toolActive) {
+          ImGui::PopStyleColor();
         }
       }
-      ImGui::EndDisabled();
-      if (toolActive) {
-        ImGui::PopStyleColor();
-      }
+    };
+    drawTools(false);
+    if (ImGui::CollapsingHeader("Experimental Tools")) {
+      drawTools(true);
     }
     ImGui::EndTabItem();
   }
   ImGui::EndTabBar();
+
+  if (state.buildingTemplates.templates.empty()) {
+    return;
+  }
+  ImGui::SeparatorText("Building templates");
+  bool first = true;
+  for (std::size_t templateIndex = 0U;
+       templateIndex < state.buildingTemplates.templates.size();
+       ++templateIndex) {
+    const cr::CreativeWorldLayoutBuildingTemplate& buildingTemplate =
+        state.buildingTemplates.templates[templateIndex];
+    if (!first) {
+      ImGui::SameLine();
+    }
+    first = false;
+    const std::string_view label = buildingTemplate.label.empty()
+                                       ? std::string_view{buildingTemplate.templateId}
+                                       : std::string_view{buildingTemplate.label};
+    if (ImGui::Button(label.data())) {
+      if (state.tool != CreativeEditorWorldLayoutTool::Select) {
+        queueTool(commands, CreativeEditorWorldLayoutTool::Select);
+      }
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
+          CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
+              templateIndex});
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
+          CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
+              CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
+              {0.0, 0.0},
+              cr::CreativeWorldLayoutBuildingTransformOperation::
+                  RotateRight90});
+    }
+  }
 }
 
 void drawWorldLayoutAssetPlacementControls(
@@ -276,34 +280,8 @@ void drawWorldLayoutAssetPlacementControls(
 bool drawWorldLayoutGlyphButton(const char* id,
                                 CreativeEditorToolGlyph glyph, float tileSize,
                                 bool active, std::string_view tooltip) {
-  constexpr float kGlyphButtonPadding = 2.0F;
-  constexpr float kGlyphButtonRounding = 2.0F;
-  const ImVec2 tilePosition = ImGui::GetCursorScreenPos();
-  const bool pressed =
-      ImGui::InvisibleButton(id, ImVec2{tileSize, tileSize});
-  const bool hovered = ImGui::IsItemHovered();
-  ImDrawList* drawList = ImGui::GetWindowDrawList();
-  const ImVec2 tileEnd{tilePosition.x + tileSize, tilePosition.y + tileSize};
-  if (active) {
-    drawList->AddRectFilled(
-        tilePosition, tileEnd,
-        ImGui::GetColorU32(ImVec4{0.16F, 0.47F, 0.25F, 1.0F}),
-        kGlyphButtonRounding);
-  } else if (hovered) {
-    drawList->AddRectFilled(tilePosition, tileEnd,
-                            ImGui::GetColorU32(ImGuiCol_ButtonHovered),
-                            kGlyphButtonRounding);
-  }
-  drawCreativeEditorToolGlyph(*drawList, glyph,
-                              tilePosition.x + kGlyphButtonPadding,
-                              tilePosition.y + kGlyphButtonPadding,
-                              tileSize - (2.0F * kGlyphButtonPadding),
-                              ImGui::GetColorU32(ImGuiCol_Text));
-  if (!tooltip.empty() &&
-      ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-    ImGui::SetTooltip("%s", tooltip.data());
-  }
-  return pressed;
+  return drawCreativeEditorToolGlyphButton(id, glyph, tileSize, active,
+                                           tooltip);
 }
 
 void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
@@ -322,80 +300,75 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
     ImGui::EndChild();
     return;
   }
-  auto lastCategory = CreativeEditorWorldLayoutPaletteCategory::Count;
-  int column = 0;
   int buttonId = 0;
-  for (const CreativeEditorToolPresentation& presentation :
-       creativeEditorToolPresentations()) {
-    if (!presentation.toolbox) {
-      continue;
+  const auto activate = [&](const CreativeEditorToolDescriptor& descriptor) {
+    switch (descriptor.worldLayoutActivation) {
+      case CreativeEditorWorldLayoutToolActivation::Tool:
+        queueTool(commands, descriptor.worldLayoutTool);
+        break;
+      case CreativeEditorWorldLayoutToolActivation::TerrainRegionSession:
+        if (topography.region.editingEnabled) {
+          topography.region.editingEnabled = false;
+          commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+        } else {
+          topography.region.editingEnabled = true;
+          topography.visible = true;
+          topography.elevationBandsVisible = true;
+        }
+        break;
+      case CreativeEditorWorldLayoutToolActivation::None:
+      case CreativeEditorWorldLayoutToolActivation::Count:
+        break;
     }
-    if (presentation.category != lastCategory) {
-      if (lastCategory != CreativeEditorWorldLayoutPaletteCategory::Count) {
-        ImGui::Separator();
+  };
+  const auto drawDescriptorSet = [&](bool experimental) {
+    auto lastCategory = CreativeEditorWorldLayoutPaletteCategory::Count;
+    int column = 0;
+    for (const CreativeEditorToolDescriptor& descriptor :
+         creativeEditorToolDescriptors()) {
+      if (!creativeEditorToolHasWorldLayoutSurface(descriptor) ||
+          creativeEditorToolExperimental(descriptor) != experimental ||
+          (!experimental && !creativeEditorToolDefaultVisible(descriptor))) {
+        continue;
       }
-      lastCategory = presentation.category;
-      column = 0;
-    }
-    if (column == 1) {
-      ImGui::SameLine();
-    }
-    const CreativeEditorToolPresentationStatus status =
-        evaluateCreativeEditorToolPresentation(presentation, state, topography,
-                                               editor.terrainGeneration);
-    ImGui::PushID(buttonId++);
-    ImGui::BeginDisabled(status.unavailable);
-    const bool pressed = drawWorldLayoutGlyphButton(
-        "##tool", presentation.glyph, kTileSize, status.active,
-        presentation.name);
-    ImGui::EndDisabled();
-    if (pressed && !status.unavailable) {
-      switch (presentation.activation) {
-        case CreativeEditorToolActivation::WorldLayoutTool: {
-          queueTool(commands, presentation.tool);
-          break;
+      const CreativeEditorWorldLayoutPaletteCategory category =
+          creativeEditorWorldLayoutPaletteCategory(descriptor);
+      if (category != lastCategory) {
+        if (lastCategory != CreativeEditorWorldLayoutPaletteCategory::Count) {
+          ImGui::Separator();
         }
-        case CreativeEditorToolActivation::BuildingTemplate: {
-          const std::size_t templateIndex = findBuildingTemplate(
-              state.buildingTemplates, presentation.buildingTemplateId);
-          if (templateIndex == cr::kInvalidCreativeWorldLayoutIndex) {
-            break;
-          }
-          if (state.tool != CreativeEditorWorldLayoutTool::Select) {
-            queueTool(commands, CreativeEditorWorldLayoutTool::Select);
-          }
-          commands.push(
-              CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
-              CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
-                  templateIndex});
-          commands.push(
-              CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
-              CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
-                  CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
-                      Begin,
-                  {0.0, 0.0},
-                  cr::CreativeWorldLayoutBuildingTransformOperation::
-                      RotateRight90});
-          break;
-        }
-        case CreativeEditorToolActivation::TerrainRegionSession: {
-          if (topography.region.editingEnabled) {
-            topography.region.editingEnabled = false;
-            commands.push(
-                CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
-          } else {
-            topography.region.editingEnabled = true;
-            topography.visible = true;
-            topography.elevationBandsVisible = true;
-          }
-          break;
-        }
-        case CreativeEditorToolActivation::Count:
-          break;
+        lastCategory = category;
+        column = 0;
       }
+      if (column == 1) {
+        ImGui::SameLine();
+      }
+      const CreativeEditorToolStatus status = evaluateCreativeEditorTool(
+          descriptor, state, topography, editor.terrainGeneration);
+      ImGui::PushID(buttonId++);
+      ImGui::BeginDisabled(status.unavailable);
+      const bool pressed = drawWorldLayoutGlyphButton(
+          "##tool", descriptor.glyph, kTileSize, status.active,
+          descriptor.name);
+      ImGui::EndDisabled();
+      if (pressed && !status.unavailable) {
+        activate(descriptor);
+      }
+      ImGui::PopID();
+      column = (column + 1) % 2;
     }
-    ImGui::PopID();
-    column = (column + 1) % 2;
+  };
+  drawDescriptorSet(false);
+  ImGui::Separator();
+  if (drawWorldLayoutGlyphButton(
+          "##experimental_tools", CreativeEditorToolGlyph::BadgeTemplate,
+          kTileSize, state.experimentalToolsVisible,
+          "Experimental Tools (M0-M2)")) {
+    state.experimentalToolsVisible = !state.experimentalToolsVisible;
+  }
+  if (state.experimentalToolsVisible) {
+    ImGui::Separator();
+    drawDescriptorSet(true);
   }
   ImGui::EndChild();
 }
@@ -643,11 +616,69 @@ constexpr std::array<CreativeEditorWorldLayoutBlockoutPatternChoice, 4U>
         {"2 x 2", cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2},
     }};
 
+bool blockoutProfileCellHeight(
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind,
+    cr::CreativeGridSettings grid, std::uint16_t& output) noexcept {
+  if (kind >= cr::CreativeWorldLayoutArchitecturalProfileKind::Count ||
+      kind == cr::CreativeWorldLayoutArchitecturalProfileKind::Custom ||
+      !std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutArchitecturalProfile profile =
+      cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
+  return cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+      grid, profile, output);
+}
+
+bool applyBlockoutArchitecturalProfile(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& draft,
+    cr::CreativeGridSettings grid,
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
+  std::uint16_t wallHeightCells = 0U;
+  if (!blockoutProfileCellHeight(kind, grid, wallHeightCells)) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutArchitecturalProfile profile =
+      cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
+  draft.architecturalProfileKind = kind;
+  draft.shell.wallHeightCells = wallHeightCells;
+  draft.shell.floorThicknessLayers = profile.floorThicknessLayers;
+  draft.ceilingThicknessLayers = profile.ceilingThicknessLayers;
+  draft.shell.roofThicknessLayers = profile.roofThicknessLayers;
+  return true;
+}
+
+bool drawBlockoutMaterialCombo(const char* label,
+                               cr::CreativeStructuralMaterial& material) {
+  bool changed = false;
+  ImGui::SetNextItemWidth(140.0F);
+  if (ImGui::BeginCombo(label, cr::toString(material).data())) {
+    for (const cr::CreativeStructuralMaterial candidate :
+         {cr::CreativeStructuralMaterial::Blockout,
+          cr::CreativeStructuralMaterial::Plaster,
+          cr::CreativeStructuralMaterial::Timber,
+          cr::CreativeStructuralMaterial::Stone,
+          cr::CreativeStructuralMaterial::Brick}) {
+      const bool selected = candidate == material;
+      if (ImGui::Selectable(cr::toString(candidate).data(), selected)) {
+        material = candidate;
+        changed = true;
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  return changed;
+}
+
 // The one blockout settings drawer, shared verbatim by the Create draft and
 // the selected-building Edit draft so the two surfaces cannot drift. Only one
 // mode is visible per frame, so the widget ids stay stable across modes.
 void drawWorldLayoutBlockoutSettingsDrawer(
-    CreativeEditorWorldLayoutBuildingBlockoutSettings& draft) {
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& draft,
+    cr::CreativeGridSettings grid) {
 
   int minimumX = static_cast<int>(draft.shell.footprint.minimum.x);
   int minimumZ = static_cast<int>(draft.shell.footprint.minimum.z);
@@ -682,6 +713,67 @@ void drawWorldLayoutBlockoutSettingsDrawer(
     }
   }
 
+  ImGui::SeparatorText("Architecture");
+  ImGui::SetNextItemWidth(180.0F);
+  if (ImGui::BeginCombo(
+          "Profile##blockout",
+          cr::toString(draft.architecturalProfileKind).data())) {
+    for (const cr::CreativeWorldLayoutArchitecturalProfileKind kind :
+         {cr::CreativeWorldLayoutArchitecturalProfileKind::Residential,
+          cr::CreativeWorldLayoutArchitecturalProfileKind::Grand,
+          cr::CreativeWorldLayoutArchitecturalProfileKind::Custom}) {
+      std::uint16_t ignored = 0U;
+      const bool available =
+          kind == cr::CreativeWorldLayoutArchitecturalProfileKind::Custom ||
+          blockoutProfileCellHeight(kind, grid, ignored);
+      const bool selected = draft.architecturalProfileKind == kind;
+      ImGui::BeginDisabled(!available);
+      if (ImGui::Selectable(cr::toString(kind).data(), selected)) {
+        if (kind ==
+            cr::CreativeWorldLayoutArchitecturalProfileKind::Custom) {
+          draft.architecturalProfileKind = kind;
+        } else {
+          static_cast<void>(
+              applyBlockoutArchitecturalProfile(draft, grid, kind));
+        }
+      }
+      ImGui::EndDisabled();
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
+  ImGui::SetNextItemWidth(152.0F);
+  if (ImGui::InputScalar("Floor-to-floor##blockout", ImGuiDataType_U16,
+                         &draft.shell.wallHeightCells)) {
+    draft.architecturalProfileKind =
+        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("%.2f m",
+                      draft.shell.wallHeightCells * grid.cellSizeMeters);
+  ImGui::SetNextItemWidth(120.0F);
+  if (ImGui::InputScalar("Floor slab##blockout", ImGuiDataType_U16,
+                         &draft.shell.floorThicknessLayers)) {
+    draft.architecturalProfileKind =
+        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  }
+  ImGui::SetNextItemWidth(120.0F);
+  if (ImGui::InputScalar("Ceiling##blockout", ImGuiDataType_U16,
+                         &draft.ceilingThicknessLayers)) {
+    draft.architecturalProfileKind =
+        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  }
+  ImGui::SetNextItemWidth(120.0F);
+  if (ImGui::InputScalar("Roof slab##blockout", ImGuiDataType_U16,
+                         &draft.shell.roofThicknessLayers)) {
+    draft.architecturalProfileKind =
+        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  }
+
+  ImGui::SeparatorText("Floor plan");
   ImGui::Checkbox("Interior doors##blockout", &draft.connectRooms);
   ImGui::SetNextItemWidth(120.0F);
   ImGui::InputScalar("Storeys##blockout", ImGuiDataType_U16,
@@ -733,42 +825,20 @@ void drawWorldLayoutBlockoutSettingsDrawer(
     }
   }
 
-  ImGui::SetNextItemWidth(140.0F);
-  ImGui::InputDouble("Floor top##blockout", &draft.shell.floorTopLayer, 0.25,
-                     1.0, "%.3f");
-  ImGui::SetNextItemWidth(140.0F);
-  ImGui::InputScalar("Wall height##blockout", ImGuiDataType_U16,
-                     &draft.shell.wallHeightCells);
-  ImGui::SetNextItemWidth(112.0F);
-  ImGui::InputDouble("Wall thickness##blockout",
-                     &draft.shell.wallThicknessCells, 0.05, 0.25, "%.3f");
-  ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Floor layers##blockout", ImGuiDataType_U16,
-                     &draft.shell.floorThicknessLayers);
-  ImGui::SetNextItemWidth(120.0F);
-  ImGui::InputScalar("Roof layers##blockout", ImGuiDataType_U16,
-                     &draft.shell.roofThicknessLayers);
-
-  if (ImGui::TreeNode("Roof##blockout")) {
-    constexpr std::array roofStyles{cr::CreativeStructuralRoofStyle::Flat,
-                                    cr::CreativeStructuralRoofStyle::Gable};
-    constexpr std::array ridgeAxes{cr::CreativeStructuralRoofRidgeAxis::X,
-                                   cr::CreativeStructuralRoofRidgeAxis::Z};
-    const auto roofStyleLabel = [](cr::CreativeStructuralRoofStyle style) {
-      return style == cr::CreativeStructuralRoofStyle::Gable ? "Gable"
-                                                             : "Flat";
-    };
-    const auto ridgeLabel = [](cr::CreativeStructuralRoofRidgeAxis axis) {
-      return axis == cr::CreativeStructuralRoofRidgeAxis::Z ? "Z axis"
-                                                            : "X axis";
-    };
+  ImGui::SeparatorText("Facade");
+  ImGui::Checkbox("Entrance##blockout", &draft.facade.includeEntrance);
+  if (draft.facade.includeEntrance) {
     ImGui::SetNextItemWidth(140.0F);
-    if (ImGui::BeginCombo("Style##blockout",
-                          roofStyleLabel(draft.shell.roofStyle))) {
-      for (const cr::CreativeStructuralRoofStyle style : roofStyles) {
-        const bool selected = style == draft.shell.roofStyle;
-        if (ImGui::Selectable(roofStyleLabel(style), selected)) {
-          draft.shell.roofStyle = style;
+    if (ImGui::BeginCombo("Entrance side##blockout",
+                          cr::toString(draft.facade.entranceEdge).data())) {
+      for (const cr::CreativeWorldLayoutRoomEdge edge :
+           {cr::CreativeWorldLayoutRoomEdge::North,
+            cr::CreativeWorldLayoutRoomEdge::East,
+            cr::CreativeWorldLayoutRoomEdge::South,
+            cr::CreativeWorldLayoutRoomEdge::West}) {
+        const bool selected = draft.facade.entranceEdge == edge;
+        if (ImGui::Selectable(cr::toString(edge).data(), selected)) {
+          draft.facade.entranceEdge = edge;
         }
         if (selected) {
           ImGui::SetItemDefaultFocus();
@@ -777,27 +847,30 @@ void drawWorldLayoutBlockoutSettingsDrawer(
       ImGui::EndCombo();
     }
     ImGui::SetNextItemWidth(140.0F);
-    ImGui::InputDouble("Overhang##blockout", &draft.shell.roofOverhangCells,
-                       0.25, 1.0, "%.2f");
-    if (draft.shell.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
-      ImGui::SetNextItemWidth(140.0F);
-      if (ImGui::BeginCombo("Ridge##blockout",
-                            ridgeLabel(draft.shell.roofRidgeAxis))) {
-        for (const cr::CreativeStructuralRoofRidgeAxis axis : ridgeAxes) {
-          const bool selected = axis == draft.shell.roofRidgeAxis;
-          if (ImGui::Selectable(ridgeLabel(axis), selected)) {
-            draft.shell.roofRidgeAxis = axis;
-          }
-          if (selected) {
-            ImGui::SetItemDefaultFocus();
-          }
-        }
-        ImGui::EndCombo();
-      }
-      ImGui::SetNextItemWidth(140.0F);
-      ImGui::InputDouble("Pitch##blockout", &draft.shell.roofPitchDegrees,
-                         1.0, 5.0, "%.1f deg");
-    }
+    ImGui::InputDouble("Entrance offset##blockout",
+                       &draft.facade.entranceOffsetCells, 0.25, 1.0, "%.2f");
+  }
+  ImGui::Checkbox("Exterior windows##blockout",
+                  &draft.facade.includeExteriorWindows);
+
+  ImGui::SeparatorText("Structure");
+  ImGui::SetNextItemWidth(140.0F);
+  ImGui::InputDouble("Floor top##blockout", &draft.shell.floorTopLayer, 0.25,
+                     1.0, "%.3f");
+  ImGui::SetNextItemWidth(112.0F);
+  ImGui::InputDouble("Wall thickness##blockout",
+                     &draft.shell.wallThicknessCells, 0.05, 0.25, "%.3f");
+  static_cast<void>(drawBlockoutMaterialCombo(
+      "Exterior walls##blockout", draft.exteriorWallMaterial));
+  static_cast<void>(drawBlockoutMaterialCombo(
+      "Interior walls##blockout", draft.interiorWallMaterial));
+  ImGui::TextDisabled(
+      "Wall ownership follows the floor-plan topology automatically");
+
+  if (ImGui::TreeNode("Roof##blockout")) {
+    CreativeDesktopPropertyEditActivity roofActivity;
+    drawCreativeStructuralRoofSettingsWidgets(
+        draft.shell, roofActivity, "blockout_roof");
     ImGui::TreePop();
   }
 
@@ -812,6 +885,7 @@ void drawWorldLayoutBlockoutSettingsDrawer(
 void drawWorldLayoutBuildingBlockoutSection(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
+    cr::CreativeGridSettings grid,
     CreativeDesktopCommandFrame& commands) {
   CreativeEditorDesktopBlockoutEditDraft& edit =
       desktopUi.worldLayoutBlockoutEdit;
@@ -827,7 +901,7 @@ void drawWorldLayoutBuildingBlockoutSection(
         "%s", creativeEditorWorldLayoutBlockoutEditInSync(edit, state)
                   ? "In sync with source."
                   : "Source changed since this draft was read.");
-    drawWorldLayoutBlockoutSettingsDrawer(edit.settings);
+    drawWorldLayoutBlockoutSettingsDrawer(edit.settings, grid);
     ImGui::BeginDisabled(previewActive);
     if (ImGui::Button("Apply blockout")) {
       commands.push(
@@ -841,7 +915,8 @@ void drawWorldLayoutBuildingBlockoutSection(
       edit = {};
     }
   } else {
-    drawWorldLayoutBlockoutSettingsDrawer(desktopUi.worldLayoutBlockoutDraft);
+    drawWorldLayoutBlockoutSettingsDrawer(desktopUi.worldLayoutBlockoutDraft,
+                                          grid);
     ImGui::BeginDisabled(previewActive);
     if (ImGui::Button("Stage blockout")) {
       commands.push(
@@ -869,6 +944,13 @@ void drawWorldLayoutBuildingBlockoutSection(
 
 }  // namespace
 
+bool applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
+    cr::CreativeGridSettings grid,
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
+  return applyBlockoutArchitecturalProfile(settings, grid, kind);
+}
+
 bool creativeEditorWorldLayoutBlockoutEditInSync(
     const CreativeEditorDesktopBlockoutEditDraft& draft,
     const CreativeEditorWorldLayoutState& state) noexcept {
@@ -885,9 +967,10 @@ void drawCreativeEditorWorldLayoutCreateTools(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeCatalogState& catalog,
+    cr::CreativeGridSettings grid,
     CreativeDesktopCommandFrame& commands, bool unavailable) {
   ImGui::BeginDisabled(unavailable);
-  drawWorldLayoutBuildingBlockoutSection(desktopUi, state, commands);
+  drawWorldLayoutBuildingBlockoutSection(desktopUi, state, grid, commands);
   ImGui::Spacing();
   ImGui::Separator();
   drawWorldLayoutPalette(state, commands);

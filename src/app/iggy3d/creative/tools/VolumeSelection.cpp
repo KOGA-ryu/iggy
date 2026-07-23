@@ -39,6 +39,19 @@ std::string_view toString(CreativeVolumeSelectionPhase phase) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeVolumeFace face) noexcept {
+  switch (face) {
+    case CreativeVolumeFace::NegativeX: return "Negative X";
+    case CreativeVolumeFace::PositiveX: return "Positive X";
+    case CreativeVolumeFace::NegativeY: return "Negative Y";
+    case CreativeVolumeFace::PositiveY: return "Positive Y";
+    case CreativeVolumeFace::NegativeZ: return "Negative Z";
+    case CreativeVolumeFace::PositiveZ: return "Positive Z";
+    case CreativeVolumeFace::Count: break;
+  }
+  return "Unknown";
+}
+
 std::string_view toString(CreativeVolumeOperationKind operation) noexcept {
   switch (operation) {
     case CreativeVolumeOperationKind::Fill: return "Fill";
@@ -190,6 +203,220 @@ bool resizeCreativeVolumeSelectionHeight(CreativeVolumeSelection& selection,
   }
   selection.firstCell.y = static_cast<std::int32_t>(minY);
   selection.secondCell.y = static_cast<std::int32_t>(nextMaxY);
+  return true;
+}
+
+CreativeVolumeRegionFacts inspectCreativeVolumeRegion(
+    const CreativeVolumeSelection& selection) noexcept {
+  CreativeVolumeRegionFacts facts;
+  if (!creativeVolumeSelectionValid(selection)) {
+    return facts;
+  }
+  facts.exclusiveBounds = creativeVolumeGridBounds(selection);
+  facts.inclusiveMinimum = facts.exclusiveBounds.min;
+  facts.inclusiveMaximum = {
+      facts.exclusiveBounds.max.x - 1,
+      facts.exclusiveBounds.max.y - 1,
+      facts.exclusiveBounds.max.z - 1,
+  };
+  facts.dimensions = {
+      facts.exclusiveBounds.max.x - facts.exclusiveBounds.min.x,
+      facts.exclusiveBounds.max.y - facts.exclusiveBounds.min.y,
+      facts.exclusiveBounds.max.z - facts.exclusiveBounds.min.z,
+  };
+  facts.cellCount = creativeVolumeCellCount(selection);
+  facts.valid = facts.cellCount > 0U;
+  return facts;
+}
+
+bool setCreativeVolumeSelectionGridBounds(
+    CreativeVolumeSelection& selection,
+    CreativeGridBounds3 exclusiveBounds) noexcept {
+  if (!validCellSize(selection.cellSize) ||
+      !isFiniteCreativeVec3(selection.origin) ||
+      exclusiveBounds.max.x <= exclusiveBounds.min.x ||
+      exclusiveBounds.max.y <= exclusiveBounds.min.y ||
+      exclusiveBounds.max.z <= exclusiveBounds.min.z ||
+      exclusiveBounds.min.x == std::numeric_limits<std::int32_t>::max() ||
+      exclusiveBounds.min.y == std::numeric_limits<std::int32_t>::max() ||
+      exclusiveBounds.min.z == std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+
+  CreativeVolumeSelection candidate = selection;
+  candidate.phase = CreativeVolumeSelectionPhase::Complete;
+  candidate.firstCell = exclusiveBounds.min;
+  candidate.secondCell = {
+      exclusiveBounds.max.x - 1,
+      exclusiveBounds.max.y - 1,
+      exclusiveBounds.max.z - 1,
+  };
+  if (!creativeVolumeSelectionValid(candidate)) {
+    return false;
+  }
+  const CreativeGridBounds3 current = creativeVolumeGridBounds(selection);
+  if (creativeVolumeSelectionComplete(selection) &&
+      current.min.x == exclusiveBounds.min.x &&
+      current.min.y == exclusiveBounds.min.y &&
+      current.min.z == exclusiveBounds.min.z &&
+      current.max.x == exclusiveBounds.max.x &&
+      current.max.y == exclusiveBounds.max.y &&
+      current.max.z == exclusiveBounds.max.z) {
+    return false;
+  }
+  selection = candidate;
+  return true;
+}
+
+bool moveCreativeVolumeSelection(CreativeVolumeSelection& selection,
+                                 CreativeGridCoord3 deltaCells) noexcept {
+  if (!creativeVolumeSelectionValid(selection) ||
+      (deltaCells.x == 0 && deltaCells.y == 0 && deltaCells.z == 0)) {
+    return false;
+  }
+  const CreativeGridBounds3 bounds = creativeVolumeGridBounds(selection);
+  CreativeGridBounds3 moved;
+  const auto checkedAdd = [](std::int32_t value, std::int32_t delta,
+                             std::int32_t& out) noexcept {
+    const std::int64_t sum = static_cast<std::int64_t>(value) + delta;
+    if (sum < std::numeric_limits<std::int32_t>::min() ||
+        sum > std::numeric_limits<std::int32_t>::max()) {
+      return false;
+    }
+    out = static_cast<std::int32_t>(sum);
+    return true;
+  };
+  if (!checkedAdd(bounds.min.x, deltaCells.x, moved.min.x) ||
+      !checkedAdd(bounds.min.y, deltaCells.y, moved.min.y) ||
+      !checkedAdd(bounds.min.z, deltaCells.z, moved.min.z) ||
+      !checkedAdd(bounds.max.x, deltaCells.x, moved.max.x) ||
+      !checkedAdd(bounds.max.y, deltaCells.y, moved.max.y) ||
+      !checkedAdd(bounds.max.z, deltaCells.z, moved.max.z)) {
+    return false;
+  }
+  return setCreativeVolumeSelectionGridBounds(selection, moved);
+}
+
+bool resizeCreativeVolumeSelectionFace(CreativeVolumeSelection& selection,
+                                       CreativeVolumeFace face,
+                                       std::int32_t deltaCells) noexcept {
+  if (!creativeVolumeSelectionValid(selection) || deltaCells == 0 ||
+      face >= CreativeVolumeFace::Count) {
+    return false;
+  }
+  CreativeGridBounds3 resized = creativeVolumeGridBounds(selection);
+  const auto adjust = [deltaCells](std::int32_t value, bool negative,
+                                  std::int32_t& out) noexcept {
+    const std::int64_t next = static_cast<std::int64_t>(value) +
+                              (negative ? -static_cast<std::int64_t>(deltaCells)
+                                        : static_cast<std::int64_t>(deltaCells));
+    if (next < std::numeric_limits<std::int32_t>::min() ||
+        next > std::numeric_limits<std::int32_t>::max()) {
+      return false;
+    }
+    out = static_cast<std::int32_t>(next);
+    return true;
+  };
+  bool adjusted = false;
+  switch (face) {
+    case CreativeVolumeFace::NegativeX:
+      adjusted = adjust(resized.min.x, true, resized.min.x);
+      break;
+    case CreativeVolumeFace::PositiveX:
+      adjusted = adjust(resized.max.x, false, resized.max.x);
+      break;
+    case CreativeVolumeFace::NegativeY:
+      adjusted = adjust(resized.min.y, true, resized.min.y);
+      break;
+    case CreativeVolumeFace::PositiveY:
+      adjusted = adjust(resized.max.y, false, resized.max.y);
+      break;
+    case CreativeVolumeFace::NegativeZ:
+      adjusted = adjust(resized.min.z, true, resized.min.z);
+      break;
+    case CreativeVolumeFace::PositiveZ:
+      adjusted = adjust(resized.max.z, false, resized.max.z);
+      break;
+    case CreativeVolumeFace::Count: return false;
+  }
+  return adjusted && setCreativeVolumeSelectionGridBounds(selection, resized);
+}
+
+bool fitCreativeVolumeSelectionToObjects(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    double cellSize,
+    CreativeVec3 origin,
+    CreativeVolumeSelection& selection) noexcept {
+  if (!document.isValid() || objectIds.empty() || !validCellSize(cellSize) ||
+      !isFiniteCreativeVec3(origin)) {
+    return false;
+  }
+
+  CreativeVec3 minimum{
+      std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::infinity(),
+      std::numeric_limits<double>::infinity(),
+  };
+  CreativeVec3 maximum{
+      -std::numeric_limits<double>::infinity(),
+      -std::numeric_limits<double>::infinity(),
+      -std::numeric_limits<double>::infinity(),
+  };
+  for (const CreativeObjectId objectId : objectIds) {
+    const CreativeObject* object = document.findObject(objectId);
+    if (object == nullptr) {
+      return false;
+    }
+    const CreativeObjectWorldExtent extent =
+        resolveCreativeObjectWorldExtent(*object);
+    if (!extent.valid) {
+      return false;
+    }
+    minimum.x = std::min(minimum.x, extent.min.x);
+    minimum.y = std::min(minimum.y, extent.min.y);
+    minimum.z = std::min(minimum.z, extent.min.z);
+    maximum.x = std::max(maximum.x, extent.max.x);
+    maximum.y = std::max(maximum.y, extent.max.y);
+    maximum.z = std::max(maximum.z, extent.max.z);
+  }
+
+  CreativeGridBounds3 bounds;
+  const auto checkedGridLine = [cellSize](double value, double axisOrigin,
+                                          bool upper,
+                                          std::int32_t& out) noexcept {
+    const double scaled = (value - axisOrigin) / cellSize;
+    const double gridLine = upper ? std::ceil(scaled) : std::floor(scaled);
+    return checkedCoord(gridLine, out);
+  };
+  if (!checkedGridLine(minimum.x, origin.x, false, bounds.min.x) ||
+      !checkedGridLine(minimum.y, origin.y, false, bounds.min.y) ||
+      !checkedGridLine(minimum.z, origin.z, false, bounds.min.z) ||
+      !checkedGridLine(maximum.x, origin.x, true, bounds.max.x) ||
+      !checkedGridLine(maximum.y, origin.y, true, bounds.max.y) ||
+      !checkedGridLine(maximum.z, origin.z, true, bounds.max.z)) {
+    return false;
+  }
+  if (bounds.max.x <= bounds.min.x) {
+    if (bounds.min.x == std::numeric_limits<std::int32_t>::max()) return false;
+    bounds.max.x = bounds.min.x + 1;
+  }
+  if (bounds.max.y <= bounds.min.y) {
+    if (bounds.min.y == std::numeric_limits<std::int32_t>::max()) return false;
+    bounds.max.y = bounds.min.y + 1;
+  }
+  if (bounds.max.z <= bounds.min.z) {
+    if (bounds.min.z == std::numeric_limits<std::int32_t>::max()) return false;
+    bounds.max.z = bounds.min.z + 1;
+  }
+
+  CreativeVolumeSelection candidate = selection;
+  candidate.cellSize = cellSize;
+  candidate.origin = origin;
+  if (!setCreativeVolumeSelectionGridBounds(candidate, bounds)) {
+    return false;
+  }
+  selection = candidate;
   return true;
 }
 

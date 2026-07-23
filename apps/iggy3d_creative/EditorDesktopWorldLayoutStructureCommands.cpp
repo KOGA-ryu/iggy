@@ -22,7 +22,7 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
         result.message = "layout point: payload mismatch";
         break;
       }
-      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+      CreativeDesktopWorldLayoutLiveEditResult liveEdit =
           dispatchCreativeDesktopWorldLayoutImmediateEdit(
               editor.worldLayout, activeAppState,
               [&](CreativeEditorWorldLayoutState& target) {
@@ -31,6 +31,12 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
                     activeAppState.facade.document().gridSettings());
               },
               "desktop_world_layout_point_create");
+      if (liveEdit.accepted && editor.worldLayout.terrainPathDraft.active) {
+        const CreativeEditorWorldLayoutPreviewReceipt preview =
+            previewCreativeEditorWorldLayoutTerrainPathDraft(
+                editor.worldLayout, activeAppState.facade.document());
+        liveEdit.sceneChanged = liveEdit.sceneChanged || preview.changed;
+      }
       result.accepted = liveEdit.accepted;
       result.changed = liveEdit.changed;
       result.worldLayoutChanged = liveEdit.worldLayoutChanged;
@@ -55,7 +61,8 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
               [&](CreativeEditorWorldLayoutState& target,
                   CreativeEditorWorldLayoutGesturePhase phase) {
                 return applyCreativeEditorWorldLayoutGesture(
-                    target, phase, payload->point);
+                    target, phase, payload->point,
+                    activeAppState.facade.document().gridSettings());
               },
               "desktop_world_layout_gesture_create",
               "plan creation preview ready in 3D",
@@ -161,6 +168,120 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutSplitRoom: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutRoomSplitPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room split: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return splitCreativeEditorWorldLayoutRoom(
+                    target, payload->roomIndex, payload->axis,
+                    payload->coordinate);
+              },
+              "desktop_world_layout_room_split");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutMergeRooms: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutRoomMergePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room merge: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return mergeCreativeEditorWorldLayoutRooms(
+                    target, payload->primaryRoomIndex,
+                    payload->secondaryRoomIndex);
+              },
+              "desktop_world_layout_room_merge");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetRoomEdgeSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutRoomEdgeSettingsPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout wall settings: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return setCreativeEditorWorldLayoutRoomEdgeSettings(
+                    target, payload->request);
+              },
+              "desktop_world_layout_room_edge_settings");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSplitWall: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutWallSplitPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout wall split: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return splitCreativeEditorWorldLayoutWall(
+                    target, payload->topologyEdgeIndex,
+                    payload->offsetCells);
+              },
+              "desktop_world_layout_wall_split");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutMergeWalls: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutWallMergePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout wall merge: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return mergeCreativeEditorWorldLayoutWalls(
+                    target, payload->primaryTopologyEdgeIndex,
+                    payload->secondaryTopologyEdgeIndex);
+              },
+              "desktop_world_layout_wall_merge");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutManipulateRoom: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutRoomManipulationPayload>(command);
@@ -189,6 +310,67 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoomBoundary: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room boundary manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, activeAppState, payload->phase,
+              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoomBoundaryManipulationPhase
+                      phase) {
+                return applyCreativeEditorWorldLayoutRoomBoundaryManipulation(
+                    target, phase, payload->point,
+                    payload->toleranceCells);
+              },
+              "desktop_world_layout_room_boundary_drag",
+              "room boundary preview ready in 3D",
+              "room boundary updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoomCorner: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoomCornerManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout room corner manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, activeAppState, payload->phase,
+              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoomCornerManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutRoomCornerManipulation(
+                    target, phase, payload->point,
+                    payload->toleranceCells);
+              },
+              "desktop_world_layout_room_corner_drag",
+              "room corner preview ready in 3D",
+              "room corner updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
     case CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings: {
       const auto* payload = payloadAs<
           CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload>(
@@ -202,7 +384,8 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
       const CreativeEditorWorldLayoutEditReceipt receipt =
           setCreativeEditorWorldLayoutVerticalConnectorSettings(
               editor.worldLayout, payload->connectorIndex,
-              payload->settings);
+              payload->settings,
+              appState.facade.document().gridSettings());
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
@@ -305,7 +488,8 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
                   CreativeEditorWorldLayoutVerticalConnectorManipulationPhase
                       phase) {
                 return applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
-                    target, phase, payload->point, payload->toleranceCells);
+                    target, phase, payload->point, payload->toleranceCells,
+                    appState.facade.document().gridSettings());
               },
               "desktop_world_layout_vertical_connector_drag",
               "connector drag preview ready in 3D",
@@ -623,6 +807,37 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
       result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingRepairPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout building repair: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->issue.table,
+              payload->issue.index, payload->stableKey)) {
+        result.message = "layout building repair: stale target";
+        break;
+      }
+      const creative::CreativeGridSettings grid =
+          activeAppState.facade.document().gridSettings();
+      const CreativeDesktopWorldLayoutLiveEditResult repair =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return applyCreativeEditorWorldLayoutBuildingRepair(
+                    target, grid, payload->issue);
+              },
+              "desktop_world_layout_building_repair");
+      result.accepted = repair.accepted;
+      result.changed = repair.changed;
+      result.worldLayoutChanged = repair.worldLayoutChanged;
+      result.sceneChanged = repair.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

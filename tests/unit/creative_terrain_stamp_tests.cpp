@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
-#include <span>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -17,365 +17,256 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-const cr::CreativeTerrainControlPoint* controlAt(
-    const cr::CreativeTerrainStampPlan& plan,
-    cr::CreativeTerrainCoord2 coord) {
-  for (const cr::CreativeTerrainControlPoint& control : plan.controls()) {
-    if (control.coord == coord) {
-      return &control;
-    }
-  }
-  return nullptr;
+cr::CreativeTerrainHeightField makeHeightField(
+    cr::CreativeTerrainHeightFieldBounds bounds,
+    std::initializer_list<std::uint16_t> heights) {
+  cr::CreativeTerrainHeightField field;
+  const std::vector<std::uint16_t> values(heights);
+  static_cast<void>(field.replace(bounds, values));
+  return field;
 }
 
-bool copyIsRelativeBoundedAndTransactional() {
-  constexpr std::array controls{
-      cr::CreativeTerrainControlPoint{{9, 19}, 1U, 1U},
-      cr::CreativeTerrainControlPoint{{10, 20}, 2U, 2U},
-      cr::CreativeTerrainControlPoint{{11, 20}, 3U, 3U},
-      cr::CreativeTerrainControlPoint{{10, 22}, 4U, 4U},
-  };
+cr::CreativeTerrainHeightField makeHeightField(
+    cr::CreativeTerrainHeightFieldBounds bounds,
+    const std::vector<std::uint16_t>& heights) {
+  cr::CreativeTerrainHeightField field;
+  static_cast<void>(field.replace(bounds, heights));
+  return field;
+}
+
+cr::CreativeTerrainMaterialField makeMaterials(
+    std::initializer_list<cr::CreativeTerrainMaterialOverride> values) {
+  cr::CreativeTerrainMaterialField field;
+  std::vector<cr::CreativeTerrainMaterialEdit> edits;
+  edits.reserve(values.size());
+  for (const cr::CreativeTerrainMaterialOverride& value : values) {
+    edits.push_back(
+        cr::makeCreativeTerrainMaterialWeightEdit(value.coord, value.weights));
+  }
+  if (!edits.empty()) {
+    static_cast<void>(field.apply(edits));
+  }
+  return field;
+}
+
+cr::CreativeTerrainStamp captureStamp(
+    const cr::CreativeTerrainHeightField& height,
+    const cr::CreativeTerrainMaterialField& materials,
+    cr::CreativeTerrainCoord2 minimum,
+    cr::CreativeTerrainCoord2 maximum,
+    std::string_view assetId = "terrain-stamp-1",
+    std::string_view label = "Test Stamp") {
+  cr::CreativeTerrainStamp stamp;
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(height);
+  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
+      17U, 23U, surface, materials, minimum, maximum, assetId, label, 3U,
+      stamp));
+  return stamp;
+}
+
+bool copyCapturesExactHeightMaterialAndHolesTransactionally() {
+  const cr::CreativeTerrainHeightField source = makeHeightField(
+      {{10, 20}, 3U, 2U}, {2U, 0U, 4U, 5U, 6U, 7U});
+  const auto dirt = cr::creativeTerrainMaterialSolidWeights(
+      cr::CreativeTerrainMaterial::Dirt);
+  const auto stone = cr::creativeTerrainMaterialSolidWeights(
+      cr::CreativeTerrainMaterial::Stone);
+  const cr::CreativeTerrainMaterialField materials = makeMaterials(
+      {{{10, 20}, dirt}, {{12, 21}, stone}});
   cr::CreativeTerrainStamp stamp;
   const cr::CreativeTerrainStampCopyReceipt copied =
-      cr::copyCreativeTerrainRegionToStamp(17U, 23U, controls, {10, 20},
-                                           {11, 22}, stamp);
+      cr::copyCreativeTerrainRegionToStamp(
+          17U, 23U, cr::buildCreativeTerrainHeightSurfacePlan(source),
+          materials, {10, 20}, {12, 21}, "terrain-stamp-7", "Rock Shelf",
+          4U, stamp);
   const cr::CreativeTerrainStamp preserved = stamp;
   const cr::CreativeTerrainStampCopyReceipt empty =
-      cr::copyCreativeTerrainRegionToStamp(17U, 23U, controls, {30, 30},
-                                           {31, 31}, stamp);
+      cr::copyCreativeTerrainRegionToStamp(
+          17U, 23U, cr::buildCreativeTerrainHeightSurfacePlan(source),
+          materials, {30, 30}, {31, 31}, "terrain-stamp-8", "Empty", 1U,
+          stamp);
 
-  return expect(copied.accepted && copied.copiedControlCount == 3U &&
-                    stamp.controlCount == preserved.controlCount &&
-                    preserved.sourceDocumentId == 17U &&
-                    preserved.sourceRevision == 23U &&
-                    preserved.sourceMinimum == cr::CreativeTerrainCoord2{10, 20} &&
-                    preserved.widthCells == 2U && preserved.depthCells == 3U &&
-                    preserved.minimumHeightCells == 2U &&
-                    copied.minimumHeightCells == 2U &&
-                    preserved.items()[0].coord ==
-                        cr::CreativeTerrainCoord2{0, 0} &&
-                    preserved.items()[1].coord ==
-                        cr::CreativeTerrainCoord2{1, 0} &&
-                    preserved.items()[2].coord ==
-                        cr::CreativeTerrainCoord2{0, 2} &&
-                    preserved.contentSignature != 0U &&
-                    cr::isValidCreativeTerrainStamp(preserved),
-                "copy stores canonical source-local rods and stable identity") &&
+  return expect(copied.accepted && copied.copiedCellCount == 6U &&
+                    copied.copiedPresentCellCount == 5U &&
+                    copied.copiedMaterialCellCount == 2U &&
+                    stamp.assetId == "terrain-stamp-7" &&
+                    stamp.label == "Rock Shelf" && stamp.assetVersion == 4U &&
+                    stamp.sourceDocumentId == 17U &&
+                    stamp.sourceRevision == 23U &&
+                    stamp.sourceMinimum == cr::CreativeTerrainCoord2{10, 20} &&
+                    stamp.widthCells == 3U && stamp.depthCells == 2U &&
+                    stamp.minimumHeightCells == 2U &&
+                    stamp.heights ==
+                        std::vector<std::uint16_t>{2U, 0U, 4U, 5U, 6U, 7U} &&
+                    stamp.materials[0U] == dirt &&
+                    stamp.materials[1U] ==
+                        cr::creativeTerrainMaterialSolidWeights(
+                            cr::CreativeTerrainMaterial::Grass) &&
+                    stamp.materials[5U] == stone &&
+                    stamp.contentSignature != 0U &&
+                    cr::isValidCreativeTerrainStamp(stamp),
+                "copy captures exact dense heights materials holes and identity") &&
          expect(!empty.accepted &&
                     empty.status ==
                         cr::CreativeTerrainStampCopyStatus::EmptyRegion &&
                     stamp.contentSignature == preserved.contentSignature,
-                "rejected copy preserves the previous terrain clipboard");
+                "rejected copy preserves the previous terrain stamp");
 }
 
-bool elevationModesAndManualOffsetsAreAtomic() {
-  constexpr std::array source{
-      cr::CreativeTerrainControlPoint{{0, 0}, 2U, 2U},
-      cr::CreativeTerrainControlPoint{{1, 0}, 6U, 3U},
-  };
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, source, {0, 0}, {1, 0}, stamp));
+bool rotationMirrorAndElevationProduceOneExactCandidate() {
+  const cr::CreativeTerrainHeightField source =
+      makeHeightField({{0, 0}, 2U, 2U}, {2U, 0U, 6U, 4U});
+  const auto sand = cr::creativeTerrainMaterialSolidWeights(
+      cr::CreativeTerrainMaterial::Sand);
+  const cr::CreativeTerrainMaterialField sourceMaterials =
+      makeMaterials({{{0, 1}, sand}});
+  const cr::CreativeTerrainStamp stamp =
+      captureStamp(source, sourceMaterials, {0, 0}, {1, 1});
+
+  const cr::CreativeTerrainHeightField destination =
+      makeHeightField({{10, 20}, 3U, 3U},
+                      {9U, 9U, 9U, 9U, 9U, 9U, 9U, 9U, 9U});
+  const cr::CreativeTerrainMaterialField destinationMaterials;
   cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
-  request.targetMinimum = {10, 0};
-  request.elevationMode = cr::CreativeTerrainStampElevationMode::Surface;
-  request.targetSurfacePresent = true;
-  request.targetSurfaceHeightCells = 9U;
-  const cr::CreativeTerrainStampPlan aligned =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  request.manualHeightOffsetCells = -2;
-  const cr::CreativeTerrainStampPlan lowered =
-      cr::buildCreativeTerrainStampPlan(request);
-  request.targetSurfacePresent = false;
-  request.targetSurfaceHeightCells = 0U;
-  request.manualHeightOffsetCells = 1;
-  const cr::CreativeTerrainStampPlan emptySurface =
-      cr::buildCreativeTerrainStampPlan(request);
-  request.elevationMode = cr::CreativeTerrainStampElevationMode::Absolute;
-  request.targetSurfacePresent = true;
-  request.targetSurfaceHeightCells = 20U;
-  const cr::CreativeTerrainStampPlan absolute =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  request.elevationMode = cr::CreativeTerrainStampElevationMode::Surface;
-  request.targetSurfaceHeightCells = 64U;
-  request.manualHeightOffsetCells = 0;
-  const cr::CreativeTerrainStampPlan highOverflow =
-      cr::buildCreativeTerrainStampPlan(request);
-  request.elevationMode = cr::CreativeTerrainStampElevationMode::Absolute;
-  request.targetSurfacePresent = false;
-  request.targetSurfaceHeightCells = 0U;
-  request.manualHeightOffsetCells = -2;
-  const cr::CreativeTerrainStampPlan lowOverflow =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  return expect(aligned.accepted && aligned.appliedHeightOffsetCells == 7 &&
-                    aligned.targetSurfacePresent &&
-                    controlAt(aligned, {10, 0})->heightCells == 9U &&
-                    controlAt(aligned, {11, 0})->heightCells == 13U,
-                "surface mode aligns the copied minimum to authored terrain") &&
-         expect(lowered.accepted && lowered.appliedHeightOffsetCells == 5 &&
-                    controlAt(lowered, {10, 0})->heightCells == 7U &&
-                    controlAt(lowered, {11, 0})->heightCells == 11U,
-                "manual offset applies after surface alignment") &&
-         expect(emptySurface.accepted &&
-                    emptySurface.appliedHeightOffsetCells == 1 &&
-                    controlAt(emptySurface, {10, 0})->heightCells == 3U,
-                "surface mode preserves source elevation over empty terrain") &&
-         expect(absolute.accepted && absolute.appliedHeightOffsetCells == 1 &&
-                    controlAt(absolute, {10, 0})->heightCells == 3U &&
-                    controlAt(absolute, {11, 0})->heightCells == 7U,
-                "absolute mode ignores destination height and applies manual offset") &&
-         expect(!highOverflow.accepted && !lowOverflow.accepted &&
-                    highOverflow.status ==
-                        cr::CreativeTerrainStampPlanStatus::HeightOutOfRange &&
-                    lowOverflow.status ==
-                        cr::CreativeTerrainStampPlanStatus::HeightOutOfRange &&
-                    highOverflow.editCount == 0U &&
-                    lowOverflow.editCount == 0U &&
-                    highOverflow.targetMaximum ==
-                        cr::CreativeTerrainCoord2{11, 0},
-                "height overflow rejects atomically with a positionable footprint");
-}
-
-bool copyRejectsInvalidInputsWithoutClobberingClipboard() {
-  constexpr std::array valid{
-      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 2U},
-  };
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      2U, 3U, valid, {0, 0}, {0, 0}, stamp));
-  const cr::CreativeTerrainStamp preserved = stamp;
-  constexpr std::array unsorted{
-      cr::CreativeTerrainControlPoint{{1, 0}, 4U, 2U},
-      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 2U},
-  };
-  const cr::CreativeTerrainStampCopyReceipt invalidSource =
-      cr::copyCreativeTerrainRegionToStamp(2U, 3U, unsorted, {0, 0},
-                                           {1, 0}, stamp);
-  const cr::CreativeTerrainStampCopyReceipt reversedBounds =
-      cr::copyCreativeTerrainRegionToStamp(2U, 3U, valid, {1, 0},
-                                           {0, 0}, stamp);
-  const cr::CreativeTerrainStampCopyReceipt oversizedBounds =
-      cr::copyCreativeTerrainRegionToStamp(
-          2U, 3U, valid,
-          {std::numeric_limits<std::int32_t>::min(), 0}, {-1, 0}, stamp);
-
-  return expect(!invalidSource.accepted &&
-                    invalidSource.status ==
-                        cr::CreativeTerrainStampCopyStatus::InvalidSource,
-                "copy rejects non-canonical source controls") &&
-         expect(!reversedBounds.accepted && !oversizedBounds.accepted &&
-                    reversedBounds.status ==
-                        cr::CreativeTerrainStampCopyStatus::InvalidBounds &&
-                    oversizedBounds.status ==
-                        cr::CreativeTerrainStampCopyStatus::InvalidBounds,
-                "copy rejects reversed and unrenderable footprint bounds") &&
-         expect(stamp.contentSignature == preserved.contentSignature &&
-                    stamp.controlCount == preserved.controlCount,
-                "every rejected copy preserves the previous clipboard");
-}
-
-bool rotationAndMirrorsNormalizeTheFootprint() {
-  constexpr std::array controls{
-      cr::CreativeTerrainControlPoint{{10, 20}, 2U, 2U},
-      cr::CreativeTerrainControlPoint{{11, 20}, 3U, 3U},
-      cr::CreativeTerrainControlPoint{{10, 22}, 4U, 4U},
-  };
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, controls, {10, 20}, {11, 22}, stamp));
-  cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
-  request.targetMinimum = {100, 200};
+  request.stamp = stamp;
+  request.targetMinimum = {10, 20};
   request.quarterTurns = 1U;
-  const cr::CreativeTerrainStampPlan rotated =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  request.quarterTurns = 0U;
   request.mirrorX = true;
-  request.mirrorZ = true;
-  const cr::CreativeTerrainStampPlan mirrored =
-      cr::buildCreativeTerrainStampPlan(request);
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Surface;
+  request.manualHeightOffsetCells = -1;
+  const cr::CreativeTerrainStampPlan plan = cr::buildCreativeTerrainStampPlan(
+      destination, destinationMaterials,
+      cr::buildCreativeTerrainHeightSurfacePlan(destination), request);
 
-  return expect(rotated.accepted && rotated.finalControlCount == 3U &&
-                    rotated.editCount == 3U &&
-                    rotated.transformedWidthCells == 3U &&
-                    rotated.transformedDepthCells == 2U &&
-                    rotated.targetMaximum ==
-                        cr::CreativeTerrainCoord2{102, 201} &&
-                    controlAt(rotated, {102, 200})->heightCells == 2U &&
-                    controlAt(rotated, {102, 201})->heightCells == 3U &&
-                    controlAt(rotated, {100, 200})->heightCells == 4U,
-                "clockwise rotation swaps dimensions and keeps target at min") &&
-         expect(mirrored.accepted &&
-                    controlAt(mirrored, {101, 202})->heightCells == 2U &&
-                    controlAt(mirrored, {100, 202})->heightCells == 3U &&
-                    controlAt(mirrored, {101, 200})->heightCells == 4U,
-                "both mirrors remain exact integer-lattice transforms");
+  return expect(plan.accepted &&
+                    plan.status == cr::CreativeTerrainStampPlanStatus::Ready &&
+                    plan.transformedWidthCells == 2U &&
+                    plan.transformedDepthCells == 2U &&
+                    plan.targetMaximum == cr::CreativeTerrainCoord2{11, 21} &&
+                    plan.targetSurfacePresent &&
+                    plan.targetSurfaceHeightCells == 9U &&
+                    plan.appliedHeightOffsetCells == 6 &&
+                    plan.heightField.heightAt({11, 20}).value() == 9U &&
+                    plan.heightField.heightAt({10, 20}).value() == 10U &&
+                    plan.heightField.heightAt({11, 21}).value() == 8U &&
+                    plan.heightField.heightAt({10, 21}).value() == 12U &&
+                    plan.materialField.weightsAt({10, 21}) == sand,
+                "rotation mirror surface alignment and material transform stay exact");
 }
 
-bool mergeAndReplaceHaveDistinctAtomicSemantics() {
-  constexpr std::array source{
-      cr::CreativeTerrainControlPoint{{0, 0}, 5U, 2U},
-      cr::CreativeTerrainControlPoint{{1, 1}, 7U, 3U},
-  };
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, source, {0, 0}, {1, 1}, stamp));
-  constexpr std::array destination{
-      cr::CreativeTerrainControlPoint{{10, 10}, 1U, 1U},
-      cr::CreativeTerrainControlPoint{{11, 10}, 9U, 1U},
-      cr::CreativeTerrainControlPoint{{20, 20}, 8U, 2U},
-  };
+bool mergePreservesHolesAndReplaceClearsThem() {
+  const cr::CreativeTerrainHeightField source =
+      makeHeightField({{0, 0}, 2U, 2U}, {4U, 0U, 0U, 7U});
+  const auto stone = cr::creativeTerrainMaterialSolidWeights(
+      cr::CreativeTerrainMaterial::Stone);
+  const cr::CreativeTerrainMaterialField sourceMaterials =
+      makeMaterials({{{1, 1}, stone}});
+  const cr::CreativeTerrainStamp stamp =
+      captureStamp(source, sourceMaterials, {0, 0}, {1, 1});
+  const cr::CreativeTerrainHeightField destination =
+      makeHeightField({{10, 10}, 2U, 2U}, {1U, 2U, 3U, 4U});
+  const auto dirt = cr::creativeTerrainMaterialSolidWeights(
+      cr::CreativeTerrainMaterial::Dirt);
+  const cr::CreativeTerrainMaterialField destinationMaterials =
+      makeMaterials({{{11, 10}, dirt}, {{10, 11}, dirt}});
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(destination);
   cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
-  request.destinationControls = destination;
+  request.stamp = stamp;
   request.targetMinimum = {10, 10};
-  const cr::CreativeTerrainStampPlan merged =
-      cr::buildCreativeTerrainStampPlan(request);
+  request.elevationMode = cr::CreativeTerrainStampElevationMode::Absolute;
+  const cr::CreativeTerrainStampPlan merged = cr::buildCreativeTerrainStampPlan(
+      destination, destinationMaterials, surface, request);
   request.mode = cr::CreativeTerrainStampMode::Replace;
   const cr::CreativeTerrainStampPlan replaced =
-      cr::buildCreativeTerrainStampPlan(request);
+      cr::buildCreativeTerrainStampPlan(destination, destinationMaterials,
+                                        surface, request);
 
-  cr::CreativeTerrainField field;
-  std::array<cr::CreativeTerrainControlEdit, destination.size()> seed{};
-  for (std::size_t index = 0U; index < destination.size(); ++index) {
-    seed[index] = {cr::CreativeTerrainEditKind::Upsert, destination[index]};
-  }
-  static_cast<void>(field.apply(seed));
-  const cr::CreativeTerrainMutationReceipt applied = field.apply(replaced.items());
-  return expect(merged.accepted && merged.editCount == 2U &&
-                    merged.insertedControlCount == 1U &&
-                    merged.updatedControlCount == 1U &&
-                    merged.removedControlCount == 0U,
-                "merge updates stamp coordinates and preserves footprint extras") &&
-         expect(replaced.accepted && replaced.editCount == 3U &&
-                    replaced.insertedControlCount == 1U &&
-                    replaced.updatedControlCount == 1U &&
-                    replaced.removedControlCount == 1U && applied.accepted &&
-                    applied.changed && field.controlAt({10, 10}) != nullptr &&
-                    field.controlAt({10, 10})->heightCells == 5U &&
-                    field.controlAt({11, 10}) == nullptr &&
-                    field.controlAt({11, 11}) != nullptr &&
-                    field.controlAt({20, 20}) != nullptr,
-                "replace removes only destination-only rods inside its footprint");
+  return expect(merged.accepted &&
+                    merged.heightField.heightAt({10, 10}).value() == 4U &&
+                    merged.heightField.heightAt({11, 10}).value() == 2U &&
+                    merged.heightField.heightAt({10, 11}).value() == 3U &&
+                    merged.heightField.heightAt({11, 11}).value() == 7U &&
+                    merged.materialField.weightsAt({11, 10}) == dirt,
+                "merge writes present cells and preserves stamp holes") &&
+         expect(replaced.accepted &&
+                    replaced.heightField.heightAt({10, 10}).value() == 4U &&
+                    replaced.heightField.heightAt({11, 10}).value() == 0U &&
+                    replaced.heightField.heightAt({10, 11}).value() == 0U &&
+                    replaced.heightField.heightAt({11, 11}).value() == 7U &&
+                    replaced.materialField.weightsAt({11, 10}) ==
+                        cr::creativeTerrainMaterialSolidWeights(
+                            cr::CreativeTerrainMaterial::Grass) &&
+                    replaced.materialField.weightsAt({11, 11}) == stone,
+                "replace clears height and material at baked stamp holes");
 }
 
-bool exactEditCeilingAndFinalCapacityFailClosed() {
-  std::array<cr::CreativeTerrainControlPoint,
-             cr::kCreativeTerrainControlCapacity>
-      source{};
-  std::array<cr::CreativeTerrainControlPoint,
-             cr::kCreativeTerrainControlCapacity>
-      destination{};
-  for (std::size_t index = 0U; index < source.size(); ++index) {
-    source[index] = {{static_cast<std::int32_t>(index * 2U + 1U), 0}, 4U, 1U};
-    destination[index] = {
-        {static_cast<std::int32_t>(index * 2U), 0}, 3U, 1U};
-  }
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, source, {0, 0}, {511, 0}, stamp));
+bool invalidOverflowAndCapacityRequestsFailAtomically() {
+  const cr::CreativeTerrainHeightField source =
+      makeHeightField({{0, 0}, 2U, 1U}, {1U, 64U});
+  cr::CreativeTerrainStamp stamp =
+      captureStamp(source, {}, {0, 0}, {1, 0});
+  const cr::CreativeTerrainHeightField destination =
+      makeHeightField({{0, 0}, 1U, 1U}, {4U});
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(destination);
   cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
-  request.destinationControls = destination;
-  request.mode = cr::CreativeTerrainStampMode::Replace;
-  const cr::CreativeTerrainStampPlan exact =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  cr::CreativeTerrainStamp one;
-  constexpr std::array oneSource{
-      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 1U},
-  };
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, oneSource, {0, 0}, {0, 0}, one));
-  request.stamp = &one;
-  request.mode = cr::CreativeTerrainStampMode::Merge;
-  request.targetMinimum = {1000, 0};
-  const cr::CreativeTerrainStampPlan overflow =
-      cr::buildCreativeTerrainStampPlan(request);
-
-  return expect(exact.accepted &&
-                    exact.editCount == cr::kCreativeTerrainStampEditCapacity &&
-                    exact.insertedControlCount ==
-                        cr::kCreativeTerrainControlCapacity &&
-                    exact.removedControlCount ==
-                        cr::kCreativeTerrainControlCapacity,
-                "replace supports the exact 512-edit remove-plus-upsert ceiling") &&
-         expect(!overflow.accepted && overflow.editCount == 0U &&
-                    overflow.status ==
-                        cr::CreativeTerrainStampPlanStatus::CapacityExceeded,
-                "merge rejects a 257th final rod without partial edits");
-}
-
-bool invalidAndOverflowRequestsDoNotProducePlans() {
-  constexpr std::array source{
-      cr::CreativeTerrainControlPoint{{0, 0}, 4U, 1U},
-  };
-  cr::CreativeTerrainStamp stamp;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, source, {0, 0}, {1, 0}, stamp));
-  cr::CreativeTerrainStampRequest request;
-  request.stamp = &stamp;
+  request.stamp = stamp;
   request.targetMinimum = {std::numeric_limits<std::int32_t>::max(), 0};
-  const cr::CreativeTerrainStampPlan overflow =
-      cr::buildCreativeTerrainStampPlan(request);
-  cr::CreativeTerrainStamp singleCell;
-  static_cast<void>(cr::copyCreativeTerrainRegionToStamp(
-      1U, 1U, source, {0, 0}, {0, 0}, singleCell));
-  request.stamp = &singleCell;
-  const cr::CreativeTerrainStampPlan exclusiveBoundsOverflow =
-      cr::buildCreativeTerrainStampPlan(request);
-  request.stamp = &stamp;
+  const cr::CreativeTerrainStampPlan coordinateOverflow =
+      cr::buildCreativeTerrainStampPlan(destination, {}, surface, request);
   request.targetMinimum = {};
   request.quarterTurns = 4U;
-  const cr::CreativeTerrainStampPlan invalid =
-      cr::buildCreativeTerrainStampPlan(request);
-  stamp.contentSignature ^= 1U;
+  const cr::CreativeTerrainStampPlan invalidRotation =
+      cr::buildCreativeTerrainStampPlan(destination, {}, surface, request);
   request.quarterTurns = 0U;
-  const cr::CreativeTerrainStampPlan corrupt =
-      cr::buildCreativeTerrainStampPlan(request);
+  request.manualHeightOffsetCells = 1;
+  const cr::CreativeTerrainStampPlan heightOverflow =
+      cr::buildCreativeTerrainStampPlan(destination, {}, surface, request);
   stamp.contentSignature ^= 1U;
-  ++stamp.minimumHeightCells;
-  const cr::CreativeTerrainStampPlan corruptMinimum =
-      cr::buildCreativeTerrainStampPlan(request);
+  request.stamp = stamp;
+  request.manualHeightOffsetCells = 0;
+  const cr::CreativeTerrainStampPlan corrupt =
+      cr::buildCreativeTerrainStampPlan(destination, {}, surface, request);
 
-  return expect(!overflow.accepted && overflow.editCount == 0U &&
-                    overflow.status ==
+  const cr::CreativeTerrainHeightField huge = makeHeightField(
+      {{0, 0}, 128U, 64U}, std::vector<std::uint16_t>(8192U, 4U));
+  request.stamp = captureStamp(source, {}, {0, 0}, {1, 0});
+  request.targetMinimum = {1000, 1000};
+  const cr::CreativeTerrainStampPlan unionCapacity =
+      cr::buildCreativeTerrainStampPlan(
+          huge, {}, cr::buildCreativeTerrainHeightSurfacePlan(huge), request);
+
+  return expect(!coordinateOverflow.accepted &&
+                    coordinateOverflow.status ==
                         cr::CreativeTerrainStampPlanStatus::CoordinateOverflow,
-                "transformed footprint overflow rejects before output") &&
-         expect(!invalid.accepted && invalid.editCount == 0U &&
-                    invalid.status ==
+                "coordinate overflow rejects before output") &&
+         expect(!invalidRotation.accepted &&
+                    invalidRotation.status ==
                         cr::CreativeTerrainStampPlanStatus::InvalidRequest,
-                "invalid rotation rejects before output") &&
-         expect(!exclusiveBoundsOverflow.accepted &&
-                    exclusiveBoundsOverflow.editCount == 0U &&
-                    exclusiveBoundsOverflow.status ==
-                        cr::CreativeTerrainStampPlanStatus::CoordinateOverflow,
-                "exclusive render bound overflow rejects a max-coordinate cell") &&
-         expect(!corrupt.accepted && corrupt.editCount == 0U &&
+                "invalid transform rejects before output") &&
+         expect(!heightOverflow.accepted &&
+                    heightOverflow.status ==
+                        cr::CreativeTerrainStampPlanStatus::HeightOutOfRange,
+                "height overflow rejects atomically") &&
+         expect(!corrupt.accepted &&
                     corrupt.status ==
                         cr::CreativeTerrainStampPlanStatus::InvalidStamp,
-                "stamp signature corruption fails closed") &&
-         expect(!corruptMinimum.accepted && corruptMinimum.editCount == 0U &&
-                    corruptMinimum.status ==
-                        cr::CreativeTerrainStampPlanStatus::InvalidStamp,
-                "copied minimum-height corruption fails closed");
+                "content corruption rejects atomically") &&
+         expect(!unionCapacity.accepted &&
+                    unionCapacity.status ==
+                        cr::CreativeTerrainStampPlanStatus::CapacityExceeded,
+                "output union beyond terrain capacity rejects atomically");
 }
 
 }  // namespace
 
 int main() {
   bool ok = true;
-  ok = copyIsRelativeBoundedAndTransactional() && ok;
-  ok = copyRejectsInvalidInputsWithoutClobberingClipboard() && ok;
-  ok = elevationModesAndManualOffsetsAreAtomic() && ok;
-  ok = rotationAndMirrorsNormalizeTheFootprint() && ok;
-  ok = mergeAndReplaceHaveDistinctAtomicSemantics() && ok;
-  ok = exactEditCeilingAndFinalCapacityFailClosed() && ok;
-  ok = invalidAndOverflowRequestsDoNotProducePlans() && ok;
+  ok = copyCapturesExactHeightMaterialAndHolesTransactionally() && ok;
+  ok = rotationMirrorAndElevationProduceOneExactCandidate() && ok;
+  ok = mergePreservesHolesAndReplaceClearsThem() && ok;
+  ok = invalidOverflowAndCapacityRequestsFailAtomically() && ok;
   return ok ? 0 : 1;
 }

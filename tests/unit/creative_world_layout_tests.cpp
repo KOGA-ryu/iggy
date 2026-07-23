@@ -1,9 +1,17 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutAdoption.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/physics/PhysicsCollisionQueries.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,9 +19,11 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -91,6 +101,59 @@ bool terrainGroundedBuildingsShiftAsOneAndFillRelief() {
                 "foundation fills bounded terrain relief");
 }
 
+bool stagedLandformGroundsBuildingAgainstPreviewTerrain() {
+  cr::CreativeDocument document = makeDocument(79U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "staged_landform_grounding";
+
+  cr::CreativeWorldLayoutTerrainProfile plateau;
+  plateau.stableKey = "building_pad";
+  plateau.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  plateau.usesLandformRecipe = true;
+  plateau.landform.kind = cr::CreativeTerrainLandformKind::Plateau;
+  plateau.landform.bounds = {{0, 0}, 2U, 2U};
+  plateau.landform.baseHeightCells = 1U;
+  plateau.landform.targetHeightCells = 5U;
+  plateau.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  plateau.landform.edgeWidthCells = 0U;
+  layout.terrainProfiles.push_back(plateau);
+
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "plateau_house";
+  building.name = "Plateau House";
+  building.rootFootprint = {{0, 0}, {2, 2}};
+  building.groundingMode =
+      cr::CreativeWorldLayoutGroundingMode::Foundation;
+  building.maximumGroundReliefCells = 0U;
+  layout.buildings.push_back(building);
+  layout.levels.push_back(
+      {0U, "ground", "Ground", 0.05, 3U, 1U, 1U, 1U});
+  layout.rooms.push_back(
+      {0U, 0U, "room", "Plateau Room", {{0, 0}, {2, 2}}, 0.25});
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  cr::Facade facade;
+  static_cast<void>(facade.installDocument(std::move(document)));
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      compiled.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlan(facade, compiled.plan)
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeObject* floor =
+      findNamed(facade.document(), "Plateau Room Floor");
+
+  return expect(compiled.receipt.accepted &&
+                    compiled.receipt.groundedBuildingCount == 1U &&
+                    compiled.plan.terrainOperationMutations.size() == 1U &&
+                    compiled.plan.terrainOperationMutations[0].operationKind ==
+                        cr::CreativeTerrainOperationKind::Landform,
+                "building compile stages the landform before grounding") &&
+         expect(applied.accepted && applied.changed && floor != nullptr &&
+                    near(floor->bounds.min.y, 6.0) &&
+                    near(floor->bounds.max.y, 6.05),
+                "building floor rests on the staged plateau surface");
+}
+
 bool denseTerrainRevisionInvalidatesGroundedPlans() {
   cr::CreativeDocument document = makeDocument(77U);
   constexpr std::array<std::uint16_t, 1U> firstHeight{2U};
@@ -142,6 +205,57 @@ cr::CreativeAppState makeAppState(cr::CreativeDocumentId id) {
   cr::CreativeAppState appState;
   static_cast<void>(appState.facade.installDocument(makeDocument(id)));
   return appState;
+}
+
+cr::CreativeWorldLayoutTerrainPath terrainPath(std::string key,
+                                               std::int32_t z,
+                                               std::uint16_t height,
+                                               std::uint16_t halfWidth = 1U) {
+  cr::CreativeWorldLayoutTerrainPath path;
+  path.stableKey = std::move(key);
+  path.recipe.kind = cr::CreativeTerrainPathKind::Road;
+  path.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  path.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  path.recipe.material = cr::CreativeTerrainMaterial::Dirt;
+  path.recipe.nextPointId = 3U;
+  path.recipe.points = {
+      {1U, {0, z}, height, halfWidth, 1U, 0},
+      {2U, {8, z}, height, halfWidth, 1U, 0},
+  };
+  return path;
+}
+
+cr::CreativeWorldLayoutTerrainProfile landform(
+    std::string key,
+    cr::CreativeTerrainLandformKind kind =
+        cr::CreativeTerrainLandformKind::Terrace) {
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = std::move(key);
+  profile.kind = cr::creativeTerrainRecipeKind(kind);
+  profile.usesLandformRecipe = true;
+  profile.landform.kind = kind;
+  profile.landform.bounds = {{0, 0}, 8U, 4U};
+  profile.landform.baseHeightCells = 2U;
+  profile.landform.targetHeightCells = 8U;
+  profile.landform.terraceCount = 4U;
+  profile.landform.direction =
+      cr::CreativeTerrainLandformDirection::PositiveX;
+  profile.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  profile.landform.edgeWidthCells = 0U;
+  profile.landform.material = cr::CreativeTerrainMaterial::Stone;
+  return profile;
+}
+
+const cr::CreativeTerrainOperation* findTerrainOperation(
+    const cr::CreativeDocument& document,
+    std::string_view sourceKey) {
+  const auto& operations = document.terrainOperationStack().operations;
+  const auto found = std::find_if(
+      operations.begin(), operations.end(),
+      [sourceKey](const cr::CreativeTerrainOperation& operation) {
+        return operation.sourceKey == sourceKey;
+      });
+  return found == operations.end() ? nullptr : &*found;
 }
 
 const cr::CreativeObject* findNamed(const cr::CreativeDocument& document,
@@ -275,15 +389,23 @@ cr::CreativeWorldLayout transformableBuildingLayout() {
       {0U, "wall_v", "Vertical Wall", {14, 20}, {14, 26}, 0.5, 3U, 0.25},
   };
 
+  const auto openDoor = [](cr::CreativeDoorHingeSide hinge,
+                           cr::CreativeDoorSwingSide swing) {
+    cr::CreativeDoorSettings settings;
+    settings.hingeSide = hinge;
+    settings.swingSide = swing;
+    settings.initialState = cr::CreativeDoorInitialState::Open;
+    return settings;
+  };
   const auto addRoomDoor =
       [&](std::string key, cr::CreativeWorldLayoutRoomEdge edge, double offset,
-          cr::CreativeBuildingOpeningPose pose) {
+          cr::CreativeDoorSettings door) {
         cr::CreativeWorldLayoutOpening opening;
         opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
         opening.roomIndex = 0U;
         opening.roomEdge = edge;
         opening.kind = cr::CreativeBuildingOpeningKind::Door;
-        opening.pose = pose;
+        opening.door = door;
         opening.stableKey = std::move(key);
         opening.name = opening.stableKey;
         opening.centerOffsetCells = offset;
@@ -292,22 +414,25 @@ cr::CreativeWorldLayout transformableBuildingLayout() {
         layout.openings.push_back(std::move(opening));
       };
   addRoomDoor("door_n", cr::CreativeWorldLayoutRoomEdge::North, 1.0,
-              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+              openDoor(cr::CreativeDoorHingeSide::MinimumEdge,
+                       cr::CreativeDoorSwingSide::PositiveNormal));
   addRoomDoor("door_e", cr::CreativeWorldLayoutRoomEdge::East, 1.0,
-              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+              openDoor(cr::CreativeDoorHingeSide::MinimumEdge,
+                       cr::CreativeDoorSwingSide::PositiveNormal));
   addRoomDoor("door_s", cr::CreativeWorldLayoutRoomEdge::South, 2.0,
-              cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal);
+              openDoor(cr::CreativeDoorHingeSide::MaximumEdge,
+                       cr::CreativeDoorSwingSide::NegativeNormal));
   addRoomDoor("door_w", cr::CreativeWorldLayoutRoomEdge::West, 3.0,
-              cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal);
+              openDoor(cr::CreativeDoorHingeSide::MaximumEdge,
+                       cr::CreativeDoorSwingSide::PositiveNormal));
 
   const auto addWallDoor = [&](std::string key, std::size_t wallIndex,
-                               double offset,
-                               cr::CreativeBuildingOpeningPose pose) {
+                               double offset, cr::CreativeDoorSettings door) {
     cr::CreativeWorldLayoutOpening opening;
     opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
     opening.wallIndex = wallIndex;
     opening.kind = cr::CreativeBuildingOpeningKind::Door;
-    opening.pose = pose;
+    opening.door = door;
     opening.stableKey = std::move(key);
     opening.name = opening.stableKey;
     opening.centerOffsetCells = offset;
@@ -316,14 +441,46 @@ cr::CreativeWorldLayout transformableBuildingLayout() {
     layout.openings.push_back(std::move(opening));
   };
   addWallDoor("door_wall_h", 0U, 2.0,
-              cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+              openDoor(cr::CreativeDoorHingeSide::MinimumEdge,
+                       cr::CreativeDoorSwingSide::PositiveNormal));
   addWallDoor("door_wall_v", 1U, 4.0,
-              cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal);
+              openDoor(cr::CreativeDoorHingeSide::MaximumEdge,
+                       cr::CreativeDoorSwingSide::NegativeNormal));
+
+  cr::CreativeWorldLayoutOpening window;
+  window.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  window.wallIndex = 0U;
+  window.kind = cr::CreativeBuildingOpeningKind::Window;
+  window.window.insertKind = cr::CreativeWindowInsertKind::PairedShutters;
+  window.stableKey = "window_wall_h";
+  window.name = "Shutter Window";
+  window.centerOffsetCells = 6.0;
+  window.widthCells = 1.0;
+  window.cutoutBottomCells = 1.0;
+  window.cutoutHeightCells = 1.0;
+  window.insertBottomCells = 1.0;
+  window.insertHeightCells = 1.0;
+  layout.openings.push_back(window);
 
   cr::CreativeWorldLayoutTerrainProfile terrain;
   terrain.stableKey = "unowned_terrain";
   terrain.center = {12, 22};
   layout.terrainProfiles.push_back(terrain);
+  return layout;
+}
+
+cr::CreativeWorldLayout roofApertureBuildingLayout() {
+  cr::CreativeWorldLayout layout = transformableBuildingLayout();
+  cr::CreativeWorldLayoutRoofAperture aperture;
+  aperture.levelIndex = 0U;
+  aperture.kind = cr::CreativeStructuralRoofApertureKind::Skylight;
+  aperture.stableKey = "roof_skylight";
+  aperture.name = "Roof Skylight";
+  aperture.minimumXCells = 12.25;
+  aperture.maximumXCells = 13.75;
+  aperture.minimumZCells = 21.0;
+  aperture.maximumZCells = 22.5;
+  layout.roofApertures.push_back(std::move(aperture));
   return layout;
 }
 
@@ -361,11 +518,31 @@ cr::CreativeWorldLayout verticalConnectorBuildingLayout() {
 bool sameBuildingTransformGeometry(const cr::CreativeWorldLayout &lhs,
                                    const cr::CreativeWorldLayout &rhs) {
   if (lhs.buildings.size() != rhs.buildings.size() ||
+      lhs.levels.size() != rhs.levels.size() ||
       lhs.rooms.size() != rhs.rooms.size() ||
       lhs.boxes.size() != rhs.boxes.size() ||
       lhs.walls.size() != rhs.walls.size() ||
       lhs.openings.size() != rhs.openings.size()) {
     return false;
+  }
+  for (std::size_t index = 0U; index < lhs.levels.size(); ++index) {
+    const cr::CreativeWorldLayoutLevel& left = lhs.levels[index];
+    const cr::CreativeWorldLayoutLevel& right = rhs.levels[index];
+    if (left.buildingIndex != right.buildingIndex ||
+        left.stableKey != right.stableKey || left.name != right.name ||
+        left.floorTopLayer != right.floorTopLayer ||
+        left.wallHeightCells != right.wallHeightCells ||
+        left.floorThicknessLayers != right.floorThicknessLayers ||
+        left.ceilingThicknessLayers != right.ceilingThicknessLayers ||
+        left.roofThicknessLayers != right.roofThicknessLayers ||
+        left.roofStyle != right.roofStyle ||
+        left.roofRidgeAxis != right.roofRidgeAxis ||
+        left.roofPitchDegrees != right.roofPitchDegrees ||
+        left.roofOverhangCells != right.roofOverhangCells ||
+        left.roofSlopeDirection != right.roofSlopeDirection ||
+        left.roofMaterial != right.roofMaterial) {
+      return false;
+    }
   }
   for (std::size_t index = 0U; index < lhs.buildings.size(); ++index) {
     if (lhs.buildings[index].stableKey != rhs.buildings[index].stableKey ||
@@ -408,7 +585,8 @@ bool sameBuildingTransformGeometry(const cr::CreativeWorldLayout &lhs,
         left.wallIndex != right.wallIndex ||
         left.roomIndex != right.roomIndex || left.roomEdge != right.roomEdge ||
         left.centerOffsetCells != right.centerOffsetCells ||
-        left.pose != right.pose) {
+        !(left.door == right.door) || !(left.window == right.window) ||
+        left.facing != right.facing) {
       return false;
     }
   }
@@ -456,62 +634,95 @@ bool buildingTransformPreservesHostedOpeningSemantics() {
              layout.openings[0].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::East &&
                  layout.openings[0].centerOffsetCells == 1.0 &&
-                 layout.openings[0].pose == cr::CreativeBuildingOpeningPose::
-                                                OpenFromStartNegativeNormal &&
+                 layout.openings[0].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MaximumEdge &&
+                 layout.openings[0].door.swingSide ==
+                     cr::CreativeDoorSwingSide::NegativeNormal &&
+                 layout.openings[0].facing ==
+                     cr::CreativeBuildingOpeningFacing::NegativeNormal &&
                  layout.openings[1].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::South &&
                  layout.openings[1].centerOffsetCells == 3.0 &&
-                 layout.openings[1].pose == cr::CreativeBuildingOpeningPose::
-                                                OpenFromEndPositiveNormal &&
+                 layout.openings[1].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MaximumEdge &&
+                 layout.openings[1].door.swingSide ==
+                     cr::CreativeDoorSwingSide::PositiveNormal &&
+                 layout.openings[1].facing ==
+                     cr::CreativeBuildingOpeningFacing::PositiveNormal &&
                  layout.openings[2].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::West &&
                  layout.openings[2].centerOffsetCells == 2.0 &&
-                 layout.openings[2].pose == cr::CreativeBuildingOpeningPose::
-                                                OpenFromEndPositiveNormal &&
+                 layout.openings[2].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MinimumEdge &&
+                 layout.openings[2].door.swingSide ==
+                     cr::CreativeDoorSwingSide::PositiveNormal &&
                  layout.openings[3].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::North &&
                  layout.openings[3].centerOffsetCells == 1.0 &&
-                 layout.openings[3].pose == cr::CreativeBuildingOpeningPose::
-                                                OpenFromStartPositiveNormal,
+                 layout.openings[3].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MinimumEdge &&
+                 layout.openings[3].door.swingSide ==
+                     cr::CreativeDoorSwingSide::PositiveNormal,
              "room-edge direction, offset, hinge, and normal remap together") &&
          expect(
              layout.openings[4].centerOffsetCells == 2.0 &&
-                 layout.openings[4].pose == cr::CreativeBuildingOpeningPose::
-                                                OpenFromStartNegativeNormal &&
+                 layout.openings[4].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MaximumEdge &&
+                 layout.openings[4].door.swingSide ==
+                     cr::CreativeDoorSwingSide::NegativeNormal &&
                  layout.openings[5].centerOffsetCells == 4.0 &&
-                 layout.openings[5].pose ==
-                     cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal,
-             "standalone-wall offsets retain start-to-end parameterization") &&
+                 layout.openings[5].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MinimumEdge &&
+                 layout.openings[5].door.swingSide ==
+                     cr::CreativeDoorSwingSide::NegativeNormal &&
+                 layout.openings[6].window.insertKind ==
+                     cr::CreativeWindowInsertKind::PairedShutters,
+             "standalone-wall offsets and window treatment survive transform") &&
          expect(
              mirrorX.accepted && mirrorZ.accepted &&
                  mirrorX.transformed.openings[0].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::North &&
                  mirrorX.transformed.openings[0].centerOffsetCells == 5.0 &&
-                 mirrorX.transformed.openings[0].pose ==
-                     cr::CreativeBuildingOpeningPose::
-                         OpenFromEndPositiveNormal &&
+                 mirrorX.transformed.openings[0].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MaximumEdge &&
+                 mirrorX.transformed.openings[0].door.swingSide ==
+                     cr::CreativeDoorSwingSide::PositiveNormal &&
                  mirrorX.transformed.openings[1].roomEdge ==
                      cr::CreativeWorldLayoutRoomEdge::West &&
-                 mirrorX.transformed.openings[1].pose ==
-                     cr::CreativeBuildingOpeningPose::
-                         OpenFromStartNegativeNormal &&
-                 mirrorX.transformed.openings[5].pose ==
-                     cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal,
+                 mirrorX.transformed.openings[1].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MaximumEdge &&
+                 mirrorX.transformed.openings[1].door.swingSide ==
+                     cr::CreativeDoorSwingSide::NegativeNormal &&
+                 mirrorX.transformed.openings[0].facing ==
+                     cr::CreativeBuildingOpeningFacing::PositiveNormal &&
+                 mirrorX.transformed.openings[1].facing ==
+                     cr::CreativeBuildingOpeningFacing::NegativeNormal &&
+                 mirrorX.transformed.openings[5].door.hingeSide ==
+                     cr::CreativeDoorHingeSide::MinimumEdge &&
+                 mirrorX.transformed.openings[5].door.swingSide ==
+                     cr::CreativeDoorSwingSide::PositiveNormal,
              "mirror X reverses canonical edges and vertical normals") &&
          expect(mirrorZ.transformed.openings[0].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::South &&
-                    mirrorZ.transformed.openings[0].pose ==
-                        cr::CreativeBuildingOpeningPose::
-                            OpenFromStartNegativeNormal &&
+                    mirrorZ.transformed.openings[0].door.hingeSide ==
+                        cr::CreativeDoorHingeSide::MaximumEdge &&
+                    mirrorZ.transformed.openings[0].door.swingSide ==
+                        cr::CreativeDoorSwingSide::NegativeNormal &&
                     mirrorZ.transformed.openings[1].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::East &&
                     mirrorZ.transformed.openings[1].centerOffsetCells == 3.0 &&
-                    mirrorZ.transformed.openings[1].pose ==
-                        cr::CreativeBuildingOpeningPose::
-                            OpenFromEndPositiveNormal &&
-                    mirrorZ.transformed.openings[4].pose ==
-                        cr::CreativeBuildingOpeningPose::
-                            OpenFromStartNegativeNormal,
+                    mirrorZ.transformed.openings[1].door.hingeSide ==
+                        cr::CreativeDoorHingeSide::MaximumEdge &&
+                    mirrorZ.transformed.openings[1].door.swingSide ==
+                        cr::CreativeDoorSwingSide::PositiveNormal &&
+                    mirrorZ.transformed.openings[0].facing ==
+                        cr::CreativeBuildingOpeningFacing::NegativeNormal &&
+                    mirrorZ.transformed.openings[1].facing ==
+                        cr::CreativeBuildingOpeningFacing::PositiveNormal &&
+                    mirrorZ.transformed.openings[4].door.hingeSide ==
+                        cr::CreativeDoorHingeSide::MaximumEdge &&
+                    mirrorZ.transformed.openings[4].door.swingSide ==
+                        cr::CreativeDoorSwingSide::NegativeNormal,
                 "mirror Z reverses canonical edges and horizontal normals") &&
          expect(layout.terrainProfiles[0].center ==
                     source.terrainProfiles[0].center,
@@ -521,7 +732,13 @@ bool buildingTransformPreservesHostedOpeningSemantics() {
 }
 
 bool buildingTransformsRoundTripAndRejectOverflow() {
-  const cr::CreativeWorldLayout source = transformableBuildingLayout();
+  cr::CreativeWorldLayout source = transformableBuildingLayout();
+  source.levels[0].roofStyle = cr::CreativeStructuralRoofStyle::Shed;
+  source.levels[0].roofRidgeAxis =
+      cr::CreativeStructuralRoofRidgeAxis::X;
+  source.levels[0].roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::PositiveX;
+  source.levels[0].roofMaterial = cr::CreativeStructuralMaterial::Stone;
   cr::CreativeWorldLayout turned = source;
   for (std::size_t turn = 0U; turn < 4U; ++turn) {
     const cr::CreativeWorldLayoutBuildingTransformResult result =
@@ -549,6 +766,9 @@ bool buildingTransformsRoundTripAndRejectOverflow() {
   const auto rightThenLeft = cr::transformCreativeWorldLayoutBuilding(
       right.transformed,
       {0U, cr::CreativeWorldLayoutBuildingTransformOperation::RotateLeft90});
+  const auto mirroredX = cr::transformCreativeWorldLayoutBuilding(
+      source,
+      {0U, cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX});
   cr::CreativeWorldLayout grounded = source;
   grounded.buildings[0].rootMode = cr::CreativeBuildingRootMode::None;
   grounded.buildings[0].groundingMode =
@@ -584,6 +804,18 @@ bool buildingTransformsRoundTripAndRejectOverflow() {
                     sameBuildingTransformGeometry(source,
                                                   rightThenLeft.transformed),
                 "left and right quarter turns are exact inverses") &&
+         expect(right.transformed.levels[0].roofRidgeAxis ==
+                        cr::CreativeStructuralRoofRidgeAxis::Z &&
+                    right.transformed.levels[0].roofSlopeDirection ==
+                        cr::CreativeStructuralRoofSlopeDirection::PositiveZ &&
+                    right.transformed.levels[0].roofMaterial ==
+                        cr::CreativeStructuralMaterial::Stone &&
+                    mirroredX.accepted &&
+                    mirroredX.transformed.levels[0].roofSlopeDirection ==
+                        cr::CreativeStructuralRoofSlopeDirection::NegativeX &&
+                    mirroredX.transformed.levels[0].roofMaterial ==
+                        cr::CreativeStructuralMaterial::Stone,
+                "roof axis and downhill direction transform while material persists") &&
          expect(groundedTurn.accepted &&
                     groundedTurn.transformed.buildings[0].rootFootprint
                             .minimum ==
@@ -655,13 +887,13 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
   const bool duplicateExact =
       duplicated.accepted && duplicated.changed &&
       duplicated.resultBuildingIndex == 1U &&
-      duplicated.nextStableOrdinal == 52U &&
+      duplicated.nextStableOrdinal == 53U &&
       duplicated.edited.buildings.size() == 2U &&
       duplicated.edited.levels.size() == 2U &&
       duplicated.edited.rooms.size() == 2U &&
       duplicated.edited.boxes.size() == 2U &&
       duplicated.edited.walls.size() == 4U &&
-      duplicated.edited.openings.size() == 12U &&
+      duplicated.edited.openings.size() == 14U &&
       duplicated.edited.buildings[1].stableKey == "building_40" &&
       duplicated.edited.buildings[1].rootFootprint.minimum ==
           cr::CreativeTerrainCoord2{30, 20} &&
@@ -669,8 +901,8 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
       duplicated.edited.rooms[1].levelIndex == 1U &&
       duplicated.edited.levels[1].buildingIndex == 1U &&
       duplicated.edited.walls[2].buildingIndex == 1U &&
-      duplicated.edited.openings[6].roomIndex == 1U &&
-      duplicated.edited.openings[10].wallIndex == 2U &&
+      duplicated.edited.openings[7].roomIndex == 1U &&
+      duplicated.edited.openings[11].wallIndex == 2U &&
       duplicated.edited.terrainProfiles.size() == 1U;
 
   const cr::CreativeWorldLayoutBuildingEditResult removed =
@@ -682,7 +914,7 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
       removed.edited.rooms.size() == 1U &&
       removed.edited.boxes.size() == 1U &&
       removed.edited.walls.size() == 2U &&
-      removed.edited.openings.size() == 6U &&
+      removed.edited.openings.size() == 7U &&
       removed.edited.rooms[0].buildingIndex == 0U &&
       removed.edited.rooms[0].levelIndex == 0U &&
       removed.edited.walls[0].buildingIndex == 0U &&
@@ -717,6 +949,135 @@ bool buildingEditKernelsAreAtomicAndRemapOwnership() {
                         cr::CreativeWorldLayoutBuildingEditStatus::
                             InvalidOwnership,
                 "building edits reject malformed ownership before copying");
+}
+
+bool roofAperturesFollowBuildingOwnershipAndTemplateSync() {
+  const cr::CreativeWorldLayout source = roofApertureBuildingLayout();
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint sourceFingerprint =
+      cr::fingerprintCreativeWorldLayoutBuilding(source, 0U);
+  cr::CreativeWorldLayout changedSource = source;
+  changedSource.roofApertures[0].maximumXCells += 0.25;
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint changedFingerprint =
+      cr::fingerprintCreativeWorldLayoutBuilding(changedSource, 0U);
+
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(source, {0U, 3, -2});
+  const cr::CreativeWorldLayoutBuildingTransformResult rotated =
+      cr::transformCreativeWorldLayoutBuilding(
+          source,
+          {0U,
+           cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(source, {0U, 20, 0, 40U});
+  const std::string duplicateApertureKey =
+      duplicated.accepted && duplicated.edited.roofApertures.size() == 2U
+          ? duplicated.edited.roofApertures[1].stableKey
+          : std::string{};
+  const cr::CreativeWorldLayoutBuildingEditResult removed =
+      duplicated.accepted
+          ? cr::deleteCreativeWorldLayoutBuilding(duplicated.edited, {0U})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          source, {0U, "aperture_house", "Aperture House"});
+  cr::CreativeWorldLayout destination;
+  destination.stableKey = "aperture_destination";
+  const cr::CreativeWorldLayoutBuildingEditResult stamped =
+      captured.accepted
+          ? cr::stampCreativeWorldLayoutBuildingTemplate(
+                destination, captured.value, {{30, 40}, 100U, false})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+
+  cr::CreativeWorldLayoutBuildingTemplateResult updated;
+  if (captured.accepted) {
+    cr::CreativeWorldLayout updatedLayout = captured.value.normalizedLayout;
+    updatedLayout.roofApertures[0].maximumXCells += 0.25;
+    updated = cr::loadCreativeWorldLayoutBuildingTemplate(
+        std::move(updatedLayout));
+  }
+  const cr::CreativeWorldLayoutBuildingTemplateSyncReceipt sourceChanged =
+      stamped.accepted && updated.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                stamped.edited, 0U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+  const std::string stampedApertureKey =
+      stamped.accepted && stamped.edited.roofApertures.size() == 1U
+          ? stamped.edited.roofApertures[0].stableKey
+          : std::string{};
+  const cr::CreativeWorldLayoutBuildingTemplateRefreshResult refreshed =
+      stamped.accepted && updated.accepted
+          ? cr::refreshCreativeWorldLayoutBuildingTemplateInstances(
+                stamped.edited,
+                {&updated.value,
+                 cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                     SafeInstances,
+                 cr::kInvalidCreativeWorldLayoutIndex,
+                 stamped.nextStableOrdinal})
+          : cr::CreativeWorldLayoutBuildingTemplateRefreshResult{};
+  const cr::CreativeWorldLayoutBuildingTemplateSyncReceipt currentAfterRefresh =
+      refreshed.accepted
+          ? cr::inspectCreativeWorldLayoutBuildingTemplateSync(
+                refreshed.edited, 0U, &updated.value)
+          : cr::CreativeWorldLayoutBuildingTemplateSyncReceipt{};
+
+  return expect(sourceFingerprint.valid && changedFingerprint.valid &&
+                    sourceFingerprint.value != changedFingerprint.value,
+                "roof aperture source participates in building fingerprint") &&
+         expect(moved.accepted && moved.edited.roofApertures.size() == 1U &&
+                    moved.edited.roofApertures[0].minimumXCells == 15.25 &&
+                    moved.edited.roofApertures[0].maximumXCells == 16.75 &&
+                    moved.edited.roofApertures[0].minimumZCells == 19.0 &&
+                    moved.edited.roofApertures[0].maximumZCells == 20.5,
+                "building move offsets exact roof aperture bounds") &&
+         expect(rotated.accepted &&
+                    rotated.transformed.roofApertures.size() == 1U &&
+                    rotated.transformed.roofApertures[0].minimumXCells == 13.5 &&
+                    rotated.transformed.roofApertures[0].maximumXCells == 15.0 &&
+                    rotated.transformed.roofApertures[0].minimumZCells == 22.25 &&
+                    rotated.transformed.roofApertures[0].maximumZCells == 23.75,
+                "building rotation maps roof aperture corners exactly") &&
+         expect(duplicated.accepted &&
+                    duplicated.edited.roofApertures.size() == 2U &&
+                    duplicated.edited.roofApertures[1].levelIndex == 1U &&
+                    duplicateApertureKey != "roof_skylight" &&
+                    duplicated.edited.roofApertures[1].minimumXCells == 32.25 &&
+                    duplicated.edited.roofApertures[1].maximumZCells == 22.5,
+                "building duplicate remaps and rekeys roof aperture source") &&
+         expect(removed.accepted &&
+                    removed.edited.roofApertures.size() == 1U &&
+                    removed.edited.roofApertures[0].levelIndex == 0U &&
+                    removed.edited.roofApertures[0].stableKey ==
+                        duplicateApertureKey &&
+                    removed.edited.roofApertures[0].minimumXCells == 32.25,
+                "building delete removes owned aperture and compacts level owner") &&
+         expect(captured.accepted &&
+                    captured.value.normalizedLayout.roofApertures.size() == 1U &&
+                    captured.value.normalizedLayout.roofApertures[0]
+                            .minimumXCells == 2.25 &&
+                    captured.value.normalizedLayout.roofApertures[0]
+                            .minimumZCells == 1.0,
+                "template capture normalizes roof aperture plan bounds") &&
+         expect(stamped.accepted && stampedApertureKey != "roof_skylight" &&
+                    stamped.edited.roofApertures.size() == 1U &&
+                    stamped.edited.roofApertures[0].levelIndex == 0U &&
+                    stamped.edited.roofApertures[0].minimumXCells == 32.25 &&
+                    stamped.edited.roofApertures[0].maximumZCells == 42.5,
+                "template stamp restores aperture geometry with fresh identity") &&
+         expect(updated.accepted &&
+                    sourceChanged.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::
+                            SourceChanged,
+                "template sync observes changed aperture semantics") &&
+         expect(refreshed.accepted &&
+                    refreshed.refreshedInstanceCount == 1U &&
+                    refreshed.edited.roofApertures.size() == 1U &&
+                    refreshed.edited.roofApertures[0].stableKey ==
+                        stampedApertureKey &&
+                    refreshed.edited.roofApertures[0].maximumXCells == 34.0 &&
+                    currentAfterRefresh.state ==
+                        cr::CreativeWorldLayoutBuildingTemplateSyncState::Current,
+                "template refresh preserves aperture identity and updates bounds");
 }
 
 bool verticalConnectorOwnershipFollowsBuildingKernels() {
@@ -785,6 +1146,161 @@ bool verticalConnectorOwnershipFollowsBuildingKernels() {
                 "template capture and stamp preserve connector ownership");
 }
 
+bool explicitTopologyFollowsBuildingOwnershipKernels() {
+  const cr::CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      cr::materializeCreativeWorldLayoutRoomGraph(
+          transformableBuildingLayout());
+  if (!expect(materialized.accepted && materialized.changed,
+              "building topology fixture materializes")) {
+    return false;
+  }
+  const cr::CreativeWorldLayout& source = materialized.edited;
+  const cr::CreativeWorldLayoutRoomGraph sourceGraph =
+      cr::buildCreativeWorldLayoutRoomGraph(source);
+  const std::size_t sourceVertexCount = source.topologyVertices.size();
+  const std::size_t sourceEdgeCount = source.topologyEdges.size();
+  const std::size_t sourceBoundaryCount = source.roomBoundaries.size();
+  const cr::CreativeTerrainCoord2 firstVertex =
+      source.topologyVertices.front().position;
+  const std::string firstEdgeKey = source.topologyEdges.front().stableKey;
+
+  const cr::CreativeWorldLayoutBuildingEditResult moved =
+      cr::moveCreativeWorldLayoutBuilding(source, {0U, 3, -2});
+  const cr::CreativeWorldLayoutBuildingTransformResult rotated =
+      cr::transformCreativeWorldLayoutBuilding(
+          source,
+          {0U,
+           cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const cr::CreativeWorldLayoutRoomGraph movedGraph =
+      moved.accepted ? cr::buildCreativeWorldLayoutRoomGraph(moved.edited)
+                     : cr::CreativeWorldLayoutRoomGraph{};
+  const cr::CreativeWorldLayoutRoomGraph rotatedGraph =
+      rotated.accepted
+          ? cr::buildCreativeWorldLayoutRoomGraph(rotated.transformed)
+          : cr::CreativeWorldLayoutRoomGraph{};
+
+  const cr::CreativeWorldLayoutBuildingEditResult duplicated =
+      cr::duplicateCreativeWorldLayoutBuilding(source, {0U, 20, 0, 100U});
+  const cr::CreativeWorldLayoutRoomGraph duplicatedGraph =
+      duplicated.accepted
+          ? cr::buildCreativeWorldLayoutRoomGraph(duplicated.edited)
+          : cr::CreativeWorldLayoutRoomGraph{};
+  bool duplicateDirectHostsRemapped = duplicated.accepted;
+  for (std::size_t index = source.openings.size();
+       duplicateDirectHostsRemapped && index < duplicated.edited.openings.size();
+       ++index) {
+    const cr::CreativeWorldLayoutOpening& opening =
+        duplicated.edited.openings[index];
+    if (opening.hostKind ==
+            cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+        opening.roomTopologyEdgeIndex !=
+            cr::kInvalidCreativeWorldLayoutIndex) {
+      duplicateDirectHostsRemapped =
+          opening.roomIndex >= source.rooms.size() &&
+          opening.roomTopologyEdgeIndex >= sourceEdgeCount;
+    }
+  }
+
+  const cr::CreativeWorldLayoutBuildingEditResult removed =
+      duplicated.accepted
+          ? cr::deleteCreativeWorldLayoutBuilding(duplicated.edited, {0U})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+  const cr::CreativeWorldLayoutRoomGraph removedGraph =
+      removed.accepted ? cr::buildCreativeWorldLayoutRoomGraph(removed.edited)
+                       : cr::CreativeWorldLayoutRoomGraph{};
+
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          source, {0U, "topology_house", "Topology House"});
+  const cr::CreativeWorldLayoutBuildingTemplateResult rotatedTemplate =
+      captured.accepted
+          ? cr::transformCreativeWorldLayoutBuildingTemplate(
+                captured.value,
+                cr::CreativeWorldLayoutBuildingTransformOperation::MirrorX)
+          : cr::CreativeWorldLayoutBuildingTemplateResult{};
+  cr::CreativeWorldLayout destination;
+  destination.stableKey = "topology_destination";
+  const cr::CreativeWorldLayoutBuildingEditResult stamped =
+      rotatedTemplate.accepted
+          ? cr::stampCreativeWorldLayoutBuildingTemplate(
+                destination, rotatedTemplate.value, {{30, 40}, 500U, false})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+  const cr::CreativeWorldLayoutRoomGraph stampedGraph =
+      stamped.accepted ? cr::buildCreativeWorldLayoutRoomGraph(stamped.edited)
+                       : cr::CreativeWorldLayoutRoomGraph{};
+
+  cr::CreativeWorldLayoutBuildingTemplateResult updated;
+  if (captured.accepted) {
+    cr::CreativeWorldLayout revised = captured.value.normalizedLayout;
+    revised.topologyEdges.front().material =
+        cr::CreativeStructuralMaterial::Stone;
+    updated = cr::loadCreativeWorldLayoutBuildingTemplate(std::move(revised));
+  }
+  const std::string stampedEdgeKey =
+      stamped.accepted ? stamped.edited.topologyEdges.front().stableKey : "";
+  const cr::CreativeWorldLayoutBuildingTemplateRefreshResult refreshed =
+      stamped.accepted && updated.accepted
+          ? cr::refreshCreativeWorldLayoutBuildingTemplateInstances(
+                stamped.edited,
+                {&updated.value,
+                 cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                     SafeInstances,
+                 cr::kInvalidCreativeWorldLayoutIndex,
+                 stamped.nextStableOrdinal})
+          : cr::CreativeWorldLayoutBuildingTemplateRefreshResult{};
+  const cr::CreativeWorldLayoutRoomGraph refreshedGraph =
+      refreshed.accepted
+          ? cr::buildCreativeWorldLayoutRoomGraph(refreshed.edited)
+          : cr::CreativeWorldLayoutRoomGraph{};
+
+  return expect(sourceGraph.accepted && sourceGraph.sourceWasExplicit,
+                "canonical building starts with a valid explicit graph") &&
+         expect(moved.accepted && movedGraph.accepted &&
+                    moved.edited.topologyVertices.front().position ==
+                        cr::CreativeTerrainCoord2{firstVertex.x + 3,
+                                                  firstVertex.z - 2} &&
+                    moved.edited.topologyEdges.front().stableKey == firstEdgeKey,
+                "building move offsets topology without identity churn") &&
+         expect(rotated.accepted && rotatedGraph.accepted &&
+                    rotated.transformed.topologyEdges.front().stableKey ==
+                        firstEdgeKey,
+                "building transform preserves a valid canonical graph") &&
+         expect(duplicated.accepted && duplicatedGraph.accepted &&
+                    duplicated.edited.topologyVertices.size() ==
+                        sourceVertexCount * 2U &&
+                    duplicated.edited.topologyEdges.size() ==
+                        sourceEdgeCount * 2U &&
+                    duplicated.edited.roomBoundaries.size() ==
+                        sourceBoundaryCount * 2U &&
+                    duplicateDirectHostsRemapped,
+                "building duplicate remaps topology and direct opening hosts") &&
+         expect(removed.accepted && removedGraph.accepted &&
+                    removed.edited.buildings.size() == 1U &&
+                    removed.edited.topologyVertices.size() ==
+                        sourceVertexCount &&
+                    removed.edited.topologyEdges.size() == sourceEdgeCount &&
+                    removed.edited.roomBoundaries.size() ==
+                        sourceBoundaryCount,
+                "building delete compacts surviving topology atomically") &&
+         expect(captured.accepted,
+                "template capture preserves topology") &&
+         expect(rotatedTemplate.accepted,
+                "template transform preserves topology") &&
+         expect(stamped.accepted,
+                "template stamp preserves topology") &&
+         expect(stampedGraph.accepted &&
+                    stamped.edited.topologyEdges.size() == sourceEdgeCount,
+                "stamped topology remains a valid explicit graph") &&
+         expect(updated.accepted && refreshed.accepted &&
+                    refreshed.refreshedInstanceCount == 1U &&
+                    refreshedGraph.accepted &&
+                    refreshed.edited.topologyEdges.front().stableKey ==
+                        stampedEdgeKey &&
+                    refreshed.edited.topologyEdges.front().material ==
+                        cr::CreativeStructuralMaterial::Stone,
+                "linked template refresh keeps wall identity and updates semantics");
+}
+
 bool buildingTemplatesNormalizeTransformPersistAndStamp() {
   const cr::CreativeWorldLayout source = transformableBuildingLayout();
   const cr::CreativeWorldLayoutBuildingTemplateResult captured =
@@ -842,7 +1358,7 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
   const bool stampExact =
       stamped.accepted && stamped.changed &&
       stamped.resultBuildingIndex == 0U &&
-      stamped.nextStableOrdinal == 112U &&
+      stamped.nextStableOrdinal == 113U &&
       stamped.edited.buildings[0].stableKey == "building_100" &&
       stamped.edited.levels.size() == 1U &&
       stamped.edited.levels[0].buildingIndex == 0U &&
@@ -881,6 +1397,161 @@ bool buildingTemplatesNormalizeTransformPersistAndStamp() {
                 "building template cannot absorb unowned terrain") &&
          expect(!cr::validCreativeWorldLayoutBuildingTemplate(invalidObject),
                 "building template cannot absorb unowned objects");
+}
+
+bool buildingTemplatePlacementAnalysisAndDetachAreExact() {
+  const cr::CreativeWorldLayoutBuildingTemplateResult captured =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          transformableBuildingLayout(),
+          {0U, "placement_house", "Placement House"});
+  if (!captured.accepted) {
+    return expect(false, "placement analysis template capture accepted");
+  }
+
+  cr::CreativeWorldLayout emptyDestination;
+  emptyDestination.stableKey = "placement_destination";
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis clear =
+      cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+          {&emptyDestination, &captured.value, {30, 40}, {}, nullptr});
+  const cr::CreativeWorldLayoutBuildingEditResult existing =
+      cr::stampCreativeWorldLayoutBuildingTemplate(
+          emptyDestination, captured.value, {{30, 40}, 100U, false});
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis overlap =
+      existing.accepted
+          ? cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+                {&existing.edited, &captured.value, {30, 40}, {}, nullptr})
+          : cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis{};
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis adjacent =
+      existing.accepted
+          ? cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+                {&existing.edited, &captured.value, {38, 40}, {}, nullptr})
+          : cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis{};
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis overflow =
+      cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+          {&emptyDestination,
+           &captured.value,
+           {std::numeric_limits<std::int32_t>::max(), 40},
+           {},
+           nullptr});
+
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint beforeDetach =
+      existing.accepted
+          ? cr::fingerprintCreativeWorldLayoutBuilding(existing.edited, 0U)
+          : cr::CreativeWorldLayoutBuildingTemplateFingerprint{};
+  const std::string stableKey =
+      existing.accepted ? existing.edited.buildings[0].stableKey : std::string{};
+  const cr::CreativeWorldLayoutBuildingEditResult detached =
+      existing.accepted
+          ? cr::detachCreativeWorldLayoutBuildingTemplateInstance(
+                existing.edited, 0U)
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint afterDetach =
+      detached.accepted
+          ? cr::fingerprintCreativeWorldLayoutBuilding(detached.edited, 0U)
+          : cr::CreativeWorldLayoutBuildingTemplateFingerprint{};
+  const cr::CreativeWorldLayoutBuildingEditResult detachedAgain =
+      detached.accepted
+          ? cr::detachCreativeWorldLayoutBuildingTemplateInstance(
+                detached.edited, 0U)
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+
+  const cr::CreativeWorldLayoutBuildingTemplateResult smallHouse =
+      cr::captureCreativeWorldLayoutBuildingTemplate(
+          smallHouseLayout(), {0U, "foundation_house", "Foundation House"});
+  cr::CreativeWorldLayoutBuildingTemplateResult foundationTemplate;
+  if (smallHouse.accepted) {
+    cr::CreativeWorldLayout foundationLayout = smallHouse.value.normalizedLayout;
+    foundationLayout.buildings[0].groundingMode =
+        cr::CreativeWorldLayoutGroundingMode::Foundation;
+    foundationLayout.buildings[0].maximumGroundReliefCells = 1U;
+    foundationTemplate =
+        cr::loadCreativeWorldLayoutBuildingTemplate(std::move(foundationLayout));
+  }
+  cr::CreativeDocument terrainDocument = makeDocument(91U);
+  std::vector<std::uint16_t> heights(24U, 2U);
+  for (std::size_t index = 1U; index < heights.size(); index += 2U) {
+    heights[index] = 3U;
+  }
+  const cr::CreativeTerrainHeightFieldReplaceReceipt terrainReceipt =
+      terrainDocument.replaceTerrainHeightField({{0, 0}, 6U, 4U}, heights);
+  const cr::CreativeTerrainSurfacePlan terrainSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          terrainDocument.terrainField(), terrainDocument.terrainHeightField());
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis foundation =
+      foundationTemplate.accepted && terrainSurface.accepted
+          ? cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+                {&emptyDestination, &foundationTemplate.value, {0, 0},
+                 terrainDocument.gridSettings(), &terrainSurface})
+          : cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis{};
+  const cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis
+      missingFoundationTerrain =
+          foundationTemplate.accepted
+              ? cr::analyzeCreativeWorldLayoutBuildingTemplatePlacement(
+                    {&emptyDestination, &foundationTemplate.value, {0, 0}, {},
+                     nullptr})
+              : cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis{};
+  const cr::CreativeWorldLayoutBuildingEditResult foundationStamped =
+      foundationTemplate.accepted
+          ? cr::stampCreativeWorldLayoutBuildingTemplate(
+                emptyDestination, foundationTemplate.value, {{0, 0}, 200U, false})
+          : cr::CreativeWorldLayoutBuildingEditResult{};
+  const cr::CreativeWorldLayoutCompileResult foundationCompiled =
+      foundationStamped.accepted
+          ? cr::buildCreativeWorldLayoutPlan(terrainDocument,
+                                             foundationStamped.edited)
+          : cr::CreativeWorldLayoutCompileResult{};
+
+  return expect(clear.accepted &&
+                    clear.status == cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::Ready &&
+                    clear.templateVersion == captured.value.sourceFingerprint.value &&
+                    clear.bounds.minimum == cr::CreativeTerrainCoord2{30, 40} &&
+                    clear.bounds.maximum == cr::CreativeTerrainCoord2{38, 46} &&
+                    clear.footprint.minimum == cr::CreativeTerrainCoord2{30, 40} &&
+                    clear.footprint.maximum == cr::CreativeTerrainCoord2{38, 46} &&
+                    clear.levelCount == 1U && clear.entranceCount == 6U &&
+                    clear.terrainImpact ==
+                        cr::CreativeWorldLayoutBuildingTemplateTerrainImpact::None,
+                "placement analysis exposes version footprint entrances levels and terrain") &&
+         expect(existing.accepted && !overlap.accepted &&
+                    overlap.status ==
+                        cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+                            BuildingOverlap &&
+                    overlap.conflictingBuildingIndex == 0U,
+                "placement analysis rejects a vertically overlapping building") &&
+         expect(adjacent.accepted &&
+                    adjacent.conflictingBuildingIndex ==
+                        cr::kInvalidCreativeWorldLayoutIndex,
+                "placement analysis allows buildings whose footprints only touch") &&
+         expect(!overflow.accepted &&
+                    overflow.status ==
+                        cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+                            CoordinateOverflow,
+                "placement analysis rejects coordinate overflow atomically") &&
+         expect(detached.accepted && detached.changed && beforeDetach.valid &&
+                    beforeDetach == afterDetach &&
+                    detached.edited.buildings[0].stableKey == stableKey &&
+                    !cr::creativeWorldLayoutBuildingTemplateInstanceProvenance(
+                         detached.edited, 0U)
+                         .present &&
+                    detachedAgain.accepted && !detachedAgain.changed,
+                "template detach preserves content identity and is idempotent") &&
+         expect(terrainReceipt.accepted && foundation.accepted &&
+                    foundation.terrainImpact ==
+                        cr::CreativeWorldLayoutBuildingTemplateTerrainImpact::Foundation &&
+                    foundation.grounding.reliefCells == 1U &&
+                    foundationCompiled.receipt.accepted &&
+                    foundationCompiled.receipt.groundedBuildingCount == 1U &&
+                    foundationCompiled.receipt.foundationObjectCount == 1U,
+                "placement terrain facts match the compiler foundation result") &&
+         expect(!missingFoundationTerrain.accepted &&
+                    missingFoundationTerrain.status ==
+                        cr::CreativeWorldLayoutBuildingTemplatePlacementStatus::
+                            TerrainRejected &&
+                    missingFoundationTerrain.bounds.valid &&
+                    missingFoundationTerrain.terrainImpact ==
+                        cr::CreativeWorldLayoutBuildingTemplateTerrainImpact::
+                            Unknown,
+                "missing terrain fails closed while retaining placement facts");
 }
 
 bool buildingTemplateSyncIsSafeAtomicAndPersistent() {
@@ -1101,9 +1772,9 @@ bool structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() {
                     sameVec3(ceiling->transform.scale, {1.0, 1.0, 1.0}),
                 "ceiling extends up from exact support plane") &&
          expect(roof != nullptr && near(roof->bounds.min.y, 5.5) &&
-                    near(roof->bounds.max.y, 6.5) &&
+                    near(roof->bounds.max.y, 5.75) &&
                     sameVec3(roof->transform.scale, {1.0, 1.0, 1.0}),
-                "roof uses descriptor thickness above support plane") &&
+                "roof uses its thin descriptor layer above support plane") &&
          expect(volume != nullptr && near(volume->bounds.min.y, 2.75) &&
                     near(volume->bounds.max.y, 3.75),
                 "ordinary box retains grid-cell layer semantics");
@@ -1118,15 +1789,21 @@ bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
       cr::previewCreativeWorldLayoutPlan(document, compiled.plan);
   const cr::CreativeObject* root = findNamed(preview.document, "Small House");
   const cr::CreativeObject* door = findNamed(preview.document, "Front Door");
+  const cr::CreativeObject* doorFrame =
+      findNamed(preview.document, "Front Door Minimum Jamb");
+  const cr::CreativeObject* doorHandle =
+      findNamed(preview.document, "Front Door Primary Handle");
   const cr::CreativeObject* window = findNamed(preview.document, "East Window");
+  const cr::CreativeObject* windowFrame =
+      findNamed(preview.document, "East Window Minimum Jamb");
 
   return expect(compiled.receipt.accepted &&
                     compiled.receipt.status == cr::CreativeWorldLayoutStatus::Ready,
                 "2D building layout compiles") &&
          expect(compiled.receipt.objectRecipeCount == 1U &&
-                    compiled.receipt.objectCount == 14U,
+                    compiled.receipt.objectCount == 24U,
                 "2D building layout has deterministic generated object count") &&
-         expect(preview.accepted && preview.document.objectCount() == 14U,
+         expect(preview.accepted && preview.document.objectCount() == 24U,
                 "2D building plan previews exact document") &&
          expect(root != nullptr && root->bounds.min.x == 10.0 &&
                     root->bounds.min.y == 1.0 &&
@@ -1135,14 +1812,20 @@ bool twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() {
                     root->bounds.max.y == 5.0 &&
                     root->bounds.max.z == -6.0,
                 "grid-line footprint converts to exact world bounds") &&
-         expect(door != nullptr && door->bounds.min.x == 12.0 &&
-                    door->bounds.max.x == 14.0 &&
-                    door->bounds.min.z == -6.125 &&
-                    door->bounds.max.z == -5.875,
-                "door slots into selected wall cutout") &&
-         expect(window != nullptr && window->bounds.min.y == 3.0 &&
-                    window->bounds.max.y == 4.0,
-                "window inherits sill height in generated insert") &&
+         expect(door != nullptr && doorFrame != nullptr &&
+                    doorHandle != nullptr && window != nullptr &&
+                    windowFrame != nullptr && root != nullptr &&
+                    door->parentId == root->id &&
+                    doorFrame->parentId == root->id &&
+                    doorHandle->parentId == door->id &&
+                    door->door == layout.openings[0].door &&
+                    window->parentId == root->id &&
+                    windowFrame->parentId == root->id &&
+                    window->window == layout.openings[1].window,
+                "hosted openings retain grouped frames and semantic inserts") &&
+         expect(window != nullptr && near(window->bounds.min.y, 3.06) &&
+                    near(window->bounds.max.y, 3.94),
+                "window fits inside the sill and lintel frame") &&
          expect(root != nullptr &&
                     cr::creativeRecipeObjectHasInstanceProvenance(
                         *root, cr::CreativeRecipeKind::Building,
@@ -1182,7 +1865,7 @@ bool rebuildingAndDeletingLayoutNeverDuplicatesOutput() {
       cr::applyCreativeWorldLayoutPlan(appState.facade, deletion.plan);
 
   return expect(firstApply.accepted && firstApply.changed &&
-                    firstObjectCount == 14U,
+                    firstObjectCount == 24U,
                 "first layout generation has exact output count") &&
          expect(replacement.receipt.accepted &&
                     replacement.receipt.objectRecipePatchCount == 1U &&
@@ -1190,20 +1873,20 @@ bool rebuildingAndDeletingLayoutNeverDuplicatesOutput() {
                     replacement.receipt.objectRemoveCount == 0U &&
                     replacement.plan.objectRecipePatches.size() == 1U &&
                     replacement.plan.objectRecipes.empty() &&
-                    replacement.receipt.objectCount == 14U &&
+                    replacement.receipt.objectCount == 24U &&
                     replacement.recipeChanges.size() == 1U &&
                     replacement.recipeChanges[0].kind ==
                         cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
                     replacement.recipeChanges[0].memberCounts.updateCount ==
                         1U &&
                     replacement.recipeChanges[0]
-                            .memberCounts.preserveCount == 13U,
+                            .memberCounts.preserveCount == 23U,
                 "layout rebuild patches complete prior output in place") &&
          expect(replaced.accepted && replaced.changed &&
-                    replacementObjectCount == 14U && replacementNamePresent,
+                    replacementObjectCount == 24U && replacementNamePresent,
                 "layout replacement applies atomically without duplication") &&
          expect(deletion.receipt.accepted &&
-                    deletion.receipt.objectRemoveCount == 14U,
+                    deletion.receipt.objectRemoveCount == 24U,
                 "empty source layout compiles deletion of stale output") &&
          expect(deleted.accepted && deleted.changed &&
                     appState.facade.document().objectCount() == 0U,
@@ -1276,6 +1959,13 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
       preservedBuilding != nullptr && preservedBuilding->id == buildingId &&
       preservedCrateB != nullptr &&
       sameVec3(preservedCrateB->transform.position, refinedPosition);
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
   const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
   const cr::CreativeObject* restoredCrateA =
@@ -1289,7 +1979,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                     first.receipt.objectRecipeReplaceCount == 0U &&
                     first.receipt.objectRecipeKeepCount == 0U &&
                     first.receipt.objectRecipeCount == 3U &&
-                    first.receipt.objectCount == 16U,
+                    first.receipt.objectCount == 26U,
                 "initial generation reports three created recipe groups") &&
          expect(refined.changed && unchanged.receipt.accepted &&
                     unchanged.receipt.status ==
@@ -1332,7 +2022,23 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                     replaced.historyReceipt.recorded &&
                     replacementPreserved,
                 "selective patch retains matching identity and unrelated edits") &&
+         expect(expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Building &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    expectedOperation->action == "WorldLayout.Apply" &&
+                    expectedOperation->requestFingerprint ==
+                        cr::fingerprintCreativeWorldLayoutPlanSource(
+                            replacement.plan) &&
+                    expectedOperation->affectedMemberCount ==
+                        cr::creativeWorldLayoutPlanAffectedMemberCount(
+                            replacement.plan),
+                "world layout history records its exact source plan") &&
          expect(undone.accepted && undone.changed &&
+                    undone.targetOperation == expectedOperation &&
                     restoredCrateA != nullptr &&
                     restoredCrateA->name == "Crate A" &&
                     restoredCrateB != nullptr &&
@@ -1738,14 +2444,14 @@ bool buildingRegenerationIsolatedToChangedOwnershipGroup() {
                     replacement.receipt.objectRemoveCount == 0U &&
                     replacement.plan.objectRecipePatches.size() == 1U &&
                     replacement.plan.objectRecipes.empty() &&
-                    replacement.receipt.objectCount == 14U &&
+                    replacement.receipt.objectCount == 24U &&
                     replacement.recipeChanges.size() == 2U &&
                     replacement.recipeChanges[0].kind ==
                         cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
                     replacement.recipeChanges[0]
                             .memberCounts.updateCount == 1U &&
                     replacement.recipeChanges[0]
-                            .memberCounts.preserveCount == 13U,
+                            .memberCounts.preserveCount == 23U,
                 "wall edit schedules only its owning building patch") &&
          expect(selected.accepted && replaced.accepted && replaced.changed,
                 "stable-id patch applies after selecting generated output") &&
@@ -2296,15 +3002,15 @@ bool authoredChildBlocksRemovalOfManagedParent() {
                     detached.receipt.objectRecipeConflictCount == 1U &&
                     detached.receipt.objectRecipeDetachCount == 1U &&
                     detached.plan.objectDetachIds.size() == 1U &&
-                    detached.plan.objectRemoveIds.size() == 13U &&
+                    detached.plan.objectRemoveIds.size() == 23U &&
                     detached.recipeChanges[0].memberCounts.detachCount == 1U &&
-                    detached.recipeChanges[0].memberCounts.removeCount == 13U &&
+                    detached.recipeChanges[0].memberCounts.removeCount == 23U &&
                     applied.accepted && applied.changed &&
                     applied.historyReceipt.recorded && detachedState,
                 "member detach preserves the authored hierarchy and removes safe siblings") &&
          expect(undone.accepted && undone.changed && restoredRoot != nullptr &&
                     !cr::creativeRecipeObjectInstanceKey(*restoredRoot).empty() &&
-                    appState.facade.document().objectCount() == 15U,
+                    appState.facade.document().objectCount() == 25U,
                 "hierarchy-aware member resolution remains one undo step");
 }
 
@@ -2347,12 +3053,12 @@ bool unversionedGeneratedGroupsMigrateOnceThenRemainStable() {
                     migration.receipt.objectRemoveCount == 0U &&
                     migration.plan.objectRecipePatches.size() == 1U &&
                     migration.plan.objectRecipes.empty() &&
-                    migration.receipt.objectCount == 14U &&
+                    migration.receipt.objectCount == 24U &&
                     migration.recipeChanges.size() == 1U &&
                     migration.recipeChanges[0].kind ==
                         cr::CreativeWorldLayoutRecipeChangeKind::Patch &&
                     migration.recipeChanges[0]
-                            .memberCounts.preserveCount == 14U &&
+                            .memberCounts.preserveCount == 24U &&
                     migration.recipeChanges[0]
                             .memberCounts.updateCount == 0U,
                 "unversioned generated group schedules metadata adoption") &&
@@ -2392,11 +3098,18 @@ bool authoritativeTerrainAndMaterialApplyAsOneHistoryStep() {
   hill.radiusCells = 2U;
   hill.amplitudeCells = 2U;
   layout.terrainProfiles.push_back(hill);
-  layout.terrainPaths.push_back(
-      {"river.main", cr::CreativeTerrainRecipeKind::River, 0U, 2U,
-       cr::CreativeTerrainPathElevation::Level, 1U, 2U, true,
-       cr::CreativeTerrainMaterial::Count});
-  layout.terrainPathPoints = {{{6, 0}, 8U}, {{9, 0}, 8U}};
+  cr::CreativeWorldLayoutTerrainPath river;
+  river.stableKey = "river.main";
+  river.recipe.kind = cr::CreativeTerrainPathKind::River;
+  river.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  river.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  river.recipe.material = cr::CreativeTerrainMaterial::Sand;
+  river.recipe.nextPointId = 3U;
+  river.recipe.points = {
+      {1U, {6, 0}, 8U, 1U, 2U, 0},
+      {2U, {9, 0}, 8U, 1U, 2U, 0},
+  };
+  layout.terrainPaths.push_back(std::move(river));
 
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
@@ -2438,6 +3151,1044 @@ bool authoritativeTerrainAndMaterialApplyAsOneHistoryStep() {
                     appState.facade.document().terrainMaterialField().materialAt(
                         {50, 50}) == cr::CreativeTerrainMaterial::Stone,
                 "one undo restores pre-layout terrain and material");
+}
+
+bool watercourseCompileRetainsCanonicalAttachmentsWithoutWaterObjects() {
+  cr::CreativeAppState appState = makeAppState(204U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "watercourse_layout";
+  cr::CreativeWorldLayoutTerrainPath river;
+  river.stableKey = "river.main";
+  river.recipe.kind = cr::CreativeTerrainPathKind::River;
+  river.recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+  river.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  river.recipe.material = cr::CreativeTerrainMaterial::Sand;
+  river.recipe.watercourse.bankSlopeCells = 2U;
+  river.recipe.watercourse.drainageDirection =
+      cr::CreativeTerrainWatercourseDrainageDirection::StartToEnd;
+  river.recipe.watercourse.surfacePolicy =
+      cr::CreativeTerrainWaterSurfacePolicy::Reserved;
+  river.recipe.watercourse.surfaceInsetCells = 1U;
+  river.recipe.watercourse.nextCrossingId = 10U;
+  river.recipe.watercourse.crossings = {{9U, 2U, 1U, 2U, 3U}};
+  river.recipe.nextPointId = 4U;
+  river.recipe.points = {
+      {1U, {-4, 0}, 9U, 2U, 3U, 0},
+      {2U, {0, 0}, 8U, 2U, 3U, 0},
+      {3U, {4, 0}, 7U, 2U, 3U, 0},
+  };
+  layout.terrainPaths.push_back(river);
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlan(appState.facade, first.plan)
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWatercoursePlan* plan =
+      first.plan.watercoursePlans.size() == 1U
+          ? &first.plan.watercoursePlans.front()
+          : nullptr;
+  const cr::CreativeWatercourseCrossingFrame* crossing =
+      plan != nullptr && plan->crossings.size() == 1U
+          ? &plan->crossings.front()
+          : nullptr;
+
+  cr::CreativeWorldLayout uphill = layout;
+  uphill.terrainPaths[0].recipe.points[2].heightCells = 10U;
+  const cr::CreativeWorldLayoutCompileResult rejected =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), uphill);
+
+  return expect(first.receipt.accepted &&
+                    first.receipt.watercourseCount == 1U &&
+                    first.receipt.watercourseCrossingCount == 1U &&
+                    first.plan.terrainOperationMutations.size() == 1U &&
+                    plan != nullptr && !plan->surfaceSamples.empty() &&
+                    crossing != nullptr,
+                "world layout retains one canonical watercourse plan") &&
+         expect(crossing->id == 9U && crossing->sourcePointId == 2U &&
+                    sameVec3(crossing->crossingAxis, {0.0, 0.0, 1.0}) &&
+                    sameVec3(crossing->centerMeters, {10.0, 7.0, -10.0}) &&
+                    crossing->leftBankMeters.x == 10.0 &&
+                    crossing->leftBankMeters.z == -5.0 &&
+                    crossing->rightBankMeters.x == 10.0 &&
+                    crossing->rightBankMeters.z == -15.0 &&
+                    crossing->leftApproachMeters.x == 10.0 &&
+                    crossing->leftApproachMeters.z == -2.0 &&
+                    crossing->rightApproachMeters.x == 10.0 &&
+                    crossing->rightApproachMeters.z == -18.0 &&
+                    crossing->leftBankMeters.y ==
+                        1.0 + crossing->leftBankGrid.y &&
+                    crossing->rightBankMeters.y ==
+                        1.0 + crossing->rightBankGrid.y &&
+                    crossing->leftApproachMeters.y ==
+                        1.0 + crossing->leftApproachGrid.y &&
+                    crossing->rightApproachMeters.y ==
+                        1.0 + crossing->rightApproachGrid.y &&
+                    crossing->leftBankMeters.y < crossing->centerMeters.y &&
+                    crossing->rightBankMeters.y < crossing->centerMeters.y &&
+                    crossing->channelBedMeters.y <=
+                        crossing->clearanceReferenceMeters.y &&
+                    crossing->spanMeters == 10.0,
+                "crossing frame retains terrain banks approaches and deck") &&
+         expect(first.plan.objectRecipes.empty() &&
+                    first.plan.objectRecipePatches.empty() &&
+                    first.receipt.objectCount == 0U && applied.accepted &&
+                    appState.facade.document().objectCount() == 0U,
+                "watercourse compile fabricates neither water nor bridge objects") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.plan.watercoursePlans.size() == 1U &&
+                    stable.plan.watercoursePlans[0].definitionFingerprint ==
+                        plan->definitionFingerprint,
+                "unchanged watercourse replays one deterministic semantic plan") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainPath &&
+                    rejected.receipt.failedIndex == 0U,
+                "uphill directed drainage fails at its exact source path");
+}
+
+bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
+  cr::CreativeAppState appState = makeAppState(205U);
+  const cr::CreativeTerrainControlEdit manualControl{
+      cr::CreativeTerrainEditKind::Upsert, {{40, 40}, 6U, 1U}};
+  const cr::CreativeTerrainMutationReceipt manualTerrain =
+      appState.facade.applyTerrainControlEdits({&manualControl, 1U});
+  cr::CreativeTerrainOperationMutationRequest manualOperation;
+  manualOperation.kind = cr::CreativeTerrainOperationMutationKind::Add;
+  manualOperation.operationKind = cr::CreativeTerrainOperationKind::Path;
+  manualOperation.path = terrainPath("manual", 30, 6U).recipe;
+  const cr::CreativeTerrainOperationMutationReceipt manualAdded =
+      appState.facade.applyTerrainOperationMutation(manualOperation);
+
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "path_layout";
+  layout.terrainPaths = {
+      terrainPath("road.a", 0, 4U),
+      terrainPath("road.b", 10, 5U),
+  };
+  const std::string sourceA =
+      cr::creativeWorldLayoutTerrainPathSourceKey(layout.stableKey, "road.a");
+  const std::string sourceB =
+      cr::creativeWorldLayoutTerrainPathSourceKey(layout.stableKey, "road.b");
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt firstApplied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, first.plan, "world_layout_path_first")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeTerrainOperation* firstA =
+      findTerrainOperation(appState.facade.document(), sourceA);
+  const cr::CreativeTerrainOperation* firstB =
+      findTerrainOperation(appState.facade.document(), sourceB);
+  const cr::CreativeTerrainOperationId firstAId =
+      firstA != nullptr ? firstA->id : cr::kInvalidCreativeTerrainOperationId;
+  const cr::CreativeTerrainOperationId firstBId =
+      firstB != nullptr ? firstB->id : cr::kInvalidCreativeTerrainOperationId;
+  const bool firstOwnershipValid =
+      firstA != nullptr && firstB != nullptr &&
+      firstA->owner == cr::CreativeTerrainOperationOwner::WorldLayout &&
+      firstB->owner == cr::CreativeTerrainOperationOwner::WorldLayout;
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  cr::CreativeWorldLayout changed = layout;
+  changed.terrainPaths[0].recipe.points[1].heightCells = 7U;
+  changed.terrainPaths[0].recipe.points[1].halfWidthCells = 2U;
+  const cr::CreativeWorldLayoutCompileResult update =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), changed);
+  const cr::CreativeWorldLayoutApplyReceipt updated =
+      update.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, update.plan, "world_layout_path_update")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeTerrainOperation* updatedA =
+      findTerrainOperation(appState.facade.document(), sourceA);
+  const bool updatedIdentityValid =
+      updatedA != nullptr && updatedA->id == firstAId &&
+      updatedA->path == changed.terrainPaths[0].recipe;
+
+  cr::CreativeWorldLayout reordered = changed;
+  std::swap(reordered.terrainPaths[0], reordered.terrainPaths[1]);
+  const cr::CreativeWorldLayoutCompileResult reorder =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), reordered);
+  const cr::CreativeWorldLayoutApplyReceipt reorderedApplied =
+      reorder.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, reorder.plan, "world_layout_path_reorder")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const auto& reorderedOperations =
+      appState.facade.document().terrainOperationStack().operations;
+  const bool reorderedIdsStable =
+      reorderedOperations.size() == 3U &&
+      reorderedOperations[0].id == manualAdded.operationId &&
+      reorderedOperations[1].sourceKey == sourceB &&
+      reorderedOperations[1].id == firstBId &&
+      reorderedOperations[2].sourceKey == sourceA &&
+      reorderedOperations[2].id == firstAId;
+
+  cr::CreativeWorldLayout removed = reordered;
+  removed.terrainPaths.erase(removed.terrainPaths.begin());
+  const cr::CreativeWorldLayoutCompileResult remove =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
+  const cr::CreativeWorldLayoutApplyReceipt removedApplied =
+      remove.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, remove.plan, "world_layout_path_remove")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const auto& preservedOperations =
+      appState.facade.document().terrainOperationStack().operations;
+  const bool preserveKeptManual =
+      preservedOperations.size() == 2U &&
+      preservedOperations[0].id == manualAdded.operationId &&
+      preservedOperations[0].owner == cr::CreativeTerrainOperationOwner::Manual &&
+      preservedOperations[1].sourceKey == sourceA &&
+      preservedOperations[1].id == firstAId &&
+      appState.facade.document().terrainField().controlAt({40, 40}) != nullptr;
+
+  cr::CreativeWorldLayout replaced = removed;
+  replaced.terrainOwnership = cr::CreativeWorldLayoutTerrainOwnership::ReplaceAll;
+  const cr::CreativeWorldLayoutCompileResult replace =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), replaced);
+  const cr::CreativeWorldLayoutApplyReceipt replacedApplied =
+      replace.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, replace.plan, "world_layout_path_replace_all")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const auto& replacedOperations =
+      appState.facade.document().terrainOperationStack().operations;
+
+  return expect(manualTerrain.accepted && manualAdded.accepted &&
+                    first.receipt.accepted &&
+                    first.receipt.terrainOperationMutationCount == 2U &&
+                    first.plan.terrainOperationMutations.size() == 2U &&
+                    firstApplied.accepted && firstApplied.changed &&
+                    firstOwnershipValid,
+                "first path compile preserves manual terrain and adds owned operations") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.plan.terrainOperationMutations.empty(),
+                "unchanged paths compile to no operation churn") &&
+         expect(update.receipt.accepted &&
+                    update.plan.terrainOperationMutations.size() == 1U &&
+                    update.plan.terrainOperationMutations[0].kind ==
+                        cr::CreativeTerrainOperationMutationKind::Update &&
+                    update.plan.terrainOperationMutations[0].operationId ==
+                        firstAId &&
+                    updated.accepted && updated.changed &&
+                    updatedIdentityValid,
+                "path recipe edits update the same operation identity") &&
+         expect(reorder.receipt.accepted && reorderedApplied.accepted &&
+                    reorderedApplied.changed && reorderedIdsStable,
+                "path source order reorders only owned operations with stable ids") &&
+         expect(remove.receipt.accepted && removedApplied.accepted &&
+                    removedApplied.changed && preserveKeptManual,
+                "PreserveExisting removes stale owned paths but keeps manual terrain") &&
+         expect(replace.receipt.accepted && replacedApplied.accepted &&
+                    replacedApplied.changed && replacedOperations.size() == 1U &&
+                    replacedOperations[0].owner ==
+                        cr::CreativeTerrainOperationOwner::WorldLayout &&
+                    replacedOperations[0].sourceKey == sourceA &&
+                    appState.facade.document().terrainField().controlAt({40, 40}) ==
+                        nullptr &&
+                    cr::creativeUndoDepth(appState.history) == 5U,
+                "ReplaceAll removes manual terrain and rebuilds only desired paths");
+}
+
+bool roadConstructionReconcilesAndKeepsTravelSurfaceTraversable() {
+  cr::CreativeAppState appState = makeAppState(213U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "road_structure_layout";
+  cr::CreativeWorldLayoutTerrainPath road = terrainPath("road.main", 5, 4U);
+  road.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Flat;
+  road.recipe.points[0].amplitudeCells = 0U;
+  road.recipe.points[1].amplitudeCells = 0U;
+  road.recipe.road.shoulderWidthCells = 1U;
+  road.recipe.road.edgeTreatment =
+      cr::CreativeTerrainRoadEdgeTreatment::Curb;
+  road.recipe.road.edgeWidthMeters = 0.2;
+  road.recipe.road.edgeHeightMeters = 0.25;
+  road.recipe.road.edgeMaterial = cr::CreativeStructuralMaterial::Stone;
+  layout.terrainPaths.push_back(road);
+  const std::string instanceKey = road.stableKey;
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, first.plan, "world_layout_road_structure")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> generated =
+      managedObjectIds(appState.facade.document(), instanceKey);
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &appState.facade.document();
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const bool centerlineBlocked = iggy3d::segmentHitsAnyPhysicsAabb(
+      physics.colliders, {11.0F, 5.5F, -5.0F},
+      {17.0F, 5.5F, -5.0F}, 0.05F, nullptr);
+  const std::array<iggy3d::Vec3, 2U> waypoints{
+      iggy3d::Vec3{11.0F, 5.0F, -5.0F},
+      iggy3d::Vec3{17.0F, 5.0F, -5.0F},
+  };
+  const iggy3d::ReasoningGraph reasoning =
+      iggy3d::buildReasoningGraph(baked.room, waypoints);
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  cr::CreativeWorldLayout withoutCurbs = layout;
+  withoutCurbs.terrainPaths[0].recipe.road.edgeTreatment =
+      cr::CreativeTerrainRoadEdgeTreatment::None;
+  const cr::CreativeWorldLayoutCompileResult removal =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       withoutCurbs);
+  const cr::CreativeWorldLayoutApplyReceipt removed =
+      removal.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, removal.plan, "world_layout_road_remove_curbs")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> afterRemoval =
+      managedObjectIds(appState.facade.document(), instanceKey);
+
+  return expect(first.receipt.accepted &&
+                    first.plan.objectRecipes.size() == 1U &&
+                    first.plan.objectRecipes[0].kind ==
+                        cr::CreativeRecipeKind::Road &&
+                    !first.plan.objectRecipes[0].objects.empty() &&
+                    applied.accepted && applied.changed &&
+                    generated.size() ==
+                        first.plan.objectRecipes[0].objects.size(),
+                "World Layout applies one owned road structure recipe") &&
+         expect(baked.receipt.accepted && physics.ok && !centerlineBlocked &&
+                    reasoning.nodes.size() == 2U &&
+                    reasoning.edges.size() == 1U,
+                "curb geometry leaves the authored travel surface traversable") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.plan.objectRecipes.empty() &&
+                    stable.plan.objectRecipePatches.empty(),
+                "unchanged road structure reconciles without object churn") &&
+         expect(removal.receipt.accepted &&
+                    removal.plan.objectRemoveIds.size() == generated.size() &&
+                    removed.accepted && removed.changed &&
+                    afterRemoval.empty(),
+                "disabling curbs removes every Road-owned generated member");
+}
+
+bool watercourseBridgeReconcilesStructureGradesCollisionAndTraversal() {
+  cr::CreativeAppState appState = makeAppState(216U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "bridge_recipe_layout";
+
+  cr::CreativeWorldLayoutTerrainPath river;
+  river.stableKey = "river.bridge";
+  river.recipe.kind = cr::CreativeTerrainPathKind::River;
+  river.recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+  river.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  river.recipe.paintSurface = true;
+  river.recipe.material = cr::CreativeTerrainMaterial::Sand;
+  river.recipe.watercourse.bankSlopeCells = 1U;
+  river.recipe.watercourse.nextCrossingId = 2U;
+  river.recipe.watercourse.crossings = {{1U, 2U, 1U, 1U, 4U}};
+  river.recipe.nextPointId = 4U;
+  river.recipe.points = {
+      {1U, {-4, 0}, 4U, 1U, 2U, 0},
+      {2U, {0, 0}, 4U, 1U, 2U, 0},
+      {3U, {4, 0}, 4U, 1U, 2U, 0},
+  };
+  layout.terrainPaths.push_back(river);
+
+  cr::CreativeWorldLayoutObject bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  bridge.stableKey = "bridge.main";
+  bridge.name = "Main Bridge";
+  bridge.boundsCells = {{-1.0, 0.0, -3.0}, {1.0, 0.35, 3.0}};
+  bridge.tags = {"world_layout:object"};
+  bridge.usesBridgeRecipe = true;
+  bridge.bridge.watercoursePathKey = river.stableKey;
+  bridge.bridge.crossingId = 1U;
+  layout.objects.push_back(bridge);
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, first.plan, "world_layout_bridge_recipe")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> generated =
+      managedObjectIds(appState.facade.document(), bridge.stableKey);
+  const cr::CreativeObject* deck =
+      findManaged(appState.facade.document(), bridge.stableKey, "deck");
+  const bool deckReady =
+      deck != nullptr && deck->kind == cr::CreativeObjectKind::Bridge;
+  const cr::CreativeObjectId deckId = deck != nullptr ? deck->id : 0U;
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &appState.facade.document();
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::CollisionQueryResult deckTop =
+      iggy3d::sampleSurfaceHeight(surfaces, {10.0F, 0.0F, -10.0F});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const bool centerlineBlocked = iggy3d::segmentHitsAnyPhysicsAabb(
+      physics.colliders,
+      {10.0F, deckTop.heightMeters + 0.5F, -13.0F},
+      {10.0F, deckTop.heightMeters + 0.5F, -7.0F}, 0.05F, nullptr);
+  const std::array<iggy3d::Vec3, 2U> bridgeWaypoints{
+      iggy3d::Vec3{10.0F, deckTop.heightMeters, -12.0F},
+      iggy3d::Vec3{10.0F, deckTop.heightMeters, -8.0F},
+  };
+  const iggy3d::ReasoningGraph bridgeReasoning =
+      iggy3d::buildReasoningGraph(baked.room, bridgeWaypoints);
+
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  cr::CreativeWorldLayout updatedLayout = layout;
+  updatedLayout.objects[0].bridge.settings.deckWidthMeters = 3.0;
+  updatedLayout.objects[0].bridge.settings.rails = false;
+  updatedLayout.objects[0].bridge.settings.materials.deck =
+      cr::CreativeStructuralMaterial::Stone;
+  const cr::CreativeWorldLayoutCompileResult updated =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       updatedLayout);
+  const cr::CreativeWorldLayoutApplyReceipt updatedApplied =
+      updated.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, updated.plan, "world_layout_bridge_update")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> updatedMembers =
+      managedObjectIds(appState.facade.document(), bridge.stableKey);
+  const cr::CreativeObject* updatedDeck =
+      findManaged(appState.facade.document(), bridge.stableKey, "deck");
+  cr::CreativeStructuralMaterial updatedDeckMaterial =
+      cr::CreativeStructuralMaterial::Count;
+  const bool updatedDeckReady =
+      updatedDeck != nullptr && updatedDeck->id == deckId &&
+      cr::parseCreativeStructuralMaterialTag(updatedDeck->tags,
+                                             updatedDeckMaterial);
+  bool retainedIdentity = true;
+  for (const auto& [key, id] : updatedMembers) {
+    const auto prior = generated.find(key);
+    retainedIdentity =
+        retainedIdentity && prior != generated.end() && prior->second == id;
+  }
+  const cr::CreativeWorldLayoutCompileResult updatedStable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       updatedLayout);
+
+  cr::CreativeWorldLayout missingPath = updatedLayout;
+  missingPath.objects[0].bridge.watercoursePathKey = "river.missing";
+  const cr::CreativeWorldLayoutCompileResult missingPathResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), missingPath);
+  cr::CreativeWorldLayout missingCrossing = updatedLayout;
+  missingCrossing.objects[0].bridge.crossingId = 99U;
+  const cr::CreativeWorldLayoutCompileResult missingCrossingResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       missingCrossing);
+  cr::CreativeWorldLayout duplicateAttachment = updatedLayout;
+  cr::CreativeWorldLayoutObject duplicateBridge =
+      duplicateAttachment.objects[0];
+  duplicateBridge.stableKey = "bridge.duplicate";
+  duplicateBridge.name = "Duplicate Bridge";
+  duplicateAttachment.objects.push_back(std::move(duplicateBridge));
+  const cr::CreativeWorldLayoutCompileResult duplicateAttachmentResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       duplicateAttachment);
+
+  cr::CreativeWorldLayout removedLayout = updatedLayout;
+  removedLayout.objects.clear();
+  const cr::CreativeWorldLayoutCompileResult removal =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       removedLayout);
+  const cr::CreativeWorldLayoutApplyReceipt removed =
+      removal.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, removal.plan, "world_layout_bridge_remove")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> afterRemoval =
+      managedObjectIds(appState.facade.document(), bridge.stableKey);
+  const auto& operations =
+      appState.facade.document().terrainOperationStack().operations;
+  const bool bridgeGradesRemoved = std::none_of(
+      operations.begin(), operations.end(),
+      [](const cr::CreativeTerrainOperation& operation) {
+        return operation.sourceKey.find("/bridge_approach/") !=
+               std::string::npos;
+      });
+
+  return expect(first.receipt.accepted &&
+                    first.receipt.watercourseCount == 1U &&
+                    first.receipt.bridgeRecipeCount == 1U &&
+                    first.receipt.bridgeGeneratedObjectCount == 5U &&
+                    first.receipt.bridgeApproachGradeCount == 2U &&
+                    first.plan.watercoursePlans.size() == 1U &&
+                    first.plan.bridgePlans.size() == 1U &&
+                    first.plan.terrainOperationMutations.size() == 3U &&
+                    first.plan.objectRecipes.size() == 1U &&
+                    first.plan.objectRecipes[0].kind ==
+                        cr::CreativeRecipeKind::Bridge,
+                "World Layout owns one attached bridge structure and two grades") &&
+         expect(applied.accepted && applied.changed,
+                "bridge recipe applies atomically") &&
+         expect(generated.size() == 5U,
+                "bridge recipe materializes every semantic member") &&
+         expect(deckReady,
+                "bridge recipe owns one walkable deck member") &&
+         expect(baked.receipt.accepted && physics.ok &&
+                    deckTop.status == iggy3d::CollisionQueryStatus::Hit &&
+                    !centerlineBlocked && bridgeReasoning.nodes.size() == 2U &&
+                    bridgeReasoning.edges.size() == 1U,
+                "bridge deck keeps collision and reasoning traversal clear") &&
+         expect(stable.receipt.accepted,
+                "unchanged bridge remains a valid compile") &&
+         expect(stable.receipt.status ==
+                    cr::CreativeWorldLayoutStatus::NoChange,
+                "unchanged bridge reports no semantic change") &&
+         expect(stable.plan.objectRecipes.empty() &&
+                    stable.plan.objectRecipePatches.empty(),
+                "unchanged bridge regenerates without member churn") &&
+         expect(updated.receipt.accepted &&
+                    updated.receipt.bridgeGeneratedObjectCount == 3U &&
+                    updatedApplied.accepted && updatedApplied.changed &&
+                    updatedMembers.size() == 3U && retainedIdentity &&
+                    updatedDeckReady &&
+                    updatedDeckMaterial == cr::CreativeStructuralMaterial::Stone,
+                "bridge source edits patch retained members and remove disabled rails") &&
+         expect(updatedStable.receipt.accepted &&
+                    updatedStable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    updatedStable.plan.objectRecipes.empty() &&
+                    updatedStable.plan.objectRecipePatches.empty(),
+                "edited bridge converges to one stable definition") &&
+         expect(!missingPathResult.receipt.accepted &&
+                    missingPathResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    missingPathResult.receipt.reasonCode ==
+                        "creative_world_layout_bridge_watercourse_missing" &&
+                    !missingCrossingResult.receipt.accepted &&
+                    missingCrossingResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    missingCrossingResult.receipt.reasonCode ==
+                        "creative_world_layout_bridge_crossing_missing",
+                "missing bridge attachments fail at the exact source row") &&
+         expect(!duplicateAttachmentResult.receipt.accepted &&
+                    duplicateAttachmentResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    duplicateAttachmentResult.receipt.failedIndex == 1U &&
+                    duplicateAttachmentResult.receipt.reasonCode ==
+                        "creative_world_layout_bridge_attachment_duplicate",
+                "one stable crossing has exactly one bridge owner") &&
+         expect(removal.receipt.accepted &&
+                    removal.plan.objectRemoveIds.size() ==
+                        updatedMembers.size() &&
+                    removed.accepted && removed.changed && afterRemoval.empty() &&
+                    bridgeGradesRemoved,
+                "removing bridge removes structure and owned approach grades");
+}
+
+bool terrainLandformsReconcileBeforePathsWithStableIdentity() {
+  cr::CreativeAppState appState = makeAppState(207U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "site_layout";
+  layout.terrainProfiles.push_back(landform("terrace.entry"));
+  layout.terrainPaths.push_back(terrainPath("road.entry", 10, 4U));
+  const std::string landformKey =
+      cr::creativeWorldLayoutTerrainLandformSourceKey(
+          layout.stableKey, "terrace.entry");
+  const std::string pathKey = cr::creativeWorldLayoutTerrainPathSourceKey(
+      layout.stableKey, "road.entry");
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const bool firstOrder =
+      first.plan.terrainOperationMutations.size() == 2U &&
+      first.plan.terrainOperationMutations[0].operationKind ==
+          cr::CreativeTerrainOperationKind::Landform &&
+      first.plan.terrainOperationMutations[1].operationKind ==
+          cr::CreativeTerrainOperationKind::Path;
+  const cr::CreativeWorldLayoutApplyReceipt firstApplied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, first.plan, "world_layout_landform_first")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeTerrainOperation* firstLandform =
+      findTerrainOperation(appState.facade.document(), landformKey);
+  const cr::CreativeTerrainOperation* firstPath =
+      findTerrainOperation(appState.facade.document(), pathKey);
+  const cr::CreativeTerrainOperationId landformId =
+      firstLandform != nullptr
+          ? firstLandform->id
+          : cr::kInvalidCreativeTerrainOperationId;
+  const cr::CreativeTerrainOperationId pathId =
+      firstPath != nullptr ? firstPath->id
+                           : cr::kInvalidCreativeTerrainOperationId;
+  const bool firstOperationsValid =
+      firstLandform != nullptr && firstPath != nullptr &&
+      firstLandform->owner ==
+          cr::CreativeTerrainOperationOwner::WorldLayout &&
+      firstLandform->kind == cr::CreativeTerrainOperationKind::Landform;
+  const bool exactTerrace =
+      appState.facade.document().terrainHeightField().heightAt({0, 1}) == 2U &&
+      appState.facade.document().terrainHeightField().heightAt({2, 1}) == 4U &&
+      appState.facade.document().terrainHeightField().heightAt({4, 1}) == 6U &&
+      appState.facade.document().terrainHeightField().heightAt({6, 1}) == 8U &&
+      appState.facade.document().terrainMaterialField().materialAt({6, 1}) ==
+          cr::CreativeTerrainMaterial::Stone;
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+
+  cr::CreativeWorldLayout changed = layout;
+  changed.terrainProfiles[0].kind = cr::CreativeTerrainRecipeKind::Cliff;
+  changed.terrainProfiles[0].landform.kind =
+      cr::CreativeTerrainLandformKind::Cliff;
+  changed.terrainProfiles[0].landform.direction =
+      cr::CreativeTerrainLandformDirection::NegativeX;
+  const cr::CreativeWorldLayoutCompileResult update =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), changed);
+  const cr::CreativeWorldLayoutApplyReceipt updated =
+      update.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, update.plan, "world_layout_landform_update")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeTerrainOperation* updatedLandform =
+      findTerrainOperation(appState.facade.document(), landformKey);
+  const cr::CreativeTerrainOperation* updatedPath =
+      findTerrainOperation(appState.facade.document(), pathKey);
+  const bool updatedIdentityValid =
+      updatedLandform != nullptr && updatedLandform->id == landformId &&
+      updatedLandform->landform == changed.terrainProfiles[0].landform &&
+      updatedPath != nullptr && updatedPath->id == pathId;
+
+  cr::CreativeWorldLayout removed = changed;
+  removed.terrainProfiles.clear();
+  const cr::CreativeWorldLayoutCompileResult remove =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
+  const cr::CreativeWorldLayoutApplyReceipt removedApplied =
+      remove.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, remove.plan, "world_layout_landform_remove")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const cr::CreativeTerrainOperation* remainingPath =
+      findTerrainOperation(appState.facade.document(), pathKey);
+
+  return expect(first.receipt.accepted && firstOrder &&
+                    firstApplied.accepted && firstApplied.changed &&
+                    firstOperationsValid &&
+                    exactTerrace,
+                "landform compiles before paths and owns exact site output") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.plan.terrainOperationMutations.empty(),
+                "unchanged landform and path produce no operation churn") &&
+         expect(update.receipt.accepted &&
+                    update.plan.terrainOperationMutations.size() == 1U &&
+                    update.plan.terrainOperationMutations[0].kind ==
+                        cr::CreativeTerrainOperationMutationKind::Update &&
+                    update.plan.terrainOperationMutations[0].operationId ==
+                        landformId &&
+                    updated.accepted && updated.changed &&
+                    updatedIdentityValid,
+                "landform variant edits retain source operation identity") &&
+         expect(remove.receipt.accepted && removedApplied.accepted &&
+                    removedApplied.changed &&
+                    findTerrainOperation(appState.facade.document(),
+                                         landformKey) == nullptr &&
+                    remainingPath != nullptr && remainingPath->id == pathId,
+                "removing a landform removes only its owned operation");
+}
+
+bool retainingEdgesReconcileCollisionAndStairTraversal() {
+  cr::CreativeAppState appState = makeAppState(219U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "retaining_edge_layout";
+  cr::CreativeWorldLayoutTerrainProfile terrace =
+      landform("terrace.retained");
+  terrace.landform.targetHeightCells = 4U;
+  terrace.landform.terraceCount = 2U;
+  terrace.usesRetainingEdgeRecipe = true;
+  terrace.retainingEdge.terrainProfileKey = terrace.stableKey;
+  terrace.retainingEdge.settings.selection =
+      cr::CreativeRetainingEdgeSelection::Internal;
+  terrace.retainingEdge.settings.transitionCount = 1U;
+  terrace.retainingEdge.settings.transitions[0] = {
+      cr::canonicalCreativeTerrainHardEdge({3, 1}, {4, 1}),
+      cr::CreativeRetainingEdgeTransitionKind::Stair,
+      3U,
+  };
+  layout.terrainProfiles.push_back(terrace);
+  const std::string instanceKey = terrace.stableKey;
+
+  const cr::CreativeWorldLayoutCompileResult first =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      first.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, first.plan, "world_layout_retaining_edge")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> generated =
+      managedObjectIds(appState.facade.document(), instanceKey);
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &appState.facade.document();
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const bool neighboringRiserBlocked = iggy3d::segmentHitsAnyPhysicsAabb(
+      physics.colliders, {12.75F, 4.0F, -8.0F},
+      {14.25F, 4.0F, -8.0F}, 0.05F, nullptr);
+  const iggy3d::ReasoningGraph reasoning =
+      iggy3d::buildReasoningGraph(baked.room, {});
+  const std::size_t stairAnchorCount = static_cast<std::size_t>(std::count_if(
+      baked.room.anchors.begin(), baked.room.anchors.end(),
+      [](const iggy3d::RoomAnchorAsset& anchor) {
+        return anchor.kind == "stair";
+      }));
+
+  const cr::CreativeWorldLayoutCompileResult stable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  cr::CreativeWorldLayout updatedLayout = layout;
+  updatedLayout.terrainProfiles[0].retainingEdge.settings.material =
+      cr::CreativeStructuralMaterial::Brick;
+  const cr::CreativeWorldLayoutCompileResult updated =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       updatedLayout);
+  const cr::CreativeWorldLayoutApplyReceipt updatedApplied =
+      updated.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, updated.plan, "world_layout_retaining_edge_update")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> updatedMembers =
+      managedObjectIds(appState.facade.document(), instanceKey);
+  bool updatedMaterial = !updatedMembers.empty();
+  for (const auto& [stableKey, id] : updatedMembers) {
+    const auto prior = generated.find(stableKey);
+    const cr::CreativeObject* object =
+        findManaged(appState.facade.document(), instanceKey, stableKey);
+    cr::CreativeStructuralMaterial material =
+        cr::CreativeStructuralMaterial::Count;
+    updatedMaterial = updatedMaterial && prior != generated.end() &&
+                      prior->second == id && object != nullptr &&
+                      cr::parseCreativeStructuralMaterialTag(object->tags,
+                                                             material) &&
+                      material == cr::CreativeStructuralMaterial::Brick;
+  }
+  const cr::CreativeWorldLayoutCompileResult updatedStable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       updatedLayout);
+
+  cr::CreativeWorldLayout mismatched = updatedLayout;
+  mismatched.terrainProfiles[0].retainingEdge.terrainProfileKey =
+      "terrace.other";
+  const cr::CreativeWorldLayoutCompileResult mismatchResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), mismatched);
+  cr::CreativeWorldLayout sloped = updatedLayout;
+  sloped.terrainProfiles[0].landform.edge =
+      cr::CreativeTerrainLandformEdge::Slope;
+  sloped.terrainProfiles[0].landform.edgeWidthCells = 2U;
+  const cr::CreativeWorldLayoutCompileResult slopedResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), sloped);
+  cr::CreativeWorldLayout overwritten = updatedLayout;
+  cr::CreativeWorldLayoutTerrainProfile replacement =
+      overwritten.terrainProfiles[0];
+  replacement.stableKey = "terrace.replacement";
+  replacement.usesRetainingEdgeRecipe = false;
+  replacement.retainingEdge = {};
+  overwritten.terrainProfiles.push_back(std::move(replacement));
+  const cr::CreativeWorldLayoutCompileResult overwrittenResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       overwritten);
+  cr::CreativeWorldLayout malformedDisabled = updatedLayout;
+  malformedDisabled.terrainProfiles[0].usesRetainingEdgeRecipe = false;
+  malformedDisabled.terrainProfiles[0]
+      .retainingEdge.settings.transitionCount =
+      cr::kCreativeRetainingEdgeTransitionCapacity + 1U;
+  const cr::CreativeWorldLayoutCompileResult malformedDisabledResult =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       malformedDisabled);
+
+  cr::CreativeWorldLayout removedLayout = updatedLayout;
+  removedLayout.terrainProfiles[0].usesRetainingEdgeRecipe = false;
+  const cr::CreativeWorldLayoutCompileResult removal =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(),
+                                       removedLayout);
+  const cr::CreativeWorldLayoutApplyReceipt removed =
+      removal.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, removal.plan, "world_layout_retaining_edge_remove")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const std::map<std::string, cr::CreativeObjectId> afterRemoval =
+      managedObjectIds(appState.facade.document(), instanceKey);
+
+  return expect(first.receipt.accepted &&
+                    first.receipt.retainingEdgeRecipeCount == 1U &&
+                    first.receipt.retainingEdgeGeneratedObjectCount > 0U &&
+                    first.plan.retainingEdgePlans.size() == 1U &&
+                    first.plan.objectRecipes.size() == 1U &&
+                    first.plan.objectRecipes[0].kind ==
+                        cr::CreativeRecipeKind::RetainingEdge &&
+                    first.plan.retainingEdgePlans[0].receipt.stairCount == 1U,
+                "World Layout owns one retaining structure over final hard edges") &&
+         expect(applied.accepted && applied.changed &&
+                    generated.size() ==
+                        first.receipt.retainingEdgeGeneratedObjectCount,
+                "retaining structure materializes atomically") &&
+         expect(baked.receipt.accepted && physics.ok &&
+                    neighboringRiserBlocked && stairAnchorCount == 2U &&
+                    reasoning.nodes.size() == 2U &&
+                    reasoning.edges.size() == 1U,
+                "retained wall blocks while the authored stair seam remains traversable") &&
+         expect(stable.receipt.accepted &&
+                    stable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    stable.plan.objectRecipes.empty() &&
+                    stable.plan.objectRecipePatches.empty(),
+                "unchanged retaining source converges without object churn") &&
+         expect(updated.receipt.accepted && updatedApplied.accepted &&
+                    updatedApplied.changed &&
+                    updatedMembers.size() == generated.size() &&
+                    updatedMaterial,
+                "retaining material edit patches every member without identity churn") &&
+         expect(updatedStable.receipt.accepted &&
+                    updatedStable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange,
+                "edited retaining source converges to one stable definition") &&
+         expect(!mismatchResult.receipt.accepted &&
+                    mismatchResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    mismatchResult.receipt.reasonCode ==
+                        "creative_world_layout_retaining_edge_source_invalid" &&
+                    !slopedResult.receipt.accepted &&
+                    slopedResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    slopedResult.receipt.reasonCode ==
+                        "creative_world_layout_retaining_edge_source_invalid",
+                "invalid retaining attachments fail at the exact profile row") &&
+         expect(!overwrittenResult.receipt.accepted &&
+                    overwrittenResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    overwrittenResult.receipt.failedIndex == 0U &&
+                    overwrittenResult.receipt.reasonCode ==
+                        "creative_world_layout_retaining_edge_recipe_rejected" &&
+                    overwrittenResult.receipt.kernelReasonCode ==
+                        "creative_retaining_edge_recipe_no_matching_edges",
+                "retaining source cannot decorate a later landform owner's seams") &&
+         expect(!malformedDisabledResult.receipt.accepted &&
+                    malformedDisabledResult.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    malformedDisabledResult.receipt.reasonCode ==
+                        "creative_world_layout_retaining_edge_source_invalid",
+                "disabled retaining data remains valid and saveable") &&
+         expect(removal.receipt.accepted &&
+                    removal.plan.objectRemoveIds.size() ==
+                        updatedMembers.size() &&
+                    removed.accepted && removed.changed &&
+                    afterRemoval.empty(),
+                "disabling retaining output removes every owned member");
+}
+
+bool terrainPathOperationCapacityFailsAtExactSource() {
+  const cr::CreativeDocument document = makeDocument(206U);
+  const std::uint64_t revisionBefore = document.revision();
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "path_capacity_layout";
+  layout.terrainPaths.reserve(cr::kCreativeTerrainOperationCapacity + 1U);
+  for (std::size_t index = 0U;
+       index <= cr::kCreativeTerrainOperationCapacity; ++index) {
+    layout.terrainPaths.push_back(terrainPath(
+        "road." + std::to_string(index), static_cast<std::int32_t>(index),
+        4U));
+  }
+
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  return expect(!compiled.receipt.accepted &&
+                    compiled.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::MutationRejected &&
+                    compiled.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainPath &&
+                    compiled.receipt.failedIndex ==
+                        cr::kCreativeTerrainOperationCapacity &&
+                    compiled.receipt.reasonCode ==
+                        "creative_terrain_operation_capacity_exceeded",
+                "path operation capacity reports the exact rejected source") &&
+         expect(document.terrainOperationStack().operations.empty() &&
+                    document.revision() == revisionBefore,
+                "capacity rejection cannot partially mutate the live document");
+}
+
+bool terrainPathNetworkRequiresExactIntersectionAndBridgeSeams() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "path_network_layout";
+
+  const auto gradeApproach = [](std::string key,
+                                cr::CreativeTerrainCoord2 start,
+                                cr::CreativeTerrainCoord2 end,
+                                std::uint16_t halfWidth) {
+    cr::CreativeWorldLayoutTerrainPath path;
+    path.stableKey = std::move(key);
+    path.recipe.kind = cr::CreativeTerrainPathKind::Road;
+    path.recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+    path.recipe.curve = cr::CreativeTerrainPathCurvePolicy::Linear;
+    path.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Flat;
+    path.recipe.falloffCells = 2U;
+    path.recipe.material = cr::CreativeTerrainMaterial::Dirt;
+    path.recipe.nextPointId = 3U;
+    path.recipe.points = {
+        {1U, start, 4U, halfWidth, 0U, 0},
+        {2U, end, 4U, halfWidth, 0U, 0},
+    };
+    return path;
+  };
+
+  cr::CreativeWorldLayoutTerrainPath main = terrainPath("main", 0, 4U, 2U);
+  main.recipe.endJoin = cr::CreativeTerrainPathEndpointJoin::Intersection;
+  cr::CreativeWorldLayoutTerrainPath branch =
+      terrainPath("branch", -4, 4U, 2U);
+  branch.recipe.points[0].coord = {8, -4};
+  branch.recipe.points[1].coord = {8, 0};
+  branch.recipe.endJoin = cr::CreativeTerrainPathEndpointJoin::Intersection;
+  cr::CreativeWorldLayoutTerrainPath bridgeApproach = gradeApproach(
+      "bridge.approach.west", {8, 0}, {12, 0}, 2U);
+  bridgeApproach.recipe.startJoin =
+      cr::CreativeTerrainPathEndpointJoin::Intersection;
+  bridgeApproach.recipe.endJoin =
+      cr::CreativeTerrainPathEndpointJoin::Bridge;
+  cr::CreativeWorldLayoutTerrainPath bridgeExit = gradeApproach(
+      "bridge.approach.east", {17, 0}, {21, 0}, 2U);
+  bridgeExit.recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::Bridge;
+  cr::CreativeWorldLayoutTerrainPath padApproach = gradeApproach(
+      "building.pad.approach", {20, 0}, {24, 0}, 1U);
+  padApproach.recipe.endJoin =
+      cr::CreativeTerrainPathEndpointJoin::BuildingPad;
+  layout.terrainPaths = {main, branch, bridgeApproach, bridgeExit, padApproach};
+
+  cr::CreativeWorldLayoutObject bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  bridge.stableKey = "bridge.main";
+  bridge.name = "Main Bridge";
+  bridge.boundsCells = {{12.0, 0.0, -2.0}, {18.0, 1.0, 3.0}};
+  layout.objects.push_back(bridge);
+
+  cr::CreativeWorldLayoutBuilding building;
+  building.rootMode = cr::CreativeBuildingRootMode::CreateRoom;
+  building.stableKey = "building.main";
+  building.name = "Main Building";
+  building.rootFootprint = {{24, -2}, {30, 3}};
+  layout.buildings.push_back(building);
+  layout.boxes.push_back(
+      {0U, cr::CreativeObjectKind::Floor, "pad", "Main Building Pad",
+       building.rootFootprint, 0.0, 1U});
+
+  cr::CreativeAppState appState = makeAppState(207U);
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const cr::CreativeWorldLayoutApplyReceipt applied =
+      compiled.receipt.accepted
+          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+                appState, compiled.plan, "world_layout_path_network")
+          : cr::CreativeWorldLayoutApplyReceipt{};
+  const bool networkApplied =
+      compiled.receipt.accepted && applied.accepted && applied.changed &&
+      appState.facade.document().terrainOperationStack().operations.size() ==
+          5U &&
+      std::all_of(
+          appState.facade.document().terrainOperationStack().operations.begin(),
+          appState.facade.document().terrainOperationStack().operations.end(),
+          [](const cr::CreativeTerrainOperation& operation) {
+            return operation.owner ==
+                       cr::CreativeTerrainOperationOwner::WorldLayout &&
+                   operation.kind == cr::CreativeTerrainOperationKind::Path;
+          });
+  if (!networkApplied) {
+    std::cerr << "path network compile status="
+              << static_cast<unsigned>(compiled.receipt.status)
+              << " reason=" << compiled.receipt.reasonCode
+              << " kernel=" << compiled.receipt.kernelReasonCode
+              << " failedTable="
+              << static_cast<unsigned>(compiled.receipt.failedTable)
+              << " failedIndex=" << compiled.receipt.failedIndex << '\n';
+  }
+
+  cr::CreativeWorldLayout unmatchedIntersection;
+  unmatchedIntersection.stableKey = "unmatched_intersection";
+  unmatchedIntersection.terrainPaths = {main};
+  const cr::CreativeWorldLayoutCompileResult intersectionRejected =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(208U),
+                                       unmatchedIntersection);
+
+  cr::CreativeWorldLayout mismatchedHeight = layout;
+  mismatchedHeight.terrainPaths[1].recipe.points.back().heightCells = 5U;
+  const cr::CreativeWorldLayoutCompileResult heightRejected =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(209U), mismatchedHeight);
+
+  cr::CreativeWorldLayout unmatchedBridge = layout;
+  unmatchedBridge.objects.clear();
+  const cr::CreativeWorldLayoutCompileResult bridgeRejected =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(210U), unmatchedBridge);
+
+  cr::CreativeWorldLayout oneSidedBridge = layout;
+  oneSidedBridge.terrainPaths.erase(oneSidedBridge.terrainPaths.begin() + 3U);
+  const cr::CreativeWorldLayoutCompileResult bridgePairRejected =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(211U), oneSidedBridge);
+
+  cr::CreativeWorldLayout unmatchedPad = layout;
+  unmatchedPad.buildings.clear();
+  unmatchedPad.boxes.clear();
+  const cr::CreativeWorldLayoutCompileResult padRejected =
+      cr::buildCreativeWorldLayoutPlan(makeDocument(212U), unmatchedPad);
+
+  return expect(networkApplied,
+                "matched intersections and bridge approaches compile together") &&
+         expect(!intersectionRejected.receipt.accepted &&
+                    intersectionRejected.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainPath &&
+                    intersectionRejected.receipt.reasonCode ==
+                        "creative_world_layout_path_intersection_unmatched",
+                "unmatched intersection endpoints fail closed") &&
+         expect(!heightRejected.receipt.accepted &&
+                    heightRejected.receipt.reasonCode ==
+                        "creative_world_layout_path_intersection_height_mismatch",
+                "intersection endpoints require one exact authored elevation") &&
+         expect(!bridgeRejected.receipt.accepted &&
+                    bridgeRejected.receipt.failedIndex == 2U &&
+                    bridgeRejected.receipt.reasonCode ==
+                        "creative_world_layout_path_bridge_endpoint_unmatched",
+                "bridge joins require an actual bridge footprint edge") &&
+         expect(!bridgePairRejected.receipt.accepted &&
+                    bridgePairRejected.receipt.reasonCode ==
+                        "creative_world_layout_bridge_approach_pair_required",
+                "bridge terrain integration requires both exact approaches") &&
+         expect(!padRejected.receipt.accepted &&
+                    padRejected.receipt.reasonCode ==
+                        "creative_world_layout_path_building_pad_unmatched",
+                "building-pad joins require one exact host footprint");
 }
 
 bool invalidAndStaleSourcesFailClosed() {
@@ -2662,6 +4413,7 @@ bool generatedOutputAdoptionIsBoundedToInvertibleSources() {
 int main() {
   const bool ok =
       terrainGroundedBuildingsShiftAsOneAndFillRelief() &&
+      stagedLandformGroundsBuildingAgainstPreviewTerrain() &&
       denseTerrainRevisionInvalidatesGroundedPlans() &&
       structuralSurfacesCompileFromExplicitPlanesOnNonUnitGrid() &&
       twoDimensionalBuildingCompilesToExactThreeDimensionalOutput() &&
@@ -2679,11 +4431,22 @@ int main() {
       authoredChildBlocksRemovalOfManagedParent() &&
       unversionedGeneratedGroupsMigrateOnceThenRemainStable() &&
       authoritativeTerrainAndMaterialApplyAsOneHistoryStep() &&
+      watercourseCompileRetainsCanonicalAttachmentsWithoutWaterObjects() &&
+      terrainPathOperationsReconcileOwnershipOrderAndIdentity() &&
+      roadConstructionReconcilesAndKeepsTravelSurfaceTraversable() &&
+      watercourseBridgeReconcilesStructureGradesCollisionAndTraversal() &&
+      terrainLandformsReconcileBeforePathsWithStableIdentity() &&
+      retainingEdgesReconcileCollisionAndStairTraversal() &&
+      terrainPathOperationCapacityFailsAtExactSource() &&
+      terrainPathNetworkRequiresExactIntersectionAndBridgeSeams() &&
       buildingTransformPreservesHostedOpeningSemantics() &&
       buildingTransformsRoundTripAndRejectOverflow() &&
       buildingEditKernelsAreAtomicAndRemapOwnership() &&
+      roofAperturesFollowBuildingOwnershipAndTemplateSync() &&
       verticalConnectorOwnershipFollowsBuildingKernels() &&
+      explicitTopologyFollowsBuildingOwnershipKernels() &&
       buildingTemplatesNormalizeTransformPersistAndStamp() &&
+      buildingTemplatePlacementAnalysisAndDetachAreExact() &&
       buildingTemplateSyncIsSafeAtomicAndPersistent() &&
       generatedOutputAdoptionIsBoundedToInvertibleSources() &&
       invalidAndStaleSourcesFailClosed();

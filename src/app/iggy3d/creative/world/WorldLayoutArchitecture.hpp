@@ -82,6 +82,10 @@ defaultCreativeWorldLayoutArchitecturalProfile(
     CreativeWorldLayoutArchitecturalProfileKind kind) noexcept;
 [[nodiscard]] bool validCreativeWorldLayoutArchitecturalProfile(
     const CreativeWorldLayoutArchitecturalProfile& profile) noexcept;
+[[nodiscard]] bool resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+    const CreativeGridSettings& grid,
+    const CreativeWorldLayoutArchitecturalProfile& profile,
+    std::uint16_t& output) noexcept;
 
 // Normalizes one building in a single candidate copy. Horizontal footprints,
 // names, stable keys, opening-local dimensions, neighboring buildings, and

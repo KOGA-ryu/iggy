@@ -102,7 +102,8 @@ replaceCreativeTerrainSurfaceRegion(
 [[nodiscard]] CreativeTerrainSurfacePlan
 buildCreativeComposedTerrainSurfacePlan(
     const CreativeTerrainField& legacy,
-    const CreativeTerrainHeightField& authored);
+    const CreativeTerrainHeightField& authored,
+    std::span<const CreativeTerrainHardEdge> hardEdges = {});
 [[nodiscard]] CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(
     const CreativeTerrainHeightField& field,
     CreativeVec3 gridOrigin,

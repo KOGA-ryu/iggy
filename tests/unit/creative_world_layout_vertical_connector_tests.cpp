@@ -2,6 +2,11 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/movement/MovementSystem.hpp"
+#include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,7 +15,9 @@
 #include <iostream>
 #include <limits>
 #include <numbers>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -74,6 +81,40 @@ cr::CreativeWorldLayout twoStoreyLayout() {
   return layout;
 }
 
+void replaceRoomsWithExplicitLTopology(cr::CreativeWorldLayout& layout) {
+  const cr::CreativeTerrainCoord2 points[] = {
+      {0, 0}, {8, 0}, {8, 4}, {4, 4}, {4, 8}, {0, 8},
+  };
+  const std::pair<std::size_t, std::size_t> edges[] = {
+      {0U, 1U}, {1U, 2U}, {3U, 2U},
+      {3U, 4U}, {5U, 4U}, {0U, 5U},
+  };
+  const bool reversed[] = {false, false, true, false, true, true};
+  for (std::size_t levelIndex = 0U; levelIndex < 2U; ++levelIndex) {
+    const std::size_t vertexBase = layout.topologyVertices.size();
+    const std::size_t edgeBase = layout.topologyEdges.size();
+    for (std::size_t pointIndex = 0U; pointIndex < std::size(points);
+         ++pointIndex) {
+      layout.topologyVertices.push_back(
+          {levelIndex,
+           "l" + std::to_string(levelIndex) + "_vertex_" +
+               std::to_string(pointIndex),
+           points[pointIndex]});
+    }
+    for (std::size_t edgeIndex = 0U; edgeIndex < std::size(edges);
+         ++edgeIndex) {
+      layout.topologyEdges.push_back(
+          {levelIndex,
+           "l" + std::to_string(levelIndex) + "_edge_" +
+               std::to_string(edgeIndex),
+           vertexBase + edges[edgeIndex].first,
+           vertexBase + edges[edgeIndex].second, 0.25});
+      layout.roomBoundaries.push_back(
+          {levelIndex, edgeBase + edgeIndex, edgeIndex, reversed[edgeIndex]});
+    }
+  }
+}
+
 bool stairPlanOwnsRiseDirectionAndStepParity() {
   const cr::CreativeGridSettings grid{{10.0, 1.0, -5.0}, 1.0, {32, 16, 32}};
   const cr::CreativeWorldLayout layout = twoStoreyLayout();
@@ -85,6 +126,12 @@ bool stairPlanOwnsRiseDirectionAndStepParity() {
          expect(plan.riseMeters == 3.0 && plan.runMeters == 4.0 &&
                     plan.widthMeters == 2.0 && plan.stepCount == 12U,
                 "stair dimensions and descriptor-owned step count match") &&
+         expect(plan.stair.accepted &&
+                    plan.stair.riserHeightMeters == 0.25 &&
+                    std::abs(plan.stair.treadDepthMeters - 1.0 / 3.0) <
+                        1.0e-12 &&
+                    plan.stair.socketCount == 4U,
+                "world connector exposes one canonical stair schedule") &&
          expect(
              std::abs(plan.rotationEulerRadians.y - std::numbers::pi * 0.5) <
                  1.0e-12,
@@ -95,7 +142,12 @@ bool stairPlanOwnsRiseDirectionAndStepParity() {
                     plan.authoredBounds.max.z == 0.0 &&
                     plan.authoredBounds.min.y == 1.0 &&
                     plan.authoredBounds.max.y == 4.0,
-                "authored local bounds preserve world center and swapped axes");
+                "authored local bounds preserve world center and swapped axes") &&
+         expect(plan.stair.lowerLanding.centerMeters.x == 10.5 &&
+                    plan.stair.upperLanding.centerMeters.x == 15.5 &&
+                    plan.stair.lowerLanding.centerMeters.y == 1.0 &&
+                    plan.stair.upperLanding.centerMeters.y == 4.0,
+                "landings follow the selected rise direction and levels");
 }
 
 bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
@@ -108,6 +160,7 @@ bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
   connector.stableKey = "main_ramp";
   connector.name = "Main Ramp";
   connector.footprint = {{2, 1}, {4, 5}};
+  connector.material = cr::CreativeStructuralMaterial::Stone;
 
   const auto plan =
       cr::planCreativeWorldLayoutVerticalConnector(grid, layout, 0U);
@@ -128,6 +181,12 @@ bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
       ramp = &*found;
     }
   }
+  cr::CreativeStructuralMaterial compiledMaterial =
+      cr::CreativeStructuralMaterial::Count;
+  const bool materialTagged =
+      ramp != nullptr &&
+      cr::parseCreativeStructuralMaterialTag(ramp->createRequest.tags,
+                                             compiledMaterial);
 
   return expect(plan.accepted &&
                     plan.objectKind == cr::CreativeObjectKind::Ramp,
@@ -135,12 +194,25 @@ bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
          expect(plan.riseMeters == 3.0 && plan.runMeters == 4.0 &&
                     plan.widthMeters == 2.0 && plan.stepCount == 0U,
                 "ramp shares slope dimensions without publishing treads") &&
+         expect(plan.ramp.accepted && plan.ramp.walkable &&
+                    near(plan.ramp.slopeAngleDegrees, 36.8698976458) &&
+                    plan.ramp.maximumWalkableSlopeDegrees == 40.0 &&
+                    plan.ramp.socketCount == 2U &&
+                    plan.ramp.material == cr::CreativeStructuralMaterial::Stone,
+                "ramp recipe owns walkability sockets and material") &&
+         expect(plan.ramp.sideEdges[0].lowMeters.y == 0.0 &&
+                    plan.ramp.sideEdges[0].highMeters.y == 3.0 &&
+                    plan.ramp.lowerLanding.centerMeters.z == 5.5 &&
+                    plan.ramp.upperLanding.centerMeters.z == 0.5,
+                "ramp publishes explicit side edges and landings") &&
          expect(
              std::abs(plan.rotationEulerRadians.y - std::numbers::pi) < 1.0e-12,
              "negative Z ramp points from its low end toward its high end") &&
          expect(
              ramp != nullptr && ramp->stableKey == "house.main_ramp" &&
                  ramp->createRequest.hasTransformOverride &&
+                 materialTagged &&
+                 compiledMaterial == cr::CreativeStructuralMaterial::Stone &&
                  std::abs(ramp->createRequest.transform.rotationEulerRadians.y -
                           std::numbers::pi) < 1.0e-12,
              "compiler emits one directionally authored ramp");
@@ -156,6 +228,12 @@ bool invalidStoriesFootprintsAndLandingsFailClosed() {
   noLanding.verticalConnectors[0].footprint = {{0, 2}, {4, 4}};
   cr::CreativeWorldLayout steep = twoStoreyLayout();
   steep.verticalConnectors[0].footprint = {{1, 2}, {3, 4}};
+  cr::CreativeWorldLayout rampAtFortyFive = twoStoreyLayout();
+  rampAtFortyFive.verticalConnectors[0].kind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  rampAtFortyFive.verticalConnectors[0].footprint = {{1, 2}, {4, 4}};
+  cr::CreativeWorldLayout lowHeadroom = twoStoreyLayout();
+  lowHeadroom.levels[1].wallHeightCells = 1U;
 
   return expect(
              cr::planCreativeWorldLayoutVerticalConnector(grid, wrongRise, 0U)
@@ -176,7 +254,55 @@ bool invalidStoriesFootprintsAndLandingsFailClosed() {
              cr::planCreativeWorldLayoutVerticalConnector(grid, steep, 0U)
                      .status ==
                  cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidSlope,
-             "run shorter than rise rejects");
+             "run shorter than rise rejects") &&
+         expect(
+             cr::planCreativeWorldLayoutVerticalConnector(
+                 grid, rampAtFortyFive, 0U)
+                     .status ==
+                 cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidSlope,
+             "45 degree ramp rejects against the runtime 40 degree limit") &&
+         expect(cr::planCreativeWorldLayoutVerticalConnector(
+                    grid, lowHeadroom, 0U)
+                    .status ==
+                    cr::CreativeWorldLayoutVerticalConnectorStatus::
+                        InvalidHeadroom,
+                "upper storey without player headroom rejects");
+}
+
+bool orthogonalRoomsRejectNotchFootprintsAndMissingLandings() {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  cr::CreativeWorldLayout valid = twoStoreyLayout();
+  replaceRoomsWithExplicitLTopology(valid);
+  valid.verticalConnectors[0].direction =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+  valid.verticalConnectors[0].footprint = {{1, 1}, {3, 5}};
+
+  cr::CreativeWorldLayout notch = valid;
+  notch.verticalConnectors[0].direction =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  notch.verticalConnectors[0].footprint = {{5, 5}, {7, 7}};
+
+  cr::CreativeWorldLayout missingLanding = valid;
+  missingLanding.verticalConnectors[0].direction =
+      cr::CreativeWorldLayoutVerticalDirection::PositiveX;
+  missingLanding.verticalConnectors[0].footprint = {{2, 5}, {4, 7}};
+
+  return expect(
+             cr::planCreativeWorldLayoutVerticalConnector(grid, valid, 0U)
+                 .accepted,
+             "connector and both landings fit the covered L-room union") &&
+         expect(
+             cr::planCreativeWorldLayoutVerticalConnector(grid, notch, 0U)
+                     .status ==
+                 cr::CreativeWorldLayoutVerticalConnectorStatus::
+                     InvalidFootprint,
+             "connector inside the L-room bounding-box notch rejects") &&
+         expect(
+             cr::planCreativeWorldLayoutVerticalConnector(
+                 grid, missingLanding, 0U)
+                     .status ==
+                 cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidLanding,
+             "landing in the L-room notch rejects after a covered footprint");
 }
 
 bool stagedConnectorPlanningDoesNotMutateTheLayout() {
@@ -286,6 +412,9 @@ bool connectorProducesSpecificRenderedGeometryAndCollision(
   connector.name = objectKind == cr::CreativeObjectKind::Stair
                        ? "Rendered Stair"
                        : "Rendered Ramp";
+  if (objectKind == cr::CreativeObjectKind::Ramp) {
+    connector.material = cr::CreativeStructuralMaterial::Stone;
+  }
 
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Connector Render Contract");
@@ -400,7 +529,12 @@ bool connectorProducesSpecificRenderedGeometryAndCollision(
        connectorSurface->shape ==
            iggy3d::RoomSpatialSurfaceShape::HeightPatch &&
        connectorSurface->role == iggy3d::RoomSpatialSurfaceRole::Walkable &&
-       connectorSurface->normal.x < 0.0F && connectorSurface->normal.y > 0.0F);
+       near(connectorSurface->normal.x,
+            connectorPlan.ramp.surfaceNormal.x) &&
+       near(connectorSurface->normal.y,
+            connectorPlan.ramp.surfaceNormal.y) &&
+       near(connectorSurface->normal.z,
+            connectorPlan.ramp.surfaceNormal.z));
   const bool stairSurfaceCorrect =
       objectKind != cr::CreativeObjectKind::Stair ||
       (connectorSurface != nullptr &&
@@ -416,6 +550,25 @@ bool connectorProducesSpecificRenderedGeometryAndCollision(
               << " indices=" << geometry.indices.size()
               << " draws=" << geometry.indexedDraws.size() << '\n';
   }
+  const std::size_t rampAnchorCount =
+      static_cast<std::size_t>(std::count_if(
+          baked.room.anchors.begin(), baked.room.anchors.end(),
+          [](const iggy3d::RoomAnchorAsset& anchor) {
+            return anchor.kind == "ramp";
+          }));
+  const iggy3d::ReasoningGraph reasoning =
+      iggy3d::buildReasoningGraph(baked.room, {});
+  const std::size_t rampReasoningNodeCount =
+      static_cast<std::size_t>(std::count_if(
+          reasoning.nodes.begin(), reasoning.nodes.end(),
+          [](const iggy3d::ReasoningNode& node) {
+            return node.kind == iggy3d::ReasoningNodeKind::ramp;
+          }));
+  const bool rampSemanticsCorrect =
+      objectKind != cr::CreativeObjectKind::Ramp ||
+      (bakedMesh != nullptr &&
+       bakedMesh->materialId == "creative_wall_stone" &&
+       rampAnchorCount == 2U && rampReasoningNodeCount == 2U);
 
   return expect(connectorPlan.accepted && compiled.receipt.accepted &&
                     preview.accepted && object != nullptr,
@@ -448,7 +601,9 @@ bool connectorProducesSpecificRenderedGeometryAndCollision(
                 "rotated render geometry matches authored connector bounds") &&
          expect(surfaceCount == expectedSurfaceCount && rampSurfaceCorrect &&
                     stairSurfaceCorrect,
-                "connector render and collision profiles stay in parity");
+                "connector render and collision profiles stay in parity") &&
+         expect(rampSemanticsCorrect,
+                "ramp material and navigation semantics reach runtime");
 }
 
 bool worldLayoutConnectorsRenderAsStairsAndRamps() {
@@ -462,16 +617,214 @@ bool worldLayoutConnectorsRenderAsStairsAndRamps() {
              1U);
 }
 
+bool authoredStairSupportsFullMotorTraversal() {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  const cr::CreativeWorldLayout layout = twoStoreyLayout();
+  const cr::CreativeWorldLayoutVerticalConnectorPlan connector =
+      cr::planCreativeWorldLayoutVerticalConnector(grid, layout, 0U);
+
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Authored Stair Motor Traversal");
+  static_cast<void>(document.assignId(75U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      compiled.receipt.accepted
+          ? cr::previewCreativeWorldLayoutPlan(document, compiled.plan)
+          : cr::CreativeWorldLayoutPreviewResult{};
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = preview.accepted ? &preview.document : nullptr;
+  bakeRequest.roomId = "authored_stair_motor_traversal";
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+
+  iggy3d::PlayerPhysicsMovePlannerConfig config;
+  config.motor.skinMeters = 0.02F;
+  config.motor.groundProbeDistanceMeters = 0.10F;
+  config.motor.groundSnapDistanceMeters = 0.10F;
+  config.maxStepHeightMeters = 0.35F;
+  const cr::CreativeVec3 lower = connector.stair.lowerLanding.centerMeters;
+  const cr::CreativeVec3 upper = connector.stair.upperLanding.centerMeters;
+  const double horizontalDistance =
+      std::hypot(upper.x - lower.x, upper.z - lower.z);
+  const double directionX = (upper.x - lower.x) / horizontalDistance;
+  const double directionZ = (upper.z - lower.z) / horizontalDistance;
+  const std::size_t moveCount = static_cast<std::size_t>(std::llround(
+      horizontalDistance / connector.stair.treadDepthMeters));
+
+  iggy3d::Vec3 center{static_cast<float>(lower.x),
+                      static_cast<float>(lower.y + 0.90),
+                      static_cast<float>(lower.z)};
+  std::size_t acceptedStepCount = 0U;
+  bool everyMoveAccepted = true;
+  for (std::size_t moveIndex = 0U; moveIndex < moveCount; ++moveIndex) {
+    iggy3d::PlayerPhysicsMovePlannerRequest request;
+    request.collisionSurfaces = &surfaces;
+    request.startCenterMeters = center;
+    request.bodyHalfExtentsMeters = {0.30F, 0.90F, 0.30F};
+    request.desiredDisplacementMeters = {
+        static_cast<float>(directionX * connector.stair.treadDepthMeters),
+        0.0F,
+        static_cast<float>(directionZ * connector.stair.treadDepthMeters)};
+    request.config = config;
+    const iggy3d::PlayerPhysicsMovePlannerResult planned =
+        iggy3d::planPlayerPhysicsMove(request);
+    everyMoveAccepted = everyMoveAccepted && planned.ok && planned.grounded &&
+                        (!planned.stepAttempted || planned.stepAccepted);
+    acceptedStepCount += planned.stepAccepted ? 1U : 0U;
+    center = planned.finalCenterMeters;
+  }
+
+  return expect(connector.accepted && compiled.receipt.accepted &&
+                    preview.accepted && baked.receipt.accepted,
+                "authored stair reaches the runtime room") &&
+         expect(moveCount == 15U && everyMoveAccepted &&
+                    acceptedStepCount == connector.stepCount,
+                "motor accepts every authored riser exactly once") &&
+         expect(std::fabs(center.x - static_cast<float>(upper.x)) <= 0.01F &&
+                    std::fabs(center.z - static_cast<float>(upper.z)) <= 0.01F &&
+                    std::fabs(center.y -
+                              static_cast<float>(upper.y + 0.90)) <= 0.01F,
+                "motor finishes grounded on the authored upper landing");
+}
+
+bool authoredRampSupportsFullMotorTraversal() {
+  const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
+  cr::CreativeWorldLayout layout = twoStoreyLayout();
+  layout.verticalConnectors[0].kind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  layout.verticalConnectors[0].material =
+      cr::CreativeStructuralMaterial::Stone;
+  const cr::CreativeWorldLayoutVerticalConnectorPlan connector =
+      cr::planCreativeWorldLayoutVerticalConnector(grid, layout, 0U);
+
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Authored Ramp Motor Traversal");
+  static_cast<void>(document.assignId(76U));
+  static_cast<void>(document.setGridSettings(grid));
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  const cr::CreativeWorldLayoutPreviewResult preview =
+      compiled.receipt.accepted
+          ? cr::previewCreativeWorldLayoutPlan(document, compiled.plan)
+          : cr::CreativeWorldLayoutPreviewResult{};
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = preview.accepted ? &preview.document : nullptr;
+  bakeRequest.roomId = "authored_ramp_motor_traversal";
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+
+  const cr::CreativeVec3 lower = connector.ramp.lowerLanding.centerMeters;
+  const cr::CreativeVec3 upper = connector.ramp.upperLanding.centerMeters;
+  const iggy3d::CollisionQueryResult upperLandingGround =
+      iggy3d::sampleSurfaceHeightAtOrBelow(
+          surfaces,
+          {static_cast<float>(upper.x), static_cast<float>(upper.y),
+           static_cast<float>(upper.z)},
+          static_cast<float>(upper.y) +
+              iggy3d::MovementParams{}.groundSnapMeters,
+          iggy3d::MovementParams{}.radiusMeters);
+  const double horizontalDistance =
+      std::hypot(upper.x - lower.x, upper.z - lower.z);
+  const double directionX = (upper.x - lower.x) / horizontalDistance;
+  const double directionZ = (upper.z - lower.z) / horizontalDistance;
+  constexpr double kMoveMeters = 0.10;
+  const std::size_t moveCount = static_cast<std::size_t>(
+      std::llround(horizontalDistance / kMoveMeters));
+
+  iggy3d::WorldState world;
+  iggy3d::EntityState player;
+  player.id = {1U};
+  player.stableName = "ramp_player";
+  player.kind = iggy3d::EntityKind::Player;
+  player.transform = iggy3d::identityTransform3();
+  player.transform.position = {static_cast<float>(lower.x),
+                               static_cast<float>(lower.y),
+                               static_cast<float>(lower.z)};
+  player.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F},
+                                         {0.25F, 1.8F, 0.25F});
+  static_cast<void>(world.seedEntity(player));
+  iggy3d::RuntimeConfig runtimeConfig = iggy3d::makeDefaultRuntimeConfig();
+  iggy3d::MovementSystemContext context{&world, &runtimeConfig, &surfaces,
+                                        true};
+  bool everyMoveAccepted = true;
+  for (std::size_t moveIndex = 0U; moveIndex < moveCount; ++moveIndex) {
+    const iggy3d::EntityState* current = world.findById({1U});
+    if (current == nullptr) {
+      everyMoveAccepted = false;
+      break;
+    }
+    iggy3d::MovementRequest request;
+    request.actor = {1U};
+    request.destination = {
+        current->transform.position.x +
+            static_cast<float>(directionX * kMoveMeters),
+        current->transform.position.y,
+        current->transform.position.z +
+            static_cast<float>(directionZ * kMoveMeters)};
+    request.mode = iggy3d::MovementMode::Walk;
+    request.maxDistanceMeters = 1.0F;
+    const iggy3d::MovementResult moved =
+        iggy3d::executeMovement(context, request);
+    everyMoveAccepted =
+        everyMoveAccepted &&
+        moved.blocked == iggy3d::MovementBlockedReason::None;
+  }
+  const iggy3d::EntityState* finalPlayer = world.findById({1U});
+  const bool reachedUpperLanding =
+      finalPlayer != nullptr &&
+      std::fabs(finalPlayer->transform.position.x -
+                static_cast<float>(upper.x)) <= 0.02F &&
+      std::fabs(finalPlayer->transform.position.z -
+                static_cast<float>(upper.z)) <= 0.02F &&
+      std::fabs(finalPlayer->transform.position.y -
+                upperLandingGround.heightMeters) <= 0.03F;
+  if (!reachedUpperLanding) {
+    if (finalPlayer != nullptr) {
+      std::cerr << "ramp movement final foot: "
+                << finalPlayer->transform.position.x << ' '
+                << finalPlayer->transform.position.y << ' '
+                << finalPlayer->transform.position.z << " expected "
+                << upper.x << ' ' << upperLandingGround.heightMeters << ' '
+                << upper.z << '\n';
+    }
+  }
+
+  return expect(connector.accepted && connector.ramp.walkable &&
+                    compiled.receipt.accepted && preview.accepted &&
+                    baked.receipt.accepted,
+                "authored ramp reaches the runtime room") &&
+         expect(moveCount == 50U && everyMoveAccepted,
+                "movement remains grounded across the complete ramp") &&
+         expect(upperLandingGround.status ==
+                    iggy3d::CollisionQueryStatus::Hit,
+                "authored upper landing has exact walkable ground") &&
+         expect(reachedUpperLanding,
+                "movement finishes grounded on the authored ramp landing");
+}
+
 } // namespace
 
 int main() {
   return stairPlanOwnsRiseDirectionAndStepParity() &&
                  rampPlanUsesTheSharedSlopeAndCompilerPath() &&
                  invalidStoriesFootprintsAndLandingsFailClosed() &&
+                 orthogonalRoomsRejectNotchFootprintsAndMissingLandings() &&
                  stagedConnectorPlanningDoesNotMutateTheLayout() &&
                  oneConnectorOwnsEachAffectedSlab() &&
                  compilerCutsBothSlabsAndEmitsOneStair() &&
-                 worldLayoutConnectorsRenderAsStairsAndRamps()
+                 worldLayoutConnectorsRenderAsStairsAndRamps() &&
+                 authoredStairSupportsFullMotorTraversal() &&
+                 authoredRampSupportsFullMotorTraversal()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

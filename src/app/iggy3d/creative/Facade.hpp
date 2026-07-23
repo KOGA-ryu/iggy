@@ -8,9 +8,11 @@
 #include "app/iggy3d/creative/tools/Measure.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/AssetScatter.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/Pattern.hpp"
+#include "app/iggy3d/creative/tools/RecipeTransform.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 #include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
@@ -144,6 +146,19 @@ struct CreativeFacadeDocumentInstallReceipt {
   std::string_view message = "creative_facade_document_not_requested";
 };
 
+struct CreativeFacadeMeasurementAnnotationSaveReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeMeasurementAnnotationId annotationId =
+      kInvalidCreativeMeasurementAnnotationId;
+  CreativeMeasurementAnnotationBuildResult build;
+  CreativeMeasurementAnnotationMutationReceipt mutation;
+  CreativeMeasurementReceipt clear;
+  std::string_view reasonCode =
+      "creative_measurement_annotation_save_not_requested";
+};
+
 enum class CreativeFacadeDocumentBatchCreateStatus : std::uint8_t {
   Unknown,
   Empty,
@@ -209,6 +224,21 @@ class Facade {
   void setSnapSettings(CreativeSnapSettings settings) noexcept;
   [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
       const CreativeToolInputPacket& input);
+  [[nodiscard]] CreativeMeasurementReceipt configureMeasurement(
+      CreativeMeasurementMode mode,
+      CreativeMeasurementAxis axis,
+      bool closePath) noexcept;
+  [[nodiscard]] CreativeMeasurementReceipt appendMeasurementPoint(
+      CreativeMeasurementPoint point) noexcept;
+  [[nodiscard]] CreativeMeasurementReceipt previewMeasurementPoint(
+      CreativeMeasurementPoint point) noexcept;
+  [[nodiscard]] CreativeMeasurementReceipt completeMeasurement() noexcept;
+  [[nodiscard]] CreativeMeasurementReceipt cancelMeasurement() noexcept;
+  [[nodiscard]] CreativeMeasurementReceipt clearMeasurement() noexcept;
+  [[nodiscard]] CreativeFacadeMeasurementAnnotationSaveReceipt
+  saveMeasurementAnnotation(std::string_view name);
+  [[nodiscard]] CreativeMeasurementAnnotationMutationReceipt
+  removeMeasurementAnnotation(CreativeMeasurementAnnotationId annotationId);
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
   [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();
@@ -231,6 +261,9 @@ class Facade {
   [[nodiscard]] CreativeGroupCommandReceipt ungroupObject(
       CreativeObjectId groupObjectId);
   [[nodiscard]] CreativeGroupCommandReceipt ungroupSelectedObject();
+  [[nodiscard]] CreativeGroupPivotReceipt setGroupPivot(
+      CreativeObjectId groupObjectId,
+      CreativeVec3 pivot);
   [[nodiscard]] CreativeAuthoredAssetInstanceReceipt instantiateAuthoredAsset(
       const CreativeAuthoredAssetPlacementRequest& request);
   [[nodiscard]] CreativeAuthoredAssetRefreshReceipt
@@ -247,6 +280,36 @@ class Facade {
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(
       const CreativeRadialArrayRequest& request = {});
+  [[nodiscard]] CreativeLinearArrayReceipt updateLinearArrayRecipe(
+      CreativePatternRecipeId recipeId,
+      const CreativeLinearArrayRequest& request = {});
+  [[nodiscard]] CreativeRadialArrayReceipt updateRadialArrayRecipe(
+      CreativePatternRecipeId recipeId,
+      const CreativeRadialArrayRequest& request = {});
+  [[nodiscard]] CreativeAssetScatterRecipeMutationReceipt
+  createAssetScatterRecipe(
+      std::span<const CreativeDocumentCreateRequest> createRequests,
+      std::span<const CreativeObjectId> selectionFilterObjectIds,
+      const CreativeAssetScatterRecipe& recipe);
+  [[nodiscard]] CreativeAssetScatterRecipeMutationReceipt
+  updateAssetScatterRecipe(
+      CreativePatternRecipeId recipeId,
+      std::span<const CreativeDocumentCreateRequest> createRequests,
+      const CreativeAssetScatterRecipe& recipe);
+  [[nodiscard]] CreativeAssetScatterRecipeMutationReceipt
+  extendAssetScatterRecipe(
+      CreativePatternRecipeId recipeId,
+      std::span<const CreativeDocumentCreateRequest> createRequests,
+      const CreativeAssetScatterRecipe& recipe);
+  [[nodiscard]] CreativeAssetScatterRecipeMutationReceipt
+  excludeAssetScatterOutput(
+      CreativePatternRecipeId recipeId,
+      CreativeObjectId outputObjectId,
+      const CreativeAssetScatterRecipe& recipe);
+  [[nodiscard]] CreativeAssetScatterRecipeMutationReceipt
+  removeAssetScatterRecipe(CreativePatternRecipeId recipeId);
+  [[nodiscard]] CreativePatternRecipeMutationReceipt detachPatternRecipe(
+      CreativePatternRecipeId recipeId);
   [[nodiscard]] CreativeClipboardCopyReceipt copySelectedObjectsToClipboard(
       CreativeClipboard& outClipboard);
   [[nodiscard]] CreativeClipboardCutReceipt cutSelectedObjectsToClipboard(
@@ -267,6 +330,12 @@ class Facade {
   [[nodiscard]] CreativeTerrainOperationMutationReceipt
   applyTerrainOperationMutation(
       const CreativeTerrainOperationMutationRequest& request);
+  [[nodiscard]] CreativePatternRecipeTranslationReceipt
+  applyPatternRecipeTranslation(
+      const CreativePatternRecipeTranslationPlan& plan);
+  [[nodiscard]] CreativeTerrainOperationTranslationReceipt
+  applyTerrainOperationTranslation(
+      const CreativeTerrainOperationTranslationPlan& plan);
   [[nodiscard]] CreativeTerrainMaterialMutationReceipt applyTerrainMaterialEdits(
       std::span<const CreativeTerrainMaterialEdit> edits);
 
@@ -285,6 +354,9 @@ class Facade {
       CreativeObjectId targetObjectId);
   [[nodiscard]] CreativeHierarchyBatchRemoveReceipt
   removeDocumentObjectsAtomically(
+      std::span<const CreativeObjectId> objectIds);
+  [[nodiscard]] CreativeSemanticDeleteReceipt
+  deleteDocumentObjectsSemantically(
       std::span<const CreativeObjectId> objectIds);
   [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
       CreativeDocument document);

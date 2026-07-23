@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <cstdint>
 #include <span>
@@ -21,6 +22,18 @@ enum class CreativeSelectionPlacementAxis : std::uint8_t {
   X,
   Y,
   Z,
+  Count,
+};
+
+enum class CreativeSelectionPlacementPivotMode : std::uint8_t {
+  SharedAnchor,
+  IndividualOrigins,
+  Count,
+};
+
+enum class CreativeSelectionPlacementCoordinateSpace : std::uint8_t {
+  World,
+  Local,
   Count,
 };
 
@@ -56,6 +69,14 @@ struct CreativeSelectionPlacementRequest {
   CreativeSelectionPlacementMode mode = CreativeSelectionPlacementMode::Copy;
   CreativeVec3 sourceAnchor{};
   CreativeVec3 targetAnchor{};
+  CreativeSelectionPlacementPivotMode pivotMode =
+      CreativeSelectionPlacementPivotMode::SharedAnchor;
+  CreativeSelectionPlacementCoordinateSpace coordinateSpace =
+      CreativeSelectionPlacementCoordinateSpace::World;
+  // Frozen active-object basis for Local transforms. World requests retain
+  // identity here. This prevents selection changes from altering an active
+  // preview between plan and commit.
+  CreativeVec3 coordinateBasisEulerRadians{};
   // Selection offsets use world axes while each object's authored scale
   // channels remain local to its stored transform.
   CreativeVec3 scaleFactor{1.0, 1.0, 1.0};
@@ -73,6 +94,9 @@ struct CreativeSelectionPlacementTargetRequest {
   CreativeVec3 nudgeOffset{};
   CreativeSelectionPlacementAxis axis =
       CreativeSelectionPlacementAxis::Free;
+  CreativeSelectionPlacementCoordinateSpace coordinateSpace =
+      CreativeSelectionPlacementCoordinateSpace::World;
+  CreativeVec3 coordinateBasisEulerRadians{};
   double snapStepMeters = 1.0;
 };
 
@@ -91,6 +115,9 @@ struct CreativeSelectionPlacementNudgeRequest {
   CreativeVec3 offset{};
   CreativeSelectionPlacementAxis axis =
       CreativeSelectionPlacementAxis::Free;
+  CreativeSelectionPlacementCoordinateSpace coordinateSpace =
+      CreativeSelectionPlacementCoordinateSpace::World;
+  CreativeVec3 coordinateBasisEulerRadians{};
   double snapStepMeters = 1.0;
   std::int32_t steps = 0;
   bool fine = false;
@@ -106,6 +133,16 @@ struct CreativeSelectionPlacementNudgeReceipt {
   CreativeVec3 offset{};
   double appliedStepMeters = 0.0;
   std::string_view reasonCode = "selection_placement_nudge_not_requested";
+};
+
+struct CreativeSelectionPlacementCapabilities {
+  bool resolved = false;
+  std::uint64_t objectCount = 0;
+  bool translate = false;
+  CreativeObjectRotationSupport rotation =
+      CreativeObjectRotationSupport::None;
+  CreativeObjectScaleSupport scale = CreativeObjectScaleSupport::None;
+  bool mirror = false;
 };
 
 struct CreativeSelectionPlacementPlan {
@@ -145,6 +182,10 @@ struct CreativeSelectionPlacementReceipt {
 [[nodiscard]] std::string_view toString(
     CreativeSelectionPlacementAxis axis) noexcept;
 [[nodiscard]] std::string_view toString(
+    CreativeSelectionPlacementPivotMode mode) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeSelectionPlacementCoordinateSpace space) noexcept;
+[[nodiscard]] std::string_view toString(
     CreativeSelectionPlacementStatus status) noexcept;
 
 // Pure precision kernels. Constraint snapping is relative to sourceAnchor so
@@ -156,6 +197,19 @@ resolveCreativeSelectionPlacementTarget(
 [[nodiscard]] CreativeSelectionPlacementNudgeReceipt
 nudgeCreativeSelectionPlacementOffset(
     const CreativeSelectionPlacementNudgeRequest& request) noexcept;
+
+// The per-object pivot used by IndividualOrigins and the editor's active-origin
+// mode. Transform-backed objects use their authored origin; bounds/path-only
+// objects use the center of their resolved world extent.
+[[nodiscard]] bool resolveCreativeSelectionPlacementObjectOrigin(
+    const CreativeObject& object,
+    CreativeVec3& origin) noexcept;
+
+// Intersects the descriptor-owned transform surface across a selection. A
+// mixed selection only exposes operations representable by every object.
+[[nodiscard]] CreativeSelectionPlacementCapabilities
+resolveCreativeSelectionPlacementCapabilities(
+    std::span<const CreativeObject> objects) noexcept;
 
 [[nodiscard]] CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     std::span<const CreativeObject> objects,

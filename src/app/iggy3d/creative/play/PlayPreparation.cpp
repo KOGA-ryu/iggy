@@ -70,6 +70,7 @@ CreativePlayPreparationResult prepareCreativePlay(
   validationRequest.staticMeshAssetCatalog =
       request.staticMeshAssetCatalog;
   validationRequest.roomId = request.roomId;
+  validationRequest.playerSpawnGroup = request.playerSpawnGroup;
   validationRequest.reachabilityCellSizeMeters =
       request.reachabilityCellSizeMeters;
   CreativeMapEvaluationResult evaluation =
@@ -94,16 +95,20 @@ CreativePlayPreparationResult prepareCreativePlay(
     return result;
   }
 
-  const auto spawn = std::find_if(
-      evaluation.roomBake.room.anchors.begin(),
-      evaluation.roomBake.room.anchors.end(),
-      [](const RoomAnchorAsset& anchor) { return anchor.kind == "spawn"; });
-  if (spawn == evaluation.roomBake.room.anchors.end()) {
+  if (!result.validation.playerSpawn.accepted ||
+      !result.validation.playerSpawn.selected.accepted) {
     setStatus(result,
               CreativePlayPreparationStatus::PlayerSpawnUnavailable,
               "creative_play_player_spawn_unavailable");
     return result;
   }
+  const CreativePlayerSpawnPlan& spawn =
+      result.validation.playerSpawn.selected;
+  std::erase_if(evaluation.roomBake.room.anchors,
+                [](const RoomAnchorAsset& anchor) {
+                  return anchor.kind == "spawn";
+                });
+  evaluation.roomBake.room.anchors.push_back(spawn.anchor);
 
   CreativeRuntimeInteractableCatalog interactables =
       buildCreativeRuntimeInteractableCatalog(*request.document,
@@ -119,7 +124,11 @@ CreativePlayPreparationResult prepareCreativePlay(
   payload.documentId = request.document->id();
   payload.documentRevision = request.document->revision();
   payload.roomId = evaluation.roomBake.room.id;
-  payload.playerSpawn = *spawn;
+  payload.playerSpawnObjectId = spawn.objectId;
+  payload.playerSpawn = spawn.anchor;
+  payload.playerSpawnSettings = spawn.settings;
+  payload.playerSpawnYawRadians = spawn.yawRadians;
+  payload.playerSpawnCameraPositionMeters = spawn.cameraPositionMeters;
   payload.interactables = std::move(interactables.definitions);
   payload.logicLinks = std::move(interactables.logicLinks);
   payload.room = std::move(evaluation.roomBake.room);

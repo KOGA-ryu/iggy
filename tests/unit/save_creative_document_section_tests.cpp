@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -114,6 +115,8 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.kind = "PatrolRoute";
   object.name = "Visible Route";
   object.assetId = "boulder_01";
+  object.assetContentHash = 0x1122334455667788ULL;
+  object.assetMaterialVariant = "Mossy";
   object.transform.position = {kOneThird, 2.0, kPrecise};
   object.transform.rotation = {0.0, kPrecise, 1.5};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -133,6 +136,24 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   };
   section.objects.push_back(object);
   section.logicLinks.push_back({7U, 42U, "Open"});
+  iggy3d::SaveCreativeDocumentPatternRecipeRecord pattern;
+  pattern.id = 9U;
+  pattern.kind = "RadialArray";
+  pattern.sourceObjectIds = {42U};
+  pattern.generatedObjectIds = {101U, 102U};
+  pattern.linearDirection = "-X";
+  pattern.linearCopyCount = "16 NEW";
+  pattern.linearSpacing = "8 CELLS";
+  pattern.linearCellSize = 0.25;
+  pattern.linearMaxGeneratedObjects = 64U;
+  pattern.radialPivot = {kOneThird, 2.5, kPrecise};
+  pattern.radialAxis = "Z";
+  pattern.radialInstanceCount = "16 TOTAL";
+  pattern.radialSweep = "180 DEG";
+  pattern.radialMaxGeneratedObjects = 128U;
+  section.patternRecipeStoreVersion = 1U;
+  section.nextPatternRecipeId = 10U;
+  section.patternRecipes.push_back(pattern);
 
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
   const std::size_t authoredPos =
@@ -199,6 +220,20 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        "creativeDocument.logicLink.0.action=Open\n") !=
                        std::string::npos,
                    "logic link action encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.patternRecipe.0.kind=RadialArray\n") !=
+                       std::string::npos &&
+                       encoded.encodedText.find(
+                           "creativeDocument.patternRecipe.0.source.0.objectId="
+                           "42\n") != std::string::npos &&
+                       encoded.encodedText.find(
+                           "creativeDocument.patternRecipe.0.generated.1."
+                           "objectId=102\n") != std::string::npos &&
+                       encoded.encodedText.find(
+                           "creativeDocument.patternRecipe.0.radial.pivot.y="
+                           "2.5\n") !=
+                           std::string::npos,
+                   "pattern recipe payload encoded") &&
             expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "creative decode ok") &&
             expect(decodedSection.present, "creative present decoded") &&
             expect(decodedSection.documentId == 77U, "document id decoded") &&
@@ -232,7 +267,22 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                        decodedSection.logicLinks[0].sourceObjectId == 7U &&
                        decodedSection.logicLinks[0].targetObjectId == 42U &&
                        decodedSection.logicLinks[0].action == "Open",
-                   "logic link decoded");
+                   "logic link decoded") &&
+            expect(decodedSection.patternRecipeStoreVersion == 1U &&
+                       decodedSection.nextPatternRecipeId == 10U &&
+                       decodedSection.patternRecipes.size() == 1U &&
+                       decodedSection.patternRecipes.front().id == 9U &&
+                       decodedSection.patternRecipes.front().kind ==
+                           "RadialArray" &&
+                       decodedSection.patternRecipes.front().sourceObjectIds ==
+                           std::vector<std::uint64_t>{42U} &&
+                       decodedSection.patternRecipes.front()
+                               .generatedObjectIds ==
+                           std::vector<std::uint64_t>{101U, 102U} &&
+                       decodedSection.patternRecipes.front().radialAxis == "Z" &&
+                       decodedSection.patternRecipes.front().radialSweep ==
+                           "180 DEG",
+                   "pattern recipe decoded exactly");
 
   ok = ok && expect(decodedObject != nullptr && decodedObject->id == 42U,
                     "object id decoded") &&
@@ -242,6 +292,10 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
               "object name decoded") &&
        expect(decodedObject != nullptr && decodedObject->assetId == "boulder_01",
               "object asset id decoded") &&
+       expect(decodedObject != nullptr &&
+                  decodedObject->assetContentHash == 0x1122334455667788ULL &&
+                  decodedObject->assetMaterialVariant == "Mossy",
+              "object asset version and material variant decoded") &&
        expect(decodedObject != nullptr &&
                   decodedObject->transform.position.x == kOneThird &&
                   decodedObject->transform.position.z == kPrecise,
@@ -282,10 +336,39 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
                   decodedObject->pathPoints[2].outgoingSpeedMultiplier == 1.0,
               "object path points decoded exactly");
 
-  std::string version6Text = encoded.encodedText;
   const std::string currentVersionLine =
       "creativeDocument.version=" +
       std::to_string(iggy3d::kSaveCreativeDocumentSectionVersion) + "\n";
+  std::string version16Text = replaceFirst(
+      encoded.encodedText, currentVersionLine,
+      "creativeDocument.version=" +
+          std::to_string(
+              iggy3d::kSaveCreativeDocumentMeasurementAnnotationVersion) +
+          "\n");
+  version16Text = eraseLineForKey(
+      std::move(version16Text),
+      "creativeDocument.object.0.assetContentHash");
+  version16Text = eraseLineForKey(
+      std::move(version16Text),
+      "creativeDocument.object.0.assetMaterialVariant");
+  const iggy3d::SaveDecodeResult version16Decoded =
+      iggy3d::decodeSaveEnvelope(version16Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* version16Object =
+      version16Decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &version16Decoded.envelope.creativeDocument.objects.front();
+  ok = expect(
+           version16Decoded.status == iggy3d::SaveCodecStatus::Ok &&
+               version16Decoded.envelope.creativeDocument.version ==
+                   iggy3d::kSaveCreativeDocumentMeasurementAnnotationVersion &&
+               version16Object != nullptr &&
+               version16Object->assetId == "boulder_01" &&
+               version16Object->assetContentHash == 0U &&
+               version16Object->assetMaterialVariant.empty(),
+           "version 16 asset identity defaults remain readable") &&
+       ok;
+
+  std::string version6Text = encoded.encodedText;
   if (const std::size_t versionPosition =
           version6Text.find(currentVersionLine);
       versionPosition != std::string::npos) {
@@ -325,7 +408,9 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
       "creativeDocument.object.0.assetId=boulder_01\n";
   if (const std::size_t assetPosition = version5Text.find(assetLine);
       assetPosition != std::string::npos) {
-    version5Text.erase(assetPosition, assetLine.size());
+    const std::size_t transformPosition = version5Text.find(
+        "creativeDocument.object.0.transform.position=", assetPosition);
+    version5Text.erase(assetPosition, transformPosition - assetPosition);
   }
   const iggy3d::SaveDecodeResult version5Decoded =
       iggy3d::decodeSaveEnvelope(version5Text);
@@ -495,6 +580,110 @@ bool version9SegmentSpeedDefaultsRemainReadable() {
                 "version 9 route segments receive 1x speed defaults");
 }
 
+bool version12DoorDefaultsRemainReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 95U;
+  section.name = "Legacy Door";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 2U;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 1U;
+  object.kind = "Door";
+  object.name = "Legacy Door";
+  object.bounds.max = {0.9, 2.1, 0.12};
+  object.doorLeafArrangement = "Double";
+  object.doorHingeSide = "MaximumEdge";
+  object.doorSwingSide = "NegativeNormal";
+  object.doorInitialState = "Open";
+  object.doorGameplayLocked = true;
+  object.doorTransitionSeconds = 0.8;
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version12Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "12");
+  constexpr std::string_view kDoorKeys[] = {
+      "creativeDocument.object.0.door.leafArrangement",
+      "creativeDocument.object.0.door.hingeSide",
+      "creativeDocument.object.0.door.swingSide",
+      "creativeDocument.object.0.door.initialState",
+      "creativeDocument.object.0.door.gameplayLocked",
+      "creativeDocument.object.0.door.transitionSeconds",
+  };
+  for (const std::string_view key : kDoorKeys) {
+    version12Text = eraseLineForKey(std::move(version12Text), key);
+  }
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version12Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 12 door setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 12 without door fields remains readable") &&
+         expect(decodedObject != nullptr &&
+                    decodedObject->doorLeafArrangement == "Single" &&
+                    decodedObject->doorHingeSide == "MinimumEdge" &&
+                    decodedObject->doorSwingSide == "PositiveNormal" &&
+                    decodedObject->doorInitialState == "Closed" &&
+                    !decodedObject->doorGameplayLocked &&
+                    decodedObject->doorTransitionSeconds == 0.35,
+                "version 12 door receives complete safe defaults");
+}
+
+bool version13WindowDefaultsRemainReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 96U;
+  section.name = "Legacy Window";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 2U;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 1U;
+  object.kind = "Window";
+  object.name = "Legacy Window";
+  object.bounds = {{0.0, 1.0, 0.0}, {1.5, 2.2, 0.12}};
+  object.windowInsertKind = "PairedShutters";
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version13Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "13");
+  version13Text = eraseLineForKey(
+      std::move(version13Text),
+      "creativeDocument.object.0.window.insertKind");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version13Text);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 13 window setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 13 without window field remains readable") &&
+         expect(decodedObject != nullptr &&
+                    decodedObject->windowInsertKind == "Glazing",
+                "version 13 window receives glazing default");
+}
+
 bool version11TerrainWithoutOperationBlockRemainsReadable() {
   iggy3d::SaveEnvelope envelope = minimalEnvelope();
   iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
@@ -518,9 +707,14 @@ bool version11TerrainWithoutOperationBlockRemainsReadable() {
   std::string version11Text = replaceValueForKey(
       encoded.encodedText, "creativeDocument.version", "11");
   version11Text = eraseLineForKey(
+      version11Text, "creativeDocument.terrainHardEdge.count");
+  version11Text = eraseLineForKey(
       version11Text, "creativeDocument.terrainOperation.version");
   version11Text = eraseLineForKey(
       version11Text, "creativeDocument.terrainOperation.nextId");
+  version11Text = eraseLineForKey(
+      version11Text,
+      "creativeDocument.terrainOperation.baseHardEdge.count");
   version11Text = eraseLineForKey(
       version11Text, "creativeDocument.terrainOperation.count");
 
@@ -537,6 +731,85 @@ bool version11TerrainWithoutOperationBlockRemainsReadable() {
                     decoded.envelope.creativeDocument.terrainHeightField
                             .heights.front() == 7U,
                 "version 11 preserves baked terrain as the fallback truth");
+}
+
+bool version14WithoutPatternRecipeBlockRemainsReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 95U;
+  section.name = "Legacy Baked Arrays";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 1U;
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version14Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "14");
+  version14Text = eraseLineForKey(
+      std::move(version14Text),
+      "creativeDocument.patternRecipe.version");
+  version14Text = eraseLineForKey(
+      std::move(version14Text),
+      "creativeDocument.patternRecipe.nextId");
+  version14Text = eraseLineForKey(
+      std::move(version14Text),
+      "creativeDocument.patternRecipe.count");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version14Text);
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 14 pattern setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.version == 14U,
+                "version 14 text without pattern block decodes") &&
+         expect(decoded.envelope.creativeDocument.patternRecipes.empty() &&
+                    decoded.envelope.creativeDocument.nextPatternRecipeId ==
+                        1U,
+                "version 14 defaults to baked anonymous array geometry");
+}
+
+bool version15WithoutMeasurementAnnotationBlockRemainsReadable() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 96U;
+  section.name = "Legacy Measurements";
+  section.gridWidth = 8U;
+  section.gridHeight = 8U;
+  section.gridDepth = 8U;
+  section.worldBounds.max = {8.0, 8.0, 8.0};
+  section.nextObjectId = 1U;
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  std::string version15Text = replaceValueForKey(
+      encoded.encodedText, "creativeDocument.version", "15");
+  version15Text = eraseLineForKey(
+      std::move(version15Text),
+      "creativeDocument.measurementAnnotation.version");
+  version15Text = eraseLineForKey(
+      std::move(version15Text),
+      "creativeDocument.measurementAnnotation.nextId");
+  version15Text = eraseLineForKey(
+      std::move(version15Text),
+      "creativeDocument.measurementAnnotation.count");
+
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(version15Text);
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "version 15 measurement setup encode ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decoded.envelope.creativeDocument.version == 15U,
+                "version 15 text without measurement block decodes") &&
+         expect(decoded.envelope.creativeDocument.measurementAnnotations
+                        .empty() &&
+                    decoded.envelope.creativeDocument
+                            .nextMeasurementAnnotationId == 1U,
+                "version 15 defaults to no measurement annotations");
 }
 
 bool malformedCreativeDocumentPathPointKeysReject() {
@@ -669,7 +942,11 @@ int main() {
   ok = version7MovingPlatformDefaultsRemainReadable() && ok;
   ok = version8WaypointDwellDefaultsRemainReadable() && ok;
   ok = version9SegmentSpeedDefaultsRemainReadable() && ok;
+  ok = version12DoorDefaultsRemainReadable() && ok;
+  ok = version13WindowDefaultsRemainReadable() && ok;
   ok = version11TerrainWithoutOperationBlockRemainsReadable() && ok;
+  ok = version14WithoutPatternRecipeBlockRemainsReadable() && ok;
+  ok = version15WithoutMeasurementAnnotationBlockRemainsReadable() && ok;
   ok = malformedCreativeDocumentPathPointKeysReject() && ok;
   ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;

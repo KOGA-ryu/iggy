@@ -305,6 +305,11 @@ creativeWorldLayoutBuildingTemplateInstanceProvenance(
     CreativeWorldLayout& layout,
     std::size_t buildingIndex,
     const CreativeWorldLayoutBuildingTemplateInstanceProvenance& provenance);
+// Removes only the template link. Building contents, local refinements, names,
+// ownership, and stable keys remain byte-for-byte unchanged.
+[[nodiscard]] CreativeWorldLayoutBuildingEditResult
+detachCreativeWorldLayoutBuildingTemplateInstance(
+    const CreativeWorldLayout& source, std::size_t buildingIndex);
 [[nodiscard]] CreativeWorldLayoutBuildingTemplateOrientation
 composeCreativeWorldLayoutBuildingTemplateOrientation(
     CreativeWorldLayoutBuildingTemplateOrientation current,

@@ -31,6 +31,12 @@ namespace iggy3d::creative::room_bake_internal {
   return id;
 }
 
+[[nodiscard]] std::string voxelMaterialId(
+    CreativeObjectKind material) {
+  return "creative_voxel_material_" +
+         std::string(serializedObjectKindId(material));
+}
+
 [[nodiscard]] BakedRoomRole roleForVoxelMaterial(
     const CreativeObjectDescriptor& descriptor) noexcept {
   if (!descriptorSupportsRuntimeRoomGeometry(descriptor)) {
@@ -94,7 +100,8 @@ void appendVoxelCuboid(CreativeRoomBakeResult& result,
   RoomStaticMeshAsset mesh;
   mesh.id = stableId;
   mesh.meshId = std::string(meshIdForRole(role));
-  mesh.materialId = std::string(materialIdForRole(role));
+  mesh.materialId = voxelMaterialId(cuboid.material);
+  mesh.semanticRole = std::string(serializedObjectKindId(cuboid.material));
   mesh.role = cuboid.material == CreativeObjectKind::TerrainPatch
                   ? "terrain"
                   : std::string(roleName(role));
@@ -163,6 +170,9 @@ void appendVoxelCuboid(CreativeRoomBakeResult& result,
   }
   for (std::size_t index = 0U; index < patches.size(); ++index) {
     const CreativeTerrainSurfacePatch& patch = patches[index];
+    if ((patch.hardEdgeMask & 0xF0U) != 0U) {
+      return false;
+    }
     const CreativeCoreVec3Conversion center =
         creativeVec3ToCoreChecked(patch.center);
     if (!center.converted) {
@@ -309,21 +319,26 @@ void appendSmoothTerrainCollision(
     std::int32_t neighborZ = 0;
     std::size_t firstCorner = 0U;
     std::size_t secondCorner = 0U;
+    std::size_t neighborFirstCorner = 0U;
+    std::size_t neighborSecondCorner = 0U;
     Vec3 normal;
     std::string_view suffix;
   };
   constexpr std::array edges{
-      EdgeSpec{0, -1, 0U, 1U, {0.0F, 0.0F, -1.0F}, "south"},
-      EdgeSpec{1, 0, 1U, 2U, {1.0F, 0.0F, 0.0F}, "east"},
-      EdgeSpec{0, 1, 2U, 3U, {0.0F, 0.0F, 1.0F}, "north"},
-      EdgeSpec{-1, 0, 3U, 0U, {-1.0F, 0.0F, 0.0F}, "west"},
+      EdgeSpec{0, -1, 0U, 1U, 3U, 2U, {0.0F, 0.0F, -1.0F},
+               "south"},
+      EdgeSpec{1, 0, 1U, 2U, 0U, 3U, {1.0F, 0.0F, 0.0F}, "east"},
+      EdgeSpec{0, 1, 2U, 3U, 1U, 0U, {0.0F, 0.0F, 1.0F}, "north"},
+      EdgeSpec{-1, 0, 3U, 0U, 2U, 1U, {-1.0F, 0.0F, 0.0F},
+               "west"},
   };
   const float bottomY = creativeVec3ToCoreChecked(grid.origin).value.y;
   const float thickness = static_cast<float>(
       std::max(0.02, grid.cellSizeMeters * 0.04));
   for (const CreativeTerrainSurfacePatch& patch : patches) {
     appendTerrainHeightPatch(result, patch);
-    for (const EdgeSpec& edge : edges) {
+    for (std::size_t edgeIndex = 0U; edgeIndex < edges.size(); ++edgeIndex) {
+      const EdgeSpec& edge = edges[edgeIndex];
       const std::int64_t neighborX =
           static_cast<std::int64_t>(patch.coord.x) + edge.neighborX;
       const std::int64_t neighborZ =
@@ -333,11 +348,29 @@ void appendSmoothTerrainCollision(
           neighborX <= std::numeric_limits<std::int32_t>::max() &&
           neighborZ >= std::numeric_limits<std::int32_t>::min() &&
           neighborZ <= std::numeric_limits<std::int32_t>::max();
-      if (neighborRepresentable &&
-          findTerrainSurfacePatch(
-              patches,
-              {static_cast<std::int32_t>(neighborX),
-               static_cast<std::int32_t>(neighborZ)}) != nullptr) {
+      const CreativeTerrainSurfacePatch* neighbor =
+          neighborRepresentable
+              ? findTerrainSurfacePatch(
+                    patches,
+                    {static_cast<std::int32_t>(neighborX),
+                     static_cast<std::int32_t>(neighborZ)})
+              : nullptr;
+      if (neighbor != nullptr) {
+        if ((patch.hardEdgeMask & (1U << edgeIndex)) != 0U) {
+          const Vec3 first =
+              creativeVec3ToCoreChecked(patch.corners[edge.firstCorner]).value;
+          const Vec3 second =
+              creativeVec3ToCoreChecked(patch.corners[edge.secondCorner]).value;
+          const float lowerY = std::min(
+              creativeVec3ToCoreChecked(
+                  neighbor->corners[edge.neighborFirstCorner]).value.y,
+              creativeVec3ToCoreChecked(
+                  neighbor->corners[edge.neighborSecondCorner]).value.y);
+          appendTerrainCliffBlocker(
+              result, stableTerrainPatchId(patch.coord) + "_hard_edge_" +
+                          std::string(edge.suffix),
+              first, second, edge.normal, lowerY, thickness);
+        }
         continue;
       }
       const Vec3 first =
@@ -365,7 +398,8 @@ void appendRoomBakeFields(CreativeRoomBakeResult& result,
       -> const CreativeTerrainSurfacePlan& {
     if (!terrainSurfaceBuilt) {
       ownedTerrainSurface = buildCreativeComposedTerrainSurfacePlan(
-          document.terrainField(), document.terrainHeightField());
+          document.terrainField(), document.terrainHeightField(),
+          document.terrainHardEdges());
       terrainSurfaceBuilt = true;
     }
     return ownedTerrainSurface;

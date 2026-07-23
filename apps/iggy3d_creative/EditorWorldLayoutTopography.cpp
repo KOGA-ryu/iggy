@@ -15,25 +15,6 @@
 namespace iggy3d_creative_app {
 namespace {
 
-struct TerrainRegionOperationSpec {
-  cr::CreativeTerrainCompositionMode composition =
-      cr::CreativeTerrainCompositionMode::Replace;
-  bool usesNoise = false;
-};
-
-constexpr std::array<TerrainRegionOperationSpec, 5U>
-    kTerrainRegionOperationSpecs{{
-        {cr::CreativeTerrainCompositionMode::Replace, false},
-        {cr::CreativeTerrainCompositionMode::Raise, false},
-        {cr::CreativeTerrainCompositionMode::Lower, false},
-        {cr::CreativeTerrainCompositionMode::Smooth, false},
-        {cr::CreativeTerrainCompositionMode::Replace, true},
-    }};
-
-static_assert(kTerrainRegionOperationSpecs.size() ==
-              static_cast<std::size_t>(
-                  CreativeEditorWorldLayoutTerrainRegionOperation::Count));
-
 [[nodiscard]] const cr::CreativeTerrainHeightField& topographyHeightField(
     const cr::CreativeDocument& document,
     const cr::CreativeTerrainHeightField* heightFieldOverride) noexcept {
@@ -41,64 +22,21 @@ static_assert(kTerrainRegionOperationSpecs.size() ==
                                         : *heightFieldOverride;
 }
 
-[[nodiscard]] bool terrainCellFromPoint(double xCells,
-                                        double zCells,
-                                        cr::CreativeTerrainCoord2& output)
-    noexcept {
-  if (!std::isfinite(xCells) || !std::isfinite(zCells)) {
-    return false;
-  }
-  const double x = std::floor(xCells);
-  const double z = std::floor(zCells);
-  if (x < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      x > static_cast<double>(std::numeric_limits<std::int32_t>::max()) ||
-      z < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      z > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
-    return false;
-  }
-  output = {static_cast<std::int32_t>(x), static_cast<std::int32_t>(z)};
-  return true;
-}
-
-[[nodiscard]] bool terrainRegionBounds(
-    cr::CreativeTerrainCoord2 first,
-    cr::CreativeTerrainCoord2 second,
-    cr::CreativeTerrainHeightFieldBounds& output) noexcept {
-  const std::int64_t minimumX = std::min(first.x, second.x);
-  const std::int64_t minimumZ = std::min(first.z, second.z);
-  const std::int64_t width =
-      std::llabs(static_cast<std::int64_t>(second.x) - first.x) + 1;
-  const std::int64_t depth =
-      std::llabs(static_cast<std::int64_t>(second.z) - first.z) + 1;
-  if (width > std::numeric_limits<std::uint16_t>::max() ||
-      depth > std::numeric_limits<std::uint16_t>::max() ||
-      static_cast<std::uint64_t>(width) *
-              static_cast<std::uint64_t>(depth) >
-          cr::kCreativeTerrainHeightFieldCellCapacity) {
-    return false;
-  }
-  output = {{static_cast<std::int32_t>(minimumX),
-             static_cast<std::int32_t>(minimumZ)},
-            static_cast<std::uint16_t>(width),
-            static_cast<std::uint16_t>(depth)};
-  return cr::isValidCreativeTerrainHeightFieldBounds(output);
-}
-
 [[nodiscard]] bool coordLess(cr::CreativeTerrainCoord2 lhs,
                              cr::CreativeTerrainCoord2 rhs) noexcept {
   return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
 }
 
-[[nodiscard]] const cr::CreativeTerrainColumn* findColumn(
-    std::span<const cr::CreativeTerrainColumn> columns,
+[[nodiscard]] const cr::CreativeTerrainAnalysisCell* findCell(
+    std::span<const cr::CreativeTerrainAnalysisCell> cells,
     cr::CreativeTerrainCoord2 coord) noexcept {
   const auto found = std::lower_bound(
-      columns.begin(), columns.end(), coord,
-      [](const cr::CreativeTerrainColumn& column,
+      cells.begin(), cells.end(), coord,
+      [](const cr::CreativeTerrainAnalysisCell& cell,
          cr::CreativeTerrainCoord2 value) {
-        return coordLess(column.coord, value);
+        return coordLess(cell.coord, value);
       });
-  return found != columns.end() && found->coord == coord ? &*found : nullptr;
+  return found != cells.end() && found->coord == coord ? &*found : nullptr;
 }
 
 [[nodiscard]] bool validRequest(std::uint16_t intervalCells,
@@ -143,269 +81,7 @@ static_assert(kTerrainRegionOperationSpecs.size() ==
   return true;
 }
 
-struct AxisSlope {
-  double value = 0.0;
-  std::uint8_t sampleCount = 0U;
-};
-
-[[nodiscard]] const cr::CreativeTerrainColumn* findOffsetColumn(
-    std::span<const cr::CreativeTerrainColumn> columns,
-    cr::CreativeTerrainCoord2 coord,
-    std::int32_t deltaX,
-    std::int32_t deltaZ) noexcept {
-  const std::int64_t x = static_cast<std::int64_t>(coord.x) + deltaX;
-  const std::int64_t z = static_cast<std::int64_t>(coord.z) + deltaZ;
-  if (x < std::numeric_limits<std::int32_t>::min() ||
-      x > std::numeric_limits<std::int32_t>::max() ||
-      z < std::numeric_limits<std::int32_t>::min() ||
-      z > std::numeric_limits<std::int32_t>::max()) {
-    return nullptr;
-  }
-  return findColumn(columns,
-                    {static_cast<std::int32_t>(x),
-                     static_cast<std::int32_t>(z)});
-}
-
-[[nodiscard]] AxisSlope sampleAxisSlope(
-    std::span<const cr::CreativeTerrainColumn> columns,
-    cr::CreativeTerrainCoord2 coord,
-    std::uint16_t centerHeight,
-    std::int32_t deltaX,
-    std::int32_t deltaZ) noexcept {
-  const cr::CreativeTerrainColumn* negative =
-      findOffsetColumn(columns, coord, -deltaX, -deltaZ);
-  const cr::CreativeTerrainColumn* positive =
-      findOffsetColumn(columns, coord, deltaX, deltaZ);
-  if (negative != nullptr && positive != nullptr) {
-    return {(static_cast<double>(positive->heightCells) -
-             static_cast<double>(negative->heightCells)) /
-                2.0,
-            2U};
-  }
-  if (positive != nullptr) {
-    return {static_cast<double>(positive->heightCells) - centerHeight, 1U};
-  }
-  if (negative != nullptr) {
-    return {static_cast<double>(centerHeight) - negative->heightCells, 1U};
-  }
-  return {};
-}
-
 }  // namespace
-
-std::string_view toString(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept {
-  switch (operation) {
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Flatten:
-      return "Flatten";
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Raise:
-      return "Raise";
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Lower:
-      return "Lower";
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Smooth:
-      return "Smooth";
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Noise:
-      return "Noise";
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Count:
-      break;
-  }
-  return "Invalid";
-}
-
-bool beginCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    double xCells,
-    double zCells) noexcept {
-  cr::CreativeTerrainCoord2 coord;
-  if (!state.editingEnabled || !terrainCellFromPoint(xCells, zCells, coord)) {
-    return false;
-  }
-  state.selecting = true;
-  state.regionValid = terrainRegionBounds(coord, coord, state.bounds);
-  state.anchor = coord;
-  state.cursor = coord;
-  return state.regionValid;
-}
-
-bool updateCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    double xCells,
-    double zCells) noexcept {
-  cr::CreativeTerrainCoord2 coord;
-  if (!state.selecting || !terrainCellFromPoint(xCells, zCells, coord)) {
-    return false;
-  }
-  state.cursor = coord;
-  state.regionValid = terrainRegionBounds(state.anchor, state.cursor,
-                                          state.bounds);
-  return state.regionValid;
-}
-
-bool finishCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    double xCells,
-    double zCells) noexcept {
-  if (!state.selecting) {
-    return false;
-  }
-  static_cast<void>(updateCreativeEditorWorldLayoutTerrainRegion(
-      state, xCells, zCells));
-  state.selecting = false;
-  return state.regionValid;
-}
-
-void clearCreativeEditorWorldLayoutTerrainRegionSelection(
-    CreativeEditorWorldLayoutTerrainRegionState& state) noexcept {
-  state.selecting = false;
-  state.regionValid = false;
-  state.anchor = {};
-  state.cursor = {};
-  state.bounds = {};
-}
-
-CreativeEditorWorldLayoutTerrainRegionRecipePlan
-planCreativeEditorWorldLayoutTerrainRegion(
-    const CreativeEditorWorldLayoutTerrainRegionState& state) noexcept {
-  CreativeEditorWorldLayoutTerrainRegionRecipePlan plan;
-  plan.requested = true;
-  if (!state.editingEnabled || !state.regionValid ||
-      state.operation >=
-          CreativeEditorWorldLayoutTerrainRegionOperation::Count ||
-      state.mask >= cr::CreativeTerrainCompositionMask::Count ||
-      state.targetHeightCells < cr::kCreativeTerrainMinimumHeightCells ||
-      state.targetHeightCells > cr::kCreativeTerrainMaximumHeightCells ||
-      state.noiseReliefCells > cr::kCreativeTerrainMaximumHeightCells ||
-      !std::isfinite(state.noiseScaleCells) ||
-      state.noiseScaleCells <
-          cr::kCreativeTerrainGeneratorMinimumHorizontalScaleCells ||
-      state.noiseScaleCells >
-          cr::kCreativeTerrainGeneratorMaximumHorizontalScaleCells ||
-      state.featherCells >
-          cr::kCreativeTerrainCompositionMaximumFeatherCells ||
-      !cr::isValidCreativeTerrainHeightFieldBounds(state.bounds)) {
-    plan.reasonCode =
-        "creative_editor_world_layout_terrain_region_request_invalid";
-    return plan;
-  }
-
-  const TerrainRegionOperationSpec& spec = kTerrainRegionOperationSpecs[
-      static_cast<std::size_t>(state.operation)];
-  plan.generation = makeDefaultCreativeEditorTerrainGeneratorRecipe();
-  plan.generation.bounds = state.bounds;
-  plan.generation.seed = state.seed;
-  plan.generation.baseHeightCells = state.targetHeightCells;
-  plan.generation.reliefCells = spec.usesNoise ? state.noiseReliefCells : 0U;
-  plan.generation.horizontalScaleCells = state.noiseScaleCells;
-  plan.composition.mask = state.mask;
-  plan.composition.mode = spec.composition;
-  plan.composition.featherCells = state.featherCells;
-  if (!cr::isValidCreativeTerrainGeneratorRecipe(plan.generation) ||
-      !cr::isValidCreativeTerrainCompositionRecipe(plan.composition)) {
-    plan.reasonCode =
-        "creative_editor_world_layout_terrain_region_recipe_invalid";
-    return plan;
-  }
-  plan.accepted = true;
-  plan.reasonCode = "creative_editor_world_layout_terrain_region_ready";
-  return plan;
-}
-
-CreativeEditorTerrainGenerationPreviewReceipt
-previewCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    CreativeEditorTerrainGenerationState& terrainGeneration,
-    const cr::CreativeDocument& document) {
-  CreativeEditorTerrainGenerationPreviewReceipt receipt;
-  receipt.requested = true;
-  const CreativeEditorWorldLayoutTerrainRegionRecipePlan plan =
-      planCreativeEditorWorldLayoutTerrainRegion(state);
-  if (!plan.accepted) {
-    if (state.ownsPreview) {
-      static_cast<void>(cancelCreativeEditorTerrainGeneration(
-          terrainGeneration, "Terrain region preview rejected"));
-      state.ownsPreview = false;
-    }
-    receipt.reasonCode = plan.reasonCode;
-    state.statusMessage = "Terrain region preview rejected";
-    return receipt;
-  }
-  if (terrainGeneration.previewActive && !state.ownsPreview) {
-    receipt.reasonCode =
-        "creative_editor_world_layout_terrain_region_preview_owned_elsewhere";
-    state.statusMessage = "Another terrain preview is active";
-    return receipt;
-  }
-
-  static_cast<void>(beginNewCreativeEditorTerrainOperation(terrainGeneration));
-  terrainGeneration.recipe = plan.generation;
-  terrainGeneration.compositionRecipe = plan.composition;
-  terrainGeneration.draftDirty = true;
-  receipt = previewCreativeEditorTerrainGeneration(
-      terrainGeneration, document, false);
-  state.ownsPreview = receipt.accepted;
-  if (!receipt.accepted) {
-    static_cast<void>(cancelCreativeEditorTerrainGeneration(
-        terrainGeneration, "Terrain region preview rejected"));
-  }
-  state.statusMessage = receipt.accepted ? "Terrain region preview ready"
-                                         : "Terrain region preview rejected";
-  return receipt;
-}
-
-CreativeEditorTerrainGenerationApplyReceipt
-applyCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    CreativeEditorTerrainGenerationState& terrainGeneration,
-    cr::CreativeAppState& appState) {
-  CreativeEditorTerrainGenerationApplyReceipt receipt;
-  receipt.requested = true;
-  if (!state.ownsPreview) {
-    receipt.reasonCode =
-        "creative_editor_world_layout_terrain_region_preview_inactive";
-    state.statusMessage = "No terrain region preview to apply";
-    return receipt;
-  }
-  receipt = applyCreativeEditorTerrainGeneration(appState, terrainGeneration);
-  if (receipt.accepted) {
-    state.ownsPreview = false;
-    clearCreativeEditorWorldLayoutTerrainRegionSelection(state);
-  }
-  state.statusMessage = receipt.accepted ? "Terrain region applied"
-                                         : "Terrain region apply failed";
-  return receipt;
-}
-
-bool cancelCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    CreativeEditorTerrainGenerationState& terrainGeneration,
-    std::string_view reason) {
-  const bool changed = state.selecting || state.regionValid ||
-                       state.ownsPreview;
-  if (state.ownsPreview) {
-    static_cast<void>(cancelCreativeEditorTerrainGeneration(
-        terrainGeneration, reason));
-  }
-  state.ownsPreview = false;
-  clearCreativeEditorWorldLayoutTerrainRegionSelection(state);
-  state.statusMessage = reason.empty() ? "Terrain region canceled"
-                                       : std::string(reason);
-  return changed;
-}
-
-bool synchronizeCreativeEditorWorldLayoutTerrainRegion(
-    CreativeEditorWorldLayoutTerrainRegionState& state,
-    const CreativeEditorTerrainGenerationState& terrainGeneration,
-    const cr::CreativeDocument& document) {
-  if (!state.ownsPreview ||
-      creativeEditorTerrainGenerationPreviewMatches(terrainGeneration,
-                                                     document)) {
-    return false;
-  }
-  state.ownsPreview = false;
-  clearCreativeEditorWorldLayoutTerrainRegionSelection(state);
-  state.statusMessage = "Terrain region preview canceled: document changed";
-  return true;
-}
 
 std::string_view toString(
     CreativeEditorWorldLayoutTopographyStatus status) noexcept {
@@ -455,10 +131,15 @@ buildCreativeEditorWorldLayoutTopography(
     return plan;
   }
 
-  cr::CreativeTerrainSurfacePlan surface =
+  cr::CreativeTerrainSurfacePlan referenceSurface =
       cr::buildCreativeComposedTerrainSurfacePlan(
-          document.terrainField(), heightField);
-  if (!surface.accepted) {
+          document.terrainField(), document.terrainHeightField());
+  cr::CreativeTerrainSurfacePlan surface =
+      heightFieldOverride == nullptr
+          ? referenceSurface
+          : cr::buildCreativeComposedTerrainSurfacePlan(
+                document.terrainField(), heightField);
+  if (!referenceSurface.accepted || !surface.accepted) {
     plan.status = CreativeEditorWorldLayoutTopographyStatus::SurfaceRejected;
     plan.reasonCode =
         "creative_editor_world_layout_topography_surface_rejected";
@@ -473,27 +154,31 @@ buildCreativeEditorWorldLayoutTopography(
     return plan;
   }
 
-  plan.contours = cr::buildCreativeTerrainContourPlan(
-      surface,
-      {intervalCells, majorEvery, cr::kCreativeTerrainContourSegmentCapacity});
-  plan.columns = std::move(surface.columns);
+  cr::CreativeTerrainAnalysisRequest analysisRequest;
+  analysisRequest.contours =
+      {intervalCells, majorEvery, cr::kCreativeTerrainContourSegmentCapacity};
+  plan.analysis = cr::buildCreativeTerrainAnalysisPlan(
+      surface, analysisRequest,
+      heightFieldOverride == nullptr ? nullptr : &referenceSurface);
+  if (!plan.analysis.accepted) {
+    plan.status = plan.analysis.status ==
+                          cr::CreativeTerrainAnalysisPlanStatus::CapacityExceeded
+                      ? CreativeEditorWorldLayoutTopographyStatus::CapacityExceeded
+                      : CreativeEditorWorldLayoutTopographyStatus::SurfaceRejected;
+    plan.reasonCode = plan.analysis.reasonCode;
+    return plan;
+  }
   plan.accepted = true;
-  if (plan.columns.empty()) {
+  if (plan.analysis.status == cr::CreativeTerrainAnalysisPlanStatus::Empty) {
     plan.status = CreativeEditorWorldLayoutTopographyStatus::Empty;
     plan.reasonCode = "creative_editor_world_layout_topography_empty";
     return plan;
   }
 
-  plan.minimumHeightCells = plan.columns.front().heightCells;
-  plan.maximumHeightCells = plan.columns.front().heightCells;
-  for (const cr::CreativeTerrainColumn& column : plan.columns) {
-    plan.minimumHeightCells =
-        std::min(plan.minimumHeightCells, column.heightCells);
-    plan.maximumHeightCells =
-        std::max(plan.maximumHeightCells, column.heightCells);
-  }
+  plan.minimumHeightCells = plan.analysis.minimumHeightCells;
+  plan.maximumHeightCells = plan.analysis.maximumHeightCells;
   plan.status = CreativeEditorWorldLayoutTopographyStatus::Ready;
-  plan.reasonCode = plan.contours.accepted
+  plan.reasonCode = plan.analysis.contours.accepted
                         ? "creative_editor_world_layout_topography_ready"
                         : "creative_editor_world_layout_topography_ready_without_contours";
   return plan;
@@ -540,26 +225,119 @@ sampleCreativeEditorWorldLayoutTopography(
       !coordinateFromPoint(zCells, sample.coord.z)) {
     return {};
   }
-  const std::span<const cr::CreativeTerrainColumn> columns = plan.columns;
-  const cr::CreativeTerrainColumn* center = findColumn(columns, sample.coord);
-  if (center == nullptr) {
+  const cr::CreativeTerrainAnalysisCell* center =
+      findCell(plan.analysis.cells, sample.coord);
+  if (center == nullptr || !center->terrainPresent) {
     return sample;
   }
 
   sample.present = true;
   sample.heightCells = center->heightCells;
-  const AxisSlope xSlope = sampleAxisSlope(
-      columns, sample.coord, center->heightCells, 1, 0);
-  const AxisSlope zSlope = sampleAxisSlope(
-      columns, sample.coord, center->heightCells, 0, 1);
-  sample.slopeXCellsPerCell = xSlope.value;
-  sample.slopeZCellsPerCell = zSlope.value;
-  sample.neighborSampleCount =
-      static_cast<std::uint8_t>(xSlope.sampleCount + zSlope.sampleCount);
-  sample.slopeMagnitude = std::hypot(xSlope.value, zSlope.value);
-  sample.slopeDegrees =
-      std::atan(sample.slopeMagnitude) * 180.0 / std::acos(-1.0);
+  sample.slopeXCellsPerCell = center->slopeXCellsPerCell;
+  sample.slopeZCellsPerCell = center->slopeZCellsPerCell;
+  sample.neighborSampleCount = center->neighborSampleCount;
+  sample.slopeMagnitude =
+      std::hypot(center->slopeXCellsPerCell, center->slopeZCellsPerCell);
+  sample.slopeDegrees = center->slopeDegrees;
+  sample.slopeBand = center->slopeBand;
+  sample.cutFill = center->cutFill;
+  sample.deltaCells = center->deltaCells;
   return sample;
+}
+
+CreativeEditorWorldLayoutTerrainAnalysisEditPlan
+planCreativeEditorWorldLayoutTerrainAnalysisEdit(
+    const CreativeEditorWorldLayoutTopographyPlan& plan,
+    double xCells,
+    double zCells,
+    double contourToleranceCells,
+    cr::CreativeTerrainAnalysisHitMode mode) noexcept {
+  CreativeEditorWorldLayoutTerrainAnalysisEditPlan edit;
+  edit.requested = true;
+  edit.hit = cr::hitCreativeTerrainAnalysis(
+      plan.analysis, {xCells, zCells}, contourToleranceCells, mode);
+  if (!edit.hit.accepted) {
+    edit.reasonCode = edit.hit.reasonCode;
+    return edit;
+  }
+
+  cr::CreativeTerrainRegionRecipe recipe;
+  recipe.mode = cr::CreativeTerrainRegionMode::Flatten;
+  recipe.targetHeightCells = edit.hit.targetHeightCells;
+  if (edit.hit.kind == cr::CreativeTerrainAnalysisHitKind::Contour) {
+    constexpr std::int64_t radius = 2;
+    const std::int64_t minimumX =
+        static_cast<std::int64_t>(edit.hit.coord.x) - radius;
+    const std::int64_t minimumZ =
+        static_cast<std::int64_t>(edit.hit.coord.z) - radius;
+    if (minimumX < std::numeric_limits<std::int32_t>::min() ||
+        minimumX > std::numeric_limits<std::int32_t>::max() ||
+        minimumZ < std::numeric_limits<std::int32_t>::min() ||
+        minimumZ > std::numeric_limits<std::int32_t>::max()) {
+      edit.reasonCode =
+          "creative_editor_world_layout_terrain_analysis_bounds_overflow";
+      return edit;
+    }
+    recipe.bounds = {{static_cast<std::int32_t>(minimumX),
+                      static_cast<std::int32_t>(minimumZ)},
+                     5U, 5U};
+    recipe.mask = cr::CreativeTerrainCompositionMask::Ellipse;
+    recipe.featherCells = 1U;
+  } else if (edit.hit.kind ==
+             cr::CreativeTerrainAnalysisHitKind::HeightHandle) {
+    recipe.bounds = {edit.hit.coord, 1U, 1U};
+    recipe.mask = cr::CreativeTerrainCompositionMask::Rectangle;
+    recipe.featherCells = 0U;
+  } else {
+    edit.reasonCode =
+        "creative_editor_world_layout_terrain_analysis_target_invalid";
+    return edit;
+  }
+  if (!cr::isValidCreativeTerrainRegionRecipe(recipe)) {
+    edit.reasonCode =
+        "creative_editor_world_layout_terrain_analysis_recipe_invalid";
+    return edit;
+  }
+  edit.accepted = true;
+  edit.recipe = recipe;
+  edit.reasonCode =
+      "creative_editor_world_layout_terrain_analysis_edit_ready";
+  return edit;
+}
+
+bool selectCreativeEditorWorldLayoutTerrainAnalysisEdit(
+    CreativeEditorWorldLayoutTerrainRegionState& state,
+    const CreativeEditorWorldLayoutTerrainAnalysisEditPlan& edit) noexcept {
+  if (!state.editingEnabled || !edit.accepted ||
+      !cr::isValidCreativeTerrainRegionRecipe(edit.recipe)) {
+    state.statusMessage = "Terrain analysis target unavailable";
+    return false;
+  }
+
+  const cr::CreativeTerrainHeightFieldBounds bounds = edit.recipe.bounds;
+  const std::int64_t maximumX =
+      static_cast<std::int64_t>(bounds.minimum.x) + bounds.widthCells - 1;
+  const std::int64_t maximumZ =
+      static_cast<std::int64_t>(bounds.minimum.z) + bounds.depthCells - 1;
+  if (maximumX > std::numeric_limits<std::int32_t>::max() ||
+      maximumZ > std::numeric_limits<std::int32_t>::max()) {
+    state.statusMessage = "Terrain analysis target unavailable";
+    return false;
+  }
+
+  state.selecting = false;
+  state.manipulation = {};
+  state.editingOperationId = cr::kInvalidCreativeTerrainOperationId;
+  state.recipe = edit.recipe;
+  state.regionValid = true;
+  state.anchor = bounds.minimum;
+  state.cursor = {static_cast<std::int32_t>(maximumX),
+                  static_cast<std::int32_t>(maximumZ)};
+  state.statusMessage =
+      edit.hit.kind == cr::CreativeTerrainAnalysisHitKind::Contour
+          ? "Contour region selected"
+          : "Terrain height selected";
+  return true;
 }
 
 }  // namespace iggy3d_creative_app

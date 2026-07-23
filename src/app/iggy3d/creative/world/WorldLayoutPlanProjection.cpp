@@ -66,9 +66,15 @@ std::vector<std::size_t> activeLevelsAtDatum(
   return result;
 }
 
-std::vector<std::size_t> nearestLowerLevels(
+enum class ContextDirection : std::uint8_t {
+  Lower,
+  Higher,
+};
+
+std::vector<std::size_t> nearestContextLevels(
     const CreativeWorldLayout& layout,
-    std::span<const std::size_t> activeLevels, double datum) {
+    std::span<const std::size_t> activeLevels, double datum,
+    ContextDirection direction) {
   std::vector<std::size_t> result;
   std::vector<bool> visitedBuilding(layout.buildings.size(), false);
   for (const std::size_t activeLevelIndex : activeLevels) {
@@ -79,16 +85,19 @@ std::vector<std::size_t> nearestLowerLevels(
     }
     visitedBuilding[buildingIndex] = true;
     std::size_t best = kInvalidCreativeWorldLayoutIndex;
-    double bestTop = -std::numeric_limits<double>::infinity();
+    double bestDistance = std::numeric_limits<double>::infinity();
     for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
          ++levelIndex) {
       const CreativeWorldLayoutLevel& candidate = layout.levels[levelIndex];
+      const double distance =
+          direction == ContextDirection::Lower
+              ? datum - candidate.floorTopLayer
+              : candidate.floorTopLayer - datum;
       if (candidate.buildingIndex == buildingIndex &&
-          candidate.floorTopLayer < datum - kGeometryEpsilon &&
-          candidate.floorTopLayer > bestTop &&
+          distance > kGeometryEpsilon && distance < bestDistance &&
           creativeWorldLayoutLevelHasRooms(layout, levelIndex)) {
         best = levelIndex;
-        bestTop = candidate.floorTopLayer;
+        bestDistance = distance;
       }
     }
     if (best != kInvalidCreativeWorldLayoutIndex) {
@@ -248,10 +257,12 @@ std::string_view toString(
 
 std::string_view toString(CreativeWorldLayoutPlanLayer layer) noexcept {
   switch (layer) {
-    case CreativeWorldLayoutPlanLayer::Context:
-      return "Context";
+    case CreativeWorldLayoutPlanLayer::LowerContext:
+      return "LowerContext";
     case CreativeWorldLayoutPlanLayer::Active:
       return "Active";
+    case CreativeWorldLayoutPlanLayer::UpperContext:
+      return "UpperContext";
     case CreativeWorldLayoutPlanLayer::Overhead:
       return "Overhead";
     case CreativeWorldLayoutPlanLayer::Count:
@@ -274,8 +285,12 @@ std::string_view toString(CreativeWorldLayoutPlanRole role) noexcept {
       return "Door";
     case CreativeWorldLayoutPlanRole::DoorSwing:
       return "DoorSwing";
+    case CreativeWorldLayoutPlanRole::OpeningFacing:
+      return "OpeningFacing";
     case CreativeWorldLayoutPlanRole::Window:
       return "Window";
+    case CreativeWorldLayoutPlanRole::WindowShutter:
+      return "WindowShutter";
     case CreativeWorldLayoutPlanRole::Stair:
       return "Stair";
     case CreativeWorldLayoutPlanRole::Ramp:
@@ -284,6 +299,10 @@ std::string_view toString(CreativeWorldLayoutPlanRole role) noexcept {
       return "RoofOutline";
     case CreativeWorldLayoutPlanRole::RoofRidge:
       return "RoofRidge";
+    case CreativeWorldLayoutPlanRole::RoofSkylight:
+      return "RoofSkylight";
+    case CreativeWorldLayoutPlanRole::RoofClearance:
+      return "RoofClearance";
     case CreativeWorldLayoutPlanRole::TerrainProfile:
       return "TerrainProfile";
     case CreativeWorldLayoutPlanRole::TerrainPath:
@@ -368,10 +387,23 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
   std::vector<std::uint8_t> activeBuildingMask;
   makeMasks(layout, activeLevels, activeLevelMask, activeBuildingMask);
 
+  std::size_t terrainPathPointCount = 0U;
+  std::size_t retainingTransitionCount = 0U;
+  for (const CreativeWorldLayoutTerrainProfile& profile :
+       layout.terrainProfiles) {
+    retainingTransitionCount +=
+        profile.usesRetainingEdgeRecipe
+            ? profile.retainingEdge.settings.transitionCount
+            : 0U;
+  }
+  for (const CreativeWorldLayoutTerrainPath& path : layout.terrainPaths) {
+    terrainPathPointCount += path.recipe.points.size();
+  }
   projection.primitives.reserve(
       layout.rooms.size() + layout.walls.size() + layout.openings.size() * 3U +
       layout.verticalConnectors.size() * 9U + layout.objects.size() +
-      layout.terrainProfiles.size() + layout.terrainPathPoints.size() +
+      layout.terrainProfiles.size() + retainingTransitionCount +
+      terrainPathPointCount +
       request.contours.size());
 
   if (!projectTerrain(projection, layout, request.contours)) {
@@ -382,8 +414,10 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
 
   if (request.includeLowerLevelContext && haveLevels) {
     const std::vector<std::size_t> contextLevels =
-        nearestLowerLevels(layout, activeLevels, activeDatum);
-    projection.receipt.contextLevelCount = contextLevels.size();
+        nearestContextLevels(layout, activeLevels, activeDatum,
+                             ContextDirection::Lower);
+    projection.receipt.lowerContextLevelCount = contextLevels.size();
+    projection.receipt.contextLevelCount += contextLevels.size();
     for (const std::size_t contextLevelIndex : contextLevels) {
       const std::array<std::size_t, 1U> oneLevel{contextLevelIndex};
       std::vector<std::uint8_t> contextLevelMask;
@@ -393,7 +427,7 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
               projection, layout, compiled, contextLevelMask,
               contextBuildingMask,
               layout.levels[contextLevelIndex].floorTopLayer,
-              cutPlaneHeightCells, Layer::Context)) {
+              cutPlaneHeightCells, Layer::LowerContext)) {
         reject(
             projection,
             CreativeWorldLayoutPlanProjectionStatus::InvalidLayout,
@@ -410,6 +444,31 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
     reject(projection, CreativeWorldLayoutPlanProjectionStatus::InvalidLayout,
            "creative_world_layout_plan_projection_architecture_invalid");
     return projection;
+  }
+
+  if (request.includeUpperLevelContext && haveLevels) {
+    const std::vector<std::size_t> contextLevels =
+        nearestContextLevels(layout, activeLevels, activeDatum,
+                             ContextDirection::Higher);
+    projection.receipt.upperContextLevelCount = contextLevels.size();
+    projection.receipt.contextLevelCount += contextLevels.size();
+    for (const std::size_t contextLevelIndex : contextLevels) {
+      const std::array<std::size_t, 1U> oneLevel{contextLevelIndex};
+      std::vector<std::uint8_t> contextLevelMask;
+      std::vector<std::uint8_t> contextBuildingMask;
+      makeMasks(layout, oneLevel, contextLevelMask, contextBuildingMask);
+      if (!projectLevelArchitecture(
+              projection, layout, compiled, contextLevelMask,
+              contextBuildingMask,
+              layout.levels[contextLevelIndex].floorTopLayer,
+              cutPlaneHeightCells, Layer::UpperContext)) {
+        reject(
+            projection,
+            CreativeWorldLayoutPlanProjectionStatus::InvalidLayout,
+            "creative_world_layout_plan_projection_upper_context_invalid");
+        return projection;
+      }
+    }
   }
 
   double activeBandTop = std::numeric_limits<double>::infinity();
@@ -430,7 +489,7 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
   }
 
   if (request.includeRoofOverhead && haveLevels &&
-      !projectRoofs(projection, layout, activeLevelMask)) {
+      !projectRoofs(projection, layout, request.grid, activeLevelMask)) {
     reject(projection, CreativeWorldLayoutPlanProjectionStatus::InvalidLayout,
            "creative_world_layout_plan_projection_roof_invalid");
     return projection;

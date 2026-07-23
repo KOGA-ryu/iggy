@@ -126,6 +126,10 @@ void appendDefinitionObject(FingerprintBuilder& builder,
   builder.appendUnsigned(static_cast<std::uint64_t>(object.kind));
   builder.appendString(object.name);
   builder.appendString(object.assetId);
+  if (!object.assetId.empty()) {
+    builder.appendUnsigned(object.assetContentHash);
+    builder.appendString(object.assetMaterialVariant);
+  }
   builder.appendVec3(object.transform.position);
   builder.appendVec3(object.transform.rotationEulerRadians);
   builder.appendVec3(object.transform.scale);
@@ -179,6 +183,121 @@ void appendDefinitionObject(FingerprintBuilder& builder,
     for (const CreativePathPoint& point : object.pathPoints) {
       builder.appendDouble(point.outgoingSpeedMultiplier);
     }
+  }
+}
+
+[[nodiscard]] bool definitionPatternRecipesValid(
+    std::span<const CreativePatternRecipe> recipes,
+    std::span<const CreativeObject> objects) noexcept {
+  for (std::size_t index = 0U; index < recipes.size(); ++index) {
+    const CreativePatternRecipe& recipe = recipes[index];
+    if (!validateCreativePatternRecipe(recipe)) {
+      return false;
+    }
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      if (recipes[prior].id == recipe.id) {
+        return false;
+      }
+      for (CreativeObjectId generatedId : recipe.generatedObjectIds) {
+        if (std::find(recipes[prior].generatedObjectIds.begin(),
+                      recipes[prior].generatedObjectIds.end(), generatedId) !=
+            recipes[prior].generatedObjectIds.end()) {
+          return false;
+        }
+      }
+    }
+    for (CreativeObjectId objectId : recipe.sourceObjectIds) {
+      if (!definitionObjectIndex(objects, objectId).has_value()) {
+        return false;
+      }
+    }
+    for (CreativeObjectId objectId : recipe.generatedObjectIds) {
+      if (!definitionObjectIndex(objects, objectId).has_value()) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void appendDefinitionPatternRecipe(
+    FingerprintBuilder& builder,
+    std::span<const CreativeObject> objects,
+    const CreativePatternRecipe& recipe) noexcept {
+  builder.appendUnsigned(static_cast<std::uint64_t>(recipe.kind));
+  builder.appendUnsigned(recipe.sourceObjectIds.size());
+  for (CreativeObjectId objectId : recipe.sourceObjectIds) {
+    const std::optional<std::size_t> index =
+        definitionObjectIndex(objects, objectId);
+    if (!index.has_value()) {
+      builder.valid = false;
+      return;
+    }
+    builder.appendUnsigned(*index);
+  }
+  builder.appendUnsigned(recipe.generatedObjectIds.size());
+  for (CreativeObjectId objectId : recipe.generatedObjectIds) {
+    const std::optional<std::size_t> index =
+        definitionObjectIndex(objects, objectId);
+    if (!index.has_value()) {
+      builder.valid = false;
+      return;
+    }
+    builder.appendUnsigned(*index);
+  }
+  switch (recipe.kind) {
+    case CreativePatternRecipeKind::LinearArray:
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(recipe.linear.direction));
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(recipe.linear.copyCount));
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(recipe.linear.spacing));
+      builder.appendDouble(recipe.linear.cellSize);
+      builder.appendUnsigned(recipe.linear.maxGeneratedObjects);
+      return;
+    case CreativePatternRecipeKind::RadialArray:
+      builder.appendVec3(recipe.radial.pivot);
+      builder.appendUnsigned(static_cast<std::uint64_t>(recipe.radial.axis));
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(recipe.radial.instanceCount));
+      builder.appendUnsigned(static_cast<std::uint64_t>(recipe.radial.sweep));
+      builder.appendUnsigned(recipe.radial.maxGeneratedObjects);
+      return;
+    case CreativePatternRecipeKind::AssetScatter:
+      builder.appendUnsigned(
+          static_cast<std::uint64_t>(recipe.scatter.objectKind));
+      builder.appendString(recipe.scatter.assetId);
+      builder.appendUnsigned(recipe.scatter.assetContentHash);
+      builder.appendString(recipe.scatter.assetMaterialVariant);
+      builder.appendVec3(recipe.scatter.assetSourceBounds.min);
+      builder.appendVec3(recipe.scatter.assetSourceBounds.max);
+      builder.appendUnsigned(recipe.scatter.paintCenters.size());
+      for (CreativeVec3 center : recipe.scatter.paintCenters) {
+        builder.appendVec3(center);
+      }
+      builder.appendUnsigned(recipe.scatter.exclusions.size());
+      for (const CreativeAssetScatterExclusion& exclusion :
+           recipe.scatter.exclusions) {
+        builder.appendVec3(exclusion.center);
+        builder.appendDouble(exclusion.radiusMeters);
+      }
+      builder.appendUnsigned(static_cast<std::uint64_t>(recipe.scatter.mask));
+      builder.appendUnsigned(static_cast<std::uint64_t>(recipe.scatter.yaw));
+      builder.appendDouble(recipe.scatter.baseYawRadians);
+      builder.appendDouble(recipe.scatter.radiusMeters);
+      builder.appendDouble(recipe.scatter.spacingMeters);
+      builder.appendDouble(recipe.scatter.densityFraction);
+      builder.appendDouble(recipe.scatter.scaleVariation);
+      builder.appendDouble(recipe.scatter.maximumSlopeRadians);
+      builder.appendBool(recipe.scatter.projectToTerrainSurface);
+      builder.appendBool(recipe.scatter.avoidCollisions);
+      builder.appendUnsigned(recipe.scatter.seed);
+      builder.appendUnsigned(recipe.scatter.maxGeneratedObjects);
+      return;
+    case CreativePatternRecipeKind::Count:
+      builder.valid = false;
+      return;
   }
 }
 
@@ -269,6 +388,23 @@ CreativeAuthoredAssetFingerprint fingerprintCreativeAuthoredAssetDefinition(
     builder.valid = false;
   }
 
+  if (!definition.content.patternRecipes.empty()) {
+    // Keep fingerprints for legacy definitions byte-stable until a semantic
+    // recipe is actually present.
+    builder.appendString("pattern_recipes_v1");
+    builder.appendUnsigned(definition.content.patternRecipes.size());
+    if (!definitionPatternRecipesValid(definition.content.patternRecipes,
+                                       definition.content.objects)) {
+      builder.valid = false;
+    } else {
+      for (const CreativePatternRecipe& recipe :
+           definition.content.patternRecipes) {
+        appendDefinitionPatternRecipe(builder, definition.content.objects,
+                                      recipe);
+      }
+    }
+  }
+
   builder.appendUnsigned(definition.rootObjectIds.size());
   for (CreativeObjectId rootId : definition.rootObjectIds) {
     const std::optional<std::size_t> rootIndex =
@@ -292,6 +428,112 @@ CreativeAuthoredAssetFingerprint fingerprintCreativeAuthoredAssetDefinition(
   }
   builder.appendVec3(definition.sourceBounds.min);
   builder.appendVec3(definition.sourceBounds.max);
+  return {builder.valid, builder.valid ? builder.value : 0U};
+}
+
+CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetPlacementRequest(
+    const CreativeAuthoredAssetPlacementRequest& request) noexcept {
+  FingerprintBuilder builder;
+  builder.appendString("creative_authored_asset_placement_request_v1");
+  if (request.definition == nullptr) {
+    builder.valid = false;
+    return {false, 0U};
+  }
+  const CreativeAuthoredAssetFingerprint definition =
+      fingerprintCreativeAuthoredAssetDefinition(*request.definition);
+  if (!definition.valid ||
+      !isFiniteCreativeVec3(request.instanceTransform.position) ||
+      !isFiniteCreativeVec3(request.instanceTransform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(request.instanceTransform.scale) ||
+      (request.parentId.has_value() &&
+       *request.parentId == kInvalidObjectId)) {
+    builder.valid = false;
+  }
+  builder.appendUnsigned(definition.value);
+  builder.appendVec3(request.instanceTransform.position);
+  builder.appendVec3(request.instanceTransform.rotationEulerRadians);
+  builder.appendVec3(request.instanceTransform.scale);
+  builder.appendBool(request.parentId.has_value());
+  if (request.parentId.has_value()) {
+    builder.appendUnsigned(*request.parentId);
+  }
+  builder.appendString(request.attachmentSocket);
+  return {builder.valid, builder.valid ? builder.value : 0U};
+}
+
+CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetRefreshRequest(
+    const CreativeAuthoredAssetRefreshRequest& request) noexcept {
+  FingerprintBuilder builder;
+  builder.appendString("creative_authored_asset_refresh_request_v1");
+  if (request.definition == nullptr) {
+    builder.valid = false;
+    return {false, 0U};
+  }
+  const CreativeAuthoredAssetFingerprint definition =
+      fingerprintCreativeAuthoredAssetDefinition(*request.definition);
+  if (!definition.valid) {
+    builder.valid = false;
+  }
+  switch (request.mode) {
+    case CreativeAuthoredAssetRefreshMode::SelectedInstance:
+    case CreativeAuthoredAssetRefreshMode::SafeInstances:
+    case CreativeAuthoredAssetRefreshMode::ForceAll:
+      break;
+    default:
+      builder.valid = false;
+      break;
+  }
+  builder.appendUnsigned(definition.value);
+  builder.appendUnsigned(static_cast<std::uint8_t>(request.mode));
+  builder.appendUnsigned(request.selectedInstanceRootObjectId);
+  return {builder.valid, builder.valid ? builder.value : 0U};
+}
+
+CreativeAuthoredAssetFingerprint fingerprintCreativeAuthoredAssetInstance(
+    const CreativeObject& instanceRoot) noexcept {
+  FingerprintBuilder builder;
+  builder.appendString("creative_authored_asset_instance_v1");
+  const std::optional<std::uint64_t> sourceFingerprint =
+      creativeAuthoredAssetStoredSourceFingerprint(instanceRoot);
+  if (instanceRoot.id == kInvalidObjectId ||
+      instanceRoot.kind != CreativeObjectKind::PrefabInstance ||
+      !isValidCreativeAuthoredAssetId(instanceRoot.assetId) ||
+      !sourceFingerprint.has_value() || *sourceFingerprint == 0U ||
+      !isFiniteCreativeVec3(instanceRoot.transform.position) ||
+      !isFiniteCreativeVec3(instanceRoot.transform.rotationEulerRadians) ||
+      !isPositiveCreativeVec3(instanceRoot.transform.scale) ||
+      !measureCreativeBounds(instanceRoot.bounds).valid) {
+    builder.valid = false;
+  }
+  builder.appendUnsigned(instanceRoot.id);
+  builder.appendString(instanceRoot.assetId);
+  builder.appendUnsigned(sourceFingerprint.value_or(0U));
+  builder.appendVec3(instanceRoot.transform.position);
+  builder.appendVec3(instanceRoot.transform.rotationEulerRadians);
+  builder.appendVec3(instanceRoot.transform.scale);
+  builder.appendVec3(instanceRoot.bounds.min);
+  builder.appendVec3(instanceRoot.bounds.max);
+  builder.appendBool(instanceRoot.parentId.has_value());
+  if (instanceRoot.parentId.has_value()) {
+    builder.appendUnsigned(*instanceRoot.parentId);
+  }
+  builder.appendString(instanceRoot.attachmentSocket);
+  return {builder.valid, builder.valid ? builder.value : 0U};
+}
+
+CreativeAuthoredAssetFingerprint
+foldCreativeAuthoredAssetOperationFingerprint(
+    std::uint64_t accumulatedFingerprint,
+    std::uint64_t requestFingerprint) noexcept {
+  FingerprintBuilder builder;
+  builder.appendString("creative_authored_asset_operation_sequence_v1");
+  if (requestFingerprint == 0U) {
+    builder.valid = false;
+  }
+  builder.appendUnsigned(accumulatedFingerprint);
+  builder.appendUnsigned(requestFingerprint);
   return {builder.valid, builder.valid ? builder.value : 0U};
 }
 

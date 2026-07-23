@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/PlacementContact.hpp"
 #include "app/iggy3d/creative/spatial/PlacementOrientation.hpp"
@@ -368,6 +369,95 @@ bool cameraBoundsFramingFitsThePerspectiveAndFailsClosed() {
                 "camera framing rejects reversed and non-finite requests");
 }
 
+bool viewportNavigationSharesOneFocusAndPhysicalScaleModel() {
+  iggy3d::ProductCreativeViewportNavigationRequest request;
+  request.focus =
+      iggy3d::makeProductCreativeViewportFocus({0.0F, 2.0F, 0.0F}, 10.0F);
+  request.pose.anchorPositionMeters = {0.0F, 0.3F, 10.0F};
+  request.pose.yawDegrees = 0.0F;
+  request.pose.pitchDegrees = 0.0F;
+  request.viewportHeightPixels = 1000.0F;
+  request.orbitDegreesPerPixel = 0.1F;
+
+  request.operation =
+      iggy3d::ProductCreativeViewportNavigationOperation::Orbit;
+  request.horizontalInput = 100.0F;
+  request.verticalInput = -50.0F;
+  const auto orbit =
+      iggy3d::applyProductCreativeViewportNavigation(request);
+  const iggy3d::Vec3 orbitEye =
+      orbit.pose.anchorPositionMeters + iggy3d::Vec3{0.0F, 1.7F, 0.0F};
+
+  request.operation =
+      iggy3d::ProductCreativeViewportNavigationOperation::Pan;
+  request.horizontalInput = 100.0F;
+  request.verticalInput = 50.0F;
+  const auto pan = iggy3d::applyProductCreativeViewportNavigation(request);
+  const iggy3d::Vec3 panTranslation =
+      pan.focus.worldPointMeters - request.focus.worldPointMeters;
+
+  request.operation =
+      iggy3d::ProductCreativeViewportNavigationOperation::Dolly;
+  request.horizontalInput = 0.0F;
+  request.verticalInput = 2.0F;
+  const auto dolly =
+      iggy3d::applyProductCreativeViewportNavigation(request);
+
+  iggy3d::ProductCreativeViewportNavigationRequest implicitFocus = request;
+  implicitFocus.focus = {};
+  implicitFocus.operation =
+      iggy3d::ProductCreativeViewportNavigationOperation::Orbit;
+  implicitFocus.horizontalInput = 1.0F;
+  implicitFocus.verticalInput = 0.0F;
+  const auto established =
+      iggy3d::applyProductCreativeViewportNavigation(implicitFocus);
+
+  iggy3d::ProductCreativeViewportNavigationRequest invalid = request;
+  invalid.verticalInput = std::numeric_limits<float>::quiet_NaN();
+  const auto rejected =
+      iggy3d::applyProductCreativeViewportNavigation(invalid);
+
+  return expect(orbit.applied && nearFloat(orbit.pose.yawDegrees, 10.0F) &&
+                    nearFloat(orbit.pose.pitchDegrees, 5.0F),
+                "orbit follows the existing right/up look convention") &&
+         expect(nearFloat(iggy3d::length(orbitEye -
+                                         orbit.focus.worldPointMeters),
+                          10.0F),
+                "orbit preserves the exact focus distance") &&
+         expect(pan.applied && panTranslation.x < 0.0F &&
+                    panTranslation.y > 0.0F &&
+                    nearFloat(
+                        pan.pose.anchorPositionMeters.x -
+                            request.pose.anchorPositionMeters.x,
+                        panTranslation.x) &&
+                    nearFloat(
+                        pan.pose.anchorPositionMeters.y -
+                            request.pose.anchorPositionMeters.y,
+                        panTranslation.y),
+                "pan moves camera and focus together at perspective scale") &&
+         expect(dolly.applied && dolly.focus.distanceMeters < 10.0F &&
+                    dolly.focus.distanceMeters >=
+                        request.config.minimumFocusDistanceMeters &&
+                    dolly.focus.worldPointMeters.x ==
+                        request.focus.worldPointMeters.x &&
+                    dolly.focus.worldPointMeters.y ==
+                        request.focus.worldPointMeters.y &&
+                    dolly.focus.worldPointMeters.z ==
+                        request.focus.worldPointMeters.z,
+                "positive dolly input approaches the stable focus") &&
+         expect(established.applied && established.focus.valid &&
+                    nearFloat(established.focus.distanceMeters,
+                              request.config.defaultFocusDistanceMeters),
+                "navigation establishes a bounded forward focus when absent") &&
+         expect(!rejected.applied &&
+                    rejected.status ==
+                        iggy3d::ProductCreativeViewportNavigationStatus::
+                            InvalidRequest &&
+                    rejected.pose.anchorPositionMeters.x ==
+                        request.pose.anchorPositionMeters.x,
+                "non-finite navigation fails without moving the camera");
+}
+
 bool worldActionsAreEdgeTriggered() {
   cr::CreativeWorldActionRouterState state;
   cr::CreativeWorldInputSample sample;
@@ -407,9 +497,22 @@ bool worldActionsAreEdgeTriggered() {
 }
 
 bool hotbarHasStableNineSlotGrammar() {
-  constexpr std::array palette{cr::CreativeObjectKind::Wall,
-                               cr::CreativeObjectKind::Crate};
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
+  hotbar.entries = {
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::Material,
+                              cr::CreativeObjectKind::Wall},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::ObjectSelect, {}},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::ObjectMove, {}},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeSelect, {}},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeFill,
+                              cr::CreativeObjectKind::Wall},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeHollow,
+                              cr::CreativeObjectKind::Wall},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeReplace,
+                              cr::CreativeObjectKind::Wall},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeErase, {}},
+      cr::CreativeHotbarEntry{cr::CreativeHeldItemKind::VolumeClone, {}},
+  };
   constexpr std::array expectedKinds{
       cr::CreativeHeldItemKind::Material,
       cr::CreativeHeldItemKind::ObjectSelect,
@@ -423,9 +526,9 @@ bool hotbarHasStableNineSlotGrammar() {
   };
 
   bool ok = expect(hotbar.selectedSlot == 0U,
-                   "default hotbar selects material slot") &&
+                   "hotbar starts on its first slot") &&
             expect(hotbar.entries[0].objectKind == cr::CreativeObjectKind::Wall,
-                   "default material comes from palette") &&
+                   "material fixture owns its exact kind") &&
             expect(std::equal(expectedKinds.begin(), expectedKinds.end(),
                               hotbar.entries.begin(),
                               [](cr::CreativeHeldItemKind expected,
@@ -453,12 +556,19 @@ bool hotbarHasStableNineSlotGrammar() {
   cr::CreativeObject imported;
   imported.kind = cr::CreativeObjectKind::Rock;
   imported.assetId = "boulder_01";
+  imported.assetContentHash = 0x123456789ABCDEF0ULL;
+  imported.assetMaterialVariant = "Mossy";
   imported.transform.position = {4.5, 0.2, -2.0};
   imported.bounds = {{4.25, 0.0, -3.0}, {5.75, 1.4, -1.8}};
   ok = expect(cr::assignCreativeHotbarFromObject(hotbar, imported) &&
                   cr::creativeHotbarAssetId(
                       cr::selectedCreativeHotbarEntry(hotbar)) ==
                       "boulder_01" &&
+                  cr::selectedCreativeHotbarEntry(hotbar).hasAssetContentHash &&
+                  cr::selectedCreativeHotbarEntry(hotbar).assetContentHash ==
+                      0x123456789ABCDEF0ULL &&
+                  cr::creativeHotbarAssetMaterialVariant(
+                      cr::selectedCreativeHotbarEntry(hotbar)) == "Mossy" &&
                   cr::selectedCreativeHotbarEntry(hotbar).hasAssetBounds &&
                   near(cr::selectedCreativeHotbarEntry(hotbar)
                                .assetSourceBounds.min.x,
@@ -552,6 +662,8 @@ bool heldItemRegistryOwnsEveryKind() {
 
   const cr::CreativeHeldItemDefinition& material =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::Material);
+  const cr::CreativeHeldItemDefinition& select =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ObjectSelect);
   const cr::CreativeHeldItemDefinition& move =
       cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ObjectMove);
   const cr::CreativeHeldItemDefinition& volumeSelect =
@@ -574,6 +686,11 @@ bool heldItemRegistryOwnsEveryKind() {
                     material.targetCellPolicy ==
                         cr::CreativeHeldItemTargetCellPolicy::MaterialStorage,
                 "material row owns placement and display policy") &&
+         expect(select.acceptOperation ==
+                        cr::CreativeHeldItemWorldOperation::SelectObject &&
+                    select.rejectOperation ==
+                        cr::CreativeHeldItemWorldOperation::ClearSelection,
+                "select maps X to select and Circle to clear") &&
          expect(move.facadeTool == cr::Tool::Move &&
                     move.hierarchySelectionTool &&
                     move.frameMode ==
@@ -647,7 +764,15 @@ bool heldVolumeItemsMapWithoutBranchesAtCallers() {
   cr::CreativeHotbarEntry materialFreeTool{
       cr::CreativeHeldItemKind::VolumeErase,
       cr::CreativeObjectKind::Unknown};
-  return expect(!cr::creativeHeldItemIsVolumeOperation(
+  return expect(cr::describeCreativeHeldItem(
+                    cr::CreativeHeldItemKind::VolumeClone)
+                    .statusMode == cr::CreativeHeldItemStatusMode::VolumeClone &&
+                    cr::describeCreativeHeldItem(
+                        cr::CreativeHeldItemKind::VolumeSelect)
+                            .statusMode !=
+                        cr::CreativeHeldItemStatusMode::VolumeClone,
+                "clone alone owns its transform-rich held status") &&
+         expect(!cr::creativeHeldItemIsVolumeOperation(
                     cr::CreativeHeldItemKind::Material),
                 "material is not volume operation") &&
          expect(!cr::creativeHeldItemIsVolumeOperation(
@@ -1529,6 +1654,7 @@ int main() {
   ok = controllerStickPrimitiveHasCanonicalDirections() && ok;
   ok = controllerMovementPreservesDirectionAndFineTravel() && ok;
   ok = cameraBoundsFramingFitsThePerspectiveAndFailsClosed() && ok;
+  ok = viewportNavigationSharesOneFocusAndPhysicalScaleModel() && ok;
   ok = worldActionsAreEdgeTriggered() && ok;
   ok = hotbarHasStableNineSlotGrammar() && ok;
   ok = heldItemRegistryOwnsEveryKind() && ok;

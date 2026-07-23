@@ -189,7 +189,7 @@ bool switchingToNavigateCancelsActiveMeasurement() {
                 "navigate switch clears tool measurement flag");
 }
 
-bool measurePressMoveReleaseUpdatesMeasurement() {
+bool measureClickClickUpdatesMeasurement() {
   cr::Facade facade;
   const bool toolChanged = facade.setActiveTool(cr::Tool::Measure);
   const cr::CreativeFacadeToolDispatchReceipt begin =
@@ -206,7 +206,7 @@ bool measurePressMoveReleaseUpdatesMeasurement() {
                        8));
   const cr::CreativeFacadeToolDispatchReceipt end =
       facade.dispatchToolInput(
-          pointerInput(cr::CreativeToolInputKind::PointerRelease,
+          pointerInput(cr::CreativeToolInputKind::PointerPress,
                        5.0,
                        6.0,
                        9));
@@ -227,6 +227,52 @@ bool measurePressMoveReleaseUpdatesMeasurement() {
                 "measurement current target") &&
          expect(facade.document().objectCount() == 0U,
                 "measure did not mutate document");
+}
+
+bool measurementAnnotationsAreExplicitDocumentMutations() {
+  cr::Facade facade;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Measurement Annotations");
+  static_cast<void>(document.assignId(93U));
+  if (!expect(facade.installDocument(std::move(document)).accepted,
+              "measurement annotation document installed")) {
+    return false;
+  }
+
+  const std::uint64_t revisionBefore = facade.document().revision();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 7)));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 5.0, 6.0, 9)));
+  const bool transientStayedOutsideDocument =
+      facade.document().revision() == revisionBefore &&
+      facade.document().measurementAnnotationStore().annotations.empty();
+
+  const cr::CreativeFacadeMeasurementAnnotationSaveReceipt saved =
+      facade.saveMeasurementAnnotation("Door clearance");
+  const cr::CreativeMeasurementAnnotation* annotation =
+      cr::findCreativeMeasurementAnnotation(
+          facade.document().measurementAnnotationStore(), saved.annotationId);
+  const bool savedExactlyOnce =
+      saved.accepted && saved.changed &&
+      saved.annotationId != cr::kInvalidCreativeMeasurementAnnotationId &&
+      annotation != nullptr && annotation->name == "Door clearance" &&
+      facade.document().revision() == revisionBefore + 1U &&
+      !facade.measurementState().hasMeasurement;
+
+  const cr::CreativeMeasurementAnnotationMutationReceipt removed =
+      facade.removeMeasurementAnnotation(saved.annotationId);
+  return expect(transientStayedOutsideDocument,
+                "transient measurement changes no document state") &&
+         expect(savedExactlyOnce,
+                "explicit measurement save creates one durable annotation") &&
+         expect(removed.accepted && removed.changed &&
+                    facade.document()
+                        .measurementAnnotationStore()
+                        .annotations.empty() &&
+                    facade.document().revision() == revisionBefore + 2U,
+                "explicit measurement removal changes the document once");
 }
 
 bool leavingMeasureCancelsActiveMeasurement() {
@@ -283,7 +329,7 @@ bool leavingMeasurePreservesCompletedMeasurement() {
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 7)));
   static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerRelease, 5.0, 6.0, 9)));
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 5.0, 6.0, 9)));
 
   const bool changed = facade.setActiveTool(cr::Tool::Select);
 
@@ -625,7 +671,7 @@ bool installingDocumentClearsTransientEditorState() {
                    6.0,
                    targetId(firstId))));
   static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerRelease,
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
                    7.0,
                    8.0,
                    targetId(firstId))));
@@ -1054,7 +1100,8 @@ int main() {
                   movePressSelectsLikeSelect() &&
                   navigatePointerInputDoesNotTouchEditorState() &&
                   switchingToNavigateCancelsActiveMeasurement() &&
-                  measurePressMoveReleaseUpdatesMeasurement() &&
+                  measureClickClickUpdatesMeasurement() &&
+                  measurementAnnotationsAreExplicitDocumentMutations() &&
                   leavingMeasureCancelsActiveMeasurement() &&
                   sameMeasureToolActivationKeepsActiveMeasurement() &&
                   leavingMeasurePreservesCompletedMeasurement() &&

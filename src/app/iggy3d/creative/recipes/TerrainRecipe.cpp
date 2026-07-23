@@ -2,10 +2,12 @@
 
 #include "app/iggy3d/creative/tools/TerrainBrushKernel.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
+#include "core/hash/StableHash.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -227,6 +229,10 @@ std::string_view toString(CreativeTerrainRecipeKind kind) noexcept {
   switch (kind) {
     case CreativeTerrainRecipeKind::Plateau:
       return "Plateau";
+    case CreativeTerrainRecipeKind::Terrace:
+      return "Terrace";
+    case CreativeTerrainRecipeKind::Cliff:
+      return "Cliff";
     case CreativeTerrainRecipeKind::Hill:
       return "Hill";
     case CreativeTerrainRecipeKind::Valley:
@@ -275,6 +281,95 @@ std::string_view toString(CreativeTerrainRecipeStatus status) noexcept {
       return "Applied";
   }
   return "Unknown";
+}
+
+std::uint64_t fingerprintCreativeTerrainRecipePlan(
+    const CreativeTerrainRecipePlan& plan) noexcept {
+  if (plan.kind >= CreativeTerrainRecipeKind::Count ||
+      plan.sourceDocumentId == kInvalidDocumentId) {
+    return 0U;
+  }
+  StableHasher hasher;
+  hasher.addString("creative_terrain_recipe_plan_v1");
+  hasher.addU64(static_cast<std::uint8_t>(plan.kind));
+  hasher.addU64(plan.sourceDocumentId);
+  hasher.addU64(plan.sourceDocumentRevision);
+  hasher.addU64(plan.sourceTerrainRevision);
+  hasher.addU64(plan.sourceMaterialRevision);
+  hasher.addI64(plan.minimumCoord.x);
+  hasher.addI64(plan.minimumCoord.z);
+  hasher.addI64(plan.maximumCoord.x);
+  hasher.addI64(plan.maximumCoord.z);
+
+  hasher.addU64(plan.controlEdits.size());
+  for (const CreativeTerrainControlEdit& edit : plan.controlEdits) {
+    hasher.addU64(static_cast<std::uint8_t>(edit.kind));
+    hasher.addI64(edit.control.coord.x);
+    hasher.addI64(edit.control.coord.z);
+    hasher.addU64(edit.control.heightCells);
+    hasher.addU64(edit.control.radiusCells);
+  }
+  hasher.addU64(plan.materialEdits.size());
+  for (const CreativeTerrainMaterialEdit& edit : plan.materialEdits) {
+    hasher.addU64(static_cast<std::uint8_t>(edit.kind));
+    hasher.addI64(edit.coord.x);
+    hasher.addI64(edit.coord.z);
+    hasher.addU64(static_cast<std::uint8_t>(edit.material));
+    for (std::uint8_t weight : edit.weights) {
+      hasher.addByte(weight);
+    }
+  }
+  hasher.addU64(plan.controlOutputs.size());
+  for (const CreativeTerrainControlPoint& control : plan.controlOutputs) {
+    hasher.addI64(control.coord.x);
+    hasher.addI64(control.coord.z);
+    hasher.addU64(control.heightCells);
+    hasher.addU64(control.radiusCells);
+  }
+  hasher.addU64(plan.materialOutputs.size());
+  for (const CreativeTerrainMaterialOverride& material :
+       plan.materialOutputs) {
+    hasher.addI64(material.coord.x);
+    hasher.addI64(material.coord.z);
+    hasher.addU64(static_cast<std::uint8_t>(material.material));
+    for (std::uint8_t weight : material.weights) {
+      hasher.addByte(weight);
+    }
+  }
+  return hasher.value();
+}
+
+bool creativeTerrainRecipeLandformKind(
+    CreativeTerrainRecipeKind kind,
+    CreativeTerrainLandformKind& output) noexcept {
+  switch (kind) {
+    case CreativeTerrainRecipeKind::Plateau:
+      output = CreativeTerrainLandformKind::Plateau;
+      return true;
+    case CreativeTerrainRecipeKind::Terrace:
+      output = CreativeTerrainLandformKind::Terrace;
+      return true;
+    case CreativeTerrainRecipeKind::Cliff:
+      output = CreativeTerrainLandformKind::Cliff;
+      return true;
+    default:
+      return false;
+  }
+}
+
+CreativeTerrainRecipeKind creativeTerrainRecipeKind(
+    CreativeTerrainLandformKind kind) noexcept {
+  switch (kind) {
+    case CreativeTerrainLandformKind::Plateau:
+      return CreativeTerrainRecipeKind::Plateau;
+    case CreativeTerrainLandformKind::Terrace:
+      return CreativeTerrainRecipeKind::Terrace;
+    case CreativeTerrainLandformKind::Cliff:
+      return CreativeTerrainRecipeKind::Cliff;
+    case CreativeTerrainLandformKind::Count:
+      break;
+  }
+  return CreativeTerrainRecipeKind::Count;
 }
 
 CreativeTerrainRecipeResult buildCreativeTerrainProfileRecipe(
@@ -562,8 +657,22 @@ CreativeTerrainRecipeApplyReceipt applyCreativeTerrainRecipeWithHistory(
     CreativeAppState& appState,
     const CreativeTerrainRecipePlan& plan,
     std::string_view source) {
+  std::optional<CreativeAuthoringOperationRecord> operation =
+      makeCreativeAuthoringOperationRecord(
+          CreativeAuthoringFamily::Terrain,
+          CreativeAuthoringOperationKind::Apply, toString(plan.kind),
+          fingerprintCreativeTerrainRecipePlan(plan),
+          plan.controlEdits.size() + plan.materialEdits.size());
+  if (!operation.has_value()) {
+    CreativeTerrainRecipeApplyReceipt receipt;
+    receipt.requested = true;
+    setStatus(receipt, CreativeTerrainRecipeStatus::InvalidKind,
+              "creative_terrain_recipe_operation_record_invalid");
+    return receipt;
+  }
   CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source);
+      beginCreativeHistoryTransaction(appState.facade, source,
+                                      std::move(*operation));
   CreativeTerrainRecipeApplyReceipt receipt =
       applyCreativeTerrainRecipe(appState.facade, plan);
   if (!receipt.accepted || !receipt.changed) {

@@ -2,6 +2,7 @@
 #include "EditorPreviewFrameInternal.hpp"
 
 #include "EditorInteraction.hpp"
+#include "EditorPlayerSpawnPreview.hpp"
 #include "EditorState.hpp"
 
 namespace iggy3d_creative_app {
@@ -43,6 +44,7 @@ void buildAndAttachCreativeEditorOverlayFrame(
   const CreativeEditorWorldOverlayFacts worldFacts =
       buildCreativeEditorWorldWireframes(request, output,
                                          &placementVisualization);
+  appendCreativeEditorPlayerSpawnPreview(request, output);
 
   // DD-15: with the desktop shell on, the legacy controller HUD (hotbar,
   // catalog, tool wheel, action hints, held-item labels) renders only for a

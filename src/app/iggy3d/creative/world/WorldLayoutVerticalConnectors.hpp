@@ -1,5 +1,7 @@
 #pragma once
 
+#include "app/iggy3d/creative/recipes/RampRecipe.hpp"
+#include "app/iggy3d/creative/recipes/StairRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
 #include <cstddef>
@@ -16,6 +18,8 @@ enum class CreativeWorldLayoutVerticalConnectorStatus : std::uint8_t {
   InvalidFootprint,
   InvalidLanding,
   InvalidSlope,
+  InvalidMaterial,
+  InvalidHeadroom,
   SurfaceAlreadyCut,
   UnrepresentableGeometry,
   Ready,
@@ -36,6 +40,9 @@ struct CreativeWorldLayoutVerticalConnectorPlan {
   double runMeters = 0.0;
   double widthMeters = 0.0;
   std::uint16_t stepCount = 0U;
+  CreativeStructuralMaterial material = CreativeStructuralMaterial::Blockout;
+  CreativeRampRecipeResult ramp;
+  CreativeStairRecipeResult stair;
   std::string_view reasonCode =
       "creative_world_layout_vertical_connector_not_requested";
 };
@@ -43,7 +50,7 @@ struct CreativeWorldLayoutVerticalConnectorPlan {
 [[nodiscard]] CreativeWorldLayoutVerticalConnectorPlan
 planCreativeWorldLayoutVerticalConnector(const CreativeGridSettings& grid,
                                          const CreativeWorldLayout& layout,
-                                         std::size_t connectorIndex) noexcept;
+                                         std::size_t connectorIndex);
 
 // Evaluates an edited connector against the live layout without copying the
 // complete layout. The candidate replaces connectorIndex for this plan only.
@@ -51,6 +58,6 @@ planCreativeWorldLayoutVerticalConnector(const CreativeGridSettings& grid,
 planCreativeWorldLayoutVerticalConnector(
     const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
     std::size_t connectorIndex,
-    const CreativeWorldLayoutVerticalConnector& candidate) noexcept;
+    const CreativeWorldLayoutVerticalConnector& candidate);
 
 } // namespace iggy3d::creative

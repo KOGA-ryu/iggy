@@ -8,10 +8,12 @@
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "render/FrameInput.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorMapValidationDiagnostics.hpp"
 #include "EditorWorldLayoutHierarchy.hpp"
 #include "EditorWorldLayoutState.hpp"
 
@@ -67,6 +69,7 @@ struct CreativeDesktopInspectorDraft {
   std::array<double, 3> rotationDegrees{0.0, 0.0, 0.0};
   std::array<double, 3> scale{1.0, 1.0, 1.0};
   iggy3d::creative::CreativeMovingPlatformSettings movingPlatform;
+  iggy3d::creative::CreativePlayerSpawnSettings playerSpawn;
   std::size_t movingPlatformWaypointIndex = 0U;
   double movingPlatformWaypointDwellSeconds = 0.0;
   // A draft field is being edited this frame, so a revision bump must not
@@ -108,6 +111,28 @@ struct CreativeEditorDesktopArchitectureDraft {
   iggy3d::creative::CreativeWorldLayoutArchitecturalProfile profile;
 };
 
+enum class CreativeDesktopDockLayoutMode : std::uint8_t {
+  Standard,
+  WorldLayoutSplit,
+  Count,
+};
+
+struct CreativeDesktopDockLayoutSpec {
+  CreativeDesktopDockLayoutMode mode =
+      CreativeDesktopDockLayoutMode::Standard;
+  bool worldLayoutPanelVisible = false;
+  bool threeDimensionalViewportVisible = true;
+  float worldLayoutPanelFraction = 0.0F;
+};
+
+enum class CreativeDesktopPointerCaptureMode : std::uint8_t {
+  None,
+  FlyLook,
+  Orbit,
+  Pan,
+  Count,
+};
+
 struct CreativeEditorDesktopUiState {
   bool shellEnabled = false;  // true only for explicit desktop UI launches
   bool frameActive = false;   // NewFrame issued this frame, Render still owed
@@ -115,10 +140,12 @@ struct CreativeEditorDesktopUiState {
   // dock node). The all-zero sentinel means full-frame; it stays full-frame
   // until docked panels shrink the central node (UI-3).
   iggy3d::RenderContentViewport contentViewport;
-  // Whether the viewport owns the pointer (relative-mouse fly-look). The
-  // resting state in desktop mode is a free cursor; a click on the viewport
-  // captures it and leaving the viewport context releases it (plan DD-9).
-  bool viewportPointerCaptured = false;
+  // Relative-pointer ownership for fly-look and bounded viewport gestures.
+  // The resting state is free. Plain viewport click enters persistent
+  // FlyLook; Option+drag enters Orbit and Shift+Option+drag enters Pan until
+  // the primary button is released.
+  CreativeDesktopPointerCaptureMode viewportPointerCaptureMode =
+      CreativeDesktopPointerCaptureMode::None;
   // SDL may report the cursor warp that enters relative mode as mouse motion.
   // Consume that transition sample before applying camera look.
   bool discardNextViewportMouseDelta = false;
@@ -171,6 +198,11 @@ struct CreativeEditorDesktopUiState {
   iggy3d::creative::CreativeLogicDiagnosticReport logicDiagnostics;
   bool logicDiagnosticsCached = false;
 
+  // Whole-map validation is an explicit, potentially expensive authoring
+  // action. Preserve its last result and expose staleness without rebaking on
+  // document-edit frames.
+  CreativeEditorMapValidationCache mapValidation;
+
   // UI-4A Project/Inspector transient state (caches + drafts only).
   CreativeDesktopOutlinerState outliner;
   CreativeDesktopWorldLayoutHierarchyState worldLayoutHierarchy;
@@ -191,6 +223,8 @@ struct CreativeEditorDesktopUiState {
 // Result of the free-pointer capture policy: the new capture state and whether
 // it changed (so the caller only touches relative-mouse mode on a transition).
 struct CreativeDesktopPointerDecision {
+  CreativeDesktopPointerCaptureMode mode =
+      CreativeDesktopPointerCaptureMode::None;
   bool captured = false;
   bool changed = false;
   // The primary press that enters fly-look is pointer ownership, not a world
@@ -206,6 +240,27 @@ struct CreativeDesktopPointerDecision {
     bool desktopUiRequested,
     bool captureMode) noexcept;
 
+// World Layout is a split inspection workspace: its 2D plan/elevation canvas
+// occupies a resizable sibling dock while the central passthrough node remains
+// the live 3D viewport. Closing World Layout restores the standard workspace.
+[[nodiscard]] CreativeDesktopDockLayoutSpec creativeDesktopDockLayoutSpec(
+    bool showWorldLayout) noexcept;
+[[nodiscard]] bool creativeDesktopDockLayoutRebuildRequired(
+    bool dockLayoutBuilt, bool resetLayoutRequested) noexcept;
+
+[[nodiscard]] bool creativeDesktopPointerCaptured(
+    CreativeDesktopPointerCaptureMode mode) noexcept;
+[[nodiscard]] bool creativeDesktopPointerModeOwnsPrimaryAction(
+    CreativeDesktopPointerCaptureMode mode) noexcept;
+[[nodiscard]] bool creativeDesktopMouseLookActive(
+    bool shellEnabled,
+    CreativeDesktopPointerCaptureMode mode) noexcept;
+[[nodiscard]] bool creativeDesktopViewportDollyRequested(
+    CreativeDesktopPointerCaptureMode mode,
+    iggy3d::creative::CreativeInputModifierMask modifiers,
+    float wheelDelta,
+    bool viewportContext) noexcept;
+
 // Pure DD-9 policy. Free cursor is the resting state in desktop mode; a primary
 // click that landed on the viewport (not an ImGui panel) with no modal open
 // captures the pointer for fly-look; leaving the viewport context (a modal
@@ -213,8 +268,10 @@ struct CreativeDesktopPointerDecision {
 // forces released, so capture mode / non-desktop runs are unaffected.
 [[nodiscard]] CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
     bool shellEnabled,
-    bool currentlyCaptured,
+    CreativeDesktopPointerCaptureMode currentMode,
     bool primaryPressedOverViewport,
+    bool primaryDown,
+    iggy3d::creative::CreativeInputModifierMask modifiers,
     bool viewportContext,
     bool windowFocused) noexcept;
 
@@ -225,7 +282,7 @@ struct CreativeDesktopPointerDecision {
 // reclaims the context and releases the capture the instant the camera moves
 // (plan DD-9). Pure so the regression is pinned directly.
 [[nodiscard]] bool creativeDesktopUiWantsInput(
-    bool viewportPointerCaptured,
+    CreativeDesktopPointerCaptureMode pointerCaptureMode,
     bool imguiWantsMouse,
     bool imguiWantsKeyboard) noexcept;
 

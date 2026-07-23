@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutElevation.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -331,6 +332,175 @@ void reject(CreativeEditorWorldLayoutElevationProjection& projection,
   return host;
 }
 
+[[nodiscard]] bool roofApertureVerticalBounds(
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeWorldLayoutLevel& level,
+    const cr::CreativeWorldLayoutRoofPlan& roof,
+    const cr::CreativeWorldLayoutRoofAperture& aperture,
+    std::size_t localApertureIndex,
+    double& minimumVertical,
+    double& maximumVertical) noexcept {
+  if (aperture.kind == cr::CreativeStructuralRoofApertureKind::Skylight) {
+    for (std::size_t insertIndex = 0U;
+         insertIndex < roof.closure.insertCount; ++insertIndex) {
+      const cr::CreativeStructuralRoofApertureInsertPlan& insert =
+          roof.closure.inserts[insertIndex];
+      if (insert.apertureIndex == localApertureIndex) {
+        minimumVertical = worldVerticalToCells(grid, insert.bounds.min.y);
+        maximumVertical = worldVerticalToCells(grid, insert.bounds.max.y);
+        return std::isfinite(minimumVertical) &&
+               std::isfinite(maximumVertical) &&
+               minimumVertical < maximumVertical;
+      }
+    }
+    return false;
+  }
+  if (level.roofStyle == cr::CreativeStructuralRoofStyle::Flat) {
+    minimumVertical =
+        worldVerticalToCells(grid, roof.geometry.worldBounds.min.y);
+    maximumVertical =
+        worldVerticalToCells(grid, roof.geometry.worldBounds.max.y);
+    return std::isfinite(minimumVertical) &&
+           std::isfinite(maximumVertical) &&
+           minimumVertical < maximumVertical;
+  }
+  if (level.roofStyle == cr::CreativeStructuralRoofStyle::Hip ||
+      level.roofStyle == cr::CreativeStructuralRoofStyle::Count ||
+      roof.geometry.edgeCount == 0U) {
+    return false;
+  }
+
+  const double minimumX = cellsToWorld(
+      grid.origin.x, grid.cellSizeMeters,
+      static_cast<double>(roof.footprint.minimum.x) -
+          level.roofOverhangCells);
+  const double maximumX = cellsToWorld(
+      grid.origin.x, grid.cellSizeMeters,
+      static_cast<double>(roof.footprint.maximum.x) +
+          level.roofOverhangCells);
+  const double minimumZ = cellsToWorld(
+      grid.origin.z, grid.cellSizeMeters,
+      static_cast<double>(roof.footprint.minimum.z) -
+          level.roofOverhangCells);
+  const double maximumZ = cellsToWorld(
+      grid.origin.z, grid.cellSizeMeters,
+      static_cast<double>(roof.footprint.maximum.z) +
+          level.roofOverhangCells);
+  const double apertureMinimumX = cellsToWorld(
+      grid.origin.x, grid.cellSizeMeters, aperture.minimumXCells);
+  const double apertureMaximumX = cellsToWorld(
+      grid.origin.x, grid.cellSizeMeters, aperture.maximumXCells);
+  const double apertureMinimumZ = cellsToWorld(
+      grid.origin.z, grid.cellSizeMeters, aperture.minimumZCells);
+  const double apertureMaximumZ = cellsToWorld(
+      grid.origin.z, grid.cellSizeMeters, aperture.maximumZCells);
+  const double support = roof.geometry.edges[0].startMeters.y;
+  const double width = maximumX - minimumX;
+  const double depth = maximumZ - minimumZ;
+  const double run = level.roofStyle == cr::CreativeStructuralRoofStyle::Shed
+                         ? (level.roofSlopeDirection ==
+                                    cr::CreativeStructuralRoofSlopeDirection::
+                                        PositiveX ||
+                                level.roofSlopeDirection ==
+                                    cr::CreativeStructuralRoofSlopeDirection::
+                                        NegativeX
+                                ? width
+                                : depth)
+                         : (level.roofRidgeAxis ==
+                                    cr::CreativeStructuralRoofRidgeAxis::X
+                                ? depth
+                                : width) *
+                               0.5;
+  if (!std::isfinite(run) || run <= 0.0 ||
+      !std::isfinite(roof.geometry.riseMeters)) {
+    return false;
+  }
+  const double risePerMeter = roof.geometry.riseMeters / run;
+  const auto roofHeight = [&](double x, double z) {
+    if (level.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
+      const double uphill =
+          level.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::X
+              ? std::min(z - minimumZ, maximumZ - z)
+              : std::min(x - minimumX, maximumX - x);
+      return support + uphill * risePerMeter;
+    }
+    switch (level.roofSlopeDirection) {
+      case cr::CreativeStructuralRoofSlopeDirection::PositiveX:
+        return support + (maximumX - x) * risePerMeter;
+      case cr::CreativeStructuralRoofSlopeDirection::NegativeX:
+        return support + (x - minimumX) * risePerMeter;
+      case cr::CreativeStructuralRoofSlopeDirection::PositiveZ:
+        return support + (maximumZ - z) * risePerMeter;
+      case cr::CreativeStructuralRoofSlopeDirection::NegativeZ:
+        return support + (z - minimumZ) * risePerMeter;
+      case cr::CreativeStructuralRoofSlopeDirection::Count:
+        break;
+    }
+    return std::numeric_limits<double>::quiet_NaN();
+  };
+  const std::array<double, 4U> heights{{
+      roofHeight(apertureMinimumX, apertureMinimumZ),
+      roofHeight(apertureMaximumX, apertureMinimumZ),
+      roofHeight(apertureMaximumX, apertureMaximumZ),
+      roofHeight(apertureMinimumX, apertureMaximumZ),
+  }};
+  if (!std::all_of(heights.begin(), heights.end(),
+                   [](double value) { return std::isfinite(value); })) {
+    return false;
+  }
+  const auto [minimum, maximum] =
+      std::minmax_element(heights.begin(), heights.end());
+  constexpr double kDegreesToRadians =
+      0.01745329251994329576923690768489;
+  const double verticalThickness =
+      roof.geometry.thicknessMeters *
+      std::cos(level.roofPitchDegrees * kDegreesToRadians);
+  minimumVertical = worldVerticalToCells(grid, *minimum);
+  maximumVertical =
+      worldVerticalToCells(grid, *maximum + verticalThickness);
+  return std::isfinite(minimumVertical) &&
+         std::isfinite(maximumVertical) &&
+         minimumVertical < maximumVertical;
+}
+
+[[nodiscard]] bool appendRoofApertures(
+    CreativeEditorWorldLayoutElevationProjection& projection,
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeWorldLayoutLevel& level,
+    const cr::CreativeWorldLayoutRoofPlan& roof) {
+  for (std::size_t localIndex = 0U;
+       localIndex < roof.sourceApertureCount; ++localIndex) {
+    const std::size_t sourceIndex = roof.sourceApertureIndices[localIndex];
+    if (sourceIndex >= layout.roofApertures.size()) {
+      return false;
+    }
+    const cr::CreativeWorldLayoutRoofAperture& aperture =
+        layout.roofApertures[sourceIndex];
+    double minimumVertical = 0.0;
+    double maximumVertical = 0.0;
+    if (!roofApertureVerticalBounds(grid, level, roof, aperture, localIndex,
+                                    minimumVertical, maximumVertical)) {
+      return false;
+    }
+    appendItem(
+        projection,
+        {aperture.kind == cr::CreativeStructuralRoofApertureKind::Skylight
+             ? CreativeEditorWorldLayoutElevationItemKind::RoofSkylight
+             : CreativeEditorWorldLayoutElevationItemKind::RoofClearance,
+         CreativeEditorWorldLayoutElevationSourceKind::RoofAperture,
+         sourceIndex,
+         roof.levelIndex,
+         horizontalCoordinate(projection.axis, aperture.minimumXCells,
+                              aperture.minimumZCells),
+         horizontalCoordinate(projection.axis, aperture.maximumXCells,
+                              aperture.maximumZCells),
+         minimumVertical,
+         maximumVertical});
+  }
+  return true;
+}
+
 }  // namespace
 
 CreativeEditorWorldLayoutElevationProjection
@@ -455,7 +625,7 @@ planCreativeEditorWorldLayoutElevation(
              roof.reasonCode);
       return projection;
     }
-    const cr::CreativeBounds& base = roof.geometry.parts[0].bounds;
+    const cr::CreativeBounds& roofBounds = roof.geometry.worldBounds;
     appendItem(
         projection,
         {CreativeEditorWorldLayoutElevationItemKind::RoofBase,
@@ -464,27 +634,96 @@ planCreativeEditorWorldLayoutElevation(
          levelIndex,
          worldHorizontalToCells(
              request.grid, request.axis,
-             horizontalCoordinate(request.axis, base.min.x, base.min.z)),
+             horizontalCoordinate(request.axis, roofBounds.min.x,
+                                  roofBounds.min.z)),
          worldHorizontalToCells(
              request.grid, request.axis,
-             horizontalCoordinate(request.axis, base.max.x, base.max.z)),
-         worldVerticalToCells(request.grid, base.min.y),
-         worldVerticalToCells(request.grid, base.max.y)});
-    if (level.roofStyle != cr::CreativeStructuralRoofStyle::Gable) {
+             horizontalCoordinate(request.axis, roofBounds.max.x,
+                                  roofBounds.max.z)),
+         worldVerticalToCells(request.grid, roofBounds.min.y),
+         worldVerticalToCells(request.grid, roofBounds.max.y)});
+    if (!appendRoofApertures(projection, request.grid, layout, level, roof)) {
+      reject(projection,
+             CreativeEditorWorldLayoutElevationStatus::RecipeRejected,
+             "creative_editor_world_layout_elevation_roof_aperture_invalid");
+      return projection;
+    }
+    if (level.roofStyle == cr::CreativeStructuralRoofStyle::Flat) {
       continue;
     }
-    const double minimumHorizontal = worldHorizontalToCells(
-        request.grid, request.axis,
-        horizontalCoordinate(request.axis, roof.geometry.worldBounds.min.x,
-                             roof.geometry.worldBounds.min.z));
-    const double maximumHorizontal = worldHorizontalToCells(
-        request.grid, request.axis,
-        horizontalCoordinate(request.axis, roof.geometry.worldBounds.max.x,
-                             roof.geometry.worldBounds.max.z));
-    const double slopeBottom =
-        worldVerticalToCells(request.grid, base.max.y);
+    double minimumHorizontal = std::numeric_limits<double>::infinity();
+    double maximumHorizontal = -std::numeric_limits<double>::infinity();
+    for (std::size_t edgeIndex = 0U;
+         edgeIndex < roof.geometry.edgeCount; ++edgeIndex) {
+      const cr::CreativeStructuralRoofEdgePlan& edge =
+          roof.geometry.edges[edgeIndex];
+      const double start = worldHorizontalToCells(
+          request.grid, request.axis,
+          horizontalCoordinate(request.axis, edge.startMeters.x,
+                               edge.startMeters.z));
+      const double end = worldHorizontalToCells(
+          request.grid, request.axis,
+          horizontalCoordinate(request.axis, edge.endMeters.x,
+                               edge.endMeters.z));
+      minimumHorizontal = std::min({minimumHorizontal, start, end});
+      maximumHorizontal = std::max({maximumHorizontal, start, end});
+    }
+    if (!std::isfinite(minimumHorizontal) ||
+        !std::isfinite(maximumHorizontal) ||
+        minimumHorizontal >= maximumHorizontal) {
+      reject(projection,
+             CreativeEditorWorldLayoutElevationStatus::RecipeRejected,
+             "creative_editor_world_layout_elevation_roof_perimeter_invalid");
+      return projection;
+    }
+    const double slopeBottom = worldVerticalToCells(
+        request.grid,
+        roof.geometry.ridgeStart.y - roof.geometry.riseMeters);
     const double ridgeVertical =
         worldVerticalToCells(request.grid, roof.geometry.ridgeStart.y);
+    if (level.roofStyle == cr::CreativeStructuralRoofStyle::Shed) {
+      const bool slopesOnX =
+          level.roofSlopeDirection ==
+              cr::CreativeStructuralRoofSlopeDirection::PositiveX ||
+          level.roofSlopeDirection ==
+              cr::CreativeStructuralRoofSlopeDirection::NegativeX;
+      const bool profileVisible =
+          (request.axis == CreativeEditorWorldLayoutElevationAxis::X) ==
+          slopesOnX;
+      if (!profileVisible) {
+        appendLine(
+            projection,
+            {CreativeEditorWorldLayoutElevationLineKind::RoofRidge,
+             CreativeEditorWorldLayoutElevationSourceKind::Room,
+             facts.representativeRoomIndex, levelIndex,
+             {minimumHorizontal, ridgeVertical},
+             {maximumHorizontal, ridgeVertical}});
+        continue;
+      }
+      const bool downhillPositive =
+          level.roofSlopeDirection ==
+              cr::CreativeStructuralRoofSlopeDirection::PositiveX ||
+          level.roofSlopeDirection ==
+              cr::CreativeStructuralRoofSlopeDirection::PositiveZ;
+      const double highHorizontal =
+          downhillPositive ? minimumHorizontal : maximumHorizontal;
+      const double lowHorizontal =
+          downhillPositive ? maximumHorizontal : minimumHorizontal;
+      appendLine(
+          projection,
+          {CreativeEditorWorldLayoutElevationLineKind::RoofSlope,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {lowHorizontal, slopeBottom},
+           {highHorizontal, ridgeVertical}});
+      projection.handles.push_back(
+          {CreativeEditorWorldLayoutElevationHandleKind::RoofRidge,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {highHorizontal, ridgeVertical}});
+      continue;
+    }
+
     const bool crossSection =
         (request.axis == CreativeEditorWorldLayoutElevationAxis::X &&
          level.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::Z) ||
@@ -515,7 +754,7 @@ planCreativeEditorWorldLayoutElevation(
            facts.representativeRoomIndex,
            levelIndex,
            {ridgeHorizontal, ridgeVertical}});
-    } else {
+    } else if (level.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
       appendLine(
           projection,
           {CreativeEditorWorldLayoutElevationLineKind::RoofRidge,
@@ -524,6 +763,45 @@ planCreativeEditorWorldLayoutElevation(
            levelIndex,
            {minimumHorizontal, ridgeVertical},
            {maximumHorizontal, ridgeVertical}});
+    } else {
+      const double ridgeStartHorizontal = worldHorizontalToCells(
+          request.grid, request.axis,
+          horizontalCoordinate(request.axis, roof.geometry.ridgeStart.x,
+                               roof.geometry.ridgeStart.z));
+      const double ridgeEndHorizontal = worldHorizontalToCells(
+          request.grid, request.axis,
+          horizontalCoordinate(request.axis, roof.geometry.ridgeEnd.x,
+                               roof.geometry.ridgeEnd.z));
+      const double firstRidge =
+          std::min(ridgeStartHorizontal, ridgeEndHorizontal);
+      const double secondRidge =
+          std::max(ridgeStartHorizontal, ridgeEndHorizontal);
+      appendLine(
+          projection,
+          {CreativeEditorWorldLayoutElevationLineKind::RoofSlope,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {minimumHorizontal, slopeBottom},
+           {firstRidge, ridgeVertical}});
+      appendLine(
+          projection,
+          {CreativeEditorWorldLayoutElevationLineKind::RoofRidge,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {firstRidge, ridgeVertical},
+           {secondRidge, ridgeVertical}});
+      appendLine(
+          projection,
+          {CreativeEditorWorldLayoutElevationLineKind::RoofSlope,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {secondRidge, ridgeVertical},
+           {maximumHorizontal, slopeBottom}});
+      projection.handles.push_back(
+          {CreativeEditorWorldLayoutElevationHandleKind::RoofRidge,
+           CreativeEditorWorldLayoutElevationSourceKind::Room,
+           facts.representativeRoomIndex, levelIndex,
+           {firstRidge, ridgeVertical}});
     }
   }
 

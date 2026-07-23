@@ -15,6 +15,7 @@ namespace iggy3d::creative {
 enum class CreativeHeldItemWorldOperation : std::uint8_t {
   None,
   SelectObject,
+  ClearSelection,
   SampleTargetMaterial,
   RejectActiveInteraction,
   SetVolumeFirstCorner,
@@ -52,6 +53,9 @@ enum class CreativeHeldItemWorldOperation : std::uint8_t {
   ClearLogicLinkSource,
   AdvanceBuildingRoom,
   CancelBuildingRoom,
+  AppendMeasurementPoint,
+  CompleteMeasurement,
+  CancelMeasurement,
   Count,
 };
 
@@ -92,6 +96,7 @@ enum class CreativeHeldItemPreviewMode : std::uint8_t {
   TerrainProfile,
   TerrainPath,
   TerrainRegion,
+  Measurement,
   Count,
 };
 
@@ -110,6 +115,7 @@ enum class CreativeHeldItemInteractionMode : std::uint8_t {
   TerrainRegion,
   LogicLink,
   BuildingRoom,
+  Measurement,
   Count,
 };
 
@@ -145,6 +151,9 @@ enum class CreativeHeldItemStatusMode : std::uint8_t {
   TerrainRegion,
   LogicLink,
   BuildingRoom,
+  Measurement,
+  VolumeErase,
+  VolumeClone,
   Count,
 };
 

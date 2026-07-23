@@ -9,10 +9,6 @@ namespace iggy3d_creative_app::terrain_detail {
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeTerrainCoord2& coord) noexcept;
 
-[[nodiscard]] iggy3d::creative::CreativeTerrainGradePlan terrainGradePlan(
-    const CreativeEditorState& editor,
-    iggy3d::creative::CreativeTerrainCoord2 target) noexcept;
-
 [[nodiscard]] iggy3d::creative::CreativeBounds terrainRodBounds(
     iggy3d::creative::CreativeGridSettings grid,
     iggy3d::creative::CreativeTerrainControlPoint control,

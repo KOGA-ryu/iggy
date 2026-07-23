@@ -1,7 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/TerrainField.hpp"
+#include "app/iggy3d/creative/document/TerrainHeightField.hpp"
 #include "app/iggy3d/creative/tools/TerrainBrushKernel.hpp"
-#include "app/iggy3d/creative/tools/TerrainGrade.hpp"
 #include "app/iggy3d/creative/tools/TerrainSeed.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 
@@ -210,9 +210,10 @@ bool renderPlanBendsSharedCornersAndEnforcesBudget() {
                     left->corners[0].y != left->corners[1].y,
                 "neighbor height differences bend a tile") &&
          expect(left->center.y ==
-                    cr::sampleCreativeTerrainHeight(field, left->coord)
-                        .heightCells,
-                "render patch center preserves the resolved column height") &&
+                    (left->corners[0].y + left->corners[1].y +
+                     left->corners[2].y + left->corners[3].y) /
+                        4.0,
+                "render patch center is coplanar with its shared corners") &&
          expect(samePoint(left->corners[1], right->corners[0]) &&
                     samePoint(left->corners[2], right->corners[3]),
                 "neighbor patches share crack-free edge vertices") &&
@@ -224,6 +225,57 @@ bool renderPlanBendsSharedCornersAndEnforcesBudget() {
                     emptyPlan.status ==
                         cr::CreativeTerrainRenderPlanStatus::Empty,
                 "empty terrain produces a valid empty render plan");
+}
+
+bool renderPlanSplitsOnlyExplicitHardEdges() {
+  cr::CreativeTerrainHeightField authored;
+  const std::array<std::uint16_t, 2U> heights{2U, 6U};
+  const cr::CreativeTerrainHeightFieldReplaceReceipt replaced =
+      authored.replace({{0, 0}, 2U, 1U}, heights);
+  const std::array hardEdges{cr::canonicalCreativeTerrainHardEdge({0, 0},
+                                                                  {1, 0})};
+  cr::CreativeTerrainField legacy;
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeComposedTerrainSurfacePlan(legacy, authored, hardEdges);
+  const cr::CreativeTerrainRenderPlan plan =
+      cr::buildCreativeTerrainRenderPlan(surface, {}, 1.0);
+  const auto left = std::find_if(
+      plan.patches.begin(), plan.patches.end(),
+      [](const cr::CreativeTerrainSurfacePatch& patch) {
+        return patch.coord == cr::CreativeTerrainCoord2{0, 0};
+      });
+  const auto right = std::find_if(
+      plan.patches.begin(), plan.patches.end(),
+      [](const cr::CreativeTerrainSurfacePatch& patch) {
+        return patch.coord == cr::CreativeTerrainCoord2{1, 0};
+      });
+  const std::array duplicateEdges{hardEdges.front(), hardEdges.front()};
+  const std::array nonAdjacentEdges{
+      cr::CreativeTerrainHardEdge{{0, 0}, {2, 0}}};
+  cr::CreativeTerrainHeightField flatAuthored;
+  const std::array<std::uint16_t, 2U> flatHeights{4U, 4U};
+  static_cast<void>(
+      flatAuthored.replace({{0, 0}, 2U, 1U}, flatHeights));
+  const cr::CreativeTerrainSurfacePlan staleSurface =
+      cr::buildCreativeComposedTerrainSurfacePlan(legacy, flatAuthored,
+                                                   hardEdges);
+
+  return expect(replaced.accepted && surface.accepted && plan.accepted &&
+                    left != plan.patches.end() && right != plan.patches.end(),
+                "explicit hard-edge fixture builds a render plan") &&
+         expect(left->corners[1].y == 2.0 &&
+                    left->corners[2].y == 2.0 &&
+                    right->corners[0].y == 6.0 &&
+                    right->corners[3].y == 6.0,
+                "hard seam keeps each patch's own edge height") &&
+         expect(left->hardEdgeMask == 0U && right->hardEdgeMask == 0x08U,
+                "only the higher patch owns the west vertical face") &&
+         expect(cr::validateCreativeTerrainHardEdges(hardEdges) &&
+                    !cr::validateCreativeTerrainHardEdges(duplicateEdges) &&
+                    !cr::validateCreativeTerrainHardEdges(nonAdjacentEdges),
+                "hard-edge set rejects duplicate and non-cardinal topology") &&
+         expect(!staleSurface.accepted && staleSurface.columns.empty(),
+                "surface rejects a structurally valid edge with no height break");
 }
 
 bool documentRevisionAdvancesOncePerTerrainBatch() {
@@ -604,65 +656,130 @@ bool sculptFalloffIsDeterministicSymmetricAndSharedByModes() {
                 "falloff values are closed validated and explicitly named");
 }
 
-bool gradePlanIsDeterministicBoundedAndValidated() {
-  const cr::CreativeTerrainGradePlan ascending =
-      cr::buildCreativeTerrainGradePlan({{0, 0}, {4, 2}, 2U, 8U, 3U});
-  constexpr std::array expectedCoords{
-      cr::CreativeTerrainCoord2{0, 0}, cr::CreativeTerrainCoord2{1, 0},
-      cr::CreativeTerrainCoord2{2, 1}, cr::CreativeTerrainCoord2{3, 1},
-      cr::CreativeTerrainCoord2{4, 2}};
-  constexpr std::array<std::uint16_t, 5U> expectedHeights{2U, 4U, 5U, 7U,
-                                                         8U};
-  bool exact = ascending.items().size() == expectedCoords.size();
-  for (std::size_t index = 0U;
-       exact && index < expectedCoords.size(); ++index) {
-    exact = ascending.items()[index].kind ==
-                cr::CreativeTerrainEditKind::Upsert &&
-            ascending.items()[index].control.coord == expectedCoords[index] &&
-            ascending.items()[index].control.heightCells ==
-                expectedHeights[index] &&
-            ascending.items()[index].control.radiusCells == 3U;
+bool sculptMasksDirtyBoundsAndOverflowAreExplicit() {
+  constexpr std::array controls{
+      cr::CreativeTerrainControlPoint{{0, 0}, 10U, 2U},
+      cr::CreativeTerrainControlPoint{{3, 3}, 10U, 2U},
+  };
+  const cr::CreativeTerrainSculptPlan circle =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Raise, 4U, 8U,
+           10U, cr::CreativeTerrainSculptFalloff::Uniform,
+           cr::CreativeTerrainSculptMask::Circle});
+  const cr::CreativeTerrainSculptPlan square =
+      cr::buildCreativeTerrainSculptPlan(
+          {controls, {0, 0}, cr::CreativeTerrainSculptMode::Raise, 4U, 8U,
+           10U, cr::CreativeTerrainSculptFalloff::Linear,
+           cr::CreativeTerrainSculptMask::Square});
+  constexpr std::array overflowControl{
+      cr::CreativeTerrainControlPoint{
+          {std::numeric_limits<std::int32_t>::max() -
+               cr::kCreativeTerrainMaximumRadiusCells,
+           0},
+          10U,
+          cr::kCreativeTerrainMaximumRadiusCells},
+  };
+  const cr::CreativeTerrainSculptPlan overflow =
+      cr::buildCreativeTerrainSculptPlan(
+          {overflowControl,
+           {std::numeric_limits<std::int32_t>::max() -
+                cr::kCreativeTerrainMaximumRadiusCells,
+            0},
+           cr::CreativeTerrainSculptMode::Raise,
+           1U,
+           1U,
+           10U,
+           cr::CreativeTerrainSculptFalloff::Uniform,
+           cr::CreativeTerrainSculptMask::Circle});
+
+  return expect(circle.accepted && circle.inspectedControlCount == 2U &&
+                    circle.affectedControlCount == 1U &&
+                    circle.editCount == 1U,
+                "circle mask excludes diagonal controls outside its disk") &&
+         expect(square.accepted && square.inspectedControlCount == 2U &&
+                    square.affectedControlCount == 2U &&
+                    square.editCount == 2U &&
+                    square.items()[1].control.heightCells == 12U,
+                "square mask uses Chebyshev footprint and falloff") &&
+         expect(square.dirtyRegion.valid &&
+                    square.dirtyRegion.minimum ==
+                        cr::CreativeTerrainCoord2{-3, -3} &&
+                    square.dirtyRegion.maximum ==
+                        cr::CreativeTerrainCoord2{6, 6} &&
+                    square.dirtyRegion.candidatePatchCount == 100U,
+                "dirty region includes every edited control influence plus corner border") &&
+         expect(!overflow.accepted && overflow.items().empty() &&
+                    !overflow.dirtyRegion.valid &&
+                    overflow.status ==
+                        cr::CreativeTerrainSculptPlanStatus::ArithmeticOverflow,
+                "dirty-region coordinate overflow rejects without partial edits") &&
+         expect(cr::toString(cr::CreativeTerrainSculptMask::Circle) ==
+                        "CIRCLE" &&
+                    cr::toString(cr::CreativeTerrainSculptMask::Square) ==
+                        "SQUARE",
+                "sculpt masks have explicit product labels");
+}
+
+bool regionalSculptPreviewMatchesFullRenderWithinABoundedCost() {
+  std::array<cr::CreativeTerrainControlEdit,
+             cr::kCreativeTerrainControlCapacity>
+      initial{};
+  for (std::size_t index = 0U; index < initial.size(); ++index) {
+    initial[index] =
+        {cr::CreativeTerrainEditKind::Upsert,
+         {{static_cast<std::int32_t>(index % 16U),
+           static_cast<std::int32_t>(index / 16U)},
+          10U,
+          cr::kCreativeTerrainMaximumRadiusCells}};
   }
+  cr::CreativeTerrainField field;
+  const cr::CreativeTerrainMutationReceipt seeded = field.apply(initial);
+  const cr::CreativeTerrainSculptPlan sculpt =
+      cr::buildCreativeTerrainSculptPlan(
+          {field.controls(),
+           {8, 8},
+           cr::CreativeTerrainSculptMode::Raise,
+           cr::kCreativeTerrainMaximumRadiusCells,
+           1U,
+           10U,
+           cr::CreativeTerrainSculptFalloff::Uniform,
+           cr::CreativeTerrainSculptMask::Square});
+  const cr::CreativeTerrainMutationPreviewReceipt regional =
+      cr::buildCreativeTerrainMutationPreview(
+          field, sculpt.items(),
+          {sculpt.dirtyRegion.minimum, sculpt.dirtyRegion.maximum}, {}, 1.0);
+  const cr::CreativeTerrainMutationPreviewReceipt full =
+      cr::buildCreativeTerrainMutationPreview(field, sculpt.items(), {}, 1.0);
 
-  const cr::CreativeTerrainGradePlan descending =
-      cr::buildCreativeTerrainGradePlan({{4, 2}, {0, 0}, 8U, 2U, 3U});
-  const cr::CreativeTerrainGradePlan point =
-      cr::buildCreativeTerrainGradePlan({{7, -4}, {7, -4}, 2U, 9U, 2U});
-  const cr::CreativeTerrainGradePlan tooLong =
-      cr::buildCreativeTerrainGradePlan({{0, 0}, {256, 0}, 2U, 8U, 3U});
-  const cr::CreativeTerrainGradePlan invalidHeight =
-      cr::buildCreativeTerrainGradePlan({{0, 0}, {1, 0}, 0U, 8U, 3U});
-  const std::int32_t maximum = std::numeric_limits<std::int32_t>::max();
-  const cr::CreativeTerrainGradePlan invalidCoordinate =
-      cr::buildCreativeTerrainGradePlan(
-          {{maximum, 0}, {maximum, 0}, 2U, 8U, 3U});
-
-  return expect(ascending.accepted &&
-                    ascending.status ==
-                        cr::CreativeTerrainGradePlanStatus::Ready &&
-                    exact,
-                "grade emits exact Bresenham coordinates and rounded heights") &&
-         expect(descending.accepted && descending.items().size() == 5U &&
-                    descending.items().front().control.heightCells == 8U &&
-                    descending.items()[1].control.heightCells == 6U &&
-                    descending.items().back().control.heightCells == 2U,
-                "descending grade rounds symmetrically") &&
-         expect(point.accepted && point.items().size() == 1U &&
-                    point.items().front().control.heightCells == 9U,
-                "zero-length grade applies the requested endpoint height") &&
-         expect(!tooLong.accepted && tooLong.items().empty() &&
-                    tooLong.status ==
-                        cr::CreativeTerrainGradePlanStatus::CapacityExceeded,
-                "grade rejects before exceeding 256 edits") &&
-         expect(!invalidHeight.accepted && invalidHeight.items().empty() &&
-                    invalidHeight.status ==
-                        cr::CreativeTerrainGradePlanStatus::InvalidRequest,
-                "grade rejects invalid height") &&
-         expect(!invalidCoordinate.accepted &&
-                    invalidCoordinate.items().empty() &&
-                    invalidCoordinate.status ==
-                        cr::CreativeTerrainGradePlanStatus::InvalidRequest,
-                "grade rejects coordinates unsafe for terrain influence");
+  std::vector<cr::CreativeTerrainSurfacePatch> expected;
+  for (const cr::CreativeTerrainSurfacePatch& patch : full.render.patches) {
+    if (patch.coord.x >= sculpt.dirtyRegion.minimum.x &&
+        patch.coord.x <= sculpt.dirtyRegion.maximum.x &&
+        patch.coord.z >= sculpt.dirtyRegion.minimum.z &&
+        patch.coord.z <= sculpt.dirtyRegion.maximum.z) {
+      expected.push_back(patch);
+    }
+  }
+  const bool exact =
+      regional.render.patches.size() == expected.size() &&
+      std::equal(regional.render.patches.begin(),
+                 regional.render.patches.end(), expected.begin(),
+                 [](const auto& lhs, const auto& rhs) {
+                   return lhs.coord == rhs.coord &&
+                          samePoint(lhs.center, rhs.center) &&
+                          std::equal(lhs.corners.begin(), lhs.corners.end(),
+                                     rhs.corners.begin(), samePoint);
+                 });
+  return expect(seeded.accepted && seeded.changed && sculpt.accepted &&
+                    sculpt.editCount == initial.size(),
+                "maximum sculpt brush admits the fixed control capacity") &&
+         expect(sculpt.dirtyRegion.candidatePatchCount == 2500U &&
+                    regional.regionLimited &&
+                    regional.candidatePatchCoordinateCount == 2500U &&
+                    regional.sampledColumnCoordinateCount == 2704U,
+                "maximum brush preview work is bounded to dirty region plus support border") &&
+         expect(regional.accepted && full.accepted && exact,
+                "regional preview is bit-exact with the corresponding full render");
 }
 
 bool sharedGridLineAndMutationPreviewAreBoundedAndPure() {
@@ -726,12 +843,14 @@ int main() {
                  overlappingRodsBlendWithDeterministicIntegerWeights() &&
                  raycastHitsTerrainTopsSidesAndFailsClosed() &&
                  renderPlanBendsSharedCornersAndEnforcesBudget() &&
+                 renderPlanSplitsOnlyExplicitHardEdges() &&
                  documentRevisionAdvancesOncePerTerrainBatch() &&
                  terrainSeedPlansMissingRodsAndClearAtomically() &&
                  sculptPlanIsSnapshotBasedBoundedAndCanonical() &&
                  sculptFalloffIsDeterministicSymmetricAndSharedByModes() &&
-                 sharedGridLineAndMutationPreviewAreBoundedAndPure() &&
-                 gradePlanIsDeterministicBoundedAndValidated()
+                 sculptMasksDirtyBoundsAndOverflowAreExplicit() &&
+                 regionalSculptPreviewMatchesFullRenderWithinABoundedCost() &&
+                 sharedGridLineAndMutationPreviewAreBoundedAndPure()
              ? 0
              : 1;
 }

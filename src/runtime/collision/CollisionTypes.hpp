@@ -52,6 +52,7 @@ struct CollisionSurfaceView {
   std::array<Vec3, 5U> heightPatchPoints{};
   bool blocksActor = false;
   bool blocksProjectile = false;
+  bool blocksVision = true;
   bool hasActorMask = false;
   bool hasProjectileMask = false;
   bool opening = false;

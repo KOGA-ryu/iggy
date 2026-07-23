@@ -2,16 +2,45 @@
 
 #include "EditorWorldLayoutInternal.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomTopology.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace iggy3d_creative_app {
 namespace {
+
+[[nodiscard]] bool validLevelMutationCandidate(
+    const cr::CreativeWorldLayout& layout) {
+  if (!cr::validCreativeWorldLayoutLevelOwnership(layout)) {
+    return false;
+  }
+  if (layout.rooms.empty()) {
+    return layout.topologyVertices.empty() && layout.topologyEdges.empty() &&
+           layout.roomBoundaries.empty();
+  }
+  return cr::buildCreativeWorldLayoutRoomGraph(layout).accepted;
+}
+
+[[nodiscard]] bool explicitRoomTopology(
+    const cr::CreativeWorldLayout& layout) noexcept {
+  return !layout.topologyVertices.empty() || !layout.topologyEdges.empty() ||
+         !layout.roomBoundaries.empty();
+}
+
+void rejectInvalidLevelMutation(CreativeEditorWorldLayoutState& state,
+                                std::string_view action) {
+  state.statusMessage = std::string(action) +
+                        " would invalidate the building floor plan";
+}
 
 [[nodiscard]] std::size_t firstLevelForBuilding(
     const cr::CreativeWorldLayout& layout,
@@ -97,6 +126,12 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
              levelIndex) ||
         (connector.upperRoomIndex < state.source.rooms.size() &&
          state.source.rooms[connector.upperRoomIndex].levelIndex == levelIndex);
+  } else if (state.selection.kind ==
+                 CreativeEditorWorldLayoutSelectionKind::RoofAperture &&
+             state.selection.index < state.source.roofApertures.size()) {
+    selectionVisible =
+        state.source.roofApertures[state.selection.index].levelIndex ==
+        levelIndex;
   }
   if (!selectionVisible) {
     state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
@@ -187,6 +222,11 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     return {false, false,
             "creative_editor_world_layout_level_duplicate_invalid"};
   }
+  if (!validLevelMutationCandidate(state.source)) {
+    rejectInvalidLevelMutation(state, "duplicating this level");
+    return {false, false,
+            "creative_editor_world_layout_level_source_invalid"};
+  }
   const std::size_t buildingIndex =
       state.source.levels[levelIndex].buildingIndex;
   double floorTopLayer = 0.0;
@@ -196,43 +236,145 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
             "creative_editor_world_layout_level_elevation_invalid"};
   }
 
-  const std::size_t originalRoomCount = state.source.rooms.size();
-  const std::size_t originalOpeningCount = state.source.openings.size();
+  const cr::CreativeWorldLayout& source = state.source;
+  cr::CreativeWorldLayout candidate = source;
+  std::uint64_t nextStableOrdinal = state.nextStableOrdinal;
+  const auto mint = [&](std::string_view prefix) {
+    return cr::mintCreativeWorldLayoutStableKey(candidate, nextStableOrdinal,
+                                                prefix);
+  };
+  const std::size_t originalRoomCount = source.rooms.size();
+  const std::size_t originalVertexCount = source.topologyVertices.size();
+  const std::size_t originalEdgeCount = source.topologyEdges.size();
+  const std::size_t originalOpeningCount = source.openings.size();
   std::vector<std::size_t> roomMap(
       originalRoomCount, cr::kInvalidCreativeWorldLayoutIndex);
-  cr::CreativeWorldLayoutLevel level = state.source.levels[levelIndex];
-  level.stableKey = detail::mintWorldLayoutStableKey(state, "level");
+  std::vector<std::size_t> vertexMap(
+      originalVertexCount, cr::kInvalidCreativeWorldLayoutIndex);
+  std::vector<std::size_t> edgeMap(
+      originalEdgeCount, cr::kInvalidCreativeWorldLayoutIndex);
+
+  cr::CreativeWorldLayoutLevel level = source.levels[levelIndex];
+  level.stableKey = mint("level");
   level.name += " Copy";
   level.floorTopLayer = floorTopLayer;
-  const std::size_t duplicateLevelIndex = state.source.levels.size();
-  state.source.levels.push_back(std::move(level));
+  const std::size_t duplicateLevelIndex = candidate.levels.size();
+  candidate.levels.push_back(std::move(level));
+  for (cr::CreativeWorldLayoutRoofAperture& aperture :
+       candidate.roofApertures) {
+    if (aperture.levelIndex == levelIndex) {
+      aperture.levelIndex = duplicateLevelIndex;
+    }
+  }
 
   for (std::size_t index = 0U; index < originalRoomCount; ++index) {
-    if (state.source.rooms[index].levelIndex != levelIndex) {
+    if (source.rooms[index].levelIndex != levelIndex) {
       continue;
     }
-    cr::CreativeWorldLayoutRoom room = state.source.rooms[index];
+    cr::CreativeWorldLayoutRoom room = source.rooms[index];
     room.levelIndex = duplicateLevelIndex;
-    room.stableKey = detail::mintWorldLayoutStableKey(state, "room");
+    room.stableKey = mint("room");
     room.name += " Copy";
-    roomMap[index] = state.source.rooms.size();
-    state.source.rooms.push_back(std::move(room));
-  }
-  for (std::size_t index = 0U; index < originalOpeningCount; ++index) {
-    const cr::CreativeWorldLayoutOpening& source =
-        state.source.openings[index];
-    if (source.hostKind != cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
-        source.roomIndex >= roomMap.size() ||
-        roomMap[source.roomIndex] == cr::kInvalidCreativeWorldLayoutIndex) {
-      continue;
-    }
-    cr::CreativeWorldLayoutOpening opening = source;
-    opening.roomIndex = roomMap[source.roomIndex];
-    opening.stableKey = detail::mintWorldLayoutStableKey(state, "opening");
-    opening.name += " Copy";
-    state.source.openings.push_back(std::move(opening));
+    roomMap[index] = candidate.rooms.size();
+    candidate.rooms.push_back(std::move(room));
   }
 
+  if (explicitRoomTopology(source)) {
+    for (std::size_t index = 0U; index < originalVertexCount; ++index) {
+      const cr::CreativeWorldLayoutTopologyVertex& sourceVertex =
+          source.topologyVertices[index];
+      if (sourceVertex.levelIndex != levelIndex) {
+        continue;
+      }
+      cr::CreativeWorldLayoutTopologyVertex vertex = sourceVertex;
+      vertex.levelIndex = duplicateLevelIndex;
+      vertex.stableKey = mint("room_vertex");
+      vertexMap[index] = candidate.topologyVertices.size();
+      candidate.topologyVertices.push_back(std::move(vertex));
+    }
+    for (std::size_t index = 0U; index < originalEdgeCount; ++index) {
+      const cr::CreativeWorldLayoutTopologyEdge& sourceEdge =
+          source.topologyEdges[index];
+      if (sourceEdge.levelIndex != levelIndex) {
+        continue;
+      }
+      if (sourceEdge.startVertexIndex >= vertexMap.size() ||
+          sourceEdge.endVertexIndex >= vertexMap.size() ||
+          vertexMap[sourceEdge.startVertexIndex] ==
+              cr::kInvalidCreativeWorldLayoutIndex ||
+          vertexMap[sourceEdge.endVertexIndex] ==
+              cr::kInvalidCreativeWorldLayoutIndex) {
+        rejectInvalidLevelMutation(state, "duplicating this level");
+        return {false, false,
+                "creative_editor_world_layout_level_topology_remap_invalid"};
+      }
+      cr::CreativeWorldLayoutTopologyEdge edge = sourceEdge;
+      edge.levelIndex = duplicateLevelIndex;
+      edge.stableKey = mint("room_edge");
+      edge.startVertexIndex = vertexMap[sourceEdge.startVertexIndex];
+      edge.endVertexIndex = vertexMap[sourceEdge.endVertexIndex];
+      edgeMap[index] = candidate.topologyEdges.size();
+      candidate.topologyEdges.push_back(std::move(edge));
+    }
+    for (const cr::CreativeWorldLayoutRoomBoundary& sourceBoundary :
+         source.roomBoundaries) {
+      if (sourceBoundary.roomIndex >= roomMap.size() ||
+          roomMap[sourceBoundary.roomIndex] ==
+              cr::kInvalidCreativeWorldLayoutIndex) {
+        continue;
+      }
+      if (sourceBoundary.topologyEdgeIndex >= edgeMap.size() ||
+          edgeMap[sourceBoundary.topologyEdgeIndex] ==
+              cr::kInvalidCreativeWorldLayoutIndex) {
+        rejectInvalidLevelMutation(state, "duplicating this level");
+        return {false, false,
+                "creative_editor_world_layout_level_boundary_remap_invalid"};
+      }
+      cr::CreativeWorldLayoutRoomBoundary boundary = sourceBoundary;
+      boundary.roomIndex = roomMap[sourceBoundary.roomIndex];
+      boundary.topologyEdgeIndex =
+          edgeMap[sourceBoundary.topologyEdgeIndex];
+      candidate.roomBoundaries.push_back(boundary);
+    }
+  }
+
+  for (std::size_t index = 0U; index < originalOpeningCount; ++index) {
+    const cr::CreativeWorldLayoutOpening& sourceOpening =
+        source.openings[index];
+    if (sourceOpening.hostKind !=
+            cr::CreativeWorldLayoutOpeningHostKind::RoomEdge ||
+        sourceOpening.roomIndex >= roomMap.size() ||
+        roomMap[sourceOpening.roomIndex] ==
+            cr::kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    cr::CreativeWorldLayoutOpening opening = sourceOpening;
+    opening.roomIndex = roomMap[sourceOpening.roomIndex];
+    if (sourceOpening.roomTopologyEdgeIndex !=
+        cr::kInvalidCreativeWorldLayoutIndex) {
+      if (sourceOpening.roomTopologyEdgeIndex >= edgeMap.size() ||
+          edgeMap[sourceOpening.roomTopologyEdgeIndex] ==
+              cr::kInvalidCreativeWorldLayoutIndex) {
+        rejectInvalidLevelMutation(state, "duplicating this level");
+        return {false, false,
+                "creative_editor_world_layout_level_opening_remap_invalid"};
+      }
+      opening.roomTopologyEdgeIndex =
+          edgeMap[sourceOpening.roomTopologyEdgeIndex];
+    }
+    opening.stableKey = mint("opening");
+    opening.name += " Copy";
+    candidate.openings.push_back(std::move(opening));
+  }
+
+  if (!validLevelMutationCandidate(candidate)) {
+    rejectInvalidLevelMutation(state, "duplicating this level");
+    return {false, false,
+            "creative_editor_world_layout_level_duplicate_rejected"};
+  }
+
+  state.source = std::move(candidate);
+  state.nextStableOrdinal = nextStableOrdinal;
   state.activeLevelIndex = duplicateLevelIndex;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
                      duplicateLevelIndex};
@@ -272,15 +414,49 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     return {true, false,
             "creative_editor_world_layout_level_reorder_no_change"};
   }
-  std::swap(state.source.levels[levelIndex],
-            state.source.levels[otherIndex]);
-  for (cr::CreativeWorldLayoutRoom& room : state.source.rooms) {
+  if (!validLevelMutationCandidate(state.source)) {
+    rejectInvalidLevelMutation(state, "reordering these levels");
+    return {false, false,
+            "creative_editor_world_layout_level_source_invalid"};
+  }
+  cr::CreativeWorldLayout candidate = state.source;
+  std::swap(candidate.levels[levelIndex], candidate.levels[otherIndex]);
+  for (cr::CreativeWorldLayoutRoom& room : candidate.rooms) {
     if (room.levelIndex == levelIndex) {
       room.levelIndex = otherIndex;
     } else if (room.levelIndex == otherIndex) {
       room.levelIndex = levelIndex;
     }
   }
+  for (cr::CreativeWorldLayoutTopologyVertex& vertex :
+       candidate.topologyVertices) {
+    if (vertex.levelIndex == levelIndex) {
+      vertex.levelIndex = otherIndex;
+    } else if (vertex.levelIndex == otherIndex) {
+      vertex.levelIndex = levelIndex;
+    }
+  }
+  for (cr::CreativeWorldLayoutTopologyEdge& edge : candidate.topologyEdges) {
+    if (edge.levelIndex == levelIndex) {
+      edge.levelIndex = otherIndex;
+    } else if (edge.levelIndex == otherIndex) {
+      edge.levelIndex = levelIndex;
+    }
+  }
+  for (cr::CreativeWorldLayoutRoofAperture& aperture :
+       candidate.roofApertures) {
+    if (aperture.levelIndex == levelIndex) {
+      aperture.levelIndex = otherIndex;
+    } else if (aperture.levelIndex == otherIndex) {
+      aperture.levelIndex = levelIndex;
+    }
+  }
+  if (!validLevelMutationCandidate(candidate)) {
+    rejectInvalidLevelMutation(state, "reordering these levels");
+    return {false, false,
+            "creative_editor_world_layout_level_reorder_rejected"};
+  }
+  state.source = std::move(candidate);
   state.activeLevelIndex = otherIndex;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
                      otherIndex};
@@ -302,13 +478,20 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     return {false, false,
             "creative_editor_world_layout_level_delete_last"};
   }
+  if (!validLevelMutationCandidate(state.source)) {
+    rejectInvalidLevelMutation(state, "deleting this level");
+    return {false, false,
+            "creative_editor_world_layout_level_source_invalid"};
+  }
 
+  const cr::CreativeWorldLayout& source = state.source;
+  cr::CreativeWorldLayout candidate = source;
   std::vector<std::size_t> roomMap(
-      state.source.rooms.size(), cr::kInvalidCreativeWorldLayoutIndex);
+      source.rooms.size(), cr::kInvalidCreativeWorldLayoutIndex);
   std::vector<cr::CreativeWorldLayoutRoom> rooms;
-  rooms.reserve(state.source.rooms.size());
-  for (std::size_t index = 0U; index < state.source.rooms.size(); ++index) {
-    cr::CreativeWorldLayoutRoom room = state.source.rooms[index];
+  rooms.reserve(source.rooms.size());
+  for (std::size_t index = 0U; index < source.rooms.size(); ++index) {
+    cr::CreativeWorldLayoutRoom room = source.rooms[index];
     if (room.levelIndex == levelIndex) {
       continue;
     }
@@ -318,9 +501,76 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     roomMap[index] = rooms.size();
     rooms.push_back(std::move(room));
   }
+
+  std::vector<std::size_t> vertexMap(
+      source.topologyVertices.size(), cr::kInvalidCreativeWorldLayoutIndex);
+  std::vector<cr::CreativeWorldLayoutTopologyVertex> vertices;
+  vertices.reserve(source.topologyVertices.size());
+  for (std::size_t index = 0U; index < source.topologyVertices.size(); ++index) {
+    cr::CreativeWorldLayoutTopologyVertex vertex =
+        source.topologyVertices[index];
+    if (vertex.levelIndex == levelIndex) {
+      continue;
+    }
+    if (vertex.levelIndex > levelIndex) {
+      --vertex.levelIndex;
+    }
+    vertexMap[index] = vertices.size();
+    vertices.push_back(std::move(vertex));
+  }
+
+  std::vector<std::size_t> edgeMap(
+      source.topologyEdges.size(), cr::kInvalidCreativeWorldLayoutIndex);
+  std::vector<cr::CreativeWorldLayoutTopologyEdge> edges;
+  edges.reserve(source.topologyEdges.size());
+  for (std::size_t index = 0U; index < source.topologyEdges.size(); ++index) {
+    cr::CreativeWorldLayoutTopologyEdge edge = source.topologyEdges[index];
+    if (edge.levelIndex == levelIndex) {
+      continue;
+    }
+    if (edge.startVertexIndex >= vertexMap.size() ||
+        edge.endVertexIndex >= vertexMap.size() ||
+        vertexMap[edge.startVertexIndex] ==
+            cr::kInvalidCreativeWorldLayoutIndex ||
+        vertexMap[edge.endVertexIndex] ==
+            cr::kInvalidCreativeWorldLayoutIndex) {
+      rejectInvalidLevelMutation(state, "deleting this level");
+      return {false, false,
+              "creative_editor_world_layout_level_topology_remap_invalid"};
+    }
+    if (edge.levelIndex > levelIndex) {
+      --edge.levelIndex;
+    }
+    edge.startVertexIndex = vertexMap[edge.startVertexIndex];
+    edge.endVertexIndex = vertexMap[edge.endVertexIndex];
+    edgeMap[index] = edges.size();
+    edges.push_back(std::move(edge));
+  }
+
+  std::vector<cr::CreativeWorldLayoutRoomBoundary> boundaries;
+  boundaries.reserve(source.roomBoundaries.size());
+  for (cr::CreativeWorldLayoutRoomBoundary boundary :
+       source.roomBoundaries) {
+    if (boundary.roomIndex >= roomMap.size() ||
+        boundary.topologyEdgeIndex >= edgeMap.size()) {
+      rejectInvalidLevelMutation(state, "deleting this level");
+      return {false, false,
+              "creative_editor_world_layout_level_boundary_remap_invalid"};
+    }
+    const std::size_t roomIndex = roomMap[boundary.roomIndex];
+    const std::size_t edgeIndex = edgeMap[boundary.topologyEdgeIndex];
+    if (roomIndex == cr::kInvalidCreativeWorldLayoutIndex ||
+        edgeIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    boundary.roomIndex = roomIndex;
+    boundary.topologyEdgeIndex = edgeIndex;
+    boundaries.push_back(boundary);
+  }
+
   std::vector<cr::CreativeWorldLayoutOpening> openings;
-  openings.reserve(state.source.openings.size());
-  for (cr::CreativeWorldLayoutOpening opening : state.source.openings) {
+  openings.reserve(source.openings.size());
+  for (cr::CreativeWorldLayoutOpening opening : source.openings) {
     if (opening.hostKind ==
         cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
       if (opening.roomIndex >= roomMap.size() ||
@@ -329,13 +579,23 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
         continue;
       }
       opening.roomIndex = roomMap[opening.roomIndex];
+      if (opening.roomTopologyEdgeIndex !=
+          cr::kInvalidCreativeWorldLayoutIndex) {
+        if (opening.roomTopologyEdgeIndex >= edgeMap.size() ||
+            edgeMap[opening.roomTopologyEdgeIndex] ==
+                cr::kInvalidCreativeWorldLayoutIndex) {
+          continue;
+        }
+        opening.roomTopologyEdgeIndex =
+            edgeMap[opening.roomTopologyEdgeIndex];
+      }
     }
     openings.push_back(std::move(opening));
   }
   std::vector<cr::CreativeWorldLayoutVerticalConnector> verticalConnectors;
-  verticalConnectors.reserve(state.source.verticalConnectors.size());
+  verticalConnectors.reserve(source.verticalConnectors.size());
   for (cr::CreativeWorldLayoutVerticalConnector connector :
-       state.source.verticalConnectors) {
+       source.verticalConnectors) {
     if (connector.lowerRoomIndex >= roomMap.size() ||
         connector.upperRoomIndex >= roomMap.size() ||
         roomMap[connector.lowerRoomIndex] ==
@@ -348,11 +608,36 @@ void selectLevelOwner(CreativeEditorWorldLayoutState& state,
     connector.upperRoomIndex = roomMap[connector.upperRoomIndex];
     verticalConnectors.push_back(std::move(connector));
   }
-  state.source.rooms = std::move(rooms);
-  state.source.openings = std::move(openings);
-  state.source.verticalConnectors = std::move(verticalConnectors);
-  state.source.levels.erase(
-      state.source.levels.begin() + static_cast<std::ptrdiff_t>(levelIndex));
+  std::vector<cr::CreativeWorldLayoutRoofAperture> roofApertures;
+  roofApertures.reserve(source.roofApertures.size());
+  for (cr::CreativeWorldLayoutRoofAperture aperture :
+       source.roofApertures) {
+    if (aperture.levelIndex == levelIndex) {
+      continue;
+    }
+    if (aperture.levelIndex > levelIndex) {
+      --aperture.levelIndex;
+    }
+    roofApertures.push_back(std::move(aperture));
+  }
+  candidate.rooms = std::move(rooms);
+  candidate.topologyVertices = std::move(vertices);
+  candidate.topologyEdges = std::move(edges);
+  candidate.roomBoundaries = std::move(boundaries);
+  candidate.openings = std::move(openings);
+  candidate.verticalConnectors = std::move(verticalConnectors);
+  candidate.roofApertures = std::move(roofApertures);
+  candidate.levels.erase(
+      candidate.levels.begin() + static_cast<std::ptrdiff_t>(levelIndex));
+  static_cast<void>(cr::refreshCreativeWorldLayoutBuildingRoomFootprint(
+      candidate, buildingIndex));
+  if (!validLevelMutationCandidate(candidate)) {
+    rejectInvalidLevelMutation(state, "deleting this level");
+    return {false, false,
+            "creative_editor_world_layout_level_delete_rejected"};
+  }
+
+  state.source = std::move(candidate);
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
                      buildingIndex};
   state.activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;

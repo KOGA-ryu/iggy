@@ -13,13 +13,6 @@
 namespace iggy3d::creative {
 namespace {
 
-struct CatalogToolSpec {
-  CreativeHeldItemKind kind = CreativeHeldItemKind::ObjectSelect;
-  std::string_view label;
-  std::string_view aliases;
-  bool toolWheelEligible = true;
-};
-
 struct CatalogShapePreset {
   CreativeCatalogShapeSelection selection{};
   std::string_view label;
@@ -38,65 +31,6 @@ constexpr std::array<CatalogShapePreset, kCreativeCatalogShapePresetCount>
         {{CreativeShapeBrushKind::Cylinder, CreativeShapeBrushAxis::Z},
          "Cylinder Z"},
     }};
-
-constexpr std::array kToolSpecs{
-    CatalogToolSpec{CreativeHeldItemKind::MaterialBrush, "Brush",
-                    "paint sculpt material sphere cube cylinder"},
-    CatalogToolSpec{CreativeHeldItemKind::ObjectSelect, "Object Select",
-                    "select pick object", false},
-    CatalogToolSpec{CreativeHeldItemKind::ObjectMove, "Transform",
-                    "object move drag translate rotate mirror copy"},
-    CatalogToolSpec{CreativeHeldItemKind::ObjectGroup, "Group",
-                    "group ungroup combine assembly parent selection"},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeSelect, "Region Select",
-                    "volume region wand corner selection", false},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeFill, "Fill",
-                    "volume region solid create"},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeHollow, "Hollow",
-                    "volume region shell walls"},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeReplace, "Replace",
-                    "volume region swap material"},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeErase, "Erase",
-                    "volume region remove delete", false},
-    CatalogToolSpec{CreativeHeldItemKind::VolumeClone, "Clone",
-                    "volume region copy duplicate", false},
-    CatalogToolSpec{CreativeHeldItemKind::ConnectedFill, "Connected Fill",
-                    "flood paint bucket connected material region"},
-    CatalogToolSpec{CreativeHeldItemKind::SurfaceExtrude, "Surface Extrude",
-                    "extrude inset pull push connected face surface"},
-    CatalogToolSpec{CreativeHeldItemKind::LinearArray, "Array",
-                    "array pattern repeat duplicate line radial ring"},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainControl, "Terrain Rod",
-                    "terrain heightfield rod elevation radius landscape ground",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainPaint, "Terrain Paint",
-                    "terrain surface material grass dirt stone sand paint",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainGrade, "Terrain Grade",
-                    "terrain grade ramp slope hill smooth landscape ground",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainSculpt, "Terrain Sculpt",
-                    "terrain sculpt raise lower flatten smooth brush plateau "
-                    "landscape",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainProfile, "Terrain Profile",
-                    "terrain profile hill basin ring crater ridge wave ripple "
-                    "elevation landscape",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainPath, "Terrain Path",
-                    "terrain path road river ridge trench embankment route "
-                    "landscape",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::TerrainRegion, "Terrain Region",
-                    "terrain region area raise lower flatten smooth erase "
-                    "landscape selection",
-                    false},
-    CatalogToolSpec{CreativeHeldItemKind::LogicLink, "Logic Link",
-                    "connect wire switch lever button door logic", false},
-    CatalogToolSpec{CreativeHeldItemKind::BuildingRoom, "Room",
-                    "building floor walls shell footprint architecture",
-                    false},
-};
 
 constexpr std::array kActionEntries{
     CreativeCatalogActionEntry{CreativeInputActionId::Undo, "Undo"},
@@ -124,6 +58,16 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
   std::transform(value.begin(), value.end(), std::back_inserter(output),
                  asciiLower);
   return output;
+}
+
+void appendCatalogDetailPart(std::string& detail, std::string_view part) {
+  if (part.empty()) {
+    return;
+  }
+  if (!detail.empty()) {
+    detail.append(" | ");
+  }
+  detail.append(part);
 }
 
 [[nodiscard]] std::string sanitizedQuery(std::string_view value) {
@@ -172,7 +116,8 @@ static_assert(kActionEntries.size() == kCreativeCatalogActionCapacity);
     CreativeCatalogPage page,
     bool globalCreatorSearch) noexcept {
   return globalCreatorSearch
-             ? creativeCatalogPageIsCreatorCategory(entry.page)
+             ? creativeCatalogPageIsCreatorCategory(entry.page) &&
+                   entry.page != CreativeCatalogPage::Experimental
              : entry.page == page;
 }
 
@@ -207,7 +152,8 @@ void refreshFilter(CreativeCatalogState& catalog) {
   const std::optional<std::size_t> previous = selectedEntryIndex(catalog);
   const std::string query = lowerAscii(catalog.query);
   const bool globalCreatorSearch =
-      !query.empty() && creativeCatalogPageIsCreatorCategory(catalog.page);
+      !query.empty() && creativeCatalogPageIsCreatorCategory(catalog.page) &&
+      catalog.page != CreativeCatalogPage::Experimental;
   const bool exactWordMode =
       !query.empty() &&
       std::any_of(catalog.entries.begin(), catalog.entries.end(),
@@ -286,11 +232,17 @@ void refreshFilter(CreativeCatalogState& catalog) {
   entry.category = CreativeCatalogEntryCategory::Asset;
   entry.hotbarEntry = {CreativeHeldItemKind::Material, asset.objectKind};
   if (!setCreativeHotbarAsset(entry.hotbarEntry, asset.assetId,
-                              asset.sourceBounds)) {
+                              asset.sourceBounds, asset.contentHash)) {
     return false;
   }
   entry.label = asset.label.empty() ? asset.assetId : asset.label;
+  entry.assetContentHash = asset.contentHash;
   entry.assetAuthoringMetadata = asset.authoringMetadata;
+  entry.assetCollisionParts = asset.collisionParts;
+  entry.assetAttachmentSockets = asset.attachmentSockets;
+  entry.assetMaterialVariants = asset.materialVariants;
+  entry.assetMaterialCount = asset.materialCount;
+  entry.assetThumbnail = asset.thumbnail;
   entry.authoredComposite = asset.authoredComposite;
   entry.searchText = asset.authoredComposite
                          ? lowerAscii(entry.label + " " + asset.assetId +
@@ -306,6 +258,15 @@ void refreshFilter(CreativeCatalogState& catalog) {
                                     ? " walkable"
                                     : "") +
                                " asset imported glb blender mesh");
+  for (const StaticMeshAttachmentSocket& socket : asset.attachmentSockets) {
+    entry.searchText.push_back(' ');
+    entry.searchText.append(lowerAscii(socket.name + " " +
+                                           socket.compatibility));
+  }
+  for (const StaticMeshMaterialVariant& variant : asset.materialVariants) {
+    entry.searchText.push_back(' ');
+    entry.searchText.append(lowerAscii(variant.name));
+  }
   return true;
 }
 
@@ -358,6 +319,7 @@ std::string_view toString(CreativeCatalogPage page) noexcept {
     case CreativeCatalogPage::Testing: return "Testing";
     case CreativeCatalogPage::Helpers: return "Helpers";
     case CreativeCatalogPage::Tools: return "Tools";
+    case CreativeCatalogPage::Experimental: return "Experimental";
     case CreativeCatalogPage::Assets: return "Assets";
     case CreativeCatalogPage::Actions: return "Actions";
     case CreativeCatalogPage::Count: break;
@@ -368,7 +330,7 @@ std::string_view toString(CreativeCatalogPage page) noexcept {
 bool creativeCatalogPageIsCreatorCategory(
     CreativeCatalogPage page) noexcept {
   return page >= CreativeCatalogPage::Structure &&
-         page <= CreativeCatalogPage::Tools;
+         page <= CreativeCatalogPage::Experimental;
 }
 
 std::string_view creativeCatalogAssetPhysicsLabel(
@@ -399,10 +361,11 @@ CreativeCatalogState makeCreativeCatalog(
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets,
     std::size_t rejectedAssetCount,
-    std::span<const CreativeCatalogAssetFailure> assetFailures) {
+    std::span<const CreativeCatalogAssetFailure> assetFailures,
+    std::span<const CreativeCatalogToolSpec> toolSpecs) {
   CreativeCatalogState catalog;
   catalog.rejectedAssetCount = rejectedAssetCount;
-  catalog.entries.reserve(materialPalette.size() + kToolSpecs.size() +
+  catalog.entries.reserve(materialPalette.size() + toolSpecs.size() +
                           assets.size() + assetFailures.size() + 1U);
 
   CreativeObjectKind defaultMaterial = CreativeObjectKind::Unknown;
@@ -435,16 +398,20 @@ CreativeCatalogState makeCreativeCatalog(
     catalog.entries.push_back(std::move(entry));
   }
 
-  for (const CatalogToolSpec& spec : kToolSpecs) {
+  for (const CreativeCatalogToolSpec& spec : toolSpecs) {
+    if (spec.kind >= CreativeHeldItemKind::Count || spec.label.empty()) {
+      continue;
+    }
     if (creativeHeldItemUsesMaterial(spec.kind) &&
         defaultMaterial == CreativeObjectKind::Unknown) {
       continue;
     }
     CreativeCatalogEntry entry;
-    entry.page = CreativeCatalogPage::Tools;
+    entry.page = spec.experimental ? CreativeCatalogPage::Experimental
+                                   : CreativeCatalogPage::Tools;
     entry.category = CreativeCatalogEntryCategory::Tool;
     entry.hotbarEntry.kind = spec.kind;
-    entry.toolWheelEligible = spec.toolWheelEligible;
+    entry.toolWheelEligible = spec.defaultWheelEligible;
     entry.hotbarEntry.objectKind =
         creativeHeldItemUsesMaterial(spec.kind)
             ? defaultMaterial
@@ -452,6 +419,12 @@ CreativeCatalogState makeCreativeCatalog(
     entry.label = spec.label;
     entry.searchText = lowerAscii(std::string(spec.label) + " " +
                                   std::string(spec.aliases));
+    entry.detail.reserve(spec.maturity.size() + spec.lifecycle.size() +
+                         spec.purpose.size() + spec.inputHint.size() + 9U);
+    appendCatalogDetailPart(entry.detail, spec.maturity);
+    appendCatalogDetailPart(entry.detail, spec.lifecycle);
+    appendCatalogDetailPart(entry.detail, spec.purpose);
+    appendCatalogDetailPart(entry.detail, spec.inputHint);
     catalog.entries.push_back(std::move(entry));
   }
   for (const CreativeCatalogAsset& asset : assets) {
@@ -750,9 +723,39 @@ const CreativeCatalogEntry* creativeCatalogEntryAtFilteredIndex(
                                              : nullptr;
 }
 
+CreativeCatalogAssetInspection inspectCreativeCatalogAsset(
+    const CreativeCatalogEntry& entry) noexcept {
+  CreativeCatalogAssetInspection inspection;
+  if (entry.category == CreativeCatalogEntryCategory::AssetFailure) {
+    inspection.status = CreativeCatalogAssetInspectionStatus::Missing;
+    return inspection;
+  }
+  if (entry.category != CreativeCatalogEntryCategory::Asset) {
+    return inspection;
+  }
+  inspection.status = CreativeCatalogAssetInspectionStatus::Ready;
+  inspection.bounds = measureCreativeBounds(entry.hotbarEntry.assetSourceBounds);
+  if (inspection.bounds.valid) {
+    inspection.pivotFromCenter = {-inspection.bounds.center.x,
+                                  -inspection.bounds.center.y,
+                                  -inspection.bounds.center.z};
+  }
+  inspection.collisionMode = entry.assetAuthoringMetadata.collisionMode;
+  inspection.contentHash = entry.assetContentHash;
+  inspection.collisionPartCount = entry.assetCollisionParts.size();
+  inspection.socketCount = entry.assetAttachmentSockets.size();
+  inspection.materialCount = entry.assetMaterialCount;
+  inspection.materialVariantCount = entry.assetMaterialVariants.size();
+  inspection.walkable = entry.assetAuthoringMetadata.walkable;
+  inspection.thumbnailAvailable = entry.assetThumbnail.valid;
+  inspection.authoredComposite = entry.authoredComposite;
+  return inspection;
+}
+
 CreativeHotbarEntry resolveCreativeCatalogHotbarEntry(
     const CreativeCatalogEntry& entry,
-    CreativeObjectKind activeMaterial) noexcept {
+    CreativeObjectKind activeMaterial,
+    std::size_t assetMaterialVariantIndex) noexcept {
   if (!creativeCatalogEntryAssignable(entry)) {
     return {};
   }
@@ -760,6 +763,16 @@ CreativeHotbarEntry resolveCreativeCatalogHotbarEntry(
   if (entry.category == CreativeCatalogEntryCategory::Tool) {
     static_cast<void>(
         applyCreativeHeldItemMaterial(resolved, activeMaterial));
+  } else if (entry.category == CreativeCatalogEntryCategory::Asset &&
+             assetMaterialVariantIndex > 0U) {
+    const std::size_t variantIndex = assetMaterialVariantIndex - 1U;
+    if (variantIndex >= entry.assetMaterialVariants.size() ||
+        !setCreativeHotbarAsset(
+            resolved, creativeHotbarAssetId(entry.hotbarEntry),
+            entry.hotbarEntry.assetSourceBounds, entry.assetContentHash,
+            entry.assetMaterialVariants[variantIndex].name)) {
+      return {};
+    }
   }
   return resolved;
 }

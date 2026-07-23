@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <algorithm>
 #include <span>
@@ -41,12 +42,13 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
 
 [[nodiscard]] CreativeDocumentWireframeItem makeWireframeItem(
     const CreativeObject& object,
-    const CreativeSpatialProjectionSummary& projectionSummary) {
+    const CreativeSpatialProjectionSummary& projectionSummary,
+    bool effectivelyVisible) {
   CreativeDocumentWireframeItem item;
   item.itemKind = wireframeItemKindForProjection(projectionSummary.profile);
   item.objectId = object.id;
   item.objectKind = object.kind;
-  item.visible = object.visible;
+  item.visible = effectivelyVisible;
   item.projectionProfile = projectionSummary.profile;
   item.occupancyKind = projectionSummary.occupancyKind;
   item.style = wireframeStyleForOccupancy(projectionSummary.occupancyKind);
@@ -403,7 +405,10 @@ CreativeDocumentWireframeBuildResult buildCreativeDocumentWireframeList(
   for (const CreativeObject& object : objects) {
     const CreativeSpatialProjectionProfile profile =
         projectionProfileForObject(object.kind);
-    if (!object.visible) {
+    const bool effectivelyVisible =
+        resolveCreativeObjectHierarchyState(objects, object.id)
+            .effectivelyVisible;
+    if (!effectivelyVisible) {
       ++receipt.hiddenObjectCount;
       if (isNonProjectableObject(object, profile)) {
         ++receipt.nonProjectableObjectCount;
@@ -440,8 +445,8 @@ CreativeDocumentWireframeBuildResult buildCreativeDocumentWireframeList(
       ++receipt.nonProjectableObjectCount;
       continue;
     }
-    result.drawList.items.push_back(makeWireframeItem(object,
-                                                      projectionSummary));
+    result.drawList.items.push_back(
+        makeWireframeItem(object, projectionSummary, effectivelyVisible));
   }
 
   receipt.itemCount = result.drawList.items.size();

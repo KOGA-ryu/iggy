@@ -17,9 +17,10 @@ namespace {
 
 constexpr CreativeVec3 kEstateGridOrigin{-40.0, 0.0, -40.0};
 constexpr std::int32_t kHouseFloorLayer = 4;
-// Two equal 22-unit storeys plus the structural top layer read as a roughly
-// 45-unit building in the current Creative viewport scale.
-constexpr std::uint16_t kHouseWallHeightCells = 22U;
+constexpr double kEstateGridCellSizeMeters = 1.0;
+constexpr CreativeWorldLayoutArchitecturalProfileKind
+    kHouseArchitecturalProfileKind =
+        CreativeWorldLayoutArchitecturalProfileKind::Grand;
 constexpr std::array<std::string_view, 1U> kBuiltInBuildingTemplateIds{
     kBuilderEstateHouseTemplateId};
 constexpr std::array<std::string_view, 2U> kEstateHouseTags{
@@ -37,12 +38,27 @@ void setStatus(CreativeMapTemplateResult& result,
 CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
   CreativeWorldLayout source;
   source.stableKey = "builder_estate_house_source";
+  const CreativeWorldLayoutArchitecturalProfile profile =
+      defaultCreativeWorldLayoutArchitecturalProfile(
+          kHouseArchitecturalProfileKind);
+  CreativeGridSettings grid;
+  grid.cellSizeMeters = kEstateGridCellSizeMeters;
+  std::uint16_t wallHeightCells = 0U;
+  if (!resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+          grid, profile, wallHeightCells)) {
+    CreativeWorldLayoutBuildingTemplateResult failed;
+    failed.requested = true;
+    failed.status = CreativeWorldLayoutBuildingTemplateStatus::InvalidTemplate;
+    failed.reasonCode =
+        "creative_builder_estate_architectural_profile_invalid";
+    return failed;
+  }
   CreativeWorldLayoutBuildingBlockoutRecipe recipe;
   recipe.request.footprint = {{0, 0}, {48, 48}};
   recipe.request.pattern =
       CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
   recipe.request.wallThicknessCells = 0.25;
-  recipe.request.wallHeightCells = kHouseWallHeightCells;
+  recipe.request.wallHeightCells = wallHeightCells;
   recipe.request.storeys.count = 2U;
   recipe.request.storeys.connectStoreys = true;
   recipe.request.storeys.connectorKind =
@@ -50,6 +66,10 @@ CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
   recipe.request.storeys.preferredDirection =
       CreativeWorldLayoutVerticalDirection::PositiveZ;
   recipe.floorTopLayer = kHouseFloorLayer;
+  recipe.floorThicknessLayers = profile.floorThicknessLayers;
+  recipe.ceilingThicknessLayers = profile.ceilingThicknessLayers;
+  recipe.roofThicknessLayers = profile.roofThicknessLayers;
+  recipe.architecturalProfileKind = profile.kind;
 
   const CreativeWorldLayoutBuildingEditResult materialized =
       materializeCreativeWorldLayoutBuildingBlockout(
@@ -84,24 +104,40 @@ void appendPlateau(CreativeWorldLayout& layout,
 
 void appendTerrainPath(CreativeWorldLayout& layout,
                        std::string stableKey,
-                       CreativeTerrainRecipeKind kind,
+                       CreativeTerrainPathKind kind,
                        std::initializer_list<CreativeTerrainPathPoint> points,
                        std::uint16_t halfWidthCells,
                        std::uint16_t baselineHeightCells) {
   CreativeWorldLayoutTerrainPath path;
   path.stableKey = std::move(stableKey);
-  path.kind = kind;
-  path.firstPointIndex = layout.terrainPathPoints.size();
-  path.pointCount = points.size();
-  path.elevation = CreativeTerrainPathElevation::Level;
-  path.halfWidthCells = halfWidthCells;
-  path.amplitudeCells = 1U;
-  path.paintSurface = true;
-  path.material = CreativeTerrainMaterial::Count;
+  path.recipe.kind = kind;
+  path.recipe.elevation = CreativeTerrainPathElevation::Level;
+  path.recipe.crossSection = kind == CreativeTerrainPathKind::Trench
+                                 ? CreativeTerrainPathCrossSection::Cut
+                                 : CreativeTerrainPathCrossSection::Flat;
+  path.recipe.paintSurface = true;
+  switch (kind) {
+    case CreativeTerrainPathKind::Road:
+      path.recipe.material = CreativeTerrainMaterial::Dirt;
+      break;
+    case CreativeTerrainPathKind::River:
+    case CreativeTerrainPathKind::Trench:
+      path.recipe.material = CreativeTerrainMaterial::Sand;
+      break;
+    case CreativeTerrainPathKind::Ridge:
+      path.recipe.material = CreativeTerrainMaterial::Stone;
+      break;
+    case CreativeTerrainPathKind::Count:
+      path.recipe.material = CreativeTerrainMaterial::Count;
+      break;
+  }
+  CreativeTerrainPathSourcePointId nextPointId = 1U;
   for (CreativeTerrainPathPoint point : points) {
     point.heightCells = baselineHeightCells;
-    layout.terrainPathPoints.push_back(point);
+    path.recipe.points.push_back({nextPointId++, point.coord,
+                                  point.heightCells, halfWidthCells, 1U, 0});
   }
+  path.recipe.nextPointId = nextPointId;
   layout.terrainPaths.push_back(std::move(path));
 }
 
@@ -119,10 +155,10 @@ CreativeWorldLayoutBuildingEditResult builderEstateLayout(
   appendPlateau(layout, "plateau.row_3.col_1", {20, 68});
   appendPlateau(layout, "plateau.row_3.col_2", {40, 68});
   appendPlateau(layout, "plateau.row_3.col_3", {60, 68});
-  appendTerrainPath(layout, "path.ditch", CreativeTerrainRecipeKind::Ditch,
+  appendTerrainPath(layout, "path.ditch", CreativeTerrainPathKind::Trench,
                     {{{12, 20}, 4U}, {{64, 20}, 4U}}, 0U, 4U);
   appendTerrainPath(layout, "path.estate_road",
-                    CreativeTerrainRecipeKind::Road,
+                    CreativeTerrainPathKind::Road,
                     {{{12, 78}, 3U}, {{64, 78}, 3U}}, 0U, 3U);
 
   return stampCreativeWorldLayoutBuildingTemplate(
@@ -242,7 +278,7 @@ CreativeMapTemplateResult buildBuilderEstateMapTemplate(
   CreativeDocument document = CreativeDocument::create("Builder Estate");
   if (!document.assignId(documentId) ||
       !document.setGridSettings(
-          {kEstateGridOrigin, 1.0, {80, 64, 80}}) ||
+          {kEstateGridOrigin, kEstateGridCellSizeMeters, {80, 64, 80}}) ||
       !document.setWorldBounds(
           {kEstateGridOrigin, {40.0, 64.0, 40.0}}) ||
       !facade.installDocument(std::move(document)).accepted) {

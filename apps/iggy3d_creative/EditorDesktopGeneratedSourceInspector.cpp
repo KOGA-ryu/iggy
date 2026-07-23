@@ -21,11 +21,13 @@ bool sameConnectorSettings(
     const CreativeEditorWorldLayoutVerticalConnectorSettings& rhs) noexcept {
   return lhs.footprint.minimum == rhs.footprint.minimum &&
          lhs.footprint.maximum == rhs.footprint.maximum &&
-         lhs.kind == rhs.kind && lhs.direction == rhs.direction;
+         lhs.kind == rhs.kind && lhs.direction == rhs.direction &&
+         lhs.material == rhs.material;
 }
 
 void appendGeneratedVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& worldLayout,
+    const cr::CreativeDocument& document,
     cr::CreativeObjectId objectId,
     cr::CreativeWorldLayoutObjectProvenance provenance,
     bool disabled,
@@ -126,6 +128,11 @@ void appendGeneratedVerticalConnectorSettings(
             settings.direction);
   }
   observeCreativeDesktopDiscretePropertyEdit(editActivity, flipEdited);
+  ImGui::SetNextItemWidth(188.0F);
+  const bool materialEdited =
+      drawCreativeEditorWorldLayoutVerticalConnectorMaterial(
+          "Material##generated_vertical_connector", settings.material);
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, materialEdited);
 
   std::array<int, 2U> origin = {settings.footprint.minimum.x,
                                 settings.footprint.minimum.z};
@@ -165,7 +172,8 @@ void appendGeneratedVerticalConnectorSettings(
       maximumZ <= std::numeric_limits<std::int32_t>::max() && size[0] > 0 &&
       size[1] > 0 &&
       settings.kind < cr::CreativeWorldLayoutVerticalConnectorKind::Count &&
-      settings.direction < cr::CreativeWorldLayoutVerticalDirection::Count;
+      settings.direction < cr::CreativeWorldLayoutVerticalDirection::Count &&
+      settings.material < cr::CreativeStructuralMaterial::Count;
   if ((originEdited || sizeEdited) && representable) {
     settings.footprint.minimum = {
         static_cast<std::int32_t>(origin[0]),
@@ -177,6 +185,12 @@ void appendGeneratedVerticalConnectorSettings(
   if (!representable) {
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Connector footprint must be positive and in range");
+  }
+  if (representable) {
+    drawCreativeEditorWorldLayoutVerticalConnectorPlan(
+        planCreativeEditorWorldLayoutVerticalConnectorSettings(
+            worldLayout, document, provenance.index, settings),
+        settings.kind);
   }
   bool dirty = !sameConnectorSettings(current, settings);
   bool resetRequested = false;
@@ -353,27 +367,48 @@ void appendGeneratedOpeningSettings(
       editActivity, heightEdited, ImGui::IsItemDeactivatedAfterEdit());
   if (door) {
     settings.sillHeightCells = 0.0;
-    constexpr std::array<const char*, 5U> kPoseLabels = {
-        "Closed", "Start hinge / side A", "Start hinge / side B",
-        "End hinge / side A", "End hinge / side B"};
-    int pose = static_cast<int>(settings.pose);
-    ImGui::SetNextItemWidth(188.0F);
-    const bool poseEdited = ImGui::Combo(
-        "Pose##generated_opening", &pose, kPoseLabels.data(),
-        static_cast<int>(kPoseLabels.size()));
-    if (poseEdited) {
-      settings.pose = static_cast<cr::CreativeBuildingOpeningPose>(pose);
-    }
-    observeCreativeDesktopDiscretePropertyEdit(editActivity, poseEdited);
+    const CreativeDoorSettingsWidgetActivity doorActivity =
+        drawCreativeDoorSettingsWidgets(settings.door,
+                                        "generated_world_layout_opening");
+    observeCreativeDesktopDiscretePropertyEdit(
+        editActivity, doorActivity.discreteChanged);
+    observeCreativeDesktopContinuousPropertyEdit(
+        editActivity, doorActivity.continuousChanged,
+        doorActivity.continuousDeactivated);
   } else {
-    settings.pose = cr::CreativeBuildingOpeningPose::Closed;
     ImGui::SetNextItemWidth(112.0F);
     const bool sillEdited = ImGui::InputDouble(
         "Sill##generated_opening", &settings.sillHeightCells, 0.25, 1.0,
         "%.2f");
     observeCreativeDesktopContinuousPropertyEdit(
         editActivity, sillEdited, ImGui::IsItemDeactivatedAfterEdit());
+    constexpr std::array<const char*, 2U> kWindowInsertLabels = {
+        "Glazing", "Paired shutters"};
+    int insertKind = static_cast<int>(settings.window.insertKind);
+    ImGui::SetNextItemWidth(188.0F);
+    const bool treatmentEdited = ImGui::Combo(
+        "Treatment##generated_opening", &insertKind,
+        kWindowInsertLabels.data(),
+        static_cast<int>(kWindowInsertLabels.size()));
+    if (treatmentEdited) {
+      settings.window.insertKind =
+          static_cast<cr::CreativeWindowInsertKind>(insertKind);
+    }
+    observeCreativeDesktopDiscretePropertyEdit(editActivity,
+                                                treatmentEdited);
   }
+  constexpr std::array<const char*, 2U> kFacingLabels = {
+      "Side A (+ normal)", "Side B (- normal)"};
+  int facing = static_cast<int>(settings.facing);
+  ImGui::SetNextItemWidth(188.0F);
+  const bool facingEdited = ImGui::Combo(
+      "Front side##generated_opening", &facing, kFacingLabels.data(),
+      static_cast<int>(kFacingLabels.size()));
+  if (facingEdited) {
+    settings.facing =
+        static_cast<cr::CreativeBuildingOpeningFacing>(facing);
+  }
+  observeCreativeDesktopDiscretePropertyEdit(editActivity, facingEdited);
   const bool insertEdited = ImGui::Checkbox(
       "Include insert##generated_opening", &settings.includeInsert);
   observeCreativeDesktopDiscretePropertyEdit(editActivity, insertEdited);
@@ -384,7 +419,10 @@ void appendGeneratedOpeningSettings(
       std::isfinite(settings.widthCells) && settings.widthCells > 0.0 &&
       std::isfinite(settings.sillHeightCells) &&
       settings.sillHeightCells >= 0.0 &&
-      std::isfinite(settings.heightCells) && settings.heightCells > 0.0;
+      std::isfinite(settings.heightCells) && settings.heightCells > 0.0 &&
+      (!door || cr::isValidCreativeDoorSettings(settings.door)) &&
+      (door || cr::isValidCreativeWindowSettings(settings.window)) &&
+      settings.facing < cr::CreativeBuildingOpeningFacing::Count;
   if (!representable) {
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Opening dimensions must be finite and positive");
@@ -394,7 +432,9 @@ void appendGeneratedOpeningSettings(
       current.widthCells != settings.widthCells ||
       current.sillHeightCells != settings.sillHeightCells ||
       current.heightCells != settings.heightCells ||
-      current.pose != settings.pose ||
+      !(current.door == settings.door) ||
+      !(current.window == settings.window) ||
+      current.facing != settings.facing ||
       current.includeInsert != settings.includeInsert;
   bool resetRequested = false;
   ImGui::BeginDisabled(disabled || !dirty);
@@ -551,6 +591,13 @@ void appendCreativeDesktopGeneratedSourceSettings(
     worldLayout.roomSettingsDraft = {};
     clearedDraft = true;
   }
+  if (scope.table != cr::CreativeWorldLayoutTable::TopologyEdge &&
+      worldLayout.roomEdgeSettingsDraft.topologyEdgeIndex !=
+          cr::kInvalidCreativeWorldLayoutIndex) {
+    worldLayout.roomEdgeSettingsDraft = {};
+    worldLayout.selectedRoomTopologyEdgeStableKey.clear();
+    clearedDraft = true;
+  }
   if (scope.table != cr::CreativeWorldLayoutTable::Level &&
       worldLayout.generatedLevelSettingsDraft.active) {
     worldLayout.generatedLevelSettingsDraft = {};
@@ -569,6 +616,11 @@ void appendCreativeDesktopGeneratedSourceSettings(
   if (scope.table != cr::CreativeWorldLayoutTable::Opening &&
       worldLayout.openingSettingsDraft.active) {
     worldLayout.openingSettingsDraft = {};
+    clearedDraft = true;
+  }
+  if (scope.table != cr::CreativeWorldLayoutTable::RoofAperture &&
+      worldLayout.roofApertureSettingsDraft.active) {
+    worldLayout.roofApertureSettingsDraft = {};
     clearedDraft = true;
   }
   if (clearedDraft && creativeEditorWorldLayoutPreviewActive(worldLayout)) {
@@ -596,9 +648,16 @@ void appendCreativeDesktopGeneratedSourceSettings(
       appendCreativeDesktopGeneratedRoomSettings(
           worldLayout, objectId, scopedProvenance, disabled, commands);
       break;
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      ImGui::BeginDisabled(disabled);
+      appendCreativeDesktopTopologyEdgeSettings(worldLayout, scope.index,
+                                                commands);
+      ImGui::EndDisabled();
+      break;
     case cr::CreativeWorldLayoutTable::VerticalConnector:
       appendGeneratedVerticalConnectorSettings(
-          worldLayout, objectId, scopedProvenance, disabled, commands);
+          worldLayout, document, objectId, scopedProvenance, disabled,
+          commands);
       break;
     case cr::CreativeWorldLayoutTable::Wall:
       appendGeneratedWallSettings(worldLayout, objectId, scopedProvenance,
@@ -607,6 +666,12 @@ void appendCreativeDesktopGeneratedSourceSettings(
     case cr::CreativeWorldLayoutTable::Opening:
       appendGeneratedOpeningSettings(worldLayout, objectId, scopedProvenance,
                                      disabled, commands);
+      break;
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      ImGui::BeginDisabled(disabled);
+      drawCreativeEditorWorldLayoutRoofApertureInspector(
+          worldLayout, scope.index, commands);
+      ImGui::EndDisabled();
       break;
     case cr::CreativeWorldLayoutTable::Box:
     case cr::CreativeWorldLayoutTable::Object:

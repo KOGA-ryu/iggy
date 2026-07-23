@@ -91,6 +91,7 @@ struct CreativeRuntimeSandboxActivationReceipt {
   CreativeDocumentId documentId = kInvalidDocumentId;
   std::uint64_t documentRevision = 0;
   std::string roomId;
+  std::string playerProfileId;
   CreativeRuntimeScenarioSummary scenario;
   std::size_t collisionSurfaceCount = 0;
   ReasoningGraphSummary reasoningGraph;
@@ -101,6 +102,9 @@ struct CreativeRuntimeSandbox {
   CreativeDocumentId sourceDocumentId = kInvalidDocumentId;
   std::uint64_t sourceDocumentRevision = 0;
   std::string roomId;
+  CreativeObjectId playerSpawnObjectId = kInvalidObjectId;
+  std::string playerProfileId;
+  float playerSpawnYawRadians = 0.0F;
   CreativeRuntimeScenarioSummary scenario;
   ReasoningGraphSummary reasoningGraph;
   RoomAsset room;

@@ -27,6 +27,7 @@ namespace iggy3d::creative {
 
 struct CreativeAppState;
 class CreativeDocument;
+struct CreativeMeasurementState;
 
 }  // namespace iggy3d::creative
 
@@ -39,6 +40,7 @@ struct StaticMeshAssetCatalog;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativeEditorGizmoFrame;
 struct CreativeEditorPickFrame;
 struct CreativePlacementClearanceCache;
 
@@ -55,6 +57,7 @@ struct CreativeEditorWorldTarget {
   iggy3d::creative::CreativeTerrainCoord2 terrainCell{};
   float distanceMeters = 0.0F;
   WorldRay ray{};
+  ObjectVisualPickStack objectPickStack{};
   iggy3d::creative::CreativeGridTarget grid{};
 };
 
@@ -237,8 +240,6 @@ struct CreativeEditorInteractionState {
   CreativeEditorSurfaceExtrudeCache surfaceExtrude{};
   CreativeEditorRoomPlacementState roomPlacement{};
   CreativeMovingPlatformPathEditState movingPlatformPathEdit{};
-  iggy3d::creative::CreativeObjectId moveTargetId =
-      iggy3d::creative::kInvalidObjectId;
 };
 
 struct CreativeEditorWorldInteractionFrameRequest {
@@ -256,6 +257,7 @@ struct CreativeEditorWorldInteractionFrameRequest {
   bool captureMode = false;
   const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
   const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
+  const CreativeEditorGizmoFrame* gizmoFrame = nullptr;
 };
 
 [[nodiscard]] CreativeEditorWorldTarget resolveCreativeEditorWorldTarget(
@@ -295,7 +297,8 @@ void syncCreativeEditorHeldItem(iggy3d::creative::CreativeAppState& appState,
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor);
 [[nodiscard]] std::string creativeEditorHeldItemStatusLabel(
-    const CreativeEditorState& editor);
+    const CreativeEditorState& editor,
+    const iggy3d::creative::CreativeMeasurementState* measurement = nullptr);
 
 void processCreativeEditorWorldInteractionFrame(
     const CreativeEditorWorldInteractionFrameRequest& request);
@@ -332,7 +335,8 @@ void appendCreativeEditorInteractionOverlay(
     std::vector<iggy3d::RenderUiRect>& uiRects,
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
-    const iggy3d::creative::CreativeDocument* document = nullptr);
+    const iggy3d::creative::CreativeDocument* document = nullptr,
+    const iggy3d::creative::CreativeMeasurementState* measurement = nullptr);
 
 // The center aim reticle, split out of the interaction overlay so it can be
 // drawn even when the legacy HUD is suppressed on keyboard/mouse (plan DD-15).

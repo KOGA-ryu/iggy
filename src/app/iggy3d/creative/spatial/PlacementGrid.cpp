@@ -64,6 +64,20 @@ struct OverlayAxisRange {
   return {0.0, 0.0, std::copysign(1.0, normal.z)};
 }
 
+[[nodiscard]] CreativeVec3 normalizedNormal(CreativeVec3 normal) noexcept {
+  if (!isFiniteCreativeVec3(normal)) {
+    return {};
+  }
+  const double lengthSquared = normal.x * normal.x + normal.y * normal.y +
+                               normal.z * normal.z;
+  if (!std::isfinite(lengthSquared) || lengthSquared <= 1.0e-24) {
+    return {};
+  }
+  const double inverseLength = 1.0 / std::sqrt(lengthSquared);
+  return {normal.x * inverseLength, normal.y * inverseLength,
+          normal.z * inverseLength};
+}
+
 [[nodiscard]] CreativeVec3 dominantHorizontalNormal(
     CreativeVec3 direction) noexcept {
   if (!isFiniteCreativeVec3(direction)) {
@@ -740,8 +754,11 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
     return target;
   }
   const CreativeVec3 snappedNormal = dominantAxisNormal(faceNormal);
-  if (snappedNormal.x == 0.0 && snappedNormal.y == 0.0 &&
-      snappedNormal.z == 0.0) {
+  const CreativeVec3 exactNormal = normalizedNormal(faceNormal);
+  if ((snappedNormal.x == 0.0 && snappedNormal.y == 0.0 &&
+       snappedNormal.z == 0.0) ||
+      (exactNormal.x == 0.0 && exactNormal.y == 0.0 &&
+       exactNormal.z == 0.0)) {
     return target;
   }
   const double epsilon =
@@ -763,6 +780,7 @@ CreativeGridTarget resolveCreativeGridTargetFromHit(
   }
 
   target.hitPoint = hitPoint;
+  target.surfaceNormal = exactNormal;
   target.faceNormal = snappedNormal;
   target.placerForward = dominantHorizontalNormal(placerForward);
   target.viewDepthAxis = viewDepthAxis;
@@ -835,6 +853,15 @@ CreativeVec3 creativeGridTargetSurfaceNormal(
     }
   }
   return target.faceNormal;
+}
+
+CreativeVec3 creativeGridTargetExactSurfaceNormal(
+    const CreativeGridTarget& target) noexcept {
+  const CreativeVec3 exact = normalizedNormal(target.surfaceNormal);
+  if (exact.x != 0.0 || exact.y != 0.0 || exact.z != 0.0) {
+    return exact;
+  }
+  return normalizedNormal(creativeGridTargetSurfaceNormal(target));
 }
 
 CreativePlacementGridOverlayPlan buildCreativePlacementGridOverlayPlan(

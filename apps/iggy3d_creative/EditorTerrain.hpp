@@ -5,10 +5,9 @@
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
-#include "app/iggy3d/creative/tools/TerrainGrade.hpp"
+#include "app/iggy3d/creative/recipes/TerrainOperation.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
 #include "app/iggy3d/creative/tools/TerrainProfile.hpp"
-#include "app/iggy3d/creative/tools/TerrainRegion.hpp"
 #include "app/iggy3d/creative/tools/TerrainSculpt.hpp"
 #include "app/iggy3d/creative/tools/TerrainStamp.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
@@ -48,12 +47,35 @@ struct CreativeTerrainStrokeState {
   bool cancelOnly = false;
 };
 
+enum class CreativeTerrainGradeHandle : std::uint8_t {
+  Start,
+  End,
+  Count,
+};
+
+enum class CreativeTerrainGradeControl : std::uint8_t {
+  StartHeight,
+  EndHeight,
+  HalfWidth,
+  CrossSlope,
+  Falloff,
+  Count,
+};
+
 struct CreativeTerrainGradeState {
-  bool anchorValid = false;
-  iggy3d::creative::CreativeTerrainCoord2 anchorCoord{};
-  std::uint16_t anchorHeightCells = 4U;
-  std::uint16_t targetHeightCells = 4U;
-  std::uint16_t radiusCells = 4U;
+  bool active = false;
+  CreativeTerrainGradeHandle selectedHandle = CreativeTerrainGradeHandle::End;
+  CreativeTerrainGradeControl selectedControl =
+      CreativeTerrainGradeControl::EndHeight;
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  iggy3d::creative::CreativeTerrainGradeRecipe recipe{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
+  iggy3d::creative::CreativeDocumentId sourceDocumentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t sourceDocumentRevision = 0U;
+  std::uint64_t previewCount = 0U;
+  std::string statusMessage;
 };
 
 struct CreativeTerrainSculptStrokeState {
@@ -73,47 +95,55 @@ struct CreativeTerrainSculptPreviewCache {
       iggy3d::creative::CreativeTerrainSculptMode::Flatten;
   iggy3d::creative::CreativeTerrainSculptFalloff falloff =
       iggy3d::creative::CreativeTerrainSculptFalloff::Uniform;
+  iggy3d::creative::CreativeTerrainSculptMask mask =
+      iggy3d::creative::CreativeTerrainSculptMask::Circle;
   std::uint16_t radiusCells = 4U;
   std::uint16_t strengthCells = 1U;
   std::uint16_t targetHeightCells = 4U;
+  std::uint16_t contourIntervalCells = 2U;
+  std::uint16_t contourMajorEvery = 5U;
+  std::uint64_t sampledColumnCoordinateCount = 0U;
+  std::uint64_t candidatePatchCoordinateCount = 0U;
   iggy3d::creative::CreativeTerrainSculptPlan plan{};
+  iggy3d::creative::CreativeTerrainContourPlan contours{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
 struct CreativeTerrainSculptState {
-  std::uint16_t targetHeightCells = 4U;
   CreativeTerrainSculptStrokeState stroke{};
   CreativeTerrainSculptPreviewCache preview{};
+};
+
+enum class CreativeTerrainProfileControl : std::uint8_t {
+  BaseHeight,
+  Radius,
+  Amplitude,
+  Direction,
+  Frequency,
+  Spacing,
+  Seed,
+  Count,
 };
 
 struct CreativeTerrainProfilePreviewCache {
   bool valid = false;
   bool renderAccepted = false;
   std::uint64_t documentId = 0U;
-  std::uint64_t terrainRevision = 0U;
+  std::uint64_t documentRevision = 0U;
   std::uint64_t buildCount = 0U;
-  iggy3d::creative::CreativeTerrainCoord2 center{};
-  std::uint16_t resolvedBaseHeightCells = 4U;
-  iggy3d::creative::CreativeTerrainProfileKind profile =
-      iggy3d::creative::CreativeTerrainProfileKind::Hill;
-  iggy3d::creative::CreativeTerrainProfileBlend blend =
-      iggy3d::creative::CreativeTerrainProfileBlend::Set;
-  iggy3d::creative::CreativeTerrainProfileRodPolicy rodPolicy =
-      iggy3d::creative::CreativeTerrainProfileRodPolicy::Fill;
-  iggy3d::creative::CreativeTerrainProfileDirection direction =
-      iggy3d::creative::CreativeTerrainProfileDirection::PositiveX;
-  std::uint16_t radiusCells = 4U;
-  std::uint16_t amplitudeCells = 4U;
-  std::uint16_t spacingCells = 1U;
-  std::uint8_t frequency = 1U;
-  iggy3d::creative::CreativeTerrainProfilePlan plan{};
+  iggy3d::creative::CreativeTerrainProfileRecipe recipe{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
 struct CreativeTerrainProfileState {
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
   bool baseLocked = false;
   std::uint16_t lockedBaseHeightCells = 4U;
   std::uint16_t resolvedBaseHeightCells = 4U;
+  CreativeTerrainProfileControl selectedControl =
+      CreativeTerrainProfileControl::Amplitude;
   CreativeTerrainProfilePreviewCache preview{};
 };
 
@@ -121,44 +151,56 @@ struct CreativeTerrainPathPreviewCache {
   bool valid = false;
   bool renderAccepted = false;
   std::uint64_t documentId = 0U;
-  std::uint64_t terrainRevision = 0U;
+  std::uint64_t documentRevision = 0U;
   std::uint64_t buildCount = 0U;
-  std::array<iggy3d::creative::CreativeTerrainPathPoint,
-             iggy3d::creative::kCreativeTerrainPathPointCapacity>
-      points{};
-  std::uint8_t pointCount = 0U;
   std::uint8_t lockedPointCount = 0U;
-  iggy3d::creative::CreativeTerrainPathKind kind =
-      iggy3d::creative::CreativeTerrainPathKind::Road;
-  iggy3d::creative::CreativeTerrainPathElevation elevation =
-      iggy3d::creative::CreativeTerrainPathElevation::Follow;
-  std::uint16_t halfWidthCells = 1U;
-  std::uint16_t amplitudeCells = 1U;
-  iggy3d::creative::CreativeTerrainPathPlan plan{};
+  iggy3d::creative::CreativeTerrainPathSourceRecipe recipe{};
+  iggy3d::creative::CreativeTerrainPathSourceCache sourceCache{};
+  iggy3d::creative::CreativeTerrainPathDirtySegments dirtySegments{};
+  std::uint64_t generatedControlCount = 0U;
+  std::uint64_t rebuiltSegmentCount = 0U;
+  std::uint64_t reusedSegmentCount = 0U;
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
 struct CreativeTerrainPathState {
-  std::array<iggy3d::creative::CreativeTerrainPathPoint,
+  std::array<iggy3d::creative::CreativeTerrainPathSourcePoint,
              iggy3d::creative::kCreativeTerrainPathPointCapacity>
       points{};
   std::uint8_t pointCount = 0U;
+  iggy3d::creative::CreativeTerrainPathSourcePointId nextPointId = 1U;
+  iggy3d::creative::CreativeTerrainPathSourcePointId selectedPointId =
+      iggy3d::creative::kInvalidCreativeTerrainPathSourcePointId;
+  bool selectedPointFollowsPointer = false;
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  iggy3d::creative::CreativeTerrainPathCurvePolicy curve =
+      iggy3d::creative::CreativeTerrainPathCurvePolicy::Linear;
+  iggy3d::creative::CreativeTerrainPathCrossSection crossSection =
+      iggy3d::creative::CreativeTerrainPathCrossSection::Flat;
+  iggy3d::creative::CreativeTerrainPathEndpointJoin startJoin =
+      iggy3d::creative::CreativeTerrainPathEndpointJoin::Open;
+  iggy3d::creative::CreativeTerrainPathEndpointJoin endJoin =
+      iggy3d::creative::CreativeTerrainPathEndpointJoin::Open;
+  std::uint16_t falloffCells = 2U;
+  bool paintSurface = true;
+  iggy3d::creative::CreativeTerrainMaterial material =
+      iggy3d::creative::CreativeTerrainMaterial::Dirt;
   CreativeTerrainPathPreviewCache preview{};
 };
 
 struct CreativeTerrainRegionPreviewCache {
   bool valid = false;
   bool renderAccepted = false;
-  std::uint64_t documentId = 0U;
-  std::uint64_t terrainRevision = 0U;
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0U;
   std::uint64_t buildCount = 0U;
-  iggy3d::creative::CreativeTerrainCoord2 minimumCoord{};
-  iggy3d::creative::CreativeTerrainCoord2 maximumCoord{};
-  iggy3d::creative::CreativeTerrainRegionOperation operation =
-      iggy3d::creative::CreativeTerrainRegionOperation::Raise;
-  std::uint16_t amountCells = 1U;
-  std::uint16_t targetHeightCells = 4U;
-  iggy3d::creative::CreativeTerrainRegionPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  iggy3d::creative::CreativeTerrainRegionRecipe recipe{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
@@ -173,22 +215,14 @@ enum class CreativeTerrainStampTransformControl : std::uint8_t {
 struct CreativeTerrainStampPreviewCache {
   bool valid = false;
   bool renderAccepted = false;
-  std::uint64_t documentId = 0U;
-  std::uint64_t terrainRevision = 0U;
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0U;
   std::uint64_t stampSignature = 0U;
   std::uint64_t buildCount = 0U;
-  iggy3d::creative::CreativeTerrainCoord2 targetMinimum{};
-  std::uint8_t quarterTurns = 0U;
-  bool mirrorX = false;
-  bool mirrorZ = false;
-  iggy3d::creative::CreativeTerrainStampMode mode =
-      iggy3d::creative::CreativeTerrainStampMode::Merge;
-  iggy3d::creative::CreativeTerrainStampElevationMode elevationMode =
-      iggy3d::creative::CreativeTerrainStampElevationMode::Surface;
-  bool targetSurfacePresent = false;
-  std::uint16_t targetSurfaceHeightCells = 0U;
-  std::int16_t manualHeightOffsetCells = 0;
+  iggy3d::creative::CreativeTerrainStampRecipe recipe{};
   iggy3d::creative::CreativeTerrainStampPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
   std::vector<iggy3d::creative::CreativeTerrainSurfacePatch> patches;
 };
 
@@ -201,12 +235,13 @@ struct CreativeTerrainStampPlacementState {
   CreativeTerrainStampTransformControl selectedControl =
       CreativeTerrainStampTransformControl::Rotation;
   iggy3d::creative::CreativeTerrainStampCopyReceipt lastCopy{};
-  iggy3d::creative::CreativeTerrainMutationReceipt lastMutation{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt lastMutation{};
   CreativeTerrainStampPreviewCache preview{};
 };
 
 struct CreativeTerrainRegionState {
-  std::uint16_t targetHeightCells = 4U;
+  iggy3d::creative::CreativeTerrainOperationId editingOperationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
   CreativeTerrainRegionPreviewCache preview{};
   CreativeTerrainStampPlacementState stamp{};
 };
@@ -277,8 +312,9 @@ struct CreativeEditorTerrainGradeReceipt {
   CreativeEditorTerrainGradeAction action =
       CreativeEditorTerrainGradeAction::Anchor;
   iggy3d::creative::CreativeTerrainCoord2 targetCoord{};
-  iggy3d::creative::CreativeTerrainGradePlan plan{};
-  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode = "creative_editor_terrain_grade_not_requested";
 };
 
@@ -302,6 +338,7 @@ struct CreativeEditorTerrainSculptReceipt {
 
 enum class CreativeEditorTerrainProfileAction : std::uint8_t {
   Apply,
+  SelectOperation,
   LockBase,
   UnlockBase,
 };
@@ -313,14 +350,16 @@ struct CreativeEditorTerrainProfileReceipt {
   CreativeEditorTerrainProfileAction action =
       CreativeEditorTerrainProfileAction::Apply;
   iggy3d::creative::CreativeTerrainCoord2 targetCoord{};
-  iggy3d::creative::CreativeTerrainProfilePlan plan{};
-  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode = "creative_editor_terrain_profile_not_requested";
 };
 
 enum class CreativeEditorTerrainPathAction : std::uint8_t {
   AddPoint,
   RemovePoint,
+  ReorderPoint,
   Apply,
   Cancel,
 };
@@ -331,14 +370,16 @@ struct CreativeEditorTerrainPathReceipt {
   bool changed = false;
   CreativeEditorTerrainPathAction action =
       CreativeEditorTerrainPathAction::AddPoint;
-  iggy3d::creative::CreativeTerrainPathPoint targetPoint{};
-  iggy3d::creative::CreativeTerrainPathPlan plan{};
-  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  iggy3d::creative::CreativeTerrainPathSourcePoint targetPoint{};
+  iggy3d::creative::CreativeTerrainOperationMutationPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode = "creative_editor_terrain_path_not_requested";
 };
 
 enum class CreativeEditorTerrainRegionAction : std::uint8_t {
   Apply,
+  SelectOperation,
   SampleHeight,
   Cancel,
 };
@@ -349,8 +390,11 @@ struct CreativeEditorTerrainRegionReceipt {
   bool changed = false;
   CreativeEditorTerrainRegionAction action =
       CreativeEditorTerrainRegionAction::Apply;
-  iggy3d::creative::CreativeTerrainRegionPlan plan{};
-  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  iggy3d::creative::CreativeTerrainOperationId operationId =
+      iggy3d::creative::kInvalidCreativeTerrainOperationId;
+  iggy3d::creative::CreativeTerrainOperationMutationPlan plan{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode = "creative_editor_terrain_region_not_requested";
 };
 
@@ -369,7 +413,8 @@ struct CreativeEditorTerrainStampReceipt {
       CreativeEditorTerrainStampAction::Copy;
   iggy3d::creative::CreativeTerrainStampCopyReceipt copy{};
   iggy3d::creative::CreativeTerrainStampPlan plan{};
-  iggy3d::creative::CreativeTerrainMutationReceipt mutation{};
+  iggy3d::creative::CreativeTerrainOperationMutationReceipt operation{};
+  iggy3d::creative::CreativeHistoryRecordReceipt history{};
   std::string_view reasonCode = "creative_editor_terrain_stamp_not_requested";
 };
 
@@ -380,10 +425,6 @@ struct CreativeEditorTerrainStampReceipt {
 [[nodiscard]] bool resolveCreativeEditorTerrainGradeTarget(
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeTerrainCoord2& target) noexcept;
-[[nodiscard]] iggy3d::creative::CreativeTerrainGradePlan
-planCreativeEditorTerrainGrade(
-    const CreativeEditorState& editor,
-    iggy3d::creative::CreativeTerrainCoord2 target) noexcept;
 
 [[nodiscard]] CreativeEditorTerrainEditReceipt
 applyCreativeEditorTerrainEditWithHistory(
@@ -395,7 +436,7 @@ applyCreativeEditorTerrainEditWithHistory(
 [[nodiscard]] CreativeEditorTerrainGradeReceipt
 beginCreativeEditorTerrainGrade(
     iggy3d::creative::CreativeAppState& appState,
-    CreativeEditorState& editor) noexcept;
+    CreativeEditorState& editor);
 [[nodiscard]] CreativeEditorTerrainGradeReceipt
 applyCreativeEditorTerrainGradeWithHistory(
     iggy3d::creative::CreativeAppState& appState,
@@ -403,6 +444,12 @@ applyCreativeEditorTerrainGradeWithHistory(
     std::string_view source);
 [[nodiscard]] CreativeEditorTerrainGradeReceipt
 cancelCreativeEditorTerrainGrade(CreativeEditorState& editor) noexcept;
+[[nodiscard]] bool refreshCreativeEditorTerrainGradePreview(
+    const iggy3d::creative::CreativeDocument& document,
+    CreativeEditorState& editor);
+[[nodiscard]] bool creativeEditorTerrainGradePreviewMatches(
+    const CreativeTerrainGradeState& state,
+    const iggy3d::creative::CreativeDocument& document) noexcept;
 
 [[nodiscard]] iggy3d::creative::CreativeTerrainSculptPlan
 planCreativeEditorTerrainSculpt(
@@ -421,11 +468,16 @@ sampleCreativeEditorTerrainSculptHeight(
 [[nodiscard]] CreativeEditorTerrainSculptReceipt
 cancelCreativeEditorTerrainSculpt(CreativeEditorState& editor) noexcept;
 
-[[nodiscard]] iggy3d::creative::CreativeTerrainProfilePlan
+[[nodiscard]] iggy3d::creative::CreativeTerrainOperationMutationPlan
 planCreativeEditorTerrainProfile(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
-    iggy3d::creative::CreativeTerrainCoord2 target) noexcept;
+    iggy3d::creative::CreativeTerrainCoord2 target);
+[[nodiscard]] CreativeEditorTerrainProfileReceipt
+selectCreativeEditorTerrainProfileOperation(
+    const iggy3d::creative::CreativeDocument& document,
+    CreativeEditorState& editor,
+    iggy3d::creative::CreativeTerrainOperationId operationId) noexcept;
 [[nodiscard]] CreativeEditorTerrainProfileReceipt
 applyCreativeEditorTerrainProfileWithHistory(
     iggy3d::creative::CreativeAppState& appState,
@@ -438,16 +490,19 @@ lockCreativeEditorTerrainProfileBase(
 [[nodiscard]] CreativeEditorTerrainProfileReceipt
 unlockCreativeEditorTerrainProfileBase(CreativeEditorState& editor) noexcept;
 
-[[nodiscard]] iggy3d::creative::CreativeTerrainPathPlan
+[[nodiscard]] iggy3d::creative::CreativeTerrainOperationMutationPlan
 planCreativeEditorTerrainPath(
     const iggy3d::creative::CreativeDocument& document,
-    const CreativeEditorState& editor) noexcept;
+    const CreativeEditorState& editor);
 [[nodiscard]] CreativeEditorTerrainPathReceipt
 addCreativeEditorTerrainPathPoint(
     const iggy3d::creative::CreativeDocument& document,
     CreativeEditorState& editor) noexcept;
 [[nodiscard]] CreativeEditorTerrainPathReceipt
 removeCreativeEditorTerrainPathPoint(CreativeEditorState& editor) noexcept;
+[[nodiscard]] CreativeEditorTerrainPathReceipt
+reorderCreativeEditorTerrainPathPoint(CreativeEditorState& editor,
+                                      int direction) noexcept;
 [[nodiscard]] CreativeEditorTerrainPathReceipt
 cancelCreativeEditorTerrainPath(CreativeEditorState& editor) noexcept;
 [[nodiscard]] CreativeEditorTerrainPathReceipt
@@ -456,11 +511,19 @@ applyCreativeEditorTerrainPathWithHistory(
     CreativeEditorState& editor,
     std::string_view source);
 
-[[nodiscard]] iggy3d::creative::CreativeTerrainRegionPlan
+[[nodiscard]] iggy3d::creative::CreativeTerrainOperationMutationPlan
 planCreativeEditorTerrainRegion(
     const iggy3d::creative::CreativeDocument& document,
     const CreativeEditorState& editor,
     const iggy3d::creative::CreativeVolumeSelection& selection) noexcept;
+[[nodiscard]] bool buildCreativeEditorTerrainRegionRecipe(
+    const CreativeEditorState& editor,
+    const iggy3d::creative::CreativeVolumeSelection& selection,
+    iggy3d::creative::CreativeTerrainRegionRecipe& output) noexcept;
+[[nodiscard]] CreativeEditorTerrainRegionReceipt
+selectCreativeEditorTerrainRegionOperationAtPointer(
+    const iggy3d::creative::CreativeDocument& document,
+    CreativeEditorState& editor) noexcept;
 [[nodiscard]] CreativeEditorTerrainRegionReceipt
 applyCreativeEditorTerrainRegionWithHistory(
     iggy3d::creative::CreativeAppState& appState,
@@ -648,6 +711,12 @@ void appendCreativeEditorTerrainOverlay(
     const iggy3d::creative::CreativeTerrainSurfacePlan* surfaceOverride =
         nullptr,
     std::uint64_t sourceKey = 0U);
+
+[[nodiscard]] std::size_t appendCreativeEditorTerrainContourPlan(
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::creative::CreativeTerrainContourPlan& plan,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines);
 
 [[nodiscard]] std::size_t appendCreativeEditorTerrainContours(
     const iggy3d::creative::CreativeDocument& document,

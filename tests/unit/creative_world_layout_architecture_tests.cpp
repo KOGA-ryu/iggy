@@ -2,9 +2,14 @@
 
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingTraversal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingUsability.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
+#include "runtime/movement/MovementParams.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -26,6 +31,46 @@ bool expect(bool condition, std::string_view message) {
 
 bool near(double lhs, double rhs) noexcept {
   return std::fabs(lhs - rhs) <= kEpsilon;
+}
+
+bool sameExplicitRoomTopology(const cr::CreativeWorldLayout& lhs,
+                              const cr::CreativeWorldLayout& rhs) {
+  if (lhs.topologyVertices.size() != rhs.topologyVertices.size() ||
+      lhs.topologyEdges.size() != rhs.topologyEdges.size() ||
+      lhs.roomBoundaries.size() != rhs.roomBoundaries.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < lhs.topologyVertices.size(); ++index) {
+    const auto& left = lhs.topologyVertices[index];
+    const auto& right = rhs.topologyVertices[index];
+    if (left.levelIndex != right.levelIndex ||
+        left.stableKey != right.stableKey ||
+        left.position.x != right.position.x ||
+        left.position.z != right.position.z) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.topologyEdges.size(); ++index) {
+    const auto& left = lhs.topologyEdges[index];
+    const auto& right = rhs.topologyEdges[index];
+    if (left.levelIndex != right.levelIndex ||
+        left.stableKey != right.stableKey ||
+        left.startVertexIndex != right.startVertexIndex ||
+        left.endVertexIndex != right.endVertexIndex ||
+        !near(left.wallThicknessCells, right.wallThicknessCells)) {
+      return false;
+    }
+  }
+  for (std::size_t index = 0U; index < lhs.roomBoundaries.size(); ++index) {
+    const auto& left = lhs.roomBoundaries[index];
+    const auto& right = rhs.roomBoundaries[index];
+    if (left.roomIndex != right.roomIndex ||
+        left.topologyEdgeIndex != right.topologyEdgeIndex ||
+        left.order != right.order || left.reversed != right.reversed) {
+      return false;
+    }
+  }
+  return true;
 }
 
 struct ArchitectureFixture {
@@ -99,6 +144,10 @@ bool presetsAreExplicitAndValid() {
           cr::CreativeWorldLayoutArchitecturalProfileKind::Grand);
   cr::CreativeWorldLayoutArchitecturalProfile invalid = residential;
   invalid.floorToFloorMeters = std::numeric_limits<double>::quiet_NaN();
+  cr::CreativeGridSettings halfMeterGrid;
+  halfMeterGrid.cellSizeMeters = 0.5;
+  std::uint16_t residentialCells = 0U;
+  std::uint16_t grandCells = 0U;
 
   return expect(cr::validCreativeWorldLayoutArchitecturalProfile(residential) &&
                     residential.floorToFloorMeters == 3.0 &&
@@ -112,8 +161,64 @@ bool presetsAreExplicitAndValid() {
                     grand.ceilingThicknessLayers == 1U &&
                     grand.roofThicknessLayers == 1U,
                 "grand profile owns one complete scale contract") &&
+         expect(
+             cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+                 halfMeterGrid, residential, residentialCells) &&
+                 cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+                     halfMeterGrid, grand, grandCells) &&
+                 residentialCells == 6U && grandCells == 10U,
+             "one kernel resolves architectural profiles onto the document grid") &&
          expect(!cr::validCreativeWorldLayoutArchitecturalProfile(invalid),
                 "non-finite custom scale fails closed");
+}
+
+bool creativeValidationDefaultsMatchTheRuntimePlayer() {
+  const iggy3d::MovementParams runtime;
+  const cr::CreativeWorldLayoutOpeningClearanceRequest opening;
+  const cr::CreativeWorldLayoutBuildingUsabilityConfig usability;
+  const cr::CreativeWorldLayoutBuildingTraversalConfig traversal;
+
+  const bool creativeDefaultsMatch =
+      opening.actorRadiusMeters == iggy3d::kDefaultPlayerBodyRadiusMeters &&
+      opening.actorHeightMeters ==
+          iggy3d::kDefaultPlayerStandingHeightMeters &&
+      opening.maximumStepMeters == iggy3d::kDefaultPlayerStepHeightMeters &&
+      opening.skinMeters == iggy3d::kDefaultPlayerSkinMeters &&
+      usability.actorRadiusMeters == iggy3d::kDefaultPlayerBodyRadiusMeters &&
+      usability.actorHeightMeters ==
+          iggy3d::kDefaultPlayerStandingHeightMeters &&
+      usability.maximumStepMeters == iggy3d::kDefaultPlayerStepHeightMeters &&
+      usability.skinMeters == iggy3d::kDefaultPlayerSkinMeters &&
+      traversal.actorRadiusMeters == iggy3d::kDefaultPlayerBodyRadiusMeters &&
+      traversal.actorHeightMeters ==
+          iggy3d::kDefaultPlayerStandingHeightMeters &&
+      traversal.maximumStepMeters == iggy3d::kDefaultPlayerStepHeightMeters &&
+      traversal.groundSnapMeters == iggy3d::kDefaultPlayerGroundSnapMeters &&
+      traversal.skinMeters == iggy3d::kDefaultPlayerSkinMeters;
+  const auto runtimeNear = [](double canonical, float value) noexcept {
+    return std::fabs(canonical - static_cast<double>(value)) <= 1.0e-6;
+  };
+  const bool runtimeMatches =
+      runtimeNear(iggy3d::kDefaultPlayerBodyRadiusMeters,
+                  runtime.radiusMeters) &&
+      runtimeNear(iggy3d::kDefaultPlayerStandingHeightMeters,
+                  runtime.heightMeters) &&
+      runtimeNear(iggy3d::kDefaultPlayerStepHeightMeters,
+                  runtime.stepHeightMeters) &&
+      runtimeNear(iggy3d::kDefaultPlayerGroundSnapMeters,
+                  runtime.groundSnapMeters) &&
+      runtimeNear(iggy3d::kDefaultPlayerSkinMeters, runtime.skinMeters);
+
+  return expect(creativeDefaultsMatch && runtimeMatches,
+                "every Creative clearance proof uses the runtime player envelope") &&
+         expect(cr::kCreativeArchitecturalHumanReferenceHeightMeters ==
+                    iggy3d::kDefaultPlayerStandingHeightMeters,
+                "architectural scale marker uses the runtime player height") &&
+         expect(runtimeNear(iggy3d::kDefaultPlayerStepHeightMeters,
+                            runtime.clamberBandBottomMeters) &&
+                    runtimeNear(iggy3d::kDefaultPlayerStandingHeightMeters,
+                                runtime.clamberBandTopMeters),
+                "runtime clamber limits derive from the same player envelope");
 }
 
 bool selectedBuildingNormalizesAtomically() {
@@ -216,7 +321,7 @@ bool selectedBuildingNormalizesAtomically() {
                     near(dimensions.minimumFloorToFloorMeters, 3.0) &&
                     near(dimensions.maximumFloorToFloorMeters, 3.0) &&
                     near(dimensions.exteriorFacadeHeightMeters, 6.0) &&
-                    near(dimensions.totalHeightMeters, 7.2),
+                    near(dimensions.totalHeightMeters, 6.45),
                 "measured facade slabs and envelope use the profile") &&
          expect(expanded.accepted && facadeCount == 4U,
                 "four exterior facades remain continuous across storeys") &&
@@ -244,7 +349,10 @@ bool selectedBuildingNormalizesAtomically() {
                             Current &&
                     sync.provenance.recipe.request.wallHeightCells == 6U &&
                     sync.provenance.recipe.floorThicknessLayers == 4U &&
+                    sync.provenance.recipe.ceilingThicknessLayers == 1U &&
                     sync.provenance.recipe.roofThicknessLayers == 1U &&
+                    sync.provenance.recipe.architecturalProfileKind ==
+                        cr::CreativeWorldLayoutArchitecturalProfileKind::Residential &&
                     normalized.receipt.preservedBlockoutLink,
                 "normalization updates rather than severs blockout truth");
 }
@@ -331,6 +439,67 @@ bool customGeometryRetainsAuthoredIntent() {
                 "non-structural prop remains exactly authored");
 }
 
+bool explicitRoomTopologySurvivesArchitectureNormalization() {
+  ArchitectureFixture fixture = makeFixture();
+  const cr::CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      cr::materializeCreativeWorldLayoutRoomGraph(fixture.layout);
+  if (!expect(materialized.accepted && materialized.changed,
+              "architecture fixture materializes canonical room topology")) {
+    return false;
+  }
+  const cr::CreativeWorldLayoutRoomGraph beforeGraph =
+      cr::buildCreativeWorldLayoutRoomGraph(materialized.edited);
+  bool directOpeningHosts = !materialized.edited.openings.empty();
+  for (const cr::CreativeWorldLayoutOpening& opening :
+       materialized.edited.openings) {
+    directOpeningHosts &=
+        opening.hostKind ==
+            cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
+        opening.roomTopologyEdgeIndex <
+            materialized.edited.topologyEdges.size();
+  }
+
+  cr::CreativeWorldLayoutArchitectureRequest request;
+  request.buildingIndex = fixture.primaryBuildingIndex;
+  request.profile = cr::defaultCreativeWorldLayoutArchitecturalProfile(
+      cr::CreativeWorldLayoutArchitecturalProfileKind::Residential);
+  const cr::CreativeWorldLayoutArchitectureResult normalized =
+      cr::normalizeCreativeWorldLayoutBuildingArchitecture(
+          fixture.grid, materialized.edited, request);
+  const cr::CreativeWorldLayoutRoomGraph afterGraph =
+      normalized.receipt.accepted
+          ? cr::buildCreativeWorldLayoutRoomGraph(normalized.edited)
+          : cr::CreativeWorldLayoutRoomGraph{};
+
+  bool openingHostsUnchanged =
+      normalized.edited.openings.size() == materialized.edited.openings.size();
+  for (std::size_t index = 0U;
+       openingHostsUnchanged && index < normalized.edited.openings.size();
+       ++index) {
+    const auto& before = materialized.edited.openings[index];
+    const auto& after = normalized.edited.openings[index];
+    openingHostsUnchanged =
+        before.stableKey == after.stableKey &&
+        before.roomIndex == after.roomIndex &&
+        before.roomTopologyEdgeIndex == after.roomTopologyEdgeIndex;
+  }
+
+  return expect(beforeGraph.accepted && beforeGraph.sourceWasExplicit &&
+                    directOpeningHosts,
+                "precondition owns explicit graph and direct edge hosts") &&
+         expect(normalized.receipt.accepted && normalized.receipt.changed,
+                "shared architecture kernel accepts explicit topology") &&
+         expect(afterGraph.accepted && afterGraph.sourceWasExplicit &&
+                    sameExplicitRoomTopology(materialized.edited,
+                                             normalized.edited),
+                "vertical normalization preserves every topology identity") &&
+         expect(openingHostsUnchanged,
+                "direct opening hosts survive floor-to-floor changes") &&
+         expect(normalized.receipt.updatedLevelCount == 2U &&
+                    normalized.receipt.updatedVerticalConnectorCount == 1U,
+                "dependent levels and connector update in one result");
+}
+
 bool invalidProfilesPublishNoCandidate() {
   const ArchitectureFixture fixture = makeFixture();
   cr::CreativeWorldLayoutArchitectureRequest request;
@@ -403,8 +572,10 @@ bool invalidProfilesPublishNoCandidate() {
 
 int main() {
   const bool ok = presetsAreExplicitAndValid() &&
+                  creativeValidationDefaultsMatchTheRuntimePlayer() &&
                   selectedBuildingNormalizesAtomically() &&
                   customGeometryRetainsAuthoredIntent() &&
+                  explicitRoomTopologySurvivesArchitectureNormalization() &&
                   invalidProfilesPublishNoCandidate();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

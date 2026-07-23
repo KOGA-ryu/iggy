@@ -275,6 +275,9 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
         mutations.push_back(CreativeMutationKind::SetPatrolRoute);
         mutations.push_back(CreativeMutationKind::SetMovingPlatformSettings);
     }
+    if (objectKind == CreativeObjectKind::SpawnPoint) {
+        mutations.push_back(CreativeMutationKind::SetPlayerSpawnSettings);
+    }
     if (supportsImportedAssetReplacement(objectKind)) {
         mutations.push_back(CreativeMutationKind::SetAsset);
     }

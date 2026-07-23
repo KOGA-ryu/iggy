@@ -80,6 +80,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
   }
 
   if (dispatchCreativeDesktopDocumentCommand(command, context, result) ||
+      dispatchCreativeDesktopMeasurementCommand(command, context, result) ||
       dispatchCreativeDesktopObjectCommand(command, context, result) ||
       dispatchCreativeDesktopAssetCommand(command, context, result) ||
       dispatchCreativeDesktopTerrainCommand(command, context, result) ||

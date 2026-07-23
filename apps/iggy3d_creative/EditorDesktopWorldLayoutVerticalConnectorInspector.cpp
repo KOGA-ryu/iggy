@@ -75,8 +75,81 @@ oppositeCreativeEditorWorldLayoutVerticalConnectorDirection(
   return oppositeDirection(direction);
 }
 
+bool drawCreativeEditorWorldLayoutVerticalConnectorMaterial(
+    const char* label, cr::CreativeStructuralMaterial& material) {
+  bool changed = false;
+  if (ImGui::BeginCombo(label, cr::toString(material).data())) {
+    for (const cr::CreativeStructuralMaterial candidate :
+         {cr::CreativeStructuralMaterial::Blockout,
+          cr::CreativeStructuralMaterial::Plaster,
+          cr::CreativeStructuralMaterial::Timber,
+          cr::CreativeStructuralMaterial::Stone,
+          cr::CreativeStructuralMaterial::Brick}) {
+      const bool selected = material == candidate;
+      if (ImGui::Selectable(cr::toString(candidate).data(), selected)) {
+        material = candidate;
+        changed = true;
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  return changed;
+}
+
+cr::CreativeWorldLayoutVerticalConnectorPlan
+planCreativeEditorWorldLayoutVerticalConnectorSettings(
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document, std::size_t connectorIndex,
+    const CreativeEditorWorldLayoutVerticalConnectorSettings& settings) {
+  if (connectorIndex >= state.source.verticalConnectors.size()) {
+    return {};
+  }
+  cr::CreativeWorldLayoutVerticalConnector candidate =
+      state.source.verticalConnectors[connectorIndex];
+  candidate.footprint = settings.footprint;
+  candidate.kind = settings.kind;
+  candidate.direction = settings.direction;
+  candidate.material = settings.material;
+  return cr::planCreativeWorldLayoutVerticalConnector(
+      document.gridSettings(), state.source, connectorIndex, candidate);
+}
+
+void drawCreativeEditorWorldLayoutVerticalConnectorPlan(
+    const cr::CreativeWorldLayoutVerticalConnectorPlan& plan,
+    cr::CreativeWorldLayoutVerticalConnectorKind kind) {
+  if (kind != cr::CreativeWorldLayoutVerticalConnectorKind::Ramp) {
+    return;
+  }
+  const cr::CreativeRampRecipeResult& ramp = plan.ramp;
+  if (std::isfinite(ramp.slopeAngleDegrees) &&
+      ramp.slopeAngleDegrees > 0.0) {
+    const bool walkable = plan.accepted && ramp.walkable;
+    ImGui::TextColored(
+        walkable ? ImVec4{0.31F, 0.82F, 0.43F, 1.0F}
+                 : ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+        "Slope %.1f deg / %.1f deg max | %s", ramp.slopeAngleDegrees,
+        ramp.maximumWalkableSlopeDegrees,
+        walkable ? "Walkable" : "Blocked");
+    ImGui::TextDisabled("Width %.2f m | Rise %.2f m | Run %.2f m",
+                        ramp.widthMeters, ramp.riseMeters, ramp.runMeters);
+    ImGui::TextDisabled("Headroom %.2f m / %.2f m required",
+                        ramp.headroomMeters,
+                        cr::kCreativeRampMinimumHeadroomMeters);
+    if (walkable) {
+      ImGui::TextDisabled("2 landings | 2 side edges | 2 edge sockets");
+    }
+    return;
+  }
+  ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+                     "Ramp geometry is not currently usable");
+}
+
 void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
     CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
     CreativeDesktopCommandFrame& commands) {
   if (state.selection.kind !=
           CreativeEditorWorldLayoutSelectionKind::VerticalConnector ||
@@ -154,6 +227,11 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
     settings.direction = oppositeDirection(settings.direction);
     discreteChanged = true;
   }
+  ImGui::SetNextItemWidth(150.0F);
+  discreteChanged =
+      drawCreativeEditorWorldLayoutVerticalConnectorMaterial(
+          "Material##layout_connector", settings.material) ||
+      discreteChanged;
   observeCreativeDesktopDiscretePropertyWidget(activity, discreteChanged);
 
   int originX = settings.footprint.minimum.x;
@@ -199,7 +277,8 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
       maximumZ <= std::numeric_limits<std::int32_t>::max() && width > 0 &&
       depth > 0 &&
       settings.kind < cr::CreativeWorldLayoutVerticalConnectorKind::Count &&
-      settings.direction < cr::CreativeWorldLayoutVerticalDirection::Count;
+      settings.direction < cr::CreativeWorldLayoutVerticalDirection::Count &&
+      settings.material < cr::CreativeStructuralMaterial::Count;
   if (edited && valuesRepresentable) {
     settings.footprint.minimum = {static_cast<std::int32_t>(originX),
                                   static_cast<std::int32_t>(originZ)};
@@ -209,6 +288,12 @@ void drawCreativeEditorWorldLayoutVerticalConnectorInspector(
   if (!valuesRepresentable) {
     ImGui::TextColored(ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
                        "connector footprint must be positive and in range");
+  }
+  if (valuesRepresentable) {
+    drawCreativeEditorWorldLayoutVerticalConnectorPlan(
+        planCreativeEditorWorldLayoutVerticalConnectorSettings(
+            state, document, connectorIndex, settings),
+        settings.kind);
   }
 
   finishCreativeDesktopWorldLayoutPropertyEdit(

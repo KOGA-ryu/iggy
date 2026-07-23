@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/recipes/AuthoringContract.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -20,6 +21,10 @@ enum class CreativeRecipeKind : std::uint8_t {
   Unknown,
   Building,
   ObjectLibrary,
+  Road,
+  Watercourse,
+  Bridge,
+  RetainingEdge,
 };
 
 enum class CreativeRecipeObjectRole : std::uint8_t {
@@ -97,6 +102,8 @@ struct CreativeRecipeApplyReceipt {
 };
 
 [[nodiscard]] std::string_view toString(CreativeRecipeKind kind) noexcept;
+[[nodiscard]] CreativeAuthoringFamily creativeAuthoringFamily(
+    CreativeRecipeKind kind) noexcept;
 [[nodiscard]] std::string_view toString(CreativeRecipeObjectRole role) noexcept;
 [[nodiscard]] std::string_view toString(CreativeRecipeStatus status) noexcept;
 

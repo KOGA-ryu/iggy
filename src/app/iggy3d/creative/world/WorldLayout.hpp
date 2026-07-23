@@ -1,15 +1,21 @@
 #pragma once
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/recipes/BridgeRecipe.hpp"
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
+#include "app/iggy3d/creative/recipes/RetainingEdgeRecipe.hpp"
 #include "app/iggy3d/creative/recipes/StructuralRoofRecipe.hpp"
+#include "app/iggy3d/creative/recipes/TerrainLandform.hpp"
+#include "app/iggy3d/creative/recipes/TerrainPathSource.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
+#include "app/iggy3d/creative/recipes/WatercourseRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutReconciliation.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -17,7 +23,7 @@
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 11U;
+inline constexpr std::uint32_t kCreativeWorldLayoutSchemaVersion = 27U;
 inline constexpr std::size_t kInvalidCreativeWorldLayoutIndex =
     std::numeric_limits<std::size_t>::max();
 inline constexpr std::uint16_t kDefaultCreativeWorldLayoutWallHeightCells = 3U;
@@ -84,6 +90,22 @@ struct CreativeWorldLayoutLevel {
       CreativeStructuralRoofRidgeAxis::X;
   double roofPitchDegrees = kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+  CreativeStructuralRoofSlopeDirection roofSlopeDirection =
+      CreativeStructuralRoofSlopeDirection::PositiveZ;
+  CreativeStructuralMaterial roofMaterial =
+      CreativeStructuralMaterial::Blockout;
+};
+
+enum class CreativeWorldLayoutRoomType : std::uint8_t {
+  Generic,
+  Living,
+  Kitchen,
+  Bedroom,
+  Bathroom,
+  Corridor,
+  Storage,
+  Utility,
+  Count,
 };
 
 struct CreativeWorldLayoutRoom {
@@ -94,6 +116,56 @@ struct CreativeWorldLayoutRoom {
   CreativeWorldLayoutRect footprint;
   double wallThicknessCells =
       kDefaultCreativeWorldLayoutWallThicknessCells;
+  CreativeWorldLayoutRoomType type = CreativeWorldLayoutRoomType::Generic;
+};
+
+// Rooms with explicit topology share vertices and edges through these flat
+// tables. room.footprint remains a validated bounds cache and the compatibility
+// representation for layouts authored before schema 12.
+struct CreativeWorldLayoutTopologyVertex {
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  CreativeTerrainCoord2 position{};
+};
+
+enum class CreativeWorldLayoutWallProfile : std::uint8_t {
+  Automatic,
+  Exterior,
+  Interior,
+  Count,
+};
+
+// Straight orthogonal wall spans use a square overlap at shared vertices. The
+// enum is explicit so future join geometry can extend the contract without
+// changing the meaning of existing source records.
+enum class CreativeWorldLayoutWallJoinStyle : std::uint8_t {
+  Square,
+  Count,
+};
+
+struct CreativeWorldLayoutTopologyEdge {
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  std::string stableKey;
+  std::size_t startVertexIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t endVertexIndex = kInvalidCreativeWorldLayoutIndex;
+  double wallThicknessCells =
+      kDefaultCreativeWorldLayoutWallThicknessCells;
+  // Zero inherits the owning level height. A positive value is an intentional
+  // per-wall exception and remains attached to this stable edge identity.
+  std::uint16_t wallHeightCells = 0U;
+  CreativeWorldLayoutWallProfile profile =
+      CreativeWorldLayoutWallProfile::Automatic;
+  CreativeStructuralMaterial material =
+      CreativeStructuralMaterial::Blockout;
+  CreativeWorldLayoutWallJoinStyle joinStyle =
+      CreativeWorldLayoutWallJoinStyle::Square;
+};
+
+struct CreativeWorldLayoutRoomBoundary {
+  std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t topologyEdgeIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t order = 0U;
+  bool reversed = false;
 };
 
 enum class CreativeWorldLayoutVerticalConnectorKind : std::uint8_t {
@@ -123,6 +195,7 @@ struct CreativeWorldLayoutVerticalConnector {
   std::string stableKey;
   std::string name;
   CreativeWorldLayoutRect footprint;
+  CreativeStructuralMaterial material = CreativeStructuralMaterial::Blockout;
 };
 
 enum class CreativeWorldLayoutRoomEdge : std::uint8_t {
@@ -155,6 +228,12 @@ struct CreativeWorldLayoutWall {
   double baseLayer = 0.0;
   std::uint16_t heightCells = kDefaultCreativeWorldLayoutWallHeightCells;
   double thicknessCells = kDefaultCreativeWorldLayoutWallThicknessCells;
+  CreativeWorldLayoutWallProfile profile =
+      CreativeWorldLayoutWallProfile::Automatic;
+  CreativeStructuralMaterial material =
+      CreativeStructuralMaterial::Blockout;
+  CreativeWorldLayoutWallJoinStyle joinStyle =
+      CreativeWorldLayoutWallJoinStyle::Square;
 };
 
 struct CreativeWorldLayoutOpening {
@@ -165,7 +244,10 @@ struct CreativeWorldLayoutOpening {
   CreativeWorldLayoutRoomEdge roomEdge =
       CreativeWorldLayoutRoomEdge::North;
   CreativeBuildingOpeningKind kind = CreativeBuildingOpeningKind::Door;
-  CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
+  CreativeDoorSettings door;
+  CreativeWindowSettings window;
+  CreativeBuildingOpeningFacing facing =
+      CreativeBuildingOpeningFacing::PositiveNormal;
   std::string stableKey;
   std::string name;
   double centerOffsetCells = 0.0;
@@ -183,6 +265,24 @@ struct CreativeWorldLayoutOpening {
   std::string insertAssetId;
   CreativeBounds insertAssetSourceBoundsMeters;
   bool hasInsertAssetSourceBounds = false;
+  // Schema-12 rooms host openings directly on a shared topology edge. The
+  // legacy roomIndex/roomEdge pair remains valid when this index is absent.
+  std::size_t roomTopologyEdgeIndex = kInvalidCreativeWorldLayoutIndex;
+};
+
+// Roof apertures remain plan-space source records owned by one level. The
+// roof recipe maps these grid-cell bounds onto the exact panel plane, so style
+// or pitch changes preserve author intent without storing generated pieces.
+struct CreativeWorldLayoutRoofAperture {
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeStructuralRoofApertureKind kind =
+      CreativeStructuralRoofApertureKind::Skylight;
+  std::string stableKey;
+  std::string name;
+  double minimumXCells = 0.0;
+  double maximumXCells = 0.0;
+  double minimumZCells = 0.0;
+  double maximumZCells = 0.0;
 };
 
 // Reusable props and gameplay anchors remain semantic layout symbols instead
@@ -206,11 +306,27 @@ struct CreativeWorldLayoutObject {
   CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
   std::vector<std::string> tags;
+  // False preserves the legacy one-box ObjectLibrary bridge. True makes this
+  // row the durable source for one generated bridge attached to a stable
+  // watercourse crossing; bounds remain its 2D selection footprint.
+  bool usesBridgeRecipe = false;
+  CreativeBridgeSourceRecipe bridge;
+  CreativePlayerSpawnSettings playerSpawn{};
 };
 
 struct CreativeWorldLayoutTerrainProfile {
   std::string stableKey;
   CreativeTerrainRecipeKind kind = CreativeTerrainRecipeKind::Hill;
+  // Schema-21 and older Plateau records retain their original radial control
+  // recipe. New Plateau/Terrace/Cliff sources opt into the exact bounded
+  // landform operation explicitly, so loading an old map never changes shape.
+  bool usesLandformRecipe = false;
+  CreativeTerrainLandformRecipe landform;
+  // Optional generated structure over this profile's exact final hard seams.
+  // The landform remains the sole terrain owner; this source only decorates
+  // the composed result and retains stable member identity through recipes.
+  bool usesRetainingEdgeRecipe = false;
+  CreativeRetainingEdgeSourceRecipe retainingEdge;
   CreativeTerrainCoord2 center{};
   std::uint16_t baseHeightCells = 4U;
   std::uint16_t radiusCells = 4U;
@@ -226,15 +342,7 @@ struct CreativeWorldLayoutTerrainProfile {
 
 struct CreativeWorldLayoutTerrainPath {
   std::string stableKey;
-  CreativeTerrainRecipeKind kind = CreativeTerrainRecipeKind::Road;
-  std::size_t firstPointIndex = 0U;
-  std::size_t pointCount = 0U;
-  CreativeTerrainPathElevation elevation =
-      CreativeTerrainPathElevation::Follow;
-  std::uint16_t halfWidthCells = 1U;
-  std::uint16_t amplitudeCells = 1U;
-  bool paintSurface = true;
-  CreativeTerrainMaterial material = CreativeTerrainMaterial::Count;
+  CreativeTerrainPathSourceRecipe recipe;
 };
 
 enum class CreativeWorldLayoutTerrainOwnership : std::uint8_t {
@@ -256,10 +364,13 @@ struct CreativeWorldLayout {
   std::vector<CreativeWorldLayoutBox> boxes;
   std::vector<CreativeWorldLayoutWall> walls;
   std::vector<CreativeWorldLayoutOpening> openings;
+  std::vector<CreativeWorldLayoutRoofAperture> roofApertures;
   std::vector<CreativeWorldLayoutObject> objects;
   std::vector<CreativeWorldLayoutTerrainProfile> terrainProfiles;
   std::vector<CreativeWorldLayoutTerrainPath> terrainPaths;
-  std::vector<CreativeTerrainPathPoint> terrainPathPoints;
+  std::vector<CreativeWorldLayoutTopologyVertex> topologyVertices;
+  std::vector<CreativeWorldLayoutTopologyEdge> topologyEdges;
+  std::vector<CreativeWorldLayoutRoomBoundary> roomBoundaries;
 };
 
 enum class CreativeWorldLayoutTable : std::uint8_t {
@@ -274,7 +385,11 @@ enum class CreativeWorldLayoutTable : std::uint8_t {
   Object,
   TerrainProfile,
   TerrainPath,
+  // Retained as a serialized provenance value for pre-schema-21 layouts.
   TerrainPathPoint,
+  TopologyEdge,
+  // Appended to preserve every existing serialized provenance table value.
+  RoofAperture,
 };
 
 enum class CreativeWorldLayoutStatus : std::uint8_t {
@@ -311,6 +426,7 @@ struct CreativeWorldLayoutRecipePatch {
 struct CreativeWorldLayoutPlan {
   std::uint32_t schemaVersion = kCreativeWorldLayoutSchemaVersion;
   std::string layoutKey;
+  std::uint64_t sourceLayoutFingerprint = 0U;
   CreativeDocumentId sourceDocumentId = kInvalidDocumentId;
   std::uint64_t sourceDocumentRevision = 0U;
   std::uint64_t sourceTerrainRevision = 0U;
@@ -320,6 +436,17 @@ struct CreativeWorldLayoutPlan {
   std::vector<CreativeObjectId> objectRemoveIds;
   std::vector<CreativeWorldLayoutRecipePatch> objectRecipePatches;
   std::vector<CreativeRecipePlan> objectRecipes;
+  // Transient semantic output for crossing consumers and a future water owner.
+  // These plans never become anonymous document objects or persisted water.
+  std::vector<CreativeWatercoursePlan> watercoursePlans;
+  // Bridge plans retain the exact crossing, approach-grade, and generated
+  // structure decision used by this compile. Only their recipe objects and
+  // terrain operations are materialized.
+  std::vector<CreativeBridgeRecipeResult> bridgePlans;
+  // Exact retaining-edge decisions compiled from final staged terrain.
+  std::vector<CreativeRetainingEdgeRecipeResult> retainingEdgePlans;
+  std::vector<CreativeTerrainOperationMutationRequest>
+      terrainOperationMutations;
   std::vector<CreativeTerrainControlEdit> terrainEdits;
   std::vector<CreativeTerrainMaterialEdit> materialEdits;
 };
@@ -333,6 +460,13 @@ struct CreativeWorldLayoutReceipt {
   std::uint64_t buildingCount = 0U;
   std::uint64_t groundedBuildingCount = 0U;
   std::uint64_t foundationObjectCount = 0U;
+  std::uint64_t watercourseCount = 0U;
+  std::uint64_t watercourseCrossingCount = 0U;
+  std::uint64_t bridgeRecipeCount = 0U;
+  std::uint64_t bridgeGeneratedObjectCount = 0U;
+  std::uint64_t bridgeApproachGradeCount = 0U;
+  std::uint64_t retainingEdgeRecipeCount = 0U;
+  std::uint64_t retainingEdgeGeneratedObjectCount = 0U;
   // Recipes and objects scheduled by this compile, not total source output.
   std::uint64_t objectRecipeCount = 0U;
   std::uint64_t objectRecipeCreateCount = 0U;
@@ -351,6 +485,7 @@ struct CreativeWorldLayoutReceipt {
   std::uint64_t objectRemoveCount = 0U;
   std::uint64_t terrainControlEditCount = 0U;
   std::uint64_t terrainMaterialEditCount = 0U;
+  std::uint64_t terrainOperationMutationCount = 0U;
   std::string reasonCode = "creative_world_layout_not_requested";
   std::string kernelReasonCode = "creative_world_layout_kernel_not_requested";
 };
@@ -393,9 +528,21 @@ struct CreativeWorldLayoutApplyReceipt {
     CreativeWorldLayoutStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeWorldLayoutRoomEdge edge) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutRoomType type) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutWallProfile profile) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeWorldLayoutWallJoinStyle joinStyle) noexcept;
 [[nodiscard]] std::string_view creativeWorldLayoutRoomEdgeKey(
     CreativeWorldLayoutRoomEdge edge) noexcept;
 [[nodiscard]] std::string creativeWorldLayoutTag(std::string_view layoutKey);
+[[nodiscard]] std::string creativeWorldLayoutTerrainPathSourceKey(
+    std::string_view layoutKey,
+    std::string_view pathKey);
+[[nodiscard]] std::string creativeWorldLayoutTerrainLandformSourceKey(
+    std::string_view layoutKey,
+    std::string_view profileKey);
 [[nodiscard]] bool validCreativeWorldLayoutStableKey(
     std::string_view key) noexcept;
 [[nodiscard]] bool creativeWorldLayoutStableKeyExists(
@@ -410,6 +557,12 @@ struct CreativeWorldLayoutApplyReceipt {
     const CreativeDocument& document,
     const CreativeWorldLayout& layout,
     CreativeWorldLayoutCompileOptions options = {});
+[[nodiscard]] std::uint64_t fingerprintCreativeWorldLayoutPlanSource(
+    const CreativeWorldLayoutPlan& plan) noexcept;
+[[nodiscard]] std::uint64_t creativeWorldLayoutPlanAffectedMemberCount(
+    const CreativeWorldLayoutPlan& plan) noexcept;
+[[nodiscard]] std::optional<CreativeAuthoringOperationRecord>
+makeCreativeWorldLayoutOperationRecord(const CreativeWorldLayoutPlan& plan);
 [[nodiscard]] CreativeWorldLayoutPreviewResult previewCreativeWorldLayoutPlan(
     const CreativeDocument& document,
     const CreativeWorldLayoutPlan& plan);

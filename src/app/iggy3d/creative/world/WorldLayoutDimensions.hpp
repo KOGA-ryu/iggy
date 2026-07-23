@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "runtime/movement/MovementDefaults.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +10,7 @@
 namespace iggy3d::creative {
 
 inline constexpr double kCreativeArchitecturalHumanReferenceHeightMeters =
-    1.80;
+    iggy3d::kDefaultPlayerStandingHeightMeters;
 
 enum class CreativeWorldLayoutDimensionStatus : std::uint8_t {
   NotRequested,

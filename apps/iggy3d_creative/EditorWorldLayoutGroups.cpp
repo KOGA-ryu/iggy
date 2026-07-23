@@ -321,8 +321,16 @@ applyCreativeEditorWorldLayoutBuildingTransform(
     state.statusMessage = transformed.reasonCode;
     return {false, false, transformed.reasonCode};
   }
-  const bool samePreview = state.buildingTransform.active &&
-                           state.buildingTransform.operation == operation;
+  const bool samePreview =
+      state.buildingTransform.active &&
+      state.buildingTransform.sourceRevision == state.revision &&
+      state.buildingTransform.buildingIndex == transformed.buildingIndex &&
+      state.buildingTransform.operation == operation;
+  if (samePreview) {
+    state.statusMessage = std::string(cr::toString(operation)) + " preview";
+    return {true, false,
+            "creative_editor_world_layout_building_transform_previewed"};
+  }
   detail::clearWorldLayoutInteraction(state);
   detail::invalidateWorldLayoutPreview(state);
   state.buildingTransform.active = true;

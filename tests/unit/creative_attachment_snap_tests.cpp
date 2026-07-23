@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/recipes/StructuralRoofRecipe.hpp"
 #include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
 
 #include <cmath>
@@ -27,8 +28,9 @@ bool near(double lhs, double rhs, double epsilon = 0.000001) {
 iggy3d::StaticMeshAttachmentSocket socket(
     std::string name,
     iggy3d::StaticMeshAttachmentSocketRole role,
-    iggy3d::Vec3 position = {}) {
-  return {std::move(name), "door.frame", role, position,
+    iggy3d::Vec3 position = {},
+    std::string compatibility = "door.frame") {
+  return {std::move(name), std::move(compatibility), role, position,
           {0.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F}};
 }
 
@@ -155,6 +157,83 @@ bool reportsOutsideIncompatibleAndOccupiedWithoutInventingPlacement() {
                 "occupied receiver retains a red-preview transform");
 }
 
+bool aimedSocketSelectionIsDeliberateAndSelfOccupancyCanBeIgnored() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("aimed socket");
+  const cr::CreativeDocumentCreateReceipt target = createTarget(document);
+  iggy3d::StaticMeshAssetCatalog catalog = catalogWith({
+      socket("near_window", iggy3d::StaticMeshAttachmentSocketRole::Receiver,
+             {0.0F, 0.0F, 0.0F}, "window.frame"),
+      socket("far_door", iggy3d::StaticMeshAttachmentSocketRole::Receiver,
+             {0.5F, 0.0F, 0.0F}),
+  });
+
+  const cr::CreativeAttachmentSnapResult automatic =
+      cr::resolveCreativeAttachmentSnap(
+          snapRequest(document, catalog, target.objectId));
+  cr::CreativeAttachmentSnapRequest aimedRequest =
+      snapRequest(document, catalog, target.objectId);
+  aimedRequest.selectionMode =
+      cr::CreativeAttachmentSnapSelectionMode::AimedSocket;
+  const cr::CreativeAttachmentSnapResult incompatible =
+      cr::resolveCreativeAttachmentSnap(aimedRequest);
+  cr::CreativeAttachmentSocketMarkerRequest markerRequest;
+  markerRequest.document = &document;
+  markerRequest.assetCatalog = &catalog;
+  markerRequest.sourceAssetId = "door_leaf";
+  markerRequest.targetObjectId = target.objectId;
+  markerRequest.aimPoint = aimedRequest.aimPoint;
+  markerRequest.selectionMode =
+      cr::CreativeAttachmentSnapSelectionMode::AimedSocket;
+  const cr::CreativeAttachmentSocketMarkerFrame aimedMarkers =
+      cr::buildCreativeAttachmentSocketMarkers(markerRequest);
+  aimedRequest.aimPoint = {8.0, 1.0, -2.0};
+  const cr::CreativeAttachmentSnapResult noAimedSocket =
+      cr::resolveCreativeAttachmentSnap(aimedRequest);
+
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Door;
+  childRequest.name = "Attached Door";
+  childRequest.parentId = target.objectId;
+  childRequest.attachmentSocket = "far_door";
+  const cr::CreativeDocumentCreateReceipt child =
+      document.createObject(childRequest);
+  cr::CreativeAttachmentSnapRequest occupiedRequest =
+      snapRequest(document, catalog, target.objectId, {4.5, 1.0, -2.0});
+  occupiedRequest.selectionMode =
+      cr::CreativeAttachmentSnapSelectionMode::AimedSocket;
+  const cr::CreativeAttachmentSnapResult occupied =
+      cr::resolveCreativeAttachmentSnap(occupiedRequest);
+  occupiedRequest.ignoredOccupantObjectId = child.objectId;
+  const cr::CreativeAttachmentSnapResult ignoredSelf =
+      cr::resolveCreativeAttachmentSnap(occupiedRequest);
+
+  return expect(target.accepted && child.accepted,
+                "aimed socket objects created") &&
+         expect(automatic.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    automatic.targetSocket == "far_door",
+                "automatic mode may choose a farther compatible receiver") &&
+         expect(incompatible.status ==
+                        cr::CreativeAttachmentSnapStatus::NoCompatibleSocket &&
+                    incompatible.receiverSelected &&
+                    incompatible.targetSocket == "near_window" &&
+                    !incompatible.positioned,
+                "aim mode reports the incompatible receiver under the cursor") &&
+         expect(aimedMarkers.accepted && aimedMarkers.markerCount == 2U &&
+                    aimedMarkers.markers[0].selected &&
+                    !aimedMarkers.markers[1].selected,
+                "aimed receiver is explicit in the marker frame") &&
+         expect(noAimedSocket.status ==
+                        cr::CreativeAttachmentSnapStatus::AimedSocketUnavailable &&
+                    !noAimedSocket.receiverSelected,
+                "aim mode rejects when no receiver is inside its aperture") &&
+         expect(occupied.status == cr::CreativeAttachmentSnapStatus::Occupied &&
+                    occupied.targetSocket == "far_door",
+                "aim mode reports occupied receiver") &&
+         expect(ignoredSelf.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    ignoredSelf.targetSocket == "far_door",
+                "moving object does not occupy its own receiver");
+}
+
 bool markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() {
   cr::CreativeDocument document = cr::CreativeDocument::create("markers");
   const cr::CreativeDocumentCreateReceipt target =
@@ -232,6 +311,13 @@ bool markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() {
                     near(markers.markers[0].worldPosition.y, 1.0) &&
                     near(markers.markers[0].worldPosition.z, -4.0),
                 "marker position applies target scale rotation and translation") &&
+         expect(near(markers.markers[0].worldForward.x, 1.0) &&
+                    near(markers.markers[0].worldForward.y, 0.0) &&
+                    near(markers.markers[0].worldForward.z, 0.0) &&
+                    near(markers.markers[0].worldUp.x, 0.0) &&
+                    near(markers.markers[0].worldUp.y, 1.0) &&
+                    near(markers.markers[0].worldUp.z, 0.0),
+                "marker exposes rotated forward and up axes") &&
          expect(bounded.accepted && bounded.truncated &&
                     bounded.markerCount ==
                         iggy3d::kMaxStaticMeshAttachmentSocketCount &&
@@ -239,6 +325,220 @@ bool markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() {
                         iggy3d::kMaxStaticMeshAttachmentSocketCount + 6U &&
                     bounded.skippedCount == 6U,
                 "marker frame stays within the asset socket capacity");
+}
+
+bool generatedStairPublishesRailAndStringerReceivers() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("stair sockets");
+  cr::CreativeDocumentCreateRequest targetRequest;
+  targetRequest.kind = cr::CreativeObjectKind::Stair;
+  targetRequest.name = "Generated Stair";
+  targetRequest.transform.position = {4.0, 1.5, -2.0};
+  targetRequest.hasTransformOverride = true;
+  targetRequest.bounds = {{3.0, 0.0, -4.0}, {5.0, 3.0, 0.0}};
+  targetRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt target =
+      document.createObject(targetRequest);
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  iggy3d::StaticMeshAssetCatalogEntry rail;
+  rail.assetId = "stair_rail_asset";
+  rail.attachmentSockets.push_back(socket(
+      "stair_rail_plug", iggy3d::StaticMeshAttachmentSocketRole::Plug,
+      {}, "stair.rail"));
+  catalog.entries.push_back(std::move(rail));
+
+  cr::CreativeAttachmentSnapRequest request;
+  request.document = &document;
+  request.assetCatalog = &catalog;
+  request.sourceAssetId = "stair_rail_asset";
+  request.targetObjectId = target.objectId;
+  request.aimPoint = {3.0, 1.5, -2.0};
+  const cr::CreativeAttachmentSnapResult snapped =
+      cr::resolveCreativeAttachmentSnap(request);
+
+  cr::CreativeAttachmentSocketMarkerRequest markerRequest;
+  markerRequest.document = &document;
+  markerRequest.assetCatalog = &catalog;
+  markerRequest.sourceAssetId = "stair_rail_asset";
+  markerRequest.targetObjectId = target.objectId;
+  markerRequest.aimPoint = request.aimPoint;
+  const cr::CreativeAttachmentSocketMarkerFrame markers =
+      cr::buildCreativeAttachmentSocketMarkers(markerRequest);
+
+  return expect(target.accepted, "generated stair target created") &&
+         expect(snapped.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    snapped.targetReceiverCount == 4U &&
+                    snapped.compatiblePairCount == 2U &&
+                    snapped.targetSocket == "stair_rail_left" &&
+                    snapped.compatibility == "stair.rail",
+                "generated stair resolves canonical rail receiver") &&
+         expect(near(snapped.transform.position.x, 3.0) &&
+                    near(snapped.transform.position.y, 1.5) &&
+                    near(snapped.transform.position.z, -2.0),
+                "generated stair receiver uses authored world transform") &&
+         expect(markers.accepted && markers.receiverCount == 4U &&
+                    markers.markerCount == 4U &&
+                    markers.markers[0].targetSocket == "stair_rail_left" &&
+                    markers.markers[0].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Available &&
+                    markers.markers[2].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Incompatible,
+                "generated stair publishes bounded rail and stringer markers");
+}
+
+bool generatedRampPublishesSideEdgeReceivers() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("ramp sockets");
+  cr::CreativeDocumentCreateRequest targetRequest;
+  targetRequest.kind = cr::CreativeObjectKind::Ramp;
+  targetRequest.name = "Generated Ramp";
+  targetRequest.transform.position = {4.0, 1.5, -2.0};
+  targetRequest.hasTransformOverride = true;
+  targetRequest.bounds = {{3.0, 0.0, -4.0}, {5.0, 3.0, 0.0}};
+  targetRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt target =
+      document.createObject(targetRequest);
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  iggy3d::StaticMeshAssetCatalogEntry edge;
+  edge.assetId = "ramp_edge_asset";
+  edge.attachmentSockets.push_back(socket(
+      "ramp_edge_plug", iggy3d::StaticMeshAttachmentSocketRole::Plug,
+      {}, "ramp.edge"));
+  catalog.entries.push_back(std::move(edge));
+
+  cr::CreativeAttachmentSnapRequest request;
+  request.document = &document;
+  request.assetCatalog = &catalog;
+  request.sourceAssetId = "ramp_edge_asset";
+  request.targetObjectId = target.objectId;
+  request.aimPoint = {3.0, 1.5, -2.0};
+  const cr::CreativeAttachmentSnapResult snapped =
+      cr::resolveCreativeAttachmentSnap(request);
+
+  cr::CreativeAttachmentSocketMarkerRequest markerRequest;
+  markerRequest.document = &document;
+  markerRequest.assetCatalog = &catalog;
+  markerRequest.sourceAssetId = "ramp_edge_asset";
+  markerRequest.targetObjectId = target.objectId;
+  markerRequest.aimPoint = request.aimPoint;
+  markerRequest.maxDistanceMeters = 3.0;
+  const cr::CreativeAttachmentSocketMarkerFrame markers =
+      cr::buildCreativeAttachmentSocketMarkers(markerRequest);
+
+  return expect(target.accepted, "generated ramp target created") &&
+         expect(snapped.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    snapped.targetReceiverCount == 2U &&
+                    snapped.compatiblePairCount == 2U &&
+                    snapped.targetSocket == "ramp_edge_left" &&
+                    snapped.compatibility == "ramp.edge",
+                "generated ramp resolves canonical side-edge receiver") &&
+         expect(near(snapped.transform.position.x, 3.0) &&
+                    near(snapped.transform.position.y, 1.5) &&
+                    near(snapped.transform.position.z, -2.0),
+                "generated ramp receiver uses authored world transform") &&
+         expect(markers.accepted && markers.receiverCount == 2U &&
+                    markers.markerCount == 2U &&
+                    markers.markers[0].targetSocket == "ramp_edge_left" &&
+                    markers.markers[0].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Available &&
+                    markers.markers[1].state ==
+                        cr::CreativeAttachmentSocketMarkerState::Available,
+                "generated ramp publishes bounded side-edge markers");
+}
+
+bool generatedRoofsPublishDrainageReceivers() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("roof sockets");
+  cr::CreativeDocumentCreateRequest flatRequest;
+  flatRequest.kind = cr::CreativeObjectKind::Roof;
+  flatRequest.name = "Flat Roof";
+  flatRequest.bounds = {{-4.0, 3.0, -3.0}, {4.0, 3.25, 3.0}};
+  flatRequest.hasBoundsOverride = true;
+  flatRequest.transform.position =
+      cr::measureCreativeBounds(flatRequest.bounds).center;
+  flatRequest.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt flat =
+      document.createObject(flatRequest);
+
+  cr::CreativeStructuralRoofRecipeRequest roofRequest;
+  roofRequest.style = cr::CreativeStructuralRoofStyle::Gable;
+  roofRequest.ridgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  roofRequest.minimumX = -4.0;
+  roofRequest.maximumX = 4.0;
+  roofRequest.minimumZ = -3.0;
+  roofRequest.maximumZ = 3.0;
+  roofRequest.supportPlaneMeters = 3.0;
+  roofRequest.pitchDegrees = 45.0;
+  const cr::CreativeStructuralRoofRecipeResult roof =
+      cr::planCreativeStructuralRoof(roofRequest);
+  cr::CreativeDocumentCreateReceipt slope;
+  cr::CreativeTransform slopeTransform;
+  if (roof.accepted) {
+    const cr::CreativeStructuralRoofPart& part = roof.parts[0];
+    cr::CreativeDocumentCreateRequest slopeRequest;
+    slopeRequest.kind = part.kind;
+    slopeRequest.name = "North Roof Slope";
+    slopeRequest.bounds = part.bounds;
+    slopeRequest.hasBoundsOverride = true;
+    slopeTransform.position = cr::measureCreativeBounds(part.bounds).center;
+    slopeTransform.rotationEulerRadians = part.rotationEulerRadians;
+    slopeRequest.transform = slopeTransform;
+    slopeRequest.hasTransformOverride = true;
+    slope = document.createObject(slopeRequest);
+  }
+
+  iggy3d::StaticMeshAssetCatalog catalog;
+  iggy3d::StaticMeshAssetCatalogEntry gutter;
+  gutter.assetId = "gutter_asset";
+  gutter.attachmentSockets.push_back(socket(
+      "gutter_plug", iggy3d::StaticMeshAttachmentSocketRole::Plug, {},
+      "roof.drainage"));
+  catalog.entries.push_back(std::move(gutter));
+
+  cr::CreativeAttachmentSnapRequest flatSnapRequest;
+  flatSnapRequest.document = &document;
+  flatSnapRequest.assetCatalog = &catalog;
+  flatSnapRequest.sourceAssetId = "gutter_asset";
+  flatSnapRequest.targetObjectId = flat.objectId;
+  flatSnapRequest.aimPoint = {0.0, 3.25, -3.0};
+  const cr::CreativeAttachmentSnapResult flatSnap =
+      cr::resolveCreativeAttachmentSnap(flatSnapRequest);
+
+  cr::CreativeAttachmentSnapResult slopeSnap;
+  cr::CreativeVec3 slopeEave;
+  if (slope.accepted) {
+    const cr::CreativeStructuralRoofPartSocketResult sockets =
+        cr::planCreativeStructuralRoofPartSockets(
+            roof.parts[0].kind, roof.parts[0].bounds, slopeTransform);
+    if (sockets.accepted) {
+      const cr::CreativeVec3 rotated = cr::rotateCreativeVectorEulerXyz(
+          sockets.sockets[0].localPosition,
+          slopeTransform.rotationEulerRadians);
+      slopeEave = {slopeTransform.position.x + rotated.x,
+                   slopeTransform.position.y + rotated.y,
+                   slopeTransform.position.z + rotated.z};
+      cr::CreativeAttachmentSnapRequest slopeSnapRequest = flatSnapRequest;
+      slopeSnapRequest.targetObjectId = slope.objectId;
+      slopeSnapRequest.aimPoint = slopeEave;
+      slopeSnap = cr::resolveCreativeAttachmentSnap(slopeSnapRequest);
+    }
+  }
+
+  return expect(flat.accepted && roof.accepted && slope.accepted,
+                "generated roof targets created") &&
+         expect(flatSnap.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    flatSnap.targetReceiverCount == 4U &&
+                    flatSnap.compatiblePairCount == 4U &&
+                    flatSnap.targetSocket == "roof_drainage_north" &&
+                    flatSnap.compatibility == "roof.drainage",
+                "flat roof routes one plug across four drainage receivers") &&
+         expect(slopeSnap.status == cr::CreativeAttachmentSnapStatus::Ready &&
+                    slopeSnap.targetReceiverCount == 1U &&
+                    slopeSnap.compatiblePairCount == 1U &&
+                    slopeSnap.targetSocket == "roof_drainage_north" &&
+                    near(slopeSnap.transform.position.x, slopeEave.x) &&
+                    near(slopeSnap.transform.position.y, slopeEave.y) &&
+                    near(slopeSnap.transform.position.z, slopeEave.z),
+                "sloped roof snaps drainage to the visible low eave");
 }
 
 bool attachMutationStoresSocketAndOrdinaryReparentingClearsIt() {
@@ -314,7 +614,11 @@ bool attachMutationStoresSocketAndOrdinaryReparentingClearsIt() {
 int main() {
   const bool ok = alignsPlugToReceiverAndResolvesTiesDeterministically() &&
                   reportsOutsideIncompatibleAndOccupiedWithoutInventingPlacement() &&
+                  aimedSocketSelectionIsDeliberateAndSelfOccupancyCanBeIgnored() &&
                   markerFrameIsWorldSpaceBoundedAndUsesSnapCompatibility() &&
+                  generatedStairPublishesRailAndStringerReceivers() &&
+                  generatedRampPublishesSideEdgeReceivers() &&
+                  generatedRoofsPublishDrainageReceivers() &&
                   attachMutationStoresSocketAndOrdinaryReparentingClearsIt();
   if (!ok) {
     return 1;

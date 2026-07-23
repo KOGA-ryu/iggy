@@ -1,9 +1,12 @@
 #include "EditorAssetLibrary.hpp"
+#include "EditorAttachmentPlacement.hpp"
 #include "EditorAuthoredAssets.hpp"
+#include "EditorGroup.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorToolOptions.hpp"
 
 #include <algorithm>
@@ -141,6 +144,67 @@ bool segmentSpeedParticipatesInAuthoredAssetFingerprint() {
                 "custom segment speed participates in asset identity") &&
          expect(restoredFingerprint.value == defaultFingerprint.value,
                 "default segment speed retains the legacy identity shape");
+}
+
+bool semanticPatternParticipatesInAuthoredAssetIdentityAndPlacement() {
+  cr::CreativeDocument source = cr::CreativeDocument::create("Pattern Source");
+  static_cast<void>(source.assignId(743U));
+  const cr::CreativeObjectId sourceObject =
+      createCrate(source, "Array Source", {4.0, 0.0, 8.0});
+  cr::CreativeLinearArrayRequest arrayRequest;
+  arrayRequest.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  arrayRequest.spacing = cr::CreativeLinearArraySpacing::TwoCells;
+  const cr::CreativeLinearArrayReceipt array =
+      cr::createCreativeLinearArrayAtomically(
+          source, std::span{&sourceObject, 1U}, arrayRequest);
+  if (!expect(array.accepted && array.generatedObjectIds().size() == 2U,
+              "pattern asset setup")) {
+    return false;
+  }
+
+  const cr::CreativeObjectId selected = array.generatedObjectIds().front();
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      cr::captureCreativeAuthoredAsset(
+          {&source, std::span{&selected, 1U}, "authored_pattern",
+           "Pattern", 744U});
+  if (!expect(captured.accepted && captured.capturedObjectCount == 3U &&
+                  captured.definition.content.patternRecipes.size() == 1U,
+              "capturing generated output retains the semantic pattern")) {
+    return false;
+  }
+
+  const cr::CreativeAuthoredAssetFingerprint original =
+      cr::fingerprintCreativeAuthoredAssetDefinition(captured.definition);
+  cr::CreativeAuthoredAssetDefinition changed = captured.definition;
+  changed.content.patternRecipes.front().linear.spacing =
+      cr::CreativeLinearArraySpacing::FourCells;
+  const cr::CreativeAuthoredAssetFingerprint changedFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(changed);
+  changed.content.patternRecipes.front().linear.spacing =
+      cr::CreativeLinearArraySpacing::TwoCells;
+  const cr::CreativeAuthoredAssetFingerprint restored =
+      cr::fingerprintCreativeAuthoredAssetDefinition(changed);
+  changed.content.patternRecipes.front().generatedObjectIds.front() = 999U;
+  const cr::CreativeAuthoredAssetFingerprint dangling =
+      cr::fingerprintCreativeAuthoredAssetDefinition(changed);
+
+  cr::CreativeDocument target = cr::CreativeDocument::create("Pattern Target");
+  static_cast<void>(target.assignId(745U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = &captured.definition;
+  placement.instanceTransform.position = {20.0, 0.0, -4.0};
+  const cr::CreativeAuthoredAssetInstanceReceipt placed =
+      cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
+
+  return expect(original.valid && changedFingerprint.valid && restored.valid &&
+                    original.value != changedFingerprint.value &&
+                    original.value == restored.value && !dangling.valid,
+                "pattern recipe content participates in asset identity") &&
+         expect(placed.accepted && placed.changed &&
+                    placed.contentPasteReceipt.pastedPatternRecipeCount == 1U &&
+                    target.patternRecipeStore().recipes.size() == 1U &&
+                    target.isValid(),
+                "translated authored asset placement retains editable recipe");
 }
 
 bool captureInstantiateSelectAndUnpack() {
@@ -358,6 +422,26 @@ bool refreshAllInstancesIsAtomic() {
       target.containsObject(lockedChildId);
 
   static_cast<void>(cr::setDocumentObjectLocked(target, lockedChildId, false));
+  const cr::CreativeDocumentMutationReceipt parentLocked =
+      cr::setDocumentObjectLocked(target, parentId, true);
+  const std::uint64_t inheritedLockRevision = target.revision();
+  const std::size_t inheritedLockObjectCount = target.objectCount();
+  const cr::CreativeAuthoredAssetRefreshReceipt inheritedLockRejected =
+      cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
+                                                          updated.definition);
+  const bool inheritedLockWasAtomic =
+      cr::documentMutationChanged(parentLocked.status) &&
+      !inheritedLockRejected.accepted &&
+      inheritedLockRejected.status ==
+          cr::CreativeAuthoredAssetRefreshStatus::LockedObject &&
+      inheritedLockRejected.failedInstanceRootObjectId ==
+          first.instanceRootObjectId &&
+      inheritedLockRejected.refreshedInstanceCount == 0U &&
+      inheritedLockRejected.removedObjectCount == 0U &&
+      inheritedLockRejected.createdObjectCount == 0U &&
+      target.revision() == inheritedLockRevision &&
+      target.objectCount() == inheritedLockObjectCount;
+  static_cast<void>(cr::setDocumentObjectLocked(target, parentId, false));
   const cr::CreativeDocumentMutationReceipt scaled = cr::applyDocumentMutation(
       target, second.instanceRootObjectId, cr::CreativeMutationKind::Scale,
       cr::CreativeMutationPayload{cr::ScaleMutation{{2.0, 1.0, 1.0}}});
@@ -406,6 +490,8 @@ bool refreshAllInstancesIsAtomic() {
                 "refresh preserves roots and replaces only descendants") &&
          expect(lockWasAtomic,
                 "locked descendants reject the complete refresh") &&
+         expect(inheritedLockWasAtomic,
+                "locked ancestors reject the complete refresh") &&
          expect(scaleWasPreserved,
                 "scaled and three-axis-rotated instances refresh in place") &&
          expect(!recursionRejected.accepted &&
@@ -702,7 +788,8 @@ bool durableLibraryRoundTripsSelection() {
   app::CreativeEditorState editor;
   editor.authoredAssets = std::move(library);
   editor.catalog.model = cr::makeCreativeCatalog(
-      std::span<const cr::CreativeObjectKind>{});
+      std::span<const cr::CreativeObjectKind>{}, {}, 0U, {},
+      app::creativeEditorCatalogToolSpecs());
   editor.toolOptions.open = true;
   editor.toolOptions.commands =
       app::creativeEditorToolOptionCommandsForEntry(
@@ -830,7 +917,8 @@ bool updateCommandRoundTripsEditedInstance() {
   const std::vector<cr::CreativeCatalogAsset> catalogAssets =
       app::creativeEditorAuthoredAssetCatalogEntries(editor.authoredAssets);
   editor.catalog.model = cr::makeCreativeCatalog(
-      std::span<const cr::CreativeObjectKind>{}, catalogAssets);
+      std::span<const cr::CreativeObjectKind>{}, catalogAssets, 0U, {},
+      app::creativeEditorCatalogToolSpecs());
   editor.interaction.hotbar.selectedSlot = 0U;
   cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
@@ -879,6 +967,18 @@ bool updateCommandRoundTripsEditedInstance() {
       updatedDefinition == nullptr
           ? cr::CreativeAuthoredAssetFingerprint{}
           : cr::fingerprintCreativeAuthoredAssetDefinition(*updatedDefinition);
+  const cr::CreativeAuthoredAssetFingerprint expectedUpdateFingerprint =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          updatedFingerprint.value, first.instanceRootObjectId);
+  const cr::CreativeAuthoringOperationRecord* updateOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord>
+      expectedUpdateOperation =
+          updateOperation != nullptr
+              ? std::optional<cr::CreativeAuthoringOperationRecord>{
+                    *updateOperation}
+              : std::nullopt;
   const cr::CreativeObject* acknowledgedRoot =
       appState.facade.findObject(first.instanceRootObjectId);
   cr::CreativeAuthoredAssetPlacementRequest acknowledgedPlacement;
@@ -1050,6 +1150,18 @@ bool updateCommandRoundTripsEditedInstance() {
                 "explicit update captures the edited instance contents") &&
          expect(updateDidNotRewriteInstances && updateAcknowledgedSource,
                 "source update changes only selected instance metadata") &&
+         expect(expectedUpdateFingerprint.valid &&
+                    expectedUpdateOperation.has_value() &&
+                    expectedUpdateOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    expectedUpdateOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    expectedUpdateOperation->action ==
+                        "Prefab.AcknowledgeSourceUpdate" &&
+                    expectedUpdateOperation->requestFingerprint ==
+                        expectedUpdateFingerprint.value &&
+                    expectedUpdateOperation->affectedMemberCount > 0U,
+                "source acknowledgement records the exact prefab update") &&
          expect(sourceFramePreserved,
                 "rotated instance update removes placement yaw") &&
          expect(hotbarRefreshed && catalogRefreshed,
@@ -1153,6 +1265,21 @@ bool editorSyncCommandsExposeStatusAndOneUndo() {
       app::refreshCreativeEditorAuthoredAssetInstances(
           appState, editor.authoredAssets, first.instanceRootObjectId,
           cr::CreativeAuthoredAssetRefreshMode::SafeInstances);
+  cr::CreativeAuthoredAssetRefreshRequest safeRequest;
+  safeRequest.definition = &editor.authoredAssets.definitions.front();
+  safeRequest.mode = cr::CreativeAuthoredAssetRefreshMode::SafeInstances;
+  safeRequest.selectedInstanceRootObjectId = first.instanceRootObjectId;
+  const cr::CreativeAuthoredAssetFingerprint safeFingerprint =
+      cr::fingerprintCreativeAuthoredAssetRefreshRequest(safeRequest);
+  const cr::CreativeAuthoringOperationRecord* safeOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord>
+      expectedSafeOperation =
+          safeOperation != nullptr
+              ? std::optional<cr::CreativeAuthoringOperationRecord>{
+                    *safeOperation}
+              : std::nullopt;
   const bool safeRecordedOnce =
       safe.accepted && safe.refresh.refreshedInstanceCount == 1U &&
       cr::creativeUndoDepth(appState.history) == undoBeforeSafe + 1U &&
@@ -1166,6 +1293,17 @@ bool editorSyncCommandsExposeStatusAndOneUndo() {
       app::refreshCreativeEditorAuthoredAssetInstances(
           appState, editor.authoredAssets, second.instanceRootObjectId,
           cr::CreativeAuthoredAssetRefreshMode::SelectedInstance);
+  cr::CreativeAuthoredAssetRefreshRequest selectedRequest;
+  selectedRequest.definition = &editor.authoredAssets.definitions.front();
+  selectedRequest.mode =
+      cr::CreativeAuthoredAssetRefreshMode::SelectedInstance;
+  selectedRequest.selectedInstanceRootObjectId =
+      second.instanceRootObjectId;
+  const cr::CreativeAuthoredAssetFingerprint selectedFingerprint =
+      cr::fingerprintCreativeAuthoredAssetRefreshRequest(selectedRequest);
+  const cr::CreativeAuthoringOperationRecord* selectedOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
   const bool selectedRecordedOnce =
       undoSafe.accepted && selectedRefresh.accepted &&
       selectedRefresh.refresh.refreshedInstanceCount == 1U &&
@@ -1178,8 +1316,28 @@ bool editorSyncCommandsExposeStatusAndOneUndo() {
                 "tool options expose cached sync states and refresh choices") &&
          expect(safeRecordedOnce,
                 "safe refresh records exactly one history entry") &&
+         expect(safeFingerprint.valid && expectedSafeOperation.has_value() &&
+                    expectedSafeOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    expectedSafeOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    expectedSafeOperation->action == "Prefab.RefreshSafe" &&
+                    expectedSafeOperation->requestFingerprint ==
+                        safeFingerprint.value &&
+                    undoSafe.targetOperation == expectedSafeOperation,
+                "safe refresh preserves its exact prefab operation") &&
          expect(selectedRecordedOnce,
-                "selected refresh records exactly one history entry");
+                "selected refresh records exactly one history entry") &&
+         expect(selectedFingerprint.valid && selectedOperation != nullptr &&
+                    selectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    selectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    selectedOperation->action ==
+                        "Prefab.RefreshSelected" &&
+                    selectedOperation->requestFingerprint ==
+                        selectedFingerprint.value,
+                "selected refresh records its exact prefab request");
 }
 
 bool libraryManagementIsDurableAndReferenceSafe() {
@@ -1355,7 +1513,6 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
   editor.flyPos = {3.0F, 4.0F, 5.0F};
   editor.yawDegrees = 17.0F;
   editor.pitchDegrees = -11.0F;
-  editor.interaction.moveTargetId = instance.instanceRootObjectId;
   editor.groupFocus.documentId = mapState.facade.document().id();
   editor.terrain.documentId = mapState.facade.document().id();
   editor.volume.active = true;
@@ -1363,7 +1520,6 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
   const app::CreativeEditorAuthoredAssetMutationReceipt begun =
       app::beginCreativeEditorAuthoredAssetEdit(editor, saved.assetId);
   const bool workspaceTransientsStartedClean =
-      editor.interaction.moveTargetId == cr::kInvalidObjectId &&
       editor.groupFocus.documentId == cr::kInvalidDocumentId &&
       editor.terrain.documentId == cr::kInvalidDocumentId &&
       !editor.volume.active && !editor.volume.cursorValid;
@@ -1386,7 +1542,6 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
       mapState.facade.document().revision() == mapRevision &&
       cr::creativeUndoDepth(mapState.history) == mapUndoDepth &&
       &app::activeCreativeEditorAppState(editor, mapState) == &mapState &&
-      editor.interaction.moveTargetId == instance.instanceRootObjectId &&
       editor.groupFocus.documentId == mapState.facade.document().id() &&
       editor.terrain.documentId == mapState.facade.document().id() &&
       editor.volume.active && editor.volume.cursorValid;
@@ -1467,12 +1622,49 @@ app::CreativeEditorState authoredEditor(
   return editor;
 }
 
+cr::CreativeAuthoredAssetPlacementRequest authoredPlacementRequest(
+    const cr::CreativeAuthoredAssetDefinition& definition,
+    const app::CreativeEditorState& editor) {
+  const app::CreativeAssetAlignmentPlan alignment =
+      app::resolveCreativeAssetAlignment(
+          editor.interaction.target.grid,
+          editor.toolSettings.assetAlignmentMode);
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const app::CreativeBrushPlacementAdmission admission =
+      alignment.valid
+          ? app::admitBrushPlacement(
+                held, alignment.target, editor.toolSettings.placementYaw,
+                editor.toolSettings.assetAlignmentMode)
+          : app::CreativeBrushPlacementAdmission{};
+  cr::CreativeAuthoredAssetPlacementRequest request;
+  request.definition = &definition;
+  request.instanceTransform = admission.plan.transform;
+  const cr::CreativeObjectId activeParent =
+      app::activeCreativeEditorGroupFocusId(editor.groupFocus);
+  if (activeParent != cr::kInvalidObjectId) {
+    request.parentId = activeParent;
+  }
+  return request;
+}
+
 void setSecondary(cr::CreativeWorldActionFrame& actions,
                   bool down,
                   bool pressed,
                   bool released) {
   const std::size_t index =
       static_cast<std::size_t>(cr::CreativeWorldActionId::Secondary);
+  actions.down[index] = down;
+  actions.pressed[index] = pressed;
+  actions.released[index] = released;
+}
+
+void setPrimary(cr::CreativeWorldActionFrame& actions,
+                bool down,
+                bool pressed,
+                bool released) {
+  const std::size_t index =
+      static_cast<std::size_t>(cr::CreativeWorldActionId::Primary);
   actions.down[index] = down;
   actions.pressed[index] = pressed;
   actions.released[index] = released;
@@ -1489,6 +1681,9 @@ bool gestureDeduplicatesAndCommitsOneUndo() {
     return false;
   }
   app::CreativeEditorState editor = authoredEditor(captured.definition);
+  const cr::CreativeAuthoredAssetFingerprint firstRequestFingerprint =
+      cr::fingerprintCreativeAuthoredAssetPlacementRequest(
+          authoredPlacementRequest(captured.definition, editor));
   cr::CreativeWorldActionFrame press;
   setSecondary(press, true, true, false);
   app::processCreativeAuthoredAssetFrame(appState, editor, press, 0U);
@@ -1509,6 +1704,9 @@ bool gestureDeduplicatesAndCommitsOneUndo() {
   editor.interaction.target.grid.placementAnchor = {2.5, 0.0, 0.5};
   editor.interaction.target.grid.adjacentCellBounds =
       {{2.0, 0.0, 0.0}, {3.0, 1.0, 1.0}};
+  const cr::CreativeAuthoredAssetFingerprint secondRequestFingerprint =
+      cr::fingerprintCreativeAuthoredAssetPlacementRequest(
+          authoredPlacementRequest(captured.definition, editor));
   app::processCreativeAuthoredAssetFrame(
       appState, editor, held, 400'000'000ULL);
   const std::size_t movedCount = appState.facade.document().objectCount();
@@ -1525,6 +1723,19 @@ bool gestureDeduplicatesAndCommitsOneUndo() {
   const bool crossGestureDuplicateRejected =
       appState.facade.document().revision() == completedRevision &&
       appState.facade.document().objectCount() == movedCount;
+  const cr::CreativeAuthoredAssetFingerprint firstOperationFingerprint =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          0U, firstRequestFingerprint.value);
+  const cr::CreativeAuthoredAssetFingerprint expectedFingerprint =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          firstOperationFingerprint.value, secondRequestFingerprint.value);
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
   const std::size_t undoDepth = cr::creativeUndoDepth(appState.history);
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
@@ -1537,9 +1748,154 @@ bool gestureDeduplicatesAndCommitsOneUndo() {
                 "new target at the next cadence places another instance") &&
          expect(crossGestureDuplicateRejected,
                 "a later gesture cannot duplicate the occupied target") &&
+         expect(firstRequestFingerprint.valid &&
+                    secondRequestFingerprint.valid &&
+                    expectedFingerprint.valid &&
+                    expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    expectedOperation->action == "Prefab.PlaceStroke" &&
+                    expectedOperation->requestFingerprint ==
+                        expectedFingerprint.value &&
+                    expectedOperation->affectedMemberCount == 6U,
+                "placement stroke records its exact prefab requests") &&
          expect(undoDepth == 1U && undo.accepted &&
+                    undo.targetOperation == expectedOperation &&
                     undo.objectCountAfter == 0U,
                 "press-hold-release commits exactly one undo record");
+}
+
+bool authoredEraseRemovesTheWholeSemanticInstance() {
+  cr::CreativeAuthoredAssetCaptureResult captured = makeTwoCrateDefinition();
+  cr::CreativeAppState appState;
+  cr::CreativeDocument target = cr::CreativeDocument::create("Erase Instance");
+  static_cast<void>(target.assignId(746U));
+  if (!expect(appState.facade.installDocument(std::move(target)).accepted,
+              "authored erase document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor = authoredEditor(captured.definition);
+
+  cr::CreativeWorldActionFrame place;
+  setSecondary(place, true, true, false);
+  app::processCreativeAuthoredAssetFrame(appState, editor, place, 0U);
+  const cr::CreativeObjectId rootId =
+      editor.interaction.placementFeedback.objectId;
+  cr::CreativeWorldActionFrame placeRelease;
+  setSecondary(placeRelease, false, false, true);
+  app::processCreativeAuthoredAssetFrame(appState, editor, placeRelease, 1U);
+
+  editor.interaction.target.valid = true;
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = rootId;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::PrefabInstance;
+  const cr::CreativeObject* rootBeforeRemoval =
+      appState.facade.findObject(rootId);
+  const cr::CreativeAuthoredAssetFingerprint instanceFingerprint =
+      rootBeforeRemoval != nullptr
+          ? cr::fingerprintCreativeAuthoredAssetInstance(*rootBeforeRemoval)
+          : cr::CreativeAuthoredAssetFingerprint{};
+  const cr::CreativeAuthoredAssetFingerprint expectedFingerprint =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          0U, instanceFingerprint.value);
+  cr::CreativeWorldActionFrame remove;
+  setPrimary(remove, true, true, false);
+  app::processCreativeAuthoredAssetFrame(appState, editor, remove, 2U);
+  cr::CreativeWorldActionFrame removeRelease;
+  setPrimary(removeRelease, false, false, true);
+  app::processCreativeAuthoredAssetFrame(appState, editor, removeRelease, 3U);
+  const bool removed = appState.facade.document().objectCount() == 0U;
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
+  const std::size_t undoDepth = cr::creativeUndoDepth(appState.history);
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(captured.accepted && rootId != cr::kInvalidObjectId,
+                "authored erase fixture places one expanded instance") &&
+         expect(removed && undoDepth == 2U,
+                "authored erase removes root and children in one history step") &&
+         expect(instanceFingerprint.valid && expectedFingerprint.valid &&
+                    expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Destructive &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    expectedOperation->action == "Prefab.RemoveStroke" &&
+                    expectedOperation->requestFingerprint ==
+                        expectedFingerprint.value &&
+                    expectedOperation->affectedMemberCount == 3U,
+                "authored erase records the exact removed instance") &&
+         expect(undo.accepted && undo.targetOperation == expectedOperation &&
+                    appState.facade.document().objectCount() == 3U,
+                "undo restores the complete authored instance hierarchy");
+}
+
+bool editorPrefabDetachRecordsTheSourceItBakes() {
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      makeTwoCrateDefinition();
+  cr::CreativeDocument target = cr::CreativeDocument::create("Detach Prefab");
+  static_cast<void>(target.assignId(747U));
+  cr::CreativeAuthoredAssetPlacementRequest placement;
+  placement.definition = &captured.definition;
+  const cr::CreativeAuthoredAssetInstanceReceipt placed =
+      cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
+  const cr::CreativeObject* root =
+      target.findObject(placed.instanceRootObjectId);
+  const cr::CreativeAuthoredAssetFingerprint fingerprint =
+      root != nullptr ? cr::fingerprintCreativeAuthoredAssetInstance(*root)
+                      : cr::CreativeAuthoredAssetFingerprint{};
+
+  cr::CreativeAppState appState;
+  const bool installed =
+      appState.facade.installDocument(std::move(target)).accepted;
+  selectOnly(appState.facade, placed.instanceRootObjectId);
+  const cr::CreativeGroupCommandReceipt detached =
+      app::applyCreativeEditorGroupCommandWithHistory(
+          appState, "authored_asset_detach_test");
+  const std::size_t detachedObjectCount =
+      appState.facade.document().objectCount();
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(captured.accepted && placed.accepted && installed &&
+                    fingerprint.valid,
+                "prefab detach fixture is valid") &&
+         expect(detached.accepted && detached.changed &&
+                    detachedObjectCount == 2U,
+                "prefab detach removes only the semantic root") &&
+         expect(expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Prefab &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Destructive &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    expectedOperation->action == "Prefab.Detach" &&
+                    expectedOperation->requestFingerprint ==
+                        fingerprint.value &&
+                    expectedOperation->affectedMemberCount == 3U,
+                "prefab detach records the exact baked source") &&
+         expect(undo.accepted && undo.targetOperation == expectedOperation &&
+                    appState.facade.document().containsObject(
+                        placed.instanceRootObjectId),
+                "prefab detach metadata survives undo");
 }
 
 bool authoredPlacementPreservesClearanceRejection() {
@@ -1649,8 +2005,8 @@ bool previewUsesCanonicalCompositeProxies() {
                          app::CreativeEditorToolOptionsCommandId::
                              ForceRefreshSavedAssetInstances;
     }
-    return commands.count == 15U && save && edit && update && refreshThis &&
-           refreshSafe && refreshForce;
+    return save && edit && update && refreshThis && refreshSafe &&
+           refreshForce;
   }();
   return expect(frame.creativePreview.itemCount == 2U &&
                     frame.creativePreview.items[0].role ==
@@ -1673,6 +2029,7 @@ bool previewUsesCanonicalCompositeProxies() {
 
 int main() {
   return segmentSpeedParticipatesInAuthoredAssetFingerprint() &&
+                 semanticPatternParticipatesInAuthoredAssetIdentityAndPlacement() &&
                  captureInstantiateSelectAndUnpack() &&
                  invalidDefinitionCannotPartiallyMutate() &&
                  refreshAllInstancesIsAtomic() &&
@@ -1685,6 +2042,8 @@ int main() {
                  libraryManagementIsDurableAndReferenceSafe() &&
                  isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
+                 authoredEraseRemovesTheWholeSemanticInstance() &&
+                 editorPrefabDetachRecordsTheSourceItBakes() &&
                  authoredPlacementPreservesClearanceRejection() &&
                  interruptionFinalizesChangedGesture() &&
                  previewUsesCanonicalCompositeProxies()

@@ -6,7 +6,7 @@
 
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
-#include "EditorToolCapabilities.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
 namespace iggy3d_creative_app {
@@ -126,7 +126,7 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                        : "Remove / add point");
     return;
   }
-  switch (describeCreativeEditorToolCapability(held).quickEditProfile) {
+  switch (describeCreativeEditorHeldItemTool(held).quickEditProfile) {
     case CreativeEditorQuickEditProfile::LogicLink:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                      cr::CreativeInputActionId::QuickEditNext, "Link action");
@@ -139,9 +139,9 @@ void appendQuickEdit(HintSpecBuffer& buffer,
       return;
     case CreativeEditorQuickEditProfile::TerrainGrade:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
-                     cr::CreativeInputActionId::QuickEditNext, "End height");
+                     cr::CreativeInputActionId::QuickEditNext, "Grade control");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
-                     cr::CreativeInputActionId::QuickEditIncrease, "Width");
+                     cr::CreativeInputActionId::QuickEditIncrease, "Adjust");
       return;
     case CreativeEditorQuickEditProfile::TerrainSculpt:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
@@ -151,9 +151,10 @@ void appendQuickEdit(HintSpecBuffer& buffer,
       return;
     case CreativeEditorQuickEditProfile::TerrainProfile:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
-                     cr::CreativeInputActionId::QuickEditNext, "Amplitude");
+                     cr::CreativeInputActionId::QuickEditNext,
+                     "Profile control");
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditDecrease,
-                     cr::CreativeInputActionId::QuickEditIncrease, "Radius");
+                     cr::CreativeInputActionId::QuickEditIncrease, "Adjust");
       return;
     case CreativeEditorQuickEditProfile::TerrainPath:
       appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
@@ -188,12 +189,12 @@ void appendQuickEdit(HintSpecBuffer& buffer,
                        adjustment);
         return;
       }
-      if (cr::creativeTerrainRegionUsesTargetHeight(
-              editor.toolSettings.terrainRegionOperation)) {
+      if (cr::creativeTerrainRegionModeUsesTargetHeight(
+              editor.toolSettings.terrainRegionRecipe.mode)) {
         appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                        cr::CreativeInputActionId::QuickEditNext, "Target");
-      } else if (cr::creativeTerrainRegionUsesAmount(
-                     editor.toolSettings.terrainRegionOperation)) {
+      } else if (cr::creativeTerrainRegionModeUsesAmount(
+                     editor.toolSettings.terrainRegionRecipe.mode)) {
         appendHintPair(buffer, cr::CreativeInputActionId::QuickEditPrevious,
                        cr::CreativeInputActionId::QuickEditNext, "Amount");
       }
@@ -227,8 +228,8 @@ void appendViewportHints(HintSpecBuffer& buffer,
   const cr::CreativeInputActionId negativeAction =
       gamepad ? cr::CreativeInputActionId::RejectAction
               : cr::CreativeInputActionId::PrimaryAction;
-  const CreativeEditorToolCapability& capability =
-      describeCreativeEditorToolCapability(held.kind);
+  const CreativeEditorToolDescriptor& capability =
+      describeCreativeEditorHeldItemTool(held.kind);
   const bool keyboardQuickEdit = capability.keyboardQuickEditHints;
   const bool structuralSpan = creativeEditorUsesStructuralSpan(held);
   switch (capability.actionHintProfile) {
@@ -301,7 +302,7 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, positiveAction, "Apply grade");
       appendHint(buffer, negativeAction, "Cancel grade");
       appendHint(buffer, cr::CreativeInputActionId::PickAction,
-                 "Set start rod");
+                 "Select grade handle");
       break;
     case CreativeEditorActionHintProfile::TerrainSculpt:
       appendHint(buffer, positiveAction, "Sculpt");
@@ -317,7 +318,8 @@ void appendViewportHints(HintSpecBuffer& buffer,
       if (editor.terrain.profile.baseLocked) {
         appendHint(buffer, negativeAction, "Auto base");
       }
-      appendHint(buffer, cr::CreativeInputActionId::PickAction, "Lock base");
+      appendHint(buffer, cr::CreativeInputActionId::PickAction,
+                 "Select / lock base");
       break;
     case CreativeEditorActionHintProfile::TerrainPath:
       appendHint(buffer, positiveAction, "Commit path");
@@ -340,11 +342,12 @@ void appendViewportHints(HintSpecBuffer& buffer,
       }
       appendHint(buffer, positiveAction, positiveLabel);
       appendHint(buffer, negativeAction, "Cancel");
-      if (cr::creativeTerrainRegionUsesTargetHeight(
-              editor.toolSettings.terrainRegionOperation)) {
-        appendHint(buffer, cr::CreativeInputActionId::PickAction,
-                   "Sample height");
-      }
+      appendHint(
+          buffer, cr::CreativeInputActionId::PickAction,
+          cr::creativeTerrainRegionModeUsesTargetHeight(
+              editor.toolSettings.terrainRegionRecipe.mode)
+              ? "Edit / sample"
+              : "Edit region");
       break;
     }
     case CreativeEditorActionHintProfile::ObjectSelect:
@@ -393,6 +396,10 @@ void appendViewportHints(HintSpecBuffer& buffer,
       if (editor.interaction.roomPlacement.active) {
         appendHint(buffer, negativeAction, "Cancel room");
       }
+      break;
+    case CreativeEditorActionHintProfile::Measurement:
+      appendHint(buffer, positiveAction, "Add / finish point");
+      appendHint(buffer, negativeAction, "Cancel measure");
       break;
     case CreativeEditorActionHintProfile::VolumeSelect:
       appendHint(buffer, gamepad ? positiveAction : negativeAction,
@@ -453,9 +460,27 @@ void appendContextHints(HintSpecBuffer& buffer,
     case cr::CreativeInputContext::Catalog:
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPrevious,
                      cr::CreativeInputActionId::CatalogNext, "Browse");
-      appendHintPair(buffer,
-                     cr::CreativeInputActionId::CatalogPreviousVariant,
-                     cr::CreativeInputActionId::CatalogNextVariant, "Variant");
+      if (const cr::CreativeCatalogEntry* selected =
+              cr::selectedCreativeCatalogEntry(editor.catalog.model);
+          selected != nullptr &&
+          selected->category == cr::CreativeCatalogEntryCategory::Asset) {
+        appendHintPair(buffer,
+                       cr::CreativeInputActionId::CatalogPreviousVariant,
+                       cr::CreativeInputActionId::CatalogNextVariant,
+                       "Material");
+        appendHint(buffer, cr::CreativeInputActionId::CatalogContextAction,
+                   "Action");
+      } else {
+        appendHintPair(buffer,
+                       cr::CreativeInputActionId::CatalogPreviousVariant,
+                       cr::CreativeInputActionId::CatalogNextVariant,
+                       "Variant");
+        if (selected != nullptr &&
+            selected->category == cr::CreativeCatalogEntryCategory::Tool) {
+          appendHint(buffer, cr::CreativeInputActionId::CatalogContextAction,
+                     "Assign wheel");
+        }
+      }
       appendHintPair(buffer, cr::CreativeInputActionId::CatalogPreviousPage,
                      cr::CreativeInputActionId::CatalogNextPage, "Category");
       appendHint(
@@ -467,8 +492,6 @@ void appendContextHints(HintSpecBuffer& buffer,
                         CreativeEditorCatalogAssetAction::ManageAsset
                     ? "Manage"
                     : "Equip");
-      appendHint(buffer, cr::CreativeInputActionId::CatalogAssignToolWheel,
-                 "Assign wheel");
       appendHint(buffer, cr::CreativeInputActionId::CatalogClose, "Close");
       return;
     case cr::CreativeInputContext::ToolWheel:

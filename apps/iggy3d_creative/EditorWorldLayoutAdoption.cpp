@@ -3,13 +3,16 @@
 #include "EditorWorldLayoutHistory.hpp"
 
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutAdoption.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace iggy3d_creative_app {
 
@@ -29,6 +32,9 @@ namespace {
     case cr::CreativeWorldLayoutTable::Room:
       kind = CreativeEditorWorldLayoutSelectionKind::Room;
       break;
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      kind = CreativeEditorWorldLayoutSelectionKind::TopologyEdge;
+      break;
     case cr::CreativeWorldLayoutTable::VerticalConnector:
       kind = CreativeEditorWorldLayoutSelectionKind::VerticalConnector;
       break;
@@ -40,6 +46,9 @@ namespace {
       break;
     case cr::CreativeWorldLayoutTable::Opening:
       kind = CreativeEditorWorldLayoutSelectionKind::Opening;
+      break;
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      kind = CreativeEditorWorldLayoutSelectionKind::RoofAperture;
       break;
     case cr::CreativeWorldLayoutTable::Object:
       kind = CreativeEditorWorldLayoutSelectionKind::Object;
@@ -59,6 +68,10 @@ namespace {
       provenance.index < state.source.rooms.size()) {
     state.activeLevelIndex =
         state.source.rooms[provenance.index].levelIndex;
+  } else if (kind == CreativeEditorWorldLayoutSelectionKind::TopologyEdge &&
+             provenance.index < state.source.topologyEdges.size()) {
+    state.activeLevelIndex =
+        state.source.topologyEdges[provenance.index].levelIndex;
   } else if (kind == CreativeEditorWorldLayoutSelectionKind::Building) {
     repairCreativeEditorWorldLayoutActiveLevel(state, provenance.index);
   } else if (kind ==
@@ -80,6 +93,11 @@ namespace {
       state.activeLevelIndex =
           state.source.rooms[opening.roomIndex].levelIndex;
     }
+  } else if (kind ==
+                 CreativeEditorWorldLayoutSelectionKind::RoofAperture &&
+             provenance.index < state.source.roofApertures.size()) {
+    state.activeLevelIndex =
+        state.source.roofApertures[provenance.index].levelIndex;
   }
   state.statusMessage = provenance.contributorCount > 1U
                             ? "condensed generated wall selected"
@@ -98,6 +116,83 @@ bool selectCreativeEditorWorldLayoutObjectSource(
   const cr::CreativeWorldLayoutObjectProvenance provenance =
       cr::resolveCreativeWorldLayoutObjectProvenance(state.source, object);
   return applyWorldLayoutSourceSelection(state, provenance);
+}
+
+CreativeEditorSelectionSynchronizationReceipt
+synchronizeCreativeEditorWorldLayoutSelection(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& selection,
+    cr::CreativeWorldLayoutSourceRef preferredSource) {
+  CreativeEditorSelectionSynchronizationReceipt receipt;
+  receipt.selectedObjectCount =
+      static_cast<std::size_t>(cr::selectedTargetCount(selection));
+
+  std::vector<cr::CreativeObjectId> objectIds;
+  objectIds.reserve(receipt.selectedObjectCount);
+  for (cr::TargetRef target : cr::selectedTargetList(selection)) {
+    if (target.value != cr::kInvalidId) {
+      objectIds.push_back(static_cast<cr::CreativeObjectId>(target.value));
+    }
+  }
+  if (objectIds.empty() && selection.selectedTarget.value != cr::kInvalidId) {
+    objectIds.push_back(static_cast<cr::CreativeObjectId>(
+        selection.selectedTarget.value));
+  }
+
+  cr::CreativeObjectId primaryObjectId = cr::kInvalidObjectId;
+  if (selection.selectedTarget.value != cr::kInvalidId) {
+    primaryObjectId = static_cast<cr::CreativeObjectId>(
+        selection.selectedTarget.value);
+  }
+  const cr::CreativeSemanticSelectionSetResolution resolved =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, objectIds, primaryObjectId, &state.source);
+  if (!resolved.accepted || state.generatedRevision != state.revision) {
+    const CreativeEditorWorldLayoutEditReceipt cleared =
+        clearCreativeEditorWorldLayoutSelection(state);
+    receipt.accepted = resolved.accepted;
+    receipt.changed = cleared.changed;
+    receipt.reasonCode = resolved.accepted
+                             ? "creative_editor_selection_sync_source_stale"
+                             : resolved.reasonCode;
+    return receipt;
+  }
+
+  const bool preferredValid =
+      preferredSource.table != cr::CreativeWorldLayoutTable::None &&
+      preferredSource.index != cr::kInvalidCreativeWorldLayoutIndex &&
+      !objectIds.empty() &&
+      std::all_of(
+          objectIds.begin(), objectIds.end(),
+          [&](cr::CreativeObjectId objectId) {
+            const cr::CreativeObject* object = document.findObject(objectId);
+            return object != nullptr &&
+                   cr::creativeWorldLayoutObjectBelongsToSource(
+                       state.source, *object, preferredSource.table,
+                       preferredSource.index);
+          });
+  const cr::CreativeWorldLayoutSourceRef source =
+      preferredValid ? preferredSource : resolved.commonWorldLayoutSource;
+  if (source.table == cr::CreativeWorldLayoutTable::None || objectIds.empty()) {
+    const CreativeEditorWorldLayoutEditReceipt cleared =
+        clearCreativeEditorWorldLayoutSelection(state);
+    receipt.accepted = true;
+    receipt.changed = cleared.changed;
+    receipt.reasonCode = "creative_editor_selection_sync_no_common_source";
+    return receipt;
+  }
+
+  const CreativeEditorWorldLayoutEditReceipt selected =
+      selectCreativeEditorWorldLayoutSource(state, source.table, source.index);
+  receipt.accepted = selected.accepted;
+  receipt.changed = selected.changed;
+  receipt.sourceSelected = selected.accepted;
+  receipt.source = source;
+  receipt.reasonCode = selected.accepted
+                           ? "creative_editor_selection_sync_source_selected"
+                           : "creative_editor_selection_sync_source_rejected";
+  return receipt;
 }
 
 CreativeEditorWorldLayoutEditReceipt

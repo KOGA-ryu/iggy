@@ -3,14 +3,22 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <string>
 
 #include "imgui.h"
+#include "EditorDraftingStyle.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
 
 ImU32 color(ImVec4 value) { return ImGui::ColorConvertFloat4ToU32(value); }
+
+ImU32 draftingColor(CreativeEditorDraftingColor value) {
+  return IM_COL32(value.r, value.g, value.b, value.a);
+}
 
 bool selected(const CreativeEditorWorldLayoutState& state,
               CreativeEditorWorldLayoutSelectionKind kind,
@@ -38,20 +46,71 @@ CreativeEditorWorldLayoutElevationPoint toElevationWorld(
           (transform.origin.y - screen.y) / transform.pixelsPerCell};
 }
 
+CreativeEditorWorldLayoutElevationPoint measurementElevationPoint(
+    CreativeEditorWorldLayoutElevationAxis axis,
+    cr::CreativeMeasurementPoint point) noexcept {
+  return {axis == CreativeEditorWorldLayoutElevationAxis::X ? point.x : point.z,
+          point.y};
+}
+
+void drawMeasurementGeometry(
+    ImDrawList& drawList, const ElevationCanvasTransform& transform,
+    CreativeEditorWorldLayoutElevationAxis axis,
+    const cr::CreativeMeasurementGeometry& geometry,
+    std::string_view label, bool transient) {
+  if (!geometry.visible) {
+    return;
+  }
+  const CreativeEditorDraftingStyle& style = creativeEditorDraftingStyle(
+      CreativeEditorDraftingRole::MeasurementOverlay);
+  CreativeEditorDraftingColor tintValue = style.tint;
+  if (!transient) {
+    tintValue.a = static_cast<std::uint8_t>(
+        static_cast<float>(tintValue.a) * 0.72F);
+  }
+  const ImU32 tint = draftingColor(tintValue);
+  const float thickness = creativeEditorDraftingStrokeThicknessPixels(
+      style, transform.pixelsPerCell);
+  for (std::size_t index = 0U; index < geometry.segmentCount; ++index) {
+    const cr::CreativeMeasurementSegment& segment = geometry.segments[index];
+    drawList.AddLine(
+        toElevationScreen(transform,
+                          measurementElevationPoint(axis, segment.start)),
+        toElevationScreen(transform,
+                          measurementElevationPoint(axis, segment.end)),
+        tint, thickness);
+  }
+  for (std::size_t index = 0U; index < geometry.pointCount; ++index) {
+    drawList.AddCircleFilled(
+        toElevationScreen(
+            transform, measurementElevationPoint(axis, geometry.points[index])),
+        index + 1U == geometry.pointCount ? 4.5F : 3.5F, tint);
+  }
+  if (!label.empty() && geometry.pointCount > 0U) {
+    const ImVec2 anchor = toElevationScreen(
+        transform,
+        measurementElevationPoint(axis,
+                                  geometry.points[geometry.pointCount - 1U]));
+    drawList.AddText({anchor.x + 8.0F, anchor.y + 8.0F}, tint, label.data(),
+                     label.data() + label.size());
+  }
+}
+
 std::size_t elevationBuildingIndex(
-    const CreativeEditorWorldLayoutState& state) noexcept {
+    const CreativeEditorWorldLayoutState& state,
+    const cr::CreativeWorldLayout& source) noexcept {
   std::size_t buildingIndex = creativeEditorWorldLayoutSelectedBuilding(state);
-  if (buildingIndex < state.source.buildings.size()) {
+  if (buildingIndex < source.buildings.size()) {
     return buildingIndex;
   }
-  if (state.activeLevelIndex < state.source.levels.size()) {
-    buildingIndex = state.source.levels[state.activeLevelIndex].buildingIndex;
-    if (buildingIndex < state.source.buildings.size()) {
+  if (state.activeLevelIndex < source.levels.size()) {
+    buildingIndex = source.levels[state.activeLevelIndex].buildingIndex;
+    if (buildingIndex < source.buildings.size()) {
       return buildingIndex;
     }
   }
-  for (const cr::CreativeWorldLayoutRoom& room : state.source.rooms) {
-    if (room.buildingIndex < state.source.buildings.size()) {
+  for (const cr::CreativeWorldLayoutRoom& room : source.rooms) {
+    if (room.buildingIndex < source.buildings.size()) {
       return room.buildingIndex;
     }
   }
@@ -68,20 +127,30 @@ bool elevationGridMatches(const CreativeEditorWorldLayoutElevationCache& cache,
 
 const CreativeEditorWorldLayoutElevationProjection& elevationProjection(
     CreativeEditorWorldLayoutState& state,
-    const cr::CreativeGridSettings& grid, std::size_t buildingIndex) {
-  if (!state.elevationCache.valid ||
+    const cr::CreativeGridSettings& grid, std::size_t buildingIndex,
+    const CreativeEditorWorldLayoutInspection& inspection) {
+  const bool previewSource =
+      inspection.sourceKind ==
+      CreativeEditorWorldLayoutInspectionSourceKind::Preview;
+  if (!state.elevationCache.valid || inspection.volatileSource ||
       state.elevationCache.sourceRevision != state.revision ||
+      state.elevationCache.inspectionContentRevision !=
+          inspection.contentRevision ||
+      state.elevationCache.inspectionPreviewSource != previewSource ||
       state.elevationCache.buildingIndex != buildingIndex ||
       state.elevationCache.axis != state.elevationAxis ||
       !elevationGridMatches(state.elevationCache, grid)) {
     state.elevationCache.valid = true;
     state.elevationCache.sourceRevision = state.revision;
+    state.elevationCache.inspectionContentRevision =
+        inspection.contentRevision;
+    state.elevationCache.inspectionPreviewSource = previewSource;
     state.elevationCache.buildingIndex = buildingIndex;
     state.elevationCache.axis = state.elevationAxis;
     state.elevationCache.gridOrigin = grid.origin;
     state.elevationCache.gridCellSizeMeters = grid.cellSizeMeters;
     state.elevationCache.projection = planCreativeEditorWorldLayoutElevation(
-        {&state.source, grid, buildingIndex, state.elevationAxis});
+        {inspection.source, grid, buildingIndex, state.elevationAxis});
   }
   return state.elevationCache.projection;
 }
@@ -138,6 +207,10 @@ ImU32 elevationItemColor(
       return color({0.53F, 0.58F, 0.63F, 0.88F});
     case CreativeEditorWorldLayoutElevationItemKind::RoofBase:
       return color({0.44F, 0.28F, 0.22F, 0.92F});
+    case CreativeEditorWorldLayoutElevationItemKind::RoofSkylight:
+      return color({0.20F, 0.65F, 0.82F, 0.92F});
+    case CreativeEditorWorldLayoutElevationItemKind::RoofClearance:
+      return color({0.78F, 0.54F, 0.22F, 0.82F});
     case CreativeEditorWorldLayoutElevationItemKind::Door:
       return color({0.72F, 0.45F, 0.20F, 0.96F});
     case CreativeEditorWorldLayoutElevationItemKind::Window:
@@ -170,6 +243,10 @@ bool elevationItemSelected(
     case CreativeEditorWorldLayoutElevationSourceKind::Opening:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Opening,
                       item.sourceIndex);
+    case CreativeEditorWorldLayoutElevationSourceKind::RoofAperture:
+      return selected(
+          state, CreativeEditorWorldLayoutSelectionKind::RoofAperture,
+          item.sourceIndex);
     case CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector:
       return selected(
           state, CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
@@ -179,6 +256,33 @@ bool elevationItemSelected(
       break;
   }
   return false;
+}
+
+CreativeEditorWorldLayoutElevationSourceKind elevationSelectionSourceKind(
+    CreativeEditorWorldLayoutSelectionKind kind) noexcept {
+  switch (kind) {
+    case CreativeEditorWorldLayoutSelectionKind::Room:
+      return CreativeEditorWorldLayoutElevationSourceKind::Room;
+    case CreativeEditorWorldLayoutSelectionKind::Box:
+      return CreativeEditorWorldLayoutElevationSourceKind::Box;
+    case CreativeEditorWorldLayoutSelectionKind::Wall:
+      return CreativeEditorWorldLayoutElevationSourceKind::Wall;
+    case CreativeEditorWorldLayoutSelectionKind::Opening:
+      return CreativeEditorWorldLayoutElevationSourceKind::Opening;
+    case CreativeEditorWorldLayoutSelectionKind::RoofAperture:
+      return CreativeEditorWorldLayoutElevationSourceKind::RoofAperture;
+    case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
+      return CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector;
+    case CreativeEditorWorldLayoutSelectionKind::None:
+    case CreativeEditorWorldLayoutSelectionKind::Building:
+    case CreativeEditorWorldLayoutSelectionKind::Level:
+    case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
+    case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
+    case CreativeEditorWorldLayoutSelectionKind::Object:
+    case CreativeEditorWorldLayoutSelectionKind::TopologyEdge:
+      break;
+  }
+  return CreativeEditorWorldLayoutElevationSourceKind::None;
 }
 
 bool elevationHandleVisible(
@@ -212,6 +316,8 @@ bool elevationHandleVisible(
     case CreativeEditorWorldLayoutElevationSourceKind::Opening:
       return selected(state, CreativeEditorWorldLayoutSelectionKind::Opening,
                       handle.sourceIndex);
+    case CreativeEditorWorldLayoutElevationSourceKind::RoofAperture:
+      return false;
     case CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector:
     case CreativeEditorWorldLayoutElevationSourceKind::None:
     case CreativeEditorWorldLayoutElevationSourceKind::Count:
@@ -278,6 +384,16 @@ void selectElevationItem(
         }
       }
       break;
+    case CreativeEditorWorldLayoutElevationSourceKind::RoofAperture:
+      if (item.sourceIndex < state.source.roofApertures.size()) {
+        state.selection = {
+            CreativeEditorWorldLayoutSelectionKind::RoofAperture,
+            item.sourceIndex};
+        if (item.levelIndex < state.source.levels.size()) {
+          state.activeLevelIndex = item.levelIndex;
+        }
+      }
+      break;
     case CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector:
       if (item.sourceIndex < state.source.verticalConnectors.size()) {
         state.selection = {
@@ -297,7 +413,12 @@ void selectElevationItem(
 void selectElevationHandle(
     CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutElevationHandle& handle) {
-  if (handle.sourceKind ==
+  if (handle.kind == CreativeEditorWorldLayoutElevationHandleKind::RoofRidge &&
+      handle.levelIndex < state.source.levels.size()) {
+    state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
+                       handle.levelIndex};
+    state.activeLevelIndex = handle.levelIndex;
+  } else if (handle.sourceKind ==
           CreativeEditorWorldLayoutElevationSourceKind::Room &&
       handle.sourceIndex < state.source.rooms.size()) {
     state.selection = {CreativeEditorWorldLayoutSelectionKind::Room,
@@ -324,6 +445,77 @@ void selectElevationHandle(
   }
 }
 
+[[nodiscard]] cr::CreativeWorldLayoutTable elevationSourceTable(
+    CreativeEditorWorldLayoutElevationSourceKind kind) noexcept {
+  switch (kind) {
+    case CreativeEditorWorldLayoutElevationSourceKind::Room:
+      return cr::CreativeWorldLayoutTable::Room;
+    case CreativeEditorWorldLayoutElevationSourceKind::Box:
+      return cr::CreativeWorldLayoutTable::Box;
+    case CreativeEditorWorldLayoutElevationSourceKind::Wall:
+      return cr::CreativeWorldLayoutTable::Wall;
+    case CreativeEditorWorldLayoutElevationSourceKind::Opening:
+      return cr::CreativeWorldLayoutTable::Opening;
+    case CreativeEditorWorldLayoutElevationSourceKind::RoofAperture:
+      return cr::CreativeWorldLayoutTable::RoofAperture;
+    case CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector:
+      return cr::CreativeWorldLayoutTable::VerticalConnector;
+    case CreativeEditorWorldLayoutElevationSourceKind::None:
+    case CreativeEditorWorldLayoutElevationSourceKind::Count:
+      return cr::CreativeWorldLayoutTable::None;
+  }
+  return cr::CreativeWorldLayoutTable::None;
+}
+
+void queueElevationSourceSelection(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutElevationSourceKind sourceKind,
+    std::size_t sourceIndex,
+    std::size_t levelIndex,
+    CreativeDesktopCommandFrame& commands) {
+  const cr::CreativeWorldLayoutTable table = elevationSourceTable(sourceKind);
+  if (table == cr::CreativeWorldLayoutTable::None) {
+    return;
+  }
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+      CreativeDesktopWorldLayoutSourcePayload{
+          table, sourceIndex,
+          std::string(creativeEditorWorldLayoutSourceStableKey(
+              state, table, sourceIndex)),
+          levelIndex});
+}
+
+void queueElevationRoofSelection(
+    const CreativeEditorWorldLayoutState& state,
+    std::size_t levelIndex,
+    CreativeDesktopCommandFrame& commands) {
+  if (levelIndex >= state.source.levels.size()) {
+    return;
+  }
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
+      CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Level, levelIndex,
+          std::string(creativeEditorWorldLayoutSourceStableKey(
+              state, cr::CreativeWorldLayoutTable::Level, levelIndex)),
+          levelIndex});
+}
+
+void queueElevationRoofManipulation(
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutRoofManipulationPhase phase,
+    std::size_t levelIndex,
+    double verticalCells) {
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateRoof,
+      CreativeDesktopWorldLayoutRoofManipulationPayload{
+          phase,
+          {levelIndex,
+           CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight},
+          verticalCells});
+}
+
 bool queueElevationEdit(
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutElevationEditResult& edit,
@@ -346,8 +538,7 @@ bool queueElevationEdit(
         settings.wallHeightCells = edit.wallHeightCells;
         break;
       case CreativeEditorWorldLayoutElevationHandleKind::RoofRidge:
-        settings.roofPitchDegrees = edit.roofPitchDegrees;
-        break;
+        return false;
       case CreativeEditorWorldLayoutElevationHandleKind::None:
       case CreativeEditorWorldLayoutElevationHandleKind::OpeningBottom:
       case CreativeEditorWorldLayoutElevationHandleKind::OpeningTop:
@@ -481,12 +672,18 @@ CreativeEditorWorldLayoutElevationPoint previewElevationHandlePosition(
 
 void drawElevationCanvas(CreativeEditorState& editor,
                          const cr::CreativeGridSettings& grid,
+                         const cr::CreativeMeasurementAnnotationStore&
+                             measurementAnnotations,
+                         const cr::CreativeMeasurementState& measurement,
                          CreativeDesktopCommandFrame& commands,
                          bool interactionEnabled) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
-  const std::size_t buildingIndex = elevationBuildingIndex(state);
+  const CreativeEditorWorldLayoutInspection inspection =
+      inspectCreativeEditorWorldLayout(state);
+  const std::size_t buildingIndex =
+      elevationBuildingIndex(state, *inspection.source);
   const CreativeEditorWorldLayoutElevationProjection& projection =
-      elevationProjection(state, grid, buildingIndex);
+      elevationProjection(state, grid, buildingIndex, inspection);
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const ImVec2 canvasSize{std::max(available.x, 160.0F),
                           std::max(available.y, 160.0F)};
@@ -589,12 +786,20 @@ void drawElevationCanvas(CreativeEditorState& editor,
       }
       const CreativeEditorWorldLayoutElevationPoint position =
           previewElevationHandlePosition(state, projection, handle);
-      const bool active =
+      const bool roofActive =
+          handle.kind ==
+              CreativeEditorWorldLayoutElevationHandleKind::RoofRidge &&
+          state.roofManipulation.active &&
+          state.roofManipulation.target.levelIndex == handle.levelIndex;
+      const bool elevationActive =
           state.elevationManipulation.active &&
           state.elevationManipulation.handle.kind == handle.kind &&
           state.elevationManipulation.handle.sourceKind == handle.sourceKind &&
           state.elevationManipulation.handle.sourceIndex == handle.sourceIndex;
-      const bool valid = !active || state.elevationManipulation.preview.accepted;
+      const bool active = roofActive || elevationActive;
+      const bool valid =
+          !active || (roofActive ? state.roofManipulation.previewValid
+                                 : state.elevationManipulation.preview.accepted);
       drawList->AddCircleFilled(
           toElevationScreen(transform, position), active ? 6.0F : 4.0F,
           valid ? color({0.30F, 0.95F, 0.42F, 1.0F})
@@ -604,9 +809,31 @@ void drawElevationCanvas(CreativeEditorState& editor,
                           color({0.06F, 0.07F, 0.08F, 1.0F}), 0, 1.2F);
     }
   }
+  for (const cr::CreativeMeasurementAnnotation& annotation :
+       measurementAnnotations.annotations) {
+    drawMeasurementGeometry(
+        *drawList, transform, state.elevationAxis,
+        projectCreativeEditorMeasurementGeometryToGrid(
+            cr::buildCreativeMeasurementGeometry(annotation), grid),
+        annotation.name, false);
+  }
+  const cr::CreativeMeasurementGeometry transientMeasurement =
+      projectCreativeEditorMeasurementGeometryToGrid(
+          cr::buildCreativeMeasurementGeometry(measurement), grid);
+  drawMeasurementGeometry(
+      *drawList, transform, state.elevationAxis, transientMeasurement,
+      transientMeasurement.visible
+          ? formatCreativeEditorMeasurementReadout(measurement)
+          : std::string{},
+      true);
   drawList->PopClipRect();
 
   if (!interactionEnabled || !projection.accepted) {
+    if (state.roofManipulation.active) {
+      queueElevationRoofManipulation(
+          commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+          state.roofManipulation.target.levelIndex, 0.0);
+    }
     state.elevationManipulation = {};
     return;
   }
@@ -619,6 +846,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
                                             handleTolerance)
               : CreativeEditorWorldLayoutElevationHandle{};
   if (state.elevationManipulation.active ||
+      state.roofManipulation.active ||
       hoveredHandle.kind !=
           CreativeEditorWorldLayoutElevationHandleKind::None) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
@@ -628,18 +856,58 @@ void drawElevationCanvas(CreativeEditorState& editor,
     if (hoveredHandle.kind !=
         CreativeEditorWorldLayoutElevationHandleKind::None) {
       selectElevationHandle(state, hoveredHandle);
-      state.elevationManipulation = {
-          true,
-          state.revision,
-          hoveredHandle,
-          planCreativeEditorWorldLayoutElevationEdit(
-              state.source, projection, hoveredHandle, pointer.vertical)};
+      if (hoveredHandle.kind ==
+          CreativeEditorWorldLayoutElevationHandleKind::RoofRidge) {
+        queueElevationRoofSelection(state, hoveredHandle.levelIndex, commands);
+        queueElevationRoofManipulation(
+            commands, CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+            hoveredHandle.levelIndex, pointer.vertical);
+      } else {
+        state.elevationManipulation = {
+            true,
+            state.revision,
+            hoveredHandle,
+            planCreativeEditorWorldLayoutElevationEdit(
+                state.source, projection, hoveredHandle, pointer.vertical)};
+        queueElevationSourceSelection(
+            state, hoveredHandle.sourceKind, hoveredHandle.sourceIndex,
+            hoveredHandle.levelIndex, commands);
+      }
     } else if (const CreativeEditorWorldLayoutElevationItem* item =
-                   findCreativeEditorWorldLayoutElevationItem(
-                       projection, pointer, handleTolerance);
+                   cycleCreativeEditorWorldLayoutElevationItem(
+                       findCreativeEditorWorldLayoutElevationItemStack(
+                           projection, pointer, handleTolerance),
+                       elevationSelectionSourceKind(state.selection.kind),
+                       state.selection.index);
                item != nullptr) {
       selectElevationItem(state, *item);
+      queueElevationSourceSelection(state, item->sourceKind, item->sourceIndex,
+                                    item->levelIndex, commands);
+    } else {
+      commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
     }
+  }
+
+  if (state.roofManipulation.active) {
+    const bool cancelRoof =
+        io.AppFocusLost ||
+        state.roofManipulation.sourceRevision != state.revision ||
+        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+        ImGui::IsKeyPressed(ImGuiKey_Escape);
+    if (cancelRoof) {
+      queueElevationRoofManipulation(
+          commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+          state.roofManipulation.target.levelIndex, pointer.vertical);
+    } else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      queueElevationRoofManipulation(
+          commands, CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
+          state.roofManipulation.target.levelIndex, pointer.vertical);
+    } else if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+      queueElevationRoofManipulation(
+          commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+          state.roofManipulation.target.levelIndex, pointer.vertical);
+    }
+    return;
   }
 
   if (!state.elevationManipulation.active) {
@@ -671,8 +939,11 @@ void drawElevationCanvas(CreativeEditorState& editor,
 
 void drawCreativeEditorWorldLayoutElevationCanvas(
     CreativeEditorState& editor, const cr::CreativeGridSettings& grid,
+    const cr::CreativeMeasurementAnnotationStore& measurementAnnotations,
+    const cr::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands, bool interactionEnabled) {
-  drawElevationCanvas(editor, grid, commands, interactionEnabled);
+  drawElevationCanvas(editor, grid, measurementAnnotations, measurement,
+                      commands, interactionEnabled);
 }
 
 }  // namespace iggy3d_creative_app

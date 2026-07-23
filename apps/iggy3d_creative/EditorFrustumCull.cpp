@@ -1,6 +1,7 @@
 #include "EditorFrustumCull.hpp"
 
 #include <algorithm>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,11 @@ bool surfacePatchAabb(const iggy3d::SceneRoomSurfacePatchItem& patch,
   return iggy3d::isValid(bounds);
 }
 
+bool isOpeningSemanticRole(std::string_view role) {
+  return role == "Door" || role == "Window" || role == "Arch" ||
+         role == "CaveOpening";
+}
+
 void refreshRoomRoleVisibility(iggy3d::SceneRoomProjection& room) {
   room.floorVisible = false;
   room.wallVisible = false;
@@ -54,7 +60,9 @@ void refreshRoomRoleVisibility(iggy3d::SceneRoomProjection& room) {
     room.floorVisible = room.floorVisible || mesh.role == "floor" ||
                         mesh.role == "terrain";
     room.wallVisible = room.wallVisible || mesh.role == "wall";
-    room.openingVisible = room.openingVisible || mesh.role == "opening";
+    room.openingVisible =
+        room.openingVisible || mesh.role == "opening" ||
+        isOpeningSemanticRole(mesh.semanticRole);
     room.propVisible = room.propVisible || mesh.role == "prop";
   }
   room.floorVisible = room.floorVisible || !room.surfacePatches.empty();

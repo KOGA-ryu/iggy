@@ -25,6 +25,8 @@ std::string_view toString(CreativeWorldLayoutTable table) noexcept {
     case CreativeWorldLayoutTable::TerrainProfile: return "TerrainProfile";
     case CreativeWorldLayoutTable::TerrainPath: return "TerrainPath";
     case CreativeWorldLayoutTable::TerrainPathPoint: return "TerrainPathPoint";
+    case CreativeWorldLayoutTable::TopologyEdge: return "TopologyEdge";
+    case CreativeWorldLayoutTable::RoofAperture: return "RoofAperture";
   }
   return "Unknown";
 }
@@ -65,6 +67,40 @@ std::string_view toString(CreativeWorldLayoutRoomEdge edge) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeWorldLayoutWallProfile profile) noexcept {
+  switch (profile) {
+    case CreativeWorldLayoutWallProfile::Automatic: return "Automatic";
+    case CreativeWorldLayoutWallProfile::Exterior: return "Exterior";
+    case CreativeWorldLayoutWallProfile::Interior: return "Interior";
+    case CreativeWorldLayoutWallProfile::Count: break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeWorldLayoutWallJoinStyle joinStyle) noexcept {
+  switch (joinStyle) {
+    case CreativeWorldLayoutWallJoinStyle::Square: return "Square";
+    case CreativeWorldLayoutWallJoinStyle::Count: break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeWorldLayoutRoomType type) noexcept {
+  switch (type) {
+    case CreativeWorldLayoutRoomType::Generic: return "Generic";
+    case CreativeWorldLayoutRoomType::Living: return "Living";
+    case CreativeWorldLayoutRoomType::Kitchen: return "Kitchen";
+    case CreativeWorldLayoutRoomType::Bedroom: return "Bedroom";
+    case CreativeWorldLayoutRoomType::Bathroom: return "Bathroom";
+    case CreativeWorldLayoutRoomType::Corridor: return "Corridor";
+    case CreativeWorldLayoutRoomType::Storage: return "Storage";
+    case CreativeWorldLayoutRoomType::Utility: return "Utility";
+    case CreativeWorldLayoutRoomType::Count: break;
+  }
+  return "Unknown";
+}
+
 std::string_view creativeWorldLayoutRoomEdgeKey(
     CreativeWorldLayoutRoomEdge edge) noexcept {
   switch (edge) {
@@ -79,6 +115,19 @@ std::string_view creativeWorldLayoutRoomEdgeKey(
 
 std::string creativeWorldLayoutTag(std::string_view layoutKey) {
   return "creative_world_layout:" + std::string(layoutKey);
+}
+
+std::string creativeWorldLayoutTerrainPathSourceKey(
+    std::string_view layoutKey,
+    std::string_view pathKey) {
+  return std::string(layoutKey) + "/terrain_path/" + std::string(pathKey);
+}
+
+std::string creativeWorldLayoutTerrainLandformSourceKey(
+    std::string_view layoutKey,
+    std::string_view profileKey) {
+  return std::string(layoutKey) + "/terrain_landform/" +
+         std::string(profileKey);
 }
 
 bool validCreativeWorldLayoutStableKey(std::string_view key) noexcept {
@@ -99,11 +148,17 @@ bool creativeWorldLayoutStableKeyExists(const CreativeWorldLayout& layout,
          std::any_of(layout.boxes.begin(), layout.boxes.end(), matches) ||
          std::any_of(layout.walls.begin(), layout.walls.end(), matches) ||
          std::any_of(layout.openings.begin(), layout.openings.end(), matches) ||
+         std::any_of(layout.roofApertures.begin(),
+                     layout.roofApertures.end(), matches) ||
          std::any_of(layout.objects.begin(), layout.objects.end(), matches) ||
          std::any_of(layout.terrainProfiles.begin(),
                      layout.terrainProfiles.end(), matches) ||
          std::any_of(layout.terrainPaths.begin(), layout.terrainPaths.end(),
-                     matches);
+                     matches) ||
+         std::any_of(layout.topologyVertices.begin(),
+                     layout.topologyVertices.end(), matches) ||
+         std::any_of(layout.topologyEdges.begin(),
+                     layout.topologyEdges.end(), matches);
 }
 
 std::string mintCreativeWorldLayoutStableKey(

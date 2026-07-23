@@ -21,6 +21,7 @@ struct GreedyFloorGroup {
   float maxY = 0.0F;
   std::string meshId;
   std::string materialId;
+  std::string semanticRole;
   std::string role;
   std::vector<GreedyFloorCandidate> candidates;
 };
@@ -48,6 +49,7 @@ struct GreedyFloorGroup {
   mesh.id = input.singleMeshId;
   mesh.meshId = policy.meshId;
   mesh.materialId = policy.materialId;
+  mesh.semanticRole = policy.semanticRole;
   mesh.role = policy.role;
   mesh.positionMeters = input.center;
   mesh.sizeMeters = input.size;
@@ -63,6 +65,7 @@ struct GreedyFloorGroup {
   mesh.id = std::move(id);
   mesh.meshId = policy.meshId;
   mesh.materialId = policy.materialId;
+  mesh.semanticRole = policy.semanticRole;
   mesh.role = policy.role;
   mesh.positionMeters = center;
   mesh.sizeMeters = size;
@@ -259,7 +262,7 @@ void appendFloorGroup(std::vector<GreedyFloorGroup>& groups,
   for (GreedyFloorGroup& group : groups) {
     if (group.minY == input.min.y && group.maxY == input.max.y &&
         group.meshId == policy.meshId && group.materialId == policy.materialId &&
-        group.role == policy.role) {
+        group.semanticRole == policy.semanticRole && group.role == policy.role) {
       group.candidates.push_back({&input, footprint});
       return;
     }
@@ -270,6 +273,7 @@ void appendFloorGroup(std::vector<GreedyFloorGroup>& groups,
   group.maxY = input.max.y;
   group.meshId = policy.meshId;
   group.materialId = policy.materialId;
+  group.semanticRole = policy.semanticRole;
   group.role = policy.role;
   group.candidates.push_back({&input, footprint});
   groups.push_back(std::move(group));

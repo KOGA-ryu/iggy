@@ -14,7 +14,8 @@ struct CreativeAppState;
 
 namespace iggy3d_creative_app {
 
-inline constexpr std::size_t kCreativeEditorGroupFocusDepth = 8U;
+inline constexpr std::size_t kCreativeEditorGroupFocusDepth =
+    iggy3d::creative::kCreativeHierarchyDepthCapacity;
 
 enum class CreativeEditorGroupFocusStatus : std::uint8_t {
   NotRequested,
@@ -85,6 +86,13 @@ resolveCreativeEditorGroupSelectionTarget(
 [[nodiscard]] iggy3d::creative::CreativeGroupCommandReceipt
 applyCreativeEditorGroupCommandWithHistory(
     iggy3d::creative::CreativeAppState& appState,
+    std::string_view source);
+
+[[nodiscard]] iggy3d::creative::CreativeGroupPivotReceipt
+setCreativeEditorGroupPivotWithHistory(
+    iggy3d::creative::CreativeAppState& appState,
+    iggy3d::creative::CreativeObjectId groupObjectId,
+    iggy3d::creative::CreativeVec3 pivot,
     std::string_view source);
 
 }  // namespace iggy3d_creative_app

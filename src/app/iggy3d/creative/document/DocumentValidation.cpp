@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/document/DocumentInternal.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <cmath>
 
@@ -161,6 +163,28 @@ bool parentGraphContainsCycle(
   return false;
 }
 
+bool parentGraphExceedsDepthCapacity(
+    std::span<const CreativeObject> objects,
+    const std::unordered_map<CreativeObjectId, std::size_t>& objectIndex)
+    noexcept {
+  for (const CreativeObject& object : objects) {
+    std::optional<CreativeObjectId> parentId = object.parentId;
+    std::size_t depth = 0U;
+    while (parentId.has_value()) {
+      ++depth;
+      if (depth > kCreativeHierarchyDepthCapacity) {
+        return true;
+      }
+      const auto parentIt = objectIndex.find(*parentId);
+      if (parentIt == objectIndex.end()) {
+        break;
+      }
+      parentId = objects[parentIt->second].parentId;
+    }
+  }
+  return false;
+}
+
 bool isValidUnits(CreativeUnits units) noexcept {
   return units == CreativeUnits::Meters;
 }
@@ -187,8 +211,22 @@ bool isValidRestoreObject(const CreativeObject& object) noexcept {
          isFiniteCreativeVec3(object.transform.rotationEulerRadians) &&
          isFiniteCreativeVec3(object.transform.scale) &&
          isValidWorldBounds(object.bounds) &&
+         (object.assetId.empty()
+              ? object.assetContentHash == 0U &&
+                    object.assetMaterialVariant.empty()
+              : validStaticMeshAssetId(object.assetId) &&
+                    validCreativeAssetMaterialVariantName(
+                        object.assetMaterialVariant)) &&
          (object.kind != CreativeObjectKind::MovingPlatform ||
-          isValidCreativeMovingPlatformSettings(object.movingPlatform));
+          isValidCreativeMovingPlatformSettings(object.movingPlatform)) &&
+         (object.kind != CreativeObjectKind::Door ||
+          isValidCreativeDoorSettings(object.door)) &&
+         (object.kind != CreativeObjectKind::Window ||
+          isValidCreativeWindowSettings(object.window)) &&
+         (object.kind != CreativeObjectKind::SpawnPoint ||
+          isValidCreativePlayerSpawnSettings(object.playerSpawn)) &&
+         (object.kind == CreativeObjectKind::SpawnPoint ||
+          object.playerSpawn == CreativePlayerSpawnSettings{});
 }
 
 }  // namespace iggy3d::creative::document_internal
@@ -231,6 +269,10 @@ std::string_view validateCreativeObjectParentGraph(
 
   if (parentGraphContainsCycle(objects, objectIndex)) {
     return "parent_cycle";
+  }
+  if (document_internal::parentGraphExceedsDepthCapacity(objects,
+                                                          objectIndex)) {
+    return "parent_depth_exceeded";
   }
 
   return {};

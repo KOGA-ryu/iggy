@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 
 #include <algorithm>
 #include <array>
@@ -8,6 +9,7 @@
 #include <cstdint>
 #include <limits>
 #include <utility>
+#include <vector>
 
 namespace iggy3d::creative {
 namespace {
@@ -54,16 +56,8 @@ bool validRect(CreativeWorldLayoutRect rect) noexcept {
   return rect.minimum.x < rect.maximum.x && rect.minimum.z < rect.maximum.z;
 }
 
-bool validOpeningPose(CreativeBuildingOpeningPose pose) noexcept {
-  switch (pose) {
-    case CreativeBuildingOpeningPose::Closed:
-    case CreativeBuildingOpeningPose::OpenFromStartNegativeNormal:
-    case CreativeBuildingOpeningPose::OpenFromStartPositiveNormal:
-    case CreativeBuildingOpeningPose::OpenFromEndNegativeNormal:
-    case CreativeBuildingOpeningPose::OpenFromEndPositiveNormal:
-      return true;
-  }
-  return false;
+bool validOpeningFacing(CreativeBuildingOpeningFacing facing) noexcept {
+  return facing < CreativeBuildingOpeningFacing::Count;
 }
 
 bool checkedCoord(std::int64_t x,
@@ -130,6 +124,40 @@ verticalDirectionFromVector(IntVector2 direction) noexcept {
   return CreativeWorldLayoutVerticalDirection::Count;
 }
 
+IntVector2 roofSlopeDirectionVector(
+    CreativeStructuralRoofSlopeDirection direction) noexcept {
+  switch (direction) {
+    case CreativeStructuralRoofSlopeDirection::PositiveX:
+      return {1, 0};
+    case CreativeStructuralRoofSlopeDirection::NegativeX:
+      return {-1, 0};
+    case CreativeStructuralRoofSlopeDirection::PositiveZ:
+      return {0, 1};
+    case CreativeStructuralRoofSlopeDirection::NegativeZ:
+      return {0, -1};
+    case CreativeStructuralRoofSlopeDirection::Count:
+      break;
+  }
+  return {};
+}
+
+CreativeStructuralRoofSlopeDirection roofSlopeDirectionFromVector(
+    IntVector2 direction) noexcept {
+  if (direction.x == 1 && direction.z == 0) {
+    return CreativeStructuralRoofSlopeDirection::PositiveX;
+  }
+  if (direction.x == -1 && direction.z == 0) {
+    return CreativeStructuralRoofSlopeDirection::NegativeX;
+  }
+  if (direction.x == 0 && direction.z == 1) {
+    return CreativeStructuralRoofSlopeDirection::PositiveZ;
+  }
+  if (direction.x == 0 && direction.z == -1) {
+    return CreativeStructuralRoofSlopeDirection::NegativeZ;
+  }
+  return CreativeStructuralRoofSlopeDirection::Count;
+}
+
 bool transformPoint(CreativeTerrainCoord2 point,
                     CreativeWorldLayoutBuildingBounds bounds,
                     CreativeWorldLayoutBuildingTransformOperation operation,
@@ -182,6 +210,78 @@ bool transformRect(CreativeWorldLayoutRect source,
   return validRect(output);
 }
 
+bool transformRoofAperture(
+    const CreativeWorldLayoutRoofAperture& source,
+    CreativeWorldLayoutBuildingBounds bounds,
+    CreativeWorldLayoutBuildingTransformOperation operation,
+    CreativeWorldLayoutRoofAperture& output) noexcept {
+  const auto transform = [&](double x, double z, double& outputX,
+                             double& outputZ) noexcept {
+    if (!std::isfinite(x) || !std::isfinite(z)) {
+      return false;
+    }
+    const double minimumX = bounds.minimum.x;
+    const double minimumZ = bounds.minimum.z;
+    const double width = static_cast<double>(bounds.maximum.x) - minimumX;
+    const double depth = static_cast<double>(bounds.maximum.z) - minimumZ;
+    const double localX = x - minimumX;
+    const double localZ = z - minimumZ;
+    switch (operation) {
+      case CreativeWorldLayoutBuildingTransformOperation::RotateLeft90:
+        outputX = minimumX + localZ;
+        outputZ = minimumZ + width - localX;
+        break;
+      case CreativeWorldLayoutBuildingTransformOperation::RotateRight90:
+        outputX = minimumX + depth - localZ;
+        outputZ = minimumZ + localX;
+        break;
+      case CreativeWorldLayoutBuildingTransformOperation::MirrorX:
+        outputX = minimumX + width - localX;
+        outputZ = z;
+        break;
+      case CreativeWorldLayoutBuildingTransformOperation::MirrorZ:
+        outputX = x;
+        outputZ = minimumZ + depth - localZ;
+        break;
+      case CreativeWorldLayoutBuildingTransformOperation::Count:
+        return false;
+    }
+    return std::isfinite(outputX) && std::isfinite(outputZ);
+  };
+
+  if (source.minimumXCells >= source.maximumXCells ||
+      source.minimumZCells >= source.maximumZCells) {
+    return false;
+  }
+  const std::array<std::pair<double, double>, 4U> corners{{
+      {source.minimumXCells, source.minimumZCells},
+      {source.maximumXCells, source.minimumZCells},
+      {source.maximumXCells, source.maximumZCells},
+      {source.minimumXCells, source.maximumZCells},
+  }};
+  double minimumX = std::numeric_limits<double>::infinity();
+  double maximumX = -std::numeric_limits<double>::infinity();
+  double minimumZ = std::numeric_limits<double>::infinity();
+  double maximumZ = -std::numeric_limits<double>::infinity();
+  for (const auto [x, z] : corners) {
+    double transformedX = 0.0;
+    double transformedZ = 0.0;
+    if (!transform(x, z, transformedX, transformedZ)) {
+      return false;
+    }
+    minimumX = std::min(minimumX, transformedX);
+    maximumX = std::max(maximumX, transformedX);
+    minimumZ = std::min(minimumZ, transformedZ);
+    maximumZ = std::max(maximumZ, transformedZ);
+  }
+  output = source;
+  output.minimumXCells = minimumX;
+  output.maximumXCells = maximumX;
+  output.minimumZCells = minimumZ;
+  output.maximumZCells = maximumZ;
+  return minimumX < maximumX && minimumZ < maximumZ;
+}
+
 bool wallAxis(const CreativeWorldLayoutWall& wall,
               LayoutAxis& output) noexcept {
   if (wall.start.z == wall.end.z && wall.start.x != wall.end.x) {
@@ -193,6 +293,28 @@ bool wallAxis(const CreativeWorldLayoutWall& wall,
     return true;
   }
   return false;
+}
+
+bool segmentAxis(CreativeTerrainCoord2 start,
+                 CreativeTerrainCoord2 end,
+                 LayoutAxis& output) noexcept {
+  if (start.z == end.z && start.x != end.x) {
+    output = LayoutAxis::Horizontal;
+    return true;
+  }
+  if (start.x == end.x && start.z != end.z) {
+    output = LayoutAxis::Vertical;
+    return true;
+  }
+  return false;
+}
+
+double segmentLength(CreativeTerrainCoord2 start,
+                     CreativeTerrainCoord2 end,
+                     LayoutAxis axis) noexcept {
+  return axis == LayoutAxis::Horizontal
+             ? std::fabs(static_cast<double>(end.x) - start.x)
+             : std::fabs(static_cast<double>(end.z) - start.z);
 }
 
 LayoutAxis edgeAxis(CreativeWorldLayoutRoomEdge edge) noexcept {
@@ -268,37 +390,46 @@ bool transformFlipsPositiveNormal(
          transformed.z != targetPositiveNormal.z;
 }
 
-CreativeBuildingOpeningPose encodePose(bool usesStart,
-                                       bool positiveNormal) noexcept {
-  if (usesStart) {
-    return positiveNormal
-               ? CreativeBuildingOpeningPose::OpenFromStartPositiveNormal
-               : CreativeBuildingOpeningPose::OpenFromStartNegativeNormal;
+CreativeDoorSettings transformDoorSettings(
+    CreativeDoorSettings settings,
+    LayoutAxis sourceAxis,
+    CreativeWorldLayoutBuildingTransformOperation operation) noexcept {
+  const IntVector2 sourcePositiveAxis =
+      sourceAxis == LayoutAxis::Horizontal ? IntVector2{1, 0}
+                                           : IntVector2{0, 1};
+  const IntVector2 transformedAxis =
+      transformVector(sourcePositiveAxis, operation);
+  const LayoutAxis targetAxis = transformedAxis.x == 0
+                                    ? LayoutAxis::Horizontal
+                                    : LayoutAxis::Vertical;
+  const IntVector2 targetPositiveAxis =
+      targetAxis == LayoutAxis::Horizontal ? IntVector2{1, 0}
+                                           : IntVector2{0, 1};
+  if (transformedAxis.x != targetPositiveAxis.x ||
+      transformedAxis.z != targetPositiveAxis.z) {
+    settings.hingeSide =
+        settings.hingeSide == CreativeDoorHingeSide::MinimumEdge
+            ? CreativeDoorHingeSide::MaximumEdge
+            : CreativeDoorHingeSide::MinimumEdge;
   }
-  return positiveNormal
-             ? CreativeBuildingOpeningPose::OpenFromEndPositiveNormal
-             : CreativeBuildingOpeningPose::OpenFromEndNegativeNormal;
+  if (transformFlipsPositiveNormal(sourceAxis, operation)) {
+    settings.swingSide =
+        settings.swingSide == CreativeDoorSwingSide::PositiveNormal
+            ? CreativeDoorSwingSide::NegativeNormal
+            : CreativeDoorSwingSide::PositiveNormal;
+  }
+  return settings;
 }
 
-CreativeBuildingOpeningPose transformPose(
-    CreativeBuildingOpeningPose pose,
-    LayoutAxis sourceAxis,
-    CreativeWorldLayoutBuildingTransformOperation operation,
-    bool reverseStartEnd) noexcept {
-  if (pose == CreativeBuildingOpeningPose::Closed) {
-    return pose;
+CreativeBuildingOpeningFacing transformFacing(
+    CreativeBuildingOpeningFacing facing, LayoutAxis sourceAxis,
+    CreativeWorldLayoutBuildingTransformOperation operation) noexcept {
+  if (!transformFlipsPositiveNormal(sourceAxis, operation)) {
+    return facing;
   }
-  bool usesStart =
-      pose == CreativeBuildingOpeningPose::OpenFromStartNegativeNormal ||
-      pose == CreativeBuildingOpeningPose::OpenFromStartPositiveNormal;
-  bool positiveNormal =
-      pose == CreativeBuildingOpeningPose::OpenFromStartPositiveNormal ||
-      pose == CreativeBuildingOpeningPose::OpenFromEndPositiveNormal;
-  usesStart = reverseStartEnd ? !usesStart : usesStart;
-  positiveNormal = transformFlipsPositiveNormal(sourceAxis, operation)
-                       ? !positiveNormal
-                       : positiveNormal;
-  return encodePose(usesStart, positiveNormal);
+  return facing == CreativeBuildingOpeningFacing::PositiveNormal
+             ? CreativeBuildingOpeningFacing::NegativeNormal
+             : CreativeBuildingOpeningFacing::PositiveNormal;
 }
 
 double edgeLength(CreativeWorldLayoutRect room,
@@ -352,11 +483,21 @@ bool transformOwnedGeometry(
   const bool swapsAxes =
       operation == CreativeWorldLayoutBuildingTransformOperation::RotateLeft90 ||
       operation == CreativeWorldLayoutBuildingTransformOperation::RotateRight90;
-  if (swapsAxes) {
-    for (std::size_t index = 0U; index < source.levels.size(); ++index) {
-      if (source.levels[index].buildingIndex != buildingIndex) {
-        continue;
-      }
+  for (std::size_t index = 0U; index < source.levels.size(); ++index) {
+    if (source.levels[index].buildingIndex != buildingIndex) {
+      continue;
+    }
+    CreativeStructuralRoofSlopeDirection& slopeDirection =
+        candidate.levels[index].roofSlopeDirection;
+    slopeDirection = roofSlopeDirectionFromVector(transformVector(
+        roofSlopeDirectionVector(source.levels[index].roofSlopeDirection),
+        operation));
+    if (slopeDirection >= CreativeStructuralRoofSlopeDirection::Count) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+      return false;
+    }
+    if (swapsAxes) {
       CreativeStructuralRoofRidgeAxis& axis =
           candidate.levels[index].roofRidgeAxis;
       if (axis == CreativeStructuralRoofRidgeAxis::X) {
@@ -385,6 +526,99 @@ bool transformOwnedGeometry(
       failureStatus =
           CreativeWorldLayoutBuildingTransformStatus::CoordinateOverflow;
       return false;
+    }
+  }
+
+  for (std::size_t index = 0U; index < source.roofApertures.size(); ++index) {
+    const CreativeWorldLayoutRoofAperture& sourceAperture =
+        source.roofApertures[index];
+    if (source.levels[sourceAperture.levelIndex].buildingIndex !=
+        buildingIndex) {
+      continue;
+    }
+    if (!transformRoofAperture(sourceAperture, bounds, operation,
+                               candidate.roofApertures[index])) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+      return false;
+    }
+  }
+
+  for (std::size_t index = 0U; index < source.topologyVertices.size();
+       ++index) {
+    const CreativeWorldLayoutTopologyVertex& sourceVertex =
+        source.topologyVertices[index];
+    if (source.levels[sourceVertex.levelIndex].buildingIndex !=
+        buildingIndex) {
+      continue;
+    }
+    if (!transformPoint(sourceVertex.position, bounds, operation,
+                        candidate.topologyVertices[index].position)) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::CoordinateOverflow;
+      return false;
+    }
+  }
+
+  std::vector<bool> topologyEdgeReversed(source.topologyEdges.size(), false);
+  for (std::size_t index = 0U; index < source.topologyEdges.size(); ++index) {
+    const CreativeWorldLayoutTopologyEdge& sourceEdge =
+        source.topologyEdges[index];
+    if (source.levels[sourceEdge.levelIndex].buildingIndex != buildingIndex) {
+      continue;
+    }
+    CreativeWorldLayoutTopologyEdge& transformedEdge =
+        candidate.topologyEdges[index];
+    const CreativeTerrainCoord2 start =
+        candidate.topologyVertices[transformedEdge.startVertexIndex].position;
+    const CreativeTerrainCoord2 end =
+        candidate.topologyVertices[transformedEdge.endVertexIndex].position;
+    LayoutAxis transformedAxis;
+    if (!segmentAxis(start, end, transformedAxis)) {
+      failureStatus =
+          CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+      return false;
+    }
+    const bool reversed = transformedAxis == LayoutAxis::Horizontal
+                              ? start.x > end.x
+                              : start.z > end.z;
+    topologyEdgeReversed[index] = reversed;
+    if (!reversed) {
+      continue;
+    }
+    std::swap(transformedEdge.startVertexIndex,
+              transformedEdge.endVertexIndex);
+    for (CreativeWorldLayoutRoomBoundary& boundary :
+         candidate.roomBoundaries) {
+      if (boundary.topologyEdgeIndex == index) {
+        boundary.reversed = !boundary.reversed;
+      }
+    }
+  }
+  const bool reversesWinding =
+      operation == CreativeWorldLayoutBuildingTransformOperation::MirrorX ||
+      operation == CreativeWorldLayoutBuildingTransformOperation::MirrorZ;
+  if (reversesWinding) {
+    for (std::size_t roomIndex = 0U; roomIndex < source.rooms.size();
+         ++roomIndex) {
+      if (source.rooms[roomIndex].buildingIndex != buildingIndex) {
+        continue;
+      }
+      const std::size_t boundaryCount =
+          static_cast<std::size_t>(std::count_if(
+              candidate.roomBoundaries.begin(),
+              candidate.roomBoundaries.end(),
+              [roomIndex](const CreativeWorldLayoutRoomBoundary& boundary) {
+                return boundary.roomIndex == roomIndex;
+              }));
+      for (CreativeWorldLayoutRoomBoundary& boundary :
+           candidate.roomBoundaries) {
+        if (boundary.roomIndex != roomIndex) {
+          continue;
+        }
+        boundary.order = boundaryCount - boundary.order - 1U;
+        boundary.reversed = !boundary.reversed;
+      }
     }
   }
   for (std::size_t index = 0U; index < source.verticalConnectors.size();
@@ -459,7 +693,11 @@ bool transformOwnedGeometry(
     if (!openingOwnedByBuilding(source, sourceOpening, buildingIndex)) {
       continue;
     }
-    if (!validOpeningPose(sourceOpening.pose) ||
+    if ((sourceOpening.kind == CreativeBuildingOpeningKind::Door &&
+         !isValidCreativeDoorSettings(sourceOpening.door)) ||
+        (sourceOpening.kind == CreativeBuildingOpeningKind::Window &&
+         !isValidCreativeWindowSettings(sourceOpening.window)) ||
+        !validOpeningFacing(sourceOpening.facing) ||
         !std::isfinite(sourceOpening.centerOffsetCells)) {
       failureStatus =
           CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
@@ -473,8 +711,38 @@ bool transformOwnedGeometry(
             CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
         return false;
       }
-      transformedOpening.pose =
-          transformPose(sourceOpening.pose, axis, operation, false);
+      transformedOpening.door =
+          transformDoorSettings(sourceOpening.door, axis, operation);
+      transformedOpening.facing =
+          transformFacing(sourceOpening.facing, axis, operation);
+      continue;
+    }
+
+    if (sourceOpening.roomTopologyEdgeIndex !=
+        kInvalidCreativeWorldLayoutIndex) {
+      const CreativeWorldLayoutTopologyEdge& sourceEdge =
+          source.topologyEdges[sourceOpening.roomTopologyEdgeIndex];
+      const CreativeTerrainCoord2 start =
+          source.topologyVertices[sourceEdge.startVertexIndex].position;
+      const CreativeTerrainCoord2 end =
+          source.topologyVertices[sourceEdge.endVertexIndex].position;
+      LayoutAxis axis;
+      if (!segmentAxis(start, end, axis)) {
+        failureStatus =
+            CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry;
+        return false;
+      }
+      const bool reverseStartEnd =
+          topologyEdgeReversed[sourceOpening.roomTopologyEdgeIndex];
+      if (reverseStartEnd) {
+        transformedOpening.centerOffsetCells =
+            segmentLength(start, end, axis) -
+            sourceOpening.centerOffsetCells;
+      }
+      transformedOpening.door =
+          transformDoorSettings(sourceOpening.door, axis, operation);
+      transformedOpening.facing =
+          transformFacing(sourceOpening.facing, axis, operation);
       continue;
     }
 
@@ -496,9 +764,10 @@ bool transformOwnedGeometry(
           edgeLength(room.footprint, sourceOpening.roomEdge) -
           sourceOpening.centerOffsetCells;
     }
-    transformedOpening.pose =
-        transformPose(sourceOpening.pose, edgeAxis(sourceOpening.roomEdge),
-                      operation, edge.reversesCanonicalDirection);
+    transformedOpening.door = transformDoorSettings(
+        sourceOpening.door, edgeAxis(sourceOpening.roomEdge), operation);
+    transformedOpening.facing = transformFacing(
+        sourceOpening.facing, edgeAxis(sourceOpening.roomEdge), operation);
   }
   return true;
 }
@@ -531,6 +800,12 @@ bool transformBlockoutRecipe(
                       operation));
   if (recipe.request.storeys.preferredDirection >=
       CreativeWorldLayoutVerticalDirection::Count) {
+    return false;
+  }
+  recipe.roofSlopeDirection = roofSlopeDirectionFromVector(transformVector(
+      roofSlopeDirectionVector(recipe.roofSlopeDirection), operation));
+  if (recipe.roofSlopeDirection >=
+      CreativeStructuralRoofSlopeDirection::Count) {
     return false;
   }
 
@@ -650,6 +925,14 @@ CreativeWorldLayoutBuildingTransformResult transformCreativeWorldLayoutBuilding(
             ? "creative_world_layout_building_transform_coordinate_overflow"
             : "creative_world_layout_building_transform_geometry_invalid";
     setFailure(result, failureStatus, reason);
+    return result;
+  }
+  if (!validCreativeWorldLayoutBuildingOwnership(result.transformed) ||
+      (!result.transformed.topologyEdges.empty() &&
+       !buildCreativeWorldLayoutRoomGraph(result.transformed).accepted)) {
+    setFailure(result,
+               CreativeWorldLayoutBuildingTransformStatus::InvalidGeometry,
+               "creative_world_layout_building_transform_topology_invalid");
     return result;
   }
   if (!measureCreativeWorldLayoutBuildingBounds(result.transformed,

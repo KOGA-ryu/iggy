@@ -6,10 +6,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/spatial/SurfacePose.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 #include "core/math/OrientedBox.hpp"
 
 namespace iggy3d_creative_app {
@@ -27,17 +30,17 @@ struct ClearanceBox {
   bool valid = false;
 };
 
+struct CollisionBoxSet {
+  std::array<ClearanceBox, iggy3d::kMaxStaticMeshCollisionPartCount> boxes{};
+  std::size_t count = 0U;
+  bool valid = false;
+};
+
 [[nodiscard]] bool descriptorBlocksPlacement(
     const cr::CreativeObjectDescriptor& descriptor) noexcept {
   return descriptor.hasBounds &&
          descriptor.profile != cr::CreativeObjectProfile::RoomContainer &&
          cr::isSolidCreativeSpatialOccupancy(descriptor.occupancyKind);
-}
-
-[[nodiscard]] bool objectBlocksPlacement(
-    const cr::CreativeObject& object) noexcept {
-  return object.visible &&
-         descriptorBlocksPlacement(cr::describeObject(object.kind));
 }
 
 [[nodiscard]] bool placementPlanBlocksPlacement(
@@ -77,6 +80,107 @@ struct ClearanceBox {
   return result;
 }
 
+[[nodiscard]] ClearanceBox localClearanceBox(
+    cr::CreativeBounds localBounds,
+    cr::CreativeTransform transform) noexcept {
+  ClearanceBox result;
+  const cr::CreativeBoundsMetrics local = cr::measureCreativeBounds(localBounds);
+  if (!local.valid || !cr::isFiniteCreativeVec3(transform.position) ||
+      !cr::isFiniteCreativeVec3(transform.rotationEulerRadians) ||
+      !cr::isPositiveCreativeVec3(transform.scale) ||
+      !cr::isPositiveCreativeVec3(local.size)) {
+    return result;
+  }
+
+  result.transformed.size = {
+      local.size.x * transform.scale.x,
+      local.size.y * transform.scale.y,
+      local.size.z * transform.scale.z,
+  };
+  result.transformed.rotationEulerRadians = transform.rotationEulerRadians;
+  const cr::CreativeVec3 scaledCenter{
+      local.center.x * transform.scale.x,
+      local.center.y * transform.scale.y,
+      local.center.z * transform.scale.z,
+  };
+  const cr::CreativeVec3 rotatedCenter = cr::rotateCreativeVectorEulerXyz(
+      scaledCenter, transform.rotationEulerRadians);
+  result.transformed.center = {
+      transform.position.x + rotatedCenter.x,
+      transform.position.y + rotatedCenter.y,
+      transform.position.z + rotatedCenter.z,
+  };
+  if (!cr::isFiniteCreativeVec3(result.transformed.center) ||
+      !cr::isFiniteCreativeVec3(result.transformed.size)) {
+    return {};
+  }
+
+  const cr::CreativeVec3 half{
+      result.transformed.size.x * 0.5,
+      result.transformed.size.y * 0.5,
+      result.transformed.size.z * 0.5,
+  };
+  for (std::size_t index = 0U; index < result.transformed.corners.size();
+       ++index) {
+    const cr::CreativeVec3 cornerOffset{
+        (index & 1U) != 0U ? half.x : -half.x,
+        (index & 2U) != 0U ? half.y : -half.y,
+        (index & 4U) != 0U ? half.z : -half.z,
+    };
+    const cr::CreativeVec3 rotated = cr::rotateCreativeVectorEulerXyz(
+        cornerOffset, transform.rotationEulerRadians);
+    result.transformed.corners[index] = {
+        result.transformed.center.x + rotated.x,
+        result.transformed.center.y + rotated.y,
+        result.transformed.center.z + rotated.z,
+    };
+    if (!cr::isFiniteCreativeVec3(result.transformed.corners[index])) {
+      return {};
+    }
+  }
+  result.transformed.worldBounds = {
+      result.transformed.corners.front(), result.transformed.corners.front()};
+  for (std::size_t index = 1U; index < result.transformed.corners.size();
+       ++index) {
+    const cr::CreativeVec3& corner = result.transformed.corners[index];
+    result.transformed.worldBounds.min.x =
+        std::min(result.transformed.worldBounds.min.x, corner.x);
+    result.transformed.worldBounds.min.y =
+        std::min(result.transformed.worldBounds.min.y, corner.y);
+    result.transformed.worldBounds.min.z =
+        std::min(result.transformed.worldBounds.min.z, corner.z);
+    result.transformed.worldBounds.max.x =
+        std::max(result.transformed.worldBounds.max.x, corner.x);
+    result.transformed.worldBounds.max.y =
+        std::max(result.transformed.worldBounds.max.y, corner.y);
+    result.transformed.worldBounds.max.z =
+        std::max(result.transformed.worldBounds.max.z, corner.z);
+  }
+  result.transformed.valid = true;
+
+  const cr::CreativeCoreVec3Conversion center =
+      cr::creativeVec3ToCoreChecked(result.transformed.center);
+  const cr::CreativeCoreVec3Conversion size =
+      cr::creativeVec3ToCoreChecked(result.transformed.size);
+  const cr::CreativeCoreVec3Conversion rotation =
+      cr::creativeVec3ToCoreChecked(result.transformed.rotationEulerRadians);
+  const cr::CreativeCoreVec3Conversion worldMin = cr::creativeVec3ToCoreChecked(
+      result.transformed.worldBounds.min);
+  const cr::CreativeCoreVec3Conversion worldMax = cr::creativeVec3ToCoreChecked(
+      result.transformed.worldBounds.max);
+  if (!center.converted || !size.converted || !rotation.converted ||
+      !worldMin.converted || !worldMax.converted) {
+    return {};
+  }
+  const iggy3d::Vec3 coreHalf = size.value * 0.5F;
+  result.oriented = iggy3d::makeOrientedBox(
+      {center.value, rotation.value, {1.0F, 1.0F, 1.0F}},
+      iggy3d::makeAabb3(coreHalf * -1.0F, coreHalf));
+  result.worldAabb = iggy3d::makeAabb3(worldMin.value, worldMax.value);
+  result.valid = iggy3d::isValid(result.worldAabb);
+  return result;
+}
+
 [[nodiscard]] ClearanceBox objectClearanceBox(
     const cr::CreativeObject& object) noexcept {
   cr::CreativeTransform transform = object.transform;
@@ -84,6 +188,63 @@ struct ClearanceBox {
     transform = {};
   }
   return clearanceBox(object.bounds, transform);
+}
+
+[[nodiscard]] cr::CreativeBounds creativeBoundsFor(
+    const iggy3d::StaticMeshCollisionPart& part) noexcept {
+  return {{part.boundsMin.x, part.boundsMin.y, part.boundsMin.z},
+          {part.boundsMax.x, part.boundsMax.y, part.boundsMax.z}};
+}
+
+[[nodiscard]] cr::CreativeBounds creativeBoundsFor(
+    const iggy3d::StaticMeshAssetCatalogEntry& asset) noexcept {
+  return {{asset.boundsMin.x, asset.boundsMin.y, asset.boundsMin.z},
+          {asset.boundsMax.x, asset.boundsMax.y, asset.boundsMax.z}};
+}
+
+[[nodiscard]] CollisionBoxSet assetCollisionBoxes(
+    const iggy3d::StaticMeshAssetCatalogEntry& asset,
+    const cr::CreativeTransform& transform) noexcept {
+  CollisionBoxSet result;
+  if (asset.collisionParts.size() > result.boxes.size()) {
+    return result;
+  }
+  if (asset.collisionParts.empty()) {
+    result.boxes[0] = localClearanceBox(creativeBoundsFor(asset), transform);
+    result.count = result.boxes[0].valid ? 1U : 0U;
+    result.valid = result.count == 1U;
+    return result;
+  }
+  for (const iggy3d::StaticMeshCollisionPart& part : asset.collisionParts) {
+    ClearanceBox box = localClearanceBox(creativeBoundsFor(part), transform);
+    if (!box.valid) {
+      return {};
+    }
+    result.boxes[result.count++] = box;
+  }
+  result.valid = result.count > 0U;
+  return result;
+}
+
+[[nodiscard]] CollisionBoxSet objectCollisionBoxes(
+    const cr::CreativeObject& object,
+    const iggy3d::StaticMeshAssetCatalog& catalog,
+    bool requireCatalogAsset) noexcept {
+  if (!object.assetId.empty()) {
+    if (const iggy3d::StaticMeshAssetCatalogEntry* asset =
+            catalog.find(object.assetId);
+        asset != nullptr) {
+      return assetCollisionBoxes(*asset, object.transform);
+    }
+    if (requireCatalogAsset) {
+      return {};
+    }
+  }
+  CollisionBoxSet result;
+  result.boxes[0] = objectClearanceBox(object);
+  result.count = result.boxes[0].valid ? 1U : 0U;
+  result.valid = result.count == 1U;
+  return result;
 }
 
 [[nodiscard]] ClearanceBox axisAlignedClearanceBox(
@@ -177,12 +338,15 @@ struct ClearanceBox {
 }
 
 [[nodiscard]] bool overlapsObject(
-    const CreativeBrushPlacementPlan& plan,
+    const cr::CreativeDocument& document,
+    std::span<const cr::CreativeObjectId> ignoredObjectIds,
     const ClearanceBox& candidate,
     const cr::CreativeObject& object,
     cr::CreativePlacementClearanceResult& result) noexcept {
-  if (!objectBlocksPlacement(object) ||
-      (plan.hasAttachment && object.id == plan.attachmentTargetId)) {
+  if (!cr::creativeObjectEffectivelyVisible(document, object.id) ||
+      !creativeObjectBlocksPlacementClearance(object) ||
+      std::find(ignoredObjectIds.begin(), ignoredObjectIds.end(), object.id) !=
+          ignoredObjectIds.end()) {
     return false;
   }
   ++result.testedAuthoredObjectCount;
@@ -204,7 +368,7 @@ struct ClearanceBox {
 
 [[nodiscard]] bool authoredObjectBlocks(
     const cr::CreativeDocument& document,
-    const CreativeBrushPlacementPlan& plan,
+    std::span<const cr::CreativeObjectId> ignoredObjectIds,
     const ClearanceBox& candidate,
     const CreativePlacementClearanceCache* cache,
     cr::CreativePlacementClearanceResult& result) noexcept {
@@ -219,7 +383,8 @@ struct ClearanceBox {
         for (const std::uint64_t id : query.candidates) {
           const cr::CreativeObject* object = document.findObject(id);
           if (object == nullptr ||
-              overlapsObject(plan, candidate, *object, result)) {
+              overlapsObject(document, ignoredObjectIds, candidate, *object,
+                             result)) {
             if (object == nullptr) {
               result.status =
                   cr::CreativePlacementClearanceStatus::InvalidRequest;
@@ -235,7 +400,7 @@ struct ClearanceBox {
     }
   }
   for (const cr::CreativeObject& object : document.objects()) {
-    if (overlapsObject(plan, candidate, object, result)) {
+    if (overlapsObject(document, ignoredObjectIds, candidate, object, result)) {
       return true;
     }
   }
@@ -425,6 +590,12 @@ struct ClearanceBox {
 
 }  // namespace
 
+bool creativeObjectBlocksPlacementClearance(
+    const cr::CreativeObject& object) noexcept {
+  return object.visible &&
+         descriptorBlocksPlacement(cr::describeObject(object.kind));
+}
+
 bool refreshCreativePlacementClearanceCache(
     CreativePlacementClearanceCache& cache,
     const cr::CreativeDocument& document) {
@@ -438,7 +609,8 @@ bool refreshCreativePlacementClearanceCache(
   cache.indexedObjectCount = 0U;
   cache.complete = document.isValid();
   for (const cr::CreativeObject& object : document.objects()) {
-    if (!objectBlocksPlacement(object)) {
+    if (!cr::creativeObjectEffectivelyVisible(document, object.id) ||
+        !creativeObjectBlocksPlacementClearance(object)) {
       continue;
     }
     const ClearanceBox obstacle = objectClearanceBox(object);
@@ -468,7 +640,8 @@ void invalidateCreativePlacementClearanceCache(
 cr::CreativePlacementClearanceResult evaluateCreativeBrushPlacementClearance(
     const cr::CreativeDocument& document,
     const CreativeBrushPlacementPlan& plan,
-    const CreativePlacementClearanceCache* cache) noexcept {
+    const CreativePlacementClearanceCache* cache,
+    std::span<const cr::CreativeObjectId> ignoredObjectIds) noexcept {
   cr::CreativePlacementClearanceResult result;
   result.evaluated = true;
   result.status = cr::CreativePlacementClearanceStatus::InvalidRequest;
@@ -490,7 +663,17 @@ cr::CreativePlacementClearanceResult evaluateCreativeBrushPlacementClearance(
   }
 
   if (placementPlanBlocksPlacement(plan)) {
-    if (authoredObjectBlocks(document, plan, candidate, cache, result) ||
+    std::vector<cr::CreativeObjectId> combinedIgnored;
+    std::span<const cr::CreativeObjectId> effectiveIgnored = ignoredObjectIds;
+    if (plan.hasAttachment &&
+        std::find(ignoredObjectIds.begin(), ignoredObjectIds.end(),
+                  plan.attachmentTargetId) == ignoredObjectIds.end()) {
+      combinedIgnored.assign(ignoredObjectIds.begin(), ignoredObjectIds.end());
+      combinedIgnored.push_back(plan.attachmentTargetId);
+      effectiveIgnored = combinedIgnored;
+    }
+    if (authoredObjectBlocks(document, effectiveIgnored, candidate, cache,
+                             result) ||
         voxelBlocks(document, candidate, result) ||
         terrainBlocks(document, candidate, result)) {
       return result;
@@ -502,15 +685,140 @@ cr::CreativePlacementClearanceResult evaluateCreativeBrushPlacementClearance(
   return result;
 }
 
+CreativeObjectSetClearanceResult evaluateCreativeObjectSetPlacementClearance(
+    const cr::CreativeDocument& document,
+    std::span<const cr::CreativeObject> candidates,
+    std::span<const cr::CreativeObjectId> ignoredObjectIds,
+    const CreativePlacementClearanceCache* cache) noexcept {
+  CreativeObjectSetClearanceResult result;
+  result.clearance.evaluated = true;
+  result.clearance.status = cr::CreativePlacementClearanceStatus::InvalidRequest;
+  if (!document.isValid() || candidates.empty()) {
+    return result;
+  }
+
+  for (const cr::CreativeObject& object : candidates) {
+    ++result.candidateObjectCount;
+    if (!creativeObjectBlocksPlacementClearance(object)) {
+      continue;
+    }
+    result.candidateObjectId = object.id;
+    const ClearanceBox candidate = objectClearanceBox(object);
+    if (!candidate.valid) {
+      return result;
+    }
+    if (!configuredWorldBoundsContain(document.worldBounds(),
+                                      candidate.transformed.worldBounds)) {
+      result.clearance.status =
+          cr::CreativePlacementClearanceStatus::OutsideWorldBounds;
+      return result;
+    }
+    if (authoredObjectBlocks(document, ignoredObjectIds, candidate, cache,
+                             result.clearance) ||
+        voxelBlocks(document, candidate, result.clearance) ||
+        terrainBlocks(document, candidate, result.clearance)) {
+      return result;
+    }
+  }
+
+  result.candidateObjectId = cr::kInvalidObjectId;
+  result.clearance.status = cr::CreativePlacementClearanceStatus::Ready;
+  result.clearance.allowed = true;
+  return result;
+}
+
+CreativeObjectSetClearanceResult evaluateCreativeAttachmentPlacementClearance(
+    const cr::CreativeDocument& document,
+    const iggy3d::StaticMeshAssetCatalog& assetCatalog,
+    std::span<const cr::CreativeObject> candidates,
+    std::span<const cr::CreativeObjectId> sourceHierarchyIds,
+    cr::CreativeObjectId sourceObjectId,
+    cr::CreativeObjectId targetObjectId,
+    const CreativePlacementClearanceCache* cache) {
+  CreativeObjectSetClearanceResult result;
+  result.clearance.evaluated = true;
+  result.clearance.status = cr::CreativePlacementClearanceStatus::InvalidRequest;
+  if (!document.isValid() || candidates.empty() ||
+      targetObjectId == cr::kInvalidObjectId ||
+      (sourceObjectId != cr::kInvalidObjectId &&
+       sourceObjectId == targetObjectId)) {
+    return result;
+  }
+  const cr::CreativeObject* target = document.findObject(targetObjectId);
+  if (target == nullptr) {
+    return result;
+  }
+  const CollisionBoxSet targetBoxes =
+      objectCollisionBoxes(*target, assetCatalog, false);
+  if (!targetBoxes.valid) {
+    return result;
+  }
+
+  std::vector<cr::CreativeObjectId> ignored(sourceHierarchyIds.begin(),
+                                            sourceHierarchyIds.end());
+  ignored.push_back(targetObjectId);
+  const std::span<const cr::CreativeObjectId> ignoredObjects{ignored};
+
+  for (const cr::CreativeObject& candidateObject : candidates) {
+    ++result.candidateObjectCount;
+    if (candidateObject.id != sourceObjectId &&
+        !creativeObjectBlocksPlacementClearance(candidateObject)) {
+      continue;
+    }
+    result.candidateObjectId = candidateObject.id;
+    const CollisionBoxSet candidateBoxes = objectCollisionBoxes(
+        candidateObject, assetCatalog, candidateObject.id == sourceObjectId);
+    if (!candidateBoxes.valid) {
+      return result;
+    }
+    for (std::size_t candidateIndex = 0U;
+         candidateIndex < candidateBoxes.count; ++candidateIndex) {
+      const ClearanceBox& candidate = candidateBoxes.boxes[candidateIndex];
+      if (!configuredWorldBoundsContain(document.worldBounds(),
+                                        candidate.transformed.worldBounds)) {
+        result.clearance.status =
+            cr::CreativePlacementClearanceStatus::OutsideWorldBounds;
+        return result;
+      }
+      if (authoredObjectBlocks(document, ignoredObjects, candidate, cache,
+                               result.clearance) ||
+          voxelBlocks(document, candidate, result.clearance) ||
+          terrainBlocks(document, candidate, result.clearance)) {
+        return result;
+      }
+      for (std::size_t targetIndex = 0U; targetIndex < targetBoxes.count;
+           ++targetIndex) {
+        ++result.clearance.testedAuthoredObjectCount;
+        const ClearanceBox& obstacle = targetBoxes.boxes[targetIndex];
+        if (!iggy3d::intersects(candidate.worldAabb, obstacle.worldAabb) ||
+            !iggy3d::strictlyOverlaps(candidate.oriented, obstacle.oriented,
+                                      kClearanceEpsilonMeters)) {
+          continue;
+        }
+        result.clearance.status =
+            cr::CreativePlacementClearanceStatus::AuthoredObjectBlocked;
+        result.clearance.blockingObjectId = targetObjectId;
+        return result;
+      }
+    }
+  }
+
+  result.candidateObjectId = cr::kInvalidObjectId;
+  result.clearance.status = cr::CreativePlacementClearanceStatus::Ready;
+  result.clearance.allowed = true;
+  return result;
+}
+
 void applyCreativeBrushPlacementClearance(
     CreativeBrushPlacementAdmission& admission,
     const cr::CreativeDocument& document,
-    const CreativePlacementClearanceCache* cache) noexcept {
+    const CreativePlacementClearanceCache* cache,
+    std::span<const cr::CreativeObjectId> ignoredObjectIds) noexcept {
   if (!admission.allowed || !admission.plan.valid) {
     return;
   }
   admission.plan.clearance = evaluateCreativeBrushPlacementClearance(
-      document, admission.plan, cache);
+      document, admission.plan, cache, ignoredObjectIds);
   if (!admission.plan.clearance.allowed) {
     admission.allowed = false;
     admission.status =

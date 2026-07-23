@@ -225,6 +225,19 @@ struct CreativeAuthoredAssetRefreshReceipt {
 [[nodiscard]] CreativeAuthoredAssetFingerprint
 fingerprintCreativeAuthoredAssetDefinition(
     const CreativeAuthoredAssetDefinition& definition) noexcept;
+[[nodiscard]] CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetPlacementRequest(
+    const CreativeAuthoredAssetPlacementRequest& request) noexcept;
+[[nodiscard]] CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetRefreshRequest(
+    const CreativeAuthoredAssetRefreshRequest& request) noexcept;
+[[nodiscard]] CreativeAuthoredAssetFingerprint
+fingerprintCreativeAuthoredAssetInstance(
+    const CreativeObject& instanceRoot) noexcept;
+[[nodiscard]] CreativeAuthoredAssetFingerprint
+foldCreativeAuthoredAssetOperationFingerprint(
+    std::uint64_t accumulatedFingerprint,
+    std::uint64_t requestFingerprint) noexcept;
 [[nodiscard]] std::optional<std::uint64_t>
 creativeAuthoredAssetStoredSourceFingerprint(
     const CreativeObject& instanceRoot) noexcept;

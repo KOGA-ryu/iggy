@@ -1,5 +1,7 @@
 #include "EditorDesktopModel.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
+#include "app/iggy3d/creative/tools/Select.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <algorithm>
@@ -68,9 +70,10 @@ constexpr double kRadiansPerDegree = kPi / 180.0;
 
 void includeGeneratedScopeObject(
     CreativeDesktopGeneratedSourceScopeSummary& summary,
-    const cr::CreativeObject& object) noexcept {
+    const cr::CreativeObject& object,
+    bool effectivelyVisible) noexcept {
   ++summary.objectCount;
-  if (object.visible) {
+  if (effectivelyVisible) {
     ++summary.visibleObjectCount;
   } else {
     ++summary.hiddenObjectCount;
@@ -187,6 +190,12 @@ CreativeDesktopOutlinerModel buildCreativeDesktopOutlinerModel(
       row.hasChildren = !children[frame.index].empty();
       row.visible = object.visible;
       row.locked = object.locked;
+      const cr::CreativeObjectHierarchyState hierarchyState =
+          cr::resolveCreativeObjectHierarchyState(objects, object.id);
+      row.effectivelyVisible =
+          hierarchyState.resolved && hierarchyState.effectivelyVisible;
+      row.effectivelyLocked =
+          !hierarchyState.resolved || hierarchyState.effectivelyLocked;
       row.recovery = recovery;
       if (recovery != CreativeDesktopHierarchyRecovery::None) {
         ++model.recoveredRowCount;
@@ -322,6 +331,9 @@ CreativeDesktopSelectionPlan planCreativeDesktopSelection(
                                           : plan.objectIds.back())
                 : primaryObjectId;
       } else {
+        if (plan.objectIds.size() >= cr::kCreativeSelectionTargetCapacity) {
+          return {};
+        }
         plan.objectIds.push_back(clickedObjectId);
         plan.primaryObjectId = clickedObjectId;  // an added object is primary.
       }
@@ -341,6 +353,9 @@ CreativeDesktopSelectionPlan planCreativeDesktopSelection(
       }
       const std::size_t low = std::min(anchorIndex, clickedIndex);
       const std::size_t high = std::max(anchorIndex, clickedIndex);
+      if (high - low + 1U > cr::kCreativeSelectionTargetCapacity) {
+        return {};
+      }
       plan.objectIds.reserve(high - low + 1U);
       for (std::size_t i = low; i <= high; ++i) {
         plan.objectIds.push_back(visibleObjectIds[i]);
@@ -348,6 +363,94 @@ CreativeDesktopSelectionPlan planCreativeDesktopSelection(
       plan.primaryObjectId = clickedObjectId;
       plan.nextAnchorObjectId = anchorObjectId;  // a range retains the anchor.
       plan.accepted = true;
+      return plan;
+    }
+  }
+  return plan;
+}
+
+CreativeDesktopSelectionPlan planCreativeDesktopHierarchySelection(
+    const CreativeDesktopOutlinerModel& model,
+    cr::CreativeObjectId objectId,
+    CreativeDesktopHierarchySelectionScope scope) {
+  CreativeDesktopSelectionPlan plan;
+  if (objectId == cr::kInvalidObjectId || model.rows.empty()) {
+    return plan;
+  }
+  const auto target = std::find_if(
+      model.rows.begin(), model.rows.end(),
+      [objectId](const CreativeDesktopOutlinerRow& row) {
+        return row.objectId == objectId;
+      });
+  if (target == model.rows.end()) {
+    return plan;
+  }
+
+  const auto accept = [&](cr::CreativeObjectId primary) {
+    if (plan.objectIds.empty() ||
+        plan.objectIds.size() > cr::kCreativeSelectionTargetCapacity) {
+      plan = {};
+      return;
+    }
+    plan.primaryObjectId = primary;
+    plan.nextAnchorObjectId = primary;
+    plan.accepted = true;
+  };
+
+  switch (scope) {
+    case CreativeDesktopHierarchySelectionScope::Parent:
+      if (target->parentObjectId == cr::kInvalidObjectId ||
+          std::none_of(model.rows.begin(), model.rows.end(),
+                       [&](const CreativeDesktopOutlinerRow& row) {
+                         return row.objectId == target->parentObjectId;
+                       })) {
+        return plan;
+      }
+      plan.objectIds.push_back(target->parentObjectId);
+      accept(target->parentObjectId);
+      return plan;
+
+    case CreativeDesktopHierarchySelectionScope::DirectChildren:
+      for (const CreativeDesktopOutlinerRow& row : model.rows) {
+        if (row.parentObjectId == objectId) {
+          plan.objectIds.push_back(row.objectId);
+          if (plan.objectIds.size() > cr::kCreativeSelectionTargetCapacity) {
+            return {};
+          }
+        }
+      }
+      accept(plan.objectIds.empty() ? cr::kInvalidObjectId
+                                    : plan.objectIds.front());
+      return plan;
+
+    case CreativeDesktopHierarchySelectionScope::Subtree: {
+      std::unordered_map<cr::CreativeObjectId, cr::CreativeObjectId> parents;
+      parents.reserve(model.rows.size());
+      for (const CreativeDesktopOutlinerRow& row : model.rows) {
+        parents.emplace(row.objectId, row.parentObjectId);
+      }
+      plan.objectIds.push_back(objectId);
+      for (const CreativeDesktopOutlinerRow& row : model.rows) {
+        if (row.objectId == objectId) {
+          continue;
+        }
+        cr::CreativeObjectId cursor = row.parentObjectId;
+        std::size_t hopCount = 0U;
+        while (cursor != cr::kInvalidObjectId &&
+               hopCount++ < model.rows.size()) {
+          if (cursor == objectId) {
+            plan.objectIds.push_back(row.objectId);
+            break;
+          }
+          const auto parent = parents.find(cursor);
+          cursor = parent == parents.end() ? cr::kInvalidObjectId
+                                           : parent->second;
+        }
+        if (plan.objectIds.size() > cr::kCreativeSelectionTargetCapacity) {
+          return {};
+        }
+      }
+      accept(objectId);
       return plan;
     }
   }
@@ -436,150 +539,84 @@ buildCreativeDesktopGeneratedSourceScopeModel(
     const cr::CreativeWorldLayout& layout,
     const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept {
   CreativeDesktopGeneratedSourceScopeModel model;
-  if (!provenance.owned) {
-    return model;
-  }
-
-  const auto append = [&](cr::CreativeWorldLayoutTable table,
-                          std::size_t index) {
-    if (model.count >= model.entries.size() ||
-        findCreativeDesktopGeneratedSourceScope(model, table, index) <
-            model.count) {
-      return;
-    }
+  const cr::CreativeWorldLayoutSourceAncestry ancestry =
+      cr::buildCreativeWorldLayoutSourceAncestry(layout, provenance);
+  for (std::size_t sourceIndex = 0U; sourceIndex < ancestry.count;
+       ++sourceIndex) {
+    const cr::CreativeWorldLayoutSourceRef source =
+        ancestry.entries[sourceIndex];
     CreativeDesktopGeneratedSourceScopeEntry entry;
-    entry.table = table;
-    entry.index = index;
-    switch (table) {
+    entry.table = source.table;
+    entry.index = source.index;
+    switch (source.table) {
       case cr::CreativeWorldLayoutTable::Building:
-        if (index >= layout.buildings.size()) return;
-        entry.stableKey = layout.buildings[index].stableKey;
-        entry.name = layout.buildings[index].name;
+        if (source.index >= layout.buildings.size()) continue;
+        entry.stableKey = layout.buildings[source.index].stableKey;
+        entry.name = layout.buildings[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Level:
-        if (index >= layout.levels.size()) return;
-        entry.stableKey = layout.levels[index].stableKey;
-        entry.name = layout.levels[index].name;
+        if (source.index >= layout.levels.size()) continue;
+        entry.stableKey = layout.levels[source.index].stableKey;
+        entry.name = layout.levels[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Room:
-        if (index >= layout.rooms.size()) return;
-        entry.stableKey = layout.rooms[index].stableKey;
-        entry.name = layout.rooms[index].name;
+        if (source.index >= layout.rooms.size()) continue;
+        entry.stableKey = layout.rooms[source.index].stableKey;
+        entry.name = layout.rooms[source.index].name;
+        break;
+      case cr::CreativeWorldLayoutTable::TopologyEdge:
+        if (source.index >= layout.topologyEdges.size()) continue;
+        entry.stableKey = layout.topologyEdges[source.index].stableKey;
+        entry.name = "Wall";
         break;
       case cr::CreativeWorldLayoutTable::VerticalConnector:
-        if (index >= layout.verticalConnectors.size()) return;
-        entry.stableKey = layout.verticalConnectors[index].stableKey;
-        entry.name = layout.verticalConnectors[index].name;
+        if (source.index >= layout.verticalConnectors.size()) continue;
+        entry.stableKey = layout.verticalConnectors[source.index].stableKey;
+        entry.name = layout.verticalConnectors[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Box:
-        if (index >= layout.boxes.size()) return;
-        entry.stableKey = layout.boxes[index].stableKey;
-        entry.name = layout.boxes[index].name;
+        if (source.index >= layout.boxes.size()) continue;
+        entry.stableKey = layout.boxes[source.index].stableKey;
+        entry.name = layout.boxes[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Wall:
-        if (index >= layout.walls.size()) return;
-        entry.stableKey = layout.walls[index].stableKey;
-        entry.name = layout.walls[index].name;
+        if (source.index >= layout.walls.size()) continue;
+        entry.stableKey = layout.walls[source.index].stableKey;
+        entry.name = layout.walls[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Opening:
-        if (index >= layout.openings.size()) return;
-        entry.stableKey = layout.openings[index].stableKey;
-        entry.name = layout.openings[index].name;
+        if (source.index >= layout.openings.size()) continue;
+        entry.stableKey = layout.openings[source.index].stableKey;
+        entry.name = layout.openings[source.index].name;
+        break;
+      case cr::CreativeWorldLayoutTable::RoofAperture:
+        if (source.index >= layout.roofApertures.size()) continue;
+        entry.stableKey = layout.roofApertures[source.index].stableKey;
+        entry.name = layout.roofApertures[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::Object:
-        if (index >= layout.objects.size()) return;
-        entry.stableKey = layout.objects[index].stableKey;
-        entry.name = layout.objects[index].name;
+        if (source.index >= layout.objects.size()) continue;
+        entry.stableKey = layout.objects[source.index].stableKey;
+        entry.name = layout.objects[source.index].name;
         break;
       case cr::CreativeWorldLayoutTable::TerrainProfile:
-        if (index >= layout.terrainProfiles.size()) return;
-        entry.stableKey = layout.terrainProfiles[index].stableKey;
-        entry.name = layout.terrainProfiles[index].stableKey;
+        if (source.index >= layout.terrainProfiles.size()) continue;
+        entry.stableKey = layout.terrainProfiles[source.index].stableKey;
+        entry.name = layout.terrainProfiles[source.index].stableKey;
         break;
       case cr::CreativeWorldLayoutTable::TerrainPath:
-        if (index >= layout.terrainPaths.size()) return;
-        entry.stableKey = layout.terrainPaths[index].stableKey;
-        entry.name = layout.terrainPaths[index].stableKey;
+        if (source.index >= layout.terrainPaths.size()) continue;
+        entry.stableKey = layout.terrainPaths[source.index].stableKey;
+        entry.name = layout.terrainPaths[source.index].stableKey;
         break;
       case cr::CreativeWorldLayoutTable::None:
       case cr::CreativeWorldLayoutTable::TerrainPathPoint:
-        return;
+        continue;
     }
     model.entries[model.count++] = entry;
-  };
-  const auto appendBuilding = [&](std::size_t buildingIndex) {
-    append(cr::CreativeWorldLayoutTable::Building, buildingIndex);
-  };
-  const auto appendLevel = [&](std::size_t levelIndex) {
-    if (levelIndex >= layout.levels.size()) return;
-    appendBuilding(layout.levels[levelIndex].buildingIndex);
-    append(cr::CreativeWorldLayoutTable::Level, levelIndex);
-  };
-  const auto appendRoom = [&](std::size_t roomIndex) {
-    if (roomIndex >= layout.rooms.size()) return;
-    const cr::CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
-    appendBuilding(room.buildingIndex);
-    if (room.levelIndex < layout.levels.size() &&
-        layout.levels[room.levelIndex].buildingIndex == room.buildingIndex) {
-      append(cr::CreativeWorldLayoutTable::Level, room.levelIndex);
-    }
-    append(cr::CreativeWorldLayoutTable::Room, roomIndex);
-  };
-
-  switch (provenance.table) {
-    case cr::CreativeWorldLayoutTable::Building:
-      appendBuilding(provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Level:
-      appendLevel(provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Room:
-      appendRoom(provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::VerticalConnector:
-      if (provenance.index < layout.verticalConnectors.size()) {
-        appendBuilding(
-            layout.verticalConnectors[provenance.index].buildingIndex);
-      }
-      append(provenance.table, provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Box:
-      if (provenance.index < layout.boxes.size()) {
-        appendBuilding(layout.boxes[provenance.index].buildingIndex);
-      }
-      append(provenance.table, provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Wall:
-      if (provenance.index < layout.walls.size()) {
-        appendBuilding(layout.walls[provenance.index].buildingIndex);
-      }
-      append(provenance.table, provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Opening:
-      if (provenance.index < layout.openings.size()) {
-        const cr::CreativeWorldLayoutOpening& opening =
-            layout.openings[provenance.index];
-        if (opening.hostKind ==
-            cr::CreativeWorldLayoutOpeningHostKind::RoomEdge) {
-          appendRoom(opening.roomIndex);
-        } else if (opening.wallIndex < layout.walls.size()) {
-          appendBuilding(layout.walls[opening.wallIndex].buildingIndex);
-        }
-      }
-      append(provenance.table, provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::Object:
-    case cr::CreativeWorldLayoutTable::TerrainProfile:
-    case cr::CreativeWorldLayoutTable::TerrainPath:
-      append(provenance.table, provenance.index);
-      break;
-    case cr::CreativeWorldLayoutTable::None:
-    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
-      break;
   }
-  const std::size_t direct = findCreativeDesktopGeneratedSourceScope(
-      model, provenance.table, provenance.index);
-  model.directEntryIndex = direct < model.count ? direct : 0U;
+  model.directEntryIndex =
+      ancestry.directEntryIndex < model.count ? ancestry.directEntryIndex : 0U;
   return model;
 }
 
@@ -611,45 +648,8 @@ bool creativeDesktopGeneratedObjectBelongsToSourceScope(
     const cr::CreativeObject& object,
     cr::CreativeWorldLayoutTable table,
     std::size_t index) {
-  if (table == cr::CreativeWorldLayoutTable::None ||
-      index == cr::kInvalidCreativeWorldLayoutIndex) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutObjectProvenance provenance =
-      cr::resolveCreativeWorldLayoutObjectProvenance(layout, object);
-  if (!provenance.owned) {
-    return false;
-  }
-
-  const auto hasTag = [&](std::string_view expected) {
-    return !expected.empty() &&
-           std::find(object.tags.begin(), object.tags.end(), expected) !=
-               object.tags.end();
-  };
-  if (table == cr::CreativeWorldLayoutTable::Room) {
-    if (index >= layout.rooms.size()) {
-      return false;
-    }
-    if (hasTag(cr::creativeWorldLayoutProvenanceTag(layout, table, index))) {
-      return true;
-    }
-    for (std::size_t edgeIndex = 0U;
-         edgeIndex <
-         static_cast<std::size_t>(cr::CreativeWorldLayoutRoomEdge::Count);
-         ++edgeIndex) {
-      if (hasTag(cr::creativeWorldLayoutRoomEdgeProvenanceTag(
-              layout, index,
-              static_cast<cr::CreativeWorldLayoutRoomEdge>(edgeIndex)))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  const CreativeDesktopGeneratedSourceScopeModel scopes =
-      buildCreativeDesktopGeneratedSourceScopeModel(layout, provenance);
-  return findCreativeDesktopGeneratedSourceScope(scopes, table, index) <
-         scopes.count;
+  return cr::creativeWorldLayoutObjectBelongsToSource(layout, object, table,
+                                                      index);
 }
 
 CreativeDesktopGeneratedSourceScopeSummary
@@ -666,7 +666,11 @@ buildCreativeDesktopGeneratedSourceScopeSummary(
             layout, object, table, index)) {
       continue;
     }
-    includeGeneratedScopeObject(summary, object);
+    const cr::CreativeObjectHierarchyState hierarchyState =
+        cr::resolveCreativeObjectHierarchyState(document, object.id);
+    includeGeneratedScopeObject(
+        summary, object,
+        hierarchyState.resolved && hierarchyState.effectivelyVisible);
   }
   summary.valid = summary.objectCount > 0U;
   return summary;
@@ -709,7 +713,11 @@ bool refreshCreativeDesktopGeneratedSourceScopeCache(
       continue;
     }
     cache.objectIds.push_back(object.id);
-    includeGeneratedScopeObject(cache.summary, object);
+    const cr::CreativeObjectHierarchyState hierarchyState =
+        cr::resolveCreativeObjectHierarchyState(document, object.id);
+    includeGeneratedScopeObject(
+        cache.summary, object,
+        hierarchyState.resolved && hierarchyState.effectivelyVisible);
   }
   std::sort(cache.objectIds.begin(), cache.objectIds.end());
   cache.summary.valid = cache.summary.objectCount > 0U;
@@ -734,6 +742,10 @@ creativeDesktopGeneratedSourceScopeTint(
       return {0.24F, 0.90F, 0.48F, 1.0F};
     case cr::CreativeWorldLayoutTable::Room:
       return {1.0F, 0.58F, 0.18F, 1.0F};
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      return {1.0F, 0.78F, 0.24F, 1.0F};
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      return {0.35F, 0.76F, 0.94F, 1.0F};
     case cr::CreativeWorldLayoutTable::None:
     case cr::CreativeWorldLayoutTable::VerticalConnector:
     case cr::CreativeWorldLayoutTable::Box:

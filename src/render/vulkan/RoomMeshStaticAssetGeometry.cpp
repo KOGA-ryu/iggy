@@ -64,6 +64,9 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
   const Vec3 inputCenter = (asset.boundsMin + asset.boundsMax) * 0.5F;
   const Vec3 scale{item.size.x / inputSize.x, item.size.y / inputSize.y,
                    item.size.z / inputSize.z};
+  const std::optional<std::size_t> variantIndex =
+      findStaticMeshMaterialVariantIndex(asset.materialVariants,
+                                         item.materialVariant);
   for (const StaticMeshPrimitive& primitive : asset.primitives) {
     if (primitive.indexCount == 0U || primitive.indexCount % 3U != 0U ||
         primitive.firstIndex > asset.indices.size() ||
@@ -75,16 +78,17 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
     }
     IndexedDrawRange draw;
     draw.firstIndex = static_cast<std::uint32_t>(indices.size());
+    const std::uint32_t materialIndex =
+        resolveStaticMeshPrimitiveMaterialIndex(primitive, variantIndex);
     const StaticMeshMaterial* material =
-        primitive.materialIndex < asset.materials.size()
-            ? &asset.materials[primitive.materialIndex]
+        materialIndex < asset.materials.size()
+            ? &asset.materials[materialIndex]
             : nullptr;
     if (primitive.hasTexcoord0 && material != nullptr &&
         material->baseColorImageIndex != kInvalidStaticMeshImageIndex &&
         materialTextures != nullptr) {
       draw.materialTextureIndex = findStaticMeshMaterialTextureIndex(
-          materialTextures->materialBindings, asset.id,
-          primitive.materialIndex);
+          materialTextures->materialBindings, asset.id, materialIndex);
     }
     for (std::uint32_t triangle = 0U; triangle < primitive.indexCount;
          triangle += 3U) {
@@ -125,7 +129,7 @@ bool appendStaticMeshAsset(std::vector<FirstRoomVertex>& vertices,
       const Vec3 faceNormal =
           normalized(cross(world[1] - world[0], world[2] - world[0]));
       const Vec3 color =
-          importedTriangleColor(asset, primitive.materialIndex, faceNormal);
+          importedTriangleColor(asset, materialIndex, faceNormal);
       for (std::size_t corner = 0U; corner < 3U; ++corner) {
         const Vec3 position = world[corner];
         const std::uint16_t index =

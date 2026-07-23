@@ -47,7 +47,7 @@ SegmentOcclusionVerdict segmentOcclusion(
   }
 
   bool startInside = false;
-  const bool hit = segmentHitsAnyPhysicsAabb(
+  const bool hit = segmentOccludedByAnyPhysicsAabb(
       colliders, fromEye, toEye, marginMeters, &startInside);
   return hit ? SegmentOcclusionVerdict::Blocked
              : SegmentOcclusionVerdict::Clear;

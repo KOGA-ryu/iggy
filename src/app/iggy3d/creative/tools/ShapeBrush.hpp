@@ -10,6 +10,7 @@
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/tools/VolumeTypes.hpp"
 
 namespace iggy3d::creative {
 
@@ -218,6 +219,7 @@ enum class CreativeShapeBrushPlanStatus : std::uint8_t {
   NotRequested,
   InvalidKind,
   InvalidAxis,
+  InvalidShell,
   CandidateLimitExceeded,
   GeneratedLimitExceeded,
   Planned,
@@ -229,6 +231,11 @@ struct CreativeShapeBrushPlanRequest {
   CreativeGridCoord3 firstCell{};
   CreativeGridCoord3 secondCell{};
   bool hollow = false;
+  std::uint8_t shellThicknessCells = 1U;
+  CreativeVolumeHollowOpening shellOpening =
+      CreativeVolumeHollowOpening::Closed;
+  CreativeVolumeHollowCornerRule shellCornerRule =
+      CreativeVolumeHollowCornerRule::KeepEdges;
   std::uint64_t maxCandidateCellCount =
       kDefaultCreativeShapeBrushCellLimit;
   std::uint64_t maxGeneratedCellCount =
@@ -241,6 +248,11 @@ struct CreativeShapeBrushPlanReceipt {
   CreativeShapeBrushKind kind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis axis = CreativeShapeBrushAxis::Y;
   bool hollow = false;
+  std::uint8_t shellThicknessCells = 1U;
+  CreativeVolumeHollowOpening shellOpening =
+      CreativeVolumeHollowOpening::Closed;
+  CreativeVolumeHollowCornerRule shellCornerRule =
+      CreativeVolumeHollowCornerRule::KeepEdges;
   CreativeShapeBrushPlanStatus status =
       CreativeShapeBrushPlanStatus::NotRequested;
   std::uint64_t candidateCellCount = 0;

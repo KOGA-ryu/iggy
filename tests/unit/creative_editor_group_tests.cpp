@@ -7,8 +7,10 @@
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <span>
@@ -24,6 +26,45 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool creativePathPointsExactlyEqual(
+    std::span<const cr::CreativePathPoint> left,
+    std::span<const cr::CreativePathPoint> right) {
+  if (left.size() != right.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < left.size(); ++index) {
+    if (!cr::creativeVec3ExactlyEqual(left[index].position,
+                                      right[index].position) ||
+        left[index].dwellSeconds != right[index].dwellSeconds ||
+        left[index].outgoingSpeedMultiplier !=
+            right[index].outgoingSpeedMultiplier) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool creativeObjectsExactlyEqual(const cr::CreativeObject& left,
+                                 const cr::CreativeObject& right) {
+  return left.id == right.id && left.kind == right.kind &&
+         left.name == right.name && left.assetId == right.assetId &&
+         cr::creativeVec3ExactlyEqual(left.transform.position,
+                                      right.transform.position) &&
+         cr::creativeVec3ExactlyEqual(left.transform.rotationEulerRadians,
+                                      right.transform.rotationEulerRadians) &&
+         cr::creativeVec3ExactlyEqual(left.transform.scale,
+                                      right.transform.scale) &&
+         cr::creativeVec3ExactlyEqual(left.bounds.min, right.bounds.min) &&
+         cr::creativeVec3ExactlyEqual(left.bounds.max, right.bounds.max) &&
+         left.layerId == right.layerId && left.visible == right.visible &&
+         left.locked == right.locked && left.tags == right.tags &&
+         left.parentId == right.parentId &&
+         left.attachmentSocket == right.attachmentSocket &&
+         creativePathPointsExactlyEqual(left.pathPoints, right.pathPoints) &&
+         left.movingPlatform == right.movingPlatform &&
+         left.door == right.door && left.window == right.window;
 }
 
 cr::CreativeObjectId createCrate(cr::Facade& facade, double x) {
@@ -180,12 +221,13 @@ bool deletingASelectedGroupRemovesAndRestoresItsHierarchy() {
   const cr::CreativeGroupCommandReceipt grouped =
       app::applyCreativeEditorGroupCommandWithHistory(
           appState, "test_group_before_delete");
-  const cr::CreativeDocumentRemoveReceipt removed = app::deleteSelectedObject(
-      appState, "test_delete_group", &appState.history);
+  const cr::CreativeSemanticDeleteReceipt removed =
+      app::deleteSelectedObjectsWithUndo(appState, "test_delete_group",
+                                         &appState.history);
   const bool undone = app::undoLastEdit(appState, "test_undo_group_delete");
-  return expect(grouped.accepted && removed.accepted &&
-                    removed.objectRemoved &&
-                    removed.reasonCode == "object_hierarchy_removed" &&
+  return expect(grouped.accepted && removed.accepted && removed.changed &&
+                    removed.removedObjectCount == 3U &&
+                    removed.reasonCode == "creative_semantic_delete_applied" &&
                     undone && appState.facade.document().objectCount() == 3U &&
                     appState.facade.findObject(grouped.groupObjectId) != nullptr,
                 "delete and undo treat a group hierarchy as one history step");
@@ -444,7 +486,7 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           {cr::CreativeHeldItemKind::ObjectMove,
            cr::CreativeObjectKind::Unknown});
   bool ok = expect(
-      commands.count == 15U &&
+      commands.count == 16U &&
           commands.ids[0] ==
               app::CreativeEditorToolOptionsCommandId::TransformSelection &&
           commands.ids[1] ==
@@ -458,24 +500,26 @@ bool transformToolOptionsExposeAndRouteSharedObjectActions() {
           commands.ids[5] ==
               app::CreativeEditorToolOptionsCommandId::ToggleSelectionLocked &&
           commands.ids[6] ==
-              app::CreativeEditorToolOptionsCommandId::DetachAttachment &&
+              app::CreativeEditorToolOptionsCommandId::ReattachAttachment &&
           commands.ids[7] ==
-              app::CreativeEditorToolOptionsCommandId::GroupSelection &&
+              app::CreativeEditorToolOptionsCommandId::DetachAttachment &&
           commands.ids[8] ==
-              app::CreativeEditorToolOptionsCommandId::UngroupSelection &&
+              app::CreativeEditorToolOptionsCommandId::GroupSelection &&
           commands.ids[9] ==
-              app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
+              app::CreativeEditorToolOptionsCommandId::UngroupSelection &&
           commands.ids[10] ==
-              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
+              app::CreativeEditorToolOptionsCommandId::EditGroupContents &&
           commands.ids[11] ==
-              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
+              app::CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset &&
           commands.ids[12] ==
-              app::CreativeEditorToolOptionsCommandId::
-                  RefreshSavedAssetInstance &&
+              app::CreativeEditorToolOptionsCommandId::UpdateSavedAsset &&
           commands.ids[13] ==
               app::CreativeEditorToolOptionsCommandId::
-                  RefreshSafeSavedAssetInstances &&
+                  RefreshSavedAssetInstance &&
           commands.ids[14] ==
+              app::CreativeEditorToolOptionsCommandId::
+                  RefreshSafeSavedAssetInstances &&
+          commands.ids[15] ==
               app::CreativeEditorToolOptionsCommandId::
                   ForceRefreshSavedAssetInstances,
       "Transform options expose the bounded shared object-action order");
@@ -727,6 +771,135 @@ bool controllerTransformScalesAGroupAsOneUndoableHierarchy() {
          ok;
 }
 
+bool groupPivotEditsOnePersistentPivotWithoutMovingMembers() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Group Pivot");
+  static_cast<void>(document.assignId(313U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId first = createCrate(appState.facade, 0.0);
+  const cr::CreativeObjectId second = createCrate(appState.facade, 2.0);
+  select(appState.facade, first, false);
+  select(appState.facade, second, true);
+  const cr::CreativeGroupCommandReceipt grouped =
+      appState.facade.groupSelectedObjects();
+  if (!expect(grouped.accepted, "group pivot fixture grouped")) {
+    return false;
+  }
+  appState.history = {};
+  const cr::CreativeObject firstBefore = *appState.facade.findObject(first);
+  const cr::CreativeObject secondBefore = *appState.facade.findObject(second);
+  const cr::CreativeVec3 pivot{5.0, 1.5, -2.0};
+  const cr::CreativeGroupPivotReceipt changed =
+      app::setCreativeEditorGroupPivotWithHistory(
+          appState, grouped.groupObjectId, pivot, "test_group_pivot");
+  const cr::CreativeObject* group =
+      appState.facade.findObject(grouped.groupObjectId);
+  const cr::CreativeObject* firstAfter = appState.facade.findObject(first);
+  const cr::CreativeObject* secondAfter = appState.facade.findObject(second);
+  bool ok = expect(changed.accepted && changed.changed && group != nullptr &&
+                       cr::creativeVec3ExactlyEqual(group->transform.position,
+                                                    pivot) &&
+                       cr::creativeUndoDepth(appState.history) == 1U,
+                   "group pivot changes once with one history record") &&
+            expect(firstAfter != nullptr && secondAfter != nullptr &&
+                       creativeObjectsExactlyEqual(*firstAfter, firstBefore) &&
+                       creativeObjectsExactlyEqual(*secondAfter, secondBefore),
+                   "group pivot leaves every member world record unchanged");
+
+  app::CreativeEditorState editor;
+  ok = expect(app::beginCreativeEditorSelectionTransformPreview(
+                  appState, editor.transform, "test_group_pivot_transform",
+                  app::CreativeEditorTransformAnchorPolicy::FixedSource) &&
+                  editor.transform.pivot ==
+                      app::CreativeEditorTransformPivot::ActiveObjectOrigin &&
+                  cr::creativeVec3ExactlyEqual(
+                      editor.transform.request.sourceAnchor, pivot),
+              "group transform opens on its persistent local pivot") &&
+       ok;
+  static_cast<void>(app::cancelCreativeEditorSelectionTransformPreview(
+      editor.transform, "test_group_pivot_cancel"));
+  const bool undone = app::undoLastEdit(appState, "test_group_pivot_undo");
+  group = appState.facade.findObject(grouped.groupObjectId);
+  return expect(undone && group != nullptr &&
+                    cr::creativeVec3ExactlyEqual(group->transform.position,
+                                                 grouped.pivot),
+                "group pivot undo restores the generated pivot") &&
+         ok;
+}
+
+bool groupHierarchyDepthAndInheritedFlagsFailClosed() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Group Hierarchy Laws");
+  static_cast<void>(document.assignId(314U));
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Group;
+  create.name = "Root";
+  cr::CreativeObjectId parent = document.createObject(create).objectId;
+  if (!expect(parent != cr::kInvalidObjectId,
+              "group hierarchy root created")) {
+    return false;
+  }
+  for (std::size_t depth = 1U;
+       depth < cr::kCreativeHierarchyDepthCapacity; ++depth) {
+    create.name = "Nested";
+    create.parentId = parent;
+    const cr::CreativeDocumentCreateReceipt nested =
+        document.createObject(create);
+    if (!expect(nested.accepted, "bounded nested group created")) {
+      return false;
+    }
+    parent = nested.objectId;
+  }
+  create.parentId = parent;
+  create.name = "Depth Eight A";
+  const cr::CreativeDocumentCreateReceipt first = document.createObject(create);
+  create.name = "Depth Eight B";
+  const cr::CreativeDocumentCreateReceipt second = document.createObject(create);
+  if (!expect(first.accepted && second.accepted,
+              "maximum-depth siblings created")) {
+    return false;
+  }
+  const std::array selected{first.objectId, second.objectId};
+  const cr::CreativeGroupCommandReceipt tooDeep =
+      cr::groupDocumentObjectsAtomically(document, selected);
+  create.parentId = first.objectId;
+  const cr::CreativeDocumentCreateReceipt directTooDeep =
+      document.createObject(create);
+
+  const cr::CreativeDocumentMutationReceipt hidden =
+      cr::setDocumentObjectVisible(document, parent, false);
+  const cr::CreativeObjectHierarchyState hiddenChild =
+      cr::resolveCreativeObjectHierarchyState(document, first.objectId);
+  const cr::CreativeObject* child = document.findObject(first.objectId);
+  const cr::CreativeDocumentMutationReceipt shown =
+      cr::setDocumentObjectVisible(document, parent, true);
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(document, parent, true);
+  const cr::CreativeObjectHierarchyState lockedChild =
+      cr::resolveCreativeObjectHierarchyState(document, first.objectId);
+  const cr::CreativeDocumentMutationReceipt blockedMove =
+      cr::moveDocumentObject(document, first.objectId, {9.0, 0.0, 0.0});
+
+  return expect(!tooDeep.accepted &&
+                    tooDeep.status ==
+                        cr::CreativeGroupCommandStatus::DepthExceeded &&
+                    tooDeep.reasonCode == "creative_group_depth_exceeded" &&
+                    !directTooDeep.accepted &&
+                    directTooDeep.reasonCode == "parent_depth_exceeded",
+                "depth capacity rejects direct and grouped depth nine") &&
+         expect(hidden.changed && shown.changed && child != nullptr &&
+                    child->visible && hiddenChild.resolved &&
+                    !hiddenChild.effectivelyVisible &&
+                    hiddenChild.hiddenByObjectId == parent,
+                "parent visibility is inherited without overwriting child state") &&
+         expect(locked.changed && lockedChild.resolved &&
+                    lockedChild.effectivelyLocked &&
+                    lockedChild.lockedByObjectId == parent &&
+                    !cr::documentMutationSucceeded(blockedMove.status),
+                "parent lock blocks descendant mutation and identifies owner");
+}
+
 }  // namespace
 
 int main() {
@@ -742,7 +915,9 @@ int main() {
                  transformToolOptionsExposeAndRouteSharedObjectActions() &&
                  objectActionsInspectCompleteGroupCapability() &&
                  groupToolOptionsEnterFocusAndUngroupWithHistory() &&
-                 controllerTransformScalesAGroupAsOneUndoableHierarchy()
+                 controllerTransformScalesAGroupAsOneUndoableHierarchy() &&
+                 groupPivotEditsOnePersistentPivotWithoutMovingMembers() &&
+                 groupHierarchyDepthAndInheritedFlagsFailClosed()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;
 }

@@ -1,9 +1,13 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 
+#include "app/iggy3d/creative/tools/Group.hpp"
+
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
 #include <numbers>
+#include <unordered_set>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -75,43 +79,6 @@ template <typename Enum>
 
 }  // namespace
 
-std::string_view toString(CreativeLinearArrayDirection direction) noexcept {
-  switch (direction) {
-    case CreativeLinearArrayDirection::PositiveX: return "+X";
-    case CreativeLinearArrayDirection::NegativeX: return "-X";
-    case CreativeLinearArrayDirection::PositiveY: return "+Y";
-    case CreativeLinearArrayDirection::NegativeY: return "-Y";
-    case CreativeLinearArrayDirection::PositiveZ: return "+Z";
-    case CreativeLinearArrayDirection::NegativeZ: return "-Z";
-    case CreativeLinearArrayDirection::Count: break;
-  }
-  return "INVALID";
-}
-
-std::string_view toString(CreativeLinearArrayCopyCount count) noexcept {
-  switch (count) {
-    case CreativeLinearArrayCopyCount::One: return "1 NEW";
-    case CreativeLinearArrayCopyCount::Two: return "2 NEW";
-    case CreativeLinearArrayCopyCount::Four: return "4 NEW";
-    case CreativeLinearArrayCopyCount::Eight: return "8 NEW";
-    case CreativeLinearArrayCopyCount::Sixteen: return "16 NEW";
-    case CreativeLinearArrayCopyCount::ThirtyTwo: return "32 NEW";
-    case CreativeLinearArrayCopyCount::Count: break;
-  }
-  return "INVALID";
-}
-
-std::string_view toString(CreativeLinearArraySpacing spacing) noexcept {
-  switch (spacing) {
-    case CreativeLinearArraySpacing::OneCell: return "1 CELL";
-    case CreativeLinearArraySpacing::TwoCells: return "2 CELLS";
-    case CreativeLinearArraySpacing::FourCells: return "4 CELLS";
-    case CreativeLinearArraySpacing::EightCells: return "8 CELLS";
-    case CreativeLinearArraySpacing::Count: break;
-  }
-  return "INVALID";
-}
-
 std::string_view toString(CreativeLinearArrayStatus status) noexcept {
   switch (status) {
     case CreativeLinearArrayStatus::NotRequested: return "NotRequested";
@@ -123,32 +90,17 @@ std::string_view toString(CreativeLinearArrayStatus status) noexcept {
     case CreativeLinearArrayStatus::ObjectIdExhausted:
       return "ObjectIdExhausted";
     case CreativeLinearArrayStatus::PasteRejected: return "PasteRejected";
+    case CreativeLinearArrayStatus::RecipeNotFound: return "RecipeNotFound";
+    case CreativeLinearArrayStatus::RecipeKindMismatch:
+      return "RecipeKindMismatch";
+    case CreativeLinearArrayStatus::RecipeDependencyConflict:
+      return "RecipeDependencyConflict";
+    case CreativeLinearArrayStatus::RecipeRejected: return "RecipeRejected";
+    case CreativeLinearArrayStatus::RemoveRejected: return "RemoveRejected";
     case CreativeLinearArrayStatus::Planned: return "Planned";
     case CreativeLinearArrayStatus::Applied: return "Applied";
   }
   return "Unknown";
-}
-
-std::string_view toString(CreativeRadialArrayInstanceCount count) noexcept {
-  switch (count) {
-    case CreativeRadialArrayInstanceCount::Two: return "2 TOTAL";
-    case CreativeRadialArrayInstanceCount::Four: return "4 TOTAL";
-    case CreativeRadialArrayInstanceCount::Eight: return "8 TOTAL";
-    case CreativeRadialArrayInstanceCount::Sixteen: return "16 TOTAL";
-    case CreativeRadialArrayInstanceCount::ThirtyTwo: return "32 TOTAL";
-    case CreativeRadialArrayInstanceCount::Count: break;
-  }
-  return "INVALID";
-}
-
-std::string_view toString(CreativeRadialArraySweep sweep) noexcept {
-  switch (sweep) {
-    case CreativeRadialArraySweep::Degrees90: return "90 DEG";
-    case CreativeRadialArraySweep::Degrees180: return "180 DEG";
-    case CreativeRadialArraySweep::Degrees360: return "360 DEG";
-    case CreativeRadialArraySweep::Count: break;
-  }
-  return "INVALID";
 }
 
 std::string_view toString(CreativeRadialArrayStatus status) noexcept {
@@ -164,38 +116,17 @@ std::string_view toString(CreativeRadialArrayStatus status) noexcept {
     case CreativeRadialArrayStatus::ObjectIdExhausted:
       return "ObjectIdExhausted";
     case CreativeRadialArrayStatus::PasteRejected: return "PasteRejected";
+    case CreativeRadialArrayStatus::RecipeNotFound: return "RecipeNotFound";
+    case CreativeRadialArrayStatus::RecipeKindMismatch:
+      return "RecipeKindMismatch";
+    case CreativeRadialArrayStatus::RecipeDependencyConflict:
+      return "RecipeDependencyConflict";
+    case CreativeRadialArrayStatus::RecipeRejected: return "RecipeRejected";
+    case CreativeRadialArrayStatus::RemoveRejected: return "RemoveRejected";
     case CreativeRadialArrayStatus::Planned: return "Planned";
     case CreativeRadialArrayStatus::Applied: return "Applied";
   }
   return "Unknown";
-}
-
-std::uint32_t creativeLinearArrayCopyCountValue(
-    CreativeLinearArrayCopyCount count) noexcept {
-  constexpr std::array<std::uint32_t, 6> values{1U, 2U, 4U, 8U, 16U, 32U};
-  const std::size_t index = static_cast<std::size_t>(count);
-  return index < values.size() ? values[index] : 0U;
-}
-
-std::uint32_t creativeLinearArraySpacingCells(
-    CreativeLinearArraySpacing spacing) noexcept {
-  constexpr std::array<std::uint32_t, 4> values{1U, 2U, 4U, 8U};
-  const std::size_t index = static_cast<std::size_t>(spacing);
-  return index < values.size() ? values[index] : 0U;
-}
-
-std::uint32_t creativeRadialArrayInstanceCountValue(
-    CreativeRadialArrayInstanceCount count) noexcept {
-  constexpr std::array<std::uint32_t, 5> values{2U, 4U, 8U, 16U, 32U};
-  const std::size_t index = static_cast<std::size_t>(count);
-  return index < values.size() ? values[index] : 0U;
-}
-
-double creativeRadialArraySweepDegrees(
-    CreativeRadialArraySweep sweep) noexcept {
-  constexpr std::array values{90.0, 180.0, 360.0};
-  const std::size_t index = static_cast<std::size_t>(sweep);
-  return index < values.size() ? values[index] : 0.0;
 }
 
 CreativeLinearArrayPlanReceipt planCreativeLinearArray(
@@ -335,7 +266,73 @@ CreativeRadialArrayPlanReceipt planCreativeRadialArray(
   return receipt;
 }
 
-CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
+CreativePatternReplacementPreflight preflightCreativePatternReplacement(
+    const CreativeDocument& document,
+    const CreativePatternRecipe& recipe) {
+  CreativePatternReplacementPreflight result;
+  std::unordered_set<CreativeObjectId> generatedIds{
+      recipe.generatedObjectIds.begin(), recipe.generatedObjectIds.end()};
+  result.rootObjectIds.reserve(recipe.generatedObjectIds.size());
+  for (CreativeObjectId objectId : recipe.generatedObjectIds) {
+    const CreativeObject* object = document.findObject(objectId);
+    if (object == nullptr) {
+      result.failedObjectId = objectId;
+      result.reasonCode = "creative_pattern_generated_object_missing";
+      return result;
+    }
+    if (!object->parentId.has_value() ||
+        !generatedIds.contains(*object->parentId)) {
+      result.rootObjectIds.push_back(objectId);
+    }
+  }
+
+  for (const CreativeObject& object : document.objects()) {
+    if (object.parentId.has_value() &&
+        generatedIds.contains(*object.parentId) &&
+        !generatedIds.contains(object.id)) {
+      result.failedObjectId = object.id;
+      result.reasonCode = "creative_pattern_external_child_attached";
+      return result;
+    }
+  }
+  for (const CreativePatternRecipe& other :
+       document.patternRecipeStore().recipes) {
+    if (other.id == recipe.id) {
+      continue;
+    }
+    const auto dependency = std::find_if(
+        other.sourceObjectIds.begin(), other.sourceObjectIds.end(),
+        [&generatedIds](CreativeObjectId objectId) {
+          return generatedIds.contains(objectId);
+        });
+    if (dependency != other.sourceObjectIds.end()) {
+      result.failedObjectId = *dependency;
+      result.reasonCode = "creative_pattern_output_has_dependent_recipe";
+      return result;
+    }
+  }
+  if (result.rootObjectIds.empty()) {
+    result.reasonCode = "creative_pattern_generated_roots_missing";
+    return result;
+  }
+  result.accepted = true;
+  result.reasonCode = "creative_pattern_replacement_ready";
+  return result;
+}
+
+namespace {
+
+void unlockPatternOutputs(CreativeDocument& document,
+                          std::span<const CreativeObjectId> objectIds) {
+  for (CreativeObjectId objectId : objectIds) {
+    CreativeObject* object = document.findObject(objectId);
+    if (object != nullptr) {
+      object->locked = false;
+    }
+  }
+}
+
+CreativeLinearArrayReceipt createCreativeLinearArrayCopiesAtomically(
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
     const CreativeLinearArrayRequest& request) {
@@ -352,7 +349,8 @@ CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
 
   CreativeClipboard clipboard;
   receipt.copyReceipt =
-      copyDocumentObjectsToClipboard(document, objectIds, clipboard);
+      copyDocumentObjectsToClipboard(document, objectIds, clipboard,
+                                     CreativeClipboardCopyMode::ExactObjects);
   if (!receipt.copyReceipt.accepted) {
     receipt.failedObjectId = receipt.copyReceipt.failedObjectId;
     receipt.status = statusForClipboardFailure(receipt.copyReceipt.status);
@@ -360,6 +358,10 @@ CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
     return receipt;
   }
   receipt.sourceObjectCount = receipt.copyReceipt.copiedObjectCount;
+  receipt.sourceObjectIds.reserve(clipboard.objects.size());
+  for (const CreativeObject& object : clipboard.objects) {
+    receipt.sourceObjectIds.push_back(object.id);
+  }
 
   CreativeLinearArrayPlanRequest planRequest;
   planRequest.sourceObjectCount = receipt.sourceObjectCount;
@@ -410,7 +412,7 @@ CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
   return receipt;
 }
 
-CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
+CreativeRadialArrayReceipt createCreativeRadialArrayCopiesAtomically(
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
     const CreativeRadialArrayRequest& request) {
@@ -427,7 +429,8 @@ CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
 
   CreativeClipboard clipboard;
   receipt.copyReceipt =
-      copyDocumentObjectsToClipboard(document, objectIds, clipboard);
+      copyDocumentObjectsToClipboard(document, objectIds, clipboard,
+                                     CreativeClipboardCopyMode::ExactObjects);
   if (!receipt.copyReceipt.accepted) {
     receipt.failedObjectId = receipt.copyReceipt.failedObjectId;
     receipt.status = radialStatusForClipboardFailure(receipt.copyReceipt.status);
@@ -435,6 +438,10 @@ CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
     return receipt;
   }
   receipt.sourceObjectCount = receipt.copyReceipt.copiedObjectCount;
+  receipt.sourceObjectIds.reserve(clipboard.objects.size());
+  for (const CreativeObject& object : clipboard.objects) {
+    receipt.sourceObjectIds.push_back(object.id);
+  }
 
   CreativeRadialArrayPlanRequest planRequest;
   planRequest.sourceObjectCount = receipt.sourceObjectCount;
@@ -498,6 +505,291 @@ CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
       receipt.finalCopyObjectCount;
   receipt.message = "creative_radial_array_applied";
   return receipt;
+}
+
+}  // namespace
+
+CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeLinearArrayRequest& request) {
+  CreativeDocument staged = document;
+  CreativeLinearArrayReceipt receipt =
+      createCreativeLinearArrayCopiesAtomically(staged, objectIds, request);
+  if (!receipt.accepted) {
+    return receipt;
+  }
+
+  CreativePatternRecipe recipe;
+  recipe.kind = CreativePatternRecipeKind::LinearArray;
+  recipe.sourceObjectIds = receipt.sourceObjectIds;
+  recipe.generatedObjectIds.assign(receipt.generatedObjectIds().begin(),
+                                   receipt.generatedObjectIds().end());
+  recipe.linear = request;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Add;
+  mutation.recipe = std::move(recipe);
+  receipt.patternMutationReceipt =
+      staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeLinearArrayStatus::RecipeRejected;
+    receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
+  document = std::move(staged);
+  receipt.revisionAfter = document.revision();
+  return receipt;
+}
+
+CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeRadialArrayRequest& request) {
+  CreativeDocument staged = document;
+  CreativeRadialArrayReceipt receipt =
+      createCreativeRadialArrayCopiesAtomically(staged, objectIds, request);
+  if (!receipt.accepted) {
+    return receipt;
+  }
+
+  CreativePatternRecipe recipe;
+  recipe.kind = CreativePatternRecipeKind::RadialArray;
+  recipe.sourceObjectIds = receipt.sourceObjectIds;
+  recipe.generatedObjectIds.assign(receipt.generatedObjectIds().begin(),
+                                   receipt.generatedObjectIds().end());
+  recipe.radial = request;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Add;
+  mutation.recipe = std::move(recipe);
+  receipt.patternMutationReceipt =
+      staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeRadialArrayStatus::RecipeRejected;
+    receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
+  document = std::move(staged);
+  receipt.revisionAfter = document.revision();
+  return receipt;
+}
+
+CreativeLinearArrayReceipt updateCreativeLinearArrayRecipeAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId,
+    const CreativeLinearArrayRequest& request) {
+  CreativeLinearArrayReceipt rejected;
+  rejected.requested = true;
+  rejected.patternRecipeId = recipeId;
+  rejected.revisionBefore = document.revision();
+  rejected.revisionAfter = rejected.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    rejected.status = CreativeLinearArrayStatus::RecipeNotFound;
+    rejected.message = "creative_linear_array_recipe_not_found";
+    return rejected;
+  }
+  if (existing->kind != CreativePatternRecipeKind::LinearArray) {
+    rejected.status = CreativeLinearArrayStatus::RecipeKindMismatch;
+    rejected.message = "creative_linear_array_recipe_kind_mismatch";
+    return rejected;
+  }
+  const CreativePatternReplacementPreflight preflight =
+      preflightCreativePatternReplacement(document, *existing);
+  if (!preflight.accepted) {
+    rejected.failedObjectId = preflight.failedObjectId;
+    rejected.status =
+        CreativeLinearArrayStatus::RecipeDependencyConflict;
+    rejected.message = std::string{preflight.reasonCode};
+    return rejected;
+  }
+
+  const std::vector<CreativeObjectId> oldGeneratedObjectIds =
+      existing->generatedObjectIds;
+  const std::vector<CreativeObjectId> sourceObjectIds =
+      existing->sourceObjectIds;
+  CreativeDocument staged = document;
+  CreativeLinearArrayReceipt receipt =
+      createCreativeLinearArrayCopiesAtomically(staged, sourceObjectIds,
+                                                 request);
+  receipt.patternRecipeId = recipeId;
+  receipt.replacedGeneratedObjectCount = oldGeneratedObjectIds.size();
+  if (!receipt.accepted) {
+    return receipt;
+  }
+
+  CreativePatternRecipe replacement;
+  replacement.kind = CreativePatternRecipeKind::LinearArray;
+  replacement.sourceObjectIds = receipt.sourceObjectIds;
+  replacement.generatedObjectIds.assign(receipt.generatedObjectIds().begin(),
+                                        receipt.generatedObjectIds().end());
+  replacement.linear = request;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Replace;
+  mutation.recipeId = recipeId;
+  mutation.recipe = std::move(replacement);
+  receipt.patternMutationReceipt =
+      staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeLinearArrayStatus::RecipeRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  unlockPatternOutputs(staged, oldGeneratedObjectIds);
+  const CreativeHierarchyBatchRemoveReceipt removed =
+      removeCreativeObjectHierarchiesAtomically(
+          staged, preflight.rootObjectIds);
+  if (!removed.accepted || !removed.changed ||
+      removed.removedObjectIds.size() != oldGeneratedObjectIds.size()) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.failedObjectId = removed.failedObjectId;
+    receipt.status = CreativeLinearArrayStatus::RemoveRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{removed.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  document = std::move(staged);
+  receipt.updatedExistingRecipe = true;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_linear_array_updated";
+  return receipt;
+}
+
+CreativeRadialArrayReceipt updateCreativeRadialArrayRecipeAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId,
+    const CreativeRadialArrayRequest& request) {
+  CreativeRadialArrayReceipt rejected;
+  rejected.requested = true;
+  rejected.patternRecipeId = recipeId;
+  rejected.revisionBefore = document.revision();
+  rejected.revisionAfter = rejected.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    rejected.status = CreativeRadialArrayStatus::RecipeNotFound;
+    rejected.message = "creative_radial_array_recipe_not_found";
+    return rejected;
+  }
+  if (existing->kind != CreativePatternRecipeKind::RadialArray) {
+    rejected.status = CreativeRadialArrayStatus::RecipeKindMismatch;
+    rejected.message = "creative_radial_array_recipe_kind_mismatch";
+    return rejected;
+  }
+  const CreativePatternReplacementPreflight preflight =
+      preflightCreativePatternReplacement(document, *existing);
+  if (!preflight.accepted) {
+    rejected.failedObjectId = preflight.failedObjectId;
+    rejected.status =
+        CreativeRadialArrayStatus::RecipeDependencyConflict;
+    rejected.message = std::string{preflight.reasonCode};
+    return rejected;
+  }
+
+  const std::vector<CreativeObjectId> oldGeneratedObjectIds =
+      existing->generatedObjectIds;
+  const std::vector<CreativeObjectId> sourceObjectIds =
+      existing->sourceObjectIds;
+  CreativeDocument staged = document;
+  CreativeRadialArrayReceipt receipt =
+      createCreativeRadialArrayCopiesAtomically(staged, sourceObjectIds,
+                                                 request);
+  receipt.patternRecipeId = recipeId;
+  receipt.replacedGeneratedObjectCount = oldGeneratedObjectIds.size();
+  if (!receipt.accepted) {
+    return receipt;
+  }
+
+  CreativePatternRecipe replacement;
+  replacement.kind = CreativePatternRecipeKind::RadialArray;
+  replacement.sourceObjectIds = receipt.sourceObjectIds;
+  replacement.generatedObjectIds.assign(receipt.generatedObjectIds().begin(),
+                                        receipt.generatedObjectIds().end());
+  replacement.radial = request;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Replace;
+  mutation.recipeId = recipeId;
+  mutation.recipe = std::move(replacement);
+  receipt.patternMutationReceipt =
+      staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeRadialArrayStatus::RecipeRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  unlockPatternOutputs(staged, oldGeneratedObjectIds);
+  const CreativeHierarchyBatchRemoveReceipt removed =
+      removeCreativeObjectHierarchiesAtomically(
+          staged, preflight.rootObjectIds);
+  if (!removed.accepted || !removed.changed ||
+      removed.removedObjectIds.size() != oldGeneratedObjectIds.size()) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.failedObjectId = removed.failedObjectId;
+    receipt.status = CreativeRadialArrayStatus::RemoveRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{removed.reasonCode};
+    receipt.pasteReceipt.pastedObjectIds.clear();
+    receipt.pasteReceipt.idRemaps.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  document = std::move(staged);
+  receipt.updatedExistingRecipe = true;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_radial_array_updated";
+  return receipt;
+}
+
+CreativePatternRecipeMutationReceipt detachCreativePatternRecipe(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId) {
+  CreativePatternRecipeMutationRequest request;
+  request.kind = CreativePatternRecipeMutationKind::Detach;
+  request.recipeId = recipeId;
+  return document.applyPatternRecipeMutation(request);
 }
 
 }  // namespace iggy3d::creative

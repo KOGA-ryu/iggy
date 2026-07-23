@@ -45,6 +45,8 @@ void refreshCreativeEditorObjectActionContext(
 [[nodiscard]] bool activateCreativeEditorObjectAction(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
-    CreativeEditorToolOptionsCommandId command);
+    CreativeEditorToolOptionsCommandId command,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr,
+    const CreativePlacementClearanceCache* placementClearanceCache = nullptr);
 
 }  // namespace iggy3d_creative_app

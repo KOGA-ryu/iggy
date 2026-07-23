@@ -37,7 +37,8 @@ ImVec2 toScreen(const CreativeEditorWorldLayoutCanvasTransform& transform,
 bool styleApplies(const Style& style,
                   cr::CreativeWorldLayoutPlanLayer layer) noexcept {
   switch (layer) {
-    case cr::CreativeWorldLayoutPlanLayer::Context:
+    case cr::CreativeWorldLayoutPlanLayer::LowerContext:
+    case cr::CreativeWorldLayoutPlanLayer::UpperContext:
       return style.contextLayer;
     case cr::CreativeWorldLayoutPlanLayer::Active:
       return style.normalLayer;
@@ -52,13 +53,31 @@ bool styleApplies(const Style& style,
 Style resolvedStyle(const Primitive& primitive) noexcept {
   Style style = creativeEditorDraftingStyle(
       creativeEditorWorldLayoutPlanDraftingRole(primitive));
-  if (primitive.layer != cr::CreativeWorldLayoutPlanLayer::Context) {
-    return style;
+  CreativeEditorDraftingRole contextRole;
+  switch (primitive.layer) {
+    case cr::CreativeWorldLayoutPlanLayer::LowerContext:
+      contextRole = CreativeEditorDraftingRole::LowerLevelGhostOverlay;
+      break;
+    case cr::CreativeWorldLayoutPlanLayer::UpperContext:
+      contextRole = CreativeEditorDraftingRole::UpperLevelGhostOverlay;
+      break;
+    case cr::CreativeWorldLayoutPlanLayer::Active:
+    case cr::CreativeWorldLayoutPlanLayer::Overhead:
+    case cr::CreativeWorldLayoutPlanLayer::Count:
+      return style;
   }
-  const Style& ghost = creativeEditorDraftingStyle(
-      CreativeEditorDraftingRole::LowerLevelGhostOverlay);
+  const Style& ghost = creativeEditorDraftingStyle(contextRole);
   style.tint = ghost.tint;
+  style.strokeClass = ghost.strokeClass;
+  style.dashCells = ghost.dashCells;
+  style.gapCells = ghost.gapCells;
   style.drawOrder = ghost.drawOrder;
+  if (ghost.fillPattern != CreativeEditorDraftingFillPattern::None) {
+    style.fillPattern = ghost.fillPattern;
+  }
+  if (style.fillPattern != CreativeEditorDraftingFillPattern::None) {
+    style.fillAlpha = std::min(style.fillAlpha, 0.06F);
+  }
   return style;
 }
 

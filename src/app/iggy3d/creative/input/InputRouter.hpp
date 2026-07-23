@@ -53,7 +53,9 @@ enum class CreativeInputActionId : std::uint8_t {
   CatalogPreviousPage,
   CatalogNextPage,
   CatalogConfirm,
-  CatalogAssignToolWheel,
+  // Secondary catalog action: assign a tool to the wheel or cycle an asset
+  // between Equip and Replace/Manage.
+  CatalogContextAction,
   CatalogClose,
   ToggleToolWheel,
   ToolWheelPrevious,
@@ -119,6 +121,7 @@ enum class CreativeInputActionId : std::uint8_t {
   ControlsActivate,
   ControlsClose,
   ControlsResetDefaults,
+  FrameContext3D,
   Count,
 };
 

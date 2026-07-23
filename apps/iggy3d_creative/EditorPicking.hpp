@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <array>
 #include <limits>
 #include <optional>
 #include <span>
@@ -29,6 +30,31 @@ struct ObjectVisualPickBounds {
   VisualBounds bounds{};
   cr::CreativeScreenBounds screenAabb{};
   std::optional<iggy3d::OrientedBox> orientedBounds{};
+  bool visible = true;
+  bool locked = false;
+};
+
+inline constexpr std::size_t kObjectVisualPickHitCapacity = 64U;
+
+struct ObjectVisualPickHit {
+  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+  float entryDistance = std::numeric_limits<float>::max();
+  bool locked = false;
+};
+
+struct ObjectVisualPickStack {
+  bool rayValid = false;
+  std::array<ObjectVisualPickHit, kObjectVisualPickHitCapacity> items{};
+  std::size_t count = 0U;
+  std::uint64_t testedCount = 0U;
+  std::uint64_t totalHitCount = 0U;
+  std::uint64_t hiddenExcludedCount = 0U;
+  std::uint64_t lockedHitCount = 0U;
+  bool truncated = false;
+
+  [[nodiscard]] std::span<const ObjectVisualPickHit> hits() const noexcept {
+    return {items.data(), count};
+  }
 };
 
 struct ObjectVisualPickResult {
@@ -74,6 +100,18 @@ struct PathPointHandlePickResult {
 [[nodiscard]] ObjectVisualPickResult pickNearestVisualBoundsObjectBruteForce(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray);
+[[nodiscard]] ObjectVisualPickStack pickVisualBoundsObjectStack(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray);
+[[nodiscard]] ObjectVisualPickStack pickVisualBoundsObjectStackBruteForce(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray);
+
+// Repeating a plain selection over the same overlap stack advances to the next
+// visible hit. A current selection outside the stack restarts at the nearest.
+[[nodiscard]] cr::CreativeObjectId cycleObjectVisualPick(
+    const ObjectVisualPickStack& stack,
+    cr::CreativeObjectId currentObjectId) noexcept;
 [[nodiscard]] std::vector<PathPointHandleHit> buildPathPointHandleHits(
     const cr::CreativeObject& object,
     const iggy3d::Mat4& clipFromWorld,

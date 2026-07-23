@@ -49,6 +49,8 @@ struct SceneRoomMeshItem {
   std::string meshId;
   std::string role;
   std::string materialId;
+  std::string materialVariant;
+  std::string semanticRole;
   Vec3 position;
   Vec3 size;
   Vec3 rotationEulerRadians;
@@ -65,6 +67,8 @@ struct SceneRoomSurfacePatchItem {
   std::string role;
   Vec3 center;
   std::array<Vec3, 4U> corners{};
+  Vec3 tint{};
+  bool hasTint = false;
 };
 
 struct SceneRoomProjection {

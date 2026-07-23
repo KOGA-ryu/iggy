@@ -2,6 +2,7 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorTerrainGeneration.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 
 #include <span>
 #include <string>
@@ -27,7 +28,8 @@ namespace {
 CreativeEditorWorldLayoutEditReceipt applyWorldLayoutPropertySettings(
     CreativeEditorWorldLayoutState& state,
     std::size_t index,
-    const CreativeDesktopWorldLayoutPropertySettings& settings) {
+    const CreativeDesktopWorldLayoutPropertySettings& settings,
+    creative::CreativeGridSettings grid) {
   return std::visit(
       [&]<typename Settings>(const Settings& value) {
         if constexpr (std::is_same_v<
@@ -37,14 +39,27 @@ CreativeEditorWorldLayoutEditReceipt applyWorldLayoutPropertySettings(
                                                            value);
         } else if constexpr (std::is_same_v<
                                  Settings,
+                                 CreativeEditorWorldLayoutRoomMetadata>) {
+          return setCreativeEditorWorldLayoutRoomMetadata(state, index,
+                                                          value);
+        } else if constexpr (std::is_same_v<
+                                 Settings,
                                  CreativeEditorWorldLayoutRoomSettings>) {
           return setCreativeEditorWorldLayoutRoomSettings(state, index,
                                                           value);
         } else if constexpr (std::is_same_v<
                                  Settings,
+                                 CreativeEditorWorldLayoutTopologyEdgeSettings>) {
+          return setCreativeEditorWorldLayoutRoomEdgeSettings(
+              state,
+              {index, value.fixedEndpoint, value.lengthCells,
+               value.wallThicknessCells, value.wallHeightCells,
+               value.profile, value.material, value.joinStyle});
+        } else if constexpr (std::is_same_v<
+                                 Settings,
                                  CreativeEditorWorldLayoutVerticalConnectorSettings>) {
           return setCreativeEditorWorldLayoutVerticalConnectorSettings(
-              state, index, value);
+              state, index, value, grid);
         } else if constexpr (std::is_same_v<
                                  Settings,
                                  CreativeEditorWorldLayoutBoxSettings>) {
@@ -59,6 +74,11 @@ CreativeEditorWorldLayoutEditReceipt applyWorldLayoutPropertySettings(
                                  CreativeEditorWorldLayoutOpeningSettings>) {
           return setCreativeEditorWorldLayoutOpeningSettings(state, index,
                                                              value);
+        } else if constexpr (std::is_same_v<
+                                 Settings,
+                                 CreativeEditorWorldLayoutRoofApertureSettings>) {
+          return setCreativeEditorWorldLayoutRoofApertureSettings(
+              state, index, value, grid);
         } else if constexpr (std::is_same_v<
                                  Settings,
                                  CreativeEditorWorldLayoutTerrainProfileSettings>) {
@@ -180,7 +200,9 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
 
       const auto applyProperty = [&](CreativeEditorWorldLayoutState& target) {
         return applyWorldLayoutPropertySettings(target, payload->index,
-                                                payload->settings);
+                                                payload->settings,
+                                                appState.facade.document()
+                                                    .gridSettings());
       };
       CreativeDesktopWorldLayoutLiveEditResult propertyEdit;
       if (payload->phase ==
@@ -358,12 +380,52 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
         result.message = "layout source scope: stale target";
         break;
       }
+
+      CreativeEditorWorldLayoutState selectionCandidate = editor.worldLayout;
+      const CreativeEditorWorldLayoutEditReceipt candidateReceipt =
+          selectCreativeEditorWorldLayoutSource(
+              selectionCandidate, payload->table, payload->index,
+              payload->preferredLevelIndex);
+      if (!candidateReceipt.accepted) {
+        editor.worldLayout.statusMessage = selectionCandidate.statusMessage;
+        result.message = editor.worldLayout.statusMessage;
+        break;
+      }
+
+      editor.generatedSourceScopeCache = {};
+      if (editor.worldLayout.generatedRevision == editor.worldLayout.revision) {
+        static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
+            editor.generatedSourceScopeCache, appState.facade.document(),
+            editor.worldLayout.source, editor.worldLayout.sourceEpoch,
+            editor.worldLayout.revision,
+            editor.worldLayout.generatedRevision, payload->table,
+            payload->index));
+      }
+      if (editor.generatedSourceScopeCache.objectIds.size() >
+          creative::kCreativeSelectionTargetCapacity) {
+        result.message = "layout source scope exceeds selection capacity";
+        break;
+      }
+
+      const std::span<const creative::CreativeObjectId> generatedObjectIds =
+          editor.generatedSourceScopeCache.objectIds;
+      const creative::CreativeObjectId primaryObjectId =
+          generatedObjectIds.empty() ? creative::kInvalidObjectId
+                                     : generatedObjectIds.front();
+      const creative::CreativeSelectionReceipt objectSelection =
+          appState.facade.selectTargets(generatedObjectIds, primaryObjectId);
+      if (!objectSelection.accepted) {
+        result.message = objectSelection.message;
+        break;
+      }
+
       const CreativeEditorWorldLayoutEditReceipt receipt =
           selectCreativeEditorWorldLayoutSource(
               editor.worldLayout, payload->table, payload->index,
               payload->preferredLevelIndex);
       result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      result.changed = receipt.changed || objectSelection.changed;
+      result.affectedObjectCount = generatedObjectIds.size();
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -486,15 +548,30 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
         result.message = "layout source delete: stale target";
         break;
       }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          deleteCreativeEditorWorldLayoutSource(
-              editor.worldLayout, payload->table, payload->index);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
+      if (payload->table == cr::CreativeWorldLayoutTable::RoofAperture) {
+        const CreativeDesktopWorldLayoutLiveEditResult deleted =
+            dispatchCreativeDesktopWorldLayoutImmediateEdit(
+                editor.worldLayout, appState,
+                [&](CreativeEditorWorldLayoutState& target) {
+                  return deleteCreativeEditorWorldLayoutSource(
+                      target, payload->table, payload->index);
+                },
+                "desktop_world_layout_roof_aperture_delete");
+        result.accepted = deleted.accepted;
+        result.changed = deleted.changed;
+        result.worldLayoutChanged = deleted.worldLayoutChanged;
+        result.sceneChanged = deleted.sceneChanged;
+      } else {
+        const bool previewWasActive =
+            creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+        const CreativeEditorWorldLayoutEditReceipt receipt =
+            deleteCreativeEditorWorldLayoutSource(
+                editor.worldLayout, payload->table, payload->index);
+        result.accepted = receipt.accepted;
+        result.changed = receipt.changed;
+        result.worldLayoutChanged = receipt.changed;
+        result.sceneChanged = previewWasActive && receipt.changed;
+      }
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -569,6 +646,90 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
       result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutCreateRoofAperture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofApertureCreatePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof aperture: payload mismatch";
+        break;
+      }
+      const auto createAperture = [&](CreativeEditorWorldLayoutState& target) {
+        return createCreativeEditorWorldLayoutRoofAperture(
+            target, payload->levelIndex, payload->kind);
+      };
+      const CreativeDesktopWorldLayoutLiveEditResult created =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, appState, createAperture,
+              "desktop_world_layout_roof_aperture_create");
+      result.accepted = created.accepted;
+      result.changed = created.changed;
+      result.worldLayoutChanged = created.worldLayoutChanged;
+      result.sceneChanged = created.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofApertureManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof aperture manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoofApertureManipulationPhase
+                      phase) {
+                return applyCreativeEditorWorldLayoutRoofApertureManipulation(
+                    target, phase, payload->point, payload->toleranceCells,
+                    appState.facade.document().gridSettings());
+              },
+              "desktop_world_layout_roof_aperture_drag",
+              "roof aperture drag preview ready in 3D",
+              "roof aperture updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoof: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoofManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutRoofManipulation(
+                    target, phase, payload->target,
+                    payload->coordinateCells,
+                    appState.facade.document().gridSettings());
+              },
+              "desktop_world_layout_roof_drag",
+              "roof drag preview ready in 3D",
+              "roof updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }
@@ -726,8 +887,12 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
     case CreativeDesktopCommandId::WorldLayoutClearSelection: {
       const CreativeEditorWorldLayoutEditReceipt receipt =
           clearCreativeEditorWorldLayoutSelection(editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      editor.generatedSourceScopeCache = {};
+      const creative::CreativeSelectionReceipt objectSelection =
+          appState.facade.selectTargets(
+              std::span<const creative::CreativeObjectId>{});
+      result.accepted = receipt.accepted && objectSelection.accepted;
+      result.changed = receipt.changed || objectSelection.changed;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

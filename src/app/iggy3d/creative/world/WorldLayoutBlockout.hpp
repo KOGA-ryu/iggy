@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
 #include <array>
@@ -84,7 +85,7 @@ struct CreativeWorldLayoutBuildingBlockoutRequest {
 };
 
 inline constexpr std::uint32_t
-    kCreativeWorldLayoutBuildingBlockoutRecipeVersion = 1U;
+    kCreativeWorldLayoutBuildingBlockoutRecipeVersion = 3U;
 
 // The complete semantic input required to regenerate a blockout. This remains
 // independent of editor UI state so both 2D and 3D frontends can load and
@@ -95,12 +96,23 @@ struct CreativeWorldLayoutBuildingBlockoutRecipe {
   CreativeWorldLayoutBuildingBlockoutRequest request;
   double floorTopLayer = 0.0;
   std::uint16_t floorThicknessLayers = 1U;
+  std::uint16_t ceilingThicknessLayers = 1U;
   std::uint16_t roofThicknessLayers = 1U;
+  CreativeWorldLayoutArchitecturalProfileKind architecturalProfileKind =
+      CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  CreativeStructuralMaterial exteriorWallMaterial =
+      CreativeStructuralMaterial::Blockout;
+  CreativeStructuralMaterial interiorWallMaterial =
+      CreativeStructuralMaterial::Blockout;
   CreativeStructuralRoofStyle roofStyle = CreativeStructuralRoofStyle::Flat;
   CreativeStructuralRoofRidgeAxis roofRidgeAxis =
       CreativeStructuralRoofRidgeAxis::X;
   double roofPitchDegrees = kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+  CreativeStructuralRoofSlopeDirection roofSlopeDirection =
+      CreativeStructuralRoofSlopeDirection::PositiveZ;
+  CreativeStructuralMaterial roofMaterial =
+      CreativeStructuralMaterial::Blockout;
 };
 
 struct CreativeWorldLayoutBuildingBlockoutFingerprint {
@@ -228,6 +240,10 @@ fingerprintCreativeWorldLayoutBuildingBlockout(
 [[nodiscard]] CreativeWorldLayoutBuildingBlockoutProvenance
 creativeWorldLayoutBuildingBlockoutProvenance(
     const CreativeWorldLayout& layout, std::size_t buildingIndex);
+[[nodiscard]] bool creativeWorldLayoutBuildingBlockoutWallMaterial(
+    const CreativeWorldLayout& layout, std::size_t buildingIndex,
+    CreativeWorldLayoutWallProfile profile,
+    CreativeStructuralMaterial& output);
 [[nodiscard]] bool setCreativeWorldLayoutBuildingBlockoutProvenance(
     CreativeWorldLayout& layout, std::size_t buildingIndex,
     const CreativeWorldLayoutBuildingBlockoutProvenance& provenance);

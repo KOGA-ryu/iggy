@@ -143,6 +143,8 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
   create.kind = object.kind;
   create.name = request.appendCopySuffix ? object.name + " Copy" : object.name;
   create.assetId = object.assetId;
+  create.assetContentHash = object.assetContentHash;
+  create.assetMaterialVariant = object.assetMaterialVariant;
   create.transform = object.transform;
   create.hasTransformOverride = descriptor.hasTransform;
   create.bounds = object.bounds;
@@ -172,6 +174,18 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
     create.movingPlatform = object.movingPlatform;
     create.hasMovingPlatformSettingsOverride = true;
   }
+  if (object.kind == CreativeObjectKind::Door) {
+    create.door = object.door;
+    create.hasDoorSettingsOverride = true;
+  }
+  if (object.kind == CreativeObjectKind::Window) {
+    create.window = object.window;
+    create.hasWindowSettingsOverride = true;
+  }
+  if (object.kind == CreativeObjectKind::SpawnPoint) {
+    create.playerSpawn = object.playerSpawn;
+    create.hasPlayerSpawnSettingsOverride = true;
+  }
   return create;
 }
 
@@ -192,6 +206,124 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
                      [](const CreativePathPoint& point) {
                        return isValidCreativePathPoint(point);
                      });
+}
+
+[[nodiscard]] bool clipboardPatternRecipesValid(
+    const CreativeClipboard& clipboard) {
+  CreativePatternRecipeStore store;
+  store.recipes = clipboard.patternRecipes;
+  CreativePatternRecipeId maximumId = kInvalidCreativePatternRecipeId;
+  for (const CreativePatternRecipe& recipe : store.recipes) {
+    maximumId = std::max(maximumId, recipe.id);
+  }
+  if (!store.recipes.empty()) {
+    if (maximumId == std::numeric_limits<CreativePatternRecipeId>::max()) {
+      return false;
+    }
+    store.nextRecipeId = maximumId + 1U;
+  }
+  return validateCreativePatternRecipeReferences(store, clipboard.objects);
+}
+
+[[nodiscard]] bool patternPasteTransformSupported(
+    const CreativeClipboardPasteRequest& request) noexcept {
+  return creativeVec3ExactlyEqual(request.scaleFactor, {1.0, 1.0, 1.0}) &&
+         request.quarterTurns == 0U && !request.mirrorX && !request.mirrorZ &&
+         !request.hasAxisAngleRotation;
+}
+
+void clearPublishedPasteOutputs(
+    CreativeClipboardBatchPasteReceipt& receipt) noexcept {
+  receipt.pastedPasteCount = 0U;
+  receipt.pastedObjectCount = 0U;
+  receipt.pastedLogicLinkCount = 0U;
+  receipt.pastedPatternRecipeCount = 0U;
+  receipt.idRemaps.clear();
+  receipt.patternRecipeIdRemaps.clear();
+  receipt.pastedObjectIds.clear();
+}
+
+[[nodiscard]] bool remapPatternRecipe(
+    const CreativePatternRecipe& source,
+    const std::unordered_map<CreativeObjectId, CreativeObjectId>& remaps,
+    CreativeVec3 translation,
+    CreativePatternRecipe& output) {
+  output = source;
+  output.id = kInvalidCreativePatternRecipeId;
+  const auto remapIds = [&remaps](std::vector<CreativeObjectId>& objectIds) {
+    for (CreativeObjectId& objectId : objectIds) {
+      const auto remap = remaps.find(objectId);
+      if (remap == remaps.end()) {
+        return false;
+      }
+      objectId = remap->second;
+    }
+    return true;
+  };
+  if (!remapIds(output.sourceObjectIds) ||
+      !remapIds(output.generatedObjectIds)) {
+    return false;
+  }
+  if (output.kind == CreativePatternRecipeKind::RadialArray) {
+    output.radial.pivot = add(output.radial.pivot, translation);
+  } else if (output.kind == CreativePatternRecipeKind::AssetScatter) {
+    for (CreativeVec3& center : output.scatter.paintCenters) {
+      center = add(center, translation);
+    }
+    for (CreativeAssetScatterExclusion& exclusion :
+         output.scatter.exclusions) {
+      exclusion.center = add(exclusion.center, translation);
+    }
+  }
+  return true;
+}
+
+[[nodiscard]] bool clipboardCutHasExternalReferences(
+    const CreativeDocument& document,
+    const CreativeClipboard& clipboard,
+    CreativeObjectId& failedObjectId) {
+  std::unordered_set<CreativeObjectId> copiedIds;
+  copiedIds.reserve(clipboard.objects.size());
+  for (const CreativeObject& object : clipboard.objects) {
+    copiedIds.insert(object.id);
+  }
+  std::unordered_set<CreativePatternRecipeId> copiedRecipeIds;
+  copiedRecipeIds.reserve(clipboard.patternRecipes.size());
+  for (const CreativePatternRecipe& recipe : clipboard.patternRecipes) {
+    copiedRecipeIds.insert(recipe.id);
+  }
+  for (const CreativeLogicLink& link : document.logicLinks()) {
+    const bool sourceCopied = copiedIds.contains(link.sourceObjectId);
+    const bool targetCopied = copiedIds.contains(link.targetObjectId);
+    if (sourceCopied != targetCopied) {
+      failedObjectId = sourceCopied ? link.sourceObjectId : link.targetObjectId;
+      return true;
+    }
+  }
+  for (const CreativePatternRecipe& recipe :
+       document.patternRecipeStore().recipes) {
+    if (copiedRecipeIds.contains(recipe.id)) {
+      continue;
+    }
+    const auto copiedReference = [&copiedIds](CreativeObjectId objectId) {
+      return copiedIds.contains(objectId);
+    };
+    const auto source = std::find_if(recipe.sourceObjectIds.begin(),
+                                     recipe.sourceObjectIds.end(),
+                                     copiedReference);
+    if (source != recipe.sourceObjectIds.end()) {
+      failedObjectId = *source;
+      return true;
+    }
+    const auto generated = std::find_if(recipe.generatedObjectIds.begin(),
+                                        recipe.generatedObjectIds.end(),
+                                        copiedReference);
+    if (generated != recipe.generatedObjectIds.end()) {
+      failedObjectId = *generated;
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -238,6 +370,22 @@ std::string_view toString(CreativeDuplicateCommandStatus status) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(CreativeSemanticDeleteStatus status) noexcept {
+  switch (status) {
+    case CreativeSemanticDeleteStatus::NotRequested: return "NotRequested";
+    case CreativeSemanticDeleteStatus::EmptySelection: return "EmptySelection";
+    case CreativeSemanticDeleteStatus::InvalidDocument: return "InvalidDocument";
+    case CreativeSemanticDeleteStatus::InvalidHierarchy:
+      return "InvalidHierarchy";
+    case CreativeSemanticDeleteStatus::MissingObject: return "MissingObject";
+    case CreativeSemanticDeleteStatus::ExternalReference:
+      return "ExternalReference";
+    case CreativeSemanticDeleteStatus::RemoveRejected: return "RemoveRejected";
+    case CreativeSemanticDeleteStatus::Deleted: return "Deleted";
+  }
+  return "Unknown";
+}
+
 bool creativeClipboardEmpty(const CreativeClipboard& clipboard) noexcept {
   return clipboard.objects.empty();
 }
@@ -249,7 +397,8 @@ void clearCreativeClipboard(CreativeClipboard& clipboard) noexcept {
 CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
     const CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
-    CreativeClipboard& outClipboard) {
+    CreativeClipboard& outClipboard,
+    CreativeClipboardCopyMode mode) {
   CreativeClipboardCopyReceipt receipt;
   receipt.requested = true;
   receipt.requestedObjectCount = objectIds.size();
@@ -263,6 +412,12 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
     receipt.reasonCode = "creative_clipboard_selection_empty";
     return receipt;
   }
+  if (mode != CreativeClipboardCopyMode::SemanticClosure &&
+      mode != CreativeClipboardCopyMode::ExactObjects) {
+    receipt.status = CreativeClipboardStatus::InvalidRequest;
+    receipt.reasonCode = "creative_clipboard_copy_mode_invalid";
+    return receipt;
+  }
 
   std::unordered_set<CreativeObjectId> requested;
   requested.reserve(objectIds.size());
@@ -274,6 +429,45 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
       return receipt;
     }
     requested.insert(objectId);
+  }
+
+  if (!validateCreativePatternRecipeReferences(document.patternRecipeStore(),
+                                                document.objects())) {
+    receipt.status = CreativeClipboardStatus::InvalidClipboard;
+    receipt.reasonCode = "creative_clipboard_pattern_store_invalid";
+    return receipt;
+  }
+
+  std::vector<bool> copiedRecipes(
+      document.patternRecipeStore().recipes.size(), false);
+  if (mode == CreativeClipboardCopyMode::SemanticClosure) {
+    bool closureChanged = true;
+    while (closureChanged) {
+      closureChanged = false;
+      for (std::size_t index = 0U;
+           index < document.patternRecipeStore().recipes.size(); ++index) {
+        if (copiedRecipes[index]) {
+          continue;
+        }
+        const CreativePatternRecipe& recipe =
+            document.patternRecipeStore().recipes[index];
+        const bool generatedMemberSelected = std::any_of(
+            recipe.generatedObjectIds.begin(), recipe.generatedObjectIds.end(),
+            [&requested](CreativeObjectId objectId) {
+              return requested.contains(objectId);
+            });
+        if (!generatedMemberSelected) {
+          continue;
+        }
+        copiedRecipes[index] = true;
+        for (CreativeObjectId objectId : recipe.sourceObjectIds) {
+          closureChanged = requested.insert(objectId).second || closureChanged;
+        }
+        for (CreativeObjectId objectId : recipe.generatedObjectIds) {
+          closureChanged = requested.insert(objectId).second || closureChanged;
+        }
+      }
+    }
   }
 
   CreativeClipboard staged;
@@ -290,6 +484,12 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
     if (requested.contains(link.sourceObjectId) &&
         requested.contains(link.targetObjectId)) {
       staged.logicLinks.push_back(link);
+    }
+  }
+  for (std::size_t index = 0U; index < copiedRecipes.size(); ++index) {
+    if (copiedRecipes[index]) {
+      staged.patternRecipes.push_back(
+          document.patternRecipeStore().recipes[index]);
     }
   }
   if (staged.objects.size() != requested.size()) {
@@ -310,6 +510,11 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
     receipt.reasonCode = "creative_clipboard_parent_graph_invalid";
     return receipt;
   }
+  if (!clipboardPatternRecipesValid(staged)) {
+    receipt.status = CreativeClipboardStatus::InvalidClipboard;
+    receipt.reasonCode = "creative_clipboard_pattern_references_invalid";
+    return receipt;
+  }
   if (!resolveClipboardPlacementAnchor(staged.objects,
                                        staged.placementAnchor)) {
     receipt.status = CreativeClipboardStatus::InvalidClipboard;
@@ -322,6 +527,7 @@ CreativeClipboardCopyReceipt copyDocumentObjectsToClipboard(
   receipt.status = CreativeClipboardStatus::Copied;
   receipt.copiedObjectCount = staged.objects.size();
   receipt.copiedLogicLinkCount = staged.logicLinks.size();
+  receipt.copiedPatternRecipeCount = staged.patternRecipes.size();
   receipt.reasonCode = "creative_clipboard_copied";
   outClipboard = std::move(staged);
   return receipt;
@@ -342,10 +548,13 @@ CreativeClipboardPasteReceipt pasteCreativeClipboardAtomically(
   receipt.requestedObjectCount = batch.requestedObjectCount;
   receipt.pastedObjectCount = batch.pastedObjectCount;
   receipt.pastedLogicLinkCount = batch.pastedLogicLinkCount;
+  receipt.pastedPatternRecipeCount = batch.pastedPatternRecipeCount;
   receipt.failedObjectId = batch.failedObjectId;
   receipt.revisionBefore = batch.revisionBefore;
   receipt.revisionAfter = batch.revisionAfter;
   receipt.idRemaps = std::move(batch.idRemaps);
+  receipt.patternRecipeIdRemaps =
+      std::move(batch.patternRecipeIdRemaps);
   receipt.pastedObjectIds = std::move(batch.pastedObjectIds);
   receipt.reasonCode = std::move(batch.reasonCode);
   return receipt;
@@ -399,6 +608,15 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
   receipt.requestedLogicLinkCount =
       static_cast<std::uint64_t>(clipboard.logicLinks.size()) *
       requests.size();
+  if (clipboard.patternRecipes.size() >
+      std::numeric_limits<std::uint64_t>::max() / requests.size()) {
+    receipt.status = CreativeClipboardStatus::InvalidRequest;
+    receipt.reasonCode = "creative_clipboard_pattern_batch_size_overflow";
+    return receipt;
+  }
+  receipt.requestedPatternRecipeCount =
+      static_cast<std::uint64_t>(clipboard.patternRecipes.size()) *
+      requests.size();
 
   const CreativeLogicLinkValidationReceipt linkValidation =
       validateCreativeLogicLinks(clipboard.logicLinks, clipboard.objects);
@@ -406,6 +624,11 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
     receipt.status = CreativeClipboardStatus::InvalidClipboard;
     receipt.failedObjectId = linkValidation.sourceObjectId;
     receipt.reasonCode = std::string(linkValidation.reasonCode);
+    return receipt;
+  }
+  if (!clipboardPatternRecipesValid(clipboard)) {
+    receipt.status = CreativeClipboardStatus::InvalidClipboard;
+    receipt.reasonCode = "creative_clipboard_pattern_references_invalid";
     return receipt;
   }
 
@@ -446,6 +669,13 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       receipt.reasonCode = "creative_clipboard_parent_policy_invalid";
       return receipt;
     }
+    if (!clipboard.patternRecipes.empty() &&
+        !patternPasteTransformSupported(request)) {
+      receipt.failedPasteIndex = requestIndex;
+      receipt.status = CreativeClipboardStatus::InvalidRequest;
+      receipt.reasonCode = "creative_clipboard_pattern_transform_unsupported";
+      return receipt;
+    }
   }
 
   std::vector<std::size_t> parentOrder;
@@ -469,6 +699,8 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
   const std::size_t totalObjectCount =
       static_cast<std::size_t>(receipt.requestedObjectCount);
   receipt.idRemaps.reserve(totalObjectCount);
+  receipt.patternRecipeIdRemaps.reserve(
+      static_cast<std::size_t>(receipt.requestedPatternRecipeCount));
   receipt.pastedObjectIds.reserve(totalObjectCount);
   for (std::size_t requestIndex = 0; requestIndex < requests.size();
        ++requestIndex) {
@@ -482,6 +714,10 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
                                               : CreativeVec3{};
     placementRequest.targetAnchor =
         add(placementRequest.sourceAnchor, request.offset);
+    placementRequest.pivotMode = request.pivotMode;
+    placementRequest.coordinateSpace = request.coordinateSpace;
+    placementRequest.coordinateBasisEulerRadians =
+        request.coordinateBasisEulerRadians;
     placementRequest.scaleFactor = request.scaleFactor;
     placementRequest.quarterTurns = request.quarterTurns;
     placementRequest.mirrorX = request.mirrorX;
@@ -496,9 +732,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
       receipt.failedObjectId = placementPlan.failedObjectId;
       receipt.status = CreativeClipboardStatus::InvalidRequest;
       receipt.reasonCode = placementPlan.reasonCode;
-      receipt.pastedPasteCount = 0U;
-      receipt.idRemaps.clear();
-      receipt.pastedObjectIds.clear();
+      clearPublishedPasteOutputs(receipt);
       return receipt;
     }
     const CreativeObjectId pasteStartId = staged.nextObjectId();
@@ -521,9 +755,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
         receipt.failedObjectId = object.id;
         receipt.status = CreativeClipboardStatus::InvalidRequest;
         receipt.reasonCode = "creative_clipboard_output_invalid";
-        receipt.pastedPasteCount = 0U;
-        receipt.idRemaps.clear();
-        receipt.pastedObjectIds.clear();
+        clearPublishedPasteOutputs(receipt);
         return receipt;
       }
       const CreativeDocumentCreateReceipt createReceipt =
@@ -535,9 +767,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
         receipt.failedObjectId = object.id;
         receipt.status = CreativeClipboardStatus::CreateRejected;
         receipt.reasonCode = std::string(createReceipt.reasonCode);
-        receipt.pastedPasteCount = 0U;
-        receipt.idRemaps.clear();
-        receipt.pastedObjectIds.clear();
+        clearPublishedPasteOutputs(receipt);
         return receipt;
       }
       receipt.pastedObjectIds.push_back(createReceipt.objectId);
@@ -550,9 +780,7 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
         receipt.failedObjectId = link.sourceObjectId;
         receipt.status = CreativeClipboardStatus::InvalidClipboard;
         receipt.reasonCode = "creative_clipboard_link_endpoint_missing";
-        receipt.pastedPasteCount = 0U;
-        receipt.idRemaps.clear();
-        receipt.pastedObjectIds.clear();
+        clearPublishedPasteOutputs(receipt);
         return receipt;
       }
       const CreativeLogicLinkMutationReceipt linkReceipt = staged.setLogicLink(
@@ -562,12 +790,36 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
         receipt.failedObjectId = link.sourceObjectId;
         receipt.status = CreativeClipboardStatus::CreateRejected;
         receipt.reasonCode = std::string(linkReceipt.reasonCode);
-        receipt.pastedPasteCount = 0U;
-        receipt.idRemaps.clear();
-        receipt.pastedObjectIds.clear();
+        clearPublishedPasteOutputs(receipt);
         return receipt;
       }
       ++receipt.pastedLogicLinkCount;
+    }
+    for (const CreativePatternRecipe& recipe : clipboard.patternRecipes) {
+      CreativePatternRecipe remappedRecipe;
+      if (!remapPatternRecipe(recipe, remaps, request.offset,
+                              remappedRecipe)) {
+        receipt.failedPasteIndex = requestIndex;
+        receipt.status = CreativeClipboardStatus::InvalidClipboard;
+        receipt.reasonCode = "creative_clipboard_pattern_endpoint_missing";
+        clearPublishedPasteOutputs(receipt);
+        return receipt;
+      }
+      CreativePatternRecipeMutationRequest mutation;
+      mutation.kind = CreativePatternRecipeMutationKind::Add;
+      mutation.recipe = std::move(remappedRecipe);
+      const CreativePatternRecipeMutationReceipt recipeReceipt =
+          staged.applyPatternRecipeMutation(mutation);
+      if (!recipeReceipt.accepted || !recipeReceipt.changed) {
+        receipt.failedPasteIndex = requestIndex;
+        receipt.status = CreativeClipboardStatus::CreateRejected;
+        receipt.reasonCode = std::string(recipeReceipt.reasonCode);
+        clearPublishedPasteOutputs(receipt);
+        return receipt;
+      }
+      receipt.patternRecipeIdRemaps.push_back(
+          {recipe.id, recipeReceipt.recipeId});
+      ++receipt.pastedPatternRecipeCount;
     }
     ++receipt.pastedPasteCount;
   }
@@ -650,6 +902,8 @@ CreativeDuplicateCommandReceipt duplicateDocumentObjectsAtomically(
   receipt.status = CreativeDuplicateCommandStatus::Applied;
   receipt.duplicatedObjectIds = std::move(pasteReceipt.pastedObjectIds);
   receipt.duplicatedObjectCount = receipt.duplicatedObjectIds.size();
+  receipt.duplicatedPatternRecipeCount =
+      pasteReceipt.pastedPatternRecipeCount;
   receipt.duplicatedSelectionObjectIds.reserve(hierarchy.rootObjectIds.size());
   for (CreativeObjectId rootObjectId : hierarchy.rootObjectIds) {
     const auto remap = std::find_if(
@@ -697,6 +951,12 @@ CreativeClipboardCutReceipt cutDocumentObjectsAtomically(
     receipt.reasonCode = "creative_clipboard_parent_graph_invalid";
     return receipt;
   }
+  if (clipboardCutHasExternalReferences(document, stagedClipboard,
+                                        receipt.failedObjectId)) {
+    receipt.status = CreativeClipboardStatus::RemoveRejected;
+    receipt.reasonCode = "creative_clipboard_cut_external_reference";
+    return receipt;
+  }
 
   CreativeDocument stagedDocument = document;
   receipt.removeReceipts.reserve(parentOrder.size());
@@ -721,8 +981,76 @@ CreativeClipboardCutReceipt cutDocumentObjectsAtomically(
   receipt.changed = true;
   receipt.status = CreativeClipboardStatus::Cut;
   receipt.cutObjectCount = receipt.removeReceipts.size();
+  receipt.cutPatternRecipeCount = outClipboard.patternRecipes.size();
   receipt.revisionAfter = document.revision();
   receipt.reasonCode = "creative_clipboard_cut";
+  return receipt;
+}
+
+CreativeSemanticDeleteReceipt deleteDocumentObjectsSemanticallyAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds) {
+  CreativeSemanticDeleteReceipt receipt;
+  receipt.requested = true;
+  receipt.requestedObjectCount = objectIds.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, objectIds);
+  if (!hierarchy.accepted) {
+    receipt.failedObjectId = hierarchy.missingObjectId;
+    switch (hierarchy.status) {
+      case CreativeHierarchySelectionStatus::EmptySelection:
+        receipt.status = CreativeSemanticDeleteStatus::EmptySelection;
+        break;
+      case CreativeHierarchySelectionStatus::InvalidDocument:
+        receipt.status = CreativeSemanticDeleteStatus::InvalidDocument;
+        break;
+      case CreativeHierarchySelectionStatus::MissingObject:
+        receipt.status = CreativeSemanticDeleteStatus::MissingObject;
+        break;
+      case CreativeHierarchySelectionStatus::InvalidHierarchy:
+      case CreativeHierarchySelectionStatus::NotRequested:
+      case CreativeHierarchySelectionStatus::Ready:
+        receipt.status = CreativeSemanticDeleteStatus::InvalidHierarchy;
+        break;
+    }
+    receipt.reasonCode = std::string(hierarchy.reasonCode);
+    return receipt;
+  }
+
+  CreativeClipboard discarded;
+  const CreativeClipboardCutReceipt cut =
+      cutDocumentObjectsAtomically(document, hierarchy.objectIds, discarded);
+  if (!cut.accepted) {
+    receipt.failedObjectId = cut.failedObjectId;
+    receipt.revisionAfter = cut.revisionAfter;
+    if (cut.reasonCode == "creative_clipboard_cut_external_reference") {
+      receipt.status = CreativeSemanticDeleteStatus::ExternalReference;
+    } else if (cut.status == CreativeClipboardStatus::MissingObject) {
+      receipt.status = CreativeSemanticDeleteStatus::MissingObject;
+    } else if (cut.status == CreativeClipboardStatus::InvalidClipboard ||
+               cut.status == CreativeClipboardStatus::InvalidRequest) {
+      receipt.status = CreativeSemanticDeleteStatus::InvalidHierarchy;
+    } else {
+      receipt.status = CreativeSemanticDeleteStatus::RemoveRejected;
+    }
+    receipt.reasonCode = cut.reasonCode;
+    return receipt;
+  }
+
+  receipt.removedObjectIds.reserve(discarded.objects.size());
+  for (const CreativeObject& object : discarded.objects) {
+    receipt.removedObjectIds.push_back(object.id);
+  }
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeSemanticDeleteStatus::Deleted;
+  receipt.removedObjectCount = receipt.removedObjectIds.size();
+  receipt.removedPatternRecipeCount = discarded.patternRecipes.size();
+  receipt.revisionAfter = document.revision();
+  receipt.reasonCode = "creative_semantic_delete_applied";
   return receipt;
 }
 

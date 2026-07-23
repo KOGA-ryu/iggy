@@ -6,11 +6,14 @@
 
 #include "imgui.h"
 
+#include "EditorDesktopHistoryModel.hpp"
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopWidgets.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorMapValidationPanel.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlayMode.hpp"
+#include "EditorToolGlyphs.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
@@ -88,13 +91,78 @@ void appendDiagnosticsTab(const cr::CreativeDocument& document,
   }
 }
 
-void appendPassStatusTab(const cr::CreativeLogicDiagnosticReport& diagnostics) {
-  ImGui::TextColored(diagnostics.errorCount == 0U
-                         ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
-                         : ImVec4{1.0F, 0.34F, 0.30F, 1.0F},
-                     "%s", diagnostics.errorCount == 0U ? "LOGIC CHECK PASSED"
-                                                        : "LOGIC CHECK FAILED");
-  ImGui::TextDisabled("Warnings do not block validation; errors do.");
+const char* historyDomainLabel(CreativeDesktopHistoryDomain domain) noexcept {
+  switch (domain) {
+    case CreativeDesktopHistoryDomain::WorldLayout: return "Layout";
+    case CreativeDesktopHistoryDomain::Document: return "Document";
+  }
+  return "Document";
+}
+
+void appendHistoryStack(
+    std::string_view heading,
+    const std::vector<CreativeDesktopHistoryEntry>& entries) {
+  ImGui::TextUnformatted(heading.data(), heading.data() + heading.size());
+  ImGui::Separator();
+  if (entries.empty()) {
+    ImGui::TextDisabled("No entries");
+    return;
+  }
+  for (std::size_t index = 0U; index < entries.size(); ++index) {
+    const CreativeDesktopHistoryEntry& entry = entries[index];
+    ImGui::PushID(static_cast<int>(index));
+    if (entry.nextAction) {
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, ">  %s",
+                         entry.label.c_str());
+    } else if (entry.blockedByUnsynchronizedSource) {
+      ImGui::TextDisabled("   %s", entry.label.c_str());
+    } else {
+      ImGui::Text("   %s", entry.label.c_str());
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("[%s]", historyDomainLabel(entry.domain));
+    if (ImGui::IsItemHovered() && !entry.source.empty()) {
+      ImGui::SetTooltip("%s", entry.source.c_str());
+    }
+    ImGui::PopID();
+  }
+}
+
+void appendHistoryPanel(const cr::CreativeAppState& appState,
+                        const CreativeEditorWorldLayoutState& worldLayout,
+                        CreativeDesktopCommandFrame& commands) {
+  const CreativeDesktopHistoryModel model = buildCreativeDesktopHistoryModel(
+      appState.history, &worldLayout);
+  ImGui::BeginDisabled(!model.canUndo);
+  if (ImGui::Button("Undo")) {
+    commands.push(CreativeDesktopCommandId::Undo);
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!model.canRedo);
+  if (ImGui::Button("Redo")) {
+    commands.push(CreativeDesktopCommandId::Redo);
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  ImGui::TextDisabled("Layout %zu/%zu  Document %zu/%zu",
+                      worldLayout.sourceHistory.undoEntries.size(),
+                      model.sourceMaxDepth,
+                      appState.history.undoSnapshots.size(),
+                      model.documentMaxDepth);
+  if (!model.sourceSynchronized) {
+    ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.20F, 1.0F},
+                       "Document history paused until the layout is generated");
+  }
+  if (ImGui::BeginTable("##creative_history_columns", 2,
+                        ImGuiTableFlags_BordersInnerV |
+                            ImGuiTableFlags_Resizable)) {
+    ImGui::TableNextColumn();
+    appendHistoryStack("Undo", model.undoEntries);
+    ImGui::TableNextColumn();
+    appendHistoryStack("Redo", model.redoEntries);
+    ImGui::EndTable();
+  }
 }
 
 // A compact read-only viewport header. The tool buttons it replaced performed no
@@ -193,6 +261,7 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::MenuItem("Project", nullptr, &desktopUi.showOutliner);
       ImGui::MenuItem("Inspector", nullptr, &desktopUi.showInspector);
       ImGui::MenuItem("Diagnostics", nullptr, &desktopUi.showDiagnostics);
+      ImGui::MenuItem("History", nullptr, &desktopUi.showHistory);
       ImGui::MenuItem("World Layout", nullptr, &desktopUi.showWorldLayout);
       ImGui::Separator();
       if (ImGui::MenuItem("Reset Layout")) {
@@ -272,6 +341,7 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
@@ -306,11 +376,48 @@ void buildCreativeEditorDesktopPanels(
       }
       desktopUi.showWorldLayout = !desktopUi.showWorldLayout;
     }
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+    constexpr float kViewButtonSize = 24.0F;
+    ImGui::BeginDisabled(
+        playModeActive || cr::selectedTargetCount(
+                              appState.facade.selectionState()) == 0U);
+    if (drawCreativeEditorToolGlyphButton(
+            "##desktop_frame_selection_3d",
+            CreativeEditorToolGlyph::FitSelection, kViewButtonSize, false,
+            "Frame visible selection in 3D")) {
+      commands.push(CreativeDesktopCommandId::FrameSelection3D);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(playModeActive || document.objects().empty());
+    if (drawCreativeEditorToolGlyphButton(
+            "##desktop_frame_all_3d", CreativeEditorToolGlyph::FitAll,
+            kViewButtonSize, false, "Frame all visible objects in 3D")) {
+      commands.push(CreativeDesktopCommandId::FrameAll3D);
+    }
+    ImGui::EndDisabled();
     if (creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
       ImGui::SameLine();
       if (ImGui::Button("Close Preview")) {
         commands.push(CreativeDesktopCommandId::WorldLayoutCancelPreview);
       }
+    }
+    if (desktopUi.showWorldLayout) {
+      const CreativeEditorWorldLayoutInspectionStatus inspection =
+          composeCreativeEditorWorldLayoutInspectionStatus(
+              editor.worldLayout);
+      ImVec4 tint{0.68F, 0.72F, 0.75F, 1.0F};
+      if (inspection.validity ==
+          CreativeEditorWorldLayoutPreviewValidity::Valid) {
+        tint = ImVec4{0.32F, 0.95F, 0.43F, 1.0F};
+      } else if (inspection.validity ==
+                 CreativeEditorWorldLayoutPreviewValidity::Invalid) {
+        tint = ImVec4{0.95F, 0.35F, 0.32F, 1.0F};
+      }
+      ImGui::SameLine();
+      ImGui::TextColored(tint, "%s", inspection.text.c_str());
     }
   }
   ImGui::End();
@@ -355,18 +462,26 @@ void buildCreativeEditorDesktopPanels(
       ImGui::End();
     }
 
-    // Diagnostics (bottom). Only the two tabs that project real products
-    // remain; Diffs / Stale Outputs / Proof Receipts do not exist yet.
+    // Diagnostics (bottom). Whole-map validation is explicit and cached;
+    // authored-logic diagnostics remain independently available to the
+    // Inspector and as a focused topology tab.
     if (desktopUi.showDiagnostics) {
       if (ImGui::Begin("Diagnostics##bottom", &desktopUi.showDiagnostics)) {
         if (ImGui::BeginTabBar("##desktop_bottom_tabs")) {
-          if (ImGui::BeginTabItem("Diagnostics")) {
+          if (ImGui::BeginTabItem("Map Validation")) {
+            buildCreativeEditorMapValidationPanel(
+                desktopUi.mapValidation, document, assetCatalog,
+                playModeActive, commands);
+            ImGui::EndTabItem();
+          }
+          if (ImGui::BeginTabItem("Logic")) {
             appendDiagnosticsTab(document, logicDiagnostics, playModeActive,
                                  commands);
             ImGui::EndTabItem();
           }
           if (ImGui::BeginTabItem("Pass Status")) {
-            appendPassStatusTab(logicDiagnostics);
+            buildCreativeEditorMapValidationPassStatus(
+                desktopUi.mapValidation, document, assetCatalog);
             ImGui::EndTabItem();
           }
           ImGui::EndTabBar();
@@ -376,8 +491,16 @@ void buildCreativeEditorDesktopPanels(
     }
   }
 
-  buildCreativeEditorWorldLayoutPanel(desktopUi, editor, document,
-                                      playModeActive, commands);
+  if (desktopUi.showHistory) {
+    if (ImGui::Begin("History##bottom", &desktopUi.showHistory)) {
+      appendHistoryPanel(appState, editor.worldLayout, commands);
+    }
+    ImGui::End();
+  }
+
+  buildCreativeEditorWorldLayoutPanel(
+      desktopUi, editor, document, appState.facade.selectionState(),
+      appState.facade.measurementState(), playModeActive, commands);
 }
 
 void buildCreativeEditorDesktopStatusBar(

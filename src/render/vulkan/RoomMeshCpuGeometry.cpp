@@ -17,6 +17,7 @@ using room_mesh_detail::appendCreativeWireframeDebugGeometry;
 using room_mesh_detail::appendFloorPlaneIfFits;
 using room_mesh_detail::appendOpenFrameIfFits;
 using room_mesh_detail::appendRampWedgeIfFits;
+using room_mesh_detail::appendHipRoofPanelIfFits;
 using room_mesh_detail::appendStaticMeshAsset;
 using room_mesh_detail::appendStairStepsIfFits;
 using room_mesh_detail::appendSurfacePatches;
@@ -25,6 +26,7 @@ using room_mesh_detail::buildOptimizedWallDraws;
 using room_mesh_detail::canEmitFloorDraw;
 using room_mesh_detail::canAppendSurfacePatches;
 using room_mesh_detail::colorForRoomRole;
+using room_mesh_detail::colorForRoomMaterial;
 using room_mesh_detail::externalStaticMeshId;
 using room_mesh_detail::finiteVec3;
 using room_mesh_detail::FloorDraw;
@@ -218,6 +220,11 @@ const StaticMeshAssetDrawRanges* findStaticMeshAssetDrawRanges(
   return &*found;
 }
 
+struct StaticMeshAssetInstanceGroups {
+  std::vector<StaticMeshInstanceTransform> defaultInstances;
+  std::vector<std::vector<StaticMeshInstanceTransform>> materialVariants;
+};
+
 RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     const SceneRoomProjection& room,
     const RenderCreativeWireframeDebugFrame* creativeWireframeDebug,
@@ -236,9 +243,14 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
                           room.surfacePatches.size() * 5U);
   result.indices.reserve(room.meshes.size() * 144U +
                          room.surfacePatches.size() * 24U);
-  std::vector<std::vector<StaticMeshInstanceTransform>> instanceGroups;
+  std::vector<StaticMeshAssetInstanceGroups> instanceGroups;
   if (staticMeshAssetDraws != nullptr) {
     instanceGroups.resize(staticMeshAssetDraws->size());
+    for (std::size_t assetIndex = 0U;
+         assetIndex < staticMeshAssetDraws->size(); ++assetIndex) {
+      instanceGroups[assetIndex].materialVariants.resize(
+          (*staticMeshAssetDraws)[assetIndex].materialVariants.size());
+    }
   }
 
   const std::vector<FloorDraw> floorDraws = buildOptimizedFloorDraws(room);
@@ -256,15 +268,11 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
       result.indexedDraws.clear();
       return result;
     }
-    const bool appended =
-        hasRotation(floor.rotationEulerRadians)
-            ? appendBoxIfFits(result.vertices, result.indices,
-                              result.indexedDraws, floor.position, floor.size,
-                              colorForRoomRole("floor"),
-                              floor.rotationEulerRadians)
-            : appendFloorPlaneIfFits(result.vertices, result.indices,
-                                     result.indexedDraws, floor.position,
-                                     floor.size, colorForRoomRole("floor"));
+    const bool appended = appendBoxIfFits(
+        result.vertices, result.indices, result.indexedDraws, floor.position,
+        floor.size,
+        colorForRoomMaterial("floor", floor.semanticRole, floor.materialId),
+        floor.rotationEulerRadians);
     if (!appended) {
       result.vertices.clear();
       result.indices.clear();
@@ -275,7 +283,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
   }
   for (const WallBoxDraw& wall : wallDraws) {
     if (!appendBoxIfFits(result.vertices, result.indices, result.indexedDraws,
-                         wall.position, wall.size, colorForRoomRole("wall"),
+                         wall.position, wall.size,
+                         colorForRoomMaterial("wall", wall.semanticRole,
+                                              wall.materialId),
                          wall.rotationEulerRadians)) {
       result.vertices.clear();
       result.indices.clear();
@@ -303,7 +313,20 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
         if (asset != nullptr && buildStaticMeshInstanceTransform(
                                     mesh, asset->boundsMin, asset->boundsMax,
                                     transform)) {
-          instanceGroups[assetIndex].push_back(transform);
+          const auto variant = std::find_if(
+              asset->materialVariants.begin(), asset->materialVariants.end(),
+              [&mesh](const StaticMeshMaterialVariantDrawRanges& candidate) {
+                return candidate.name == mesh.materialVariant;
+              });
+          if (!mesh.materialVariant.empty() &&
+              variant != asset->materialVariants.end()) {
+            const std::size_t variantIndex = static_cast<std::size_t>(
+                variant - asset->materialVariants.begin());
+            instanceGroups[assetIndex].materialVariants[variantIndex].push_back(
+                transform);
+          } else {
+            instanceGroups[assetIndex].defaultInstances.push_back(transform);
+          }
           continue;
         }
         if (!appendBoxIfFits(result.vertices, result.indices,
@@ -342,6 +365,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
       continue;
     }
     if (mesh.role == "floor") {
+      if (!mesh.semanticRole.empty() && mesh.semanticRole != "Floor") {
+        continue;
+      }
       if (hasRotation(mesh.rotationEulerRadians)) {
         continue;
       }
@@ -387,8 +413,24 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     if (mesh.meshId == "creative_ramp_wedge") {
       if (!appendRampWedgeIfFits(result.vertices, result.indices,
                                  result.indexedDraws, mesh.position, mesh.size,
-                                 colorForRoomRole(mesh.role),
+                                 colorForRoomMaterial(mesh.role,
+                                                      mesh.semanticRole,
+                                                      mesh.materialId),
                                  mesh.rotationEulerRadians)) {
+        result.vertices.clear();
+        result.indices.clear();
+        result.indexedDraws.clear();
+        return result;
+      }
+      continue;
+    }
+    if (mesh.meshId == "creative_hip_roof_panel") {
+      if (!appendHipRoofPanelIfFits(
+              result.vertices, result.indices, result.indexedDraws,
+              mesh.position, mesh.size,
+              colorForRoomMaterial(mesh.role, mesh.semanticRole,
+                                   mesh.materialId),
+              mesh.rotationEulerRadians)) {
         result.vertices.clear();
         result.indices.clear();
         result.indexedDraws.clear();
@@ -399,7 +441,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     if (mesh.meshId == "creative_open_frame") {
       if (!appendOpenFrameIfFits(
               result.vertices, result.indices, result.indexedDraws,
-              mesh.position, mesh.size, colorForRoomRole(mesh.role),
+              mesh.position, mesh.size,
+              colorForRoomMaterial(mesh.role, mesh.semanticRole,
+                                   mesh.materialId),
               mesh.rotationEulerRadians)) {
         result.vertices.clear();
         result.indices.clear();
@@ -411,7 +455,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     if (mesh.meshId == "creative_stair_steps") {
       if (!appendStairStepsIfFits(
               result.vertices, result.indices, result.indexedDraws,
-              mesh.position, mesh.size, colorForRoomRole(mesh.role),
+              mesh.position, mesh.size,
+              colorForRoomMaterial(mesh.role, mesh.semanticRole,
+                                   mesh.materialId),
               mesh.rotationEulerRadians, mesh.proceduralSegmentCount)) {
         result.vertices.clear();
         result.indices.clear();
@@ -424,7 +470,9 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     SceneModelKind beanKind = SceneModelKind::PlayerBean;
     if (parseSceneModelId(mesh.role, beanKind)) {
       if (!appendBean(result.vertices, result.indices, result.indexedDraws,
-                      mesh.position, mesh.size, colorForRoomRole(mesh.role),
+                      mesh.position, mesh.size,
+                      colorForRoomMaterial(mesh.role, mesh.semanticRole,
+                                           mesh.materialId),
                       beanKind)) {
         result.vertices.clear();
         result.indices.clear();
@@ -434,7 +482,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
     } else {
       if (!appendBoxIfFits(result.vertices, result.indices,
                            result.indexedDraws, mesh.position, mesh.size,
-                           colorForRoomRole(mesh.role),
+                           colorForRoomMaterial(mesh.role, mesh.semanticRole,
+                                                mesh.materialId),
                            mesh.rotationEulerRadians)) {
         result.vertices.clear();
         result.indices.clear();
@@ -465,7 +514,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
         continue;
       }
       const FloorDraw terrain{mesh.position, mesh.size,
-                              mesh.rotationEulerRadians};
+                              mesh.rotationEulerRadians, mesh.materialId,
+                              mesh.semanticRole};
       if (!canEmitFloorDraw(terrain) ||
           !appendFloorPlaneIfFits(result.vertices, result.indices,
                                   result.indexedDraws, terrain.position,
@@ -480,34 +530,52 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometryImpl(
   }
 
   if (staticMeshAssetDraws != nullptr) {
+    const auto appendInstanceFamily =
+        [&result](std::span<const StaticMeshInstanceTransform> instances,
+                  std::span<const IndexedDrawRange> draws) {
+          if (instances.empty()) {
+            return true;
+          }
+          if (instances.size() > std::numeric_limits<std::uint32_t>::max() ||
+              result.staticMeshInstances.size() >
+                  std::numeric_limits<std::uint32_t>::max() -
+                      instances.size()) {
+            return false;
+          }
+          const std::uint32_t firstInstance =
+              static_cast<std::uint32_t>(result.staticMeshInstances.size());
+          const std::uint32_t instanceCount =
+              static_cast<std::uint32_t>(instances.size());
+          result.staticMeshInstances.insert(result.staticMeshInstances.end(),
+                                            instances.begin(), instances.end());
+          for (const IndexedDrawRange& draw : draws) {
+            if (draw.indexCount == 0U) {
+              continue;
+            }
+            result.staticMeshInstanceBatches.push_back(
+                {draw.firstIndex, draw.indexCount, draw.materialTextureIndex,
+                 firstInstance, instanceCount});
+          }
+          return true;
+        };
     for (std::size_t assetIndex = 0U; assetIndex < instanceGroups.size();
          ++assetIndex) {
-      const std::vector<StaticMeshInstanceTransform>& instances =
-          instanceGroups[assetIndex];
-      if (instances.empty()) {
-        continue;
+      const StaticMeshAssetDrawRanges& asset =
+          (*staticMeshAssetDraws)[assetIndex];
+      const StaticMeshAssetInstanceGroups& groups = instanceGroups[assetIndex];
+      bool appended = appendInstanceFamily(groups.defaultInstances,
+                                           asset.indexedDraws);
+      for (std::size_t variantIndex = 0U;
+           appended && variantIndex < groups.materialVariants.size();
+           ++variantIndex) {
+        appended = appendInstanceFamily(
+            groups.materialVariants[variantIndex],
+            asset.materialVariants[variantIndex].indexedDraws);
       }
-      if (instances.size() > std::numeric_limits<std::uint32_t>::max() ||
-          result.staticMeshInstances.size() >
-              std::numeric_limits<std::uint32_t>::max() - instances.size()) {
+      if (!appended) {
         result.staticMeshInstances.clear();
         result.staticMeshInstanceBatches.clear();
         return result;
-      }
-      const std::uint32_t firstInstance =
-          static_cast<std::uint32_t>(result.staticMeshInstances.size());
-      const std::uint32_t instanceCount =
-          static_cast<std::uint32_t>(instances.size());
-      result.staticMeshInstances.insert(result.staticMeshInstances.end(),
-                                        instances.begin(), instances.end());
-      for (const IndexedDrawRange& draw :
-           (*staticMeshAssetDraws)[assetIndex].indexedDraws) {
-        if (draw.indexCount == 0U) {
-          continue;
-        }
-        result.staticMeshInstanceBatches.push_back(
-            {draw.firstIndex, draw.indexCount, draw.materialTextureIndex,
-             firstInstance, instanceCount});
       }
     }
   }

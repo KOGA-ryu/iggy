@@ -4,6 +4,7 @@
 #include "core/math/EulerRotation.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <iterator>
 #include <limits>
@@ -12,6 +13,41 @@
 #include <vector>
 
 namespace iggy3d::vulkan::room_mesh_detail {
+
+namespace {
+
+struct SemanticRoleColor {
+  std::string_view role;
+  Vec3 color;
+};
+
+constexpr std::array<SemanticRoleColor, 14U> kSemanticRoleColors{{
+    {"Floor", {0.30F, 0.32F, 0.34F}},
+    {"Ceiling", {0.40F, 0.41F, 0.43F}},
+    {"Roof", {0.34F, 0.25F, 0.20F}},
+    {"GableRoof", {0.36F, 0.26F, 0.20F}},
+    {"HipRoof", {0.36F, 0.26F, 0.20F}},
+    {"Wall", {0.42F, 0.43F, 0.46F}},
+    {"Door", {0.45F, 0.28F, 0.12F}},
+    {"Window", {0.36F, 0.68F, 0.78F}},
+    {"Stair", {0.48F, 0.47F, 0.43F}},
+    {"Ramp", {0.46F, 0.45F, 0.41F}},
+    {"Platform", {0.34F, 0.40F, 0.46F}},
+    {"Bridge", {0.40F, 0.30F, 0.17F}},
+    {"Column", {0.46F, 0.46F, 0.44F}},
+    {"Beam", {0.40F, 0.28F, 0.15F}},
+}};
+
+Vec3 colorForSemanticRole(std::string_view role, Vec3 fallback) {
+  const auto found = std::find_if(
+      kSemanticRoleColors.begin(), kSemanticRoleColors.end(),
+      [role](const SemanticRoleColor& candidate) {
+        return candidate.role == role;
+      });
+  return found == kSemanticRoleColors.end() ? fallback : found->color;
+}
+
+}  // namespace
 
 Vec3 colorForRoomRole(const std::string& role) {
   if (role == "editor_ghost_valid") {
@@ -89,6 +125,31 @@ Vec3 colorForRoomRole(const std::string& role) {
   return {0.36F, 0.42F, 0.48F};
 }
 
+Vec3 colorForRoomMaterial(std::string_view role,
+                          std::string_view semanticRole,
+                          std::string_view materialId) {
+  if (materialId == "creative_window_glass") {
+    return {0.36F, 0.68F, 0.78F};
+  }
+  if (materialId == "creative_window_shutter") {
+    return {0.38F, 0.23F, 0.12F};
+  }
+  if (materialId == "creative_wall_plaster") {
+    return {0.74F, 0.72F, 0.66F};
+  }
+  if (materialId == "creative_wall_timber") {
+    return {0.38F, 0.23F, 0.12F};
+  }
+  if (materialId == "creative_wall_stone") {
+    return {0.43F, 0.46F, 0.48F};
+  }
+  if (materialId == "creative_wall_brick") {
+    return {0.55F, 0.25F, 0.18F};
+  }
+  return colorForSemanticRole(semanticRole,
+                              colorForRoomRole(std::string(role)));
+}
+
 template <typename Index>
 void appendTriangle(std::vector<Index>& indices,
                     std::uint32_t a,
@@ -161,7 +222,12 @@ bool appendSurfacePatches(
         return false;
       }
     }
-    const Vec3 color = colorForRoomRole(patch.role);
+    const Vec3 color = patch.hasTint ? patch.tint : colorForRoomRole(patch.role);
+    if (!finiteVec3(color) || color.x < 0.0F || color.x > 1.0F ||
+        color.y < 0.0F || color.y > 1.0F || color.z < 0.0F ||
+        color.z > 1.0F) {
+      return false;
+    }
     const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
     vertices.push_back({{patch.center.x, patch.center.y, patch.center.z},
                         {color.x, color.y, color.z}});
@@ -194,6 +260,11 @@ bool canAppendSurfacePatches(
   return std::all_of(
       patches.begin(), patches.end(), [](const SceneRoomSurfacePatchItem& patch) {
         return finiteVec3(patch.center) &&
+               (!patch.hasTint ||
+                (finiteVec3(patch.tint) && patch.tint.x >= 0.0F &&
+                 patch.tint.x <= 1.0F && patch.tint.y >= 0.0F &&
+                 patch.tint.y <= 1.0F && patch.tint.z >= 0.0F &&
+                 patch.tint.z <= 1.0F)) &&
                std::all_of(patch.corners.begin(), patch.corners.end(),
                            [](Vec3 corner) { return finiteVec3(corner); });
       });
@@ -295,6 +366,51 @@ bool appendRampWedgeIfFits(std::vector<FirstRoomVertex>& vertices,
   appendTriangle(indices, base + 0U, base + 2U, base + 4U);
   appendTriangle(indices, base + 1U, base + 5U, base + 3U);
   range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+  return true;
+}
+
+template <typename Index>
+bool appendHipRoofPanelIfFits(std::vector<FirstRoomVertex>& vertices,
+                              std::vector<Index>& indices,
+                              std::vector<IndexedDrawRange>& draws,
+                              Vec3 center,
+                              Vec3 size,
+                              Vec3 color,
+                              Vec3 rotationEulerRadians) {
+  const std::size_t maximumVertexCount =
+      static_cast<std::size_t>(std::numeric_limits<Index>::max());
+  if (vertices.size() > maximumVertexCount - 8U || !finiteVec3(center)) {
+    return false;
+  }
+  const GeneratedHipRoofPanelLayout layout =
+      generatedHipRoofPanelLayout(size, rotationEulerRadians);
+  if (!layout.valid) {
+    return false;
+  }
+  const std::uint32_t base = static_cast<std::uint32_t>(vertices.size());
+  for (const Vec3 point : layout.corners) {
+    const Vec3 position =
+        center + rotateEulerXyz(point, rotationEulerRadians);
+    vertices.push_back({{position.x, position.y, position.z},
+                        {color.x, color.y, color.z}});
+  }
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  appendTriangle(indices, base + 0U, base + 2U, base + 1U);
+  appendTriangle(indices, base + 0U, base + 3U, base + 2U);
+  appendTriangle(indices, base + 4U, base + 5U, base + 6U);
+  appendTriangle(indices, base + 4U, base + 6U, base + 7U);
+  appendTriangle(indices, base + 0U, base + 1U, base + 5U);
+  appendTriangle(indices, base + 0U, base + 5U, base + 4U);
+  appendTriangle(indices, base + 3U, base + 7U, base + 6U);
+  appendTriangle(indices, base + 3U, base + 6U, base + 2U);
+  appendTriangle(indices, base + 0U, base + 4U, base + 7U);
+  appendTriangle(indices, base + 0U, base + 7U, base + 3U);
+  appendTriangle(indices, base + 1U, base + 2U, base + 6U);
+  appendTriangle(indices, base + 1U, base + 6U, base + 5U);
+  range.indexCount =
+      static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
   draws.push_back(range);
   return true;
 }
@@ -469,6 +585,18 @@ bool appendRampWedgeIfFits(
     Vec3 color,
     Vec3 rotationEulerRadians) {
   return appendRampWedgeIfFits<std::uint16_t>(
+      vertices, indices, draws, center, size, color, rotationEulerRadians);
+}
+
+bool appendHipRoofPanelIfFits(
+    std::vector<FirstRoomVertex>& vertices,
+    std::vector<std::uint16_t>& indices,
+    std::vector<IndexedDrawRange>& draws,
+    Vec3 center,
+    Vec3 size,
+    Vec3 color,
+    Vec3 rotationEulerRadians) {
+  return appendHipRoofPanelIfFits<std::uint16_t>(
       vertices, indices, draws, center, size, color, rotationEulerRadians);
 }
 

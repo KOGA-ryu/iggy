@@ -124,9 +124,16 @@ bool twoCornersApplyOneUndoableShell() {
                   appState.facade.document().objectCount() == 6U &&
                   cr::creativeUndoDepth(appState.history) == 1U &&
                   editor.worldLayout.source.rooms.size() == 1U &&
+                  editor.worldLayout.source.buildings.size() == 1U &&
+                  editor.worldLayout.source.buildings[0]
+                          .rootFootprint.minimum ==
+                      cr::CreativeTerrainCoord2{0, 0} &&
+                  editor.worldLayout.source.buildings[0]
+                          .rootFootprint.maximum ==
+                      cr::CreativeTerrainCoord2{3, 2} &&
                   editor.worldLayout.generatedRevision ==
                       editor.worldLayout.revision,
-              "room shell is one completed history transaction") &&
+              "room shell is one transaction with canonical building extent") &&
        expect(floor != nullptr && floor->kind == cr::CreativeObjectKind::Floor &&
                   sameBounds(floor->bounds,
                              {{0.0, -0.25, 0.0}, {3.0, 0.0, 2.0}}),

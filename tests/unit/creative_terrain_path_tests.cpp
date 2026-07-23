@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
+#include "app/iggy3d/creative/recipes/TerrainPathSource.hpp"
 
 #include <algorithm>
 #include <array>
@@ -38,6 +39,65 @@ cr::CreativeTerrainPathRequest requestFor(
   request.halfWidthCells = 1U;
   request.amplitudeCells = 2U;
   return request;
+}
+
+cr::CreativeTerrainHeightField flatHeightField(
+    cr::CreativeTerrainHeightFieldBounds bounds,
+    std::uint16_t heightCells) {
+  cr::CreativeTerrainHeightField field;
+  const std::vector<std::uint16_t> heights(
+      static_cast<std::size_t>(bounds.widthCells) * bounds.depthCells,
+      heightCells);
+  static_cast<void>(field.replace(bounds, heights));
+  return field;
+}
+
+cr::CreativeTerrainPathSourcePoint sourcePoint(
+    cr::CreativeTerrainPathSourcePointId id,
+    std::int32_t x,
+    std::int32_t z,
+    std::uint16_t height,
+    std::uint16_t halfWidth,
+    std::uint16_t amplitude = 0U,
+    std::int32_t bankPermille = 0) {
+  return {id, {x, z}, height, halfWidth, amplitude, bankPermille};
+}
+
+bool heightFieldsEqual(const cr::CreativeTerrainHeightField& lhs,
+                       const cr::CreativeTerrainHeightField& rhs) {
+  return lhs.bounds() == rhs.bounds() &&
+         std::equal(lhs.heights().begin(), lhs.heights().end(),
+                    rhs.heights().begin(), rhs.heights().end());
+}
+
+bool materialEditsEqual(
+    std::span<const cr::CreativeTerrainMaterialEdit> lhs,
+    std::span<const cr::CreativeTerrainMaterialEdit> rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(lhs.begin(), lhs.end(), rhs.begin(),
+                    [](const auto& left, const auto& right) {
+                      return left.kind == right.kind &&
+                             left.coord == right.coord &&
+                             left.material == right.material &&
+                             left.weights == right.weights;
+                    });
+}
+
+bool segmentReceiptsEqual(
+    std::span<const cr::CreativeTerrainPathSegmentReceipt> lhs,
+    std::span<const cr::CreativeTerrainPathSegmentReceipt> rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(lhs.begin(), lhs.end(), rhs.begin(),
+                    [](const auto& left, const auto& right) {
+                      return left.startPointId == right.startPointId &&
+                             left.endPointId == right.endPointId &&
+                             left.impactBounds == right.impactBounds &&
+                             left.sourceHash == right.sourceHash &&
+                             left.centerlineCellCount ==
+                                 right.centerlineCellCount &&
+                             left.generatedCellCount ==
+                                 right.generatedCellCount;
+                    });
 }
 
 bool optionValuesAndLabelsAreClosed() {
@@ -182,6 +242,451 @@ bool bendsDeduplicateAndFollowSamplesLiveTerrain() {
                 "follow samples current terrain along the centerline");
 }
 
+bool durableRoadRecipeOwnsProfilesMaterialsAndExactOutput() {
+  const cr::CreativeTerrainHeightField base =
+      flatHeightField({{0, 0}, 16U, 12U}, 4U);
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(base);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe recipe;
+  recipe.kind = cr::CreativeTerrainPathKind::Road;
+  recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+  recipe.curve = cr::CreativeTerrainPathCurvePolicy::Linear;
+  recipe.crossSection = cr::CreativeTerrainPathCrossSection::Flat;
+  recipe.falloffCells = 2U;
+  recipe.material = cr::CreativeTerrainMaterial::Dirt;
+  recipe.nextPointId = 3U;
+  recipe.points = {sourcePoint(1U, 2, 5, 4U, 1U),
+                   sourcePoint(2U, 12, 5, 6U, 2U, 0U, 1000)};
+
+  const cr::CreativeTerrainPathSourceResult first =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  const cr::CreativeTerrainPathSourceResult repeated =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  const bool endpointPainted = std::any_of(
+      first.materialEdits.begin(), first.materialEdits.end(),
+      [](const cr::CreativeTerrainMaterialEdit& edit) {
+        return edit.coord == cr::CreativeTerrainCoord2{12, 5} &&
+               edit.material == cr::CreativeTerrainMaterial::Dirt;
+      });
+  const bool materialEditsRepeat =
+      repeated.materialEdits.size() == first.materialEdits.size() &&
+      std::equal(repeated.materialEdits.begin(), repeated.materialEdits.end(),
+                 first.materialEdits.begin(),
+                 [](const cr::CreativeTerrainMaterialEdit& lhs,
+                    const cr::CreativeTerrainMaterialEdit& rhs) {
+                   return lhs.kind == rhs.kind && lhs.coord == rhs.coord &&
+                          lhs.material == rhs.material &&
+                          lhs.weights == rhs.weights;
+                 });
+
+  return expect(cr::isValidCreativeTerrainPathSourceRecipe(recipe) &&
+                    first.receipt.accepted && first.segments.size() == 1U &&
+                    first.segments[0].startPointId == 1U &&
+                    first.segments[0].endPointId == 2U &&
+                    first.segments[0].centerlineCellCount == 11U &&
+                    first.segments[0].impactBounds.widthCells > 0U,
+                "durable path recipe owns stable points and segment facts") &&
+         expect(first.heightField.heightAt({2, 5}) == 4U &&
+                    first.heightField.heightAt({12, 5}) == 6U &&
+                    first.heightField.heightAt({12, 6}) == 7U &&
+                    first.heightField.heightAt({0, 0}) == 4U,
+                "road profiles interpolate elevation width and signed bank") &&
+         expect(first.receipt.materialEditCount > 0U && endpointPainted,
+                "road recipe emits exact bounded surface material edits") &&
+         expect(repeated.receipt.accepted &&
+                    repeated.receipt.recipeHash == first.receipt.recipeHash &&
+                    repeated.receipt.outputHeightHash ==
+                        first.receipt.outputHeightHash &&
+                    materialEditsRepeat,
+                "path source output and provenance hashes are deterministic");
+}
+
+bool roadSettingsOwnShouldersGradesAndExactSampling() {
+  const cr::CreativeTerrainHeightField base =
+      flatHeightField({{0, 0}, 16U, 12U}, 4U);
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(base);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe road;
+  road.kind = cr::CreativeTerrainPathKind::Road;
+  road.elevation = cr::CreativeTerrainPathElevation::Grade;
+  road.crossSection = cr::CreativeTerrainPathCrossSection::Flat;
+  road.falloffCells = 0U;
+  road.material = cr::CreativeTerrainMaterial::Dirt;
+  road.nextPointId = 3U;
+  road.points = {sourcePoint(1U, 2, 5, 8U, 1U),
+                 sourcePoint(2U, 10, 5, 8U, 1U)};
+
+  const cr::CreativeTerrainPathSourceResult travelSurface =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials, road);
+  road.road.shoulderWidthCells = 2U;
+  const cr::CreativeTerrainPathSourceSamplingResult sampled =
+      cr::sampleCreativeTerrainPathSourceRecipe(road);
+  const cr::CreativeTerrainPathSourceResult shouldered =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials, road);
+  const cr::CreativeTerrainPathSourceSamplingResult repeated =
+      cr::sampleCreativeTerrainPathSourceRecipe(road);
+
+  cr::CreativeTerrainPathSourceRecipe exactGrade = road;
+  exactGrade.points[0].heightCells = 4U;
+  exactGrade.points[1].heightCells = 8U;
+  exactGrade.road.maximumGradePermille = 500U;
+  const cr::CreativeTerrainPathSourceSamplingResult acceptedGrade =
+      cr::sampleCreativeTerrainPathSourceRecipe(exactGrade);
+  exactGrade.road.maximumGradePermille = 499U;
+  const cr::CreativeTerrainPathSourceSamplingResult rejectedGrade =
+      cr::sampleCreativeTerrainPathSourceRecipe(exactGrade);
+
+  const auto paints = [](const cr::CreativeTerrainPathSourceResult& result,
+                         cr::CreativeTerrainCoord2 coord) {
+    return std::any_of(
+        result.materialEdits.begin(), result.materialEdits.end(),
+        [coord](const cr::CreativeTerrainMaterialEdit& edit) {
+          return edit.coord == coord &&
+                 edit.material == cr::CreativeTerrainMaterial::Dirt;
+        });
+  };
+
+  return expect(travelSurface.receipt.accepted &&
+                    travelSurface.heightField.heightAt({6, 8}) == 4U &&
+                    !paints(travelSurface, {6, 8}),
+                "authored half-width remains the road travel surface") &&
+         expect(sampled.accepted && shouldered.receipt.accepted &&
+                    sampled.samples == shouldered.samples &&
+                    !sampled.samples.empty() &&
+                    sampled.samples.front().halfWidthCells == 3.0 &&
+                    shouldered.heightField.heightAt({6, 8}) == 8U &&
+                    paints(shouldered, {6, 8}),
+                "shoulder width expands grading painting and shared samples") &&
+         expect(repeated.accepted && repeated.samples == sampled.samples &&
+                    segmentReceiptsEqual(repeated.segments,
+                                         sampled.segments),
+                "public road sampling is deterministic") &&
+         expect(acceptedGrade.accepted && !rejectedGrade.accepted &&
+                    rejectedGrade.status ==
+                        cr::CreativeTerrainPathSourceStatus::InvalidRecipe &&
+                    rejectedGrade.reasonCode ==
+                        "creative_terrain_path_source_grade_limit_exceeded",
+                "road grade accepts its exact limit and rejects steeper sources") &&
+         expect(cr::toString(cr::CreativeTerrainRoadEdgeTreatment::None) ==
+                        "NONE" &&
+                    cr::toString(cr::CreativeTerrainRoadEdgeTreatment::Curb) ==
+                        "CURB",
+                "road edge treatments expose closed creator labels");
+}
+
+bool durableFollowUsesPointHeightWhereTerrainIsAbsent() {
+  cr::CreativeTerrainHeightField empty;
+  const cr::CreativeTerrainSurfacePlan emptySurface =
+      cr::buildCreativeTerrainHeightSurfacePlan(empty);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe recipe;
+  recipe.kind = cr::CreativeTerrainPathKind::Road;
+  recipe.elevation = cr::CreativeTerrainPathElevation::Follow;
+  recipe.crossSection = cr::CreativeTerrainPathCrossSection::Flat;
+  recipe.falloffCells = 0U;
+  recipe.nextPointId = 3U;
+  recipe.points = {sourcePoint(1U, 0, 0, 4U, 0U),
+                   sourcePoint(2U, 4, 0, 6U, 0U)};
+
+  const cr::CreativeTerrainPathSourceResult result =
+      cr::buildCreativeTerrainPathSourceRecipe(empty, emptySurface, materials,
+                                               recipe);
+  return expect(result.receipt.accepted &&
+                    result.heightField.heightAt({0, 0}) == 4U &&
+                    result.heightField.heightAt({4, 0}) == 6U,
+                "follow falls back to authored endpoint heights over empty terrain");
+}
+
+bool curvesCrossSectionsAndDirtySegmentsAreExplicit() {
+  const cr::CreativeTerrainHeightField base =
+      flatHeightField({{0, 0}, 20U, 16U}, 10U);
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(base);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe curve;
+  curve.kind = cr::CreativeTerrainPathKind::River;
+  curve.elevation = cr::CreativeTerrainPathElevation::Level;
+  curve.curve = cr::CreativeTerrainPathCurvePolicy::CatmullRom;
+  curve.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  curve.startJoin = cr::CreativeTerrainPathEndpointJoin::Blend;
+  curve.endJoin = cr::CreativeTerrainPathEndpointJoin::Bridge;
+  curve.falloffCells = 1U;
+  curve.material = cr::CreativeTerrainMaterial::Sand;
+  curve.nextPointId = 7U;
+  curve.points = {
+      sourcePoint(1U, 2, 2, 10U, 2U, 2U),
+      sourcePoint(2U, 5, 8, 10U, 2U, 2U),
+      sourcePoint(3U, 8, 10, 10U, 3U, 2U),
+      sourcePoint(4U, 11, 8, 10U, 3U, 2U),
+      sourcePoint(5U, 14, 2, 10U, 2U, 2U),
+      sourcePoint(6U, 17, 3, 10U, 2U, 2U),
+  };
+  const cr::CreativeTerrainPathSourceResult curved =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               curve);
+  cr::CreativeTerrainPathSourceRecipe linear = curve;
+  linear.curve = cr::CreativeTerrainPathCurvePolicy::Linear;
+  const cr::CreativeTerrainPathSourceResult straight =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               linear);
+  cr::CreativeTerrainPathSourceRecipe edited = curve;
+  edited.points[3U].halfWidthCells = 5U;
+  const cr::CreativeTerrainPathDirtySegments dirty =
+      cr::diffCreativeTerrainPathSourceSegments(curve, edited);
+  cr::CreativeTerrainPathSourceRecipe allocatorOnly = curve;
+  ++allocatorOnly.nextPointId;
+  const cr::CreativeTerrainPathDirtySegments allocatorDirty =
+      cr::diffCreativeTerrainPathSourceSegments(curve, allocatorOnly);
+
+  return expect(curved.receipt.accepted && straight.receipt.accepted &&
+                    curved.receipt.centerlineCellCount > curve.points.size() &&
+                    curved.heightField.heightAt({8, 10}) == 8U,
+                "curved channel emits a sampled concave cross-section") &&
+         expect(curved.receipt.recipeHash != straight.receipt.recipeHash &&
+                    curved.receipt.outputHeightHash !=
+                        straight.receipt.outputHeightHash,
+                "curve policy changes exact deterministic geometry") &&
+         expect(dirty.changed && !dirty.allSegments &&
+                    dirty.firstSegment == 1U && dirty.segmentCount == 4U,
+                "Catmull-Rom edits invalidate only tangent-adjacent segments") &&
+         expect(!allocatorDirty.changed && allocatorDirty.segmentCount == 0U,
+                "point id allocator changes do not rebuild geometry") &&
+         expect(cr::toString(cr::CreativeTerrainPathCurvePolicy::CatmullRom) ==
+                        "CATMULL-ROM" &&
+                    cr::toString(cr::CreativeTerrainPathCrossSection::Cut) ==
+                        "CUT" &&
+                    cr::toString(cr::CreativeTerrainPathEndpointJoin::Bridge) ==
+                        "BRIDGE" &&
+                    cr::toString(
+                        cr::CreativeTerrainPathEndpointJoin::BuildingPad) ==
+                        "BUILDING_PAD",
+                "durable path policies expose closed creator labels");
+}
+
+bool incrementalSegmentCacheIsExactAtomicAndObservable() {
+  const cr::CreativeTerrainHeightField base =
+      flatHeightField({{0, 0}, 24U, 16U}, 10U);
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(base);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe recipe;
+  recipe.kind = cr::CreativeTerrainPathKind::River;
+  recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  recipe.curve = cr::CreativeTerrainPathCurvePolicy::CatmullRom;
+  recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  recipe.falloffCells = 1U;
+  recipe.material = cr::CreativeTerrainMaterial::Sand;
+  recipe.nextPointId = 7U;
+  recipe.points = {
+      sourcePoint(1U, 2, 2, 10U, 2U, 2U),
+      sourcePoint(2U, 5, 8, 10U, 2U, 2U),
+      sourcePoint(3U, 8, 10, 10U, 3U, 2U),
+      sourcePoint(4U, 11, 8, 10U, 3U, 2U),
+      sourcePoint(5U, 14, 2, 10U, 2U, 2U),
+      sourcePoint(6U, 17, 3, 10U, 2U, 2U),
+  };
+
+  cr::CreativeTerrainPathSourceCache cache;
+  const cr::CreativeTerrainPathSourceResult first =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe, &cache);
+  bool ok = expect(first.receipt.accepted && cache.valid &&
+                       first.receipt.rebuiltSegmentCount == 5U &&
+                       first.receipt.reusedSegmentCount == 0U &&
+                       cache.dirtySegments.changed &&
+                       cache.dirtySegments.allSegments &&
+                       cache.segments.size() == 5U &&
+                       first.receipt.generatedControlCount > 0U &&
+                       first.receipt.generatedControlCount ==
+                           first.receipt.evaluatedCellCount &&
+                       cache.generatedControlCount ==
+                           first.receipt.generatedControlCount,
+                   "first cached build reports all sampled segments and controls");
+
+  cr::CreativeTerrainPathSourceRecipe edited = recipe;
+  edited.points[3U].halfWidthCells = 5U;
+  const cr::CreativeTerrainPathSourceResult incremental =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               edited, &cache);
+  const cr::CreativeTerrainPathSourceResult clean =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               edited);
+  const bool exactParity =
+      incremental.receipt.accepted && clean.receipt.accepted &&
+      incremental.receipt.outputHeightHash ==
+          clean.receipt.outputHeightHash &&
+      heightFieldsEqual(incremental.heightField, clean.heightField) &&
+      materialEditsEqual(incremental.materialEdits, clean.materialEdits) &&
+      segmentReceiptsEqual(incremental.segments, clean.segments);
+  ok = expect(cache.dirtySegments.changed &&
+                  !cache.dirtySegments.allSegments &&
+                  cache.dirtySegments.firstSegment == 1U &&
+                  cache.dirtySegments.segmentCount == 4U &&
+                  incremental.receipt.rebuiltSegmentCount == 4U &&
+                  incremental.receipt.reusedSegmentCount == 1U && exactParity,
+              "one middle-point edit rebuilds only tangent-adjacent segments with clean parity") &&
+       ok;
+
+  cr::CreativeTerrainPathSourceRecipe allocatorOnly = edited;
+  ++allocatorOnly.nextPointId;
+  const cr::CreativeTerrainPathSourceResult reused =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               allocatorOnly, &cache);
+  ok = expect(reused.receipt.accepted &&
+                  reused.receipt.rebuiltSegmentCount == 0U &&
+                  reused.receipt.reusedSegmentCount == 5U &&
+                  !cache.dirtySegments.changed &&
+                  reused.receipt.outputHeightHash ==
+                      incremental.receipt.outputHeightHash &&
+                  heightFieldsEqual(reused.heightField,
+                                    incremental.heightField),
+              "allocator-only recipe changes reuse every geometric segment") &&
+       ok;
+
+  const cr::CreativeTerrainPathSourceCache stableCache = cache;
+  cr::CreativeTerrainPathSourceRecipe rejected = allocatorOnly;
+  rejected.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  for (auto& point : rejected.points) {
+    point.heightCells = cr::kCreativeTerrainMaximumHeightCells;
+    point.amplitudeCells = cr::kCreativeTerrainMaximumHeightCells;
+  }
+  const cr::CreativeTerrainPathSourceResult failed =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               rejected, &cache);
+  return expect(!failed.receipt.accepted &&
+                    failed.receipt.status ==
+                        cr::CreativeTerrainPathSourceStatus::HeightOutOfRange &&
+                    cache == stableCache,
+                "failed incremental composition preserves the last good cache") &&
+         ok;
+}
+
+bool endpointJoinsOwnDistinctTerrainSeams() {
+  const cr::CreativeTerrainHeightField base =
+      flatHeightField({{-4, -4}, 20U, 12U}, 4U);
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeTerrainHeightSurfacePlan(base);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe recipe;
+  recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  recipe.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  recipe.falloffCells = 0U;
+  recipe.material = cr::CreativeTerrainMaterial::Dirt;
+  recipe.nextPointId = 3U;
+  recipe.points = {sourcePoint(1U, 0, 0, 8U, 2U, 2U),
+                   sourcePoint(2U, 8, 0, 8U, 2U, 2U)};
+
+  recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::Open;
+  const cr::CreativeTerrainPathSourceResult open =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::Blend;
+  const cr::CreativeTerrainPathSourceResult blend =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::Intersection;
+  const cr::CreativeTerrainPathSourceResult intersection =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::Bridge;
+  const cr::CreativeTerrainPathSourceResult bridge =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+  recipe.startJoin = cr::CreativeTerrainPathEndpointJoin::BuildingPad;
+  const cr::CreativeTerrainPathSourceResult buildingPad =
+      cr::buildCreativeTerrainPathSourceRecipe(base, surface, materials,
+                                               recipe);
+
+  const auto paintedAt = [](const cr::CreativeTerrainPathSourceResult& result,
+                            cr::CreativeTerrainCoord2 coord) {
+    return std::any_of(
+        result.materialEdits.begin(), result.materialEdits.end(),
+        [coord](const cr::CreativeTerrainMaterialEdit& edit) {
+          return edit.kind == cr::CreativeTerrainMaterialEditKind::Set &&
+                 edit.coord == coord;
+        });
+  };
+
+  return expect(open.receipt.accepted && blend.receipt.accepted &&
+                    intersection.receipt.accepted && bridge.receipt.accepted &&
+                    buildingPad.receipt.accepted,
+                "all endpoint join policies generate valid terrain") &&
+         expect(open.heightField.heightAt({0, 0}) == 10U &&
+                    paintedAt(open, {0, 0}),
+                "open join retains the ordinary full-profile cap") &&
+         expect(blend.heightField.heightAt({0, 0}) == 4U &&
+                    blend.heightField.heightAt({1, 0}) == 7U &&
+                    blend.heightField.heightAt({2, 0}) == 10U &&
+                    !paintedAt(blend, {0, 0}) && paintedAt(blend, {2, 0}),
+                "blend join eases height and material into surrounding terrain") &&
+         expect(intersection.heightField.heightAt({0, 0}) == 8U &&
+                    intersection.heightField.heightAt({0, 3}) == 8U &&
+                    paintedAt(intersection, {0, 3}),
+                "intersection join emits a widened level junction pad") &&
+         expect(bridge.heightField.heightAt({0, 0}) == 8U &&
+                    bridge.heightField.heightAt({0, 1}) == 8U &&
+                    bridge.heightField.heightAt({2, 0}) == 10U,
+                "bridge join emits a level approach before full profile resumes") &&
+         expect(buildingPad.heightField.heightAt({0, 0}) == 8U &&
+                    buildingPad.heightField.heightAt({0, 1}) == 8U &&
+                    buildingPad.heightField.heightAt({2, 0}) == 10U,
+                "building-pad join flattens the profile at the host perimeter");
+}
+
+bool durablePathFailuresAreAtomicAndBounded() {
+  cr::CreativeTerrainHeightField empty;
+  const cr::CreativeTerrainSurfacePlan emptySurface =
+      cr::buildCreativeTerrainHeightSurfacePlan(empty);
+  cr::CreativeTerrainMaterialField materials;
+  cr::CreativeTerrainPathSourceRecipe duplicateIds;
+  duplicateIds.nextPointId = 2U;
+  duplicateIds.points = {sourcePoint(1U, 0, 0, 4U, 1U),
+                         sourcePoint(1U, 4, 0, 4U, 1U)};
+  const cr::CreativeTerrainPathSourceResult invalid =
+      cr::buildCreativeTerrainPathSourceRecipe(
+          empty, emptySurface, materials, duplicateIds);
+
+  cr::CreativeTerrainPathSourceRecipe oversized;
+  oversized.nextPointId = 3U;
+  oversized.falloffCells =
+      cr::kCreativeTerrainPathSourceMaximumFalloffCells;
+  oversized.points = {
+      sourcePoint(1U, 0, 0, 4U,
+                  cr::kCreativeTerrainPathSourceMaximumHalfWidthCells),
+      sourcePoint(2U, cr::kCreativeTerrainPathMaximumSegmentCells, 0, 4U,
+                  cr::kCreativeTerrainPathSourceMaximumHalfWidthCells),
+  };
+  const cr::CreativeTerrainPathSourceResult capacity =
+      cr::buildCreativeTerrainPathSourceRecipe(empty, emptySurface, materials,
+                                               oversized);
+
+  cr::CreativeTerrainPathSourceRecipe unsupported = oversized;
+  unsupported.version = 99U;
+  const cr::CreativeTerrainPathSourceResult version =
+      cr::buildCreativeTerrainPathSourceRecipe(empty, emptySurface, materials,
+                                               unsupported);
+
+  return expect(!invalid.receipt.accepted && invalid.materialEdits.empty() &&
+                    invalid.heightField.cellCount() == 0U &&
+                    invalid.receipt.status ==
+                        cr::CreativeTerrainPathSourceStatus::InvalidRecipe,
+                "invalid stable point ownership rejects atomically") &&
+         expect(!capacity.receipt.accepted &&
+                    capacity.materialEdits.empty() &&
+                    capacity.heightField.cellCount() == 0U &&
+                    capacity.receipt.status ==
+                        cr::CreativeTerrainPathSourceStatus::CapacityExceeded,
+                "oversized path bounds reject before partial output") &&
+         expect(!version.receipt.accepted && version.materialEdits.empty() &&
+                    version.receipt.status ==
+                        cr::CreativeTerrainPathSourceStatus::UnsupportedVersion,
+                "unsupported path source versions fail closed");
+}
+
 bool rejectedPlansAreAtomicAndSpecific() {
   cr::CreativeTerrainField empty;
   constexpr std::array duplicate{
@@ -267,6 +772,13 @@ int main() {
   ok = roadRasterIsCanonicalAndIdempotent() && ok;
   ok = crossSectionsAndElevationModesArePinned() && ok;
   ok = bendsDeduplicateAndFollowSamplesLiveTerrain() && ok;
+  ok = durableRoadRecipeOwnsProfilesMaterialsAndExactOutput() && ok;
+  ok = roadSettingsOwnShouldersGradesAndExactSampling() && ok;
+  ok = durableFollowUsesPointHeightWhereTerrainIsAbsent() && ok;
+  ok = curvesCrossSectionsAndDirtySegmentsAreExplicit() && ok;
+  ok = incrementalSegmentCacheIsExactAtomicAndObservable() && ok;
+  ok = endpointJoinsOwnDistinctTerrainSeams() && ok;
+  ok = durablePathFailuresAreAtomicAndBounded() && ok;
   ok = rejectedPlansAreAtomicAndSpecific() && ok;
   return ok ? 0 : 1;
 }

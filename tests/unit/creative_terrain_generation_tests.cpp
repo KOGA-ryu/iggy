@@ -380,6 +380,75 @@ bool slopeDampingSuppressesFineTerrainVariation() {
                 "slope damping changes generated terrain output");
 }
 
+bool biomeIntentProducesExplicitDeterministicMaterialsAndBoundedWork() {
+  cr::CreativeTerrainGeneratorRecipe recipe = testRecipe();
+  recipe.bounds = {{0, 0}, 128U, 64U};
+  recipe.baseHeightCells = 12U;
+  recipe.reliefCells = 0U;
+  recipe.octaveCount = cr::kCreativeTerrainGeneratorMaximumOctaves;
+  cr::applyCreativeTerrainBiomeIntent(
+      recipe, cr::CreativeTerrainBiomeIntent::Arid);
+  recipe.materialTransitionHeightCells = 13U;
+  const cr::CreativeTerrainGenerationResult first =
+      cr::buildCreativeTerrainGenerationPlan(recipe);
+  const cr::CreativeTerrainGenerationResult second =
+      cr::buildCreativeTerrainGenerationPlan(recipe);
+  cr::CreativeTerrainGeneratorRecipe heightOnlyRecipe = recipe;
+  heightOnlyRecipe.paintMaterials = false;
+  const cr::CreativeTerrainGenerationResult heightOnly =
+      cr::buildCreativeTerrainGenerationPlan(heightOnlyRecipe);
+
+  cr::applyCreativeTerrainBiomeIntent(
+      recipe, cr::CreativeTerrainBiomeIntent::Alpine);
+  const bool alpineExplicit =
+      recipe.biomeIntent == cr::CreativeTerrainBiomeIntent::Alpine &&
+      recipe.lowlandMaterial == cr::CreativeTerrainMaterial::Dirt &&
+      recipe.highlandMaterial == cr::CreativeTerrainMaterial::Stone;
+  recipe.lowlandMaterial = cr::CreativeTerrainMaterial::Sand;
+  cr::applyCreativeTerrainBiomeIntent(
+      recipe, cr::CreativeTerrainBiomeIntent::Custom);
+
+  return expect(first.receipt.accepted && second.receipt.accepted,
+                "maximum bounded biome generation is accepted") &&
+         expect(first.receipt.generatedCellCount == 8192U &&
+                    first.receipt.evaluatedOctaveCount == 8192U * 8U,
+                "generation receipt exposes the exact bounded octave work") &&
+         expect(first.receipt.generatedMaterialOverrideCount == 8192U &&
+                    first.plan.materialField.overrideCount() == 8192U &&
+                    first.plan.materialField.materialAt({0, 0}) ==
+                        cr::CreativeTerrainMaterial::Sand,
+                "arid lowland intent materializes explicit sand output") &&
+         expect(first.receipt.heightHash == second.receipt.heightHash &&
+                    first.receipt.materialHash == second.receipt.materialHash &&
+                    cr::creativeTerrainMaterialFieldsEqual(
+                        first.plan.materialField,
+                        second.plan.materialField),
+                "biome height and material outputs are deterministic") &&
+         expect(heightOnly.receipt.accepted &&
+                    heightOnly.receipt.heightHash == first.receipt.heightHash &&
+                    heightOnly.receipt.generatedMaterialOverrideCount == 0U &&
+                    heightOnly.plan.materialField.overrideCount() == 0U,
+                "height-only generation preserves terrain shape without "
+                "emitting material edits") &&
+         expect(alpineExplicit &&
+                    recipe.biomeIntent ==
+                        cr::CreativeTerrainBiomeIntent::Custom &&
+                    recipe.lowlandMaterial ==
+                        cr::CreativeTerrainMaterial::Sand,
+                "named presets write explicit fields and Custom preserves them") &&
+         expect(cr::toString(cr::CreativeTerrainBiomeIntent::Wetland) ==
+                        "Wetland" &&
+                    [] {
+                      cr::CreativeTerrainBiomeIntent parsed =
+                          cr::CreativeTerrainBiomeIntent::Count;
+                      return cr::parseCreativeTerrainBiomeIntent(
+                                 "Temperate", parsed) &&
+                             parsed ==
+                                 cr::CreativeTerrainBiomeIntent::Temperate;
+                    }(),
+                "biome persistence text is total and stable");
+}
+
 bool invalidRecipesFailClosed() {
   cr::CreativeTerrainGeneratorRecipe version = testRecipe();
   ++version.version;
@@ -390,6 +459,10 @@ bool invalidRecipesFailClosed() {
   cr::CreativeTerrainGeneratorRecipe parameters = testRecipe();
   parameters.horizontalScaleCells =
       std::numeric_limits<double>::quiet_NaN();
+  cr::CreativeTerrainGeneratorRecipe biome = testRecipe();
+  biome.biomeIntent = cr::CreativeTerrainBiomeIntent::Count;
+  cr::CreativeTerrainGeneratorRecipe material = testRecipe();
+  material.highlandMaterial = cr::CreativeTerrainMaterial::Count;
 
   const cr::CreativeTerrainGenerationResult badVersion =
       cr::buildCreativeTerrainGenerationPlan(version);
@@ -399,6 +472,10 @@ bool invalidRecipesFailClosed() {
       cr::buildCreativeTerrainGenerationPlan(bounds);
   const cr::CreativeTerrainGenerationResult badParameters =
       cr::buildCreativeTerrainGenerationPlan(parameters);
+  const cr::CreativeTerrainGenerationResult badBiome =
+      cr::buildCreativeTerrainGenerationPlan(biome);
+  const cr::CreativeTerrainGenerationResult badMaterial =
+      cr::buildCreativeTerrainGenerationPlan(material);
 
   return expect(!badVersion.receipt.accepted &&
                     badVersion.receipt.status ==
@@ -417,6 +494,13 @@ bool invalidRecipesFailClosed() {
                     badParameters.receipt.status ==
                         cr::CreativeTerrainGenerationStatus::InvalidParameters,
                 "non-finite parameters fail closed") &&
+         expect(!badBiome.receipt.accepted &&
+                    !badMaterial.receipt.accepted &&
+                    badBiome.receipt.status ==
+                        cr::CreativeTerrainGenerationStatus::InvalidParameters &&
+                    badMaterial.receipt.status ==
+                        cr::CreativeTerrainGenerationStatus::InvalidParameters,
+                "invalid biome and material values fail closed") &&
          expect(badVersion.plan.heightField.cellCount() == 0U &&
                     badKind.plan.heightField.cellCount() == 0U &&
                     badBounds.plan.heightField.cellCount() == 0U &&
@@ -433,6 +517,7 @@ int main() {
                   heightSurfaceCompositionReplacesRegionAndSharesCorners() &&
                   generationIsDeterministicAndSeedSensitive() &&
                   slopeDampingSuppressesFineTerrainVariation() &&
+                  biomeIntentProducesExplicitDeterministicMaterialsAndBoundedWork() &&
                   invalidRecipesFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

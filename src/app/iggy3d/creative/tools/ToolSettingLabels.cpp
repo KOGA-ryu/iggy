@@ -1,5 +1,10 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
+#include <cmath>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
 namespace iggy3d::creative {
 
 std::string_view toString(CreativeMoveConstraint constraint) noexcept {
@@ -133,6 +138,37 @@ std::string_view toString(CreativeAssetPlacementMode mode) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(CreativeAssetAlignmentMode mode) noexcept {
+  switch (mode) {
+    case CreativeAssetAlignmentMode::Grid: return "GRID";
+    case CreativeAssetAlignmentMode::Floor: return "FLOOR";
+    case CreativeAssetAlignmentMode::Wall: return "WALL";
+    case CreativeAssetAlignmentMode::SurfaceNormal: return "SURFACE NORMAL";
+    case CreativeAssetAlignmentMode::Free: return "FREE";
+    case CreativeAssetAlignmentMode::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetAttachmentMode mode) noexcept {
+  switch (mode) {
+    case CreativeAssetAttachmentMode::BestMatch: return "BEST MATCH";
+    case CreativeAssetAttachmentMode::AimSocket: return "AIM SOCKET";
+    case CreativeAssetAttachmentMode::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeAssetScatterMask mask) noexcept {
+  switch (mask) {
+    case CreativeAssetScatterMask::Circle: return "CIRCLE";
+    case CreativeAssetScatterMask::Box: return "BOX";
+    case CreativeAssetScatterMask::Selection: return "SELECTION";
+    case CreativeAssetScatterMask::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeAssetScatterRadius radius) noexcept {
   switch (radius) {
     case CreativeAssetScatterRadius::TwoCells: return "2 CELLS";
@@ -194,12 +230,61 @@ std::string_view toString(CreativeAssetScatterSlope slope) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(
+    CreativeAssetScatterCollision collision) noexcept {
+  switch (collision) {
+    case CreativeAssetScatterCollision::Avoid: return "AVOID";
+    case CreativeAssetScatterCollision::Allow: return "ALLOW";
+    case CreativeAssetScatterCollision::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeCloneOffsetAxis axis) noexcept {
   switch (axis) {
     case CreativeCloneOffsetAxis::X: return "X";
     case CreativeCloneOffsetAxis::Y: return "Y";
     case CreativeCloneOffsetAxis::Z: return "Z";
+    case CreativeCloneOffsetAxis::NegativeX: return "-X";
+    case CreativeCloneOffsetAxis::NegativeY: return "-Y";
+    case CreativeCloneOffsetAxis::NegativeZ: return "-Z";
     case CreativeCloneOffsetAxis::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeCloneRotation rotation) noexcept {
+  switch (rotation) {
+    case CreativeCloneRotation::Degrees0: return "0 DEG";
+    case CreativeCloneRotation::Degrees90: return "90 DEG";
+    case CreativeCloneRotation::Degrees180: return "180 DEG";
+    case CreativeCloneRotation::Degrees270: return "270 DEG";
+    case CreativeCloneRotation::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeCloneMirror mirror) noexcept {
+  switch (mirror) {
+    case CreativeCloneMirror::None: return "NONE";
+    case CreativeCloneMirror::X: return "X";
+    case CreativeCloneMirror::Z: return "Z";
+    case CreativeCloneMirror::XAndZ: return "X+Z";
+    case CreativeCloneMirror::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(
+    CreativeVolumeCloneVoxelOverlapPolicy policy) noexcept {
+  switch (policy) {
+    case CreativeVolumeCloneVoxelOverlapPolicy::RejectOccupied:
+      return "REJECT";
+    case CreativeVolumeCloneVoxelOverlapPolicy::PreserveExisting:
+      return "PRESERVE";
+    case CreativeVolumeCloneVoxelOverlapPolicy::ReplaceExisting:
+      return "REPLACE";
+    case CreativeVolumeCloneVoxelOverlapPolicy::Count: break;
   }
   return "INVALID";
 }
@@ -215,11 +300,111 @@ std::string_view toString(CreativeCloneOffsetDistance distance) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(
+    CreativeVolumeFillOverlapPolicy policy) noexcept {
+  switch (policy) {
+    case CreativeVolumeFillOverlapPolicy::PreserveExisting:
+      return "PRESERVE";
+    case CreativeVolumeFillOverlapPolicy::ReplaceExisting:
+      return "REPLACE";
+    case CreativeVolumeFillOverlapPolicy::Count:
+      break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(
+    CreativeVolumeHollowThickness thickness) noexcept {
+  switch (thickness) {
+    case CreativeVolumeHollowThickness::OneCell: return "1 CELL";
+    case CreativeVolumeHollowThickness::TwoCells: return "2 CELLS";
+    case CreativeVolumeHollowThickness::FourCells: return "4 CELLS";
+    case CreativeVolumeHollowThickness::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(
+    CreativeVolumeHollowAlignment alignment) noexcept {
+  switch (alignment) {
+    case CreativeVolumeHollowAlignment::Inward: return "INWARD";
+    case CreativeVolumeHollowAlignment::Outward: return "OUTWARD";
+    case CreativeVolumeHollowAlignment::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeVolumeHollowOpening opening) noexcept {
+  switch (opening) {
+    case CreativeVolumeHollowOpening::Closed: return "CLOSED";
+    case CreativeVolumeHollowOpening::NegativeEnd: return "- END";
+    case CreativeVolumeHollowOpening::PositiveEnd: return "+ END";
+    case CreativeVolumeHollowOpening::BothEnds: return "BOTH ENDS";
+    case CreativeVolumeHollowOpening::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeVolumeHollowCornerRule rule) noexcept {
+  switch (rule) {
+    case CreativeVolumeHollowCornerRule::KeepEdges: return "KEEP EDGES";
+    case CreativeVolumeHollowCornerRule::CutThrough: return "CUT THROUGH";
+    case CreativeVolumeHollowCornerRule::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeVolumeMemberMask mask) noexcept {
+  switch (mask) {
+    case CreativeVolumeMemberMask::VoxelCells: return "VOXELS";
+    case CreativeVolumeMemberMask::DocumentObjects: return "OBJECTS";
+    case CreativeVolumeMemberMask::Both: return "BOTH";
+    case CreativeVolumeMemberMask::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeArrayMode mode) noexcept {
   switch (mode) {
     case CreativeArrayMode::Linear: return "LINEAR";
     case CreativeArrayMode::Radial: return "RADIAL";
     case CreativeArrayMode::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeMeasurementMode mode) noexcept {
+  switch (mode) {
+    case CreativeMeasurementMode::Distance: return "Distance";
+    case CreativeMeasurementMode::AxisProjected: return "Axis projected";
+    case CreativeMeasurementMode::Vertical: return "Vertical";
+    case CreativeMeasurementMode::Slope: return "Slope";
+    case CreativeMeasurementMode::Perimeter: return "Perimeter";
+    case CreativeMeasurementMode::Area: return "Area";
+    case CreativeMeasurementMode::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeMeasurementAxis axis) noexcept {
+  switch (axis) {
+    case CreativeMeasurementAxis::X: return "X";
+    case CreativeMeasurementAxis::Y: return "Y";
+    case CreativeMeasurementAxis::Z: return "Z";
+    case CreativeMeasurementAxis::Count: break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(CreativeMeasurementSnapMode mode) noexcept {
+  switch (mode) {
+    case CreativeMeasurementSnapMode::Auto: return "Auto";
+    case CreativeMeasurementSnapMode::Grid: return "Grid";
+    case CreativeMeasurementSnapMode::Surface: return "Surface";
+    case CreativeMeasurementSnapMode::Vertex: return "Vertex";
+    case CreativeMeasurementSnapMode::Opening: return "Opening";
+    case CreativeMeasurementSnapMode::Level: return "Level";
+    case CreativeMeasurementSnapMode::Count: break;
   }
   return "INVALID";
 }
@@ -238,151 +423,244 @@ std::string_view toString(CreativeToolOptionAdjustStatus status) noexcept {
   return "Unknown";
 }
 
-std::string_view creativeToolOptionValueLabel(
+namespace {
+
+[[nodiscard]] std::string cellCountLabel(std::uint64_t cells) {
+  return std::to_string(cells) + (cells == 1U ? " CELL" : " CELLS");
+}
+
+[[nodiscard]] std::string cellScaleLabel(double cells) {
+  if (std::floor(cells) == cells) {
+    return cellCountLabel(static_cast<std::uint64_t>(cells));
+  }
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(1) << cells << " CELLS";
+  return stream.str();
+}
+
+}  // namespace
+
+std::string creativeToolOptionValueLabel(
     const CreativeToolSettings& settings,
-    CreativeToolOptionId option) noexcept {
+    CreativeToolOptionId option) {
   switch (option) {
     case CreativeToolOptionId::MoveConstraint:
-      return toString(settings.moveConstraint);
+      return std::string(toString(settings.moveConstraint));
     case CreativeToolOptionId::RotationStep:
-      return toString(settings.rotationStep);
+      return std::string(toString(settings.rotationStep));
     case CreativeToolOptionId::PlacementYaw:
-      return toString(settings.placementYaw);
+      return std::string(toString(settings.placementYaw));
     case CreativeToolOptionId::SnapIncrement:
-      return toString(settings.snapIncrement);
+      return std::string(toString(settings.snapIncrement));
     case CreativeToolOptionId::PlacementGridDots:
-      return toString(settings.placementGridDots);
+      return std::string(toString(settings.placementGridDots));
     case CreativeToolOptionId::PlacementPlane:
-      return toString(settings.placementPlane);
+      return std::string(toString(settings.placementPlane));
     case CreativeToolOptionId::PlacementAnchor:
-      return toString(settings.placementAnchor);
+      return std::string(toString(settings.placementAnchor));
     case CreativeToolOptionId::PlacementDepth:
-      return toString(settings.placementDepth);
+      return std::string(toString(settings.placementDepth));
     case CreativeToolOptionId::RoomWallHeight:
-      return toString(settings.roomWallHeight);
+      return std::string(toString(settings.roomWallHeight));
     case CreativeToolOptionId::RoomWallThickness:
-      return toString(settings.roomWallThickness);
+      return std::string(toString(settings.roomWallThickness));
     case CreativeToolOptionId::RoomFloorThickness:
-      return toString(settings.roomFloorThickness);
+      return std::string(toString(settings.roomFloorThickness));
     case CreativeToolOptionId::AssetPlacementMode:
-      return toString(settings.assetPlacementMode);
+      return std::string(toString(settings.assetPlacementMode));
+    case CreativeToolOptionId::AssetAlignmentMode:
+      return std::string(toString(settings.assetAlignmentMode));
+    case CreativeToolOptionId::AssetAttachmentMode:
+      return std::string(toString(settings.assetAttachmentMode));
+    case CreativeToolOptionId::AssetScatterMask:
+      return std::string(toString(settings.assetScatterMask));
     case CreativeToolOptionId::AssetScatterRadius:
-      return toString(settings.assetScatterRadius);
+      return std::string(toString(settings.assetScatterRadius));
     case CreativeToolOptionId::AssetScatterDensity:
-      return toString(settings.assetScatterDensity);
+      return std::string(toString(settings.assetScatterDensity));
     case CreativeToolOptionId::AssetScatterSpacing:
-      return toString(settings.assetScatterSpacing);
+      return std::string(toString(settings.assetScatterSpacing));
     case CreativeToolOptionId::AssetScatterYaw:
-      return toString(settings.assetScatterYaw);
+      return std::string(toString(settings.assetScatterYaw));
     case CreativeToolOptionId::AssetScatterScale:
-      return toString(settings.assetScatterScale);
+      return std::string(toString(settings.assetScatterScale));
     case CreativeToolOptionId::AssetScatterSlope:
-      return toString(settings.assetScatterSlope);
+      return std::string(toString(settings.assetScatterSlope));
+    case CreativeToolOptionId::AssetScatterCollision:
+      return std::string(toString(settings.assetScatterCollision));
     case CreativeToolOptionId::MaterialBrushShape:
-      return toString(settings.materialBrushShape);
+      return std::string(toString(settings.materialBrushShape));
     case CreativeToolOptionId::MaterialBrushAxis:
-      return toString(settings.materialBrushAxis);
+      return std::string(toString(settings.materialBrushAxis));
     case CreativeToolOptionId::MaterialBrushSize:
-      return toString(settings.materialBrushSize);
+      return std::string(toString(settings.materialBrushSize));
     case CreativeToolOptionId::MaterialBrushFill:
-      return toString(settings.materialBrushFill);
+      return std::string(toString(settings.materialBrushFill));
     case CreativeToolOptionId::MaterialBrushGuide:
-      return toString(settings.materialBrushGuide);
+      return std::string(toString(settings.materialBrushGuide));
     case CreativeToolOptionId::MaterialBrushSymmetry:
-      return toString(settings.materialBrushSymmetry);
+      return std::string(toString(settings.materialBrushSymmetry));
     case CreativeToolOptionId::MaterialBrushMask:
-      return toString(settings.materialBrushMask);
+      return std::string(toString(settings.materialBrushMask));
     case CreativeToolOptionId::MaterialBrushReplaceSource:
-      return settings.materialBrushReplaceSourceKind ==
-                     CreativeObjectKind::Unknown
-                 ? std::string_view{"ANY"}
-                 : toString(settings.materialBrushReplaceSourceKind);
+      return std::string(settings.materialBrushReplaceSourceKind ==
+                                 CreativeObjectKind::Unknown
+                             ? std::string_view{"ANY"}
+                             : toString(
+                                   settings.materialBrushReplaceSourceKind));
     case CreativeToolOptionId::ConnectedFillLimit:
-      return toString(settings.connectedFillLimit);
+      return std::string(toString(settings.connectedFillLimit));
     case CreativeToolOptionId::SurfaceExtrudeDepth:
-      return toString(settings.surfaceExtrudeDepth);
+      return std::string(toString(settings.surfaceExtrudeDepth));
     case CreativeToolOptionId::SurfaceExtrudeLimit:
-      return toString(settings.surfaceExtrudeLimit);
+      return std::string(toString(settings.surfaceExtrudeLimit));
     case CreativeToolOptionId::ShapeBrushKind:
-      return toString(settings.shapeBrushKind);
+      return std::string(toString(settings.shapeBrushKind));
     case CreativeToolOptionId::ShapeBrushAxis:
-      return toString(settings.shapeBrushAxis);
+      return std::string(toString(settings.shapeBrushAxis));
+    case CreativeToolOptionId::VolumeFillOverlapPolicy:
+      return std::string(toString(settings.volumeFillOverlapPolicy));
+    case CreativeToolOptionId::VolumeHollowThickness:
+      return std::string(toString(settings.volumeHollowThickness));
+    case CreativeToolOptionId::VolumeHollowAlignment:
+      return std::string(toString(settings.volumeHollowAlignment));
+    case CreativeToolOptionId::VolumeHollowOpening:
+      return std::string(toString(settings.volumeHollowOpening));
+    case CreativeToolOptionId::VolumeHollowCornerRule:
+      return std::string(toString(settings.volumeHollowCornerRule));
     case CreativeToolOptionId::ReplaceSource:
-      return settings.replaceSourceKind == CreativeObjectKind::Unknown
-                 ? std::string_view{"ANY"}
-                 : toString(settings.replaceSourceKind);
+      return std::string(settings.replaceSourceKind == CreativeObjectKind::Unknown
+                             ? std::string_view{"ANY"}
+                             : toString(settings.replaceSourceKind));
+    case CreativeToolOptionId::ReplaceMemberMask:
+      return std::string(toString(settings.volumeReplaceMemberMask));
+    case CreativeToolOptionId::EraseSource:
+      return std::string(settings.eraseSourceKind == CreativeObjectKind::Unknown
+                             ? std::string_view{"ANY"}
+                             : toString(settings.eraseSourceKind));
+    case CreativeToolOptionId::EraseMemberMask:
+      return std::string(toString(settings.volumeEraseMemberMask));
     case CreativeToolOptionId::CloneOffsetAxis:
-      return toString(settings.cloneOffsetAxis);
+      return std::string(toString(settings.cloneOffsetAxis));
     case CreativeToolOptionId::CloneOffsetDistance:
-      return toString(settings.cloneOffsetDistance);
+      return std::string(toString(settings.cloneOffsetDistance));
+    case CreativeToolOptionId::CloneRotation:
+      return std::string(toString(settings.cloneRotation));
+    case CreativeToolOptionId::CloneMirror:
+      return std::string(toString(settings.cloneMirror));
+    case CreativeToolOptionId::CloneMemberMask:
+      return std::string(toString(settings.volumeCloneMemberMask));
+    case CreativeToolOptionId::CloneVoxelOverlapPolicy:
+      return std::string(toString(settings.cloneVoxelOverlapPolicy));
     case CreativeToolOptionId::ArrayMode:
-      return toString(settings.arrayMode);
+      return std::string(toString(settings.arrayMode));
     case CreativeToolOptionId::ArrayDirection:
-      return toString(settings.arrayDirection);
+      return std::string(toString(settings.arrayDirection));
     case CreativeToolOptionId::ArrayCopyCount:
-      return toString(settings.arrayCopyCount);
+      return std::string(toString(settings.arrayCopyCount));
     case CreativeToolOptionId::ArraySpacing:
-      return toString(settings.arraySpacing);
+      return std::string(toString(settings.arraySpacing));
     case CreativeToolOptionId::RadialArrayAxis:
-      return toString(settings.radialArrayAxis);
+      return std::string(toString(settings.radialArrayAxis));
     case CreativeToolOptionId::RadialArrayInstanceCount:
-      return toString(settings.radialArrayInstanceCount);
+      return std::string(toString(settings.radialArrayInstanceCount));
     case CreativeToolOptionId::RadialArraySweep:
-      return toString(settings.radialArraySweep);
+      return std::string(toString(settings.radialArraySweep));
+    case CreativeToolOptionId::MeasurementMode:
+      return std::string(toString(settings.measurementMode));
+    case CreativeToolOptionId::MeasurementAxis:
+      return std::string(toString(settings.measurementAxis));
+    case CreativeToolOptionId::MeasurementSnapMode:
+      return std::string(toString(settings.measurementSnapMode));
+    case CreativeToolOptionId::MeasurementClosePath:
+      return settings.measurementClosePath ? "CLOSED" : "OPEN";
     case CreativeToolOptionId::TerrainSculptMode:
-      return toString(settings.terrainSculptMode);
+      return std::string(toString(settings.terrainSculptMode));
     case CreativeToolOptionId::TerrainSculptRadius:
-      return toString(settings.terrainSculptRadius);
+      return std::string(toString(settings.terrainSculptRadius));
     case CreativeToolOptionId::TerrainSculptStrength:
-      return toString(settings.terrainSculptStrength);
+      return std::string(toString(settings.terrainSculptStrength));
+    case CreativeToolOptionId::TerrainSculptTargetHeight:
+      return std::to_string(settings.terrainSculptTargetHeightCells) +
+             " CELLS";
     case CreativeToolOptionId::TerrainSculptFalloff:
-      return toString(settings.terrainSculptFalloff);
+      return std::string(toString(settings.terrainSculptFalloff));
+    case CreativeToolOptionId::TerrainSculptMask:
+      return std::string(toString(settings.terrainSculptMask));
     case CreativeToolOptionId::TerrainPaintMode:
-      return toString(settings.terrainPaintMode);
+      return std::string(toString(settings.terrainPaintMode));
     case CreativeToolOptionId::TerrainPaintMaterial:
-      return toString(settings.terrainPaintMaterial);
+      return std::string(toString(settings.terrainPaintMaterial));
     case CreativeToolOptionId::TerrainPaintRadius:
-      return toString(settings.terrainPaintRadius);
+      return std::string(toString(settings.terrainPaintRadius));
     case CreativeToolOptionId::TerrainPaintSource:
-      return toString(settings.terrainPaintSource);
+      return std::string(toString(settings.terrainPaintSource));
+    case CreativeToolOptionId::TerrainPaintHardness:
+      return std::string(toString(settings.terrainPaintHardness));
+    case CreativeToolOptionId::TerrainPaintOpacity:
+      return std::string(toString(settings.terrainPaintOpacity));
+    case CreativeToolOptionId::TerrainPaintMask:
+      return std::string(toString(settings.terrainPaintMask));
+    case CreativeToolOptionId::TerrainPaintBlend:
+      return std::string(toString(settings.terrainPaintBlend));
+    case CreativeToolOptionId::TerrainPaintSlopeFilter:
+      return std::string(toString(settings.terrainPaintSlopeFilter));
+    case CreativeToolOptionId::TerrainPaintHeightFilter:
+      return std::string(toString(settings.terrainPaintHeightFilter));
     case CreativeToolOptionId::TerrainRodStampMode:
-      return toString(settings.terrainRodStampMode);
+      return std::string(toString(settings.terrainRodStampMode));
     case CreativeToolOptionId::TerrainSeedRadius:
-      return toString(settings.terrainSeedRadius);
+      return std::string(toString(settings.terrainSeedRadius));
     case CreativeToolOptionId::TerrainSeedSpacing:
-      return toString(settings.terrainSeedSpacing);
+      return std::string(toString(settings.terrainSeedSpacing));
     case CreativeToolOptionId::TerrainProfileKind:
-      return toString(settings.terrainProfileKind);
+      return std::string(toString(settings.terrainProfileKind));
     case CreativeToolOptionId::TerrainProfileBlend:
-      return toString(settings.terrainProfileBlend);
+      return std::string(toString(settings.terrainProfileBlend));
     case CreativeToolOptionId::TerrainProfileRodPolicy:
-      return toString(settings.terrainProfileRodPolicy);
+      return std::string(toString(settings.terrainProfileRodPolicy));
     case CreativeToolOptionId::TerrainProfileRadius:
-      return toString(settings.terrainProfileRadius);
+      return cellCountLabel(settings.terrainProfileRadiusCells);
     case CreativeToolOptionId::TerrainProfileAmplitude:
-      return toString(settings.terrainProfileAmplitude);
+      return cellCountLabel(settings.terrainProfileAmplitudeCells);
     case CreativeToolOptionId::TerrainProfileSpacing:
-      return toString(settings.terrainProfileSpacing);
+      return cellCountLabel(settings.terrainProfileSpacingCells);
     case CreativeToolOptionId::TerrainProfileDirection:
-      return toString(settings.terrainProfileDirection);
+      return std::string(toString(settings.terrainProfileDirection));
     case CreativeToolOptionId::TerrainProfileFrequency:
-      return toString(settings.terrainProfileFrequency);
+      return std::to_string(settings.terrainProfileFrequencyCycles) +
+             (settings.terrainProfileFrequencyCycles == 1U ? " CYCLE"
+                                                           : " CYCLES");
+    case CreativeToolOptionId::TerrainProfileSeed:
+      return std::to_string(settings.terrainProfileSeed);
     case CreativeToolOptionId::TerrainPathKind:
-      return toString(settings.terrainPathKind);
+      return std::string(toString(settings.terrainPathKind));
     case CreativeToolOptionId::TerrainPathElevation:
-      return toString(settings.terrainPathElevation);
+      return std::string(toString(settings.terrainPathElevation));
     case CreativeToolOptionId::TerrainPathWidth:
-      return toString(settings.terrainPathWidth);
+      return std::string(toString(settings.terrainPathWidth));
     case CreativeToolOptionId::TerrainPathAmplitude:
-      return toString(settings.terrainPathAmplitude);
+      return std::string(toString(settings.terrainPathAmplitude));
     case CreativeToolOptionId::TerrainRegionOperation:
-      return toString(settings.terrainRegionOperation);
+      return std::string(toString(settings.terrainRegionRecipe.mode));
+    case CreativeToolOptionId::TerrainRegionMask:
+      return std::string(toString(settings.terrainRegionRecipe.mask));
     case CreativeToolOptionId::TerrainRegionAmount:
-      return toString(settings.terrainRegionAmount);
+      return cellCountLabel(settings.terrainRegionRecipe.amountCells);
+    case CreativeToolOptionId::TerrainRegionTargetHeight:
+      return cellCountLabel(settings.terrainRegionRecipe.targetHeightCells);
+    case CreativeToolOptionId::TerrainRegionNoiseRelief:
+      return cellCountLabel(settings.terrainRegionRecipe.noiseReliefCells);
+    case CreativeToolOptionId::TerrainRegionNoiseScale:
+      return cellScaleLabel(settings.terrainRegionRecipe.noiseScaleCells);
+    case CreativeToolOptionId::TerrainRegionSeed:
+      return std::to_string(settings.terrainRegionRecipe.seed);
+    case CreativeToolOptionId::TerrainRegionFeather:
+      return cellCountLabel(settings.terrainRegionRecipe.featherCells);
     case CreativeToolOptionId::TerrainStampMode:
-      return toString(settings.terrainStampMode);
+      return std::string(toString(settings.terrainStampMode));
     case CreativeToolOptionId::TerrainStampElevation:
-      return toString(settings.terrainStampElevationMode);
+      return std::string(toString(settings.terrainStampElevationMode));
     case CreativeToolOptionId::Count:
       break;
   }

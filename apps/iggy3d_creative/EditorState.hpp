@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "core/math/Vec3.hpp"
@@ -24,6 +25,7 @@
 #include "EditorTerrain.hpp"
 #include "EditorTerrainGeneration.hpp"
 #include "EditorTerrainPaint.hpp"
+#include "EditorTerrainStampLibrary.hpp"
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
@@ -47,8 +49,6 @@ struct CreativeEditorDocumentTransientState {
   CreativeEditorConnectedFillCache connectedFill;
   CreativeEditorSurfaceExtrudeCache surfaceExtrude;
   CreativeEditorRoomPlacementState roomPlacement;
-  iggy3d::creative::CreativeObjectId moveTargetId =
-      iggy3d::creative::kInvalidObjectId;
   CreativeEditorGroupFocusState groupFocus;
   CreativeEditorPatternState pattern;
   CreativeEditorAssetReplacementState assetReplacement;
@@ -75,6 +75,7 @@ struct CreativeEditorAuthoredAssetEditSession {
   iggy3d::Vec3 mapFlyPosition{};
   float mapYawDegrees = 0.0F;
   float mapPitchDegrees = 0.0F;
+  iggy3d::ProductCreativeViewportFocus mapViewportFocus;
   std::string statusLabel;
 };
 
@@ -83,6 +84,8 @@ struct CreativeEditorState {
   iggy3d::Vec3 flyPos{0.0F, 6.0F, 12.0F};
   float yawDegrees = 0.0F;
   float pitchDegrees = -25.0F;
+  iggy3d::ProductCreativeViewportNavigationConfig viewportNavigationConfig;
+  iggy3d::ProductCreativeViewportFocus viewportFocus;
   bool rightStickLookRearmRequired = false;
   iggy3d::creative::CreativeControlDevice activeControlDevice =
       iggy3d::creative::CreativeControlDevice::KeyboardMouse;
@@ -110,6 +113,7 @@ struct CreativeEditorState {
   CreativeEditorTerrainState terrain;
   CreativeEditorTerrainGenerationState terrainGeneration;
   CreativeEditorTerrainPaintState terrainPaint;
+  CreativeEditorTerrainStampLibraryState terrainStamps;
   CreativeEditorLogicLinkState logicLinks;
   CreativeMovingPlatformPreviewState movingPlatformPreview;
   CreativeEditorWorldLayoutState worldLayout;

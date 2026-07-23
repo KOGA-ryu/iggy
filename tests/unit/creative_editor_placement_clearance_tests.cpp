@@ -573,6 +573,44 @@ bool genericRejectionUsesTheSharedFeedbackModel() {
                 "placement success uses the shared green model");
 }
 
+bool structuredRejectionsRemainVisibleToTheCreator() {
+  app::CreativeEditorInteractionState interaction;
+  app::CreativeBrushPlacementAdmission admission;
+  admission.status =
+      app::CreativeBrushPlacementAdmissionStatus::UnsupportedBrush;
+  admission.plan.brush = cr::CreativeObjectKind::Unknown;
+  app::setCreativeEditorPlacementAdmissionRejectionFeedback(
+      interaction, 60U, admission);
+  const app::CreativeEditorPlacementFeedbackViewModel unsupported =
+      app::creativeEditorPlacementFeedbackViewModel(
+          interaction.placementFeedback, 60U);
+
+  app::CreativeBrushPlacementMutationReceipt occupiedReceipt;
+  occupiedReceipt.requested = true;
+  occupiedReceipt.status =
+      app::CreativeBrushPlacementMutationStatus::Occupied;
+  occupiedReceipt.objectKind = cr::CreativeObjectKind::Wall;
+  app::setCreativeEditorPlacementMutationFeedback(
+      interaction, 61U, occupiedReceipt);
+  const app::CreativeEditorPlacementFeedbackViewModel occupied =
+      app::creativeEditorPlacementFeedbackViewModel(
+          interaction.placementFeedback, 61U);
+
+  app::setCreativeEditorPlacementRejectionFeedback(
+      interaction, 62U, cr::CreativeObjectKind::Crate, {},
+      app::CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
+  const app::CreativeEditorPlacementFeedbackViewModel generated =
+      app::creativeEditorPlacementFeedbackViewModel(
+          interaction.placementFeedback, 62U);
+
+  return expect(unsupported.label.view() == "Unsupported shape",
+                "unsupported placement reports the missing capability") &&
+         expect(occupied.label.view() == "Target occupied",
+                "replacement conflict reports occupancy explicitly") &&
+         expect(generated.label.view() == "Edit generated source",
+                "generated output directs the creator to its source");
+}
+
 }  // namespace
 
 int main() {
@@ -585,6 +623,7 @@ int main() {
                   resolvedAdmissionCarriesClearanceVerdict() &&
                   blockerFeedbackNamesAndOutlinesTheObstruction() &&
                   voxelTerrainAndWorldBlockersProjectSpecificFeedback() &&
-                  genericRejectionUsesTheSharedFeedbackModel();
+                  genericRejectionUsesTheSharedFeedbackModel() &&
+                  structuredRejectionsRemainVisibleToTheCreator();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

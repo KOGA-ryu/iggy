@@ -11,6 +11,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -82,7 +83,11 @@ void rejectStructuralSpan(CreativeEditorState& editor,
   }
   const cr::CreativeObject* object = appState.facade.document().findObject(
       static_cast<cr::CreativeObjectId>(selected.front().value));
-  if (object == nullptr || !object->visible || object->locked ||
+  if (object == nullptr ||
+      !cr::creativeObjectEffectivelyVisible(appState.facade.document(),
+                                            object->id) ||
+      cr::creativeObjectEffectivelyLocked(appState.facade.document(),
+                                          object->id) ||
       !object->assetId.empty() ||
       !cr::descriptorSupportsCreativeStructuralSpan(
           cr::describeObject(object->kind)) ||
@@ -288,6 +293,7 @@ bool processCreativeEditorStructuralSpanInput(
   const CreativeBrushPlacementMutationReceipt receipt = applyBrushPlacement(
       appState.facade, admission.plan, ordinal,
       activeCreativeEditorGroupFocusId(editor.groupFocus), {},
+      0U, {},
       clearanceCache);
   const bool changed = receipt.accepted && receipt.changed &&
                        receipt.objectCreated;
@@ -566,7 +572,9 @@ std::size_t appendCreativeEditorStructuralSpanEditWireframe(
   }
   const cr::CreativeObject* object =
       appState.facade.document().findObject(state.objectId);
-  if (object == nullptr || !object->visible) {
+  if (object == nullptr ||
+      !cr::creativeObjectEffectivelyVisible(appState.facade.document(),
+                                            object->id)) {
     return 0U;
   }
   const cr::CreativeTransform transform =

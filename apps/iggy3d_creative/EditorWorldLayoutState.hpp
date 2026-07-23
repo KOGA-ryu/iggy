@@ -15,6 +15,9 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomOperations.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomTopology.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
 #include "EditorWorldLayoutElevation.hpp"
@@ -25,6 +28,19 @@ struct CreativeCatalogEntry;
 }
 
 namespace iggy3d_creative_app {
+
+enum class CreativeEditorWorldLayoutPreviewValidity : std::uint8_t {
+  None,
+  Valid,
+  Invalid,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutInspectionSourceKind : std::uint8_t {
+  Authored,
+  Preview,
+  Count,
+};
 
 namespace cr = iggy3d::creative;
 
@@ -104,22 +120,6 @@ enum class CreativeEditorWorldLayoutPaletteCategory : std::uint8_t {
   Count,
 };
 
-enum class CreativeEditorWorldLayoutPaletteActivation : std::uint8_t {
-  Tool,
-  BuildingTemplate,
-  Count,
-};
-
-struct CreativeEditorWorldLayoutPaletteEntry {
-  CreativeEditorWorldLayoutPaletteCategory category =
-      CreativeEditorWorldLayoutPaletteCategory::Structure;
-  std::string_view label;
-  CreativeEditorWorldLayoutPaletteActivation activation =
-      CreativeEditorWorldLayoutPaletteActivation::Tool;
-  CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
-  std::string_view buildingTemplateId;
-};
-
 enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   None,
   Level,
@@ -128,10 +128,12 @@ enum class CreativeEditorWorldLayoutSelectionKind : std::uint8_t {
   Box,
   Wall,
   Opening,
+  RoofAperture,
   Building,
   TerrainProfile,
   TerrainPath,
   Object,
+  TopologyEdge,
 };
 
 struct CreativeEditorWorldLayoutSelection {
@@ -143,6 +145,14 @@ struct CreativeEditorWorldLayoutSelection {
 struct CreativeEditorWorldLayoutPoint {
   double x = 0.0;
   double z = 0.0;
+};
+
+struct CreativeEditorWorldLayoutPlanRegionSelectionGesture {
+  bool active = false;
+  CreativeEditorWorldLayoutPoint anchor;
+  CreativeEditorWorldLayoutPoint current;
+  bool additive = false;
+  bool toggle = false;
 };
 
 struct CreativeEditorWorldLayoutRoomSettings {
@@ -161,6 +171,10 @@ struct CreativeEditorWorldLayoutRoomSettings {
   double roofPitchDegrees =
       cr::kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+  cr::CreativeStructuralRoofSlopeDirection roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::PositiveZ;
+  cr::CreativeStructuralMaterial roofMaterial =
+      cr::CreativeStructuralMaterial::Blockout;
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutRoomSettings& lhs,
@@ -174,13 +188,32 @@ struct CreativeEditorWorldLayoutRoomSettings {
            lhs.roofThicknessLayers == rhs.roofThicknessLayers &&
            lhs.roofStyle == rhs.roofStyle &&
            lhs.roofRidgeAxis == rhs.roofRidgeAxis &&
+           lhs.roofSlopeDirection == rhs.roofSlopeDirection &&
            lhs.roofPitchDegrees == rhs.roofPitchDegrees &&
-           lhs.roofOverhangCells == rhs.roofOverhangCells;
+           lhs.roofOverhangCells == rhs.roofOverhangCells &&
+           lhs.roofMaterial == rhs.roofMaterial;
   }
+};
+
+struct CreativeEditorWorldLayoutRoomMetadata {
+  std::string name;
+  cr::CreativeWorldLayoutRoomType type =
+      cr::CreativeWorldLayoutRoomType::Generic;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutRoomMetadata&,
+      const CreativeEditorWorldLayoutRoomMetadata&) noexcept = default;
 };
 
 struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
   CreativeEditorWorldLayoutRoomSettings shell;
+  cr::CreativeWorldLayoutArchitecturalProfileKind architecturalProfileKind =
+      cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
+  std::uint16_t ceilingThicknessLayers = 1U;
+  cr::CreativeStructuralMaterial exteriorWallMaterial =
+      cr::CreativeStructuralMaterial::Blockout;
+  cr::CreativeStructuralMaterial interiorWallMaterial =
+      cr::CreativeStructuralMaterial::Blockout;
   cr::CreativeWorldLayoutBuildingBlockoutPattern pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
   bool connectRooms = true;
@@ -193,6 +226,52 @@ struct CreativeEditorWorldLayoutRoomSettingsDraft {
   std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
   std::uint64_t sourceRevision = 0U;
   CreativeEditorWorldLayoutRoomSettings settings;
+};
+
+struct CreativeEditorWorldLayoutRoomMetadataDraft {
+  bool active = false;
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoomMetadata metadata;
+};
+
+struct CreativeEditorWorldLayoutRoomTopologyDraft {
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  cr::CreativeWorldLayoutRoomSplitAxis splitAxis =
+      cr::CreativeWorldLayoutRoomSplitAxis::X;
+  std::int32_t splitCoordinate = 0;
+  std::size_t mergeRoomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+};
+
+struct CreativeEditorWorldLayoutTopologyEdgeSettings {
+  cr::CreativeWorldLayoutRoomEdgeAnchor fixedEndpoint =
+      cr::CreativeWorldLayoutRoomEdgeAnchor::Start;
+  std::uint32_t lengthCells = 0U;
+  double wallThicknessCells =
+      cr::kDefaultCreativeWorldLayoutWallThicknessCells;
+  std::uint16_t wallHeightCells = 0U;
+  cr::CreativeWorldLayoutWallProfile profile =
+      cr::CreativeWorldLayoutWallProfile::Automatic;
+  cr::CreativeStructuralMaterial material =
+      cr::CreativeStructuralMaterial::Blockout;
+  cr::CreativeWorldLayoutWallJoinStyle joinStyle =
+      cr::CreativeWorldLayoutWallJoinStyle::Square;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutTopologyEdgeSettings&,
+      const CreativeEditorWorldLayoutTopologyEdgeSettings&) noexcept =
+      default;
+};
+
+struct CreativeEditorWorldLayoutRoomEdgeSettingsDraft {
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t topologyEdgeIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutTopologyEdgeSettings settings;
+  std::uint32_t splitOffsetCells = 0U;
+  std::size_t mergeTopologyEdgeIndex =
+      cr::kInvalidCreativeWorldLayoutIndex;
 };
 
 enum class CreativeEditorWorldLayoutRectHandle : std::uint8_t {
@@ -241,9 +320,52 @@ struct CreativeEditorWorldLayoutRoomManipulationState {
   CreativeEditorWorldLayoutPoint startPoint;
   cr::CreativeWorldLayoutRect originalFootprint;
   cr::CreativeWorldLayoutRect previewFootprint;
+  cr::CreativeWorldLayoutRoomFootprintEditResult previewEdit;
   bool previewValid = false;
   std::string reasonCode =
       "creative_editor_world_layout_room_manipulation_inactive";
+};
+
+struct CreativeEditorWorldLayoutRoomBoundaryTarget {
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t topologyEdgeIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  bool horizontal = false;
+};
+
+using CreativeEditorWorldLayoutRoomBoundaryManipulationPhase =
+    CreativeEditorWorldLayoutRectManipulationPhase;
+
+struct CreativeEditorWorldLayoutRoomBoundaryManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoomBoundaryTarget target;
+  std::int32_t originalCoordinate = 0;
+  std::int32_t previewCoordinate = 0;
+  cr::CreativeWorldLayoutRoomOperationResult previewEdit;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_room_boundary_manipulation_inactive";
+};
+
+struct CreativeEditorWorldLayoutRoomCornerTarget {
+  std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t topologyVertexIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  bool northWestSouthEast = true;
+};
+
+using CreativeEditorWorldLayoutRoomCornerManipulationPhase =
+    CreativeEditorWorldLayoutRectManipulationPhase;
+
+struct CreativeEditorWorldLayoutRoomCornerManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoomCornerTarget target;
+  cr::CreativeTerrainCoord2 originalPosition{};
+  cr::CreativeTerrainCoord2 previewPosition{};
+  cr::CreativeWorldLayoutRoomOperationResult previewEdit;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_room_corner_manipulation_inactive";
 };
 
 inline constexpr double
@@ -256,13 +378,16 @@ struct CreativeEditorWorldLayoutVerticalConnectorSettings {
       cr::CreativeWorldLayoutVerticalConnectorKind::Stair;
   cr::CreativeWorldLayoutVerticalDirection direction =
       cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
+  cr::CreativeStructuralMaterial material =
+      cr::CreativeStructuralMaterial::Blockout;
 
   [[nodiscard]] friend bool operator==(
       CreativeEditorWorldLayoutVerticalConnectorSettings lhs,
       CreativeEditorWorldLayoutVerticalConnectorSettings rhs) noexcept {
     return lhs.footprint.minimum == rhs.footprint.minimum &&
            lhs.footprint.maximum == rhs.footprint.maximum &&
-           lhs.kind == rhs.kind && lhs.direction == rhs.direction;
+           lhs.kind == rhs.kind && lhs.direction == rhs.direction &&
+           lhs.material == rhs.material;
   }
 };
 
@@ -506,6 +631,11 @@ enum class CreativeEditorWorldLayoutBuildingTemplatePlacementPhase
 struct CreativeEditorWorldLayoutBuildingTemplatePlacementState {
   bool active = false;
   std::uint64_t sourceRevision = 0U;
+  cr::CreativeDocumentId terrainDocumentId = cr::kInvalidDocumentId;
+  std::uint64_t terrainDocumentRevision = 0U;
+  bool terrainSurfacePrepared = false;
+  cr::CreativeGridSettings terrainGrid;
+  cr::CreativeTerrainSurfacePlan terrainSurface;
   std::size_t templateIndex = cr::kInvalidCreativeWorldLayoutIndex;
   cr::CreativeWorldLayoutBuildingTemplate orientedTemplate;
   cr::CreativeTerrainCoord2 anchor;
@@ -513,7 +643,9 @@ struct CreativeEditorWorldLayoutBuildingTemplatePlacementState {
   cr::CreativeWorldLayout candidate;
   std::size_t resultBuildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
   std::uint64_t nextStableOrdinal = 1U;
+  bool previewPositioned = false;
   bool previewValid = false;
+  cr::CreativeWorldLayoutBuildingTemplatePlacementAnalysis analysis;
   std::string reasonCode =
       "creative_editor_world_layout_building_template_placement_inactive";
 };
@@ -523,8 +655,10 @@ struct CreativeEditorWorldLayoutOpeningSettings {
   double widthCells = 1.0;
   double sillHeightCells = 0.0;
   double heightCells = 2.1;
-  cr::CreativeBuildingOpeningPose pose =
-      cr::CreativeBuildingOpeningPose::Closed;
+  cr::CreativeDoorSettings door;
+  cr::CreativeWindowSettings window;
+  cr::CreativeBuildingOpeningFacing facing =
+      cr::CreativeBuildingOpeningFacing::PositiveNormal;
   bool includeInsert = true;
 
   [[nodiscard]] friend bool operator==(
@@ -537,6 +671,49 @@ struct CreativeEditorWorldLayoutOpeningSettingsDraft {
   std::size_t openingIndex = cr::kInvalidCreativeWorldLayoutIndex;
   std::uint64_t sourceRevision = 0U;
   CreativeEditorWorldLayoutOpeningSettings settings;
+};
+
+struct CreativeEditorWorldLayoutRoofApertureSettings {
+  cr::CreativeStructuralRoofApertureKind kind =
+      cr::CreativeStructuralRoofApertureKind::Skylight;
+  double minimumXCells = 0.0;
+  double maximumXCells = 0.0;
+  double minimumZCells = 0.0;
+  double maximumZCells = 0.0;
+
+  [[nodiscard]] friend bool operator==(
+      CreativeEditorWorldLayoutRoofApertureSettings,
+      CreativeEditorWorldLayoutRoofApertureSettings) noexcept = default;
+};
+
+struct CreativeEditorWorldLayoutRoofApertureSettingsDraft {
+  bool active = false;
+  std::size_t apertureIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoofApertureSettings settings;
+};
+
+using CreativeEditorWorldLayoutRoofApertureHandle =
+    CreativeEditorWorldLayoutRectHandle;
+using CreativeEditorWorldLayoutRoofApertureManipulationPhase =
+    CreativeEditorWorldLayoutRectManipulationPhase;
+
+struct CreativeEditorWorldLayoutRoofApertureTarget {
+  std::size_t apertureIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutRoofApertureHandle handle =
+      CreativeEditorWorldLayoutRoofApertureHandle::None;
+};
+
+struct CreativeEditorWorldLayoutRoofApertureManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoofApertureTarget target;
+  CreativeEditorWorldLayoutPoint startPoint;
+  CreativeEditorWorldLayoutRoofApertureSettings originalSettings;
+  CreativeEditorWorldLayoutRoofApertureSettings previewSettings;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_roof_aperture_manipulation_inactive";
 };
 
 struct CreativeEditorWorldLayoutLevelSettings {
@@ -553,10 +730,55 @@ struct CreativeEditorWorldLayoutLevelSettings {
       cr::CreativeStructuralRoofRidgeAxis::X;
   double roofPitchDegrees = cr::kDefaultCreativeStructuralRoofPitchDegrees;
   double roofOverhangCells = 0.0;
+  cr::CreativeStructuralRoofSlopeDirection roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::PositiveZ;
+  cr::CreativeStructuralMaterial roofMaterial =
+      cr::CreativeStructuralMaterial::Blockout;
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutLevelSettings&,
       const CreativeEditorWorldLayoutLevelSettings&) = default;
+};
+
+enum class CreativeEditorWorldLayoutRoofHandleKind : std::uint8_t {
+  None,
+  NorthEave,
+  EastEave,
+  SouthEave,
+  WestEave,
+  RidgeHeight,
+  Count,
+};
+
+enum class CreativeEditorWorldLayoutRoofManipulationPhase : std::uint8_t {
+  Begin,
+  Update,
+  Commit,
+  Cancel,
+  Count,
+};
+
+struct CreativeEditorWorldLayoutRoofTarget {
+  std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  CreativeEditorWorldLayoutRoofHandleKind handle =
+      CreativeEditorWorldLayoutRoofHandleKind::None;
+
+  [[nodiscard]] friend constexpr bool operator==(
+      CreativeEditorWorldLayoutRoofTarget,
+      CreativeEditorWorldLayoutRoofTarget) noexcept = default;
+};
+
+struct CreativeEditorWorldLayoutRoofManipulationState {
+  bool active = false;
+  std::uint64_t sourceRevision = 0U;
+  CreativeEditorWorldLayoutRoofTarget target;
+  double startCoordinateCells = 0.0;
+  double previewDeltaCells = 0.0;
+  CreativeEditorWorldLayoutLevelSettings originalSettings;
+  CreativeEditorWorldLayoutLevelSettings previewSettings;
+  bool previewValid = false;
+  std::string reasonCode =
+      "creative_editor_world_layout_roof_manipulation_inactive";
 };
 
 struct CreativeEditorWorldLayoutLevelSettingsDraft {
@@ -586,6 +808,10 @@ struct CreativeEditorWorldLayoutTerrainProfileSettings {
   cr::CreativeTerrainProfileDirection direction =
       cr::CreativeTerrainProfileDirection::PositiveX;
   std::uint8_t frequency = 1U;
+  bool usesLandformRecipe = false;
+  cr::CreativeTerrainLandformRecipe landform;
+  bool usesRetainingEdgeRecipe = false;
+  cr::CreativeRetainingEdgeSourceRecipe retainingEdge;
 
   [[nodiscard]] friend bool operator==(
       CreativeEditorWorldLayoutTerrainProfileSettings,
@@ -600,14 +826,7 @@ struct CreativeEditorWorldLayoutTerrainProfileSettingsDraft {
 };
 
 struct CreativeEditorWorldLayoutTerrainPathSettings {
-  cr::CreativeTerrainRecipeKind kind = cr::CreativeTerrainRecipeKind::Road;
-  cr::CreativeTerrainPathElevation elevation =
-      cr::CreativeTerrainPathElevation::Level;
-  std::uint16_t halfWidthCells = 1U;
-  std::uint16_t amplitudeCells = 1U;
-  bool paintSurface = true;
-  cr::CreativeTerrainMaterial material = cr::CreativeTerrainMaterial::Count;
-  std::vector<cr::CreativeTerrainPathPoint> points;
+  cr::CreativeTerrainPathSourceRecipe recipe;
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutTerrainPathSettings&,
@@ -634,6 +853,9 @@ struct CreativeEditorWorldLayoutObjectSettings {
   double yawRadians = 0.0;
   cr::CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
+  bool usesBridgeRecipe = false;
+  cr::CreativeBridgeSourceRecipe bridge;
+  cr::CreativePlayerSpawnSettings playerSpawn{};
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutObjectSettings& lhs,
@@ -664,7 +886,9 @@ struct CreativeEditorWorldLayoutObjectSettings {
            lhs.hasAssetSourceBounds == rhs.hasAssetSourceBounds &&
            lhs.yawRadians == rhs.yawRadians && lhs.scale.x == rhs.scale.x &&
            lhs.scale.y == rhs.scale.y && lhs.scale.z == rhs.scale.z &&
-           lhs.visible == rhs.visible;
+           lhs.visible == rhs.visible &&
+           lhs.usesBridgeRecipe == rhs.usesBridgeRecipe &&
+           lhs.bridge == rhs.bridge && lhs.playerSpawn == rhs.playerSpawn;
   }
 };
 
@@ -806,11 +1030,14 @@ struct CreativeEditorWorldLayoutObjectSettingsDraft {
 
 using CreativeEditorWorldLayoutPropertySettings = std::variant<
     CreativeEditorWorldLayoutLevelSettings,
+    CreativeEditorWorldLayoutRoomMetadata,
     CreativeEditorWorldLayoutRoomSettings,
+    CreativeEditorWorldLayoutTopologyEdgeSettings,
     CreativeEditorWorldLayoutVerticalConnectorSettings,
     CreativeEditorWorldLayoutBoxSettings,
     CreativeEditorWorldLayoutWallSettings,
     CreativeEditorWorldLayoutOpeningSettings,
+    CreativeEditorWorldLayoutRoofApertureSettings,
     CreativeEditorWorldLayoutTerrainProfileSettings,
     CreativeEditorWorldLayoutTerrainPathSettings,
     CreativeEditorWorldLayoutObjectSettings>;
@@ -875,6 +1102,8 @@ struct CreativeEditorWorldLayoutOpeningManipulationState {
 struct CreativeEditorWorldLayoutElevationCache {
   bool valid = false;
   std::uint64_t sourceRevision = 0U;
+  std::uint64_t inspectionContentRevision = 0U;
+  bool inspectionPreviewSource = false;
   std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
   CreativeEditorWorldLayoutElevationAxis axis =
       CreativeEditorWorldLayoutElevationAxis::X;
@@ -941,6 +1170,12 @@ struct CreativeEditorWorldLayoutConflictReviewState {
   std::vector<cr::CreativeWorldLayoutTerrainConflictDecision> terrainDecisions;
 };
 
+struct CreativeEditorWorldLayoutTerrainPathDraft {
+  bool active = false;
+  CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Road;
+  cr::CreativeWorldLayoutTerrainPath path;
+};
+
 struct CreativeEditorWorldLayoutState {
   cr::CreativeWorldLayout source;
   // Transient identity for the installed source. A replacement may reuse the
@@ -955,13 +1190,21 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutDeferredSourceHistory deferredSourceHistory;
 
   CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Select;
+  // Explicit opt-in for capabilities below product maturity. This is editor
+  // UI state only; it never enters document history or persistence.
+  bool experimentalToolsVisible = false;
   std::size_t activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
   CreativeEditorWorldLayoutSelection selection;
+  CreativeEditorWorldLayoutPlanRegionSelectionGesture planRegionSelection;
   bool anchorActive = false;
   cr::CreativeTerrainCoord2 anchor{};
+  CreativeEditorWorldLayoutTerrainPathDraft terrainPathDraft;
   bool gesturePreviewGridPointValid = false;
   cr::CreativeTerrainCoord2 gesturePreviewGridPoint{};
   CreativeEditorWorldLayoutRoomManipulationState roomManipulation;
+  CreativeEditorWorldLayoutRoomBoundaryManipulationState
+      roomBoundaryManipulation;
+  CreativeEditorWorldLayoutRoomCornerManipulationState roomCornerManipulation;
   CreativeEditorWorldLayoutVerticalConnectorManipulationState
       verticalConnectorManipulation;
   CreativeEditorWorldLayoutBoxManipulationState boxManipulation;
@@ -973,12 +1216,21 @@ struct CreativeEditorWorldLayoutState {
   CreativeEditorWorldLayoutBuildingTemplatePlacementState
       buildingTemplatePlacement;
   CreativeEditorWorldLayoutOpeningManipulationState openingManipulation;
+  CreativeEditorWorldLayoutRoofApertureManipulationState
+      roofApertureManipulation;
+  CreativeEditorWorldLayoutRoofManipulationState roofManipulation;
   CreativeEditorWorldLayoutRoomSettingsDraft roomSettingsDraft;
+  CreativeEditorWorldLayoutRoomMetadataDraft roomMetadataDraft;
+  CreativeEditorWorldLayoutRoomTopologyDraft roomTopologyDraft;
+  CreativeEditorWorldLayoutRoomEdgeSettingsDraft roomEdgeSettingsDraft;
+  std::string selectedRoomTopologyEdgeStableKey;
   CreativeEditorWorldLayoutVerticalConnectorSettingsDraft
       verticalConnectorSettingsDraft;
   CreativeEditorWorldLayoutBoxSettingsDraft boxSettingsDraft;
   CreativeEditorWorldLayoutWallSettingsDraft wallSettingsDraft;
   CreativeEditorWorldLayoutOpeningSettingsDraft openingSettingsDraft;
+  CreativeEditorWorldLayoutRoofApertureSettingsDraft
+      roofApertureSettingsDraft;
   CreativeEditorWorldLayoutLevelSettingsDraft levelSettingsDraft;
   CreativeEditorWorldLayoutLevelSettingsDraft generatedLevelSettingsDraft;
   CreativeEditorWorldLayoutTerrainProfileSettingsDraft
@@ -1005,6 +1257,7 @@ struct CreativeEditorWorldLayoutState {
   // previews and generated-settings previews leave this false.
   bool liveEditPreviewVisible = false;
   CreativeEditorWorldLayoutPropertyPreviewKey propertyPreviewKey;
+  cr::CreativeWorldLayout previewSource;
   std::uint64_t previewLayoutRevision = 0U;
   std::uint64_t previewContentRevision = 0U;
   cr::CreativeWorldLayoutPreviewResult preview;
@@ -1012,6 +1265,7 @@ struct CreativeEditorWorldLayoutState {
 
   // Canvas-only view state. It is neither document nor layout truth.
   bool planLowerLevelContextVisible = true;
+  bool planUpperLevelContextVisible = false;
   bool planRoofOverheadVisible = true;
   float canvasPixelsPerCell = 28.0F;
   float canvasPanX = 0.0F;

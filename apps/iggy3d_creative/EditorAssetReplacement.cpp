@@ -1,5 +1,7 @@
 #include "EditorAssetReplacement.hpp"
 
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+
 #include <SDL3/SDL_log.h>
 
 #include <algorithm>
@@ -151,7 +153,7 @@ CreativeAssetReplacementPlan planCreativeAssetReplacement(
                  "creative_asset_replace_object_unsupported");
       return plan;
     }
-    if (object->locked) {
+    if (cr::creativeObjectEffectivelyLocked(document, object->id)) {
       rejectPlan(plan, CreativeAssetReplacementStatus::LockedObject,
                  "creative_asset_replace_object_locked");
       return plan;
@@ -164,18 +166,25 @@ CreativeAssetReplacementPlan planCreativeAssetReplacement(
                  "creative_asset_replace_source_missing");
       return plan;
     }
+    plan.objectIds.push_back(objectId);
     const cr::CreativeBounds naturalSource =
         creativeAssetBoundsAtPivot(*source, object->transform.position);
-    if (!cr::creativeBoundsExactlyEqual(object->bounds, naturalSource)) {
-      rejectPlan(plan, CreativeAssetReplacementStatus::CustomBounds,
-                 "creative_asset_replace_custom_bounds");
-      return plan;
-    }
-
-    plan.objectIds.push_back(objectId);
+    const bool hasCustomBounds =
+        !cr::creativeBoundsExactlyEqual(object->bounds, naturalSource);
     const cr::CreativeBounds replacementBounds =
-        creativeAssetBoundsAtPivot(*target, object->transform.position);
+        hasCustomBounds
+            ? object->bounds
+            : creativeAssetBoundsAtPivot(*target, object->transform.position);
+    const bool variantRetained =
+        object->assetMaterialVariant.empty() ||
+        iggy3d::findStaticMeshMaterialVariantIndex(
+            target->materialVariants, object->assetMaterialVariant)
+            .has_value();
+    const std::string replacementVariant =
+        variantRetained ? object->assetMaterialVariant : std::string{};
     if (object->kind == targetObjectKind && object->assetId == targetAssetId &&
+        object->assetContentHash == target->contentHash &&
+        object->assetMaterialVariant == replacementVariant &&
         cr::creativeBoundsExactlyEqual(object->bounds, replacementBounds)) {
       continue;
     }
@@ -183,7 +192,8 @@ CreativeAssetReplacementPlan planCreativeAssetReplacement(
     mutation.objectId = objectId;
     mutation.kind = cr::CreativeMutationKind::SetAsset;
     mutation.payload = cr::makeAssetPayload(
-        targetObjectKind, std::string(targetAssetId), replacementBounds);
+        targetObjectKind, std::string(targetAssetId), replacementBounds,
+        target->contentHash, replacementVariant);
     plan.mutations.push_back(std::move(mutation));
   }
   if (plan.mutations.empty()) {

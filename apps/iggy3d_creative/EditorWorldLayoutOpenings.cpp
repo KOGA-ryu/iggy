@@ -26,7 +26,6 @@ using opening_detail::OpeningHostProjection;
 using opening_detail::openingHost;
 using opening_detail::openingHostOffset;
 using opening_detail::openingHostPoint;
-using opening_detail::openingIntervalsOverlap;
 using opening_detail::openingSettings;
 using opening_detail::openingTargetAt;
 using opening_detail::openingWithSettings;
@@ -90,8 +89,8 @@ planCreativeEditorWorldLayoutOpeningPlacement(
   opening.wallIndex = projection.wallIndex;
   opening.roomIndex = projection.roomIndex;
   opening.roomEdge = projection.roomEdge;
+  opening.roomTopologyEdgeIndex = projection.topologyEdgeIndex;
   opening.kind = request.kind;
-  opening.pose = cr::CreativeBuildingOpeningPose::Closed;
   opening.includeInsert = true;
   switch (request.kind) {
     case cr::CreativeBuildingOpeningKind::Door:
@@ -136,60 +135,52 @@ planCreativeEditorWorldLayoutOpeningPlacement(
       std::clamp(std::round(projection.centerOffsetCells / kOpeningSnapCells) *
                      kOpeningSnapCells,
                  minimumCenter, maximumCenter);
+  const cr::CreativeWorldLayoutOpeningValidationResult validation =
+      cr::validateCreativeWorldLayoutOpening(
+          {&state.source, &opening, cr::kInvalidCreativeWorldLayoutIndex,
+           kOpeningEndClearanceCells,
+           opening_detail::kOpeningMinimumWidthCells});
+  if (!validation.accepted) {
+    switch (validation.status) {
+      case cr::CreativeWorldLayoutOpeningValidationStatus::InteriorWindow:
+        result.message = "Place windows on an exterior room edge";
+        result.reasonCode =
+            "creative_editor_world_layout_window_requires_exterior";
+        break;
+      case cr::CreativeWorldLayoutOpeningValidationStatus::Overlap:
+        result.message = "Opening overlaps an existing opening";
+        result.reasonCode = "creative_editor_world_layout_opening_overlap";
+        break;
+      case cr::CreativeWorldLayoutOpeningValidationStatus::
+          EndClearanceInvalid:
+        result.message = "Wall is too short for this opening";
+        result.reasonCode = "creative_editor_world_layout_wall_too_short";
+        break;
+      case cr::CreativeWorldLayoutOpeningValidationStatus::WallHeightExceeded:
+        result.message = "Opening exceeds the wall height";
+        result.reasonCode =
+            "creative_editor_world_layout_opening_height_invalid";
+        break;
+      case cr::CreativeWorldLayoutOpeningValidationStatus::MissingHost:
+        result.message = "Opening host is unavailable";
+        result.reasonCode =
+            "creative_editor_world_layout_opening_host_invalid";
+        break;
+      case cr::CreativeWorldLayoutOpeningValidationStatus::
+          UnsupportedHostOrientation:
+        result.message = "Openings require a cardinal wall";
+        result.reasonCode =
+            "creative_editor_world_layout_opening_host_orientation_unsupported";
+        break;
+      default:
+        result.message = "Opening target is invalid";
+        result.reasonCode =
+            "creative_editor_world_layout_opening_placement_invalid";
+        break;
+    }
+    return result;
+  }
   result.host = openingHost(state.source, opening);
-  if (!result.host.valid) {
-    result.message = "Opening host is unavailable";
-    result.reasonCode =
-        "creative_editor_world_layout_opening_host_invalid";
-    return result;
-  }
-  const double hostDx = result.host.end.x - result.host.start.x;
-  const double hostDz = result.host.end.z - result.host.start.z;
-  if (std::fabs(hostDx) > kOpeningGeometryEpsilon &&
-      std::fabs(hostDz) > kOpeningGeometryEpsilon) {
-    result.message = "Openings require a cardinal wall";
-    result.reasonCode =
-        "creative_editor_world_layout_opening_host_orientation_unsupported";
-    return result;
-  }
-  if (opening.cutoutBottomCells + opening.cutoutHeightCells >
-      result.host.wallHeightCells + kOpeningGeometryEpsilon) {
-    result.message = "Opening exceeds the wall height";
-    result.reasonCode =
-        "creative_editor_world_layout_opening_height_invalid";
-    return result;
-  }
-  if (request.kind == cr::CreativeBuildingOpeningKind::Window &&
-      projection.hostKind ==
-          cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-      cr::creativeWorldLayoutRoomEdgeIntervalIsShared(
-          state.source, projection.roomIndex, projection.roomEdge,
-          opening.centerOffsetCells, opening.widthCells)) {
-    result.message = "Place windows on an exterior room edge";
-    result.reasonCode =
-        "creative_editor_world_layout_window_requires_exterior";
-    return result;
-  }
-
-  for (const cr::CreativeWorldLayoutOpening& existing :
-       state.source.openings) {
-    const CreativeEditorWorldLayoutOpeningHost existingHost =
-        openingHost(state.source, existing);
-    if (!existingHost.valid ||
-        !std::isfinite(existing.centerOffsetCells) ||
-        !std::isfinite(existing.widthCells) || existing.widthCells <= 0.0) {
-      result.message = "An existing opening is invalid";
-      result.reasonCode =
-          "creative_editor_world_layout_existing_opening_invalid";
-      return result;
-    }
-    if (openingIntervalsOverlap(opening, result.host, existing,
-                                existingHost)) {
-      result.message = "Opening overlaps an existing opening";
-      result.reasonCode = "creative_editor_world_layout_opening_overlap";
-      return result;
-    }
-  }
 
   result.opening = std::move(opening);
   result.centerPoint =

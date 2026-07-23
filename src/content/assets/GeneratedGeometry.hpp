@@ -1,8 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 
+#include "core/math/EulerRotation.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {
@@ -18,6 +21,11 @@ struct GeneratedOpenFramePart {
 
 struct GeneratedOpenFrameLayout {
   std::array<GeneratedOpenFramePart, kGeneratedOpenFramePartCount> parts{};
+  bool valid = false;
+};
+
+struct GeneratedHipRoofPanelLayout {
+  std::array<Vec3, 8U> corners{};
   bool valid = false;
 };
 
@@ -46,6 +54,46 @@ struct GeneratedOpenFrameLayout {
                      {pierWidth, openingHeight, outerSize.z}};
   result.parts[2] = {{0.0F, openingHeight * 0.5F, 0.0F},
                      {outerSize.x, lintelHeight, outerSize.z}};
+  result.valid = true;
+  return result;
+}
+
+// Returns the eight centered local-space corners of a tapered hip-roof prism.
+// Rendering and collision consume the same layout so the visible ridge cannot
+// diverge from the traversable weather face.
+[[nodiscard]] inline GeneratedHipRoofPanelLayout generatedHipRoofPanelLayout(
+    Vec3 size,
+    Vec3 rotationEulerRadians) noexcept {
+  GeneratedHipRoofPanelLayout result;
+  if (!isFinite(size) || !isFinite(rotationEulerRadians) || size.x <= 0.0F ||
+      size.y <= 0.0F || size.z <= 0.0F) {
+    return result;
+  }
+
+  const Vec3 worldRunAxis =
+      rotateEulerXyz({0.0F, 0.0F, 1.0F}, rotationEulerRadians);
+  const float horizontalRun =
+      size.z * std::sqrt(worldRunAxis.x * worldRunAxis.x +
+                         worldRunAxis.z * worldRunAxis.z);
+  const float halfX = size.x * 0.5F;
+  const float halfY = size.y * 0.5F;
+  const float halfZ = size.z * 0.5F;
+  if (!std::isfinite(horizontalRun) || horizontalRun < 0.0F ||
+      horizontalRun > halfX + 1.0e-4F) {
+    return result;
+  }
+
+  const float highHalfWidth = std::max(0.0F, halfX - horizontalRun);
+  result.corners = {{
+      {-halfX, -halfY, -halfZ},
+      {halfX, -halfY, -halfZ},
+      {highHalfWidth, -halfY, halfZ},
+      {-highHalfWidth, -halfY, halfZ},
+      {-halfX, halfY, -halfZ},
+      {halfX, halfY, -halfZ},
+      {highHalfWidth, halfY, halfZ},
+      {-highHalfWidth, halfY, halfZ},
+  }};
   result.valid = true;
   return result;
 }

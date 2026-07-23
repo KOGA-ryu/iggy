@@ -2,6 +2,7 @@
 
 #include "EditorWorldLayoutInternal.hpp"
 
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -28,6 +29,8 @@ namespace {
       return selection.index < state.source.levels.size();
     case CreativeEditorWorldLayoutSelectionKind::Room:
       return selection.index < state.source.rooms.size();
+    case CreativeEditorWorldLayoutSelectionKind::TopologyEdge:
+      return selection.index < state.source.topologyEdges.size();
     case CreativeEditorWorldLayoutSelectionKind::VerticalConnector:
       return selection.index < state.source.verticalConnectors.size();
     case CreativeEditorWorldLayoutSelectionKind::Box:
@@ -36,6 +39,8 @@ namespace {
       return selection.index < state.source.walls.size();
     case CreativeEditorWorldLayoutSelectionKind::Opening:
       return selection.index < state.source.openings.size();
+    case CreativeEditorWorldLayoutSelectionKind::RoofAperture:
+      return selection.index < state.source.roofApertures.size();
     case CreativeEditorWorldLayoutSelectionKind::Building:
       return selection.index < state.source.buildings.size();
     case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
@@ -279,9 +284,17 @@ cr::CreativeWorldLayoutApplyReceipt applyCreativeEditorWorldLayoutPlanWithHistor
     receipt.reasonCode = "creative_world_layout_history_sidecar_invalid";
     return receipt;
   }
+  std::optional<cr::CreativeAuthoringOperationRecord> operation =
+      cr::makeCreativeWorldLayoutOperationRecord(plan);
+  if (!operation.has_value()) {
+    receipt.status = cr::CreativeWorldLayoutStatus::InvalidSchema;
+    receipt.reasonCode = "creative_world_layout_operation_invalid";
+    return receipt;
+  }
   cr::CreativeDocumentHistoryTransaction transaction =
       cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(beforeSidecar));
+                                          std::move(beforeSidecar),
+                                          std::move(operation));
   receipt = cr::applyCreativeWorldLayoutPlan(appState.facade, plan);
   if (!receipt.accepted) {
     cr::cancelCreativeHistoryTransaction(transaction);

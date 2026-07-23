@@ -4,7 +4,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <string>
+#include <limits>
+#include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -56,12 +58,6 @@ struct CellKeyHash {
          object.tags.end();
 }
 
-void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
-  if (std::find(tags.begin(), tags.end(), tag) == tags.end()) {
-    tags.emplace_back(tag);
-  }
-}
-
 [[nodiscard]] CellKey toCellKey(CreativeGridCoord3 cell) noexcept {
   return {cell.x, cell.y, cell.z};
 }
@@ -82,38 +78,104 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
   return sameBounds(object.bounds, expected, epsilon);
 }
 
-[[nodiscard]] CreativeDocumentCreateRequest makeVolumeCellRequest(
-    CreativeObjectKind kind,
-    CreativeGridCoord3 cell,
-    const CreativeVolumeSelection& selection,
-    const CreativeObject* replacedObject = nullptr) {
-  const CreativeObjectDescriptor& descriptor = describeObject(kind);
-  const CreativeBounds cellBounds = creativeVolumeCellBounds(
-      cell, selection.cellSize, selection.origin);
-  const CreativeVec3 center = measureCreativeBounds(cellBounds).center;
+struct HollowPlanBounds {
+  bool valid = false;
+  CreativeGridCoord3 exteriorMinimum{};
+  CreativeGridCoord3 exteriorMaximum{};
+  CreativeGridBounds3 interiorBounds{};
+  CreativeGridBounds3 exteriorBounds{};
+  std::string_view reasonCode = "creative_volume_hollow_bounds_invalid";
+};
 
-  CreativeDocumentCreateRequest create;
-  create.kind = kind;
-  create.name = std::string(toString(kind)) + " volume " +
-                std::to_string(cell.x) + "," + std::to_string(cell.y) + "," +
-                std::to_string(cell.z);
-  create.transform = descriptor.defaults.transform;
-  create.transform.position = center;
-  create.hasTransformOverride = descriptor.hasTransform;
-  create.bounds = cellBounds;
-  create.hasBoundsOverride = true;
-  create.layerId = replacedObject != nullptr ? replacedObject->layerId
-                                              : descriptor.defaults.layerId;
-  create.hasLayerOverride = true;
-  create.visible = replacedObject != nullptr ? replacedObject->visible : true;
-  create.hasVisibleOverride = true;
-  create.locked = false;
-  create.hasLockedOverride = true;
-  if (replacedObject != nullptr) {
-    create.tags = replacedObject->tags;
+[[nodiscard]] bool checkedCoord(std::int64_t value,
+                                std::int32_t& output) noexcept {
+  if (value < std::numeric_limits<std::int32_t>::min() ||
+      value > std::numeric_limits<std::int32_t>::max()) {
+    return false;
   }
-  ensureTag(create.tags, kCreativeVolumeCellTag);
-  return create;
+  output = static_cast<std::int32_t>(value);
+  return true;
+}
+
+[[nodiscard]] HollowPlanBounds planHollowBounds(
+    const CreativeVolumeOperationRequest& request) noexcept {
+  HollowPlanBounds result;
+  if (request.shapeKind == CreativeShapeBrushKind::Line) {
+    result.reasonCode = "creative_volume_hollow_line_has_no_interior";
+    return result;
+  }
+  const CreativeVolumeRegionFacts region =
+      inspectCreativeVolumeRegion(request.selection);
+  const std::uint8_t thickness =
+      creativeVolumeHollowThicknessCells(request.hollowThickness);
+  if (!region.valid || thickness == 0U) {
+    return result;
+  }
+
+  const std::int64_t minX = region.inclusiveMinimum.x;
+  const std::int64_t minY = region.inclusiveMinimum.y;
+  const std::int64_t minZ = region.inclusiveMinimum.z;
+  const std::int64_t maxX = region.inclusiveMaximum.x;
+  const std::int64_t maxY = region.inclusiveMaximum.y;
+  const std::int64_t maxZ = region.inclusiveMaximum.z;
+  const std::int64_t shell = thickness;
+
+  std::int64_t exteriorMinX = minX;
+  std::int64_t exteriorMinY = minY;
+  std::int64_t exteriorMinZ = minZ;
+  std::int64_t exteriorMaxX = maxX;
+  std::int64_t exteriorMaxY = maxY;
+  std::int64_t exteriorMaxZ = maxZ;
+  std::int64_t interiorMinX = minX + shell;
+  std::int64_t interiorMinY = minY + shell;
+  std::int64_t interiorMinZ = minZ + shell;
+  std::int64_t interiorMaxX = maxX + 1 - shell;
+  std::int64_t interiorMaxY = maxY + 1 - shell;
+  std::int64_t interiorMaxZ = maxZ + 1 - shell;
+  if (request.hollowAlignment == CreativeVolumeHollowAlignment::Outward) {
+    exteriorMinX -= shell;
+    exteriorMinY -= shell;
+    exteriorMinZ -= shell;
+    exteriorMaxX += shell;
+    exteriorMaxY += shell;
+    exteriorMaxZ += shell;
+    interiorMinX = minX;
+    interiorMinY = minY;
+    interiorMinZ = minZ;
+    interiorMaxX = maxX + 1;
+    interiorMaxY = maxY + 1;
+    interiorMaxZ = maxZ + 1;
+  } else if (interiorMinX >= interiorMaxX ||
+             interiorMinY >= interiorMaxY ||
+             interiorMinZ >= interiorMaxZ) {
+    result.reasonCode = "creative_volume_hollow_shell_does_not_fit";
+    return result;
+  }
+
+  if (!checkedCoord(exteriorMinX, result.exteriorMinimum.x) ||
+      !checkedCoord(exteriorMinY, result.exteriorMinimum.y) ||
+      !checkedCoord(exteriorMinZ, result.exteriorMinimum.z) ||
+      !checkedCoord(exteriorMaxX, result.exteriorMaximum.x) ||
+      !checkedCoord(exteriorMaxY, result.exteriorMaximum.y) ||
+      !checkedCoord(exteriorMaxZ, result.exteriorMaximum.z) ||
+      !checkedCoord(interiorMinX, result.interiorBounds.min.x) ||
+      !checkedCoord(interiorMinY, result.interiorBounds.min.y) ||
+      !checkedCoord(interiorMinZ, result.interiorBounds.min.z) ||
+      !checkedCoord(interiorMaxX, result.interiorBounds.max.x) ||
+      !checkedCoord(interiorMaxY, result.interiorBounds.max.y) ||
+      !checkedCoord(interiorMaxZ, result.interiorBounds.max.z) ||
+      !checkedCoord(exteriorMinX, result.exteriorBounds.min.x) ||
+      !checkedCoord(exteriorMinY, result.exteriorBounds.min.y) ||
+      !checkedCoord(exteriorMinZ, result.exteriorBounds.min.z) ||
+      !checkedCoord(exteriorMaxX + 1, result.exteriorBounds.max.x) ||
+      !checkedCoord(exteriorMaxY + 1, result.exteriorBounds.max.y) ||
+      !checkedCoord(exteriorMaxZ + 1, result.exteriorBounds.max.z)) {
+    result.reasonCode = "creative_volume_hollow_bounds_overflow";
+    return result;
+  }
+  result.valid = true;
+  result.reasonCode = "creative_volume_hollow_bounds_ready";
+  return result;
 }
 
 [[nodiscard]] CreativeVolumeOperationReceipt fillVolume(
@@ -132,6 +194,20 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
   filledRequest.axis = request.shapeAxis;
   filledRequest.firstCell = request.selection.firstCell;
   filledRequest.secondCell = request.selection.secondCell;
+  HollowPlanBounds hollowBounds;
+  if (hollow) {
+    hollowBounds = planHollowBounds(request);
+    if (!hollowBounds.valid) {
+      reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
+             hollowBounds.reasonCode);
+      return receipt;
+    }
+    filledRequest.firstCell = hollowBounds.exteriorMinimum;
+    filledRequest.secondCell = hollowBounds.exteriorMaximum;
+    receipt.hollowBoundsValid = true;
+    receipt.hollowInteriorBounds = hollowBounds.interiorBounds;
+    receipt.hollowExteriorBounds = hollowBounds.exteriorBounds;
+  }
   filledRequest.maxCandidateCellCount = request.maxAffectedObjects;
   filledRequest.maxGeneratedCellCount = request.maxAffectedObjects;
   const CreativeShapeBrushPlanReceipt filledPlan =
@@ -157,6 +233,10 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
   if (hollow) {
     CreativeShapeBrushPlanRequest hollowRequest = filledRequest;
     hollowRequest.hollow = true;
+    hollowRequest.shellThicknessCells =
+        creativeVolumeHollowThicknessCells(request.hollowThickness);
+    hollowRequest.shellOpening = request.hollowOpening;
+    hollowRequest.shellCornerRule = request.hollowCornerRule;
     hollowPlan = planCreativeShapeBrush(hollowRequest);
     if (!hollowPlan.accepted) {
       const bool limitExceeded =
@@ -188,17 +268,18 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
       plannedCells.insert(toCellKey(cell));
     }
   }
-  std::unordered_set<CellKey, CellKeyHash> occupiedLegacyCells;
-  occupiedLegacyCells.reserve(document.objects().size());
-  std::vector<CreativeObjectId> interiorObjectIds;
+  std::unordered_map<CellKey, std::vector<CreativeObjectId>, CellKeyHash>
+      legacyObjectsByCell;
+  legacyObjectsByCell.reserve(document.objects().size());
+  std::vector<CreativeObjectId> objectIdsToRemove;
   for (const CreativeObject& object : document.objects()) {
     CreativeGridCoord3 cell;
     if (volumeCellForObject(object, request.selection, cell)) {
       const CellKey key = toCellKey(cell);
-      occupiedLegacyCells.insert(key);
+      legacyObjectsByCell[key].push_back(object.id);
       if (hollow && filledCells.contains(key)) {
         if (!plannedCells.contains(key)) {
-          interiorObjectIds.push_back(object.id);
+          objectIdsToRemove.push_back(object.id);
         }
       }
     }
@@ -211,7 +292,7 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
       const CellKey key = toCellKey(cell);
       if (plannedCells.contains(key)) {
         if (document.voxelField().occupied(cell) ||
-            occupiedLegacyCells.contains(key)) {
+            legacyObjectsByCell.contains(key)) {
           ++receipt.skippedOccupiedCellCount;
           continue;
         }
@@ -223,16 +304,32 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
     }
   } else {
     for (const CreativeGridCoord3 cell : plannedShape->generatedCells()) {
-      if (document.voxelField().occupied(cell) ||
-          occupiedLegacyCells.contains(toCellKey(cell))) {
+      const CellKey key = toCellKey(cell);
+      const CreativeObjectKind currentMaterial =
+          document.voxelField().materialAt(cell);
+      const auto legacy = legacyObjectsByCell.find(key);
+      const bool hasLegacy = legacy != legacyObjectsByCell.end();
+      if (request.fillOverlapPolicy ==
+              CreativeVolumeFillOverlapPolicy::PreserveExisting &&
+          (currentMaterial != CreativeObjectKind::Unknown || hasLegacy)) {
         ++receipt.skippedOccupiedCellCount;
         continue;
       }
-      voxelEdits.push_back({cell, request.objectKind});
+      if (request.fillOverlapPolicy ==
+              CreativeVolumeFillOverlapPolicy::ReplaceExisting &&
+          hasLegacy) {
+        objectIdsToRemove.insert(objectIdsToRemove.end(),
+                                 legacy->second.begin(), legacy->second.end());
+      }
+      if (currentMaterial == request.objectKind) {
+        ++receipt.unchangedMaterialCellCount;
+      } else {
+        voxelEdits.push_back({cell, request.objectKind});
+      }
     }
   }
 
-  if (affectedCountExceeds(interiorObjectIds.size(), voxelEdits.size(),
+  if (affectedCountExceeds(objectIdsToRemove.size(), voxelEdits.size(),
                            request.maxAffectedObjects)) {
     reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
            hollow ? "creative_volume_hollow_limit_exceeded"
@@ -241,18 +338,18 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
   }
 
   CreativeDocument staged = document;
-  if (!interiorObjectIds.empty()) {
+  if (!objectIdsToRemove.empty()) {
     CreativeClipboard removedObjects;
     const CreativeClipboardCutReceipt cutReceipt =
-        cutDocumentObjectsAtomically(staged, interiorObjectIds, removedObjects);
+        cutDocumentObjectsAtomically(staged, objectIdsToRemove, removedObjects);
     if (!cutReceipt.accepted || !cutReceipt.changed) {
       receipt.failedObjectId = cutReceipt.failedObjectId;
       reject(receipt, CreativeVolumeOperationStatus::RemoveRejected,
              cutReceipt.reasonCode);
       return receipt;
     }
-    receipt.matchedObjectCount = interiorObjectIds.size();
-    receipt.removedObjectIds = interiorObjectIds;
+    receipt.matchedObjectCount = objectIdsToRemove.size();
+    receipt.removedObjectIds = objectIdsToRemove;
   }
 
   if (!voxelEdits.empty()) {
@@ -270,7 +367,13 @@ void ensureTag(std::vector<std::string>& tags, std::string_view tag) {
       receipt.removedVoxelCellCount == 0U &&
       receipt.replacedVoxelCellCount == 0U &&
       receipt.removedObjectIds.empty()) {
-    acceptNoChange(receipt, "creative_volume_cells_already_occupied");
+    acceptNoChange(
+        receipt,
+        hollow ? "creative_volume_hollow_already_applied"
+               : request.fillOverlapPolicy ==
+                         CreativeVolumeFillOverlapPolicy::ReplaceExisting
+                     ? "creative_volume_fill_material_already_applied"
+                     : "creative_volume_cells_already_occupied");
     return receipt;
   }
   document = std::move(staged);
@@ -307,14 +410,24 @@ CreativeVolumeOperationReceipt replaceVolumeCells(
   std::vector<CreativeVoxelEdit> voxelEdits;
   voxelEdits.reserve(voxelCandidates.size());
   for (const CreativeVoxelCell& cell : voxelCandidates) {
+    if (!creativeVolumeMemberMaskIncludesVoxels(
+            request.replaceMemberMask)) {
+      ++receipt.excludedVoxelCellCount;
+      continue;
+    }
     if (request.hasReplaceKindFilter &&
         cell.material != request.replaceKindFilter) {
+      ++receipt.excludedVoxelCellCount;
       continue;
     }
     ++receipt.matchedVoxelCellCount;
-    if (cell.material != request.objectKind) {
-      voxelEdits.push_back({cell.cell, request.objectKind});
+    if (cell.material == request.objectKind) {
+      ++receipt.unchangedMaterialCellCount;
+      receipt.unchangedVoxelCells.push_back(cell.cell);
+      continue;
     }
+    voxelEdits.push_back({cell.cell, request.objectKind});
+    receipt.changedVoxelCells.push_back(cell.cell);
   }
 
   std::vector<CreativeObject> candidates;
@@ -322,18 +435,30 @@ CreativeVolumeOperationReceipt replaceVolumeCells(
   for (const CreativeObject& object : document.objects()) {
     CreativeGridCoord3 cell;
     if (!volumeCellForObject(object, request.selection, cell) ||
-        !objectInsideVolume(object, worldBounds) ||
+        !objectInsideVolume(object, worldBounds)) {
+      continue;
+    }
+    if (!creativeVolumeBrushSupported(object.kind) ||
+        !creativeVolumeMemberMaskIncludesObjects(
+            request.replaceMemberMask) ||
         (request.hasReplaceKindFilter &&
          object.kind != request.replaceKindFilter)) {
+      ++receipt.excludedObjectCount;
       continue;
     }
     ++receipt.matchedObjectCount;
-    if (object.kind != request.objectKind) {
-      candidates.push_back(object);
+    if (object.kind == request.objectKind) {
+      ++receipt.unchangedObjectCount;
+      receipt.unchangedObjectIds.push_back(object.id);
+      continue;
     }
+    candidates.push_back(object);
+    receipt.changedObjectIds.push_back(object.id);
   }
 
-  if (affectedCountExceeds(candidates.size(), voxelEdits.size(),
+  if (affectedCountExceeds(
+          static_cast<std::size_t>(receipt.matchedObjectCount),
+          static_cast<std::size_t>(receipt.matchedVoxelCellCount),
                            request.maxAffectedObjects)) {
     reject(receipt, CreativeVolumeOperationStatus::OperationLimitExceeded,
            "creative_volume_replace_limit_exceeded");
@@ -359,51 +484,32 @@ CreativeVolumeOperationReceipt replaceVolumeCells(
   }
 
   CreativeDocument staged = document;
-  receipt.removedObjectIds.reserve(candidates.size());
+  CreativeObjectDirtyFlags objectDirtyFlags = 0U;
   for (const CreativeObject& candidate : candidates) {
-    const CreativeDocumentRemoveReceipt removeReceipt =
-        staged.removeDocumentObject(candidate.id);
-    if (!removeReceipt.accepted || !removeReceipt.objectRemoved ||
-        !removeReceipt.changed) {
-      receipt.failedObjectId = candidate.id;
-      reject(receipt, CreativeVolumeOperationStatus::RemoveRejected,
-             removeReceipt.reasonCode);
-      return receipt;
-    }
-    receipt.removedObjectIds.push_back(candidate.id);
-  }
-
-  receipt.createdObjectIds.reserve(candidates.size());
-  for (const CreativeObject& candidate : candidates) {
-    CreativeGridCoord3 cell;
-    if (!volumeCellForObject(candidate, request.selection, cell)) {
+    CreativeObject* replacement = staged.findObject(candidate.id);
+    if (replacement == nullptr || replacement->kind != candidate.kind) {
       receipt.failedObjectId = candidate.id;
       reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
-             "creative_volume_replace_cell_invalid");
+             "creative_volume_replace_object_missing");
       return receipt;
     }
-    const CreativeDocumentCreateReceipt createReceipt = staged.createObject(
-        makeVolumeCellRequest(request.objectKind, cell, request.selection,
-                              &candidate));
-    if (!createReceipt.accepted || !createReceipt.objectCreated ||
-        !createReceipt.changed) {
-      receipt.failedObjectId = candidate.id;
-      reject(receipt, CreativeVolumeOperationStatus::CreateRejected,
-             createReceipt.reasonCode);
-      return receipt;
-    }
-    receipt.createdObjectIds.push_back(createReceipt.objectId);
+    objectDirtyFlags |= dirtyFlagsForCreation(candidate.kind);
+    objectDirtyFlags |= dirtyFlagsForCreation(request.objectKind);
+    replacement->kind = request.objectKind;
   }
+  receipt.replacedObjectCount = candidates.size();
 
   if (!voxelEdits.empty()) {
     const CreativeVoxelMutationReceipt voxelReceipt =
-        staged.applyVoxelEdits(voxelEdits);
+        staged.applyVoxelEdits(voxelEdits, objectDirtyFlags);
     if (!voxelReceipt.accepted) {
       reject(receipt, CreativeVolumeOperationStatus::VoxelMutationRejected,
              voxelReceipt.reasonCode);
       return receipt;
     }
     copyVoxelMutationFacts(receipt, voxelReceipt);
+  } else if (objectDirtyFlags != 0U) {
+    staged.markObjectMutationChanged(objectDirtyFlags);
   }
 
   document = std::move(staged);

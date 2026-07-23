@@ -14,14 +14,16 @@ namespace iggy3d::vulkan::room_mesh_detail {
 
 struct FloorMergeKey {
   std::string materialId;
+  std::string semanticRole;
   std::int64_t positionY = 0;
   std::int64_t sizeX = 0;
   std::int64_t sizeY = 0;
   std::int64_t sizeZ = 0;
 
   bool operator<(const FloorMergeKey& rhs) const {
-    return std::tie(materialId, positionY, sizeX, sizeY, sizeZ) <
-           std::tie(rhs.materialId, rhs.positionY, rhs.sizeX, rhs.sizeY, rhs.sizeZ);
+    return std::tie(materialId, semanticRole, positionY, sizeX, sizeY, sizeZ) <
+           std::tie(rhs.materialId, rhs.semanticRole, rhs.positionY, rhs.sizeX,
+                    rhs.sizeY, rhs.sizeZ);
   }
 };
 
@@ -56,6 +58,7 @@ bool floorToGridCell(const SceneRoomMeshItem& mesh,
   }
 
   key.materialId = mesh.materialId;
+  key.semanticRole = mesh.semanticRole;
   key.positionY = quantized(mesh.position.y);
   key.sizeX = quantized(mesh.size.x);
   key.sizeY = quantized(mesh.size.y);
@@ -68,6 +71,8 @@ bool floorToGridCell(const SceneRoomMeshItem& mesh,
 }
 
 void appendFloorRectsForGroup(const std::vector<FloorCell>& cells,
+                              std::string_view materialId,
+                              std::string_view semanticRole,
                               std::vector<FloorDraw>& floorDraws) {
   std::map<std::pair<std::int64_t, std::int64_t>, FloorCell> remaining;
   std::vector<FloorCell> duplicates;
@@ -79,7 +84,8 @@ void appendFloorRectsForGroup(const std::vector<FloorCell>& cells,
   }
 
   for (const FloorCell& duplicate : duplicates) {
-    floorDraws.push_back({duplicate.position, duplicate.size, {}});
+    floorDraws.push_back({duplicate.position, duplicate.size, {},
+                          std::string(materialId), std::string(semanticRole)});
   }
 
   while (!remaining.empty()) {
@@ -112,6 +118,8 @@ void appendFloorRectsForGroup(const std::vector<FloorCell>& cells,
         origin.position.y,
         origin.position.z + (static_cast<float>(height - 1) * origin.size.z * 0.5F),
     };
+    draw.materialId = materialId;
+    draw.semanticRole = semanticRole;
     floorDraws.push_back(draw);
 
     for (std::int64_t dz = 0; dz < height; ++dz) {
@@ -137,15 +145,16 @@ std::vector<FloorDraw> buildOptimizedFloorDraws(const SceneRoomProjection& room)
     FloorCell cell;
     if (!floorToGridCell(mesh, key, cell)) {
       floorDraws.push_back(
-          {mesh.position, mesh.size, mesh.rotationEulerRadians});
+          {mesh.position, mesh.size, mesh.rotationEulerRadians,
+           mesh.materialId, mesh.semanticRole});
       continue;
     }
     groups[key].push_back(cell);
   }
 
   for (const auto& [key, cells] : groups) {
-    (void)key;
-    appendFloorRectsForGroup(cells, floorDraws);
+    appendFloorRectsForGroup(cells, key.materialId, key.semanticRole,
+                             floorDraws);
   }
   return floorDraws;
 }
@@ -165,6 +174,7 @@ enum class WallRunOrientation : std::uint8_t {
 struct WallSegmentSource {
   WallRunOrientation orientation = WallRunOrientation::AlongX;
   std::string materialId;
+  std::string semanticRole;
   std::int64_t constantAxis = 0;
   std::int64_t endpointY = 0;
   std::int64_t bottomY = 0;
@@ -181,6 +191,7 @@ struct WallSegmentSource {
 
 struct WallRunKey {
   std::string materialId;
+  std::string semanticRole;
   WallRunOrientation orientation = WallRunOrientation::AlongX;
   std::int64_t constantAxis = 0;
   std::int64_t endpointY = 0;
@@ -189,10 +200,11 @@ struct WallRunKey {
   std::int64_t thickness = 0;
 
   bool operator<(const WallRunKey& rhs) const {
-    return std::tie(materialId, orientation, constantAxis, endpointY, bottomY,
-                    height, thickness) <
-           std::tie(rhs.materialId, rhs.orientation, rhs.constantAxis, rhs.endpointY,
-                    rhs.bottomY, rhs.height, rhs.thickness);
+    return std::tie(materialId, semanticRole, orientation, constantAxis,
+                    endpointY, bottomY, height, thickness) <
+           std::tie(rhs.materialId, rhs.semanticRole, rhs.orientation,
+                    rhs.constantAxis, rhs.endpointY, rhs.bottomY, rhs.height,
+                    rhs.thickness);
   }
 };
 
@@ -224,6 +236,8 @@ bool wallBoxFromSegment(const SceneRoomMeshItem& mesh, WallBoxDraw& draw) {
                   ? Vec3{length, mesh.wallHeightMeters, mesh.wallThicknessMeters}
                   : Vec3{mesh.wallThicknessMeters, mesh.wallHeightMeters, length};
   draw.rotationEulerRadians = {};
+  draw.materialId = mesh.materialId;
+  draw.semanticRole = mesh.semanticRole;
   return true;
 }
 
@@ -248,6 +262,7 @@ bool wallSegmentSourceFromMesh(const SceneRoomMeshItem& mesh,
   source.orientation = runsAlongX ? WallRunOrientation::AlongX
                                   : WallRunOrientation::AlongZ;
   source.materialId = mesh.materialId;
+  source.semanticRole = mesh.semanticRole;
   source.endpointYMeters = mesh.wallStartMeters.y;
   source.bottomYMeters = mesh.wallBottomY;
   source.heightMeters = mesh.wallHeightMeters;
@@ -281,6 +296,8 @@ bool wallBoxForMesh(const SceneRoomMeshItem& mesh,
   draw.position = mesh.position;
   draw.size = mesh.size;
   draw.rotationEulerRadians = mesh.rotationEulerRadians;
+  draw.materialId = mesh.materialId;
+  draw.semanticRole = mesh.semanticRole;
   return std::isfinite(draw.position.x) && std::isfinite(draw.position.y) &&
          std::isfinite(draw.position.z) && finitePositive(draw.size.x) &&
          finitePositive(draw.size.y) && finitePositive(draw.size.z) &&
@@ -290,6 +307,8 @@ bool wallBoxForMesh(const SceneRoomMeshItem& mesh,
 WallBoxDraw wallBoxFromRun(const WallSegmentSource& run) {
   const float length = run.maxCoordMeters - run.minCoordMeters;
   WallBoxDraw draw;
+  draw.materialId = run.materialId;
+  draw.semanticRole = run.semanticRole;
   if (run.orientation == WallRunOrientation::AlongX) {
     draw.position = {(run.minCoordMeters + run.maxCoordMeters) * 0.5F,
                      run.bottomYMeters + run.heightMeters * 0.5F,
@@ -352,6 +371,7 @@ bool buildOptimizedWallDraws(const SceneRoomProjection& room,
       return false;
     }
     const WallRunKey key{segment.materialId,
+                         segment.semanticRole,
                          segment.orientation,
                          segment.constantAxis,
                          segment.endpointY,

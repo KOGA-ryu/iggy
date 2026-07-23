@@ -18,6 +18,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRoomTopology.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 namespace iggy3d_creative_app {
@@ -291,6 +292,12 @@ CreativeEditorRoomPlacementReceipt advanceCreativeEditorRoomPlacement(
       cr::mintCreativeWorldLayoutStableKey(candidate, nextOrdinal, "room");
   room.name = "Room " + std::to_string(candidate.rooms.size() + 1U);
   candidate.rooms.push_back(std::move(room));
+  if (!cr::refreshCreativeWorldLayoutBuildingRoomFootprint(candidate, 0U)) {
+    receipt.status = CreativeEditorRoomPlacementStatus::InvalidLayout;
+    receipt.reasonCode = "creative_editor_room_building_footprint_invalid";
+    rejectRoom(editor);
+    return receipt;
+  }
   ++committed.revision;
 
   const cr::CreativeWorldLayoutTerrainReconciliationResult terrain =

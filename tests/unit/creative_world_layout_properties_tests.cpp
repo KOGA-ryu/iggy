@@ -167,44 +167,148 @@ bool terrainProfileSettingsAreBounded() {
                 "unsupported terrain sampling values reject atomically");
 }
 
+bool terrainLandformSettingsRoundTripAtomically() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = "terrace_1";
+  profile.kind = cr::CreativeTerrainRecipeKind::Terrace;
+  profile.usesLandformRecipe = true;
+  profile.landform.kind = cr::CreativeTerrainLandformKind::Terrace;
+  profile.landform.bounds = {{-2, 3}, 6U, 5U};
+  profile.landform.baseHeightCells = 1U;
+  profile.landform.targetHeightCells = 7U;
+  profile.landform.terraceCount = 3U;
+  profile.landform.direction =
+      cr::CreativeTerrainLandformDirection::NegativeZ;
+  profile.landform.edge = cr::CreativeTerrainLandformEdge::Slope;
+  profile.landform.edgeWidthCells = 2U;
+  profile.landform.featherCells = 1U;
+  profile.landform.material = cr::CreativeTerrainMaterial::Dirt;
+  state.source.terrainProfiles.push_back(profile);
+
+  app::CreativeEditorWorldLayoutTerrainProfileSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutTerrainProfileSettings(
+      state, 0U, settings);
+  const bool readExactly =
+      settings.kind == profile.kind && settings.usesLandformRecipe &&
+      settings.landform == profile.landform;
+  settings.kind = cr::CreativeTerrainRecipeKind::Cliff;
+  settings.landform.kind = cr::CreativeTerrainLandformKind::Cliff;
+  settings.landform.bounds = {{4, -5}, 9U, 7U};
+  settings.landform.targetHeightCells = 12U;
+  settings.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  settings.landform.edgeWidthCells = 0U;
+  settings.landform.material = cr::CreativeTerrainMaterial::Stone;
+  settings.usesRetainingEdgeRecipe = true;
+  settings.retainingEdge.terrainProfileKey = profile.stableKey;
+  settings.retainingEdge.settings.selection =
+      cr::CreativeRetainingEdgeSelection::Internal;
+  settings.retainingEdge.settings.kit =
+      cr::CreativeRetainingEdgeKit::InfrastructureStone;
+  settings.retainingEdge.settings.thicknessMeters = 0.45;
+  settings.retainingEdge.settings.maximumHeightMeters = 12.0;
+  settings.retainingEdge.settings.material =
+      cr::CreativeStructuralMaterial::Brick;
+  settings.retainingEdge.settings.transitionCount = 1U;
+  settings.retainingEdge.settings.transitions[0] = {
+      cr::canonicalCreativeTerrainHardEdge({4, -5}, {5, -5}),
+      cr::CreativeRetainingEdgeTransitionKind::Stair,
+      3U,
+  };
+  const std::uint64_t before = state.revision;
+  const auto updated = app::setCreativeEditorWorldLayoutTerrainProfileSettings(
+      state, 0U, settings);
+  const auto committed = state.source.terrainProfiles[0];
+  const std::uint64_t afterUpdate = state.revision;
+
+  auto mismatchedAttachment = settings;
+  mismatchedAttachment.retainingEdge.terrainProfileKey = "terrace.other";
+  const auto attachmentRejected =
+      app::setCreativeEditorWorldLayoutTerrainProfileSettings(
+          state, 0U, mismatchedAttachment);
+  settings.landform.kind = cr::CreativeTerrainLandformKind::Terrace;
+  const auto rejected = app::setCreativeEditorWorldLayoutTerrainProfileSettings(
+      state, 0U, settings);
+
+  return expect(read && readExactly && updated.accepted && updated.changed &&
+                    committed.kind == cr::CreativeTerrainRecipeKind::Cliff &&
+                    committed.usesLandformRecipe &&
+                    committed.landform.kind ==
+                        cr::CreativeTerrainLandformKind::Cliff &&
+                    committed.landform.bounds ==
+                        cr::CreativeTerrainHeightFieldBounds{{4, -5}, 9U, 7U} &&
+                    committed.landform.targetHeightCells == 12U &&
+                    committed.landform.edge ==
+                        cr::CreativeTerrainLandformEdge::Retaining &&
+                    committed.landform.edgeWidthCells == 0U &&
+                    committed.landform.material ==
+                        cr::CreativeTerrainMaterial::Stone &&
+                    committed.usesRetainingEdgeRecipe &&
+                    committed.retainingEdge.terrainProfileKey ==
+                        profile.stableKey &&
+                    committed.retainingEdge.settings.selection ==
+                        cr::CreativeRetainingEdgeSelection::Internal &&
+                    committed.retainingEdge.settings.kit ==
+                        cr::CreativeRetainingEdgeKit::InfrastructureStone &&
+                    committed.retainingEdge.settings.transitions[0].kind ==
+                        cr::CreativeRetainingEdgeTransitionKind::Stair &&
+                    afterUpdate == before + 1U,
+                "bounded landform and retaining properties round-trip exactly") &&
+         expect(!attachmentRejected.accepted &&
+                    !attachmentRejected.changed && !rejected.accepted &&
+                    !rejected.changed &&
+                    state.revision == afterUpdate &&
+                    state.source.terrainProfiles[0].landform ==
+                        committed.landform &&
+                    state.source.terrainProfiles[0].retainingEdge ==
+                        committed.retainingEdge,
+                "mismatched landform kinds and retaining owners reject without source drift");
+}
+
 bool terrainPathSettingsUseTheSharedRecipe() {
   app::CreativeEditorWorldLayoutState state = shellState();
   cr::CreativeWorldLayoutTerrainPath path;
   path.stableKey = "path_1";
-  path.kind = cr::CreativeTerrainRecipeKind::Road;
-  path.firstPointIndex = 0U;
-  path.pointCount = 2U;
-  path.elevation = cr::CreativeTerrainPathElevation::Level;
-  state.source.terrainPathPoints = {{{0, 0}, 4U}, {{5, 0}, 4U}};
+  path.recipe.kind = cr::CreativeTerrainPathKind::Road;
+  path.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  path.recipe.nextPointId = 3U;
+  path.recipe.points = {
+      {1U, {0, 0}, 4U, 1U, 0U, 0},
+      {2U, {5, 0}, 4U, 1U, 0U, 0},
+  };
   state.source.terrainPaths.push_back(path);
 
   app::CreativeEditorWorldLayoutTerrainPathSettings settings;
   const bool read = app::readCreativeEditorWorldLayoutTerrainPathSettings(
       state, 0U, settings);
-  settings.kind = cr::CreativeTerrainRecipeKind::River;
-  settings.elevation = cr::CreativeTerrainPathElevation::Grade;
-  settings.halfWidthCells = 2U;
-  settings.amplitudeCells = 4U;
-  settings.paintSurface = true;
-  settings.material = cr::CreativeTerrainMaterial::Sand;
-  settings.points[1] = {{7, 3}, 8U};
+  settings.recipe.kind = cr::CreativeTerrainPathKind::River;
+  settings.recipe.elevation = cr::CreativeTerrainPathElevation::Grade;
+  settings.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  settings.recipe.paintSurface = true;
+  settings.recipe.material = cr::CreativeTerrainMaterial::Sand;
+  settings.recipe.points[1].coord = {7, 3};
+  settings.recipe.points[1].heightCells = 8U;
+  settings.recipe.points[1].halfWidthCells = 2U;
+  settings.recipe.points[1].amplitudeCells = 4U;
   const auto updated = app::setCreativeEditorWorldLayoutTerrainPathSettings(
       state, 0U, settings);
   const std::uint64_t afterUpdate = state.revision;
-  settings.points[1] = settings.points[0];
+  settings.recipe.points[1].coord = settings.recipe.points[0].coord;
   const auto rejected = app::setCreativeEditorWorldLayoutTerrainPathSettings(
       state, 0U, settings);
 
   return expect(read && updated.accepted && updated.changed &&
-                    state.source.terrainPaths[0].kind ==
-                        cr::CreativeTerrainRecipeKind::River &&
-                    state.source.terrainPathPoints[1].coord ==
+                    state.source.terrainPaths[0].recipe.kind ==
+                        cr::CreativeTerrainPathKind::River &&
+                    state.source.terrainPaths[0].recipe.points[1].coord ==
                         cr::CreativeTerrainCoord2{7, 3} &&
-                    state.source.terrainPathPoints[1].heightCells == 8U,
+                    state.source.terrainPaths[0]
+                            .recipe.points[1].heightCells == 8U &&
+                    state.source.terrainPaths[0].recipe.points[1].id == 2U,
                 "path properties and control points update together") &&
          expect(!rejected.accepted && !rejected.changed &&
                     state.revision == afterUpdate &&
-                    state.source.terrainPathPoints[1].coord ==
+                    state.source.terrainPaths[0].recipe.points[1].coord ==
                         cr::CreativeTerrainCoord2{7, 3},
                 "the terrain path kernel rejects degenerate segments");
 }
@@ -251,6 +355,104 @@ bool objectSettingsPreserveSemanticIdentity() {
                 "zero-volume object bounds reject atomically");
 }
 
+bool bridgeRecipeSettingsRetainAttachmentAndGeneratedPlacementOwnership() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutTerrainPath river;
+  river.stableKey = "river.bridge";
+  river.recipe.kind = cr::CreativeTerrainPathKind::River;
+  river.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  river.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Channel;
+  river.recipe.watercourse.crossings = {
+      {5U, 2U, 1U, 2U, 3U},
+      {6U, 1U, 1U, 2U, 3U},
+  };
+  river.recipe.watercourse.nextCrossingId = 7U;
+  river.recipe.nextPointId = 4U;
+  river.recipe.points = {
+      {1U, {-4, 0}, 5U, 2U, 2U, 0},
+      {2U, {0, 0}, 4U, 2U, 2U, 0},
+      {3U, {4, 0}, 3U, 2U, 2U, 0},
+  };
+  state.source.terrainPaths.push_back(river);
+  cr::CreativeWorldLayoutObject bridge;
+  bridge.kind = cr::CreativeObjectKind::Bridge;
+  bridge.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+  bridge.stableKey = "bridge_1";
+  bridge.name = "River Bridge";
+  bridge.boundsCells = {{-2.0, 0.0, -3.0}, {2.0, 0.35, 3.0}};
+  bridge.tags = {"world_layout:object"};
+  bridge.usesBridgeRecipe = true;
+  bridge.bridge.watercoursePathKey = river.stableKey;
+  bridge.bridge.crossingId = 5U;
+  state.source.objects.push_back(bridge);
+  cr::CreativeWorldLayoutObject occupiedBridge = bridge;
+  occupiedBridge.stableKey = "bridge_2";
+  occupiedBridge.name = "Second River Bridge";
+  occupiedBridge.bridge.crossingId = 6U;
+  state.source.objects.push_back(occupiedBridge);
+
+  app::CreativeEditorWorldLayoutObjectSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+  const cr::CreativeBounds authoredFootprint = settings.boundsCells;
+  settings.bridge.settings.deckWidthMeters = 3.0;
+  settings.bridge.settings.deckElevationOffsetMeters = 0.5;
+  settings.bridge.settings.supportStyle =
+      cr::CreativeBridgeSupportStyle::None;
+  settings.bridge.settings.rails = false;
+  settings.bridge.settings.maximumApproachGradePermille = 350U;
+  settings.bridge.settings.materials.deck =
+      cr::CreativeStructuralMaterial::Stone;
+  const std::uint64_t before = state.revision;
+  const auto updated = app::setCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+  const cr::CreativeBridgeSourceRecipe committed =
+      state.source.objects[0].bridge;
+  const std::uint64_t afterUpdate = state.revision;
+
+  settings.bridge.crossingId = 6U;
+  const auto occupiedAttachment =
+      app::setCreativeEditorWorldLayoutObjectSettings(state, 0U, settings);
+  settings.bridge.crossingId = 99U;
+  const auto missingAttachment =
+      app::setCreativeEditorWorldLayoutObjectSettings(state, 0U, settings);
+  settings = {};
+  static_cast<void>(app::readCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings));
+  settings.boundsCells.min.x -= 1.0;
+  const auto movedFootprint = app::setCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+  const auto manipulation =
+      app::beginCreativeEditorWorldLayoutObjectManipulation(state, 0U,
+                                                            {0.0, 0.0});
+
+  return expect(read && updated.accepted && updated.changed &&
+                    afterUpdate == before + 1U &&
+                    committed.watercoursePathKey == "river.bridge" &&
+                    committed.crossingId == 5U &&
+                    committed.settings.deckWidthMeters == 3.0 &&
+                    committed.settings.deckElevationOffsetMeters == 0.5 &&
+                    committed.settings.supportStyle ==
+                        cr::CreativeBridgeSupportStyle::None &&
+                    !committed.settings.rails &&
+                    committed.settings.materials.deck ==
+                        cr::CreativeStructuralMaterial::Stone,
+                "bridge settings edit one durable attached recipe") &&
+         expect(!missingAttachment.accepted &&
+                    !missingAttachment.changed &&
+                    !occupiedAttachment.accepted &&
+                    !occupiedAttachment.changed &&
+                    !movedFootprint.accepted && !movedFootprint.changed &&
+                    state.revision == afterUpdate &&
+                    state.source.objects[0].boundsCells.min.x ==
+                        authoredFootprint.min.x,
+                "missing attachments and detached footprints reject atomically") &&
+         expect(!manipulation.accepted && !manipulation.changed &&
+                    manipulation.reasonCode ==
+                        "creative_editor_world_layout_bridge_manipulation_attached",
+                "attached bridge placement is owned by its crossing");
+}
+
 bool objectManipulationPreviewsThenCommitsOnce() {
   app::CreativeEditorWorldLayoutState state = shellState();
   cr::CreativeWorldLayoutObject boundsObject;
@@ -277,6 +479,12 @@ bool objectManipulationPreviewsThenCommitsOnce() {
       state, {2.0, 2.0});
   const auto begun = app::beginCreativeEditorWorldLayoutObjectManipulation(
       state, hit, {2.0, 2.0});
+  const auto reselected = app::selectCreativeEditorWorldLayoutSource(
+      state, cr::CreativeWorldLayoutTable::Object, hit);
+  const bool reselectionPreservedManipulation =
+      reselected.accepted && !reselected.changed &&
+      state.objectManipulation.active &&
+      state.objectManipulation.objectIndex == hit;
   const auto previewed = app::updateCreativeEditorWorldLayoutObjectManipulation(
       state, {5.49, 0.51});
 
@@ -302,6 +510,7 @@ bool objectManipulationPreviewsThenCommitsOnce() {
   const cr::CreativeBounds& moved =
       editor.worldLayout.source.objects[0].boundsCells;
   return expect(hit == 0U && begun.accepted && begun.changed &&
+                    reselectionPreservedManipulation &&
                     previewed.accepted && previewed.changed &&
                     editor.worldLayout.sourceHistory.undoEntries.size() ==
                         undoBefore + 1U,
@@ -413,6 +622,149 @@ bool catalogObjectManipulationMovesOnlyItsPivot() {
                 "catalog drag commits once without geometry drift");
 }
 
+bool roofApertureManipulationSnapsRejectsAndCommitsOnce() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  const auto created = app::createCreativeEditorWorldLayoutRoofAperture(
+      state, 0U, cr::CreativeStructuralRoofApertureKind::Skylight);
+  app::CreativeEditorWorldLayoutRoofApertureSettings original;
+  if (!created.accepted ||
+      !app::readCreativeEditorWorldLayoutRoofApertureSettings(state, 0U,
+                                                              original)) {
+    return expect(false, "roof aperture manipulation fixture is valid");
+  }
+
+  constexpr double kTolerance = 0.20;
+  const app::CreativeEditorWorldLayoutPoint center{
+      (original.minimumXCells + original.maximumXCells) * 0.5,
+      (original.minimumZCells + original.maximumZCells) * 0.5};
+  const auto centerTarget =
+      app::findCreativeEditorWorldLayoutRoofApertureTarget(
+          state, center, kTolerance);
+  const std::uint64_t revisionBefore = state.revision;
+  const std::size_t undoBefore = state.sourceHistory.undoEntries.size();
+  const auto begun =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+          center, kTolerance);
+  const auto previewed =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+          {center.x + 1.12, center.z + 0.62}, kTolerance);
+  const app::CreativeEditorWorldLayoutRoofApertureSettings movedPreview =
+      state.roofApertureManipulation.previewSettings;
+  app::CreativeEditorWorldLayoutRoofApertureSettings sourceDuringPreview;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoofApertureSettings(
+      state, 0U, sourceDuringPreview));
+  const auto canceled =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
+          {}, kTolerance);
+  const bool movePreviewAndCancel =
+      centerTarget.handle ==
+          app::CreativeEditorWorldLayoutRoofApertureHandle::Move &&
+      begun.accepted && previewed.accepted && previewed.changed &&
+      movedPreview.minimumXCells == original.minimumXCells + 1.0 &&
+      movedPreview.maximumXCells == original.maximumXCells + 1.0 &&
+      movedPreview.minimumZCells == original.minimumZCells + 0.5 &&
+      movedPreview.maximumZCells == original.maximumZCells + 0.5 &&
+      sourceDuringPreview == original && canceled.accepted && canceled.changed &&
+      state.revision == revisionBefore;
+
+  const double width = original.maximumXCells - original.minimumXCells;
+  const app::CreativeEditorWorldLayoutPoint eastEdge{
+      original.maximumXCells,
+      (original.minimumZCells + original.maximumZCells) * 0.5};
+  const auto invalidBegun =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+          eastEdge, kTolerance);
+  const app::CreativeEditorWorldLayoutPoint invertedEast{
+      eastEdge.x - width - 0.25, eastEdge.z};
+  const auto invalidPreview =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+          invertedEast, kTolerance);
+  const bool invalidPreviewVisible =
+      state.roofApertureManipulation.active &&
+      !state.roofApertureManipulation.previewValid;
+  const auto invalidCommit =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
+          invertedEast, kTolerance);
+  const bool invalidRejectedAtomically =
+      invalidBegun.accepted && invalidPreview.accepted &&
+      invalidPreview.changed && invalidPreviewVisible &&
+      !invalidCommit.accepted && !invalidCommit.changed &&
+      !state.roofApertureManipulation.active &&
+      state.revision == revisionBefore &&
+      state.sourceHistory.undoEntries.size() == undoBefore;
+
+  const app::CreativeEditorWorldLayoutPoint northEast{
+      original.maximumXCells, original.minimumZCells};
+  const auto resizeBegun =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+          northEast, kTolerance);
+  const app::CreativeEditorWorldLayoutPoint expandedNorthEast{
+      northEast.x + 0.48, northEast.z - 0.52};
+  const auto resizePreview =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+          expandedNorthEast, kTolerance);
+  const auto resized =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          state,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
+          expandedNorthEast, kTolerance);
+  app::CreativeEditorWorldLayoutRoofApertureSettings committed;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoofApertureSettings(
+      state, 0U, committed));
+
+  app::CreativeEditorWorldLayoutState staleState = state;
+  const app::CreativeEditorWorldLayoutPoint committedCenter{
+      (committed.minimumXCells + committed.maximumXCells) * 0.5,
+      (committed.minimumZCells + committed.maximumZCells) * 0.5};
+  const auto staleBegun =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          staleState,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+          committedCenter, kTolerance);
+  ++staleState.revision;
+  const auto stale =
+      app::applyCreativeEditorWorldLayoutRoofApertureManipulation(
+          staleState,
+          app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+          {committedCenter.x + 0.25, committedCenter.z}, kTolerance);
+
+  return expect(movePreviewAndCancel,
+                "roof aperture move snaps to quarter cells and cancels cleanly") &&
+         expect(invalidRejectedAtomically,
+                "an inverted roof aperture resize rejects atomically") &&
+         expect(resizeBegun.accepted && resizePreview.accepted &&
+                    resizePreview.changed && resized.accepted && resized.changed &&
+                    committed.maximumXCells ==
+                        original.maximumXCells + 0.5 &&
+                    committed.minimumZCells == original.minimumZCells - 0.5 &&
+                    committed.minimumXCells == original.minimumXCells &&
+                    committed.maximumZCells == original.maximumZCells &&
+                    state.revision == revisionBefore + 1U &&
+                    state.sourceHistory.undoEntries.size() == undoBefore + 1U,
+                "roof aperture resize commits one exact source edit") &&
+         expect(staleBegun.accepted && !stale.accepted && !stale.changed &&
+                    !staleState.roofApertureManipulation.active &&
+                    stale.reasonCode ==
+                        "creative_editor_world_layout_roof_aperture_manipulation_stale",
+                "source revision changes invalidate a roof aperture drag");
+}
+
 cr::CreativeAppState makeApp() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Properties");
@@ -468,11 +820,14 @@ int main() {
   const bool ok = levelSettingsAreOwnedAndValidated() &&
                   buildingGroundingSettingsAreExplicitAndBounded() &&
                   terrainProfileSettingsAreBounded() &&
+                  terrainLandformSettingsRoundTripAtomically() &&
                   terrainPathSettingsUseTheSharedRecipe() &&
                   objectSettingsPreserveSemanticIdentity() &&
+                  bridgeRecipeSettingsRetainAttachmentAndGeneratedPlacementOwnership() &&
                   objectManipulationPreviewsThenCommitsOnce() &&
                   pointObjectManipulationCancelsAndRejectsStaleInput() &&
                   catalogObjectManipulationMovesOnlyItsPivot() &&
+                  roofApertureManipulationSnapsRejectsAndCommitsOnce() &&
                   typedSettingsCommandsGuardIdentityAndPreview();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

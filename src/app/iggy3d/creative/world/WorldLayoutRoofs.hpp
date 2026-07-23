@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -28,6 +29,10 @@ struct CreativeWorldLayoutRoofPlan {
   std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
   CreativeWorldLayoutRect footprint;
   CreativeStructuralRoofRecipeResult geometry;
+  CreativeStructuralRoofApertureResult closure;
+  std::array<std::size_t, kCreativeStructuralRoofApertureCapacity>
+      sourceApertureIndices{};
+  std::size_t sourceApertureCount = 0U;
   std::string_view reasonCode = "creative_world_layout_roof_not_requested";
 };
 
@@ -36,11 +41,11 @@ struct CreativeWorldLayoutRoofPlan {
 [[nodiscard]] bool creativeWorldLayoutLevelRoofFootprint(
     const CreativeWorldLayout& layout,
     std::size_t levelIndex,
-    CreativeWorldLayoutRect& output) noexcept;
+    CreativeWorldLayoutRect& output);
 
 [[nodiscard]] CreativeWorldLayoutRoofPlan planCreativeWorldLayoutRoof(
     const CreativeGridSettings& grid,
     const CreativeWorldLayout& layout,
-    std::size_t levelIndex) noexcept;
+    std::size_t levelIndex);
 
 }  // namespace iggy3d::creative

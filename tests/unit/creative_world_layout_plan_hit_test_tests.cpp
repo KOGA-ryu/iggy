@@ -130,6 +130,90 @@ bool pointsUseCallerTolerance() {
                 "point symbols use zoom-derived caller tolerance");
 }
 
+bool regionSelectionDistinguishesWindowAndCrossing() {
+  auto segment = primitive(cr::CreativeWorldLayoutPlanPrimitiveKind::Segment);
+  segment.pointCount = 2U;
+  segment.points[0] = {0.0, 0.0};
+  segment.points[1] = {4.0, 0.0};
+  segment.widthCells = 0.5;
+  const auto segmentWindow =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          segment, {-1.0, -1.0}, {5.0, 1.0},
+          cr::CreativeWorldLayoutPlanRegionMode::Window);
+  const auto segmentPartialWindow =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          segment, {1.0, -1.0}, {3.0, 1.0},
+          cr::CreativeWorldLayoutPlanRegionMode::Window);
+  const auto segmentCrossing =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          segment, {1.0, -1.0}, {3.0, 1.0},
+          cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+
+  auto polygon = primitive(cr::CreativeWorldLayoutPlanPrimitiveKind::Polygon);
+  polygon.pointCount = 4U;
+  polygon.points = {{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}};
+  const auto regionInsidePolygon =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          polygon, {1.0, 1.0}, {2.0, 2.0},
+          cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+  const auto polygonNotEnclosed =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          polygon, {1.0, 1.0}, {2.0, 2.0},
+          cr::CreativeWorldLayoutPlanRegionMode::Window);
+
+  auto circle = primitive(cr::CreativeWorldLayoutPlanPrimitiveKind::Circle);
+  circle.pointCount = 1U;
+  circle.points[0] = {2.0, 2.0};
+  circle.radiusCells = 1.0;
+  const auto circleWindow =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          circle, {0.5, 0.5}, {3.5, 3.5},
+          cr::CreativeWorldLayoutPlanRegionMode::Window);
+  const auto circleCrossing =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          circle, {2.9, 1.9}, {3.2, 2.1},
+          cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+
+  constexpr double kPi = 3.14159265358979323846;
+  auto arc = primitive(cr::CreativeWorldLayoutPlanPrimitiveKind::Arc);
+  arc.pointCount = 1U;
+  arc.points[0] = {0.0, 0.0};
+  arc.radiusCells = 2.0;
+  arc.startRadians = 0.0;
+  arc.sweepRadians = kPi * 0.5;
+  const auto arcWindow = cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+      arc, {-0.1, -0.1}, {2.1, 2.1},
+      cr::CreativeWorldLayoutPlanRegionMode::Window);
+  const auto arcCrossing = cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+      arc, {1.3, 1.3}, {1.6, 1.6},
+      cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+  const auto arcOpposite = cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+      arc, {-1.6, 1.3}, {-1.3, 1.6},
+      cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+
+  auto point = primitive(cr::CreativeWorldLayoutPlanPrimitiveKind::Point);
+  point.pointCount = 1U;
+  point.points[0] = {7.0, 8.0};
+  const auto pointCrossing =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          point, {6.9, 7.9}, {7.1, 8.1},
+          cr::CreativeWorldLayoutPlanRegionMode::Crossing);
+  const auto invalidMode =
+      cr::selectCreativeWorldLayoutPlanPrimitiveInRegion(
+          point, {6.9, 7.9}, {7.1, 8.1},
+          cr::CreativeWorldLayoutPlanRegionMode::Count);
+
+  return expect(
+      segmentWindow.hit && !segmentPartialWindow.hit && segmentCrossing.hit &&
+          regionInsidePolygon.hit && !polygonNotEnclosed.hit &&
+          circleWindow.hit && circleCrossing.hit && arcWindow.hit &&
+          arcCrossing.hit && !arcOpposite.hit && pointCrossing.hit &&
+          !invalidMode.hit &&
+          invalidMode.status ==
+              cr::CreativeWorldLayoutPlanHitTestStatus::InvalidRequest,
+      "window encloses complete geometry while crossing accepts intersection");
+}
+
 }  // namespace
 
 int main() {
@@ -140,5 +224,6 @@ int main() {
   ok = circlesSelectTheirFilledFootprint() && ok;
   ok = arcsRespectDirectedSweepAndEndpoints() && ok;
   ok = pointsUseCallerTolerance() && ok;
+  ok = regionSelectionDistinguishesWindowAndCrossing() && ok;
   return ok ? 0 : 1;
 }

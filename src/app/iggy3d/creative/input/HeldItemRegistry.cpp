@@ -52,6 +52,7 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.worldOperations = {WorldOp::SelectObject, WorldOp::None,
                            WorldOp::SampleTargetMaterial};
     row.acceptOperation = WorldOp::SelectObject;
+    row.rejectOperation = WorldOp::ClearSelection;
     row.hierarchySelectionTool = true;
   }
   {
@@ -135,6 +136,7 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.volumeOperation = CreativeVolumeOperationKind::Erase;
     row.interactionMode = InteractionMode::Volume;
     row.targetCellPolicy = TargetPolicy::DocumentGrid;
+    row.statusMode = StatusMode::VolumeErase;
     row.volumeMode = true;
     row.volumeOperationItem = true;
   }
@@ -148,6 +150,7 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.volumeOperation = CreativeVolumeOperationKind::Clone;
     row.interactionMode = InteractionMode::Volume;
     row.targetCellPolicy = TargetPolicy::DocumentGrid;
+    row.statusMode = StatusMode::VolumeClone;
     row.volumeMode = true;
     row.volumeOperationItem = true;
   }
@@ -312,6 +315,18 @@ using StatusMode = CreativeHeldItemStatusMode;
     row.targetCellPolicy = TargetPolicy::DocumentGrid;
     row.statusMode = StatusMode::BuildingRoom;
     row.primaryWinsSimultaneous = true;
+  }
+  {
+    auto& row = rows[heldIndex(CreativeHeldItemKind::Measure)];
+    row.facadeTool = Tool::Measure;
+    row.worldOperations = {WorldOp::AppendMeasurementPoint,
+                           WorldOp::CompleteMeasurement, WorldOp::None};
+    row.acceptOperation = WorldOp::AppendMeasurementPoint;
+    row.rejectOperation = WorldOp::CancelMeasurement;
+    row.interactionMode = InteractionMode::Measurement;
+    row.targetCellPolicy = TargetPolicy::DocumentGrid;
+    row.previewMode = PreviewMode::Measurement;
+    row.statusMode = StatusMode::Measurement;
   }
   return rows;
 }

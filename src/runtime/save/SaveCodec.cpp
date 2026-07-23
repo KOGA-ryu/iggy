@@ -323,6 +323,14 @@ private:
     lineString(prefix + "name", object.name);
     if (!object.assetId.empty()) {
       lineString(prefix + "assetId", object.assetId);
+      if (object.assetContentHash != 0U) {
+        line(prefix + "assetContentHash",
+             unsignedText(object.assetContentHash));
+      }
+      if (!object.assetMaterialVariant.empty()) {
+        lineString(prefix + "assetMaterialVariant",
+                   object.assetMaterialVariant);
+      }
     }
     lineCreativeVec3(prefix + "transform.position", object.transform.position);
     lineCreativeVec3(prefix + "transform.rotation", object.transform.rotation);
@@ -347,6 +355,28 @@ private:
                  object.movingPlatformTraversalMode);
       lineBool(prefix + "movingPlatform.startsActive",
                object.movingPlatformStartsActive);
+    }
+    if (object.kind == "Door") {
+      lineString(prefix + "door.leafArrangement",
+                 object.doorLeafArrangement);
+      lineString(prefix + "door.hingeSide", object.doorHingeSide);
+      lineString(prefix + "door.swingSide", object.doorSwingSide);
+      lineString(prefix + "door.initialState", object.doorInitialState);
+      lineBool(prefix + "door.gameplayLocked", object.doorGameplayLocked);
+      line(prefix + "door.transitionSeconds",
+           formatDoubleLossless(object.doorTransitionSeconds));
+    }
+    if (object.kind == "Window") {
+      lineString(prefix + "window.insertKind", object.windowInsertKind);
+    }
+    if (object.kind == "SpawnPoint") {
+      lineString(prefix + "playerSpawn.profileId",
+                 object.playerSpawnProfileId);
+      lineString(prefix + "playerSpawn.group", object.playerSpawnGroup);
+      line(prefix + "playerSpawn.validationRadiusMeters",
+           formatDoubleLossless(object.playerSpawnValidationRadiusMeters));
+      line(prefix + "playerSpawn.fallbackPriority",
+           unsignedText(object.playerSpawnFallbackPriority));
     }
   }
 
@@ -447,6 +477,21 @@ private:
     }
     writeCreativeTerrainHeightField("creativeDocument.terrainHeightField",
                                     section.terrainHeightField);
+    if (section.version >= kSaveCreativeDocumentTerrainHardEdgeVersion) {
+      line("creativeDocument.terrainHardEdge.count",
+           unsignedText(section.terrainHardEdges.size()));
+      for (std::size_t index = 0U; index < section.terrainHardEdges.size();
+           ++index) {
+        const SaveCreativeDocumentTerrainHardEdgeRecord& edge =
+            section.terrainHardEdges[index];
+        const std::string prefix = "creativeDocument.terrainHardEdge." +
+                                   std::to_string(index) + ".";
+        line(prefix + "firstX", std::to_string(edge.firstX));
+        line(prefix + "firstZ", std::to_string(edge.firstZ));
+        line(prefix + "secondX", std::to_string(edge.secondX));
+        line(prefix + "secondZ", std::to_string(edge.secondZ));
+      }
+    }
     line("creativeDocument.terrainOperation.version",
          unsignedText(section.terrainOperationStackVersion));
     line("creativeDocument.terrainOperation.nextId",
@@ -454,6 +499,45 @@ private:
     writeCreativeTerrainHeightField(
         "creativeDocument.terrainOperation.baseHeightField",
         section.terrainOperationBaseHeightField);
+    if (section.version >= kSaveCreativeDocumentTerrainHardEdgeVersion) {
+      line("creativeDocument.terrainOperation.baseHardEdge.count",
+           unsignedText(section.terrainOperationBaseHardEdges.size()));
+      for (std::size_t index = 0U;
+           index < section.terrainOperationBaseHardEdges.size(); ++index) {
+        const SaveCreativeDocumentTerrainHardEdgeRecord& edge =
+            section.terrainOperationBaseHardEdges[index];
+        const std::string prefix =
+            "creativeDocument.terrainOperation.baseHardEdge." +
+            std::to_string(index) + ".";
+        line(prefix + "firstX", std::to_string(edge.firstX));
+        line(prefix + "firstZ", std::to_string(edge.firstZ));
+        line(prefix + "secondX", std::to_string(edge.secondX));
+        line(prefix + "secondZ", std::to_string(edge.secondZ));
+      }
+    }
+    if (!section.terrainOperations.empty() ||
+        !section.terrainOperationBaseMaterials.empty()) {
+      line("creativeDocument.terrainOperation.baseMaterial.count",
+           unsignedText(section.terrainOperationBaseMaterials.size()));
+      for (std::size_t index = 0U;
+           index < section.terrainOperationBaseMaterials.size(); ++index) {
+        const SaveCreativeDocumentTerrainMaterialRecord& material =
+            section.terrainOperationBaseMaterials[index];
+        const std::string prefix =
+            "creativeDocument.terrainOperation.baseMaterial." +
+            std::to_string(index) + ".";
+        line(prefix + "x", std::to_string(material.x));
+        line(prefix + "z", std::to_string(material.z));
+        lineString(prefix + "material", material.material);
+        lineBool(prefix + "weightsPresent", material.hasWeights);
+        if (material.hasWeights) {
+          line(prefix + "grassWeight", unsignedText(material.grassWeight));
+          line(prefix + "dirtWeight", unsignedText(material.dirtWeight));
+          line(prefix + "stoneWeight", unsignedText(material.stoneWeight));
+          line(prefix + "sandWeight", unsignedText(material.sandWeight));
+        }
+      }
+    }
     line("creativeDocument.terrainOperation.count",
          unsignedText(section.terrainOperations.size()));
     for (std::size_t index = 0U; index < section.terrainOperations.size();
@@ -464,6 +548,12 @@ private:
                                  std::to_string(index) + ".";
       line(prefix + "id", unsignedText(operation.id));
       lineBool(prefix + "enabled", operation.enabled);
+      if (section.version >=
+          kSaveCreativeDocumentTerrainOperationProvenanceVersion) {
+        lineString(prefix + "owner", operation.owner);
+        lineString(prefix + "sourceKey", operation.sourceKey);
+      }
+      lineString(prefix + "kind", operation.operationKind);
       line(prefix + "generation.version",
            unsignedText(operation.generationVersion));
       lineString(prefix + "generation.kind", operation.generatorKind);
@@ -490,12 +580,430 @@ private:
            formatDoubleLossless(operation.lacunarity));
       line(prefix + "generation.slopeDamping",
            formatDoubleLossless(operation.slopeDamping));
+      if (section.version >=
+          kSaveCreativeDocumentTerrainGenerationIntentVersion) {
+        lineBool(prefix + "generation.paintMaterials",
+                 operation.paintMaterials);
+        lineString(prefix + "generation.biomeIntent",
+                   operation.biomeIntent);
+        lineString(prefix + "generation.lowlandMaterial",
+                   operation.lowlandMaterial);
+        lineString(prefix + "generation.highlandMaterial",
+                   operation.highlandMaterial);
+        line(prefix + "generation.materialTransitionHeightCells",
+             unsignedText(operation.materialTransitionHeightCells));
+      }
       line(prefix + "composition.version",
            unsignedText(operation.compositionVersion));
       lineString(prefix + "composition.mask", operation.mask);
       lineString(prefix + "composition.mode", operation.mode);
       line(prefix + "composition.featherCells",
            unsignedText(operation.featherCells));
+      if (section.version >=
+          kSaveCreativeDocumentTerrainGenerationIntentVersion) {
+        line(prefix + "composition.protectedRegion.count",
+             unsignedText(operation.protectedRegions.size()));
+        for (std::size_t protectedIndex = 0U;
+             protectedIndex < operation.protectedRegions.size();
+             ++protectedIndex) {
+          const SaveCreativeDocumentTerrainProtectedRegionRecord& region =
+              operation.protectedRegions[protectedIndex];
+          const std::string protectedPrefix =
+              prefix + "composition.protectedRegion." +
+              std::to_string(protectedIndex) + ".";
+          line(protectedPrefix + "minimumX", std::to_string(region.minimumX));
+          line(protectedPrefix + "minimumZ", std::to_string(region.minimumZ));
+          line(protectedPrefix + "widthCells",
+               unsignedText(region.widthCells));
+          line(protectedPrefix + "depthCells",
+               unsignedText(region.depthCells));
+          lineString(protectedPrefix + "mask", region.mask);
+        }
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainRegionVersion) {
+        line(prefix + "region.version", unsignedText(operation.regionVersion));
+        line(prefix + "region.minimumX",
+             std::to_string(operation.regionMinimumX));
+        line(prefix + "region.minimumZ",
+             std::to_string(operation.regionMinimumZ));
+        line(prefix + "region.widthCells",
+             unsignedText(operation.regionWidthCells));
+        line(prefix + "region.depthCells",
+             unsignedText(operation.regionDepthCells));
+        lineString(prefix + "region.mask", operation.regionMask);
+        lineString(prefix + "region.mode", operation.regionMode);
+        line(prefix + "region.amountCells",
+             unsignedText(operation.regionAmountCells));
+        line(prefix + "region.targetHeightCells",
+             unsignedText(operation.regionTargetHeightCells));
+        line(prefix + "region.noiseReliefCells",
+             unsignedText(operation.regionNoiseReliefCells));
+        line(prefix + "region.noiseScaleCells",
+             formatDoubleLossless(operation.regionNoiseScaleCells));
+        line(prefix + "region.featherCells",
+             unsignedText(operation.regionFeatherCells));
+        line(prefix + "region.seed", unsignedText(operation.regionSeed));
+      }
+      line(prefix + "grade.version", unsignedText(operation.gradeVersion));
+      line(prefix + "grade.startX", std::to_string(operation.gradeStartX));
+      line(prefix + "grade.startZ", std::to_string(operation.gradeStartZ));
+      line(prefix + "grade.endX", std::to_string(operation.gradeEndX));
+      line(prefix + "grade.endZ", std::to_string(operation.gradeEndZ));
+      line(prefix + "grade.startHeightCells",
+           unsignedText(operation.gradeStartHeightCells));
+      line(prefix + "grade.endHeightCells",
+           unsignedText(operation.gradeEndHeightCells));
+      line(prefix + "grade.halfWidthCells",
+           unsignedText(operation.gradeHalfWidthCells));
+      line(prefix + "grade.crossSlopePermille",
+           std::to_string(operation.gradeCrossSlopePermille));
+      line(prefix + "grade.falloffCells",
+           unsignedText(operation.gradeFalloffCells));
+      line(prefix + "path.version", unsignedText(operation.pathVersion));
+      lineString(prefix + "path.kind", operation.pathKind);
+      lineString(prefix + "path.elevation", operation.pathElevation);
+      lineString(prefix + "path.curve", operation.pathCurve);
+      lineString(prefix + "path.crossSection", operation.pathCrossSection);
+      lineString(prefix + "path.startJoin", operation.pathStartJoin);
+      lineString(prefix + "path.endJoin", operation.pathEndJoin);
+      line(prefix + "path.falloffCells",
+           unsignedText(operation.pathFalloffCells));
+      lineBool(prefix + "path.paintSurface", operation.pathPaintSurface);
+      lineString(prefix + "path.material", operation.pathMaterial);
+      if (section.version >= kSaveCreativeDocumentTerrainRoadVersion) {
+        line(prefix + "path.road.shoulderWidthCells",
+             unsignedText(operation.pathRoadShoulderWidthCells));
+        line(prefix + "path.road.maximumGradePermille",
+             unsignedText(operation.pathRoadMaximumGradePermille));
+        line(prefix + "path.road.edgeTreatment",
+             unsignedText(operation.pathRoadEdgeTreatment));
+        line(prefix + "path.road.edgeWidthMeters",
+             formatDoubleLossless(operation.pathRoadEdgeWidthMeters));
+        line(prefix + "path.road.edgeHeightMeters",
+             formatDoubleLossless(operation.pathRoadEdgeHeightMeters));
+        line(prefix + "path.road.edgeMaterial",
+             unsignedText(operation.pathRoadEdgeMaterial));
+      }
+      if (section.version >=
+          kSaveCreativeDocumentTerrainWatercourseVersion) {
+        line(prefix + "path.watercourse.bankSlopeCells",
+             unsignedText(operation.pathWatercourseBankSlopeCells));
+        line(prefix + "path.watercourse.drainageDirection",
+             unsignedText(operation.pathWatercourseDrainageDirection));
+        line(prefix + "path.watercourse.surfacePolicy",
+             unsignedText(operation.pathWatercourseSurfacePolicy));
+        line(prefix + "path.watercourse.surfaceInsetCells",
+             unsignedText(operation.pathWatercourseSurfaceInsetCells));
+        line(prefix + "path.watercourse.nextCrossingId",
+             unsignedText(operation.pathWatercourseNextCrossingId));
+        line(prefix + "path.watercourse.crossing.count",
+             unsignedText(operation.pathWatercourseCrossings.size()));
+        for (std::size_t crossingIndex = 0U;
+             crossingIndex < operation.pathWatercourseCrossings.size();
+             ++crossingIndex) {
+          const SaveCreativeDocumentTerrainWatercourseCrossingRecord& crossing =
+              operation.pathWatercourseCrossings[crossingIndex];
+          const std::string crossingPrefix =
+              prefix + "path.watercourse.crossing." +
+              std::to_string(crossingIndex) + ".";
+          line(crossingPrefix + "id", unsignedText(crossing.id));
+          line(crossingPrefix + "pointId", unsignedText(crossing.pointId));
+          line(crossingPrefix + "bankClearanceCells",
+               unsignedText(crossing.bankClearanceCells));
+          line(crossingPrefix + "deckClearanceCells",
+               unsignedText(crossing.deckClearanceCells));
+          line(crossingPrefix + "approachLengthCells",
+               unsignedText(crossing.approachLengthCells));
+        }
+      }
+      line(prefix + "path.nextPointId",
+           unsignedText(operation.pathNextPointId));
+      line(prefix + "path.point.count",
+           unsignedText(operation.pathPoints.size()));
+      for (std::size_t pointIndex = 0U;
+           pointIndex < operation.pathPoints.size(); ++pointIndex) {
+        const SaveCreativeDocumentTerrainPathPointRecord& point =
+            operation.pathPoints[pointIndex];
+        const std::string pointPrefix =
+            prefix + "path.point." + std::to_string(pointIndex) + ".";
+        line(pointPrefix + "id", unsignedText(point.id));
+        line(pointPrefix + "x", std::to_string(point.x));
+        line(pointPrefix + "z", std::to_string(point.z));
+        line(pointPrefix + "heightCells", unsignedText(point.heightCells));
+        line(pointPrefix + "halfWidthCells",
+             unsignedText(point.halfWidthCells));
+        line(pointPrefix + "amplitudeCells",
+             unsignedText(point.amplitudeCells));
+        line(pointPrefix + "bankPermille",
+             std::to_string(point.bankPermille));
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainStampVersion) {
+        line(prefix + "stamp.recipeVersion",
+             unsignedText(operation.stampRecipeVersion));
+        line(prefix + "stamp.version", unsignedText(operation.stampVersion));
+        lineString(prefix + "stamp.assetId", operation.stampAssetId);
+        lineString(prefix + "stamp.label", operation.stampLabel);
+        line(prefix + "stamp.assetVersion",
+             unsignedText(operation.stampAssetVersion));
+        line(prefix + "stamp.sourceDocumentId",
+             unsignedText(operation.stampSourceDocumentId));
+        line(prefix + "stamp.sourceRevision",
+             unsignedText(operation.stampSourceRevision));
+        line(prefix + "stamp.contentSignature",
+             unsignedText(operation.stampContentSignature));
+        line(prefix + "stamp.sourceMinimumX",
+             std::to_string(operation.stampSourceMinimumX));
+        line(prefix + "stamp.sourceMinimumZ",
+             std::to_string(operation.stampSourceMinimumZ));
+        line(prefix + "stamp.minimumHeightCells",
+             unsignedText(operation.stampMinimumHeightCells));
+        writeCreativeTerrainHeightField(prefix + "stamp.height",
+                                        operation.stampHeightField);
+        line(prefix + "stamp.material.count",
+             unsignedText(operation.stampMaterials.size()));
+        for (std::size_t materialIndex = 0U;
+             materialIndex < operation.stampMaterials.size();
+             ++materialIndex) {
+          const SaveCreativeDocumentTerrainMaterialRecord& material =
+              operation.stampMaterials[materialIndex];
+          const std::string materialPrefix =
+              prefix + "stamp.material." + std::to_string(materialIndex) + ".";
+          line(materialPrefix + "x", std::to_string(material.x));
+          line(materialPrefix + "z", std::to_string(material.z));
+          lineString(materialPrefix + "material", material.material);
+          lineBool(materialPrefix + "weightsPresent", material.hasWeights);
+          if (material.hasWeights) {
+            line(materialPrefix + "grassWeight",
+                 unsignedText(material.grassWeight));
+            line(materialPrefix + "dirtWeight",
+                 unsignedText(material.dirtWeight));
+            line(materialPrefix + "stoneWeight",
+                 unsignedText(material.stoneWeight));
+            line(materialPrefix + "sandWeight",
+                 unsignedText(material.sandWeight));
+          }
+        }
+        line(prefix + "stamp.targetMinimumX",
+             std::to_string(operation.stampTargetMinimumX));
+        line(prefix + "stamp.targetMinimumZ",
+             std::to_string(operation.stampTargetMinimumZ));
+        line(prefix + "stamp.quarterTurns",
+             unsignedText(operation.stampQuarterTurns));
+        lineBool(prefix + "stamp.mirrorX", operation.stampMirrorX);
+        lineBool(prefix + "stamp.mirrorZ", operation.stampMirrorZ);
+        lineString(prefix + "stamp.mode", operation.stampMode);
+        lineString(prefix + "stamp.elevation", operation.stampElevation);
+        line(prefix + "stamp.manualHeightOffsetCells",
+             std::to_string(operation.stampManualHeightOffsetCells));
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainProfileVersion) {
+        line(prefix + "profile.version",
+             unsignedText(operation.profileVersion));
+        lineString(prefix + "profile.kind", operation.profileKind);
+        lineString(prefix + "profile.blend", operation.profileBlend);
+        lineString(prefix + "profile.rodPolicy", operation.profileRodPolicy);
+        line(prefix + "profile.centerX",
+             std::to_string(operation.profileCenterX));
+        line(prefix + "profile.centerZ",
+             std::to_string(operation.profileCenterZ));
+        line(prefix + "profile.baseHeightCells",
+             unsignedText(operation.profileBaseHeightCells));
+        line(prefix + "profile.radiusCells",
+             unsignedText(operation.profileRadiusCells));
+        line(prefix + "profile.amplitudeCells",
+             unsignedText(operation.profileAmplitudeCells));
+        line(prefix + "profile.spacingCells",
+             unsignedText(operation.profileSpacingCells));
+        lineString(prefix + "profile.direction", operation.profileDirection);
+        line(prefix + "profile.frequency",
+             unsignedText(operation.profileFrequency));
+        line(prefix + "profile.seed", unsignedText(operation.profileSeed));
+      }
+      if (section.version >= kSaveCreativeDocumentTerrainLandformVersion) {
+        line(prefix + "landform.version",
+             unsignedText(operation.landformVersion));
+        lineString(prefix + "landform.kind", operation.landformKind);
+        line(prefix + "landform.minimumX",
+             std::to_string(operation.landformMinimumX));
+        line(prefix + "landform.minimumZ",
+             std::to_string(operation.landformMinimumZ));
+        line(prefix + "landform.widthCells",
+             unsignedText(operation.landformWidthCells));
+        line(prefix + "landform.depthCells",
+             unsignedText(operation.landformDepthCells));
+        line(prefix + "landform.baseHeightCells",
+             unsignedText(operation.landformBaseHeightCells));
+        line(prefix + "landform.targetHeightCells",
+             unsignedText(operation.landformTargetHeightCells));
+        line(prefix + "landform.terraceCount",
+             unsignedText(operation.landformTerraceCount));
+        lineString(prefix + "landform.direction",
+                   operation.landformDirection);
+        lineString(prefix + "landform.edge", operation.landformEdge);
+        line(prefix + "landform.edgeWidthCells",
+             unsignedText(operation.landformEdgeWidthCells));
+        line(prefix + "landform.featherCells",
+             unsignedText(operation.landformFeatherCells));
+        lineBool(prefix + "landform.paintSurface",
+                 operation.landformPaintSurface);
+        lineString(prefix + "landform.material", operation.landformMaterial);
+        lineString(prefix + "landform.erosion", operation.landformErosion);
+        line(prefix + "landform.erosionReliefCells",
+             unsignedText(operation.landformErosionReliefCells));
+        line(prefix + "landform.seed", unsignedText(operation.landformSeed));
+      }
+    }
+    line("creativeDocument.patternRecipe.version",
+         unsignedText(section.patternRecipeStoreVersion));
+    line("creativeDocument.patternRecipe.nextId",
+         unsignedText(section.nextPatternRecipeId));
+    line("creativeDocument.patternRecipe.count",
+         unsignedText(section.patternRecipes.size()));
+    for (std::size_t index = 0U; index < section.patternRecipes.size();
+         ++index) {
+      const SaveCreativeDocumentPatternRecipeRecord& recipe =
+          section.patternRecipes[index];
+      const std::string prefix = "creativeDocument.patternRecipe." +
+                                 std::to_string(index) + ".";
+      line(prefix + "id", unsignedText(recipe.id));
+      lineString(prefix + "kind", recipe.kind);
+      line(prefix + "source.count",
+           unsignedText(recipe.sourceObjectIds.size()));
+      for (std::size_t objectIndex = 0U;
+           objectIndex < recipe.sourceObjectIds.size(); ++objectIndex) {
+        line(prefix + "source." + std::to_string(objectIndex) + ".objectId",
+             unsignedText(recipe.sourceObjectIds[objectIndex]));
+      }
+      line(prefix + "generated.count",
+           unsignedText(recipe.generatedObjectIds.size()));
+      for (std::size_t objectIndex = 0U;
+           objectIndex < recipe.generatedObjectIds.size(); ++objectIndex) {
+        line(prefix + "generated." + std::to_string(objectIndex) +
+                 ".objectId",
+             unsignedText(recipe.generatedObjectIds[objectIndex]));
+      }
+      lineString(prefix + "linear.direction", recipe.linearDirection);
+      lineString(prefix + "linear.copyCount", recipe.linearCopyCount);
+      lineString(prefix + "linear.spacing", recipe.linearSpacing);
+      line(prefix + "linear.cellSize",
+           formatDoubleLossless(recipe.linearCellSize));
+      line(prefix + "linear.maxGeneratedObjects",
+           unsignedText(recipe.linearMaxGeneratedObjects));
+      line(prefix + "radial.pivot.x",
+           formatDoubleLossless(recipe.radialPivot.x));
+      line(prefix + "radial.pivot.y",
+           formatDoubleLossless(recipe.radialPivot.y));
+      line(prefix + "radial.pivot.z",
+           formatDoubleLossless(recipe.radialPivot.z));
+      lineString(prefix + "radial.axis", recipe.radialAxis);
+      lineString(prefix + "radial.instanceCount",
+                 recipe.radialInstanceCount);
+      lineString(prefix + "radial.sweep", recipe.radialSweep);
+      line(prefix + "radial.maxGeneratedObjects",
+           unsignedText(recipe.radialMaxGeneratedObjects));
+      if (section.patternRecipeStoreVersion >= 2U) {
+        lineString(prefix + "scatter.objectKind", recipe.scatterObjectKind);
+        lineString(prefix + "scatter.assetId", recipe.scatterAssetId);
+        line(prefix + "scatter.assetContentHash",
+             unsignedText(recipe.scatterAssetContentHash));
+        lineString(prefix + "scatter.assetMaterialVariant",
+                   recipe.scatterAssetMaterialVariant);
+        line(prefix + "scatter.assetSourceBounds.min.x",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.min.x));
+        line(prefix + "scatter.assetSourceBounds.min.y",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.min.y));
+        line(prefix + "scatter.assetSourceBounds.min.z",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.min.z));
+        line(prefix + "scatter.assetSourceBounds.max.x",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.max.x));
+        line(prefix + "scatter.assetSourceBounds.max.y",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.max.y));
+        line(prefix + "scatter.assetSourceBounds.max.z",
+             formatDoubleLossless(recipe.scatterAssetSourceBounds.max.z));
+        line(prefix + "scatter.paintCenter.count",
+             unsignedText(recipe.scatterPaintCenters.size()));
+        for (std::size_t centerIndex = 0U;
+             centerIndex < recipe.scatterPaintCenters.size(); ++centerIndex) {
+          const SaveCreativeDocumentVec3Record& center =
+              recipe.scatterPaintCenters[centerIndex];
+          const std::string centerPrefix = prefix + "scatter.paintCenter." +
+                                           std::to_string(centerIndex) + ".";
+          line(centerPrefix + "x", formatDoubleLossless(center.x));
+          line(centerPrefix + "y", formatDoubleLossless(center.y));
+          line(centerPrefix + "z", formatDoubleLossless(center.z));
+        }
+        line(prefix + "scatter.exclusion.count",
+             unsignedText(recipe.scatterExclusions.size()));
+        for (std::size_t exclusionIndex = 0U;
+             exclusionIndex < recipe.scatterExclusions.size();
+             ++exclusionIndex) {
+          const SaveCreativeDocumentPatternRecipeRecord::Exclusion& exclusion =
+              recipe.scatterExclusions[exclusionIndex];
+          const std::string exclusionPrefix =
+              prefix + "scatter.exclusion." +
+              std::to_string(exclusionIndex) + ".";
+          line(exclusionPrefix + "center.x",
+               formatDoubleLossless(exclusion.center.x));
+          line(exclusionPrefix + "center.y",
+               formatDoubleLossless(exclusion.center.y));
+          line(exclusionPrefix + "center.z",
+               formatDoubleLossless(exclusion.center.z));
+          line(exclusionPrefix + "radiusMeters",
+               formatDoubleLossless(exclusion.radiusMeters));
+        }
+        lineString(prefix + "scatter.mask", recipe.scatterMask);
+        lineString(prefix + "scatter.yaw", recipe.scatterYaw);
+        line(prefix + "scatter.baseYawRadians",
+             formatDoubleLossless(recipe.scatterBaseYawRadians));
+        line(prefix + "scatter.radiusMeters",
+             formatDoubleLossless(recipe.scatterRadiusMeters));
+        line(prefix + "scatter.spacingMeters",
+             formatDoubleLossless(recipe.scatterSpacingMeters));
+        line(prefix + "scatter.densityFraction",
+             formatDoubleLossless(recipe.scatterDensityFraction));
+        line(prefix + "scatter.scaleVariation",
+             formatDoubleLossless(recipe.scatterScaleVariation));
+        line(prefix + "scatter.maximumSlopeRadians",
+             formatDoubleLossless(recipe.scatterMaximumSlopeRadians));
+        lineBool(prefix + "scatter.projectToTerrainSurface",
+                 recipe.scatterProjectToTerrainSurface);
+        lineBool(prefix + "scatter.avoidCollisions",
+                 recipe.scatterAvoidCollisions);
+        line(prefix + "scatter.seed", unsignedText(recipe.scatterSeed));
+        line(prefix + "scatter.maxGeneratedObjects",
+             unsignedText(recipe.scatterMaxGeneratedObjects));
+      }
+    }
+    line("creativeDocument.measurementAnnotation.version",
+         unsignedText(section.measurementAnnotationStoreVersion));
+    line("creativeDocument.measurementAnnotation.nextId",
+         unsignedText(section.nextMeasurementAnnotationId));
+    line("creativeDocument.measurementAnnotation.count",
+         unsignedText(section.measurementAnnotations.size()));
+    for (std::size_t annotationIndex = 0U;
+         annotationIndex < section.measurementAnnotations.size();
+         ++annotationIndex) {
+      const SaveCreativeDocumentMeasurementAnnotationRecord& annotation =
+          section.measurementAnnotations[annotationIndex];
+      const std::string prefix = "creativeDocument.measurementAnnotation." +
+                                 std::to_string(annotationIndex) + ".";
+      line(prefix + "id", unsignedText(annotation.id));
+      lineString(prefix + "name", annotation.name);
+      lineString(prefix + "mode", annotation.mode);
+      lineString(prefix + "axis", annotation.axis);
+      lineBool(prefix + "closePath", annotation.closePath);
+      line(prefix + "point.count", unsignedText(annotation.points.size()));
+      for (std::size_t pointIndex = 0U;
+           pointIndex < annotation.points.size(); ++pointIndex) {
+        const SaveCreativeDocumentMeasurementAnnotationPointRecord& point =
+            annotation.points[pointIndex];
+        const std::string pointPrefix =
+            prefix + "point." + std::to_string(pointIndex) + ".";
+        line(pointPrefix + "x", formatDoubleLossless(point.x));
+        line(pointPrefix + "y", formatDoubleLossless(point.y));
+        line(pointPrefix + "z", formatDoubleLossless(point.z));
+        lineString(pointPrefix + "snapKind", point.snapKind);
+      }
     }
     line("creativeDocument.terrainMaterial.count",
          unsignedText(section.terrainMaterials.size()));
@@ -508,6 +1016,13 @@ private:
       line(p + "x", std::to_string(material.x));
       line(p + "z", std::to_string(material.z));
       lineString(p + "material", material.material);
+      lineBool(p + "weightsPresent", material.hasWeights);
+      if (material.hasWeights) {
+        line(p + "grassWeight", unsignedText(material.grassWeight));
+        line(p + "dirtWeight", unsignedText(material.dirtWeight));
+        line(p + "stoneWeight", unsignedText(material.stoneWeight));
+        line(p + "sandWeight", unsignedText(material.sandWeight));
+      }
     }
   }
 

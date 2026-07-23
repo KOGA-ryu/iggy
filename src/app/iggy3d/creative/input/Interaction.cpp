@@ -103,6 +103,7 @@ std::string_view toString(CreativeHeldItemKind kind) noexcept {
     case CreativeHeldItemKind::ObjectGroup: return "Group";
     case CreativeHeldItemKind::LogicLink: return "Link";
     case CreativeHeldItemKind::BuildingRoom: return "Room";
+    case CreativeHeldItemKind::Measure: return "Measure";
     case CreativeHeldItemKind::Count: break;
   }
   return "Unknown";
@@ -121,26 +122,6 @@ bool parseCreativeHeldItemKind(std::string_view value,
     }
   }
   return false;
-}
-
-CreativeHotbarState makeDefaultCreativeHotbar(
-    std::span<const CreativeObjectKind> materialPalette) noexcept {
-  const CreativeObjectKind material =
-      materialPalette.empty() ? CreativeObjectKind::Unknown
-                              : materialPalette.front();
-  CreativeHotbarState hotbar;
-  hotbar.entries = {
-      CreativeHotbarEntry{CreativeHeldItemKind::Material, material},
-      CreativeHotbarEntry{CreativeHeldItemKind::ObjectSelect, {}},
-      CreativeHotbarEntry{CreativeHeldItemKind::ObjectMove, {}},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeSelect, {}},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeFill, material},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeHollow, material},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeReplace, material},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeErase, {}},
-      CreativeHotbarEntry{CreativeHeldItemKind::VolumeClone, {}},
-  };
-  return hotbar;
 }
 
 CreativeHotbarEntry& selectedCreativeHotbarEntry(
@@ -208,7 +189,9 @@ bool assignCreativeHotbarFromObject(CreativeHotbarState& hotbar,
         {object.bounds.max.x - object.transform.position.x,
          object.bounds.max.y - object.transform.position.y,
          object.bounds.max.z - object.transform.position.z}};
-    if (!setCreativeHotbarAsset(replacement, object.assetId, sourceBounds)) {
+    if (!setCreativeHotbarAsset(
+            replacement, object.assetId, sourceBounds,
+            object.assetContentHash, object.assetMaterialVariant)) {
       return false;
     }
   }
@@ -225,9 +208,20 @@ std::string_view creativeHotbarAssetId(
           static_cast<std::size_t>(terminator - entry.assetId.begin())};
 }
 
+std::string_view creativeHotbarAssetMaterialVariant(
+    const CreativeHotbarEntry& entry) noexcept {
+  const auto terminator = std::find(entry.assetMaterialVariant.begin(),
+                                    entry.assetMaterialVariant.end(), '\0');
+  return {entry.assetMaterialVariant.data(),
+          static_cast<std::size_t>(terminator -
+                                   entry.assetMaterialVariant.begin())};
+}
+
 bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
                             std::string_view assetId,
-                            CreativeBounds sourceBounds) noexcept {
+                            CreativeBounds sourceBounds,
+                            std::uint64_t contentHash,
+                            std::string_view materialVariant) noexcept {
   const bool validId = !assetId.empty() &&
                        assetId.size() <= kCreativeHotbarAssetIdCapacity &&
                        assetId.front() != '/' &&
@@ -242,11 +236,22 @@ bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
                        });
   const CreativeBoundsMetrics bounds = measureCreativeBounds(sourceBounds);
   const bool validBounds = bounds.valid && isPositiveCreativeVec3(bounds.size);
-  if (!validId || !validBounds) {
+  const bool validVariant =
+      materialVariant.size() <= kCreativeHotbarMaterialVariantCapacity &&
+      std::all_of(materialVariant.begin(), materialVariant.end(), [](char value) {
+        const unsigned char byte = static_cast<unsigned char>(value);
+        return byte >= 0x20U && byte != 0x7FU;
+      });
+  if (!validId || !validBounds || !validVariant) {
     return false;
   }
   entry.assetId.fill('\0');
   std::copy(assetId.begin(), assetId.end(), entry.assetId.begin());
+  entry.assetContentHash = contentHash;
+  entry.hasAssetContentHash = contentHash != 0U;
+  entry.assetMaterialVariant.fill('\0');
+  std::copy(materialVariant.begin(), materialVariant.end(),
+            entry.assetMaterialVariant.begin());
   entry.assetSourceBounds = sourceBounds;
   entry.hasAssetBounds = true;
   return true;
@@ -254,8 +259,11 @@ bool setCreativeHotbarAsset(CreativeHotbarEntry& entry,
 
 void clearCreativeHotbarAsset(CreativeHotbarEntry& entry) noexcept {
   entry.assetId.fill('\0');
+  entry.assetContentHash = 0U;
+  entry.assetMaterialVariant.fill('\0');
   entry.assetSourceBounds = {};
   entry.hasAssetBounds = false;
+  entry.hasAssetContentHash = false;
 }
 
 bool creativeHeldItemIsVolumeOperation(CreativeHeldItemKind kind) noexcept {

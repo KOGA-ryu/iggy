@@ -1,11 +1,12 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBlockout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -17,22 +18,6 @@
 namespace iggy3d::creative {
 namespace {
 
-enum class EdgeOrientation : std::uint8_t { Horizontal, Vertical };
-
-struct EdgeRecord {
-  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
-  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
-  std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
-  CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::North;
-  EdgeOrientation orientation = EdgeOrientation::Horizontal;
-  std::int32_t line = 0;
-  std::int32_t begin = 0;
-  std::int32_t end = 0;
-  double baseLayer = 0.0;
-  std::uint16_t heightCells = 0U;
-  double thicknessCells = 0.0;
-};
-
 struct EdgeBinding {
   std::size_t wallIndex = kInvalidCreativeWorldLayoutIndex;
   std::int32_t edgeBegin = 0;
@@ -41,67 +26,17 @@ struct EdgeBinding {
   double edgeBaseLayer = 0.0;
 };
 
-constexpr std::size_t kRoomEdgeCount =
-    static_cast<std::size_t>(CreativeWorldLayoutRoomEdge::Count);
-
-std::size_t bindingIndex(std::size_t roomIndex,
-                         CreativeWorldLayoutRoomEdge edge) noexcept {
-  return roomIndex * kRoomEdgeCount + static_cast<std::size_t>(edge);
-}
-
-bool validRect(CreativeWorldLayoutRect rect) noexcept {
-  return rect.minimum.x < rect.maximum.x && rect.minimum.z < rect.maximum.z;
-}
-
-bool sameFloorTop(double lhs, double rhs) noexcept {
-  constexpr double kFloorTopEpsilonLayers = 1.0e-9;
-  return std::abs(lhs - rhs) <= kFloorTopEpsilonLayers;
-}
-
-bool roomsOverlap(const CreativeWorldLayoutRoom& lhs,
-                  const CreativeWorldLayoutRoom& rhs) noexcept {
-  if (lhs.buildingIndex != rhs.buildingIndex ||
-      lhs.levelIndex != rhs.levelIndex) {
-    return false;
-  }
-  return std::max(lhs.footprint.minimum.x, rhs.footprint.minimum.x) <
-             std::min(lhs.footprint.maximum.x, rhs.footprint.maximum.x) &&
-         std::max(lhs.footprint.minimum.z, rhs.footprint.minimum.z) <
-             std::min(lhs.footprint.maximum.z, rhs.footprint.maximum.z);
-}
-
-bool sameMergeLane(const EdgeRecord& lhs, const EdgeRecord& rhs) noexcept {
-  return lhs.buildingIndex == rhs.buildingIndex &&
-         lhs.levelIndex == rhs.levelIndex &&
-         lhs.orientation == rhs.orientation && lhs.line == rhs.line &&
-         lhs.baseLayer == rhs.baseLayer && lhs.heightCells == rhs.heightCells &&
-         lhs.thicknessCells == rhs.thicknessCells;
-}
-
-bool oppositeEdges(CreativeWorldLayoutRoomEdge lhs,
-                   CreativeWorldLayoutRoomEdge rhs) noexcept {
-  return (lhs == CreativeWorldLayoutRoomEdge::North &&
-          rhs == CreativeWorldLayoutRoomEdge::South) ||
-         (lhs == CreativeWorldLayoutRoomEdge::East &&
-          rhs == CreativeWorldLayoutRoomEdge::West) ||
-         (lhs == CreativeWorldLayoutRoomEdge::South &&
-          rhs == CreativeWorldLayoutRoomEdge::North) ||
-         (lhs == CreativeWorldLayoutRoomEdge::West &&
-          rhs == CreativeWorldLayoutRoomEdge::East);
-}
-
 bool exteriorWallProvenance(
     const CreativeWorldLayoutRoomCompileResult::WallProvenance& provenance)
     noexcept {
   if (provenance.contributors.empty()) {
     return false;
   }
-  for (std::size_t first = 0U; first < provenance.contributors.size();
-       ++first) {
+  for (std::size_t first = 0U; first < provenance.contributors.size(); ++first) {
     for (std::size_t second = first + 1U;
          second < provenance.contributors.size(); ++second) {
-      if (oppositeEdges(provenance.contributors[first].roomEdge,
-                        provenance.contributors[second].roomEdge)) {
+      if (provenance.contributors[first].topologyEdgeIndex ==
+          provenance.contributors[second].topologyEdgeIndex) {
         return false;
       }
     }
@@ -112,7 +47,9 @@ bool exteriorWallProvenance(
 bool sameFacadeRun(const CreativeWorldLayoutWall& lhs,
                    const CreativeWorldLayoutWall& rhs) noexcept {
   return lhs.buildingIndex == rhs.buildingIndex && lhs.start == rhs.start &&
-         lhs.end == rhs.end && lhs.thicknessCells == rhs.thicknessCells;
+         lhs.end == rhs.end && lhs.thicknessCells == rhs.thicknessCells &&
+         lhs.profile == rhs.profile && lhs.material == rhs.material &&
+         lhs.joinStyle == rhs.joinStyle;
 }
 
 bool mergeContiguousFacadeHeight(CreativeWorldLayoutWall& destination,
@@ -164,6 +101,8 @@ void mergeContiguousExteriorFacades(
     const bool exterior =
         wallIndex >= explicitWallCount &&
         wallIndex < result.wallProvenance.size() &&
+        result.expanded.walls[wallIndex].profile ==
+            CreativeWorldLayoutWallProfile::Exterior &&
         exteriorWallProvenance(result.wallProvenance[wallIndex]);
     std::size_t destinationIndex = kInvalidCreativeWorldLayoutIndex;
     if (exterior) {
@@ -205,55 +144,6 @@ void mergeContiguousExteriorFacades(
   result.wallProvenance = std::move(mergedProvenance);
 }
 
-bool sharedMergeLane(const EdgeRecord& lhs,
-                     const EdgeRecord& rhs) noexcept {
-  return lhs.buildingIndex == rhs.buildingIndex &&
-         lhs.levelIndex == rhs.levelIndex &&
-         lhs.orientation == rhs.orientation && lhs.line == rhs.line &&
-         sameFloorTop(lhs.baseLayer, rhs.baseLayer) &&
-         lhs.heightCells == rhs.heightCells &&
-         lhs.thicknessCells == rhs.thicknessCells &&
-         oppositeEdges(lhs.roomEdge, rhs.roomEdge);
-}
-
-auto edgeSortKey(const EdgeRecord& edge) noexcept {
-  return std::tuple{edge.buildingIndex, edge.levelIndex, edge.baseLayer,
-                    edge.heightCells, edge.thicknessCells, edge.orientation,
-                    edge.line, edge.begin, edge.end, edge.roomIndex,
-                    edge.roomEdge};
-}
-
-std::array<EdgeRecord, kRoomEdgeCount> roomEdges(
-    const CreativeWorldLayoutRoom& room, std::size_t roomIndex,
-    const CreativeWorldLayoutResolvedRoomGeometry& geometry) {
-  const CreativeWorldLayoutRect rect = room.footprint;
-  const auto make = [&](CreativeWorldLayoutRoomEdge edge,
-                        EdgeOrientation orientation, std::int32_t line,
-                        std::int32_t begin, std::int32_t end) {
-    return EdgeRecord{room.buildingIndex,
-                      room.levelIndex,
-                      roomIndex,
-                      edge,
-                      orientation,
-                      line,
-                      begin,
-                      end,
-                      geometry.floorTopLayer,
-                      geometry.wallHeightCells,
-                      room.wallThicknessCells};
-  };
-  return {
-      make(CreativeWorldLayoutRoomEdge::North, EdgeOrientation::Horizontal,
-           rect.minimum.z, rect.minimum.x, rect.maximum.x),
-      make(CreativeWorldLayoutRoomEdge::East, EdgeOrientation::Vertical,
-           rect.maximum.x, rect.minimum.z, rect.maximum.z),
-      make(CreativeWorldLayoutRoomEdge::South, EdgeOrientation::Horizontal,
-           rect.maximum.z, rect.minimum.x, rect.maximum.x),
-      make(CreativeWorldLayoutRoomEdge::West, EdgeOrientation::Vertical,
-           rect.minimum.x, rect.minimum.z, rect.maximum.z),
-  };
-}
-
 void setFailure(CreativeWorldLayoutRoomCompileResult& result,
                 CreativeWorldLayoutRoomCompileStatus status,
                 std::size_t failedIndex, std::string reasonCode) {
@@ -267,10 +157,6 @@ void setFailure(CreativeWorldLayoutRoomCompileResult& result,
 CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     const CreativeWorldLayout& layout) {
   CreativeWorldLayoutRoomCompileResult result;
-  result.expanded = layout;
-  result.expanded.rooms.clear();
-  result.wallProvenance.resize(layout.walls.size());
-
   const std::size_t invalidLevelIndex =
       firstInvalidCreativeWorldLayoutLevelIndex(layout);
   if (invalidLevelIndex != kInvalidCreativeWorldLayoutIndex) {
@@ -280,16 +166,60 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     return result;
   }
 
-  if (layout.rooms.size() >
-      (std::numeric_limits<std::size_t>::max() / kRoomEdgeCount)) {
-    setFailure(result, CreativeWorldLayoutRoomCompileStatus::CapacityExceeded,
-               kInvalidCreativeWorldLayoutIndex,
-               "creative_world_layout_room_edge_capacity_exceeded");
+  if (layout.rooms.empty()) {
+    if (!layout.topologyVertices.empty() || !layout.topologyEdges.empty() ||
+        !layout.roomBoundaries.empty()) {
+      setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
+                 kInvalidCreativeWorldLayoutIndex,
+                 "creative_world_layout_room_graph_orphan_data");
+      return result;
+    }
+    result.expanded = layout;
+    result.wallProvenance.resize(layout.walls.size());
+    result.accepted = true;
+    result.status = CreativeWorldLayoutRoomCompileStatus::Ready;
+    result.reasonCode = "creative_world_layout_rooms_expanded";
     return result;
   }
 
-  std::vector<EdgeRecord> edges;
-  edges.reserve(layout.rooms.size() * kRoomEdgeCount);
+  const CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      materializeCreativeWorldLayoutRoomGraph(layout);
+  if (!materialized.accepted) {
+    const CreativeWorldLayoutRoomCompileStatus status =
+        materialized.status ==
+                CreativeWorldLayoutRoomGraphStatus::OverlappingRooms
+            ? CreativeWorldLayoutRoomCompileStatus::OverlappingRooms
+        : materialized.status ==
+                CreativeWorldLayoutRoomGraphStatus::OpeningHostInvalid
+            ? CreativeWorldLayoutRoomCompileStatus::InvalidOpeningHost
+            : CreativeWorldLayoutRoomCompileStatus::InvalidRoom;
+    setFailure(result, status,
+               status == CreativeWorldLayoutRoomCompileStatus::InvalidOpeningHost
+                   ? materialized.failedOpeningIndex
+                   : kInvalidCreativeWorldLayoutIndex,
+               materialized.reasonCode);
+    return result;
+  }
+  const CreativeWorldLayout& canonical = materialized.edited;
+  const CreativeWorldLayoutRoomGraph graph =
+      buildCreativeWorldLayoutRoomGraph(canonical);
+  if (!graph.accepted) {
+    setFailure(result,
+               graph.status ==
+                       CreativeWorldLayoutRoomGraphStatus::OverlappingRooms
+                   ? CreativeWorldLayoutRoomCompileStatus::OverlappingRooms
+                   : CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
+               graph.failedRoomIndex, graph.reasonCode);
+    return result;
+  }
+
+  result.expanded = canonical;
+  result.expanded.rooms.clear();
+  result.expanded.topologyVertices.clear();
+  result.expanded.topologyEdges.clear();
+  result.expanded.roomBoundaries.clear();
+  result.wallProvenance.resize(canonical.walls.size());
+
   for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
        ++roomIndex) {
     const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
@@ -303,89 +233,208 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     const CreativeWorldLayoutResolvedRoomGeometry geometry =
         resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex);
     if (room.buildingIndex >= layout.buildings.size() || room.name.empty() ||
-        !geometry.valid || !validRect(room.footprint) ||
+        !geometry.valid ||
         !std::isfinite(room.wallThicknessCells) ||
-        room.wallThicknessCells <= 0.0 ||
-        (static_cast<double>(room.footprint.maximum.x) -
-         static_cast<double>(room.footprint.minimum.x)) <=
-            room.wallThicknessCells * 2.0 ||
-        (static_cast<double>(room.footprint.maximum.z) -
-         static_cast<double>(room.footprint.minimum.z)) <=
-            room.wallThicknessCells * 2.0) {
+        room.wallThicknessCells <= 0.0) {
       setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidRoom,
                  roomIndex, "creative_world_layout_room_invalid");
       return result;
     }
-    for (std::size_t prior = 0U; prior < roomIndex; ++prior) {
-      if (roomsOverlap(layout.rooms[prior], room)) {
-        setFailure(result,
-                   CreativeWorldLayoutRoomCompileStatus::OverlappingRooms,
-                   roomIndex, "creative_world_layout_rooms_overlap");
-        return result;
-      }
-    }
-
-    const auto generated = roomEdges(room, roomIndex, geometry);
-    edges.insert(edges.end(), generated.begin(), generated.end());
   }
 
-  std::sort(edges.begin(), edges.end(),
-            [](const EdgeRecord& lhs, const EdgeRecord& rhs) {
-              return edgeSortKey(lhs) < edgeSortKey(rhs);
-            });
+  std::vector<std::vector<CreativeWorldLayoutRoomCompileResult::WallContributor>>
+      contributors(graph.edges.size());
+  for (const CreativeWorldLayoutRoomBoundary& boundary : graph.boundaries) {
+    CreativeWorldLayoutRoomEdge cardinal = CreativeWorldLayoutRoomEdge::Count;
+    const CreativeWorldLayoutTopologyEdge& edge =
+        graph.edges[boundary.topologyEdgeIndex];
+    const CreativeTerrainCoord2 start =
+        graph.vertices[edge.startVertexIndex].position;
+    const CreativeTerrainCoord2 end =
+        graph.vertices[edge.endVertexIndex].position;
+    const CreativeWorldLayoutRect bounds = graph.roomBounds[boundary.roomIndex];
+    if (start.z == bounds.minimum.z && end.z == bounds.minimum.z) {
+      cardinal = CreativeWorldLayoutRoomEdge::North;
+    } else if (start.x == bounds.maximum.x && end.x == bounds.maximum.x) {
+      cardinal = CreativeWorldLayoutRoomEdge::East;
+    } else if (start.z == bounds.maximum.z && end.z == bounds.maximum.z) {
+      cardinal = CreativeWorldLayoutRoomEdge::South;
+    } else if (start.x == bounds.minimum.x && end.x == bounds.minimum.x) {
+      cardinal = CreativeWorldLayoutRoomEdge::West;
+    }
+    contributors[boundary.topologyEdgeIndex].push_back(
+        {boundary.roomIndex, cardinal, boundary.topologyEdgeIndex});
+  }
 
-  std::vector<EdgeBinding> bindings(layout.rooms.size() * kRoomEdgeCount);
-  for (std::size_t cursor = 0U; cursor < edges.size();) {
+  struct GraphEdgeLane {
+    std::size_t edgeIndex = kInvalidCreativeWorldLayoutIndex;
+    std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+    std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+    double baseLayer = 0.0;
+    std::uint16_t heightCells = 0U;
+    double thicknessCells = 0.0;
+    CreativeWorldLayoutWallProfile profile =
+        CreativeWorldLayoutWallProfile::Automatic;
+    CreativeStructuralMaterial material =
+        CreativeStructuralMaterial::Blockout;
+    CreativeWorldLayoutWallJoinStyle joinStyle =
+        CreativeWorldLayoutWallJoinStyle::Square;
+    bool horizontal = false;
+    bool exterior = false;
+    std::int32_t line = 0;
+    std::int32_t begin = 0;
+    std::int32_t end = 0;
+  };
+  struct BlockoutWallMaterials {
+    bool valid = false;
+    CreativeStructuralMaterial exterior =
+        CreativeStructuralMaterial::Blockout;
+    CreativeStructuralMaterial interior =
+        CreativeStructuralMaterial::Blockout;
+  };
+  std::vector<BlockoutWallMaterials> blockoutWallMaterials(
+      canonical.buildings.size());
+  if (!graph.sourceWasExplicit) {
+    for (std::size_t buildingIndex = 0U;
+         buildingIndex < blockoutWallMaterials.size(); ++buildingIndex) {
+      BlockoutWallMaterials& materials =
+          blockoutWallMaterials[buildingIndex];
+      materials.valid = creativeWorldLayoutBuildingBlockoutWallMaterial(
+                            canonical, buildingIndex,
+                            CreativeWorldLayoutWallProfile::Exterior,
+                            materials.exterior) &&
+                        creativeWorldLayoutBuildingBlockoutWallMaterial(
+                            canonical, buildingIndex,
+                            CreativeWorldLayoutWallProfile::Interior,
+                            materials.interior);
+    }
+  }
+  std::vector<GraphEdgeLane> lanes;
+  lanes.reserve(graph.edges.size());
+  for (std::size_t edgeIndex = 0U; edgeIndex < graph.edges.size();
+       ++edgeIndex) {
+    const CreativeWorldLayoutTopologyEdge& edge = graph.edges[edgeIndex];
+    const CreativeWorldLayoutLevel& level = canonical.levels[edge.levelIndex];
+    const CreativeTerrainCoord2 start =
+        graph.vertices[edge.startVertexIndex].position;
+    const CreativeTerrainCoord2 end =
+        graph.vertices[edge.endVertexIndex].position;
+    const bool horizontal = start.z == end.z;
+    const CreativeWorldLayoutWallProfile profile =
+        edge.profile == CreativeWorldLayoutWallProfile::Automatic
+            ? (contributors[edgeIndex].size() == 1U
+                   ? CreativeWorldLayoutWallProfile::Exterior
+                   : CreativeWorldLayoutWallProfile::Interior)
+            : edge.profile;
+    CreativeStructuralMaterial material = edge.material;
+    if (level.buildingIndex < blockoutWallMaterials.size() &&
+        blockoutWallMaterials[level.buildingIndex].valid) {
+      material = profile == CreativeWorldLayoutWallProfile::Exterior
+                     ? blockoutWallMaterials[level.buildingIndex].exterior
+                     : blockoutWallMaterials[level.buildingIndex].interior;
+    }
+    lanes.push_back({edgeIndex,
+                     level.buildingIndex,
+                     edge.levelIndex,
+                     level.floorTopLayer,
+                     edge.wallHeightCells == 0U ? level.wallHeightCells
+                                                : edge.wallHeightCells,
+                     edge.wallThicknessCells,
+                     profile,
+                     material,
+                     edge.joinStyle,
+                     horizontal,
+                     contributors[edgeIndex].size() == 1U,
+                     horizontal ? start.z : start.x,
+                     horizontal ? start.x : start.z,
+                     horizontal ? end.x : end.z});
+  }
+  std::sort(lanes.begin(), lanes.end(), [](const GraphEdgeLane& lhs,
+                                           const GraphEdgeLane& rhs) {
+    return std::tuple{lhs.buildingIndex, lhs.levelIndex, lhs.baseLayer,
+                      lhs.heightCells, lhs.thicknessCells,
+                      lhs.profile, lhs.material, lhs.joinStyle,
+                      lhs.horizontal ? 0U : 1U, lhs.exterior, lhs.line,
+                      lhs.begin, lhs.end, lhs.edgeIndex} <
+           std::tuple{rhs.buildingIndex, rhs.levelIndex, rhs.baseLayer,
+                      rhs.heightCells, rhs.thicknessCells,
+                      rhs.profile, rhs.material, rhs.joinStyle,
+                      rhs.horizontal ? 0U : 1U, rhs.exterior, rhs.line,
+                      rhs.begin, rhs.end, rhs.edgeIndex};
+  });
+
+  std::vector<EdgeBinding> bindings(graph.edges.size());
+  for (std::size_t cursor = 0U; cursor < lanes.size();) {
     const std::size_t laneBegin = cursor;
-    std::int32_t mergedBegin = edges[cursor].begin;
-    std::int32_t mergedEnd = edges[cursor].end;
+    std::int32_t mergedBegin = lanes[cursor].begin;
+    std::int32_t mergedEnd = lanes[cursor].end;
     ++cursor;
-    while (cursor < edges.size() &&
-           sameMergeLane(edges[laneBegin], edges[cursor]) &&
-           edges[cursor].begin <= mergedEnd) {
-      mergedEnd = std::max(mergedEnd, edges[cursor].end);
+    const auto sameRun = [](const GraphEdgeLane& lhs,
+                            const GraphEdgeLane& rhs) {
+      return lhs.buildingIndex == rhs.buildingIndex &&
+             lhs.levelIndex == rhs.levelIndex &&
+             lhs.baseLayer == rhs.baseLayer &&
+             lhs.heightCells == rhs.heightCells &&
+             lhs.thicknessCells == rhs.thicknessCells &&
+             lhs.profile == rhs.profile && lhs.material == rhs.material &&
+             lhs.joinStyle == rhs.joinStyle &&
+             lhs.horizontal == rhs.horizontal &&
+             lhs.exterior == rhs.exterior && lhs.line == rhs.line;
+    };
+    while (cursor < lanes.size() &&
+           sameRun(lanes[laneBegin], lanes[cursor]) &&
+           lanes[cursor].begin <= mergedEnd) {
+      mergedEnd = std::max(mergedEnd, lanes[cursor].end);
       ++cursor;
     }
 
-    const EdgeRecord& lane = edges[laneBegin];
+    const GraphEdgeLane& lane = lanes[laneBegin];
     CreativeWorldLayoutWall wall;
     wall.buildingIndex = lane.buildingIndex;
-    wall.stableKey =
-        "room_shell_wall_" + std::to_string(result.expanded.walls.size());
+    wall.stableKey = canonical.levels[lane.levelIndex].stableKey +
+                     ".topology.wall." +
+                     (lane.horizontal ? "h." : "v.") +
+                     std::to_string(lane.line) + "." +
+                     std::to_string(mergedBegin) + "." +
+                     std::to_string(mergedEnd);
     wall.name =
-        "Room Shell Wall " + std::to_string(result.expanded.walls.size() + 1U);
-    wall.start = lane.orientation == EdgeOrientation::Horizontal
+        "Room Wall " + std::to_string(result.expanded.walls.size() + 1U);
+    wall.start = lane.horizontal
                      ? CreativeTerrainCoord2{mergedBegin, lane.line}
                      : CreativeTerrainCoord2{lane.line, mergedBegin};
-    wall.end = lane.orientation == EdgeOrientation::Horizontal
+    wall.end = lane.horizontal
                    ? CreativeTerrainCoord2{mergedEnd, lane.line}
                    : CreativeTerrainCoord2{lane.line, mergedEnd};
     wall.baseLayer = lane.baseLayer;
     wall.heightCells = lane.heightCells;
     wall.thicknessCells = lane.thicknessCells;
+    wall.profile = lane.profile;
+    wall.material = lane.material;
+    wall.joinStyle = lane.joinStyle;
     const std::size_t wallIndex = result.expanded.walls.size();
     result.expanded.walls.push_back(std::move(wall));
     CreativeWorldLayoutRoomCompileResult::WallProvenance provenance;
-    provenance.contributors.reserve(cursor - laneBegin);
-
-    for (std::size_t edgeIndex = laneBegin; edgeIndex < cursor; ++edgeIndex) {
-      const EdgeRecord& edge = edges[edgeIndex];
-      provenance.contributors.push_back({edge.roomIndex, edge.roomEdge});
-      bindings[bindingIndex(edge.roomIndex, edge.roomEdge)] = {
-          wallIndex, edge.begin, mergedBegin, edge.end - edge.begin,
-          edge.baseLayer};
+    for (std::size_t laneIndex = laneBegin; laneIndex < cursor; ++laneIndex) {
+      const GraphEdgeLane& edgeLane = lanes[laneIndex];
+      const auto& edgeContributors = contributors[edgeLane.edgeIndex];
+      provenance.contributors.insert(provenance.contributors.end(),
+                                     edgeContributors.begin(),
+                                     edgeContributors.end());
+      bindings[edgeLane.edgeIndex] = {
+          wallIndex, edgeLane.begin, mergedBegin,
+          edgeLane.end - edgeLane.begin, edgeLane.baseLayer};
     }
     result.wallProvenance.push_back(std::move(provenance));
   }
 
-  mergeContiguousExteriorFacades(layout.walls.size(), result, bindings);
+  mergeContiguousExteriorFacades(canonical.walls.size(), result, bindings);
 
   for (std::size_t openingIndex = 0U;
        openingIndex < result.expanded.openings.size(); ++openingIndex) {
     CreativeWorldLayoutOpening& opening =
         result.expanded.openings[openingIndex];
     if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::Wall) {
-      if (opening.wallIndex >= layout.walls.size()) {
+      if (opening.wallIndex >= canonical.walls.size()) {
         setFailure(
             result, CreativeWorldLayoutRoomCompileStatus::InvalidOpeningHost,
             openingIndex, "creative_world_layout_opening_wall_host_invalid");
@@ -394,16 +443,15 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
       continue;
     }
     if (opening.hostKind != CreativeWorldLayoutOpeningHostKind::RoomEdge ||
-        opening.roomIndex >= layout.rooms.size() ||
-        opening.roomEdge >= CreativeWorldLayoutRoomEdge::Count ||
+        opening.roomIndex >= canonical.rooms.size() ||
+        opening.roomTopologyEdgeIndex >= bindings.size() ||
         !std::isfinite(opening.centerOffsetCells)) {
       setFailure(
           result, CreativeWorldLayoutRoomCompileStatus::InvalidOpeningHost,
           openingIndex, "creative_world_layout_opening_room_host_invalid");
       return result;
     }
-    const EdgeBinding& binding =
-        bindings[bindingIndex(opening.roomIndex, opening.roomEdge)];
+    const EdgeBinding& binding = bindings[opening.roomTopologyEdgeIndex];
     const double halfWidth = opening.widthCells * 0.5;
     if (binding.wallIndex == kInvalidCreativeWorldLayoutIndex ||
         !std::isfinite(opening.widthCells) || opening.widthCells <= 0.0 ||
@@ -431,6 +479,7 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
     }
     opening.hostKind = CreativeWorldLayoutOpeningHostKind::Wall;
     opening.roomIndex = kInvalidCreativeWorldLayoutIndex;
+    opening.roomTopologyEdgeIndex = kInvalidCreativeWorldLayoutIndex;
   }
 
   result.accepted = true;
@@ -444,42 +493,61 @@ std::vector<CreativeWorldLayoutSharedRoomEdgeSpan>
 inspectCreativeWorldLayoutSharedRoomEdges(
     const CreativeWorldLayout& layout) {
   std::vector<CreativeWorldLayoutSharedRoomEdgeSpan> spans;
-  for (std::size_t firstRoomIndex = 0U;
-       firstRoomIndex < layout.rooms.size(); ++firstRoomIndex) {
-    const auto firstEdges = roomEdges(
-        layout.rooms[firstRoomIndex], firstRoomIndex,
-        resolveCreativeWorldLayoutRoomGeometry(layout, firstRoomIndex));
-    for (std::size_t secondRoomIndex = firstRoomIndex + 1U;
-         secondRoomIndex < layout.rooms.size(); ++secondRoomIndex) {
-      const auto secondEdges = roomEdges(
-          layout.rooms[secondRoomIndex], secondRoomIndex,
-          resolveCreativeWorldLayoutRoomGeometry(layout, secondRoomIndex));
-      for (const EdgeRecord& first : firstEdges) {
-        for (const EdgeRecord& second : secondEdges) {
-          if (!sharedMergeLane(first, second)) {
-            continue;
-          }
-          const std::int32_t begin = std::max(first.begin, second.begin);
-          const std::int32_t end = std::min(first.end, second.end);
-          if (begin >= end) {
-            continue;
-          }
-          spans.push_back({
-              firstRoomIndex,
-              first.roomEdge,
-              secondRoomIndex,
-              second.roomEdge,
-              first.orientation == EdgeOrientation::Horizontal
-                  ? CreativeTerrainCoord2{begin, first.line}
-                  : CreativeTerrainCoord2{first.line, begin},
-              first.orientation == EdgeOrientation::Horizontal
-                  ? CreativeTerrainCoord2{end, first.line}
-                  : CreativeTerrainCoord2{first.line, end},
-          });
-        }
-      }
-    }
+  const CreativeWorldLayoutRoomGraph graph =
+      buildCreativeWorldLayoutRoomGraph(layout);
+  if (!graph.accepted) {
+    return spans;
   }
+  std::vector<std::vector<const CreativeWorldLayoutRoomBoundary*>> owners(
+      graph.edges.size());
+  for (const CreativeWorldLayoutRoomBoundary& boundary : graph.boundaries) {
+    owners[boundary.topologyEdgeIndex].push_back(&boundary);
+  }
+  const auto cardinal = [&](const CreativeWorldLayoutRoomBoundary& boundary) {
+    const CreativeWorldLayoutTopologyEdge& edge =
+        graph.edges[boundary.topologyEdgeIndex];
+    const CreativeTerrainCoord2 start =
+        graph.vertices[edge.startVertexIndex].position;
+    const CreativeTerrainCoord2 end =
+        graph.vertices[edge.endVertexIndex].position;
+    const CreativeWorldLayoutRect bounds = graph.roomBounds[boundary.roomIndex];
+    if (start.z == bounds.minimum.z && end.z == bounds.minimum.z) {
+      return CreativeWorldLayoutRoomEdge::North;
+    }
+    if (start.x == bounds.maximum.x && end.x == bounds.maximum.x) {
+      return CreativeWorldLayoutRoomEdge::East;
+    }
+    if (start.z == bounds.maximum.z && end.z == bounds.maximum.z) {
+      return CreativeWorldLayoutRoomEdge::South;
+    }
+    if (start.x == bounds.minimum.x && end.x == bounds.minimum.x) {
+      return CreativeWorldLayoutRoomEdge::West;
+    }
+    return CreativeWorldLayoutRoomEdge::Count;
+  };
+  for (std::size_t edgeIndex = 0U; edgeIndex < owners.size(); ++edgeIndex) {
+    if (owners[edgeIndex].size() != 2U) {
+      continue;
+    }
+    const CreativeWorldLayoutRoomBoundary* first = owners[edgeIndex][0];
+    const CreativeWorldLayoutRoomBoundary* second = owners[edgeIndex][1];
+    if (second->roomIndex < first->roomIndex) {
+      std::swap(first, second);
+    }
+    const CreativeWorldLayoutTopologyEdge& edge = graph.edges[edgeIndex];
+    spans.push_back({first->roomIndex,
+                     cardinal(*first),
+                     second->roomIndex,
+                     cardinal(*second),
+                     graph.vertices[edge.startVertexIndex].position,
+                     graph.vertices[edge.endVertexIndex].position});
+  }
+  std::sort(spans.begin(), spans.end(), [](const auto& lhs, const auto& rhs) {
+    return std::tie(lhs.firstRoomIndex, lhs.secondRoomIndex, lhs.start.x,
+                    lhs.start.z, lhs.end.x, lhs.end.z) <
+           std::tie(rhs.firstRoomIndex, rhs.secondRoomIndex, rhs.start.x,
+                    rhs.start.z, rhs.end.x, rhs.end.z);
+  });
   return spans;
 }
 
@@ -495,39 +563,51 @@ bool creativeWorldLayoutRoomEdgeIntervalIsShared(
   }
   const double intervalBegin = centerOffsetCells - widthCells * 0.5;
   const double intervalEnd = centerOffsetCells + widthCells * 0.5;
-  const CreativeWorldLayoutRoom& room = layout.rooms[roomIndex];
-  const auto candidateEdges = roomEdges(
-      room, roomIndex,
-      resolveCreativeWorldLayoutRoomGeometry(layout, roomIndex));
-  const EdgeRecord& candidate =
-      candidateEdges[static_cast<std::size_t>(roomEdge)];
-  const double offsetOrigin =
-      candidate.orientation == EdgeOrientation::Horizontal
-          ? static_cast<double>(room.footprint.minimum.x)
-          : static_cast<double>(room.footprint.minimum.z);
-  for (std::size_t otherRoomIndex = 0U;
-       otherRoomIndex < layout.rooms.size(); ++otherRoomIndex) {
-    if (otherRoomIndex == roomIndex) {
+  const CreativeWorldLayoutRoomGraph graph =
+      buildCreativeWorldLayoutRoomGraph(layout);
+  if (!graph.accepted) {
+    return false;
+  }
+  std::vector<std::size_t> edgeUseCount(graph.edges.size(), 0U);
+  for (const CreativeWorldLayoutRoomBoundary& boundary : graph.boundaries) {
+    ++edgeUseCount[boundary.topologyEdgeIndex];
+  }
+  const CreativeWorldLayoutRect bounds = graph.roomBounds[roomIndex];
+  const bool horizontal = roomEdge == CreativeWorldLayoutRoomEdge::North ||
+                          roomEdge == CreativeWorldLayoutRoomEdge::South;
+  const double origin = horizontal ? static_cast<double>(bounds.minimum.x)
+                                   : static_cast<double>(bounds.minimum.z);
+  for (const CreativeWorldLayoutRoomBoundary& boundary :
+       creativeWorldLayoutRoomBoundaries(graph, roomIndex)) {
+    if (edgeUseCount[boundary.topologyEdgeIndex] != 2U) {
       continue;
     }
-    const auto otherEdges = roomEdges(
-        layout.rooms[otherRoomIndex], otherRoomIndex,
-        resolveCreativeWorldLayoutRoomGeometry(layout, otherRoomIndex));
-    const auto found = std::find_if(
-        otherEdges.begin(), otherEdges.end(), [&](const EdgeRecord& edge) {
-          return sharedMergeLane(candidate, edge) &&
-                 std::max(candidate.begin, edge.begin) <
-                     std::min(candidate.end, edge.end);
-        });
-    if (found == otherEdges.end()) {
+    const CreativeWorldLayoutTopologyEdge& edge =
+        graph.edges[boundary.topologyEdgeIndex];
+    const CreativeTerrainCoord2 start =
+        graph.vertices[edge.startVertexIndex].position;
+    const CreativeTerrainCoord2 end =
+        graph.vertices[edge.endVertexIndex].position;
+    const bool sideMatches =
+        (roomEdge == CreativeWorldLayoutRoomEdge::North &&
+         start.z == bounds.minimum.z && end.z == bounds.minimum.z) ||
+        (roomEdge == CreativeWorldLayoutRoomEdge::East &&
+         start.x == bounds.maximum.x && end.x == bounds.maximum.x) ||
+        (roomEdge == CreativeWorldLayoutRoomEdge::South &&
+         start.z == bounds.maximum.z && end.z == bounds.maximum.z) ||
+        (roomEdge == CreativeWorldLayoutRoomEdge::West &&
+         start.x == bounds.minimum.x && end.x == bounds.minimum.x);
+    if (!sideMatches) {
       continue;
     }
     const double sharedBegin =
-        static_cast<double>(std::max(candidate.begin, found->begin)) -
-        offsetOrigin;
+        (horizontal ? static_cast<double>(start.x)
+                    : static_cast<double>(start.z)) -
+        origin;
     const double sharedEnd =
-        static_cast<double>(std::min(candidate.end, found->end)) -
-        offsetOrigin;
+        (horizontal ? static_cast<double>(end.x)
+                    : static_cast<double>(end.z)) -
+        origin;
     if (std::max(intervalBegin, sharedBegin) <
         std::min(intervalEnd, sharedEnd)) {
       return true;
@@ -538,13 +618,28 @@ bool creativeWorldLayoutRoomEdgeIntervalIsShared(
 
 bool creativeWorldLayoutHasInteriorRoomWindow(
     const CreativeWorldLayout& layout) {
+  const CreativeWorldLayoutRoomGraph graph =
+      buildCreativeWorldLayoutRoomGraph(layout);
+  std::vector<std::size_t> edgeUseCount;
+  if (graph.accepted) {
+    edgeUseCount.assign(graph.edges.size(), 0U);
+    for (const CreativeWorldLayoutRoomBoundary& boundary : graph.boundaries) {
+      ++edgeUseCount[boundary.topologyEdgeIndex];
+    }
+  }
   for (const CreativeWorldLayoutOpening& opening : layout.openings) {
     if (opening.kind == CreativeBuildingOpeningKind::Window &&
-        opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-        creativeWorldLayoutRoomEdgeIntervalIsShared(
-            layout, opening.roomIndex, opening.roomEdge,
-            opening.centerOffsetCells, opening.widthCells)) {
-      return true;
+        opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
+      if (opening.roomTopologyEdgeIndex < edgeUseCount.size() &&
+          edgeUseCount[opening.roomTopologyEdgeIndex] == 2U) {
+        return true;
+      }
+      if (opening.roomTopologyEdgeIndex == kInvalidCreativeWorldLayoutIndex &&
+          creativeWorldLayoutRoomEdgeIntervalIsShared(
+              layout, opening.roomIndex, opening.roomEdge,
+              opening.centerOffsetCells, opening.widthCells)) {
+        return true;
+      }
     }
   }
   return false;

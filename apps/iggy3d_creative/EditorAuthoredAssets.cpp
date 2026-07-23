@@ -1,5 +1,9 @@
 #include "EditorAuthoredAssets.hpp"
 
+#include "EditorAttachmentPlacement.hpp"
+
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+
 #include <algorithm>
 #include <charconv>
 #include <filesystem>
@@ -9,6 +13,7 @@
 #include <utility>
 
 #include "EditorGroup.hpp"
+#include "EditorEdits.hpp"
 #include "EditorPlacementClearance.hpp"
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -137,8 +142,19 @@ writeAuthoredAssetDocument(
 [[nodiscard]] CreativeBrushPlacementAdmission placementPreview(
     const CreativeEditorState& editor,
     const cr::CreativeHotbarEntry& held) noexcept {
-  return admitBrushPlacement(held, editor.interaction.target.grid,
-                             editor.toolSettings.placementYaw);
+  const CreativeAssetAlignmentPlan alignment = resolveCreativeAssetAlignment(
+      editor.interaction.target.grid,
+      editor.toolSettings.assetAlignmentMode);
+  if (!alignment.valid) {
+    CreativeBrushPlacementAdmission admission;
+    admission.plan.brush = held.objectKind;
+    admission.status =
+        creativeAssetAlignmentAdmissionStatus(alignment.status);
+    return admission;
+  }
+  return admitBrushPlacement(held, alignment.target,
+                             editor.toolSettings.placementYaw,
+                             editor.toolSettings.assetAlignmentMode);
 }
 
 void ensureTransaction(cr::CreativeAppState& appState,
@@ -147,6 +163,39 @@ void ensureTransaction(cr::CreativeAppState& appState,
     stroke.transaction = beginEditTransaction(
         appState.facade, "creative_authored_asset_stroke");
   }
+}
+
+[[nodiscard]] std::string_view authoredAssetRefreshAction(
+    cr::CreativeAuthoredAssetRefreshMode mode) noexcept {
+  switch (mode) {
+    case cr::CreativeAuthoredAssetRefreshMode::SelectedInstance:
+      return "Prefab.RefreshSelected";
+    case cr::CreativeAuthoredAssetRefreshMode::SafeInstances:
+      return "Prefab.RefreshSafe";
+    case cr::CreativeAuthoredAssetRefreshMode::ForceAll:
+      return "Prefab.RefreshAll";
+  }
+  return {};
+}
+
+[[nodiscard]] bool setStrokeOperation(
+    CreativeAuthoredAssetStrokeState& stroke,
+    cr::CreativeAuthoringOperationKind kind,
+    std::string_view action,
+    std::uint64_t requestFingerprint,
+    std::uint64_t affectedMemberCount,
+    std::uint64_t& nextFingerprint) {
+  const cr::CreativeAuthoredAssetFingerprint folded =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          stroke.operationFingerprint, requestFingerprint);
+  if (!folded.valid ||
+      !cr::setCreativeHistoryTransactionOperation(
+          stroke.transaction, cr::CreativeAuthoringFamily::Prefab, kind,
+          action, folded.value, affectedMemberCount)) {
+    return false;
+  }
+  nextFingerprint = folded.value;
+  return true;
 }
 
 void applyPlacement(cr::CreativeAppState& appState,
@@ -192,7 +241,6 @@ void applyPlacement(cr::CreativeAppState& appState,
     return;
   }
 
-  ensureTransaction(appState, stroke);
   cr::CreativeAuthoredAssetPlacementRequest request;
   request.definition = definition;
   request.instanceTransform = admission.plan.transform;
@@ -200,6 +248,22 @@ void applyPlacement(cr::CreativeAppState& appState,
       activeCreativeEditorGroupFocusId(editor.groupFocus);
   if (activeParent != cr::kInvalidObjectId) {
     request.parentId = activeParent;
+  }
+  const cr::CreativeAuthoredAssetFingerprint requestFingerprint =
+      cr::fingerprintCreativeAuthoredAssetPlacementRequest(request);
+  ensureTransaction(appState, stroke);
+  std::uint64_t nextFingerprint = 0U;
+  const std::uint64_t expectedAffectedCount =
+      stroke.affectedMemberCount + definition->content.objects.size() + 1U;
+  if (!requestFingerprint.valid ||
+      !setStrokeOperation(stroke, cr::CreativeAuthoringOperationKind::Apply,
+                          "Prefab.PlaceStroke",
+                          requestFingerprint.value, expectedAffectedCount,
+                          nextFingerprint)) {
+    setCreativeEditorPlacementFeedback(
+        editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
+        editor.frameIndex, cr::CreativeObjectKind::PrefabInstance);
+    return;
   }
   const cr::CreativeAuthoredAssetInstanceReceipt receipt =
       appState.facade.instantiateAuthoredAsset(request);
@@ -209,6 +273,13 @@ void applyPlacement(cr::CreativeAppState& appState,
         editor.frameIndex, cr::CreativeObjectKind::PrefabInstance);
     return;
   }
+  stroke.operationFingerprint = nextFingerprint;
+  stroke.affectedMemberCount += receipt.instanceObjectIds.size() + 1U;
+  static_cast<void>(cr::setCreativeHistoryTransactionOperation(
+      stroke.transaction, cr::CreativeAuthoringFamily::Prefab,
+      cr::CreativeAuthoringOperationKind::Apply, "Prefab.PlaceStroke",
+      stroke.operationFingerprint,
+      stroke.affectedMemberCount));
   static_cast<void>(cr::rememberCreativeWorldGestureKey(stroke.visited, key));
   ++stroke.acceptedMutationCount;
   ++editor.placedCount;
@@ -232,15 +303,51 @@ void applyRemoval(cr::CreativeAppState& appState,
     stroke.capacityReached = true;
     return;
   }
-  ensureTransaction(appState, stroke);
-  const cr::CreativeDocumentRemoveReceipt receipt =
-      appState.facade.removeDocumentObject(rootId);
-  if (!receipt.accepted || !receipt.objectRemoved) {
-    setCreativeEditorPlacementFeedback(
-        editor.interaction, CreativeEditorPlacementFeedbackStatus::Rejected,
-        editor.frameIndex, cr::CreativeObjectKind::PrefabInstance);
+  if (creativeEditorObjectRequiresSourceEdit(appState.facade.document(),
+                                             rootId)) {
+    setCreativeEditorPlacementRejectionFeedback(
+        editor.interaction, editor.frameIndex,
+        cr::CreativeObjectKind::PrefabInstance, {},
+        CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
     return;
   }
+  const cr::CreativeObject* root = appState.facade.findObject(rootId);
+  const cr::CreativeAuthoredAssetFingerprint requestFingerprint =
+      root != nullptr ? cr::fingerprintCreativeAuthoredAssetInstance(*root)
+                      : cr::CreativeAuthoredAssetFingerprint{};
+  ensureTransaction(appState, stroke);
+  std::uint64_t nextFingerprint = 0U;
+  if (!requestFingerprint.valid ||
+      !setStrokeOperation(
+          stroke, cr::CreativeAuthoringOperationKind::Destructive,
+          "Prefab.RemoveStroke",
+                          requestFingerprint.value,
+                          stroke.affectedMemberCount, nextFingerprint)) {
+    setCreativeEditorPlacementRejectionFeedback(
+        editor.interaction, editor.frameIndex,
+        cr::CreativeObjectKind::PrefabInstance, {},
+        CreativeEditorPlacementRejectionReason::ActionRejected);
+    return;
+  }
+  const cr::CreativeSemanticDeleteReceipt receipt =
+      appState.facade.deleteDocumentObjectsSemantically(
+          std::span{&rootId, 1U});
+  if (!receipt.accepted || !receipt.changed) {
+    setCreativeEditorPlacementRejectionFeedback(
+        editor.interaction, editor.frameIndex,
+        cr::CreativeObjectKind::PrefabInstance, {},
+        receipt.status == cr::CreativeSemanticDeleteStatus::ExternalReference
+            ? CreativeEditorPlacementRejectionReason::ExternalReference
+            : CreativeEditorPlacementRejectionReason::ActionRejected);
+    return;
+  }
+  stroke.operationFingerprint = nextFingerprint;
+  stroke.affectedMemberCount += receipt.removedObjectCount;
+  static_cast<void>(cr::setCreativeHistoryTransactionOperation(
+      stroke.transaction, cr::CreativeAuthoringFamily::Prefab,
+      cr::CreativeAuthoringOperationKind::Destructive,
+      "Prefab.RemoveStroke", stroke.operationFingerprint,
+      stroke.affectedMemberCount));
   static_cast<void>(cr::rememberCreativeWorldGestureKey(stroke.visited, key));
   ++stroke.acceptedMutationCount;
   clearCreativeEditorPlacementFeedback(editor.interaction);
@@ -414,7 +521,8 @@ updateCreativeEditorAuthoredAssetFromInstance(
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
-  if (instance->locked) {
+  if (cr::creativeObjectEffectivelyLocked(appState.facade.document(),
+                                          instance->id)) {
     receipt.reasonCode = "creative_authored_asset_update_instance_locked";
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -440,6 +548,29 @@ updateCreativeEditorAuthoredAssetFromInstance(
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
+  const cr::CreativeAuthoredAssetFingerprint sourceFingerprint =
+      cr::fingerprintCreativeAuthoredAssetDefinition(
+          receipt.capture.definition);
+  const cr::CreativeAuthoredAssetFingerprint updateFingerprint =
+      cr::foldCreativeAuthoredAssetOperationFingerprint(
+          sourceFingerprint.value, instanceRootObjectId);
+  const std::optional<cr::CreativeAuthoringOperationRecord> operation =
+      sourceFingerprint.valid && updateFingerprint.valid
+          ? cr::makeCreativeAuthoringOperationRecord(
+                cr::CreativeAuthoringFamily::Prefab,
+                cr::CreativeAuthoringOperationKind::Reconcile,
+                "Prefab.AcknowledgeSourceUpdate", updateFingerprint.value,
+                0U)
+          : std::nullopt;
+  if (!operation.has_value()) {
+    receipt.reasonCode = "creative_authored_asset_update_operation_invalid";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+  StandaloneEditTransaction transaction =
+      cr::beginCreativeHistoryTransaction(appState.facade,
+                                          "creative_authored_asset_update",
+                                          *operation);
 
   const iggy3d::ProductCreativeSaveWriteResult write =
       writeAuthoredAssetDocument(
@@ -447,6 +578,7 @@ updateCreativeEditorAuthoredAssetFromInstance(
           receipt.capture.storageDocument, true);
   receipt.durableWriteOk = write.ok;
   if (!write.ok) {
+    cr::cancelCreativeHistoryTransaction(transaction);
     receipt.reasonCode = write.reasonCode;
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -458,6 +590,7 @@ updateCreativeEditorAuthoredAssetFromInstance(
         return candidate.assetId == receipt.assetId;
       });
   if (definition == library.definitions.end()) {
+    cr::cancelCreativeHistoryTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_update_source_missing";
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -467,14 +600,30 @@ updateCreativeEditorAuthoredAssetFromInstance(
           receipt.capture.definition, instanceRootObjectId);
   if (!receipt.provenance.committed ||
       !cr::documentMutationSucceeded(receipt.provenance.status)) {
+    cr::cancelCreativeHistoryTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_update_provenance_rejected";
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
   *definition = receipt.capture.definition;
   ++library.nextDocumentId;
-  receipt.accepted = true;
-  receipt.reasonCode = "creative_authored_asset_updated";
+  if (!cr::setCreativeHistoryTransactionOperation(
+          transaction, cr::CreativeAuthoringFamily::Prefab,
+          cr::CreativeAuthoringOperationKind::Reconcile,
+          "Prefab.AcknowledgeSourceUpdate", updateFingerprint.value,
+          receipt.provenance.appliedCount)) {
+    cr::cancelCreativeHistoryTransaction(transaction);
+    receipt.reasonCode = "creative_authored_asset_update_operation_invalid";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
+  receipt.history = completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade,
+      receipt.provenance.changed, receipt.provenance.message);
+  receipt.accepted = receipt.history.accepted;
+  receipt.reasonCode = receipt.accepted
+                           ? "creative_authored_asset_updated"
+                           : std::string(receipt.history.reasonCode);
   library.statusLabel = receipt.reasonCode;
   return receipt;
 }
@@ -516,10 +665,44 @@ refreshCreativeEditorAuthoredAssetInstances(
     case cr::CreativeAuthoredAssetRefreshMode::ForceAll:
       break;
   }
+  cr::CreativeAuthoredAssetRefreshRequest refreshRequest;
+  refreshRequest.definition = definition;
+  refreshRequest.mode = mode;
+  refreshRequest.selectedInstanceRootObjectId = instanceRootObjectId;
+  const cr::CreativeAuthoredAssetFingerprint requestFingerprint =
+      cr::fingerprintCreativeAuthoredAssetRefreshRequest(refreshRequest);
+  const std::string_view action = authoredAssetRefreshAction(mode);
+  const std::optional<cr::CreativeAuthoringOperationRecord> operation =
+      requestFingerprint.valid && !action.empty()
+          ? cr::makeCreativeAuthoringOperationRecord(
+                cr::CreativeAuthoringFamily::Prefab,
+                cr::CreativeAuthoringOperationKind::Reconcile, action,
+                requestFingerprint.value, 0U)
+          : std::nullopt;
+  if (!operation.has_value()) {
+    receipt.reasonCode = "creative_authored_asset_refresh_operation_invalid";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
   StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, transactionSource);
+      cr::beginCreativeHistoryTransaction(appState.facade, transactionSource,
+                                          *operation);
   receipt.refresh = appState.facade.refreshAuthoredAssetInstances(
       *definition, instanceRootObjectId, mode);
+  const std::uint64_t affectedMemberCount =
+      receipt.refresh.removedObjectCount +
+      receipt.refresh.createdObjectCount +
+      receipt.refresh.refreshedInstanceCount;
+  if (receipt.refresh.accepted && receipt.refresh.changed &&
+      !cr::setCreativeHistoryTransactionOperation(
+          transaction, cr::CreativeAuthoringFamily::Prefab,
+          cr::CreativeAuthoringOperationKind::Reconcile, action,
+          requestFingerprint.value, affectedMemberCount)) {
+    cr::cancelCreativeHistoryTransaction(transaction);
+    receipt.reasonCode = "creative_authored_asset_refresh_operation_invalid";
+    library.statusLabel = receipt.reasonCode;
+    return receipt;
+  }
   receipt.history = completeEditTransaction(
       appState.history, std::move(transaction), appState.facade,
       receipt.refresh.accepted && receipt.refresh.changed,

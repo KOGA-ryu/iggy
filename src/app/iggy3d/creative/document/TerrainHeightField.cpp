@@ -3,7 +3,9 @@
 #include "app/iggy3d/creative/document/TerrainFieldInternal.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
+#include <utility>
 
 namespace iggy3d::creative {
 namespace {
@@ -22,6 +24,12 @@ namespace {
 [[nodiscard]] bool coordLess(CreativeTerrainCoord2 lhs,
                              CreativeTerrainCoord2 rhs) noexcept {
   return lhs.z != rhs.z ? lhs.z < rhs.z : lhs.x < rhs.x;
+}
+
+[[nodiscard]] bool hardEdgeLess(CreativeTerrainHardEdge lhs,
+                                CreativeTerrainHardEdge rhs) noexcept {
+  return lhs.first != rhs.first ? coordLess(lhs.first, rhs.first)
+                                : coordLess(lhs.second, rhs.second);
 }
 
 [[nodiscard]] bool coordInsideBounds(
@@ -66,6 +74,59 @@ void rebuildTerrainCuboids(CreativeTerrainSurfacePlan& plan) {
 }
 
 }  // namespace
+
+CreativeTerrainHardEdge canonicalCreativeTerrainHardEdge(
+    CreativeTerrainCoord2 first,
+    CreativeTerrainCoord2 second) noexcept {
+  return coordLess(second, first) ? CreativeTerrainHardEdge{second, first}
+                                  : CreativeTerrainHardEdge{first, second};
+}
+
+bool isValidCreativeTerrainHardEdge(CreativeTerrainHardEdge edge) noexcept {
+  const std::int64_t deltaX =
+      static_cast<std::int64_t>(edge.second.x) - edge.first.x;
+  const std::int64_t deltaZ =
+      static_cast<std::int64_t>(edge.second.z) - edge.first.z;
+  return coordLess(edge.first, edge.second) &&
+         std::abs(deltaX) + std::abs(deltaZ) == 1;
+}
+
+bool validateCreativeTerrainHardEdges(
+    std::span<const CreativeTerrainHardEdge> edges) noexcept {
+  if (edges.size() > kCreativeTerrainHardEdgeCapacity) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < edges.size(); ++index) {
+    if (!isValidCreativeTerrainHardEdge(edges[index]) ||
+        (index > 0U && !hardEdgeLess(edges[index - 1U], edges[index]))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool validateCreativeTerrainHardEdgesForSurface(
+    std::span<const CreativeTerrainColumn> columns,
+    std::span<const CreativeTerrainHardEdge> edges) noexcept {
+  if (!validSurfaceColumns(columns) ||
+      !validateCreativeTerrainHardEdges(edges)) {
+    return false;
+  }
+  const auto heightAt = [&](CreativeTerrainCoord2 coord) {
+    const auto found = std::lower_bound(
+        columns.begin(), columns.end(), coord,
+        [](const CreativeTerrainColumn& column, CreativeTerrainCoord2 value) {
+          return coordLess(column.coord, value);
+        });
+    return found != columns.end() && found->coord == coord
+               ? found->heightCells
+               : kCreativeTerrainEmptyHeightCells;
+  };
+  return std::all_of(
+      edges.begin(), edges.end(), [&](CreativeTerrainHardEdge edge) {
+        return heightAt(edge.first) != heightAt(edge.second);
+      });
+}
 
 bool isValidCreativeTerrainHeightFieldBounds(
     CreativeTerrainHeightFieldBounds bounds) noexcept {
@@ -297,7 +358,8 @@ CreativeTerrainSurfacePlan replaceCreativeTerrainSurfaceRegion(
        base.status != CreativeTerrainSurfacePlanStatus::Ready) ||
       (base.status == CreativeTerrainSurfacePlanStatus::Empty &&
        !base.columns.empty()) ||
-      !validSurfaceColumns(base.columns)) {
+      !validSurfaceColumns(base.columns) ||
+      !validateCreativeTerrainHardEdges(base.hardEdges)) {
     plan.status = CreativeTerrainSurfacePlanStatus::InvalidField;
     plan.reasonCode = "creative_terrain_height_composition_invalid";
     return plan;
@@ -325,6 +387,12 @@ CreativeTerrainSurfacePlan replaceCreativeTerrainSurfaceRegion(
               return coordLess(lhs.coord, rhs.coord);
             });
   rebuildTerrainCuboids(plan);
+  for (const CreativeTerrainHardEdge edge : base.hardEdges) {
+    if (!coordInsideBounds(edge.first, replacement.bounds()) &&
+        !coordInsideBounds(edge.second, replacement.bounds())) {
+      plan.hardEdges.push_back(edge);
+    }
+  }
   plan.contributionCount = plan.columns.size();
   plan.accepted = true;
   plan.status = plan.columns.empty()
@@ -338,13 +406,35 @@ CreativeTerrainSurfacePlan replaceCreativeTerrainSurfaceRegion(
 
 CreativeTerrainSurfacePlan buildCreativeComposedTerrainSurfacePlan(
     const CreativeTerrainField& legacy,
-    const CreativeTerrainHeightField& authored) {
+    const CreativeTerrainHeightField& authored,
+    std::span<const CreativeTerrainHardEdge> hardEdges) {
   CreativeTerrainSurfacePlan base =
       buildCreativeTerrainSurfacePlan(legacy);
-  if (!base.accepted || authored.cellCount() == 0U) {
+  if (!base.accepted || !validateCreativeTerrainHardEdges(hardEdges)) {
+    if (!validateCreativeTerrainHardEdges(hardEdges)) {
+      base.accepted = false;
+      base.status = CreativeTerrainSurfacePlanStatus::InvalidField;
+      base.reasonCode = "creative_terrain_hard_edges_invalid";
+    }
     return base;
   }
-  return replaceCreativeTerrainSurfaceRegion(base, authored);
+  CreativeTerrainSurfacePlan plan = authored.cellCount() == 0U
+                                        ? std::move(base)
+                                        : replaceCreativeTerrainSurfaceRegion(
+                                              base, authored);
+  if (!plan.accepted) {
+    return plan;
+  }
+  if (!validateCreativeTerrainHardEdgesForSurface(plan.columns, hardEdges)) {
+    plan.accepted = false;
+    plan.status = CreativeTerrainSurfacePlanStatus::InvalidField;
+    plan.columns.clear();
+    plan.cuboids.clear();
+    plan.reasonCode = "creative_terrain_hard_edges_do_not_match_surface";
+    return plan;
+  }
+  plan.hardEdges.assign(hardEdges.begin(), hardEdges.end());
+  return plan;
 }
 
 CreativeTerrainRenderPlan buildCreativeTerrainHeightRenderPlan(

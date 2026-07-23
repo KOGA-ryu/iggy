@@ -1,13 +1,48 @@
 #include "EditorDesktopCommandsInternal.hpp"
 
+#include <algorithm>
+
 #include "EditorFrame.hpp"
 #include "EditorTerrainGeneration.hpp"
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
 
 namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;
+
+namespace {
+
+void includeBounds(creative::CreativeBounds source,
+                   creative::CreativeBounds& aggregate,
+                   bool& initialized) noexcept {
+  if (!initialized) {
+    aggregate = source;
+    initialized = true;
+    return;
+  }
+  aggregate.min.x = std::min(aggregate.min.x, source.min.x);
+  aggregate.min.y = std::min(aggregate.min.y, source.min.y);
+  aggregate.min.z = std::min(aggregate.min.z, source.min.z);
+  aggregate.max.x = std::max(aggregate.max.x, source.max.x);
+  aggregate.max.y = std::max(aggregate.max.y, source.max.y);
+  aggregate.max.z = std::max(aggregate.max.z, source.max.z);
+}
+
+void includeObjectBounds(const creative::CreativeObject& object,
+                         creative::CreativeBounds& aggregate,
+                         bool& initialized) noexcept {
+  const creative::CreativeTransformedBounds resolved =
+      creative::resolveCreativeObjectBounds(object);
+  if (resolved.valid) {
+    includeBounds(resolved.worldBounds, aggregate, initialized);
+  }
+}
+
+}  // namespace
 
 float editorViewportAspectRatio(const CreativeEditorState& editor) noexcept {
   const iggy3d::RenderContentViewport viewport =
@@ -44,6 +79,8 @@ bool focusEditorCameraOnBounds(CreativeEditorState& editor,
     return false;
   }
   editor.flyPos = frame.anchorPositionMeters;
+  editor.viewportFocus = iggy3d::makeProductCreativeViewportFocus(
+      (boundsMin.value + boundsMax.value) * 0.5F, frame.distanceMeters);
   return true;
 }
 
@@ -58,6 +95,36 @@ bool focusEditorCameraOnObject(
           : creative::CreativeBounds{object.transform.position,
                                      object.transform.position};
   return focusEditorCameraOnBounds(editor, focusBounds);
+}
+
+bool focusEditorCameraOnSelection(
+    CreativeEditorState& editor,
+    const creative::CreativeDocument& document,
+    const creative::CreativeSelectionState& selection) noexcept {
+  creative::CreativeBounds bounds;
+  bool initialized = false;
+  for (creative::TargetRef target : creative::selectedTargetList(selection)) {
+    const creative::CreativeObject* object = document.findObject(
+        static_cast<creative::CreativeObjectId>(target.value));
+    if (object != nullptr && creative::creativeObjectEffectivelyVisible(
+                                 document, object->id)) {
+      includeObjectBounds(*object, bounds, initialized);
+    }
+  }
+  return initialized && focusEditorCameraOnBounds(editor, bounds);
+}
+
+bool focusEditorCameraOnDocument(
+    CreativeEditorState& editor,
+    const creative::CreativeDocument& document) noexcept {
+  creative::CreativeBounds bounds;
+  bool initialized = false;
+  for (const creative::CreativeObject& object : document.objects()) {
+    if (creative::creativeObjectEffectivelyVisible(document, object.id)) {
+      includeObjectBounds(object, bounds, initialized);
+    }
+  }
+  return initialized && focusEditorCameraOnBounds(editor, bounds);
 }
 
 bool focusEditorCameraOnTerrainGeneration(

@@ -356,6 +356,26 @@ bool receiptedCreateWithOverridesSharesAllocator() {
          expect(!object->parentId.has_value(), "override no parent");
 }
 
+bool transformOverrideRelocatesDescriptorDefaultBounds() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Door;
+  request.transform.position = {4.0, 1.5, -3.0};
+  request.hasTransformOverride = true;
+
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+  const cr::CreativeObject* object = document.findObject(receipt.objectId);
+
+  return expect(receipt.accepted && object != nullptr,
+                "transform-only create accepted") &&
+         expect(sameVec3(object->transform.position, {4.0, 1.5, -3.0}),
+                "transform-only create stores requested pivot") &&
+         expect(sameVec3(object->bounds.min, {4.0, 1.5, -3.0}) &&
+                    sameVec3(object->bounds.max, {5.0, 3.75, -2.8}),
+                "transform-only create relocates descriptor default bounds");
+}
+
 bool facadeGenericCreateWrapsDocumentAndPreservesInteractionState() {
   cr::Facade facade;
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
@@ -589,6 +609,7 @@ int main() {
                   unsupportedOverridesRejectWithoutMutation() &&
                   parentOwnerUnsupportedRejectsWithoutMutation() &&
                   receiptedCreateWithOverridesSharesAllocator() &&
+                  transformOverrideRelocatesDescriptorDefaultBounds() &&
                   facadeGenericCreateWrapsDocumentAndPreservesInteractionState() &&
                   facadeGenericCreateFailureRecordsFailureOnly() &&
                   facadeBatchCreateAppliesAllRequestsAtomically() &&

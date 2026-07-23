@@ -11,10 +11,184 @@ constexpr CreativeInputModifierMask kAllModifiers =
     kCreativeInputModifierShift | kCreativeInputModifierControl |
     kCreativeInputModifierAlt | kCreativeInputModifierCommand;
 
+using ReachabilityRequirement = CreativeControlReachabilityRequirement;
+using Action = CreativeInputActionId;
+using Context = CreativeInputContext;
+using Activation = CreativeInputBindingActivation;
+
+constexpr ReachabilityRequirement requireGamepad(
+    Action action,
+    Context context,
+    Activation activation = Activation::Press) noexcept {
+  return {action, context, CreativeControlDevice::Gamepad, activation};
+}
+
+constexpr std::array kDefaultGamepadReachabilityRequirements{
+    requireGamepad(Action::ToggleCatalog, Context::EditorViewport),
+    requireGamepad(Action::ToggleToolWheel, Context::EditorViewport),
+    requireGamepad(Action::QuickEditPrevious, Context::EditorViewport),
+    requireGamepad(Action::QuickEditNext, Context::EditorViewport),
+    requireGamepad(Action::QuickEditDecrease, Context::EditorViewport),
+    requireGamepad(Action::QuickEditIncrease, Context::EditorViewport),
+    requireGamepad(Action::AcceptAction, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::RejectAction, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::PickAction, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::HotbarPrevious, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::HotbarNext, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::ToggleControls, Context::EditorViewport),
+    requireGamepad(Action::FrameContext3D, Context::EditorViewport),
+    requireGamepad(Action::FlyUp, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::FlyDown, Context::EditorViewport,
+                   Activation::Continuous),
+    requireGamepad(Action::Sprint, Context::EditorViewport,
+                   Activation::Continuous),
+
+    requireGamepad(Action::ToggleCatalog, Context::Catalog),
+    requireGamepad(Action::CatalogPrevious, Context::Catalog),
+    requireGamepad(Action::CatalogNext, Context::Catalog),
+    requireGamepad(Action::CatalogPreviousVariant, Context::Catalog),
+    requireGamepad(Action::CatalogNextVariant, Context::Catalog),
+    requireGamepad(Action::CatalogPreviousPage, Context::Catalog),
+    requireGamepad(Action::CatalogNextPage, Context::Catalog),
+    requireGamepad(Action::CatalogConfirm, Context::Catalog),
+    requireGamepad(Action::CatalogContextAction, Context::Catalog),
+    requireGamepad(Action::CatalogClose, Context::Catalog),
+
+    requireGamepad(Action::ToggleToolWheel, Context::ToolWheel),
+    requireGamepad(Action::ToolWheelPrevious, Context::ToolWheel),
+    requireGamepad(Action::ToolWheelNext, Context::ToolWheel),
+    requireGamepad(Action::ToolWheelConfirm, Context::ToolWheel),
+    requireGamepad(Action::ToolWheelOptions, Context::ToolWheel),
+    requireGamepad(Action::ToolWheelClose, Context::ToolWheel),
+
+    requireGamepad(Action::ToolOptionsPrevious, Context::ToolOptions),
+    requireGamepad(Action::ToolOptionsNext, Context::ToolOptions),
+    requireGamepad(Action::ToolOptionsDecrease, Context::ToolOptions),
+    requireGamepad(Action::ToolOptionsIncrease, Context::ToolOptions),
+    requireGamepad(Action::ToolOptionsConfirm, Context::ToolOptions),
+    requireGamepad(Action::ToolOptionsClose, Context::ToolOptions),
+
+    requireGamepad(Action::ConfirmActiveTool,
+                   Context::AssetReplacementPreview),
+    requireGamepad(Action::CancelActiveTool,
+                   Context::AssetReplacementPreview),
+    requireGamepad(Action::FlyUp, Context::AssetReplacementPreview,
+                   Activation::Continuous),
+    requireGamepad(Action::FlyDown, Context::AssetReplacementPreview,
+                   Activation::Continuous),
+    requireGamepad(Action::Sprint, Context::AssetReplacementPreview,
+                   Activation::Continuous),
+
+    requireGamepad(Action::CatalogPrevious, Context::AssetLibrary),
+    requireGamepad(Action::CatalogNext, Context::AssetLibrary),
+    requireGamepad(Action::CatalogPreviousVariant, Context::AssetLibrary),
+    requireGamepad(Action::CatalogNextVariant, Context::AssetLibrary),
+    requireGamepad(Action::CatalogConfirm, Context::AssetLibrary),
+    requireGamepad(Action::CatalogClose, Context::AssetLibrary),
+
+    requireGamepad(Action::ToolOptionsPrevious,
+                   Context::AuthoredAssetEditMenu),
+    requireGamepad(Action::ToolOptionsNext,
+                   Context::AuthoredAssetEditMenu),
+    requireGamepad(Action::ConfirmActiveTool,
+                   Context::AuthoredAssetEditMenu),
+    requireGamepad(Action::CancelActiveTool,
+                   Context::AuthoredAssetEditMenu),
+
+    requireGamepad(Action::ConfirmActiveTool, Context::TransformPreview),
+    requireGamepad(Action::CancelActiveTool, Context::TransformPreview),
+    requireGamepad(Action::ToggleTransformControls,
+                   Context::TransformPreview),
+    requireGamepad(Action::TransformNudgeNegative, Context::TransformPreview),
+    requireGamepad(Action::TransformNudgePositive, Context::TransformPreview),
+    requireGamepad(Action::QuickEditNext, Context::TransformPreview),
+    requireGamepad(Action::QuickEditDecrease, Context::TransformPreview),
+    requireGamepad(Action::QuickEditIncrease, Context::TransformPreview),
+    requireGamepad(Action::FlyUp, Context::TransformPreview,
+                   Activation::Continuous),
+    requireGamepad(Action::FlyDown, Context::TransformPreview,
+                   Activation::Continuous),
+    requireGamepad(Action::Sprint, Context::TransformPreview,
+                   Activation::Continuous),
+
+    requireGamepad(Action::ConfirmActiveTool, Context::TransformControls),
+    requireGamepad(Action::CancelActiveTool, Context::TransformControls),
+    requireGamepad(Action::ToggleTransformControls,
+                   Context::TransformControls),
+    requireGamepad(Action::TransformControlPrevious,
+                   Context::TransformControls),
+    requireGamepad(Action::TransformControlNext, Context::TransformControls),
+
+    requireGamepad(Action::ControlsPrevious, Context::Controls),
+    requireGamepad(Action::ControlsNext, Context::Controls),
+    requireGamepad(Action::ControlsDecrease, Context::Controls),
+    requireGamepad(Action::ControlsIncrease, Context::Controls),
+    requireGamepad(Action::ControlsActivate, Context::Controls),
+    requireGamepad(Action::ControlsClose, Context::Controls),
+    requireGamepad(Action::ControlsResetDefaults, Context::Controls),
+
+    requireGamepad(Action::RuntimeAttack, Context::RuntimePlay,
+                   Activation::Continuous),
+    requireGamepad(Action::RuntimeInteract, Context::RuntimePlay,
+                   Activation::Continuous),
+    requireGamepad(Action::Sprint, Context::RuntimePlay,
+                   Activation::Continuous),
+    requireGamepad(Action::ToggleControls, Context::RuntimePlay),
+};
+
+static_assert(kDefaultGamepadReachabilityRequirements.size() <=
+              kCreativeControlReachabilityRequirementCapacity);
+
 [[nodiscard]] CreativeControlDevice deviceForKey(
     CreativeInputKey key) noexcept {
   return creativeInputKeyIsGamepad(key) ? CreativeControlDevice::Gamepad
                                         : CreativeControlDevice::KeyboardMouse;
+}
+
+[[nodiscard]] bool validReachabilityRequirement(
+    const ReachabilityRequirement& requirement) noexcept {
+  const auto action = static_cast<std::size_t>(requirement.action);
+  const auto context = static_cast<std::size_t>(requirement.context);
+  const auto device = static_cast<std::size_t>(requirement.device);
+  const bool activationValid =
+      requirement.activation == Activation::Press ||
+      requirement.activation == Activation::Continuous;
+  return action < static_cast<std::size_t>(Action::Count) &&
+         context < static_cast<std::size_t>(Context::Count) &&
+         device < static_cast<std::size_t>(CreativeControlDevice::Count) &&
+         activationValid;
+}
+
+[[nodiscard]] bool bindingSatisfies(
+    const CreativeInputBinding& binding,
+    const ReachabilityRequirement& requirement) noexcept {
+  const auto trigger = static_cast<std::size_t>(binding.trigger);
+  if (trigger >= static_cast<std::size_t>(CreativeInputKey::Count) ||
+      binding.trigger == CreativeInputKey::Unbound) {
+    return false;
+  }
+  return binding.action == requirement.action &&
+         binding.context == requirement.context &&
+         binding.activation == requirement.activation &&
+         deviceForKey(binding.trigger) == requirement.device;
+}
+
+void appendReachabilityIssue(
+    CreativeControlReachabilityAuditResult& result,
+    CreativeControlReachabilityIssueKind kind,
+    std::size_t requirementIndex,
+    const ReachabilityRequirement& requirement) noexcept {
+  if (result.issueCount >= result.issues.size()) {
+    result.requirementCapacityExceeded = true;
+    return;
+  }
+  result.issues[result.issueCount++] = {kind, requirementIndex, requirement};
 }
 
 [[nodiscard]] bool sameDefaultGroup(const CreativeInputBinding& lhs,
@@ -204,6 +378,19 @@ std::string_view toString(CreativeControlSettingId setting) noexcept {
   return "Unknown";
 }
 
+std::string_view toString(
+    CreativeControlReachabilityIssueKind kind) noexcept {
+  switch (kind) {
+    case CreativeControlReachabilityIssueKind::MissingBinding:
+      return "MissingBinding";
+    case CreativeControlReachabilityIssueKind::InvalidRequirement:
+      return "InvalidRequirement";
+    case CreativeControlReachabilityIssueKind::Count:
+      break;
+  }
+  return "Unknown";
+}
+
 CreativeControlProfile makeDefaultCreativeControlProfile() {
   CreativeControlProfile profile;
   const std::span<const CreativeInputBinding> defaults =
@@ -302,6 +489,49 @@ CreativeControlBindingList buildCreativeControlBindingList(
         profile.groupDevices[group],
         binding->activation,
     };
+  }
+  return result;
+}
+
+std::span<const CreativeControlReachabilityRequirement>
+defaultCreativeGamepadReachabilityRequirements() noexcept {
+  return kDefaultGamepadReachabilityRequirements;
+}
+
+CreativeControlReachabilityAuditResult auditCreativeControlReachability(
+    std::span<const CreativeInputBinding> bindings,
+    std::span<const CreativeControlReachabilityRequirement>
+        requirements) noexcept {
+  CreativeControlReachabilityAuditResult result;
+  result.bindingCapacityExceeded =
+      bindings.size() > kCreativeInputBindingCapacity;
+  result.requirementCapacityExceeded =
+      requirements.size() > kCreativeControlReachabilityRequirementCapacity;
+  bindings = bindings.first(
+      std::min(bindings.size(), kCreativeInputBindingCapacity));
+  requirements = requirements.first(std::min(
+      requirements.size(), kCreativeControlReachabilityRequirementCapacity));
+
+  for (std::size_t requirementIndex = 0;
+       requirementIndex < requirements.size(); ++requirementIndex) {
+    const CreativeControlReachabilityRequirement& requirement =
+        requirements[requirementIndex];
+    if (!validReachabilityRequirement(requirement)) {
+      appendReachabilityIssue(
+          result, CreativeControlReachabilityIssueKind::InvalidRequirement,
+          requirementIndex, requirement);
+      continue;
+    }
+    const bool found = std::any_of(
+        bindings.begin(), bindings.end(),
+        [&requirement](const CreativeInputBinding& binding) {
+          return bindingSatisfies(binding, requirement);
+        });
+    if (!found) {
+      appendReachabilityIssue(
+          result, CreativeControlReachabilityIssueKind::MissingBinding,
+          requirementIndex, requirement);
+    }
   }
   return result;
 }

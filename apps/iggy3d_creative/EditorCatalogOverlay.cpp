@@ -71,6 +71,8 @@ namespace {
       return compact ? "HLP" : "HELP";
     case cr::CreativeCatalogPage::Tools:
       return compact ? "TLS" : "TOOLS";
+    case cr::CreativeCatalogPage::Experimental:
+      return compact ? "LAB" : "EXPER";
     case cr::CreativeCatalogPage::Assets:
       return compact ? "AST" : "ASSET";
     case cr::CreativeCatalogPage::Actions:
@@ -248,6 +250,11 @@ void appendCatalogBuildDetails(
              fitCatalogText(entry->label, layout.detailWidth - 8U),
              layout.detailX + 4, layout.searchY + 29, drawableWidth,
              drawableHeight, 0.94F, 0.96F, 0.98F);
+  if (isAsset) {
+    appendCatalogAssetDetails(editor, *entry, layout, drawableWidth,
+                              drawableHeight, uiRects, glyphs);
+    return;
+  }
 
   const bool shapeTool = cr::creativeCatalogEntryUsesShapeSelection(*entry);
   std::int32_t detailY = layout.rowsY + 12;
@@ -268,48 +275,6 @@ void appendCatalogBuildDetails(
                entry->category == cr::CreativeCatalogEntryCategory::AssetFailure
                    ? 0.32F
                    : 0.95F);
-    detailY += 58;
-  }
-  if (isAsset) {
-    appendText(glyphs, "ASSET ID", layout.detailX + 4, detailY,
-               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
-    appendText(
-        glyphs,
-        fitCatalogText(cr::creativeHotbarAssetId(entry->hotbarEntry),
-                       layout.detailWidth - 8U),
-        layout.detailX + 4, detailY + 21, drawableWidth, drawableHeight,
-        0.90F, 0.93F, 0.95F);
-    detailY += 58;
-    appendText(glyphs, entry->authoredComposite ? "CONTENT" : "PHYSICS",
-               layout.detailX + 4, detailY,
-               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
-    appendText(glyphs, entry->authoredComposite
-                           ? std::string_view{"EXPANDED EDITABLE OBJECTS"}
-                           : cr::creativeCatalogAssetPhysicsLabel(
-                                 entry->assetAuthoringMetadata),
-               layout.detailX + 4,
-               detailY + 21, drawableWidth, drawableHeight, 0.90F, 0.93F,
-               0.95F);
-    detailY += 58;
-    const cr::CreativeBoundsMetrics assetBounds =
-        cr::measureCreativeBounds(entry->hotbarEntry.assetSourceBounds);
-    char dimensions[96];
-    std::snprintf(dimensions, sizeof(dimensions), "%.2f x %.2f x %.2f m",
-                  assetBounds.size.x, assetBounds.size.y, assetBounds.size.z);
-    appendText(glyphs, "DIMENSIONS", layout.detailX + 4, detailY,
-               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
-    appendText(glyphs, dimensions, layout.detailX + 4, detailY + 21,
-               drawableWidth, drawableHeight, 0.90F, 0.93F, 0.95F);
-    detailY += 58;
-    const cr::CreativeVec3 pivotFromCenter{
-        -assetBounds.center.x, -assetBounds.center.y, -assetBounds.center.z};
-    char pivot[96];
-    std::snprintf(pivot, sizeof(pivot), "ORIGIN %+.2f %+.2f %+.2f",
-                  pivotFromCenter.x, pivotFromCenter.y, pivotFromCenter.z);
-    appendText(glyphs, "PIVOT FROM CENTER", layout.detailX + 4, detailY,
-               drawableWidth, drawableHeight, 0.58F, 0.66F, 0.71F);
-    appendText(glyphs, pivot, layout.detailX + 4, detailY + 21,
-               drawableWidth, drawableHeight, 0.90F, 0.93F, 0.95F);
     detailY += 58;
   }
   if (shapeTool) {

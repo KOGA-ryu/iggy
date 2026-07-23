@@ -26,6 +26,7 @@ struct RoomBakeGreedyFloorPolicy {
   std::int64_t maxCells = 1'000'000;
   std::string meshId = "creative_floor_rect";
   std::string materialId = "creative_floor";
+  std::string semanticRole = "Floor";
   std::string role = "floor";
 };
 

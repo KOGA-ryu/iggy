@@ -1,7 +1,8 @@
 #include "EditorActionHints.hpp"
 #include "EditorState.hpp"
-#include "EditorToolCapabilities.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorToolOptions.hpp"
+#include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
 #include <array>
@@ -99,17 +100,20 @@ std::uint16_t groupFor(const cr::CreativeControlProfile& profile,
 }
 
 bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
-  const std::span<const CreativeEditorToolCapability> capabilities =
-      creativeEditorToolCapabilities();
-  bool ok = expect(capabilities.size() == cr::kCreativeHeldItemKindCount,
-                   "tool capabilities cover every held kind");
+  const auto validation = validateCreativeEditorToolDescriptors(
+      creativeEditorToolDescriptors());
+  bool ok = expect(
+      validation.status == CreativeEditorToolDescriptorValidationStatus::Valid,
+      "the product tool descriptor table passes its release gate");
   std::size_t specializedCommandProfiles = 0U;
   std::size_t keyboardQuickEditProfiles = 0U;
   std::size_t materialFilters = 0U;
-  for (std::size_t index = 0U; index < capabilities.size(); ++index) {
+  for (std::size_t index = 0U; index < cr::kCreativeHeldItemKindCount;
+       ++index) {
     const cr::CreativeHeldItemKind kind =
         static_cast<cr::CreativeHeldItemKind>(index);
-    const CreativeEditorToolCapability& capability = capabilities[index];
+    const CreativeEditorToolDescriptor& capability =
+        describeCreativeEditorHeldItemTool(kind);
     const cr::CreativeHeldItemDefinition& behavior =
         cr::describeCreativeHeldItem(kind);
     const CreativeEditorToolOptionsCommandList commands =
@@ -127,7 +131,7 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
         ++specializedCommandProfiles;
         break;
       case CreativeEditorToolCommandProfile::ObjectMove:
-        expectedCommandCount = 15U;
+        expectedCommandCount = 16U;
         ++specializedCommandProfiles;
         break;
       case CreativeEditorToolCommandProfile::Count:
@@ -146,10 +150,10 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
     const bool volumeOperationProfile =
         capability.actionHintProfile ==
         CreativeEditorActionHintProfile::VolumeOperation;
-    ok = expect(capability.kind == kind,
-                "capability row order matches held enum") &&
-         expect(&describeCreativeEditorToolCapability(kind) == &capability,
-                "capability lookup returns canonical row") &&
+    ok = expect(capability.heldItemKind == kind,
+                "every held kind maps to one product descriptor") &&
+         expect(&describeCreativeEditorHeldItemTool(kind) == &capability,
+                "held-item lookup returns the canonical descriptor") &&
          expect(capability.optionFilterProfile <
                         CreativeEditorToolOptionFilterProfile::Count &&
                     capability.commandProfile <
@@ -175,15 +179,16 @@ bool toolCapabilitiesCoverBehaviorAndUiProfiles() {
          ok;
   }
 
-  const CreativeEditorToolCapability& invalid =
-      describeCreativeEditorToolCapability(cr::CreativeHeldItemKind::Count);
+  const CreativeEditorToolDescriptor& invalid =
+      describeCreativeEditorHeldItemTool(cr::CreativeHeldItemKind::Count);
   return expect(specializedCommandProfiles == 3U,
                 "three tools own specialized command profiles") &&
-         expect(keyboardQuickEditProfiles == 9U,
-                "terrain tools, Logic Link, and Room expose keyboard quick-edit hints") &&
+         expect(keyboardQuickEditProfiles == 10U,
+                "terrain, Logic Link, Room, and Measure expose keyboard quick-edit hints") &&
          expect(materialFilters == 1U,
                 "only direct material placement filters descriptor options") &&
-         expect(invalid.kind == cr::CreativeHeldItemKind::Count &&
+         expect(invalid.id == CreativeEditorToolId::Count &&
+                    invalid.heldItemKind == cr::CreativeHeldItemKind::Count &&
                     invalid.actionHintProfile ==
                         CreativeEditorActionHintProfile::None &&
                     invalid.quickEditProfile ==
@@ -311,6 +316,34 @@ bool activeDeviceUsesUnambiguousPhysicalActivity() {
                     cr::CreativeControlDevice::Count, {}) ==
                     cr::CreativeControlDevice::KeyboardMouse,
                 "invalid idle prior state fails closed to keyboard and mouse");
+}
+
+bool catalogAssetMaterialVariantsAreControllerReachable() {
+  CreativeEditorCatalogState state;
+  cr::CreativeCatalogEntry asset;
+  asset.category = cr::CreativeCatalogEntryCategory::Asset;
+  asset.assetMaterialVariants = {{"Weathered"}, {"Painted"}};
+  const bool first =
+      moveCreativeEditorCatalogAssetMaterialVariant(state, asset, 1);
+  const std::string_view firstLabel =
+      creativeEditorCatalogAssetMaterialVariantLabel(state, asset);
+  const bool second =
+      moveCreativeEditorCatalogAssetMaterialVariant(state, asset, 1);
+  const std::string_view secondLabel =
+      creativeEditorCatalogAssetMaterialVariantLabel(state, asset);
+  const bool wrapped =
+      moveCreativeEditorCatalogAssetMaterialVariant(state, asset, 1);
+  const std::string_view wrappedLabel =
+      creativeEditorCatalogAssetMaterialVariantLabel(state, asset);
+  cr::CreativeCatalogEntry material;
+  material.category = cr::CreativeCatalogEntryCategory::Material;
+  return expect(first && firstLabel == "Weathered" && second &&
+                    secondLabel == "Painted" && wrapped &&
+                    wrappedLabel == "DEFAULT",
+                "asset material variants include a wrapped default choice") &&
+         expect(!moveCreativeEditorCatalogAssetMaterialVariant(state, material,
+                                                               1),
+                "non-assets cannot acquire material variant state");
 }
 
 bool editorHintsMatchToolsContextsAndPs5Language() {
@@ -544,7 +577,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   editor.terrain.selectionValid = false;
 
   setHeld(editor, cr::CreativeHeldItemKind::TerrainGrade);
-  editor.terrain.grade.anchorValid = true;
+  editor.terrain.grade.active = true;
   const cr::CreativeActionHintFrame terrainGrade =
       resolveCreativeEditorActionHints(
           editor, cr::CreativeInputContext::EditorViewport,
@@ -566,11 +599,11 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   gradeCancel->label.view() == "Cancel grade" &&
                   gradeAnchor != nullptr &&
                   gradeAnchor->chord.view() == "Touchpad" &&
-                  gradeAnchor->label.view() == "Set start rod" &&
+                  gradeAnchor->label.view() == "Select grade handle" &&
                   gradeHeight != nullptr &&
-                  gradeHeight->label.view() == "End height" &&
-                  gradeWidth != nullptr && gradeWidth->label.view() == "Width",
-              "terrain grade advertises anchor apply cancel height and width") &&
+                  gradeHeight->label.view() == "Grade control" &&
+                  gradeWidth != nullptr && gradeWidth->label.view() == "Adjust",
+              "terrain grade advertises handle, control, and adjustment actions") &&
        ok;
 
   setHeld(editor, cr::CreativeHeldItemKind::TerrainSculpt);
@@ -611,7 +644,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   ok = expect(findHint(terrainRaise, cr::CreativeInputActionId::PickAction) ==
                       nullptr &&
                   creativeEditorTerrainSculptQuickEditLabel(editor) ==
-                      "RAISE | RADIUS 4 | STRENGTH 1 | FALLOFF UNIFORM",
+                      "RAISE | RADIUS 4 | STRENGTH 1 | FALLOFF UNIFORM | MASK CIRCLE",
               "raise omits the Flatten-only sample action and target label") &&
        ok;
 
@@ -624,20 +657,22 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       findHint(terrainProfile, cr::CreativeInputActionId::AcceptAction);
   const cr::CreativeActionHint* profileLock =
       findHint(terrainProfile, cr::CreativeInputActionId::PickAction);
+  const cr::CreativeActionHint* profileControl =
+      findHint(terrainProfile, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHint* profileAdjust =
+      findHint(terrainProfile, cr::CreativeInputActionId::QuickEditDecrease);
   ok = expect(profileApply != nullptr && profileApply->chord.view() == "X" &&
                   profileApply->label.view() == "Apply profile" &&
                   profileLock != nullptr &&
                   profileLock->chord.view() == "Touchpad" &&
-                  profileLock->label.view() == "Lock base" &&
+                  profileLock->label.view() == "Select / lock base" &&
                   findHint(terrainProfile,
                            cr::CreativeInputActionId::RejectAction) == nullptr &&
-                  findHint(terrainProfile,
-                           cr::CreativeInputActionId::QuickEditPrevious) !=
-                      nullptr &&
-                  findHint(terrainProfile,
-                           cr::CreativeInputActionId::QuickEditDecrease) !=
-                      nullptr,
-              "profile advertises X apply Touchpad lock and quick tuning") &&
+                  profileControl != nullptr &&
+                  profileControl->label.view() == "Profile control" &&
+                  profileAdjust != nullptr &&
+                  profileAdjust->label.view() == "Adjust",
+              "profile advertises apply select-or-lock and exact quick tuning") &&
        ok;
   editor.terrain.profile.baseLocked = true;
   const cr::CreativeActionHintFrame lockedProfile =
@@ -704,6 +739,8 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       findHint(emptyRegion, cr::CreativeInputActionId::QuickEditPrevious);
   const cr::CreativeActionHint* regionOperation =
       findHint(emptyRegion, cr::CreativeInputActionId::QuickEditDecrease);
+  const cr::CreativeActionHint* regionEdit =
+      findHint(emptyRegion, cr::CreativeInputActionId::PickAction);
   ok = expect(regionCornerOne != nullptr &&
                   regionCornerOne->chord.view() == "X" &&
                   regionCornerOne->label.view() == "Corner 1" &&
@@ -714,9 +751,9 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   regionAmount->label.view() == "Amount" &&
                   regionOperation != nullptr &&
                   regionOperation->label.view() == "Operation" &&
-                  findHint(emptyRegion,
-                           cr::CreativeInputActionId::PickAction) == nullptr,
-              "region starts with corner controls and contextual amount tuning") &&
+                  regionEdit != nullptr &&
+                  regionEdit->label.view() == "Edit region",
+              "region starts with corner controls, reopen, and contextual tuning") &&
        ok;
   editor.volume.selection.phase =
       cr::CreativeVolumeSelectionPhase::FirstCorner;
@@ -727,8 +764,8 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
   const cr::CreativeActionHint* regionCornerTwo =
       findHint(secondRegionCorner, cr::CreativeInputActionId::AcceptAction);
   editor.volume.selection.phase = cr::CreativeVolumeSelectionPhase::Complete;
-  editor.toolSettings.terrainRegionOperation =
-      cr::CreativeTerrainRegionOperation::Flatten;
+  editor.toolSettings.terrainRegionRecipe.mode =
+      cr::CreativeTerrainRegionMode::Flatten;
   const cr::CreativeActionHintFrame completeRegion =
       resolveCreativeEditorActionHints(
           editor, cr::CreativeInputContext::EditorViewport,
@@ -745,7 +782,7 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                   regionApply->label.view() == "Apply region" &&
                   regionSample != nullptr &&
                   regionSample->chord.view() == "Touchpad" &&
-                  regionSample->label.view() == "Sample height" &&
+                  regionSample->label.view() == "Edit / sample" &&
                   regionTarget != nullptr &&
                   regionTarget->label.view() == "Target" &&
                   !completeRegion.capacityExceeded,
@@ -993,6 +1030,10 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
               "transform ribbon names the active rotation axis") &&
        ok;
 
+  cr::CreativeCatalogEntry toolCatalogEntry;
+  toolCatalogEntry.category = cr::CreativeCatalogEntryCategory::Tool;
+  editor.catalog.model.entries = {toolCatalogEntry};
+  editor.catalog.model.filteredEntryIndices = {0U};
   const cr::CreativeActionHintFrame catalog = resolveCreativeEditorActionHints(
       editor, cr::CreativeInputContext::Catalog,
       cr::CreativeControlDevice::Gamepad, false);
@@ -1000,7 +1041,10 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
       findHint(catalog, cr::CreativeInputActionId::CatalogConfirm);
   const cr::CreativeActionHint* assignWheel =
       findHint(catalog,
-               cr::CreativeInputActionId::CatalogAssignToolWheel);
+               cr::CreativeInputActionId::CatalogContextAction);
+  editor.catalog.model.entries[0].category =
+      cr::CreativeCatalogEntryCategory::Asset;
+  editor.catalog.model.entries[0].assetMaterialVariants = {{"Weathered"}};
   editor.catalog.assetAction =
       CreativeEditorCatalogAssetAction::ReplaceSelection;
   const cr::CreativeActionHintFrame replaceCatalog =
@@ -1009,6 +1053,10 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
           cr::CreativeControlDevice::Gamepad, false);
   const cr::CreativeActionHint* replace =
       findHint(replaceCatalog, cr::CreativeInputActionId::CatalogConfirm);
+  const cr::CreativeActionHint* materialVariant = findHint(
+      replaceCatalog, cr::CreativeInputActionId::CatalogPreviousVariant);
+  const cr::CreativeActionHint* assetContext =
+      findHint(replaceCatalog, cr::CreativeInputActionId::CatalogContextAction);
   editor.catalog.assetAction = CreativeEditorCatalogAssetAction::Equip;
   editor.catalog.toolWheelAssignmentCatalogEntryIndex = 0U;
   const cr::CreativeActionHintFrame wheelAssignment =
@@ -1033,6 +1081,11 @@ bool editorHintsMatchToolsContextsAndPs5Language() {
                     assignWheel->chord.view() == "Square" &&
                     assignWheel->label.view() == "Assign wheel",
                 "catalog advertises the contextual PS5 wheel assignment") &&
+         expect(materialVariant != nullptr &&
+                    materialVariant->label.view() == "Material" &&
+                    assetContext != nullptr &&
+                    assetContext->label.view() == "Action",
+                "asset catalog exposes material and action controls separately") &&
          expect(replace != nullptr && replace->chord.view() == "X" &&
                     replace->label.view() == "Replace",
                 "catalog confirm hint follows focused asset action") &&
@@ -1077,6 +1130,39 @@ bool buildingRoomHintsTrackCornerState() {
                 "active room draft advertises shell creation") &&
          expect(cancel != nullptr && cancel->label.view() == "Cancel room",
                 "active room draft advertises explicit cancellation");
+}
+
+bool measurementHintsUseConfirmCancelAndSharedSettings() {
+  CreativeEditorState editor;
+  setHeld(editor, cr::CreativeHeldItemKind::Measure);
+  const cr::CreativeActionHintFrame gamepad =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::Gamepad, false);
+  const cr::CreativeActionHint* append =
+      findHint(gamepad, cr::CreativeInputActionId::AcceptAction);
+  const cr::CreativeActionHint* cancel =
+      findHint(gamepad, cr::CreativeInputActionId::RejectAction);
+  const cr::CreativeActionHint* setting =
+      findHint(gamepad, cr::CreativeInputActionId::QuickEditPrevious);
+  const cr::CreativeActionHintFrame keyboard =
+      resolveCreativeEditorActionHints(
+          editor, cr::CreativeInputContext::EditorViewport,
+          cr::CreativeControlDevice::KeyboardMouse, false);
+  const cr::CreativeActionHint* mouseAppend =
+      findHint(keyboard, cr::CreativeInputActionId::SecondaryAction);
+  return expect(append != nullptr && append->chord.view() == "X" &&
+                    append->label.view() == "Add / finish point",
+                "Measure uses PS5 confirm for point placement") &&
+         expect(cancel != nullptr && cancel->chord.view() == "Circle" &&
+                    cancel->label.view() == "Cancel measure",
+                "Measure uses PS5 cancel for transient cleanup") &&
+         expect(setting != nullptr &&
+                    setting->chord.view() == "D-pad Up / Square",
+                "Measure exposes the shared quick-edit option route") &&
+         expect(mouseAppend != nullptr &&
+                    mouseAppend->chord.view() == "Mouse R",
+                "Measure preserves the keyboard and mouse world-action grammar");
 }
 
 bool everyInteractiveContextResolvesOnlyLiveBindings() {
@@ -1170,8 +1256,10 @@ int main() {
   ok = resolverUsesLiveBindingsAndBoundedPairs() && ok;
   ok = resolverSkipsMissingBindingsAndFailsClosedAtCapacity() && ok;
   ok = activeDeviceUsesUnambiguousPhysicalActivity() && ok;
+  ok = catalogAssetMaterialVariantsAreControllerReachable() && ok;
   ok = editorHintsMatchToolsContextsAndPs5Language() && ok;
   ok = buildingRoomHintsTrackCornerState() && ok;
+  ok = measurementHintsUseConfirmCancelAndSharedSettings() && ok;
   ok = everyInteractiveContextResolvesOnlyLiveBindings() && ok;
   ok = widgetProjectionIsResponsiveAndUsesTheStandardFrame() && ok;
   return ok ? 0 : 1;

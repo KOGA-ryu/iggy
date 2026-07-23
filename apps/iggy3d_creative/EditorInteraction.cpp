@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 #include "EditorGroup.hpp"
 #include "EditorRoomPlacement.hpp"
@@ -12,6 +13,7 @@
 #include "EditorTerrainPaint.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 
@@ -56,6 +58,40 @@ constexpr std::array kContinuousGestureFinalizers{
         CreativeEditorContinuousGestureOwner::TerrainSculpt,
         finalizeCreativeTerrainSculptStroke},
 };
+
+[[nodiscard]] const CreativeEditorWorldLayoutRoofHandle* findRoofHandle(
+    const CreativeEditorWorldLayoutRoofHandleFrame& frame,
+    CreativeEditorWorldLayoutRoofTarget target) noexcept {
+  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
+    if (frame.handles[index].valid &&
+        frame.handles[index].target == target) {
+      return &frame.handles[index];
+    }
+  }
+  return nullptr;
+}
+
+[[nodiscard]] bool sampleRoofHandleCoordinate(
+    const CreativeEditorWorldLayoutRoofHandle& handle,
+    const CreativeEditorWorldTarget& worldTarget,
+    double cellSizeMeters,
+    double& coordinateCells) noexcept {
+  if (!worldTarget.ray.valid || !std::isfinite(cellSizeMeters) ||
+      cellSizeMeters <= 0.0) {
+    return false;
+  }
+  const CreativeEditorTransformAxisRaySample sample =
+      sampleCreativeEditorTransformAxisRay(
+          cr::creativeVec3FromCore(worldTarget.ray.origin),
+          cr::creativeVec3FromCore(worldTarget.ray.direction),
+          cr::creativeVec3FromCore(handle.worldPosition),
+          cr::creativeVec3FromCore(handle.worldAxis));
+  if (!sample.valid) {
+    return false;
+  }
+  coordinateCells = sample.axisParameter / cellSizeMeters;
+  return std::isfinite(coordinateCells);
+}
 
 }  // namespace
 
@@ -216,7 +252,6 @@ void syncCreativeEditorHeldItem(cr::CreativeAppState& appState,
   if (interactionChanged &&
       definition.interactionMode !=
           cr::CreativeHeldItemInteractionMode::ObjectMove) {
-    editor.interaction.moveTargetId = cr::kInvalidObjectId;
     editor.interaction.movingPlatformPathEdit = {};
     resetCreativeEditorStructuralSpanEdit(
         editor.interaction.structuralSpanEdit);
@@ -291,7 +326,10 @@ void processCreativeEditorWorldInteractionFrame(
       placementGrid, &editor.interaction.target);
   const cr::CreativeHotbarEntry& aimedHeld =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (aimedHeld.kind == cr::CreativeHeldItemKind::ObjectMove) {
+  const cr::CreativeHeldItemDefinition& aimedDefinition =
+      cr::describeCreativeHeldItem(aimedHeld.kind);
+  if (aimedDefinition.interactionMode ==
+      cr::CreativeHeldItemInteractionMode::ObjectMove) {
     syncCreativeMovingPlatformPathEditState(
         request.appState, editor.interaction.movingPlatformPathEdit);
   } else {
@@ -300,11 +338,31 @@ void processCreativeEditorWorldInteractionFrame(
         editor.interaction.structuralSpanEdit);
   }
   const bool hierarchySelectionTool =
-      cr::describeCreativeHeldItem(aimedHeld.kind).hierarchySelectionTool;
+      aimedDefinition.hierarchySelectionTool;
   if (hierarchySelectionTool && editor.interaction.target.objectHit) {
+    ObjectVisualPickStack& stack =
+        editor.interaction.target.objectPickStack;
+    std::size_t resolvedCount = 0U;
+    for (std::size_t hitIndex = 0U; hitIndex < stack.count; ++hitIndex) {
+      ObjectVisualPickHit hit = stack.items[hitIndex];
+      hit.objectId = resolveCreativeEditorGroupSelectionTarget(
+          document, editor.groupFocus, hit.objectId);
+      const bool duplicate = std::any_of(
+          stack.items.begin(), stack.items.begin() + resolvedCount,
+          [hit](const ObjectVisualPickHit& existing) {
+            return existing.objectId == hit.objectId;
+          });
+      if (hit.objectId != cr::kInvalidObjectId && !duplicate) {
+        stack.items[resolvedCount++] = hit;
+      }
+    }
+    stack.count = resolvedCount;
     const cr::CreativeObjectId resolvedObjectId =
-        resolveCreativeEditorGroupSelectionTarget(
-            document, editor.groupFocus, editor.interaction.target.objectId);
+        stack.count > 0U
+            ? stack.items[0].objectId
+            : resolveCreativeEditorGroupSelectionTarget(
+                  document, editor.groupFocus,
+                  editor.interaction.target.objectId);
     const cr::CreativeObject* resolvedObject =
         document.findObject(resolvedObjectId);
     if (resolvedObject == nullptr) {
@@ -338,7 +396,7 @@ void processCreativeEditorWorldInteractionFrame(
     brushGridRequest.documentWorldBounds = document.worldBounds();
     brushGridRequest.storageAligned = true;
     brushPivotAim = cr::resolveCreativeGridTargetFromHit(
-        targetGrid.hitPoint, targetGrid.faceNormal,
+        targetGrid.hitPoint, cr::creativeGridTargetExactSurfaceNormal(targetGrid),
         cr::makeCreativePlacementGridFrame(brushGridRequest),
         targetGrid.placerForward);
   }
@@ -350,11 +408,171 @@ void processCreativeEditorWorldInteractionFrame(
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;
   }
   if (request.captureMode) {
+    if (editor.worldLayout.roofManipulation.active) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Cancel));
+    }
+    static_cast<void>(
+        finishCreativeEditorVolumeHandleGesture(editor.volume, false));
     editor.interaction.movingPlatformPathEdit.pending =
         CreativeMovingPlatformPathEditCommand::None;
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_capture");
     return;
+  }
+
+  if (editor.worldLayout.roofManipulation.active) {
+    const CreativeEditorWorldLayoutRoofTarget target =
+        editor.worldLayout.roofManipulation.target;
+    const CreativeEditorWorldLayoutRoofHandleFrame handles =
+        buildCreativeEditorWorldLayoutRoofHandleFrame(
+            editor.worldLayout, documentGrid, target.levelIndex, false);
+    const CreativeEditorWorldLayoutRoofHandle* handle =
+        findRoofHandle(handles, target);
+    const bool cancel =
+        handle == nullptr ||
+        editor.worldLayout.roofManipulation.sourceRevision !=
+            editor.worldLayout.revision ||
+        cr::creativeWorldActionPressed(request.actions,
+                                       cr::CreativeWorldActionId::Reject);
+    if (cancel) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+              target));
+      return;
+    }
+
+    double coordinateCells = 0.0;
+    if (sampleRoofHandleCoordinate(*handle, editor.interaction.target,
+                                   documentGrid.cellSizeMeters,
+                                   coordinateCells)) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+              target, coordinateCells));
+    }
+    const bool released =
+        cr::creativeWorldActionReleased(request.actions,
+                                        cr::CreativeWorldActionId::Primary) ||
+        cr::creativeWorldActionReleased(request.actions,
+                                        cr::CreativeWorldActionId::Accept);
+    if (released) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
+              target, coordinateCells));
+    }
+    return;
+  }
+
+  const bool roofHandlePressed =
+      hierarchySelectionTool &&
+      editor.worldLayout.tool == CreativeEditorWorldLayoutTool::Select &&
+      editor.worldLayout.selection.kind ==
+          CreativeEditorWorldLayoutSelectionKind::Level &&
+      editor.worldLayout.selection.index <
+          editor.worldLayout.source.levels.size() &&
+      editor.interaction.target.ray.valid &&
+      (cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Primary) ||
+       cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Accept));
+  if (roofHandlePressed) {
+    const std::size_t levelIndex = editor.worldLayout.selection.index;
+    const CreativeEditorWorldLayoutRoofHandleFrame handles =
+        buildCreativeEditorWorldLayoutRoofHandleFrame(
+            editor.worldLayout, documentGrid, levelIndex, false);
+    const float centerX = static_cast<float>(request.contentRegion.x) +
+                          static_cast<float>(request.contentRegion.width) *
+                              0.5F;
+    const float centerY = static_cast<float>(request.contentRegion.y) +
+                          static_cast<float>(request.contentRegion.height) *
+                              0.5F;
+    const CreativeEditorWorldLayoutRoofHandlePick picked =
+        pickCreativeEditorWorldLayoutRoofHandleAtPixel(
+            handles, request.camera, request.contentRegion, centerX, centerY);
+    if (picked.hit && picked.handleIndex < handles.handleCount) {
+      const CreativeEditorWorldLayoutRoofHandle& handle =
+          handles.handles[picked.handleIndex];
+      double coordinateCells = 0.0;
+      if (sampleRoofHandleCoordinate(handle, editor.interaction.target,
+                                     documentGrid.cellSizeMeters,
+                                     coordinateCells)) {
+        const CreativeEditorWorldLayoutRoofLiveEditReceipt begun =
+            applyCreativeEditorWorldLayoutRoofManipulationToDocument(
+                editor.worldLayout, request.appState,
+                CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+                handle.target, coordinateCells);
+        if (begun.accepted) {
+          finalizeCreativeEditorContinuousGestures(
+              request.appState, editor, "creative_roof_handle_begin");
+          return;
+        }
+      }
+    }
+  }
+
+  if (editor.volume.handleGesture.active) {
+    const bool cancel = cr::creativeWorldActionPressed(
+        request.actions, cr::CreativeWorldActionId::Reject);
+    if (cancel) {
+      static_cast<void>(
+          finishCreativeEditorVolumeHandleGesture(editor.volume, false));
+      return;
+    }
+    if (editor.interaction.target.ray.valid) {
+      static_cast<void>(updateCreativeEditorVolumeHandleGesture(
+          editor.volume,
+          cr::creativeVec3FromCore(editor.interaction.target.ray.origin),
+          cr::creativeVec3FromCore(editor.interaction.target.ray.direction)));
+    }
+    const bool released = cr::creativeWorldActionReleased(
+                              request.actions,
+                              cr::CreativeWorldActionId::Primary) ||
+                          cr::creativeWorldActionReleased(
+                              request.actions,
+                              cr::CreativeWorldActionId::Accept);
+    if (released) {
+      static_cast<void>(
+          finishCreativeEditorVolumeHandleGesture(editor.volume, true));
+    }
+    return;
+  }
+  const bool volumeHandlePressed =
+      editor.volume.active &&
+      aimedDefinition.interactionMode !=
+          cr::CreativeHeldItemInteractionMode::TerrainRegion &&
+      editor.interaction.target.ray.valid &&
+      (cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Primary) ||
+       cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Accept));
+  if (volumeHandlePressed) {
+    const CreativeEditorVolumeHandleFrame handles =
+        buildCreativeEditorVolumeHandleFrame(editor.volume, request.camera,
+                                             request.contentRegion);
+    const float centerX = static_cast<float>(request.contentRegion.x) +
+                          static_cast<float>(request.contentRegion.width) * 0.5F;
+    const float centerY = static_cast<float>(request.contentRegion.y) +
+                          static_cast<float>(request.contentRegion.height) * 0.5F;
+    const CreativeEditorVolumeHandlePick picked =
+        pickCreativeEditorVolumeHandle(handles, centerX, centerY);
+    if (picked.hit && beginCreativeEditorVolumeHandleGesture(
+                          editor.volume, handles.handles[picked.index],
+                          cr::creativeVec3FromCore(
+                              editor.interaction.target.ray.origin),
+                          cr::creativeVec3FromCore(
+                              editor.interaction.target.ray.direction))) {
+      finalizeCreativeEditorContinuousGestures(
+          request.appState, editor, "creative_volume_handle_begin");
+      return;
+    }
   }
   if (creativeEditorGroupFocusActive(editor.groupFocus) &&
       cr::creativeWorldActionPressed(
@@ -371,17 +589,45 @@ void processCreativeEditorWorldInteractionFrame(
         editor.interaction.structuralSpanEdit));
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_transform");
+    const bool gestureActive =
+        editor.transform.pointerGesture.kind !=
+        CreativeEditorTransformPointerGestureKind::None;
+    if (gestureActive) {
+      const cr::CreativeVec3 rayOrigin =
+          cr::creativeVec3FromCore(editor.interaction.target.ray.origin);
+      const cr::CreativeVec3 rayDirection =
+          cr::creativeVec3FromCore(editor.interaction.target.ray.direction);
+      static_cast<void>(updateCreativeEditorTransformPointerGesture(
+          request.appState, editor.transform,
+          editor.interaction.target.grid.valid,
+          editor.interaction.target.grid.placementAnchor, rayOrigin,
+          rayDirection));
+      const bool released =
+          cr::creativeWorldActionReleased(
+              request.actions, cr::CreativeWorldActionId::Primary) ||
+          cr::creativeWorldActionReleased(
+              request.actions, cr::CreativeWorldActionId::Accept);
+      if (released) {
+        static_cast<void>(finishCreativeEditorTransformPointerGesture(
+            editor.transform, "transform_pointer_release"));
+        if (!editor.transform.active) {
+          return;
+        }
+      }
+    }
     const bool secondaryPressed =
-        cr::creativeWorldActionPressed(
-            request.actions, cr::CreativeWorldActionId::Secondary) ||
-        cr::creativeWorldActionPressed(
-            request.actions, cr::CreativeWorldActionId::Accept);
+        !gestureActive &&
+        (cr::creativeWorldActionPressed(
+             request.actions, cr::CreativeWorldActionId::Secondary) ||
+         cr::creativeWorldActionPressed(
+             request.actions, cr::CreativeWorldActionId::Accept));
     static_cast<void>(processCreativeEditorSelectionTransformPreview(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
         editor.interaction.target.grid.placementAnchor, secondaryPressed,
         "selection_transform_commit",
-        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement)));
+        cr::creativeSnapIncrementMeters(editor.toolSettings.snapIncrement),
+        &editor.worldLayout, request.placementClearanceCache));
     return;
   }
 

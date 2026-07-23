@@ -116,6 +116,26 @@ iggy3d_add_unit_test(creative_building_recipe_tests
 set_tests_properties(creative_building_recipe_tests PROPERTIES
   LABELS "unit;app;creative;recipe;building;iggy3d")
 
+iggy3d_add_unit_test(creative_door_recipe_tests
+  tests/unit/creative_door_recipe_tests.cpp)
+set_tests_properties(creative_door_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;building;door;iggy3d")
+
+iggy3d_add_unit_test(creative_ramp_recipe_tests
+  tests/unit/creative_ramp_recipe_tests.cpp)
+set_tests_properties(creative_ramp_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;building;ramp;movement;iggy3d")
+
+iggy3d_add_unit_test(creative_stair_recipe_tests
+  tests/unit/creative_stair_recipe_tests.cpp)
+set_tests_properties(creative_stair_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;building;stair;iggy3d")
+
+iggy3d_add_unit_test(creative_window_recipe_tests
+  tests/unit/creative_window_recipe_tests.cpp)
+set_tests_properties(creative_window_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;building;window;iggy3d")
+
 iggy3d_add_unit_test(creative_structural_surface_recipe_tests
   tests/unit/creative_structural_surface_recipe_tests.cpp)
 set_tests_properties(creative_structural_surface_recipe_tests PROPERTIES
@@ -135,6 +155,26 @@ iggy3d_add_unit_test(creative_terrain_recipe_tests
   tests/unit/creative_terrain_recipe_tests.cpp)
 set_tests_properties(creative_terrain_recipe_tests PROPERTIES
   LABELS "unit;app;creative;recipe;terrain;history;iggy3d")
+
+iggy3d_add_unit_test(creative_road_recipe_tests
+  tests/unit/creative_road_recipe_tests.cpp)
+set_tests_properties(creative_road_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;terrain;road;iggy3d")
+
+iggy3d_add_unit_test(creative_watercourse_recipe_tests
+  tests/unit/creative_watercourse_recipe_tests.cpp)
+set_tests_properties(creative_watercourse_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;terrain;watercourse;iggy3d")
+
+iggy3d_add_unit_test(creative_bridge_recipe_tests
+  tests/unit/creative_bridge_recipe_tests.cpp)
+set_tests_properties(creative_bridge_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;bridge;terrain;iggy3d")
+
+iggy3d_add_unit_test(creative_retaining_edge_recipe_tests
+  tests/unit/creative_retaining_edge_recipe_tests.cpp)
+set_tests_properties(creative_retaining_edge_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;retaining_edge;terrain;iggy3d")
 
 iggy3d_add_unit_test(creative_terrain_grounding_tests
   tests/unit/creative_terrain_grounding_tests.cpp)
@@ -231,20 +271,25 @@ iggy3d_add_unit_test(creative_terrain_profile_tests
 set_tests_properties(creative_terrain_profile_tests PROPERTIES
   LABELS "unit;app;creative;tools;terrain;profile;iggy3d")
 
+iggy3d_add_unit_test(creative_terrain_landform_tests
+  tests/unit/creative_terrain_landform_tests.cpp)
+set_tests_properties(creative_terrain_landform_tests PROPERTIES
+  LABELS "unit;app;creative;recipe;terrain;landform;site;iggy3d")
+
 iggy3d_add_unit_test(creative_terrain_path_tests
   tests/unit/creative_terrain_path_tests.cpp)
 set_tests_properties(creative_terrain_path_tests PROPERTIES
   LABELS "unit;app;creative;tools;terrain;path;iggy3d")
 
-iggy3d_add_unit_test(creative_terrain_region_tests
-  tests/unit/creative_terrain_region_tests.cpp)
-set_tests_properties(creative_terrain_region_tests PROPERTIES
-  LABELS "unit;app;creative;tools;terrain;region;iggy3d")
-
 iggy3d_add_unit_test(creative_terrain_stamp_tests
   tests/unit/creative_terrain_stamp_tests.cpp)
 set_tests_properties(creative_terrain_stamp_tests PROPERTIES
   LABELS "unit;app;creative;tools;terrain;clipboard;iggy3d")
+
+iggy3d_add_unit_test(creative_terrain_stamp_library_tests
+  tests/unit/creative_terrain_stamp_library_tests.cpp)
+set_tests_properties(creative_terrain_stamp_library_tests PROPERTIES
+  LABELS "unit;app;creative;tools;terrain;stamp;catalog;codec;iggy3d")
 
 iggy3d_add_unit_test(creative_pattern_tests
   tests/unit/creative_pattern_tests.cpp)
@@ -265,6 +310,11 @@ iggy3d_add_unit_test(creative_surface_extrude_tests
   tests/unit/creative_surface_extrude_tests.cpp)
 set_tests_properties(creative_surface_extrude_tests PROPERTIES
   LABELS "unit;app;creative;tools;surface_extrude;iggy3d")
+
+iggy3d_add_unit_test(creative_recipe_transform_tests
+  tests/unit/creative_recipe_transform_tests.cpp)
+set_tests_properties(creative_recipe_transform_tests PROPERTIES
+  LABELS "unit;app;creative;tools;recipe;transform;terrain;pattern;iggy3d")
 
 add_executable(creative_editor_pattern_tests
   tests/unit/creative_editor_pattern_tests.cpp)
@@ -315,6 +365,16 @@ set_tests_properties(creative_editor_placement_tests PROPERTIES
 set_tests_properties(creative_editor_placement_tests PROPERTIES
   LABELS "unit;app;creative;editor;placement;preview;history;iggy3d")
 
+add_executable(creative_editor_selection_tests
+  tests/unit/creative_editor_selection_tests.cpp)
+target_link_libraries(creative_editor_selection_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_selection_tests)
+add_test(NAME creative_editor_selection_tests
+  COMMAND "$<TARGET_FILE:creative_editor_selection_tests>")
+set_tests_properties(creative_editor_selection_tests PROPERTIES
+  LABELS "unit;app;creative;editor;selection;iggy3d")
+
 add_executable(creative_editor_room_placement_tests
   tests/unit/creative_editor_room_placement_tests.cpp)
 target_link_libraries(creative_editor_room_placement_tests PRIVATE
@@ -346,6 +406,28 @@ add_test(NAME creative_editor_moving_platform_preview_tests
 set_tests_properties(creative_editor_moving_platform_preview_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;moving_platform;preview;iggy3d")
+
+add_executable(creative_editor_player_spawn_preview_tests
+  tests/unit/creative_editor_player_spawn_preview_tests.cpp)
+target_link_libraries(creative_editor_player_spawn_preview_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_player_spawn_preview_tests)
+add_test(NAME creative_editor_player_spawn_preview_tests
+  COMMAND "$<TARGET_FILE:creative_editor_player_spawn_preview_tests>")
+set_tests_properties(creative_editor_player_spawn_preview_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;player_spawn;preview;iggy3d")
+
+add_executable(creative_editor_map_validation_diagnostics_tests
+  tests/unit/creative_editor_map_validation_diagnostics_tests.cpp)
+target_link_libraries(creative_editor_map_validation_diagnostics_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_map_validation_diagnostics_tests)
+add_test(NAME creative_editor_map_validation_diagnostics_tests
+  COMMAND "$<TARGET_FILE:creative_editor_map_validation_diagnostics_tests>")
+set_tests_properties(creative_editor_map_validation_diagnostics_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;validation;diagnostics;iggy3d")
 
 iggy3d_add_unit_test(creative_attachment_snap_tests
   tests/unit/creative_attachment_snap_tests.cpp)
@@ -433,6 +515,17 @@ add_test(NAME creative_editor_terrain_tests
 set_tests_properties(creative_editor_terrain_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;terrain;history;preview;iggy3d")
+
+add_executable(creative_editor_terrain_stamp_library_tests
+  tests/unit/creative_editor_terrain_stamp_library_tests.cpp)
+target_link_libraries(creative_editor_terrain_stamp_library_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_terrain_stamp_library_tests)
+add_test(NAME creative_editor_terrain_stamp_library_tests
+  COMMAND "$<TARGET_FILE:creative_editor_terrain_stamp_library_tests>")
+set_tests_properties(creative_editor_terrain_stamp_library_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;terrain;stamp;catalog;persistence;iggy3d")
 
 add_executable(creative_editor_terrain_generation_preview_tests
   tests/unit/creative_editor_terrain_generation_preview_tests.cpp)
@@ -538,6 +631,28 @@ set_tests_properties(creative_editor_world_layout_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;iggy3d")
 
+add_executable(creative_editor_world_layout_room_operations_tests
+  tests/unit/creative_editor_world_layout_room_operations_tests.cpp)
+target_link_libraries(creative_editor_world_layout_room_operations_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_world_layout_room_operations_tests)
+add_test(NAME creative_editor_world_layout_room_operations_tests
+  COMMAND "$<TARGET_FILE:creative_editor_world_layout_room_operations_tests>")
+set_tests_properties(creative_editor_world_layout_room_operations_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;room;topology;iggy3d")
+
+add_executable(creative_editor_world_layout_level_operations_tests
+  tests/unit/creative_editor_world_layout_level_operations_tests.cpp)
+target_link_libraries(creative_editor_world_layout_level_operations_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_world_layout_level_operations_tests)
+add_test(NAME creative_editor_world_layout_level_operations_tests
+  COMMAND "$<TARGET_FILE:creative_editor_world_layout_level_operations_tests>")
+set_tests_properties(creative_editor_world_layout_level_operations_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;level;topology;iggy3d")
+
 add_executable(creative_editor_building_blockout_tests
   tests/unit/creative_editor_building_blockout_tests.cpp)
 target_link_libraries(creative_editor_building_blockout_tests PRIVATE
@@ -559,6 +674,115 @@ add_test(NAME creative_building_authoring_workflow_tests
 set_tests_properties(creative_building_authoring_workflow_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;building;workflow;history;collision;iggy3d")
+
+add_executable(creative_building_refinement_workflow_tests
+  tests/unit/creative_building_refinement_workflow_tests.cpp)
+target_link_libraries(creative_building_refinement_workflow_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_building_refinement_workflow_tests)
+add_test(NAME creative_building_refinement_workflow_tests
+  COMMAND "$<TARGET_FILE:creative_building_refinement_workflow_tests>")
+set_tests_properties(creative_building_refinement_workflow_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;building;workflow;refinement;persistence;traversal;iggy3d")
+
+add_executable(creative_creator_task_workflow_tests
+  tests/unit/creative_creator_task_workflow_tests.cpp)
+target_link_libraries(creative_creator_task_workflow_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_creator_task_workflow_tests)
+add_test(NAME creative_creator_task_workflow_tests
+  COMMAND "$<TARGET_FILE:creative_creator_task_workflow_tests>")
+set_tests_properties(creative_creator_task_workflow_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;workflow;building;terrain;assets;persistence;history;iggy3d")
+
+add_executable(creative_world_layout_building_usability_tests
+  tests/unit/creative_world_layout_building_usability_tests.cpp)
+target_link_libraries(creative_world_layout_building_usability_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_building_usability_tests)
+add_test(NAME creative_world_layout_building_usability_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_building_usability_tests>")
+set_tests_properties(creative_world_layout_building_usability_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;building;usability;topology;iggy3d")
+
+add_executable(creative_world_layout_building_repair_tests
+  tests/unit/creative_world_layout_building_repair_tests.cpp)
+target_link_libraries(creative_world_layout_building_repair_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_building_repair_tests)
+add_test(NAME creative_world_layout_building_repair_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_building_repair_tests>")
+set_tests_properties(creative_world_layout_building_repair_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;building;usability;repair;topology;iggy3d")
+
+add_executable(creative_world_layout_building_traversal_tests
+  tests/unit/creative_world_layout_building_traversal_tests.cpp)
+target_link_libraries(creative_world_layout_building_traversal_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_building_traversal_tests)
+add_test(NAME creative_world_layout_building_traversal_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_building_traversal_tests>")
+set_tests_properties(creative_world_layout_building_traversal_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;building;traversal;collision;movement;iggy3d")
+
+add_executable(creative_world_layout_room_topology_tests
+  tests/unit/creative_world_layout_room_topology_tests.cpp)
+target_link_libraries(creative_world_layout_room_topology_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_room_topology_tests)
+add_test(NAME creative_world_layout_room_topology_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_room_topology_tests>")
+set_tests_properties(creative_world_layout_room_topology_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;room;topology;iggy3d")
+
+add_executable(creative_world_layout_opening_tests
+  tests/unit/creative_world_layout_opening_tests.cpp)
+target_link_libraries(creative_world_layout_opening_tests PRIVATE iggy3d)
+iggy3d_apply_warnings(creative_world_layout_opening_tests)
+add_test(NAME creative_world_layout_opening_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_opening_tests>")
+set_tests_properties(creative_world_layout_opening_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;opening;topology;clearance;iggy3d")
+
+add_executable(creative_world_layout_orthogonal_rooms_tests
+  tests/unit/creative_world_layout_orthogonal_rooms_tests.cpp)
+target_link_libraries(creative_world_layout_orthogonal_rooms_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_orthogonal_rooms_tests)
+add_test(NAME creative_world_layout_orthogonal_rooms_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_orthogonal_rooms_tests>")
+set_tests_properties(creative_world_layout_orthogonal_rooms_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;room;orthogonal;graph;iggy3d")
+
+add_executable(creative_world_layout_room_operations_tests
+  tests/unit/creative_world_layout_room_operations_tests.cpp)
+target_link_libraries(creative_world_layout_room_operations_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_room_operations_tests)
+add_test(NAME creative_world_layout_room_operations_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_room_operations_tests>")
+set_tests_properties(creative_world_layout_room_operations_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;room;orthogonal;operation;iggy3d")
+
+add_executable(creative_world_layout_wall_operations_tests
+  tests/unit/creative_world_layout_wall_operations_tests.cpp)
+target_link_libraries(creative_world_layout_wall_operations_tests PRIVATE
+  iggy3d)
+iggy3d_apply_warnings(creative_world_layout_wall_operations_tests)
+add_test(NAME creative_world_layout_wall_operations_tests
+  COMMAND "$<TARGET_FILE:creative_world_layout_wall_operations_tests>")
+set_tests_properties(creative_world_layout_wall_operations_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;world;layout;wall;orthogonal;operation;iggy3d")
 
 add_executable(creative_editor_world_layout_topography_tests
   tests/unit/creative_editor_world_layout_topography_tests.cpp)
@@ -696,6 +920,11 @@ iggy3d_add_unit_test(creative_terrain_composition_tests
 set_tests_properties(creative_terrain_composition_tests PROPERTIES
   LABELS "unit;app;creative;document;recipe;terrain;composition;iggy3d")
 
+iggy3d_add_unit_test(creative_terrain_region_recipe_tests
+  tests/unit/creative_terrain_region_recipe_tests.cpp)
+set_tests_properties(creative_terrain_region_recipe_tests PROPERTIES
+  LABELS "unit;app;creative;document;recipe;terrain;region;iggy3d")
+
 iggy3d_add_unit_test(creative_terrain_operation_tests
   tests/unit/creative_terrain_operation_tests.cpp)
 set_tests_properties(creative_terrain_operation_tests PROPERTIES
@@ -715,6 +944,21 @@ iggy3d_add_unit_test(creative_measure_tests
   tests/unit/creative_measure_tests.cpp)
 set_tests_properties(creative_measure_tests PROPERTIES
   LABELS "unit;app;creative;measure;iggy3d")
+
+iggy3d_add_unit_test(creative_measurement_annotation_tests
+  tests/unit/creative_measurement_annotation_tests.cpp)
+set_tests_properties(creative_measurement_annotation_tests PROPERTIES
+  LABELS "unit;app;creative;measure;annotation;document;iggy3d")
+
+add_executable(creative_editor_measurement_tests
+  tests/unit/creative_editor_measurement_tests.cpp)
+target_link_libraries(creative_editor_measurement_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_measurement_tests)
+add_test(NAME creative_editor_measurement_tests
+  COMMAND "$<TARGET_FILE:creative_editor_measurement_tests>")
+set_tests_properties(creative_editor_measurement_tests PROPERTIES
+  LABELS "unit;app;creative;editor;measure;snap;iggy3d")
 
 iggy3d_add_unit_test(creative_snap_tests
   tests/unit/creative_snap_tests.cpp)
@@ -746,6 +990,11 @@ iggy3d_add_unit_test(creative_map_validation_tests
 set_tests_properties(creative_map_validation_tests PROPERTIES
   LABELS "unit;app;creative;validation;iggy3d")
 
+iggy3d_add_unit_test(creative_player_spawn_tests
+  tests/unit/creative_player_spawn_tests.cpp)
+set_tests_properties(creative_player_spawn_tests PROPERTIES
+  LABELS "unit;app;creative;play;validation;iggy3d")
+
 iggy3d_add_unit_test(creative_play_preparation_tests
   tests/unit/creative_play_preparation_tests.cpp)
 set_tests_properties(creative_play_preparation_tests PROPERTIES
@@ -759,6 +1008,11 @@ iggy3d_add_unit_test(creative_runtime_sandbox_tests
   tests/unit/creative_runtime_sandbox_tests.cpp)
 set_tests_properties(creative_runtime_sandbox_tests PROPERTIES
   LABELS "unit;app;creative;play;runtime;session;iggy3d")
+
+iggy3d_add_unit_test(creative_runtime_door_tests
+  tests/unit/creative_runtime_door_tests.cpp)
+set_tests_properties(creative_runtime_door_tests PROPERTIES
+  LABELS "unit;app;creative;play;runtime;physics;ai;iggy3d")
 
 iggy3d_add_unit_test(creative_runtime_moving_platform_tests
   tests/unit/creative_runtime_moving_platform_tests.cpp)

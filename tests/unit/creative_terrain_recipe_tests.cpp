@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string_view>
 
 namespace {
@@ -225,6 +226,13 @@ bool heightAndMaterialCommitAsOneUndoStep() {
       appState.facade.document().terrainMaterialField().overrideCount() > 0U;
   const std::uint64_t undoDepthAfterApply =
       cr::creativeUndoDepth(appState.history);
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
   const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
 
@@ -236,8 +244,24 @@ bool heightAndMaterialCommitAsOneUndoStep() {
          expect(bothCommitted, "terrain recipe commits both authored fields") &&
          expect(applied.historyReceipt.recorded && undoDepthAfterApply == 1U,
                 "terrain recipe records exactly one undo snapshot") &&
+         expect(expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Terrain &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    expectedOperation->action == "River" &&
+                    expectedOperation->requestFingerprint ==
+                        cr::fingerprintCreativeTerrainRecipePlan(recipe.plan) &&
+                    expectedOperation->affectedMemberCount ==
+                        recipe.plan.controlEdits.size() +
+                            recipe.plan.materialEdits.size(),
+                "terrain history records the exact semantic plan") &&
          expect(undone.accepted && undone.changed,
                 "terrain recipe one-step undo accepted") &&
+         expect(undone.targetOperation == expectedOperation,
+                "terrain operation metadata survives undo") &&
          expect(appState.facade.document().terrainField().controlCount() == 0U &&
                     appState.facade.document()
                             .terrainMaterialField()

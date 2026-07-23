@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -30,8 +31,9 @@ bool validLevel(const CreativeWorldLayout& layout,
          level.wallHeightCells > 0U && level.floorThicknessLayers > 0U &&
          level.ceilingThicknessLayers > 0U && level.roofThicknessLayers > 0U &&
          validCreativeStructuralRoofSettings(
-             level.roofStyle, level.roofRidgeAxis, level.roofPitchDegrees,
-             level.roofOverhangCells) &&
+             level.roofStyle, level.roofRidgeAxis,
+             level.roofSlopeDirection, level.roofPitchDegrees,
+             level.roofOverhangCells, level.roofMaterial) &&
          level.roofOverhangCells <=
              kMaximumCreativeWorldLayoutRoofOverhangCells;
 }
@@ -79,6 +81,15 @@ bool wallTouchesLevel(const CreativeWorldLayout& layout,
              wall.baseLayer, wall.baseLayer + wall.heightCells,
              level.floorTopLayer,
              level.floorTopLayer + level.wallHeightCells);
+}
+
+bool topologyEdgeTouchesLevel(const CreativeWorldLayout& layout,
+                              std::size_t edgeIndex,
+                              std::size_t levelIndex) noexcept {
+  return edgeIndex < layout.topologyEdges.size() &&
+         layout.topologyEdges[edgeIndex].levelIndex == levelIndex &&
+         levelIndex < layout.levels.size() &&
+         layout.levels[levelIndex].buildingIndex < layout.buildings.size();
 }
 
 bool openingTouchesLevel(const CreativeWorldLayout& layout,
@@ -138,7 +149,11 @@ bool validCreativeWorldLayoutLevelOwnership(
       return false;
     }
   }
-  return true;
+  return std::all_of(
+      layout.roofApertures.begin(), layout.roofApertures.end(),
+      [&](const CreativeWorldLayoutRoofAperture& aperture) {
+        return aperture.levelIndex < layout.levels.size();
+      });
 }
 
 const CreativeWorldLayoutLevel* creativeWorldLayoutLevelForRoom(
@@ -294,6 +309,11 @@ bool creativeWorldLayoutSourceTouchesLevel(
       return wallTouchesLevel(layout, sourceIndex, levelIndex);
     case CreativeWorldLayoutTable::Opening:
       return openingTouchesLevel(layout, sourceIndex, levelIndex);
+    case CreativeWorldLayoutTable::TopologyEdge:
+      return topologyEdgeTouchesLevel(layout, sourceIndex, levelIndex);
+    case CreativeWorldLayoutTable::RoofAperture:
+      return sourceIndex < layout.roofApertures.size() &&
+             layout.roofApertures[sourceIndex].levelIndex == levelIndex;
     case CreativeWorldLayoutTable::None:
     case CreativeWorldLayoutTable::Object:
     case CreativeWorldLayoutTable::TerrainProfile:

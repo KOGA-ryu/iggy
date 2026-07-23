@@ -284,7 +284,6 @@ bool cancelCreativeEditorHeldItem(cr::CreativeAppState& appState,
   cancel.kind = cr::CreativeToolInputKind::Cancel;
   const cr::CreativeFacadeToolDispatchReceipt receipt =
       appState.facade.dispatchToolInput(cancel);
-  editor.interaction.moveTargetId = cr::kInvalidObjectId;
   return receipt.changed;
 }
 

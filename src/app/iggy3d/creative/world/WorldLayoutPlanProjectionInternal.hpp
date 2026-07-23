@@ -70,6 +70,7 @@ void reject(Projection& projection,
 
 [[nodiscard]] bool projectRoofs(
     Projection& projection, const CreativeWorldLayout& layout,
+    CreativeGridSettings grid,
     std::span<const std::uint8_t> activeLevelMask);
 
 [[nodiscard]] bool projectObjects(

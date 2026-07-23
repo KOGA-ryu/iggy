@@ -35,6 +35,18 @@ std::vector<OwnedIdentity> ownedIdentities(const Rows& rows,
   return result;
 }
 
+template <typename Rows, typename Predicate>
+std::vector<std::string> ownedStableKeys(const Rows& rows,
+                                         Predicate isOwned) {
+  std::vector<std::string> result;
+  for (const auto& row : rows) {
+    if (isOwned(row)) {
+      result.push_back(row.stableKey);
+    }
+  }
+  return result;
+}
+
 void applyReusedOrMintedIdentity(
     CreativeWorldLayout& layout, std::uint64_t& nextStableOrdinal,
     const std::vector<OwnedIdentity>& oldIdentities, std::size_t ordinal,
@@ -45,6 +57,18 @@ void applyReusedOrMintedIdentity(
     if (preserveExistingNames) {
       name = oldIdentities[ordinal].name;
     }
+    return;
+  }
+  stableKey =
+      mintCreativeWorldLayoutStableKey(layout, nextStableOrdinal, prefix);
+}
+
+void applyReusedOrMintedStableKey(
+    CreativeWorldLayout& layout, std::uint64_t& nextStableOrdinal,
+    const std::vector<std::string>& oldStableKeys, std::size_t ordinal,
+    std::string_view prefix, std::string& stableKey) {
+  if (ordinal < oldStableKeys.size()) {
+    stableKey = oldStableKeys[ordinal];
     return;
   }
   stableKey =
@@ -93,6 +117,26 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
       [&](const auto& row) {
         return openingOwnedByBuilding(layout, row, buildingIndex);
       });
+  const auto oldLevelOwned = [&](std::size_t levelIndex) {
+    return levelIndex < layout.levels.size() &&
+           layout.levels[levelIndex].buildingIndex == buildingIndex;
+  };
+  const std::vector<OwnedIdentity> oldRoofApertureIdentities =
+      ownedIdentities(
+          layout.roofApertures,
+          [&](const CreativeWorldLayoutRoofAperture& row) {
+            return oldLevelOwned(row.levelIndex);
+          });
+  const std::vector<std::string> oldTopologyVertexKeys = ownedStableKeys(
+      layout.topologyVertices,
+      [&](const CreativeWorldLayoutTopologyVertex& vertex) {
+        return oldLevelOwned(vertex.levelIndex);
+      });
+  const std::vector<std::string> oldTopologyEdgeKeys = ownedStableKeys(
+      layout.topologyEdges,
+      [&](const CreativeWorldLayoutTopologyEdge& edge) {
+        return oldLevelOwned(edge.levelIndex);
+      });
   const std::string buildingStableKey =
       layout.buildings[buildingIndex].stableKey;
   const std::string buildingName = layout.buildings[buildingIndex].name;
@@ -127,6 +171,30 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
     levels.push_back(std::move(level));
   }
 
+  std::vector<CreativeWorldLayoutRoofAperture> roofApertures;
+  roofApertures.reserve(layout.roofApertures.size() +
+                        positioned.roofApertures.size());
+  for (CreativeWorldLayoutRoofAperture aperture : layout.roofApertures) {
+    if (oldLevelOwned(aperture.levelIndex)) {
+      continue;
+    }
+    aperture.levelIndex = oldLevelMap[aperture.levelIndex];
+    roofApertures.push_back(std::move(aperture));
+  }
+  for (std::size_t index = 0U;
+       index < positioned.roofApertures.size(); ++index) {
+    CreativeWorldLayoutRoofAperture aperture =
+        positioned.roofApertures[index];
+    aperture.levelIndex = newLevelMap[aperture.levelIndex];
+    applyReusedOrMintedIdentity(
+        layout, nextStableOrdinal, oldRoofApertureIdentities, index,
+        aperture.kind == CreativeStructuralRoofApertureKind::Skylight
+            ? "skylight"
+            : "chimney_clearance",
+        preserveExistingNames, aperture.stableKey, aperture.name);
+    roofApertures.push_back(std::move(aperture));
+  }
+
   std::vector<std::size_t> oldRoomMap(layout.rooms.size(),
                                       kInvalidCreativeWorldLayoutIndex);
   std::vector<CreativeWorldLayoutRoom> rooms;
@@ -151,6 +219,88 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
         preserveExistingNames, room.stableKey, room.name);
     newRoomMap[index] = rooms.size();
     rooms.push_back(std::move(room));
+  }
+
+  std::vector<std::size_t> oldTopologyVertexMap(
+      layout.topologyVertices.size(), kInvalidCreativeWorldLayoutIndex);
+  std::vector<CreativeWorldLayoutTopologyVertex> topologyVertices;
+  topologyVertices.reserve(layout.topologyVertices.size() +
+                           positioned.topologyVertices.size());
+  for (std::size_t index = 0U; index < layout.topologyVertices.size();
+       ++index) {
+    CreativeWorldLayoutTopologyVertex vertex =
+        layout.topologyVertices[index];
+    if (oldLevelOwned(vertex.levelIndex)) {
+      continue;
+    }
+    vertex.levelIndex = oldLevelMap[vertex.levelIndex];
+    oldTopologyVertexMap[index] = topologyVertices.size();
+    topologyVertices.push_back(std::move(vertex));
+  }
+  std::vector<std::size_t> newTopologyVertexMap(
+      positioned.topologyVertices.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U;
+       index < positioned.topologyVertices.size(); ++index) {
+    CreativeWorldLayoutTopologyVertex vertex =
+        positioned.topologyVertices[index];
+    vertex.levelIndex = newLevelMap[vertex.levelIndex];
+    applyReusedOrMintedStableKey(
+        layout, nextStableOrdinal, oldTopologyVertexKeys, index,
+        "wall_vertex", vertex.stableKey);
+    newTopologyVertexMap[index] = topologyVertices.size();
+    topologyVertices.push_back(std::move(vertex));
+  }
+
+  std::vector<std::size_t> oldTopologyEdgeMap(
+      layout.topologyEdges.size(), kInvalidCreativeWorldLayoutIndex);
+  std::vector<CreativeWorldLayoutTopologyEdge> topologyEdges;
+  topologyEdges.reserve(layout.topologyEdges.size() +
+                        positioned.topologyEdges.size());
+  for (std::size_t index = 0U; index < layout.topologyEdges.size(); ++index) {
+    CreativeWorldLayoutTopologyEdge edge = layout.topologyEdges[index];
+    if (oldLevelOwned(edge.levelIndex)) {
+      continue;
+    }
+    edge.levelIndex = oldLevelMap[edge.levelIndex];
+    edge.startVertexIndex = oldTopologyVertexMap[edge.startVertexIndex];
+    edge.endVertexIndex = oldTopologyVertexMap[edge.endVertexIndex];
+    oldTopologyEdgeMap[index] = topologyEdges.size();
+    topologyEdges.push_back(std::move(edge));
+  }
+  std::vector<std::size_t> newTopologyEdgeMap(
+      positioned.topologyEdges.size(), kInvalidCreativeWorldLayoutIndex);
+  for (std::size_t index = 0U; index < positioned.topologyEdges.size();
+       ++index) {
+    CreativeWorldLayoutTopologyEdge edge = positioned.topologyEdges[index];
+    edge.levelIndex = newLevelMap[edge.levelIndex];
+    edge.startVertexIndex = newTopologyVertexMap[edge.startVertexIndex];
+    edge.endVertexIndex = newTopologyVertexMap[edge.endVertexIndex];
+    applyReusedOrMintedStableKey(
+        layout, nextStableOrdinal, oldTopologyEdgeKeys, index, "wall",
+        edge.stableKey);
+    newTopologyEdgeMap[index] = topologyEdges.size();
+    topologyEdges.push_back(std::move(edge));
+  }
+
+  std::vector<CreativeWorldLayoutRoomBoundary> roomBoundaries;
+  roomBoundaries.reserve(layout.roomBoundaries.size() +
+                         positioned.roomBoundaries.size());
+  for (CreativeWorldLayoutRoomBoundary boundary : layout.roomBoundaries) {
+    if (oldRoomMap[boundary.roomIndex] ==
+        kInvalidCreativeWorldLayoutIndex) {
+      continue;
+    }
+    boundary.roomIndex = oldRoomMap[boundary.roomIndex];
+    boundary.topologyEdgeIndex =
+        oldTopologyEdgeMap[boundary.topologyEdgeIndex];
+    roomBoundaries.push_back(std::move(boundary));
+  }
+  for (CreativeWorldLayoutRoomBoundary boundary :
+       positioned.roomBoundaries) {
+    boundary.roomIndex = newRoomMap[boundary.roomIndex];
+    boundary.topologyEdgeIndex =
+        newTopologyEdgeMap[boundary.topologyEdgeIndex];
+    roomBoundaries.push_back(std::move(boundary));
   }
 
   std::vector<CreativeWorldLayoutVerticalConnector> verticalConnectors;
@@ -226,6 +376,11 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
     }
     if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
       opening.roomIndex = oldRoomMap[opening.roomIndex];
+      if (opening.roomTopologyEdgeIndex !=
+          kInvalidCreativeWorldLayoutIndex) {
+        opening.roomTopologyEdgeIndex =
+            oldTopologyEdgeMap[opening.roomTopologyEdgeIndex];
+      }
     } else {
       opening.wallIndex = oldWallMap[opening.wallIndex];
     }
@@ -235,6 +390,11 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
     CreativeWorldLayoutOpening opening = positioned.openings[index];
     if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::RoomEdge) {
       opening.roomIndex = newRoomMap[opening.roomIndex];
+      if (opening.roomTopologyEdgeIndex !=
+          kInvalidCreativeWorldLayoutIndex) {
+        opening.roomTopologyEdgeIndex =
+            newTopologyEdgeMap[opening.roomTopologyEdgeIndex];
+      }
     } else {
       opening.wallIndex = newWallMap[opening.wallIndex];
     }
@@ -246,7 +406,11 @@ bool replaceBuildingContents(CreativeWorldLayout& layout,
   }
 
   layout.levels = std::move(levels);
+  layout.roofApertures = std::move(roofApertures);
   layout.rooms = std::move(rooms);
+  layout.topologyVertices = std::move(topologyVertices);
+  layout.topologyEdges = std::move(topologyEdges);
+  layout.roomBoundaries = std::move(roomBoundaries);
   layout.verticalConnectors = std::move(verticalConnectors);
   layout.boxes = std::move(boxes);
   layout.walls = std::move(walls);

@@ -1,6 +1,7 @@
 
 
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <optional>
 #include <utility>
@@ -110,6 +111,24 @@ requestedRelationshipAssignment(const CreativeMutationRequest& request) {
         false,
         std::move(objectReceipt),
         std::move(message));
+}
+
+[[nodiscard]] CreativeDocumentMutationReceipt rejectDocumentLockedMutation(
+    CreativeDocument& document,
+    const CreativeObject& object,
+    CreativeMutationKind mutationKind,
+    CreativeObjectId lockedByObjectId) {
+    const auto revision = document.revision();
+    std::string message = lockedByObjectId == object.id
+                              ? "object is locked"
+                              : "object is locked by an ancestor";
+    CreativeMutationApplyReceipt objectReceipt = rejectMutation(
+        object, mutationKind, CreativeMutationApplyStatus::LockedObject,
+        message);
+    return makeDocumentMutationReceipt(
+        CreativeDocumentMutationStatus::ApplyFailed, object.id, object.kind,
+        mutationKind, revision, revision, 0, false, false,
+        std::move(objectReceipt), std::move(message));
 }
 
 [[nodiscard]] std::string_view validateRelationshipParentAssignment(
@@ -241,9 +260,34 @@ CreativeDocumentMutationReceipt applyDocumentMutation(
         return rejectDocumentMutation(document, request.objectId, request.kind, CreativeDocumentMutationStatus::MissingObject, "document does not contain requested object");
     }
 
+    if (options.applyOptions.rejectLockedObjects &&
+        request.kind != CreativeMutationKind::SetLocked) {
+        const CreativeObjectHierarchyState hierarchyState =
+            resolveCreativeObjectHierarchyState(document, object->id);
+        if (!hierarchyState.resolved || hierarchyState.effectivelyLocked) {
+            return rejectDocumentLockedMutation(
+                document, *object, request.kind,
+                hierarchyState.lockedByObjectId != kInvalidObjectId
+                    ? hierarchyState.lockedByObjectId
+                    : object->id);
+        }
+    }
+
     const std::optional<RequestedRelationshipAssignment> relationship =
         requestedRelationshipAssignment(request);
     if (relationship.has_value() && canMutate(object->kind, request.kind)) {
+        if (document.findObject(relationship->parentId) != nullptr) {
+            const CreativeObjectHierarchyState parentState =
+                resolveCreativeObjectHierarchyState(document,
+                                                    relationship->parentId);
+            if (!parentState.resolved || parentState.effectivelyLocked) {
+                return rejectDocumentLockedMutation(
+                    document, *object, request.kind,
+                    parentState.lockedByObjectId != kInvalidObjectId
+                        ? parentState.lockedByObjectId
+                        : relationship->parentId);
+            }
+        }
         const std::string_view relationshipValidation =
             validateRelationshipParentAssignment(
                 document, object->id, *relationship);

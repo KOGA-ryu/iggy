@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/play/PlayPreparation.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -28,14 +29,21 @@ bool addFloor(cr::CreativeDocument& document) {
   return document.createObject(request).accepted;
 }
 
-bool addSpawn(cr::CreativeDocument& document,
-              cr::CreativeVec3 position = {1.0, 0.25, -1.0}) {
+cr::CreativeDocumentCreateReceipt addSpawn(
+    cr::CreativeDocument& document,
+    cr::CreativeVec3 position = {1.0, 0.25, -1.0},
+    cr::CreativePlayerSpawnSettings settings = {},
+    double yawRadians = 0.0,
+    std::string name = "Play Spawn") {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::SpawnPoint;
-  request.name = "Play Spawn";
+  request.name = std::move(name);
   request.transform.position = position;
+  request.transform.rotationEulerRadians.y = yawRadians;
   request.hasTransformOverride = true;
-  return document.createObject(request).accepted;
+  request.playerSpawn = std::move(settings);
+  request.hasPlayerSpawnSettingsOverride = true;
+  return document.createObject(request);
 }
 
 bool addRock(cr::CreativeDocument& document,
@@ -116,9 +124,19 @@ bool validMapProducesActivationSnapshot() {
                     payload.room.id == payload.roomId,
                 "payload is identity and revision stamped") &&
          expect(payload.playerSpawn.kind == "spawn" &&
+                    payload.playerSpawnObjectId != cr::kInvalidObjectId &&
                     payload.playerSpawn.positionMeters.x == 1.0F &&
                     payload.playerSpawn.positionMeters.y == 0.25F &&
-                    payload.playerSpawn.positionMeters.z == -1.0F,
+                    payload.playerSpawn.positionMeters.z == -1.0F &&
+                    payload.playerSpawnSettings ==
+                        cr::CreativePlayerSpawnSettings{} &&
+                    payload.playerSpawnYawRadians == 0.0F &&
+                    payload.playerSpawnCameraPositionMeters.x == 1.0F &&
+                    std::fabs(payload.playerSpawnCameraPositionMeters.y -
+                              (0.25F +
+                               cr::kCreativeDefaultPlayerEyeHeightMeters)) <
+                        0.0001F &&
+                    payload.playerSpawnCameraPositionMeters.z == -1.0F,
                 "payload preserves baked player spawn") &&
          expect(result.validation.roomBake.bakedSpatialSurfaceCount ==
                     payload.room.spatialSurfaces.size() &&
@@ -129,6 +147,74 @@ bool validMapProducesActivationSnapshot() {
                 "fresh payload matches source document") &&
          expect(cr::toString(result.status) == "prepared",
                 "prepared status string is stable");
+}
+
+bool prioritySelectsOneActivationSpawn() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Fallback Spawn Map");
+  static_cast<void>(document.assignId(23U));
+  const bool floorCreated = addFloor(document);
+
+  cr::CreativePlayerSpawnSettings fallbackSettings;
+  fallbackSettings.spawnGroup = "north_entry";
+  fallbackSettings.validationRadiusMeters = 0.5;
+  fallbackSettings.fallbackPriority = 7U;
+  const cr::CreativeDocumentCreateReceipt fallback = addSpawn(
+      document, {1.0, 0.25, -1.0}, fallbackSettings, -0.5,
+      "North Entry Fallback");
+
+  cr::CreativePlayerSpawnSettings preferredSettings;
+  preferredSettings.spawnGroup = "north_entry";
+  preferredSettings.validationRadiusMeters = 0.65;
+  preferredSettings.fallbackPriority = 2U;
+  const cr::CreativeDocumentCreateReceipt preferred = addSpawn(
+      document, {-1.0, 0.25, 1.0}, preferredSettings, 1.25,
+      "North Entry Preferred");
+
+  cr::CreativePlayPreparationRequest request;
+  request.document = &document;
+  request.staticMeshAssetCatalog = &catalog;
+  request.roomId = "fallback_spawn_room";
+  request.playerSpawnGroup = "north_entry";
+  const cr::CreativePlayPreparationResult result =
+      cr::prepareCreativePlay(request);
+  if (!result.payload.has_value()) {
+    return expect(false, "priority spawn map prepares payload");
+  }
+  const cr::CreativePlayActivationPayload& payload = *result.payload;
+  const std::size_t spawnAnchorCount = static_cast<std::size_t>(std::count_if(
+      payload.room.anchors.begin(), payload.room.anchors.end(),
+      [](const iggy3d::RoomAnchorAsset& anchor) {
+        return anchor.kind == "spawn";
+      }));
+
+  return expect(floorCreated && fallback.accepted && preferred.accepted &&
+                    result.accepted && result.validation.passed,
+                "multiple valid fallback spawns prepare") &&
+         expect(result.validation.playerSpawn.accepted &&
+                    result.validation.playerSpawn.groupCandidateCount == 2U &&
+                    result.validation.playerSpawn.rejectedCandidateCount == 0U &&
+                    result.validation.playerSpawn.selected.objectId ==
+                        preferred.objectId,
+                "lowest authored priority selects deterministically") &&
+         expect(payload.playerSpawnObjectId == preferred.objectId &&
+                    payload.playerSpawnSettings == preferredSettings &&
+                    payload.playerSpawnYawRadians == 1.25F &&
+                    payload.playerSpawn.positionMeters.x == -1.0F &&
+                    payload.playerSpawn.positionMeters.y == 0.25F &&
+                    payload.playerSpawn.positionMeters.z == 1.0F &&
+                    payload.playerSpawnCameraPositionMeters.x == -1.0F &&
+                    std::fabs(payload.playerSpawnCameraPositionMeters.y -
+                              (0.25F +
+                               cr::kCreativeDefaultPlayerEyeHeightMeters)) <
+                        0.0001F &&
+                    payload.playerSpawnCameraPositionMeters.z == 1.0F,
+                "selected identity settings pose and camera enter payload") &&
+         expect(spawnAnchorCount == 1U &&
+                    payload.room.anchors.back().kind == "spawn" &&
+                    payload.room.anchors.back().id == payload.playerSpawn.id,
+                "activation room contains only selected spawn anchor");
 }
 
 bool validationFailureReturnsDiagnosticsWithoutPayload() {
@@ -272,6 +358,7 @@ bool payloadFreshnessRejectsRevisionAndIdentityDrift() {
 
 int main() {
   const bool ok = validMapProducesActivationSnapshot() &&
+                  prioritySelectsOneActivationSpawn() &&
                   validationFailureReturnsDiagnosticsWithoutPayload() &&
                   linkedPlatformWithoutCollisionCannotPrepare() &&
                   missingDocumentAndIdentityFailClosed() &&

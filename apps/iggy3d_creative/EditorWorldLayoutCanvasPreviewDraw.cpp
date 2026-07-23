@@ -1,11 +1,13 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -77,25 +79,37 @@ void drawOpeningPlacementPlan(
 void drawOpeningPlacementPreview(
     ImDrawList& drawList, const CanvasTransform& transform,
     const CreativeEditorWorldLayoutState& state,
-    CreativeEditorWorldLayoutPoint hovered) {
-  cr::CreativeBuildingOpeningKind kind;
-  if (state.tool == CreativeEditorWorldLayoutTool::Door) {
-    kind = cr::CreativeBuildingOpeningKind::Door;
-  } else if (state.tool == CreativeEditorWorldLayoutTool::Window) {
-    kind = cr::CreativeBuildingOpeningKind::Window;
-  } else {
-    return;
-  }
+    CreativeEditorWorldLayoutPoint hovered,
+    cr::CreativeBuildingOpeningKind kind, std::string_view label) {
   const CreativeEditorWorldLayoutOpeningPlacementPlan plan =
       planCreativeEditorWorldLayoutOpeningPlacement(state, hovered, kind);
-  drawOpeningPlacementPlan(
-      drawList, transform, hovered, plan, kind,
-      kind == cr::CreativeBuildingOpeningKind::Door ? "Door" : "Window");
+  drawOpeningPlacementPlan(drawList, transform, hovered, plan, kind, label);
+}
+
+ImU32 previewFillColor(CreativeEditorWorldLayoutPreviewFill fill) {
+  switch (fill) {
+    case CreativeEditorWorldLayoutPreviewFill::None:
+      return 0U;
+    case CreativeEditorWorldLayoutPreviewFill::Structure:
+      return color({0.22F, 0.58F, 0.38F, 0.22F});
+    case CreativeEditorWorldLayoutPreviewFill::VerticalConnector:
+      return color({0.18F, 0.55F, 0.72F, 0.28F});
+    case CreativeEditorWorldLayoutPreviewFill::Ramp:
+      return color({0.72F, 0.38F, 0.12F, 0.28F});
+    case CreativeEditorWorldLayoutPreviewFill::Road:
+      return color({0.72F, 0.56F, 0.28F, 0.32F});
+    case CreativeEditorWorldLayoutPreviewFill::Ditch:
+      return color({0.25F, 0.47F, 0.68F, 0.32F});
+    case CreativeEditorWorldLayoutPreviewFill::Count:
+      break;
+  }
+  return 0U;
 }
 
 void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
                        const CreativeEditorWorldLayoutState& state,
-                       CreativeEditorWorldLayoutPoint hovered) {
+                       CreativeEditorWorldLayoutPoint hovered,
+                       const CreativeEditorToolDescriptor& descriptor) {
   if (!state.anchorActive) {
     return;
   }
@@ -103,54 +117,76 @@ void drawAnchorPreview(ImDrawList& drawList, const CanvasTransform& transform,
   const double snappedZ = std::round(hovered.z);
   const ImU32 previewColor = color({0.96F, 0.82F, 0.22F, 0.95F});
   const ImVec2 start = toScreen(transform, state.anchor.x, state.anchor.z);
-  if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
-      state.tool == CreativeEditorWorldLayoutTool::Room ||
-      state.tool == CreativeEditorWorldLayoutTool::Floor ||
-      creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
-      state.tool == CreativeEditorWorldLayoutTool::Bridge) {
-    const ImVec2 end = toScreen(transform, snappedX, snappedZ);
-    if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
-        state.tool == CreativeEditorWorldLayoutTool::Room ||
-        creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
-        state.tool == CreativeEditorWorldLayoutTool::Bridge) {
-      drawList.AddRectFilled(
-          {std::min(start.x, end.x), std::min(start.y, end.y)},
-          {std::max(start.x, end.x), std::max(start.y, end.y)},
-          state.tool == CreativeEditorWorldLayoutTool::Ramp
-              ? color({0.72F, 0.38F, 0.12F, 0.28F})
-              : creativeEditorWorldLayoutToolIsVerticalConnector(state.tool)
-                    ? color({0.18F, 0.55F, 0.72F, 0.28F})
-                    : color({0.22F, 0.58F, 0.38F, 0.22F}));
+  switch (descriptor.worldLayoutPreviewProfile) {
+    case CreativeEditorWorldLayoutPreviewProfile::Rectangle: {
+      const ImVec2 end = toScreen(transform, snappedX, snappedZ);
+      if (descriptor.worldLayoutPreviewFill !=
+          CreativeEditorWorldLayoutPreviewFill::None) {
+        drawList.AddRectFilled(
+            {std::min(start.x, end.x), std::min(start.y, end.y)},
+            {std::max(start.x, end.x), std::max(start.y, end.y)},
+            previewFillColor(descriptor.worldLayoutPreviewFill));
+      }
+      drawList.AddRect({std::min(start.x, end.x), std::min(start.y, end.y)},
+                       {std::max(start.x, end.x), std::max(start.y, end.y)},
+                       previewColor, 0.0F, 0, 2.0F);
+      const int width =
+          static_cast<int>(std::fabs(snappedX - state.anchor.x));
+      const int depth =
+          static_cast<int>(std::fabs(snappedZ - state.anchor.z));
+      const std::string dimensions =
+          std::to_string(width) + " x " + std::to_string(depth);
+      drawList.AddText({std::min(start.x, end.x) + 6.0F,
+                        std::min(start.y, end.y) + 6.0F},
+                       previewColor, dimensions.c_str());
+      break;
     }
-    drawList.AddRect({std::min(start.x, end.x), std::min(start.y, end.y)},
-                     {std::max(start.x, end.x), std::max(start.y, end.y)},
-                     previewColor, 0.0F, 0, 2.0F);
-    const int width = static_cast<int>(std::fabs(snappedX - state.anchor.x));
-    const int depth = static_cast<int>(std::fabs(snappedZ - state.anchor.z));
-    const std::string dimensions =
-        std::to_string(width) + " x " + std::to_string(depth);
-    drawList.AddText({std::min(start.x, end.x) + 6.0F,
-                      std::min(start.y, end.y) + 6.0F},
-                     previewColor, dimensions.c_str());
-  } else if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
-    const double deltaX = std::fabs(snappedX - state.anchor.x);
-    const double deltaZ = std::fabs(snappedZ - state.anchor.z);
-    const ImVec2 end = deltaX >= deltaZ
-                           ? toScreen(transform, snappedX, state.anchor.z)
-                           : toScreen(transform, state.anchor.x, snappedZ);
-    drawList.AddLine(start, end, previewColor, 4.0F);
-  } else if (state.tool == CreativeEditorWorldLayoutTool::Road ||
-             state.tool == CreativeEditorWorldLayoutTool::Ditch) {
-    const ImVec2 end = toScreen(transform, snappedX, snappedZ);
-    const float width = state.tool == CreativeEditorWorldLayoutTool::Ditch
-                            ? transform.pixelsPerCell * 3.0F
-                            : transform.pixelsPerCell * 3.0F;
-    drawList.AddLine(start, end,
-                     state.tool == CreativeEditorWorldLayoutTool::Ditch
-                         ? color({0.25F, 0.47F, 0.68F, 0.32F})
-                         : color({0.72F, 0.56F, 0.28F, 0.32F}),
-                     width);
-    drawList.AddLine(start, end, previewColor, 2.0F);
+    case CreativeEditorWorldLayoutPreviewProfile::AxisLine: {
+      const double deltaX = std::fabs(snappedX - state.anchor.x);
+      const double deltaZ = std::fabs(snappedZ - state.anchor.z);
+      const ImVec2 end = deltaX >= deltaZ
+                             ? toScreen(transform, snappedX, state.anchor.z)
+                             : toScreen(transform, state.anchor.x, snappedZ);
+      drawList.AddLine(start, end, previewColor, 4.0F);
+      break;
+    }
+    case CreativeEditorWorldLayoutPreviewProfile::TerrainPath: {
+      const auto& points = state.terrainPathDraft.path.recipe.points;
+      if (points.empty()) {
+        return;
+      }
+      const ImU32 bodyColor =
+          previewFillColor(descriptor.worldLayoutPreviewFill);
+      const float width = transform.pixelsPerCell * 3.0F;
+      const auto drawSegment = [&](cr::CreativeTerrainCoord2 from,
+                                   cr::CreativeTerrainCoord2 to) {
+        const ImVec2 segmentStart = toScreen(transform, from.x, from.z);
+        const ImVec2 segmentEnd = toScreen(transform, to.x, to.z);
+        drawList.AddLine(segmentStart, segmentEnd, bodyColor, width);
+        drawList.AddLine(segmentStart, segmentEnd, previewColor, 2.0F);
+      };
+      for (std::size_t index = 1U; index < points.size(); ++index) {
+        drawSegment(points[index - 1U].coord, points[index].coord);
+      }
+      const cr::CreativeTerrainCoord2 live{
+          static_cast<std::int32_t>(snappedX),
+          static_cast<std::int32_t>(snappedZ)};
+      if (live != points.back().coord) {
+        drawSegment(points.back().coord, live);
+      }
+      for (const cr::CreativeTerrainPathSourcePoint& point : points) {
+        drawList.AddCircleFilled(
+            toScreen(transform, point.coord.x, point.coord.z), 4.0F,
+            previewColor);
+      }
+      break;
+    }
+    case CreativeEditorWorldLayoutPreviewProfile::None:
+    case CreativeEditorWorldLayoutPreviewProfile::DoorOpening:
+    case CreativeEditorWorldLayoutPreviewProfile::WindowOpening:
+    case CreativeEditorWorldLayoutPreviewProfile::CatalogAsset:
+    case CreativeEditorWorldLayoutPreviewProfile::Count:
+      break;
   }
 }
 
@@ -159,8 +195,7 @@ void drawCatalogPlacementPreview(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint hovered,
     cr::CreativeGridSettings grid) {
-  if (state.tool != CreativeEditorWorldLayoutTool::CatalogAsset ||
-      !state.catalogPlacement.active) {
+  if (!state.catalogPlacement.active) {
     return;
   }
   const CreativeEditorWorldLayoutCatalogPlacementPlan plan =
@@ -264,9 +299,32 @@ void drawCreativeEditorWorldLayoutPlacementPreviews(
     const CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint hoveredPoint,
     const cr::CreativeGridSettings& grid) {
-  drawOpeningPlacementPreview(drawList, transform, state, hoveredPoint);
-  drawCatalogPlacementPreview(drawList, transform, state, hoveredPoint, grid);
-  drawAnchorPreview(drawList, transform, state, hoveredPoint);
+  const CreativeEditorToolDescriptor& descriptor =
+      describeCreativeEditorWorldLayoutTool(state.tool);
+  switch (descriptor.worldLayoutPreviewProfile) {
+    case CreativeEditorWorldLayoutPreviewProfile::DoorOpening:
+      drawOpeningPlacementPreview(
+          drawList, transform, state, hoveredPoint,
+          cr::CreativeBuildingOpeningKind::Door, descriptor.name);
+      break;
+    case CreativeEditorWorldLayoutPreviewProfile::WindowOpening:
+      drawOpeningPlacementPreview(
+          drawList, transform, state, hoveredPoint,
+          cr::CreativeBuildingOpeningKind::Window, descriptor.name);
+      break;
+    case CreativeEditorWorldLayoutPreviewProfile::CatalogAsset:
+      drawCatalogPlacementPreview(drawList, transform, state, hoveredPoint,
+                                  grid);
+      break;
+    case CreativeEditorWorldLayoutPreviewProfile::Rectangle:
+    case CreativeEditorWorldLayoutPreviewProfile::AxisLine:
+    case CreativeEditorWorldLayoutPreviewProfile::TerrainPath:
+      drawAnchorPreview(drawList, transform, state, hoveredPoint, descriptor);
+      break;
+    case CreativeEditorWorldLayoutPreviewProfile::None:
+    case CreativeEditorWorldLayoutPreviewProfile::Count:
+      break;
+  }
 }
 
 }  // namespace iggy3d_creative_app

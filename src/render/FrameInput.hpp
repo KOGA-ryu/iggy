@@ -130,7 +130,7 @@ inline constexpr std::size_t kRenderCreativePreviewRoleCount =
 inline constexpr std::size_t kRenderCreativePreviewCapacity = 3U;
 inline constexpr std::size_t kRenderCreativePreviewAssetIdCapacity = 128U;
 inline constexpr std::uint16_t
-    kRenderCreativePreviewMaximumStairSegmentCount = 32U;
+    kRenderCreativePreviewMaximumStairSegmentCount = 96U;
 
 struct RenderCreativePreviewItem {
   RenderCreativePreviewRole role = RenderCreativePreviewRole::Held;

@@ -13,9 +13,12 @@ namespace iggy3d_creative_app {
 makeDefaultCreativeEditorTerrainGeneratorRecipe() noexcept;
 
 struct CreativeEditorTerrainGenerationState {
+  iggy3d::creative::CreativeTerrainOperationKind operationKind =
+      iggy3d::creative::CreativeTerrainOperationKind::GeneratedTerrain;
   iggy3d::creative::CreativeTerrainGeneratorRecipe recipe =
       makeDefaultCreativeEditorTerrainGeneratorRecipe();
   iggy3d::creative::CreativeTerrainCompositionRecipe compositionRecipe{};
+  iggy3d::creative::CreativeTerrainRegionRecipe regionRecipe{};
   iggy3d::creative::CreativeTerrainGenerationResult generation{};
   iggy3d::creative::CreativeTerrainOperationMutationPlan operationPreview{};
   iggy3d::creative::CreativeTerrainOperationId editingOperationId =

@@ -29,11 +29,17 @@ namespace {
 
 [[nodiscard]] bool contourDisplayHidden(const CreativeEditorState& editor,
                                         bool captureMode) noexcept {
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool sculptPreviewOwnsContours =
+      held.kind == cr::CreativeHeldItemKind::TerrainSculpt &&
+      editor.terrain.sculpt.preview.valid &&
+      editor.terrain.sculpt.preview.renderAccepted;
   return captureMode || editor.catalog.model.open ||
          editor.catalog.toolWheel.open || editor.toolOptions.open ||
          editor.controls.open || editor.transform.active ||
          editor.transform.controlsOpen || editor.assetReplacement.active ||
-         editor.assetEdit.menuOpen;
+         editor.assetEdit.menuOpen || sculptPreviewOwnsContours;
 }
 
 void appendContourLine(
@@ -76,7 +82,8 @@ bool refreshCreativeEditorTerrainContours(
   const cr::CreativeTerrainSurfacePlan* surface = surfaceOverride;
   if (surface == nullptr) {
     composed = cr::buildCreativeComposedTerrainSurfacePlan(
-        document.terrainField(), document.terrainHeightField());
+        document.terrainField(), document.terrainHeightField(),
+        document.terrainHardEdges());
     surface = &composed;
   }
   state.plan = cr::buildCreativeTerrainContourPlan(
@@ -95,16 +102,13 @@ bool refreshCreativeEditorTerrainContours(
   return true;
 }
 
-std::size_t appendCreativeEditorTerrainContours(
+std::size_t appendCreativeEditorTerrainContourPlan(
     const cr::CreativeDocument& document,
-    const CreativeEditorState& editor,
+    const cr::CreativeTerrainContourPlan& plan,
     float wireThickness,
-    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
-    bool captureMode) {
-  const CreativeTerrainContourDisplayState& state = editor.terrain.contours;
-  if (!state.visible || !state.cacheValid || !state.plan.accepted ||
-      state.plan.status != cr::CreativeTerrainContourPlanStatus::Ready ||
-      contourDisplayHidden(editor, captureMode)) {
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
+  if (!plan.accepted ||
+      plan.status != cr::CreativeTerrainContourPlanStatus::Ready) {
     return 0U;
   }
 
@@ -116,7 +120,7 @@ std::size_t appendCreativeEditorTerrainContours(
   const float majorThickness = std::max(0.02F, wireThickness * 1.05F);
   const std::size_t before = wireLines.size();
   for (const cr::CreativeTerrainContourSegment& segment :
-       state.plan.segments) {
+       plan.segments) {
     const double y =
         grid.origin.y +
         (static_cast<double>(segment.levelCells) - 0.5) *
@@ -132,6 +136,21 @@ std::size_t appendCreativeEditorTerrainContours(
         segment.major ? majorThickness : minorThickness);
   }
   return wireLines.size() - before;
+}
+
+std::size_t appendCreativeEditorTerrainContours(
+    const cr::CreativeDocument& document,
+    const CreativeEditorState& editor,
+    float wireThickness,
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
+    bool captureMode) {
+  const CreativeTerrainContourDisplayState& state = editor.terrain.contours;
+  if (!state.visible || !state.cacheValid ||
+      contourDisplayHidden(editor, captureMode)) {
+    return 0U;
+  }
+  return appendCreativeEditorTerrainContourPlan(
+      document, state.plan, wireThickness, wireLines);
 }
 
 }  // namespace iggy3d_creative_app

@@ -92,4 +92,31 @@ namespace iggy3d_creative_app {
           layout.equipHeight};
 }
 
+[[nodiscard]] CatalogRect catalogAssetThumbnailRect(
+    const CatalogLayout& layout) noexcept {
+  const std::uint32_t available =
+      layout.detailWidth > 8U ? layout.detailWidth - 8U : 1U;
+  const std::uint32_t size = std::min(128U, available);
+  return {layout.detailX +
+              std::max(0, static_cast<std::int32_t>(layout.detailWidth - size) /
+                              2),
+          layout.rowsY + 4, size, size};
+}
+
+[[nodiscard]] CatalogRect previousAssetMaterialVariantButton(
+    const CatalogLayout& layout) noexcept {
+  const CatalogRect thumbnail = catalogAssetThumbnailRect(layout);
+  return {layout.detailX + 4,
+          thumbnail.y + static_cast<std::int32_t>(thumbnail.height) + 8, 28U,
+          26U};
+}
+
+[[nodiscard]] CatalogRect nextAssetMaterialVariantButton(
+    const CatalogLayout& layout) noexcept {
+  const CatalogRect thumbnail = catalogAssetThumbnailRect(layout);
+  return {layout.detailX + static_cast<std::int32_t>(layout.detailWidth) - 32,
+          thumbnail.y + static_cast<std::int32_t>(thumbnail.height) + 8, 28U,
+          26U};
+}
+
 }  // namespace iggy3d_creative_app

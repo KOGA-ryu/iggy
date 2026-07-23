@@ -34,7 +34,8 @@ enum class CreativeMutationPayloadKind {
     Color,
     AudioSource,
     PathPointsOrLegacyText,
-    MovingPlatformSettings
+    MovingPlatformSettings,
+    PlayerSpawnSettings
 };
 
 struct CreativeMutationMetadataRow {
@@ -195,6 +196,10 @@ constexpr std::array kCreativeMutationMetadataRows{
 
     mutationMetadata(CreativeMutationKind::SetSpawnFacing, "SetSpawnFacing", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::Rotate),
+    mutationMetadata(CreativeMutationKind::SetPlayerSpawnSettings,
+                     "SetPlayerSpawnSettings",
+                     CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::PlayerSpawnSettings),
     mutationMetadata(CreativeMutationKind::SetCheckpointId, "SetCheckpointId", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::TextOrStringId, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
@@ -358,6 +363,8 @@ constexpr std::array kCreativeMutationMetadataRows{
                std::holds_alternative<StringIdMutation>(value);
     case CreativeMutationPayloadKind::MovingPlatformSettings:
         return std::holds_alternative<MovingPlatformSettingsMutation>(value);
+    case CreativeMutationPayloadKind::PlayerSpawnSettings:
+        return std::holds_alternative<PlayerSpawnSettingsMutation>(value);
     }
 
     return false;
@@ -564,9 +571,12 @@ CreativeMutationPayload makeBoundsPayload(CreativeBounds bounds) {
 
 CreativeMutationPayload makeAssetPayload(CreativeObjectKind objectKind,
                                          std::string assetId,
-                                         CreativeBounds bounds) {
-    return CreativeMutationPayload{
-        SetAssetMutation{objectKind, std::move(assetId), bounds}};
+                                         CreativeBounds bounds,
+                                         std::uint64_t assetContentHash,
+                                         std::string assetMaterialVariant) {
+    return CreativeMutationPayload{SetAssetMutation{
+        objectKind, std::move(assetId), assetContentHash,
+        std::move(assetMaterialVariant), bounds}};
 }
 
 CreativeMutationPayload makeScalarPayload(double value) {
@@ -600,6 +610,11 @@ CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pat
 CreativeMutationPayload makeMovingPlatformSettingsPayload(
     CreativeMovingPlatformSettings settings) {
     return CreativeMutationPayload{MovingPlatformSettingsMutation{settings}};
+}
+
+CreativeMutationPayload makePlayerSpawnSettingsPayload(
+    CreativePlayerSpawnSettings settings) {
+    return CreativeMutationPayload{PlayerSpawnSettingsMutation{std::move(settings)}};
 }
 
 } // namespace iggy3d::creative

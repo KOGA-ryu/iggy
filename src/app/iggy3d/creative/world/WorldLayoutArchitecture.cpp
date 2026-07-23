@@ -331,6 +331,13 @@ bool validCreativeWorldLayoutArchitecturalProfile(
          profile.roofThicknessLayers > 0U;
 }
 
+bool resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+    const CreativeGridSettings& grid,
+    const CreativeWorldLayoutArchitecturalProfile& profile,
+    std::uint16_t& output) noexcept {
+  return resolveWallHeightCells(grid, profile, output);
+}
+
 CreativeWorldLayoutArchitectureResult
 normalizeCreativeWorldLayoutBuildingArchitecture(
     const CreativeGridSettings& grid,
@@ -549,8 +556,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     return result;
   }
 
-  if (changed && result.receipt.blockoutWasCurrent &&
-      request.profile.ceilingThicknessLayers == 1U) {
+  if (changed && result.receipt.blockoutWasCurrent) {
     CreativeWorldLayoutBuildingBlockoutProvenance provenance =
         blockoutSync.provenance;
     provenance.recipe.request.wallHeightCells =
@@ -558,8 +564,11 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     provenance.recipe.floorTopLayer = lowestFloorTop;
     provenance.recipe.floorThicknessLayers =
         request.profile.floorThicknessLayers;
+    provenance.recipe.ceilingThicknessLayers =
+        request.profile.ceilingThicknessLayers;
     provenance.recipe.roofThicknessLayers =
         request.profile.roofThicknessLayers;
+    provenance.recipe.architecturalProfileKind = request.profile.kind;
     const CreativeWorldLayoutBuildingBlockoutFingerprint baseline =
         fingerprintCreativeWorldLayoutBuildingBlockout(
             edited, request.buildingIndex);

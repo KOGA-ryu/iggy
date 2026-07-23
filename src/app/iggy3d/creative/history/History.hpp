@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/recipes/AuthoringContract.hpp"
 
 namespace iggy3d::creative {
 
@@ -41,6 +42,7 @@ struct CreativeDocumentHistorySnapshot {
   CreativeDocument document;
   std::string source;
   std::optional<CreativeHistorySidecar> sidecar;
+  std::optional<CreativeAuthoringOperationRecord> operation;
 };
 
 struct CreativeDocumentHistory {
@@ -54,6 +56,7 @@ struct CreativeDocumentHistoryTransaction {
   CreativeDocument before;
   std::string source;
   std::optional<CreativeHistorySidecar> beforeSidecar;
+  std::optional<CreativeAuthoringOperationRecord> operation;
 };
 
 struct CreativeHistoryRecordReceipt {
@@ -90,6 +93,7 @@ struct CreativeHistoryApplyReceipt {
   std::string reasonCode = "creative_history_not_requested";
   CreativeFacadeDocumentInstallReceipt installReceipt;
   std::optional<CreativeHistorySidecar> targetSidecar;
+  std::optional<CreativeAuthoringOperationRecord> targetOperation;
 };
 
 [[nodiscard]] std::string_view toString(
@@ -113,6 +117,24 @@ beginCreativeHistoryTransaction(
     const Facade& facade,
     std::string_view source,
     std::optional<CreativeHistorySidecar> beforeSidecar);
+[[nodiscard]] CreativeDocumentHistoryTransaction
+beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    CreativeAuthoringOperationRecord operation);
+[[nodiscard]] CreativeDocumentHistoryTransaction
+beginCreativeHistoryTransaction(
+    const Facade& facade,
+    std::string_view source,
+    std::optional<CreativeHistorySidecar> beforeSidecar,
+    std::optional<CreativeAuthoringOperationRecord> operation);
+[[nodiscard]] bool setCreativeHistoryTransactionOperation(
+    CreativeDocumentHistoryTransaction& transaction,
+    CreativeAuthoringFamily family,
+    CreativeAuthoringOperationKind kind,
+    std::string_view action,
+    std::uint64_t requestFingerprint,
+    std::uint64_t affectedMemberCount);
 [[nodiscard]] CreativeHistoryRecordReceipt commitCreativeHistoryTransaction(
     CreativeDocumentHistory& history,
     CreativeDocumentHistoryTransaction transaction,
@@ -127,6 +149,10 @@ void cancelCreativeHistoryTransaction(
     std::optional<CreativeHistorySidecar> currentSidecar = std::nullopt);
 
 [[nodiscard]] const CreativeHistorySidecar* creativeHistoryTargetSidecar(
+    const CreativeDocumentHistory& history,
+    CreativeHistoryDirection direction) noexcept;
+[[nodiscard]] const CreativeAuthoringOperationRecord*
+creativeHistoryTargetOperation(
     const CreativeDocumentHistory& history,
     CreativeHistoryDirection direction) noexcept;
 

@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "app/iggy3d/creative/input/Catalog.hpp"
@@ -45,11 +46,21 @@ struct CreativeEditorCatalogState {
   iggy3d::creative::CreativeCatalogShapeSelection shapeSelection{};
   CreativeEditorCatalogAssetAction assetAction =
       CreativeEditorCatalogAssetAction::Equip;
+  // Zero selects imported default materials; named variants are one-based.
+  std::size_t assetMaterialVariantIndex = 0U;
   std::size_t scrollOffset = 0;
   std::size_t actionScrollOffset = 0;
   std::optional<std::size_t> toolWheelAssignmentCatalogEntryIndex;
   std::string statusLabel;
 };
+
+[[nodiscard]] bool moveCreativeEditorCatalogAssetMaterialVariant(
+    CreativeEditorCatalogState& state,
+    const iggy3d::creative::CreativeCatalogEntry& entry,
+    std::int32_t direction) noexcept;
+[[nodiscard]] std::string_view creativeEditorCatalogAssetMaterialVariantLabel(
+    const CreativeEditorCatalogState& state,
+    const iggy3d::creative::CreativeCatalogEntry& entry) noexcept;
 
 struct CreativeEditorCatalogFrameRequest {
   iggy3d::SdlWindow& window;

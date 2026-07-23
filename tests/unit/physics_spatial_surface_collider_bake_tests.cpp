@@ -80,6 +80,14 @@ iggy3d::RoomSpatialSurface wallSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface transparentWallSurface() {
+  iggy3d::RoomSpatialSurface surface = wallSurface();
+  surface.id = "transparent_wall";
+  surface.blocksVision = false;
+  surface.runtimeOwnerStableName = "owner.transparent_wall";
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface projectileOnlySurface() {
   iggy3d::RoomSpatialSurface surface;
   surface.id = "projectile";
@@ -346,6 +354,21 @@ bool actorBlockerPolicyFollowsActorQuerySemantics() {
                 "actor mask blocker owner");
 }
 
+bool visionOcclusionMetadataReachesPhysicsCollider() {
+  const iggy3d::SpatialSurfaceSet set =
+      surfaceSet({transparentWallSurface()});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult result =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&set, {}});
+
+  return expect(set.surfaces().size() == 1U &&
+                    !set.surfaces().front().blocksVision,
+                "surface set preserves transparent blocker metadata") &&
+         expect(result.ok && result.colliderCount == 1U,
+                "transparent actor blocker still bakes") &&
+         expect(!result.colliders.front().occludesVision,
+                "physics collider preserves non-occluding semantics");
+}
+
 bool blockerRoleProjectileMaskIsNotActorBlockerByDefault() {
   const iggy3d::SpatialSurfaceSet set =
       surfaceSet({blockerRoleProjectileOnlySurface()});
@@ -487,6 +510,7 @@ int main() {
       heightPatchStaysQueryOwnedWhileCliffBoxesStillBake() &&
       defaultPolicySkipsProjectileOnlyAndOpeningSurfaces() &&
       actorBlockerPolicyFollowsActorQuerySemantics() &&
+      visionOcclusionMetadataReachesPhysicsCollider() &&
       blockerRoleProjectileMaskIsNotActorBlockerByDefault() &&
       malformedAuthoredSurfaceIsFilteredBeforeBake() &&
       floorPlaneThicknessPolicyIsExact() &&

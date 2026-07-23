@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace iggy3d::creative {
@@ -149,6 +150,28 @@ struct NoiseSample {
   return hasher.value();
 }
 
+[[nodiscard]] std::uint64_t hashMaterialField(
+    const CreativeTerrainMaterialField& field) noexcept {
+  StableHasher hasher;
+  for (const CreativeTerrainMaterialOverride& value : field.overrides()) {
+    hasher.addI64(value.coord.x);
+    hasher.addI64(value.coord.z);
+    for (const std::uint8_t weight : value.weights) {
+      hasher.addU64(weight);
+    }
+  }
+  return hasher.value();
+}
+
+[[nodiscard]] std::uint16_t defaultMaterialTransition(
+    const CreativeTerrainGeneratorRecipe& recipe) noexcept {
+  const std::uint32_t offset =
+      std::max<std::uint32_t>(1U, recipe.reliefCells / 2U);
+  return static_cast<std::uint16_t>(std::min<std::uint32_t>(
+      kCreativeTerrainMaximumHeightCells,
+      static_cast<std::uint32_t>(recipe.baseHeightCells) + offset));
+}
+
 }  // namespace
 
 bool isValidCreativeTerrainGeneratorRecipe(
@@ -174,7 +197,14 @@ bool isValidCreativeTerrainGeneratorRecipe(
          recipe.lacunarity <= kCreativeTerrainGeneratorMaximumLacunarity &&
          std::isfinite(recipe.slopeDamping) && recipe.slopeDamping >= 0.0 &&
          recipe.slopeDamping <=
-             kCreativeTerrainGeneratorMaximumSlopeDamping;
+             kCreativeTerrainGeneratorMaximumSlopeDamping &&
+         recipe.biomeIntent < CreativeTerrainBiomeIntent::Count &&
+         isValidCreativeTerrainMaterial(recipe.lowlandMaterial) &&
+         isValidCreativeTerrainMaterial(recipe.highlandMaterial) &&
+         recipe.materialTransitionHeightCells >=
+             kCreativeTerrainMinimumHeightCells &&
+         recipe.materialTransitionHeightCells <=
+             kCreativeTerrainMaximumHeightCells;
 }
 
 std::string_view toString(CreativeTerrainGeneratorKind kind) noexcept {
@@ -197,6 +227,61 @@ bool parseCreativeTerrainGeneratorKind(
   return false;
 }
 
+std::string_view toString(CreativeTerrainBiomeIntent intent) noexcept {
+  switch (intent) {
+    case CreativeTerrainBiomeIntent::Temperate: return "Temperate";
+    case CreativeTerrainBiomeIntent::Alpine: return "Alpine";
+    case CreativeTerrainBiomeIntent::Arid: return "Arid";
+    case CreativeTerrainBiomeIntent::Wetland: return "Wetland";
+    case CreativeTerrainBiomeIntent::Custom: return "Custom";
+    case CreativeTerrainBiomeIntent::Count: break;
+  }
+  return "Invalid";
+}
+
+bool parseCreativeTerrainBiomeIntent(
+    std::string_view value,
+    CreativeTerrainBiomeIntent& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(CreativeTerrainBiomeIntent::Count);
+       ++index) {
+    const auto candidate = static_cast<CreativeTerrainBiomeIntent>(index);
+    if (value == toString(candidate)) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+void applyCreativeTerrainBiomeIntent(
+    CreativeTerrainGeneratorRecipe& recipe,
+    CreativeTerrainBiomeIntent intent) noexcept {
+  recipe.biomeIntent = intent;
+  switch (intent) {
+    case CreativeTerrainBiomeIntent::Temperate:
+      recipe.lowlandMaterial = CreativeTerrainMaterial::Grass;
+      recipe.highlandMaterial = CreativeTerrainMaterial::Stone;
+      break;
+    case CreativeTerrainBiomeIntent::Alpine:
+      recipe.lowlandMaterial = CreativeTerrainMaterial::Dirt;
+      recipe.highlandMaterial = CreativeTerrainMaterial::Stone;
+      break;
+    case CreativeTerrainBiomeIntent::Arid:
+      recipe.lowlandMaterial = CreativeTerrainMaterial::Sand;
+      recipe.highlandMaterial = CreativeTerrainMaterial::Stone;
+      break;
+    case CreativeTerrainBiomeIntent::Wetland:
+      recipe.lowlandMaterial = CreativeTerrainMaterial::Dirt;
+      recipe.highlandMaterial = CreativeTerrainMaterial::Grass;
+      break;
+    case CreativeTerrainBiomeIntent::Custom:
+    case CreativeTerrainBiomeIntent::Count:
+      return;
+  }
+  recipe.materialTransitionHeightCells = defaultMaterialTransition(recipe);
+}
+
 std::string_view toString(CreativeTerrainGenerationStatus status) noexcept {
   switch (status) {
     case CreativeTerrainGenerationStatus::NotRequested:
@@ -213,6 +298,8 @@ std::string_view toString(CreativeTerrainGenerationStatus status) noexcept {
       return "EvaluationFailed";
     case CreativeTerrainGenerationStatus::HeightFieldRejected:
       return "HeightFieldRejected";
+    case CreativeTerrainGenerationStatus::MaterialFieldRejected:
+      return "MaterialFieldRejected";
     case CreativeTerrainGenerationStatus::Ready:
       return "Ready";
   }
@@ -254,6 +341,8 @@ CreativeTerrainGenerationResult buildCreativeTerrainGenerationPlan(
       recipe.bounds.depthCells;
   std::vector<std::uint16_t> heights;
   heights.reserve(cellCount);
+  std::vector<CreativeTerrainMaterialEdit> materialEdits;
+  materialEdits.reserve(cellCount);
   std::uint16_t minimumHeight = kCreativeTerrainMaximumHeightCells;
   std::uint16_t maximumHeight = kCreativeTerrainMinimumHeightCells;
   for (std::uint16_t z = 0U; z < recipe.bounds.depthCells; ++z) {
@@ -284,6 +373,18 @@ CreativeTerrainGenerationResult buildCreativeTerrainGenerationPlan(
               roundedHeight, kCreativeTerrainMinimumHeightCells,
               kCreativeTerrainMaximumHeightCells));
       heights.push_back(height);
+      const CreativeTerrainMaterial material =
+          height >= recipe.materialTransitionHeightCells
+              ? recipe.highlandMaterial
+              : recipe.lowlandMaterial;
+      if (recipe.paintMaterials &&
+          material != CreativeTerrainMaterial::Grass) {
+        materialEdits.push_back(
+            {CreativeTerrainMaterialEditKind::Set,
+             {recipe.bounds.minimum.x + static_cast<std::int32_t>(x),
+              recipe.bounds.minimum.z + static_cast<std::int32_t>(z)},
+             material, {}});
+      }
       minimumHeight = std::min(minimumHeight, height);
       maximumHeight = std::max(maximumHeight, height);
     }
@@ -299,13 +400,32 @@ CreativeTerrainGenerationResult buildCreativeTerrainGenerationPlan(
         "creative_terrain_generation_height_field_rejected";
     return result;
   }
+  if (!materialEdits.empty()) {
+    const CreativeTerrainMaterialMutationReceipt materialInstalled =
+        result.plan.materialField.apply(materialEdits);
+    if (!materialInstalled.accepted ||
+        !result.plan.materialField.validateInvariants()) {
+      result.plan.heightField.clear();
+      result.plan.materialField.clear();
+      result.receipt.status =
+          CreativeTerrainGenerationStatus::MaterialFieldRejected;
+      result.receipt.reasonCode =
+          "creative_terrain_generation_material_field_rejected";
+      return result;
+    }
+  }
 
   result.receipt.accepted = true;
   result.receipt.status = CreativeTerrainGenerationStatus::Ready;
   result.receipt.generatedCellCount = heights.size();
+  result.receipt.evaluatedOctaveCount =
+      result.receipt.generatedCellCount * recipe.octaveCount;
+  result.receipt.generatedMaterialOverrideCount =
+      result.plan.materialField.overrideCount();
   result.receipt.minimumHeightCells = minimumHeight;
   result.receipt.maximumHeightCells = maximumHeight;
   result.receipt.heightHash = hashHeightField(result.plan.heightField);
+  result.receipt.materialHash = hashMaterialField(result.plan.materialField);
   result.receipt.reasonCode = "creative_terrain_generation_ready";
   return result;
 }

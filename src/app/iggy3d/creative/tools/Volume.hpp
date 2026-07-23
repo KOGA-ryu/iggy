@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
+#include "app/iggy3d/creative/tools/VolumeTypes.hpp"
 
 namespace iggy3d::creative {
 
@@ -28,12 +29,31 @@ enum class CreativeVolumeCorner : std::uint8_t {
   Second,
 };
 
+enum class CreativeVolumeFace : std::uint8_t {
+  NegativeX,
+  PositiveX,
+  NegativeY,
+  PositiveY,
+  NegativeZ,
+  PositiveZ,
+  Count,
+};
+
 struct CreativeVolumeSelection {
   CreativeVolumeSelectionPhase phase = CreativeVolumeSelectionPhase::Empty;
   CreativeGridCoord3 firstCell{};
   CreativeGridCoord3 secondCell{};
   CreativeVec3 origin{};
   double cellSize = 1.0;
+};
+
+struct CreativeVolumeRegionFacts {
+  bool valid = false;
+  CreativeGridBounds3 exclusiveBounds{};
+  CreativeGridCoord3 inclusiveMinimum{};
+  CreativeGridCoord3 inclusiveMaximum{};
+  CreativeGridCoord3 dimensions{};
+  std::uint64_t cellCount = 0U;
 };
 
 enum class CreativeVolumeOperationKind : std::uint8_t {
@@ -68,12 +88,43 @@ struct CreativeVolumeOperationRequest {
   CreativeObjectKind objectKind = CreativeObjectKind::Wall;
   CreativeShapeBrushKind shapeKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeAxis = CreativeShapeBrushAxis::Y;
+  CreativeVolumeFillOverlapPolicy fillOverlapPolicy =
+      CreativeVolumeFillOverlapPolicy::PreserveExisting;
+  CreativeVolumeHollowThickness hollowThickness =
+      CreativeVolumeHollowThickness::OneCell;
+  CreativeVolumeHollowAlignment hollowAlignment =
+      CreativeVolumeHollowAlignment::Inward;
+  CreativeVolumeHollowOpening hollowOpening =
+      CreativeVolumeHollowOpening::Closed;
+  CreativeVolumeHollowCornerRule hollowCornerRule =
+      CreativeVolumeHollowCornerRule::KeepEdges;
   bool hasReplaceKindFilter = false;
   CreativeObjectKind replaceKindFilter = CreativeObjectKind::Unknown;
+  CreativeVolumeMemberMask replaceMemberMask =
+      CreativeVolumeMemberMask::Both;
+  bool hasEraseKindFilter = false;
+  CreativeObjectKind eraseKindFilter = CreativeObjectKind::Unknown;
+  CreativeVolumeMemberMask eraseMemberMask = CreativeVolumeMemberMask::Both;
   bool hasCloneOffset = false;
   CreativeVec3 cloneOffset{};
+  std::uint8_t cloneQuarterTurns = 0U;
+  bool cloneMirrorX = false;
+  bool cloneMirrorZ = false;
+  CreativeVolumeMemberMask cloneMemberMask = CreativeVolumeMemberMask::Both;
+  CreativeVolumeCloneVoxelOverlapPolicy cloneVoxelOverlapPolicy =
+      CreativeVolumeCloneVoxelOverlapPolicy::RejectOccupied;
   std::uint64_t maxAffectedObjects =
       kDefaultCreativeVolumeOperationLimit;
+};
+
+struct CreativeVolumeObjectIdRemap {
+  CreativeObjectId sourceObjectId = kInvalidObjectId;
+  CreativeObjectId clonedObjectId = kInvalidObjectId;
+};
+
+struct CreativeVolumePatternRecipeIdRemap {
+  CreativePatternRecipeId sourceRecipeId = kInvalidCreativePatternRecipeId;
+  CreativePatternRecipeId clonedRecipeId = kInvalidCreativePatternRecipeId;
 };
 
 struct CreativeVolumeOperationReceipt {
@@ -83,6 +134,30 @@ struct CreativeVolumeOperationReceipt {
   CreativeVolumeOperationKind operation = CreativeVolumeOperationKind::Fill;
   CreativeShapeBrushKind shapeKind = CreativeShapeBrushKind::Box;
   CreativeShapeBrushAxis shapeAxis = CreativeShapeBrushAxis::Y;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  CreativeVolumeFillOverlapPolicy fillOverlapPolicy =
+      CreativeVolumeFillOverlapPolicy::PreserveExisting;
+  CreativeVolumeHollowThickness hollowThickness =
+      CreativeVolumeHollowThickness::OneCell;
+  CreativeVolumeHollowAlignment hollowAlignment =
+      CreativeVolumeHollowAlignment::Inward;
+  CreativeVolumeHollowOpening hollowOpening =
+      CreativeVolumeHollowOpening::Closed;
+  CreativeVolumeHollowCornerRule hollowCornerRule =
+      CreativeVolumeHollowCornerRule::KeepEdges;
+  CreativeVolumeMemberMask replaceMemberMask =
+      CreativeVolumeMemberMask::Both;
+  CreativeVolumeMemberMask eraseMemberMask = CreativeVolumeMemberMask::Both;
+  CreativeVolumeMemberMask cloneMemberMask = CreativeVolumeMemberMask::Both;
+  CreativeVolumeCloneVoxelOverlapPolicy cloneVoxelOverlapPolicy =
+      CreativeVolumeCloneVoxelOverlapPolicy::RejectOccupied;
+  CreativeVec3 cloneOffset{};
+  std::uint8_t cloneQuarterTurns = 0U;
+  bool cloneMirrorX = false;
+  bool cloneMirrorZ = false;
+  bool hollowBoundsValid = false;
+  CreativeGridBounds3 hollowInteriorBounds{};
+  CreativeGridBounds3 hollowExteriorBounds{};
   CreativeVolumeOperationStatus status =
       CreativeVolumeOperationStatus::NotRequested;
   std::uint64_t revisionBefore = 0;
@@ -91,8 +166,17 @@ struct CreativeVolumeOperationReceipt {
   std::uint64_t shapeCandidateCellCount = 0;
   std::uint64_t plannedCellCount = 0;
   std::uint64_t skippedOccupiedCellCount = 0;
+  std::uint64_t unchangedMaterialCellCount = 0;
   std::uint64_t matchedObjectCount = 0;
   std::uint64_t matchedVoxelCellCount = 0;
+  std::uint64_t excludedObjectCount = 0;
+  std::uint64_t excludedVoxelCellCount = 0;
+  std::uint64_t unchangedObjectCount = 0;
+  std::uint64_t replacedObjectCount = 0;
+  std::uint64_t protectedObjectCount = 0;
+  std::uint64_t dependentSourceObjectCount = 0;
+  std::uint64_t clonedLogicLinkCount = 0;
+  std::uint64_t clonedPatternRecipeCount = 0;
   std::uint64_t createdObjectCount = 0;
   std::uint64_t removedObjectCount = 0;
   std::uint64_t createdVoxelCellCount = 0;
@@ -102,11 +186,25 @@ struct CreativeVolumeOperationReceipt {
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::vector<CreativeObjectId> createdObjectIds;
   std::vector<CreativeObjectId> removedObjectIds;
+  std::vector<CreativeObjectId> changedObjectIds;
+  std::vector<CreativeObjectId> unchangedObjectIds;
+  std::vector<CreativeObjectId> protectedObjectIds;
+  std::vector<CreativeObjectId> dependentSourceObjectIds;
+  std::vector<CreativeObjectId> blockedObjectIds;
+  std::vector<CreativeVolumeObjectIdRemap> clonedObjectIdRemaps;
+  std::vector<CreativeVolumePatternRecipeIdRemap>
+      clonedPatternRecipeIdRemaps;
+  std::vector<CreativeGridCoord3> createdVoxelCells;
+  std::vector<CreativeGridCoord3> blockedVoxelCells;
+  std::vector<CreativeGridCoord3> changedVoxelCells;
+  std::vector<CreativeGridCoord3> unchangedVoxelCells;
+  std::vector<CreativeGridCoord3> removedVoxelCells;
   std::string reasonCode = "creative_volume_not_requested";
 };
 
 [[nodiscard]] std::string_view toString(
     CreativeVolumeSelectionPhase phase) noexcept;
+[[nodiscard]] std::string_view toString(CreativeVolumeFace face) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeVolumeOperationKind operation) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -138,6 +236,30 @@ void clearCreativeVolumeSelection(CreativeVolumeSelection& selection) noexcept;
 [[nodiscard]] bool resizeCreativeVolumeSelectionHeight(
     CreativeVolumeSelection& selection,
     std::int32_t deltaCells) noexcept;
+[[nodiscard]] CreativeVolumeRegionFacts inspectCreativeVolumeRegion(
+    const CreativeVolumeSelection& selection) noexcept;
+// Bounds are minimum-inclusive and maximum-exclusive. Invalid edits leave the
+// selection unchanged.
+[[nodiscard]] bool setCreativeVolumeSelectionGridBounds(
+    CreativeVolumeSelection& selection,
+    CreativeGridBounds3 exclusiveBounds) noexcept;
+[[nodiscard]] bool moveCreativeVolumeSelection(
+    CreativeVolumeSelection& selection,
+    CreativeGridCoord3 deltaCells) noexcept;
+// A positive delta expands the named face outwards; a negative delta contracts
+// it inwards. The final region always contains at least one cell on every axis.
+[[nodiscard]] bool resizeCreativeVolumeSelectionFace(
+    CreativeVolumeSelection& selection,
+    CreativeVolumeFace face,
+    std::int32_t deltaCells) noexcept;
+// Fits one canonical grid region around complete object extents. Missing or
+// invalid objects reject atomically and leave the selection unchanged.
+[[nodiscard]] bool fitCreativeVolumeSelectionToObjects(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    double cellSize,
+    CreativeVec3 origin,
+    CreativeVolumeSelection& selection) noexcept;
 
 [[nodiscard]] CreativeGridCoord3 creativeVolumeCellFromWorld(
     CreativeVec3 worldPosition,
@@ -177,12 +299,26 @@ void clearCreativeVolumeSelection(CreativeVolumeSelection& selection) noexcept;
     const CreativeToolSettings& settings) noexcept;
 
 // Fill/hollow write the chunked voxel field and also recognize retired tagged
-// cell objects so old documents remain editable. Replace targets voxel cells
+// cell objects so old documents remain editable. Fill's explicit overlap policy
+// either preserves occupied cells or replaces their material while migrating
+// retired tagged cells. Replace targets voxel cells
 // and retired tagged cell objects. Erase and clone affect both voxels and every
 // ordinary object wholly contained by the selected world bounds. Each command
 // stages one document and commits only after every object and voxel edit passes.
 [[nodiscard]] CreativeVolumeOperationReceipt executeCreativeVolumeOperation(
     CreativeDocument& document,
     const CreativeVolumeOperationRequest& request);
+// Runs the exact atomic executor against a staged document. Callers must cache
+// this result when presenting it frame-to-frame; it intentionally favors
+// semantic parity over a second approximate preview implementation.
+[[nodiscard]] CreativeVolumeOperationReceipt previewCreativeVolumeOperation(
+    const CreativeDocument& document,
+    const CreativeVolumeOperationRequest& request);
+[[nodiscard]] std::uint64_t creativeVolumeChangedMemberCount(
+    const CreativeVolumeOperationReceipt& receipt) noexcept;
+// Stable, exact request identity for destructive-operation history. Invalid or
+// non-finite requests return zero rather than fabricating an auditable record.
+[[nodiscard]] std::uint64_t fingerprintCreativeVolumeOperationRequest(
+    const CreativeVolumeOperationRequest& request) noexcept;
 
 }  // namespace iggy3d::creative

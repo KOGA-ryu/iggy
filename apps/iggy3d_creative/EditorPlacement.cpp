@@ -476,6 +476,12 @@ std::string_view toString(
       return "creative_placement_ready";
     case CreativeBrushPlacementAdmissionStatus::InvalidTarget:
       return "creative_placement_target_invalid";
+    case CreativeBrushPlacementAdmissionStatus::FloorRequired:
+      return "creative_placement_floor_required";
+    case CreativeBrushPlacementAdmissionStatus::WallRequired:
+      return "creative_placement_wall_required";
+    case CreativeBrushPlacementAdmissionStatus::SurfaceRequired:
+      return "creative_placement_surface_required";
     case CreativeBrushPlacementAdmissionStatus::UnsupportedBrush:
       return "creative_placement_brush_unsupported";
     case CreativeBrushPlacementAdmissionStatus::InvalidGeometry:
@@ -486,6 +492,10 @@ std::string_view toString(
       return "creative_placement_face_disallowed";
     case CreativeBrushPlacementAdmissionStatus::TargetIncompatible:
       return "creative_placement_target_incompatible";
+    case CreativeBrushPlacementAdmissionStatus::AttachmentUnavailable:
+      return "creative_placement_attachment_unavailable";
+    case CreativeBrushPlacementAdmissionStatus::AttachmentIncompatible:
+      return "creative_placement_attachment_incompatible";
     case CreativeBrushPlacementAdmissionStatus::AttachmentOccupied:
       return "creative_placement_attachment_occupied";
     case CreativeBrushPlacementAdmissionStatus::ClearanceBlocked:
@@ -772,7 +782,8 @@ bool applyCreativeAssetPlacementTransform(
 CreativeBrushPlacementAdmission admitBrushPlacement(
     const iggy3d::creative::CreativeHotbarEntry& held,
     const iggy3d::creative::CreativeGridTarget& target,
-    iggy3d::creative::CreativePlacementYaw placementYaw) noexcept {
+    iggy3d::creative::CreativePlacementYaw placementYaw,
+    iggy3d::creative::CreativeAssetAlignmentMode alignmentMode) noexcept {
   CreativeBrushPlacementAdmission admission =
       admitBrushPlacement(held.objectKind, target, placementYaw);
   const std::string_view assetId =
@@ -780,13 +791,45 @@ CreativeBrushPlacementAdmission admitBrushPlacement(
   if (assetId.empty()) {
     return admission;
   }
+  if (static_cast<std::size_t>(alignmentMode) >=
+      static_cast<std::size_t>(
+          iggy3d::creative::CreativeAssetAlignmentMode::Count)) {
+    admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    admission.allowed = false;
+    return admission;
+  }
   const bool compatibilityOnlyRejection =
       admission.status ==
           CreativeBrushPlacementAdmissionStatus::TargetIncompatible &&
       admission.plan.valid;
   if ((!admission.allowed && !compatibilityOnlyRejection) ||
-      !held.hasAssetBounds ||
-      !applyCreativeAssetPlacementBounds(admission.plan,
+      !held.hasAssetBounds) {
+    admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+    admission.allowed = false;
+    return admission;
+  }
+  if (alignmentMode ==
+      iggy3d::creative::CreativeAssetAlignmentMode::SurfaceNormal) {
+    admission.plan.surfaceFrame =
+        iggy3d::creative::resolveCreativePlacementSurfaceFrame(
+            {iggy3d::creative::creativeGridTargetExactSurfaceNormal(target),
+             target.placerForward,
+             {0.0, 1.0, 0.0},
+             iggy3d::creative::creativePlacementYawRadians(placementYaw)});
+    if (!admission.plan.surfaceFrame.valid) {
+      admission.status =
+          CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
+      admission.allowed = false;
+      return admission;
+    }
+    admission.plan.transform.rotationEulerRadians =
+        admission.plan.surfaceFrame.rotationEulerRadians;
+    admission.plan.resolvedFace =
+        iggy3d::creative::creativePlacementFaceFromNormal(
+            admission.plan.surfaceFrame.surfaceNormal);
+    admission.plan.orientationResolved = true;
+  }
+  if (!applyCreativeAssetPlacementBounds(admission.plan,
                                          held.assetSourceBounds)) {
     admission.status = CreativeBrushPlacementAdmissionStatus::InvalidGeometry;
     admission.allowed = false;

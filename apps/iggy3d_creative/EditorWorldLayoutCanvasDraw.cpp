@@ -1,9 +1,13 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 #include "EditorWorldLayoutPlanDraw.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 #include "EditorWorldLayoutTopography.hpp"
+
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 
 #include <algorithm>
 #include <array>
@@ -286,7 +290,8 @@ void drawRoomManipulation(ImDrawList& drawList,
                           const CreativeEditorWorldLayoutState& state) {
   if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
       !detail::worldLayoutRoomOnActiveLevel(state, state.source,
-                                            state.selection.index)) {
+                                            state.selection.index) ||
+      !state.source.roomBoundaries.empty()) {
     return;
   }
   const bool active = state.roomManipulation.active &&
@@ -297,6 +302,144 @@ void drawRoomManipulation(ImDrawList& drawList,
       active ? state.roomManipulation.previewFootprint
              : state.source.rooms[state.selection.index].footprint,
       active, state.roomManipulation.previewValid);
+}
+
+void drawRoomBoundaryManipulation(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind != CreativeEditorWorldLayoutSelectionKind::Room ||
+      state.source.roomBoundaries.empty()) {
+    return;
+  }
+  const cr::CreativeWorldLayout& displayed =
+      creativeEditorWorldLayoutDisplaySource(state);
+  const cr::CreativeWorldLayoutRoomGraph graph =
+      cr::buildCreativeWorldLayoutRoomGraph(displayed);
+  if (!graph.accepted || state.selection.index >= graph.rooms.size()) {
+    return;
+  }
+
+  std::size_t activeEdge = cr::kInvalidCreativeWorldLayoutIndex;
+  if (state.roomBoundaryManipulation.active &&
+      state.roomBoundaryManipulation.target.roomIndex ==
+          state.selection.index) {
+    activeEdge = state.roomBoundaryManipulation.target.topologyEdgeIndex;
+    if (state.roomBoundaryManipulation.previewValid &&
+        state.roomBoundaryManipulation.previewEdit.changed &&
+        activeEdge < state.roomBoundaryManipulation.previewEdit
+                         .sourceToEditedEdgeIndices.size()) {
+      activeEdge = state.roomBoundaryManipulation.previewEdit
+                       .sourceToEditedEdgeIndices[activeEdge];
+    }
+  }
+  std::size_t activeVertex = cr::kInvalidCreativeWorldLayoutIndex;
+  if (state.roomCornerManipulation.active &&
+      state.roomCornerManipulation.target.roomIndex ==
+          state.selection.index) {
+    activeVertex =
+        state.roomCornerManipulation.target.topologyVertexIndex;
+    if (state.roomCornerManipulation.previewValid &&
+        state.roomCornerManipulation.previewEdit.changed &&
+        activeVertex < state.roomCornerManipulation.previewEdit
+                           .sourceToEditedVertexIndices.size()) {
+      activeVertex = state.roomCornerManipulation.previewEdit
+                         .sourceToEditedVertexIndices[activeVertex];
+    }
+  }
+
+  const ImU32 normalColor = color({0.96F, 0.82F, 0.22F, 0.90F});
+  const ImU32 boundaryActiveColor =
+      state.roomBoundaryManipulation.previewValid
+          ? color({0.20F, 0.78F, 0.38F, 1.0F})
+          : color({0.92F, 0.29F, 0.24F, 1.0F});
+  const ImU32 cornerActiveColor =
+      state.roomCornerManipulation.previewValid
+          ? color({0.20F, 0.78F, 0.38F, 1.0F})
+          : color({0.92F, 0.29F, 0.24F, 1.0F});
+  for (const cr::CreativeWorldLayoutRoomBoundary& boundary :
+       cr::creativeWorldLayoutRoomBoundaries(graph, state.selection.index)) {
+    const cr::CreativeWorldLayoutTopologyEdge& edge =
+        graph.edges[boundary.topologyEdgeIndex];
+    const cr::CreativeTerrainCoord2 start =
+        graph.vertices[edge.startVertexIndex].position;
+    const cr::CreativeTerrainCoord2 end =
+        graph.vertices[edge.endVertexIndex].position;
+    const ImVec2 startScreen = toScreen(transform, start.x, start.z);
+    const ImVec2 endScreen = toScreen(transform, end.x, end.z);
+    const ImU32 tint = boundary.topologyEdgeIndex == activeEdge
+                           ? boundaryActiveColor
+                           : normalColor;
+    drawList.AddLine(startScreen, endScreen, tint,
+                     boundary.topologyEdgeIndex == activeEdge ? 4.0F : 2.5F);
+    for (const auto [vertexIndex, vertex] :
+         {std::pair{edge.startVertexIndex, startScreen},
+          std::pair{edge.endVertexIndex, endScreen}}) {
+      const ImU32 vertexTint =
+          vertexIndex == activeVertex ? cornerActiveColor : tint;
+      drawList.AddRectFilled({vertex.x - 3.0F, vertex.y - 3.0F},
+                             {vertex.x + 3.0F, vertex.y + 3.0F}, vertexTint);
+    }
+  }
+
+  if (state.roomBoundaryManipulation.active &&
+      !state.roomBoundaryManipulation.previewValid) {
+    const cr::CreativeWorldLayoutRoomGraph sourceGraph =
+        cr::buildCreativeWorldLayoutRoomGraph(state.source);
+    const std::size_t sourceEdgeIndex =
+        state.roomBoundaryManipulation.target.topologyEdgeIndex;
+    if (sourceGraph.accepted && sourceEdgeIndex < sourceGraph.edges.size()) {
+      const cr::CreativeWorldLayoutTopologyEdge& edge =
+          sourceGraph.edges[sourceEdgeIndex];
+      cr::CreativeTerrainCoord2 start =
+          sourceGraph.vertices[edge.startVertexIndex].position;
+      cr::CreativeTerrainCoord2 end =
+          sourceGraph.vertices[edge.endVertexIndex].position;
+      if (state.roomBoundaryManipulation.target.horizontal) {
+        start.z = state.roomBoundaryManipulation.previewCoordinate;
+        end.z = state.roomBoundaryManipulation.previewCoordinate;
+      } else {
+        start.x = state.roomBoundaryManipulation.previewCoordinate;
+        end.x = state.roomBoundaryManipulation.previewCoordinate;
+      }
+      drawList.AddLine(toScreen(transform, start.x, start.z),
+                       toScreen(transform, end.x, end.z), boundaryActiveColor,
+                       4.0F);
+    }
+  }
+
+  if (state.roomCornerManipulation.active &&
+      !state.roomCornerManipulation.previewValid) {
+    const cr::CreativeWorldLayoutRoomGraph sourceGraph =
+        cr::buildCreativeWorldLayoutRoomGraph(state.source);
+    const auto& target = state.roomCornerManipulation.target;
+    if (sourceGraph.accepted && target.roomIndex < sourceGraph.rooms.size() &&
+        target.topologyVertexIndex < sourceGraph.vertices.size()) {
+      const ImVec2 attempted = toScreen(
+          transform, state.roomCornerManipulation.previewPosition.x,
+          state.roomCornerManipulation.previewPosition.z);
+      for (const cr::CreativeWorldLayoutRoomBoundary& boundary :
+           cr::creativeWorldLayoutRoomBoundaries(sourceGraph,
+                                                 target.roomIndex)) {
+        const cr::CreativeWorldLayoutTopologyEdge& edge =
+            sourceGraph.edges[boundary.topologyEdgeIndex];
+        if (edge.startVertexIndex != target.topologyVertexIndex &&
+            edge.endVertexIndex != target.topologyVertexIndex) {
+          continue;
+        }
+        const std::size_t otherIndex =
+            edge.startVertexIndex == target.topologyVertexIndex
+                ? edge.endVertexIndex
+                : edge.startVertexIndex;
+        const cr::CreativeTerrainCoord2 other =
+            sourceGraph.vertices[otherIndex].position;
+        drawList.AddLine(attempted, toScreen(transform, other.x, other.z),
+                         cornerActiveColor, 3.0F);
+      }
+      drawList.AddRectFilled({attempted.x - 4.0F, attempted.y - 4.0F},
+                             {attempted.x + 4.0F, attempted.y + 4.0F},
+                             cornerActiveColor);
+    }
+  }
 }
 
 void drawBoxManipulation(ImDrawList& drawList,
@@ -314,6 +457,125 @@ void drawBoxManipulation(ImDrawList& drawList,
       active ? state.boxManipulation.previewFootprint
              : state.source.boxes[state.selection.index].footprint,
       active, state.boxManipulation.previewValid);
+}
+
+void drawRoofApertureManipulation(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state) {
+  if (state.selection.kind !=
+          CreativeEditorWorldLayoutSelectionKind::RoofAperture ||
+      state.selection.index >= state.source.roofApertures.size()) {
+    return;
+  }
+
+  const bool active = state.roofApertureManipulation.active &&
+                      state.roofApertureManipulation.target.apertureIndex ==
+                          state.selection.index;
+  const cr::CreativeWorldLayoutRoofAperture& aperture =
+      state.source.roofApertures[state.selection.index];
+  const CreativeEditorWorldLayoutRoofApertureSettings settings =
+      active ? state.roofApertureManipulation.previewSettings
+             : CreativeEditorWorldLayoutRoofApertureSettings{
+                   aperture.kind, aperture.minimumXCells,
+                   aperture.maximumXCells, aperture.minimumZCells,
+                   aperture.maximumZCells};
+  const ImVec2 first =
+      toScreen(transform, settings.minimumXCells, settings.minimumZCells);
+  const ImVec2 second =
+      toScreen(transform, settings.maximumXCells, settings.maximumZCells);
+  const ImVec2 minimum{std::min(first.x, second.x),
+                       std::min(first.y, second.y)};
+  const ImVec2 maximum{std::max(first.x, second.x),
+                       std::max(first.y, second.y)};
+  const ImVec4 tint =
+      active && !state.roofApertureManipulation.previewValid
+          ? ImVec4{0.92F, 0.29F, 0.24F, 1.0F}
+          : active ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+                   : ImVec4{0.96F, 0.82F, 0.22F, 1.0F};
+
+  if (active) {
+    ImVec4 fill = tint;
+    fill.w = 0.24F;
+    drawList.AddRectFilled(minimum, maximum, color(fill));
+    drawList.AddRect(minimum, maximum, color(tint), 0.0F, 0, 3.0F);
+    char dimensions[64]{};
+    std::snprintf(dimensions, sizeof(dimensions), "%.2f x %.2f",
+                  std::fabs(settings.maximumXCells - settings.minimumXCells),
+                  std::fabs(settings.maximumZCells - settings.minimumZCells));
+    drawList.AddText({minimum.x + 7.0F, minimum.y + 7.0F}, color(tint),
+                     dimensions);
+  }
+
+  const float centerX = (minimum.x + maximum.x) * 0.5F;
+  const float centerY = (minimum.y + maximum.y) * 0.5F;
+  const std::array<ImVec2, 8U> handles = {
+      ImVec2{minimum.x, minimum.y}, ImVec2{centerX, minimum.y},
+      ImVec2{maximum.x, minimum.y}, ImVec2{maximum.x, centerY},
+      ImVec2{maximum.x, maximum.y}, ImVec2{centerX, maximum.y},
+      ImVec2{minimum.x, maximum.y}, ImVec2{minimum.x, centerY},
+  };
+  for (const ImVec2 handle : handles) {
+    drawList.AddRectFilled({handle.x - 4.0F, handle.y - 4.0F},
+                           {handle.x + 4.0F, handle.y + 4.0F}, color(tint));
+  }
+}
+
+void drawRoofManipulation(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const CreativeEditorWorldLayoutState& state,
+    cr::CreativeGridSettings grid) {
+  const std::size_t levelIndex =
+      state.roofManipulation.active
+          ? state.roofManipulation.target.levelIndex
+          : state.selection.kind ==
+                    CreativeEditorWorldLayoutSelectionKind::Level
+                ? state.selection.index
+                : cr::kInvalidCreativeWorldLayoutIndex;
+  const CreativeEditorWorldLayoutRoofHandleFrame frame =
+      buildCreativeEditorWorldLayoutRoofHandleFrame(state, grid, levelIndex);
+  if (!frame.accepted) {
+    return;
+  }
+  const bool active = state.roofManipulation.active;
+  const ImVec4 tint =
+      active && !state.roofManipulation.previewValid
+          ? ImVec4{0.92F, 0.29F, 0.24F, 1.0F}
+          : active ? ImVec4{0.20F, 0.78F, 0.38F, 1.0F}
+                   : ImVec4{0.96F, 0.82F, 0.22F, 1.0F};
+  const ImU32 packed = color(tint);
+  const auto planPoint = [&](cr::CreativeVec3 world) {
+    return toScreen(
+        transform, (world.x - grid.origin.x) / grid.cellSizeMeters,
+        (world.z - grid.origin.z) / grid.cellSizeMeters);
+  };
+  for (std::size_t index = 0U;
+       index < frame.roof.geometry.edgeCount; ++index) {
+    const cr::CreativeStructuralRoofEdgePlan& edge =
+        frame.roof.geometry.edges[index];
+    drawList.AddLine(planPoint(edge.startMeters), planPoint(edge.endMeters),
+                     packed, active ? 3.5F : 2.5F);
+  }
+  if (frame.roof.geometry.riseMeters > 0.0) {
+    drawList.AddLine(planPoint(frame.roof.geometry.ridgeStart),
+                     planPoint(frame.roof.geometry.ridgeEnd), packed, 1.5F);
+  }
+  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
+    const CreativeEditorWorldLayoutRoofHandle& handle = frame.handles[index];
+    if (!handle.valid) {
+      continue;
+    }
+    const ImVec2 point = toScreen(transform, handle.planPosition.x,
+                                  handle.planPosition.z);
+    if (handle.target.handle ==
+        CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight) {
+      drawList.AddQuadFilled({point.x, point.y - 5.0F},
+                             {point.x + 5.0F, point.y},
+                             {point.x, point.y + 5.0F},
+                             {point.x - 5.0F, point.y}, packed);
+    } else {
+      drawList.AddCircleFilled(point, 5.0F, packed, 12);
+    }
+  }
 }
 
 void drawWall(ImDrawList& drawList, const CanvasTransform& transform,
@@ -539,6 +801,43 @@ void drawOpenings(ImDrawList& drawList, const CanvasTransform& transform,
   }
 }
 
+void drawMeasurementGeometry(
+    ImDrawList& drawList, const CanvasTransform& transform,
+    const cr::CreativeMeasurementGeometry& geometry,
+    std::string_view label, bool transient) {
+  if (!geometry.visible) {
+    return;
+  }
+  const CreativeEditorDraftingStyle& style = creativeEditorDraftingStyle(
+      CreativeEditorDraftingRole::MeasurementOverlay);
+  CreativeEditorDraftingColor tintValue = style.tint;
+  if (!transient) {
+    tintValue.a = static_cast<std::uint8_t>(
+        static_cast<float>(tintValue.a) * 0.72F);
+  }
+  const ImU32 tint = draftingColor(tintValue);
+  const float thickness = creativeEditorDraftingStrokeThicknessPixels(
+      style, transform.pixelsPerCell);
+  for (std::size_t index = 0U; index < geometry.segmentCount; ++index) {
+    const cr::CreativeMeasurementSegment& segment = geometry.segments[index];
+    drawList.AddLine(toScreen(transform, segment.start.x, segment.start.z),
+                     toScreen(transform, segment.end.x, segment.end.z), tint,
+                     thickness);
+  }
+  for (std::size_t index = 0U; index < geometry.pointCount; ++index) {
+    drawList.AddCircleFilled(
+        toScreen(transform, geometry.points[index].x, geometry.points[index].z),
+        index + 1U == geometry.pointCount ? 4.5F : 3.5F, tint);
+  }
+  if (!label.empty() && geometry.pointCount > 0U) {
+    const cr::CreativeMeasurementPoint& finalPoint =
+        geometry.points[geometry.pointCount - 1U];
+    const ImVec2 anchor = toScreen(transform, finalPoint.x, finalPoint.z);
+    drawList.AddText({anchor.x + 8.0F, anchor.y + 8.0F}, tint, label.data(),
+                     label.data() + label.size());
+  }
+}
+
 }  // namespace
 
 CreativeEditorWorldLayoutCanvasPointerGeometry
@@ -549,8 +848,10 @@ drawCreativeEditorWorldLayoutCanvasScene(
     CreativeEditorWorldLayoutTopographyState& topography,
     const CreativeEditorWorldLayoutPlanViewCache& planView,
     std::size_t hoveredPlanPrimitiveIndex,
-    const cr::CreativeGridSettings& grid, ImVec2 pointerPosition,
-    bool hovered) {
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeMeasurementAnnotationStore& measurementAnnotations,
+    const cr::CreativeMeasurementState& measurement,
+    ImVec2 pointerPosition, bool hovered) {
   drawList.PushClipRect(minimum, maximum, true);
   drawList.AddRectFilled(minimum, maximum,
                          color({0.105F, 0.12F, 0.135F, 1.0F}));
@@ -561,6 +862,8 @@ drawCreativeEditorWorldLayoutCanvasScene(
   static_cast<void>(drawCreativeEditorWorldLayoutPlan(
       drawList, transform, state, displaySource, planView,
       hoveredPlanPrimitiveIndex));
+  drawCreativeEditorWorldLayoutTerrainAnnotations(
+      drawList, transform, topography, grid);
   const cr::CreativeWorldLayoutPlanProjection& projection =
       planView.projection;
   if (!projection.accepted) {
@@ -605,7 +908,27 @@ drawCreativeEditorWorldLayoutCanvasScene(
   drawBuildingSelection(drawList, transform, state);
   drawBuildingTemplatePlacement(drawList, transform, state);
   drawRoomManipulation(drawList, transform, state);
+  drawRoomBoundaryManipulation(drawList, transform, state);
   drawBoxManipulation(drawList, transform, state);
+  drawRoofManipulation(drawList, transform, state, grid);
+  drawRoofApertureManipulation(drawList, transform, state);
+  for (const cr::CreativeMeasurementAnnotation& annotation :
+       measurementAnnotations.annotations) {
+    drawMeasurementGeometry(
+        drawList, transform,
+        projectCreativeEditorMeasurementGeometryToGrid(
+            cr::buildCreativeMeasurementGeometry(annotation), grid),
+        annotation.name, false);
+  }
+  const cr::CreativeMeasurementGeometry transientMeasurement =
+      projectCreativeEditorMeasurementGeometryToGrid(
+          cr::buildCreativeMeasurementGeometry(measurement), grid);
+  drawMeasurementGeometry(
+      drawList, transform, transientMeasurement,
+      transientMeasurement.visible
+          ? formatCreativeEditorMeasurementReadout(measurement)
+          : std::string{},
+      true);
 
   CreativeEditorWorldLayoutCanvasPointerGeometry geometry;
   geometry.pointerPoint = toWorld(transform, pointerPosition);

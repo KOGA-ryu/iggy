@@ -1,9 +1,11 @@
 #include "EditorEdits.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <utility>
 
 namespace app = iggy3d_creative_app;
@@ -110,6 +112,8 @@ bool confirmHandsHistoryBackToTheDocumentOwner() {
       state, {{{0, 0}, {5, 4}}, 0.0, 3U, 0.25, 1U});
   const bool sourceUndoBeforeConfirm =
       app::creativeEditorWorldLayoutSourceUndoAvailable(state);
+  const cr::CreativeWorldLayoutCompileResult expectedPlan =
+      cr::buildCreativeWorldLayoutPlan(live.facade.document(), state.source);
   const auto confirmed = app::confirmCreativeEditorWorldLayout(state, live);
   const std::uint64_t generatedObjectCount =
       live.facade.document().objectCount();
@@ -118,17 +122,46 @@ bool confirmHandsHistoryBackToTheDocumentOwner() {
       confirmed.accepted && confirmed.changed && generatedObjectCount > 0U &&
       !app::creativeEditorWorldLayoutSourceUndoAvailable(state) &&
       cr::creativeUndoDepth(live.history) == 1U;
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          live.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
 
-  const bool undone = app::undoLastEdit(live, "confirm-handoff-undo", &state);
+  const cr::CreativeHistoryApplyReceipt undoReceipt =
+      app::applyCreativeEditorWorldLayoutHistory(
+          state, live, cr::CreativeHistoryDirection::Undo);
+  const bool undone = undoReceipt.accepted;
   const bool documentUndoRestoredBoth =
       undone && state.source.buildings.empty() &&
       live.facade.document().objectCount() == 0U &&
       cr::creativeRedoDepth(live.history) == 1U;
-  const bool redone = app::redoLastEdit(live, "confirm-handoff-redo", &state);
+  const cr::CreativeHistoryApplyReceipt redoReceipt =
+      app::applyCreativeEditorWorldLayoutHistory(
+          state, live, cr::CreativeHistoryDirection::Redo);
+  const bool redone = redoReceipt.accepted;
 
   return expect(handedOff,
                 "Confirm clears local snapshots after recording document history") &&
+         expect(expectedPlan.receipt.accepted &&
+                    expectedOperation.has_value() &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::Building &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    expectedOperation->action == "WorldLayout.Apply" &&
+                    expectedOperation->requestFingerprint ==
+                        cr::fingerprintCreativeWorldLayoutPlanSource(
+                            expectedPlan.plan) &&
+                    expectedOperation->affectedMemberCount ==
+                        cr::creativeWorldLayoutPlanAffectedMemberCount(
+                            expectedPlan.plan),
+                "2D confirm records the shared world-layout operation") &&
          expect(documentUndoRestoredBoth && redone &&
+                    undoReceipt.targetOperation == expectedOperation &&
+                    redoReceipt.targetOperation == expectedOperation &&
                     state.source.buildings.size() == 1U &&
                     live.facade.document().objectCount() ==
                         generatedObjectCount,
@@ -271,6 +304,8 @@ bool noChangeApplyPreservesSourceHistory() {
 
   cr::CreativeWorldLayoutPlan noChangePlan;
   noChangePlan.layoutKey = state.source.stableKey;
+  noChangePlan.sourceLayoutFingerprint =
+      cr::fingerprintCreativeWorldLayout(state.source);
   noChangePlan.sourceDocumentId = live.facade.document().id();
   noChangePlan.sourceDocumentRevision = live.facade.document().revision();
   noChangePlan.sourceTerrainRevision =
@@ -313,6 +348,39 @@ bool noChangeApplyPreservesSourceHistory() {
                 "preserved source history remains usable after apply");
 }
 
+bool sourceRestorePreservesIndependentInspectionCameras() {
+  app::CreativeEditorWorldLayoutState state;
+  app::resetCreativeEditorWorldLayout(state, "inspection_restore");
+  state.viewMode = app::CreativeEditorWorldLayoutViewMode::Elevation;
+  state.canvasPixelsPerCell = 37.0F;
+  state.canvasPanX = 91.0F;
+  state.canvasPanZ = -43.0F;
+  state.elevationAxis = app::CreativeEditorWorldLayoutElevationAxis::Z;
+  state.elevationPixelsPerCell = 52.0F;
+  state.elevationPanHorizontal = -117.0F;
+  state.elevationPanY = 28.0F;
+
+  app::CreativeEditorWorldLayoutSnapshot snapshot =
+      app::captureCreativeEditorWorldLayoutSnapshot(state);
+  snapshot.source.stableKey = "restored_source";
+  app::installCreativeEditorWorldLayoutSnapshot(state, std::move(snapshot));
+
+  return expect(state.source.stableKey == "restored_source",
+                "the requested authored snapshot is installed") &&
+         expect(state.viewMode ==
+                        app::CreativeEditorWorldLayoutViewMode::Elevation &&
+                    state.canvasPixelsPerCell == 37.0F &&
+                    state.canvasPanX == 91.0F &&
+                    state.canvasPanZ == -43.0F,
+                "source restoration preserves the Plan camera and active view") &&
+         expect(state.elevationAxis ==
+                        app::CreativeEditorWorldLayoutElevationAxis::Z &&
+                    state.elevationPixelsPerCell == 52.0F &&
+                    state.elevationPanHorizontal == -117.0F &&
+                    state.elevationPanY == 28.0F,
+                "source restoration preserves the Elevation camera");
+}
+
 }  // namespace
 
 int main() {
@@ -323,6 +391,7 @@ int main() {
                   dirtySourceProtectsUnrelatedDocumentHistoryWhenLocalHistoryIsDisabled() &&
                   sourceReplacementClearsLocalHistory() &&
                   savedCheckpointTracksAcrossSourceHistory() &&
-                  noChangeApplyPreservesSourceHistory();
+                  noChangeApplyPreservesSourceHistory() &&
+                  sourceRestorePreservesIndependentInspectionCameras();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

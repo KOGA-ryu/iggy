@@ -59,6 +59,12 @@ bool applyLayoutTerrain(cr::CreativeDocument& document,
   if (!compiled.receipt.accepted) {
     return false;
   }
+  for (const cr::CreativeTerrainOperationMutationRequest& mutation :
+       compiled.plan.terrainOperationMutations) {
+    if (!document.applyTerrainOperationMutation(mutation).accepted) {
+      return false;
+    }
+  }
   const cr::CreativeTerrainMutationReceipt terrain =
       document.applyTerrainControlEdits(compiled.plan.terrainEdits);
   const cr::CreativeTerrainMaterialMutationReceipt materials =
@@ -224,17 +230,17 @@ bool pathImpactTracksControlsMaterialsAndInvalidSources() {
   cr::CreativeDocument document = makeDocument(9304U);
   cr::CreativeWorldLayout layout;
   layout.stableKey = "impact_path";
-  layout.terrainPathPoints = {{{0, 0}, 5U}, {{4, 0}, 5U}};
   cr::CreativeWorldLayoutTerrainPath path;
   path.stableKey = "terrain.road";
-  path.kind = cr::CreativeTerrainRecipeKind::Road;
-  path.firstPointIndex = 0U;
-  path.pointCount = 2U;
-  path.elevation = cr::CreativeTerrainPathElevation::Level;
-  path.halfWidthCells = 1U;
-  path.amplitudeCells = 1U;
-  path.paintSurface = true;
-  path.material = cr::CreativeTerrainMaterial::Dirt;
+  path.recipe.kind = cr::CreativeTerrainPathKind::Road;
+  path.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  path.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  path.recipe.material = cr::CreativeTerrainMaterial::Sand;
+  path.recipe.nextPointId = 3U;
+  path.recipe.points = {
+      {1U, {0, 0}, 5U, 1U, 1U, 0},
+      {2U, {4, 0}, 5U, 1U, 1U, 0},
+  };
   layout.terrainPaths.push_back(path);
 
   const bool generated = applyLayoutTerrain(document, layout);
@@ -243,14 +249,33 @@ bool pathImpactTracksControlsMaterialsAndInvalidSources() {
   const auto* impact = cr::findCreativeWorldLayoutTerrainSourceImpact(
       plan, cr::CreativeWorldLayoutTable::TerrainPath, 0U);
 
-  layout.terrainPaths[0].elevation = cr::CreativeTerrainPathElevation::Follow;
+  layout.terrainPaths[0].recipe.points[1].id = 1U;
   const cr::CreativeWorldLayoutTerrainImpactPlan invalid =
       cr::buildCreativeWorldLayoutTerrainImpactPlan(document, layout);
+  if (!generated || !plan.accepted || impact == nullptr ||
+      impact->status != cr::CreativeWorldLayoutTerrainImpactStatus::Current ||
+      impact->authoredControlCount == 0U || impact->influenceCells.empty() ||
+      impact->materials.empty()) {
+    std::cerr << "Path impact: generated=" << generated
+              << " plan=" << plan.accepted
+              << " plan-status=" << cr::toString(plan.status)
+              << " reason=" << plan.reasonCode
+              << " kernel=" << plan.kernelReasonCode;
+    if (impact != nullptr) {
+      std::cerr << " status=" << cr::toString(impact->status)
+                << " controls=" << impact->authoredControlCount
+                << " influence=" << impact->influenceCells.size()
+                << " materials=" << impact->materials.size();
+    }
+    std::cerr << '\n';
+  }
   return expect(generated && plan.accepted && impact != nullptr &&
                     impact->status ==
                         cr::CreativeWorldLayoutTerrainImpactStatus::Current &&
-                    !impact->controls.empty() && !impact->materials.empty(),
-                "path impact retains exact control and material products") &&
+                    impact->authoredControlCount > 0U &&
+                    !impact->influenceCells.empty() &&
+                    !impact->materials.empty(),
+                "path impact retains exact generated influence and material products") &&
          expect(!invalid.accepted &&
                     invalid.status ==
                         cr::CreativeWorldLayoutTerrainImpactPlanStatus::

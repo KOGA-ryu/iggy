@@ -45,10 +45,16 @@ namespace {
       return index < state.source.openings.size()
                  ? &state.source.openings[index].name
                  : nullptr;
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      return index < state.source.roofApertures.size()
+                 ? &state.source.roofApertures[index].name
+                 : nullptr;
     case cr::CreativeWorldLayoutTable::Object:
       return index < state.source.objects.size()
                  ? &state.source.objects[index].name
                  : nullptr;
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      return nullptr;
     case cr::CreativeWorldLayoutTable::None:
     case cr::CreativeWorldLayoutTable::TerrainProfile:
     case cr::CreativeWorldLayoutTable::TerrainPath:
@@ -90,6 +96,10 @@ namespace {
       return index < state.source.openings.size()
                  ? state.source.openings[index].stableKey
                  : std::string_view{};
+    case cr::CreativeWorldLayoutTable::RoofAperture:
+      return index < state.source.roofApertures.size()
+                 ? state.source.roofApertures[index].stableKey
+                 : std::string_view{};
     case cr::CreativeWorldLayoutTable::Object:
       return index < state.source.objects.size()
                  ? state.source.objects[index].stableKey
@@ -101,6 +111,10 @@ namespace {
     case cr::CreativeWorldLayoutTable::TerrainPath:
       return index < state.source.terrainPaths.size()
                  ? state.source.terrainPaths[index].stableKey
+                 : std::string_view{};
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
+      return index < state.source.topologyEdges.size()
+                 ? state.source.topologyEdges[index].stableKey
                  : std::string_view{};
     case cr::CreativeWorldLayoutTable::None:
     case cr::CreativeWorldLayoutTable::TerrainPathPoint:
@@ -229,6 +243,21 @@ SourceTarget resolveSourceTarget(
       }
       break;
     }
+    case cr::CreativeWorldLayoutTable::RoofAperture: {
+      if (index >= source.roofApertures.size()) return target;
+      const cr::CreativeWorldLayoutRoofAperture& aperture =
+          source.roofApertures[index];
+      if (aperture.levelIndex >= source.levels.size()) return target;
+      target.selection = {
+          CreativeEditorWorldLayoutSelectionKind::RoofAperture, index};
+      target.activeLevelIndex = aperture.levelIndex;
+      target.buildingIndex = source.levels[aperture.levelIndex].buildingIndex;
+      target.center = {(aperture.minimumXCells + aperture.maximumXCells) * 0.5,
+                       (aperture.minimumZCells + aperture.maximumZCells) * 0.5};
+      target.hasCenter = std::isfinite(target.center.x) &&
+                         std::isfinite(target.center.z);
+      break;
+    }
     case cr::CreativeWorldLayoutTable::Object: {
       if (index >= source.objects.size()) return target;
       target.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
@@ -245,57 +274,86 @@ SourceTarget resolveSourceTarget(
                          std::isfinite(target.center.z);
       break;
     }
+    case cr::CreativeWorldLayoutTable::TopologyEdge: {
+      if (index >= source.topologyEdges.size()) return target;
+      const cr::CreativeWorldLayoutTopologyEdge& edge =
+          source.topologyEdges[index];
+      if (edge.levelIndex >= source.levels.size() ||
+          edge.startVertexIndex >= source.topologyVertices.size() ||
+          edge.endVertexIndex >= source.topologyVertices.size()) {
+        return target;
+      }
+      target.selection = {
+          CreativeEditorWorldLayoutSelectionKind::TopologyEdge, index};
+      target.activeLevelIndex = edge.levelIndex;
+      target.buildingIndex = source.levels[edge.levelIndex].buildingIndex;
+      const cr::CreativeTerrainCoord2 start =
+          source.topologyVertices[edge.startVertexIndex].position;
+      const cr::CreativeTerrainCoord2 end =
+          source.topologyVertices[edge.endVertexIndex].position;
+      target.center = {
+          (static_cast<double>(start.x) + end.x) * 0.5,
+          (static_cast<double>(start.z) + end.z) * 0.5};
+      target.hasCenter = true;
+      break;
+    }
     case cr::CreativeWorldLayoutTable::TerrainProfile:
       if (index >= source.terrainProfiles.size()) return target;
       target.selection = {
           CreativeEditorWorldLayoutSelectionKind::TerrainProfile, index};
-      target.center = {
-          static_cast<double>(source.terrainProfiles[index].center.x),
-          static_cast<double>(source.terrainProfiles[index].center.z)};
+      if (source.terrainProfiles[index].usesLandformRecipe) {
+        const cr::CreativeTerrainHeightFieldBounds& bounds =
+            source.terrainProfiles[index].landform.bounds;
+        target.center = {
+            static_cast<double>(bounds.minimum.x) + bounds.widthCells * 0.5,
+            static_cast<double>(bounds.minimum.z) + bounds.depthCells * 0.5};
+      } else {
+        target.center = {
+            static_cast<double>(source.terrainProfiles[index].center.x),
+            static_cast<double>(source.terrainProfiles[index].center.z)};
+      }
       target.hasCenter = true;
       break;
     case cr::CreativeWorldLayoutTable::TerrainPath: {
       if (index >= source.terrainPaths.size()) return target;
       const cr::CreativeWorldLayoutTerrainPath& path =
           source.terrainPaths[index];
-      if (path.pointCount == 0U ||
-          path.firstPointIndex > source.terrainPathPoints.size() ||
-          path.pointCount >
-              source.terrainPathPoints.size() - path.firstPointIndex) {
+      if (!cr::isValidCreativeTerrainPathSourceRecipe(path.recipe)) {
         return target;
       }
       target.selection = {
           CreativeEditorWorldLayoutSelectionKind::TerrainPath, index};
       double sumX = 0.0;
       double sumZ = 0.0;
-      for (std::size_t pointIndex = 0U; pointIndex < path.pointCount;
-           ++pointIndex) {
-        const cr::CreativeTerrainPathPoint& point =
-            source.terrainPathPoints[path.firstPointIndex + pointIndex];
+      for (const cr::CreativeTerrainPathSourcePoint& point :
+           path.recipe.points) {
         sumX += point.coord.x;
         sumZ += point.coord.z;
       }
-      const double pointCount = static_cast<double>(path.pointCount);
+      const double pointCount =
+          static_cast<double>(path.recipe.points.size());
       target.center = {sumX / pointCount, sumZ / pointCount};
       target.hasCenter = true;
       break;
     }
     case cr::CreativeWorldLayoutTable::TerrainPathPoint: {
-      if (index >= source.terrainPathPoints.size()) return target;
-      const auto owner = std::find_if(
-          source.terrainPaths.begin(), source.terrainPaths.end(),
-          [index](const cr::CreativeWorldLayoutTerrainPath& path) {
-            return index >= path.firstPointIndex &&
-                   index - path.firstPointIndex < path.pointCount;
-          });
-      if (owner == source.terrainPaths.end()) return target;
-      target.selection = {
-          CreativeEditorWorldLayoutSelectionKind::TerrainPath,
-          static_cast<std::size_t>(owner - source.terrainPaths.begin())};
-      target.center = {
-          static_cast<double>(source.terrainPathPoints[index].coord.x),
-          static_cast<double>(source.terrainPathPoints[index].coord.z)};
-      target.hasCenter = true;
+      std::size_t flattenedIndex = index;
+      for (std::size_t pathIndex = 0U;
+           pathIndex < source.terrainPaths.size(); ++pathIndex) {
+        const auto& points = source.terrainPaths[pathIndex].recipe.points;
+        if (flattenedIndex < points.size()) {
+          target.selection = {
+              CreativeEditorWorldLayoutSelectionKind::TerrainPath,
+              pathIndex};
+          target.center = {
+              static_cast<double>(points[flattenedIndex].coord.x),
+              static_cast<double>(points[flattenedIndex].coord.z)};
+          target.hasCenter = true;
+          break;
+        }
+        flattenedIndex -= points.size();
+      }
+      if (!target.hasCenter) return target;
       break;
     }
     case cr::CreativeWorldLayoutTable::None:
@@ -320,6 +378,11 @@ CreativeEditorWorldLayoutEditReceipt applySourceTarget(
                        (target.activeLevelIndex !=
                             cr::kInvalidCreativeWorldLayoutIndex &&
                         state.activeLevelIndex != target.activeLevelIndex);
+  if (!changed && !centerView) {
+    state.statusMessage = "layout source scope selected";
+    return {true, false,
+            "creative_editor_world_layout_source_scope_selected"};
+  }
   detail::clearWorldLayoutInteraction(state);
   state.anchorActive = false;
   state.tool = CreativeEditorWorldLayoutTool::Select;
@@ -374,12 +437,16 @@ cr::CreativeWorldLayoutTable creativeEditorWorldLayoutSelectionTable(
       return cr::CreativeWorldLayoutTable::Wall;
     case CreativeEditorWorldLayoutSelectionKind::Opening:
       return cr::CreativeWorldLayoutTable::Opening;
+    case CreativeEditorWorldLayoutSelectionKind::RoofAperture:
+      return cr::CreativeWorldLayoutTable::RoofAperture;
     case CreativeEditorWorldLayoutSelectionKind::TerrainProfile:
       return cr::CreativeWorldLayoutTable::TerrainProfile;
     case CreativeEditorWorldLayoutSelectionKind::TerrainPath:
       return cr::CreativeWorldLayoutTable::TerrainPath;
     case CreativeEditorWorldLayoutSelectionKind::Object:
       return cr::CreativeWorldLayoutTable::Object;
+    case CreativeEditorWorldLayoutSelectionKind::TopologyEdge:
+      return cr::CreativeWorldLayoutTable::TopologyEdge;
     case CreativeEditorWorldLayoutSelectionKind::None:
       return cr::CreativeWorldLayoutTable::None;
   }
@@ -396,8 +463,10 @@ bool creativeEditorWorldLayoutSourceCanRename(
     case cr::CreativeWorldLayoutTable::Box:
     case cr::CreativeWorldLayoutTable::Wall:
     case cr::CreativeWorldLayoutTable::Opening:
+    case cr::CreativeWorldLayoutTable::RoofAperture:
     case cr::CreativeWorldLayoutTable::Object:
       return true;
+    case cr::CreativeWorldLayoutTable::TopologyEdge:
     case cr::CreativeWorldLayoutTable::None:
     case cr::CreativeWorldLayoutTable::TerrainProfile:
     case cr::CreativeWorldLayoutTable::TerrainPath:
@@ -416,7 +485,8 @@ bool creativeEditorWorldLayoutSourceCanDuplicate(
 bool creativeEditorWorldLayoutSourceCanDelete(
     cr::CreativeWorldLayoutTable table) noexcept {
   return table != cr::CreativeWorldLayoutTable::None &&
-         table != cr::CreativeWorldLayoutTable::TerrainPathPoint;
+         table != cr::CreativeWorldLayoutTable::TerrainPathPoint &&
+         table != cr::CreativeWorldLayoutTable::TopologyEdge;
 }
 
 bool creativeEditorWorldLayoutSourceStableKeyMatches(

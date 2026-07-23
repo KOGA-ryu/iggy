@@ -75,8 +75,10 @@ constexpr CreativeObjectDefaults kPlatformDefaults = boxDefaults(3.0, 0.35, 3.0)
 constexpr CreativeObjectDescriptor withGeneratedGeometry(
     CreativeObjectDescriptor value,
     CreativeGeneratedGeometryProfile profile,
-    double maximumStepRiseMeters = 0.0) noexcept {
-    value.generatedGeometry = {profile, maximumStepRiseMeters};
+    double maximumStepRiseMeters = 0.0,
+    double minimumSegmentRunMeters = 0.0) noexcept {
+    value.generatedGeometry = {
+        profile, maximumStepRiseMeters, minimumSegmentRunMeters};
     return value;
 }
 
@@ -352,7 +354,7 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "Roof",
         "exterior upper structural cover",
         structuralCreationDirtyFlags(),
-        boxDefaults(5.0, 1.0, 5.0),
+        boxDefaults(5.0, 0.25, 5.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::DescriptorDefault,
@@ -366,13 +368,27 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         CreativeObjectShapeKind::Surface,
         CreativeSpatialProjectionProfile::BoxProjection,
         CreativeSpatialOccupancyKind::Structural,
-        "GableRoof",
-        "Gable Roof Slope",
-        "generated sloped half of an authored gable roof",
+        "RoofSlope",
+        "Roof Slope Panel",
+        "generated thin panel for an authored shed or gable roof",
         structuralCreationDirtyFlags(),
-        boxDefaults(4.0, 1.0, 2.0),
+        boxDefaults(4.0, 0.25, 2.0),
         kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful
-    ), CreativeGeneratedGeometryProfile::RampWedge),
+    ), CreativeGeneratedGeometryProfile::SlopedPanel),
+    withGeneratedGeometry(descriptor(
+        CreativeObjectKind::HipRoof,
+        CreativeObjectCategory::Structural,
+        CreativeObjectProfile::BoxStructural,
+        CreativeObjectShapeKind::Surface,
+        CreativeSpatialProjectionProfile::BoxProjection,
+        CreativeSpatialOccupancyKind::Structural,
+        "HipRoof",
+        "Hip Roof Panel",
+        "generated tapered panel for an authored hip roof",
+        structuralCreationDirtyFlags(),
+        boxDefaults(4.0, 0.25, 2.0),
+        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful
+    ), CreativeGeneratedGeometryProfile::HipRoofPanel),
     withPlacementHost(descriptor(
         CreativeObjectKind::Door,
         CreativeObjectCategory::Structural,
@@ -385,7 +401,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "openable passage attachment",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Logic),
         boxDefaults(1.0, 2.25, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        kHasTransform | kHasBounds | kCanHaveParent | kCanOwnChildren |
+            kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::UprightSurfaceOrPlacerFacing
     ), CreativePlacementHostPolicy::StructuralVerticalSurface),
@@ -401,7 +418,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "wall opening or visual aperture",
         structuralCreationDirtyFlags(),
         boxDefaults(1.5, 1.0, 0.2),
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette,
+        kHasTransform | kHasBounds | kCanHaveParent | kCanOwnChildren |
+            kRuntimeMeaningful | kAuthoringBrushPalette,
         CreativeRuntimeAnchorSemantic::None,
         CreativePlacementOrientationPolicy::SurfaceFrame
     ), CreativePlacementHostPolicy::StructuralVerticalSurface),
@@ -417,8 +435,11 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "stepped traversal structure",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
         kStairDefaults,
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
-    ), CreativeGeneratedGeometryProfile::StairSteps, 0.25),
+        kHasTransform | kHasBounds | kCanHaveParent | kCanOwnChildren |
+            kRuntimeMeaningful | kAuthoringBrushPalette
+    ), CreativeGeneratedGeometryProfile::StairSteps,
+       kCreativeGeneratedStairMaximumRiseMeters,
+       kCreativeGeneratedStairMinimumRunMeters),
     withGeneratedGeometry(descriptor(
         CreativeObjectKind::Ramp,
         CreativeObjectCategory::Structural,
@@ -431,7 +452,8 @@ constexpr auto kStructuralDescriptors = std::to_array<CreativeObjectDescriptor>(
         "sloped traversal structure",
         structuralCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Navigation),
         kRampDefaults,
-        kHasTransform | kHasBounds | kCanHaveParent | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kHasBounds | kCanHaveParent | kCanOwnChildren |
+            kRuntimeMeaningful | kAuthoringBrushPalette
     ), CreativeGeneratedGeometryProfile::RampWedge),
     withGeneratedGeometry(descriptor(
         CreativeObjectKind::Platform,
@@ -2109,6 +2131,8 @@ std::uint16_t creativeGeneratedGeometrySegmentCount(
     if (geometry.profile != CreativeGeneratedGeometryProfile::StairSteps ||
         !std::isfinite(geometry.maximumStepRiseMeters) ||
         geometry.maximumStepRiseMeters <= 0.0 ||
+        !std::isfinite(geometry.minimumSegmentRunMeters) ||
+        geometry.minimumSegmentRunMeters <= 0.0 ||
         !std::isfinite(resolvedSize.x) || !std::isfinite(resolvedSize.y) ||
         !std::isfinite(resolvedSize.z) || resolvedSize.x <= 0.0 ||
         resolvedSize.y <= 0.0 || resolvedSize.z <= 0.0) {
@@ -2117,12 +2141,15 @@ std::uint16_t creativeGeneratedGeometrySegmentCount(
 
     const double required =
         std::ceil(resolvedSize.y / geometry.maximumStepRiseMeters);
-    if (!std::isfinite(required) || required <= 0.0) {
+    const double maximum =
+        std::floor(resolvedSize.z / geometry.minimumSegmentRunMeters);
+    if (!std::isfinite(required) || !std::isfinite(maximum) ||
+        required <= 0.0 || maximum <= 0.0 || required > maximum ||
+        required > static_cast<double>(
+                       kMaximumCreativeGeneratedGeometrySegmentCount)) {
         return 0U;
     }
-    return static_cast<std::uint16_t>(std::clamp(
-        required, 1.0,
-        static_cast<double>(kMaximumCreativeGeneratedGeometrySegmentCount)));
+    return static_cast<std::uint16_t>(required);
 }
 
 CreativeWallGeometryDefaults defaultCreativeWallGeometry() noexcept {
@@ -2315,6 +2342,49 @@ bool descriptorAllowsMutation(CreativeObjectKind objectKind, CreativeMutationKin
     }
 
     return true;
+}
+
+CreativeObjectTransformCapabilities creativeObjectTransformCapabilities(
+    CreativeObjectKind kind) noexcept {
+    CreativeObjectTransformCapabilities capabilities;
+    if (kind == CreativeObjectKind::Unknown ||
+        kind == CreativeObjectKind::Count) {
+        return capabilities;
+    }
+
+    const bool hasTransform = objectHasTransform(kind);
+    const bool hasBounds = objectHasBounds(kind);
+    const bool hasPath = objectStoresPathPoints(kind);
+    const bool canMoveTransform =
+        hasTransform && descriptorAllowsMutation(kind, CreativeMutationKind::Move);
+    const bool canSetBounds =
+        !hasTransform && hasBounds &&
+        descriptorAllowsMutation(kind, CreativeMutationKind::SetBounds);
+    const bool canSetPath =
+        hasPath &&
+        descriptorAllowsMutation(kind, CreativeMutationKind::SetPatrolRoute);
+
+    capabilities.translate =
+        canMoveTransform || canSetBounds || canSetPath;
+    if (hasTransform &&
+        descriptorAllowsMutation(kind, CreativeMutationKind::Rotate)) {
+        capabilities.rotation = CreativeObjectRotationSupport::Arbitrary;
+    } else if (canSetBounds) {
+        capabilities.rotation = CreativeObjectRotationSupport::QuarterTurns;
+    } else if (canSetPath) {
+        capabilities.rotation = CreativeObjectRotationSupport::Arbitrary;
+    }
+
+    if (hasTransform &&
+        descriptorAllowsMutation(kind, CreativeMutationKind::Scale)) {
+        capabilities.scale = CreativeObjectScaleSupport::NonUniform;
+    } else if (canSetBounds || canSetPath) {
+        capabilities.scale = CreativeObjectScaleSupport::NonUniform;
+    }
+
+    capabilities.mirror =
+        capabilities.rotation != CreativeObjectRotationSupport::None;
+    return capabilities;
 }
 
 } // namespace iggy3d::creative

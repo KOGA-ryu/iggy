@@ -44,6 +44,9 @@ struct CreativeAssetBoundsRefreshPlan {
   std::size_t inspectedObjectCount = 0;
   std::size_t missingAssetCount = 0;
   std::size_t customBoundsSkippedCount = 0;
+  std::size_t boundsUpdateCount = 0;
+  std::size_t identityUpdateCount = 0;
+  std::size_t materialVariantResetCount = 0;
 };
 
 struct CreativeWorldLayoutAssetBoundsRefreshPlan {
@@ -71,6 +74,8 @@ struct CreativeEditorAssetReloadReceipt {
   std::size_t failedAssetCount = 0;
   std::size_t refreshedHotbarSlotCount = 0;
   std::size_t refreshedObjectBoundsCount = 0;
+  std::size_t refreshedObjectIdentityCount = 0;
+  std::size_t resetObjectMaterialVariantCount = 0;
   std::size_t customBoundsSkippedCount = 0;
   std::size_t refreshedWorldLayoutAssetBoundsCount = 0;
   std::size_t customWorldLayoutBoundsSkippedCount = 0;

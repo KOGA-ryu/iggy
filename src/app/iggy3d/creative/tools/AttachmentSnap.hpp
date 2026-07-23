@@ -11,6 +11,13 @@
 namespace iggy3d::creative {
 
 inline constexpr double kCreativeAttachmentSnapRadiusMeters = 1.25;
+inline constexpr double kCreativeAttachmentAimRadiusMeters = 0.30;
+
+enum class CreativeAttachmentSnapSelectionMode : std::uint8_t {
+  BestMatch,
+  AimedSocket,
+  Count,
+};
 
 enum class CreativeAttachmentSnapStatus : std::uint8_t {
   NotRequested,
@@ -20,6 +27,7 @@ enum class CreativeAttachmentSnapStatus : std::uint8_t {
   TargetObjectMissing,
   TargetAssetMissing,
   TargetReceiverMissing,
+  AimedSocketUnavailable,
   NoCompatibleSocket,
   OutsideRadius,
   Occupied,
@@ -34,6 +42,10 @@ struct CreativeAttachmentSnapRequest {
   CreativeVec3 aimPoint{};
   CreativeVec3 sourceScale{1.0, 1.0, 1.0};
   double maxDistanceMeters = kCreativeAttachmentSnapRadiusMeters;
+  double aimedSocketRadiusMeters = kCreativeAttachmentAimRadiusMeters;
+  CreativeObjectId ignoredOccupantObjectId = kInvalidObjectId;
+  CreativeAttachmentSnapSelectionMode selectionMode =
+      CreativeAttachmentSnapSelectionMode::BestMatch;
 };
 
 struct CreativeAttachmentSnapResult {
@@ -49,9 +61,16 @@ struct CreativeAttachmentSnapResult {
   std::size_t targetReceiverCount = 0U;
   std::size_t compatiblePairCount = 0U;
   std::size_t occupiedPairCount = 0U;
+  std::size_t selectedReceiverIndex = 0U;
+  CreativeVec3 targetForward{};
+  CreativeVec3 targetUp{};
+  bool receiverSelected = false;
   bool positioned = false;
   bool snapped = false;
 };
+
+[[nodiscard]] std::string_view toString(
+    CreativeAttachmentSnapStatus status) noexcept;
 
 enum class CreativeAttachmentSocketMarkerState : std::uint8_t {
   Incompatible,
@@ -73,11 +92,14 @@ enum class CreativeAttachmentSocketMarkerStatus : std::uint8_t {
 
 struct CreativeAttachmentSocketMarker {
   CreativeVec3 worldPosition{};
+  CreativeVec3 worldForward{};
+  CreativeVec3 worldUp{};
   CreativeObjectId targetObjectId = kInvalidObjectId;
   std::string_view targetSocket;
   std::string_view compatibility;
   CreativeAttachmentSocketMarkerState state =
       CreativeAttachmentSocketMarkerState::Incompatible;
+  bool selected = false;
 };
 
 struct CreativeAttachmentSocketMarkerRequest {
@@ -87,6 +109,10 @@ struct CreativeAttachmentSocketMarkerRequest {
   CreativeObjectId targetObjectId = kInvalidObjectId;
   CreativeVec3 aimPoint{};
   double maxDistanceMeters = kCreativeAttachmentSnapRadiusMeters;
+  double aimedSocketRadiusMeters = kCreativeAttachmentAimRadiusMeters;
+  CreativeObjectId ignoredOccupantObjectId = kInvalidObjectId;
+  CreativeAttachmentSnapSelectionMode selectionMode =
+      CreativeAttachmentSnapSelectionMode::BestMatch;
 };
 
 struct CreativeAttachmentSocketMarkerFrame {

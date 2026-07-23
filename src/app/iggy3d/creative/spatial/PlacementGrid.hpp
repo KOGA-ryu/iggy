@@ -116,6 +116,7 @@ struct CreativeGridTarget {
   bool targetInBounds = false;
   bool adjacentInBounds = false;
   CreativeVec3 hitPoint{};
+  CreativeVec3 surfaceNormal{};
   CreativeVec3 faceNormal{};
   CreativeVec3 placerForward{0.0, 0.0, -1.0};
   CreativeVec3 viewDepthAxis{0.0, 0.0, -1.0};
@@ -217,6 +218,8 @@ selectCreativePlacementAnchor(
     CreativeVec3 origin = {},
     CreativeVec3 placerForward = {0.0, 0.0, -1.0}) noexcept;
 [[nodiscard]] CreativeVec3 creativeGridTargetSurfaceNormal(
+    const CreativeGridTarget& target) noexcept;
+[[nodiscard]] CreativeVec3 creativeGridTargetExactSurfaceNormal(
     const CreativeGridTarget& target) noexcept;
 [[nodiscard]] CreativePlacementGridOverlayPlan
 buildCreativePlacementGridOverlayPlan(

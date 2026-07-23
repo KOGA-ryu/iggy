@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -320,6 +321,31 @@ buildCreativeWorldLayoutTerrainImpactPlan(const CreativeDocument& document,
     static_cast<void>(staged.assignId(document.id()));
     static_cast<void>(staged.setGridSettings(document.gridSettings()));
   }
+  const std::string layoutPathPrefix =
+      creativeWorldLayoutTerrainPathSourceKey(layout.stableKey, {});
+  const std::string layoutLandformPrefix =
+      creativeWorldLayoutTerrainLandformSourceKey(layout.stableKey, {});
+  std::vector<CreativeTerrainOperationId> ownedTerrainOperationIds;
+  for (const CreativeTerrainOperation& operation :
+       staged.terrainOperationStack().operations) {
+    if (operation.owner == CreativeTerrainOperationOwner::WorldLayout &&
+        (operation.sourceKey.starts_with(layoutPathPrefix) ||
+         operation.sourceKey.starts_with(layoutLandformPrefix))) {
+      ownedTerrainOperationIds.push_back(operation.id);
+    }
+  }
+  for (const CreativeTerrainOperationId operationId :
+       ownedTerrainOperationIds) {
+    CreativeTerrainOperationMutationRequest remove;
+    remove.kind = CreativeTerrainOperationMutationKind::Remove;
+    remove.operationId = operationId;
+    if (!staged.applyTerrainOperationMutation(remove).accepted) {
+      reject(plan,
+             CreativeWorldLayoutTerrainImpactPlanStatus::MutationRejected,
+             "creative_world_layout_terrain_impact_operation_reset_rejected");
+      return plan;
+    }
+  }
   std::map<CreativeTerrainCoord2, ControlOwner, CoordLess> controlOwners;
   std::map<CreativeTerrainCoord2, MaterialOwner, CoordLess> materialOwners;
   std::set<std::string> stableKeys;
@@ -328,12 +354,29 @@ buildCreativeWorldLayoutTerrainImpactPlan(const CreativeDocument& document,
     const CreativeWorldLayoutTerrainProfile& symbol =
         layout.terrainProfiles[index];
     if (!registerKey(stableKeys, symbol.stableKey) ||
-        symbol.blend != CreativeTerrainProfileBlend::Set ||
-        symbol.rodPolicy != CreativeTerrainProfileRodPolicy::Fill) {
+        (symbol.usesLandformRecipe
+             ? !isValidCreativeTerrainLandformRecipe(symbol.landform)
+             : symbol.kind == CreativeTerrainRecipeKind::Terrace ||
+                   symbol.kind == CreativeTerrainRecipeKind::Cliff ||
+                   symbol.blend != CreativeTerrainProfileBlend::Set ||
+                   symbol.rodPolicy != CreativeTerrainProfileRodPolicy::Fill)) {
       reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::InvalidLayout,
              "creative_world_layout_terrain_impact_profile_invalid",
              CreativeWorldLayoutTable::TerrainProfile, index);
       return plan;
+    }
+    if (symbol.usesLandformRecipe) {
+      CreativeTerrainLandformKind expectedKind =
+          CreativeTerrainLandformKind::Count;
+      if (!creativeTerrainRecipeLandformKind(symbol.kind, expectedKind) ||
+          expectedKind != symbol.landform.kind) {
+        reject(plan,
+               CreativeWorldLayoutTerrainImpactPlanStatus::InvalidLayout,
+               "creative_world_layout_terrain_impact_landform_kind_invalid",
+               CreativeWorldLayoutTable::TerrainProfile, index);
+        return plan;
+      }
+      continue;
     }
     const std::size_t sourceIndex = plan.sources.size();
     CreativeWorldLayoutTerrainSourceImpact impact;
@@ -371,76 +414,254 @@ buildCreativeWorldLayoutTerrainImpactPlan(const CreativeDocument& document,
     }
   }
 
-  std::vector<bool> pointOwned(layout.terrainPathPoints.size(), false);
+  finalizeSources(document, staged, controlOwners, materialOwners, plan);
+
+  for (std::size_t index = 0U; index < layout.terrainProfiles.size(); ++index) {
+    const CreativeWorldLayoutTerrainProfile& symbol =
+        layout.terrainProfiles[index];
+    if (!symbol.usesLandformRecipe) {
+      continue;
+    }
+    CreativeWorldLayoutTerrainSourceImpact impact;
+    impact.table = CreativeWorldLayoutTable::TerrainProfile;
+    impact.index = index;
+    impact.stableKey = symbol.stableKey;
+    impact.hasGridBounds = true;
+    impact.minimumCoord = symbol.landform.bounds.minimum;
+    impact.maximumCoord = {
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(symbol.landform.bounds.minimum.x) +
+            symbol.landform.bounds.widthCells - 1),
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(symbol.landform.bounds.minimum.z) +
+            symbol.landform.bounds.depthCells - 1)};
+
+    const CreativeTerrainSurfacePlan surface =
+        buildCreativeComposedTerrainSurfacePlan(
+            staged.terrainField(), staged.terrainHeightField());
+    const CreativeTerrainLandformResult recipe =
+        buildCreativeTerrainLandform(
+            staged.terrainHeightField(), surface,
+            staged.terrainMaterialField(), symbol.landform);
+    if (!surface.accepted || !recipe.receipt.accepted) {
+      reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::KernelRejected,
+             "creative_world_layout_terrain_impact_landform_kernel_rejected",
+             CreativeWorldLayoutTable::TerrainProfile, index,
+             recipe.receipt.reasonCode);
+      return plan;
+    }
+    impact.authoredControlCount = recipe.receipt.modifiedCellCount;
+    impact.authoredMaterialCount = recipe.materialEdits.size();
+    for (std::int64_t z = impact.minimumCoord.z;
+         z <= impact.maximumCoord.z; ++z) {
+      for (std::int64_t x = impact.minimumCoord.x;
+           x <= impact.maximumCoord.x; ++x) {
+        const CreativeTerrainCoord2 coord{static_cast<std::int32_t>(x),
+                                          static_cast<std::int32_t>(z)};
+        const std::optional<std::uint16_t> height =
+            recipe.heightField.heightAt(coord);
+        if (height.has_value()) {
+          includeHeight(impact, *height);
+        }
+        if (height == staged.terrainHeightField().heightAt(coord)) {
+          continue;
+        }
+        if (impact.influenceCells.size() >=
+            kCreativeTerrainRenderPatchCapacity) {
+          impact.influenceCells.clear();
+          impact.influenceCellsClipped = true;
+          break;
+        }
+        impact.influenceCells.push_back(coord);
+      }
+      if (impact.influenceCellsClipped) {
+        break;
+      }
+    }
+    for (const CreativeTerrainMaterialEdit& edit : recipe.materialEdits) {
+      if (edit.kind == CreativeTerrainMaterialEditKind::Set) {
+        impact.materials.push_back({edit.coord, edit.material});
+      }
+    }
+
+    const std::string sourceKey =
+        creativeWorldLayoutTerrainLandformSourceKey(layout.stableKey,
+                                                    symbol.stableKey);
+    const CreativeTerrainOperation* live = nullptr;
+    for (const CreativeTerrainOperation& operation :
+         document.terrainOperationStack().operations) {
+      if (operation.owner == CreativeTerrainOperationOwner::WorldLayout &&
+          operation.sourceKey == sourceKey) {
+        if (live != nullptr) {
+          reject(
+              plan,
+              CreativeWorldLayoutTerrainImpactPlanStatus::InvalidDocument,
+              "creative_world_layout_terrain_impact_landform_source_duplicate",
+              CreativeWorldLayoutTable::TerrainProfile, index);
+          return plan;
+        }
+        live = &operation;
+      }
+    }
+    impact.status =
+        live != nullptr && live->enabled &&
+                live->kind == CreativeTerrainOperationKind::Landform &&
+                live->landform == symbol.landform
+            ? CreativeWorldLayoutTerrainImpactStatus::Current
+            : CreativeWorldLayoutTerrainImpactStatus::Drifted;
+    if (impact.status != CreativeWorldLayoutTerrainImpactStatus::Current) {
+      impact.effectiveControlEditCount = recipe.receipt.modifiedCellCount;
+      impact.effectiveMaterialEditCount = recipe.materialEdits.size();
+    }
+    plan.sources.push_back(std::move(impact));
+
+    CreativeTerrainOperationMutationRequest request;
+    request.kind = CreativeTerrainOperationMutationKind::Add;
+    request.owner = CreativeTerrainOperationOwner::WorldLayout;
+    request.sourceKey = sourceKey;
+    request.operationKind = CreativeTerrainOperationKind::Landform;
+    request.landform = symbol.landform;
+    const CreativeTerrainOperationMutationReceipt mutation =
+        staged.applyTerrainOperationMutation(request);
+    if (!mutation.accepted) {
+      reject(plan,
+             CreativeWorldLayoutTerrainImpactPlanStatus::MutationRejected,
+             "creative_world_layout_terrain_impact_landform_stage_rejected",
+             CreativeWorldLayoutTable::TerrainProfile, index);
+      return plan;
+    }
+  }
+
   for (std::size_t index = 0U; index < layout.terrainPaths.size(); ++index) {
     const CreativeWorldLayoutTerrainPath& symbol = layout.terrainPaths[index];
-    if (!registerKey(stableKeys, symbol.stableKey) || symbol.pointCount < 2U ||
-        symbol.firstPointIndex > layout.terrainPathPoints.size() ||
-        symbol.pointCount >
-            layout.terrainPathPoints.size() - symbol.firstPointIndex ||
-        symbol.elevation == CreativeTerrainPathElevation::Follow) {
+    if (!registerKey(stableKeys, symbol.stableKey) ||
+        !isValidCreativeTerrainPathSourceRecipe(symbol.recipe)) {
       reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::InvalidLayout,
              "creative_world_layout_terrain_impact_path_invalid",
              CreativeWorldLayoutTable::TerrainPath, index);
       return plan;
     }
-    for (std::size_t pointIndex = symbol.firstPointIndex;
-         pointIndex < symbol.firstPointIndex + symbol.pointCount;
-         ++pointIndex) {
-      if (pointOwned[pointIndex]) {
-        reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::InvalidLayout,
-               "creative_world_layout_terrain_impact_path_point_shared",
-               CreativeWorldLayoutTable::TerrainPathPoint, pointIndex);
-        return plan;
-      }
-      pointOwned[pointIndex] = true;
-    }
-  }
-  const auto unowned = std::find(pointOwned.begin(), pointOwned.end(), false);
-  if (unowned != pointOwned.end()) {
-    reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::InvalidLayout,
-           "creative_world_layout_terrain_impact_path_point_unowned",
-           CreativeWorldLayoutTable::TerrainPathPoint,
-           static_cast<std::size_t>(unowned - pointOwned.begin()));
-    return plan;
-  }
-
-  for (std::size_t index = 0U; index < layout.terrainPaths.size(); ++index) {
-    const CreativeWorldLayoutTerrainPath& symbol = layout.terrainPaths[index];
-    const std::size_t sourceIndex = plan.sources.size();
     CreativeWorldLayoutTerrainSourceImpact impact;
     impact.table = CreativeWorldLayoutTable::TerrainPath;
     impact.index = index;
     impact.stableKey = symbol.stableKey;
-    plan.sources.push_back(std::move(impact));
-    CreativeTerrainPathRecipeRequest request;
-    request.document = &staged;
-    request.kind = symbol.kind;
-    request.points = std::span{layout.terrainPathPoints}.subspan(
-        symbol.firstPointIndex, symbol.pointCount);
-    request.elevation = symbol.elevation;
-    request.halfWidthCells = symbol.halfWidthCells;
-    request.amplitudeCells = symbol.amplitudeCells;
-    request.paintSurface = symbol.paintSurface;
-    request.material = symbol.material;
-    const CreativeTerrainRecipeResult recipe =
-        buildCreativeTerrainPathRecipe(request);
-    if (!recipe.receipt.accepted) {
+    const CreativeTerrainSurfacePlan surface =
+        buildCreativeComposedTerrainSurfacePlan(
+            staged.terrainField(), staged.terrainHeightField());
+    const CreativeTerrainPathSourceResult recipe =
+        buildCreativeTerrainPathSourceRecipe(
+            staged.terrainHeightField(), surface,
+            staged.terrainMaterialField(), symbol.recipe);
+    if (!surface.accepted || !recipe.receipt.accepted) {
       reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::KernelRejected,
-             recipe.receipt.reasonCode, CreativeWorldLayoutTable::TerrainPath,
-             index, recipe.receipt.kernelReasonCode);
+             "creative_world_layout_terrain_impact_path_kernel_rejected",
+             CreativeWorldLayoutTable::TerrainPath, index,
+             recipe.receipt.reasonCode);
       return plan;
     }
-    if (!applyRecipe(staged, recipe, sourceIndex, plan.sources.back(),
-                     controlOwners, materialOwners)) {
+    for (const CreativeTerrainPathSegmentReceipt& segment : recipe.segments) {
+      const CreativeTerrainHeightFieldBounds bounds = segment.impactBounds;
+      const CreativeTerrainCoord2 maximum{
+          static_cast<std::int32_t>(
+              static_cast<std::int64_t>(bounds.minimum.x) +
+              bounds.widthCells - 1),
+          static_cast<std::int32_t>(
+              static_cast<std::int64_t>(bounds.minimum.z) +
+              bounds.depthCells - 1)};
+      if (!impact.hasGridBounds) {
+        impact.hasGridBounds = true;
+        impact.minimumCoord = bounds.minimum;
+        impact.maximumCoord = maximum;
+      } else {
+        impact.minimumCoord.x =
+            std::min(impact.minimumCoord.x, bounds.minimum.x);
+        impact.minimumCoord.z =
+            std::min(impact.minimumCoord.z, bounds.minimum.z);
+        impact.maximumCoord.x = std::max(impact.maximumCoord.x, maximum.x);
+        impact.maximumCoord.z = std::max(impact.maximumCoord.z, maximum.z);
+      }
+    }
+    impact.authoredControlCount = recipe.receipt.modifiedCellCount;
+    impact.authoredMaterialCount = recipe.materialEdits.size();
+    if (impact.hasGridBounds) {
+      for (std::int64_t z = impact.minimumCoord.z;
+           z <= impact.maximumCoord.z; ++z) {
+        for (std::int64_t x = impact.minimumCoord.x;
+             x <= impact.maximumCoord.x; ++x) {
+          const CreativeTerrainCoord2 coord{static_cast<std::int32_t>(x),
+                                            static_cast<std::int32_t>(z)};
+          const std::uint16_t height = recipe.heightField.heightAt(coord)
+                                           .value_or(
+                                               kCreativeTerrainEmptyHeightCells);
+          includeHeight(impact, height);
+          if (recipe.heightField.heightAt(coord) ==
+              staged.terrainHeightField().heightAt(coord)) {
+            continue;
+          }
+          if (impact.influenceCells.size() >=
+              kCreativeTerrainRenderPatchCapacity) {
+            impact.influenceCells.clear();
+            impact.influenceCellsClipped = true;
+            break;
+          }
+          impact.influenceCells.push_back(coord);
+        }
+        if (impact.influenceCellsClipped) {
+          break;
+        }
+      }
+    }
+    for (const CreativeTerrainMaterialEdit& edit : recipe.materialEdits) {
+      if (edit.kind == CreativeTerrainMaterialEditKind::Set) {
+        impact.materials.push_back({edit.coord, edit.material});
+      }
+    }
+
+    const std::string sourceKey = creativeWorldLayoutTerrainPathSourceKey(
+        layout.stableKey, symbol.stableKey);
+    const CreativeTerrainOperation* live = nullptr;
+    for (const CreativeTerrainOperation& operation :
+         document.terrainOperationStack().operations) {
+      if (operation.owner == CreativeTerrainOperationOwner::WorldLayout &&
+          operation.sourceKey == sourceKey) {
+        if (live != nullptr) {
+          reject(plan,
+                 CreativeWorldLayoutTerrainImpactPlanStatus::InvalidDocument,
+                 "creative_world_layout_terrain_impact_path_source_duplicate",
+                 CreativeWorldLayoutTable::TerrainPath, index);
+          return plan;
+        }
+        live = &operation;
+      }
+    }
+    impact.status =
+        live != nullptr && live->enabled &&
+                live->kind == CreativeTerrainOperationKind::Path &&
+                live->path == symbol.recipe
+            ? CreativeWorldLayoutTerrainImpactStatus::Current
+            : CreativeWorldLayoutTerrainImpactStatus::Drifted;
+    if (impact.status != CreativeWorldLayoutTerrainImpactStatus::Current) {
+      impact.effectiveControlEditCount = recipe.receipt.modifiedCellCount;
+      impact.effectiveMaterialEditCount = recipe.materialEdits.size();
+    }
+    plan.sources.push_back(std::move(impact));
+
+    CreativeTerrainOperationMutationRequest request;
+    request.kind = CreativeTerrainOperationMutationKind::Add;
+    request.operationId = kInvalidCreativeTerrainOperationId;
+    request.owner = CreativeTerrainOperationOwner::WorldLayout;
+    request.sourceKey = sourceKey;
+    request.operationKind = CreativeTerrainOperationKind::Path;
+    request.path = symbol.recipe;
+    const CreativeTerrainOperationMutationReceipt mutation =
+        staged.applyTerrainOperationMutation(request);
+    if (!mutation.accepted) {
       reject(plan, CreativeWorldLayoutTerrainImpactPlanStatus::MutationRejected,
              "creative_world_layout_terrain_impact_path_stage_rejected",
              CreativeWorldLayoutTable::TerrainPath, index);
       return plan;
     }
   }
-
-  finalizeSources(document, staged, controlOwners, materialOwners, plan);
   plan.accepted = true;
   plan.status = CreativeWorldLayoutTerrainImpactPlanStatus::Ready;
   plan.reasonCode = "creative_world_layout_terrain_impact_ready";

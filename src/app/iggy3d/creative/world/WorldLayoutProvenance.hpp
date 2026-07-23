@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
+#include <array>
 #include <cstddef>
 #include <string>
 
@@ -13,6 +14,27 @@ struct CreativeWorldLayoutObjectProvenance {
   std::size_t index = kInvalidCreativeWorldLayoutIndex;
   CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::Count;
   std::size_t contributorCount = 0U;
+};
+
+inline constexpr std::size_t kCreativeWorldLayoutSourceAncestryCapacity = 4U;
+
+struct CreativeWorldLayoutSourceRef {
+  CreativeWorldLayoutTable table = CreativeWorldLayoutTable::None;
+  std::size_t index = kInvalidCreativeWorldLayoutIndex;
+
+  [[nodiscard]] friend constexpr bool operator==(
+      CreativeWorldLayoutSourceRef,
+      CreativeWorldLayoutSourceRef) noexcept = default;
+};
+
+// Broadest-to-narrowest source ownership for one generated object. Four slots
+// cover Building -> Level -> Room/host -> direct source without allocating.
+struct CreativeWorldLayoutSourceAncestry {
+  std::array<CreativeWorldLayoutSourceRef,
+             kCreativeWorldLayoutSourceAncestryCapacity>
+      entries{};
+  std::size_t count = 0U;
+  std::size_t directEntryIndex = 0U;
 };
 
 // Produces a stable source tag from the symbol's authored key rather than its
@@ -43,5 +65,24 @@ resolveCreativeWorldLayoutObjectProvenance(
     const CreativeWorldLayout& layout,
     const CreativeObject& object,
     CreativeVec3 sourcePointCells);
+
+[[nodiscard]] CreativeWorldLayoutSourceAncestry
+buildCreativeWorldLayoutSourceAncestry(
+    const CreativeWorldLayout& layout,
+    CreativeWorldLayoutObjectProvenance provenance) noexcept;
+
+[[nodiscard]] std::size_t findCreativeWorldLayoutSource(
+    const CreativeWorldLayoutSourceAncestry& ancestry,
+    CreativeWorldLayoutTable table,
+    std::size_t index) noexcept;
+
+// Shared room boundaries may carry several contributor tags. All other source
+// membership follows the same fixed ancestry used by semantic selection and UI
+// breadcrumbs.
+[[nodiscard]] bool creativeWorldLayoutObjectBelongsToSource(
+    const CreativeWorldLayout& layout,
+    const CreativeObject& object,
+    CreativeWorldLayoutTable table,
+    std::size_t index);
 
 }  // namespace iggy3d::creative

@@ -245,7 +245,8 @@ bool Facade::setActiveTool(Tool tool) noexcept {
   const bool changed = iggy3d::creative::setActiveTool(toolState_, tool);
   if (changed && activeToolBefore == Tool::Measure &&
       toolState_.activeTool != Tool::Measure && measurementState_.active) {
-    static_cast<void>(cancelMeasurement(measurementState_));
+    static_cast<void>(
+        iggy3d::creative::cancelMeasurement(measurementState_));
   }
   if (changed && ghostState_.visible) {
     static_cast<void>(hideGhost(ghostState_));
@@ -336,9 +337,58 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
   if (receipt.moveDrag.stage != CreativeFacadeMoveDragStage::None) {
     moveDragReceipt_ = receipt.moveDrag;
   }
+  toolState_.measurementActive = measurementState_.active;
   state_.tool = toolState_.activeTool;
   state_.selected = selectionState_.selectedTarget;
   state_.hovered = toolState_.pointer.target;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::configureMeasurement(
+    CreativeMeasurementMode mode,
+    CreativeMeasurementAxis axis,
+    bool closePath) noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::configureMeasurement(measurementState_, mode, axis,
+                                             closePath);
+  toolState_.measurementActive = measurementState_.active;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::appendMeasurementPoint(
+    CreativeMeasurementPoint point) noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::appendMeasurementPoint(measurementState_, point);
+  toolState_.measurementActive = measurementState_.active;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::previewMeasurementPoint(
+    CreativeMeasurementPoint point) noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::previewMeasurementPoint(measurementState_, point);
+  toolState_.measurementActive = measurementState_.active;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::completeMeasurement() noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::completeMeasurement(measurementState_);
+  toolState_.measurementActive = measurementState_.active;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::cancelMeasurement() noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::cancelMeasurement(measurementState_);
+  toolState_.measurementActive = measurementState_.active;
+  return receipt;
+}
+
+CreativeMeasurementReceipt Facade::clearMeasurement() noexcept {
+  const CreativeMeasurementReceipt receipt =
+      iggy3d::creative::clearMeasurement(measurementState_);
+  toolState_.measurementActive = measurementState_.active;
   return receipt;
 }
 

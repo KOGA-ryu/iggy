@@ -478,11 +478,15 @@ PhysicsRaycastQueryResult raycastPhysicsAabbs(
   return result;
 }
 
-bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
-                               Vec3 from,
-                               Vec3 to,
-                               float marginMeters,
-                               bool* startInside) {
+namespace {
+
+bool segmentHitsAnyPhysicsAabbFiltered(
+    std::span<const PhysicsAabbCollider> colliders,
+    Vec3 from,
+    Vec3 to,
+    float marginMeters,
+    bool* startInside,
+    bool occludingOnly) {
   if (startInside != nullptr) {
     *startInside = false;
   }
@@ -499,7 +503,9 @@ bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
   const Vec3 direction = displacement / maxDistanceMeters;
   for (const PhysicsAabbCollider& collider : colliders) {
     // branch-gate: BG-1097
-    if (collider.sensor || !isValidPhysicsAabbCollider(collider)) {
+    if (collider.sensor ||
+        (occludingOnly && !collider.occludesVision) ||
+        !isValidPhysicsAabbCollider(collider)) {
       continue;
     }
     const PhysicsRayAabbHit rayHit = intersectPhysicsRayAabb(
@@ -514,6 +520,27 @@ bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
     }
   }
   return false;
+}
+
+}  // namespace
+
+bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
+                               Vec3 from,
+                               Vec3 to,
+                               float marginMeters,
+                               bool* startInside) {
+  return segmentHitsAnyPhysicsAabbFiltered(
+      colliders, from, to, marginMeters, startInside, false);
+}
+
+bool segmentOccludedByAnyPhysicsAabb(
+    std::span<const PhysicsAabbCollider> colliders,
+    Vec3 from,
+    Vec3 to,
+    float marginMeters,
+    bool* startInside) {
+  return segmentHitsAnyPhysicsAabbFiltered(
+      colliders, from, to, marginMeters, startInside, true);
 }
 
 PhysicsSweptAabbQueryResult sweepPhysicsAabb(

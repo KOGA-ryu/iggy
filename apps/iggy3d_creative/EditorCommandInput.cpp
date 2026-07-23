@@ -9,6 +9,7 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
 #include "EditorConnectedFill.hpp"
+#include "EditorDesktopCommandsInternal.hpp"
 #include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPathEditing.hpp"
@@ -126,6 +127,14 @@ void applyCreativeEditorCommandInput(
             selectCreativeEditorHotbarSlot(appState, editor, slot));
         break;
       }
+      case creative::CreativeInputActionId::FrameContext3D:
+        if (!focusEditorCameraOnSelection(
+                editor, appState.facade.document(),
+                appState.facade.selectionState())) {
+          static_cast<void>(focusEditorCameraOnDocument(
+              editor, appState.facade.document()));
+        }
+        break;
       case creative::CreativeInputActionId::ToggleCatalog:
       case creative::CreativeInputActionId::CatalogPrevious:
       case creative::CreativeInputActionId::CatalogNext:
@@ -134,7 +143,7 @@ void applyCreativeEditorCommandInput(
       case creative::CreativeInputActionId::CatalogPreviousPage:
       case creative::CreativeInputActionId::CatalogNextPage:
       case creative::CreativeInputActionId::CatalogConfirm:
-      case creative::CreativeInputActionId::CatalogAssignToolWheel:
+      case creative::CreativeInputActionId::CatalogContextAction:
       case creative::CreativeInputActionId::CatalogClose:
       case creative::CreativeInputActionId::ToggleToolWheel:
       case creative::CreativeInputActionId::ToolWheelPrevious:
@@ -195,7 +204,8 @@ void applyCreativeEditorCommandInput(
             static_cast<void>(beginCreativeEditorSelectionTransformPreview(
                 appState, editor.transform,
                 "controller_selection_transform_begin",
-                CreativeEditorTransformAnchorPolicy::FixedSource));
+                CreativeEditorTransformAnchorPolicy::FixedSource,
+                &editor.worldLayout));
           }
           break;
         }
@@ -287,12 +297,12 @@ void applyCreativeEditorCommandInput(
                      queueCreativeMovingPlatformPathEdit(
                        appState, editor.interaction.movingPlatformPathEdit,
                        CreativeMovingPlatformPathEditCommand::RemoveSelected))) {
-          (void)deleteSelectedObject(
+          (void)deleteCreativeEditorSelectionWithUndo(
               appState,
               event.trigger == creative::CreativeInputKey::Backspace
                   ? "backspace_key"
                   : "delete_key",
-              &appState.history);
+              &appState.history, &editor.worldLayout);
         }
         break;
       case creative::CreativeInputActionId::Undo:
@@ -325,7 +335,7 @@ void applyCreativeEditorCommandInput(
         } else {
           static_cast<void>(beginCreativeEditorClipboardTransformPreview(
               appState, appState.clipboard, editor.transform,
-              "keyboard_paste"));
+              "keyboard_paste", &editor.worldLayout));
         }
         break;
       case creative::CreativeInputActionId::DuplicateSelection:

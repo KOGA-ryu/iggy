@@ -17,8 +17,8 @@ namespace iggy3d_creative_app {
 // - Exterior walls read heavier than interior partitions.
 // - Overhead geometry (roof) reads lighter and dashed, and never joins the
 //   normal layer.
-// - Lower-storey context is ghosted: reduced alpha, painted under the active
-//   storey.
+// - Lower-storey context is ghosted under the active storey; upper-storey
+//   context is dashed above it. They remain distinguishable without color.
 // - Every state overlay stays distinguishable in grayscale: any two overlays
 //   differ in structure (stroke class, dash pattern, or fill pattern), never
 //   in hue alone. Invalid previews carry a shape cue (hatch + short dash).
@@ -54,11 +54,15 @@ enum class CreativeEditorDraftingRole : std::uint8_t {
   RoomFloor,
   Door,
   DoorSwing,
+  OpeningFacing,
   Window,
+  WindowShutter,
   Stair,
   Ramp,
   RoofOutline,
   RoofRidge,
+  RoofSkylight,
+  RoofClearance,
   // Terrain
   ContourMinor,
   ContourMajor,
@@ -73,6 +77,12 @@ enum class CreativeEditorDraftingRole : std::uint8_t {
   RidgeLine,
   Bridge,
   ElevationBand,
+  SlopeFlat,
+  SlopeGentle,
+  SlopeSteep,
+  SlopeExtreme,
+  CutArea,
+  FillArea,
   RegionMask,
   // Objects
   ObjectBounds,
@@ -91,8 +101,10 @@ enum class CreativeEditorDraftingRole : std::uint8_t {
   PreviewInvalidOverlay,
   LockedOverlay,
   GeneratedOverlay,
+  MeasurementOverlay,
   OverheadOverlay,
   LowerLevelGhostOverlay,
+  UpperLevelGhostOverlay,
   Count,
 };
 

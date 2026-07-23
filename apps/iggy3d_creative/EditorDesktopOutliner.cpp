@@ -68,21 +68,27 @@ void refreshOutlinerCaches(CreativeDesktopOutlinerState& state,
 // row's selectable. Absent during Play (document edits are read-only there).
 void appendRowFlagControls(const CreativeDesktopOutlinerRow& row,
                            CreativeDesktopCommandFrame& commands) {
-  if (ImGui::SmallButton(row.visible ? "o" : "-")) {
+  const bool inheritedHidden = row.visible && !row.effectivelyVisible;
+  const bool inheritedLocked = !row.locked && row.effectivelyLocked;
+  if (ImGui::SmallButton(inheritedHidden ? "o*" : row.visible ? "o" : "-")) {
     commands.push(CreativeDesktopCommandId::SetObjectsVisible,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.visible});
   }
-  appendHoverTooltip(row.visible ? "Visible — click to hide"
-                                 : "Hidden — click to show");
+  appendHoverTooltip(inheritedHidden
+                         ? "Locally visible; hidden by an ancestor"
+                     : row.visible ? "Visible — click to hide"
+                                   : "Hidden — click to show");
   ImGui::SameLine();
-  if (ImGui::SmallButton(row.locked ? "L" : ".")) {
+  if (ImGui::SmallButton(inheritedLocked ? "L*" : row.locked ? "L" : ".")) {
     commands.push(CreativeDesktopCommandId::SetObjectsLocked,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.locked});
   }
-  appendHoverTooltip(row.locked ? "Locked — click to unlock"
-                                : "Unlocked — click to lock");
+  appendHoverTooltip(inheritedLocked
+                         ? "Unlocked locally; locked by an ancestor"
+                     : row.locked ? "Locked — click to unlock"
+                                  : "Unlocked — click to lock");
   ImGui::SameLine();
 }
 
@@ -210,6 +216,31 @@ void buildCreativeEditorDesktopOutlinerPanel(
                                                    plan.primaryObjectId});
         state.selectionAnchor = plan.nextAnchorObjectId;
       }
+    }
+    if (ImGui::BeginPopupContextItem("##selection_scope")) {
+      const auto appendHierarchySelection = [&](
+          const char* label,
+          CreativeDesktopHierarchySelectionScope scope) {
+        const CreativeDesktopSelectionPlan plan =
+            planCreativeDesktopHierarchySelection(state.model, row.objectId,
+                                                   scope);
+        if (ImGui::MenuItem(label, nullptr, false, plan.accepted)) {
+          commands.push(CreativeDesktopCommandId::SelectObjects,
+                        CreativeDesktopSelectPayload{plan.objectIds,
+                                                     plan.primaryObjectId});
+          state.selectionAnchor = plan.nextAnchorObjectId;
+        }
+      };
+      appendHierarchySelection(
+          "Select parent",
+          CreativeDesktopHierarchySelectionScope::Parent);
+      appendHierarchySelection(
+          "Select direct children",
+          CreativeDesktopHierarchySelectionScope::DirectChildren);
+      appendHierarchySelection(
+          "Select hierarchy",
+          CreativeDesktopHierarchySelectionScope::Subtree);
+      ImGui::EndPopup();
     }
     if (quietHighlight) {
       ImGui::PopStyleColor();

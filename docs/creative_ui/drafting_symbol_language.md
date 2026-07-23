@@ -61,7 +61,9 @@ draws.
 | room floor | #8B8570 | None | — | solid 0.16 | 10 | normal+context |
 | door | #E8E4D8 | Medium | — | — | 42 | normal+context |
 | door swing | #E8E4D8 | Hairline | 0.9/0.9 | — | 43 | normal+context |
+| opening facing | #C9C4B4 | Hairline | — | — | 44 | normal+context |
 | window | #9FC4D6 | Medium | — | — | 41 | normal+context |
+| window shutter | #B4A98F | Medium | — | — | 42 | normal+context |
 | stair | #C9C4B4 | Light | — | — | 36 | normal+context |
 | ramp | #C9C4B4 | Light | — | — | 36 | normal+context |
 | roof outline | #A89B78 | Light | 1.5/1.0 | — | 60 | overhead |

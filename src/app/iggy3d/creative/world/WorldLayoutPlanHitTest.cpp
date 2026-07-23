@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 
 namespace iggy3d::creative {
@@ -153,6 +154,236 @@ bool within(double distance, double footprint) noexcept {
   return distance <= footprint + kGeometryEpsilon;
 }
 
+struct RegionRect {
+  double minimumX = 0.0;
+  double minimumZ = 0.0;
+  double maximumX = 0.0;
+  double maximumZ = 0.0;
+};
+
+RegionRect normalizedRect(CreativeWorldLayoutPlanPoint first,
+                          CreativeWorldLayoutPlanPoint second) noexcept {
+  return {
+      std::min(first.x, second.x),
+      std::min(first.z, second.z),
+      std::max(first.x, second.x),
+      std::max(first.z, second.z),
+  };
+}
+
+RegionRect expandedRect(RegionRect rect, double amount) noexcept {
+  rect.minimumX -= amount;
+  rect.minimumZ -= amount;
+  rect.maximumX += amount;
+  rect.maximumZ += amount;
+  return rect;
+}
+
+bool rectContains(RegionRect rect,
+                  CreativeWorldLayoutPlanPoint point) noexcept {
+  return point.x >= rect.minimumX - kGeometryEpsilon &&
+         point.x <= rect.maximumX + kGeometryEpsilon &&
+         point.z >= rect.minimumZ - kGeometryEpsilon &&
+         point.z <= rect.maximumZ + kGeometryEpsilon;
+}
+
+bool rectContains(RegionRect outer, RegionRect inner) noexcept {
+  return inner.minimumX >= outer.minimumX - kGeometryEpsilon &&
+         inner.maximumX <= outer.maximumX + kGeometryEpsilon &&
+         inner.minimumZ >= outer.minimumZ - kGeometryEpsilon &&
+         inner.maximumZ <= outer.maximumZ + kGeometryEpsilon;
+}
+
+bool segmentIntersectsRect(CreativeWorldLayoutPlanPoint start,
+                           CreativeWorldLayoutPlanPoint end,
+                           RegionRect rect) noexcept {
+  if (rectContains(rect, start) || rectContains(rect, end)) {
+    return true;
+  }
+  const double dx = end.x - start.x;
+  const double dz = end.z - start.z;
+  double first = 0.0;
+  double last = 1.0;
+  const auto clip = [&](double direction, double distance) {
+    if (std::abs(direction) <= kGeometryEpsilon) {
+      return distance >= -kGeometryEpsilon;
+    }
+    const double value = distance / direction;
+    if (direction < 0.0) {
+      if (value > last) {
+        return false;
+      }
+      first = std::max(first, value);
+    } else {
+      if (value < first) {
+        return false;
+      }
+      last = std::min(last, value);
+    }
+    return first <= last + kGeometryEpsilon;
+  };
+  return clip(-dx, start.x - rect.minimumX) &&
+         clip(dx, rect.maximumX - start.x) &&
+         clip(-dz, start.z - rect.minimumZ) &&
+         clip(dz, rect.maximumZ - start.z);
+}
+
+bool polygonIntersectsRect(const CreativeWorldLayoutPlanPrimitive& primitive,
+                           RegionRect rect) noexcept {
+  for (std::size_t index = 0U; index < primitive.pointCount; ++index) {
+    if (rectContains(rect, primitive.points[index]) ||
+        segmentIntersectsRect(
+            primitive.points[index],
+            primitive.points[(index + 1U) % primitive.pointCount], rect)) {
+      return true;
+    }
+  }
+  const CreativeWorldLayoutPlanPoint corners[] = {
+      {rect.minimumX, rect.minimumZ},
+      {rect.maximumX, rect.minimumZ},
+      {rect.maximumX, rect.maximumZ},
+      {rect.minimumX, rect.maximumZ},
+  };
+  return std::any_of(std::begin(corners), std::end(corners),
+                     [&](CreativeWorldLayoutPlanPoint corner) {
+                       return pointInPolygon(primitive, corner);
+                     });
+}
+
+bool circleIntersectsRect(CreativeWorldLayoutPlanPoint center, double radius,
+                          RegionRect rect) noexcept {
+  const double closestX =
+      std::clamp(center.x, rect.minimumX, rect.maximumX);
+  const double closestZ =
+      std::clamp(center.z, rect.minimumZ, rect.maximumZ);
+  const double dx = center.x - closestX;
+  const double dz = center.z - closestZ;
+  return dx * dx + dz * dz <= radius * radius + kGeometryEpsilon;
+}
+
+bool arcIntersectsRect(const CreativeWorldLayoutPlanPrimitive& primitive,
+                       RegionRect rect) noexcept {
+  const CreativeWorldLayoutPlanPoint center = primitive.points[0];
+  const double radius = primitive.radiusCells;
+  const auto pointOnArc = [&](CreativeWorldLayoutPlanPoint point) {
+    const double angle = std::atan2(point.z - center.z, point.x - center.x);
+    return angleWithinSweep(angle, primitive.startRadians,
+                            primitive.sweepRadians);
+  };
+  const CreativeWorldLayoutPlanPoint start =
+      arcPoint(center, radius, primitive.startRadians);
+  const CreativeWorldLayoutPlanPoint end = arcPoint(
+      center, radius, primitive.startRadians + primitive.sweepRadians);
+  if (rectContains(rect, start) || rectContains(rect, end)) {
+    return true;
+  }
+  if (radius <= kGeometryEpsilon) {
+    return rectContains(rect, center);
+  }
+
+  const auto intersectsVertical = [&](double x) {
+    const double offset = x - center.x;
+    if (std::abs(offset) > radius + kGeometryEpsilon) {
+      return false;
+    }
+    const double remainder = std::max(0.0, radius * radius - offset * offset);
+    const double dz = std::sqrt(remainder);
+    const CreativeWorldLayoutPlanPoint candidates[] = {
+        {x, center.z - dz}, {x, center.z + dz}};
+    return std::any_of(std::begin(candidates), std::end(candidates),
+                       [&](CreativeWorldLayoutPlanPoint point) {
+                         return point.z >= rect.minimumZ - kGeometryEpsilon &&
+                                point.z <= rect.maximumZ + kGeometryEpsilon &&
+                                pointOnArc(point);
+                       });
+  };
+  const auto intersectsHorizontal = [&](double z) {
+    const double offset = z - center.z;
+    if (std::abs(offset) > radius + kGeometryEpsilon) {
+      return false;
+    }
+    const double remainder = std::max(0.0, radius * radius - offset * offset);
+    const double dx = std::sqrt(remainder);
+    const CreativeWorldLayoutPlanPoint candidates[] = {
+        {center.x - dx, z}, {center.x + dx, z}};
+    return std::any_of(std::begin(candidates), std::end(candidates),
+                       [&](CreativeWorldLayoutPlanPoint point) {
+                         return point.x >= rect.minimumX - kGeometryEpsilon &&
+                                point.x <= rect.maximumX + kGeometryEpsilon &&
+                                pointOnArc(point);
+                       });
+  };
+  return intersectsVertical(rect.minimumX) ||
+         intersectsVertical(rect.maximumX) ||
+         intersectsHorizontal(rect.minimumZ) ||
+         intersectsHorizontal(rect.maximumZ);
+}
+
+void includePoint(RegionRect& bounds, bool& initialized,
+                  CreativeWorldLayoutPlanPoint point) noexcept {
+  if (!initialized) {
+    bounds = {point.x, point.z, point.x, point.z};
+    initialized = true;
+    return;
+  }
+  bounds.minimumX = std::min(bounds.minimumX, point.x);
+  bounds.minimumZ = std::min(bounds.minimumZ, point.z);
+  bounds.maximumX = std::max(bounds.maximumX, point.x);
+  bounds.maximumZ = std::max(bounds.maximumZ, point.z);
+}
+
+RegionRect primitiveBounds(
+    const CreativeWorldLayoutPlanPrimitive& primitive,
+    double toleranceCells) noexcept {
+  RegionRect bounds;
+  bool initialized = false;
+  switch (primitive.kind) {
+    case CreativeWorldLayoutPlanPrimitiveKind::Segment:
+    case CreativeWorldLayoutPlanPrimitiveKind::Polygon:
+      for (std::size_t index = 0U; index < primitive.pointCount; ++index) {
+        includePoint(bounds, initialized, primitive.points[index]);
+      }
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Circle: {
+      const double radius = primitive.radiusCells;
+      bounds = {primitive.points[0].x - radius,
+                primitive.points[0].z - radius,
+                primitive.points[0].x + radius,
+                primitive.points[0].z + radius};
+      initialized = true;
+      break;
+    }
+    case CreativeWorldLayoutPlanPrimitiveKind::Arc: {
+      includePoint(bounds, initialized,
+                   arcPoint(primitive.points[0], primitive.radiusCells,
+                            primitive.startRadians));
+      includePoint(bounds, initialized,
+                   arcPoint(primitive.points[0], primitive.radiusCells,
+                            primitive.startRadians + primitive.sweepRadians));
+      constexpr double extrema[] = {0.0, kPi * 0.5, kPi, kPi * 1.5};
+      for (double angle : extrema) {
+        if (angleWithinSweep(angle, primitive.startRadians,
+                             primitive.sweepRadians)) {
+          includePoint(bounds, initialized,
+                       arcPoint(primitive.points[0], primitive.radiusCells,
+                                angle));
+        }
+      }
+      break;
+    }
+    case CreativeWorldLayoutPlanPrimitiveKind::Point:
+      includePoint(bounds, initialized, primitive.points[0]);
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Count:
+      break;
+  }
+  const double width =
+      primitive.kind == CreativeWorldLayoutPlanPrimitiveKind::Segment
+          ? primitive.widthCells * 0.5
+          : 0.0;
+  return expandedRect(bounds, toleranceCells + width);
+}
+
 }  // namespace
 
 std::string_view toString(CreativeWorldLayoutPlanHitTestStatus status) noexcept {
@@ -244,6 +475,71 @@ CreativeWorldLayoutPlanHitTestResult hitTestCreativeWorldLayoutPlanPrimitive(
   }
   return {false, CreativeWorldLayoutPlanHitTestStatus::InvalidPrimitive, 0.0,
           "creative_world_layout_plan_hit_test_primitive_invalid"};
+}
+
+CreativeWorldLayoutPlanHitTestResult
+selectCreativeWorldLayoutPlanPrimitiveInRegion(
+    const CreativeWorldLayoutPlanPrimitive& primitive,
+    CreativeWorldLayoutPlanPoint first,
+    CreativeWorldLayoutPlanPoint second,
+    CreativeWorldLayoutPlanRegionMode mode,
+    double toleranceCells) noexcept {
+  if (!finite(first) || !finite(second) || !std::isfinite(toleranceCells) ||
+      toleranceCells < 0.0 || mode >= CreativeWorldLayoutPlanRegionMode::Count) {
+    return {false, CreativeWorldLayoutPlanHitTestStatus::InvalidRequest, 0.0,
+            "creative_world_layout_plan_region_request_invalid"};
+  }
+  if (!validPrimitive(primitive)) {
+    return {false, CreativeWorldLayoutPlanHitTestStatus::InvalidPrimitive, 0.0,
+            "creative_world_layout_plan_region_primitive_invalid"};
+  }
+
+  const RegionRect region = normalizedRect(first, second);
+  if (mode == CreativeWorldLayoutPlanRegionMode::Window) {
+    const bool selected =
+        rectContains(region, primitiveBounds(primitive, toleranceCells));
+    return {selected,
+            selected ? CreativeWorldLayoutPlanHitTestStatus::Hit
+                     : CreativeWorldLayoutPlanHitTestStatus::Miss,
+            0.0,
+            selected ? "creative_world_layout_plan_region_window_hit"
+                     : "creative_world_layout_plan_region_window_miss"};
+  }
+
+  bool selected = false;
+  switch (primitive.kind) {
+    case CreativeWorldLayoutPlanPrimitiveKind::Segment:
+      selected = segmentIntersectsRect(
+          primitive.points[0], primitive.points[1],
+          expandedRect(region,
+                       toleranceCells + primitive.widthCells * 0.5));
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Polygon:
+      selected = polygonIntersectsRect(
+          primitive, expandedRect(region, toleranceCells));
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Circle:
+      selected = circleIntersectsRect(
+          primitive.points[0], primitive.radiusCells,
+          expandedRect(region, toleranceCells));
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Arc:
+      selected = arcIntersectsRect(
+          primitive, expandedRect(region, toleranceCells));
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Point:
+      selected = rectContains(expandedRect(region, toleranceCells),
+                              primitive.points[0]);
+      break;
+    case CreativeWorldLayoutPlanPrimitiveKind::Count:
+      break;
+  }
+  return {selected,
+          selected ? CreativeWorldLayoutPlanHitTestStatus::Hit
+                   : CreativeWorldLayoutPlanHitTestStatus::Miss,
+          0.0,
+          selected ? "creative_world_layout_plan_region_crossing_hit"
+                   : "creative_world_layout_plan_region_crossing_miss"};
 }
 
 }  // namespace iggy3d::creative

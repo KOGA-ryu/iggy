@@ -30,6 +30,23 @@ void selectControlDirection(CreativeEditorSelectionTransformState& state,
   }
 }
 
+void setTransformAxis(const CreativeEditorTransformFrameRequest& request,
+                      CreativeEditorSelectionTransformState& state,
+                      cr::CreativeSelectionPlacementAxis placementAxis,
+                      cr::CreativeAxis3 rotationAxis) {
+  if (state.transformMode == CreativeEditorTransformMode::Rotate) {
+    static_cast<void>(setCreativeEditorTransformRotationDegrees(
+        request.appState, state, rotationAxis, state.rotationDegrees));
+    return;
+  }
+  const cr::CreativeSelectionPlacementAxis next =
+      state.constraint == placementAxis
+          ? cr::CreativeSelectionPlacementAxis::Free
+          : placementAxis;
+  static_cast<void>(setCreativeEditorTransformConstraint(
+      request.appState, state, next));
+}
+
 void applyTransformPreviewAction(
     const CreativeEditorTransformFrameRequest& request,
     CreativeEditorSelectionTransformState& state,
@@ -39,16 +56,16 @@ void applyTransformPreviewAction(
       state.controlsOpen = true;
       return;
     case cr::CreativeInputActionId::TransformConstraintX:
-      static_cast<void>(setCreativeEditorTransformConstraint(
-          request.appState, state, cr::CreativeSelectionPlacementAxis::X));
+      setTransformAxis(request, state, cr::CreativeSelectionPlacementAxis::X,
+                       cr::CreativeAxis3::X);
       return;
     case cr::CreativeInputActionId::TransformConstraintY:
-      static_cast<void>(setCreativeEditorTransformConstraint(
-          request.appState, state, cr::CreativeSelectionPlacementAxis::Y));
+      setTransformAxis(request, state, cr::CreativeSelectionPlacementAxis::Y,
+                       cr::CreativeAxis3::Y);
       return;
     case cr::CreativeInputActionId::TransformConstraintZ:
-      static_cast<void>(setCreativeEditorTransformConstraint(
-          request.appState, state, cr::CreativeSelectionPlacementAxis::Z));
+      setTransformAxis(request, state, cr::CreativeSelectionPlacementAxis::Z,
+                       cr::CreativeAxis3::Z);
       return;
     case cr::CreativeInputActionId::TransformNudgePositive:
       static_cast<void>(nudgeCreativeEditorSelectionTransform(

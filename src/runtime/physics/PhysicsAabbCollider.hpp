@@ -40,6 +40,7 @@ struct PhysicsAabbCollider {
   Vec3 halfExtentsMeters;
   Aabb3 bounds;
   bool sensor = false;
+  bool occludesVision = true;
 };
 
 struct PhysicsAabbColliderResult {

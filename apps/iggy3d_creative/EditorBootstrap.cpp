@@ -26,6 +26,8 @@
 
 #include "EditorAssets.hpp"
 #include "EditorPlacement.hpp"
+#include "EditorTerrainStampLibrary.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayout.hpp"
 
 namespace iggy3d_creative_app {
@@ -141,13 +143,12 @@ void initializeCreativeEditorBootstrapData(
   output.gizmoAxisLengthMeters = 1.5F;
   output.gizmoThicknessMeters = 0.05F;
   // ---- PLACE state -------------------------------------------------------
-  // Slot 1 starts as the first descriptor-backed material. The center ray and
-  // targeted face provide its placement anchor; the grid pitch is the cell size.
+  // Released workspace tools seed the hotbar. Experimental authoring tools are
+  // assigned explicitly from the catalog rather than advertised at startup.
   output.editor.brushPalette = buildBrushPaletteFromDescriptors();
   output.editor.placeBrush = firstBrushKind(output.editor.brushPalette);
   output.editor.interaction.hotbar =
-      iggy3d::creative::makeDefaultCreativeHotbar(
-          output.editor.brushPalette);
+      makeCreativeEditorDefaultHotbar(output.editor.brushPalette);
   output.assetRoot =
       std::filesystem::path{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};
   CreativeCatalogAssetDiscovery catalogAssets =
@@ -158,6 +159,9 @@ void initializeCreativeEditorBootstrapData(
   const CreativeEditorWorldLayoutBuildingTemplateLoadReceipt buildingTemplates =
       loadCreativeEditorWorldLayoutBuildingTemplateLibrary(
           output.editor.worldLayout.buildingTemplates, output.saveRoot);
+  const CreativeEditorTerrainStampLibraryLoadReceipt terrainStamps =
+      loadCreativeEditorTerrainStampLibrary(output.editor.terrainStamps,
+                                            output.saveRoot);
   if (buildingTemplates.accepted) {
     for (const std::string_view templateId :
          iggy3d::creative::creativeBuiltInBuildingTemplateIds()) {
@@ -204,6 +208,12 @@ void initializeCreativeEditorBootstrapData(
           static_cast<unsigned long long>(buildingTemplates.loadedCount),
           static_cast<unsigned long long>(buildingTemplates.rejectedCount),
           buildingTemplates.reasonCode.c_str());
+  SDL_Log("iggy3d_creative: terrain stamps root='%s' ready=%llu rejected=%llu "
+          "status='%s'",
+          output.editor.terrainStamps.root.generic_string().c_str(),
+          static_cast<unsigned long long>(terrainStamps.loadedCount),
+          static_cast<unsigned long long>(terrainStamps.rejectedCount),
+          terrainStamps.reasonCode.c_str());
   for (const iggy3d::creative::CreativeCatalogAssetFailure& failure :
        catalogAssets.failures) {
     SDL_Log("iggy3d_creative: asset catalog rejected path='%s' reason='%s'",
@@ -211,7 +221,8 @@ void initializeCreativeEditorBootstrapData(
   }
   output.editor.catalog.model = iggy3d::creative::makeCreativeCatalog(
       output.editor.brushPalette, catalogAssets.assets,
-      catalogAssets.failures.size(), catalogAssets.failures);
+      catalogAssets.failures.size(), catalogAssets.failures,
+      creativeEditorCatalogToolSpecs());
   output.staticMeshAssetCatalog = std::move(catalogAssets.catalog);
   output.editor.catalog.toolWheel =
       iggy3d::creative::makeCreativeToolWheel(output.editor.catalog.model);

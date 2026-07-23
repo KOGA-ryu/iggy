@@ -55,7 +55,7 @@ CreativeEditorToolWheelPersistenceReceipt loadCreativeEditorToolWheel(
   std::string extraToken;
   if (!(countRow >> countLabel >> entryCount) ||
       (countRow >> extraToken) || countLabel != "entry_count" ||
-      entryCount != cr::kCreativeToolWheelCapacity) {
+      entryCount > cr::kCreativeToolWheelCapacity) {
     receipt.status = CreativeEditorToolWheelPersistenceStatus::Invalid;
     return receipt;
   }
@@ -110,8 +110,7 @@ CreativeEditorToolWheelPersistenceReceipt saveCreativeEditorToolWheel(
     const std::filesystem::path& path) {
   CreativeEditorToolWheelPersistenceReceipt receipt;
   receipt.status = CreativeEditorToolWheelPersistenceStatus::IoError;
-  if (!cr::isValidCreativeToolWheel(wheel, catalog) ||
-      wheel.entryCount != cr::kCreativeToolWheelCapacity) {
+  if (!cr::isValidCreativeToolWheel(wheel, catalog)) {
     receipt.status = CreativeEditorToolWheelPersistenceStatus::Invalid;
     return receipt;
   }

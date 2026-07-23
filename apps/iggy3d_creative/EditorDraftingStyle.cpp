@@ -87,6 +87,12 @@ constexpr Color kRoadGray{169, 169, 180, 255};
 constexpr Color kWater{94, 110, 120, 255};
 constexpr Color kTimber{180, 169, 143, 255};
 constexpr Color kMoss{74, 90, 70, 255};
+constexpr Color kSlopeFlat{76, 132, 92, 255};
+constexpr Color kSlopeGentle{154, 153, 82, 255};
+constexpr Color kSlopeSteep{196, 125, 61, 255};
+constexpr Color kSlopeExtreme{195, 74, 64, 255};
+constexpr Color kCut{220, 97, 65, 255};
+constexpr Color kFill{70, 145, 212, 255};
 constexpr Color kNature{127, 163, 107, 255};
 constexpr Color kCover{95, 168, 160, 255};
 constexpr Color kProp{176, 141, 110, 255};
@@ -98,8 +104,10 @@ constexpr Color kValid{82, 240, 122, 255};
 constexpr Color kInvalid{240, 90, 80, 255};
 constexpr Color kLocked{154, 160, 166, 255};
 constexpr Color kGenerated{127, 184, 255, 255};
+constexpr Color kMeasurement{46, 230, 255, 255};
 constexpr Color kOverhead{232, 228, 216, 140};
 constexpr Color kGhost{140, 135, 120, 110};
+constexpr Color kUpperGhost{185, 180, 164, 125};
 
 constexpr Style terrain(Color tint, Stroke strokeClass,
                         std::uint8_t drawOrder, float fillAlpha,
@@ -121,11 +129,17 @@ constexpr std::array<Style, kRoleCount> kStyles = {{
     filled(Color{139, 133, 112, 255}, 0.16F, 10U, true, false, true),
     stroke(kPaper, Stroke::Medium, 42U, 0.0F, 0.0F, true, false, true),
     stroke(kPaper, Stroke::Hairline, 43U, 0.9F, 0.9F, true, false, true),
+    stroke(kPaperDim, Stroke::Hairline, 44U, 0.0F, 0.0F, true, false, true),
     stroke(kGlass, Stroke::Medium, 41U, 0.0F, 0.0F, true, false, true),
+    stroke(kTimber, Stroke::Medium, 42U, 0.0F, 0.0F, true, false, true),
     stroke(kPaperDim, Stroke::Light, 36U, 0.0F, 0.0F, true, false, true),
     stroke(kPaperDim, Stroke::Light, 36U, 0.0F, 0.0F, true, false, true),
     stroke(kRoof, Stroke::Light, 60U, 1.5F, 1.0F, false, true, false),
     stroke(kRoof, Stroke::Hairline, 61U, 0.8F, 0.8F, false, true, false),
+    overlay(kGlass, Stroke::Medium, Fill::Solid, 0.14F, 62U, 0.0F, 0.0F,
+            false, true, false),
+    overlay(kRoof, Stroke::Light, Fill::Hatched, 0.10F, 62U, 0.7F, 0.7F,
+            false, true, false),
     // Terrain
     stroke(kEarthDim, Stroke::Hairline, 6U),
     stroke(kEarth, Stroke::Light, 7U),
@@ -140,6 +154,12 @@ constexpr std::array<Style, kRoleCount> kStyles = {{
     terrain(kRidge, Stroke::Medium, 10U, 0.08F, 1.3F, 0.8F),
     stroke(kTimber, Stroke::Medium, 12U),
     filled(kMoss, 0.10F, 2U),
+    filled(kSlopeFlat, 0.16F, 3U),
+    filled(kSlopeGentle, 0.20F, 3U),
+    filled(kSlopeSteep, 0.24F, 3U),
+    filled(kSlopeExtreme, 0.30F, 3U),
+    overlay(kCut, Stroke::Hairline, Fill::Hatched, 0.30F, 5U, 0.6F, 0.6F),
+    overlay(kFill, Stroke::Hairline, Fill::Solid, 0.26F, 5U),
     stroke(kPaper, Stroke::Light, 80U, 2.5F, 2.0F),
     // Objects
     stroke(kTimber, Stroke::Light, 30U, 0.0F, 0.0F, true, false, true),
@@ -158,10 +178,13 @@ constexpr std::array<Style, kRoleCount> kStyles = {{
     overlay(kInvalid, Stroke::Light, Fill::Hatched, 0.22F, 95U, 0.8F, 0.8F),
     overlay(kLocked, Stroke::Hairline, Fill::Hatched, 0.10F, 91U, 0.6F, 1.2F),
     overlay(kGenerated, Stroke::Light, Fill::None, 0.0F, 89U, 2.0F, 1.2F),
+    overlay(kMeasurement, Stroke::Medium, Fill::None, 0.0F, 96U),
     overlay(kOverhead, Stroke::Hairline, Fill::None, 0.0F, 88U, 1.5F, 1.5F,
             false, true, false),
     overlay(kGhost, Stroke::Hairline, Fill::None, 0.0F, 4U, 0.0F, 0.0F, false,
             false, true),
+    overlay(kUpperGhost, Stroke::Hairline, Fill::None, 0.0F, 58U, 0.9F, 1.4F,
+            false, false, true),
 }};
 
 constexpr std::array<std::string_view, kRoleCount> kRoleNames = {{
@@ -171,11 +194,15 @@ constexpr std::array<std::string_view, kRoleCount> kRoleNames = {{
     "room floor",
     "door",
     "door swing",
+    "opening facing",
     "window",
+    "window shutter",
     "stair",
     "ramp",
     "roof outline",
     "roof ridge",
+    "roof skylight",
+    "roof clearance",
     "contour minor",
     "contour major",
     "hill",
@@ -189,6 +216,12 @@ constexpr std::array<std::string_view, kRoleCount> kRoleNames = {{
     "ridge line",
     "bridge",
     "elevation band",
+    "slope flat",
+    "slope gentle",
+    "slope steep",
+    "slope extreme",
+    "cut area",
+    "fill area",
     "region mask",
     "object bounds",
     "object point",
@@ -204,8 +237,10 @@ constexpr std::array<std::string_view, kRoleCount> kRoleNames = {{
     "preview invalid overlay",
     "locked overlay",
     "generated overlay",
+    "measurement overlay",
     "overhead overlay",
     "lower level ghost overlay",
+    "upper level ghost overlay",
 }};
 
 // Sheet-only names: shown as Reserved on the reference sheets, deliberately

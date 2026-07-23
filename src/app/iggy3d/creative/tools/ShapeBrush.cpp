@@ -34,6 +34,16 @@ struct InclusiveBounds {
          static_cast<std::size_t>(CreativeShapeBrushAxis::Count);
 }
 
+[[nodiscard]] bool validOpening(
+    CreativeVolumeHollowOpening opening) noexcept {
+  return opening < CreativeVolumeHollowOpening::Count;
+}
+
+[[nodiscard]] bool validCornerRule(
+    CreativeVolumeHollowCornerRule rule) noexcept {
+  return rule < CreativeVolumeHollowCornerRule::Count;
+}
+
 [[nodiscard]] InclusiveBounds inclusiveBounds(
     CreativeGridCoord3 first,
     CreativeGridCoord3 second) noexcept {
@@ -157,21 +167,101 @@ struct InclusiveBounds {
   return false;
 }
 
-[[nodiscard]] bool boundaryCell(CreativeShapeBrushKind kind,
-                                CreativeShapeBrushAxis axis,
-                                const InclusiveBounds& bounds,
-                                std::int64_t x,
-                                std::int64_t y,
-                                std::int64_t z) noexcept {
+enum class ShellDirection : std::uint8_t {
+  NegativeX,
+  PositiveX,
+  NegativeY,
+  PositiveY,
+  NegativeZ,
+  PositiveZ,
+};
+
+[[nodiscard]] constexpr std::uint8_t directionBit(
+    ShellDirection direction) noexcept {
+  return static_cast<std::uint8_t>(
+      1U << static_cast<std::uint8_t>(direction));
+}
+
+[[nodiscard]] constexpr std::uint8_t openingMask(
+    CreativeShapeBrushAxis axis,
+    CreativeVolumeHollowOpening opening) noexcept {
+  ShellDirection negative = ShellDirection::NegativeY;
+  ShellDirection positive = ShellDirection::PositiveY;
+  switch (axis) {
+    case CreativeShapeBrushAxis::X:
+      negative = ShellDirection::NegativeX;
+      positive = ShellDirection::PositiveX;
+      break;
+    case CreativeShapeBrushAxis::Y:
+      break;
+    case CreativeShapeBrushAxis::Z:
+      negative = ShellDirection::NegativeZ;
+      positive = ShellDirection::PositiveZ;
+      break;
+    case CreativeShapeBrushAxis::Count:
+      return 0U;
+  }
+  switch (opening) {
+    case CreativeVolumeHollowOpening::Closed: return 0U;
+    case CreativeVolumeHollowOpening::NegativeEnd:
+      return directionBit(negative);
+    case CreativeVolumeHollowOpening::PositiveEnd:
+      return directionBit(positive);
+    case CreativeVolumeHollowOpening::BothEnds:
+      return static_cast<std::uint8_t>(directionBit(negative) |
+                                       directionBit(positive));
+    case CreativeVolumeHollowOpening::Count: break;
+  }
+  return 0U;
+}
+
+[[nodiscard]] std::uint8_t shellCorridorMask(
+    CreativeShapeBrushKind kind,
+    CreativeShapeBrushAxis axis,
+    const InclusiveBounds& bounds,
+    std::int64_t x,
+    std::int64_t y,
+    std::int64_t z,
+    std::uint8_t thickness) noexcept {
   constexpr std::array<std::array<std::int64_t, 3>, 6> kNeighbors{{
       {{-1, 0, 0}}, {{1, 0, 0}}, {{0, -1, 0}},
       {{0, 1, 0}},  {{0, 0, -1}}, {{0, 0, 1}},
   }};
-  return std::any_of(kNeighbors.begin(), kNeighbors.end(),
-                     [&](const auto& offset) {
-                       return !insideShape(kind, axis, bounds, x + offset[0],
-                                           y + offset[1], z + offset[2]);
-                     });
+  std::uint8_t mask = 0U;
+  for (std::size_t direction = 0U; direction < kNeighbors.size(); ++direction) {
+    const auto& offset = kNeighbors[direction];
+    for (std::uint8_t distance = 1U; distance <= thickness; ++distance) {
+      const std::int64_t scale = distance;
+      if (!insideShape(kind, axis, bounds, x + offset[0] * scale,
+                       y + offset[1] * scale, z + offset[2] * scale)) {
+        mask = static_cast<std::uint8_t>(mask | (1U << direction));
+        break;
+      }
+    }
+  }
+  return mask;
+}
+
+[[nodiscard]] bool shellCell(const CreativeShapeBrushPlanRequest& request,
+                             const InclusiveBounds& bounds,
+                             std::int64_t x,
+                             std::int64_t y,
+                             std::int64_t z) noexcept {
+  const std::uint8_t corridors = shellCorridorMask(
+      request.kind, request.axis, bounds, x, y, z,
+      request.shellThicknessCells);
+  if (corridors == 0U) {
+    return false;
+  }
+  const std::uint8_t open = openingMask(request.axis, request.shellOpening);
+  if ((corridors & open) == 0U) {
+    return true;
+  }
+  if (request.shellCornerRule ==
+      CreativeVolumeHollowCornerRule::CutThrough) {
+    return false;
+  }
+  return (corridors & static_cast<std::uint8_t>(~open)) != 0U;
 }
 
 void reject(CreativeShapeBrushPlanReceipt& receipt,
@@ -319,6 +409,7 @@ std::string_view toString(CreativeShapeBrushPlanStatus status) noexcept {
     case CreativeShapeBrushPlanStatus::NotRequested: return "NotRequested";
     case CreativeShapeBrushPlanStatus::InvalidKind: return "InvalidKind";
     case CreativeShapeBrushPlanStatus::InvalidAxis: return "InvalidAxis";
+    case CreativeShapeBrushPlanStatus::InvalidShell: return "InvalidShell";
     case CreativeShapeBrushPlanStatus::CandidateLimitExceeded:
       return "CandidateLimitExceeded";
     case CreativeShapeBrushPlanStatus::GeneratedLimitExceeded:
@@ -335,6 +426,9 @@ CreativeShapeBrushPlanReceipt planCreativeShapeBrush(
   receipt.kind = request.kind;
   receipt.axis = request.axis;
   receipt.hollow = request.hollow;
+  receipt.shellThicknessCells = request.shellThicknessCells;
+  receipt.shellOpening = request.shellOpening;
+  receipt.shellCornerRule = request.shellCornerRule;
 
   if (!validKind(request.kind)) {
     reject(receipt, CreativeShapeBrushPlanStatus::InvalidKind,
@@ -346,9 +440,26 @@ CreativeShapeBrushPlanReceipt planCreativeShapeBrush(
            "creative_shape_brush_axis_invalid");
     return receipt;
   }
+  if (request.hollow &&
+      (request.kind == CreativeShapeBrushKind::Line ||
+       request.shellThicknessCells == 0U ||
+       !validOpening(request.shellOpening) ||
+       !validCornerRule(request.shellCornerRule))) {
+    reject(receipt, CreativeShapeBrushPlanStatus::InvalidShell,
+           "creative_shape_brush_shell_invalid");
+    return receipt;
+  }
 
   const InclusiveBounds bounds =
       inclusiveBounds(request.firstCell, request.secondCell);
+  if (request.hollow &&
+      (bounds.width <= 2U * request.shellThicknessCells ||
+       bounds.height <= 2U * request.shellThicknessCells ||
+       bounds.depth <= 2U * request.shellThicknessCells)) {
+    reject(receipt, CreativeShapeBrushPlanStatus::InvalidShell,
+           "creative_shape_brush_shell_does_not_fit");
+    return receipt;
+  }
   if (request.kind == CreativeShapeBrushKind::Line) {
     const std::uint64_t dx = static_cast<std::uint64_t>(
         std::llabs(static_cast<std::int64_t>(request.secondCell.x) -
@@ -383,8 +494,7 @@ CreativeShapeBrushPlanReceipt planCreativeShapeBrush(
       for (std::int64_t y = bounds.minY; y <= bounds.maxY; ++y) {
         for (std::int64_t x = bounds.minX; x <= bounds.maxX; ++x) {
           if (!insideShape(request.kind, request.axis, bounds, x, y, z) ||
-              (request.hollow &&
-               !boundaryCell(request.kind, request.axis, bounds, x, y, z))) {
+              (request.hollow && !shellCell(request, bounds, x, y, z))) {
             continue;
           }
           if (!appendCell(receipt, request,

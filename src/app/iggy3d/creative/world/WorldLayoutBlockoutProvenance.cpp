@@ -65,12 +65,26 @@ constexpr std::string_view kRoofStylePrefix =
     "iggy3d.world_layout.building_blockout.roof_style=";
 constexpr std::string_view kRoofRidgeAxisPrefix =
     "iggy3d.world_layout.building_blockout.roof_ridge_axis=";
+constexpr std::string_view kRoofSlopeDirectionPrefix =
+    "iggy3d.world_layout.building_blockout.roof_slope_direction=";
 constexpr std::string_view kRoofPitchPrefix =
     "iggy3d.world_layout.building_blockout.roof_pitch=";
 constexpr std::string_view kRoofOverhangPrefix =
     "iggy3d.world_layout.building_blockout.roof_overhang=";
+constexpr std::string_view kRoofMaterialPrefix =
+    "iggy3d.world_layout.building_blockout.roof_material=";
+constexpr std::string_view kCeilingThicknessPrefix =
+    "iggy3d.world_layout.building_blockout.ceiling_thickness=";
+constexpr std::string_view kArchitecturalProfilePrefix =
+    "iggy3d.world_layout.building_blockout.architectural_profile=";
+constexpr std::string_view kExteriorWallMaterialPrefix =
+    "iggy3d.world_layout.building_blockout.exterior_wall_material=";
+constexpr std::string_view kInteriorWallMaterialPrefix =
+    "iggy3d.world_layout.building_blockout.interior_wall_material=";
 
-constexpr std::uint32_t kExpectedFields = (1U << 25U) - 1U;
+constexpr std::uint32_t kExpectedVersion1Fields = (1U << 25U) - 1U;
+constexpr std::uint32_t kExpectedVersion2Fields = (1U << 27U) - 1U;
+constexpr std::uint32_t kExpectedVersion3Fields = (1U << 31U) - 1U;
 
 template <typename Integer>
 bool parseInteger(std::string_view text, Integer& output) noexcept {
@@ -176,10 +190,17 @@ bool validCreativeWorldLayoutBuildingBlockoutRecipe(
     const CreativeWorldLayoutBuildingBlockoutRecipe& recipe) noexcept {
   if (recipe.version != kCreativeWorldLayoutBuildingBlockoutRecipeVersion ||
       !std::isfinite(recipe.floorTopLayer) ||
-      recipe.floorThicknessLayers == 0U || recipe.roofThicknessLayers == 0U ||
+      recipe.floorThicknessLayers == 0U ||
+      recipe.ceilingThicknessLayers == 0U ||
+      recipe.roofThicknessLayers == 0U ||
+      recipe.architecturalProfileKind >=
+          CreativeWorldLayoutArchitecturalProfileKind::Count ||
+      recipe.exteriorWallMaterial >= CreativeStructuralMaterial::Count ||
+      recipe.interiorWallMaterial >= CreativeStructuralMaterial::Count ||
       !validCreativeStructuralRoofSettings(
-          recipe.roofStyle, recipe.roofRidgeAxis, recipe.roofPitchDegrees,
-          recipe.roofOverhangCells) ||
+          recipe.roofStyle, recipe.roofRidgeAxis,
+          recipe.roofSlopeDirection, recipe.roofPitchDegrees,
+          recipe.roofOverhangCells, recipe.roofMaterial) ||
       recipe.roofOverhangCells > kMaximumCreativeWorldLayoutRoofOverhangCells) {
     return false;
   }
@@ -372,12 +393,101 @@ creativeWorldLayoutBuildingBlockoutProvenance(const CreativeWorldLayout& layout,
                     result.recipe.roofOverhangCells)) {
       continue;
     }
+    if (tag.starts_with(kRoofSlopeDirectionPrefix) &&
+        claim(seen, 1U << 25U)) {
+      std::uint8_t value = 0U;
+      if (parseInteger(tag.substr(kRoofSlopeDirectionPrefix.size()), value)) {
+        result.recipe.roofSlopeDirection =
+            static_cast<CreativeStructuralRoofSlopeDirection>(value);
+        continue;
+      }
+    }
+    if (tag.starts_with(kRoofMaterialPrefix) && claim(seen, 1U << 26U)) {
+      std::uint8_t value = 0U;
+      if (parseInteger(tag.substr(kRoofMaterialPrefix.size()), value)) {
+        result.recipe.roofMaterial =
+            static_cast<CreativeStructuralMaterial>(value);
+        continue;
+      }
+    }
+    if (tag.starts_with(kCeilingThicknessPrefix) &&
+        claim(seen, 1U << 27U) &&
+        parseInteger(tag.substr(kCeilingThicknessPrefix.size()),
+                     result.recipe.ceilingThicknessLayers)) {
+      continue;
+    }
+    if (tag.starts_with(kArchitecturalProfilePrefix) &&
+        claim(seen, 1U << 28U)) {
+      std::uint8_t value = 0U;
+      if (parseInteger(tag.substr(kArchitecturalProfilePrefix.size()), value)) {
+        result.recipe.architecturalProfileKind =
+            static_cast<CreativeWorldLayoutArchitecturalProfileKind>(value);
+        continue;
+      }
+    }
+    if (tag.starts_with(kExteriorWallMaterialPrefix) &&
+        claim(seen, 1U << 29U)) {
+      std::uint8_t value = 0U;
+      if (parseInteger(tag.substr(kExteriorWallMaterialPrefix.size()), value)) {
+        result.recipe.exteriorWallMaterial =
+            static_cast<CreativeStructuralMaterial>(value);
+        continue;
+      }
+    }
+    if (tag.starts_with(kInteriorWallMaterialPrefix) &&
+        claim(seen, 1U << 30U)) {
+      std::uint8_t value = 0U;
+      if (parseInteger(tag.substr(kInteriorWallMaterialPrefix.size()), value)) {
+        result.recipe.interiorWallMaterial =
+            static_cast<CreativeStructuralMaterial>(value);
+        continue;
+      }
+    }
     return result;
   }
 
-  result.valid = result.present && seen == kExpectedFields &&
+  const bool version1 = result.recipe.version == 1U &&
+                        seen == kExpectedVersion1Fields;
+  const bool version2 = result.recipe.version == 2U &&
+                        seen == kExpectedVersion2Fields;
+  const bool version3 =
+      result.recipe.version == kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+      seen == kExpectedVersion3Fields;
+  if (version1) {
+    result.recipe.roofSlopeDirection =
+        CreativeStructuralRoofSlopeDirection::PositiveZ;
+    result.recipe.roofMaterial = CreativeStructuralMaterial::Blockout;
+  }
+  if (version1 || version2) {
+    result.recipe.version = kCreativeWorldLayoutBuildingBlockoutRecipeVersion;
+    result.recipe.ceilingThicknessLayers = 1U;
+    result.recipe.architecturalProfileKind =
+        CreativeWorldLayoutArchitecturalProfileKind::Custom;
+    result.recipe.exteriorWallMaterial = CreativeStructuralMaterial::Blockout;
+    result.recipe.interiorWallMaterial = CreativeStructuralMaterial::Blockout;
+  }
+  result.valid = result.present && (version1 || version2 || version3) &&
                  validCreativeWorldLayoutBuildingBlockoutRecipe(result.recipe);
   return result;
+}
+
+bool creativeWorldLayoutBuildingBlockoutWallMaterial(
+    const CreativeWorldLayout& layout, std::size_t buildingIndex,
+    CreativeWorldLayoutWallProfile profile,
+    CreativeStructuralMaterial& output) {
+  if (profile != CreativeWorldLayoutWallProfile::Exterior &&
+      profile != CreativeWorldLayoutWallProfile::Interior) {
+    return false;
+  }
+  const CreativeWorldLayoutBuildingBlockoutProvenance provenance =
+      creativeWorldLayoutBuildingBlockoutProvenance(layout, buildingIndex);
+  if (!provenance.valid) {
+    return false;
+  }
+  output = profile == CreativeWorldLayoutWallProfile::Exterior
+               ? provenance.recipe.exteriorWallMaterial
+               : provenance.recipe.interiorWallMaterial;
+  return true;
 }
 
 bool setCreativeWorldLayoutBuildingBlockoutProvenance(
@@ -440,10 +550,22 @@ bool setCreativeWorldLayoutBuildingBlockoutProvenance(
                           enumValue(recipe.roofStyle));
   building.tags.push_back(std::string{kRoofRidgeAxisPrefix} +
                           enumValue(recipe.roofRidgeAxis));
+  building.tags.push_back(std::string{kRoofSlopeDirectionPrefix} +
+                          enumValue(recipe.roofSlopeDirection));
   building.tags.push_back(std::string{kRoofPitchPrefix} +
                           encodeDouble(recipe.roofPitchDegrees));
   building.tags.push_back(std::string{kRoofOverhangPrefix} +
                           encodeDouble(recipe.roofOverhangCells));
+  building.tags.push_back(std::string{kRoofMaterialPrefix} +
+                          enumValue(recipe.roofMaterial));
+  building.tags.push_back(std::string{kCeilingThicknessPrefix} +
+                          std::to_string(recipe.ceilingThicknessLayers));
+  building.tags.push_back(std::string{kArchitecturalProfilePrefix} +
+                          enumValue(recipe.architecturalProfileKind));
+  building.tags.push_back(std::string{kExteriorWallMaterialPrefix} +
+                          enumValue(recipe.exteriorWallMaterial));
+  building.tags.push_back(std::string{kInteriorWallMaterialPrefix} +
+                          enumValue(recipe.interiorWallMaterial));
   return true;
 }
 

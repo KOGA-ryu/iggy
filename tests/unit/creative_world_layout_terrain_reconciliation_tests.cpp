@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -39,6 +40,22 @@ cr::CreativeWorldLayoutTerrainProfile plateau(std::string_view key,
   return profile;
 }
 
+cr::CreativeWorldLayoutTerrainProfile terrace(std::string_view key) {
+  cr::CreativeWorldLayoutTerrainProfile profile;
+  profile.stableKey = key;
+  profile.kind = cr::CreativeTerrainRecipeKind::Terrace;
+  profile.usesLandformRecipe = true;
+  profile.landform.kind = cr::CreativeTerrainLandformKind::Terrace;
+  profile.landform.bounds = {{-2, 3}, 8U, 4U};
+  profile.landform.baseHeightCells = 2U;
+  profile.landform.targetHeightCells = 8U;
+  profile.landform.terraceCount = 4U;
+  profile.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  profile.landform.edgeWidthCells = 0U;
+  profile.landform.material = cr::CreativeTerrainMaterial::Stone;
+  return profile;
+}
+
 bool applyLayoutTerrain(cr::CreativeDocument& document,
                         const cr::CreativeWorldLayout& layout) {
   const cr::CreativeWorldLayoutCompileResult compiled =
@@ -51,6 +68,24 @@ bool applyLayoutTerrain(cr::CreativeDocument& document,
   const cr::CreativeTerrainMaterialMutationReceipt materials =
       document.applyTerrainMaterialEdits(compiled.plan.materialEdits);
   return terrain.accepted && materials.accepted;
+}
+
+bool applyFullLayoutTerrain(cr::CreativeDocument& document,
+                            const cr::CreativeWorldLayout& layout) {
+  const cr::CreativeWorldLayoutCompileResult compiled =
+      cr::buildCreativeWorldLayoutPlan(document, layout);
+  if (!compiled.receipt.accepted) {
+    return false;
+  }
+  for (const cr::CreativeTerrainOperationMutationRequest& mutation :
+       compiled.plan.terrainOperationMutations) {
+    if (!document.applyTerrainOperationMutation(mutation).accepted) {
+      return false;
+    }
+  }
+  return document.applyTerrainControlEdits(compiled.plan.terrainEdits).accepted &&
+         document.applyTerrainMaterialEdits(compiled.plan.materialEdits)
+             .accepted;
 }
 
 bool driftFirstOwnedControl(cr::CreativeDocument& document,
@@ -201,17 +236,17 @@ bool sourceTypeChangeCannotMasqueradeAsRemoval() {
 
   cr::CreativeWorldLayout desired = generatedLayout;
   desired.terrainProfiles.clear();
-  desired.terrainPathPoints = {{{0, 0}, 4U}, {{4, 0}, 4U}};
   cr::CreativeWorldLayoutTerrainPath path;
   path.stableKey = "terrain.converted";
-  path.kind = cr::CreativeTerrainRecipeKind::Road;
-  path.firstPointIndex = 0U;
-  path.pointCount = 2U;
-  path.elevation = cr::CreativeTerrainPathElevation::Level;
-  path.halfWidthCells = 1U;
-  path.amplitudeCells = 1U;
-  path.paintSurface = true;
-  path.material = cr::CreativeTerrainMaterial::Dirt;
+  path.recipe.kind = cr::CreativeTerrainPathKind::Road;
+  path.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+  path.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  path.recipe.material = cr::CreativeTerrainMaterial::Dirt;
+  path.recipe.nextPointId = 3U;
+  path.recipe.points = {
+      {1U, {0, 0}, 4U, 1U, 1U, 0},
+      {2U, {4, 0}, 4U, 1U, 1U, 0},
+  };
   desired.terrainPaths.push_back(path);
 
   const cr::CreativeWorldLayoutTerrainReconciliationResult result =
@@ -226,12 +261,80 @@ bool sourceTypeChangeCannotMasqueradeAsRemoval() {
                 "same-key source type change requires explicit regeneration");
 }
 
+bool landformImpactAndDriftUseDurableOperationIdentity() {
+  cr::CreativeDocument document = makeDocument(9405U);
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "terrain_landform_reconcile";
+  layout.terrainProfiles.push_back(terrace("terrain.terrace"));
+  const bool generated = applyFullLayoutTerrain(document, layout);
+  const cr::CreativeWorldLayoutTerrainImpactPlan current =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(document, layout);
+  const cr::CreativeWorldLayoutTerrainSourceImpact* currentImpact =
+      cr::findCreativeWorldLayoutTerrainSourceImpact(
+          current, cr::CreativeWorldLayoutTable::TerrainProfile, 0U);
+
+  const std::string sourceKey =
+      cr::creativeWorldLayoutTerrainLandformSourceKey(
+          layout.stableKey, layout.terrainProfiles[0].stableKey);
+  const auto found = std::find_if(
+      document.terrainOperationStack().operations.begin(),
+      document.terrainOperationStack().operations.end(),
+      [&](const cr::CreativeTerrainOperation& operation) {
+        return operation.sourceKey == sourceKey;
+      });
+  bool drifted = false;
+  if (found != document.terrainOperationStack().operations.end()) {
+    cr::CreativeTerrainOperationMutationRequest update;
+    update.kind = cr::CreativeTerrainOperationMutationKind::Update;
+    update.operationId = found->id;
+    update.owner = cr::CreativeTerrainOperationOwner::WorldLayout;
+    update.sourceKey = sourceKey;
+    update.operationKind = cr::CreativeTerrainOperationKind::Landform;
+    update.landform = found->landform;
+    ++update.landform.targetHeightCells;
+    const cr::CreativeTerrainOperationMutationReceipt receipt =
+        document.applyTerrainOperationMutation(update);
+    drifted = receipt.accepted && receipt.changed;
+  }
+  const cr::CreativeWorldLayoutTerrainImpactPlan driftedImpactPlan =
+      cr::buildCreativeWorldLayoutTerrainImpactPlan(document, layout);
+  const cr::CreativeWorldLayoutTerrainSourceImpact* driftedImpact =
+      cr::findCreativeWorldLayoutTerrainSourceImpact(
+          driftedImpactPlan, cr::CreativeWorldLayoutTable::TerrainProfile,
+          0U);
+  const cr::CreativeWorldLayoutTerrainReconciliationResult blocked =
+      reconcile(document, layout, layout);
+
+  return expect(generated && current.accepted && currentImpact != nullptr &&
+                    currentImpact->status ==
+                        cr::CreativeWorldLayoutTerrainImpactStatus::Current &&
+                    currentImpact->hasGridBounds &&
+                    currentImpact->minimumCoord ==
+                        cr::CreativeTerrainCoord2{-2, 3} &&
+                    currentImpact->maximumCoord ==
+                        cr::CreativeTerrainCoord2{5, 6} &&
+                    currentImpact->minimumHeightCells == 2U &&
+                    currentImpact->maximumHeightCells == 8U &&
+                    !currentImpact->materials.empty(),
+                "landform impact reports exact bounds heights material and current state") &&
+         expect(drifted && driftedImpactPlan.accepted &&
+                    driftedImpact != nullptr &&
+                    driftedImpact->status ==
+                        cr::CreativeWorldLayoutTerrainImpactStatus::Drifted &&
+                    blocked.blocked && blocked.conflicts.size() == 1U &&
+                    blocked.conflicts[0].generatedTable ==
+                        cr::CreativeWorldLayoutTable::TerrainProfile &&
+                    blocked.conflicts[0].stableKey == "terrain.terrace",
+                "landform operation drift requires the normal source conflict decision");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = currentTerrainNeedsNoDecision() &&
                   driftRequiresExactRegenerateDecision() &&
                   sourceRemovalOnlyKeeps3DUnderPreserveExisting() &&
-                  sourceTypeChangeCannotMasqueradeAsRemoval();
+                  sourceTypeChangeCannotMasqueradeAsRemoval() &&
+                  landformImpactAndDriftUseDurableOperationIdentity();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

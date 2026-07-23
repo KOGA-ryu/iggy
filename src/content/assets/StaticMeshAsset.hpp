@@ -4,20 +4,27 @@
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "content/assets/StaticMeshAuthoringMetadata.hpp"
+#include "content/assets/StaticMeshThumbnail.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {
 
 inline constexpr std::uint32_t kInvalidStaticMeshImageIndex =
     std::numeric_limits<std::uint32_t>::max();
+inline constexpr std::uint32_t kInvalidStaticMeshMaterialIndex =
+    std::numeric_limits<std::uint32_t>::max();
 inline constexpr std::size_t kMaxStaticMeshCollisionPartCount = 256U;
 inline constexpr std::size_t kMaxStaticMeshAttachmentSocketCount = 64U;
+inline constexpr std::size_t kMaxStaticMeshMaterialVariantCount = 64U;
+inline constexpr std::size_t kMaxStaticMeshMaterialVariantNameLength = 64U;
 
 enum class StaticMeshTextureWrap : std::uint8_t {
   Repeat,
@@ -67,7 +74,14 @@ struct StaticMeshPrimitive {
   std::uint32_t firstIndex = 0;
   std::uint32_t indexCount = 0;
   std::uint32_t materialIndex = 0;
+  // One resolved material per asset-level KHR_materials_variants entry.
+  // Unmapped variants retain the primitive's default material.
+  std::vector<std::uint32_t> variantMaterialIndices;
   bool hasTexcoord0 = false;
+};
+
+struct StaticMeshMaterialVariant {
+  std::string name;
 };
 
 struct StaticMeshCollisionPart {
@@ -94,6 +108,7 @@ struct StaticMeshAsset {
   std::vector<std::uint32_t> indices;
   std::vector<StaticMeshPrimitive> primitives;
   std::vector<StaticMeshMaterial> materials;
+  std::vector<StaticMeshMaterialVariant> materialVariants;
   std::vector<StaticMeshImage> images;
   std::vector<StaticMeshCollisionPart> collisionParts;
   std::vector<StaticMeshAttachmentSocket> attachmentSockets;
@@ -136,6 +151,9 @@ struct StaticMeshAssetCatalogEntry {
   StaticMeshAuthoringMetadata authoringMetadata;
   std::vector<StaticMeshCollisionPart> collisionParts;
   std::vector<StaticMeshAttachmentSocket> attachmentSockets;
+  std::vector<StaticMeshMaterialVariant> materialVariants;
+  std::size_t materialCount = 0;
+  StaticMeshAssetThumbnail thumbnail;
 };
 
 struct StaticMeshAssetCatalogFailure {
@@ -154,6 +172,12 @@ struct StaticMeshAssetCatalog {
 };
 
 [[nodiscard]] bool validStaticMeshAssetId(std::string_view assetId) noexcept;
+[[nodiscard]] std::optional<std::size_t> findStaticMeshMaterialVariantIndex(
+    std::span<const StaticMeshMaterialVariant> variants,
+    std::string_view name) noexcept;
+[[nodiscard]] std::uint32_t resolveStaticMeshPrimitiveMaterialIndex(
+    const StaticMeshPrimitive& primitive,
+    std::optional<std::size_t> variantIndex) noexcept;
 [[nodiscard]] StaticMeshImportResult importStaticMeshGlb(
     const std::filesystem::path& path,
     std::string_view assetId);

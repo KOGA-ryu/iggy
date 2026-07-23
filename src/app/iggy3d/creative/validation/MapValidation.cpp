@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/validation/MapValidation.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <algorithm>
 #include <string>
@@ -69,9 +70,11 @@ class DiagnosticCollector {
   std::uint64_t droppedCount_ = 0;
 };
 
-[[nodiscard]] bool includedObject(const CreativeObject& object,
+[[nodiscard]] bool includedObject(const CreativeDocument& document,
+                                  const CreativeObject& object,
                                   bool includeHidden) noexcept {
-  return includeHidden || object.visible;
+  return includeHidden ||
+         creativeObjectEffectivelyVisible(document, object.id);
 }
 
 [[nodiscard]] bool bakedObject(
@@ -171,6 +174,45 @@ void appendReachabilityDiagnostic(
   }
 }
 
+[[nodiscard]] CreativeMapDiagnosticCode playerSpawnDiagnosticCode(
+    CreativePlayerSpawnStatus status) noexcept {
+  switch (status) {
+    case CreativePlayerSpawnStatus::InvalidSettings:
+      return CreativeMapDiagnosticCode::PlayerSpawnSettingsInvalid;
+    case CreativePlayerSpawnStatus::UnsupportedProfile:
+      return CreativeMapDiagnosticCode::PlayerSpawnProfileUnsupported;
+    case CreativePlayerSpawnStatus::OutsideWorldBounds:
+      return CreativeMapDiagnosticCode::PlayerSpawnOutsideWorldBounds;
+    case CreativePlayerSpawnStatus::UnsupportedFloor:
+      return CreativeMapDiagnosticCode::PlayerSpawnFloorUnsupported;
+    case CreativePlayerSpawnStatus::Obstructed:
+      return CreativeMapDiagnosticCode::PlayerSpawnObstructed;
+    case CreativePlayerSpawnStatus::Unreachable:
+      return CreativeMapDiagnosticCode::PlayerSpawnUnreachable;
+    case CreativePlayerSpawnStatus::GroupUnavailable:
+      return CreativeMapDiagnosticCode::PlayerSpawnGroupUnavailable;
+    case CreativePlayerSpawnStatus::NotRequested:
+    case CreativePlayerSpawnStatus::MissingDocument:
+    case CreativePlayerSpawnStatus::InvalidDocument:
+    case CreativePlayerSpawnStatus::MissingRoomBake:
+    case CreativePlayerSpawnStatus::InvalidObject:
+    case CreativePlayerSpawnStatus::Ready:
+      return CreativeMapDiagnosticCode::PlayerSpawnSettingsInvalid;
+  }
+  return CreativeMapDiagnosticCode::PlayerSpawnSettingsInvalid;
+}
+
+void appendPlayerSpawnDiagnostic(const CreativeObject& object,
+                                 const CreativePlayerSpawnPlan& plan,
+                                 DiagnosticCollector& diagnostics) {
+  if (plan.accepted) {
+    return;
+  }
+  diagnostics.add(CreativeMapDiagnosticSeverity::Error,
+                  playerSpawnDiagnosticCode(plan.status), object.id, object.name,
+                  std::string(plan.reasonCode));
+}
+
 [[nodiscard]] CreativeMapDiagnosticCode mapLogicDiagnosticCode(
     CreativeLogicDiagnosticCode code) noexcept {
   switch (code) {
@@ -238,7 +280,7 @@ void appendLogicTargetCollisionDiagnostics(
     if (target == nullptr ||
         (target->kind != CreativeObjectKind::Platform &&
          target->kind != CreativeObjectKind::MovingPlatform) ||
-        !includedObject(*target, includeHidden) ||
+        !includedObject(document, *target, includeHidden) ||
         surfaceObjectIds.contains(target->id) ||
         !diagnosedTargets.insert(target->id).second) {
       continue;
@@ -300,6 +342,20 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
       return "no_player_spawn";
     case CreativeMapDiagnosticCode::MultiplePlayerSpawns:
       return "multiple_player_spawns";
+    case CreativeMapDiagnosticCode::PlayerSpawnSettingsInvalid:
+      return "player_spawn_settings_invalid";
+    case CreativeMapDiagnosticCode::PlayerSpawnProfileUnsupported:
+      return "player_spawn_profile_unsupported";
+    case CreativeMapDiagnosticCode::PlayerSpawnOutsideWorldBounds:
+      return "player_spawn_outside_world_bounds";
+    case CreativeMapDiagnosticCode::PlayerSpawnFloorUnsupported:
+      return "player_spawn_floor_unsupported";
+    case CreativeMapDiagnosticCode::PlayerSpawnObstructed:
+      return "player_spawn_obstructed";
+    case CreativeMapDiagnosticCode::PlayerSpawnUnreachable:
+      return "player_spawn_unreachable";
+    case CreativeMapDiagnosticCode::PlayerSpawnGroupUnavailable:
+      return "player_spawn_group_unavailable";
     case CreativeMapDiagnosticCode::RoomBakeRejected:
       return "room_bake_rejected";
     case CreativeMapDiagnosticCode::RuntimeObjectSkipped:
@@ -375,10 +431,12 @@ CreativeMapEvaluationResult evaluateCreativeMap(
 
   std::vector<const CreativeObject*> runtimeObjects;
   runtimeObjects.reserve(document.objects().size());
+  std::vector<const CreativeObject*> playerSpawns;
+  playerSpawns.reserve(document.objects().size());
   std::uint64_t unsupportedAssetCount = 0;
   std::uint64_t invalidAssetCount = 0;
   for (const CreativeObject& object : document.objects()) {
-    if (!includedObject(object, request.includeHidden)) {
+    if (!includedObject(document, object, request.includeHidden)) {
       continue;
     }
 
@@ -392,6 +450,7 @@ CreativeMapEvaluationResult evaluateCreativeMap(
       if (descriptor.runtimeAnchorSemantic ==
           CreativeRuntimeAnchorSemantic::Spawn) {
         ++result.summary.playerSpawnCount;
+        playerSpawns.push_back(&object);
       }
     }
 
@@ -435,13 +494,6 @@ CreativeMapEvaluationResult evaluateCreativeMap(
                     kInvalidObjectId,
                     {},
                     "creative_map_player_spawn_missing");
-  } else if (result.summary.playerSpawnCount > 1U) {
-    diagnostics.add(CreativeMapDiagnosticSeverity::Error,
-                    CreativeMapDiagnosticCode::MultiplePlayerSpawns,
-                    kInvalidObjectId,
-                    {},
-                    "creative_map_player_spawn_not_unique",
-                    result.summary.playerSpawnCount);
   }
 
   appendLogicDiagnostics(document, diagnostics);
@@ -469,6 +521,26 @@ CreativeMapEvaluationResult evaluateCreativeMap(
   } else {
     appendLogicTargetCollisionDiagnostics(
         document, baked, request.includeHidden, diagnostics);
+    for (const CreativeObject* spawn : playerSpawns) {
+      appendPlayerSpawnDiagnostic(
+          *spawn,
+          planCreativePlayerSpawn({&document, &baked, spawn,
+                                   request.reachabilityCellSizeMeters}),
+          diagnostics);
+    }
+    result.playerSpawn = resolveCreativePlayerSpawn(
+        {&document, &baked, request.playerSpawnGroup,
+         request.reachabilityCellSizeMeters, request.includeHidden});
+    if (!result.playerSpawn.accepted &&
+        result.playerSpawn.status ==
+            CreativePlayerSpawnStatus::GroupUnavailable &&
+        result.summary.playerSpawnCount > 0U) {
+      diagnostics.add(
+          CreativeMapDiagnosticSeverity::Error,
+          CreativeMapDiagnosticCode::PlayerSpawnGroupUnavailable,
+          kInvalidObjectId, {}, std::string(result.playerSpawn.reasonCode),
+          result.playerSpawn.groupCandidateCount);
+    }
   }
 
   std::unordered_set<CreativeObjectId> bakedObjectIds;

@@ -9,8 +9,10 @@ namespace iggy3d_creative_app {
 struct CreativeEditorVolumePreviewFacts {
   iggy3d::creative::CreativeVolumeSelection selection{};
   iggy3d::creative::CreativeShapeBrushPlanReceipt shapePlan{};
+  iggy3d::creative::CreativeVolumeOperationReceipt operationPreview{};
   bool selectionVisible = false;
   bool usesShapePlan = false;
+  bool hasOperationPreview = false;
   bool terrainRegion = false;
   bool terrainStamp = false;
 };

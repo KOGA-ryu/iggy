@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include <cstdint>
 #include <span>
@@ -45,6 +46,7 @@ enum class CreativeGroupCommandStatus : std::uint8_t {
   LockedObject,
   UnsupportedObject,
   MixedParents,
+  DepthExceeded,
   NotGroup,
   CreateRejected,
   MutationRejected,
@@ -71,6 +73,32 @@ struct CreativeGroupCommandReceipt {
   CreativeDocumentRemoveReceipt removeReceipt{};
   std::vector<CreativeObjectId> selectionObjectIds;
   std::string_view reasonCode = "creative_group_not_requested";
+};
+
+enum class CreativeGroupPivotStatus : std::uint8_t {
+  NotRequested,
+  InvalidDocument,
+  MissingGroup,
+  NotGroup,
+  LockedGroup,
+  InvalidPivot,
+  NoChange,
+  Applied,
+  Rejected,
+};
+
+struct CreativeGroupPivotReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeGroupPivotStatus status = CreativeGroupPivotStatus::NotRequested;
+  CreativeObjectId groupObjectId = kInvalidObjectId;
+  CreativeVec3 pivotBefore{};
+  CreativeVec3 pivotAfter{};
+  std::uint64_t revisionBefore = 0U;
+  std::uint64_t revisionAfter = 0U;
+  CreativeDocumentMutationReceipt mutationReceipt{};
+  std::string_view reasonCode = "creative_group_pivot_not_requested";
 };
 
 struct CreativeHierarchyRemoveReceipt {
@@ -107,6 +135,8 @@ struct CreativeHierarchyBatchRemoveReceipt {
     CreativeGroupCommandKind kind) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeGroupCommandStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeGroupPivotStatus status) noexcept;
 [[nodiscard]] bool creativeObjectIsHierarchyContainer(
     CreativeObjectKind kind) noexcept;
 
@@ -132,6 +162,14 @@ struct CreativeHierarchyBatchRemoveReceipt {
 [[nodiscard]] CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
     CreativeDocument& document,
     CreativeObjectId groupObjectId);
+
+// Changes only the Group's persistent manipulation pivot. Child objects store
+// world-space transforms, so their world geometry remains byte-for-byte
+// unchanged. Assembly movement continues to use SelectionPlacement.
+[[nodiscard]] CreativeGroupPivotReceipt setCreativeGroupPivot(
+    CreativeDocument& document,
+    CreativeObjectId groupObjectId,
+    CreativeVec3 pivot);
 
 // Removes descendants before their root and leaves the document unchanged on
 // any lock, missing-object, or remove failure.

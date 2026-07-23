@@ -2,6 +2,8 @@
 
 #include "EditorWorldLayout.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
+
 #include <cstddef>
 #include <limits>
 #include <string>
@@ -10,8 +12,10 @@ namespace iggy3d_creative_app::opening_detail {
 
 inline constexpr double kOpeningHitToleranceCells = 0.75;
 inline constexpr double kOpeningSnapCells = 0.25;
-inline constexpr double kOpeningEndClearanceCells = 0.25;
-inline constexpr double kOpeningMinimumWidthCells = 0.25;
+inline constexpr double kOpeningEndClearanceCells =
+    cr::kCreativeWorldLayoutOpeningEndClearanceCells;
+inline constexpr double kOpeningMinimumWidthCells =
+    cr::kCreativeWorldLayoutOpeningMinimumWidthCells;
 inline constexpr double kOpeningGeometryEpsilon = 1.0e-9;
 
 struct OpeningHostProjection {
@@ -20,6 +24,7 @@ struct OpeningHostProjection {
       cr::CreativeWorldLayoutOpeningHostKind::Wall;
   std::size_t wallIndex = cr::kInvalidCreativeWorldLayoutIndex;
   std::size_t roomIndex = cr::kInvalidCreativeWorldLayoutIndex;
+  std::size_t topologyEdgeIndex = cr::kInvalidCreativeWorldLayoutIndex;
   cr::CreativeWorldLayoutRoomEdge roomEdge =
       cr::CreativeWorldLayoutRoomEdge::North;
   double centerOffsetCells = 0.0;
@@ -42,11 +47,6 @@ struct OpeningValidation {
     CreativeEditorWorldLayoutPoint point) noexcept;
 [[nodiscard]] CreativeEditorWorldLayoutPoint openingHostPoint(
     CreativeEditorWorldLayoutOpeningHost host, double offsetCells) noexcept;
-[[nodiscard]] bool openingIntervalsOverlap(
-    const cr::CreativeWorldLayoutOpening& candidate,
-    CreativeEditorWorldLayoutOpeningHost candidateHost,
-    const cr::CreativeWorldLayoutOpening& existing,
-    CreativeEditorWorldLayoutOpeningHost existingHost) noexcept;
 [[nodiscard]] OpeningHostProjection nearestOpeningHost(
     const cr::CreativeWorldLayout& layout,
     CreativeEditorWorldLayoutPoint point, double tolerance,

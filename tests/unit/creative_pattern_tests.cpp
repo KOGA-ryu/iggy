@@ -1,6 +1,8 @@
 #include "app/iggy3d/creative/tools/Pattern.hpp"
+#include "app/iggy3d/creative/tools/AssetScatter.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -525,6 +527,9 @@ bool arrayExecutionCreatesCopiesAndIdentifiesFinalGroup() {
       finalCopy.empty() ? nullptr : document.findObject(finalCopy[0]);
   const cr::CreativeObject* finalChild =
       finalCopy.size() < 2U ? nullptr : document.findObject(finalCopy[1]);
+  const cr::CreativePatternRecipe* recipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    receipt.patternRecipeId);
 
   return expect(receipt.accepted && receipt.changed &&
                     receipt.status == cr::CreativeLinearArrayStatus::Applied,
@@ -542,8 +547,16 @@ bool arrayExecutionCreatesCopiesAndIdentifiesFinalGroup() {
                     finalChild->parentId == finalParent->id,
                 "array execution final copy uses ordinal offset and remap") &&
          expect(document.objectCount() == 6U &&
-                    document.revision() == revisionBefore + 4U,
-                "array execution keeps originals and adds four objects");
+                    document.revision() == revisionBefore + 5U,
+                "array execution records copies and one relationship") &&
+         expect(recipe != nullptr &&
+                    recipe->kind == cr::CreativePatternRecipeKind::LinearArray &&
+                    recipe->sourceObjectIds ==
+                        std::vector<cr::CreativeObjectId>{1U, 2U} &&
+                    recipe->generatedObjectIds ==
+                        std::vector<cr::CreativeObjectId>{3U, 4U, 5U, 6U} &&
+                    recipe->linear == request,
+                "array execution retains source ids outputs and parameters");
 }
 
 bool arrayExecutionRejectsMissingSourceWithoutMutation() {
@@ -586,6 +599,9 @@ bool radialExecutionRotatesGroupAndRemapsParents() {
       finalCopy.empty() ? nullptr : document.findObject(finalCopy[0]);
   const cr::CreativeObject* finalChild =
       finalCopy.size() < 2U ? nullptr : document.findObject(finalCopy[1]);
+  const cr::CreativePatternRecipe* recipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    receipt.patternRecipeId);
 
   return expect(receipt.accepted && receipt.changed &&
                     receipt.status == cr::CreativeRadialArrayStatus::Applied,
@@ -606,8 +622,15 @@ bool radialExecutionRotatesGroupAndRemapsParents() {
                     finalChild->parentId == finalParent->id,
                 "radial execution rotates rigid group and remaps parent") &&
          expect(document.objectCount() == 8U &&
-                    document.revision() == revisionBefore + 6U,
-                "radial execution publishes complete batch only");
+                    document.revision() == revisionBefore + 7U,
+                "radial execution publishes copies and relationship") &&
+         expect(recipe != nullptr &&
+                    recipe->kind == cr::CreativePatternRecipeKind::RadialArray &&
+                    recipe->sourceObjectIds ==
+                        std::vector<cr::CreativeObjectId>{1U, 2U} &&
+                    recipe->generatedObjectIds.size() == 6U &&
+                    recipe->radial == request,
+                "radial execution retains source ids outputs and parameters");
 }
 
 bool radialExecutionRejectsDegeneratePivotWithoutMutation() {
@@ -632,6 +655,906 @@ bool radialExecutionRejectsDegeneratePivotWithoutMutation() {
                 "degenerate radial request leaves document unchanged");
 }
 
+bool patternRecipeRejectsMissingReferencesAtomically() {
+  cr::CreativeDocument document = ::document("invalid pattern refs");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  cr::CreativePatternRecipeMutationRequest request;
+  request.kind = cr::CreativePatternRecipeMutationKind::Add;
+  request.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  request.recipe.sourceObjectIds = {source};
+  request.recipe.generatedObjectIds = {999U};
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativePatternRecipeMutationReceipt receipt =
+      document.applyPatternRecipeMutation(request);
+  return expect(!receipt.accepted && !receipt.changed &&
+                    receipt.status ==
+                        cr::CreativePatternRecipeMutationStatus::InvalidRequest,
+                "pattern recipe rejects missing output") &&
+         expect(document.patternRecipeStore().recipes.empty() &&
+                    document.revision() == revisionBefore,
+                "invalid pattern recipe leaves document unchanged");
+}
+
+bool deletingPatternMemberDetachesRelationship() {
+  cr::CreativeDocument document = ::document("pattern member delete");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt array =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&source, 1U}, request);
+  if (!expect(array.accepted && array.generatedObjectIds().size() == 2U,
+              "pattern member delete setup")) {
+    return false;
+  }
+  const cr::CreativeObjectId removedId = array.generatedObjectIds().front();
+  const cr::CreativeObjectId survivorId = array.generatedObjectIds().back();
+  const cr::CreativeDocumentRemoveReceipt removed =
+      document.removeDocumentObject(removedId);
+  return expect(removed.accepted && removed.objectRemoved &&
+                    removed.detachedPatternRecipeCount == 1U,
+                "deleting a generated member detaches its recipe") &&
+         expect(document.patternRecipeStore().recipes.empty() &&
+                    document.findObject(source) != nullptr &&
+                    document.findObject(survivorId) != nullptr,
+                "detachment preserves source and surviving output") &&
+         expect(document.isValid(),
+                "member deletion leaves valid independent geometry");
+}
+
+bool semanticClipboardPreservesEditablePatternAcrossDocuments() {
+  cr::CreativeDocument sourceDocument = ::document("semantic clipboard source");
+  const cr::CreativeObjectId source =
+      createGroup(sourceDocument, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  request.spacing = cr::CreativeLinearArraySpacing::TwoCells;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          sourceDocument, std::span{&source, 1U}, request);
+  if (!expect(created.accepted && created.generatedObjectIds().size() == 2U,
+              "semantic clipboard setup")) {
+    return false;
+  }
+
+  const cr::CreativeObjectId selectedGenerated =
+      created.generatedObjectIds().front();
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(
+          sourceDocument, std::span{&selectedGenerated, 1U}, clipboard);
+  bool ok = expect(copied.accepted && copied.requestedObjectCount == 1U &&
+                       copied.copiedObjectCount == 3U &&
+                       copied.copiedPatternRecipeCount == 1U &&
+                       clipboard.patternRecipes.size() == 1U,
+                   "generated-member copy expands to its semantic pattern") &&
+            expect(clipboard.patternRecipes.front().sourceObjectIds ==
+                           std::vector<cr::CreativeObjectId>{source} &&
+                       clipboard.patternRecipes.front().generatedObjectIds ==
+                           std::vector<cr::CreativeObjectId>{
+                               created.generatedObjectIds().begin(),
+                               created.generatedObjectIds().end()},
+                   "semantic clipboard retains source and generated ownership");
+
+  cr::CreativeDocument targetDocument = ::document("semantic clipboard target");
+  const cr::CreativeObjectId existingSource =
+      createGroup(targetDocument, "Existing", {20.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest existingRequest;
+  existingRequest.copyCount = cr::CreativeLinearArrayCopyCount::One;
+  const cr::CreativeLinearArrayReceipt existing =
+      cr::createCreativeLinearArrayAtomically(
+          targetDocument, std::span{&existingSource, 1U}, existingRequest);
+  cr::CreativeClipboardPasteRequest pasteRequest;
+  pasteRequest.offset = {10.0, 0.0, 0.0};
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(targetDocument, clipboard,
+                                           pasteRequest);
+  if (!expect(existing.accepted && pasted.accepted && pasted.changed &&
+                  pasted.pastedObjectCount == 3U &&
+                  pasted.pastedPatternRecipeCount == 1U &&
+                  pasted.patternRecipeIdRemaps.size() == 1U,
+              "cross-document paste remaps the semantic pattern")) {
+    return false;
+  }
+  const cr::CreativePatternRecipeId pastedRecipeId =
+      pasted.patternRecipeIdRemaps.front().pastedRecipeId;
+  const cr::CreativePatternRecipe* pastedRecipe =
+      cr::findCreativePatternRecipe(targetDocument.patternRecipeStore(),
+                                    pastedRecipeId);
+  const auto remappedObjectId = [&pasted](cr::CreativeObjectId objectId) {
+    const auto found = std::find_if(
+        pasted.idRemaps.begin(), pasted.idRemaps.end(),
+        [objectId](const cr::CreativeClipboardIdRemap& remap) {
+          return remap.sourceObjectId == objectId;
+        });
+    return found == pasted.idRemaps.end() ? cr::kInvalidObjectId
+                                         : found->pastedObjectId;
+  };
+  ok = expect(pastedRecipe != nullptr &&
+                  pastedRecipeId != existing.patternRecipeId &&
+                  pastedRecipe->sourceObjectIds ==
+                      std::vector<cr::CreativeObjectId>{
+                          remappedObjectId(source)} &&
+                  pastedRecipe->generatedObjectIds ==
+                      std::vector<cr::CreativeObjectId>{
+                          remappedObjectId(created.generatedObjectIds()[0]),
+                          remappedObjectId(created.generatedObjectIds()[1])},
+              "pasted recipe receives fresh stable ids and object remaps") &&
+       ok;
+
+  cr::CreativeLinearArrayRequest updatedRequest = request;
+  updatedRequest.direction = cr::CreativeLinearArrayDirection::NegativeZ;
+  updatedRequest.copyCount = cr::CreativeLinearArrayCopyCount::Four;
+  const std::vector<cr::CreativeObjectId> originalGenerated{
+      created.generatedObjectIds().begin(), created.generatedObjectIds().end()};
+  const cr::CreativeLinearArrayReceipt updated =
+      cr::updateCreativeLinearArrayRecipeAtomically(
+          targetDocument, pastedRecipeId, updatedRequest);
+  return expect(updated.accepted && updated.changed &&
+                    cr::findCreativePatternRecipe(
+                        targetDocument.patternRecipeStore(),
+                        existing.patternRecipeId) != nullptr,
+                "pasted pattern remains independently editable") &&
+         expect(std::all_of(
+                    originalGenerated.begin(), originalGenerated.end(),
+                    [&sourceDocument](cr::CreativeObjectId objectId) {
+                      return sourceDocument.findObject(objectId) != nullptr;
+                    }),
+                "editing the pasted pattern leaves source geometry untouched") &&
+         ok;
+}
+
+bool semanticClipboardTranslatesAssetScatterRecipeGeometry() {
+  cr::CreativeDocument sourceDocument = ::document("scatter clipboard source");
+  const cr::CreativeObjectId generated = createRoom(
+      sourceDocument, "Scatter Rock", {{1.0, 0.0, 2.0}, {2.0, 1.0, 3.0}});
+  cr::CreativePatternRecipeMutationRequest add;
+  add.kind = cr::CreativePatternRecipeMutationKind::Add;
+  add.recipe.kind = cr::CreativePatternRecipeKind::AssetScatter;
+  add.recipe.generatedObjectIds = {generated};
+  add.recipe.scatter.objectKind = cr::CreativeObjectKind::Rock;
+  add.recipe.scatter.assetId = "environment/rock_a";
+  add.recipe.scatter.assetSourceBounds = {{-0.5, 0.0, -0.5},
+                                          {0.5, 1.0, 0.5}};
+  add.recipe.scatter.paintCenters = {{1.5, 0.0, 2.5}, {5.0, 0.0, 6.0}};
+  add.recipe.scatter.exclusions = {{{3.0, 0.0, 4.0}, 0.75}};
+  const cr::CreativePatternRecipeMutationReceipt added =
+      sourceDocument.applyPatternRecipeMutation(add);
+
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(
+          sourceDocument, std::span{&generated, 1U}, clipboard);
+  cr::CreativeDocument targetDocument = ::document("scatter clipboard target");
+  cr::CreativeClipboardPasteRequest paste;
+  paste.offset = {10.0, 2.0, -3.0};
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(targetDocument, clipboard, paste);
+  const cr::CreativePatternRecipe* pastedRecipe =
+      pasted.patternRecipeIdRemaps.empty()
+          ? nullptr
+          : cr::findCreativePatternRecipe(
+                targetDocument.patternRecipeStore(),
+                pasted.patternRecipeIdRemaps.front().pastedRecipeId);
+
+  return expect(added.accepted && copied.accepted &&
+                    copied.copiedPatternRecipeCount == 1U,
+                "scatter clipboard expands generated member to recipe") &&
+         expect(pasted.accepted && pasted.pastedObjectCount == 1U &&
+                    pasted.pastedPatternRecipeCount == 1U &&
+                    pastedRecipe != nullptr,
+                "scatter clipboard pastes editable relationship") &&
+         expect(pastedRecipe->sourceObjectIds.empty() &&
+                    pastedRecipe->generatedObjectIds.size() == 1U &&
+                    pastedRecipe->scatter.paintCenters.size() == 2U &&
+                    pastedRecipe->scatter.exclusions.size() == 1U,
+                "scatter clipboard preserves generated-only ownership") &&
+         expect(cr::creativeVec3ExactlyEqual(
+                    pastedRecipe->scatter.paintCenters[0],
+                    {11.5, 2.0, -0.5}) &&
+                    cr::creativeVec3ExactlyEqual(
+                        pastedRecipe->scatter.paintCenters[1],
+                        {15.0, 2.0, 3.0}) &&
+                    cr::creativeVec3ExactlyEqual(
+                        pastedRecipe->scatter.exclusions[0].center,
+                        {13.0, 2.0, 1.0}) &&
+                    pastedRecipe->scatter.exclusions[0].radiusMeters == 0.75,
+                "scatter clipboard translates centers but not radii");
+}
+
+bool semanticClipboardKeepsIndependentSourcesIndependent() {
+  cr::CreativeDocument document = ::document("semantic source only");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&source, 1U}, request);
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(
+          document, std::span{&source, 1U}, clipboard);
+  return expect(created.accepted && copied.accepted &&
+                    copied.copiedObjectCount == 1U &&
+                    copied.copiedPatternRecipeCount == 0U &&
+                    clipboard.objects.size() == 1U &&
+                    clipboard.patternRecipes.empty(),
+                "copying a pattern source alone stays an independent copy");
+}
+
+bool semanticClipboardRejectsInvalidAndUnrepresentableRecipesAtomically() {
+  cr::CreativeDocument target = ::document("semantic clipboard rejection");
+  cr::CreativeClipboard invalid;
+  cr::CreativeObject object;
+  object.id = 1U;
+  object.kind = cr::CreativeObjectKind::Group;
+  object.name = "Source";
+  invalid.objects.push_back(object);
+  cr::CreativePatternRecipe recipe;
+  recipe.id = 1U;
+  recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipe.sourceObjectIds = {1U};
+  recipe.generatedObjectIds = {999U};
+  invalid.patternRecipes.push_back(recipe);
+  const std::uint64_t revisionBefore = target.revision();
+  const cr::CreativeClipboardPasteReceipt dangling =
+      cr::pasteCreativeClipboardAtomically(target, invalid);
+
+  cr::CreativeDocument sourceDocument = ::document("transform rejection source");
+  const cr::CreativeObjectId source =
+      createGroup(sourceDocument, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest arrayRequest;
+  arrayRequest.copyCount = cr::CreativeLinearArrayCopyCount::One;
+  const cr::CreativeLinearArrayReceipt array =
+      cr::createCreativeLinearArrayAtomically(
+          sourceDocument, std::span{&source, 1U}, arrayRequest);
+  cr::CreativeClipboard semantic;
+  const cr::CreativeObjectId generated = array.generatedObjectIds().front();
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(
+          sourceDocument, std::span{&generated, 1U}, semantic);
+  cr::CreativeClipboardPasteRequest scale;
+  scale.scaleFactor = {2.0, 2.0, 2.0};
+  const cr::CreativeClipboardPasteReceipt unrepresentable =
+      cr::pasteCreativeClipboardAtomically(target, semantic, scale);
+
+  return expect(!dangling.accepted && !dangling.changed &&
+                    dangling.status == cr::CreativeClipboardStatus::InvalidClipboard &&
+                    dangling.reasonCode ==
+                        "creative_clipboard_pattern_references_invalid" &&
+                    target.revision() == revisionBefore &&
+                    target.objectCount() == 0U,
+                "dangling clipboard recipe rejects without mutation") &&
+         expect(array.accepted && copied.accepted &&
+                    !unrepresentable.accepted && !unrepresentable.changed &&
+                    unrepresentable.reasonCode ==
+                        "creative_clipboard_pattern_transform_unsupported" &&
+                    unrepresentable.pastedObjectIds.empty() &&
+                    unrepresentable.patternRecipeIdRemaps.empty() &&
+                    target.revision() == revisionBefore,
+                "unrepresentable recipe transform fails closed before mutation");
+}
+
+bool semanticCutAndDuplicatePreserveWholePatternAtomically() {
+  cr::CreativeDocument duplicatedDocument = ::document("semantic duplicate");
+  const cr::CreativeObjectId source =
+      createGroup(duplicatedDocument, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          duplicatedDocument, std::span{&source, 1U}, request);
+  const cr::CreativeObjectId generated = created.generatedObjectIds().front();
+  const cr::CreativeDuplicateCommandReceipt duplicated =
+      cr::duplicateDocumentObjectsAtomically(
+          duplicatedDocument, std::span{&generated, 1U});
+  bool ok = expect(duplicated.accepted && duplicated.changed &&
+                       duplicated.duplicatedObjectCount == 3U &&
+                       duplicated.duplicatedPatternRecipeCount == 1U &&
+                       duplicated.duplicatedSelectionObjectIds.size() == 1U &&
+                       duplicatedDocument.patternRecipeStore().recipes.size() ==
+                           2U,
+                   "duplicate of generated member creates an editable pattern copy");
+
+  cr::CreativeDocument cutDocument = ::document("semantic cut");
+  const cr::CreativeObjectId cutSource =
+      createGroup(cutDocument, "Source", {0.0, 0.0, 0.0});
+  const cr::CreativeLinearArrayReceipt cutArray =
+      cr::createCreativeLinearArrayAtomically(
+          cutDocument, std::span{&cutSource, 1U}, request);
+  const cr::CreativeObjectId cutGenerated =
+      cutArray.generatedObjectIds().front();
+  cr::CreativeClipboard cutClipboard;
+  const cr::CreativeClipboardCutReceipt cut =
+      cr::cutDocumentObjectsAtomically(
+          cutDocument, std::span{&cutGenerated, 1U}, cutClipboard);
+  ok = expect(cut.accepted && cut.changed && cut.cutObjectCount == 3U &&
+                  cut.cutPatternRecipeCount == 1U &&
+                  cutClipboard.patternRecipes.size() == 1U &&
+                  cutDocument.objectCount() == 0U &&
+                  cutDocument.patternRecipeStore().recipes.empty(),
+              "cut of generated member removes the whole semantic pattern") &&
+       ok;
+
+  cr::CreativeDocument dependent = ::document("semantic cut dependency");
+  const cr::CreativeObjectId sharedSource =
+      createGroup(dependent, "Shared", {0.0, 0.0, 0.0});
+  const cr::CreativeLinearArrayReceipt first =
+      cr::createCreativeLinearArrayAtomically(
+          dependent, std::span{&sharedSource, 1U}, request);
+  cr::CreativeLinearArrayRequest secondRequest = request;
+  secondRequest.direction = cr::CreativeLinearArrayDirection::PositiveZ;
+  const cr::CreativeLinearArrayReceipt second =
+      cr::createCreativeLinearArrayAtomically(
+          dependent, std::span{&sharedSource, 1U}, secondRequest);
+  const std::uint64_t dependentRevision = dependent.revision();
+  const std::size_t dependentObjects = dependent.objectCount();
+  cr::CreativeClipboard rejectedClipboard;
+  const cr::CreativeObjectId firstGenerated =
+      first.generatedObjectIds().front();
+  const cr::CreativeClipboardCutReceipt rejected =
+      cr::cutDocumentObjectsAtomically(
+          dependent, std::span{&firstGenerated, 1U}, rejectedClipboard);
+  return expect(first.accepted && second.accepted && !rejected.accepted &&
+                    !rejected.changed &&
+                    rejected.reasonCode ==
+                        "creative_clipboard_cut_external_reference" &&
+                    dependent.revision() == dependentRevision &&
+                    dependent.objectCount() == dependentObjects &&
+                    rejectedClipboard.objects.empty(),
+                "cut rejects external recipe dependencies atomically") &&
+         ok;
+}
+
+bool semanticClipboardRemapsInternalLinksAndRejectsCrossingLinks() {
+  cr::CreativeDocument sourceDocument =
+      ::document("semantic clipboard links");
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Switch;
+  sourceRequest.name = "Source";
+  cr::CreativeDocumentCreateRequest targetRequest;
+  targetRequest.kind = cr::CreativeObjectKind::Door;
+  targetRequest.name = "Target";
+  cr::CreativeDocumentCreateRequest externalRequest = targetRequest;
+  externalRequest.name = "External";
+  const cr::CreativeObjectId source =
+      sourceDocument.createObject(sourceRequest).objectId;
+  const cr::CreativeObjectId target =
+      sourceDocument.createObject(targetRequest).objectId;
+  const cr::CreativeObjectId external =
+      sourceDocument.createObject(externalRequest).objectId;
+  const cr::CreativeLogicLinkMutationReceipt internalLink =
+      sourceDocument.setLogicLink(
+          {source, target, cr::CreativeLogicLinkAction::Toggle});
+  const cr::CreativeLogicLinkMutationReceipt crossingLink =
+      sourceDocument.setLogicLink(
+          {source, external, cr::CreativeLogicLinkAction::Toggle});
+
+  const std::array selected{source, target};
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(sourceDocument, selected, clipboard);
+  cr::CreativeDocument pastedDocument = ::document("pasted semantic links");
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(pastedDocument, clipboard);
+  const auto remappedId = [&pasted](cr::CreativeObjectId original) {
+    const auto found = std::find_if(
+        pasted.idRemaps.begin(), pasted.idRemaps.end(),
+        [original](const cr::CreativeClipboardIdRemap& remap) {
+          return remap.sourceObjectId == original;
+        });
+    return found == pasted.idRemaps.end() ? cr::kInvalidObjectId
+                                         : found->pastedObjectId;
+  };
+  const cr::CreativeObjectId pastedSource = remappedId(source);
+  const cr::CreativeObjectId pastedTarget = remappedId(target);
+  const bool linkRemapped =
+      pastedDocument.logicLinks().size() == 1U &&
+      pastedDocument.logicLinks().front().sourceObjectId == pastedSource &&
+      pastedDocument.logicLinks().front().targetObjectId == pastedTarget &&
+      pastedDocument.logicLinks().front().action ==
+          cr::CreativeLogicLinkAction::Toggle;
+
+  const std::uint64_t revisionBefore = sourceDocument.revision();
+  const std::size_t objectCountBefore = sourceDocument.objectCount();
+  const std::size_t linkCountBefore = sourceDocument.logicLinks().size();
+  cr::CreativeClipboard rejectedClipboard;
+  const cr::CreativeClipboardCutReceipt rejectedCut =
+      cr::cutDocumentObjectsAtomically(sourceDocument, selected,
+                                       rejectedClipboard);
+  const cr::CreativeSemanticDeleteReceipt rejectedDelete =
+      cr::deleteDocumentObjectsSemanticallyAtomically(sourceDocument,
+                                                       selected);
+
+  return expect(internalLink.accepted,
+                "internal logic-link fixture is valid") &&
+         expect(crossingLink.accepted,
+                "crossing logic-link fixture is valid") &&
+         expect(copied.accepted,
+                "logic-linked semantic closure copies successfully") &&
+         expect(copied.copiedLogicLinkCount == 1U &&
+                    clipboard.logicLinks.size() == 1U,
+                "copy keeps only links whose endpoints are in the closure") &&
+         expect(pasted.accepted && pasted.pastedLogicLinkCount == 1U &&
+                    linkRemapped,
+                "cross-document paste remaps both internal link endpoints") &&
+         expect(!rejectedCut.accepted && !rejectedCut.changed &&
+                    rejectedCut.reasonCode ==
+                        "creative_clipboard_cut_external_reference" &&
+                    rejectedClipboard.objects.empty(),
+                "cut rejects a link that crosses the semantic closure") &&
+         expect(!rejectedDelete.accepted && !rejectedDelete.changed &&
+                    rejectedDelete.status ==
+                        cr::CreativeSemanticDeleteStatus::ExternalReference &&
+                    sourceDocument.revision() == revisionBefore &&
+                    sourceDocument.objectCount() == objectCountBefore &&
+                    sourceDocument.logicLinks().size() == linkCountBefore,
+                "delete rejects crossing links without partial mutation");
+}
+
+bool semanticDeleteRemovesPatternSourceAndOutputsAsOneClosure() {
+  cr::CreativeDocument document = ::document("semantic delete");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&source, 1U}, request);
+  const cr::CreativeObjectId generated = created.generatedObjectIds().front();
+  const cr::CreativeSemanticDeleteReceipt deleted =
+      cr::deleteDocumentObjectsSemanticallyAtomically(
+          document, std::span{&generated, 1U});
+
+  cr::CreativeDocument dependent = ::document("semantic delete dependency");
+  const cr::CreativeObjectId sharedSource =
+      createGroup(dependent, "Shared", {0.0, 0.0, 0.0});
+  const cr::CreativeLinearArrayReceipt first =
+      cr::createCreativeLinearArrayAtomically(
+          dependent, std::span{&sharedSource, 1U}, request);
+  cr::CreativeLinearArrayRequest secondRequest = request;
+  secondRequest.direction = cr::CreativeLinearArrayDirection::PositiveZ;
+  const cr::CreativeLinearArrayReceipt second =
+      cr::createCreativeLinearArrayAtomically(
+          dependent, std::span{&sharedSource, 1U}, secondRequest);
+  const std::uint64_t revisionBefore = dependent.revision();
+  const std::size_t objectCountBefore = dependent.objectCount();
+  const cr::CreativeObjectId dependentGenerated =
+      first.generatedObjectIds().front();
+  const cr::CreativeSemanticDeleteReceipt rejected =
+      cr::deleteDocumentObjectsSemanticallyAtomically(
+          dependent, std::span{&dependentGenerated, 1U});
+
+  return expect(created.accepted && deleted.accepted && deleted.changed &&
+                    deleted.status == cr::CreativeSemanticDeleteStatus::Deleted &&
+                    deleted.removedObjectCount == 3U &&
+                    deleted.removedPatternRecipeCount == 1U &&
+                    deleted.removedObjectIds.size() == 3U &&
+                    document.objectCount() == 0U &&
+                    document.patternRecipeStore().recipes.empty(),
+                "delete of generated output removes its editable source closure") &&
+         expect(first.accepted && second.accepted && !rejected.accepted &&
+                    !rejected.changed &&
+                    rejected.status ==
+                        cr::CreativeSemanticDeleteStatus::ExternalReference &&
+                    dependent.revision() == revisionBefore &&
+                    dependent.objectCount() == objectCountBefore &&
+                    dependent.patternRecipeStore().recipes.size() == 2U,
+                "semantic delete rejects dependent recipes without partial mutation");
+}
+
+bool linearArrayUpdateKeepsIdentityAndReplacesOnlyOwnedOutputs() {
+  cr::CreativeDocument document = ::document("linear array update");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {0.0, 0.0, 0.0});
+  const cr::CreativeObjectId unrelated = createRoom(
+      document, "Unrelated", {{20.0, 0.0, 20.0}, {24.0, 3.0, 24.0}});
+  cr::CreativeLinearArrayRequest initial;
+  initial.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&source, 1U}, initial);
+  if (!expect(created.accepted && created.generatedObjectIds().size() == 2U,
+              "linear update setup")) {
+    return false;
+  }
+  const std::vector<cr::CreativeObjectId> oldGenerated{
+      created.generatedObjectIds().begin(), created.generatedObjectIds().end()};
+
+  cr::CreativeLinearArrayRequest updatedRequest;
+  updatedRequest.direction = cr::CreativeLinearArrayDirection::NegativeZ;
+  updatedRequest.copyCount = cr::CreativeLinearArrayCopyCount::Four;
+  updatedRequest.spacing = cr::CreativeLinearArraySpacing::TwoCells;
+  updatedRequest.cellSize = 0.5;
+  const cr::CreativeLinearArrayReceipt updated =
+      cr::updateCreativeLinearArrayRecipeAtomically(
+          document, created.patternRecipeId, updatedRequest);
+  const cr::CreativePatternRecipe* recipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    created.patternRecipeId);
+  const cr::CreativeObject* finalCopy =
+      updated.finalCopyObjectIds().empty()
+          ? nullptr
+          : document.findObject(updated.finalCopyObjectIds().front());
+
+  return expect(updated.accepted && updated.changed &&
+                    updated.updatedExistingRecipe &&
+                    updated.patternRecipeId == created.patternRecipeId,
+                "linear update keeps editable recipe identity") &&
+         expect(updated.replacedGeneratedObjectCount == 2U &&
+                    updated.generatedObjectIds().size() == 4U,
+                "linear update reports old and replacement output counts") &&
+         expect(document.findObject(oldGenerated[0]) == nullptr &&
+                    document.findObject(oldGenerated[1]) == nullptr &&
+                    document.findObject(source) != nullptr &&
+                    document.findObject(unrelated) != nullptr,
+                "linear update removes only prior owned outputs") &&
+         expect(recipe != nullptr && recipe->linear == updatedRequest &&
+                    recipe->generatedObjectIds ==
+                        std::vector<cr::CreativeObjectId>{
+                            updated.generatedObjectIds().begin(),
+                            updated.generatedObjectIds().end()},
+                "linear update stores exact replacement parameters and ids") &&
+         expect(finalCopy != nullptr &&
+                    near(finalCopy->transform.position.z, -4.0),
+                "linear update geometry consumes replacement plan") &&
+         expect(document.objectCount() == 6U && document.isValid(),
+                "linear update leaves local document topology valid");
+}
+
+bool radialArrayUpdateKeepsIdentityAndRemovesOldRing() {
+  cr::CreativeDocument document = ::document("radial array update");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {2.0, 0.0, 0.0});
+  cr::CreativeRadialArrayRequest initial;
+  initial.pivot = {};
+  initial.axis = cr::CreativeAxis3::Y;
+  initial.instanceCount = cr::CreativeRadialArrayInstanceCount::Four;
+  const cr::CreativeRadialArrayReceipt created =
+      cr::createCreativeRadialArrayAtomically(
+          document, std::span{&source, 1U}, initial);
+  if (!expect(created.accepted && created.generatedObjectIds().size() == 3U,
+              "radial update setup")) {
+    return false;
+  }
+  const std::vector<cr::CreativeObjectId> oldGenerated{
+      created.generatedObjectIds().begin(), created.generatedObjectIds().end()};
+
+  cr::CreativeRadialArrayRequest updatedRequest = initial;
+  updatedRequest.instanceCount =
+      cr::CreativeRadialArrayInstanceCount::Two;
+  updatedRequest.sweep = cr::CreativeRadialArraySweep::Degrees180;
+  const cr::CreativeRadialArrayReceipt updated =
+      cr::updateCreativeRadialArrayRecipeAtomically(
+          document, created.patternRecipeId, updatedRequest);
+  const cr::CreativePatternRecipe* recipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    created.patternRecipeId);
+  const cr::CreativeObject* replacement =
+      updated.generatedObjectIds().empty()
+          ? nullptr
+          : document.findObject(updated.generatedObjectIds().front());
+  return expect(updated.accepted && updated.updatedExistingRecipe &&
+                    updated.replacedGeneratedObjectCount == 3U &&
+                    updated.generatedObjectIds().size() == 1U,
+                "radial update replaces the prior ring") &&
+         expect(std::all_of(oldGenerated.begin(), oldGenerated.end(),
+                            [&document](cr::CreativeObjectId objectId) {
+                              return document.findObject(objectId) == nullptr;
+                            }),
+                "radial update removes every old owned output") &&
+         expect(recipe != nullptr && recipe->id == created.patternRecipeId &&
+                    recipe->radial == updatedRequest &&
+                    recipe->generatedObjectIds.size() == 1U,
+                "radial update keeps identity and exact parameters") &&
+         expect(replacement != nullptr &&
+                    near(replacement->transform.position.x, -2.0) &&
+                    near(replacement->transform.position.z, 0.0),
+                "radial update emits the new partial-sweep endpoint") &&
+         expect(document.objectCount() == 2U && document.isValid(),
+                "radial update leaves source plus replacement only");
+}
+
+bool patternUpdateRejectsExternalAndRecipeDependencies() {
+  cr::CreativeDocument externalChildDocument =
+      ::document("pattern external child");
+  const cr::CreativeObjectId source =
+      createGroup(externalChildDocument, "Source", {});
+  cr::CreativeLinearArrayRequest oneCopy;
+  oneCopy.copyCount = cr::CreativeLinearArrayCopyCount::One;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          externalChildDocument, std::span{&source, 1U}, oneCopy);
+  const cr::CreativeObjectId generated =
+      created.generatedObjectIds().empty()
+          ? cr::kInvalidObjectId
+          : created.generatedObjectIds().front();
+  const cr::CreativeObjectId externalChild =
+      createGroup(externalChildDocument, "Attached", {}, generated);
+  const std::uint64_t externalRevision = externalChildDocument.revision();
+  const cr::CreativeLinearArrayReceipt externalRejected =
+      cr::updateCreativeLinearArrayRecipeAtomically(
+          externalChildDocument, created.patternRecipeId, {});
+
+  cr::CreativeDocument dependentDocument =
+      ::document("pattern dependent recipe");
+  const cr::CreativeObjectId dependentSource =
+      createGroup(dependentDocument, "Source", {});
+  const cr::CreativeLinearArrayReceipt upstream =
+      cr::createCreativeLinearArrayAtomically(
+          dependentDocument, std::span{&dependentSource, 1U}, oneCopy);
+  const cr::CreativeObjectId upstreamOutput =
+      upstream.generatedObjectIds().front();
+  const cr::CreativeLinearArrayReceipt downstream =
+      cr::createCreativeLinearArrayAtomically(
+          dependentDocument, std::span{&upstreamOutput, 1U}, oneCopy);
+  const std::uint64_t dependentRevision = dependentDocument.revision();
+  const cr::CreativeLinearArrayReceipt dependentRejected =
+      cr::updateCreativeLinearArrayRecipeAtomically(
+          dependentDocument, upstream.patternRecipeId, {});
+
+  return expect(!externalRejected.accepted &&
+                    externalRejected.status ==
+                        cr::CreativeLinearArrayStatus::
+                            RecipeDependencyConflict &&
+                    externalRejected.failedObjectId == externalChild &&
+                    externalChildDocument.revision() == externalRevision,
+                "array update refuses an externally attached child") &&
+         expect(externalChildDocument.findObject(generated) != nullptr &&
+                    externalChildDocument.findObject(externalChild) != nullptr,
+                "external-child rejection publishes no partial removal") &&
+         expect(downstream.accepted && !dependentRejected.accepted &&
+                    dependentRejected.status ==
+                        cr::CreativeLinearArrayStatus::
+                            RecipeDependencyConflict &&
+                    dependentRejected.failedObjectId == upstreamOutput &&
+                    dependentDocument.revision() == dependentRevision,
+                "array update refuses to invalidate a downstream recipe") &&
+         expect(dependentDocument.patternRecipeStore().recipes.size() == 2U &&
+                    dependentDocument.isValid(),
+                "dependent-recipe rejection preserves both relationships");
+}
+
+bool detachingPatternKeepsBakedGeometryIndependent() {
+  cr::CreativeDocument document = ::document("pattern detach");
+  const cr::CreativeObjectId source =
+      createGroup(document, "Source", {});
+  cr::CreativeLinearArrayRequest request;
+  request.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  const cr::CreativeLinearArrayReceipt created =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&source, 1U}, request);
+  const std::vector<cr::CreativeObjectId> outputs{
+      created.generatedObjectIds().begin(), created.generatedObjectIds().end()};
+  const cr::CreativePatternRecipeMutationReceipt detached =
+      cr::detachCreativePatternRecipe(document, created.patternRecipeId);
+  const std::uint64_t detachedRevision = document.revision();
+  const cr::CreativeLinearArrayReceipt updateRejected =
+      cr::updateCreativeLinearArrayRecipeAtomically(
+          document, created.patternRecipeId, request);
+  return expect(detached.accepted && detached.changed &&
+                    detached.status ==
+                        cr::CreativePatternRecipeMutationStatus::Applied,
+                "detach removes only editable relation") &&
+         expect(document.patternRecipeStore().recipes.empty() &&
+                    document.findObject(source) != nullptr &&
+                    document.findObject(outputs[0]) != nullptr &&
+                    document.findObject(outputs[1]) != nullptr,
+                "detach preserves source and every baked output") &&
+         expect(!updateRejected.accepted &&
+                    updateRejected.status ==
+                        cr::CreativeLinearArrayStatus::RecipeNotFound &&
+                    document.revision() == detachedRevision,
+                "detached geometry no longer accepts relationship updates") &&
+         expect(document.isValid(),
+                "detached geometry remains a valid independent document");
+}
+
+cr::CreativePatternRecipe validAssetScatterRecipe() {
+  cr::CreativePatternRecipe recipe;
+  recipe.id = 1U;
+  recipe.kind = cr::CreativePatternRecipeKind::AssetScatter;
+  recipe.generatedObjectIds = {10U, 11U};
+  recipe.scatter.objectKind = cr::CreativeObjectKind::Rock;
+  recipe.scatter.assetId = "environment/rock_a";
+  recipe.scatter.assetContentHash = 42U;
+  recipe.scatter.assetMaterialVariant = "mossy";
+  recipe.scatter.assetSourceBounds = {{-0.5, 0.0, -0.5},
+                                      {0.5, 1.0, 0.5}};
+  recipe.scatter.paintCenters = {{2.0, 0.0, 3.0}};
+  recipe.scatter.exclusions = {{{2.5, 0.0, 3.5}, 0.75}};
+  recipe.scatter.mask = cr::CreativeAssetScatterRecipeMask::Circle;
+  recipe.scatter.yaw = cr::CreativeAssetScatterRecipeYaw::QuarterTurns;
+  recipe.scatter.baseYawRadians = std::numbers::pi * 0.5;
+  recipe.scatter.radiusMeters = 6.0;
+  recipe.scatter.spacingMeters = 1.5;
+  recipe.scatter.densityFraction = 0.8;
+  recipe.scatter.scaleVariation = 0.2;
+  recipe.scatter.maximumSlopeRadians = std::numbers::pi / 6.0;
+  recipe.scatter.projectToTerrainSurface = true;
+  recipe.scatter.avoidCollisions = false;
+  recipe.scatter.seed = 99U;
+  recipe.scatter.maxGeneratedObjects = 128U;
+  return recipe;
+}
+
+cr::CreativeDocumentCreateRequest scatterCreateRequest(
+    const cr::CreativeAssetScatterRecipe& recipe,
+    std::string_view name,
+    cr::CreativeVec3 position) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = recipe.objectKind;
+  request.name = std::string{name};
+  request.assetId = recipe.assetId;
+  request.assetContentHash = recipe.assetContentHash;
+  request.assetMaterialVariant = recipe.assetMaterialVariant;
+  request.bounds = recipe.assetSourceBounds;
+  request.hasBoundsOverride = true;
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  return request;
+}
+
+bool assetScatterRecipeMutationIsAtomicEditableAndBakeable() {
+  cr::CreativeDocument document = ::document("scatter mutation");
+  const cr::CreativeObjectId unrelated =
+      createGroup(document, "Unrelated", {-20.0, 0.0, 0.0});
+  cr::CreativeAssetScatterRecipe recipe = validAssetScatterRecipe().scatter;
+  const std::array createRequests{
+      scatterCreateRequest(recipe, "Rock 1", {2.0, 0.0, 3.0}),
+      scatterCreateRequest(recipe, "Rock 2", {5.0, 0.0, 6.0}),
+  };
+
+  cr::CreativeDocumentCreateRequest mismatched = createRequests.front();
+  mismatched.assetId = "environment/not_the_recipe_asset";
+  const std::uint64_t beforeInvalid = document.revision();
+  const cr::CreativeAssetScatterRecipeMutationReceipt invalid =
+      cr::createCreativeAssetScatterRecipeAtomically(
+          document, std::span{&mismatched, 1U}, {}, recipe);
+  const cr::CreativeAssetScatterRecipeMutationReceipt created =
+      cr::createCreativeAssetScatterRecipeAtomically(
+          document, createRequests, {}, recipe);
+  if (!expect(!invalid.accepted &&
+                  invalid.status == cr::CreativeAssetScatterRecipeMutationStatus::
+                                        InvalidRequest &&
+                  document.findObject(unrelated) != nullptr,
+              "scatter rejects recipe-output identity drift atomically") ||
+      !expect(created.accepted && created.changed &&
+                  created.generatedObjectIds.size() == 2U &&
+                  created.patternRecipeId !=
+                      cr::kInvalidCreativePatternRecipeId,
+              "scatter creates geometry and one recipe atomically")) {
+    return false;
+  }
+  const std::vector<cr::CreativeObjectId> oldOutputs =
+      created.generatedObjectIds;
+  const cr::CreativePatternRecipe* createdRecipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    created.patternRecipeId);
+  bool ok = expect(beforeInvalid == invalid.revisionAfter &&
+                       createdRecipe != nullptr &&
+                       createdRecipe->sourceObjectIds.empty() &&
+                       createdRecipe->generatedObjectIds == oldOutputs &&
+                       createdRecipe->scatter == recipe,
+                   "created scatter retains exact editable provenance");
+
+  cr::CreativeAssetScatterRecipe changedRecipe = recipe;
+  changedRecipe.seed += 1U;
+  changedRecipe.paintCenters.push_back({9.0, 0.0, 9.0});
+  const cr::CreativeDocumentCreateRequest replacementRequest =
+      scatterCreateRequest(changedRecipe, "Regenerated Rock",
+                           {9.0, 0.0, 9.0});
+  const cr::CreativeAssetScatterRecipeMutationReceipt updated =
+      cr::updateCreativeAssetScatterRecipeAtomically(
+          document, created.patternRecipeId,
+          std::span{&replacementRequest, 1U}, changedRecipe);
+  const cr::CreativePatternRecipe* updatedRecipe =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(),
+                                    created.patternRecipeId);
+  ok = expect(updated.accepted && updated.changed &&
+                  updated.updatedExistingRecipe &&
+                  updated.replacedGeneratedObjectCount == 2U &&
+                  updated.generatedObjectIds.size() == 1U &&
+                  updatedRecipe != nullptr &&
+                  updatedRecipe->id == created.patternRecipeId &&
+                  updatedRecipe->scatter == changedRecipe,
+              "scatter regenerate keeps recipe identity and exact settings") &&
+       expect(document.findObject(oldOutputs[0]) == nullptr &&
+                  document.findObject(oldOutputs[1]) == nullptr &&
+                  document.findObject(unrelated) != nullptr &&
+                  document.objectCount() == 2U,
+              "scatter regenerate replaces only owned outputs") &&
+       ok;
+
+  const cr::CreativeObjectId regenerated = updated.generatedObjectIds.front();
+  cr::CreativeLinearArrayRequest downstreamRequest;
+  downstreamRequest.copyCount = cr::CreativeLinearArrayCopyCount::One;
+  const cr::CreativeLinearArrayReceipt downstream =
+      cr::createCreativeLinearArrayAtomically(
+          document, std::span{&regenerated, 1U}, downstreamRequest);
+  const std::uint64_t beforeConflict = document.revision();
+  const cr::CreativeAssetScatterRecipeMutationReceipt conflict =
+      cr::updateCreativeAssetScatterRecipeAtomically(
+          document, created.patternRecipeId,
+          std::span{&replacementRequest, 1U}, changedRecipe);
+  const cr::CreativePatternRecipeMutationReceipt baked =
+      cr::detachCreativePatternRecipe(document, created.patternRecipeId);
+  return expect(downstream.accepted && !conflict.accepted &&
+                    conflict.status ==
+                        cr::CreativeAssetScatterRecipeMutationStatus::
+                            RecipeDependencyConflict &&
+                    conflict.failedObjectId == regenerated &&
+                    document.findObject(regenerated) != nullptr &&
+                    beforeConflict == conflict.revisionAfter,
+                "scatter regenerate refuses downstream recipe dependency") &&
+         expect(baked.accepted && baked.changed &&
+                    cr::findCreativePatternRecipe(
+                        document.patternRecipeStore(),
+                        created.patternRecipeId) == nullptr &&
+                    document.findObject(regenerated) != nullptr &&
+                    cr::findCreativePatternRecipe(
+                        document.patternRecipeStore(),
+                        downstream.patternRecipeId) != nullptr,
+                "scatter bake detaches recipe and keeps instances") &&
+         ok;
+}
+
+bool assetScatterRecipePinsEditableContract() {
+  const cr::CreativePatternRecipe baseline = validAssetScatterRecipe();
+  bool ok = expect(cr::validateCreativePatternRecipe(baseline),
+                   "generated-only circle scatter recipe is valid") &&
+            expect(baseline == validAssetScatterRecipe(),
+                   "scatter recipe exact equality is stable") &&
+            expect(cr::toString(cr::CreativePatternRecipeKind::AssetScatter) ==
+                       "AssetScatter" &&
+                       cr::toString(baseline.scatter.mask) == "Circle" &&
+                       cr::toString(baseline.scatter.yaw) == "QuarterTurns",
+                   "scatter recipe enum text is stable");
+
+  cr::CreativePatternRecipe selection = baseline;
+  selection.scatter.mask = cr::CreativeAssetScatterRecipeMask::Selection;
+  ok = expect(!cr::validateCreativePatternRecipe(selection),
+              "selection scatter requires source objects") &&
+       ok;
+  selection.sourceObjectIds = {7U};
+  ok = expect(cr::validateCreativePatternRecipe(selection),
+              "selection scatter accepts a source filter") &&
+       ok;
+
+  cr::CreativePatternRecipe box = baseline;
+  box.scatter.mask = cr::CreativeAssetScatterRecipeMask::Box;
+  box.scatter.paintCenters.push_back({8.0, 0.0, 9.0});
+  ok = expect(cr::validateCreativePatternRecipe(box),
+              "box scatter accepts multiple paint centers") &&
+       ok;
+
+  cr::CreativePatternRecipe invalid = baseline;
+  invalid.scatter.paintCenters.push_back(invalid.scatter.paintCenters.front());
+  ok = expect(!cr::validateCreativePatternRecipe(invalid),
+              "duplicate scatter paint centers are rejected") &&
+       ok;
+  invalid = baseline;
+  invalid.scatter.exclusions.front().radiusMeters = 0.0;
+  ok = expect(!cr::validateCreativePatternRecipe(invalid),
+              "nonpositive scatter exclusions are rejected") &&
+       ok;
+  invalid = baseline;
+  invalid.scatter.densityFraction =
+      std::numeric_limits<double>::quiet_NaN();
+  ok = expect(!cr::validateCreativePatternRecipe(invalid),
+              "nonfinite scatter parameters are rejected") &&
+       ok;
+  invalid = baseline;
+  invalid.scatter.maxGeneratedObjects =
+      cr::kCreativeAssetScatterGeneratedObjectCapacity + 1U;
+  return expect(!cr::validateCreativePatternRecipe(invalid),
+                "scatter generated capacity cannot be raised") &&
+         ok;
+}
+
 }  // namespace
 
 int main() {
@@ -650,5 +1573,21 @@ int main() {
   ok = arrayExecutionRejectsMissingSourceWithoutMutation() && ok;
   ok = radialExecutionRotatesGroupAndRemapsParents() && ok;
   ok = radialExecutionRejectsDegeneratePivotWithoutMutation() && ok;
+  ok = patternRecipeRejectsMissingReferencesAtomically() && ok;
+  ok = deletingPatternMemberDetachesRelationship() && ok;
+  ok = semanticClipboardPreservesEditablePatternAcrossDocuments() && ok;
+  ok = semanticClipboardTranslatesAssetScatterRecipeGeometry() && ok;
+  ok = semanticClipboardKeepsIndependentSourcesIndependent() && ok;
+  ok = semanticClipboardRejectsInvalidAndUnrepresentableRecipesAtomically() &&
+       ok;
+  ok = semanticCutAndDuplicatePreserveWholePatternAtomically() && ok;
+  ok = semanticClipboardRemapsInternalLinksAndRejectsCrossingLinks() && ok;
+  ok = semanticDeleteRemovesPatternSourceAndOutputsAsOneClosure() && ok;
+  ok = linearArrayUpdateKeepsIdentityAndReplacesOnlyOwnedOutputs() && ok;
+  ok = radialArrayUpdateKeepsIdentityAndRemovesOldRing() && ok;
+  ok = patternUpdateRejectsExternalAndRecipeDependencies() && ok;
+  ok = detachingPatternKeepsBakedGeometryIndependent() && ok;
+  ok = assetScatterRecipePinsEditableContract() && ok;
+  ok = assetScatterRecipeMutationIsAtomicEditableAndBakeable() && ok;
   return ok ? 0 : 1;
 }

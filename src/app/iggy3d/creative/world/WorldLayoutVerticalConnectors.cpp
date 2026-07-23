@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -18,19 +19,6 @@ void reject(CreativeWorldLayoutVerticalConnectorPlan& plan,
   plan.reasonCode = reasonCode;
 }
 
-[[nodiscard]] bool validRect(CreativeWorldLayoutRect rect) noexcept {
-  return rect.minimum.x < rect.maximum.x && rect.minimum.z < rect.maximum.z;
-}
-
-[[nodiscard]] bool contains(CreativeWorldLayoutRect outer,
-                            CreativeWorldLayoutRect inner) noexcept {
-  return validRect(outer) && validRect(inner) &&
-         inner.minimum.x >= outer.minimum.x &&
-         inner.maximum.x <= outer.maximum.x &&
-         inner.minimum.z >= outer.minimum.z &&
-         inner.maximum.z <= outer.maximum.z;
-}
-
 [[nodiscard]] bool worldCoordinate(double origin, double cellSize,
                                    long double coordinate,
                                    double& output) noexcept {
@@ -44,45 +32,57 @@ void reject(CreativeWorldLayoutVerticalConnectorPlan& plan,
   return std::isfinite(output);
 }
 
-[[nodiscard]] bool
-hasLanding(const CreativeWorldLayoutRoom& lower,
-           const CreativeWorldLayoutRoom& upper,
-           CreativeWorldLayoutRect footprint,
-           CreativeWorldLayoutVerticalDirection direction) noexcept {
-  constexpr std::int64_t kLandingCells = 1;
+[[nodiscard]] bool landingRects(
+    CreativeWorldLayoutRect footprint,
+    CreativeWorldLayoutVerticalDirection direction,
+    CreativeWorldLayoutRect& lowerLanding,
+    CreativeWorldLayoutRect& upperLanding) noexcept {
   switch (direction) {
   case CreativeWorldLayoutVerticalDirection::PositiveX:
-    return static_cast<std::int64_t>(footprint.minimum.x) -
-                   lower.footprint.minimum.x >=
-               kLandingCells &&
-           static_cast<std::int64_t>(upper.footprint.maximum.x) -
-                   footprint.maximum.x >=
-               kLandingCells;
-  case CreativeWorldLayoutVerticalDirection::NegativeX:
-    return static_cast<std::int64_t>(lower.footprint.maximum.x) -
-                   footprint.maximum.x >=
-               kLandingCells &&
-           static_cast<std::int64_t>(footprint.minimum.x) -
-                   upper.footprint.minimum.x >=
-               kLandingCells;
-  case CreativeWorldLayoutVerticalDirection::PositiveZ:
-    return static_cast<std::int64_t>(footprint.minimum.z) -
-                   lower.footprint.minimum.z >=
-               kLandingCells &&
-           static_cast<std::int64_t>(upper.footprint.maximum.z) -
-                   footprint.maximum.z >=
-               kLandingCells;
-  case CreativeWorldLayoutVerticalDirection::NegativeZ:
-    return static_cast<std::int64_t>(lower.footprint.maximum.z) -
-                   footprint.maximum.z >=
-               kLandingCells &&
-           static_cast<std::int64_t>(footprint.minimum.z) -
-                   upper.footprint.minimum.z >=
-               kLandingCells;
-  case CreativeWorldLayoutVerticalDirection::Count:
+    lowerLanding = {{footprint.minimum.x - 1, footprint.minimum.z},
+                    {footprint.minimum.x, footprint.maximum.z}};
+    upperLanding = {{footprint.maximum.x, footprint.minimum.z},
+                    {footprint.maximum.x + 1, footprint.maximum.z}};
     break;
+  case CreativeWorldLayoutVerticalDirection::NegativeX:
+    lowerLanding = {{footprint.maximum.x, footprint.minimum.z},
+                    {footprint.maximum.x + 1, footprint.maximum.z}};
+    upperLanding = {{footprint.minimum.x - 1, footprint.minimum.z},
+                    {footprint.minimum.x, footprint.maximum.z}};
+    break;
+  case CreativeWorldLayoutVerticalDirection::PositiveZ:
+    lowerLanding = {{footprint.minimum.x, footprint.minimum.z - 1},
+                    {footprint.maximum.x, footprint.minimum.z}};
+    upperLanding = {{footprint.minimum.x, footprint.maximum.z},
+                    {footprint.maximum.x, footprint.maximum.z + 1}};
+    break;
+  case CreativeWorldLayoutVerticalDirection::NegativeZ:
+    lowerLanding = {{footprint.minimum.x, footprint.maximum.z},
+                    {footprint.maximum.x, footprint.maximum.z + 1}};
+    upperLanding = {{footprint.minimum.x, footprint.minimum.z - 1},
+                    {footprint.maximum.x, footprint.minimum.z}};
+    break;
+  case CreativeWorldLayoutVerticalDirection::Count:
+    return false;
   }
-  return false;
+  return true;
+}
+
+[[nodiscard]] bool hasLanding(
+    const CreativeWorldLayoutRoomGraph& graph,
+    std::size_t lowerRoomIndex,
+    std::size_t upperRoomIndex,
+    CreativeWorldLayoutRect footprint,
+    CreativeWorldLayoutVerticalDirection direction) noexcept {
+  CreativeWorldLayoutRect lowerLanding;
+  CreativeWorldLayoutRect upperLanding;
+  if (!landingRects(footprint, direction, lowerLanding, upperLanding)) {
+    return false;
+  }
+  return creativeWorldLayoutRoomContainsRect(graph, lowerRoomIndex,
+                                              lowerLanding) &&
+         creativeWorldLayoutRoomContainsRect(graph, upperRoomIndex,
+                                              upperLanding);
 }
 
 [[nodiscard]] bool
@@ -97,7 +97,7 @@ sharesCutSurface(const CreativeWorldLayoutVerticalConnector& lhs,
 CreativeWorldLayoutVerticalConnectorPlan
 planCreativeWorldLayoutVerticalConnector(const CreativeGridSettings& grid,
                                          const CreativeWorldLayout& layout,
-                                         std::size_t connectorIndex) noexcept {
+                                         std::size_t connectorIndex) {
   CreativeWorldLayoutVerticalConnectorPlan plan;
   if (connectorIndex >= layout.verticalConnectors.size()) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidConnector,
@@ -112,7 +112,7 @@ CreativeWorldLayoutVerticalConnectorPlan
 planCreativeWorldLayoutVerticalConnector(
     const CreativeGridSettings& grid, const CreativeWorldLayout& layout,
     std::size_t connectorIndex,
-    const CreativeWorldLayoutVerticalConnector& connector) noexcept {
+    const CreativeWorldLayoutVerticalConnector& connector) {
   CreativeWorldLayoutVerticalConnectorPlan plan;
   if (connectorIndex >= layout.verticalConnectors.size()) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidConnector,
@@ -123,12 +123,20 @@ planCreativeWorldLayoutVerticalConnector(
   plan.lowerRoomIndex = connector.lowerRoomIndex;
   plan.upperRoomIndex = connector.upperRoomIndex;
   plan.openingFootprint = connector.footprint;
+  plan.material = connector.material;
 
   if (connector.kind >= CreativeWorldLayoutVerticalConnectorKind::Count ||
       connector.direction >= CreativeWorldLayoutVerticalDirection::Count ||
+      connector.material >= CreativeStructuralMaterial::Count ||
       connector.name.empty() || connector.stableKey.empty()) {
-    reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidConnector,
-           "creative_world_layout_vertical_connector_invalid");
+    const bool invalidMaterial =
+        connector.material >= CreativeStructuralMaterial::Count;
+    reject(plan, invalidMaterial
+                     ? CreativeWorldLayoutVerticalConnectorStatus::InvalidMaterial
+                     : CreativeWorldLayoutVerticalConnectorStatus::InvalidConnector,
+           invalidMaterial
+               ? "creative_world_layout_vertical_connector_material_invalid"
+               : "creative_world_layout_vertical_connector_invalid");
     return plan;
   }
   if (connector.buildingIndex >= layout.buildings.size() ||
@@ -162,13 +170,19 @@ planCreativeWorldLayoutVerticalConnector(
            "creative_world_layout_vertical_connector_levels_invalid");
     return plan;
   }
-  if (!contains(lower.footprint, connector.footprint) ||
-      !contains(upper.footprint, connector.footprint)) {
+  const CreativeWorldLayoutRoomGraph graph =
+      buildCreativeWorldLayoutRoomGraph(layout);
+  if (!graph.accepted ||
+      !creativeWorldLayoutRoomContainsRect(
+          graph, connector.lowerRoomIndex, connector.footprint) ||
+      !creativeWorldLayoutRoomContainsRect(
+          graph, connector.upperRoomIndex, connector.footprint)) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidFootprint,
            "creative_world_layout_vertical_connector_footprint_invalid");
     return plan;
   }
-  if (!hasLanding(lower, upper, connector.footprint, connector.direction)) {
+  if (!hasLanding(graph, connector.lowerRoomIndex, connector.upperRoomIndex,
+                  connector.footprint, connector.direction)) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidLanding,
            "creative_world_layout_vertical_connector_landing_invalid");
     return plan;
@@ -194,7 +208,9 @@ planCreativeWorldLayoutVerticalConnector(
   const double runCells = alongX ? extentX : extentZ;
   const double widthCells = alongX ? extentZ : extentX;
   if (!std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
-      runCells < riseCells || widthCells < 1.0) {
+      runCells <= 0.0 || widthCells < 1.0 ||
+      (connector.kind == CreativeWorldLayoutVerticalConnectorKind::Stair &&
+       runCells < riseCells)) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidSlope,
            "creative_world_layout_vertical_connector_slope_invalid");
     return plan;
@@ -261,14 +277,55 @@ planCreativeWorldLayoutVerticalConnector(
   }
 
   if (plan.objectKind == CreativeObjectKind::Stair) {
-    plan.stepCount = creativeGeneratedGeometrySegmentCount(
-        describeObject(CreativeObjectKind::Stair),
-        {plan.widthMeters, plan.riseMeters, plan.runMeters});
-    if (plan.stepCount == 0U) {
-      reject(
-          plan,
-          CreativeWorldLayoutVerticalConnectorStatus::UnrepresentableGeometry,
-          "creative_world_layout_vertical_connector_steps_unrepresentable");
+    CreativeStairRecipeRequest stairRequest;
+    stairRequest.authoredBounds = plan.authoredBounds;
+    stairRequest.transform.position =
+        measureCreativeBounds(plan.authoredBounds).center;
+    stairRequest.transform.rotationEulerRadians =
+        plan.rotationEulerRadians;
+    stairRequest.maximumRiserHeightMeters =
+        describeObject(CreativeObjectKind::Stair)
+            .generatedGeometry.maximumStepRiseMeters;
+    stairRequest.landingDepthMeters = grid.cellSizeMeters;
+    stairRequest.availableHeadroomMeters =
+        static_cast<double>(upperLevel.wallHeightCells) *
+        grid.cellSizeMeters;
+    plan.stair = planCreativeStair(stairRequest);
+    if (!plan.stair.accepted) {
+      const bool headroom =
+          plan.stair.status == CreativeStairRecipeStatus::InvalidHeadroom;
+      reject(plan,
+             headroom
+                 ? CreativeWorldLayoutVerticalConnectorStatus::InvalidHeadroom
+                 : CreativeWorldLayoutVerticalConnectorStatus::
+                       UnrepresentableGeometry,
+             plan.stair.reasonCode);
+      return plan;
+    }
+    plan.stepCount = plan.stair.stepCount;
+  } else {
+    CreativeRampRecipeRequest rampRequest;
+    rampRequest.authoredBounds = plan.authoredBounds;
+    rampRequest.transform.position =
+        measureCreativeBounds(plan.authoredBounds).center;
+    rampRequest.transform.rotationEulerRadians = plan.rotationEulerRadians;
+    rampRequest.landingDepthMeters = grid.cellSizeMeters;
+    rampRequest.availableHeadroomMeters =
+        static_cast<double>(upperLevel.wallHeightCells) *
+        grid.cellSizeMeters;
+    rampRequest.material = connector.material;
+    plan.ramp = planCreativeRamp(rampRequest);
+    if (!plan.ramp.accepted) {
+      CreativeWorldLayoutVerticalConnectorStatus status =
+          CreativeWorldLayoutVerticalConnectorStatus::UnrepresentableGeometry;
+      if (plan.ramp.status == CreativeRampRecipeStatus::InvalidHeadroom) {
+        status = CreativeWorldLayoutVerticalConnectorStatus::InvalidHeadroom;
+      } else if (plan.ramp.status == CreativeRampRecipeStatus::InvalidSlope) {
+        status = CreativeWorldLayoutVerticalConnectorStatus::InvalidSlope;
+      } else if (plan.ramp.status == CreativeRampRecipeStatus::InvalidMaterial) {
+        status = CreativeWorldLayoutVerticalConnectorStatus::InvalidMaterial;
+      }
+      reject(plan, status, plan.ramp.reasonCode);
       return plan;
     }
   }

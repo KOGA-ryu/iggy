@@ -549,6 +549,9 @@ constexpr GlyphPoint kContextLowerPlate[] = {{12.0F, 11.5F},
 constexpr GlyphOp kLowerLevelContextOps[] = {
     strokeOp(kContextUpperPlate, true),
     dashedOp(kContextLowerPlate, 1.6F, 1.4F, true)};
+constexpr GlyphOp kUpperLevelContextOps[] = {
+    dashedOp(kContextUpperPlate, 1.6F, 1.4F, true),
+    strokeOp(kContextLowerPlate, true)};
 
 constexpr GlyphPoint kContourOuter[] = {{12.0F, 12.0F}, {9.0F, 6.5F}};
 constexpr GlyphPoint kContourMiddle[] = {{12.0F, 12.0F}, {6.0F, 4.2F}};
@@ -606,8 +609,8 @@ constexpr std::array<std::span<const GlyphOp>, kGlyphCount> kGlyphOpsTable = {{
     kBadgeTemplateOps,    kViewPlanOps,         kViewElevationOps,
     kView3dOps,           kLevelUpOps,          kLevelDownOps,
     kFitAllOps,           kFitSelectionOps,     kRoofVisibilityOps,
-    kLowerLevelContextOps, kContoursOps,        kDimensionsOps,
-    kSnapOps,
+    kLowerLevelContextOps, kUpperLevelContextOps, kContoursOps,
+    kDimensionsOps,       kSnapOps,
 }};
 
 constexpr std::array<std::string_view, kGlyphCount> kGlyphNames = {{
@@ -628,8 +631,8 @@ constexpr std::array<std::string_view, kGlyphCount> kGlyphNames = {{
     "badge template",  "plan view",       "elevation view",
     "3d view",         "level up",        "level down",
     "fit all",         "fit selection",   "roof visibility",
-    "lower level context",                "contours",
-    "dimensions",      "snap",
+    "lower level context",                "upper level context",
+    "contours",        "dimensions",      "snap",
 }};
 
 constexpr int kPathSegmentsPerCubic = 12;
@@ -736,19 +739,21 @@ CreativeEditorToolGlyph creativeEditorToolGlyphForWorldLayoutTool(
 }
 
 CreativeEditorToolGlyph creativeEditorToolGlyphForTerrainRegionOperation(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept {
+    cr::CreativeTerrainRegionMode operation) noexcept {
   switch (operation) {
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Flatten:
+    case cr::CreativeTerrainRegionMode::Flatten:
       return CreativeEditorToolGlyph::RegionFlatten;
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Raise:
+    case cr::CreativeTerrainRegionMode::Raise:
       return CreativeEditorToolGlyph::RegionRaise;
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Lower:
+    case cr::CreativeTerrainRegionMode::Lower:
       return CreativeEditorToolGlyph::RegionLower;
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Smooth:
+    case cr::CreativeTerrainRegionMode::Smooth:
       return CreativeEditorToolGlyph::RegionSmooth;
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Noise:
+    case cr::CreativeTerrainRegionMode::Noise:
       return CreativeEditorToolGlyph::RegionNoise;
-    case CreativeEditorWorldLayoutTerrainRegionOperation::Count:
+    case cr::CreativeTerrainRegionMode::Erase:
+      return CreativeEditorToolGlyph::BadgeRemove;
+    case cr::CreativeTerrainRegionMode::Count:
       break;
   }
   return CreativeEditorToolGlyph::RegionFlatten;
@@ -1045,6 +1050,37 @@ void drawCreativeEditorToolGlyph(ImDrawList& drawList,
         break;
     }
   }
+}
+
+bool drawCreativeEditorToolGlyphButton(
+    const char* id, CreativeEditorToolGlyph glyph, float tileSize,
+    bool active, std::string_view tooltip) {
+  constexpr float kPadding = 2.0F;
+  constexpr float kRounding = 2.0F;
+  const ImVec2 position = ImGui::GetCursorScreenPos();
+  const bool pressed = ImGui::InvisibleButton(id, {tileSize, tileSize});
+  const bool hovered = ImGui::IsItemHovered();
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+  const ImVec2 end{position.x + tileSize, position.y + tileSize};
+  if (active) {
+    drawList->AddRectFilled(
+        position, end,
+        ImGui::GetColorU32(ImVec4{0.16F, 0.47F, 0.25F, 1.0F}), kRounding);
+  } else if (hovered) {
+    drawList->AddRectFilled(position, end,
+                            ImGui::GetColorU32(ImGuiCol_ButtonHovered),
+                            kRounding);
+  }
+  drawCreativeEditorToolGlyph(*drawList, glyph, position.x + kPadding,
+                              position.y + kPadding,
+                              tileSize - (2.0F * kPadding),
+                              ImGui::GetColorU32(ImGuiCol_Text));
+  if (!tooltip.empty() &&
+      ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+    ImGui::SetTooltip("%.*s", static_cast<int>(tooltip.size()),
+                      tooltip.data());
+  }
+  return pressed;
 }
 
 }  // namespace iggy3d_creative_app

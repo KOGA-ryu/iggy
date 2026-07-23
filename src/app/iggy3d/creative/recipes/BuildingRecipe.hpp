@@ -2,7 +2,9 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
+#include "app/iggy3d/creative/recipes/DoorRecipe.hpp"
 #include "app/iggy3d/creative/recipes/StructuralWallRecipe.hpp"
+#include "app/iggy3d/creative/recipes/WindowRecipe.hpp"
 
 #include <array>
 #include <cstdint>
@@ -23,6 +25,12 @@ enum class CreativeBuildingRootMode : std::uint8_t {
 enum class CreativeBuildingOpeningKind : std::uint8_t {
   Door,
   Window,
+};
+
+enum class CreativeBuildingOpeningFacing : std::uint8_t {
+  PositiveNormal,
+  NegativeNormal,
+  Count,
 };
 
 using CreativeBuildingOpeningPose = CreativeStructuralWallOpeningPose;
@@ -46,6 +54,7 @@ enum class CreativeBuildingOpeningAssetFitStatus : std::uint8_t {
   InvalidTargetBounds,
   InvalidWallFrame,
   InvalidPose,
+  InvalidFacing,
   UnrepresentableTransform,
   Ready,
 };
@@ -122,7 +131,13 @@ struct CreativeBuildingBoxSpec {
 
 struct CreativeBuildingOpeningSpec {
   CreativeBuildingOpeningKind kind = CreativeBuildingOpeningKind::Door;
+  // Retained for window/import fitting compatibility. Door state, hinge, and
+  // swing identity live in `door` and never depend on this transient pose.
   CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
+  CreativeDoorSettings door;
+  CreativeWindowSettings window;
+  CreativeBuildingOpeningFacing facing =
+      CreativeBuildingOpeningFacing::PositiveNormal;
   std::string stableKey;
   std::string name;
 
@@ -153,6 +168,8 @@ struct CreativeBuildingOpeningAssetFitRequest {
   CreativeBounds targetBoundsMeters;
   CreativeStructuralWallFrame wallFrame;
   CreativeBuildingOpeningPose pose = CreativeBuildingOpeningPose::Closed;
+  CreativeBuildingOpeningFacing facing =
+      CreativeBuildingOpeningFacing::PositiveNormal;
 };
 
 struct CreativeBuildingOpeningAssetFitPlan {
@@ -227,7 +244,9 @@ struct CreativeBuildingRecipeReceipt {
   std::uint64_t boxObjectCount = 0U;
   std::uint64_t wallObjectCount = 0U;
   std::uint64_t doorObjectCount = 0U;
+  std::uint64_t doorPartObjectCount = 0U;
   std::uint64_t windowObjectCount = 0U;
+  std::uint64_t windowPartObjectCount = 0U;
   std::uint64_t generatedObjectCount = 0U;
   std::size_t failedBoxIndex = 0U;
   std::size_t failedWallIndex = 0U;

@@ -1,6 +1,10 @@
+#include "EditorDesktopHistoryModel.hpp"
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <cmath>
@@ -342,6 +346,100 @@ bool missingAnchorFallsBackToPlain() {
                 "an anchor absent from the filtered rows falls back to plain") &&
          expect(noAnchor.objectIds.size() == 1U && noAnchor.objectIds[0] == 12U,
                 "no anchor at all falls back to plain");
+}
+
+bool hierarchySelectionPlansParentChildrenAndSubtree() {
+  const std::vector<cr::CreativeObject> objects{
+      makeObject(1U, std::nullopt, cr::CreativeObjectKind::Group, "root"),
+      makeObject(2U, 1U, cr::CreativeObjectKind::Group, "branch"),
+      makeObject(3U, 2U, cr::CreativeObjectKind::Crate, "leaf"),
+      makeObject(4U, 1U, cr::CreativeObjectKind::Crate, "sibling")};
+  const app::CreativeDesktopOutlinerModel model =
+      app::buildCreativeDesktopOutlinerModel(1U, 1U, objects);
+  const app::CreativeDesktopSelectionPlan parent =
+      app::planCreativeDesktopHierarchySelection(
+          model, 3U,
+          app::CreativeDesktopHierarchySelectionScope::Parent);
+  const app::CreativeDesktopSelectionPlan children =
+      app::planCreativeDesktopHierarchySelection(
+          model, 1U,
+          app::CreativeDesktopHierarchySelectionScope::DirectChildren);
+  const app::CreativeDesktopSelectionPlan subtree =
+      app::planCreativeDesktopHierarchySelection(
+          model, 1U,
+          app::CreativeDesktopHierarchySelectionScope::Subtree);
+  const app::CreativeDesktopSelectionPlan leafChildren =
+      app::planCreativeDesktopHierarchySelection(
+          model, 3U,
+          app::CreativeDesktopHierarchySelectionScope::DirectChildren);
+
+  return expect(parent.accepted && parent.objectIds ==
+                                        std::vector<cr::CreativeObjectId>{2U} &&
+                    parent.primaryObjectId == 2U,
+                "parent selection resolves one immediate parent") &&
+         expect(children.accepted &&
+                    children.objectIds ==
+                        std::vector<cr::CreativeObjectId>{2U, 4U} &&
+                    children.primaryObjectId == 2U,
+                "child selection preserves deterministic sibling order") &&
+         expect(subtree.accepted &&
+                    subtree.objectIds ==
+                        std::vector<cr::CreativeObjectId>{1U, 2U, 3U, 4U} &&
+                    subtree.primaryObjectId == 1U,
+                "hierarchy selection includes root and every descendant") &&
+         expect(!leafChildren.accepted && leafChildren.objectIds.empty(),
+                "a leaf invents no child selection");
+}
+
+bool selectionPlannersRejectOverCapacityAtomically() {
+  std::vector<cr::CreativeObjectId> ids;
+  ids.reserve(cr::kCreativeSelectionTargetCapacity + 1U);
+  for (std::size_t index = 0U;
+       index <= cr::kCreativeSelectionTargetCapacity; ++index) {
+    ids.push_back(static_cast<cr::CreativeObjectId>(index + 1U));
+  }
+  const app::CreativeDesktopSelectionPlan range =
+      app::planCreativeDesktopSelection(
+          ids, {}, cr::kInvalidObjectId, ids.back(), ids.front(),
+          app::CreativeDesktopSelectionGesture::VisibleRange);
+  const app::CreativeDesktopSelectionPlan toggle =
+      app::planCreativeDesktopSelection(
+          {}, std::span<const cr::CreativeObjectId>{
+                  ids.data(), cr::kCreativeSelectionTargetCapacity},
+          ids.front(), ids.back(), ids.front(),
+          app::CreativeDesktopSelectionGesture::Toggle);
+
+  app::CreativeDesktopOutlinerModel model;
+  model.rows.reserve(ids.size());
+  app::CreativeDesktopOutlinerRow root;
+  root.objectId = ids.front();
+  root.parentObjectId = cr::kInvalidObjectId;
+  model.rows.push_back(root);
+  for (std::size_t index = 1U; index < ids.size(); ++index) {
+    app::CreativeDesktopOutlinerRow child;
+    child.objectId = ids[index];
+    child.parentObjectId = ids.front();
+    model.rows.push_back(child);
+  }
+  const app::CreativeDesktopSelectionPlan subtree =
+      app::planCreativeDesktopHierarchySelection(
+          model, ids.front(),
+          app::CreativeDesktopHierarchySelectionScope::Subtree);
+  const app::CreativeDesktopSelectionPlan children =
+      app::planCreativeDesktopHierarchySelection(
+          model, ids.front(),
+          app::CreativeDesktopHierarchySelectionScope::DirectChildren);
+
+  return expect(!range.accepted && range.objectIds.empty(),
+                "visible range rejects an over-capacity span") &&
+         expect(!toggle.accepted && toggle.objectIds.empty(),
+                "toggle rejects an addition at capacity") &&
+         expect(!subtree.accepted && subtree.objectIds.empty(),
+                "over-capacity hierarchy rejects without a partial set") &&
+         expect(children.accepted &&
+                    children.objectIds.size() ==
+                        cr::kCreativeSelectionTargetCapacity,
+                "the exact hierarchy capacity remains accepted");
 }
 
 // 13. Stale selected ids are discarded when resolving against document truth.
@@ -756,6 +854,64 @@ bool generatedScopeSummaryCountsVisibilityAndMergesWorldBounds() {
                 "scope cache rebuilds only when its complete revision key changes");
 }
 
+bool historyModelPinsPriorityLabelsAndUnsynchronizedBlocking() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("History");
+  static_cast<void>(document.assignId(991U));
+  cr::CreativeDocumentHistory history;
+  history.maxDepth = 4U;
+  history.undoSnapshots.push_back({document, "desktop_duplicate_selection", {}});
+  history.undoSnapshots.push_back({document, "keyboard_delete", {}});
+  history.redoSnapshots.push_back({document, "desktop_paste", {}});
+
+  app::CreativeEditorWorldLayoutState worldLayout;
+  worldLayout.revision = 7U;
+  worldLayout.generatedRevision = 6U;
+  worldLayout.sourceHistory.maxDepth = 3U;
+  app::CreativeEditorWorldLayoutSourceHistoryEntry older;
+  older.source = "room resized";
+  app::CreativeEditorWorldLayoutSourceHistoryEntry newer;
+  newer.source = "layout symbol deleted";
+  worldLayout.sourceHistory.undoEntries = {older, newer};
+  app::CreativeEditorWorldLayoutSourceHistoryEntry redo;
+  redo.source = "wall restored";
+  worldLayout.sourceHistory.redoEntries = {redo};
+
+  const app::CreativeDesktopHistoryModel unsynchronized =
+      app::buildCreativeDesktopHistoryModel(history, &worldLayout);
+  const bool sourcePriority =
+      !unsynchronized.sourceSynchronized && unsynchronized.canUndo &&
+      unsynchronized.canRedo && unsynchronized.undoEntries.size() == 4U &&
+      unsynchronized.undoEntries[0].domain ==
+          app::CreativeDesktopHistoryDomain::WorldLayout &&
+      unsynchronized.undoEntries[0].label == "Layout symbol deleted" &&
+      unsynchronized.undoEntries[0].nextAction &&
+      unsynchronized.undoEntries[1].label == "Room resized" &&
+      unsynchronized.undoEntries[2].label == "Delete" &&
+      unsynchronized.undoEntries[2].blockedByUnsynchronizedSource &&
+      !unsynchronized.undoEntries[2].nextAction &&
+      unsynchronized.redoEntries[0].label == "Wall restored" &&
+      unsynchronized.redoEntries[0].nextAction;
+
+  worldLayout.revision = worldLayout.generatedRevision;
+  worldLayout.sourceHistory.undoEntries.clear();
+  worldLayout.sourceHistory.redoEntries.clear();
+  const app::CreativeDesktopHistoryModel synchronized =
+      app::buildCreativeDesktopHistoryModel(history, &worldLayout);
+  return expect(sourcePriority,
+                "history projects source edits first and blocks stale document history") &&
+         expect(synchronized.sourceSynchronized && synchronized.canUndo &&
+                    synchronized.canRedo &&
+                    synchronized.undoEntries[0].label == "Delete" &&
+                    synchronized.undoEntries[0].nextAction &&
+                    synchronized.undoEntries[1].label ==
+                        "Duplicate selection" &&
+                    synchronized.redoEntries[0].label == "Paste" &&
+                    synchronized.redoEntries[0].nextAction &&
+                    synchronized.sourceMaxDepth == 3U &&
+                    synchronized.documentMaxDepth == 4U,
+                "history resumes newest-first document actions after synchronization");
+}
+
 }  // namespace
 
 int main() {
@@ -773,6 +929,8 @@ int main() {
   ok = shiftRangeSelectsBothDirections() && ok;
   ok = shiftWinsOverToggle() && ok;
   ok = missingAnchorFallsBackToPlain() && ok;
+  ok = hierarchySelectionPlansParentChildrenAndSubtree() && ok;
+  ok = selectionPlannersRejectOverCapacityAtomically() && ok;
   ok = staleSelectionIdsAreDiscarded() && ok;
   ok = degreeRadianParity() && ok;
   ok = draftRejectsNonFiniteAndNonPositiveScale() && ok;
@@ -780,5 +938,6 @@ int main() {
   ok = generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() && ok;
   ok = generatedScopeMembershipHonorsSharedEdgesAndNoInventedAncestry() && ok;
   ok = generatedScopeSummaryCountsVisibilityAndMergesWorldBounds() && ok;
+  ok = historyModelPinsPriorityLabelsAndUnsynchronizedBlocking() && ok;
   return ok ? 0 : 1;
 }

@@ -48,10 +48,13 @@ target_sources(iggy3d
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
     src/app/iggy3d/creative/document/DocumentTerrainOperations.cpp
+    src/app/iggy3d/creative/document/DocumentPatternRecipes.cpp
+    src/app/iggy3d/creative/document/DocumentMeasurementAnnotations.cpp
     src/app/iggy3d/creative/document/DocumentLogicLinks.cpp
     src/app/iggy3d/creative/document/DocumentObjects.cpp
     src/app/iggy3d/creative/document/DocumentRestore.cpp
     src/app/iggy3d/creative/document/DocumentValidation.cpp
+    src/app/iggy3d/creative/document/Hierarchy.cpp
     src/app/iggy3d/creative/document/TerrainField.cpp
     src/app/iggy3d/creative/document/TerrainHeightField.cpp
     src/app/iggy3d/creative/document/TerrainContours.cpp
@@ -86,15 +89,14 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/Interaction.cpp
     src/app/iggy3d/creative/input/HeldItemRegistry.cpp
     src/app/iggy3d/creative/history/History.cpp
-    src/app/iggy3d/creative/tools/TerrainGrade.cpp
     src/app/iggy3d/creative/tools/TerrainBrushKernel.cpp
     src/app/iggy3d/creative/tools/TerrainPath.cpp
     src/app/iggy3d/creative/tools/TerrainPaint.cpp
     src/app/iggy3d/creative/tools/TerrainProfile.cpp
-    src/app/iggy3d/creative/tools/TerrainRegion.cpp
     src/app/iggy3d/creative/tools/TerrainSeed.cpp
     src/app/iggy3d/creative/tools/TerrainSculpt.cpp
     src/app/iggy3d/creative/tools/TerrainStamp.cpp
+    src/app/iggy3d/creative/tools/TerrainStampLibrary.cpp
     src/app/iggy3d/creative/tools/ToolOptions.cpp
     src/app/iggy3d/creative/tools/ToolSettingLabels.cpp
     src/app/iggy3d/creative/tools/ToolSettings.cpp
@@ -102,12 +104,14 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/AssetScatter.cpp
     src/app/iggy3d/creative/tools/AttachmentSnap.cpp
     src/app/iggy3d/creative/tools/Select.cpp
+    src/app/iggy3d/creative/tools/SelectionResolution.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Group.cpp
     src/app/iggy3d/creative/tools/SelectionPlacement.cpp
     src/app/iggy3d/creative/tools/StructuralPlacement.cpp
     src/app/iggy3d/creative/tools/SelectionTransformCommands.cpp
     src/app/iggy3d/creative/tools/Pattern.cpp
+    src/app/iggy3d/creative/tools/RecipeTransform.cpp
     src/app/iggy3d/creative/tools/MaterialBrush.cpp
     src/app/iggy3d/creative/tools/MaterialBrushPath.cpp
     src/app/iggy3d/creative/tools/ShapeBrush.cpp
@@ -118,6 +122,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/VolumeFill.cpp
     src/app/iggy3d/creative/tools/VolumeObjects.cpp
     src/app/iggy3d/creative/tools/Measure.cpp
+    src/app/iggy3d/creative/tools/MeasurementAnnotation.cpp
     src/app/iggy3d/creative/spatial/Snap.cpp
     src/app/iggy3d/creative/document/DocumentSnap.cpp
     src/app/iggy3d/creative/adapters/RoomBake.cpp
@@ -128,23 +133,39 @@ target_sources(iggy3d
     src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
     src/app/iggy3d/creative/validation/MapValidation.cpp
+    src/app/iggy3d/creative/play/PlayerSpawn.cpp
     src/app/iggy3d/creative/play/PlayPreparation.cpp
     src/app/iggy3d/creative/play/RuntimeInteractableCatalog.cpp
     src/app/iggy3d/creative/play/RuntimeInteractables.cpp
+    src/app/iggy3d/creative/play/RuntimeDoors.cpp
     src/app/iggy3d/creative/play/RuntimeLogicPlanning.cpp
     src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp
     src/app/iggy3d/creative/play/RuntimeSandbox.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/recipes/CreativeRecipe.cpp
     src/app/iggy3d/creative/recipes/BuildingRecipe.cpp
+    src/app/iggy3d/creative/recipes/DoorRecipe.cpp
+    src/app/iggy3d/creative/recipes/RampRecipe.cpp
+    src/app/iggy3d/creative/recipes/StairRecipe.cpp
+    src/app/iggy3d/creative/recipes/WindowRecipe.cpp
     src/app/iggy3d/creative/recipes/StructuralRoofRecipe.cpp
     src/app/iggy3d/creative/recipes/StructuralSurfaceRecipe.cpp
     src/app/iggy3d/creative/recipes/StructuralWallRecipe.cpp
     src/app/iggy3d/creative/recipes/ObjectLibraryRecipe.cpp
+    src/app/iggy3d/creative/recipes/PatternRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainGeneration.cpp
     src/app/iggy3d/creative/recipes/TerrainComposition.cpp
     src/app/iggy3d/creative/recipes/TerrainGrounding.cpp
+    src/app/iggy3d/creative/recipes/TerrainLandform.cpp
+    src/app/iggy3d/creative/recipes/TerrainGradeAdapters.cpp
+    src/app/iggy3d/creative/recipes/TerrainGradeRecipe.cpp
+    src/app/iggy3d/creative/recipes/TerrainPathSource.cpp
+    src/app/iggy3d/creative/recipes/RoadRecipe.cpp
+    src/app/iggy3d/creative/recipes/WatercourseRecipe.cpp
+    src/app/iggy3d/creative/recipes/BridgeRecipe.cpp
+    src/app/iggy3d/creative/recipes/RetainingEdgeRecipe.cpp
+    src/app/iggy3d/creative/recipes/TerrainRegionRecipe.cpp
     src/app/iggy3d/creative/recipes/TerrainOperation.cpp
     src/app/iggy3d/creative/world/WorldLayout.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingCompile.cpp
@@ -164,7 +185,15 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutPlanHitTest.cpp
     src/app/iggy3d/creative/world/WorldLayoutRoofs.cpp
     src/app/iggy3d/creative/world/WorldLayoutRooms.cpp
+    src/app/iggy3d/creative/world/WorldLayoutOpenings.cpp
+    src/app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.cpp
+    src/app/iggy3d/creative/world/WorldLayoutRoomOperations.cpp
+    src/app/iggy3d/creative/world/WorldLayoutWallOperations.cpp
+    src/app/iggy3d/creative/world/WorldLayoutRoomTopology.cpp
     src/app/iggy3d/creative/world/WorldLayoutVerticalConnectors.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingUsability.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingRepairs.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingTraversal.cpp
     src/app/iggy3d/creative/world/WorldLayoutProvenance.cpp
     src/app/iggy3d/creative/world/WorldLayoutAdoption.cpp
     src/app/iggy3d/creative/world/WorldLayoutBlockout.cpp
@@ -174,6 +203,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplates.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplateSync.cpp
     src/app/iggy3d/creative/world/WorldLayoutBuildingTemplateRefresh.cpp
+    src/app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.cpp
     src/app/iggy3d/creative/world/WorldLayoutTransform.cpp
     src/app/iggy3d/creative/world/WorldLayoutApply.cpp
     src/app/iggy3d/creative/world/WorldLayoutCodec.cpp
@@ -182,10 +212,12 @@ target_sources(iggy3d
     src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp
     src/app/iggy3d/creative/Facade.cpp
+    src/app/iggy3d/creative/FacadeMeasurementAnnotations.cpp
     src/app/iggy3d/creative/FacadeDocumentMutations.cpp
     src/app/iggy3d/creative/FacadeObjectCommands.cpp
     src/app/iggy3d/creative/FacadeMoveDrag.cpp
     src/app/iggy3d/creative/camera/Fly.cpp
+    src/app/iggy3d/creative/camera/ViewportNavigation.cpp
     src/app/iggy3d/map_maker/Grid.cpp
     src/app/iggy3d/creative/render/WireframeDebugLines.cpp
     src/app/iggy3d/creative/render/CreativeOverlayFrame.cpp
@@ -211,6 +243,7 @@ target_sources(iggy3d
     src/content/assets/ImageDecode.cpp
     src/content/assets/StaticMeshAsset.cpp
     src/content/assets/StaticMeshAuthoringMetadata.cpp
+    src/content/assets/StaticMeshThumbnail.cpp
     src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
@@ -348,9 +381,10 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorAssetScatter.cpp
   apps/iggy3d_creative/EditorAuthoredAssets.cpp
   apps/iggy3d_creative/EditorAssets.cpp
-  apps/iggy3d_creative/EditorToolCapabilities.cpp
   apps/iggy3d_creative/EditorLogicLinks.cpp
+  apps/iggy3d_creative/EditorMeasurement.cpp
   apps/iggy3d_creative/EditorCatalog.cpp
+  apps/iggy3d_creative/EditorCatalogAssetOverlay.cpp
   apps/iggy3d_creative/EditorToolWheel.cpp
   apps/iggy3d_creative/EditorCatalogLayout.cpp
   apps/iggy3d_creative/EditorCatalogOverlay.cpp
@@ -360,7 +394,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorControlsUi.cpp
   apps/iggy3d_creative/EditorDraftingStyle.cpp
   apps/iggy3d_creative/EditorToolGlyphs.cpp
-  apps/iggy3d_creative/EditorToolPresentation.cpp
+  apps/iggy3d_creative/EditorToolDescriptor.cpp
+  apps/iggy3d_creative/EditorToolDescriptorOptions.cpp
   apps/iggy3d_creative/EditorToolOptions.cpp
   apps/iggy3d_creative/EditorToolOptionsPanel.cpp
   apps/iggy3d_creative/EditorObjectActions.cpp
@@ -392,20 +427,25 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldLayoutElevationProjection.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationEditing.cpp
   apps/iggy3d_creative/EditorWorldLayoutElevationPanel.cpp
+  apps/iggy3d_creative/EditorWorldLayoutRoofs.cpp
   apps/iggy3d_creative/EditorWorldLayoutDiagnostics.cpp
   apps/iggy3d_creative/EditorWorldLayoutLevels.cpp
   apps/iggy3d_creative/EditorWorldLayoutHistory.cpp
   apps/iggy3d_creative/EditorWorldLayoutHierarchy.cpp
   apps/iggy3d_creative/EditorWorldLayoutHierarchyPanel.cpp
   apps/iggy3d_creative/EditorWorldLayoutProperties.cpp
+  apps/iggy3d_creative/EditorWorldLayoutBuildingRepairs.cpp
+  apps/iggy3d_creative/EditorWorldLayoutRoofApertures.cpp
   apps/iggy3d_creative/EditorWorldLayoutBlockouts.cpp
   apps/iggy3d_creative/EditorWorldLayoutShells.cpp
+  apps/iggy3d_creative/EditorWorldLayoutRoomOperations.cpp
   apps/iggy3d_creative/EditorWorldLayoutSource.cpp
   apps/iggy3d_creative/EditorWorldLayoutStructures.cpp
   apps/iggy3d_creative/EditorWorldLayoutVerticalConnectors.cpp
   apps/iggy3d_creative/EditorWorldLayoutGroups.cpp
   apps/iggy3d_creative/EditorWorldLayoutTemplates.cpp
   apps/iggy3d_creative/EditorWorldLayoutTopography.cpp
+  apps/iggy3d_creative/EditorWorldLayoutTerrainRegion.cpp
   apps/iggy3d_creative/EditorConnectedFill.cpp
   apps/iggy3d_creative/EditorSurfaceExtrude.cpp
   apps/iggy3d_creative/EditorTerrain.cpp
@@ -419,6 +459,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorTerrainRegion.cpp
   apps/iggy3d_creative/EditorTerrainSculpt.cpp
   apps/iggy3d_creative/EditorTerrainStamp.cpp
+  apps/iggy3d_creative/EditorTerrainStampLibrary.cpp
   apps/iggy3d_creative/EditorMaterialStroke.cpp
   apps/iggy3d_creative/EditorStructuralPlacement.cpp
   apps/iggy3d_creative/EditorPattern.cpp
@@ -436,6 +477,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorFrustumCull.cpp
   apps/iggy3d_creative/EditorPathEditing.cpp
   apps/iggy3d_creative/EditorMovingPlatformPreview.cpp
+  apps/iggy3d_creative/EditorPlayerSpawnPreview.cpp
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPlayMode.cpp
   apps/iggy3d_creative/EditorPlayLogicOverlay.cpp
@@ -454,6 +496,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopCommandCamera.cpp
   apps/iggy3d_creative/EditorDesktopAssetCommands.cpp
   apps/iggy3d_creative/EditorDesktopDocumentCommands.cpp
+  apps/iggy3d_creative/EditorDesktopMeasurementCommands.cpp
   apps/iggy3d_creative/EditorDesktopObjectCommands.cpp
   apps/iggy3d_creative/EditorDesktopTerrainCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutBuildingCommands.cpp
@@ -463,9 +506,12 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopWorldLayoutStructureCommands.cpp
   apps/iggy3d_creative/EditorDesktopUi.cpp
   apps/iggy3d_creative/EditorDesktopCommands.cpp
+  apps/iggy3d_creative/EditorDesktopHistoryModel.cpp
   apps/iggy3d_creative/EditorDesktopModel.cpp
   apps/iggy3d_creative/EditorDesktopOutliner.cpp
   apps/iggy3d_creative/EditorDesktopInspector.cpp
+  apps/iggy3d_creative/EditorDesktopTransformInspector.cpp
+  apps/iggy3d_creative/EditorDesktopVolumeInspector.cpp
   apps/iggy3d_creative/EditorDesktopTerrainGeneration.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedSourceInspector.cpp
   apps/iggy3d_creative/EditorDesktopGeneratedBuildingInspector.cpp
@@ -475,6 +521,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopWorldLayoutInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp
+  apps/iggy3d_creative/EditorMapValidationDiagnostics.cpp
+  apps/iggy3d_creative/EditorMapValidationPanel.cpp
   apps/iggy3d_creative/EditorDesktopPanels.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvas.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasDraw.cpp

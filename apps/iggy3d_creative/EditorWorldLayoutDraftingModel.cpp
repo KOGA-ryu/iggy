@@ -8,6 +8,44 @@
 #include <span>
 
 namespace iggy3d_creative_app {
+CreativeEditorWorldLayoutInspectionStatus
+composeCreativeEditorWorldLayoutInspectionStatus(
+    const CreativeEditorWorldLayoutState& state) {
+  const CreativeEditorWorldLayoutInspection inspection =
+      inspectCreativeEditorWorldLayout(state);
+  CreativeEditorWorldLayoutInspectionStatus status;
+  status.validity = inspection.previewValidity;
+  switch (inspection.previewValidity) {
+    case CreativeEditorWorldLayoutPreviewValidity::None:
+      status.text = "Authored";
+      break;
+    case CreativeEditorWorldLayoutPreviewValidity::Valid:
+      status.text = "Preview valid";
+      break;
+    case CreativeEditorWorldLayoutPreviewValidity::Invalid:
+      status.text = "Preview invalid";
+      break;
+    case CreativeEditorWorldLayoutPreviewValidity::Count:
+      status.text = "Inspection invalid";
+      break;
+  }
+
+  std::string_view stableKey;
+  if (inspection.authoredSource.table != cr::CreativeWorldLayoutTable::None) {
+    stableKey = creativeEditorWorldLayoutSourceStableKey(
+        state, inspection.authoredSource.table,
+        inspection.authoredSource.index);
+  }
+  if (stableKey.empty() && inspection.source != nullptr) {
+    stableKey = inspection.source->stableKey;
+  }
+  if (!stableKey.empty()) {
+    status.text += " | ";
+    status.text.append(stableKey);
+  }
+  return status;
+}
+
 CreativeEditorWorldLayoutStatusLine composeCreativeEditorWorldLayoutStatusLine(
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutTopographyState& topography,
@@ -27,11 +65,16 @@ CreativeEditorWorldLayoutStatusLine composeCreativeEditorWorldLayoutStatusLine(
     line.cursor += " | ";
     line.cursor.append(hover.semanticRole);
   }
+  const float pixelsPerCell =
+      state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation
+          ? state.elevationPixelsPerCell
+          : state.canvasPixelsPerCell;
   const long long zoomPercent = std::llround(
-      static_cast<double>(state.canvasPixelsPerCell) * 100.0 /
+      static_cast<double>(pixelsPerCell) * 100.0 /
       static_cast<double>(kCreativeEditorWorldLayoutStatusZoomBaselinePixels));
   std::snprintf(buffer, sizeof buffer, "Zoom %lld%%", zoomPercent);
   line.zoom = buffer;
+  line.inspection = composeCreativeEditorWorldLayoutInspectionStatus(state);
   if (state.tool == CreativeEditorWorldLayoutTool::CatalogAsset) {
     const char* snapName = "grid";
     switch (state.catalogPlacement.snapMode) {
@@ -131,17 +174,17 @@ measureCreativeEditorWorldLayoutTerrainRegion(
     const CreativeEditorWorldLayoutTerrainRegionState& region) noexcept {
   CreativeEditorWorldLayoutTerrainRegionMetrics metrics;
   if (!region.regionValid ||
-      !cr::isValidCreativeTerrainHeightFieldBounds(region.bounds)) {
+      !cr::isValidCreativeTerrainHeightFieldBounds(region.recipe.bounds)) {
     return metrics;
   }
   metrics.present = true;
-  metrics.minimumX = region.bounds.minimum.x;
-  metrics.minimumZ = region.bounds.minimum.z;
-  metrics.widthCells = region.bounds.widthCells;
-  metrics.depthCells = region.bounds.depthCells;
+  metrics.minimumX = region.recipe.bounds.minimum.x;
+  metrics.minimumZ = region.recipe.bounds.minimum.z;
+  metrics.widthCells = region.recipe.bounds.widthCells;
+  metrics.depthCells = region.recipe.bounds.depthCells;
   metrics.candidateCellCount =
-      static_cast<std::uint32_t>(region.bounds.widthCells) *
-      static_cast<std::uint32_t>(region.bounds.depthCells);
+      static_cast<std::uint32_t>(region.recipe.bounds.widthCells) *
+      static_cast<std::uint32_t>(region.recipe.bounds.depthCells);
   return metrics;
 }
 

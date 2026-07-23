@@ -4,6 +4,7 @@
 #include <array>
 
 #include "EditorState.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTerrainPaint.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -155,6 +156,9 @@ void refreshHeldItemPreview(
             request.editor.terrain, request.appState.facade.document(),
             request.editor));
       }
+      return;
+    case cr::CreativeHeldItemPreviewMode::Measurement:
+      static_cast<void>(previewCreativeEditorMeasurementPoint(request));
       return;
     case cr::CreativeHeldItemPreviewMode::None:
     case cr::CreativeHeldItemPreviewMode::Count:

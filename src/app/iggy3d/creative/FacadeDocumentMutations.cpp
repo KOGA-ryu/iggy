@@ -107,6 +107,33 @@ CreativeTerrainOperationMutationReceipt Facade::applyTerrainOperationMutation(
   return receipt;
 }
 
+CreativePatternRecipeTranslationReceipt Facade::applyPatternRecipeTranslation(
+    const CreativePatternRecipeTranslationPlan& plan) {
+  recordCommandAttempt(stats_);
+  CreativePatternRecipeTranslationReceipt receipt =
+      applyCreativePatternRecipeTranslation(document_, plan);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeTerrainOperationTranslationReceipt
+Facade::applyTerrainOperationTranslation(
+    const CreativeTerrainOperationTranslationPlan& plan) {
+  recordCommandAttempt(stats_);
+  CreativeTerrainOperationTranslationReceipt receipt =
+      applyCreativeTerrainOperationTranslation(document_, plan);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
 CreativeTerrainMaterialMutationReceipt Facade::applyTerrainMaterialEdits(
     std::span<const CreativeTerrainMaterialEdit> edits) {
   recordCommandAttempt(stats_);
@@ -243,6 +270,24 @@ CreativeHierarchyBatchRemoveReceipt Facade::removeDocumentObjectsAtomically(
   recordCommandAttempt(stats_);
   CreativeHierarchyBatchRemoveReceipt receipt =
       removeCreativeObjectHierarchiesAtomically(document_, objectIds);
+  if (!receipt.accepted) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+  for (CreativeObjectId objectId : receipt.removedObjectIds) {
+    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+                                       selectionState_, measurementState_,
+                                       ghostState_);
+  }
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeSemanticDeleteReceipt Facade::deleteDocumentObjectsSemantically(
+    std::span<const CreativeObjectId> objectIds) {
+  recordCommandAttempt(stats_);
+  CreativeSemanticDeleteReceipt receipt =
+      deleteDocumentObjectsSemanticallyAtomically(document_, objectIds);
   if (!receipt.accepted) {
     recordCommandFailure(stats_);
     return receipt;

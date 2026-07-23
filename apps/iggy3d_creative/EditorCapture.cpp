@@ -670,7 +670,7 @@ void runCreativeEditorCaptureScenarioFrame(
   captureStep.moveHeldAxisForX = heldAxisForGrabbedAxis(GizmoAxis::X);
   captureStep.moveHeldAxisForZ = heldAxisForGrabbedAxis(GizmoAxis::Z);
   captureStep.deleteSelected = [&](std::string_view source) {
-    return deleteSelectedObject(appState, source, &appState.history);
+    return deleteSelectedObjectsWithUndo(appState, source, &appState.history);
   };
   runStandaloneCaptureScenarioStep(captureStep);
 }

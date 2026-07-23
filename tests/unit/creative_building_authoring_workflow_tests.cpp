@@ -4,6 +4,7 @@
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingUsability.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
@@ -93,7 +94,7 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
   blockout.shell.roofThicknessLayers = 1U;
   blockout.pattern = cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
   blockout.connectRooms = false;
-  blockout.facade.includeEntrance = false;
+  blockout.facade.includeEntrance = true;
   blockout.facade.includeExteriorWindows = false;
   blockout.storeys.count = 2U;
   blockout.storeys.connectStoreys = true;
@@ -108,7 +109,7 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
                   editor.worldLayout.source.levels.size() == 2U &&
                   editor.worldLayout.source.rooms.size() == 2U &&
                   editor.worldLayout.source.verticalConnectors.size() == 1U &&
-                  editor.worldLayout.source.openings.empty() &&
+                  editor.worldLayout.source.openings.size() == 1U &&
                   appState.facade.document().objectCount() == 0U &&
                   cr::creativeUndoDepth(appState.history) == 0U,
               "desktop command stages one complete two-storey recipe")) {
@@ -129,6 +130,8 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
                             cr::CreativeObjectKind::Roof) == 1U &&
                   countKind(appState.facade.document(),
                             cr::CreativeObjectKind::Stair) == 1U &&
+                  countKind(appState.facade.document(),
+                            cr::CreativeObjectKind::Door) == 1U &&
                   cr::creativeUndoDepth(appState.history) == 1U,
               "generation installs floors, ceiling, roof, and stair atomically")) {
     return false;
@@ -193,11 +196,11 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
   if (!expect(doorTool.accepted && doorPlaced.accepted &&
                   doorPlaced.changed && doorPlaced.worldLayoutChanged &&
                   doorPlaced.sceneChanged &&
-                  editor.worldLayout.source.openings.size() == 1U &&
-                  editor.worldLayout.source.openings[0].hostKind ==
+                  editor.worldLayout.source.openings.size() == 2U &&
+                  editor.worldLayout.source.openings[1].hostKind ==
                       cr::CreativeWorldLayoutOpeningHostKind::Wall &&
-                  editor.worldLayout.source.openings[0].wallIndex == 0U &&
-                  editor.worldLayout.source.openings[0].kind ==
+                  editor.worldLayout.source.openings[1].wallIndex == 0U &&
+                  editor.worldLayout.source.openings[1].kind ==
                       cr::CreativeBuildingOpeningKind::Door &&
                   cr::creativeUndoDepth(appState.history) == wallUndoDepth + 2U,
               "door point snaps to the authored partition and commits once")) {
@@ -214,10 +217,10 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
   if (!expect(windowTool.accepted && windowPlaced.accepted &&
                   windowPlaced.changed && windowPlaced.worldLayoutChanged &&
                   windowPlaced.sceneChanged &&
-                  editor.worldLayout.source.openings.size() == 2U &&
-                  editor.worldLayout.source.openings[1].hostKind ==
+                  editor.worldLayout.source.openings.size() == 3U &&
+                  editor.worldLayout.source.openings[2].hostKind ==
                       cr::CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-                  editor.worldLayout.source.openings[1].kind ==
+                  editor.worldLayout.source.openings[2].kind ==
                       cr::CreativeBuildingOpeningKind::Window &&
                   cr::creativeUndoDepth(appState.history) == wallUndoDepth + 3U,
               "window point snaps to the exterior shell and commits once")) {
@@ -290,10 +293,17 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
       iggy3d::buildSpatialSurfaceSet(roomBake.room);
   const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
       iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
-  if (!expect(countKind(authored, cr::CreativeObjectKind::Door) == 1U &&
+  cr::CreativeWorldLayoutBuildingUsabilityConfig usabilityConfig;
+  usabilityConfig.gridCellSizeMeters = authored.gridSettings().cellSizeMeters;
+  const cr::CreativeWorldLayoutBuildingUsabilityReceipt usability =
+      cr::validateCreativeWorldLayoutBuildingUsability(
+          {&editor.worldLayout.source, &authored, usabilityConfig});
+  if (!expect(countKind(authored, cr::CreativeObjectKind::Door) == 2U &&
                   countKind(authored, cr::CreativeObjectKind::Window) == 1U &&
                   allObjectsRetainSemanticOwnership(
                       authored, editor.worldLayout.source) &&
+                  usability.accepted && usability.usable &&
+                  usability.reachableRoomCount == 2U &&
                   roomBake.receipt.accepted &&
                   roomBake.receipt.objectCount == authored.objectCount() &&
                   roomBake.receipt.bakedSpatialSurfaceCount > 0U && physics.ok &&
@@ -325,7 +335,7 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
                     cr::creativeUndoDepth(appState.history) ==
                         propertyUndoDepth + 1U &&
                     countKind(appState.facade.document(),
-                              cr::CreativeObjectKind::Door) == 1U &&
+                              cr::CreativeObjectKind::Door) == 2U &&
                     countKind(appState.facade.document(),
                               cr::CreativeObjectKind::Window) == 1U,
                 "undo and redo restore source and generated scene together");

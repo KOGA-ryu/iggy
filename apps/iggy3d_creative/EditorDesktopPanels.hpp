@@ -6,6 +6,10 @@
 #include "EditorDesktopUi.hpp"
 #include "EditorState.hpp"
 
+namespace iggy3d {
+struct StaticMeshAssetCatalog;
+}
+
 namespace iggy3d_creative_app {
 
 // Renders the main menu bar + Save As modal, emitting semantic command IDs
@@ -27,6 +31,7 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands);
 

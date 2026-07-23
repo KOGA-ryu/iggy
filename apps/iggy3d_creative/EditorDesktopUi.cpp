@@ -52,8 +52,8 @@ bool creativeDesktopShellEnabledForLaunch(bool desktopUiRequested,
 bool beginCreativeEditorDesktopUiFrame(CreativeEditorDesktopUiState& desktopUi,
                                        iggy3d::VulkanBackend& backend) {
   desktopUi.frameActive = false;
-  desktopUi.contentViewport = {};  // sentinel: scene fills the whole window
   if (!desktopUi.shellEnabled) {
+    desktopUi.contentViewport = {};  // sentinel: scene fills the whole window
     return false;
   }
   if (!backend.beginExternalUiFrame()) {
@@ -68,11 +68,11 @@ namespace {
 // Reserved height for the bottom status bar so the dockspace never overlaps it.
 constexpr float kStatusBarReserveScale = 1.0F;
 
-// Builds the default docked arrangement: Project left (~18%), Inspector right
-// (~24%), Diagnostics bottom (~22%), a thin toolbar above the central 3D
-// viewport. Ratios are of the shrinking node, so later splits compensate for
-// earlier ones to hit the target fractions of the whole workspace.
-void buildDefaultDesktopLayout(ImGuiID dockspaceId, ImVec2 workspaceSize) {
+// Builds the docked arrangement. World Layout receives a sibling drafting node
+// rather than consuming the central passthrough node, so 2D authoring and 3D
+// inspection remain visible together.
+void buildDefaultDesktopLayout(ImGuiID dockspaceId, ImVec2 workspaceSize,
+                               CreativeDesktopDockLayoutSpec layout) {
   ImGui::DockBuilderRemoveNode(dockspaceId);
   ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_PassthruCentralNode |
                                              ImGuiDockNodeFlags_DockSpace);
@@ -93,15 +93,44 @@ void buildDefaultDesktopLayout(ImGuiID dockspaceId, ImVec2 workspaceSize) {
   const ImGuiID toolbarId = ImGui::DockBuilderSplitNode(
       centerId, ImGuiDir_Up, toolbarFraction, nullptr, &centerId);
 
+  ImGuiID worldLayoutId = 0U;
+  if (layout.worldLayoutPanelVisible) {
+    worldLayoutId = ImGui::DockBuilderSplitNode(
+        centerId, ImGuiDir_Left, layout.worldLayoutPanelFraction, nullptr,
+        &centerId);
+  }
+
   ImGui::DockBuilderDockWindow("Project", leftId);
   ImGui::DockBuilderDockWindow("Inspector", rightId);
   ImGui::DockBuilderDockWindow("Diagnostics##bottom", bottomId);
+  ImGui::DockBuilderDockWindow("History##bottom", bottomId);
   ImGui::DockBuilderDockWindow("Toolbar##desktop", toolbarId);
-  ImGui::DockBuilderDockWindow("World Layout", centerId);
+  if (worldLayoutId != 0U) {
+    ImGui::DockBuilderDockWindow("World Layout", worldLayoutId);
+  }
   ImGui::DockBuilderFinish(dockspaceId);
 }
 
 }  // namespace
+
+CreativeDesktopDockLayoutSpec creativeDesktopDockLayoutSpec(
+    bool showWorldLayout) noexcept {
+  if (showWorldLayout) {
+    return {CreativeDesktopDockLayoutMode::WorldLayoutSplit,
+            /*worldLayoutPanelVisible=*/true,
+            /*threeDimensionalViewportVisible=*/true,
+            /*worldLayoutPanelFraction=*/0.5F};
+  }
+  return {CreativeDesktopDockLayoutMode::Standard,
+          /*worldLayoutPanelVisible=*/false,
+          /*threeDimensionalViewportVisible=*/true,
+          /*worldLayoutPanelFraction=*/0.0F};
+}
+
+bool creativeDesktopDockLayoutRebuildRequired(
+    bool dockLayoutBuilt, bool resetLayoutRequested) noexcept {
+  return !dockLayoutBuilt || resetLayoutRequested;
+}
 
 void layoutCreativeEditorDesktopDockspace(
     CreativeEditorDesktopUiState& desktopUi) {
@@ -132,8 +161,13 @@ void layoutCreativeEditorDesktopDockspace(
   ImGui::Begin("##creative_desktop_shell", nullptr, hostFlags);
   ImGui::PopStyleVar(3);
   const ImGuiID dockspaceId = ImGui::GetID("creative_desktop_dockspace");
-  if (!desktopUi.dockLayoutBuilt || desktopUi.resetLayoutRequested) {
-    buildDefaultDesktopLayout(dockspaceId, hostSize);
+  if (creativeDesktopDockLayoutRebuildRequired(
+          desktopUi.dockLayoutBuilt, desktopUi.resetLayoutRequested)) {
+    // Always seed the latent World Layout dock. ImGui collapses its empty node
+    // while the panel is hidden and restores the same user-adjusted node when
+    // it reopens; visibility changes must never rebuild the dockspace.
+    buildDefaultDesktopLayout(dockspaceId, hostSize,
+                              creativeDesktopDockLayoutSpec(true));
     desktopUi.dockLayoutBuilt = true;
     desktopUi.resetLayoutRequested = false;
   }
@@ -153,35 +187,78 @@ void endCreativeEditorDesktopFrame(CreativeEditorDesktopUiState& desktopUi) {
 
 CreativeDesktopPointerDecision decideCreativeDesktopPointerCapture(
     bool shellEnabled,
-    bool currentlyCaptured,
+    CreativeDesktopPointerCaptureMode currentMode,
     bool primaryPressedOverViewport,
+    bool primaryDown,
+    iggy3d::creative::CreativeInputModifierMask modifiers,
     bool viewportContext,
     bool windowFocused) noexcept {
   CreativeDesktopPointerDecision decision;
+  const bool orbitModifier =
+      (modifiers & iggy3d::creative::kCreativeInputModifierAlt) != 0U;
+  const bool panModifier =
+      orbitModifier &&
+      (modifiers & iggy3d::creative::kCreativeInputModifierShift) != 0U;
   if (!shellEnabled) {
-    decision.captured = false;
-    decision.changed = currentlyCaptured;
+    decision.changed = creativeDesktopPointerCaptured(currentMode);
     return decision;
   }
-  bool next = currentlyCaptured;
-  if (currentlyCaptured) {
-    if (!windowFocused || !viewportContext) {
-      next = false;
+  CreativeDesktopPointerCaptureMode next = currentMode;
+  if (creativeDesktopPointerCaptured(currentMode)) {
+    const bool dragGesture =
+        creativeDesktopPointerModeOwnsPrimaryAction(currentMode);
+    if (!windowFocused || !viewportContext ||
+        (dragGesture && !primaryDown)) {
+      next = CreativeDesktopPointerCaptureMode::None;
     }
   } else if (windowFocused && viewportContext && primaryPressedOverViewport) {
-    next = true;
+    next = panModifier ? CreativeDesktopPointerCaptureMode::Pan
+                       : orbitModifier
+                             ? CreativeDesktopPointerCaptureMode::Orbit
+                             : CreativeDesktopPointerCaptureMode::FlyLook;
     decision.consumePrimaryPress = true;
     decision.discardNextMouseDelta = true;
   }
-  decision.captured = next;
-  decision.changed = next != currentlyCaptured;
+  decision.mode = next;
+  decision.captured = creativeDesktopPointerCaptured(next);
+  decision.changed = next != currentMode;
   return decision;
 }
 
-bool creativeDesktopUiWantsInput(bool viewportPointerCaptured,
+bool creativeDesktopPointerCaptured(
+    CreativeDesktopPointerCaptureMode mode) noexcept {
+  return mode > CreativeDesktopPointerCaptureMode::None &&
+         mode < CreativeDesktopPointerCaptureMode::Count;
+}
+
+bool creativeDesktopPointerModeOwnsPrimaryAction(
+    CreativeDesktopPointerCaptureMode mode) noexcept {
+  return mode == CreativeDesktopPointerCaptureMode::Orbit ||
+         mode == CreativeDesktopPointerCaptureMode::Pan;
+}
+
+bool creativeDesktopMouseLookActive(
+    bool shellEnabled,
+    CreativeDesktopPointerCaptureMode mode) noexcept {
+  return !shellEnabled || mode == CreativeDesktopPointerCaptureMode::FlyLook;
+}
+
+bool creativeDesktopViewportDollyRequested(
+    CreativeDesktopPointerCaptureMode mode,
+    iggy3d::creative::CreativeInputModifierMask modifiers,
+    float wheelDelta,
+    bool viewportContext) noexcept {
+  return viewportContext && mode == CreativeDesktopPointerCaptureMode::None &&
+         (modifiers & iggy3d::creative::kCreativeInputModifierAlt) != 0U &&
+         std::isfinite(wheelDelta) && std::fabs(wheelDelta) > 1.0e-4F;
+}
+
+bool creativeDesktopUiWantsInput(
+                                 CreativeDesktopPointerCaptureMode pointerCaptureMode,
                                  bool imguiWantsMouse,
                                  bool imguiWantsKeyboard) noexcept {
-  return !viewportPointerCaptured && (imguiWantsMouse || imguiWantsKeyboard);
+  return !creativeDesktopPointerCaptured(pointerCaptureMode) &&
+         (imguiWantsMouse || imguiWantsKeyboard);
 }
 
 }  // namespace iggy3d_creative_app

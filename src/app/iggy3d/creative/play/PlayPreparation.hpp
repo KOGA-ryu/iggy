@@ -25,6 +25,8 @@ struct CreativePlayPreparationRequest {
   const CreativeDocument* document = nullptr;
   const StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
   std::string roomId = "creative_play";
+  std::string playerSpawnGroup =
+      std::string(kCreativeDefaultPlayerSpawnGroup);
   float reachabilityCellSizeMeters = 1.0F;
 };
 
@@ -34,7 +36,11 @@ struct CreativePlayActivationPayload {
   CreativeDocumentId documentId = kInvalidDocumentId;
   std::uint64_t documentRevision = 0;
   std::string roomId;
+  CreativeObjectId playerSpawnObjectId = kInvalidObjectId;
   RoomAnchorAsset playerSpawn;
+  CreativePlayerSpawnSettings playerSpawnSettings{};
+  float playerSpawnYawRadians = 0.0F;
+  Vec3 playerSpawnCameraPositionMeters;
   std::vector<CreativeRuntimeInteractableDefinition> interactables;
   std::vector<CreativeRuntimeLogicLink> logicLinks;
   RoomAsset room;

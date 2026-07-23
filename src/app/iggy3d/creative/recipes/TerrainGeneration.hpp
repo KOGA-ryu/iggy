@@ -1,13 +1,14 @@
 #pragma once
 
 #include "app/iggy3d/creative/document/TerrainHeightField.hpp"
+#include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 
 #include <cstdint>
 #include <string_view>
 
 namespace iggy3d::creative {
 
-inline constexpr std::uint32_t kCreativeTerrainGeneratorRecipeVersion = 1U;
+inline constexpr std::uint32_t kCreativeTerrainGeneratorRecipeVersion = 2U;
 inline constexpr std::uint8_t kCreativeTerrainGeneratorMaximumOctaves = 8U;
 inline constexpr double kCreativeTerrainGeneratorMinimumHorizontalScaleCells =
     1.0;
@@ -24,6 +25,15 @@ enum class CreativeTerrainGeneratorKind : std::uint8_t {
   Count,
 };
 
+enum class CreativeTerrainBiomeIntent : std::uint8_t {
+  Temperate,
+  Alpine,
+  Arid,
+  Wetland,
+  Custom,
+  Count,
+};
+
 struct CreativeTerrainGeneratorRecipe {
   std::uint32_t version = kCreativeTerrainGeneratorRecipeVersion;
   CreativeTerrainGeneratorKind kind =
@@ -37,6 +47,12 @@ struct CreativeTerrainGeneratorRecipe {
   double persistence = 0.5;
   double lacunarity = 2.0;
   double slopeDamping = 0.35;
+  bool paintMaterials = true;
+  CreativeTerrainBiomeIntent biomeIntent =
+      CreativeTerrainBiomeIntent::Temperate;
+  CreativeTerrainMaterial lowlandMaterial = CreativeTerrainMaterial::Grass;
+  CreativeTerrainMaterial highlandMaterial = CreativeTerrainMaterial::Stone;
+  std::uint16_t materialTransitionHeightCells = 11U;
 
   [[nodiscard]] friend bool operator==(
       const CreativeTerrainGeneratorRecipe&,
@@ -51,6 +67,7 @@ enum class CreativeTerrainGenerationStatus : std::uint8_t {
   InvalidParameters,
   EvaluationFailed,
   HeightFieldRejected,
+  MaterialFieldRejected,
   Ready,
 };
 
@@ -60,16 +77,20 @@ struct CreativeTerrainGenerationReceipt {
   CreativeTerrainGenerationStatus status =
       CreativeTerrainGenerationStatus::NotRequested;
   std::uint64_t generatedCellCount = 0U;
+  std::uint64_t evaluatedOctaveCount = 0U;
   std::uint64_t dampedContributionCount = 0U;
+  std::uint64_t generatedMaterialOverrideCount = 0U;
   std::uint16_t minimumHeightCells = 0U;
   std::uint16_t maximumHeightCells = 0U;
   std::uint64_t heightHash = 0U;
+  std::uint64_t materialHash = 0U;
   std::string_view reasonCode = "creative_terrain_generation_not_requested";
 };
 
 struct CreativeTerrainGenerationPlan {
   CreativeTerrainGeneratorRecipe recipe{};
   CreativeTerrainHeightField heightField;
+  CreativeTerrainMaterialField materialField;
 };
 
 struct CreativeTerrainGenerationResult {
@@ -84,6 +105,17 @@ struct CreativeTerrainGenerationResult {
 [[nodiscard]] bool parseCreativeTerrainGeneratorKind(
     std::string_view value,
     CreativeTerrainGeneratorKind& output) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeTerrainBiomeIntent intent) noexcept;
+[[nodiscard]] bool parseCreativeTerrainBiomeIntent(
+    std::string_view value,
+    CreativeTerrainBiomeIntent& output) noexcept;
+// Applies a named material preset by writing all durable material fields.
+// Custom leaves those fields untouched, so replay never depends on hidden
+// biome lookup behavior.
+void applyCreativeTerrainBiomeIntent(
+    CreativeTerrainGeneratorRecipe& recipe,
+    CreativeTerrainBiomeIntent intent) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeTerrainGenerationStatus status) noexcept;
 

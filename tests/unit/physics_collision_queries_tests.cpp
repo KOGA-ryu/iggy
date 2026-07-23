@@ -435,6 +435,28 @@ bool segmentAnyHitRejectsInvalidInputs() {
          expect(!nonfiniteToStartInside, "nonfinite to clears start inside");
 }
 
+bool segmentOcclusionFilterPreservesPhysicalHits() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      colliderAt({1U}, {2.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
+  colliders[0].occludesVision = false;
+  bool startInside = true;
+  const bool physical = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool occluded = iggy3d::segmentOccludedByAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  colliders[0].occludesVision = true;
+  const bool opaque = iggy3d::segmentOccludedByAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  return expect(physical, "transparent collider remains a physical hit") &&
+         expect(!occluded && !startInside,
+                "transparent collider is skipped by sight query") &&
+         expect(opaque, "opaque collider blocks sight query");
+}
+
 bool sweptAabbHitsMissesSensorsAndZeroDisplacement() {
   std::vector<iggy3d::PhysicsAabbCollider> colliders{
       colliderAt({1U}, {3.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
@@ -578,6 +600,7 @@ int main() {
                   segmentAnyHitReportsMissHitAndStartInside() &&
                   segmentAnyHitIgnoresSensorsAndUsesMargin() &&
                   segmentAnyHitRejectsInvalidInputs() &&
+                  segmentOcclusionFilterPreservesPhysicalHits() &&
                   sweptAabbHitsMissesSensorsAndZeroDisplacement() &&
                   groundCheckUsesSweptAabbAndSensorPolicy();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

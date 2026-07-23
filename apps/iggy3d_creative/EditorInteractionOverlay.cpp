@@ -6,6 +6,7 @@
 
 #include "EditorConnectedFill.hpp"
 #include "EditorGroup.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorPattern.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPreviewProxies.hpp"
@@ -14,6 +15,7 @@
 #include "EditorSurfaceExtrude.hpp"
 #include "EditorTerrain.hpp"
 #include "EditorTerrainPaint.hpp"
+#include "EditorToolDescriptor.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -48,6 +50,9 @@ namespace {
     const cr::CreativeToolSettings& settings,
     const CreativeMaterialBrushPresetBank& brushPresets,
     std::size_t slot) {
+  if (entry.kind >= cr::CreativeHeldItemKind::Count) {
+    return "--";
+  }
   switch (cr::describeCreativeHeldItem(entry.kind).hotbarLabelMode) {
     case cr::CreativeHeldItemHotbarLabelMode::DirectShape:
       return shapeHotbarLabel(entry.kind, settings);
@@ -137,7 +142,8 @@ void appendHeldQuickEditStatus(std::string& output,
 }
 
 void appendDirectShapeStatus(std::string& output,
-                             const CreativeEditorState& editor) {
+                             const CreativeEditorState& editor,
+                             CreativeEditorVolumeSettingsProfile settings) {
   output.append(" | ");
   output.append(cr::toString(editor.toolSettings.shapeBrushKind));
   if (editor.toolSettings.shapeBrushKind ==
@@ -147,6 +153,28 @@ void appendDirectShapeStatus(std::string& output,
   }
   output.append(" | ");
   output.append(cr::toString(editor.placeBrush));
+  switch (settings) {
+    case CreativeEditorVolumeSettingsProfile::Fill:
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeFillOverlapPolicy));
+      break;
+    case CreativeEditorVolumeSettingsProfile::Hollow:
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeHollowThickness));
+      output.push_back(' ');
+      output.append(cr::toString(editor.toolSettings.volumeHollowAlignment));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeHollowOpening));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeHollowCornerRule));
+      break;
+    case CreativeEditorVolumeSettingsProfile::None:
+    case CreativeEditorVolumeSettingsProfile::Replace:
+    case CreativeEditorVolumeSettingsProfile::Erase:
+    case CreativeEditorVolumeSettingsProfile::Clone:
+    case CreativeEditorVolumeSettingsProfile::Count:
+      break;
+  }
   if (editor.volume.selection.phase ==
       cr::CreativeVolumeSelectionPhase::FirstCorner) {
     output.append(" | Corner 1");
@@ -255,13 +283,17 @@ void appendTerrainControlStatus(std::string& output,
 
 void appendTerrainGradeStatus(std::string& output,
                               const CreativeEditorState& editor) {
-  if (editor.terrain.grade.anchorValid) {
+  if (editor.terrain.grade.active) {
     output.append(" | START ");
-    output.append(std::to_string(editor.terrain.grade.anchorCoord.x));
+    output.append(std::to_string(editor.terrain.grade.recipe.start.x));
     output.push_back(' ');
-    output.append(std::to_string(editor.terrain.grade.anchorCoord.z));
+    output.append(std::to_string(editor.terrain.grade.recipe.start.z));
+    output.append(" | END ");
+    output.append(std::to_string(editor.terrain.grade.recipe.end.x));
+    output.push_back(' ');
+    output.append(std::to_string(editor.terrain.grade.recipe.end.z));
   } else {
-    output.append(" | SET START ROD");
+    output.append(" | SELECT OR SET GRADE HANDLE");
   }
   appendHeldQuickEditStatus(output, editor);
 }
@@ -287,9 +319,12 @@ void appendTerrainProfileStatus(std::string& output,
   output.append(" | ");
   output.append(creativeEditorTerrainProfileQuickEditLabel(editor));
   if (editor.terrain.profile.preview.valid &&
-      !editor.terrain.profile.preview.plan.accepted) {
+      !editor.terrain.profile.preview.operationPreview.receipt.accepted) {
     output.append(" | ");
-    output.append(cr::toString(editor.terrain.profile.preview.plan.status));
+    const cr::CreativeTerrainOperationMutationReceipt& receipt =
+        editor.terrain.profile.preview.operationPreview.receipt;
+    output.append(receipt.replay.requested ? receipt.replay.reasonCode
+                                           : receipt.reasonCode);
   }
 }
 
@@ -304,10 +339,11 @@ void appendTerrainPathStatus(std::string& output,
   output.append(" | POINTS ");
   output.append(std::to_string(editor.terrain.path.pointCount));
   if (editor.terrain.path.preview.valid &&
-      editor.terrain.path.preview.pointCount >= 2U &&
-      !editor.terrain.path.preview.plan.accepted) {
+      editor.terrain.path.preview.recipe.points.size() >= 2U &&
+      !editor.terrain.path.preview.operationPreview.receipt.accepted) {
     output.append(" | ");
-    output.append(cr::toString(editor.terrain.path.preview.plan.status));
+    output.append(cr::toString(
+        editor.terrain.path.preview.operationPreview.receipt.status));
   }
 }
 
@@ -320,8 +356,8 @@ void appendTerrainRegionStatus(std::string& output,
         editor.terrain.region.stamp.preview;
     if (preview.valid) {
       output.append(" | ");
-      output.append(std::to_string(preview.plan.finalControlCount));
-      output.append(" RODS");
+      output.append(std::to_string(preview.plan.affectedCellCount));
+      output.append(" CELLS");
       if (!preview.plan.accepted) {
         output.append(" | ");
         output.append(cr::toString(preview.plan.status));
@@ -333,11 +369,13 @@ void appendTerrainRegionStatus(std::string& output,
       editor.terrain.region.preview;
   if (preview.valid) {
     output.append(" | ");
-    output.append(std::to_string(preview.plan.affectedControlCount));
-    output.append(" RODS");
-    if (!preview.plan.accepted) {
+    output.append(std::to_string(
+        static_cast<std::uint64_t>(preview.recipe.bounds.widthCells) *
+        preview.recipe.bounds.depthCells));
+    output.append(" CELLS");
+    if (!preview.operationPreview.receipt.accepted) {
       output.append(" | ");
-      output.append(cr::toString(preview.plan.status));
+      output.append(cr::toString(preview.operationPreview.receipt.status));
     }
   }
 }
@@ -480,11 +518,20 @@ std::string creativeMaterialBrushPresetHotbarLabel(
 }
 
 std::string creativeEditorHeldItemStatusLabel(
-    const CreativeEditorState& editor) {
+    const CreativeEditorState& editor,
+    const cr::CreativeMeasurementState* measurement) {
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  if (held.kind >= cr::CreativeHeldItemKind::Count) {
+    return "EMPTY SLOT | OPEN CATALOG TO ASSIGN";
+  }
+  const CreativeEditorToolDescriptor& tool =
+      describeCreativeEditorHeldItemTool(held.kind);
+  const cr::CreativeHeldItemDefinition& heldDefinition =
+      cr::describeCreativeHeldItem(held.kind);
   std::string output(cr::toString(held.kind));
-  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+  if (heldDefinition.interactionMode ==
+          cr::CreativeHeldItemInteractionMode::ObjectMove &&
       editor.interaction.structuralSpanEdit.available) {
     output.append(" | SPAN ENDS");
     if (editor.interaction.structuralSpanEdit.active) {
@@ -495,7 +542,8 @@ std::string creativeEditorHeldItemStatusLabel(
               : " | EDIT END");
     }
   }
-  if (held.kind == cr::CreativeHeldItemKind::ObjectMove &&
+  if (heldDefinition.interactionMode ==
+          cr::CreativeHeldItemInteractionMode::ObjectMove &&
       editor.interaction.movingPlatformPathEdit.available) {
     output.append(" | ROUTE ");
     output.append(std::to_string(
@@ -512,12 +560,12 @@ std::string creativeEditorHeldItemStatusLabel(
           editor.interaction.movingPlatformPathEdit.pointCount));
     }
   }
-  switch (cr::describeCreativeHeldItem(held.kind).statusMode) {
+  switch (heldDefinition.statusMode) {
     case cr::CreativeHeldItemStatusMode::MaterialBrush:
       appendMaterialBrushStatus(output, editor, held);
       break;
     case cr::CreativeHeldItemStatusMode::DirectShape:
-      appendDirectShapeStatus(output, editor);
+      appendDirectShapeStatus(output, editor, tool.volumeSettingsProfile);
       break;
     case cr::CreativeHeldItemStatusMode::LinearArray:
       appendLinearArrayStatus(output, editor);
@@ -530,16 +578,28 @@ std::string creativeEditorHeldItemStatusLabel(
       output.append(cr::toString(editor.toolSettings.terrainPaintMode));
       output.append(" | ");
       output.append(cr::toString(editor.toolSettings.terrainPaintMaterial));
+      output.append(" | FROM ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintSource));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintOpacity));
+      output.push_back(' ');
+      output.append(cr::toString(editor.toolSettings.terrainPaintBlend));
+      output.append(" | SLOPE ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintSlopeFilter));
+      output.append(" | HEIGHT ");
+      output.append(cr::toString(editor.toolSettings.terrainPaintHeightFilter));
       switch (editor.toolSettings.terrainPaintMode) {
         case cr::CreativeTerrainPaintMode::Brush:
           output.append(" | RADIUS ");
           output.append(cr::toString(editor.toolSettings.terrainPaintRadius));
+          output.append(" | ");
+          output.append(cr::toString(editor.toolSettings.terrainPaintHardness));
+          output.push_back(' ');
+          output.append(cr::toString(editor.toolSettings.terrainPaintMask));
           break;
         case cr::CreativeTerrainPaintMode::Connected:
           break;
         case cr::CreativeTerrainPaintMode::Region:
-          output.append(" | FROM ");
-          output.append(cr::toString(editor.toolSettings.terrainPaintSource));
           switch (editor.terrainPaint.regionPhase) {
             case CreativeEditorTerrainPaintRegionPhase::Empty:
               output.append(" | CORNER 1");
@@ -554,6 +614,12 @@ std::string creativeEditorHeldItemStatusLabel(
           break;
         case cr::CreativeTerrainPaintMode::Count:
           break;
+      }
+      if (editor.terrainPaint.preview.plan.requested) {
+        output.append(" | ");
+        output.append(std::to_string(
+            editor.terrainPaint.preview.plan.affectedCells.size()));
+        output.append(" CELLS");
       }
       appendHeldQuickEditStatus(output, editor);
       break;
@@ -601,9 +667,89 @@ std::string creativeEditorHeldItemStatusLabel(
       output.append(cr::toString(editor.toolSettings.roomFloorThickness));
       appendHeldQuickEditStatus(output, editor);
       break;
+    case cr::CreativeHeldItemStatusMode::Measurement:
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.measurementMode));
+      output.append(" | SNAP ");
+      output.append(cr::toString(editor.toolSettings.measurementSnapMode));
+      output.append(" | ");
+      output.append(measurement == nullptr
+                        ? std::string{"POINT 1"}
+                        : formatCreativeEditorMeasurementReadout(*measurement));
+      appendHeldQuickEditStatus(output, editor);
+      break;
+    case cr::CreativeHeldItemStatusMode::VolumeErase: {
+      output.append(" | FROM ");
+      output.append(editor.toolSettings.eraseSourceKind ==
+                            cr::CreativeObjectKind::Unknown
+                        ? std::string_view{"ANY"}
+                        : cr::toString(editor.toolSettings.eraseSourceKind));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeEraseMemberMask));
+      const cr::CreativeVolumeOperationReceipt& preview =
+          editor.volume.preview.receipt;
+      if (editor.volume.preview.valid && preview.requested && preview.accepted) {
+        output.append(" | ");
+        output.append(std::to_string(
+            cr::creativeVolumeChangedMemberCount(preview)));
+        output.append(" DELETE");
+        if (preview.protectedObjectCount > 0U) {
+          output.append(" | ");
+          output.append(std::to_string(preview.protectedObjectCount));
+          output.append(" SOURCE-OWNED");
+        }
+      } else if (editor.volume.preview.valid &&
+                 !preview.blockedObjectIds.empty()) {
+        output.append(" | BLOCKED ");
+        output.append(std::to_string(preview.blockedObjectIds.size()));
+      }
+      appendHeldQuickEditStatus(output, editor);
+      break;
+    }
+    case cr::CreativeHeldItemStatusMode::VolumeClone: {
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.cloneOffsetAxis));
+      output.append(" ");
+      output.append(cr::toString(editor.toolSettings.cloneOffsetDistance));
+      output.append(" | ROTATE ");
+      output.append(cr::toString(editor.toolSettings.cloneRotation));
+      output.append(" | MIRROR ");
+      output.append(cr::toString(editor.toolSettings.cloneMirror));
+      output.append(" | ");
+      output.append(cr::toString(editor.toolSettings.volumeCloneMemberMask));
+      output.append(" | VOXEL ");
+      output.append(cr::toString(editor.toolSettings.cloneVoxelOverlapPolicy));
+      const cr::CreativeVolumeOperationReceipt& preview =
+          editor.volume.preview.receipt;
+      if (editor.volume.preview.valid && preview.requested && preview.accepted) {
+        output.append(" | ");
+        output.append(std::to_string(
+            cr::creativeVolumeChangedMemberCount(preview)));
+        output.append(" CLONE");
+        if (preview.clonedPatternRecipeCount > 0U) {
+          output.append(" | ");
+          output.append(std::to_string(preview.clonedPatternRecipeCount));
+          output.append(" RECIPE");
+        }
+      }
+      appendHeldQuickEditStatus(output, editor);
+      break;
+    }
     case cr::CreativeHeldItemStatusMode::Material:
       output.append(" | ");
       output.append(cr::toString(held.objectKind));
+      if (tool.volumeSettingsProfile ==
+          CreativeEditorVolumeSettingsProfile::Replace) {
+        output.append(" | FROM ");
+        output.append(
+            editor.toolSettings.replaceSourceKind ==
+                    cr::CreativeObjectKind::Unknown
+                ? std::string_view{"ANY"}
+                : cr::toString(editor.toolSettings.replaceSourceKind));
+        output.append(" | ");
+        output.append(
+            cr::toString(editor.toolSettings.volumeReplaceMemberMask));
+      }
       if (creativeEditorUsesStructuralSpan(held)) {
         output.append(editor.interaction.structuralSpan.active
                           ? " | SET END"
@@ -678,7 +824,8 @@ void appendCreativeEditorInteractionOverlay(
     std::vector<iggy3d::RenderUiRect>& uiRects,
     std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines,
-    const cr::CreativeDocument* document) {
+    const cr::CreativeDocument* document,
+    const cr::CreativeMeasurementState* measurement) {
   if (drawableWidth == 0U || drawableHeight == 0U) {
     return;
   }
@@ -724,7 +871,8 @@ void appendCreativeEditorInteractionOverlay(
   }
 
   if (!inventoryModalOpen && !editor.transform.active) {
-    const std::string heldLabel = creativeEditorHeldItemStatusLabel(editor);
+    const std::string heldLabel =
+        creativeEditorHeldItemStatusLabel(editor, measurement);
     const std::int32_t heldLabelX = std::max(
         4, static_cast<std::int32_t>(drawableWidth / 2U) -
                static_cast<std::int32_t>(heldLabel.size() * 6U));
@@ -753,9 +901,13 @@ void appendCreativeEditorInteractionOverlay(
       cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
   const cr::CreativeHeldItemFrameMode heldFrameMode =
       cr::describeCreativeHeldItem(held.kind).frameMode;
+  const cr::CreativeHeldItemPreviewMode heldPreviewMode =
+      cr::describeCreativeHeldItem(held.kind).previewMode;
   if (!inventoryModalOpen && !editor.transform.active &&
+      held.kind < cr::CreativeHeldItemKind::Count &&
       editor.interaction.target.grid.valid &&
-      heldFrameMode != cr::CreativeHeldItemFrameMode::MaterialStroke) {
+      heldFrameMode != cr::CreativeHeldItemFrameMode::MaterialStroke &&
+      heldPreviewMode != cr::CreativeHeldItemPreviewMode::Measurement) {
     const cr::CreativeBounds& bounds =
         editor.interaction.target.grid.targetCellBounds;
     const cr::CreativeCoreVec3Conversion boxMin =

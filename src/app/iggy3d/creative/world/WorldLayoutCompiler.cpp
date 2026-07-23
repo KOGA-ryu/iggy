@@ -1,7 +1,9 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCompileInternal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
@@ -35,6 +37,60 @@ using world_layout_compile::validRect;
 using world_layout_compile::validStableKey;
 using world_layout_compile::validTerrainOwnership;
 using world_layout_compile::worldCoordinate;
+
+namespace {
+
+[[nodiscard]] constexpr std::string_view roofPartSuffix(
+    CreativeStructuralRoofPartKind kind) noexcept {
+  switch (kind) {
+    case CreativeStructuralRoofPartKind::FlatPanel:
+      return ".roof.flat";
+    case CreativeStructuralRoofPartKind::ShedPanel:
+      return ".roof.shed";
+    case CreativeStructuralRoofPartKind::GableFirst:
+      return ".roof.gable.first";
+    case CreativeStructuralRoofPartKind::GableSecond:
+      return ".roof.gable.second";
+    case CreativeStructuralRoofPartKind::HipNorth:
+      return ".roof.hip.north";
+    case CreativeStructuralRoofPartKind::HipEast:
+      return ".roof.hip.east";
+    case CreativeStructuralRoofPartKind::HipSouth:
+      return ".roof.hip.south";
+    case CreativeStructuralRoofPartKind::HipWest:
+      return ".roof.hip.west";
+    case CreativeStructuralRoofPartKind::Count:
+      break;
+  }
+  return {};
+}
+
+[[nodiscard]] constexpr std::string_view roofPartLabel(
+    CreativeStructuralRoofPartKind kind) noexcept {
+  switch (kind) {
+    case CreativeStructuralRoofPartKind::FlatPanel:
+      return " Roof Flat Panel";
+    case CreativeStructuralRoofPartKind::ShedPanel:
+      return " Roof Shed Panel";
+    case CreativeStructuralRoofPartKind::GableFirst:
+      return " Roof Gable Panel 1";
+    case CreativeStructuralRoofPartKind::GableSecond:
+      return " Roof Gable Panel 2";
+    case CreativeStructuralRoofPartKind::HipNorth:
+      return " Roof Hip North";
+    case CreativeStructuralRoofPartKind::HipEast:
+      return " Roof Hip East";
+    case CreativeStructuralRoofPartKind::HipSouth:
+      return " Roof Hip South";
+    case CreativeStructuralRoofPartKind::HipWest:
+      return " Roof Hip West";
+    case CreativeStructuralRoofPartKind::Count:
+      break;
+  }
+  return {};
+}
+
+}  // namespace
 
 CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeDocument& document,
@@ -72,6 +128,16 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     return result;
   }
   const CreativeWorldLayout& expanded = roomExpansion.expanded;
+  const CreativeWorldLayoutRoomGraph roomGraph =
+      layout.rooms.empty() ? CreativeWorldLayoutRoomGraph{}
+                           : buildCreativeWorldLayoutRoomGraph(layout);
+  if (!layout.rooms.empty() && !roomGraph.accepted) {
+    result.receipt.failedTable = CreativeWorldLayoutTable::Room;
+    result.receipt.failedIndex = roomGraph.failedRoomIndex;
+    setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+              roomGraph.reasonCode);
+    return result;
+  }
 
   result.plan.layoutKey = layout.stableKey;
   result.plan.sourceDocumentId = document.id();
@@ -165,6 +231,38 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const std::string key = childKey(
         layout.buildings[symbol.buildingIndex].stableKey, symbol.stableKey);
     if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Room, index,
+                     result.receipt)) {
+      return result;
+    }
+  }
+
+  std::vector<std::size_t> roofApertureCounts(layout.levels.size(), 0U);
+  for (std::size_t index = 0U; index < layout.roofApertures.size(); ++index) {
+    const CreativeWorldLayoutRoofAperture& symbol =
+        layout.roofApertures[index];
+    const bool finite = std::isfinite(symbol.minimumXCells) &&
+                        std::isfinite(symbol.maximumXCells) &&
+                        std::isfinite(symbol.minimumZCells) &&
+                        std::isfinite(symbol.maximumZCells);
+    if (symbol.levelIndex >= layout.levels.size() || symbol.name.empty() ||
+        symbol.kind >= CreativeStructuralRoofApertureKind::Count || !finite ||
+        symbol.minimumXCells >= symbol.maximumXCells ||
+        symbol.minimumZCells >= symbol.maximumZCells ||
+        !creativeWorldLayoutLevelIsTopmostOccupied(layout,
+                                                    symbol.levelIndex) ||
+        ++roofApertureCounts[symbol.levelIndex] >
+            kCreativeStructuralRoofApertureCapacity) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::RoofAperture;
+      result.receipt.failedIndex = index;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                "creative_world_layout_roof_aperture_invalid");
+      return result;
+    }
+    const CreativeWorldLayoutLevel& level = layout.levels[symbol.levelIndex];
+    const std::string key = childKey(
+        layout.buildings[level.buildingIndex].stableKey, symbol.stableKey);
+    if (!registerKey(stableKeys, key,
+                     CreativeWorldLayoutTable::RoofAperture, index,
                      result.receipt)) {
       return result;
     }
@@ -266,17 +364,14 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
 
   for (std::size_t index = 0U; index < layout.rooms.size(); ++index) {
     const CreativeWorldLayoutRoom& symbol = layout.rooms[index];
-    const CreativeRectangularRoomGeometryPlan geometry =
-        planCreativeWorldLayoutRoomGeometry(grid, layout, index);
     const CreativeWorldLayoutLevelDimensions dimensions =
         measureCreativeWorldLayoutLevelDimensions(grid, layout,
                                                   symbol.levelIndex);
-    if (!geometry.accepted || !dimensions.accepted ||
+    if (!dimensions.accepted ||
         dimensions.buildingIndex != symbol.buildingIndex) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Room;
       result.receipt.failedIndex = index;
-      result.receipt.kernelReasonCode =
-          geometry.accepted ? dimensions.reasonCode : geometry.reasonCode;
+      result.receipt.kernelReasonCode = dimensions.reasonCode;
       setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
                 "creative_world_layout_room_geometry_rejected");
       return result;
@@ -298,55 +393,77 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
             std::uint16_t layerCount, std::string_view suffix,
             std::string_view label,
             const CreativeWorldLayoutVerticalConnectorPlan* cutout) {
-          CreativeStructuralSurfaceRecipeRequest surface;
-          surface.kind = kind;
-          surface.layerCount = layerCount;
-          if (!worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                               symbol.footprint.minimum.x, surface.minimumX) ||
-              !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                               symbol.footprint.maximum.x, surface.maximumX) ||
-              !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                               symbol.footprint.minimum.z, surface.minimumZ) ||
-              !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                               symbol.footprint.maximum.z, surface.maximumZ) ||
-              !std::isfinite(anchorPlaneMeters)) {
-            result.receipt.failedTable = CreativeWorldLayoutTable::Room;
-            result.receipt.failedIndex = index;
-            setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
-                      "creative_world_layout_room_surface_invalid");
-            return false;
-          }
-          surface.anchorPlaneMeters = anchorPlaneMeters;
-
-          std::array<CreativeStructuralSurfaceRecipeResult,
-                     kCreativeStructuralSurfaceCutoutPieceCapacity>
-              pieces{};
-          std::size_t pieceCount = 1U;
-          if (cutout == nullptr) {
-            pieces[0] = planCreativeStructuralSurface(surface);
-            if (!pieces[0].accepted) {
-              result.receipt.kernelReasonCode = pieces[0].reasonCode;
+          std::vector<CreativeStructuralSurfaceRecipeResult> pieces;
+          const std::span<const CreativeWorldLayoutRect> sourceRects =
+              creativeWorldLayoutRoomSurfaceRects(roomGraph, index);
+          for (CreativeWorldLayoutRect sourceRect : sourceRects) {
+            CreativeStructuralSurfaceRecipeRequest surface;
+            surface.kind = kind;
+            surface.layerCount = layerCount;
+            if (!worldCoordinate(grid.origin.x, grid.cellSizeMeters,
+                                 sourceRect.minimum.x, surface.minimumX) ||
+                !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
+                                 sourceRect.maximum.x, surface.maximumX) ||
+                !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
+                                 sourceRect.minimum.z, surface.minimumZ) ||
+                !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
+                                 sourceRect.maximum.z, surface.maximumZ) ||
+                !std::isfinite(anchorPlaneMeters)) {
               result.receipt.failedTable = CreativeWorldLayoutTable::Room;
               result.receipt.failedIndex = index;
               setStatus(result.receipt,
-                        CreativeWorldLayoutStatus::KernelRejected,
-                        "creative_world_layout_room_surface_rejected");
+                        CreativeWorldLayoutStatus::InvalidSymbol,
+                        "creative_world_layout_room_surface_invalid");
               return false;
             }
-          } else {
+            surface.anchorPlaneMeters = anchorPlaneMeters;
+
+            const CreativeWorldLayoutRect intersection =
+                cutout == nullptr
+                    ? CreativeWorldLayoutRect{}
+                    : CreativeWorldLayoutRect{
+                          {std::max(sourceRect.minimum.x,
+                                    cutout->openingFootprint.minimum.x),
+                           std::max(sourceRect.minimum.z,
+                                    cutout->openingFootprint.minimum.z)},
+                          {std::min(sourceRect.maximum.x,
+                                    cutout->openingFootprint.maximum.x),
+                           std::min(sourceRect.maximum.z,
+                                    cutout->openingFootprint.maximum.z)}};
+            const bool intersects =
+                cutout != nullptr && validRect(intersection);
+            if (!intersects) {
+              const CreativeStructuralSurfaceRecipeResult planned =
+                  planCreativeStructuralSurface(surface);
+              if (!planned.accepted) {
+                result.receipt.kernelReasonCode = planned.reasonCode;
+                result.receipt.failedTable = CreativeWorldLayoutTable::Room;
+                result.receipt.failedIndex = index;
+                setStatus(result.receipt,
+                          CreativeWorldLayoutStatus::KernelRejected,
+                          "creative_world_layout_room_surface_rejected");
+                return false;
+              }
+              pieces.push_back(planned);
+              continue;
+            }
+            if (intersection.minimum == sourceRect.minimum &&
+                intersection.maximum == sourceRect.maximum) {
+              continue;
+            }
             CreativeStructuralSurfaceCutoutRequest cutoutRequest;
             cutoutRequest.surface = surface;
             if (!worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                                 cutout->openingFootprint.minimum.x,
+                                 intersection.minimum.x,
                                  cutoutRequest.cutoutMinimumX) ||
                 !worldCoordinate(grid.origin.x, grid.cellSizeMeters,
-                                 cutout->openingFootprint.maximum.x,
+                                 intersection.maximum.x,
                                  cutoutRequest.cutoutMaximumX) ||
                 !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                                 cutout->openingFootprint.minimum.z,
+                                 intersection.minimum.z,
                                  cutoutRequest.cutoutMinimumZ) ||
                 !worldCoordinate(grid.origin.z, grid.cellSizeMeters,
-                                 cutout->openingFootprint.maximum.z,
+                                 intersection.maximum.z,
                                  cutoutRequest.cutoutMaximumZ)) {
               result.receipt.failedTable =
                   CreativeWorldLayoutTable::VerticalConnector;
@@ -370,15 +487,24 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
                   "creative_world_layout_vertical_connector_cutout_rejected");
               return false;
             }
-            pieces = cut.pieces;
-            pieceCount = cut.pieceCount;
+            pieces.insert(pieces.end(), cut.pieces.begin(),
+                          cut.pieces.begin() +
+                              static_cast<std::ptrdiff_t>(cut.pieceCount));
+          }
+          if (pieces.empty()) {
+            result.receipt.failedTable = CreativeWorldLayoutTable::Room;
+            result.receipt.failedIndex = index;
+            setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                      "creative_world_layout_room_surface_consumed");
+            return false;
           }
 
-          for (std::size_t pieceIndex = 0U; pieceIndex < pieceCount;
+          const bool partitioned = pieces.size() > 1U || cutout != nullptr;
+          for (std::size_t pieceIndex = 0U; pieceIndex < pieces.size();
                ++pieceIndex) {
             const std::string localKey =
                 symbol.stableKey + std::string(suffix) +
-                (cutout == nullptr
+                (!partitioned
                      ? std::string{}
                      : ".part." + std::to_string(pieceIndex + 1U));
             const std::string key = childKey(
@@ -390,7 +516,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
             CreativeBuildingBoxSpec box{
                 kind, key,
                 symbol.name + std::string(label) +
-                    (cutout == nullptr
+                    (!partitioned
                          ? std::string{}
                          : " Part " + std::to_string(pieceIndex + 1U)),
                 pieces[pieceIndex].bounds};
@@ -412,8 +538,9 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     const CreativeWorldLayoutLevel& level =
         layout.levels[dimensions.levelIndex];
     const bool usesAuthoredLevelRoof =
-        level.roofStyle == CreativeStructuralRoofStyle::Gable ||
-        level.roofOverhangCells > 0.0;
+        level.roofStyle != CreativeStructuralRoofStyle::Flat ||
+        level.roofOverhangCells > 0.0 ||
+        roofApertureCounts[dimensions.levelIndex] > 0U;
     if (roof && usesAuthoredLevelRoof) {
       const bool firstRoomForLevel = std::none_of(
           layout.rooms.begin(), layout.rooms.begin() +
@@ -427,33 +554,70 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       const CreativeWorldLayoutRoofPlan roofPlan =
           planCreativeWorldLayoutRoof(grid, layout, dimensions.levelIndex);
       if (!roofPlan.accepted) {
-        result.receipt.failedTable = CreativeWorldLayoutTable::Level;
-        result.receipt.failedIndex = dimensions.levelIndex;
+        if (roofPlan.closure.failedApertureIndex <
+            roofPlan.sourceApertureCount) {
+          result.receipt.failedTable =
+              CreativeWorldLayoutTable::RoofAperture;
+          result.receipt.failedIndex =
+              roofPlan.sourceApertureIndices[
+                  roofPlan.closure.failedApertureIndex];
+        } else {
+          result.receipt.failedTable = CreativeWorldLayoutTable::Level;
+          result.receipt.failedIndex = dimensions.levelIndex;
+        }
         result.receipt.kernelReasonCode = roofPlan.reasonCode;
         setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
                   "creative_world_layout_roof_rejected");
         return result;
       }
-      constexpr std::array<std::string_view,
-                           kCreativeStructuralRoofPartCapacity>
-          kPartSuffixes{".roof.base", ".roof.slope.first",
-                        ".roof.slope.second"};
-      constexpr std::array<std::string_view,
-                           kCreativeStructuralRoofPartCapacity>
-          kPartLabels{" Roof Base", " Roof Slope 1", " Roof Slope 2"};
-      for (std::size_t partIndex = 0U;
-           partIndex < roofPlan.geometry.partCount; ++partIndex) {
-        const CreativeStructuralRoofPart& part =
-            roofPlan.geometry.parts[partIndex];
+      std::array<std::size_t, kCreativeStructuralRoofPartCapacity>
+          sourcePieceCounts{};
+      std::array<std::size_t, kCreativeStructuralRoofPartCapacity>
+          sourcePieceOrdinals{};
+      for (std::size_t pieceIndex = 0U;
+           pieceIndex < roofPlan.closure.pieceCount; ++pieceIndex) {
+        const std::size_t sourcePartIndex =
+            roofPlan.closure.pieces[pieceIndex].sourcePartIndex;
+        if (sourcePartIndex >= sourcePieceCounts.size()) {
+          result.receipt.failedTable = CreativeWorldLayoutTable::Level;
+          result.receipt.failedIndex = dimensions.levelIndex;
+          setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                    "creative_world_layout_roof_piece_owner_invalid");
+          return result;
+        }
+        ++sourcePieceCounts[sourcePartIndex];
+      }
+      for (std::size_t pieceIndex = 0U;
+           pieceIndex < roofPlan.closure.pieceCount; ++pieceIndex) {
+        const CreativeStructuralRoofAperturePiece& piece =
+            roofPlan.closure.pieces[pieceIndex];
+        const CreativeStructuralRoofPart& part = piece.part;
+        const std::string_view suffix = roofPartSuffix(part.partKind);
+        const std::string_view label = roofPartLabel(part.partKind);
+        if (suffix.empty() || label.empty()) {
+          result.receipt.failedTable = CreativeWorldLayoutTable::Level;
+          result.receipt.failedIndex = dimensions.levelIndex;
+          setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                    "creative_world_layout_roof_part_kind_invalid");
+          return result;
+        }
+        std::string localKey = level.stableKey + std::string(suffix);
+        std::string localName = level.name + std::string(label);
+        if (sourcePieceCounts[piece.sourcePartIndex] > 1U) {
+          const std::size_t ordinal =
+              ++sourcePieceOrdinals[piece.sourcePartIndex];
+          localKey += ".part." + std::to_string(ordinal);
+          localName += " Part " + std::to_string(ordinal);
+        }
         const std::string key = childKey(
             layout.buildings[level.buildingIndex].stableKey,
-            level.stableKey + std::string(kPartSuffixes[partIndex]));
+            localKey);
         if (!registerKey(stableKeys, key, CreativeWorldLayoutTable::Level,
                          dimensions.levelIndex, result.receipt)) {
           return result;
         }
         CreativeBuildingBoxSpec box{
-            part.kind, key, level.name + std::string(kPartLabels[partIndex]),
+            part.kind, key, std::move(localName),
             part.bounds, {1.0, 1.0, 1.0}, {},
             part.rotationEulerRadians};
         appendTagOnce(
@@ -461,6 +625,41 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
             creativeWorldLayoutProvenanceTag(
                 layout, CreativeWorldLayoutTable::Level,
                 dimensions.levelIndex));
+        appendTagOnce(box.tags,
+                      creativeStructuralMaterialTag(roofPlan.geometry.material));
+        buildings[level.buildingIndex].boxes.push_back(std::move(box));
+      }
+      for (std::size_t insertIndex = 0U;
+           insertIndex < roofPlan.closure.insertCount; ++insertIndex) {
+        const CreativeStructuralRoofApertureInsertPlan& insert =
+            roofPlan.closure.inserts[insertIndex];
+        if (insert.apertureIndex >= roofPlan.sourceApertureCount) {
+          result.receipt.failedTable = CreativeWorldLayoutTable::RoofAperture;
+          result.receipt.failedIndex = insert.apertureIndex;
+          setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                    "creative_world_layout_roof_aperture_owner_invalid");
+          return result;
+        }
+        const std::size_t sourceIndex =
+            roofPlan.sourceApertureIndices[insert.apertureIndex];
+        const CreativeWorldLayoutRoofAperture& aperture =
+            layout.roofApertures[sourceIndex];
+        const std::string key = childKey(
+            layout.buildings[level.buildingIndex].stableKey,
+            aperture.stableKey + ".insert");
+        if (!registerKey(stableKeys, key,
+                         CreativeWorldLayoutTable::RoofAperture, sourceIndex,
+                         result.receipt)) {
+          return result;
+        }
+        CreativeBuildingBoxSpec box{
+            insert.kind, key, aperture.name + " Insert", insert.bounds,
+            {1.0, 1.0, 1.0}, {}, insert.rotationEulerRadians};
+        appendTagOnce(
+            box.tags,
+            creativeWorldLayoutProvenanceTag(
+                layout, CreativeWorldLayoutTable::RoofAperture,
+                sourceIndex));
         buildings[level.buildingIndex].boxes.push_back(std::move(box));
       }
       continue;
@@ -492,6 +691,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
         box.tags,
         creativeWorldLayoutProvenanceTag(
             layout, CreativeWorldLayoutTable::VerticalConnector, index));
+    appendTagOnce(box.tags, creativeStructuralMaterialTag(symbol.material));
     buildings[symbol.buildingIndex].boxes.push_back(std::move(box));
   }
 
@@ -502,7 +702,10 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     if (symbol.buildingIndex >= buildings.size() || symbol.name.empty() ||
         !std::isfinite(symbol.baseLayer) ||
         symbol.heightCells == 0U || !std::isfinite(symbol.thicknessCells) ||
-        symbol.thicknessCells <= 0.0) {
+        symbol.thicknessCells <= 0.0 ||
+        symbol.profile >= CreativeWorldLayoutWallProfile::Count ||
+        symbol.material >= CreativeStructuralMaterial::Count ||
+        symbol.joinStyle >= CreativeWorldLayoutWallJoinStyle::Count) {
       result.receipt.failedTable = CreativeWorldLayoutTable::Wall;
       result.receipt.failedIndex = index;
       setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
@@ -520,6 +723,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     wall.name = symbol.name;
     wall.heightMeters = symbol.heightCells * grid.cellSizeMeters;
     wall.thicknessMeters = symbol.thicknessCells * grid.cellSizeMeters;
+    appendTagOnce(wall.tags, creativeStructuralMaterialTag(symbol.material));
     if (index < layout.walls.size()) {
       appendTagOnce(wall.tags, creativeWorldLayoutProvenanceTag(
                                    layout, CreativeWorldLayoutTable::Wall,
@@ -527,6 +731,10 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     } else if (index < roomExpansion.wallProvenance.size()) {
       for (const auto& contributor :
            roomExpansion.wallProvenance[index].contributors) {
+        appendTagOnce(wall.tags, creativeWorldLayoutProvenanceTag(
+                                     layout,
+                                     CreativeWorldLayoutTable::TopologyEdge,
+                                     contributor.topologyEdgeIndex));
         appendTagOnce(wall.tags, creativeWorldLayoutRoomEdgeProvenanceTag(
                                      layout, contributor.roomIndex,
                                      contributor.roomEdge));
@@ -574,7 +782,9 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     }
     CreativeBuildingOpeningSpec opening;
     opening.kind = symbol.kind;
-    opening.pose = symbol.pose;
+    opening.door = symbol.door;
+    opening.window = symbol.window;
+    opening.facing = symbol.facing;
     opening.stableKey = key;
     opening.name = symbol.name;
     opening.centerOffsetMeters = dimensions.centerOffsetMeters;
@@ -616,6 +826,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
         .openings.push_back(std::move(opening));
   }
 
+  std::unordered_set<std::string> bridgeAttachments;
   for (std::size_t index = 0U; index < layout.objects.size(); ++index) {
     const CreativeWorldLayoutObject& symbol = layout.objects[index];
     if (!registerKey(stableKeys, symbol.stableKey,
@@ -630,6 +841,31 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
                 "creative_world_layout_object_invalid");
       return result;
+    }
+    if (symbol.usesBridgeRecipe) {
+      CreativeBounds bridgeBounds;
+      const std::string attachmentKey =
+          symbol.bridge.watercoursePathKey + "\x1f" +
+          std::to_string(symbol.bridge.crossingId);
+      if (symbol.kind != CreativeObjectKind::Bridge ||
+          symbol.mode != CreativeObjectLibraryPlacementMode::Bounds ||
+          !symbol.assetId.empty() || symbol.hasAssetSourceBounds ||
+          !isValidCreativeBridgeSourceRecipe(symbol.bridge) ||
+          !layoutBounds(grid, symbol.boundsCells, bridgeBounds)) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_bridge_source_invalid");
+        return result;
+      }
+      if (!bridgeAttachments.insert(attachmentKey).second) {
+        result.receipt.failedTable = CreativeWorldLayoutTable::Object;
+        result.receipt.failedIndex = index;
+        setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                  "creative_world_layout_bridge_attachment_duplicate");
+        return result;
+      }
+      continue;
     }
 
     CreativeObjectLibraryRecipeRequest objectRequest;
@@ -647,6 +883,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     placement.yawRadians = symbol.yawRadians;
     placement.scale = symbol.scale;
     placement.visible = symbol.visible;
+    placement.playerSpawn = symbol.playerSpawn;
     placement.tags = symbol.tags;
     appendTagOnce(placement.tags, layoutTag);
     appendTagOnce(placement.tags, creativeWorldLayoutProvenanceTag(
@@ -701,6 +938,12 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     return result;
   }
 
+  result.plan.sourceLayoutFingerprint = fingerprintCreativeWorldLayout(layout);
+  if (result.plan.sourceLayoutFingerprint == 0U) {
+    setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSchema,
+              "creative_world_layout_source_fingerprint_invalid");
+    return result;
+  }
   finalizeWorldLayoutCompileResult(document, layout, result);
   return result;
 }

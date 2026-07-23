@@ -10,6 +10,7 @@
 #include "EditorDesktopUi.hpp"
 #include "EditorState.hpp"
 #include "EditorToolGlyphs.hpp"
+#include "app/iggy3d/creative/tools/Measure.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -62,9 +63,20 @@ struct CreativeEditorWorldLayoutCanvasHoverStatus {
   std::string_view semanticRole;
 };
 
+struct CreativeEditorWorldLayoutInspectionStatus {
+  std::string text;
+  CreativeEditorWorldLayoutPreviewValidity validity =
+      CreativeEditorWorldLayoutPreviewValidity::None;
+};
+
+[[nodiscard]] CreativeEditorWorldLayoutInspectionStatus
+composeCreativeEditorWorldLayoutInspectionStatus(
+    const CreativeEditorWorldLayoutState& state);
+
 struct CreativeEditorWorldLayoutStatusLine {
   std::string cursor;
   std::string zoom;
+  CreativeEditorWorldLayoutInspectionStatus inspection;
   std::string snap;
   std::string cells;
   std::string message;
@@ -85,6 +97,8 @@ composeCreativeEditorWorldLayoutStatusLine(
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
     const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::creative::CreativeSelectionState& selection,
+    const iggy3d::creative::CreativeMeasurementState& measurement,
     bool playModeActive, CreativeDesktopCommandFrame& commands);
 
 }  // namespace iggy3d_creative_app

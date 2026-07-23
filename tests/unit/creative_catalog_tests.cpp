@@ -14,6 +14,78 @@
 namespace {
 namespace cr = iggy3d::creative;
 
+// The catalog is a generic projection target. Product maturity policy is
+// tested in creative_editor_toolbox_tests; this fixture exercises catalog and
+// wheel mechanics without recreating the product registry.
+constexpr std::array kTestToolSpecs{
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::MaterialBrush,
+                                "Brush",
+                                "paint sculpt material sphere cube cylinder",
+                                true, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::ObjectSelect,
+                                "Object Select", "select pick object", false,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::ObjectMove,
+                                "Transform",
+                                "object move drag translate rotate mirror copy",
+                                false, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::ObjectGroup, "Group",
+                                "group ungroup combine assembly parent", true,
+                                true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeSelect,
+                                "Region Select", "volume region corner", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeFill, "Fill",
+                                "volume region solid create", true, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeHollow,
+                                "Hollow", "volume region shell walls", true,
+                                true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeReplace,
+                                "Replace", "volume region swap material", true,
+                                true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeErase, "Erase",
+                                "volume region remove delete", true, false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::VolumeClone, "Clone",
+                                "volume region copy duplicate", true, false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::ConnectedFill,
+                                "Connected Fill",
+                                "flood paint bucket connected material region",
+                                true, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::SurfaceExtrude,
+                                "Surface Extrude", "extrude inset push pull",
+                                true, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::LinearArray, "Array",
+                                "array pattern repeat radial", true, true},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainControl,
+                                "Terrain Rod", "terrain height elevation", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainPaint,
+                                "Terrain Paint", "terrain material paint", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainGrade,
+                                "Terrain Grade", "terrain slope grade", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainSculpt,
+                                "Terrain Sculpt",
+                                "terrain sculpt raise lower flatten smooth",
+                                true, false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainProfile,
+                                "Terrain Profile", "terrain hill crater", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainPath,
+                                "Terrain Path", "terrain road river path", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::TerrainRegion,
+                                "Terrain Region",
+                                "terrain region area raise lower flatten smooth",
+                                true, false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::LogicLink,
+                                "Logic Link", "connect switch door", true,
+                                false},
+    cr::CreativeCatalogToolSpec{cr::CreativeHeldItemKind::BuildingRoom, "Room",
+                                "building floor walls shell", true, false},
+};
+
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
     std::cerr << "FAIL: " << message << '\n';
@@ -24,7 +96,7 @@ bool expect(bool condition, std::string_view message) {
 cr::CreativeCatalogState catalog() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
-  return cr::makeCreativeCatalog(palette);
+  return cr::makeCreativeCatalog(palette, {}, 0U, {}, kTestToolSpecs);
 }
 
 cr::CreativeCatalogPage expectedCatalogPage(
@@ -239,8 +311,10 @@ bool catalogBuildsMaterialsAndCreatorTools() {
                        cr::CreativeHeldItemKind::ObjectSelect,
                    "object tools follow the material brush") &&
             expect(terrainRegion != state.entries.end() &&
-                       terrainRegion->label == "Terrain Region",
-                   "terrain region remains a selectable tool") &&
+                       terrainRegion->label == "Terrain Region" &&
+                       terrainRegion->page ==
+                           cr::CreativeCatalogPage::Experimental,
+                   "terrain region remains available only in the lab") &&
             expect(logicLink != state.entries.end() &&
                        logicLink->label == "Logic Link" &&
                        !logicLink->toolWheelEligible,
@@ -271,7 +345,8 @@ bool catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() {
     }
   }
 
-  cr::CreativeCatalogState state = cr::makeCreativeCatalog(palette);
+  cr::CreativeCatalogState state =
+      cr::makeCreativeCatalog(palette, {}, 0U, {}, kTestToolSpecs);
   constexpr std::array creatorPages{
       cr::CreativeCatalogPage::Structure,
       cr::CreativeCatalogPage::Terrain,
@@ -307,7 +382,7 @@ bool catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() {
 
   static_cast<void>(
       cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
-  ok = expect(!state.filteredEntryIndices.empty() &&
+  ok = expect(state.filteredEntryIndices.size() == 2U &&
                   std::all_of(
                       state.filteredEntryIndices.begin(),
                       state.filteredEntryIndices.end(),
@@ -317,9 +392,24 @@ bool catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() {
                                state.entries[index].category ==
                                    cr::CreativeCatalogEntryCategory::Tool;
                       }),
-              "creator tools occupy one dedicated category") &&
+              "only workspace tools occupy the normal tools category") &&
        expect(categorizedMaterialCount == palette.size(),
               "category pages partition the visible descriptor palette") &&
+       ok;
+
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Experimental));
+  ok = expect(state.filteredEntryIndices.size() == 20U &&
+                  std::all_of(
+                      state.filteredEntryIndices.begin(),
+                      state.filteredEntryIndices.end(),
+                      [&state](std::size_t index) {
+                        return state.entries[index].page ==
+                                   cr::CreativeCatalogPage::Experimental &&
+                               state.entries[index].category ==
+                                   cr::CreativeCatalogEntryCategory::Tool;
+                      }),
+              "unfinished tools occupy one explicit experimental category") &&
        ok;
 
   static_cast<void>(
@@ -337,7 +427,8 @@ bool catalogPartitionsDescriptorPaletteAndSearchesCreatorCategories() {
 }
 
 bool catalogOmitsToolsWithoutRequiredMaterial() {
-  cr::CreativeCatalogState state = cr::makeCreativeCatalog({});
+  cr::CreativeCatalogState state =
+      cr::makeCreativeCatalog({}, {}, 0U, {}, kTestToolSpecs);
   static_cast<void>(
       cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
   const bool materialDependentToolPresent = std::any_of(
@@ -355,9 +446,13 @@ bool catalogOmitsToolsWithoutRequiredMaterial() {
                entry.hotbarEntry.kind ==
                    cr::CreativeHeldItemKind::SurfaceExtrude;
       });
-  return expect(state.entries.size() == 17U &&
-                    state.filteredEntryIndices.size() == 16U,
-                "empty palette retains tools plus the asset reload command") &&
+  const bool normalToolsBounded = state.filteredEntryIndices.size() == 2U;
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Experimental));
+  return expect(state.entries.size() == 17U && normalToolsBounded &&
+                    state.filteredEntryIndices.size() == 14U,
+                "empty palette retains workspace and experimental tools plus "
+                "the asset reload command") &&
          expect(!materialDependentToolPresent,
                 "material-dependent tools require a valid material");
 }
@@ -563,8 +658,7 @@ bool toolWheelIsBoundedDirectionalAndAssignable() {
               "radial keyboard navigation wraps") &&
        ok;
 
-  constexpr std::array palette{cr::CreativeObjectKind::Wall};
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
   hotbar.selectedSlot = 3U;
   static_cast<void>(cr::selectCreativeToolWheelForHotbarEntry(
       wheel, catalogState,
@@ -650,6 +744,8 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
                            cr::CreativeObjectKind::Crate,
                    "crate result selected");
 
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Experimental));
   ok = expect(cr::setCreativeCatalogQuery(state, "REGION"),
               "tool alias query accepted") &&
        expect(state.filteredEntryIndices.size() == 8U,
@@ -703,8 +799,7 @@ bool searchIsCaseInsensitiveBoundedAndStable() {
 
 bool selectionWrapsAndAssignmentsAreExplicit() {
   cr::CreativeCatalogState state = catalog();
-  constexpr std::array palette{cr::CreativeObjectKind::Wall};
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
   static_cast<void>(
       cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Tools));
 
@@ -729,6 +824,8 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
               "move tool assigned to active slot") &&
        ok;
 
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Experimental));
   static_cast<void>(cr::setCreativeCatalogQuery(state, "Erase"));
   ok = expect(cr::assignSelectedCreativeCatalogEntry(state, hotbar, 8U),
               "numbered assignment accepted") &&
@@ -745,6 +842,8 @@ bool selectionWrapsAndAssignmentsAreExplicit() {
               "empty search cannot assign") &&
        ok;
 
+  static_cast<void>(cr::setCreativeCatalogPage(
+      state, cr::CreativeCatalogPage::Structure));
   static_cast<void>(cr::setCreativeCatalogQuery(state, "Wall"));
   hotbar.selectedSlot = 99U;
   return expect(!cr::assignSelectedCreativeCatalogEntry(state, hotbar),
@@ -817,7 +916,7 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
                            cr::CreativeInputContext::AuthoredAssetEditMenu),
                    "asset edit menu follows shared select and back semantics") &&
             expect(hasBinding(
-                       cr::CreativeInputActionId::CatalogAssignToolWheel,
+                       cr::CreativeInputActionId::CatalogContextAction,
                        cr::CreativeInputKey::GamepadWest,
                        cr::CreativeInputContext::Catalog),
                    "catalog Square owns contextual wheel assignment") &&
@@ -1221,7 +1320,8 @@ bool assetRemovalCompactsCatalogAndToolWheelIndices() {
   assets[2] = assets[0];
   assets[2].assetId = "authored_0003";
   assets[2].label = "Third";
-  cr::CreativeCatalogState state = cr::makeCreativeCatalog(palette, assets);
+  cr::CreativeCatalogState state =
+      cr::makeCreativeCatalog(palette, assets, 0U, {}, kTestToolSpecs);
   const auto second = std::find_if(
       state.entries.begin(), state.entries.end(),
       [](const cr::CreativeCatalogEntry& entry) {
@@ -1303,7 +1403,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
   assets[1].authoringMetadata.walkable = true;
   assets[1].authoringMetadata.walkableSpecified = true;
   cr::CreativeCatalogState state =
-      cr::makeCreativeCatalog(palette, assets, 1U);
+      cr::makeCreativeCatalog(palette, assets, 1U, {}, kTestToolSpecs);
   const std::size_t structureCount = state.filteredEntryIndices.size();
   const bool pageChanged = cr::setCreativeCatalogPage(
       state, cr::CreativeCatalogPage::Assets);
@@ -1313,7 +1413,7 @@ bool assetPagePreservesBuildIndicesAndEquipsDurableIdentity() {
       pageChanged && state.page == cr::CreativeCatalogPage::Assets &&
       state.filteredEntryIndices.size() == assets.size() + 1U &&
       state.rejectedAssetCount == 1U;
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
   const bool assigned = cr::assignSelectedCreativeCatalogEntry(state, hotbar);
   const cr::CreativeHotbarEntry& held =
       cr::selectedCreativeHotbarEntry(hotbar);
@@ -1391,14 +1491,14 @@ bool assetReloadCommandAndFailuresAreExplicitAndNotAssignable() {
       "static_mesh_glb_parse_failed"};
   cr::CreativeCatalogState state =
       cr::makeCreativeCatalog(palette, std::span{&asset, 1U}, 1U,
-                              std::span{&failure, 1U});
+                              std::span{&failure, 1U}, kTestToolSpecs);
   static_cast<void>(
       cr::setCreativeCatalogPage(state, cr::CreativeCatalogPage::Assets));
   const bool selectedFailure =
       cr::setCreativeCatalogQuery(state, "broken_prop");
   const cr::CreativeCatalogEntry* failureEntry =
       cr::selectedCreativeCatalogEntry(state);
-  cr::CreativeHotbarState hotbar = cr::makeDefaultCreativeHotbar(palette);
+  cr::CreativeHotbarState hotbar;
   const bool failureAssigned =
       cr::assignSelectedCreativeCatalogEntry(state, hotbar);
   const bool selectedReload = cr::setCreativeCatalogQuery(state, "reload");
@@ -1421,6 +1521,105 @@ bool assetReloadCommandAndFailuresAreExplicitAndNotAssignable() {
                 "reload is a typed command rather than a fake hotbar item");
 }
 
+bool assetInspectionExposesEveryPlacementContract() {
+  constexpr std::array palette{cr::CreativeObjectKind::Wall};
+  cr::CreativeCatalogAsset asset;
+  asset.objectKind = cr::CreativeObjectKind::Door;
+  asset.assetId = "architecture/door_oak";
+  asset.label = "Oak Door";
+  asset.contentHash = 0xBADC0FFEEULL;
+  asset.sourceBounds = {{-0.4, 0.0, -0.1}, {0.5, 2.1, 0.1}};
+  asset.authoringMetadata.status =
+      iggy3d::StaticMeshAuthoringMetadataStatus::Authored;
+  asset.authoringMetadata.collisionMode =
+      iggy3d::StaticMeshCollisionMode::CompoundBounds;
+  asset.authoringMetadata.categoryId = "building_closure";
+  asset.authoringMetadata.walkable = true;
+  asset.collisionParts.push_back(
+      {{-0.4F, 0.0F, -0.1F}, {0.5F, 2.1F, 0.1F}, true});
+  asset.attachmentSockets.push_back(
+      {"hinge", "door.frame", iggy3d::StaticMeshAttachmentSocketRole::Plug,
+       {}, {0.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F}});
+  asset.materialVariants.push_back({"Weathered"});
+  asset.materialCount = 3U;
+  asset.thumbnail.valid = true;
+  asset.thumbnail.coveredPixelCount = 1U;
+  asset.thumbnail.pixels[0] = {10U, 20U, 30U, 255U};
+  const cr::CreativeCatalogAssetFailure failure{
+      "missing_window", "assets/creative/missing_window.glb",
+      "static_mesh_file_not_found"};
+  cr::CreativeCatalogState catalog =
+      cr::makeCreativeCatalog(palette, std::span{&asset, 1U}, 1U,
+                              std::span{&failure, 1U}, kTestToolSpecs);
+  static_cast<void>(
+      cr::setCreativeCatalogPage(catalog, cr::CreativeCatalogPage::Assets));
+  const cr::CreativeCatalogEntry* entry =
+      cr::selectedCreativeCatalogEntry(catalog);
+  if (!expect(entry != nullptr, "inspection asset is selected")) {
+    return false;
+  }
+  const cr::CreativeCatalogAssetInspection inspection =
+      cr::inspectCreativeCatalogAsset(*entry);
+  const cr::CreativeHotbarEntry defaultMaterial =
+      cr::resolveCreativeCatalogHotbarEntry(
+          *entry, cr::CreativeObjectKind::Unknown, 0U);
+  const cr::CreativeHotbarEntry weatheredMaterial =
+      cr::resolveCreativeCatalogHotbarEntry(
+          *entry, cr::CreativeObjectKind::Unknown, 1U);
+  const cr::CreativeHotbarEntry invalidMaterial =
+      cr::resolveCreativeCatalogHotbarEntry(
+          *entry, cr::CreativeObjectKind::Unknown, 2U);
+  const bool searchedCategory =
+      cr::setCreativeCatalogQuery(catalog, "building_closure");
+  const bool searchedSocket = cr::setCreativeCatalogQuery(catalog, "hinge");
+  const bool searchedVariant =
+      cr::setCreativeCatalogQuery(catalog, "weathered");
+  static_cast<void>(cr::setCreativeCatalogQuery(catalog, "missing_window"));
+  const cr::CreativeCatalogEntry* missing =
+      cr::selectedCreativeCatalogEntry(catalog);
+  const cr::CreativeCatalogAssetInspection missingInspection =
+      missing != nullptr ? cr::inspectCreativeCatalogAsset(*missing)
+                         : cr::CreativeCatalogAssetInspection{};
+
+  return expect(
+             inspection.status ==
+                     cr::CreativeCatalogAssetInspectionStatus::Ready &&
+                 inspection.bounds.valid &&
+                 std::fabs(inspection.bounds.size.x - 0.9) < 1.0e-9 &&
+                 std::fabs(inspection.bounds.size.y - 2.1) < 1.0e-9 &&
+                 std::fabs(inspection.bounds.size.z - 0.2) < 1.0e-9 &&
+                 std::fabs(inspection.pivotFromCenter.x + 0.05) < 1.0e-9 &&
+                 std::fabs(inspection.pivotFromCenter.y + 1.05) < 1.0e-9 &&
+                 std::fabs(inspection.pivotFromCenter.z) < 1.0e-9 &&
+                 inspection.collisionMode ==
+                     iggy3d::StaticMeshCollisionMode::CompoundBounds &&
+                 inspection.collisionPartCount == 1U && inspection.walkable &&
+                 inspection.socketCount == 1U &&
+                 inspection.materialCount == 3U &&
+                 inspection.materialVariantCount == 1U &&
+                 inspection.contentHash == asset.contentHash &&
+                 inspection.thumbnailAvailable,
+             "asset inspection exposes bounds, pivot, collision, sockets, "
+             "materials, version, and thumbnail") &&
+         expect(defaultMaterial.hasAssetBounds &&
+                    defaultMaterial.hasAssetContentHash &&
+                    cr::creativeHotbarAssetMaterialVariant(defaultMaterial)
+                        .empty() &&
+                    weatheredMaterial.hasAssetBounds &&
+                    weatheredMaterial.assetContentHash == asset.contentHash &&
+                    cr::creativeHotbarAssetMaterialVariant(
+                        weatheredMaterial) == "Weathered" &&
+                    !invalidMaterial.hasAssetBounds &&
+                    cr::creativeHotbarAssetId(invalidMaterial).empty(),
+                "catalog material selection resolves one durable hotbar "
+                "identity and rejects out-of-range variants") &&
+         expect(searchedCategory && searchedSocket && searchedVariant,
+                "asset categories, sockets, and variants are searchable") &&
+         expect(missingInspection.status ==
+                    cr::CreativeCatalogAssetInspectionStatus::Missing,
+                "rejected imports expose explicit missing status");
+}
+
 }  // namespace
 
 int main() {
@@ -1439,5 +1638,6 @@ int main() {
   ok = assetRemovalCompactsCatalogAndToolWheelIndices() && ok;
   ok = assetPagePreservesBuildIndicesAndEquipsDurableIdentity() && ok;
   ok = assetReloadCommandAndFailuresAreExplicitAndNotAssignable() && ok;
+  ok = assetInspectionExposesEveryPlacementContract() && ok;
   return ok ? 0 : 1;
 }

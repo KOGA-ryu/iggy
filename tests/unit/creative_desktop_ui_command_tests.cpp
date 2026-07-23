@@ -84,6 +84,15 @@ cr::CreativeObjectId createMovingPlatform(cr::Facade& facade) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createPlayerSpawn(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::SpawnPoint;
+  request.name = "Command Player Spawn";
+  request.transform.position = {1.0, 0.0, 2.0};
+  request.hasTransformOverride = true;
+  return facade.createDocumentObject(request).objectId;
+}
+
 struct AttachedPair {
   cr::CreativeObjectId parentId = cr::kInvalidObjectId;
   cr::CreativeObjectId childId = cr::kInvalidObjectId;
@@ -116,6 +125,19 @@ void selectPrimary(cr::Facade& facade, cr::CreativeObjectId objectId) {
   input.pointer.button = cr::CreativeToolPointerButton::Primary;
   input.pointer.target.value = static_cast<cr::Id>(objectId);
   input.pointer.modifiers = cr::kCreativeToolModifierNone;
+  static_cast<void>(facade.dispatchToolInput(input));
+}
+
+void completeDistanceMeasurement(cr::Facade& facade) {
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.x = 1.0;
+  input.pointer.y = 2.0;
+  static_cast<void>(facade.dispatchToolInput(input));
+  input.pointer.x = 4.0;
+  input.pointer.y = 6.0;
   static_cast<void>(facade.dispatchToolInput(input));
 }
 
@@ -434,6 +456,81 @@ bool deleteAndDuplicateHitTheKernels() {
                 "delete removes the duplicated object via the kernel");
 }
 
+bool deleteGeneratedWorldLayoutOutputEditsItsSource() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Source Delete");
+  static_cast<void>(document.assignId(4101U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_delete_source");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Room));
+  const app::CreativeEditorWorldLayoutEditReceipt began =
+      app::applyCreativeEditorWorldLayoutGesture(
+          editor.worldLayout,
+          app::CreativeEditorWorldLayoutGesturePhase::Begin, {0.0, 0.0});
+  const app::CreativeEditorWorldLayoutEditReceipt committed =
+      app::applyCreativeEditorWorldLayoutGesture(
+          editor.worldLayout,
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {6.0, 4.0});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!began.accepted || !committed.accepted || !generated.accepted ||
+      appState.facade.document().objects().empty()) {
+    return expect(false, "generated source delete setup accepted");
+  }
+
+  const auto generatedObject = std::find_if(
+      appState.facade.document().objects().begin(),
+      appState.facade.document().objects().end(),
+      [&](const cr::CreativeObject& object) {
+        return cr::resolveCreativeWorldLayoutObjectProvenance(
+                   editor.worldLayout.source, object)
+            .owned;
+      });
+  if (generatedObject == appState.facade.document().objects().end()) {
+    return expect(false, "generated source delete found owned output");
+  }
+  selectPrimary(appState.facade, generatedObject->id);
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::size_t documentObjectCountBefore =
+      appState.facade.document().objectCount();
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::size_t sourceUndoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  const app::CreativeDesktopCommandResult deleted =
+      dispatchOne(app::CreativeDesktopCommandId::DeleteSelection, context);
+  const bool sourceOnlyDelete =
+      deleted.accepted && deleted.changed && deleted.worldLayoutChanged &&
+      !deleted.sceneChanged &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      editor.worldLayout.generatedRevision != editor.worldLayout.revision &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          sourceUndoBefore + 1U;
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+
+  return expect(sourceOnlyDelete,
+                "3D generated delete routes to the World Layout source") &&
+         expect(appState.facade.document().revision() ==
+                        documentRevisionBefore &&
+                    appState.facade.document().objectCount() ==
+                        documentObjectCountBefore &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        sourceUndoBefore &&
+                    undone.accepted && undone.changed &&
+                    editor.worldLayout.revision == sourceRevisionBefore,
+                "source delete leaves compiled geometry intact until generation and undoes through source history");
+}
+
 bool undoRedoMoveTheHistoryRings() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Undo");
@@ -668,6 +765,83 @@ bool focusObjectSelectsAndFramesThroughDispatcher() {
          expect(!mismatch.accepted &&
                     mismatch.message == "focus: payload mismatch",
                 "focus command rejects a mismatched payload");
+}
+
+bool frameSelectionAndSceneUseVisibleDocumentBounds() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Frame");
+  static_cast<void>(document.assignId(424U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId left = createCrate(appState.facade, -12.0);
+  const cr::CreativeObjectId right = createCrate(appState.facade, 12.0);
+  static_cast<void>(right);
+  static_cast<void>(appState.facade.selectTargets(
+      std::span<const cr::CreativeObjectId>{&left, 1U}, left));
+
+  app::CreativeEditorState editor;
+  editor.flyPos = {50.0F, 20.0F, 50.0F};
+  editor.yawDegrees = 0.0F;
+  editor.pitchDegrees = -20.0F;
+  const iggy3d::Vec3 arbitraryCamera = editor.flyPos;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult selection = dispatchOne(
+      app::CreativeDesktopCommandId::FrameSelection3D, context);
+  const iggy3d::Vec3 selectionCamera = editor.flyPos;
+  const iggy3d::ProductCreativeViewportFocus selectionFocus =
+      editor.viewportFocus;
+
+  editor.flyPos = arbitraryCamera;
+  const app::CreativeDesktopCommandResult all =
+      dispatchOne(app::CreativeDesktopCommandId::FrameAll3D, context);
+  const iggy3d::Vec3 allCamera = editor.flyPos;
+  const iggy3d::ProductCreativeViewportFocus allFocus = editor.viewportFocus;
+
+  static_cast<void>(appState.facade.selectTargets(
+      std::span<const cr::CreativeObjectId>{}, cr::kInvalidObjectId));
+  const app::CreativeDesktopCommandResult emptySelection = dispatchOne(
+      app::CreativeDesktopCommandId::FrameSelection3D, context);
+
+  cr::CreativeAppState emptyState;
+  cr::CreativeDocument emptyDocument =
+      cr::CreativeDocument::create("Cmd Empty Frame");
+  static_cast<void>(emptyDocument.assignId(425U));
+  static_cast<void>(emptyState.facade.installDocument(
+      std::move(emptyDocument)));
+  app::CreativeEditorState emptyEditor;
+  const app::CreativeDesktopCommandContext emptyContext{
+      emptyState, emptyEditor, std::filesystem::path{}, &saveId};
+  const app::CreativeDesktopCommandResult emptyAll =
+      dispatchOne(app::CreativeDesktopCommandId::FrameAll3D, emptyContext);
+
+  return expect(selection.accepted && selection.changed &&
+                    selection.affectedObjectCount == 1U,
+                "frame selection uses the current visible selection") &&
+         expect(all.accepted && all.changed && all.affectedObjectCount == 2U,
+                "frame all uses every visible document object") &&
+         expect(selectionCamera.x != arbitraryCamera.x ||
+                    selectionCamera.y != arbitraryCamera.y ||
+                    selectionCamera.z != arbitraryCamera.z,
+                "frame selection moves the camera from arbitrary state") &&
+         expect(allCamera.x != arbitraryCamera.x ||
+                    allCamera.y != arbitraryCamera.y ||
+                    allCamera.z != arbitraryCamera.z,
+                "frame all moves the camera from arbitrary state") &&
+         expect(selectionFocus.valid && allFocus.valid &&
+                    selectionFocus.distanceMeters > 0.0F &&
+                    allFocus.distanceMeters > 0.0F &&
+                    allFocus.distanceMeters >=
+                        selectionFocus.distanceMeters,
+                "framing establishes the exact orbit focus for its scope") &&
+         expect(!emptySelection.accepted &&
+                    emptySelection.message ==
+                        "frame selection: no visible selection",
+                "frame selection fails visibly when nothing is selected") &&
+         expect(!emptyAll.accepted &&
+                    emptyAll.message == "frame all: no visible objects",
+                "frame all fails visibly for an empty document");
 }
 
 bool logicCommandsRouteThroughTypedHistoryKernel() {
@@ -1094,6 +1268,85 @@ bool transformCommandIsAtomicAndAttachmentAware() {
                 "invalid masked transforms do not partially apply");
 }
 
+bool groupPivotUsesItsDedicatedTypedCommand() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Group Pivot");
+  static_cast<void>(document.assignId(435U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Assembly";
+  groupRequest.transform.position = {1.0, 0.5, 2.0};
+  groupRequest.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt group =
+      appState.facade.createDocumentObject(groupRequest);
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Assembly Member";
+  childRequest.transform.position = {3.0, 0.5, 2.0};
+  childRequest.hasTransformOverride = true;
+  childRequest.parentId = group.objectId;
+  const cr::CreativeDocumentCreateReceipt child =
+      appState.facade.createDocumentObject(childRequest);
+  if (!group.accepted || !child.accepted) {
+    return expect(false, "group pivot command fixture created");
+  }
+  const cr::CreativeVec3 originalPivot =
+      appState.facade.findObject(group.objectId)->transform.position;
+  const cr::CreativeTransform childBefore =
+      appState.facade.findObject(child.objectId)->transform;
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const cr::CreativeVec3 newPivot{6.0, 1.25, -3.0};
+  const app::CreativeDesktopCommandResult pivoted = dispatchPayload(
+      app::CreativeDesktopCommandId::SetGroupPivot, context,
+      app::CreativeDesktopGroupPivotPayload{group.objectId, newPivot});
+  const cr::CreativeObject* groupAfter =
+      appState.facade.findObject(group.objectId);
+  const cr::CreativeObject* childAfter =
+      appState.facade.findObject(child.objectId);
+  const bool pivotApplied =
+      pivoted.accepted && pivoted.changed && pivoted.affectedObjectCount == 1U &&
+      groupAfter != nullptr && childAfter != nullptr &&
+      cr::creativeVec3ExactlyEqual(groupAfter->transform.position, newPivot) &&
+      cr::creativeVec3ExactlyEqual(childAfter->transform.position,
+                                   childBefore.position) &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+
+  cr::CreativeTransform forbiddenTransform = groupAfter->transform;
+  forbiddenTransform.position = {12.0, 2.0, 4.0};
+  const app::CreativeDesktopCommandResult forbidden = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{group.objectId, forbiddenTransform,
+                                           true, false, false});
+  const bool genericRejected =
+      !forbidden.accepted && !forbidden.changed &&
+      appState.facade.findObject(group.objectId) != nullptr &&
+      cr::creativeVec3ExactlyEqual(
+          appState.facade.findObject(group.objectId)->transform.position,
+          newPivot) &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+
+  const bool undone = app::undoLastEdit(appState, "desktop_group_pivot_undo");
+  const cr::CreativeObject* restoredGroup =
+      appState.facade.findObject(group.objectId);
+  return expect(pivotApplied,
+                "SetGroupPivot changes only the persistent pivot in one edit") &&
+         expect(genericRejected,
+                "generic object transform cannot split a hierarchy container") &&
+         expect(undone && restoredGroup != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        restoredGroup->transform.position, originalPivot),
+                "group pivot command is undoable");
+}
+
 bool movingPlatformSettingsUseTypedCommandAndOneUndoStep() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -1156,6 +1409,81 @@ bool movingPlatformSettingsUseTypedCommandAndOneUndoStep() {
          expect(redo.accepted && redo.changed && afterRedo != nullptr &&
                     afterRedo->movingPlatform == settings,
                 "moving platform settings redo restores edited values");
+}
+
+bool playerSpawnSettingsUseTypedCommandAndOneUndoStep() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Player Spawn");
+  static_cast<void>(document.assignId(427U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId spawnId = createPlayerSpawn(appState.facade);
+  const cr::CreativeObjectId crateId = createCrate(appState.facade, 4.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  cr::CreativePlayerSpawnSettings settings;
+  settings.playerProfileId = "future_player";
+  settings.spawnGroup = "north_entry";
+  settings.validationRadiusMeters = 0.75;
+  settings.fallbackPriority = 4U;
+  const app::CreativeDesktopCommandResult changed = dispatchPayload(
+      app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+      app::CreativeDesktopPlayerSpawnPayload{spawnId, settings});
+  const cr::CreativeObject* afterChange = appState.facade.findObject(spawnId);
+  const bool settingsApplied =
+      afterChange != nullptr && afterChange->playerSpawn == settings;
+  const std::size_t depthAfterChange =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+      app::CreativeDesktopPlayerSpawnPayload{spawnId, settings});
+
+  cr::CreativePlayerSpawnSettings invalid = settings;
+  invalid.validationRadiusMeters = 0.0;
+  const app::CreativeDesktopCommandResult rejected = dispatchPayload(
+      app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+      app::CreativeDesktopPlayerSpawnPayload{spawnId, invalid});
+  const app::CreativeDesktopCommandResult wrongKind = dispatchPayload(
+      app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+      app::CreativeDesktopPlayerSpawnPayload{crateId, settings});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+      app::CreativeDesktopDeletePayload{{spawnId}});
+  const app::CreativeDesktopCommandResult undo =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* afterUndo = appState.facade.findObject(spawnId);
+  const bool restoredDefaults =
+      afterUndo != nullptr &&
+      afterUndo->playerSpawn == cr::CreativePlayerSpawnSettings{};
+  const app::CreativeDesktopCommandResult redo =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* afterRedo = appState.facade.findObject(spawnId);
+
+  return expect(changed.accepted && changed.changed &&
+                    changed.affectedObjectCount == 1U && settingsApplied,
+                "player spawn settings command applies typed values") &&
+         expect(depthAfterChange == 1U && unchanged.accepted &&
+                    !unchanged.changed &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "unchanged player spawn settings add no undo entry") &&
+         expect(!rejected.accepted && !rejected.changed,
+                "invalid player spawn settings are rejected") &&
+         expect(!wrongKind.accepted && !wrongKind.changed,
+                "player spawn settings reject non-spawn objects") &&
+         expect(!mismatch.accepted && !mismatch.changed &&
+                    mismatch.message ==
+                        "player spawn settings: payload mismatch",
+                "player spawn settings reject a mismatched payload") &&
+         expect(undo.accepted && undo.changed && restoredDefaults,
+                "player spawn settings undo restores defaults") &&
+         expect(redo.accepted && redo.changed && afterRedo != nullptr &&
+                    afterRedo->playerSpawn == settings,
+                "player spawn settings redo restores edited values");
 }
 
 bool movingPlatformWaypointCommandsSelectEditAndUndo() {
@@ -1520,6 +1848,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
           app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badRoofApertureManipulation =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
+          context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badGeneratedRoomPreview =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
@@ -1603,6 +1935,11 @@ bool mismatchedPayloadsAreNoOpFailures() {
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateUpdate =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
+          context, app::CreativeDesktopDeletePayload{{a}});
+  const app::CreativeDesktopCommandResult badWorldLayoutTemplateDetach =
+      dispatchPayload(
+          app::CreativeDesktopCommandId::
+              WorldLayoutDetachBuildingTemplateInstance,
           context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateRefresh =
       dispatchPayload(
@@ -1723,6 +2060,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutManipulation.message ==
                         "layout room manipulation: payload mismatch",
                 "room manipulation rejects a mismatched payload") &&
+         expect(!badRoofApertureManipulation.accepted &&
+                    badRoofApertureManipulation.message ==
+                        "layout roof aperture manipulation: payload mismatch",
+                "roof aperture manipulation rejects a mismatched payload") &&
          expect(!badGeneratedRoomPreview.accepted &&
                     badGeneratedRoomPreview.message ==
                         "generated room preview: payload mismatch" &&
@@ -1799,6 +2140,10 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutTemplateUpdate.message ==
                         "layout template update: payload mismatch",
                 "building template update rejects a mismatched payload") &&
+         expect(!badWorldLayoutTemplateDetach.accepted &&
+                    badWorldLayoutTemplateDetach.message ==
+                        "layout template detach: payload mismatch",
+                "building template detach rejects a mismatched payload") &&
          expect(!badWorldLayoutTemplateRefresh.accepted &&
                     badWorldLayoutTemplateRefresh.message ==
                         "layout template refresh: payload mismatch",
@@ -1944,10 +2289,35 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
   const app::CreativeDesktopCommandContext context{appState, editor,
                                                     std::filesystem::path{},
                                                     &saveId};
+  const app::CreativeDesktopCommandResult previewed = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!previewed.accepted || !generated.accepted) {
+    return expect(false, "source scope fixture generates 3D output");
+  }
   const app::CreativeDesktopCommandResult selected = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
       app::CreativeDesktopWorldLayoutSourcePayload{
           cr::CreativeWorldLayoutTable::Room, 0U, roomKey, 0U});
+  const cr::CreativeSelectionState& objectSelection =
+      appState.facade.selectionState();
+  const std::span<const cr::TargetRef> selectedTargets =
+      cr::selectedTargetList(objectSelection);
+  const bool generatedMembersSelected =
+      !selectedTargets.empty() &&
+      selectedTargets.size() ==
+          editor.generatedSourceScopeCache.objectIds.size() &&
+      std::all_of(
+          selectedTargets.begin(), selectedTargets.end(),
+          [&](cr::TargetRef target) {
+            const cr::CreativeObject* object =
+                appState.facade.document().findObject(target.value);
+            return object != nullptr &&
+                   app::creativeDesktopGeneratedObjectBelongsToSourceScope(
+                       editor.worldLayout.source, *object,
+                       cr::CreativeWorldLayoutTable::Room, 0U);
+          });
   const bool selectedWithoutPan =
       selected.accepted && selected.changed &&
       editor.worldLayout.selection.kind ==
@@ -1955,7 +2325,9 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
       editor.worldLayout.selection.index == 0U &&
       editor.worldLayout.activeLevelIndex == 0U &&
       editor.worldLayout.canvasPanX == 17.0F &&
-      editor.worldLayout.canvasPanZ == -9.0F;
+      editor.worldLayout.canvasPanZ == -9.0F && generatedMembersSelected &&
+      objectSelection.selectedTarget.value ==
+          editor.generatedSourceScopeCache.objectIds.front();
   const app::CreativeDesktopCommandResult wrongFloor = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope, context,
       app::CreativeDesktopWorldLayoutSourcePayload{
@@ -1968,18 +2340,127 @@ bool worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() {
       app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
       app::CreativeDesktopWorldLayoutSourcePayload{
           cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
+  const bool staleAndFloorMismatchPreservedSelection =
+      !stale.accepted && !stale.changed && !wrongFloor.accepted &&
+      !wrongFloor.changed && editor.worldLayout.selection.kind ==
+                                 app::CreativeEditorWorldLayoutSelectionKind::Room &&
+      editor.worldLayout.activeLevelIndex == 0U &&
+      cr::selectedTargetCount(appState.facade.selectionState()) ==
+          selectedTargets.size();
+  const bool focusMovedCanvas =
+      focused.accepted && editor.worldLayout.canvasPanX != 17.0F;
+  const app::CreativeDesktopCommandResult cleared = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutClearSelection, context);
 
   return expect(selectedWithoutPan,
-                "scope selection changes owner without moving the canvas") &&
-         expect(!stale.accepted && !stale.changed &&
+                "scope selection synchronizes generated objects without moving "
+                "the canvas") &&
+         expect(staleAndFloorMismatchPreservedSelection,
+                "invalid scope commands preserve 2D and 3D selection") &&
+         expect(focusMovedCanvas,
+                "explicit focus remains the only scope action that pans") &&
+         expect(cleared.accepted && cleared.changed &&
                     editor.worldLayout.selection.kind ==
-                        app::CreativeEditorWorldLayoutSelectionKind::Room,
-                "stale scope target leaves the selected owner unchanged") &&
-         expect(!wrongFloor.accepted && !wrongFloor.changed &&
-                    editor.worldLayout.activeLevelIndex == 0U,
-                "scope selection rejects a source-floor mismatch") &&
-         expect(focused.accepted && editor.worldLayout.canvasPanX != 17.0F,
-                "explicit focus remains the only scope action that pans");
+                        app::CreativeEditorWorldLayoutSelectionKind::None &&
+                    cr::selectedTargetCount(appState.facade.selectionState()) ==
+                        0U,
+                "clearing the plan selection clears generated object selection");
+}
+
+bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Generated Selection Sync");
+  static_cast<void>(document.assignId(443U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const auto previewed = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const auto generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!shell.accepted || !previewed.accepted || !generated.accepted ||
+      editor.worldLayout.source.rooms.empty()) {
+    return expect(false, "generated selection fixture builds one room");
+  }
+
+  std::vector<cr::CreativeObjectId> roomObjectIds;
+  cr::CreativeObjectId directRoomObjectId = cr::kInvalidObjectId;
+  for (const cr::CreativeObject& object : appState.facade.document().objects()) {
+    if (!cr::creativeWorldLayoutObjectBelongsToSource(
+            editor.worldLayout.source, object,
+            cr::CreativeWorldLayoutTable::Room, 0U)) {
+      continue;
+    }
+    roomObjectIds.push_back(object.id);
+    const cr::CreativeWorldLayoutObjectProvenance provenance =
+        cr::resolveCreativeWorldLayoutObjectProvenance(
+            editor.worldLayout.source, object);
+    if (provenance.table == cr::CreativeWorldLayoutTable::Room) {
+      directRoomObjectId = object.id;
+    }
+  }
+  if (roomObjectIds.empty() || directRoomObjectId == cr::kInvalidObjectId) {
+    return expect(false,
+                  "generated selection fixture exposes direct room output");
+  }
+
+  const auto roomSelected = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{roomObjectIds, roomObjectIds.front()});
+  const bool roomSynchronized =
+      roomSelected.accepted &&
+      cr::selectedTargetCount(appState.facade.selectionState()) ==
+          roomObjectIds.size() &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Room &&
+      editor.worldLayout.selection.index == 0U;
+
+  const cr::CreativeObjectId authoredObjectId =
+      createCrate(appState.facade, 20.0);
+  const auto mixed = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{
+          {directRoomObjectId, authoredObjectId}, authoredObjectId});
+  const bool mixedClearsSource =
+      mixed.accepted &&
+      cr::selectedTargetCount(appState.facade.selectionState()) == 2U &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::None;
+
+  const auto hidden = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsVisible, context,
+      app::CreativeDesktopObjectFlagPayload{{directRoomObjectId}, false});
+  const auto locked = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsLocked, context,
+      app::CreativeDesktopObjectFlagPayload{{directRoomObjectId}, true});
+  const auto inspected = dispatchPayload(
+      app::CreativeDesktopCommandId::SelectObjects, context,
+      app::CreativeDesktopSelectPayload{{directRoomObjectId},
+                                        directRoomObjectId});
+  const cr::CreativeObject* directRoomObject =
+      appState.facade.findObject(directRoomObjectId);
+  const bool hiddenLockedRemainsInspectable =
+      hidden.accepted && locked.accepted && inspected.accepted &&
+      directRoomObject != nullptr && !directRoomObject->visible &&
+      directRoomObject->locked &&
+      appState.facade.selectionState().selectedTarget.value ==
+          static_cast<cr::Id>(directRoomObjectId) &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Room &&
+      editor.worldLayout.selection.index == 0U;
+
+  return expect(roomSynchronized,
+                "Outliner object selection synchronizes its common 2D room") &&
+         expect(mixedClearsSource,
+                "mixed authored and generated selection clears 2D source") &&
+         expect(hiddenLockedRemainsInspectable,
+                "hidden locked generated output remains Outliner-selectable");
 }
 
 bool worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() {
@@ -2339,6 +2820,147 @@ bool worldLayoutStructuralCommandsRouteThroughDispatcher() {
                 "building group commands preview, commit, duplicate, and clear semantically");
 }
 
+bool synchronizedStructuralPreviewsShareInspectionSource() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Synchronized Building Transform");
+  static_cast<void>(document.assignId(452U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "synchronized_building_transform");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {12, 8}}, 0.0, 4U, 0.25, 1U});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const auto previewed = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const auto generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Select));
+  const auto selected = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingSelectionPayload{0U});
+  if (!shell.accepted || !previewed.accepted || !generated.accepted ||
+      !selected.accepted) {
+    return expect(false, "synchronized building transform fixture is ready");
+  }
+
+  const std::uint64_t revisionBefore = editor.worldLayout.revision;
+  const auto authoredFingerprint = cr::fingerprintCreativeWorldLayoutBuilding(
+      editor.worldLayout.source, 0U);
+  const auto transformed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingTransformPayload{
+          app::CreativeEditorWorldLayoutBuildingTransformPhase::Preview,
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const app::CreativeEditorWorldLayoutInspection inspection =
+      app::inspectCreativeEditorWorldLayout(editor.worldLayout);
+  const auto candidateFingerprint = cr::fingerprintCreativeWorldLayoutBuilding(
+      editor.worldLayout.buildingTransform.candidate, 0U);
+  const bool onePreviewSource =
+      transformed.accepted && transformed.changed &&
+      !transformed.worldLayoutChanged && transformed.sceneChanged &&
+      editor.worldLayout.revision == revisionBefore &&
+      cr::fingerprintCreativeWorldLayoutBuilding(editor.worldLayout.source,
+                                                 0U) ==
+          authoredFingerprint &&
+      inspection.source == &editor.worldLayout.previewSource &&
+      inspection.sourceKind ==
+          app::CreativeEditorWorldLayoutInspectionSourceKind::Preview &&
+      inspection.previewValidity ==
+          app::CreativeEditorWorldLayoutPreviewValidity::Valid &&
+      !inspection.volatileSource &&
+      &app::creativeEditorWorldLayoutDisplaySource(editor.worldLayout) ==
+          inspection.source &&
+      cr::fingerprintCreativeWorldLayoutBuilding(*inspection.source, 0U) ==
+          candidateFingerprint &&
+      &app::creativeEditorWorldLayoutRenderDocument(
+           editor.worldLayout, appState.facade.document()) ==
+          &editor.worldLayout.preview.document;
+  const std::uint64_t previewContentRevisionBeforeRepeat =
+      editor.worldLayout.previewContentRevision;
+  const auto repeatedTransform = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingTransformPayload{
+          app::CreativeEditorWorldLayoutBuildingTransformPhase::Preview,
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const bool repeatedTransformReusesPreview =
+      repeatedTransform.accepted && !repeatedTransform.changed &&
+      !repeatedTransform.worldLayoutChanged && !repeatedTransform.sceneChanged &&
+      editor.worldLayout.previewContentRevision ==
+          previewContentRevisionBeforeRepeat;
+
+  const auto cancelled = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
+      app::CreativeDesktopWorldLayoutBuildingTransformPayload{
+          app::CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
+          cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
+  const app::CreativeEditorWorldLayoutInspection authoredInspection =
+      app::inspectCreativeEditorWorldLayout(editor.worldLayout);
+  const bool cancelRestoresAuthoredInspection =
+      cancelled.accepted && cancelled.changed && cancelled.sceneChanged &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      !editor.worldLayout.liveEditPreviewVisible &&
+      authoredInspection.source == &editor.worldLayout.source &&
+      authoredInspection.sourceKind ==
+          app::CreativeEditorWorldLayoutInspectionSourceKind::Authored &&
+      authoredInspection.previewValidity ==
+          app::CreativeEditorWorldLayoutPreviewValidity::None &&
+      cr::fingerprintCreativeWorldLayoutBuilding(editor.worldLayout.source,
+                                                 0U) ==
+          authoredFingerprint;
+
+  const auto roomBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
+          {6.0, 4.0}, 0.25});
+  const auto roomUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Update,
+          {8.0, 5.0}, 0.25});
+  const app::CreativeEditorWorldLayoutInspection roomInspection =
+      app::inspectCreativeEditorWorldLayout(editor.worldLayout);
+  const auto roomCandidateFingerprint =
+      cr::fingerprintCreativeWorldLayoutBuilding(
+          editor.worldLayout.roomManipulation.previewEdit.edited, 0U);
+  const bool roomPreviewUsesCompiledSource =
+      roomBegin.accepted && roomUpdate.accepted && roomUpdate.changed &&
+      roomUpdate.sceneChanged && editor.worldLayout.roomManipulation.active &&
+      roomInspection.source == &editor.worldLayout.previewSource &&
+      roomInspection.sourceKind ==
+          app::CreativeEditorWorldLayoutInspectionSourceKind::Preview &&
+      roomInspection.previewValidity ==
+          app::CreativeEditorWorldLayoutPreviewValidity::Valid &&
+      cr::fingerprintCreativeWorldLayoutBuilding(*roomInspection.source, 0U) ==
+          roomCandidateFingerprint &&
+      &app::creativeEditorWorldLayoutRenderDocument(
+           editor.worldLayout, appState.facade.document()) ==
+          &editor.worldLayout.preview.document;
+  const auto roomCancelled = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
+      app::CreativeDesktopWorldLayoutRoomManipulationPayload{
+          app::CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
+          {}, 0.25});
+
+  return expect(onePreviewSource,
+                "building transform shares one exact source across Plan Elevation and 3D") &&
+         expect(repeatedTransformReusesPreview,
+                "identical building transform preview reuses the exact source") &&
+         expect(cancelRestoresAuthoredInspection,
+                "building transform cancel restores the authored inspection source") &&
+         expect(roomPreviewUsesCompiledSource,
+                "room drag inspection prefers its compiled exact preview") &&
+         expect(roomCancelled.accepted && roomCancelled.sceneChanged,
+                "room drag cancel closes its exact inspection preview");
+}
+
 bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -2350,7 +2972,7 @@ bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
   app::resetCreativeEditorWorldLayout(editor.worldLayout,
                                       "connector_commands");
   const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
-      editor.worldLayout, {{{0, 0}, {8, 6}}, 0.0, 4U, 0.25, 1U});
+      editor.worldLayout, {{{0, 0}, {8, 8}}, 0.0, 4U, 0.25, 1U});
   const auto upperLevel = app::applyCreativeEditorWorldLayoutLevelOperation(
       editor.worldLayout,
       app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
@@ -2372,7 +2994,7 @@ bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
       app::CreativeEditorWorldLayoutGesturePhase::Begin, {1.0, 1.0}));
   const auto connector = app::applyCreativeEditorWorldLayoutGesture(
       editor.worldLayout,
-      app::CreativeEditorWorldLayoutGesturePhase::Commit, {5.0, 5.0});
+      app::CreativeEditorWorldLayoutGesturePhase::Commit, {7.0, 7.0});
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       editor.worldLayout, app::CreativeEditorWorldLayoutTool::Select));
   const auto preview = app::previewCreativeEditorWorldLayout(
@@ -2487,6 +3109,10 @@ bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
   const app::CreativeDesktopCommandContext context{appState, editor, root,
                                                     &saveId};
 
+  const auto sourcePreview = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutPreview, context);
+  const auto sourceApply = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
   const std::uint64_t revisionBefore = editor.worldLayout.revision;
   const auto captured = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
@@ -2518,6 +3144,11 @@ bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
   const bool previewOnly =
       editor.worldLayout.revision == revisionBefore &&
       editor.worldLayout.source.buildings.size() == 1U &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.liveEditPreviewVisible &&
+      &app::creativeEditorWorldLayoutRenderDocument(
+           editor.worldLayout, appState.facade.document()) ==
+          &editor.worldLayout.preview.document &&
       app::creativeEditorWorldLayoutDisplaySource(editor.worldLayout)
               .buildings.size() == 2U;
   const auto committed = dispatchPayload(
@@ -2528,7 +3159,8 @@ bool worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() {
           cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90});
 
   const bool ok =
-      expect(libraryLoaded.accepted && captured.accepted && captured.changed &&
+      expect(libraryLoaded.accepted && sourcePreview.accepted &&
+                 sourceApply.accepted && captured.accepted && captured.changed &&
                  !captured.worldLayoutChanged &&
                  editor.worldLayout.buildingTemplates.templates.size() == 1U,
              "template capture dispatches without changing layout source") &&
@@ -2639,6 +3271,7 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
                    1U,
                    cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
                        SelectedInstance});
+  const std::uint64_t revisionAfterUpdate = editor.worldLayout.revision;
   const auto siblingOutdated =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
@@ -2682,12 +3315,28 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
   const auto siblingAfterRedo =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
+  const std::uint64_t revisionBeforeDetach = editor.worldLayout.revision;
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint beforeDetach =
+      cr::fingerprintCreativeWorldLayoutBuilding(editor.worldLayout.source, 2U);
+  const std::string detachedStableKey =
+      editor.worldLayout.source.buildings[2U].stableKey;
+  const auto detached = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutDetachBuildingTemplateInstance,
+      context, app::CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
+                   2U,
+                   cr::CreativeWorldLayoutBuildingTemplateRefreshMode::
+                       SelectedInstance});
+  const auto siblingAfterDetach =
+      app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
+          editor.worldLayout, 2U);
+  const cr::CreativeWorldLayoutBuildingTemplateFingerprint afterDetach =
+      cr::fingerprintCreativeWorldLayoutBuilding(editor.worldLayout.source, 2U);
 
   const bool ok =
       expect(updated.accepted && updated.changed &&
                  updated.worldLayoutChanged &&
-                 editor.worldLayout.revision == revisionBeforeRefresh + 1U &&
-                 revisionBeforeRefresh == revisionBeforeUpdate + 1U &&
+                 revisionAfterUpdate == revisionBeforeUpdate + 1U &&
+                 revisionBeforeRefresh == revisionAfterUpdate &&
                  siblingOutdated.state ==
                      cr::CreativeWorldLayoutBuildingTemplateSyncState::
                          SourceChanged,
@@ -2715,7 +3364,16 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
                                             Current &&
                  appState.facade.document().revision() ==
                      documentRevisionAfterRefresh,
-             "template rebuild source and geometry undo and redo together");
+             "template rebuild source and geometry undo and redo together") &&
+      expect(detached.accepted && detached.changed &&
+                 detached.worldLayoutChanged && !detached.sceneChanged &&
+                 editor.worldLayout.revision == revisionBeforeDetach + 1U &&
+                 editor.worldLayout.source.buildings[2U].stableKey ==
+                     detachedStableKey &&
+                 beforeDetach == afterDetach &&
+                 siblingAfterDetach.state ==
+                     cr::CreativeWorldLayoutBuildingTemplateSyncState::Unlinked,
+             "template detach removes only provenance through the dispatcher");
   std::filesystem::remove_all(root, error);
   return ok;
 }
@@ -2794,13 +3452,22 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       app::CreativeDesktopWorldLayoutPointPayload{{5.0, 1.0}});
   const std::uint64_t revisionBeforeOpeningSettings =
       editor.worldLayout.revision;
+  app::CreativeEditorWorldLayoutOpeningSettings openingSettingsEdit;
+  openingSettingsEdit.centerOffsetCells = 3.0;
+  openingSettingsEdit.widthCells = 1.5;
+  openingSettingsEdit.heightCells = 2.5;
+  openingSettingsEdit.door.hingeSide =
+      cr::CreativeDoorHingeSide::MinimumEdge;
+  openingSettingsEdit.door.swingSide =
+      cr::CreativeDoorSwingSide::PositiveNormal;
+  openingSettingsEdit.door.initialState =
+      cr::CreativeDoorInitialState::Open;
+  openingSettingsEdit.facing =
+      cr::CreativeBuildingOpeningFacing::NegativeNormal;
   const app::CreativeDesktopCommandResult openingSettings = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
       app::CreativeDesktopWorldLayoutOpeningSettingsPayload{
-          0U,
-          {3.0, 1.5, 0.0, 2.5,
-           cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal,
-           true}});
+          0U, openingSettingsEdit});
   const bool openingSettingsCommittedOnce =
       editor.worldLayout.revision == revisionBeforeOpeningSettings + 1U;
   const app::CreativeDesktopCommandResult selectOpeningTool = dispatchPayload(
@@ -2886,7 +3553,9 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                         revisionBeforeOpeningMove + 1U &&
                     editor.worldLayout.source.openings[0].centerOffsetCells ==
                         4.0 &&
-                    editor.worldLayout.source.openings[0].widthCells == 1.5,
+                    editor.worldLayout.source.openings[0].widthCells == 1.5 &&
+                    editor.worldLayout.source.openings[0].facing ==
+                        cr::CreativeBuildingOpeningFacing::NegativeNormal,
                 "opening settings and preview-only movement route through typed payloads") &&
          expect(preview.accepted && preview.sceneChanged &&
                     exactPreviewVisible && !editor.desktopUi.showWorldLayout,
@@ -3202,9 +3871,9 @@ bool worldLayoutObjectFocusAndAdoptionCloseTheSourceLoop() {
               {4.0, 2.0, 3.0}) &&
       editor.worldLayout.source.objects[0].hasAssetSourceBounds &&
       vecNear(editor.worldLayout.source.objects[0].assetSourceBoundsMeters.min,
-              {-1.0, 0.0, -1.0}) &&
+              {0.0, 0.0, 0.0}) &&
       vecNear(editor.worldLayout.source.objects[0].assetSourceBoundsMeters.max,
-              {0.0, 1.0, 0.0}) &&
+              {1.0, 1.0, 1.0}) &&
       editor.worldLayout.generatedRevision == editor.worldLayout.revision;
 
   const app::CreativeDesktopCommandResult undone =
@@ -3748,7 +4417,8 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
 
   const cr::CreativeObject* roof = findGeneratedObject(
       appState.facade.document(), editor.worldLayout.source,
-      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+      cr::CreativeWorldLayoutTable::Level, 1U,
+      cr::CreativeObjectKind::RoofSlope);
   const cr::CreativeObject* roomFloor = findGeneratedObject(
       appState.facade.document(), editor.worldLayout.source,
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
@@ -3857,7 +4527,8 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
 
   const cr::CreativeObject* liveRoof = findGeneratedObject(
       appState.facade.document(), editor.worldLayout.source,
-      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+      cr::CreativeWorldLayoutTable::Level, 1U,
+      cr::CreativeObjectKind::RoofSlope);
   const cr::CreativeObject* liveRoomFloor = findGeneratedObject(
       appState.facade.document(), editor.worldLayout.source,
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
@@ -4082,7 +4753,8 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const cr::CreativeObject* resizedWall = generatedObject(
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Wall);
   const cr::CreativeObject* resizedRoof = generatedObject(
-      cr::CreativeWorldLayoutTable::Level, 1U, cr::CreativeObjectKind::Roof);
+      cr::CreativeWorldLayoutTable::Level, 1U,
+      cr::CreativeObjectKind::RoofSlope);
   const cr::CreativeObject* preservedOpening = generatedObject(
       cr::CreativeWorldLayoutTable::Opening, 0U,
       cr::CreativeObjectKind::Door);
@@ -4310,8 +4982,9 @@ bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
       editor.worldLayout, 0U, openingSettings));
   openingSettings.widthCells = 1.5;
   openingSettings.heightCells = 2.5;
-  openingSettings.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal;
+  openingSettings.door.hingeSide = cr::CreativeDoorHingeSide::MinimumEdge;
+  openingSettings.door.swingSide = cr::CreativeDoorSwingSide::PositiveNormal;
+  openingSettings.door.initialState = cr::CreativeDoorInitialState::Open;
   const std::uint64_t documentRevisionBeforeOpeningPreview =
       appState.facade.document().revision();
   const std::uint64_t undoBeforeOpeningPreview =
@@ -4337,8 +5010,7 @@ bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
   const bool openingSynchronized =
       near(editor.worldLayout.source.openings[0].widthCells, 1.5) &&
       near(editor.worldLayout.source.openings[0].cutoutHeightCells, 2.5) &&
-      editor.worldLayout.source.openings[0].pose ==
-          cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal &&
+      editor.worldLayout.source.openings[0].door == openingSettings.door &&
       editor.worldLayout.generatedRevision == editor.worldLayout.revision;
 
   const std::uint64_t revisionBeforeReject = editor.worldLayout.revision;
@@ -4371,8 +5043,8 @@ bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
   const bool undoRestoredOpening =
       near(editor.worldLayout.source.openings[0].widthCells, 1.0) &&
-      editor.worldLayout.source.openings[0].pose ==
-          cr::CreativeBuildingOpeningPose::Closed &&
+      editor.worldLayout.source.openings[0].door.initialState ==
+          cr::CreativeDoorInitialState::Closed &&
       editor.worldLayout.source.walls[0].heightCells == 5U;
   const app::CreativeDesktopCommandResult redone =
       dispatchOne(app::CreativeDesktopCommandId::Redo, context);
@@ -4702,8 +5374,9 @@ bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
   app::CreativeEditorWorldLayoutOpeningSettings settings;
   static_cast<void>(app::readCreativeEditorWorldLayoutOpeningSettings(
       editor.worldLayout, 0U, settings));
-  settings.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal;
+  settings.door.hingeSide = cr::CreativeDoorHingeSide::MaximumEdge;
+  settings.door.swingSide = cr::CreativeDoorSwingSide::NegativeNormal;
+  settings.door.initialState = cr::CreativeDoorInitialState::Open;
   const std::uint64_t documentRevisionBefore =
       appState.facade.document().revision();
   const std::uint64_t documentUndoBefore =
@@ -4756,8 +5429,7 @@ bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
   const bool sourceOnlyRecorded =
       updated.accepted && updated.changed && updated.worldLayoutChanged &&
       updated.sceneChanged &&
-      editor.worldLayout.source.openings[0].pose ==
-          cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal &&
+      editor.worldLayout.source.openings[0].door == settings.door &&
       editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
       appState.facade.document().revision() == documentRevisionBefore &&
       cr::creativeUndoDepth(appState.history) == documentUndoBefore &&
@@ -4768,8 +5440,8 @@ bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
   const bool undoRestored =
       undone.accepted &&
-      editor.worldLayout.source.openings[0].pose ==
-          cr::CreativeBuildingOpeningPose::Closed &&
+      editor.worldLayout.source.openings[0].door.initialState ==
+          cr::CreativeDoorInitialState::Closed &&
       appState.facade.document().revision() == documentRevisionBefore;
   const app::CreativeDesktopCommandResult redone =
       dispatchOne(app::CreativeDesktopCommandId::Redo, context);
@@ -4781,9 +5453,7 @@ bool generatedSourceOnlyOpeningEditUsesSourceHistory() {
          expect(sourceOnlyRecorded,
                 "source-only semantic edit records no fake document revision") &&
          expect(undoRestored && redone.accepted &&
-                    editor.worldLayout.source.openings[0].pose ==
-                        cr::CreativeBuildingOpeningPose::
-                            OpenFromEndNegativeNormal,
+                    editor.worldLayout.source.openings[0].door == settings.door,
                 "source-only semantic edit remains undoable and redoable");
 }
 
@@ -5113,6 +5783,13 @@ bool worldLayoutAssetRepairCommandsPreservePlacementAndHistory() {
       app::buildCreativeEditorWorldLayoutDiagnosticReport(
           appState.facade.document(), editor.worldLayout.source,
           &editor.catalog.model);
+  const bool hasAssetDiagnostic = std::any_of(
+      finalDiagnostics.issues.begin(),
+      finalDiagnostics.issues.begin() + finalDiagnostics.issueCount,
+      [](const app::CreativeEditorWorldLayoutDiagnostic& diagnostic) {
+        return diagnostic.assetIssue !=
+               app::CreativeEditorWorldLayoutAssetIssue::None;
+      });
 
   const bool objectPlacementPreserved =
       vecNear(afterObjectRefresh.pointCells, originalObject.pointCells) &&
@@ -5170,8 +5847,7 @@ bool worldLayoutAssetRepairCommandsPreservePlacementAndHistory() {
          expect(editor.worldLayout.sourceHistory.undoEntries.size() ==
                     undoBefore + 5U,
                 "five accepted repairs create exactly five undo entries") &&
-         expect(finalDiagnostics.ready &&
-                    finalDiagnostics.issueCount == 0U,
+         expect(finalDiagnostics.ready && !hasAssetDiagnostic,
                 "repaired sources compile without asset diagnostics");
 }
 
@@ -5419,6 +6095,104 @@ bool synchronizedCreationPreviewAndPointCommitAreAtomic() {
                 "creation cancel removes only its transient preview") &&
          expect(invalidMutatedNothing,
                 "invalid creation leaves source, document, and history unchanged");
+}
+
+bool synchronizedTerrainPathDraftPreviewsAndCommitsAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Synchronized Path Preview");
+  static_cast<void>(document.assignId(446U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "synchronized_path_preview");
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const std::uint64_t initialSourceRevision = editor.worldLayout.revision;
+  const std::uint64_t initialDocumentRevision =
+      appState.facade.document().revision();
+
+  const auto tool = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
+      app::CreativeDesktopWorldLayoutToolPayload{
+          app::CreativeEditorWorldLayoutTool::Road});
+  const auto first = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{1.0, 1.0}});
+  const bool onePointIsTransient =
+      tool.accepted && first.accepted && !first.changed &&
+      !first.worldLayoutChanged && !first.sceneChanged &&
+      editor.worldLayout.terrainPathDraft.active &&
+      editor.worldLayout.terrainPathDraft.path.recipe.points.size() == 1U &&
+      editor.worldLayout.source.terrainPaths.empty() &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.revision == initialSourceRevision &&
+      appState.facade.document().revision() == initialDocumentRevision;
+
+  const auto second = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{5.0, 4.0}});
+  const std::uint64_t twoPointPreviewRevision =
+      editor.worldLayout.previewContentRevision;
+  const bool twoPointsPreviewExact3d =
+      second.accepted && !second.changed && !second.worldLayoutChanged &&
+      second.sceneChanged && editor.worldLayout.liveEditPreviewVisible &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.terrainPaths.empty() &&
+      editor.worldLayout.previewSource.terrainPaths.size() == 1U &&
+      editor.worldLayout.previewSource.terrainPaths[0].recipe.points.size() ==
+          2U &&
+      appState.facade.document().revision() == initialDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == 0U;
+
+  const auto third = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasPoint, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{9.0, 1.0}});
+  const bool thirdPointRefreshesPreview =
+      third.accepted && !third.changed && third.sceneChanged &&
+      editor.worldLayout.previewContentRevision > twoPointPreviewRevision &&
+      editor.worldLayout.previewSource.terrainPaths[0].recipe.points.size() ==
+          3U;
+
+  const auto committed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCanvasGesture, context,
+      app::CreativeDesktopWorldLayoutGesturePayload{
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {}});
+  const bool committedOnce =
+      committed.accepted && committed.changed && committed.worldLayoutChanged &&
+      committed.sceneChanged && !editor.worldLayout.terrainPathDraft.active &&
+      !editor.worldLayout.liveEditPreviewVisible &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.terrainPaths.size() == 1U &&
+      editor.worldLayout.source.terrainPaths[0].recipe.points.size() == 3U &&
+      editor.worldLayout.revision == initialSourceRevision + 1U &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      appState.facade.document().terrainOperationStack().operations.size() ==
+          1U &&
+      appState.facade.document().terrainOperationStack().operations[0].kind ==
+          cr::CreativeTerrainOperationKind::Path &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+
+  const bool undone =
+      app::undoLastEdit(appState, "terrain-path-draft-undo",
+                        &editor.worldLayout);
+  const bool wholePathUndone =
+      undone && editor.worldLayout.source.terrainPaths.empty() &&
+      appState.facade.document().terrainOperationStack().operations.empty() &&
+      appState.facade.document().revision() == initialDocumentRevision;
+
+  return expect(onePointIsTransient,
+                "one dispatched path point remains a transient draft") &&
+         expect(twoPointsPreviewExact3d,
+                "two dispatched path points preview exact 3D without history") &&
+         expect(thirdPointRefreshesPreview,
+                "a dispatched bend refreshes the transient 3D path") &&
+         expect(committedOnce,
+                "finishing a dispatched path commits source and terrain once") &&
+         expect(wholePathUndone,
+                "one undo removes the whole dispatched terrain path");
 }
 
 bool synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() {
@@ -5698,6 +6472,171 @@ bool synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() {
                 "invalid release leaves source, document, and history unchanged");
 }
 
+bool synchronizedRoofHandlesPreviewAndCommitOneLevelAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Roof Handle Live Edit");
+  static_cast<void>(document.assignId(472U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "roof_handle_live_edit");
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
+  settings.shell.footprint = {{0, 0}, {8, 6}};
+  settings.shell.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  settings.shell.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  settings.shell.roofPitchDegrees = 35.0;
+  settings.facade.includeExteriorWindows = false;
+  const auto created = app::createCreativeEditorWorldLayoutBuildingBlockout(
+      editor.worldLayout, settings);
+  const auto generated =
+      app::confirmCreativeEditorWorldLayout(editor.worldLayout, appState);
+  if (!created.accepted || !generated.accepted ||
+      editor.worldLayout.source.levels.empty()) {
+    return expect(false, "roof live-edit fixture generates");
+  }
+
+  const std::size_t levelIndex = editor.worldLayout.source.levels.size() - 1U;
+  editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
+  editor.worldLayout.activeLevelIndex = levelIndex;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Level, levelIndex};
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, {}, nullptr, nullptr, nullptr};
+  const app::CreativeEditorWorldLayoutRoofTarget target{
+      levelIndex, app::CreativeEditorWorldLayoutRoofHandleKind::EastEave};
+  const double originalOverhang =
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells;
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(appState.history);
+
+  const auto mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutPointPayload{{8.0, 3.0}});
+  const auto begin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin, target,
+          8.0});
+  const auto update = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {},
+          8.37});
+  const bool previewIsTransient =
+      !mismatch.accepted && begin.accepted && !begin.changed &&
+      update.accepted && update.changed && update.sceneChanged &&
+      !update.worldLayoutChanged && editor.worldLayout.roofManipulation.active &&
+      editor.worldLayout.liveEditPreviewVisible &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.previewSource.levels[levelIndex].roofOverhangCells ==
+          originalOverhang + 0.25 &&
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang &&
+      editor.worldLayout.revision == sourceRevisionBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoDepthBefore;
+
+  const auto repeated = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {},
+          8.37});
+  const auto committed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Commit, {},
+          8.37});
+  const bool committedOnce =
+      repeated.accepted && !repeated.changed && !repeated.sceneChanged &&
+      committed.accepted && committed.changed &&
+      committed.worldLayoutChanged && committed.sceneChanged &&
+      !editor.worldLayout.roofManipulation.active &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang + 0.25 &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      appState.facade.document().revision() != documentRevisionBefore &&
+      cr::creativeUndoDepth(appState.history) == undoDepthBefore + 1U;
+  if (!previewIsTransient || !committedOnce) {
+    return expect(false, "synchronized roof live-edit setup completes");
+  }
+  const bool undone =
+      app::undoLastEdit(appState, "roof-handle-undo", &editor.worldLayout);
+  const bool undoRestoredSourceAndScene =
+      undone &&
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision;
+
+  editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Level, levelIndex};
+  const std::uint64_t cancelDocumentRevision =
+      appState.facade.document().revision();
+  const std::uint64_t cancelUndoDepth = cr::creativeUndoDepth(appState.history);
+  const auto cancelBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin, target,
+          8.0});
+  const auto cancelUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {},
+          8.5});
+  const auto cancelled = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Cancel, {},
+          0.0});
+  const bool cancelIsEmpty =
+      cancelBegin.accepted && cancelUpdate.accepted &&
+      cancelUpdate.sceneChanged && cancelled.accepted &&
+      cancelled.sceneChanged &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang &&
+      appState.facade.document().revision() == cancelDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == cancelUndoDepth;
+
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Level, levelIndex};
+  const auto staleBegin = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Begin, target,
+          8.0});
+  ++editor.worldLayout.revision;
+  const auto staleUpdate = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoof, context,
+      app::CreativeDesktopWorldLayoutRoofManipulationPayload{
+          app::CreativeEditorWorldLayoutRoofManipulationPhase::Update, {},
+          8.5});
+  const bool staleIsClosed =
+      staleBegin.accepted && !staleUpdate.accepted &&
+      !staleUpdate.changed && !editor.worldLayout.roofManipulation.active &&
+      editor.worldLayout.source.levels[levelIndex].roofOverhangCells ==
+          originalOverhang &&
+      appState.facade.document().revision() == cancelDocumentRevision &&
+      cr::creativeUndoDepth(appState.history) == cancelUndoDepth;
+
+  return expect(previewIsTransient,
+                "roof command previews exact 3D without source mutation") &&
+         expect(committedOnce,
+                "roof command commits source and scene in one history step") &&
+         expect(undoRestoredSourceAndScene,
+                "roof handle undo restores semantic and generated truth") &&
+         expect(cancelIsEmpty,
+                "roof command cancel removes only its transient preview") &&
+         expect(staleIsClosed,
+                "stale roof command fails closed without partial history");
+}
+
 bool sourcePropertyTablesAreDerivedFromSettingsTypes() {
   const bool allMatch =
       app::creativeDesktopWorldLayoutPropertyTable<
@@ -5719,6 +6658,9 @@ bool sourcePropertyTablesAreDerivedFromSettingsTypes() {
           app::CreativeEditorWorldLayoutOpeningSettings>() ==
           cr::CreativeWorldLayoutTable::Opening &&
       app::creativeDesktopWorldLayoutPropertyTable<
+          app::CreativeEditorWorldLayoutRoofApertureSettings>() ==
+          cr::CreativeWorldLayoutTable::RoofAperture &&
+      app::creativeDesktopWorldLayoutPropertyTable<
           app::CreativeEditorWorldLayoutTerrainProfileSettings>() ==
           cr::CreativeWorldLayoutTable::TerrainProfile &&
       app::creativeDesktopWorldLayoutPropertyTable<
@@ -5729,6 +6671,235 @@ bool sourcePropertyTablesAreDerivedFromSettingsTypes() {
           cr::CreativeWorldLayoutTable::Object;
   return expect(allMatch,
                 "each property settings type owns one source table");
+}
+
+bool roofApertureCommandsSynchronizeSourceSceneAndHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Roof Aperture Commands");
+  static_cast<void>(document.assignId(911U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "roof_aperture_commands");
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  editor.worldLayout.source.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "level";
+  level.name = "Upper floor";
+  level.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  editor.worldLayout.source.levels.push_back(level);
+  cr::CreativeWorldLayoutRoom room;
+  room.buildingIndex = 0U;
+  room.levelIndex = 0U;
+  room.stableKey = "room";
+  room.name = "Hall";
+  room.footprint = {{0, 0}, {8, 8}};
+  editor.worldLayout.source.rooms.push_back(room);
+  ++editor.worldLayout.revision;
+
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!generated.accepted) {
+    return expect(false, "roof aperture command fixture generated");
+  }
+
+  const std::uint64_t undoBefore = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult created = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCreateRoofAperture, context,
+      app::CreativeDesktopWorldLayoutRoofApertureCreatePayload{
+          0U, cr::CreativeStructuralRoofApertureKind::Skylight});
+  if (!created.accepted || editor.worldLayout.source.roofApertures.size() !=
+                               1U) {
+    return expect(false, "roof aperture command creates one source");
+  }
+
+  app::CreativeEditorWorldLayoutRoofApertureSettings createdSettings;
+  if (!app::readCreativeEditorWorldLayoutRoofApertureSettings(
+          editor.worldLayout, 0U, createdSettings)) {
+    return expect(false, "created roof aperture settings are readable");
+  }
+  const std::string stableKey =
+      editor.worldLayout.source.roofApertures[0].stableKey;
+  const std::vector<cr::CreativeObjectId> createdIds =
+      generatedSourceObjectIds(appState.facade.document(),
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::RoofAperture,
+                               0U);
+  const cr::CreativeObject* createdObject =
+      createdIds.size() == 1U
+          ? appState.facade.document().findObject(createdIds.front())
+          : nullptr;
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      createdObject == nullptr
+          ? cr::CreativeWorldLayoutObjectProvenance{}
+          : cr::resolveCreativeWorldLayoutObjectProvenance(
+                editor.worldLayout.source, *createdObject);
+  const app::CreativeDesktopGeneratedSourceScopeModel scopes =
+      app::buildCreativeDesktopGeneratedSourceScopeModel(
+          editor.worldLayout.source, provenance);
+  const bool createdAtomically =
+      created.changed && created.worldLayoutChanged && created.sceneChanged &&
+      createdObject != nullptr &&
+      createdObject->kind == cr::CreativeObjectKind::Window &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 1U;
+  const bool scopesAreExact =
+      scopes.count == 3U && scopes.directEntryIndex == 2U &&
+      scopes.entries[0].table == cr::CreativeWorldLayoutTable::Building &&
+      scopes.entries[0].index == 0U &&
+      scopes.entries[1].table == cr::CreativeWorldLayoutTable::Level &&
+      scopes.entries[1].index == 0U &&
+      scopes.entries[2].table ==
+          cr::CreativeWorldLayoutTable::RoofAperture &&
+      scopes.entries[2].index == 0U;
+
+  constexpr double kDragTolerance = 0.20;
+  const app::CreativeEditorWorldLayoutPoint dragStart{
+      (createdSettings.minimumXCells + createdSettings.maximumXCells) * 0.5,
+      (createdSettings.minimumZCells + createdSettings.maximumZCells) * 0.5};
+  const app::CreativeEditorWorldLayoutPoint dragEnd{dragStart.x + 1.12,
+                                                     dragStart.z + 0.62};
+  const std::uint64_t dragUndoBefore =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult dragBegun = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
+      context, app::CreativeDesktopWorldLayoutRoofApertureManipulationPayload{
+                   app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::
+                       Begin,
+                   dragStart, kDragTolerance});
+  const app::CreativeDesktopCommandResult dragPreviewed = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
+      context, app::CreativeDesktopWorldLayoutRoofApertureManipulationPayload{
+                   app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::
+                       Update,
+                   dragEnd, kDragTolerance});
+  app::CreativeEditorWorldLayoutRoofApertureSettings sourceDuringDrag;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoofApertureSettings(
+      editor.worldLayout, 0U, sourceDuringDrag));
+  const bool dragPreviewIsTransient =
+      dragBegun.accepted && dragPreviewed.accepted && dragPreviewed.changed &&
+      dragPreviewed.sceneChanged && !dragPreviewed.worldLayoutChanged &&
+      sourceDuringDrag == createdSettings &&
+      app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      cr::creativeUndoDepth(appState.history) == dragUndoBefore;
+  const app::CreativeDesktopCommandResult dragCommitted = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
+      context, app::CreativeDesktopWorldLayoutRoofApertureManipulationPayload{
+                   app::CreativeEditorWorldLayoutRoofApertureManipulationPhase::
+                       Commit,
+                   dragEnd, kDragTolerance});
+  app::CreativeEditorWorldLayoutRoofApertureSettings draggedSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoofApertureSettings(
+      editor.worldLayout, 0U, draggedSettings));
+  const bool dragCommittedOnce =
+      dragCommitted.accepted && dragCommitted.changed &&
+      dragCommitted.worldLayoutChanged && dragCommitted.sceneChanged &&
+      !app::creativeEditorWorldLayoutPreviewActive(editor.worldLayout) &&
+      draggedSettings.minimumXCells == createdSettings.minimumXCells + 1.0 &&
+      draggedSettings.maximumXCells == createdSettings.maximumXCells + 1.0 &&
+      draggedSettings.minimumZCells == createdSettings.minimumZCells + 0.5 &&
+      draggedSettings.maximumZCells == createdSettings.maximumZCells + 0.5 &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 2U;
+
+  app::CreativeEditorWorldLayoutRoofApertureSettings editedSettings =
+      draggedSettings;
+  editedSettings.minimumXCells += 0.25;
+  editedSettings.maximumXCells += 0.25;
+  const app::CreativeDesktopCommandResult edited = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::RoofAperture, 0U, stableKey,
+          editedSettings});
+  const std::vector<cr::CreativeObjectId> editedIds =
+      generatedSourceObjectIds(appState.facade.document(),
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::RoofAperture,
+                               0U);
+  const bool editedAtomically =
+      edited.accepted && edited.changed && edited.worldLayoutChanged &&
+      edited.sceneChanged &&
+      editor.worldLayout.source.roofApertures[0].minimumXCells ==
+          editedSettings.minimumXCells &&
+      editor.worldLayout.source.roofApertures[0].maximumXCells ==
+          editedSettings.maximumXCells &&
+      editedIds.size() == 1U &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 3U;
+
+  const app::CreativeDesktopCommandResult deleted = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutDeleteSource, context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::RoofAperture, 0U, stableKey});
+  const bool deletedAtomically =
+      deleted.accepted && deleted.changed && deleted.worldLayoutChanged &&
+      deleted.sceneChanged && editor.worldLayout.source.roofApertures.empty() &&
+      (editedIds.empty() ||
+       appState.facade.document().findObject(editedIds.front()) == nullptr) &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      cr::creativeUndoDepth(appState.history) == undoBefore + 4U;
+
+  const app::CreativeDesktopCommandResult undoDelete =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  app::CreativeEditorWorldLayoutRoofApertureSettings restoredEditedSettings;
+  const bool deleteUndoRestored =
+      undoDelete.accepted &&
+      app::readCreativeEditorWorldLayoutRoofApertureSettings(
+          editor.worldLayout, 0U, restoredEditedSettings) &&
+      restoredEditedSettings == editedSettings &&
+      generatedSourceObjectIds(appState.facade.document(),
+                               editor.worldLayout.source,
+                               cr::CreativeWorldLayoutTable::RoofAperture,
+                               0U)
+              .size() ==
+          1U;
+  const app::CreativeDesktopCommandResult undoEdit =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  app::CreativeEditorWorldLayoutRoofApertureSettings restoredDraggedSettings;
+  const bool editUndoRestored =
+      undoEdit.accepted &&
+      app::readCreativeEditorWorldLayoutRoofApertureSettings(
+          editor.worldLayout, 0U, restoredDraggedSettings) &&
+      restoredDraggedSettings == draggedSettings;
+  const app::CreativeDesktopCommandResult undoDrag =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  app::CreativeEditorWorldLayoutRoofApertureSettings restoredCreatedSettings;
+  const bool dragUndoRestored =
+      undoDrag.accepted &&
+      app::readCreativeEditorWorldLayoutRoofApertureSettings(
+          editor.worldLayout, 0U, restoredCreatedSettings) &&
+      restoredCreatedSettings == createdSettings;
+  const app::CreativeDesktopCommandResult undoCreate =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool createUndoRestored =
+      undoCreate.accepted && editor.worldLayout.source.roofApertures.empty() &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision;
+
+  return expect(createdAtomically,
+                "roof aperture create synchronizes source scene and history") &&
+         expect(scopesAreExact,
+                "generated skylight exposes building level and source scopes") &&
+         expect(dragPreviewIsTransient,
+                "roof aperture drag previews in 3D without mutating source") &&
+         expect(dragCommittedOnce,
+                "roof aperture drag commits source scene and one undo step") &&
+         expect(editedAtomically,
+                "roof aperture edit synchronizes source scene and history") &&
+         expect(deletedAtomically,
+                "roof aperture delete synchronizes source scene and history") &&
+         expect(deleteUndoRestored && editUndoRestored && dragUndoRestored &&
+                    createUndoRestored,
+                "roof aperture create drag edit and delete undo independently");
 }
 
 bool sourcePropertyPreviewAndCommitAreAtomic() {
@@ -5891,6 +7062,265 @@ bool sourcePropertyPreviewAndCommitAreAtomic() {
                 "source property cancel clears only the transient preview");
 }
 
+bool buildingUsabilityRepairIsTypedAtomicAndUndoable() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Building Usability Repair Command");
+  static_cast<void>(document.assignId(911U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "building_usability_repair_command");
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings blockout;
+  blockout.shell.footprint = {{0, 0}, {8, 8}};
+  blockout.pattern =
+      cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
+  blockout.connectRooms = false;
+  blockout.facade.includeEntrance = false;
+  blockout.facade.includeExteriorWindows = false;
+  const app::CreativeDesktopCommandResult staged = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
+      context,
+      app::CreativeDesktopWorldLayoutBuildingBlockoutPayload{blockout});
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!expect(staged.accepted && generated.accepted &&
+                  editor.worldLayout.source.buildings.size() == 1U &&
+                  editor.worldLayout.source.openings.empty(),
+              "repair command fixture is synchronized without an entrance")) {
+    return false;
+  }
+
+  cr::CreativeWorldLayoutBuildingUsabilityConfig config;
+  config.gridCellSizeMeters =
+      appState.facade.document().gridSettings().cellSizeMeters;
+  const cr::CreativeWorldLayoutBuildingUsabilityReceipt usability =
+      cr::validateCreativeWorldLayoutBuildingUsability(
+          {&editor.worldLayout.source, nullptr, config});
+  const auto issueFound = std::find_if(
+      usability.issues.begin(), usability.issues.begin() + usability.issueCount,
+      [](const cr::CreativeWorldLayoutBuildingUsabilityIssue& issue) {
+        return issue.kind ==
+                   cr::CreativeWorldLayoutBuildingUsabilityIssueKind::
+                       MissingExteriorEntrance &&
+               issue.table == cr::CreativeWorldLayoutTable::Building &&
+               issue.index == 0U;
+      });
+  if (!expect(issueFound != usability.issues.begin() + usability.issueCount,
+              "repair command consumes the exact validator issue")) {
+    return false;
+  }
+
+  const cr::CreativeWorldLayoutBuildingUsabilityIssue issue = *issueFound;
+  const std::string stableKey =
+      editor.worldLayout.source.buildings[0].stableKey;
+  const std::uint64_t sourceRevision = editor.worldLayout.revision;
+  const std::uint64_t documentRevision =
+      appState.facade.document().revision();
+  const std::uint64_t undoDepth = cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult mismatched = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability,
+      context,
+      app::CreativeDesktopWorldLayoutSourcePayload{
+          cr::CreativeWorldLayoutTable::Building, 0U, stableKey});
+  const app::CreativeDesktopCommandResult stale = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability,
+      context,
+      app::CreativeDesktopWorldLayoutBuildingRepairPayload{issue,
+                                                            "stale-building"});
+  const bool rejectedAtomically =
+      !mismatched.accepted && !stale.accepted &&
+      editor.worldLayout.revision == sourceRevision &&
+      appState.facade.document().revision() == documentRevision &&
+      cr::creativeUndoDepth(appState.history) == undoDepth;
+
+  const app::CreativeDesktopCommandResult repaired = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability,
+      context,
+      app::CreativeDesktopWorldLayoutBuildingRepairPayload{issue, stableKey});
+  const bool repairedAtomically =
+      repaired.accepted && repaired.changed && repaired.worldLayoutChanged &&
+      repaired.sceneChanged && editor.worldLayout.source.openings.size() == 1U &&
+      editor.worldLayout.source.openings[0].kind ==
+          cr::CreativeBuildingOpeningKind::Door &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      appState.facade.document().revision() > documentRevision &&
+      std::count_if(appState.facade.document().objects().begin(),
+                    appState.facade.document().objects().end(),
+                    [](const cr::CreativeObject& object) {
+                      return object.kind == cr::CreativeObjectKind::Door;
+                    }) == 1 &&
+      cr::creativeUndoDepth(appState.history) == undoDepth + 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRestoredBoth =
+      undone.accepted && editor.worldLayout.source.openings.empty() &&
+      editor.worldLayout.generatedRevision == editor.worldLayout.revision &&
+      std::none_of(appState.facade.document().objects().begin(),
+                   appState.facade.document().objects().end(),
+                   [](const cr::CreativeObject& object) {
+                     return object.kind == cr::CreativeObjectKind::Door;
+                   });
+
+  return expect(rejectedAtomically,
+                "mismatched and stale repair commands mutate nothing") &&
+         expect(repairedAtomically,
+                "safe building repair updates source scene and one history entry") &&
+         expect(undoRestoredBoth,
+                "building repair undo restores source and generated scene");
+}
+
+bool measurementAnnotationsUseTypedCommandsAndHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Measurement Command Test");
+  static_cast<void>(document.assignId(4510U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "measurement command document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor;
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, nullptr};
+
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  completeDistanceMeasurement(appState.facade);
+  const bool transientIsNotHistory =
+      appState.facade.document().revision() == revisionBefore &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      appState.facade.document()
+          .measurementAnnotationStore()
+          .annotations.empty();
+
+  const app::CreativeDesktopCommandResult saved = dispatchPayload(
+      app::CreativeDesktopCommandId::SaveMeasurementAnnotation, context,
+      app::CreativeDesktopMeasurementAnnotationPayload{
+          cr::kInvalidCreativeMeasurementAnnotationId, "Measured aisle"});
+  const auto& savedStore =
+      appState.facade.document().measurementAnnotationStore();
+  const cr::CreativeMeasurementAnnotationId annotationId =
+      savedStore.annotations.empty()
+          ? cr::kInvalidCreativeMeasurementAnnotationId
+          : savedStore.annotations.front().id;
+  const bool saveRecordedOnce =
+      saved.accepted && saved.changed && saved.sceneChanged &&
+      saved.affectedObjectCount == 1U && savedStore.annotations.size() == 1U &&
+      savedStore.annotations.front().name == "Measured aisle" &&
+      !appState.facade.measurementState().hasMeasurement &&
+      cr::creativeUndoDepth(appState.history) == 1U;
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool undoRemoved =
+      undone.accepted && undone.changed &&
+      appState.facade.document()
+          .measurementAnnotationStore()
+          .annotations.empty();
+  const app::CreativeDesktopCommandResult redone =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const bool redoRestored =
+      redone.accepted && redone.changed &&
+      cr::findCreativeMeasurementAnnotation(
+          appState.facade.document().measurementAnnotationStore(),
+          annotationId) != nullptr;
+
+  const app::CreativeDesktopCommandResult removed = dispatchPayload(
+      app::CreativeDesktopCommandId::RemoveMeasurementAnnotation, context,
+      app::CreativeDesktopMeasurementAnnotationPayload{annotationId, {}});
+  const bool removeRecordedOnce =
+      removed.accepted && removed.changed && removed.sceneChanged &&
+      appState.facade.document()
+          .measurementAnnotationStore()
+          .annotations.empty() &&
+      cr::creativeUndoDepth(appState.history) == 2U;
+  const app::CreativeDesktopCommandResult removeUndone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const bool removeUndoRestored =
+      removeUndone.accepted &&
+      cr::findCreativeMeasurementAnnotation(
+          appState.facade.document().measurementAnnotationStore(),
+          annotationId) != nullptr;
+
+  const std::uint64_t revisionBeforeMismatch =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeMismatch =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::SaveMeasurementAnnotation, context,
+      app::CreativeDesktopSaveAsPayload{"wrong payload"});
+  const bool mismatchAtomic =
+      !mismatch.accepted && !mismatch.changed && !mismatch.sceneChanged &&
+      appState.facade.document().revision() == revisionBeforeMismatch &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeMismatch;
+
+  return expect(transientIsNotHistory,
+                "transient measurement changes no revision or history") &&
+         expect(saveRecordedOnce,
+                "measurement save records one semantic history entry") &&
+         expect(undoRemoved && redoRestored,
+                "measurement annotation save supports undo and redo") &&
+         expect(removeRecordedOnce && removeUndoRestored,
+                "measurement annotation removal is one undoable command") &&
+         expect(mismatchAtomic,
+                "measurement payload mismatch mutates no document or history");
+}
+
+bool terrainOperationTransformCommandOpensTheSharedSession() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Terrain Transform Command");
+  static_cast<void>(document.assignId(4511U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "terrain transform command document installed")) {
+    return false;
+  }
+  cr::CreativeTerrainOperationMutationRequest add;
+  add.kind = cr::CreativeTerrainOperationMutationKind::Add;
+  add.operationKind = cr::CreativeTerrainOperationKind::Landform;
+  add.landform.bounds = {{4, 5}, 4U, 4U};
+  add.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  add.landform.edgeWidthCells = 0U;
+  const cr::CreativeTerrainOperationMutationReceipt operation =
+      appState.facade.applyTerrainOperationMutation(add);
+  appState.history = {};
+  app::CreativeEditorState editor;
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, nullptr};
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+
+  const app::CreativeDesktopCommandResult opened = dispatchPayload(
+      app::CreativeDesktopCommandId::TerrainOperationTransform, context,
+      app::CreativeDesktopTerrainOperationPayload{
+          operation.operationId, true, 0U});
+  const bool sharedSession =
+      opened.accepted && opened.changed && !opened.sceneChanged &&
+      editor.transform.active && editor.transform.plan.accepted &&
+      editor.transform.preflight.ownershipRoute ==
+          app::CreativeEditorTransformOwnershipRoute::TerrainOperation &&
+      editor.transform.preflight.terrainOperationId == operation.operationId &&
+      appState.facade.document().revision() == revisionBefore &&
+      cr::creativeUndoDepth(appState.history) == 0U;
+
+  const app::CreativeDesktopCommandResult blocked = dispatchPayload(
+      app::CreativeDesktopCommandId::TerrainOperationTransform, context,
+      app::CreativeDesktopTerrainOperationPayload{
+          operation.operationId, true, 0U});
+  const bool secondSessionBlocked =
+      !blocked.accepted && !blocked.changed && editor.transform.active &&
+      blocked.message == "finish the current transform first";
+  return expect(operation.accepted && sharedSession,
+                "terrain command opens the shared transient transform") &&
+         expect(secondSessionBlocked,
+                "terrain command cannot replace an active transform session");
+}
+
 }  // namespace
 
 int main() {
@@ -5898,6 +7328,7 @@ int main() {
   ok = newDocumentReplacesAndClearsHistory() && ok;
   ok = builderEstateRegenerationIsExplicitUndoableAndUnsaved() && ok;
   ok = deleteAndDuplicateHitTheKernels() && ok;
+  ok = deleteGeneratedWorldLayoutOutputEditsItsSource() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndClearsHistory() && ok;
@@ -5905,6 +7336,7 @@ int main() {
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
   ok = focusObjectSelectsAndFramesThroughDispatcher() && ok;
+  ok = frameSelectionAndSceneUseVisibleDocumentBounds() && ok;
   ok = logicCommandsRouteThroughTypedHistoryKernel() && ok;
   ok = deleteObjectsCommandRemovesGroupHierarchy() && ok;
   ok = deleteObjectsRejectsWithoutPartialHierarchy() && ok;
@@ -5913,7 +7345,9 @@ int main() {
   ok = visibilityAndLockBatchesRollBackOnFailure() && ok;
   ok = transformCommandSetsAbsoluteWithMask() && ok;
   ok = transformCommandIsAtomicAndAttachmentAware() && ok;
+  ok = groupPivotUsesItsDedicatedTypedCommand() && ok;
   ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
+  ok = playerSpawnSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = movingPlatformWaypointCommandsSelectEditAndUndo() && ok;
   ok = movingPlatformPreviewCommandsStayTransient() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
@@ -5921,8 +7355,10 @@ int main() {
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() && ok;
+  ok = objectSelectionSynchronizesGeneratedSourcesAcrossViews() && ok;
   ok = worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
+  ok = synchronizedStructuralPreviewsShareInspectionSource() && ok;
   ok = worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() && ok;
@@ -5943,8 +7379,14 @@ int main() {
   ok = worldLayoutAssetRepairCommandsPreservePlacementAndHistory() && ok;
   ok = worldLayoutTerrainRegionCommandsRespectWorkspaceGuards() && ok;
   ok = synchronizedCreationPreviewAndPointCommitAreAtomic() && ok;
+  ok = synchronizedTerrainPathDraftPreviewsAndCommitsAtomically() && ok;
   ok = synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() && ok;
+  ok = synchronizedRoofHandlesPreviewAndCommitOneLevelAtomically() && ok;
   ok = sourcePropertyTablesAreDerivedFromSettingsTypes() && ok;
+  ok = roofApertureCommandsSynchronizeSourceSceneAndHistory() && ok;
   ok = sourcePropertyPreviewAndCommitAreAtomic() && ok;
+  ok = buildingUsabilityRepairIsTypedAtomicAndUndoable() && ok;
+  ok = measurementAnnotationsUseTypedCommandsAndHistory() && ok;
+  ok = terrainOperationTransformCommandOpensTheSharedSession() && ok;
   return ok ? 0 : 1;
 }

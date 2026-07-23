@@ -83,13 +83,15 @@ PhysicsBodyId generatedBodyId(PhysicsBodyId firstGeneratedBodyId,
 
 PhysicsAabbCollider makeCollider(PhysicsBodyId bodyId,
                                  const Aabb3& bounds,
-                                 bool sensor) {
+                                 bool sensor,
+                                 bool occludesVision) {
   PhysicsAabbCollider collider;
   collider.bodyId = bodyId;
   collider.bounds = bounds;
   collider.worldCenterMeters = center(bounds);
   collider.halfExtentsMeters = extents(bounds);
   collider.sensor = sensor;
+  collider.occludesVision = occludesVision;
   return collider;
 }
 
@@ -281,7 +283,7 @@ bakePhysicsAabbCollidersFromSpatialSurfaces(
     const PhysicsAabbCollider collider = makeCollider(
         generatedBodyId(request.config.firstGeneratedBodyId,
                         result.colliders.size()),
-        colliderBounds, sensor);
+        colliderBounds, sensor, surface.blocksVision);
     // branch-gate: BG-1099
     if (!isValidPhysicsAabbCollider(collider)) {
       return invalidSurfaceResult(

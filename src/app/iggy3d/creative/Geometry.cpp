@@ -85,6 +85,41 @@ CreativeVec3 rotateCreativeVectorAxisAngle(CreativeVec3 vector,
   return {};
 }
 
+CreativeVec3 rotateCreativeVectorAroundAxis(CreativeVec3 vector,
+                                            CreativeVec3 axis,
+                                            double radians) noexcept {
+  const double lengthSquared =
+      axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
+  if (!isFiniteCreativeVec3(vector) || !isFiniteCreativeVec3(axis) ||
+      !std::isfinite(radians) || !std::isfinite(lengthSquared) ||
+      lengthSquared <= 1.0e-24) {
+    const double invalid = std::numeric_limits<double>::quiet_NaN();
+    return {invalid, invalid, invalid};
+  }
+  const double inverseLength = 1.0 / std::sqrt(lengthSquared);
+  axis.x *= inverseLength;
+  axis.y *= inverseLength;
+  axis.z *= inverseLength;
+  const double cosine = std::cos(radians);
+  const double sine = std::sin(radians);
+  const double oneMinusCosine = 1.0 - cosine;
+  const double projection =
+      axis.x * vector.x + axis.y * vector.y + axis.z * vector.z;
+  const CreativeVec3 cross{
+      axis.y * vector.z - axis.z * vector.y,
+      axis.z * vector.x - axis.x * vector.z,
+      axis.x * vector.y - axis.y * vector.x,
+  };
+  return {
+      vector.x * cosine + cross.x * sine +
+          axis.x * projection * oneMinusCosine,
+      vector.y * cosine + cross.y * sine +
+          axis.y * projection * oneMinusCosine,
+      vector.z * cosine + cross.z * sine +
+          axis.z * projection * oneMinusCosine,
+  };
+}
+
 CreativeVec3 composeCreativeWorldAxisRotation(CreativeVec3 eulerRadians,
                                               CreativeAxis3 axis,
                                               double radians) noexcept {
@@ -98,6 +133,24 @@ CreativeVec3 composeCreativeWorldAxisRotation(CreativeVec3 eulerRadians,
       rotateCreativeVectorEulerXyz({0.0, 1.0, 0.0}, eulerRadians), axis,
       radians);
   const CreativeVec3 basisZ = rotateCreativeVectorAxisAngle(
+      rotateCreativeVectorEulerXyz({0.0, 0.0, 1.0}, eulerRadians), axis,
+      radians);
+  return creativeEulerXyzFromBasis(basisX, basisY, basisZ);
+}
+
+CreativeVec3 composeCreativeWorldAxisRotation(CreativeVec3 eulerRadians,
+                                              CreativeVec3 axis,
+                                              double radians) noexcept {
+  if (radians == 0.0) {
+    return eulerRadians;
+  }
+  const CreativeVec3 basisX = rotateCreativeVectorAroundAxis(
+      rotateCreativeVectorEulerXyz({1.0, 0.0, 0.0}, eulerRadians), axis,
+      radians);
+  const CreativeVec3 basisY = rotateCreativeVectorAroundAxis(
+      rotateCreativeVectorEulerXyz({0.0, 1.0, 0.0}, eulerRadians), axis,
+      radians);
+  const CreativeVec3 basisZ = rotateCreativeVectorAroundAxis(
       rotateCreativeVectorEulerXyz({0.0, 0.0, 1.0}, eulerRadians), axis,
       radians);
   return creativeEulerXyzFromBasis(basisX, basisY, basisZ);

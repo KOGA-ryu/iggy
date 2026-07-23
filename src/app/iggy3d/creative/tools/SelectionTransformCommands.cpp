@@ -206,7 +206,7 @@ CreativeTransformCommandReceipt transformDocumentObjectsAtomically(
     std::vector<CreativeMutationRequest> mutations;
     mutations.reserve(resolved.objects.size() * 2U);
     for (const CreativeObject* object : resolved.objects) {
-      if (object->locked) {
+      if (creativeObjectEffectivelyLocked(document, object->id)) {
         receipt.failedObjectId = object->id;
         receipt.failedMutationKind = CreativeMutationKind::Rotate;
         receipt.status = CreativeTransformCommandStatus::LockedObject;

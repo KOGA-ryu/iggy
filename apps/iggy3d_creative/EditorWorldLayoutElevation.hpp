@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -41,6 +42,7 @@ enum class CreativeEditorWorldLayoutElevationSourceKind : std::uint8_t {
   Box,
   Wall,
   Opening,
+  RoofAperture,
   VerticalConnector,
   Count,
 };
@@ -50,6 +52,8 @@ enum class CreativeEditorWorldLayoutElevationItemKind : std::uint8_t {
   WallEnvelope,
   CeilingSlab,
   RoofBase,
+  RoofSkylight,
+  RoofClearance,
   Door,
   Window,
   Stair,
@@ -99,6 +103,19 @@ struct CreativeEditorWorldLayoutElevationItem {
   double maximumHorizontal = 0.0;
   double minimumVertical = 0.0;
   double maximumVertical = 0.0;
+};
+
+inline constexpr std::size_t kCreativeEditorWorldLayoutElevationHitCapacity =
+    64U;
+
+struct CreativeEditorWorldLayoutElevationHitStack {
+  std::array<const CreativeEditorWorldLayoutElevationItem*,
+             kCreativeEditorWorldLayoutElevationHitCapacity>
+      items{};
+  std::size_t count = 0U;
+  std::size_t testedItemCount = 0U;
+  std::size_t totalHitItemCount = 0U;
+  bool truncated = false;
 };
 
 struct CreativeEditorWorldLayoutElevationLine {
@@ -172,6 +189,20 @@ findCreativeEditorWorldLayoutElevationItem(
     const CreativeEditorWorldLayoutElevationProjection& projection,
     CreativeEditorWorldLayoutElevationPoint point,
     double toleranceCells) noexcept;
+
+// Returns distinct semantic sources in visual order, topmost first. Multiple
+// projected rectangles owned by one source occupy one cycle slot.
+[[nodiscard]] CreativeEditorWorldLayoutElevationHitStack
+findCreativeEditorWorldLayoutElevationItemStack(
+    const CreativeEditorWorldLayoutElevationProjection& projection,
+    CreativeEditorWorldLayoutElevationPoint point,
+    double toleranceCells) noexcept;
+
+[[nodiscard]] const CreativeEditorWorldLayoutElevationItem*
+cycleCreativeEditorWorldLayoutElevationItem(
+    const CreativeEditorWorldLayoutElevationHitStack& stack,
+    CreativeEditorWorldLayoutElevationSourceKind currentSourceKind,
+    std::size_t currentSourceIndex) noexcept;
 
 // Resolves one snapped vertical handle edit without mutating layout source.
 // The caller commits the returned values through the existing room/opening

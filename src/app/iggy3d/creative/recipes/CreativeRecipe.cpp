@@ -63,6 +63,31 @@ void appendBounds(RecipeFingerprintBuilder& builder,
   appendVec3(builder, value.max);
 }
 
+void appendDoorSettings(RecipeFingerprintBuilder& builder,
+                        const CreativeDoorSettings& settings) noexcept {
+  builder.appendUnsigned(
+      static_cast<std::uint8_t>(settings.leafArrangement));
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.hingeSide));
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.swingSide));
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.initialState));
+  builder.appendBool(settings.gameplayLocked);
+  builder.appendDouble(settings.transitionSeconds);
+}
+
+void appendWindowSettings(RecipeFingerprintBuilder& builder,
+                          const CreativeWindowSettings& settings) noexcept {
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.insertKind));
+}
+
+void appendPlayerSpawnSettings(
+    RecipeFingerprintBuilder& builder,
+    const CreativePlayerSpawnSettings& settings) noexcept {
+  builder.appendString(settings.playerProfileId);
+  builder.appendString(settings.spawnGroup);
+  builder.appendDouble(settings.validationRadiusMeters);
+  builder.appendUnsigned(settings.fallbackPriority);
+}
+
 void appendCreateRequest(RecipeFingerprintBuilder& builder,
                          const CreativeDocumentCreateRequest& request) noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(request.kind));
@@ -115,6 +140,18 @@ void appendCreateRequest(RecipeFingerprintBuilder& builder,
     builder.appendUnsigned(static_cast<std::uint8_t>(
         request.movingPlatform.traversalMode));
     builder.appendBool(request.movingPlatform.startsActive);
+  }
+  builder.appendBool(request.hasDoorSettingsOverride);
+  if (request.hasDoorSettingsOverride) {
+    appendDoorSettings(builder, request.door);
+  }
+  builder.appendBool(request.hasWindowSettingsOverride);
+  if (request.hasWindowSettingsOverride) {
+    appendWindowSettings(builder, request.window);
+  }
+  builder.appendBool(request.hasPlayerSpawnSettingsOverride);
+  if (request.hasPlayerSpawnSettingsOverride) {
+    appendPlayerSpawnSettings(builder, request.playerSpawn);
   }
 }
 
@@ -216,6 +253,8 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
                        CreativeObjectKind kind,
                        std::string_view name,
                        std::string_view assetId,
+                       std::uint64_t assetContentHash,
+                       std::string_view assetMaterialVariant,
                        CreativeTransform transform,
                        CreativeBounds bounds,
                        CreativeLayerId layerId,
@@ -228,11 +267,18 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
                        CreativeObjectId parentId,
                        std::string_view attachmentSocket,
                        std::span<const CreativePathPoint> pathPoints,
-                       const CreativeMovingPlatformSettings& movingPlatform)
+                       const CreativeMovingPlatformSettings& movingPlatform,
+                       const CreativeDoorSettings& door,
+                       const CreativeWindowSettings& window,
+                       const CreativePlayerSpawnSettings& playerSpawn)
     noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(kind));
   builder.appendString(name);
   builder.appendString(assetId);
+  if (!assetId.empty()) {
+    builder.appendUnsigned(assetContentHash);
+    builder.appendString(assetMaterialVariant);
+  }
   appendVec3(builder, transform.position);
   appendVec3(builder, transform.rotationEulerRadians);
   appendVec3(builder, transform.scale);
@@ -253,6 +299,9 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
   builder.appendString(attachmentSocket);
   appendPathPoints(builder, pathPoints);
   appendMovingPlatformSettings(builder, movingPlatform);
+  appendDoorSettings(builder, door);
+  appendWindowSettings(builder, window);
+  appendPlayerSpawnSettings(builder, playerSpawn);
 }
 
 void setStatus(CreativeRecipeMaterializeReceipt& receipt,
@@ -300,7 +349,11 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
 
 [[nodiscard]] bool validRecipeKind(CreativeRecipeKind kind) noexcept {
   return kind == CreativeRecipeKind::Building ||
-         kind == CreativeRecipeKind::ObjectLibrary;
+         kind == CreativeRecipeKind::ObjectLibrary ||
+         kind == CreativeRecipeKind::Road ||
+         kind == CreativeRecipeKind::Watercourse ||
+         kind == CreativeRecipeKind::Bridge ||
+         kind == CreativeRecipeKind::RetainingEdge;
 }
 
 }  // namespace
@@ -313,8 +366,37 @@ std::string_view toString(CreativeRecipeKind kind) noexcept {
       return "Building";
     case CreativeRecipeKind::ObjectLibrary:
       return "ObjectLibrary";
+    case CreativeRecipeKind::Road:
+      return "Road";
+    case CreativeRecipeKind::Watercourse:
+      return "Watercourse";
+    case CreativeRecipeKind::Bridge:
+      return "Bridge";
+    case CreativeRecipeKind::RetainingEdge:
+      return "RetainingEdge";
   }
   return "Unknown";
+}
+
+CreativeAuthoringFamily creativeAuthoringFamily(
+    CreativeRecipeKind kind) noexcept {
+  switch (kind) {
+    case CreativeRecipeKind::Building:
+      return CreativeAuthoringFamily::Building;
+    case CreativeRecipeKind::ObjectLibrary:
+      return CreativeAuthoringFamily::ObjectLibrary;
+    case CreativeRecipeKind::Road:
+      return CreativeAuthoringFamily::Road;
+    case CreativeRecipeKind::Watercourse:
+      return CreativeAuthoringFamily::Watercourse;
+    case CreativeRecipeKind::Bridge:
+      return CreativeAuthoringFamily::Bridge;
+    case CreativeRecipeKind::RetainingEdge:
+      return CreativeAuthoringFamily::RetainingEdge;
+    case CreativeRecipeKind::Unknown:
+      break;
+  }
+  return CreativeAuthoringFamily::Count;
 }
 
 std::string_view toString(CreativeRecipeObjectRole role) noexcept {
@@ -363,6 +445,14 @@ std::string creativeRecipeKindTag(CreativeRecipeKind kind) {
       return "creative_recipe:building";
     case CreativeRecipeKind::ObjectLibrary:
       return "creative_recipe:object_library";
+    case CreativeRecipeKind::Road:
+      return "creative_recipe:road";
+    case CreativeRecipeKind::Watercourse:
+      return "creative_recipe:watercourse";
+    case CreativeRecipeKind::Bridge:
+      return "creative_recipe:bridge";
+    case CreativeRecipeKind::RetainingEdge:
+      return "creative_recipe:retaining_edge";
     case CreativeRecipeKind::Unknown:
       return "creative_recipe:unknown";
   }
@@ -469,10 +559,27 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
               object.createRequest.hasMovingPlatformSettingsOverride
           ? object.createRequest.movingPlatform
           : CreativeMovingPlatformSettings{};
+  const CreativeDoorSettings door =
+      object.createRequest.kind == CreativeObjectKind::Door &&
+              object.createRequest.hasDoorSettingsOverride
+          ? object.createRequest.door
+          : CreativeDoorSettings{};
+  const CreativeWindowSettings window =
+      object.createRequest.kind == CreativeObjectKind::Window &&
+              object.createRequest.hasWindowSettingsOverride
+          ? object.createRequest.window
+          : CreativeWindowSettings{};
+  const CreativePlayerSpawnSettings playerSpawn =
+      object.createRequest.kind == CreativeObjectKind::SpawnPoint &&
+              object.createRequest.hasPlayerSpawnSettingsOverride
+          ? object.createRequest.playerSpawn
+          : CreativePlayerSpawnSettings{};
 
   RecipeFingerprintBuilder builder;
   appendObjectState(
       builder, object.createRequest.kind, name, object.createRequest.assetId,
+      object.createRequest.assetContentHash,
+      object.createRequest.assetMaterialVariant,
       object.createRequest.hasTransformOverride
           ? object.createRequest.transform
           : descriptor.defaults.transform,
@@ -487,7 +594,7 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
       object.createRequest.tags, hasParent, parentUsesStableKey,
       parentStableKey, parentId,
       object.createRequest.attachmentSocket, object.createRequest.pathPoints,
-      movingPlatform);
+      movingPlatform, door, window, playerSpawn);
   return finishFingerprint(builder);
 }
 
@@ -497,12 +604,14 @@ std::uint64_t fingerprintCreativeRecipeObjectState(
   bool hasParent = object.parentId.has_value();
   RecipeFingerprintBuilder builder;
   appendObjectState(builder, object.kind, object.name, object.assetId,
+                    object.assetContentHash, object.assetMaterialVariant,
                     object.transform, object.bounds, object.layerId,
                     object.visible, object.locked, object.tags, hasParent,
                     hasParent && !parentStableKey.empty(), parentStableKey,
                     hasParent ? *object.parentId : kInvalidObjectId,
                     object.attachmentSocket, object.pathPoints,
-                    object.movingPlatform);
+                    object.movingPlatform, object.door, object.window,
+                    object.playerSpawn);
   return finishFingerprint(builder);
 }
 
@@ -763,8 +872,21 @@ CreativeRecipeApplyReceipt applyCreativeRecipeWithHistory(
     CreativeAppState& appState,
     const CreativeRecipePlan& plan,
     std::string_view source) {
+  std::optional<CreativeAuthoringOperationRecord> operation =
+      makeCreativeAuthoringOperationRecord(
+          creativeAuthoringFamily(plan.kind),
+          CreativeAuthoringOperationKind::Apply, toString(plan.kind),
+          fingerprintCreativeRecipePlan(plan), plan.objects.size());
+  if (!operation.has_value()) {
+    CreativeRecipeApplyReceipt receipt;
+    receipt.requested = true;
+    setStatus(receipt, CreativeRecipeStatus::InvalidRecipe,
+              "creative_recipe_operation_record_invalid");
+    return receipt;
+  }
   CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source);
+      beginCreativeHistoryTransaction(appState.facade, source,
+                                      std::move(*operation));
   CreativeRecipeApplyReceipt receipt = applyCreativeRecipe(appState.facade, plan);
   if (!receipt.accepted || !receipt.changed) {
     cancelCreativeHistoryTransaction(transaction);

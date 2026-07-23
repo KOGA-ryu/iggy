@@ -12,7 +12,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
-#include "content/assets/StaticMeshAuthoringMetadata.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 namespace iggy3d::creative {
 
@@ -32,6 +32,7 @@ enum class CreativeCatalogPage : std::uint8_t {
   Testing,
   Helpers,
   Tools,
+  Experimental,
   Assets,
   Actions,
   Count,
@@ -54,8 +55,14 @@ struct CreativeCatalogAsset {
   CreativeObjectKind objectKind = CreativeObjectKind::Prop;
   std::string assetId;
   std::string label;
+  std::uint64_t contentHash = 0U;
   CreativeBounds sourceBounds{};
   StaticMeshAuthoringMetadata authoringMetadata;
+  std::vector<StaticMeshCollisionPart> collisionParts;
+  std::vector<StaticMeshAttachmentSocket> attachmentSockets;
+  std::vector<StaticMeshMaterialVariant> materialVariants;
+  std::size_t materialCount = 0U;
+  StaticMeshAssetThumbnail thumbnail;
   bool authoredComposite = false;
 };
 
@@ -77,8 +84,51 @@ struct CreativeCatalogEntry {
   std::string label;
   std::string searchText;
   std::string detail;
+  std::uint64_t assetContentHash = 0U;
   StaticMeshAuthoringMetadata assetAuthoringMetadata;
+  std::vector<StaticMeshCollisionPart> assetCollisionParts;
+  std::vector<StaticMeshAttachmentSocket> assetAttachmentSockets;
+  std::vector<StaticMeshMaterialVariant> assetMaterialVariants;
+  std::size_t assetMaterialCount = 0U;
+  StaticMeshAssetThumbnail assetThumbnail;
   bool authoredComposite = false;
+};
+
+enum class CreativeCatalogAssetInspectionStatus : std::uint8_t {
+  NotAsset,
+  Ready,
+  Missing,
+};
+
+struct CreativeCatalogAssetInspection {
+  CreativeCatalogAssetInspectionStatus status =
+      CreativeCatalogAssetInspectionStatus::NotAsset;
+  CreativeBoundsMetrics bounds;
+  CreativeVec3 pivotFromCenter;
+  StaticMeshCollisionMode collisionMode = StaticMeshCollisionMode::Invalid;
+  std::uint64_t contentHash = 0U;
+  std::size_t collisionPartCount = 0U;
+  std::size_t socketCount = 0U;
+  std::size_t materialCount = 0U;
+  std::size_t materialVariantCount = 0U;
+  bool walkable = false;
+  bool thumbnailAvailable = false;
+  bool authoredComposite = false;
+};
+
+// Product code supplies tool rows to the generic catalog. This keeps maturity
+// and exposure policy out of the input model and prevents the catalog from
+// becoming a second tool registry.
+struct CreativeCatalogToolSpec {
+  CreativeHeldItemKind kind = CreativeHeldItemKind::Count;
+  std::string_view label;
+  std::string_view aliases;
+  bool experimental = true;
+  bool defaultWheelEligible = false;
+  std::string_view purpose{};
+  std::string_view maturity{};
+  std::string_view lifecycle{};
+  std::string_view inputHint{};
 };
 
 struct CreativeCatalogShapeSelection {
@@ -141,7 +191,8 @@ struct CreativeToolWheelState {
     std::span<const CreativeObjectKind> materialPalette,
     std::span<const CreativeCatalogAsset> assets = {},
     std::size_t rejectedAssetCount = 0U,
-    std::span<const CreativeCatalogAssetFailure> assetFailures = {});
+    std::span<const CreativeCatalogAssetFailure> assetFailures = {},
+    std::span<const CreativeCatalogToolSpec> toolSpecs = {});
 [[nodiscard]] bool appendCreativeCatalogAsset(
     CreativeCatalogState& catalog,
     const CreativeCatalogAsset& asset);
@@ -195,9 +246,12 @@ activateSelectedCreativeCatalogAction(CreativeCatalogState& catalog) noexcept;
 [[nodiscard]] const CreativeCatalogEntry* creativeCatalogEntryAtFilteredIndex(
     const CreativeCatalogState& catalog,
     std::size_t filteredIndex) noexcept;
+[[nodiscard]] CreativeCatalogAssetInspection inspectCreativeCatalogAsset(
+    const CreativeCatalogEntry& entry) noexcept;
 [[nodiscard]] CreativeHotbarEntry resolveCreativeCatalogHotbarEntry(
     const CreativeCatalogEntry& entry,
-    CreativeObjectKind activeMaterial) noexcept;
+    CreativeObjectKind activeMaterial,
+    std::size_t assetMaterialVariantIndex = 0U) noexcept;
 [[nodiscard]] bool creativeCatalogEntryAssignable(
     const CreativeCatalogEntry& entry) noexcept;
 [[nodiscard]] bool creativeCatalogEntryRequestsAssetReload(

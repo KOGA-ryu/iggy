@@ -73,6 +73,7 @@ enum class CreativeEditorToolGlyph : std::uint8_t {
   FitSelection,
   RoofVisibility,
   LowerLevelContext,
+  UpperLevelContext,
   Contours,
   Dimensions,
   Snap,
@@ -125,7 +126,7 @@ creativeEditorToolGlyphOps(CreativeEditorToolGlyph glyph) noexcept;
 
 [[nodiscard]] CreativeEditorToolGlyph
 creativeEditorToolGlyphForTerrainRegionOperation(
-    CreativeEditorWorldLayoutTerrainRegionOperation operation) noexcept;
+    cr::CreativeTerrainRegionMode operation) noexcept;
 
 [[nodiscard]] CreativeEditorToolGlyph creativeEditorToolGlyphForTerrainMask(
     cr::CreativeTerrainCompositionMask mask) noexcept;
@@ -164,5 +165,11 @@ void drawCreativeEditorToolGlyph(ImDrawList& drawList,
                                  CreativeEditorToolGlyph glyph,
                                  float leftPixels, float topPixels,
                                  float sizePixels, std::uint32_t tint);
+
+// Standard icon button used by desktop and drafting toolbars. The stable-size
+// invisible hit target prevents glyph geometry from shifting the layout.
+[[nodiscard]] bool drawCreativeEditorToolGlyphButton(
+    const char* id, CreativeEditorToolGlyph glyph, float tileSize,
+    bool active, std::string_view tooltip);
 
 }  // namespace iggy3d_creative_app

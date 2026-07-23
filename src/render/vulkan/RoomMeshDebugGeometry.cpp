@@ -62,6 +62,8 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashString(hash, mesh.meshId);
     hashString(hash, mesh.role);
     hashString(hash, mesh.materialId);
+    hashString(hash, mesh.materialVariant);
+    hashString(hash, mesh.semanticRole);
     hashFloat(hash, mesh.position.x);
     hashFloat(hash, mesh.position.y);
     hashFloat(hash, mesh.position.z);
@@ -84,6 +86,10 @@ std::uint64_t roomGeometrySignature(const SceneRoomProjection& room) {
     hashVec3(hash, patch.center);
     for (const Vec3 corner : patch.corners) {
       hashVec3(hash, corner);
+    }
+    hashBool(hash, patch.hasTint);
+    if (patch.hasTint) {
+      hashVec3(hash, patch.tint);
     }
   }
   return hash;

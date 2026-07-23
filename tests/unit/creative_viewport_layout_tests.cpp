@@ -118,17 +118,53 @@ bool narrowerContentTightensCameraAspect() {
                 "vertical projection scale is unchanged by content width");
 }
 
+bool worldLayoutUsesSplitTwoAndThreeDimensionalInspection() {
+  using iggy3d_creative_app::CreativeDesktopDockLayoutMode;
+  using iggy3d_creative_app::creativeDesktopDockLayoutSpec;
+  const auto standard = creativeDesktopDockLayoutSpec(false);
+  const auto worldLayout = creativeDesktopDockLayoutSpec(true);
+  return expect(standard.mode == CreativeDesktopDockLayoutMode::Standard &&
+                    !standard.worldLayoutPanelVisible &&
+                    standard.threeDimensionalViewportVisible &&
+                    standard.worldLayoutPanelFraction == 0.0F,
+                "standard workspace reserves the central 3D viewport") &&
+         expect(worldLayout.mode ==
+                        CreativeDesktopDockLayoutMode::WorldLayoutSplit &&
+                    worldLayout.worldLayoutPanelVisible &&
+                    worldLayout.threeDimensionalViewportVisible,
+                "World Layout keeps 2D drafting and 3D inspection visible") &&
+         expect(worldLayout.worldLayoutPanelFraction >= 0.35F &&
+                    worldLayout.worldLayoutPanelFraction <= 0.65F,
+                "the drafting and 3D siblings both retain working space");
+}
+
+bool panelVisibilityNeverRebuildsTheDockspace() {
+  using iggy3d_creative_app::creativeDesktopDockLayoutRebuildRequired;
+  return expect(creativeDesktopDockLayoutRebuildRequired(false, false),
+                "the first desktop frame builds the dockspace") &&
+         expect(!creativeDesktopDockLayoutRebuildRequired(true, false),
+                "panel visibility changes preserve the existing dockspace") &&
+         expect(creativeDesktopDockLayoutRebuildRequired(true, true),
+                "only explicit Reset Layout rebuilds an existing dockspace");
+}
+
 bool pointerPolicyCapturesOnViewportClick() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
   using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
   // Click on the viewport (not a panel), no modal, focused -> capture.
   const auto capture = decideCreativeDesktopPointerCapture(
-      /*shellEnabled=*/true, /*currentlyCaptured=*/false,
-      /*primaryPressedOverViewport=*/true, /*viewportContext=*/true,
+      /*shellEnabled=*/true, CreativeDesktopPointerCaptureMode::None,
+      /*primaryPressedOverViewport=*/true, /*primaryDown=*/true,
+      cr::kCreativeInputModifierNone, /*viewportContext=*/true,
       /*windowFocused=*/true);
   // Click that ImGui consumed (over a panel) must NOT capture.
   const auto overPanel = decideCreativeDesktopPointerCapture(
-      true, false, /*primaryPressedOverViewport=*/false, true, true);
+      true, CreativeDesktopPointerCaptureMode::None,
+      /*primaryPressedOverViewport=*/false, /*primaryDown=*/true,
+      cr::kCreativeInputModifierNone, true, true);
   return expect(capture.captured && capture.changed &&
+                    capture.mode == CreativeDesktopPointerCaptureMode::FlyLook &&
                     capture.consumePrimaryPress &&
                     capture.discardNextMouseDelta,
                 "viewport click captures the pointer and consumes the press") &&
@@ -139,16 +175,21 @@ bool pointerPolicyCapturesOnViewportClick() {
 }
 
 bool pointerPolicyReleasesWhenLeavingViewport() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
   using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
   // Held capture + a modal opened (context left EditorViewport) -> release.
   const auto modalOpened = decideCreativeDesktopPointerCapture(
-      true, /*currentlyCaptured=*/true, false, /*viewportContext=*/false, true);
+      true, CreativeDesktopPointerCaptureMode::FlyLook, false, false,
+      cr::kCreativeInputModifierNone, /*viewportContext=*/false, true);
   // Held capture + focus lost -> release.
   const auto focusLost = decideCreativeDesktopPointerCapture(
-      true, true, false, true, /*windowFocused=*/false);
+      true, CreativeDesktopPointerCaptureMode::FlyLook, false, false,
+      cr::kCreativeInputModifierNone, true, /*windowFocused=*/false);
   // Held capture + still in the viewport, focused -> stays captured.
-  const auto stays = decideCreativeDesktopPointerCapture(true, true, false,
-                                                         true, true);
+  const auto stays = decideCreativeDesktopPointerCapture(
+      true, CreativeDesktopPointerCaptureMode::FlyLook, false, false,
+      cr::kCreativeInputModifierNone, true, true);
   return expect(!modalOpened.captured && modalOpened.changed &&
                     !modalOpened.consumePrimaryPress,
                 "leaving the viewport context releases the pointer") &&
@@ -160,14 +201,53 @@ bool pointerPolicyReleasesWhenLeavingViewport() {
                 "staying in the viewport keeps the pointer captured");
 }
 
+bool pointerPolicyOwnsBoundedTouchpadGestures() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
+  using iggy3d_creative_app::creativeDesktopPointerModeOwnsPrimaryAction;
+  using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
+  const auto orbit = decideCreativeDesktopPointerCapture(
+      true, CreativeDesktopPointerCaptureMode::None, true, true,
+      cr::kCreativeInputModifierAlt, true, true);
+  const auto pan = decideCreativeDesktopPointerCapture(
+      true, CreativeDesktopPointerCaptureMode::None, true, true,
+      cr::kCreativeInputModifierAlt | cr::kCreativeInputModifierShift,
+      true, true);
+  const auto orbitHeld = decideCreativeDesktopPointerCapture(
+      true, CreativeDesktopPointerCaptureMode::Orbit, false, true,
+      cr::kCreativeInputModifierNone, true, true);
+  const auto orbitReleased = decideCreativeDesktopPointerCapture(
+      true, CreativeDesktopPointerCaptureMode::Orbit, false, false,
+      cr::kCreativeInputModifierNone, true, true);
+  return expect(orbit.mode == CreativeDesktopPointerCaptureMode::Orbit &&
+                    orbit.captured && orbit.consumePrimaryPress &&
+                    creativeDesktopPointerModeOwnsPrimaryAction(orbit.mode),
+                "Option+primary enters an orbit drag") &&
+         expect(pan.mode == CreativeDesktopPointerCaptureMode::Pan &&
+                    pan.captured && pan.consumePrimaryPress &&
+                    creativeDesktopPointerModeOwnsPrimaryAction(pan.mode),
+                "Shift+Option+primary enters a pan drag") &&
+         expect(orbitHeld.mode == CreativeDesktopPointerCaptureMode::Orbit &&
+                    orbitHeld.captured && !orbitHeld.changed,
+                "orbit remains captured while the primary button is held") &&
+         expect(orbitReleased.mode ==
+                        CreativeDesktopPointerCaptureMode::None &&
+                    !orbitReleased.captured && orbitReleased.changed,
+                "orbit releases immediately with the primary button");
+}
+
 bool pointerPolicyIsInertWhenShellOff() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
   using iggy3d_creative_app::decideCreativeDesktopPointerCapture;
   // Shell off (capture mode / non-desktop): never captures, and reports a
   // release only if we were somehow holding it.
   const auto clean = decideCreativeDesktopPointerCapture(
-      /*shellEnabled=*/false, false, true, true, true);
+      /*shellEnabled=*/false, CreativeDesktopPointerCaptureMode::None, true,
+      true, cr::kCreativeInputModifierNone, true, true);
   const auto releaseStale = decideCreativeDesktopPointerCapture(
-      false, /*currentlyCaptured=*/true, true, true, true);
+      false, CreativeDesktopPointerCaptureMode::FlyLook, true, true,
+      cr::kCreativeInputModifierNone, true, true);
   return expect(!clean.captured && !clean.changed &&
                     !clean.consumePrimaryPress,
                 "shell-off never captures") &&
@@ -177,20 +257,58 @@ bool pointerPolicyIsInertWhenShellOff() {
 }
 
 bool wantInputHelperIgnoresImGuiWhileCaptured() {
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
   using iggy3d_creative_app::creativeDesktopUiWantsInput;
   // The pointer-fix invariant: while the viewport owns the pointer, the shell
   // never claims input no matter what ImGui's want-capture flags say (that was
   // releasing fly-look the instant the camera moved).
-  return expect(!creativeDesktopUiWantsInput(true, true, true),
+  return expect(!creativeDesktopUiWantsInput(
+                    CreativeDesktopPointerCaptureMode::FlyLook, true, true),
                 "captured viewport suppresses the desktop-UI input claim") &&
-         expect(!creativeDesktopUiWantsInput(true, false, false),
+         expect(!creativeDesktopUiWantsInput(
+                    CreativeDesktopPointerCaptureMode::Orbit, false, false),
                 "captured + no ImGui intent is still no claim") &&
-         expect(creativeDesktopUiWantsInput(false, true, false),
+         expect(creativeDesktopUiWantsInput(
+                    CreativeDesktopPointerCaptureMode::None, true, false),
                 "free pointer + ImGui wants mouse claims input") &&
-         expect(creativeDesktopUiWantsInput(false, false, true),
+         expect(creativeDesktopUiWantsInput(
+                    CreativeDesktopPointerCaptureMode::None, false, true),
                 "free pointer + ImGui wants keyboard claims input") &&
-         expect(!creativeDesktopUiWantsInput(false, false, false),
+         expect(!creativeDesktopUiWantsInput(
+                    CreativeDesktopPointerCaptureMode::None, false, false),
                 "free pointer + no ImGui intent does not claim input");
+}
+
+bool desktopNavigationGesturesDoNotStealOrdinaryEditorInput() {
+  namespace cr = iggy3d::creative;
+  using iggy3d_creative_app::CreativeDesktopPointerCaptureMode;
+  using iggy3d_creative_app::creativeDesktopMouseLookActive;
+  using iggy3d_creative_app::creativeDesktopViewportDollyRequested;
+  return expect(!creativeDesktopMouseLookActive(
+                    true, CreativeDesktopPointerCaptureMode::None),
+                "free desktop cursor cannot rotate the camera") &&
+         expect(creativeDesktopMouseLookActive(
+                    true, CreativeDesktopPointerCaptureMode::FlyLook),
+                "captured fly-look owns relative mouse motion") &&
+         expect(creativeDesktopMouseLookActive(
+                    false, CreativeDesktopPointerCaptureMode::None),
+                "shell-off preserves the legacy relative mouse camera") &&
+         expect(creativeDesktopViewportDollyRequested(
+                    CreativeDesktopPointerCaptureMode::None,
+                    cr::kCreativeInputModifierAlt, 1.0F, true),
+                "Option+touchpad scroll requests viewport dolly") &&
+         expect(!creativeDesktopViewportDollyRequested(
+                    CreativeDesktopPointerCaptureMode::None,
+                    cr::kCreativeInputModifierNone, 1.0F, true),
+                "plain scroll remains available to the hotbar") &&
+         expect(!creativeDesktopViewportDollyRequested(
+                    CreativeDesktopPointerCaptureMode::FlyLook,
+                    cr::kCreativeInputModifierAlt, 1.0F, true),
+                "captured fly-look does not silently change focus distance") &&
+         expect(!creativeDesktopViewportDollyRequested(
+                    CreativeDesktopPointerCaptureMode::None,
+                    cr::kCreativeInputModifierAlt, 1.0F, false),
+                "panel scroll never moves the 3D camera");
 }
 
 bool routeRemoveDropsActionForEscRelease() {
@@ -280,10 +398,14 @@ int main() {
   ok = degenerateConversionsAreInvalid() && ok;
   ok = sentinelContentKeepsSwapchainAspect() && ok;
   ok = narrowerContentTightensCameraAspect() && ok;
+  ok = worldLayoutUsesSplitTwoAndThreeDimensionalInspection() && ok;
+  ok = panelVisibilityNeverRebuildsTheDockspace() && ok;
   ok = pointerPolicyCapturesOnViewportClick() && ok;
   ok = pointerPolicyReleasesWhenLeavingViewport() && ok;
+  ok = pointerPolicyOwnsBoundedTouchpadGestures() && ok;
   ok = pointerPolicyIsInertWhenShellOff() && ok;
   ok = wantInputHelperIgnoresImGuiWhileCaptured() && ok;
+  ok = desktopNavigationGesturesDoNotStealOrdinaryEditorInput() && ok;
   ok = routeRemoveDropsActionForEscRelease() && ok;
   ok = desktopUiContextDisablesFlyNavigation() && ok;
   ok = worldLayoutPreviewKeepsViewportNavigation() && ok;

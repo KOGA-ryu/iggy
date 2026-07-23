@@ -132,11 +132,29 @@ bool visualLawsHold() {
       roofOutline.dashCells > 0.0F && roofRidge.dashCells > 0.0F &&
       thickness(Role::RoofOutline, 24.0F) <
           thickness(Role::ExteriorWall, 24.0F);
+  const CreativeEditorDraftingStyle& skylight =
+      style(Role::RoofSkylight);
+  const CreativeEditorDraftingStyle& clearance =
+      style(Role::RoofClearance);
+  const bool apertureSemanticsDistinct =
+      skylight.overheadLayer && !skylight.normalLayer &&
+      skylight.fillPattern == CreativeEditorDraftingFillPattern::Solid &&
+      skylight.dashCells == 0.0F && clearance.overheadLayer &&
+      !clearance.normalLayer &&
+      clearance.fillPattern == CreativeEditorDraftingFillPattern::Hatched &&
+      clearance.dashCells > 0.0F;
   const CreativeEditorDraftingStyle& ghost =
       style(Role::LowerLevelGhostOverlay);
   const bool ghostIsContext = ghost.contextLayer && !ghost.normalLayer &&
                               ghost.tint.a < 160U &&
                               ghost.drawOrder < style(Role::RoomFloor).drawOrder;
+  const CreativeEditorDraftingStyle& upperGhost =
+      style(Role::UpperLevelGhostOverlay);
+  const bool upperGhostIsContext =
+      upperGhost.contextLayer && !upperGhost.normalLayer &&
+      upperGhost.tint.a < 160U && upperGhost.dashCells > 0.0F &&
+      upperGhost.drawOrder > style(Role::ExteriorWall).drawOrder &&
+      upperGhost.drawOrder < style(Role::RoofOutline).drawOrder;
   const CreativeEditorDraftingStyle& invalid =
       style(Role::PreviewInvalidOverlay);
   const bool invalidHasShapeCue =
@@ -165,8 +183,12 @@ bool visualLawsHold() {
          expect(roofOverheadOnly, "roof geometry lives only overhead") &&
          expect(roofDashedAndLighter,
                 "overhead roof reads dashed and lighter than walls") &&
+         expect(apertureSemanticsDistinct,
+                "skylight glass and open clearances differ structurally") &&
          expect(ghostIsContext,
                 "lower-storey ghost is context-only, faded, painted under") &&
+         expect(upperGhostIsContext,
+                "upper-storey ghost is context-only, dashed, painted above") &&
          expect(invalidHasShapeCue,
                 "invalid previews carry a hatch-and-dash shape cue") &&
          expect(interactiveOverlaysPaintLast,
@@ -207,13 +229,38 @@ bool terrainSemanticsRemainDistinct() {
                 "every authored terrain recipe remains visually distinct");
 }
 
+bool terrainAnalysisRolesRemainLegible() {
+  using Role = CreativeEditorDraftingRole;
+  constexpr Role kSlopeRoles[]{Role::SlopeFlat, Role::SlopeGentle,
+                               Role::SlopeSteep, Role::SlopeExtreme};
+  bool ordered = true;
+  for (std::size_t index = 1U; index < std::size(kSlopeRoles); ++index) {
+    ordered = ordered &&
+              style(kSlopeRoles[index]).fillAlpha >
+                  style(kSlopeRoles[index - 1U]).fillAlpha;
+  }
+  const auto& cut = style(Role::CutArea);
+  const auto& fill = style(Role::FillArea);
+  return expect(ordered,
+                "slope severity increases visible fill weight monotonically") &&
+         expect(cut.fillPattern == CreativeEditorDraftingFillPattern::Hatched &&
+                    fill.fillPattern ==
+                        CreativeEditorDraftingFillPattern::Solid,
+                "cut and fill differ by structure rather than hue alone") &&
+         expect(style(Role::ElevationBand).drawOrder <
+                        style(Role::SlopeFlat).drawOrder &&
+                    style(Role::SlopeExtreme).drawOrder < cut.drawOrder,
+                "analysis overlays paint above elevation and below edits");
+}
+
 bool overlaysStayDistinguishableInGrayscale() {
   using Role = CreativeEditorDraftingRole;
   constexpr Role kOverlays[] = {
       Role::HoverOverlay,         Role::SelectedOverlay,
       Role::PreviewValidOverlay,  Role::PreviewInvalidOverlay,
       Role::LockedOverlay,        Role::GeneratedOverlay,
-      Role::OverheadOverlay,      Role::LowerLevelGhostOverlay};
+      Role::OverheadOverlay,      Role::LowerLevelGhostOverlay,
+      Role::UpperLevelGhostOverlay};
   bool allDistinguishable = true;
   for (std::size_t first = 0U; first < std::size(kOverlays); ++first) {
     for (std::size_t second = first + 1U; second < std::size(kOverlays);
@@ -266,6 +313,7 @@ int main() {
   ok = stylesAreStructurallyValid() && ok;
   ok = visualLawsHold() && ok;
   ok = terrainSemanticsRemainDistinct() && ok;
+  ok = terrainAnalysisRolesRemainLegible() && ok;
   ok = overlaysStayDistinguishableInGrayscale() && ok;
   ok = strokeThicknessFollowsClassAndFloor() && ok;
   return ok ? 0 : 1;

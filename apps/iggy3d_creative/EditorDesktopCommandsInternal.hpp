@@ -29,6 +29,15 @@ template <typename Payload>
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeObject& object) noexcept;
 
+[[nodiscard]] bool focusEditorCameraOnSelection(
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeDocument& document,
+    const iggy3d::creative::CreativeSelectionState& selection) noexcept;
+
+[[nodiscard]] bool focusEditorCameraOnDocument(
+    CreativeEditorState& editor,
+    const iggy3d::creative::CreativeDocument& document) noexcept;
+
 [[nodiscard]] bool focusEditorCameraOnTerrainGeneration(
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeDocument& document,
@@ -41,6 +50,11 @@ bool dispatchCreativeDesktopDocumentCommand(
     CreativeDesktopCommandResult& result);
 
 bool dispatchCreativeDesktopObjectCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result);
+
+bool dispatchCreativeDesktopMeasurementCommand(
     const CreativeDesktopCommand& command,
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);

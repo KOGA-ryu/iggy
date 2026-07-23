@@ -9,12 +9,14 @@
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/FrameInput.hpp"
 
 namespace iggy3d {
 
 class SdlWindow;
+struct StaticMeshAssetCatalog;
 
 }  // namespace iggy3d
 
@@ -27,6 +29,7 @@ struct CreativeAppState;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
+struct CreativePlacementClearanceCache;
 
 enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   SetMaterialBrushSymmetryPivot,
@@ -38,6 +41,7 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   DeleteSelection,
   ToggleSelectionVisibility,
   ToggleSelectionLocked,
+  ReattachAttachment,
   DetachAttachment,
   GroupSelection,
   UngroupSelection,
@@ -50,10 +54,12 @@ enum class CreativeEditorToolOptionsCommandId : std::uint8_t {
   SetMovingPlatformSegmentSpeed,
   ToggleMovingPlatformPreview,
   RestartMovingPlatformPreview,
+  RegeneratePatternRecipe,
+  DetachPatternRecipe,
   Count,
 };
 
-inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 19U;
+inline constexpr std::size_t kCreativeEditorToolOptionsCommandCapacity = 24U;
 
 struct CreativeEditorToolOptionsCommandList {
   std::array<CreativeEditorToolOptionsCommandId,
@@ -66,6 +72,7 @@ struct CreativeEditorToolOptionsState {
   bool open = false;
   iggy3d::creative::CreativeHotbarEntry targetEntry{};
   iggy3d::creative::CreativeToolSettings draft;
+  double placeCellSizeDraft = 1.0;
   iggy3d::creative::CreativeToolOptionList options;
   CreativeEditorToolOptionsCommandList commands;
   std::size_t selectedIndex = 0;
@@ -76,14 +83,25 @@ struct CreativeEditorToolOptionsState {
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeObjectId contextPrimaryObjectId =
       iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativePatternRecipeId contextPatternRecipeId =
+      iggy3d::creative::kInvalidCreativePatternRecipeId;
+  iggy3d::creative::CreativePatternRecipeKind contextPatternRecipeKind =
+      iggy3d::creative::CreativePatternRecipeKind::Count;
+  std::uint64_t contextPatternRecipeSeed = 0U;
+  std::size_t contextPatternGeneratedObjectCount = 0U;
   iggy3d::creative::CreativeObjectKind contextPrimaryObjectKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
+  std::string contextPrimaryAssetId;
   iggy3d::creative::CreativeObjectKind contextContainerKind =
       iggy3d::creative::CreativeObjectKind::Unknown;
   std::string contextContainerAssetId;
   iggy3d::creative::CreativeObjectId contextAttachmentParentId =
       iggy3d::creative::kInvalidObjectId;
   std::string contextAttachmentSocket;
+  iggy3d::creative::CreativeObjectId contextAttachmentAimTargetId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeVec3 contextAttachmentAimPoint{};
+  bool contextAttachmentAimAvailable = false;
   std::size_t contextSelectionCount = 0U;
   bool contextPrimaryVisible = true;
   bool contextPrimaryLocked = false;
@@ -123,6 +141,8 @@ struct CreativeEditorToolOptionsFrameRequest {
   iggy3d::creative::CreativeHotbarEntry requestedEntry{};
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
+  const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr;
+  const CreativePlacementClearanceCache* placementClearanceCache = nullptr;
 };
 
 struct CreativeEditorToolOptionsFrameResult {
@@ -143,14 +163,20 @@ creativeEditorToolOptionsForEntry(
 creativeEditorToolOptionCommandsForEntry(
     iggy3d::creative::CreativeHotbarEntry entry,
     iggy3d::creative::CreativeObjectKind contextPrimaryObjectKind =
-        iggy3d::creative::CreativeObjectKind::Unknown) noexcept;
+        iggy3d::creative::CreativeObjectKind::Unknown,
+    iggy3d::creative::CreativePatternRecipeId contextPatternRecipeId =
+        iggy3d::creative::kInvalidCreativePatternRecipeId,
+    iggy3d::creative::CreativePatternRecipeKind contextPatternRecipeKind =
+        iggy3d::creative::CreativePatternRecipeKind::Count) noexcept;
 [[nodiscard]] std::size_t creativeEditorToolOptionsRowCount(
     const CreativeEditorToolOptionsState& state) noexcept;
 [[nodiscard]] bool activateCreativeEditorToolOptionsSelection(
     CreativeEditorState& editor);
 [[nodiscard]] bool activateCreativeEditorToolOptionsSelection(
     iggy3d::creative::CreativeAppState& appState,
-    CreativeEditorState& editor);
+    CreativeEditorState& editor,
+    const iggy3d::StaticMeshAssetCatalog* assetCatalog = nullptr,
+    const CreativePlacementClearanceCache* placementClearanceCache = nullptr);
 
 void syncCreativeEditorQuickEdit(CreativeEditorState& editor);
 [[nodiscard]] bool processCreativeEditorQuickEditAction(

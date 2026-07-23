@@ -26,14 +26,15 @@ bool sameRect(cr::CreativeWorldLayoutRect lhs,
 
 CreativeEditorWorldLayoutVerticalConnectorSettings connectorSettings(
     const cr::CreativeWorldLayoutVerticalConnector& connector) noexcept {
-  return {connector.footprint, connector.kind, connector.direction};
+  return {connector.footprint, connector.kind, connector.direction,
+          connector.material};
 }
 
 bool sameSettings(
     const CreativeEditorWorldLayoutVerticalConnectorSettings& lhs,
     const CreativeEditorWorldLayoutVerticalConnectorSettings& rhs) noexcept {
   return sameRect(lhs.footprint, rhs.footprint) && lhs.kind == rhs.kind &&
-         lhs.direction == rhs.direction;
+         lhs.direction == rhs.direction && lhs.material == rhs.material;
 }
 
 std::string_view connectorValidationMessage(
@@ -51,7 +52,11 @@ std::string_view connectorValidationMessage(
     case cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidLanding:
       return "vertical connector needs a clear landing at both ends";
     case cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidSlope:
-      return "vertical connector run must cover its rise";
+      return "vertical connector run or slope exceeds its movement limit";
+    case cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidMaterial:
+      return "vertical connector material is invalid";
+    case cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidHeadroom:
+      return "vertical connector needs at least 1.84 m of headroom";
     case cr::CreativeWorldLayoutVerticalConnectorStatus::SurfaceAlreadyCut:
       return "these room surfaces already contain a connector";
     case cr::CreativeWorldLayoutVerticalConnectorStatus::
@@ -65,7 +70,8 @@ std::string_view connectorValidationMessage(
 
 ConnectorValidation validateConnectorSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
-    const CreativeEditorWorldLayoutVerticalConnectorSettings& settings) {
+    const CreativeEditorWorldLayoutVerticalConnectorSettings& settings,
+    cr::CreativeGridSettings grid) {
   if (connectorIndex >= state.source.verticalConnectors.size()) {
     return {false,
             "creative_editor_world_layout_vertical_connector_index_invalid",
@@ -76,9 +82,10 @@ ConnectorValidation validateConnectorSettings(
   candidate.footprint = settings.footprint;
   candidate.kind = settings.kind;
   candidate.direction = settings.direction;
+  candidate.material = settings.material;
   const cr::CreativeWorldLayoutVerticalConnectorPlan plan =
       cr::planCreativeWorldLayoutVerticalConnector(
-          {}, state.source, connectorIndex, candidate);
+          grid, state.source, connectorIndex, candidate);
   return {plan.accepted, plan.reasonCode,
           connectorValidationMessage(plan.status)};
 }
@@ -86,9 +93,9 @@ ConnectorValidation validateConnectorSettings(
 CreativeEditorWorldLayoutEditReceipt commitConnectorSettings(
     CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
     const CreativeEditorWorldLayoutVerticalConnectorSettings& settings,
-    std::string statusMessage) {
+    cr::CreativeGridSettings grid, std::string statusMessage) {
   const ConnectorValidation validation =
-      validateConnectorSettings(state, connectorIndex, settings);
+      validateConnectorSettings(state, connectorIndex, settings, grid);
   if (!validation.accepted) {
     state.statusMessage = validation.message;
     return {false, false, std::string(validation.reasonCode)};
@@ -103,6 +110,7 @@ CreativeEditorWorldLayoutEditReceipt commitConnectorSettings(
   connector.footprint = settings.footprint;
   connector.kind = settings.kind;
   connector.direction = settings.direction;
+  connector.material = settings.material;
   state.selection = {
       CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
       connectorIndex};
@@ -263,8 +271,9 @@ bool readCreativeEditorWorldLayoutVerticalConnectorSettings(
 CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
-    CreativeEditorWorldLayoutVerticalConnectorSettings settings) {
-  return commitConnectorSettings(state, connectorIndex, settings,
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings,
+    cr::CreativeGridSettings grid) {
+  return commitConnectorSettings(state, connectorIndex, settings, grid,
                                  "vertical connector settings updated");
 }
 
@@ -302,7 +311,8 @@ CreativeEditorWorldLayoutEditReceipt
 applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
-    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
+    CreativeEditorWorldLayoutPoint point, double toleranceCells,
+    cr::CreativeGridSettings grid) {
   if (phase >=
       CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Count) {
     return {
@@ -408,14 +418,15 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
             settings,
             {state.verticalConnectorManipulation.previewFootprint,
              state.verticalConnectorManipulation.previewKind,
-             state.verticalConnectorManipulation.previewDirection})) {
+             state.verticalConnectorManipulation.previewDirection,
+             connector.material})) {
       return {true, false,
               state.verticalConnectorManipulation.reasonCode};
     }
     ConnectorValidation validation;
     if (coordinateValid) {
       validation =
-          validateConnectorSettings(state, connectorIndex, settings);
+          validateConnectorSettings(state, connectorIndex, settings, grid);
     } else {
       validation.reasonCode =
           "creative_editor_world_layout_vertical_connector_manipulation_out_of_range";
@@ -439,7 +450,7 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
       applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
           state,
           CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
-          point, toleranceCells);
+          point, toleranceCells, grid);
   if (!updated.accepted) {
     return updated;
   }
@@ -453,9 +464,10 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
       state.verticalConnectorManipulation.previewFootprint,
       state.verticalConnectorManipulation.previewKind,
       state.verticalConnectorManipulation.previewDirection,
+      connector.material,
   };
   state.verticalConnectorManipulation = {};
-  return commitConnectorSettings(state, connectorIndex, settings,
+  return commitConnectorSettings(state, connectorIndex, settings, grid,
                                  "vertical connector updated");
 }
 

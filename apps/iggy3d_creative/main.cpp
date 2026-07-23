@@ -61,8 +61,10 @@
 #include "EditorPlacement.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPlayMode.hpp"
+#include "EditorPlayerSpawnPreview.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
+#include "EditorVolume.hpp"
 #include "EditorWorldLayout.hpp"
 
 namespace {
@@ -91,6 +93,7 @@ using iggy3d_creative_app::creativeEditorObjectInsideActiveGroup;
 using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::CreativeEditorOverlayFrame;
+using iggy3d_creative_app::finishCreativeEditorVolumeHandleGesture;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
@@ -344,7 +347,11 @@ int main(int argc, char** argv) {
   CreativeEditorGamepad gamepad;
   iggy3d_creative_app::CreativeEditorSceneCache sceneCache;
   iggy3d_creative_app::CreativeEditorGeneratedTerrainPreviewCache
-      terrainGenerationPreviewCache;
+      terrainOperationPreviewCache;
+  iggy3d_creative_app::CreativeEditorVolumeScenePreviewCache
+      volumeScenePreviewCache;
+  iggy3d_creative_app::CreativePlayerSpawnPreviewCache
+      playerSpawnPreviewCache;
   iggy3d_creative_app::CreativeEditorPlayMode playMode;
 
   while (window.isOpen()) {
@@ -405,12 +412,14 @@ int main(int argc, char** argv) {
       // WITHOUT opening the Controls panel. Consume the ToggleControls action
       // this frame so no downstream panel acts on it.
       const bool capturedEscRelease =
-          editor.desktopUi.viewportPointerCaptured &&
+          iggy3d_creative_app::creativeDesktopPointerCaptured(
+              editor.desktopUi.viewportPointerCaptureMode) &&
           creative::creativeInputRouteContains(
               frameInput.routedInput,
               creative::CreativeInputActionId::ToggleControls);
       if (capturedEscRelease) {
-        editor.desktopUi.viewportPointerCaptured = false;
+        editor.desktopUi.viewportPointerCaptureMode =
+            iggy3d_creative_app::CreativeDesktopPointerCaptureMode::None;
         static_cast<void>(window.setViewportPointerCapture(false));
         creative::creativeInputRouteRemove(
             frameInput.routedInput,
@@ -424,14 +433,28 @@ int main(int argc, char** argv) {
                 creative::CreativeInputContext::EditorViewport ||
             frameInput.routedInput.context ==
                 creative::CreativeInputContext::RuntimePlay;
+        const creative::CreativeInputModifierMask viewportGestureModifiers =
+            frameInput.routedInput.context ==
+                    creative::CreativeInputContext::EditorViewport
+                ? frameInput.modifiers
+                : creative::kCreativeInputModifierNone;
         const iggy3d_creative_app::CreativeDesktopPointerDecision
             pointerDecision =
                 iggy3d_creative_app::decideCreativeDesktopPointerCapture(
                     editor.desktopUi.shellEnabled,
-                    editor.desktopUi.viewportPointerCaptured,
-                    primaryOverViewport, viewportContext,
+                    editor.desktopUi.viewportPointerCaptureMode,
+                    primaryOverViewport,
+                    creative::creativeInputKeyDown(
+                        frameInput.inputFrame,
+                        creative::CreativeInputKey::MousePrimary),
+                    viewportGestureModifiers, viewportContext,
                     frameInput.windowFocused);
-        if (pointerDecision.consumePrimaryPress) {
+        const bool gestureOwnsPrimary =
+            iggy3d_creative_app::creativeDesktopPointerModeOwnsPrimaryAction(
+                editor.desktopUi.viewportPointerCaptureMode) ||
+            iggy3d_creative_app::creativeDesktopPointerModeOwnsPrimaryAction(
+                pointerDecision.mode);
+        if (pointerDecision.consumePrimaryPress || gestureOwnsPrimary) {
           // Click-to-capture owns this press. Do not also remove/place/select in
           // the editor or attack in Play on the frame fly-look is acquired.
           creative::setCreativeInputKey(
@@ -451,11 +474,17 @@ int main(int argc, char** argv) {
           frameInput.worldActions.released[primaryActionIndex] = false;
         }
         if (pointerDecision.changed) {
+          const bool wasCaptured =
+              iggy3d_creative_app::creativeDesktopPointerCaptured(
+                  editor.desktopUi.viewportPointerCaptureMode);
           const SdlMouseCaptureResult captureResult =
               window.setViewportPointerCapture(pointerDecision.captured);
-          const bool acquired = !editor.desktopUi.viewportPointerCaptured &&
-                                captureResult.active;
-          editor.desktopUi.viewportPointerCaptured = captureResult.active;
+          const bool acquired = !wasCaptured && captureResult.active;
+          editor.desktopUi.viewportPointerCaptureMode =
+              captureResult.active
+                  ? pointerDecision.mode
+                  : iggy3d_creative_app::
+                        CreativeDesktopPointerCaptureMode::None;
           editor.desktopUi.discardNextViewportMouseDelta =
               acquired && pointerDecision.discardNextMouseDelta;
         }
@@ -478,7 +507,7 @@ int main(int argc, char** argv) {
     if (synchronizeCreativeEditorTerrainGeneration(
             editor.terrainGeneration, activeAppState.facade.document())) {
       invalidateCreativeEditorGeneratedTerrainPreview(
-          terrainGenerationPreviewCache);
+          terrainOperationPreviewCache);
     }
 
     // Desktop shell chrome: the menu emits semantic command IDs, the sole
@@ -494,8 +523,8 @@ int main(int argc, char** argv) {
           iggy3d_creative_app::creativeEditorPlayModeActive(playMode),
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
-          editor.desktopUi, editor, activeAppState, &playMode,
-          desktopCommands);
+          editor.desktopUi, editor, activeAppState,
+          &bootstrapData.staticMeshAssetCatalog, &playMode, desktopCommands);
       if (desktopCommands.count > 0U) {
         const bool playWasActive =
             iggy3d_creative_app::creativeEditorPlayModeActive(playMode);
@@ -698,7 +727,9 @@ int main(int argc, char** argv) {
              catalogFrame.openToolOptionsRequested,
              catalogFrame.toolOptionsEntry,
              extent.width,
-             extent.height});
+             extent.height,
+             &bootstrapData.staticMeshAssetCatalog,
+             &sceneCache.placementClearance});
     const bool layoutPreviewActive =
         creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
     const bool modalBlocksWorldActions =
@@ -746,35 +777,104 @@ int main(int argc, char** argv) {
     static_cast<void>(refreshCreativeEditorSceneCache(
         sceneCache, renderDocument,
         &bootstrapData.staticMeshAssetCatalog));
-    StandaloneRoomBakePreviewScene* selectedPreview = &sceneCache.preview;
-    const bool generationTargetsRenderedDocument =
-        &renderDocument == &activeAppState.facade.document() &&
-        creativeEditorTerrainGenerationPreviewMatches(
-            editor.terrainGeneration, renderDocument);
-    if (generationTargetsRenderedDocument) {
-      static_cast<void>(refreshCreativeEditorGeneratedTerrainPreview(
-          terrainGenerationPreviewCache, sceneCache, renderDocument,
-          editor.terrainGeneration.operationPreview.heightField,
-          editor.terrainGeneration.operationPreview.receipt.replay.heightHash,
-          &bootstrapData.staticMeshAssetCatalog));
-      if (terrainGenerationPreviewCache.valid) {
-        selectedPreview = &terrainGenerationPreviewCache.preview;
+    const auto refreshVolumeScenePreview = [&]() {
+      const creative::CreativeHotbarEntry& held =
+          creative::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+      const bool fillPreview =
+          held.kind == creative::CreativeHeldItemKind::VolumeFill;
+      const bool clonePreview =
+          held.kind == creative::CreativeHeldItemKind::VolumeClone;
+      const bool eligible =
+          &renderDocument == &activeAppState.facade.document() &&
+          (fillPreview || clonePreview) &&
+          editor.volume.active && !modalBlocksWorldActions &&
+          capturePath.empty();
+      if (!eligible) {
+        invalidateCreativeEditorVolumeScenePreview(volumeScenePreviewCache);
+        return;
       }
-    } else {
-      invalidateCreativeEditorGeneratedTerrainPreview(
-          terrainGenerationPreviewCache);
+      editor.volume.operation =
+          fillPreview ? creative::CreativeVolumeOperationKind::Fill
+                      : creative::CreativeVolumeOperationKind::Clone;
+      const creative::CreativeVolumeSelection selection =
+          creativeEditorVolumePreviewSelection(editor.volume);
+      if (!creative::creativeVolumeSelectionValid(selection)) {
+        invalidateCreativeEditorVolumeScenePreview(volumeScenePreviewCache);
+        return;
+      }
+      static_cast<void>(refreshCreativeEditorVolumeOperationPreview(
+          editor.volume, renderDocument, selection, editor.placeBrush,
+          editor.toolSettings));
+      if (!editor.volume.preview.stagedDocumentValid) {
+        invalidateCreativeEditorVolumeScenePreview(volumeScenePreviewCache);
+        return;
+      }
+      static_cast<void>(refreshCreativeEditorVolumeScenePreview(
+          volumeScenePreviewCache, editor.volume.preview.stagedDocument,
+          editor.volume.preview.refreshCount,
+          &bootstrapData.staticMeshAssetCatalog));
+    };
+    refreshVolumeScenePreview();
+    const auto refreshTerrainOperationScenePreview = [&]() {
+      const creative::CreativeTerrainOperationMutationPlan* operationPreview =
+          nullptr;
+      const bool targetsRenderedDocument =
+          &renderDocument == &activeAppState.facade.document();
+      if (targetsRenderedDocument &&
+          creativeEditorTerrainGenerationPreviewMatches(
+              editor.terrainGeneration, renderDocument)) {
+        operationPreview = &editor.terrainGeneration.operationPreview;
+      }
+
+      const creative::CreativeHotbarEntry& held =
+          creative::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+      const bool gradeEligible =
+          targetsRenderedDocument &&
+          held.kind == creative::CreativeHeldItemKind::TerrainGrade &&
+          editor.terrain.grade.active && !modalBlocksWorldActions &&
+          capturePath.empty();
+      if (gradeEligible) {
+        static_cast<void>(refreshCreativeEditorTerrainGradePreview(
+            renderDocument, editor));
+        if (creativeEditorTerrainGradePreviewMatches(editor.terrain.grade,
+                                                      renderDocument)) {
+          operationPreview = &editor.terrain.grade.operationPreview;
+        } else {
+          operationPreview = nullptr;
+        }
+      }
+
+      if (operationPreview == nullptr) {
+        invalidateCreativeEditorGeneratedTerrainPreview(
+            terrainOperationPreviewCache);
+        return;
+      }
+      static_cast<void>(refreshCreativeEditorGeneratedTerrainPreview(
+          terrainOperationPreviewCache, sceneCache, renderDocument,
+          operationPreview->heightField,
+          operationPreview->receipt.replay.heightHash,
+          operationPreview->materialField,
+          operationPreview->receipt.replay.materialHash,
+          &bootstrapData.staticMeshAssetCatalog));
+    };
+    refreshTerrainOperationScenePreview();
+    StandaloneRoomBakePreviewScene* selectedPreview = &sceneCache.preview;
+    if (terrainOperationPreviewCache.valid) {
+      selectedPreview = &terrainOperationPreviewCache.preview;
+    }
+    if (volumeScenePreviewCache.valid) {
+      selectedPreview = &volumeScenePreviewCache.scene.preview;
     }
     const creative::CreativeTerrainSurfacePlan* terrainContourSurface =
         &sceneCache.composedTerrainSurface;
     std::uint64_t terrainContourSurfaceKey =
         sceneCache.terrainSurfaceBuildCount;
-    if (terrainGenerationPreviewCache.valid &&
-        selectedPreview == &terrainGenerationPreviewCache.preview) {
-      terrainContourSurface = &terrainGenerationPreviewCache.composedSurface;
-      terrainContourSurfaceKey = terrainGenerationPreviewCache.heightHash;
+    if (terrainOperationPreviewCache.valid &&
+        selectedPreview == &terrainOperationPreviewCache.preview) {
+      terrainContourSurface = &terrainOperationPreviewCache.composedSurface;
+      terrainContourSurfaceKey = terrainOperationPreviewCache.heightHash;
     }
-    StandaloneRoomBakePreviewScene& roomBakePreview = *selectedPreview;
-    SceneProjectionResult& scene = roomBakePreview.scene;
+    SceneProjectionResult& scene = selectedPreview->scene;
     DebugProjectionResult debug{};
 
     // FRAME (non-const so we can attach UI + wireframe + label below). This
@@ -819,6 +919,17 @@ int main(int argc, char** argv) {
                                          editor,
                                          !capturePath.empty());
 
+    const RenderContentViewport contentViewport =
+        effectiveContentViewport(frame);
+    const CreativeEditorSelectionFrame interactionSelection =
+        resolveCreativeEditorSelectionFrame(activeAppState.facade);
+    const CreativeEditorGizmoFrame interactionGizmo =
+        buildCreativeEditorGizmoFrame(
+            interactionSelection,
+            editor.interaction.movingPlatformPathEdit, frame.camera,
+            extent.width, extent.height, kGizmoAxisLength, contentViewport,
+            &editor.transform);
+
     if (!modalBlocksWorldActions && frameInput.windowFocused) {
       processCreativeEditorWorldInteractionFrame(
           {activeAppState,
@@ -831,7 +942,11 @@ int main(int argc, char** argv) {
            frameInput.monotonicTimeNanoseconds,
            !capturePath.empty(),
            &bootstrapData.staticMeshAssetCatalog,
-           &sceneCache.placementClearance});
+           &sceneCache.placementClearance,
+           &interactionGizmo});
+    } else if (editor.volume.handleGesture.active) {
+      static_cast<void>(
+          finishCreativeEditorVolumeHandleGesture(editor.volume, false));
     }
 
     runCreativeEditorCaptureScenarioFrame(
@@ -840,12 +955,18 @@ int main(int argc, char** argv) {
     // World input mutates the CreativeDocument after the frame's initial scene
     // bake. Refresh only changed frames so an accepted placement is submitted
     // immediately rather than leaving the renderer on the pre-click snapshot.
-    if (refreshCreativeEditorSceneCache(
-            sceneCache, renderDocument,
-            &bootstrapData.staticMeshAssetCatalog)) {
-      frame.projections.scene = &roomBakePreview.scene;
-      frame.clock.sourceTick = roomBakePreview.scene.sourceTick;
-    }
+    static_cast<void>(refreshCreativeEditorSceneCache(
+        sceneCache, renderDocument,
+        &bootstrapData.staticMeshAssetCatalog));
+    refreshVolumeScenePreview();
+    refreshTerrainOperationScenePreview();
+    selectedPreview = volumeScenePreviewCache.valid
+                          ? &volumeScenePreviewCache.scene.preview
+                          : terrainOperationPreviewCache.valid
+                                ? &terrainOperationPreviewCache.preview
+                                : &sceneCache.preview;
+    frame.projections.scene = &selectedPreview->scene;
+    frame.clock.sourceTick = selectedPreview->scene.sourceTick;
 
     // ---- RESOLVE THE SELECTION (generic) -----------------------------------
     // Everything downstream — the yellow box, gizmo, and dimension label — keys
@@ -854,6 +975,18 @@ int main(int argc, char** argv) {
     // nothing is selected we draw no gizmo/box and skip Move.
     const CreativeEditorSelectionFrame selection =
         resolveCreativeEditorSelectionFrame(activeAppState.facade);
+    std::uint64_t playerSpawnRoomBakeRevision = sceneCache.refreshCount;
+    if (selectedPreview == &terrainOperationPreviewCache.preview) {
+      playerSpawnRoomBakeRevision = terrainOperationPreviewCache.refreshCount;
+    } else if (selectedPreview == &volumeScenePreviewCache.scene.preview) {
+      playerSpawnRoomBakeRevision =
+          volumeScenePreviewCache.operationRefreshCount;
+    }
+    static_cast<void>(
+        iggy3d_creative_app::refreshCreativePlayerSpawnPreviewCache(
+            playerSpawnPreviewCache, activeAppState.facade.document(),
+            &selectedPreview->roomBake, selection.selected,
+            playerSpawnRoomBakeRevision));
     static_cast<void>(iggy3d_creative_app::syncCreativeMovingPlatformPreview(
         editor.movingPlatformPreview,
         activeAppState.facade.document().id(), selection.selected));
@@ -867,7 +1000,8 @@ int main(int argc, char** argv) {
     // Gizmo wireframe lines are appended to the yellow selection-box lines.
     const CreativeEditorGizmoFrame gizmoFrame = buildCreativeEditorGizmoFrame(
         selection, editor.interaction.movingPlatformPathEdit, frame.camera,
-        extent.width, extent.height, kGizmoAxisLength);
+        extent.width, extent.height, kGizmoAxisLength, contentViewport,
+        &editor.transform);
 
     logCreativeEditorPathHandleCaptureFrame(
         editor.captureScript, !capturePath.empty(), gizmoFrame);
@@ -890,10 +1024,12 @@ int main(int argc, char** argv) {
          &sceneCache.placementClearance,
          &renderDocument,
          terrainContourSurface,
-         terrainContourSurfaceKey},
+         terrainContourSurfaceKey,
+         &playerSpawnPreviewCache.geometry},
         overlayFrame);
 
     iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);
+    StandaloneRoomBakePreviewScene& roomBakePreview = *selectedPreview;
     if (submitCreativeEditorFrame({
             *backend,
             frame,

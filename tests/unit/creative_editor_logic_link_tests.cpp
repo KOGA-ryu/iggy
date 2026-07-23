@@ -5,6 +5,7 @@
 #include "EditorGizmo.hpp"
 #include "EditorPreviewFrameInternal.hpp"
 #include "EditorState.hpp"
+#include "EditorWorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
@@ -454,7 +455,7 @@ bool generatedScopeOverlaySharesHierarchyTruthAndFailsClosed() {
                         2U &&
                     std::fabs(buildingScope.architecturalDimensions
                                   .totalHeightMeters -
-                              7.05) < 1.0e-9 &&
+                              6.30) < 1.0e-9 &&
                     hasColor(buildingScope, west, 0.18F, 0.82F, 1.0F) &&
                     hasColor(buildingScope, connector, 0.18F, 0.82F, 1.0F),
                 "building scope adds exact dimensions and a human guide") &&
@@ -466,6 +467,63 @@ bool generatedScopeOverlaySharesHierarchyTruthAndFailsClosed() {
                 "stale source disables scope and architectural scale claims");
 }
 
+bool roofHandlesRenderIn3dAndRespectInteractionGates() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Roof Handles");
+  static_cast<void>(document.assignId(705U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  editor.worldLayout.source.stableKey = "roof_handle_layout";
+  editor.worldLayout.source.buildings.push_back(
+      {"roof_house", "Roof House", cr::CreativeBuildingRootMode::None, {}, 0,
+       3U, true, {}});
+  editor.worldLayout.source.levels.push_back(
+      {0U, "roof_level", "Roof Level", 0.0, 4U, 1U, 1U, 1U,
+       cr::CreativeStructuralRoofStyle::Gable,
+       cr::CreativeStructuralRoofRidgeAxis::X, 35.0, 0.0});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 0U, "roof_room", "Roof Room", {{0, 0}, {8, 6}}, 0.25});
+  editor.worldLayout.revision = 4U;
+  editor.worldLayout.generatedRevision = 4U;
+  editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
+  editor.worldLayout.activeLevelIndex = 0U;
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::Level, 0U};
+  editor.interaction.hotbar.entries[0].kind =
+      cr::CreativeHeldItemKind::ObjectSelect;
+
+  app::CreativeEditorSelectionFrame selection;
+  app::CreativeEditorGizmoFrame gizmo;
+  iggy3d::FrameInput frame;
+  frame.viewport.width = 800U;
+  frame.viewport.height = 600U;
+  cr::CreativeSpatialProjectionRequest projection;
+  projection.gridSize = {32, 16, 32};
+  app::CreativeEditorOverlayFrameRequest request{
+      appState, editor, selection, gizmo, frame, projection};
+  request.drawableWidth = 800U;
+  request.drawableHeight = 600U;
+  request.gizmoThickness = 0.05F;
+
+  app::CreativeEditorOverlayFrame visible;
+  static_cast<void>(app::buildCreativeEditorWorldWireframes(request, visible));
+  app::CreativeEditorOverlayFrame captured;
+  request.captureMode = true;
+  static_cast<void>(app::buildCreativeEditorWorldWireframes(request, captured));
+  request.captureMode = false;
+  ++editor.worldLayout.revision;
+  app::CreativeEditorOverlayFrame stale;
+  static_cast<void>(app::buildCreativeEditorWorldWireframes(request, stale));
+
+  return expect(visible.worldLayoutRoofHandleEdgeCount == 19U,
+                "3D roof overlay draws exact perimeter and five handles") &&
+         expect(captured.worldLayoutRoofHandleEdgeCount == 0U,
+                "capture mode hides roof manipulation affordances") &&
+         expect(stale.worldLayoutRoofHandleEdgeCount == 0U,
+                "stale source hides roof handles that cannot commit");
+}
+
 }  // namespace
 
 int main() {
@@ -475,6 +533,7 @@ int main() {
                   connectInputMappingMatchesMouseAndControllerLanguage() &&
                   directionalOverlayPlanClipsBoundsAndHandlesFailures() &&
                   overlayShowsLinksOnlyInConnectMode() &&
-                  generatedScopeOverlaySharesHierarchyTruthAndFailsClosed();
+                  generatedScopeOverlaySharesHierarchyTruthAndFailsClosed() &&
+                  roofHandlesRenderIn3dAndRespectInteractionGates();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

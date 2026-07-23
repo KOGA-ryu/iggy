@@ -26,6 +26,8 @@ CreativeEditorWorldLayoutState makeWorldLayoutSettingsCandidate(
   candidate.catalogPlacement = state.catalogPlacement;
   candidate.planLowerLevelContextVisible =
       state.planLowerLevelContextVisible;
+  candidate.planUpperLevelContextVisible =
+      state.planUpperLevelContextVisible;
   candidate.planRoofOverheadVisible = state.planRoofOverheadVisible;
   candidate.sourceHistory.maxDepth = 0U;
   return candidate;
@@ -218,6 +220,7 @@ CreativeEditorWorldLayoutPreviewReceipt previewWorldLayoutSettingsCandidate(
     return result;
   }
   state.preview = std::move(preview);
+  state.previewSource = std::move(candidate.source);
   state.previewVisible = true;
   state.liveEditPreviewVisible = false;
   state.previewLayoutRevision = state.revision;
@@ -285,6 +288,8 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
       committedCatalogPlacement = candidate.catalogPlacement;
   const bool committedLowerLevelContextVisible =
       candidate.planLowerLevelContextVisible;
+  const bool committedUpperLevelContextVisible =
+      candidate.planUpperLevelContextVisible;
   const bool committedRoofOverheadVisible =
       candidate.planRoofOverheadVisible;
   result.apply = applyCreativeEditorWorldLayoutPlanWithHistory(
@@ -305,6 +310,8 @@ CreativeEditorWorldLayoutApplyReceipt applyWorldLayoutSettingsCandidate(
   state.catalogPlacement = committedCatalogPlacement;
   state.planLowerLevelContextVisible =
       committedLowerLevelContextVisible;
+  state.planUpperLevelContextVisible =
+      committedUpperLevelContextVisible;
   state.planRoofOverheadVisible = committedRoofOverheadVisible;
 
   // A source setting can be meaningful even when its compiled geometry is
@@ -332,13 +339,18 @@ makeCreativeEditorWorldLayoutLiveEditCandidate(
   candidate.gesturePreviewGridPointValid =
       state.gesturePreviewGridPointValid;
   candidate.gesturePreviewGridPoint = state.gesturePreviewGridPoint;
+  candidate.terrainPathDraft = state.terrainPathDraft;
   candidate.roomManipulation = state.roomManipulation;
+  candidate.roomBoundaryManipulation = state.roomBoundaryManipulation;
+  candidate.roomCornerManipulation = state.roomCornerManipulation;
   candidate.verticalConnectorManipulation =
       state.verticalConnectorManipulation;
   candidate.boxManipulation = state.boxManipulation;
   candidate.wallManipulation = state.wallManipulation;
   candidate.buildingManipulation = state.buildingManipulation;
   candidate.openingManipulation = state.openingManipulation;
+  candidate.roofApertureManipulation = state.roofApertureManipulation;
+  candidate.roofManipulation = state.roofManipulation;
   return candidate;
 }
 
@@ -353,6 +365,50 @@ previewCreativeEditorWorldLayoutLiveEditCandidate(
       previewWorldLayoutSettingsCandidate(
           state, document, std::move(candidate), std::move(editReceipt),
           successMessage);
+  state.liveEditPreviewVisible = receipt.accepted;
+  return receipt;
+}
+
+CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutTerrainPathDraft(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document) {
+  CreativeEditorWorldLayoutPreviewReceipt receipt;
+  if (!state.terrainPathDraft.active ||
+      state.terrainPathDraft.path.recipe.points.size() < 2U) {
+    receipt.accepted = state.terrainPathDraft.active;
+    receipt.changed = clearCreativeEditorWorldLayoutLiveEditPreview(state);
+    receipt.reasonCode = "creative_editor_world_layout_path_draft_incomplete";
+    return receipt;
+  }
+  if (state.generatedRevision != state.revision) {
+    receipt.accepted = true;
+    receipt.reasonCode =
+        "creative_editor_world_layout_path_draft_source_unsynchronized";
+    return receipt;
+  }
+
+  CreativeEditorWorldLayoutState candidate =
+      makeCreativeEditorWorldLayoutLiveEditCandidate(state);
+  cr::CreativeWorldLayoutTerrainPath path =
+      candidate.terrainPathDraft.path;
+  if (!cr::isValidCreativeTerrainPathSourceRecipe(path.recipe)) {
+    receipt.changed = clearCreativeEditorWorldLayoutLiveEditPreview(state);
+    receipt.reasonCode =
+        "creative_editor_world_layout_path_draft_invalid";
+    return receipt;
+  }
+  path.stableKey = cr::mintCreativeWorldLayoutStableKey(
+      candidate.source, candidate.nextStableOrdinal, "terrain_path_draft");
+  candidate.source.terrainPaths.push_back(std::move(path));
+  candidate.selection = {
+      CreativeEditorWorldLayoutSelectionKind::TerrainPath,
+      candidate.source.terrainPaths.size() - 1U};
+  ++candidate.revision;
+  receipt = previewWorldLayoutSettingsCandidate(
+      state, document, std::move(candidate),
+      {true, true, "creative_editor_world_layout_path_draft_preview"},
+      "terrain path preview ready; click to add, Enter to finish");
   state.liveEditPreviewVisible = receipt.accepted;
   return receipt;
 }
@@ -545,7 +601,7 @@ previewCreativeEditorWorldLayoutVerticalConnectorSettings(
       makeWorldLayoutSettingsCandidate(state);
   const CreativeEditorWorldLayoutEditReceipt editReceipt =
       setCreativeEditorWorldLayoutVerticalConnectorSettings(
-          candidate, connectorIndex, settings);
+          candidate, connectorIndex, settings, document.gridSettings());
   return previewWorldLayoutSettingsCandidate(
       state, document, std::move(candidate), editReceipt,
       "vertical connector preview ready");
@@ -560,7 +616,8 @@ applyCreativeEditorWorldLayoutVerticalConnectorSettingsToDocument(
       makeWorldLayoutSettingsCandidate(state);
   const CreativeEditorWorldLayoutEditReceipt editReceipt =
       setCreativeEditorWorldLayoutVerticalConnectorSettings(
-          candidate, connectorIndex, settings);
+          candidate, connectorIndex, settings,
+          appState.facade.document().gridSettings());
   return applyWorldLayoutSettingsCandidate(
       state, appState, std::move(candidate), editReceipt,
       "desktop_generated_vertical_connector_settings",

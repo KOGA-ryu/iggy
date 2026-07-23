@@ -1,8 +1,10 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 
 #include "app/iggy3d/creative/document/DocumentInternal.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -64,6 +66,29 @@ bool attachmentSocketOccupied(std::span<const CreativeObject> objects,
   return false;
 }
 
+CreativeBounds resolvedCreateBounds(
+    const CreativeObjectDescriptor& descriptor,
+    const CreativeDocumentCreateRequest& request) noexcept {
+  if (request.hasBoundsOverride || !descriptor.hasBounds ||
+      !request.hasTransformOverride) {
+    return request.hasBoundsOverride ? request.bounds : descriptor.defaults.bounds;
+  }
+
+  const CreativeVec3 delta{
+      request.transform.position.x - descriptor.defaults.transform.position.x,
+      request.transform.position.y - descriptor.defaults.transform.position.y,
+      request.transform.position.z - descriptor.defaults.transform.position.z,
+  };
+  CreativeBounds bounds = descriptor.defaults.bounds;
+  bounds.min.x += delta.x;
+  bounds.min.y += delta.y;
+  bounds.min.z += delta.z;
+  bounds.max.x += delta.x;
+  bounds.max.y += delta.y;
+  bounds.max.z += delta.z;
+  return bounds;
+}
+
 }  // namespace
 
 CreativeObject resolveCreativeDocumentCreateObject(
@@ -75,6 +100,21 @@ CreativeObject resolveCreativeDocumentCreateObject(
               request.hasMovingPlatformSettingsOverride
           ? request.movingPlatform
           : CreativeMovingPlatformSettings{};
+  const CreativeDoorSettings door =
+      request.kind == CreativeObjectKind::Door &&
+              request.hasDoorSettingsOverride
+          ? request.door
+          : CreativeDoorSettings{};
+  const CreativeWindowSettings window =
+      request.kind == CreativeObjectKind::Window &&
+              request.hasWindowSettingsOverride
+          ? request.window
+          : CreativeWindowSettings{};
+  const CreativePlayerSpawnSettings playerSpawn =
+      request.kind == CreativeObjectKind::SpawnPoint &&
+              request.hasPlayerSpawnSettingsOverride
+          ? request.playerSpawn
+          : CreativePlayerSpawnSettings{};
 
   CreativeObject object;
   object.id = objectId;
@@ -82,11 +122,12 @@ CreativeObject resolveCreativeDocumentCreateObject(
   object.name = request.name.empty() ? descriptorDefaultName(descriptor)
                                      : request.name;
   object.assetId = request.assetId;
+  object.assetContentHash = request.assetContentHash;
+  object.assetMaterialVariant = request.assetMaterialVariant;
   object.transform = request.hasTransformOverride
                          ? request.transform
                          : descriptor.defaults.transform;
-  object.bounds = request.hasBoundsOverride ? request.bounds
-                                            : descriptor.defaults.bounds;
+  object.bounds = resolvedCreateBounds(descriptor, request);
   object.layerId = request.hasLayerOverride ? request.layerId
                                             : descriptor.defaults.layerId;
   object.visible = request.hasVisibleOverride ? request.visible
@@ -98,6 +139,9 @@ CreativeObject resolveCreativeDocumentCreateObject(
   object.attachmentSocket = request.attachmentSocket;
   object.pathPoints = request.pathPoints;
   object.movingPlatform = movingPlatform;
+  object.door = door;
+  object.window = window;
+  object.playerSpawn = playerSpawn;
   return object;
 }
 
@@ -168,6 +212,15 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                     "invalid_asset_id");
     return receipt;
   }
+  if ((request.assetId.empty() &&
+       (request.assetContentHash != 0U ||
+        !request.assetMaterialVariant.empty())) ||
+      !validCreativeAssetMaterialVariantName(
+          request.assetMaterialVariant)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "invalid_asset_identity");
+    return receipt;
+  }
 
   if (request.parentId.has_value()) {
     if (!descriptor.canHaveParent) {
@@ -190,6 +243,18 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
       setCreateStatus(receipt,
                       CreativeDocumentCreateStatus::Rejected,
                       "parent_owner_unsupported");
+      return receipt;
+    }
+    const CreativeObjectHierarchyState parentState =
+        resolveCreativeObjectHierarchyState(*this, *request.parentId);
+    if (!parentState.resolved || parentState.effectivelyLocked) {
+      setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                      "parent_locked");
+      return receipt;
+    }
+    if (parentState.depth >= kCreativeHierarchyDepthCapacity) {
+      setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                      "parent_depth_exceeded");
       return receipt;
     }
     if (!request.attachmentSocket.empty() &&
@@ -239,6 +304,24 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                     "moving_platform_settings_unsupported");
     return receipt;
   }
+  if (request.hasDoorSettingsOverride &&
+      request.kind != CreativeObjectKind::Door) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "door_settings_unsupported");
+    return receipt;
+  }
+  if (request.hasWindowSettingsOverride &&
+      request.kind != CreativeObjectKind::Window) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "window_settings_unsupported");
+    return receipt;
+  }
+  if (request.hasPlayerSpawnSettingsOverride &&
+      request.kind != CreativeObjectKind::SpawnPoint) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "player_spawn_settings_unsupported");
+    return receipt;
+  }
   const CreativeMovingPlatformSettings movingPlatform =
       request.kind == CreativeObjectKind::MovingPlatform &&
               request.hasMovingPlatformSettingsOverride
@@ -248,6 +331,39 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
       !isValidCreativeMovingPlatformSettings(movingPlatform)) {
     setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
                     "moving_platform_settings_invalid");
+    return receipt;
+  }
+  const CreativeDoorSettings door =
+      request.kind == CreativeObjectKind::Door &&
+              request.hasDoorSettingsOverride
+          ? request.door
+          : CreativeDoorSettings{};
+  if (request.kind == CreativeObjectKind::Door &&
+      !isValidCreativeDoorSettings(door)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "door_settings_invalid");
+    return receipt;
+  }
+  const CreativeWindowSettings window =
+      request.kind == CreativeObjectKind::Window &&
+              request.hasWindowSettingsOverride
+          ? request.window
+          : CreativeWindowSettings{};
+  if (request.kind == CreativeObjectKind::Window &&
+      !isValidCreativeWindowSettings(window)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "window_settings_invalid");
+    return receipt;
+  }
+  const CreativePlayerSpawnSettings playerSpawn =
+      request.kind == CreativeObjectKind::SpawnPoint &&
+              request.hasPlayerSpawnSettingsOverride
+          ? request.playerSpawn
+          : CreativePlayerSpawnSettings{};
+  if (request.kind == CreativeObjectKind::SpawnPoint &&
+      !isValidCreativePlayerSpawnSettings(playerSpawn)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "player_spawn_settings_invalid");
     return receipt;
   }
 
@@ -310,10 +426,14 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   receipt.objectKind = object.kind;
   receipt.objectName = object.name;
 
-  if (object.locked) {
+  const CreativeObjectHierarchyState hierarchyState =
+      resolveCreativeObjectHierarchyState(*this, request.objectId);
+  if (!hierarchyState.resolved || hierarchyState.effectivelyLocked) {
     setRemoveStatus(receipt,
                     CreativeDocumentRemoveStatus::LockedObject,
-                    "object is locked");
+                    hierarchyState.lockedByObjectId == object.id
+                        ? "object is locked"
+                        : "object is locked by an ancestor");
     return receipt;
   }
 
@@ -326,6 +446,8 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
 
   receipt.removalDirtyFlags = dirtyFlagsForRemoval(object.kind);
   receipt.removedLogicLinkCount = eraseLogicLinksForObject(request.objectId);
+  receipt.detachedPatternRecipeCount =
+      erasePatternRecipesForObject(request.objectId);
   if (receipt.removedLogicLinkCount > 0U) {
     receipt.removalDirtyFlags |=
         static_cast<CreativeObjectDirtyFlags>(CreativeObjectDirtyFlag::Logic);
@@ -371,6 +493,22 @@ CreativeObjectId CreativeDocument::appendObject(CreativeObject object) {
   markContentChanged();
   markDirty(creationDirtyFlags);
   return id;
+}
+
+std::size_t CreativeDocument::erasePatternRecipesForObject(
+    CreativeObjectId objectId) noexcept {
+  const std::size_t before = patternRecipeStore_.recipes.size();
+  std::erase_if(
+      patternRecipeStore_.recipes,
+      [objectId](const CreativePatternRecipe& recipe) {
+        return std::find(recipe.sourceObjectIds.begin(),
+                         recipe.sourceObjectIds.end(), objectId) !=
+                   recipe.sourceObjectIds.end() ||
+               std::find(recipe.generatedObjectIds.begin(),
+                         recipe.generatedObjectIds.end(), objectId) !=
+                   recipe.generatedObjectIds.end();
+      });
+  return before - patternRecipeStore_.recipes.size();
 }
 
 }  // namespace iggy3d::creative

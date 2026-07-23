@@ -15,6 +15,12 @@ enum class CreativeWorldLayoutPlanHitTestStatus : std::uint8_t {
   Hit,
 };
 
+enum class CreativeWorldLayoutPlanRegionMode : std::uint8_t {
+  Window,
+  Crossing,
+  Count,
+};
+
 struct CreativeWorldLayoutPlanHitTestResult {
   bool hit = false;
   CreativeWorldLayoutPlanHitTestStatus status =
@@ -35,5 +41,17 @@ struct CreativeWorldLayoutPlanHitTestResult {
 hitTestCreativeWorldLayoutPlanPrimitive(
     const CreativeWorldLayoutPlanPrimitive& primitive,
     CreativeWorldLayoutPlanPoint point, double toleranceCells) noexcept;
+
+// CAD-style bounded region test. Window mode requires the complete primitive
+// footprint to be enclosed; Crossing mode accepts any geometric intersection.
+// The two modes intentionally have different semantics so drag direction can
+// communicate selection intent without another modal tool.
+[[nodiscard]] CreativeWorldLayoutPlanHitTestResult
+selectCreativeWorldLayoutPlanPrimitiveInRegion(
+    const CreativeWorldLayoutPlanPrimitive& primitive,
+    CreativeWorldLayoutPlanPoint first,
+    CreativeWorldLayoutPlanPoint second,
+    CreativeWorldLayoutPlanRegionMode mode,
+    double toleranceCells = 0.0) noexcept;
 
 }  // namespace iggy3d::creative

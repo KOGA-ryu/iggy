@@ -59,6 +59,7 @@ struct CreativeEditorAuthoredAssetUpdateReceipt {
   std::string assetId;
   iggy3d::creative::CreativeAuthoredAssetCaptureResult capture;
   iggy3d::creative::CreativeDocumentBatchMutationReceipt provenance;
+  iggy3d::creative::CreativeHistoryRecordReceipt history;
   bool durableWriteOk = false;
   std::string reasonCode = "creative_authored_asset_update_not_requested";
 };
@@ -90,6 +91,8 @@ struct CreativeAuthoredAssetStrokeState {
   iggy3d::creative::CreativeWorldGestureVisitedKeys visited{};
   CreativeBrushPlacementAdmission preview{};
   std::uint16_t acceptedMutationCount = 0U;
+  std::uint64_t operationFingerprint = 0U;
+  std::uint64_t affectedMemberCount = 0U;
   bool capacityReached = false;
 };
 

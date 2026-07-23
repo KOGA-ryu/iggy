@@ -7,6 +7,8 @@
 #include <numbers>
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/Pattern.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -77,18 +79,36 @@ struct OrderedCell {
   return true;
 }
 
-void appendCandidate(CreativeAssetScatterPlan& plan,
-                     const CreativeAssetScatterRequest& request,
-                     CreativeVec3 position,
-                     std::uint64_t hash) noexcept {
-  CreativeAssetScatterCandidate& candidate =
-      plan.candidates[plan.candidateCount++];
+[[nodiscard]] CreativeAssetScatterCandidate makeCandidate(
+    const CreativeAssetScatterRequest& request,
+    CreativeVec3 position,
+    std::uint64_t hash) noexcept {
+  CreativeAssetScatterCandidate candidate;
   candidate.position = position;
   candidate.yawOffsetRadians =
       candidateYaw(request.yaw, mix64(hash ^ 0xa24baed4963ee407ULL));
   const double centered =
       unitDouble(mix64(hash ^ 0x9fb21c651e98df25ULL)) * 2.0 - 1.0;
   candidate.uniformScale = 1.0 + centered * request.scaleVariation;
+  return candidate;
+}
+
+void appendEvaluation(
+    CreativeAssetScatterPlan& plan,
+    const CreativeAssetScatterCandidate& candidate,
+    CreativeAssetScatterEvaluationStatus status) noexcept {
+  if (plan.evaluationCount >= plan.evaluations.size()) {
+    plan.truncated = true;
+    return;
+  }
+  plan.evaluations[plan.evaluationCount++] = {candidate, status};
+}
+
+void appendCandidate(CreativeAssetScatterPlan& plan,
+                     const CreativeAssetScatterCandidate& candidate) noexcept {
+  plan.candidates[plan.candidateCount++] = candidate;
+  appendEvaluation(plan, candidate,
+                   CreativeAssetScatterEvaluationStatus::Ready);
 }
 
 [[nodiscard]] bool quantizedCoordinate(double value,
@@ -105,6 +125,31 @@ void appendCandidate(CreativeAssetScatterPlan& plan,
 }
 
 }  // namespace
+
+std::string_view toString(
+    CreativeAssetScatterRecipeMutationStatus status) noexcept {
+  switch (status) {
+    case CreativeAssetScatterRecipeMutationStatus::NotRequested:
+      return "NotRequested";
+    case CreativeAssetScatterRecipeMutationStatus::Empty: return "Empty";
+    case CreativeAssetScatterRecipeMutationStatus::InvalidRequest:
+      return "InvalidRequest";
+    case CreativeAssetScatterRecipeMutationStatus::CreateRejected:
+      return "CreateRejected";
+    case CreativeAssetScatterRecipeMutationStatus::RecipeNotFound:
+      return "RecipeNotFound";
+    case CreativeAssetScatterRecipeMutationStatus::RecipeKindMismatch:
+      return "RecipeKindMismatch";
+    case CreativeAssetScatterRecipeMutationStatus::RecipeDependencyConflict:
+      return "RecipeDependencyConflict";
+    case CreativeAssetScatterRecipeMutationStatus::RecipeRejected:
+      return "RecipeRejected";
+    case CreativeAssetScatterRecipeMutationStatus::RemoveRejected:
+      return "RemoveRejected";
+    case CreativeAssetScatterRecipeMutationStatus::Applied: return "Applied";
+  }
+  return "Unknown";
+}
 
 CreativeAssetScatterPlan planCreativeAssetScatter(
     const CreativeAssetScatterRequest& request) noexcept {
@@ -149,8 +194,8 @@ CreativeAssetScatterPlan planCreativeAssetScatter(
               return lhs.x != rhs.x ? lhs.x < rhs.x : lhs.z < rhs.z;
             });
 
-  appendCandidate(plan, request, request.center,
-                  cellHash(request.seed, 0, 0));
+  appendCandidate(plan, makeCandidate(request, request.center,
+                                      cellHash(request.seed, 0, 0)));
   const double radiusSquared = request.radiusMeters * request.radiusMeters;
   const double spacingSquared =
       request.spacingMeters * request.spacingMeters * (1.0 - 1.0e-10);
@@ -159,11 +204,6 @@ CreativeAssetScatterPlan planCreativeAssetScatter(
     const OrderedCell& cell = ordered[index];
     ++plan.examinedCellCount;
     const std::uint64_t hash = cellHash(request.seed, cell.x, cell.z);
-    if (unitDouble(mix64(hash ^ 0xd6e8feb86659fd93ULL)) >
-        request.densityFraction) {
-      ++plan.densityRejectedCount;
-      continue;
-    }
     const double jitterX =
         (unitDouble(mix64(hash ^ 0x94d049bb133111ebULL)) * 2.0 - 1.0) *
         request.spacingMeters * kJitterFraction;
@@ -184,15 +224,28 @@ CreativeAssetScatterPlan planCreativeAssetScatter(
     if (dx * dx + dz * dz > radiusSquared) {
       continue;
     }
+    const CreativeAssetScatterCandidate candidate =
+        makeCandidate(request, position, hash);
+    if (unitDouble(mix64(hash ^ 0xd6e8feb86659fd93ULL)) >
+        request.densityFraction) {
+      ++plan.densityRejectedCount;
+      appendEvaluation(plan, candidate,
+                       CreativeAssetScatterEvaluationStatus::DensityRejected);
+      continue;
+    }
     if (!spacingAllows(plan, position, spacingSquared)) {
       ++plan.spacingRejectedCount;
+      appendEvaluation(plan, candidate,
+                       CreativeAssetScatterEvaluationStatus::SpacingRejected);
       continue;
     }
     if (plan.candidateCount >= request.maxCandidateCount) {
       plan.truncated = true;
-      break;
+      appendEvaluation(plan, candidate,
+                       CreativeAssetScatterEvaluationStatus::CapacityRejected);
+      continue;
     }
-    appendCandidate(plan, request, position, hash);
+    appendCandidate(plan, candidate);
   }
 
   plan.accepted = plan.candidateCount > 0U;
@@ -218,6 +271,517 @@ std::uint64_t creativeAssetScatterSpatialKey(CreativeVec3 position,
   return mix64(static_cast<std::uint64_t>(x)) ^
          mix64(static_cast<std::uint64_t>(y) ^ 0xa24baed4963ee407ULL) ^
          mix64(static_cast<std::uint64_t>(z) ^ 0x9fb21c651e98df25ULL);
+}
+
+namespace {
+
+[[nodiscard]] bool validScatterMutationInput(
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    std::span<const CreativeObjectId> sourceObjectIds,
+    const CreativeAssetScatterRecipe& recipe) noexcept {
+  if (createRequests.empty() ||
+      createRequests.size() > recipe.maxGeneratedObjects ||
+      createRequests.size() >
+          kCreativeAssetScatterGeneratedObjectCapacity ||
+      !isValidCreativeAssetScatterRecipe(recipe, sourceObjectIds)) {
+    return false;
+  }
+  return std::all_of(
+      createRequests.begin(), createRequests.end(),
+      [&recipe](const CreativeDocumentCreateRequest& request) {
+        return request.kind == recipe.objectKind &&
+               request.assetId == recipe.assetId &&
+               request.assetContentHash == recipe.assetContentHash &&
+               request.assetMaterialVariant == recipe.assetMaterialVariant &&
+               request.hasBoundsOverride &&
+               measureCreativeBounds(request.bounds).valid;
+      });
+}
+
+[[nodiscard]] bool sameScatterParameters(
+    const CreativeAssetScatterRecipe& lhs,
+    const CreativeAssetScatterRecipe& rhs) noexcept {
+  return lhs.objectKind == rhs.objectKind && lhs.assetId == rhs.assetId &&
+         lhs.assetContentHash == rhs.assetContentHash &&
+         lhs.assetMaterialVariant == rhs.assetMaterialVariant &&
+         creativeBoundsExactlyEqual(lhs.assetSourceBounds,
+                                    rhs.assetSourceBounds) &&
+         lhs.mask == rhs.mask && lhs.yaw == rhs.yaw &&
+         lhs.baseYawRadians == rhs.baseYawRadians &&
+         lhs.radiusMeters == rhs.radiusMeters &&
+         lhs.spacingMeters == rhs.spacingMeters &&
+         lhs.densityFraction == rhs.densityFraction &&
+         lhs.scaleVariation == rhs.scaleVariation &&
+         lhs.maximumSlopeRadians == rhs.maximumSlopeRadians &&
+         lhs.projectToTerrainSurface == rhs.projectToTerrainSurface &&
+         lhs.avoidCollisions == rhs.avoidCollisions && lhs.seed == rhs.seed &&
+         lhs.maxGeneratedObjects == rhs.maxGeneratedObjects;
+}
+
+[[nodiscard]] bool scatterRecipeExtendsByOneCenter(
+    const CreativeAssetScatterRecipe& existing,
+    const CreativeAssetScatterRecipe& proposed) noexcept {
+  return sameScatterParameters(existing, proposed) &&
+         existing.exclusions == proposed.exclusions &&
+         proposed.paintCenters.size() == existing.paintCenters.size() + 1U &&
+         std::equal(existing.paintCenters.begin(), existing.paintCenters.end(),
+                    proposed.paintCenters.begin(), creativeVec3ExactlyEqual);
+}
+
+[[nodiscard]] bool scatterRecipeAddsOneExclusion(
+    const CreativeAssetScatterRecipe& existing,
+    const CreativeAssetScatterRecipe& proposed) noexcept {
+  return sameScatterParameters(existing, proposed) &&
+         existing.paintCenters.size() == proposed.paintCenters.size() &&
+         std::equal(existing.paintCenters.begin(), existing.paintCenters.end(),
+                    proposed.paintCenters.begin(), creativeVec3ExactlyEqual) &&
+         proposed.exclusions.size() == existing.exclusions.size() + 1U &&
+         std::equal(existing.exclusions.begin(), existing.exclusions.end(),
+                    proposed.exclusions.begin());
+}
+
+[[nodiscard]] bool scatterOutputCanBeRemoved(
+    const CreativeDocument& document,
+    const CreativePatternRecipe& owner,
+    CreativeObjectId outputObjectId,
+    CreativeObjectId& failedObjectId) noexcept {
+  if (std::find(owner.generatedObjectIds.begin(), owner.generatedObjectIds.end(),
+                outputObjectId) == owner.generatedObjectIds.end() ||
+      document.findObject(outputObjectId) == nullptr) {
+    failedObjectId = outputObjectId;
+    return false;
+  }
+  for (const CreativeObject& object : document.objects()) {
+    if (object.parentId == outputObjectId) {
+      failedObjectId = object.id;
+      return false;
+    }
+  }
+  for (const CreativePatternRecipe& recipe :
+       document.patternRecipeStore().recipes) {
+    if (recipe.id != owner.id &&
+        std::find(recipe.sourceObjectIds.begin(), recipe.sourceObjectIds.end(),
+                  outputObjectId) != recipe.sourceObjectIds.end()) {
+      failedObjectId = outputObjectId;
+      return false;
+    }
+  }
+  return true;
+}
+
+[[nodiscard]] bool createScatterOutputs(
+    CreativeDocument& staged,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    CreativeAssetScatterRecipeMutationReceipt& receipt) {
+  receipt.generatedObjectIds.reserve(createRequests.size());
+  for (const CreativeDocumentCreateRequest& request : createRequests) {
+    const CreativeDocumentCreateReceipt created = staged.createObject(request);
+    if (!created.accepted || !created.changed || !created.objectCreated) {
+      receipt.failedObjectId = created.objectId;
+      receipt.status =
+          CreativeAssetScatterRecipeMutationStatus::CreateRejected;
+      receipt.message = std::string{created.reasonCode};
+      receipt.generatedObjectIds.clear();
+      return false;
+    }
+    receipt.generatedObjectIds.push_back(created.objectId);
+  }
+  receipt.generatedObjectCount = receipt.generatedObjectIds.size();
+  return true;
+}
+
+void unlockScatterOutputs(
+    CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds) noexcept {
+  for (CreativeObjectId objectId : objectIds) {
+    CreativeObject* object = document.findObject(objectId);
+    if (object != nullptr) {
+      object->locked = false;
+    }
+  }
+}
+
+}  // namespace
+
+CreativeAssetScatterRecipeMutationReceipt
+createCreativeAssetScatterRecipeAtomically(
+    CreativeDocument& document,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    std::span<const CreativeObjectId> selectionFilterObjectIds,
+    const CreativeAssetScatterRecipe& recipe) {
+  CreativeAssetScatterRecipeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.requestedObjectCount = createRequests.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  if (createRequests.empty()) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::Empty;
+    receipt.message = "creative_asset_scatter_recipe_empty";
+    return receipt;
+  }
+  if (!validScatterMutationInput(createRequests, selectionFilterObjectIds,
+                                 recipe)) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::InvalidRequest;
+    receipt.message = "creative_asset_scatter_recipe_request_invalid";
+    return receipt;
+  }
+
+  CreativeDocument staged = document;
+  if (!createScatterOutputs(staged, createRequests, receipt)) {
+    return receipt;
+  }
+  CreativePatternRecipe relationship;
+  relationship.kind = CreativePatternRecipeKind::AssetScatter;
+  relationship.sourceObjectIds.assign(selectionFilterObjectIds.begin(),
+                                      selectionFilterObjectIds.end());
+  relationship.generatedObjectIds = receipt.generatedObjectIds;
+  relationship.scatter = recipe;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Add;
+  mutation.recipe = std::move(relationship);
+  receipt.patternMutationReceipt = staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message =
+        std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.generatedObjectIds.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_asset_scatter_recipe_created";
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt
+updateCreativeAssetScatterRecipeAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    const CreativeAssetScatterRecipe& recipe) {
+  CreativeAssetScatterRecipeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.patternRecipeId = recipeId;
+  receipt.requestedObjectCount = createRequests.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeNotFound;
+    receipt.message = "creative_asset_scatter_recipe_not_found";
+    return receipt;
+  }
+  if (existing->kind != CreativePatternRecipeKind::AssetScatter) {
+    receipt.status =
+        CreativeAssetScatterRecipeMutationStatus::RecipeKindMismatch;
+    receipt.message = "creative_asset_scatter_recipe_kind_mismatch";
+    return receipt;
+  }
+  if (!validScatterMutationInput(createRequests, existing->sourceObjectIds,
+                                 recipe)) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::InvalidRequest;
+    receipt.message = "creative_asset_scatter_recipe_request_invalid";
+    return receipt;
+  }
+  const CreativePatternReplacementPreflight preflight =
+      preflightCreativePatternReplacement(document, *existing);
+  if (!preflight.accepted) {
+    receipt.failedObjectId = preflight.failedObjectId;
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::
+        RecipeDependencyConflict;
+    receipt.message = std::string{preflight.reasonCode};
+    return receipt;
+  }
+
+  const std::vector<CreativeObjectId> oldGeneratedObjectIds =
+      existing->generatedObjectIds;
+  const std::vector<CreativeObjectId> sourceObjectIds =
+      existing->sourceObjectIds;
+  receipt.replacedGeneratedObjectCount = oldGeneratedObjectIds.size();
+  receipt.replacedGeneratedObjectIds = oldGeneratedObjectIds;
+  CreativeDocument staged = document;
+  if (!createScatterOutputs(staged, createRequests, receipt)) {
+    return receipt;
+  }
+  CreativePatternRecipe replacement;
+  replacement.kind = CreativePatternRecipeKind::AssetScatter;
+  replacement.sourceObjectIds = sourceObjectIds;
+  replacement.generatedObjectIds = receipt.generatedObjectIds;
+  replacement.scatter = recipe;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Replace;
+  mutation.recipeId = recipeId;
+  mutation.recipe = std::move(replacement);
+  receipt.patternMutationReceipt = staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message =
+        std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.generatedObjectIds.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  unlockScatterOutputs(staged, oldGeneratedObjectIds);
+  const CreativeHierarchyBatchRemoveReceipt removed =
+      removeCreativeObjectHierarchiesAtomically(staged,
+                                                preflight.rootObjectIds);
+  if (!removed.accepted || !removed.changed ||
+      removed.removedObjectIds.size() != oldGeneratedObjectIds.size()) {
+    receipt.failedObjectId = removed.failedObjectId;
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{removed.reasonCode};
+    receipt.generatedObjectIds.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.updatedExistingRecipe = true;
+  receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_asset_scatter_recipe_updated";
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt
+extendCreativeAssetScatterRecipeAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId,
+    std::span<const CreativeDocumentCreateRequest> createRequests,
+    const CreativeAssetScatterRecipe& recipe) {
+  CreativeAssetScatterRecipeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.patternRecipeId = recipeId;
+  receipt.requestedObjectCount = createRequests.size();
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeNotFound;
+    receipt.message = "creative_asset_scatter_recipe_not_found";
+    return receipt;
+  }
+  if (existing->kind != CreativePatternRecipeKind::AssetScatter) {
+    receipt.status =
+        CreativeAssetScatterRecipeMutationStatus::RecipeKindMismatch;
+    receipt.message = "creative_asset_scatter_recipe_kind_mismatch";
+    return receipt;
+  }
+  if (createRequests.empty()) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::Empty;
+    receipt.message = "creative_asset_scatter_extension_empty";
+    return receipt;
+  }
+  if (!scatterRecipeExtendsByOneCenter(existing->scatter, recipe) ||
+      existing->generatedObjectIds.size() + createRequests.size() >
+          recipe.maxGeneratedObjects ||
+      !validScatterMutationInput(createRequests, existing->sourceObjectIds,
+                                 recipe)) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::InvalidRequest;
+    receipt.message = "creative_asset_scatter_extension_invalid";
+    return receipt;
+  }
+
+  CreativeDocument staged = document;
+  if (!createScatterOutputs(staged, createRequests, receipt)) {
+    return receipt;
+  }
+  CreativePatternRecipe replacement = *existing;
+  replacement.scatter = recipe;
+  replacement.generatedObjectIds.insert(replacement.generatedObjectIds.end(),
+                                        receipt.generatedObjectIds.begin(),
+                                        receipt.generatedObjectIds.end());
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Replace;
+  mutation.recipeId = recipeId;
+  mutation.recipe = std::move(replacement);
+  receipt.patternMutationReceipt = staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message =
+        std::string{receipt.patternMutationReceipt.reasonCode};
+    receipt.generatedObjectIds.clear();
+    receipt.generatedObjectCount = 0U;
+    return receipt;
+  }
+
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.updatedExistingRecipe = true;
+  receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_asset_scatter_recipe_extended";
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt
+excludeCreativeAssetScatterOutputAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId,
+    CreativeObjectId outputObjectId,
+    const CreativeAssetScatterRecipe& recipe) {
+  CreativeAssetScatterRecipeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.patternRecipeId = recipeId;
+  receipt.requestedObjectCount = 1U;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeNotFound;
+    receipt.message = "creative_asset_scatter_recipe_not_found";
+    return receipt;
+  }
+  if (existing->kind != CreativePatternRecipeKind::AssetScatter) {
+    receipt.status =
+        CreativeAssetScatterRecipeMutationStatus::RecipeKindMismatch;
+    receipt.message = "creative_asset_scatter_recipe_kind_mismatch";
+    return receipt;
+  }
+  if (!scatterRecipeAddsOneExclusion(existing->scatter, recipe) ||
+      !isValidCreativeAssetScatterRecipe(recipe,
+                                         existing->sourceObjectIds)) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::InvalidRequest;
+    receipt.message = "creative_asset_scatter_exclusion_invalid";
+    return receipt;
+  }
+  if (existing->generatedObjectIds.size() == 1U &&
+      existing->generatedObjectIds.front() == outputObjectId) {
+    return removeCreativeAssetScatterRecipeAtomically(document, recipeId);
+  }
+  if (!scatterOutputCanBeRemoved(document, *existing, outputObjectId,
+                                 receipt.failedObjectId)) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::
+        RecipeDependencyConflict;
+    receipt.message = "creative_asset_scatter_output_dependency_conflict";
+    return receipt;
+  }
+
+  CreativePatternRecipe replacement = *existing;
+  replacement.scatter = recipe;
+  replacement.generatedObjectIds.erase(
+      std::remove(replacement.generatedObjectIds.begin(),
+                  replacement.generatedObjectIds.end(), outputObjectId),
+      replacement.generatedObjectIds.end());
+  CreativeDocument staged = document;
+  CreativePatternRecipeMutationRequest mutation;
+  mutation.kind = CreativePatternRecipeMutationKind::Replace;
+  mutation.recipeId = recipeId;
+  mutation.recipe = std::move(replacement);
+  receipt.patternMutationReceipt = staged.applyPatternRecipeMutation(mutation);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message =
+        std::string{receipt.patternMutationReceipt.reasonCode};
+    return receipt;
+  }
+  unlockScatterOutputs(staged, std::span{&outputObjectId, 1U});
+  const CreativeHierarchyBatchRemoveReceipt removed =
+      removeCreativeObjectHierarchiesAtomically(
+          staged, std::span{&outputObjectId, 1U});
+  if (!removed.accepted || !removed.changed ||
+      removed.removedObjectIds.size() != 1U) {
+    receipt.failedObjectId = removed.failedObjectId;
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{removed.reasonCode};
+    return receipt;
+  }
+
+  receipt.replacedGeneratedObjectIds.push_back(outputObjectId);
+  receipt.replacedGeneratedObjectCount = 1U;
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.updatedExistingRecipe = true;
+  receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_asset_scatter_output_excluded";
+  return receipt;
+}
+
+CreativeAssetScatterRecipeMutationReceipt
+removeCreativeAssetScatterRecipeAtomically(
+    CreativeDocument& document,
+    CreativePatternRecipeId recipeId) {
+  CreativeAssetScatterRecipeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.patternRecipeId = recipeId;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  const CreativePatternRecipe* existing =
+      findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (existing == nullptr) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeNotFound;
+    receipt.message = "creative_asset_scatter_recipe_not_found";
+    return receipt;
+  }
+  if (existing->kind != CreativePatternRecipeKind::AssetScatter) {
+    receipt.status =
+        CreativeAssetScatterRecipeMutationStatus::RecipeKindMismatch;
+    receipt.message = "creative_asset_scatter_recipe_kind_mismatch";
+    return receipt;
+  }
+  const CreativePatternReplacementPreflight preflight =
+      preflightCreativePatternReplacement(document, *existing);
+  if (!preflight.accepted) {
+    receipt.failedObjectId = preflight.failedObjectId;
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::
+        RecipeDependencyConflict;
+    receipt.message = std::string{preflight.reasonCode};
+    return receipt;
+  }
+
+  receipt.replacedGeneratedObjectIds = existing->generatedObjectIds;
+  receipt.replacedGeneratedObjectCount =
+      receipt.replacedGeneratedObjectIds.size();
+  CreativeDocument staged = document;
+  receipt.patternMutationReceipt =
+      detachCreativePatternRecipe(staged, recipeId);
+  if (!receipt.patternMutationReceipt.accepted ||
+      !receipt.patternMutationReceipt.changed) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message =
+        std::string{receipt.patternMutationReceipt.reasonCode};
+    return receipt;
+  }
+  unlockScatterOutputs(staged, receipt.replacedGeneratedObjectIds);
+  const CreativeHierarchyBatchRemoveReceipt removed =
+      removeCreativeObjectHierarchiesAtomically(staged,
+                                                preflight.rootObjectIds);
+  if (!removed.accepted || !removed.changed ||
+      removed.removedObjectIds.size() !=
+          receipt.replacedGeneratedObjectIds.size()) {
+    receipt.failedObjectId = removed.failedObjectId;
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{removed.reasonCode};
+    return receipt;
+  }
+
+  document = std::move(staged);
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.updatedExistingRecipe = true;
+  receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
+  receipt.revisionAfter = document.revision();
+  receipt.message = "creative_asset_scatter_recipe_removed";
+  return receipt;
 }
 
 }  // namespace iggy3d::creative

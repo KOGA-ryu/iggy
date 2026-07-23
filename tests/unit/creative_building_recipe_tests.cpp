@@ -89,12 +89,20 @@ bool roomRecipeProducesDeterministicRealOpenings() {
       findPlanObject(result.plan, "wall.north.segment.1");
   const cr::CreativeRecipeObjectPlan* leftWindow =
       findPlanObject(result.plan, "window.left.insert");
-
-  bool allChildrenUseRoot = materialized.receipt.accepted;
-  for (std::size_t index = 1U; index < materialized.createRequests.size();
-       ++index) {
-    allChildrenUseRoot &= materialized.createRequests[index].parentId == 100U;
-  }
+  const cr::CreativeRecipeObjectPlan* leftWindowFrame =
+      findPlanObject(result.plan, "window.left.frame.minimum_jamb");
+  const cr::CreativeRecipeObjectPlan* doorFrame =
+      findPlanObject(result.plan, "door.main.frame.minimum_jamb");
+  const cr::CreativeRecipeObjectPlan* doorHandle =
+      findPlanObject(result.plan, "door.main.hardware.primary.handle");
+  const std::size_t doorIndex = door == nullptr
+                                    ? result.plan.objects.size()
+                                    : static_cast<std::size_t>(
+                                          door - result.plan.objects.data());
+  const std::size_t handleIndex =
+      doorHandle == nullptr
+          ? result.plan.objects.size()
+          : static_cast<std::size_t>(doorHandle - result.plan.objects.data());
 
   const cr::CreativeWallGeometryDefaults wallDefaults =
       cr::defaultCreativeWallGeometry();
@@ -111,13 +119,19 @@ bool roomRecipeProducesDeterministicRealOpenings() {
          expect(result.receipt.wallObjectCount == 9U,
                 "building segmented wall count") &&
          expect(result.receipt.doorObjectCount == 1U &&
-                    result.receipt.windowObjectCount == 2U,
-                "building opening insert counts") &&
-         expect(result.plan.objects.size() == 14U,
+                    result.receipt.doorPartObjectCount == 7U &&
+                    result.receipt.windowObjectCount == 2U &&
+                    result.receipt.windowPartObjectCount == 10U,
+                "building opening assembly counts") &&
+         expect(result.plan.objects.size() == 28U,
                 "building complete object plan count") &&
-         expect(materialized.createRequests.size() == 14U &&
-                    allChildrenUseRoot,
-                "building materialized hierarchy") &&
+         expect(materialized.createRequests.size() == 28U &&
+                    doorIndex < materialized.createRequests.size() &&
+                    handleIndex < materialized.createRequests.size() &&
+                    materialized.createRequests[doorIndex].parentId == 100U &&
+                    materialized.createRequests[handleIndex].parentId ==
+                        100U + doorIndex,
+                "building materializes door assembly hierarchy") &&
          expect(firstSpan != nullptr &&
                     sameBounds(firstSpan->createRequest.bounds,
                                {{0.0, 0.0, -0.125},
@@ -125,9 +139,15 @@ bool roomRecipeProducesDeterministicRealOpenings() {
                 "building first wall span ends at door") &&
          expect(door != nullptr &&
                     sameBounds(door->createRequest.bounds,
+                               {{1.075, 0.015, -0.025},
+                                {1.925, 2.025, 0.025}}) &&
+                    door->createRequest.hasDoorSettingsOverride,
+                "building door leaf fits inside its real frame") &&
+         expect(doorFrame != nullptr &&
+                    sameBounds(doorFrame->createRequest.bounds,
                                {{1.0, 0.0, -0.125},
-                                {2.0, 2.1, 0.125}}),
-                "building door occupies cutout without wall overlap") &&
+                                {1.07, 2.1, 0.125}}),
+                "building door emits physical frame geometry") &&
          expect(doorLintel != nullptr &&
                     sameBounds(doorLintel->createRequest.bounds,
                                {{1.0, 2.1, -0.125},
@@ -135,9 +155,14 @@ bool roomRecipeProducesDeterministicRealOpenings() {
                 "building door lintel fills only above cutout") &&
          expect(leftWindow != nullptr &&
                     sameBounds(leftWindow->createRequest.bounds,
+                               {{3.46, 1.06, -0.01},
+                                {4.54, 1.94, 0.01}}) &&
+                    leftWindow->createRequest.hasWindowSettingsOverride &&
+                    leftWindowFrame != nullptr &&
+                    sameBounds(leftWindowFrame->createRequest.bounds,
                                {{3.4, 1.0, -0.125},
-                                {4.6, 2.0, 0.125}}),
-                "building window occupies exact cutout") &&
+                                {3.45, 2.0, 0.125}}),
+                "building window owns inset glazing and physical frame") &&
          expect(cr::creativeRecipeRequestHasProvenance(
                     materialized.createRequests.back(),
                     cr::CreativeRecipeKind::Building,
@@ -244,7 +269,7 @@ bool concernTagsReachOnlyTheirGeneratedObjects() {
                 "opening tags cover insert and cutout wall pieces");
 }
 
-bool openDoorPoseMatchesReferenceGeometry() {
+bool openDoorStatePreservesClosedEditableSource() {
   cr::CreativeBuildingRecipeRequest request;
   request.name = "Open Door";
   request.rootMode = cr::CreativeBuildingRootMode::None;
@@ -256,11 +281,9 @@ bool openDoorPoseMatchesReferenceGeometry() {
   cr::CreativeBuildingOpeningSpec door =
       cr::makeCreativeBuildingDoorOpening("door.front", "Front Door Open",
                                            5.0, 2.0, 3.0);
-  door.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromStartNegativeNormal;
-  door.insertHeightMeters = 2.25;
-  door.insertWidthMeters = 1.8;
-  door.insertThicknessMeters = 0.2;
+  door.door.hingeSide = cr::CreativeDoorHingeSide::MinimumEdge;
+  door.door.swingSide = cr::CreativeDoorSwingSide::NegativeNormal;
+  door.door.initialState = cr::CreativeDoorInitialState::Open;
   wall.openings.push_back(door);
   request.walls.push_back(wall);
   const cr::CreativeBuildingRecipeResult result =
@@ -268,20 +291,84 @@ bool openDoorPoseMatchesReferenceGeometry() {
   const cr::CreativeRecipeObjectPlan* insert =
       findPlanObject(result.plan, "door.front.insert");
 
-  return expect(result.receipt.accepted, "open door recipe accepted") &&
-         expect(insert != nullptr, "open door insert present") &&
+  return expect(result.receipt.accepted, "initially-open door recipe accepted") &&
+         expect(insert != nullptr, "initially-open door leaf present") &&
          expect(insert != nullptr &&
                     sameBounds(insert->createRequest.bounds,
-                               {{10.0, 3.25, 8.2},
-                                {10.2, 5.5, 10.0}}),
-                "open door pose preserves reference bounds");
+                               {{10.075, 3.265, 9.975},
+                                {11.925, 6.175, 10.025}}) &&
+                    insert->createRequest.door.initialState ==
+                        cr::CreativeDoorInitialState::Open &&
+                    insert->createRequest.door.swingSide ==
+                        cr::CreativeDoorSwingSide::NegativeNormal,
+                "initial state is data while source geometry stays closed");
+}
+
+bool pairedShutterWindowOwnsItsSecondaryInsert() {
+  cr::CreativeBuildingRecipeRequest request;
+  request.stableKey = "paired-shutter-window";
+  request.name = "Paired Shutter Window";
+  request.rootMode = cr::CreativeBuildingRootMode::None;
+
+  cr::CreativeBuildingWallSpec wall;
+  wall.stableKey = "wall.front";
+  wall.name = "Front Wall";
+  wall.start = {0.0, 0.0, 0.0};
+  wall.end = {4.0, 0.0, 0.0};
+  cr::CreativeBuildingOpeningSpec window =
+      cr::makeCreativeBuildingWindowOpening(
+          "window.shuttered", "Shuttered Window", 2.0, 1.2, 1.0, 1.0);
+  window.window.insertKind = cr::CreativeWindowInsertKind::PairedShutters;
+  wall.openings.push_back(window);
+  request.walls.push_back(wall);
+
+  const cr::CreativeBuildingRecipeResult result =
+      cr::buildCreativeBuildingRecipe(request);
+  const cr::CreativeRecipeObjectPlan* primary =
+      findPlanObject(result.plan, "window.shuttered.insert");
+  const cr::CreativeRecipeObjectPlan* secondary =
+      findPlanObject(result.plan, "window.shuttered.shutter.secondary");
+  const std::size_t primaryIndex =
+      primary == nullptr
+          ? result.plan.objects.size()
+          : static_cast<std::size_t>(primary - result.plan.objects.data());
+  const std::size_t secondaryIndex =
+      secondary == nullptr
+          ? result.plan.objects.size()
+          : static_cast<std::size_t>(secondary - result.plan.objects.data());
+  const cr::CreativeRecipeMaterializeResult materialized =
+      cr::materializeCreativeRecipe(result.plan, 500U);
+
+  return expect(result.receipt.accepted && primary != nullptr &&
+                    secondary != nullptr,
+                "paired shutter window compiles both inserts") &&
+         expect(primary->createRequest.kind == cr::CreativeObjectKind::Window &&
+                    primary->createRequest.hasWindowSettingsOverride &&
+                    primary->createRequest.window.insertKind ==
+                        cr::CreativeWindowInsertKind::PairedShutters &&
+                    cr::describeObject(cr::CreativeObjectKind::Window)
+                        .canOwnChildren,
+                "primary window owns its paired-shutter contract") &&
+         expect(secondary->createRequest.kind == cr::CreativeObjectKind::Prop &&
+                    secondary->parentObjectIndex == primaryIndex &&
+                    secondary->createRequest.attachmentSocket ==
+                        "window_secondary_shutter",
+                "secondary shutter targets the primary window socket") &&
+         expect(materialized.receipt.accepted &&
+                    secondaryIndex < materialized.createRequests.size() &&
+                    materialized.createRequests[secondaryIndex].parentId ==
+                        500U + primaryIndex,
+                "paired shutter materialization resolves the window parent");
 }
 
 bool assetBackedOpeningsFitTheStructuralInsertVolume() {
   const cr::CreativeBounds sourceBounds{{-0.2, -0.1, -0.05},
                                          {1.3, 2.3, 0.15}};
   const auto buildDoor = [&](cr::CreativeBuildingOpeningPose pose,
-                             bool includeInsert = true) {
+                             bool includeInsert = true,
+                             cr::CreativeBuildingOpeningFacing facing =
+                                 cr::CreativeBuildingOpeningFacing::
+                                     PositiveNormal) {
     cr::CreativeBuildingRecipeRequest request;
     request.stableKey = "asset_opening";
     request.name = "Asset Opening";
@@ -294,7 +381,11 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
     cr::CreativeBuildingOpeningSpec door =
         cr::makeCreativeBuildingDoorOpening("door.asset", "Catalog Door",
                                              2.0, 1.5, 2.4);
-    door.pose = pose;
+    door.door.initialState =
+        pose == cr::CreativeBuildingOpeningPose::Closed
+            ? cr::CreativeDoorInitialState::Closed
+            : cr::CreativeDoorInitialState::Open;
+    door.facing = facing;
     door.insertHeightMeters = 2.4;
     door.insertWidthMeters = 1.5;
     door.insertThicknessMeters = 0.2;
@@ -311,12 +402,17 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
       buildDoor(cr::CreativeBuildingOpeningPose::Closed);
   const cr::CreativeBuildingRecipeResult open = buildDoor(
       cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal);
+  const cr::CreativeBuildingRecipeResult oppositeFacing = buildDoor(
+      cr::CreativeBuildingOpeningPose::Closed, true,
+      cr::CreativeBuildingOpeningFacing::NegativeNormal);
   const cr::CreativeBuildingRecipeResult cutoutOnly =
       buildDoor(cr::CreativeBuildingOpeningPose::Closed, false);
   const cr::CreativeRecipeObjectPlan* closedInsert =
       findPlanObject(closed.plan, "door.asset.insert");
   const cr::CreativeRecipeObjectPlan* openInsert =
       findPlanObject(open.plan, "door.asset.insert");
+  const cr::CreativeRecipeObjectPlan* oppositeFacingInsert =
+      findPlanObject(oppositeFacing.plan, "door.asset.insert");
   const cr::CreativeTransformedBounds closedResolved =
       closedInsert == nullptr
           ? cr::CreativeTransformedBounds{}
@@ -329,6 +425,12 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
           : cr::resolveCreativeTransformedBounds(
                 openInsert->createRequest.bounds,
                 openInsert->createRequest.transform);
+  const cr::CreativeTransformedBounds oppositeFacingResolved =
+      oppositeFacingInsert == nullptr
+          ? cr::CreativeTransformedBounds{}
+          : cr::resolveCreativeTransformedBounds(
+                oppositeFacingInsert->createRequest.bounds,
+                oppositeFacingInsert->createRequest.transform);
 
   cr::CreativeBuildingOpeningAssetFitRequest invalidFit;
   invalidFit.sourceBoundsMeters = sourceBounds;
@@ -340,6 +442,16 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
   invalidFit.wallFrame.normal = {0.0, 0.0, 1.0};
   const cr::CreativeBuildingOpeningAssetFitPlan invalid =
       cr::planCreativeBuildingOpeningAssetFit(invalidFit);
+  cr::CreativeBuildingOpeningAssetFitRequest invalidFacingFit;
+  invalidFacingFit.sourceBoundsMeters = sourceBounds;
+  invalidFacingFit.targetBoundsMeters =
+      {{5.25, 0.0, -0.1}, {6.75, 2.4, 0.1}};
+  invalidFacingFit.wallFrame.axis = cr::CreativeStructuralWallAxis::X;
+  invalidFacingFit.wallFrame.tangent = {-1.0, 0.0, 0.0};
+  invalidFacingFit.wallFrame.normal = {0.0, 0.0, -1.0};
+  invalidFacingFit.facing = cr::CreativeBuildingOpeningFacing::Count;
+  const cr::CreativeBuildingOpeningAssetFitPlan invalidFacing =
+      cr::planCreativeBuildingOpeningAssetFit(invalidFacingFit);
 
   return expect(closed.receipt.accepted && closedInsert != nullptr &&
                     closedResolved.valid,
@@ -350,14 +462,28 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
                     closedInsert->createRequest.hasTransformOverride,
                 "asset identity and explicit pivot reach the document request") &&
          expect(sameBounds(closedResolved.worldBounds,
-                           {{5.25, 0.0, -0.1}, {6.75, 2.4, 0.1}}),
-                "reversed closed wall fits the exact insert volume") &&
+                           {{5.325, 0.015, -0.025},
+                            {6.675, 2.325, 0.025}}),
+                "reversed closed wall fits the framed leaf volume") &&
          expect(open.receipt.accepted && openInsert != nullptr &&
                     openResolved.valid &&
                     sameBounds(openResolved.worldBounds,
-                               {{6.55, 0.0, 0.0},
-                                {6.75, 2.4, 1.5}}),
-                "open pose rotates the asset into the exact swept insert volume") &&
+                               closedResolved.worldBounds) &&
+                    openInsert->createRequest.door.initialState ==
+                        cr::CreativeDoorInitialState::Open,
+                "initially-open asset preserves closed source for runtime motion") &&
+         expect(oppositeFacing.receipt.accepted &&
+                    oppositeFacingInsert != nullptr &&
+                    oppositeFacingResolved.valid &&
+                    sameBounds(oppositeFacingResolved.worldBounds,
+                               closedResolved.worldBounds) &&
+                    near(std::abs(
+                             oppositeFacingInsert->createRequest.transform
+                                     .rotationEulerRadians.y -
+                             closedInsert->createRequest.transform
+                                 .rotationEulerRadians.y),
+                         3.14159265358979323846),
+                "opening facing rotates an asymmetric asset by half a turn without moving its target volume") &&
          expect(cutoutOnly.receipt.accepted &&
                     findPlanObject(cutoutOnly.plan, "door.asset.insert") ==
                         nullptr,
@@ -365,7 +491,11 @@ bool assetBackedOpeningsFitTheStructuralInsertVolume() {
          expect(!invalid.accepted &&
                     invalid.status == cr::CreativeBuildingOpeningAssetFitStatus::
                                           InvalidSourceBounds,
-                "asset fit rejects non-finite source geometry");
+                "asset fit rejects non-finite source geometry") &&
+         expect(!invalidFacing.accepted &&
+                    invalidFacing.status ==
+                        cr::CreativeBuildingOpeningAssetFitStatus::InvalidFacing,
+                "asset fit rejects invalid facing explicitly");
 }
 
 bool invalidGeometryFailsWithSpecificStatuses() {
@@ -513,7 +643,8 @@ int main() {
                   inputOpeningOrderDoesNotChangeOutput() &&
                   stairBoxesPreserveAuthoredRotation() &&
                   concernTagsReachOnlyTheirGeneratedObjects() &&
-                  openDoorPoseMatchesReferenceGeometry() &&
+                  openDoorStatePreservesClosedEditableSource() &&
+                  pairedShutterWindowOwnsItsSecondaryInsert() &&
                   assetBackedOpeningsFitTheStructuralInsertVolume() &&
                   invalidGeometryFailsWithSpecificStatuses() &&
                   rectangularRoomGeometryKeepsFloorAndWallsOnOneSeam() &&

@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutPlanProjection.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutWallOperations.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -66,6 +68,27 @@ cr::CreativeWorldLayoutRoom room(std::size_t buildingIndex,
   result.footprint = footprint;
   result.wallThicknessCells = 0.25;
   return result;
+}
+
+void appendExplicitLRoomTopology(cr::CreativeWorldLayout& layout) {
+  const cr::CreativeTerrainCoord2 points[] = {
+      {0, 0}, {6, 0}, {6, 2}, {2, 2}, {2, 6}, {0, 6},
+  };
+  for (std::size_t index = 0U; index < std::size(points); ++index) {
+    layout.topologyVertices.push_back(
+        {0U, "l_vertex_" + std::to_string(index), points[index]});
+  }
+  const std::pair<std::size_t, std::size_t> edges[] = {
+      {0U, 1U}, {1U, 2U}, {3U, 2U},
+      {3U, 4U}, {5U, 4U}, {0U, 5U},
+  };
+  const bool reversed[] = {false, false, true, false, true, true};
+  for (std::size_t index = 0U; index < std::size(edges); ++index) {
+    layout.topologyEdges.push_back(
+        {0U, "l_edge_" + std::to_string(index), edges[index].first,
+         edges[index].second, 0.25});
+    layout.roomBoundaries.push_back({0U, index, index, reversed[index]});
+  }
 }
 
 struct ProjectionFixture {
@@ -135,8 +158,9 @@ ProjectionFixture makeFixture() {
   groundDoor.roomIndex = 0U;
   groundDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
   groundDoor.kind = cr::CreativeBuildingOpeningKind::Door;
-  groundDoor.pose =
-      cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal;
+  groundDoor.door.hingeSide = cr::CreativeDoorHingeSide::MinimumEdge;
+  groundDoor.door.swingSide = cr::CreativeDoorSwingSide::PositiveNormal;
+  groundDoor.door.initialState = cr::CreativeDoorInitialState::Open;
   groundDoor.stableKey = "ground_door";
   groundDoor.name = "Ground Door";
   groundDoor.centerOffsetCells = 2.0;
@@ -156,12 +180,14 @@ ProjectionFixture makeFixture() {
   groundWindow.widthCells = 1.0;
   groundWindow.cutoutBottomCells = 1.0;
   groundWindow.cutoutHeightCells = 1.4;
+  groundWindow.window.insertKind =
+      cr::CreativeWindowInsertKind::PairedShutters;
   fixture.layout.openings.push_back(groundWindow);
 
   cr::CreativeWorldLayoutOpening upperDoor = groundDoor;
   upperDoor.roomIndex = 2U;
   upperDoor.roomEdge = cr::CreativeWorldLayoutRoomEdge::South;
-  upperDoor.pose = cr::CreativeBuildingOpeningPose::Closed;
+  upperDoor.door.initialState = cr::CreativeDoorInitialState::Closed;
   upperDoor.stableKey = "upper_door";
   upperDoor.name = "Upper Door";
   upperDoor.centerOffsetCells = 4.0;
@@ -187,12 +213,16 @@ ProjectionFixture makeFixture() {
 
   cr::CreativeWorldLayoutTerrainPath road;
   road.stableKey = "road";
-  road.kind = cr::CreativeTerrainRecipeKind::Road;
-  road.firstPointIndex = 0U;
-  road.pointCount = 3U;
-  road.halfWidthCells = 1U;
+  road.recipe.kind = cr::CreativeTerrainPathKind::Road;
+  road.recipe.elevation = cr::CreativeTerrainPathElevation::Follow;
+  road.recipe.crossSection = cr::CreativeTerrainPathCrossSection::Crowned;
+  road.recipe.nextPointId = 4U;
+  road.recipe.points = {
+      {1U, {0, 10}, 4U, 1U, 0U, 0},
+      {2U, {5, 10}, 4U, 1U, 0U, 0},
+      {3U, {5, 15}, 4U, 1U, 0U, 0},
+  };
   fixture.layout.terrainPaths.push_back(road);
-  fixture.layout.terrainPathPoints = {{{0, 10}}, {{5, 10}}, {{5, 15}}};
 
   cr::CreativeWorldLayoutObject bridge;
   bridge.kind = cr::CreativeObjectKind::Bridge;
@@ -267,10 +297,14 @@ bool vocabularyIsClosedAndNamed() {
          expect(cr::toString(cr::CreativeWorldLayoutPlanRole::Count) ==
                     "Unknown",
                 "out-of-range plan role fails visibly") &&
-         expect(cr::toString(cr::CreativeWorldLayoutPlanLayer::Context) ==
-                    "Context" &&
+         expect(cr::toString(
+                    cr::CreativeWorldLayoutPlanLayer::LowerContext) ==
+                    "LowerContext" &&
                     cr::toString(cr::CreativeWorldLayoutPlanLayer::Active) ==
                         "Active" &&
+                    cr::toString(
+                        cr::CreativeWorldLayoutPlanLayer::UpperContext) ==
+                        "UpperContext" &&
                     cr::toString(cr::CreativeWorldLayoutPlanLayer::Overhead) ==
                         "Overhead",
                 "plan layers own stable names");
@@ -330,12 +364,16 @@ bool groundDatumProjectsBothBuildingsAndCutOpenings() {
                     near(doorSwing->startRadians, 0.0) &&
                     near(doorSwing->sweepRadians,
                          1.57079632679489661923),
-                "door pose resolves exact hinge and positive-normal arc") &&
+                "door settings resolve exact hinge and positive-normal arc") &&
          expect(!wallCrossesDoor,
                 "door cut physically interrupts the exterior wall") &&
          expect(countRole(plan, cr::CreativeWorldLayoutPlanRole::Window,
                           cr::CreativeWorldLayoutPlanLayer::Active) == 2U,
                 "window projects two glazing lines") &&
+         expect(countRole(plan,
+                          cr::CreativeWorldLayoutPlanRole::WindowShutter,
+                          cr::CreativeWorldLayoutPlanLayer::Active) == 1U,
+                "paired shutters add an opaque plan line") &&
          expect(shared != nullptr &&
                     shared->source.secondaryTable ==
                         cr::CreativeWorldLayoutTable::Room &&
@@ -348,25 +386,33 @@ bool groundDatumProjectsBothBuildingsAndCutOpenings() {
                 "plan bounds include contours and terrain profile");
 }
 
-bool everyDoorPoseProjectsTheAuthoredHingeAndSwing() {
+bool everyDoorSettingProjectsTheAuthoredHingeAndSwing() {
   struct DoorCase {
-    cr::CreativeBuildingOpeningPose pose;
+    cr::CreativeDoorHingeSide hinge;
+    cr::CreativeDoorSwingSide swingSide;
     double hingeX;
     double sweep;
   };
   constexpr DoorCase kCases[] = {
-      {cr::CreativeBuildingOpeningPose::OpenFromStartNegativeNormal, 1.5,
+      {cr::CreativeDoorHingeSide::MinimumEdge,
+       cr::CreativeDoorSwingSide::NegativeNormal, 1.5,
        -1.57079632679489661923},
-      {cr::CreativeBuildingOpeningPose::OpenFromStartPositiveNormal, 1.5,
+      {cr::CreativeDoorHingeSide::MinimumEdge,
+       cr::CreativeDoorSwingSide::PositiveNormal, 1.5,
        1.57079632679489661923},
-      {cr::CreativeBuildingOpeningPose::OpenFromEndNegativeNormal, 2.5,
+      {cr::CreativeDoorHingeSide::MaximumEdge,
+       cr::CreativeDoorSwingSide::NegativeNormal, 2.5,
        1.57079632679489661923},
-      {cr::CreativeBuildingOpeningPose::OpenFromEndPositiveNormal, 2.5,
+      {cr::CreativeDoorHingeSide::MaximumEdge,
+       cr::CreativeDoorSwingSide::PositiveNormal, 2.5,
        -1.57079632679489661923},
   };
   for (const DoorCase& doorCase : kCases) {
     ProjectionFixture fixture = makeFixture();
-    fixture.layout.openings[0].pose = doorCase.pose;
+    fixture.layout.openings[0].door.hingeSide = doorCase.hinge;
+    fixture.layout.openings[0].door.swingSide = doorCase.swingSide;
+    fixture.layout.openings[0].door.initialState =
+        cr::CreativeDoorInitialState::Open;
     const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 0U);
     const auto* swing =
         findSource(plan, cr::CreativeWorldLayoutPlanRole::DoorSwing,
@@ -376,23 +422,82 @@ bool everyDoorPoseProjectsTheAuthoredHingeAndSwing() {
                     near(swing->points[0].x, doorCase.hingeX) &&
                     near(swing->points[0].z, 0.0) &&
                     near(swing->sweepRadians, doorCase.sweep),
-                "open door pose preserves hinge side and normal")) {
+                "open door settings preserve hinge side and normal")) {
       return false;
     }
   }
 
   ProjectionFixture closedFixture = makeFixture();
-  closedFixture.layout.openings[0].pose =
-      cr::CreativeBuildingOpeningPose::Closed;
+  closedFixture.layout.openings[0].door.initialState =
+      cr::CreativeDoorInitialState::Closed;
   const cr::CreativeWorldLayoutPlanProjection closed =
       project(closedFixture, 0U);
-  return expect(closed.accepted &&
-                    findSource(closed,
-                               cr::CreativeWorldLayoutPlanRole::DoorSwing,
-                               cr::CreativeWorldLayoutPlanLayer::Active,
-                               cr::CreativeWorldLayoutTable::Opening,
-                               0U) == nullptr,
-                "closed door emits a leaf without a fabricated swing arc");
+  const auto* closedLeaf =
+      findSource(closed, cr::CreativeWorldLayoutPlanRole::Door,
+                 cr::CreativeWorldLayoutPlanLayer::Active,
+                 cr::CreativeWorldLayoutTable::Opening, 0U);
+  const auto* closedSwing =
+      findSource(closed, cr::CreativeWorldLayoutPlanRole::DoorSwing,
+                 cr::CreativeWorldLayoutPlanLayer::Active,
+                 cr::CreativeWorldLayoutTable::Opening, 0U);
+
+  ProjectionFixture doubleFixture = makeFixture();
+  doubleFixture.layout.openings[0].door.leafArrangement =
+      cr::CreativeDoorLeafArrangement::Double;
+  const cr::CreativeWorldLayoutPlanProjection doubleDoor =
+      project(doubleFixture, 0U);
+  return expect(closed.accepted && closedLeaf != nullptr &&
+                    closedSwing != nullptr &&
+                    near(closedLeaf->points[0].x, 1.5) &&
+                    near(closedLeaf->points[1].x, 2.5) &&
+                    near(closedLeaf->points[0].z, 0.0) &&
+                    near(closedLeaf->points[1].z, 0.0),
+                "closed door keeps its leaf closed and its swing legible") &&
+         expect(doubleDoor.accepted &&
+                    countRole(doubleDoor, cr::CreativeWorldLayoutPlanRole::Door,
+                              cr::CreativeWorldLayoutPlanLayer::Active) == 2U &&
+                    countRole(
+                        doubleDoor,
+                        cr::CreativeWorldLayoutPlanRole::DoorSwing,
+                        cr::CreativeWorldLayoutPlanLayer::Active) == 2U,
+                "double door projects two opposed leaves and two swing arcs");
+}
+
+bool openingFacingProjectsAnExplicitFrontSide() {
+  ProjectionFixture positiveFixture = makeFixture();
+  positiveFixture.layout.openings[0].door.initialState =
+      cr::CreativeDoorInitialState::Closed;
+  positiveFixture.layout.openings[0].facing =
+      cr::CreativeBuildingOpeningFacing::PositiveNormal;
+  const cr::CreativeWorldLayoutPlanProjection positive =
+      project(positiveFixture, 0U);
+  const auto* positiveFacing =
+      findSource(positive, cr::CreativeWorldLayoutPlanRole::OpeningFacing,
+                 cr::CreativeWorldLayoutPlanLayer::Active,
+                 cr::CreativeWorldLayoutTable::Opening, 0U);
+
+  ProjectionFixture negativeFixture = positiveFixture;
+  negativeFixture.layout.openings[0].facing =
+      cr::CreativeBuildingOpeningFacing::NegativeNormal;
+  const cr::CreativeWorldLayoutPlanProjection negative =
+      project(negativeFixture, 0U);
+  const auto* negativeFacing =
+      findSource(negative, cr::CreativeWorldLayoutPlanRole::OpeningFacing,
+                 cr::CreativeWorldLayoutPlanLayer::Active,
+                 cr::CreativeWorldLayoutTable::Opening, 0U);
+
+  return expect(positive.accepted && positiveFacing != nullptr &&
+                    near(positiveFacing->points[0].x, 2.0) &&
+                    near(positiveFacing->points[0].z, 0.0) &&
+                    near(positiveFacing->points[1].x, 2.0) &&
+                    near(positiveFacing->points[1].z, 0.35),
+                "positive opening facing projects toward the positive wall normal") &&
+         expect(negative.accepted && negativeFacing != nullptr &&
+                    near(negativeFacing->points[0].x, 2.0) &&
+                    near(negativeFacing->points[0].z, 0.0) &&
+                    near(negativeFacing->points[1].x, 2.0) &&
+                    near(negativeFacing->points[1].z, -0.35),
+                "negative opening facing projects toward the negative wall normal");
 }
 
 bool upperStoreyAddsContextRoofAndVerticalFiltering() {
@@ -400,7 +505,7 @@ bool upperStoreyAddsContextRoofAndVerticalFiltering() {
   const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 1U);
   const auto* lowerRoom =
       findSource(plan, cr::CreativeWorldLayoutPlanRole::RoomFloor,
-                 cr::CreativeWorldLayoutPlanLayer::Context,
+                 cr::CreativeWorldLayoutPlanLayer::LowerContext,
                  cr::CreativeWorldLayoutTable::Room, 0U);
   const auto* activeRoom =
       findSource(plan, cr::CreativeWorldLayoutPlanRole::RoomFloor,
@@ -422,7 +527,9 @@ bool upperStoreyAddsContextRoofAndVerticalFiltering() {
   return expect(plan.accepted && near(plan.activeFloorTopLayer, 3.0),
                 "upper storey datum projects") &&
          expect(plan.receipt.activeLevelCount == 1U &&
-                    plan.receipt.contextLevelCount == 1U,
+                    plan.receipt.contextLevelCount == 1U &&
+                    plan.receipt.lowerContextLevelCount == 1U &&
+                    plan.receipt.upperContextLevelCount == 0U,
                 "upper plan has one active and one lower context level") &&
          expect(lowerRoom != nullptr && activeRoom != nullptr,
                 "lower room is context and upper room is active") &&
@@ -441,6 +548,112 @@ bool upperStoreyAddsContextRoofAndVerticalFiltering() {
                 "stair footprint axis arrow and five treads are explicit");
 }
 
+bool everySimpleRoofStyleProjectsItsAuthoredPlanSemantics() {
+  ProjectionFixture fixture = makeFixture();
+  cr::CreativeWorldLayoutLevel& roof = fixture.layout.levels[1];
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Flat;
+  const cr::CreativeWorldLayoutPlanProjection flat = project(fixture, 1U);
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Shed;
+  roof.roofSlopeDirection =
+      cr::CreativeStructuralRoofSlopeDirection::PositiveX;
+  const cr::CreativeWorldLayoutPlanProjection shed = project(fixture, 1U);
+  const auto* shedHigh = findSource(
+      shed, cr::CreativeWorldLayoutPlanRole::RoofRidge,
+      cr::CreativeWorldLayoutPlanLayer::Overhead,
+      cr::CreativeWorldLayoutTable::Level, 1U);
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  roof.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::X;
+  const cr::CreativeWorldLayoutPlanProjection gable = project(fixture, 1U);
+
+  roof.roofStyle = cr::CreativeStructuralRoofStyle::Hip;
+  const cr::CreativeWorldLayoutPlanProjection hip = project(fixture, 1U);
+  bool hipMainRidge = false;
+  std::size_t hipCornerCount = 0U;
+  for (const cr::CreativeWorldLayoutPlanPrimitive& primitive :
+       hip.primitives) {
+    if (primitive.role != cr::CreativeWorldLayoutPlanRole::RoofRidge ||
+        primitive.layer != cr::CreativeWorldLayoutPlanLayer::Overhead ||
+        primitive.pointCount != 2U) {
+      continue;
+    }
+    const cr::CreativeWorldLayoutPlanPoint first = primitive.points[0];
+    const cr::CreativeWorldLayoutPlanPoint second = primitive.points[1];
+    hipMainRidge |= near(first.x, 2.0) && near(first.z, 2.0) &&
+                    near(second.x, 6.0) && near(second.z, 2.0);
+    const bool firstCorner =
+        (near(first.x, -0.5) || near(first.x, 8.5)) &&
+        (near(first.z, -0.5) || near(first.z, 4.5));
+    hipCornerCount += firstCorner ? 1U : 0U;
+  }
+
+  return expect(flat.accepted &&
+                    countRole(flat,
+                              cr::CreativeWorldLayoutPlanRole::RoofOutline,
+                              cr::CreativeWorldLayoutPlanLayer::Overhead) ==
+                        1U &&
+                    countRole(flat,
+                              cr::CreativeWorldLayoutPlanRole::RoofRidge,
+                              cr::CreativeWorldLayoutPlanLayer::Overhead) ==
+                        0U,
+                "flat roof plan is one exact outline without invented ridge") &&
+         expect(shed.accepted && shedHigh != nullptr &&
+                    near(shedHigh->points[0].x, -0.5) &&
+                    near(shedHigh->points[1].x, -0.5) &&
+                    near(shedHigh->points[0].z, -0.5) &&
+                    near(shedHigh->points[1].z, 4.5),
+                "positive-x shed marks its authored high edge") &&
+         expect(gable.accepted &&
+                    countRole(gable,
+                              cr::CreativeWorldLayoutPlanRole::RoofRidge,
+                              cr::CreativeWorldLayoutPlanLayer::Overhead) ==
+                        1U,
+                "gable plan emits one full ridge") &&
+         expect(hip.accepted &&
+                    countRole(hip,
+                              cr::CreativeWorldLayoutPlanRole::RoofRidge,
+                              cr::CreativeWorldLayoutPlanLayer::Overhead) ==
+                        5U &&
+                    hipMainRidge && hipCornerCount == 4U,
+                "hip plan emits one shortened ridge and four corner hips");
+}
+
+bool groundStoreyCanShowUpperContextIndependently() {
+  const ProjectionFixture fixture = makeFixture();
+  cr::CreativeWorldLayoutPlanProjectionRequest request;
+  request.layout = &fixture.layout;
+  request.grid = fixture.grid;
+  request.activeLevelIndex = 0U;
+  request.includeLowerLevelContext = false;
+  request.includeUpperLevelContext = true;
+  request.includeRoofOverhead = false;
+  const cr::CreativeWorldLayoutPlanProjection plan =
+      cr::projectCreativeWorldLayoutPlan(request);
+
+  const auto* upperRoom =
+      findSource(plan, cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                 cr::CreativeWorldLayoutPlanLayer::UpperContext,
+                 cr::CreativeWorldLayoutTable::Room, 2U);
+  const auto* activeRoom =
+      findSource(plan, cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                 cr::CreativeWorldLayoutPlanLayer::Active,
+                 cr::CreativeWorldLayoutTable::Room, 0U);
+
+  return expect(plan.accepted && activeRoom != nullptr && upperRoom != nullptr,
+                "ground storey projects active and upper context geometry") &&
+         expect(plan.receipt.contextLevelCount == 1U &&
+                    plan.receipt.lowerContextLevelCount == 0U &&
+                    plan.receipt.upperContextLevelCount == 1U,
+                "upper context receipt remains directionally explicit") &&
+         expect(countRole(plan, cr::CreativeWorldLayoutPlanRole::RoomFloor,
+                          cr::CreativeWorldLayoutPlanLayer::LowerContext) ==
+                        0U &&
+                    plan.receipt.roofPrimitiveCount == 0U,
+                "context and roof visibility flags remain independent");
+}
+
 bool displayFlagsOnlyRemoveTheirPresentationLayers() {
   const ProjectionFixture fixture = makeFixture();
   const cr::CreativeWorldLayoutPlanProjection complete = project(fixture, 1U);
@@ -457,6 +670,8 @@ bool displayFlagsOnlyRemoveTheirPresentationLayers() {
   return expect(complete.accepted && reduced.accepted,
                 "display flags preserve a valid plan") &&
          expect(reduced.receipt.contextLevelCount == 0U &&
+                    reduced.receipt.lowerContextLevelCount == 0U &&
+                    reduced.receipt.upperContextLevelCount == 0U &&
                     reduced.receipt.roofPrimitiveCount == 0U,
                 "disabled context and roof emit no presentation primitives") &&
          expect(findSource(reduced, cr::CreativeWorldLayoutPlanRole::RoomFloor,
@@ -848,6 +1063,293 @@ bool invalidInputFailsAtomically() {
                 "invalid contour geometry leaves no partial plan");
 }
 
+bool orthogonalRoomProjectionPreservesItsConcaveBoundary() {
+  ProjectionFixture fixture;
+  fixture.grid.cellSizeMeters = 1.0;
+  fixture.layout.stableKey = "orthogonal_projection";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  building.rootFootprint = {{0, 0}, {6, 6}};
+  fixture.layout.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground";
+  level.name = "Ground";
+  fixture.layout.levels.push_back(level);
+  fixture.layout.rooms.push_back(
+      room(0U, 0U, "orthogonal_room", {{0, 0}, {6, 6}}));
+  appendExplicitLRoomTopology(fixture.layout);
+
+  const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 0U);
+  double projectedFloorArea = 0.0;
+  bool notchCovered = false;
+  for (const cr::CreativeWorldLayoutPlanPrimitive& primitive :
+       plan.primitives) {
+    if (primitive.role != cr::CreativeWorldLayoutPlanRole::RoomFloor ||
+        primitive.layer != cr::CreativeWorldLayoutPlanLayer::Active ||
+        primitive.kind != cr::CreativeWorldLayoutPlanPrimitiveKind::Polygon ||
+        primitive.pointCount != 4U) {
+      continue;
+    }
+    double minimumX = primitive.points[0].x;
+    double maximumX = primitive.points[0].x;
+    double minimumZ = primitive.points[0].z;
+    double maximumZ = primitive.points[0].z;
+    for (std::size_t pointIndex = 1U; pointIndex < primitive.pointCount;
+         ++pointIndex) {
+      minimumX = std::min(minimumX, primitive.points[pointIndex].x);
+      maximumX = std::max(maximumX, primitive.points[pointIndex].x);
+      minimumZ = std::min(minimumZ, primitive.points[pointIndex].z);
+      maximumZ = std::max(maximumZ, primitive.points[pointIndex].z);
+    }
+    projectedFloorArea += (maximumX - minimumX) * (maximumZ - minimumZ);
+    notchCovered = notchCovered ||
+                   (5.0 > minimumX && 5.0 < maximumX &&
+                    5.0 > minimumZ && 5.0 < maximumZ);
+  }
+
+  return expect(plan.accepted,
+                "orthogonal room projects through the canonical graph") &&
+         expect(plan.receipt.roomPrimitiveCount == 2U &&
+                    near(projectedFloorArea, 20.0) && !notchCovered,
+                "floor projection decomposes the L without filling its notch") &&
+         expect(countRole(plan, cr::CreativeWorldLayoutPlanRole::ExteriorWall,
+                          cr::CreativeWorldLayoutPlanLayer::Active) == 6U,
+                "the six canonical L-room edges remain exterior walls") &&
+         expect(countRole(plan, cr::CreativeWorldLayoutPlanRole::RoofOutline,
+                          cr::CreativeWorldLayoutPlanLayer::Overhead) == 6U,
+                "flat irregular roof follows the six exterior edges");
+}
+
+bool splitCollinearWallsKeepExactPlanSources() {
+  ProjectionFixture fixture;
+  fixture.grid.cellSizeMeters = 1.0;
+  fixture.layout.stableKey = "split_wall_projection";
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building";
+  building.name = "Building";
+  building.rootFootprint = {{0, 0}, {8, 4}};
+  fixture.layout.buildings.push_back(building);
+  cr::CreativeWorldLayoutLevel level;
+  level.buildingIndex = 0U;
+  level.stableKey = "ground";
+  level.name = "Ground";
+  fixture.layout.levels.push_back(level);
+  fixture.layout.rooms.push_back(
+      room(0U, 0U, "room", {{0, 0}, {8, 4}}));
+  const cr::CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      cr::materializeCreativeWorldLayoutRoomGraph(fixture.layout);
+  if (!materialized.accepted) {
+    return expect(false, "split wall projection fixture materializes");
+  }
+  std::size_t northEdge = cr::kInvalidCreativeWorldLayoutIndex;
+  for (std::size_t edgeIndex = 0U;
+       edgeIndex < materialized.edited.topologyEdges.size(); ++edgeIndex) {
+    const cr::CreativeWorldLayoutTopologyEdge& edge =
+        materialized.edited.topologyEdges[edgeIndex];
+    const cr::CreativeTerrainCoord2 start =
+        materialized.edited.topologyVertices[edge.startVertexIndex].position;
+    const cr::CreativeTerrainCoord2 end =
+        materialized.edited.topologyVertices[edge.endVertexIndex].position;
+    if (start.z == 0 && end.z == 0) {
+      northEdge = edgeIndex;
+      break;
+    }
+  }
+  const cr::CreativeWorldLayoutWallOperationResult split =
+      cr::splitCreativeWorldLayoutWall(
+          materialized.edited,
+          {northEdge, 3U, "north_split_vertex", "north_split_wall"});
+  if (!split.accepted) {
+    return expect(false, "canonical north wall splits for projection");
+  }
+  fixture.layout = split.edited;
+  const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 0U);
+  const auto* first = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::ExteriorWall,
+      cr::CreativeWorldLayoutPlanLayer::Active,
+      cr::CreativeWorldLayoutTable::TopologyEdge, northEdge);
+  const auto* second = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::ExteriorWall,
+      cr::CreativeWorldLayoutPlanLayer::Active,
+      cr::CreativeWorldLayoutTable::TopologyEdge,
+      split.newTopologyEdgeIndex);
+  return expect(plan.accepted && first != nullptr && second != nullptr,
+                "each split wall has one selectable plan primitive") &&
+         expect(first->pointCount == 2U && second->pointCount == 2U &&
+                    near(first->points[0].x, 0.0) &&
+                    near(first->points[1].x, 3.0) &&
+                    near(second->points[0].x, 3.0) &&
+                    near(second->points[1].x, 8.0),
+                "plan wall geometry stops at exact canonical split bounds");
+}
+
+bool roofAperturesProjectExactAuthoredSymbols() {
+  ProjectionFixture fixture = makeFixture();
+  cr::CreativeWorldLayoutRoofAperture skylight;
+  skylight.levelIndex = 1U;
+  skylight.kind = cr::CreativeStructuralRoofApertureKind::Skylight;
+  skylight.stableKey = "upper_skylight";
+  skylight.name = "Upper Skylight";
+  skylight.minimumXCells = 1.0;
+  skylight.maximumXCells = 2.0;
+  skylight.minimumZCells = 0.5;
+  skylight.maximumZCells = 1.2;
+  fixture.layout.roofApertures.push_back(skylight);
+  cr::CreativeWorldLayoutRoofAperture clearance = skylight;
+  clearance.kind =
+      cr::CreativeStructuralRoofApertureKind::ChimneyClearance;
+  clearance.stableKey = "upper_chimney_clearance";
+  clearance.name = "Upper Chimney Clearance";
+  clearance.minimumXCells = 4.0;
+  clearance.maximumXCells = 5.0;
+  fixture.layout.roofApertures.push_back(clearance);
+
+  const cr::CreativeWorldLayoutPlanProjection plan = project(fixture, 1U);
+  const auto* skylightPrimitive = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::RoofSkylight,
+      cr::CreativeWorldLayoutPlanLayer::Overhead,
+      cr::CreativeWorldLayoutTable::RoofAperture, 0U);
+  const auto* clearancePrimitive = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::RoofClearance,
+      cr::CreativeWorldLayoutPlanLayer::Overhead,
+      cr::CreativeWorldLayoutTable::RoofAperture, 1U);
+  const auto exactBounds = [](const cr::CreativeWorldLayoutPlanPrimitive* value,
+                              double minimumX, double maximumX) {
+    return value != nullptr && value->pointCount == 4U &&
+           near(value->points[0].x, minimumX) &&
+           near(value->points[0].z, 0.5) &&
+           near(value->points[1].x, maximumX) &&
+           near(value->points[1].z, 0.5) &&
+           near(value->points[2].x, maximumX) &&
+           near(value->points[2].z, 1.2) &&
+           near(value->points[3].x, minimumX) &&
+           near(value->points[3].z, 1.2);
+  };
+  return expect(plan.accepted &&
+                    plan.receipt.roofAperturePrimitiveCount == 2U,
+                "roof apertures have a dedicated projection receipt") &&
+         expect(exactBounds(skylightPrimitive, 1.0, 2.0) &&
+                    exactBounds(clearancePrimitive, 4.0, 5.0),
+                "roof aperture symbols preserve exact authored plan bounds");
+}
+
+bool boundedLandformsProjectExactRectangles() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "landform_projection";
+  cr::CreativeWorldLayoutTerrainProfile cliff;
+  cliff.stableKey = "cliff.west";
+  cliff.kind = cr::CreativeTerrainRecipeKind::Cliff;
+  cliff.usesLandformRecipe = true;
+  cliff.landform.kind = cr::CreativeTerrainLandformKind::Cliff;
+  cliff.landform.bounds = {{-6, 3}, 10U, 5U};
+  cliff.landform.baseHeightCells = 2U;
+  cliff.landform.targetHeightCells = 9U;
+  cliff.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  cliff.landform.edgeWidthCells = 0U;
+  layout.terrainProfiles.push_back(cliff);
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 1.0;
+  cr::CreativeWorldLayoutPlanProjectionRequest request;
+  request.layout = &layout;
+  request.grid = grid;
+  const cr::CreativeWorldLayoutPlanProjection plan =
+      cr::projectCreativeWorldLayoutPlan(request);
+  const auto* primitive = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::TerrainProfile,
+      cr::CreativeWorldLayoutPlanLayer::Active,
+      cr::CreativeWorldLayoutTable::TerrainProfile, 0U);
+  return expect(plan.accepted && primitive != nullptr &&
+                    primitive->kind ==
+                        cr::CreativeWorldLayoutPlanPrimitiveKind::Polygon &&
+                    primitive->terrainKind ==
+                        cr::CreativeTerrainRecipeKind::Cliff &&
+                    primitive->pointCount == 4U &&
+                    primitive->points[0] ==
+                        cr::CreativeWorldLayoutPlanPoint{-6.0, 3.0} &&
+                    primitive->points[1] ==
+                        cr::CreativeWorldLayoutPlanPoint{4.0, 3.0} &&
+                    primitive->points[2] ==
+                        cr::CreativeWorldLayoutPlanPoint{4.0, 8.0} &&
+                    primitive->points[3] ==
+                        cr::CreativeWorldLayoutPlanPoint{-6.0, 8.0},
+                "bounded landform projection uses exact authored tile edges");
+}
+
+bool retainingTransitionsProjectOnExactSharedBoundaries() {
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "retaining_transition_projection";
+  cr::CreativeWorldLayoutTerrainProfile terrace;
+  terrace.stableKey = "terrace.central";
+  terrace.kind = cr::CreativeTerrainRecipeKind::Terrace;
+  terrace.usesLandformRecipe = true;
+  terrace.landform.kind = cr::CreativeTerrainLandformKind::Terrace;
+  terrace.landform.bounds = {{-6, 3}, 10U, 6U};
+  terrace.landform.baseHeightCells = 2U;
+  terrace.landform.targetHeightCells = 6U;
+  terrace.landform.terraceCount = 2U;
+  terrace.landform.edge = cr::CreativeTerrainLandformEdge::Retaining;
+  terrace.landform.edgeWidthCells = 0U;
+  terrace.usesRetainingEdgeRecipe = true;
+  terrace.retainingEdge.terrainProfileKey = terrace.stableKey;
+  terrace.retainingEdge.settings.transitionCount = 2U;
+  terrace.retainingEdge.settings.transitions[0] = {
+      cr::canonicalCreativeTerrainHardEdge({-3, 4}, {-2, 4}),
+      cr::CreativeRetainingEdgeTransitionKind::Stair,
+      3U,
+  };
+  terrace.retainingEdge.settings.transitions[1] = {
+      cr::canonicalCreativeTerrainHardEdge({1, 5}, {1, 6}),
+      cr::CreativeRetainingEdgeTransitionKind::Ramp,
+      5U,
+  };
+  layout.terrainProfiles.push_back(terrace);
+
+  cr::CreativeGridSettings grid;
+  grid.cellSizeMeters = 1.0;
+  cr::CreativeWorldLayoutPlanProjectionRequest request;
+  request.layout = &layout;
+  request.grid = grid;
+  const cr::CreativeWorldLayoutPlanProjection plan =
+      cr::projectCreativeWorldLayoutPlan(request);
+  const auto* stair = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::Stair,
+      cr::CreativeWorldLayoutPlanLayer::Active,
+      cr::CreativeWorldLayoutTable::TerrainProfile, 0U);
+  const auto* ramp = findSource(
+      plan, cr::CreativeWorldLayoutPlanRole::Ramp,
+      cr::CreativeWorldLayoutPlanLayer::Active,
+      cr::CreativeWorldLayoutTable::TerrainProfile, 0U);
+
+  cr::CreativeWorldLayout invalid = layout;
+  invalid.terrainProfiles[0].retainingEdge.terrainProfileKey =
+      "terrace.other";
+  cr::CreativeWorldLayoutPlanProjectionRequest invalidRequest = request;
+  invalidRequest.layout = &invalid;
+  const cr::CreativeWorldLayoutPlanProjection rejected =
+      cr::projectCreativeWorldLayoutPlan(invalidRequest);
+
+  return expect(plan.accepted &&
+                    plan.receipt.terrainPrimitiveCount == 3U &&
+                    stair != nullptr && ramp != nullptr &&
+                    stair->kind ==
+                        cr::CreativeWorldLayoutPlanPrimitiveKind::Segment &&
+                    stair->points[0] ==
+                        cr::CreativeWorldLayoutPlanPoint{-2.5, 3.5} &&
+                    stair->points[1] ==
+                        cr::CreativeWorldLayoutPlanPoint{-2.5, 4.5} &&
+                    ramp->kind ==
+                        cr::CreativeWorldLayoutPlanPrimitiveKind::Segment &&
+                    ramp->points[0] ==
+                        cr::CreativeWorldLayoutPlanPoint{0.5, 5.5} &&
+                    ramp->points[1] ==
+                        cr::CreativeWorldLayoutPlanPoint{1.5, 5.5},
+                "retaining stair and ramp mark exact shared cell boundaries") &&
+         expect(!rejected.accepted && rejected.primitives.empty(),
+                "invalid retaining projection fails atomically");
+}
+
 bool projectionIsDeterministic() {
   const ProjectionFixture fixture = makeFixture();
   const cr::CreativeWorldLayoutPlanProjection first = project(fixture, 0U);
@@ -865,14 +1367,23 @@ bool projectionIsDeterministic() {
 int main() {
   const bool ok = vocabularyIsClosedAndNamed() &&
                   groundDatumProjectsBothBuildingsAndCutOpenings() &&
-                  everyDoorPoseProjectsTheAuthoredHingeAndSwing() &&
+                  everyDoorSettingProjectsTheAuthoredHingeAndSwing() &&
+                  openingFacingProjectsAnExplicitFrontSide() &&
                   upperStoreyAddsContextRoofAndVerticalFiltering() &&
+                  everySimpleRoofStyleProjectsItsAuthoredPlanSemantics() &&
+                  groundStoreyCanShowUpperContextIndependently() &&
                   displayFlagsOnlyRemoveTheirPresentationLayers() &&
                   levelNavigationUsesPhysicalDatums() &&
                   semanticSourcesResolveToExactStoreys() &&
                   terrainContoursAndObjectsCarrySemanticMetadata() &&
                   rampOmitsStairTreadsAndTerrainOnlyPlansRemainValid() &&
-                  invalidInputFailsAtomically() && projectionIsDeterministic();
+                  invalidInputFailsAtomically() &&
+                  orthogonalRoomProjectionPreservesItsConcaveBoundary() &&
+                  splitCollinearWallsKeepExactPlanSources() &&
+                  roofAperturesProjectExactAuthoredSymbols() &&
+                  boundedLandformsProjectExactRectangles() &&
+                  retainingTransitionsProjectOnExactSharedBoundaries() &&
+                  projectionIsDeterministic();
   if (!ok) {
     return EXIT_FAILURE;
   }

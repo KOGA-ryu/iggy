@@ -7,6 +7,9 @@
 #include <vector>
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingRepairs.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingTraversal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingUsability.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
@@ -16,7 +19,7 @@ struct CreativeCatalogState;
 
 namespace iggy3d_creative_app {
 
-inline constexpr std::size_t kCreativeEditorWorldLayoutDiagnosticCapacity = 8U;
+inline constexpr std::size_t kCreativeEditorWorldLayoutDiagnosticCapacity = 32U;
 
 enum class CreativeEditorWorldLayoutDiagnosticSeverity : std::uint8_t {
   Info,
@@ -46,6 +49,24 @@ struct CreativeEditorWorldLayoutDiagnostic {
   std::string kernelReasonCode;
   CreativeEditorWorldLayoutAssetIssue assetIssue =
       CreativeEditorWorldLayoutAssetIssue::None;
+  iggy3d::creative::CreativeWorldLayoutBuildingUsabilityIssue
+      buildingUsabilityIssue{
+          iggy3d::creative::CreativeWorldLayoutBuildingUsabilityIssueKind::
+              Count,
+          iggy3d::creative::CreativeWorldLayoutTable::None,
+          iggy3d::creative::kInvalidCreativeWorldLayoutIndex,
+          iggy3d::creative::kInvalidCreativeWorldLayoutIndex};
+  iggy3d::creative::CreativeWorldLayoutBuildingRepairOperation
+      buildingRepairOperation =
+          iggy3d::creative::CreativeWorldLayoutBuildingRepairOperation::None;
+  bool buildingRepairAvailable = false;
+  iggy3d::creative::CreativeWorldLayoutBuildingTraversalIssue
+      buildingTraversalIssue{
+          iggy3d::creative::CreativeWorldLayoutBuildingTraversalIssueKind::
+              Count,
+          iggy3d::creative::CreativeWorldLayoutTable::None,
+          iggy3d::creative::kInvalidCreativeWorldLayoutIndex,
+          iggy3d::creative::kInvalidCreativeWorldLayoutIndex};
   std::string stableKey;
   std::string assetId;
 };
@@ -59,6 +80,10 @@ struct CreativeEditorWorldLayoutDiagnosticReport {
       issues{};
   std::size_t issueCount = 0U;
   iggy3d::creative::CreativeWorldLayoutReceipt compileReceipt;
+  iggy3d::creative::CreativeWorldLayoutBuildingUsabilityReceipt
+      buildingUsability;
+  iggy3d::creative::CreativeWorldLayoutBuildingTraversalReceipt
+      buildingTraversal;
   std::vector<iggy3d::creative::CreativeWorldLayoutRecipeChange>
       recipeChanges;
   iggy3d::creative::CreativeWorldLayoutTerrainImpactPlan terrainImpactPlan;

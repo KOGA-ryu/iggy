@@ -253,7 +253,7 @@ bool navigatePointerInputIsInert() {
   return ok;
 }
 
-bool measurePressMoveReleaseEmitsMeasurementIntents() {
+bool measureClicksPreviewAndCompletePaths() {
   cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
   const bool toolChanged = cr::setActiveTool(state, cr::Tool::Measure);
 
@@ -266,8 +266,8 @@ bool measurePressMoveReleaseEmitsMeasurementIntents() {
       expect(toolChanged, "measure setup changed tool") &&
       expect(begin.emittedIntentCount == 1U, "measure begin count") &&
       expect(begin.intents[0].kind ==
-                 cr::CreativeToolIntentKind::BeginMeasurement,
-             "measure begin intent") &&
+                 cr::CreativeToolIntentKind::AppendMeasurementPoint,
+             "measure append intent") &&
       expect(state.measurementActive, "measure active after begin");
 
   const cr::CreativeToolDispatchReceipt update =
@@ -282,16 +282,24 @@ bool measurePressMoveReleaseEmitsMeasurementIntents() {
              "measure update intent") &&
       expect(state.measurementActive, "measure active after update");
 
-  const cr::CreativeToolDispatchReceipt end =
+  const cr::CreativeToolDispatchReceipt release =
       cr::dispatchToolInput(state,
                             pointerInput(cr::CreativeToolInputKind::PointerRelease,
                                          5.0,
                                          6.0));
+  const bool activeAfterRelease = state.measurementActive;
+  cr::CreativeToolInputPacket completeInput =
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 5.0, 6.0);
+  completeInput.pointer.button = cr::CreativeToolPointerButton::Secondary;
+  const cr::CreativeToolDispatchReceipt complete =
+      cr::dispatchToolInput(state, completeInput);
   const bool ended =
-      expect(end.emittedIntentCount == 1U, "measure end count") &&
-      expect(end.intents[0].kind ==
-                 cr::CreativeToolIntentKind::EndMeasurement,
-             "measure end intent") &&
+      expect(release.emittedIntentCount == 0U, "measure release is inert") &&
+      expect(activeAfterRelease, "measure remains active after release") &&
+      expect(complete.emittedIntentCount == 1U, "measure complete count") &&
+      expect(complete.intents[0].kind ==
+                 cr::CreativeToolIntentKind::CompleteMeasurement,
+             "measure complete intent") &&
       expect(!state.measurementActive, "measure inactive after end");
 
   return began && updated && ended;
@@ -347,6 +355,9 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList replace =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::VolumeReplace);
+  const cr::CreativeToolOptionList erase =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::VolumeErase);
   const cr::CreativeToolOptionList fill =
       cr::creativeToolOptionsForHeldItem(cr::CreativeHeldItemKind::VolumeFill);
   const cr::CreativeToolOptionList hollow =
@@ -362,6 +373,12 @@ bool optionDescriptorsAreContextualAndBounded() {
   const cr::CreativeToolOptionList terrainSculpt =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainSculpt);
+  cr::CreativeToolSettings terrainRaiseSettings =
+      cr::makeDefaultCreativeToolSettings();
+  terrainRaiseSettings.terrainSculptMode = cr::CreativeTerrainSculptMode::Raise;
+  const cr::CreativeToolOptionList terrainRaise =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainSculpt, terrainRaiseSettings);
   const cr::CreativeToolOptionList terrainRodSingle =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainControl);
@@ -383,11 +400,18 @@ bool optionDescriptorsAreContextualAndBounded() {
           cr::CreativeHeldItemKind::TerrainRegion);
   cr::CreativeToolSettings flattenRegionSettings =
       cr::makeDefaultCreativeToolSettings();
-  flattenRegionSettings.terrainRegionOperation =
-      cr::CreativeTerrainRegionOperation::Flatten;
+  flattenRegionSettings.terrainRegionRecipe.mode =
+      cr::CreativeTerrainRegionMode::Flatten;
   const cr::CreativeToolOptionList flattenRegion =
       cr::creativeToolOptionsForHeldItem(
           cr::CreativeHeldItemKind::TerrainRegion, flattenRegionSettings);
+  cr::CreativeToolSettings noiseRegionSettings =
+      cr::makeDefaultCreativeToolSettings();
+  noiseRegionSettings.terrainRegionRecipe.mode =
+      cr::CreativeTerrainRegionMode::Noise;
+  const cr::CreativeToolOptionList noiseRegion =
+      cr::creativeToolOptionsForHeldItem(
+          cr::CreativeHeldItemKind::TerrainRegion, noiseRegionSettings);
   cr::CreativeToolSettings ridgeSettings =
       cr::makeDefaultCreativeToolSettings();
   ridgeSettings.terrainProfileKind = cr::CreativeTerrainProfileKind::Ridge;
@@ -472,36 +496,59 @@ bool optionDescriptorsAreContextualAndBounded() {
                     replaceBrush.ids[6] ==
                         cr::CreativeToolOptionId::MaterialBrushReplaceSource,
                 "replace brush exposes its contextual source filter") &&
-         expect(cylinderReplaceBrush.count ==
-                        cr::kCreativeToolOptionCapacity &&
+         expect(cylinderReplaceBrush.count == 8U &&
                     cylinderReplaceBrush.ids[1] ==
                         cr::CreativeToolOptionId::MaterialBrushAxis &&
                     cylinderReplaceBrush.ids[7] ==
                         cr::CreativeToolOptionId::MaterialBrushReplaceSource,
-                "cylinder replace options exactly fit bounded storage") &&
+                "cylinder replace exposes all eight contextual options") &&
          expect(move.count == 3U &&
                     move.ids[0] ==
                         cr::CreativeToolOptionId::MoveConstraint &&
                     move.ids[1] == cr::CreativeToolOptionId::RotationStep &&
                     move.ids[2] == cr::CreativeToolOptionId::SnapIncrement,
                 "move options retain descriptor order") &&
-         expect(fill.count == 3U && hollow.count == 3U &&
+         expect(fill.count == 4U && hollow.count == 7U &&
                     fill.ids[0] == cr::CreativeToolOptionId::SnapIncrement &&
                     fill.ids[1] == cr::CreativeToolOptionId::ShapeBrushKind &&
                     fill.ids[2] == cr::CreativeToolOptionId::ShapeBrushAxis &&
+                    fill.ids[3] ==
+                        cr::CreativeToolOptionId::VolumeFillOverlapPolicy &&
                     hollow.ids[1] ==
-                        cr::CreativeToolOptionId::ShapeBrushKind,
-                "fill and hollow expose bounded shape controls") &&
-         expect(replace.count == 2U &&
+                        cr::CreativeToolOptionId::ShapeBrushKind &&
+                    hollow.ids[3] ==
+                        cr::CreativeToolOptionId::VolumeHollowThickness &&
+                    hollow.ids[4] ==
+                        cr::CreativeToolOptionId::VolumeHollowAlignment &&
+                    hollow.ids[5] ==
+                        cr::CreativeToolOptionId::VolumeHollowOpening &&
+                    hollow.ids[6] ==
+                        cr::CreativeToolOptionId::VolumeHollowCornerRule,
+                "fill and hollow expose their distinct volume contracts") &&
+         expect(replace.count == 3U &&
                     replace.ids[1] ==
-                        cr::CreativeToolOptionId::ReplaceSource,
-                "replace exposes source filter") &&
-         expect(clone.count == 3U &&
+                        cr::CreativeToolOptionId::ReplaceSource &&
+                    replace.ids[2] ==
+                        cr::CreativeToolOptionId::ReplaceMemberMask,
+                "replace exposes source and member filters") &&
+         expect(erase.count == 3U &&
+                    erase.ids[1] == cr::CreativeToolOptionId::EraseSource &&
+                    erase.ids[2] ==
+                        cr::CreativeToolOptionId::EraseMemberMask,
+                "erase exposes source and member filters") &&
+         expect(clone.count == 7U &&
                     clone.ids[1] ==
                         cr::CreativeToolOptionId::CloneOffsetAxis &&
                     clone.ids[2] ==
-                        cr::CreativeToolOptionId::CloneOffsetDistance,
-                "clone exposes offset axis and distance") &&
+                        cr::CreativeToolOptionId::CloneOffsetDistance &&
+                    clone.ids[3] ==
+                        cr::CreativeToolOptionId::CloneRotation &&
+                    clone.ids[4] == cr::CreativeToolOptionId::CloneMirror &&
+                    clone.ids[5] ==
+                        cr::CreativeToolOptionId::CloneMemberMask &&
+                    clone.ids[6] ==
+                        cr::CreativeToolOptionId::CloneVoxelOverlapPolicy,
+                "clone exposes transform member and voxel overlap controls") &&
          expect(connectedFill.count == 1U &&
                     connectedFill.ids[0] ==
                         cr::CreativeToolOptionId::ConnectedFillLimit,
@@ -512,7 +559,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     surfaceExtrude.ids[1] ==
                         cr::CreativeToolOptionId::SurfaceExtrudeLimit,
                 "surface extrude exposes depth and affected-cell limit") &&
-         expect(terrainSculpt.count == 4U &&
+         expect(terrainSculpt.count == 6U &&
                     terrainSculpt.ids[0] ==
                         cr::CreativeToolOptionId::TerrainSculptMode &&
                     terrainSculpt.ids[1] ==
@@ -520,8 +567,24 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainSculpt.ids[2] ==
                         cr::CreativeToolOptionId::TerrainSculptStrength &&
                     terrainSculpt.ids[3] ==
-                        cr::CreativeToolOptionId::TerrainSculptFalloff,
-                "terrain sculpt exposes mode radius strength and falloff") &&
+                        cr::CreativeToolOptionId::TerrainSculptTargetHeight &&
+                    terrainSculpt.ids[4] ==
+                        cr::CreativeToolOptionId::TerrainSculptFalloff &&
+                    terrainSculpt.ids[5] ==
+                        cr::CreativeToolOptionId::TerrainSculptMask,
+                "flatten sculpt exposes mode radius strength target falloff and mask") &&
+         expect(terrainRaise.count == 5U &&
+                    terrainRaise.ids[0] ==
+                        cr::CreativeToolOptionId::TerrainSculptMode &&
+                    terrainRaise.ids[1] ==
+                        cr::CreativeToolOptionId::TerrainSculptRadius &&
+                    terrainRaise.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainSculptStrength &&
+                    terrainRaise.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainSculptFalloff &&
+                    terrainRaise.ids[4] ==
+                        cr::CreativeToolOptionId::TerrainSculptMask,
+                "non-flatten sculpt hides the irrelevant target height") &&
          expect(terrainRodSingle.count == 1U &&
                     terrainRodSingle.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRodStampMode,
@@ -544,14 +607,16 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainRidge.ids[6] ==
                         cr::CreativeToolOptionId::TerrainProfileDirection,
                 "ridge adds direction without frequency") &&
-         expect(terrainWave.count == cr::kCreativeToolOptionCapacity &&
+         expect(terrainWave.count == 9U &&
                     terrainWave.ids[6] ==
                         cr::CreativeToolOptionId::TerrainProfileDirection &&
                     terrainWave.ids[7] ==
                         cr::CreativeToolOptionId::TerrainProfileFrequency &&
+                    terrainWave.ids[8] ==
+                        cr::CreativeToolOptionId::TerrainProfileSeed &&
                     !terrainWave.capacityExceeded,
-                "wave exactly fits all eight contextual options") &&
-         expect(terrainWaveExisting.count == 7U &&
+                "wave exposes frequency and deterministic seed") &&
+         expect(terrainWaveExisting.count == 8U &&
                     std::find(terrainWaveExisting.items().begin(),
                               terrainWaveExisting.items().end(),
                               cr::CreativeToolOptionId::TerrainProfileSpacing) ==
@@ -567,23 +632,44 @@ bool optionDescriptorsAreContextualAndBounded() {
                     terrainPath.ids[3] ==
                         cr::CreativeToolOptionId::TerrainPathAmplitude,
                 "terrain path exposes type elevation width and rise depth") &&
-         expect(terrainRegion.count == 4U &&
+         expect(terrainRegion.count == 6U &&
                     terrainRegion.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRegionOperation &&
                     terrainRegion.ids[1] ==
-                        cr::CreativeToolOptionId::TerrainRegionAmount &&
+                        cr::CreativeToolOptionId::TerrainRegionMask &&
                     terrainRegion.ids[2] ==
-                        cr::CreativeToolOptionId::TerrainStampMode &&
+                        cr::CreativeToolOptionId::TerrainRegionAmount &&
                     terrainRegion.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainRegionFeather &&
+                    terrainRegion.ids[4] ==
+                        cr::CreativeToolOptionId::TerrainStampMode &&
+                    terrainRegion.ids[5] ==
                         cr::CreativeToolOptionId::TerrainStampElevation &&
-                    flattenRegion.count == 3U &&
+                    flattenRegion.count == 6U &&
                     flattenRegion.ids[0] ==
                         cr::CreativeToolOptionId::TerrainRegionOperation &&
                     flattenRegion.ids[1] ==
-                        cr::CreativeToolOptionId::TerrainStampMode &&
+                        cr::CreativeToolOptionId::TerrainRegionMask &&
                     flattenRegion.ids[2] ==
-                        cr::CreativeToolOptionId::TerrainStampElevation,
-                "terrain region keeps stamp mode while flatten hides amount") &&
+                        cr::CreativeToolOptionId::TerrainRegionTargetHeight &&
+                    flattenRegion.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainRegionFeather &&
+                    flattenRegion.ids[4] ==
+                        cr::CreativeToolOptionId::TerrainStampMode &&
+                    flattenRegion.ids[5] ==
+                        cr::CreativeToolOptionId::TerrainStampElevation &&
+                    noiseRegion.count == 9U &&
+                    noiseRegion.ids[2] ==
+                        cr::CreativeToolOptionId::TerrainRegionTargetHeight &&
+                    noiseRegion.ids[3] ==
+                        cr::CreativeToolOptionId::TerrainRegionNoiseRelief &&
+                    noiseRegion.ids[4] ==
+                        cr::CreativeToolOptionId::TerrainRegionNoiseScale &&
+                    noiseRegion.ids[5] ==
+                        cr::CreativeToolOptionId::TerrainRegionSeed &&
+                    noiseRegion.ids[6] ==
+                        cr::CreativeToolOptionId::TerrainRegionFeather,
+                "terrain region exposes only the canonical mode parameters") &&
          expect(array.count == 4U &&
                     array.ids[0] ==
                         cr::CreativeToolOptionId::ArrayMode &&
@@ -620,6 +706,7 @@ bool optionDescriptorsAreContextualAndBounded() {
                     !terrainPath.capacityExceeded &&
                     !terrainRegion.capacityExceeded &&
                     !flattenRegion.capacityExceeded &&
+                    !noiseRegion.capacityExceeded &&
                     !terrainRidge.capacityExceeded &&
                     !terrainWaveExisting.capacityExceeded &&
                     !array.capacityExceeded && !radialArray.capacityExceeded &&
@@ -653,6 +740,30 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
       cr::CreativePlacementAnchor::Count;
   cr::CreativeToolSettings invalidPlacementDepth = settings;
   invalidPlacementDepth.placementDepth = cr::CreativePlacementDepth::Count;
+  cr::CreativeToolSettings invalidVolumeFillOverlap = settings;
+  invalidVolumeFillOverlap.volumeFillOverlapPolicy =
+      cr::CreativeVolumeFillOverlapPolicy::Count;
+  cr::CreativeToolSettings invalidVolumeHollow = settings;
+  invalidVolumeHollow.volumeHollowCornerRule =
+      cr::CreativeVolumeHollowCornerRule::Count;
+  cr::CreativeToolSettings invalidVolumeReplaceMask = settings;
+  invalidVolumeReplaceMask.volumeReplaceMemberMask =
+      cr::CreativeVolumeMemberMask::Count;
+  cr::CreativeToolSettings invalidVolumeEraseMask = settings;
+  invalidVolumeEraseMask.volumeEraseMemberMask =
+      cr::CreativeVolumeMemberMask::Count;
+  cr::CreativeToolSettings invalidVolumeEraseSource = settings;
+  invalidVolumeEraseSource.eraseSourceKind = cr::CreativeObjectKind::Count;
+  cr::CreativeToolSettings invalidCloneRotation = settings;
+  invalidCloneRotation.cloneRotation = cr::CreativeCloneRotation::Count;
+  cr::CreativeToolSettings invalidCloneMirror = settings;
+  invalidCloneMirror.cloneMirror = cr::CreativeCloneMirror::Count;
+  cr::CreativeToolSettings invalidCloneMemberMask = settings;
+  invalidCloneMemberMask.volumeCloneMemberMask =
+      cr::CreativeVolumeMemberMask::Count;
+  cr::CreativeToolSettings invalidCloneVoxelOverlap = settings;
+  invalidCloneVoxelOverlap.cloneVoxelOverlapPolicy =
+      cr::CreativeVolumeCloneVoxelOverlapPolicy::Count;
   cr::CreativeToolSettings invalidBrushAxis = settings;
   invalidBrushAxis.materialBrushAxis = cr::CreativeAxis3::Count;
   cr::CreativeToolSettings invalidBrushFill = settings;
@@ -683,19 +794,25 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
   cr::CreativeToolSettings invalidSculptFalloff = settings;
   invalidSculptFalloff.terrainSculptFalloff =
       cr::CreativeTerrainSculptFalloff::Count;
+  cr::CreativeToolSettings invalidSculptMask = settings;
+  invalidSculptMask.terrainSculptMask =
+      cr::CreativeTerrainSculptMask::Count;
+  cr::CreativeToolSettings invalidSculptTarget = settings;
+  invalidSculptTarget.terrainSculptTargetHeightCells = 0U;
   cr::CreativeToolSettings invalidSeed = settings;
   invalidSeed.terrainSeedSpacing = cr::CreativeTerrainSeedSpacing::Count;
   cr::CreativeToolSettings invalidProfile = settings;
   invalidProfile.terrainProfileKind = cr::CreativeTerrainProfileKind::Count;
+  cr::CreativeToolSettings invalidProfileRadius = settings;
+  invalidProfileRadius.terrainProfileRadiusCells = 0U;
   cr::CreativeToolSettings invalidPath = settings;
   invalidPath.terrainPathElevation =
       cr::CreativeTerrainPathElevation::Count;
   cr::CreativeToolSettings invalidRegionOperation = settings;
-  invalidRegionOperation.terrainRegionOperation =
-      cr::CreativeTerrainRegionOperation::Count;
+  invalidRegionOperation.terrainRegionRecipe.mode =
+      cr::CreativeTerrainRegionMode::Count;
   cr::CreativeToolSettings invalidRegionAmount = settings;
-  invalidRegionAmount.terrainRegionAmount =
-      cr::CreativeTerrainRegionAmount::Count;
+  invalidRegionAmount.terrainRegionRecipe.amountCells = 0U;
   cr::CreativeToolSettings invalidStampMode = settings;
   invalidStampMode.terrainStampMode = cr::CreativeTerrainStampMode::Count;
   cr::CreativeToolSettings invalidStampElevation = settings;
@@ -710,6 +827,23 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        !cr::isValidCreativeToolSettings(invalidPlacementAnchor) &&
                        !cr::isValidCreativeToolSettings(invalidPlacementDepth),
                    "invalid placement grid settings fail validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidVolumeFillOverlap),
+                   "invalid volume fill overlap policy fails validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidVolumeHollow),
+                   "invalid volume hollow setting fails validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidVolumeReplaceMask),
+                   "invalid volume replace member mask fails validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidVolumeEraseMask) &&
+                       !cr::isValidCreativeToolSettings(
+                           invalidVolumeEraseSource),
+                   "invalid volume erase filters fail validation") &&
+            expect(!cr::isValidCreativeToolSettings(invalidCloneRotation) &&
+                       !cr::isValidCreativeToolSettings(invalidCloneMirror) &&
+                       !cr::isValidCreativeToolSettings(
+                           invalidCloneMemberMask) &&
+                       !cr::isValidCreativeToolSettings(
+                           invalidCloneVoxelOverlap),
+                   "invalid volume clone settings fail validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushAxis),
                    "invalid material brush axis fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidBrushFill),
@@ -729,11 +863,14 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        !cr::isValidCreativeToolSettings(invalidSurfaceLimit),
                    "invalid surface depth or limit fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidSculpt) &&
-                       !cr::isValidCreativeToolSettings(invalidSculptFalloff),
+                       !cr::isValidCreativeToolSettings(invalidSculptFalloff) &&
+                       !cr::isValidCreativeToolSettings(invalidSculptMask) &&
+                       !cr::isValidCreativeToolSettings(invalidSculptTarget),
                    "invalid terrain sculpt option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidSeed),
                    "invalid terrain seed option fails settings validation") &&
-            expect(!cr::isValidCreativeToolSettings(invalidProfile),
+            expect(!cr::isValidCreativeToolSettings(invalidProfile) &&
+                       !cr::isValidCreativeToolSettings(invalidProfileRadius),
                    "invalid terrain profile option fails settings validation") &&
             expect(!cr::isValidCreativeToolSettings(invalidPath),
                    "invalid terrain path option fails settings validation") &&
@@ -798,6 +935,28 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            cr::CreativeToolOptionId::ShapeBrushAxis) == "Y" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
+                           cr::CreativeToolOptionId::VolumeFillOverlapPolicy) ==
+                           "PRESERVE" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::VolumeHollowThickness) ==
+                           "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::VolumeHollowAlignment) ==
+                           "INWARD" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::VolumeHollowOpening) ==
+                           "CLOSED" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::VolumeHollowCornerRule) ==
+                           "KEEP EDGES" &&
+                       cr::creativeVolumeHollowThicknessCells(
+                           settings.volumeHollowThickness) == 1U &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
                            cr::CreativeToolOptionId::MaterialBrushShape) ==
                            "SPHERE" &&
                        cr::creativeToolOptionValueLabel(
@@ -830,6 +989,17 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                                MaterialBrushReplaceSource) == "ANY" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
+                           cr::CreativeToolOptionId::ReplaceMemberMask) ==
+                           "BOTH" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::EraseSource) == "ANY" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::EraseMemberMask) ==
+                           "BOTH" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
                            cr::CreativeToolOptionId::ConnectedFillLimit) ==
                            "256 CELLS" &&
                        cr::creativeToolOptionValueLabel(
@@ -854,8 +1024,16 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            "1 CELL" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
+                           cr::CreativeToolOptionId::TerrainSculptTargetHeight) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
                            cr::CreativeToolOptionId::TerrainSculptFalloff) ==
                            "UNIFORM" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainSculptMask) ==
+                           "CIRCLE" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainRodStampMode) ==
@@ -902,6 +1080,10 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                            "1 CYCLE" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
+                           cr::CreativeToolOptionId::TerrainProfileSeed) ==
+                           "0" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
                            cr::CreativeToolOptionId::TerrainPathKind) ==
                            "ROAD" &&
                        cr::creativeToolOptionValueLabel(
@@ -919,11 +1101,34 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainRegionOperation) ==
-                           "RAISE" &&
+                           "Raise" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionMask) ==
+                           "Rectangle" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainRegionAmount) ==
                            "1 CELL" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionTargetHeight) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionNoiseRelief) ==
+                           "4 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionNoiseScale) ==
+                           "12 CELLS" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionSeed) == "1" &&
+                       cr::creativeToolOptionValueLabel(
+                           settings,
+                           cr::CreativeToolOptionId::TerrainRegionFeather) ==
+                           "0 CELLS" &&
                        cr::creativeToolOptionValueLabel(
                            settings,
                            cr::CreativeToolOptionId::TerrainStampMode) ==
@@ -1040,11 +1245,19 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.terrainSculptStrength ==
                       cr::CreativeTerrainSculptStrength::TwoCells,
               "terrain sculpt strength cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptTargetHeight, 1)
+                  .changed &&
+                  settings.terrainSculptTargetHeightCells == 5U,
+              "terrain sculpt target height adjusts numerically") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainSculptFalloff, 1)
                   .changed &&
                   settings.terrainSculptFalloff ==
                       cr::CreativeTerrainSculptFalloff::Linear,
               "terrain sculpt falloff cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainSculptMask, 1).changed &&
+                  settings.terrainSculptMask ==
+                      cr::CreativeTerrainSculptMask::Square,
+              "terrain sculpt mask cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainRodStampMode, 1).changed &&
                   settings.terrainRodStampMode ==
                       cr::CreativeTerrainRodStampMode::Seed,
@@ -1071,19 +1284,16 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                       cr::CreativeTerrainProfileRodPolicy::Existing,
               "terrain profile rod policy cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainProfileRadius, 1).changed &&
-                  settings.terrainProfileRadius ==
-                      cr::CreativeTerrainProfileRadius::EightCells,
-              "terrain profile radius cycles") &&
+                  settings.terrainProfileRadiusCells == 5U,
+              "terrain profile radius adjusts one cell") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainProfileAmplitude, 1)
                   .changed &&
-                  settings.terrainProfileAmplitude ==
-                      cr::CreativeTerrainProfileAmplitude::EightCells,
-              "terrain profile amplitude cycles") &&
+                  settings.terrainProfileAmplitudeCells == 5U,
+              "terrain profile amplitude adjusts one cell") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainProfileSpacing, 1)
                   .changed &&
-                  settings.terrainProfileSpacing ==
-                      cr::CreativeTerrainProfileSpacing::TwoCells,
-              "terrain profile spacing cycles") &&
+                  settings.terrainProfileSpacingCells == 2U,
+              "terrain profile spacing adjusts one cell") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainProfileDirection, 1)
                   .changed &&
                   settings.terrainProfileDirection ==
@@ -1091,9 +1301,11 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
               "terrain profile direction cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainProfileFrequency, 1)
                   .changed &&
-                  settings.terrainProfileFrequency ==
-                      cr::CreativeTerrainProfileFrequency::TwoCycles,
-              "terrain profile frequency cycles") &&
+                  settings.terrainProfileFrequencyCycles == 2U,
+              "terrain profile frequency adjusts one cycle") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainProfileSeed, 1).changed &&
+                  settings.terrainProfileSeed == 1U,
+              "terrain profile seed adjusts deterministically") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainPathKind, 1).changed &&
                   settings.terrainPathKind ==
                       cr::CreativeTerrainPathKind::River,
@@ -1114,13 +1326,34 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
               "terrain path rise depth cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainRegionOperation, 1)
                   .changed &&
-                  settings.terrainRegionOperation ==
-                      cr::CreativeTerrainRegionOperation::Lower,
+                  settings.terrainRegionRecipe.mode ==
+                      cr::CreativeTerrainRegionMode::Lower,
               "terrain region operation cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionMask, 1).changed &&
+                  settings.terrainRegionRecipe.mask ==
+                      cr::CreativeTerrainCompositionMask::Ellipse,
+              "terrain region mask cycles") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainRegionAmount, 1).changed &&
-                  settings.terrainRegionAmount ==
-                      cr::CreativeTerrainRegionAmount::TwoCells,
-              "terrain region amount cycles") &&
+                  settings.terrainRegionRecipe.amountCells == 2U,
+              "terrain region amount steps exactly") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionTargetHeight, 1)
+                  .changed &&
+                  settings.terrainRegionRecipe.targetHeightCells == 5U,
+              "terrain region target steps exactly") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionNoiseRelief, 1)
+                  .changed &&
+                  settings.terrainRegionRecipe.noiseReliefCells == 5U,
+              "terrain region relief steps exactly") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionNoiseScale, 1)
+                  .changed &&
+                  settings.terrainRegionRecipe.noiseScaleCells == 13.0,
+              "terrain region noise scale steps exactly") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionSeed, 1).changed &&
+                  settings.terrainRegionRecipe.seed == 2U,
+              "terrain region seed steps deterministically") &&
+       expect(adjust(cr::CreativeToolOptionId::TerrainRegionFeather, 1).changed &&
+                  settings.terrainRegionRecipe.featherCells == 1U,
+              "terrain region feather steps exactly") &&
        expect(adjust(cr::CreativeToolOptionId::TerrainStampMode, 1).changed &&
                   settings.terrainStampMode ==
                       cr::CreativeTerrainStampMode::Replace,
@@ -1136,6 +1369,31 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
        expect(adjust(cr::CreativeToolOptionId::ShapeBrushAxis, 1).changed &&
                   settings.shapeBrushAxis == cr::CreativeShapeBrushAxis::Z,
               "shape axis cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::VolumeFillOverlapPolicy, 1)
+                  .changed &&
+                  settings.volumeFillOverlapPolicy ==
+                      cr::CreativeVolumeFillOverlapPolicy::ReplaceExisting,
+              "volume fill overlap policy cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::VolumeHollowThickness, 1)
+                  .changed &&
+                  settings.volumeHollowThickness ==
+                      cr::CreativeVolumeHollowThickness::TwoCells,
+              "volume hollow thickness cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::VolumeHollowAlignment, 1)
+                  .changed &&
+                  settings.volumeHollowAlignment ==
+                      cr::CreativeVolumeHollowAlignment::Outward,
+              "volume hollow alignment cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::VolumeHollowOpening, 1)
+                  .changed &&
+                  settings.volumeHollowOpening ==
+                      cr::CreativeVolumeHollowOpening::NegativeEnd,
+              "volume hollow opening cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::VolumeHollowCornerRule, 1)
+                  .changed &&
+                  settings.volumeHollowCornerRule ==
+                      cr::CreativeVolumeHollowCornerRule::CutThrough,
+              "volume hollow corner rule cycles") &&
        expect(adjust(cr::CreativeToolOptionId::CloneOffsetAxis, 1).changed &&
                   settings.cloneOffsetAxis == cr::CreativeCloneOffsetAxis::Y,
               "clone axis cycles") &&
@@ -1143,6 +1401,21 @@ bool optionAdjustmentIsDeterministicAndAtomic() {
                   settings.cloneOffsetDistance ==
                       cr::CreativeCloneOffsetDistance::TwoCells,
               "clone distance cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneRotation, 1).changed &&
+                  settings.cloneRotation == cr::CreativeCloneRotation::Degrees90,
+              "clone rotation cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneMirror, 1).changed &&
+                  settings.cloneMirror == cr::CreativeCloneMirror::X,
+              "clone mirror cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneMemberMask, 1).changed &&
+                  settings.volumeCloneMemberMask ==
+                      cr::CreativeVolumeMemberMask::VoxelCells,
+              "clone member mask cycles") &&
+       expect(adjust(cr::CreativeToolOptionId::CloneVoxelOverlapPolicy, 1)
+                  .changed &&
+                  settings.cloneVoxelOverlapPolicy ==
+                      cr::CreativeVolumeCloneVoxelOverlapPolicy::PreserveExisting,
+              "clone voxel overlap cycles") &&
        expect(adjust(cr::CreativeToolOptionId::ArrayDirection, 1).changed &&
                   settings.arrayDirection ==
                       cr::CreativeLinearArrayDirection::NegativeX,
@@ -1226,6 +1499,23 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
         settings, cr::CreativeToolOptionId::MaterialBrushReplaceSource,
         direction, palette);
   };
+  const auto adjustMemberMask = [&settings, &palette](
+                                    std::int32_t direction) {
+    return cr::adjustCreativeToolOption(
+        settings, cr::CreativeToolOptionId::ReplaceMemberMask, direction,
+        palette);
+  };
+  const auto adjustEraseSource = [&settings, &palette](
+                                     std::int32_t direction) {
+    return cr::adjustCreativeToolOption(
+        settings, cr::CreativeToolOptionId::EraseSource, direction, palette);
+  };
+  const auto adjustEraseMemberMask = [&settings, &palette](
+                                         std::int32_t direction) {
+    return cr::adjustCreativeToolOption(
+        settings, cr::CreativeToolOptionId::EraseMemberMask, direction,
+        palette);
+  };
 
   bool ok = expect(adjustSource(1).changed &&
                        settings.replaceSourceKind ==
@@ -1251,6 +1541,38 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
                        settings.materialBrushReplaceSourceKind ==
                            cr::CreativeObjectKind::Unknown,
                    "material brush source skips non-voxel palette entries") &&
+            expect(adjustMemberMask(1).changed &&
+                       settings.volumeReplaceMemberMask ==
+                           cr::CreativeVolumeMemberMask::VoxelCells &&
+                       cr::creativeVolumeMemberMaskIncludesVoxels(
+                           settings.volumeReplaceMemberMask) &&
+                       !cr::creativeVolumeMemberMaskIncludesObjects(
+                           settings.volumeReplaceMemberMask),
+                   "replace members wrap from both to voxels") &&
+            expect(adjustMemberMask(1).changed &&
+                       settings.volumeReplaceMemberMask ==
+                           cr::CreativeVolumeMemberMask::DocumentObjects &&
+                       !cr::creativeVolumeMemberMaskIncludesVoxels(
+                           settings.volumeReplaceMemberMask) &&
+                       cr::creativeVolumeMemberMaskIncludesObjects(
+                           settings.volumeReplaceMemberMask),
+                   "replace members advance to document objects") &&
+            expect(adjustMemberMask(1).changed &&
+                       settings.volumeReplaceMemberMask ==
+                           cr::CreativeVolumeMemberMask::Both &&
+                       cr::creativeVolumeMemberMaskIncludesVoxels(
+                           settings.volumeReplaceMemberMask) &&
+                       cr::creativeVolumeMemberMaskIncludesObjects(
+                           settings.volumeReplaceMemberMask),
+                   "replace members advance to both domains") &&
+            expect(adjustEraseSource(1).changed &&
+                       settings.eraseSourceKind ==
+                           cr::CreativeObjectKind::Wall,
+                   "erase source cycles independently") &&
+            expect(adjustEraseMemberMask(1).changed &&
+                       settings.volumeEraseMemberMask ==
+                           cr::CreativeVolumeMemberMask::VoxelCells,
+                   "erase member mask cycles independently") &&
             expect(cr::creativeMaterialBrushPaintAllows(
                        cr::CreativeMaterialBrushMask::Replace,
                        cr::CreativeObjectKind::Wall,
@@ -1290,6 +1612,13 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
               "invalid clone cell size fails closed") &&
        ok;
 
+  settings.cloneOffsetAxis = cr::CreativeCloneOffsetAxis::NegativeX;
+  settings.cloneOffsetDistance = cr::CreativeCloneOffsetDistance::TwoCells;
+  ok = expect(cr::tryCreativeCloneOffset(settings, 0.5, offset) &&
+                  offset.x == -1.0 && offset.y == 0.0 && offset.z == 0.0,
+              "clone offset supports negative directions") &&
+       ok;
+
   cr::CreativeToolSettings noPalette = cr::makeDefaultCreativeToolSettings();
   const cr::CreativeToolOptionAdjustReceipt unavailable =
       cr::adjustCreativeToolOption(
@@ -1297,6 +1626,9 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
   const cr::CreativeToolOptionAdjustReceipt brushUnavailable =
       cr::adjustCreativeToolOption(
           noPalette, cr::CreativeToolOptionId::MaterialBrushReplaceSource, 1);
+  const cr::CreativeToolOptionAdjustReceipt eraseUnavailable =
+      cr::adjustCreativeToolOption(
+          noPalette, cr::CreativeToolOptionId::EraseSource, 1);
   return expect(!unavailable.accepted && !unavailable.changed &&
                     unavailable.status ==
                         cr::CreativeToolOptionAdjustStatus::NoAvailableValue &&
@@ -1307,6 +1639,10 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
                     noPalette.materialBrushReplaceSourceKind ==
                         cr::CreativeObjectKind::Unknown,
                 "missing palette also leaves brush filter unchanged") &&
+         expect(!eraseUnavailable.accepted && !eraseUnavailable.changed &&
+                    noPalette.eraseSourceKind ==
+                        cr::CreativeObjectKind::Unknown,
+                "missing palette leaves erase filter unchanged") &&
          ok;
 }
 
@@ -1607,6 +1943,41 @@ bool selectionPlacementPrecisionIsExactAndFailClosed() {
               "free-axis nudge fails without changing offset") &&
        ok;
 
+  cr::CreativeSelectionPlacementTargetRequest localTarget;
+  localTarget.aimedAnchor = {2.0, 0.0, -3.0};
+  localTarget.axis = cr::CreativeSelectionPlacementAxis::X;
+  localTarget.coordinateSpace =
+      cr::CreativeSelectionPlacementCoordinateSpace::Local;
+  localTarget.coordinateBasisEulerRadians =
+      {0.0, std::numbers::pi * 0.5, 0.0};
+  localTarget.snapStepMeters = 0.5;
+  const cr::CreativeSelectionPlacementTargetResult localConstrained =
+      cr::resolveCreativeSelectionPlacementTarget(localTarget);
+  cr::CreativeSelectionPlacementNudgeRequest localNudge;
+  localNudge.axis = cr::CreativeSelectionPlacementAxis::X;
+  localNudge.coordinateSpace = localTarget.coordinateSpace;
+  localNudge.coordinateBasisEulerRadians =
+      localTarget.coordinateBasisEulerRadians;
+  localNudge.snapStepMeters = 0.5;
+  localNudge.steps = 2;
+  const cr::CreativeSelectionPlacementNudgeReceipt localNudged =
+      cr::nudgeCreativeSelectionPlacementOffset(localNudge);
+  localTarget.nudgeOffset = localNudged.offset;
+  const cr::CreativeSelectionPlacementTargetResult localWithNudge =
+      cr::resolveCreativeSelectionPlacementTarget(localTarget);
+  ok = expect(localConstrained.accepted &&
+                  near(localConstrained.targetAnchor.x, 0.0) &&
+                  near(localConstrained.targetAnchor.y, 0.0) &&
+                  near(localConstrained.targetAnchor.z, -3.0),
+              "local X constraint projects onto the frozen rotated basis") &&
+       expect(localNudged.accepted &&
+                  near(localNudged.offset.x, 0.0) &&
+                  near(localNudged.offset.z, -1.0) &&
+                  localWithNudge.accepted &&
+                  near(localWithNudge.targetAnchor.z, -4.0),
+              "local nudge advances on the same basis used by targeting") &&
+       ok;
+
   target.snapStepMeters = std::numeric_limits<double>::infinity();
   const cr::CreativeSelectionPlacementTargetResult invalidTarget =
       cr::resolveCreativeSelectionPlacementTarget(target);
@@ -1619,8 +1990,13 @@ bool selectionPlacementPrecisionIsExactAndFailClosed() {
   nudge.steps = 2;
   const cr::CreativeSelectionPlacementNudgeReceipt overflow =
       cr::nudgeCreativeSelectionPlacementOffset(nudge);
+  localTarget.coordinateSpace =
+      static_cast<cr::CreativeSelectionPlacementCoordinateSpace>(255U);
+  const cr::CreativeSelectionPlacementTargetResult invalidSpace =
+      cr::resolveCreativeSelectionPlacementTarget(localTarget);
   return expect(!invalidTarget.accepted && !invalidAxis.accepted &&
-                    !overflow.accepted && !overflow.changed,
+                    !invalidSpace.accepted && !overflow.accepted &&
+                    !overflow.changed,
                 "invalid target, axis, and overflowing nudge fail closed") &&
          ok;
 }
@@ -1711,6 +2087,326 @@ bool selectionPlacementScalePlanMatchesAtomicCommit() {
          ok;
 }
 
+bool selectionPlacementPivotModesSharePreviewAndCommitGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Pivot Modes");
+  static_cast<void>(document.assignId(901U));
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Crate;
+  create.name = "Left";
+  create.transform.position = {0.0, 0.5, 0.0};
+  create.hasTransformOverride = true;
+  const cr::CreativeDocumentCreateReceipt left = document.createObject(create);
+  create.name = "Right";
+  create.transform.position = {4.0, 0.5, 0.0};
+  const cr::CreativeDocumentCreateReceipt right = document.createObject(create);
+  const std::array ids{left.objectId, right.objectId};
+
+  cr::CreativeSelectionPlacementRequest individual;
+  individual.mode = cr::CreativeSelectionPlacementMode::Copy;
+  individual.sourceAnchor = {2.0, 0.5, 0.0};
+  individual.targetAnchor = {12.0, 0.5, 0.0};
+  individual.pivotMode =
+      cr::CreativeSelectionPlacementPivotMode::IndividualOrigins;
+  individual.coordinateSpace =
+      cr::CreativeSelectionPlacementCoordinateSpace::Local;
+  individual.coordinateBasisEulerRadians = {0.0, 0.0,
+                                             std::numbers::pi * 0.5};
+  individual.scaleFactor = {2.0, 1.0, 0.5};
+  individual.hasAxisAngleRotation = true;
+  individual.rotationAxis = cr::CreativeAxis3::Y;
+  individual.rotationRadians = std::numbers::pi * 0.5;
+
+  const cr::CreativeSelectionPlacementPlan individualPlan =
+      cr::planCreativeSelectionPlacement(document.objects(), individual);
+  cr::CreativeSelectionPlacementRequest shared = individual;
+  shared.pivotMode = cr::CreativeSelectionPlacementPivotMode::SharedAnchor;
+  const cr::CreativeSelectionPlacementPlan sharedPlan =
+      cr::planCreativeSelectionPlacement(document.objects(), shared);
+
+  cr::CreativeVec3 leftOrigin{};
+  cr::CreativeObject boundsOnly;
+  boundsOnly.id = 99U;
+  boundsOnly.kind = cr::CreativeObjectKind::Room;
+  boundsOnly.bounds = {{2.0, 1.0, 4.0}, {6.0, 5.0, 10.0}};
+  cr::CreativeVec3 boundsOrigin{};
+  bool ok = expect(individualPlan.accepted && sharedPlan.accepted &&
+                       individualPlan.objects.size() == 2U &&
+                       sharedPlan.objects.size() == 2U,
+                   "shared and individual pivot plans are accepted") &&
+            expect(cr::creativeVec3ExactlyEqual(
+                       individualPlan.objects[0].transform.position,
+                       {10.0, 0.5, 0.0}) &&
+                       cr::creativeVec3ExactlyEqual(
+                           individualPlan.objects[1].transform.position,
+                           {14.0, 0.5, 0.0}) &&
+                       !cr::creativeVec3ExactlyEqual(
+                           sharedPlan.objects[0].transform.position,
+                           individualPlan.objects[0].transform.position),
+                   "individual origins preserve spacing while shared pivot "
+                   "rotates and scales the assembly") &&
+            expect(cr::resolveCreativeSelectionPlacementObjectOrigin(
+                       document.objects().front(), leftOrigin) &&
+                       cr::creativeVec3ExactlyEqual(leftOrigin,
+                                                    {0.0, 0.5, 0.0}) &&
+                       cr::resolveCreativeSelectionPlacementObjectOrigin(
+                           boundsOnly, boundsOrigin) &&
+                       cr::creativeVec3ExactlyEqual(boundsOrigin,
+                                                    {4.0, 3.0, 7.0}),
+                   "active origins resolve from authored transforms or "
+                   "world extents");
+
+  cr::CreativeDocument movedDocument = document;
+  cr::CreativeSelectionPlacementRequest move = individual;
+  move.mode = cr::CreativeSelectionPlacementMode::Move;
+  const cr::CreativeSelectionPlacementReceipt moved =
+      cr::placeDocumentObjectsAtomically(movedDocument, ids, move);
+  const cr::CreativeObject* movedLeft = movedDocument.findObject(left.objectId);
+  const cr::CreativeObject* movedRight =
+      movedDocument.findObject(right.objectId);
+  ok = expect(moved.accepted && moved.changed && movedLeft != nullptr &&
+                  movedRight != nullptr &&
+                  cr::creativeVec3ExactlyEqual(
+                      movedLeft->transform.position,
+                      individualPlan.objects[0].transform.position) &&
+                  cr::creativeVec3ExactlyEqual(
+                      movedRight->transform.position,
+                      individualPlan.objects[1].transform.position) &&
+                  cr::creativeVec3ExactlyEqual(
+                      movedLeft->transform.rotationEulerRadians,
+                      individualPlan.objects[0].transform.rotationEulerRadians) &&
+                  cr::creativeVec3ExactlyEqual(
+                      movedLeft->transform.scale,
+                      individualPlan.objects[0].transform.scale),
+              "individual-origin move commit exactly matches preview") &&
+       ok;
+
+  cr::CreativeClipboard clipboard;
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(document, ids, clipboard);
+  cr::CreativeClipboardPasteRequest paste;
+  paste.offset = {10.0, 0.0, 0.0};
+  paste.pivotMode =
+      cr::CreativeSelectionPlacementPivotMode::IndividualOrigins;
+  paste.coordinateSpace = individual.coordinateSpace;
+  paste.coordinateBasisEulerRadians =
+      individual.coordinateBasisEulerRadians;
+  paste.scaleFactor = individual.scaleFactor;
+  paste.hasTransformAnchor = true;
+  paste.transformAnchor = individual.sourceAnchor;
+  paste.hasAxisAngleRotation = true;
+  paste.rotationAxis = individual.rotationAxis;
+  paste.rotationRadians = individual.rotationRadians;
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, paste);
+  const cr::CreativeObject* pastedLeft =
+      pasted.pastedObjectIds.empty()
+          ? nullptr
+          : document.findObject(pasted.pastedObjectIds.front());
+  const cr::CreativeObject* pastedRight =
+      pasted.pastedObjectIds.size() < 2U
+          ? nullptr
+          : document.findObject(pasted.pastedObjectIds[1]);
+  ok = expect(copied.accepted && pasted.accepted && pasted.changed &&
+                  pastedLeft != nullptr && pastedRight != nullptr,
+              "individual-origin duplicate commits both objects") &&
+       expect(pastedLeft != nullptr && pastedRight != nullptr &&
+                  cr::creativeVec3ExactlyEqual(
+                      pastedLeft->transform.position,
+                      individualPlan.objects[0].transform.position) &&
+                  cr::creativeVec3ExactlyEqual(
+                      pastedRight->transform.position,
+                      individualPlan.objects[1].transform.position),
+              "individual-origin duplicate positions match preview") &&
+       expect(pastedLeft != nullptr &&
+                  cr::creativeVec3ExactlyEqual(
+                      pastedLeft->transform.scale,
+                      individualPlan.objects[0].transform.scale) &&
+                  cr::creativeVec3ExactlyEqual(
+                      pastedLeft->transform.rotationEulerRadians,
+                      individualPlan.objects[0].transform.rotationEulerRadians),
+              "individual-origin duplicate rotation and scale match preview") &&
+       ok;
+
+  individual.pivotMode =
+      static_cast<cr::CreativeSelectionPlacementPivotMode>(255U);
+  const cr::CreativeSelectionPlacementPlan invalid =
+      cr::planCreativeSelectionPlacement(document.objects(), individual);
+  return expect(!invalid.accepted &&
+                    invalid.status ==
+                        cr::CreativeSelectionPlacementStatus::InvalidRequest,
+                "invalid pivot mode fails closed") &&
+         ok;
+}
+
+bool selectionPlacementLocalSpaceUsesFrozenBasis() {
+  const auto near = [](double actual, double expected) {
+    return std::fabs(actual - expected) <= 1.0e-9;
+  };
+  cr::CreativeObject object;
+  object.id = 1U;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.name = "Local Basis";
+  object.transform.position = {0.0, 0.5, -2.0};
+  object.transform.rotationEulerRadians.y = std::numbers::pi * 0.5;
+  object.bounds = {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
+  const std::array source{object};
+
+  cr::CreativeSelectionPlacementRequest local;
+  local.coordinateSpace =
+      cr::CreativeSelectionPlacementCoordinateSpace::Local;
+  local.coordinateBasisEulerRadians = object.transform.rotationEulerRadians;
+  local.scaleFactor = {2.0, 1.0, 1.0};
+  const cr::CreativeSelectionPlacementPlan localPlan =
+      cr::planCreativeSelectionPlacement(source, local);
+  cr::CreativeSelectionPlacementRequest world = local;
+  world.coordinateSpace =
+      cr::CreativeSelectionPlacementCoordinateSpace::World;
+  world.coordinateBasisEulerRadians = {};
+  const cr::CreativeSelectionPlacementPlan worldPlan =
+      cr::planCreativeSelectionPlacement(source, world);
+
+  const cr::CreativeVec3 aroundY = cr::rotateCreativeVectorAroundAxis(
+      {1.0, 0.0, 0.0}, {0.0, 2.0, 0.0}, std::numbers::pi * 0.5);
+  const cr::CreativeVec3 invalidAxis = cr::rotateCreativeVectorAroundAxis(
+      {1.0, 0.0, 0.0}, {}, std::numbers::pi * 0.5);
+  return expect(localPlan.accepted && worldPlan.accepted,
+                "world and local coordinate plans are accepted") &&
+         expect(near(localPlan.objects[0].transform.position.x, 0.0) &&
+                    near(localPlan.objects[0].transform.position.z, -4.0) &&
+                    near(worldPlan.objects[0].transform.position.x, 0.0) &&
+                    near(worldPlan.objects[0].transform.position.z, -2.0),
+                "local scaling follows the frozen rotated X basis") &&
+         expect(near(aroundY.x, 0.0) && near(aroundY.y, 0.0) &&
+                    near(aroundY.z, -1.0) &&
+                    !cr::isFiniteCreativeVec3(invalidAxis),
+                "arbitrary world-axis rotation normalizes and fails closed");
+}
+
+bool selectionPlacementCapabilitiesAreExplicitAndFailClosed() {
+  cr::CreativeObject crate;
+  crate.id = 1U;
+  crate.kind = cr::CreativeObjectKind::Crate;
+  crate.bounds = {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
+  cr::CreativeObject room;
+  room.id = 2U;
+  room.kind = cr::CreativeObjectKind::Room;
+  room.bounds = {{0.0, 0.0, 0.0}, {4.0, 3.0, 6.0}};
+  cr::CreativeObject route;
+  route.id = 3U;
+  route.kind = cr::CreativeObjectKind::PatrolRoute;
+  route.pathPoints = {{{0.0, 0.0, 0.0}}, {{2.0, 0.0, 0.0}}};
+
+  const std::array crateSelection{crate};
+  const std::array roomSelection{room};
+  const std::array routeSelection{route};
+  const std::array mixedSelection{crate, room, route};
+  const cr::CreativeSelectionPlacementCapabilities crateCapabilities =
+      cr::resolveCreativeSelectionPlacementCapabilities(crateSelection);
+  const cr::CreativeSelectionPlacementCapabilities roomCapabilities =
+      cr::resolveCreativeSelectionPlacementCapabilities(roomSelection);
+  const cr::CreativeSelectionPlacementCapabilities routeCapabilities =
+      cr::resolveCreativeSelectionPlacementCapabilities(routeSelection);
+  const cr::CreativeSelectionPlacementCapabilities mixedCapabilities =
+      cr::resolveCreativeSelectionPlacementCapabilities(mixedSelection);
+
+  bool ok = expect(
+      crateCapabilities.resolved && crateCapabilities.translate &&
+          crateCapabilities.rotation ==
+              cr::CreativeObjectRotationSupport::Arbitrary &&
+          crateCapabilities.scale ==
+              cr::CreativeObjectScaleSupport::NonUniform &&
+          crateCapabilities.mirror,
+      "transform-backed object exposes arbitrary rotation and nonuniform scale");
+  ok = expect(
+           roomCapabilities.resolved && roomCapabilities.translate &&
+               roomCapabilities.rotation ==
+                   cr::CreativeObjectRotationSupport::QuarterTurns &&
+               roomCapabilities.scale ==
+                   cr::CreativeObjectScaleSupport::NonUniform,
+           "bounds-only room explicitly exposes quarter-turn rotation") &&
+       expect(routeCapabilities.resolved && routeCapabilities.translate &&
+                  routeCapabilities.rotation ==
+                      cr::CreativeObjectRotationSupport::Arbitrary &&
+                  routeCapabilities.scale ==
+                      cr::CreativeObjectScaleSupport::NonUniform,
+              "path storage exposes exact point transforms") &&
+       expect(mixedCapabilities.resolved && mixedCapabilities.translate &&
+                  mixedCapabilities.rotation ==
+                      cr::CreativeObjectRotationSupport::QuarterTurns &&
+                  mixedCapabilities.scale ==
+                      cr::CreativeObjectScaleSupport::NonUniform,
+              "mixed selection intersects every object's capabilities") &&
+       ok;
+
+  cr::CreativeSelectionPlacementRequest arbitraryRoom;
+  arbitraryRoom.mode = cr::CreativeSelectionPlacementMode::Copy;
+  arbitraryRoom.hasAxisAngleRotation = true;
+  arbitraryRoom.rotationAxis = cr::CreativeAxis3::Y;
+  arbitraryRoom.rotationRadians = 37.5 * std::numbers::pi / 180.0;
+  const cr::CreativeSelectionPlacementPlan rejectedArbitrary =
+      cr::planCreativeSelectionPlacement(roomSelection, arbitraryRoom);
+  arbitraryRoom.rotationRadians = std::numbers::pi * 0.5;
+  const cr::CreativeSelectionPlacementPlan acceptedQuarterTurn =
+      cr::planCreativeSelectionPlacement(roomSelection, arbitraryRoom);
+  arbitraryRoom.coordinateSpace =
+      cr::CreativeSelectionPlacementCoordinateSpace::Local;
+  arbitraryRoom.coordinateBasisEulerRadians =
+      {0.0, 37.5 * std::numbers::pi / 180.0, 0.0};
+  arbitraryRoom.hasAxisAngleRotation = false;
+  arbitraryRoom.rotationRadians = 0.0;
+  arbitraryRoom.scaleFactor = {2.0, 1.0, 0.5};
+  const cr::CreativeSelectionPlacementPlan rejectedLocalBounds =
+      cr::planCreativeSelectionPlacement(roomSelection, arbitraryRoom);
+  return expect(!rejectedArbitrary.accepted &&
+                    rejectedArbitrary.status ==
+                        cr::CreativeSelectionPlacementStatus::UnsupportedObject &&
+                    rejectedArbitrary.reasonCode ==
+                        "selection_placement_rotation_not_representable",
+                "bounds-only arbitrary-angle Copy fails before envelope drift") &&
+         expect(acceptedQuarterTurn.accepted,
+                "bounds-only world quarter turn remains representable") &&
+         expect(!rejectedLocalBounds.accepted &&
+                    rejectedLocalBounds.reasonCode ==
+                        "selection_placement_local_bounds_not_representable",
+                "bounds-only nonuniform local scale rejects a rotated basis") &&
+         ok;
+}
+
+bool selectionPlacementPreservesExternalAttachments() {
+  cr::CreativeObject parent;
+  parent.id = 10U;
+  parent.kind = cr::CreativeObjectKind::Group;
+  parent.transform.position = {0.0, 0.0, 0.0};
+  cr::CreativeObject child;
+  child.id = 11U;
+  child.kind = cr::CreativeObjectKind::Wall;
+  child.transform.position = {1.0, 1.5, 0.0};
+  child.bounds = {{0.5, 0.0, -0.1}, {1.5, 3.0, 0.1}};
+  child.parentId = parent.id;
+  child.attachmentSocket = "wall_socket";
+
+  cr::CreativeSelectionPlacementRequest move;
+  move.mode = cr::CreativeSelectionPlacementMode::Move;
+  move.targetAnchor = {5.0, 0.0, 0.0};
+  const std::array childOnly{child};
+  const cr::CreativeSelectionPlacementPlan rejected =
+      cr::planCreativeSelectionPlacement(childOnly, move);
+  const std::array assembly{parent, child};
+  const cr::CreativeSelectionPlacementPlan accepted =
+      cr::planCreativeSelectionPlacement(assembly, move);
+
+  return expect(!rejected.accepted &&
+                    rejected.failedObjectId == child.id &&
+                    rejected.reasonCode ==
+                        "selection_placement_external_parent",
+                "moving an attached child without its parent fails closed") &&
+         expect(accepted.accepted && accepted.objects.size() == 2U &&
+                    accepted.objects[1].parentId == child.parentId &&
+                    accepted.objects[1].attachmentSocket ==
+                        child.attachmentSocket,
+                "moving a complete assembly preserves hierarchy and socket");
+}
+
 bool selectionPlacementMoveIsAtomicAndFailClosed() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Placement");
   cr::CreativeDocumentCreateRequest wallRequest;
@@ -1797,7 +2493,7 @@ int main() {
                   toolSwitchAbandonsDrag() &&
                   moveToolPointerMoveKeepsGhostPreview() &&
                   navigatePointerInputIsInert() &&
-                  measurePressMoveReleaseEmitsMeasurementIntents() &&
+                  measureClicksPreviewAndCompletePaths() &&
                   unknownInputEmitsNoIntent() &&
                   optionDescriptorsAreContextualAndBounded() &&
                   optionAdjustmentIsDeterministicAndAtomic() &&
@@ -1807,6 +2503,10 @@ int main() {
                   resetTransformPreservesPositionAndAppliesAtomically() &&
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
                   selectionPlacementScalePlanMatchesAtomicCommit() &&
+                  selectionPlacementPivotModesSharePreviewAndCommitGeometry() &&
+                  selectionPlacementLocalSpaceUsesFrozenBasis() &&
+                  selectionPlacementCapabilitiesAreExplicitAndFailClosed() &&
+                  selectionPlacementPreservesExternalAttachments() &&
                   selectionPlacementPrecisionIsExactAndFailClosed() &&
                   selectionPlacementMoveIsAtomicAndFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

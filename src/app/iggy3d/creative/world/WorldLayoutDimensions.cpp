@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 
 #include <algorithm>
@@ -99,8 +100,9 @@ CreativeWorldLayoutLevelDimensions measureCreativeWorldLayoutLevelDimensions(
       level.ceilingThicknessLayers == 0U ||
       level.roofThicknessLayers == 0U ||
       !validCreativeStructuralRoofSettings(
-          level.roofStyle, level.roofRidgeAxis, level.roofPitchDegrees,
-          level.roofOverhangCells) ||
+          level.roofStyle, level.roofRidgeAxis, level.roofSlopeDirection,
+          level.roofPitchDegrees, level.roofOverhangCells,
+          level.roofMaterial) ||
       level.roofOverhangCells >
           kMaximumCreativeWorldLayoutRoofOverhangCells) {
     reject(result, CreativeWorldLayoutDimensionStatus::InvalidLevel,
@@ -278,7 +280,7 @@ measureCreativeWorldLayoutBuildingDimensions(
       result.roofBaseMeters = level.upperSurfaceSupportMeters;
       const CreativeWorldLayoutLevel& sourceLevel = layout.levels[index];
       const bool authoredRoof =
-          sourceLevel.roofStyle == CreativeStructuralRoofStyle::Gable ||
+          sourceLevel.roofStyle != CreativeStructuralRoofStyle::Flat ||
           sourceLevel.roofOverhangCells > 0.0;
       if (authoredRoof) {
         const CreativeWorldLayoutRoofPlan roof =
@@ -392,46 +394,22 @@ measureCreativeWorldLayoutOpeningDimensions(
     return result;
   }
   const CreativeWorldLayoutOpening& opening = layout.openings[openingIndex];
+  const CreativeWorldLayoutOpeningHostFrame host =
+      resolveCreativeWorldLayoutOpeningHost(layout, opening);
+  if (!host.accepted || host.buildingIndex >= layout.buildings.size()) {
+    reject(result, CreativeWorldLayoutDimensionStatus::InvalidOpening,
+           "creative_world_layout_dimensions_opening_host_invalid");
+    return result;
+  }
   double wallHeightMeters = 0.0;
   double wallThicknessMeters = 0.0;
-  if (opening.hostKind == CreativeWorldLayoutOpeningHostKind::Wall &&
-      opening.wallIndex < layout.walls.size()) {
-    const CreativeWorldLayoutWall& wall = layout.walls[opening.wallIndex];
-    result.buildingIndex = wall.buildingIndex;
-    if (wall.buildingIndex >= layout.buildings.size() ||
-        !worldCoordinate(grid.origin.y, grid.cellSizeMeters, wall.baseLayer,
-                         result.wallBaseMeters) ||
-        !scaledLength(grid.cellSizeMeters,
-                      static_cast<double>(wall.heightCells),
-                      wallHeightMeters) ||
-        !scaledLength(grid.cellSizeMeters, wall.thicknessCells,
-                      wallThicknessMeters)) {
-      reject(result, CreativeWorldLayoutDimensionStatus::InvalidOpening,
-             "creative_world_layout_dimensions_opening_host_invalid");
-      return result;
-    }
-  } else if (opening.hostKind ==
-                 CreativeWorldLayoutOpeningHostKind::RoomEdge &&
-             opening.roomIndex < layout.rooms.size()) {
-    const CreativeWorldLayoutRoom& room = layout.rooms[opening.roomIndex];
-    const CreativeWorldLayoutLevelDimensions level =
-        measureCreativeWorldLayoutLevelDimensions(grid, layout,
-                                                  room.levelIndex);
-    if (!level.accepted) {
-      reject(result, CreativeWorldLayoutDimensionStatus::InvalidOpening,
-             "creative_world_layout_dimensions_opening_host_invalid");
-      return result;
-    }
-    result.buildingIndex = room.buildingIndex;
-    result.wallBaseMeters = level.wallBaseMeters;
-    wallHeightMeters = level.wallHeightMeters;
-    if (!scaledLength(grid.cellSizeMeters, room.wallThicknessCells,
-                      wallThicknessMeters)) {
-      reject(result, CreativeWorldLayoutDimensionStatus::InvalidOpening,
-             "creative_world_layout_dimensions_opening_host_invalid");
-      return result;
-    }
-  } else {
+  result.buildingIndex = host.buildingIndex;
+  if (!worldCoordinate(grid.origin.y, grid.cellSizeMeters, host.baseLayer,
+                       result.wallBaseMeters) ||
+      !scaledLength(grid.cellSizeMeters, host.wallHeightCells,
+                    wallHeightMeters) ||
+      !scaledLength(grid.cellSizeMeters, host.wallThicknessCells,
+                    wallThicknessMeters)) {
     reject(result, CreativeWorldLayoutDimensionStatus::InvalidOpening,
            "creative_world_layout_dimensions_opening_host_invalid");
     return result;

@@ -385,6 +385,168 @@ bool rejectedPlansAreAtomicAndSpecific() {
                 "closed enum validation rejects invalid profile");
 }
 
+cr::CreativeTerrainSurfacePlan emptyCanonicalTerrain() {
+  return cr::buildCreativeComposedTerrainSurfacePlan(
+      cr::CreativeTerrainField{}, cr::CreativeTerrainHeightField{});
+}
+
+cr::CreativeTerrainProfileRecipe profileRecipe(
+    cr::CreativeTerrainProfileKind kind) {
+  cr::CreativeTerrainProfileRecipe recipe;
+  recipe.profile = kind;
+  recipe.baseHeightCells = 20U;
+  recipe.radiusCells = 4U;
+  recipe.amplitudeCells = 8U;
+  recipe.spacingCells = 1U;
+  return recipe;
+}
+
+bool denseRecipeOwnsEveryShapeAndSetParity() {
+  const cr::CreativeTerrainSurfacePlan canonical = emptyCanonicalTerrain();
+  bool everyShapeReady = true;
+  for (const cr::CreativeTerrainProfileKind kind :
+       {cr::CreativeTerrainProfileKind::Hill,
+        cr::CreativeTerrainProfileKind::Basin,
+        cr::CreativeTerrainProfileKind::Ring,
+        cr::CreativeTerrainProfileKind::Crater,
+        cr::CreativeTerrainProfileKind::Ridge,
+        cr::CreativeTerrainProfileKind::Wave,
+        cr::CreativeTerrainProfileKind::Ripple}) {
+    cr::CreativeTerrainProfileRecipe recipe = profileRecipe(kind);
+    if (kind == cr::CreativeTerrainProfileKind::Wave ||
+        kind == cr::CreativeTerrainProfileKind::Ripple) {
+      recipe.radiusCells = 8U;
+    }
+    const cr::CreativeTerrainProfileRecipeResult result =
+        cr::buildCreativeTerrainProfileRecipe(
+            cr::CreativeTerrainHeightField{}, canonical, recipe);
+    everyShapeReady = everyShapeReady && result.receipt.accepted &&
+                      result.receipt.affectedCellCount > 0U &&
+                      result.heightField.validateInvariants();
+  }
+
+  cr::CreativeTerrainProfileRecipe hill =
+      profileRecipe(cr::CreativeTerrainProfileKind::Hill);
+  hill.radiusCells = 2U;
+  const cr::CreativeTerrainProfileRecipeResult first =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, hill);
+  const cr::CreativeTerrainSurfacePlan firstCanonical =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          cr::CreativeTerrainField{}, first.heightField);
+  const cr::CreativeTerrainProfileRecipeResult repeated =
+      cr::buildCreativeTerrainProfileRecipe(first.heightField,
+                                             firstCanonical, hill);
+  return expect(everyShapeReady,
+                "dense durable recipe evaluates every profile kind") &&
+         expect(first.receipt.accepted &&
+                    first.heightField.bounds() ==
+                        cr::CreativeTerrainHeightFieldBounds{{-2, -2}, 5U,
+                                                             5U} &&
+                    first.receipt.evaluatedCellCount == 13U &&
+                    first.heightField.heightAt({0, 0}) == 28U &&
+                    first.heightField.heightAt({2, 0}) == 20U,
+                "dense hill owns its exact bounded footprint") &&
+         expect(repeated.receipt.accepted &&
+                    repeated.receipt.modifiedCellCount == 0U &&
+                    repeated.receipt.heightHash == first.receipt.heightHash,
+                "dense set recipe is idempotent");
+}
+
+bool denseRecipeSeedSpacingAndFailureContractsAreExplicit() {
+  const cr::CreativeTerrainSurfacePlan canonical = emptyCanonicalTerrain();
+  cr::CreativeTerrainProfileRecipe wave =
+      profileRecipe(cr::CreativeTerrainProfileKind::Wave);
+  wave.radiusCells = 8U;
+  wave.frequency = 1U;
+  const cr::CreativeTerrainProfileRecipeResult base =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, wave);
+  wave.seed = 42U;
+  const cr::CreativeTerrainProfileRecipeResult seeded =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, wave);
+  wave.seed = 0U;
+  wave.spacingCells = 2U;
+  const cr::CreativeTerrainProfileRecipeResult spaced =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, wave);
+
+  cr::CreativeTerrainProfileRecipe existing =
+      profileRecipe(cr::CreativeTerrainProfileKind::Hill);
+  existing.rodPolicy = cr::CreativeTerrainProfileRodPolicy::Existing;
+  const cr::CreativeTerrainProfileRecipeResult noSource =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, existing);
+  cr::CreativeTerrainProfileRecipe undersampled =
+      profileRecipe(cr::CreativeTerrainProfileKind::Ripple);
+  undersampled.radiusCells = 2U;
+  undersampled.frequency = 2U;
+  const cr::CreativeTerrainProfileRecipeResult samplingRejected =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, undersampled);
+  cr::CreativeTerrainProfileRecipe overflow =
+      profileRecipe(cr::CreativeTerrainProfileKind::Hill);
+  overflow.center = {std::numeric_limits<std::int32_t>::max(), 0};
+  const cr::CreativeTerrainProfileRecipeResult overflowRejected =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, overflow);
+  cr::CreativeTerrainProfileRecipe capacity =
+      profileRecipe(cr::CreativeTerrainProfileKind::Hill);
+  capacity.radiusCells = cr::kCreativeTerrainProfileMaximumRadiusCells;
+  const cr::CreativeTerrainProfileRecipeResult capacityRejected =
+      cr::buildCreativeTerrainProfileRecipe(
+          cr::CreativeTerrainHeightField{}, canonical, capacity);
+
+  cr::CreativeTerrainProfileKind parsedKind =
+      cr::CreativeTerrainProfileKind::Count;
+  cr::CreativeTerrainProfileBlend parsedBlend =
+      cr::CreativeTerrainProfileBlend::Count;
+  cr::CreativeTerrainProfileRodPolicy parsedPolicy =
+      cr::CreativeTerrainProfileRodPolicy::Count;
+  cr::CreativeTerrainProfileDirection parsedDirection =
+      cr::CreativeTerrainProfileDirection::Count;
+  return expect(base.receipt.accepted && seeded.receipt.accepted &&
+                    base.receipt.heightHash != seeded.receipt.heightHash,
+                "seed changes oscillatory phase and durable output") &&
+         expect(spaced.receipt.accepted &&
+                    spaced.receipt.heightHash != base.receipt.heightHash,
+                "spacing changes deterministic sampled shape") &&
+         expect(!noSource.receipt.accepted &&
+                    noSource.receipt.status ==
+                        cr::CreativeTerrainProfileRecipeStatus::
+                            NoSourceInFootprint &&
+                    noSource.heightField.cellCount() == 0U,
+                "existing-only recipe rejects an empty footprint atomically") &&
+         expect(!samplingRejected.receipt.accepted &&
+                    samplingRejected.receipt.status ==
+                        cr::CreativeTerrainProfileRecipeStatus::UnderSampled,
+                "durable recipe exposes invalid sampling before commit") &&
+         expect(!overflowRejected.receipt.accepted &&
+                    overflowRejected.receipt.status ==
+                        cr::CreativeTerrainProfileRecipeStatus::
+                            CoordinateOverflow,
+                "durable recipe exposes coordinate overflow") &&
+         expect(!capacityRejected.receipt.accepted &&
+                    capacityRejected.receipt.status ==
+                        cr::CreativeTerrainProfileRecipeStatus::
+                            CapacityExceeded,
+                "durable recipe rejects an oversized dense footprint") &&
+         expect(cr::parseCreativeTerrainProfileKind("RIPPLE", parsedKind) &&
+                    parsedKind == cr::CreativeTerrainProfileKind::Ripple &&
+                    cr::parseCreativeTerrainProfileBlend("ADD", parsedBlend) &&
+                    parsedBlend == cr::CreativeTerrainProfileBlend::Add &&
+                    cr::parseCreativeTerrainProfileRodPolicy(
+                        "EXISTING", parsedPolicy) &&
+                    parsedPolicy ==
+                        cr::CreativeTerrainProfileRodPolicy::Existing &&
+                    cr::parseCreativeTerrainProfileDirection(
+                        "-X +Z", parsedDirection) &&
+                    parsedDirection ==
+                        cr::CreativeTerrainProfileDirection::NegativeXPositiveZ,
+                "durable profile enums round-trip through persistence labels");
+}
+
 }  // namespace
 
 int main() {
@@ -396,5 +558,7 @@ int main() {
   ok = directionAndBlendSemanticsArePinned() && ok;
   ok = everyDirectionAndSamplingCombinationIsExplicit() && ok;
   ok = rejectedPlansAreAtomicAndSpecific() && ok;
+  ok = denseRecipeOwnsEveryShapeAndSetParity() && ok;
+  ok = denseRecipeSeedSpacingAndFailureContractsAreExplicit() && ok;
   return ok ? 0 : 1;
 }

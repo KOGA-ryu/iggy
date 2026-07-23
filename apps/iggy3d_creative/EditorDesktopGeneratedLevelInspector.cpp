@@ -103,70 +103,8 @@ void appendCreativeDesktopGeneratedLevelSettings(
       editActivity, roofLayersEdited, ImGui::IsItemDeactivatedAfterEdit());
 
   ImGui::SeparatorText("Roof shape");
-  ImGui::SetNextItemWidth(148.0F);
-  bool roofStyleEdited = false;
-  if (ImGui::BeginCombo(
-          "Style##generated_level",
-          settings.roofStyle == cr::CreativeStructuralRoofStyle::Gable
-              ? "Gable"
-              : "Flat")) {
-    for (const cr::CreativeStructuralRoofStyle style :
-         {cr::CreativeStructuralRoofStyle::Flat,
-          cr::CreativeStructuralRoofStyle::Gable}) {
-      const bool selected = settings.roofStyle == style;
-      if (ImGui::Selectable(
-              style == cr::CreativeStructuralRoofStyle::Gable ? "Gable"
-                                                               : "Flat",
-              selected)) {
-        settings.roofStyle = style;
-        roofStyleEdited = true;
-      }
-      if (selected) {
-        ImGui::SetItemDefaultFocus();
-      }
-    }
-    ImGui::EndCombo();
-  }
-  observeCreativeDesktopDiscretePropertyEdit(editActivity, roofStyleEdited);
-  ImGui::SetNextItemWidth(112.0F);
-  const bool overhangEdited = ImGui::InputDouble(
-      "Overhang##generated_level", &settings.roofOverhangCells, 0.25, 1.0,
-      "%.2f");
-  observeCreativeDesktopContinuousPropertyEdit(
-      editActivity, overhangEdited, ImGui::IsItemDeactivatedAfterEdit());
-  if (settings.roofStyle == cr::CreativeStructuralRoofStyle::Gable) {
-    ImGui::SetNextItemWidth(148.0F);
-    bool ridgeEdited = false;
-    if (ImGui::BeginCombo(
-            "Ridge##generated_level",
-            settings.roofRidgeAxis == cr::CreativeStructuralRoofRidgeAxis::Z
-                ? "Z axis"
-                : "X axis")) {
-      for (const cr::CreativeStructuralRoofRidgeAxis axis :
-           {cr::CreativeStructuralRoofRidgeAxis::X,
-            cr::CreativeStructuralRoofRidgeAxis::Z}) {
-        const bool selected = settings.roofRidgeAxis == axis;
-        if (ImGui::Selectable(
-                axis == cr::CreativeStructuralRoofRidgeAxis::Z ? "Z axis"
-                                                                : "X axis",
-                selected)) {
-          settings.roofRidgeAxis = axis;
-          ridgeEdited = true;
-        }
-        if (selected) {
-          ImGui::SetItemDefaultFocus();
-        }
-      }
-      ImGui::EndCombo();
-    }
-    observeCreativeDesktopDiscretePropertyEdit(editActivity, ridgeEdited);
-    ImGui::SetNextItemWidth(112.0F);
-    const bool pitchEdited = ImGui::InputDouble(
-        "Pitch##generated_level", &settings.roofPitchDegrees, 1.0, 5.0,
-        "%.1f deg");
-    observeCreativeDesktopContinuousPropertyEdit(
-        editActivity, pitchEdited, ImGui::IsItemDeactivatedAfterEdit());
-  }
+  drawCreativeStructuralRoofSettingsWidgets(
+      settings, editActivity, "generated_level_roof");
   ImGui::EndDisabled();
 
   const bool layersRepresentable =
@@ -186,7 +124,8 @@ void appendCreativeDesktopGeneratedLevelSettings(
       std::isfinite(settings.floorTopLayer) &&
       cr::validCreativeStructuralRoofSettings(
           settings.roofStyle, settings.roofRidgeAxis,
-          settings.roofPitchDegrees, settings.roofOverhangCells) &&
+          settings.roofSlopeDirection, settings.roofPitchDegrees,
+          settings.roofOverhangCells, settings.roofMaterial) &&
       settings.roofOverhangCells <=
           cr::kMaximumCreativeWorldLayoutRoofOverhangCells;
   if (!representable) {

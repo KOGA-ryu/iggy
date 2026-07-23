@@ -14,6 +14,8 @@
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutBuildingRepairs.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.hpp"
 
 #include "EditorWorldLayoutElevation.hpp"
@@ -30,6 +32,16 @@ struct CreativeEditorWorldLayoutEditReceipt {
   bool accepted = false;
   bool changed = false;
   std::string reasonCode = "creative_editor_world_layout_not_requested";
+};
+
+struct CreativeEditorSelectionSynchronizationReceipt {
+  bool accepted = false;
+  bool changed = false;
+  bool sourceSelected = false;
+  std::size_t selectedObjectCount = 0U;
+  cr::CreativeWorldLayoutSourceRef source{};
+  std::string_view reasonCode =
+      "creative_editor_selection_sync_not_requested";
 };
 
 struct CreativeEditorWorldLayoutPreviewReceipt {
@@ -57,14 +69,27 @@ struct CreativeEditorWorldLayoutAdoptionReceipt {
       "creative_editor_world_layout_adoption_not_requested";
 };
 
+// One read-only truth shared by Plan, Elevation, and the 3D viewport. The
+// pointed-to layout is owned by state and remains valid until state mutates.
+struct CreativeEditorWorldLayoutInspection {
+  const cr::CreativeWorldLayout* source = nullptr;
+  CreativeEditorWorldLayoutInspectionSourceKind sourceKind =
+      CreativeEditorWorldLayoutInspectionSourceKind::Authored;
+  CreativeEditorWorldLayoutPreviewValidity previewValidity =
+      CreativeEditorWorldLayoutPreviewValidity::None;
+  cr::CreativeWorldLayoutSourceRef authoredSource;
+  std::uint64_t contentRevision = 0U;
+  bool volatileSource = false;
+  std::string_view reasonCode =
+      "creative_editor_world_layout_inspection_not_requested";
+};
+
 [[nodiscard]] const char* creativeEditorWorldLayoutToolLabel(
     CreativeEditorWorldLayoutTool tool) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutToolIsVerticalConnector(
     CreativeEditorWorldLayoutTool tool) noexcept;
 [[nodiscard]] const char* creativeEditorWorldLayoutPaletteCategoryLabel(
     CreativeEditorWorldLayoutPaletteCategory category) noexcept;
-[[nodiscard]] std::span<const CreativeEditorWorldLayoutPaletteEntry>
-creativeEditorWorldLayoutPaletteEntries() noexcept;
 [[nodiscard]] const char* creativeEditorWorldLayoutAssetCategoryLabel(
     CreativeEditorWorldLayoutAssetCategory category) noexcept;
 [[nodiscard]] const char* creativeEditorWorldLayoutCatalogSnapModeLabel(
@@ -153,6 +178,17 @@ deleteCreativeEditorWorldLayoutSource(
     const cr::CreativeObject& object,
     cr::CreativeGridSettings grid,
     cr::CreativeVec3 worldPoint);
+
+// Synchronizes an already-applied document selection to its deepest common 2D
+// source. A point-resolved preferred source is retained when every selected
+// object belongs to it; otherwise the shared semantic resolver chooses the
+// common ancestor. Empty, mixed, or stale selections clear the 2D source.
+[[nodiscard]] CreativeEditorSelectionSynchronizationReceipt
+synchronizeCreativeEditorWorldLayoutSelection(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& selection,
+    cr::CreativeWorldLayoutSourceRef preferredSource = {});
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 focusCreativeEditorWorldLayoutObjectSource(
     CreativeEditorWorldLayoutState& state,
@@ -174,6 +210,9 @@ creativeEditorWorldLayoutRenderDocument(
 [[nodiscard]] const cr::CreativeWorldLayout&
 creativeEditorWorldLayoutDisplaySource(
     const CreativeEditorWorldLayoutState& state) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutInspection
+inspectCreativeEditorWorldLayout(
+    const CreativeEditorWorldLayoutState& state) noexcept;
 
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutTool(CreativeEditorWorldLayoutState& state,
@@ -189,7 +228,8 @@ applyCreativeEditorWorldLayoutPoint(CreativeEditorWorldLayoutState& state,
 applyCreativeEditorWorldLayoutGesture(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutGesturePhase phase,
-    CreativeEditorWorldLayoutPoint point = {});
+    CreativeEditorWorldLayoutPoint point = {},
+    cr::CreativeGridSettings grid = {});
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutBuildingShell(
     CreativeEditorWorldLayoutState& state,
@@ -216,6 +256,64 @@ createCreativeEditorWorldLayoutRoom(
 setCreativeEditorWorldLayoutRoomSettings(
     CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
     CreativeEditorWorldLayoutRoomSettings settings);
+[[nodiscard]] bool readCreativeEditorWorldLayoutRoomMetadata(
+    const CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomMetadata& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutRoomMetadata(
+    CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutRoomMetadata metadata);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+splitCreativeEditorWorldLayoutRoom(
+    CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    cr::CreativeWorldLayoutRoomSplitAxis axis, std::int32_t coordinate);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+mergeCreativeEditorWorldLayoutRooms(
+    CreativeEditorWorldLayoutState& state, std::size_t primaryRoomIndex,
+    std::size_t secondaryRoomIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+moveCreativeEditorWorldLayoutRoomBoundary(
+    CreativeEditorWorldLayoutState& state, std::size_t topologyEdgeIndex,
+    std::int32_t coordinate);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+moveCreativeEditorWorldLayoutRoomCorner(
+    CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    std::size_t topologyVertexIndex, cr::CreativeTerrainCoord2 position);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutRoomEdgeSettings(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutRoomEdgeSettingsRequest request);
+
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+splitCreativeEditorWorldLayoutWall(
+    CreativeEditorWorldLayoutState& state, std::size_t topologyEdgeIndex,
+    std::uint32_t offsetCells);
+
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+mergeCreativeEditorWorldLayoutWalls(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t primaryTopologyEdgeIndex,
+    std::size_t secondaryTopologyEdgeIndex);
+[[nodiscard]] CreativeEditorWorldLayoutRoomBoundaryTarget
+findCreativeEditorWorldLayoutRoomBoundaryTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutRoomBoundaryManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoomBoundaryManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
+[[nodiscard]] CreativeEditorWorldLayoutRoomCornerTarget
+findCreativeEditorWorldLayoutRoomCornerTarget(
+    const CreativeEditorWorldLayoutState& state, std::size_t roomIndex,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutRoomCornerManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoomCornerManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25);
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutRoomSettingsToDocument(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
@@ -255,7 +353,8 @@ resolveCreativeEditorWorldLayoutVerticalConnectorDirectionHandle(
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 setCreativeEditorWorldLayoutVerticalConnectorSettings(
     CreativeEditorWorldLayoutState& state, std::size_t connectorIndex,
-    CreativeEditorWorldLayoutVerticalConnectorSettings settings);
+    CreativeEditorWorldLayoutVerticalConnectorSettings settings,
+    cr::CreativeGridSettings grid = {});
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutVerticalConnectorSettingsToDocument(
     CreativeEditorWorldLayoutState& state, cr::CreativeAppState& appState,
@@ -275,7 +374,8 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
-    double toleranceCells = 0.25);
+    double toleranceCells = 0.25,
+    cr::CreativeGridSettings grid = {});
 [[nodiscard]] bool readCreativeEditorWorldLayoutBoxSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t boxIndex,
     CreativeEditorWorldLayoutBoxSettings& output) noexcept;
@@ -344,6 +444,29 @@ applyCreativeEditorWorldLayoutLevelOperation(
 setCreativeEditorWorldLayoutLevelSettings(
     CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
     CreativeEditorWorldLayoutLevelSettings settings);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+createCreativeEditorWorldLayoutRoofAperture(
+    CreativeEditorWorldLayoutState& state, std::size_t levelIndex,
+    cr::CreativeStructuralRoofApertureKind kind);
+[[nodiscard]] bool readCreativeEditorWorldLayoutRoofApertureSettings(
+    const CreativeEditorWorldLayoutState& state, std::size_t apertureIndex,
+    CreativeEditorWorldLayoutRoofApertureSettings& output) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutRoofApertureSettings(
+    CreativeEditorWorldLayoutState& state, std::size_t apertureIndex,
+    CreativeEditorWorldLayoutRoofApertureSettings settings,
+    cr::CreativeGridSettings grid = {});
+[[nodiscard]] CreativeEditorWorldLayoutRoofApertureTarget
+findCreativeEditorWorldLayoutRoofApertureTarget(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept;
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutRoofApertureManipulation(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutRoofApertureManipulationPhase phase,
+    CreativeEditorWorldLayoutPoint point = {},
+    double toleranceCells = 0.25,
+    cr::CreativeGridSettings grid = {});
 [[nodiscard]] bool readCreativeEditorWorldLayoutBuildingGroundingSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     CreativeEditorWorldLayoutBuildingGroundingSettings& output) noexcept;
@@ -480,6 +603,10 @@ updateCreativeEditorWorldLayoutBuildingTemplateFromInstance(
     CreativeEditorWorldLayoutState& state,
     std::size_t buildingIndex);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+detachCreativeEditorWorldLayoutBuildingTemplateInstance(
+    CreativeEditorWorldLayoutState& state,
+    std::size_t buildingIndex);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 refreshCreativeEditorWorldLayoutBuildingTemplateInstances(
     CreativeEditorWorldLayoutState& state,
     std::size_t buildingIndex,
@@ -499,7 +626,8 @@ applyCreativeEditorWorldLayoutBuildingTemplatePlacement(
     CreativeEditorWorldLayoutBuildingTemplatePlacementPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     cr::CreativeWorldLayoutBuildingTransformOperation operation =
-        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90);
+        cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90,
+    const cr::CreativeDocument* document = nullptr);
 [[nodiscard]] bool readCreativeEditorWorldLayoutOpeningSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t openingIndex,
     CreativeEditorWorldLayoutOpeningSettings& output) noexcept;
@@ -563,6 +691,11 @@ applyCreativeEditorWorldLayoutOpeningManipulation(
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+applyCreativeEditorWorldLayoutBuildingRepair(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeGridSettings& grid,
+    const cr::CreativeWorldLayoutBuildingUsabilityIssue& issue);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutSelection(CreativeEditorWorldLayoutState& state);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 cancelCreativeEditorWorldLayoutPreview(
@@ -581,6 +714,10 @@ previewCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState candidate,
     CreativeEditorWorldLayoutEditReceipt editReceipt,
     std::string_view successMessage);
+[[nodiscard]] CreativeEditorWorldLayoutPreviewReceipt
+previewCreativeEditorWorldLayoutTerrainPathDraft(
+    CreativeEditorWorldLayoutState& state,
+    const cr::CreativeDocument& document);
 [[nodiscard]] CreativeEditorWorldLayoutApplyReceipt
 applyCreativeEditorWorldLayoutLiveEditCandidate(
     CreativeEditorWorldLayoutState& state,

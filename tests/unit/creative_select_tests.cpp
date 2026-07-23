@@ -1,8 +1,13 @@
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -16,6 +21,23 @@ bool expect(bool condition, std::string_view message) {
 
 cr::TargetRef target(cr::Id id) {
   return cr::TargetRef{id};
+}
+
+cr::CreativeObjectId addObject(
+    cr::CreativeDocument& document,
+    std::string name,
+    std::vector<std::string> tags = {},
+    bool visible = true,
+    bool locked = false) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = std::move(name);
+  request.tags = std::move(tags);
+  request.visible = visible;
+  request.hasVisibleOverride = true;
+  request.locked = locked;
+  request.hasLockedOverride = true;
+  return document.createObject(request).objectId;
 }
 
 cr::CreativeToolIntent selectIntent(cr::TargetRef selectedTarget) {
@@ -203,6 +225,233 @@ bool nonSelectionIntentIsNoOp() {
                 "non-selection message");
 }
 
+bool selectionCapacityRejectsWithoutPartialChange() {
+  cr::CreativeSelectionState state = cr::makeDefaultCreativeSelectionState();
+  static_cast<void>(cr::setSelectedTarget(state, target(7U)));
+  std::vector<cr::TargetRef> targets;
+  targets.reserve(cr::kCreativeSelectionTargetCapacity + 1U);
+  for (std::size_t index = 0U;
+       index <= cr::kCreativeSelectionTargetCapacity; ++index) {
+    targets.push_back(target(static_cast<cr::Id>(index + 1U)));
+  }
+
+  const cr::CreativeSelectionReceipt receipt =
+      cr::setSelectedTargets(state, targets);
+  return expect(!receipt.accepted && !receipt.changed,
+                "selection capacity rejects") &&
+         expect(receipt.message == "selection_capacity_exceeded",
+                "selection capacity reports reason") &&
+         expect(state.selectedTarget.value == 7U &&
+                    state.selectedTargets.size() == 1U &&
+                    state.selectedTargets.front().value == 7U,
+                "selection capacity preserves prior state");
+}
+
+bool semanticResolutionPreservesInspectionFacts() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Selection");
+  const cr::CreativeObjectId objectId =
+      addObject(document, "Hidden Locked", {}, false, true);
+  const cr::CreativeSemanticSelectionResolution resolved =
+      cr::resolveCreativeSemanticSelection(document, objectId);
+  const cr::CreativeSemanticSelectionResolution missing =
+      cr::resolveCreativeSemanticSelection(document, 999U);
+
+  return expect(resolved.accepted &&
+                    resolved.status ==
+                        cr::CreativeSemanticSelectionStatus::Ready &&
+                    resolved.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::AuthoredObject,
+                "authored object resolves") &&
+         expect(!resolved.objectVisible && resolved.objectLocked &&
+                    resolved.objectKind == cr::CreativeObjectKind::Crate,
+                "hidden locked object remains inspectable") &&
+         expect(!missing.accepted &&
+                    missing.status ==
+                        cr::CreativeSemanticSelectionStatus::MissingObject &&
+                    missing.reasonCode == "creative_selection_object_missing",
+                "missing semantic object fails closed");
+}
+
+bool semanticResolutionReportsInheritedInspectionFacts() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Selection Hierarchy");
+  cr::CreativeDocumentCreateRequest parentRequest;
+  parentRequest.kind = cr::CreativeObjectKind::Group;
+  parentRequest.name = "Hidden Locked Parent";
+  const cr::CreativeDocumentCreateReceipt parent =
+      document.createObject(parentRequest);
+
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Locally Visible Child";
+  childRequest.parentId = parent.objectId;
+  const cr::CreativeDocumentCreateReceipt child =
+      document.createObject(childRequest);
+  const cr::CreativeDocumentMutationReceipt hidden =
+      cr::setDocumentObjectVisible(document, parent.objectId, false);
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(document, parent.objectId, true);
+  const cr::CreativeObject* childObject = document.findObject(child.objectId);
+  const cr::CreativeSemanticSelectionResolution resolved =
+      cr::resolveCreativeSemanticSelection(document, child.objectId);
+
+  return expect(parent.accepted && child.accepted && hidden.changed &&
+                    locked.changed && childObject != nullptr &&
+                    childObject->visible && !childObject->locked,
+                "hierarchy selection fixture preserves local child flags") &&
+         expect(resolved.accepted && !resolved.objectVisible &&
+                    resolved.objectLocked && resolved.hasParent &&
+                    resolved.parentObjectId == parent.objectId,
+                "semantic selection reports inherited visibility and lock");
+}
+
+bool semanticResolutionPreservesNestedRecipeAncestry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Ownership");
+  const cr::CreativeObjectId sourceId = addObject(document, "Source");
+
+  cr::CreativeWorldLayout layout;
+  cr::CreativeWorldLayoutObject source;
+  source.kind = cr::CreativeObjectKind::Crate;
+  source.stableKey = "layout_crate";
+  source.name = "Layout Crate";
+  layout.objects.push_back(source);
+  const std::string provenanceTag = cr::creativeWorldLayoutProvenanceTag(
+      layout, cr::CreativeWorldLayoutTable::Object, 0U);
+  const cr::CreativeObjectId generatedId = addObject(
+      document, "Generated",
+      {cr::creativeWorldLayoutTag(layout.stableKey), provenanceTag});
+
+  cr::CreativePatternRecipeMutationRequest request;
+  request.kind = cr::CreativePatternRecipeMutationKind::Add;
+  request.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  request.recipe.sourceObjectIds = {sourceId};
+  request.recipe.generatedObjectIds = {generatedId};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(request);
+  const cr::CreativeSemanticSelectionResolution resolved =
+      cr::resolveCreativeSemanticSelection(document, generatedId, &layout);
+
+  return expect(recipe.accepted && recipe.changed,
+                "nested ownership fixture recipe added") &&
+         expect(resolved.accepted &&
+                    resolved.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::PatternRecipe &&
+                    resolved.patternRecipeId == recipe.recipeId &&
+                    resolved.patternRecipeKind ==
+                        cr::CreativePatternRecipeKind::LinearArray,
+                "nearest pattern owner resolves") &&
+         expect(resolved.worldLayoutSource.owned &&
+                    resolved.worldLayoutSource.table ==
+                        cr::CreativeWorldLayoutTable::Object &&
+                    resolved.worldLayoutSource.index == 0U,
+                "underlying world layout ancestry remains available");
+}
+
+bool semanticSetResolutionFindsTheDeepestSharedOwner() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Selection Set Ownership");
+  cr::CreativeWorldLayout layout;
+  layout.stableKey = "selection_set_layout";
+
+  cr::CreativeWorldLayoutBuilding building;
+  building.stableKey = "building_house";
+  layout.buildings.push_back(building);
+
+  for (std::size_t levelIndex = 0U; levelIndex < 2U; ++levelIndex) {
+    cr::CreativeWorldLayoutLevel level;
+    level.buildingIndex = 0U;
+    level.stableKey = "level_" + std::to_string(levelIndex);
+    layout.levels.push_back(level);
+
+    cr::CreativeWorldLayoutRoom room;
+    room.buildingIndex = 0U;
+    room.levelIndex = levelIndex;
+    room.stableKey = "room_" + std::to_string(levelIndex);
+    layout.rooms.push_back(room);
+  }
+
+  cr::CreativeWorldLayoutOpening opening;
+  opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+  opening.roomIndex = 0U;
+  opening.stableKey = "opening_room_0";
+  layout.openings.push_back(opening);
+
+  const std::string layoutTag = cr::creativeWorldLayoutTag(layout.stableKey);
+  const cr::CreativeObjectId roomObject = addObject(
+      document, "Room Geometry",
+      {layoutTag, cr::creativeWorldLayoutProvenanceTag(
+                      layout, cr::CreativeWorldLayoutTable::Room, 0U)});
+  const cr::CreativeObjectId openingObject = addObject(
+      document, "Opening Geometry",
+      {layoutTag, cr::creativeWorldLayoutProvenanceTag(
+                      layout, cr::CreativeWorldLayoutTable::Opening, 0U)});
+  const cr::CreativeObjectId upperRoomObject = addObject(
+      document, "Upper Room Geometry",
+      {layoutTag, cr::creativeWorldLayoutProvenanceTag(
+                      layout, cr::CreativeWorldLayoutTable::Room, 1U)});
+  const cr::CreativeObjectId authoredObject =
+      addObject(document, "Authored Crate");
+
+  cr::CreativePatternRecipeMutationRequest patternRequest;
+  patternRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  patternRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  patternRequest.recipe.sourceObjectIds = {authoredObject};
+  patternRequest.recipe.generatedObjectIds = {roomObject, openingObject};
+  const cr::CreativePatternRecipeMutationReceipt pattern =
+      document.applyPatternRecipeMutation(patternRequest);
+
+  const std::array roomSelection{roomObject, openingObject};
+  const cr::CreativeSemanticSelectionSetResolution room =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, roomSelection, openingObject, &layout);
+  const std::array buildingSelection{roomObject, upperRoomObject};
+  const cr::CreativeSemanticSelectionSetResolution buildingScope =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, buildingSelection, roomObject, &layout);
+  const std::array mixedSelection{roomObject, authoredObject};
+  const cr::CreativeSemanticSelectionSetResolution mixed =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, mixedSelection, authoredObject, &layout);
+  const std::array missingSelection{roomObject,
+                                    static_cast<cr::CreativeObjectId>(9999U)};
+  const cr::CreativeSemanticSelectionSetResolution missing =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, missingSelection, roomObject, &layout);
+
+  return expect(pattern.accepted && pattern.changed,
+                "semantic set fixture records one pattern recipe") &&
+         expect(room.accepted && room.resolvedCount == 2U &&
+                    room.primaryObjectId == openingObject &&
+                    room.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::PatternRecipe &&
+                    room.patternRecipeId == pattern.recipeId,
+                "one pattern owns every selected generated member") &&
+         expect(room.commonWorldLayoutSource.table ==
+                        cr::CreativeWorldLayoutTable::Room &&
+                    room.commonWorldLayoutSource.index == 0U,
+                "pattern selection retains its deepest shared room") &&
+         expect(buildingScope.accepted &&
+                    buildingScope.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::WorldLayoutSource &&
+                    buildingScope.commonWorldLayoutSource.table ==
+                        cr::CreativeWorldLayoutTable::Building &&
+                    buildingScope.commonWorldLayoutSource.index == 0U,
+                "members on different floors converge at their building") &&
+         expect(mixed.accepted &&
+                    mixed.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::AuthoredObject &&
+                    mixed.commonWorldLayoutSource.table ==
+                        cr::CreativeWorldLayoutTable::None &&
+                    mixed.patternRecipeId ==
+                        cr::kInvalidCreativePatternRecipeId,
+                "mixed authored and generated selection invents no owner") &&
+         expect(!missing.accepted && missing.resolvedCount == 1U &&
+                    missing.missingCount == 1U &&
+                    missing.status ==
+                        cr::CreativeSemanticSelectionStatus::MissingObject,
+                "missing members fail the complete requested set closed");
+}
+
 }  // namespace
 
 int main() {
@@ -214,6 +463,11 @@ int main() {
                   updatingCandidateDoesNotMutateSelected() &&
                   applyingSelectObjectCandidateSelectsTarget() &&
                   invalidSelectObjectCandidateClearsSelection() &&
-                  nonSelectionIntentIsNoOp();
+                  nonSelectionIntentIsNoOp() &&
+                  selectionCapacityRejectsWithoutPartialChange() &&
+                  semanticResolutionPreservesInspectionFacts() &&
+                  semanticResolutionReportsInheritedInspectionFacts() &&
+                  semanticResolutionPreservesNestedRecipeAncestry() &&
+                  semanticSetResolutionFindsTheDeepestSharedOwner();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

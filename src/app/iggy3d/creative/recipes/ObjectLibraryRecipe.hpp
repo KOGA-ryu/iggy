@@ -42,6 +42,7 @@ struct CreativeObjectLibraryPlacementSpec {
   double yawRadians = 0.0;
   CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
+  CreativePlayerSpawnSettings playerSpawn{};
   std::vector<std::string> tags;
 };
 

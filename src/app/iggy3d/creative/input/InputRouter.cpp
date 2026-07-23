@@ -134,8 +134,8 @@ std::string_view toString(CreativeInputActionId action) noexcept {
       return "CatalogPreviousPage";
     case CreativeInputActionId::CatalogNextPage: return "CatalogNextPage";
     case CreativeInputActionId::CatalogConfirm: return "CatalogConfirm";
-    case CreativeInputActionId::CatalogAssignToolWheel:
-      return "CatalogAssignToolWheel";
+    case CreativeInputActionId::CatalogContextAction:
+      return "CatalogContextAction";
     case CreativeInputActionId::CatalogClose: return "CatalogClose";
     case CreativeInputActionId::ToggleToolWheel: return "ToggleToolWheel";
     case CreativeInputActionId::ToolWheelPrevious: return "ToolWheelPrevious";
@@ -217,6 +217,7 @@ std::string_view toString(CreativeInputActionId action) noexcept {
     case CreativeInputActionId::ControlsClose: return "ControlsClose";
     case CreativeInputActionId::ControlsResetDefaults:
       return "ControlsResetDefaults";
+    case CreativeInputActionId::FrameContext3D: return "FrameContext3D";
     case CreativeInputActionId::Count: break;
   }
   return "Unknown";
@@ -369,6 +370,11 @@ std::string creativeInputChordLabel(const CreativeInputBinding& binding,
 
 bool parseCreativeInputActionId(std::string_view value,
                                 CreativeInputActionId& out) noexcept {
+  // Keep pre-inspection control profiles readable after the semantic rename.
+  if (value == "CatalogAssignToolWheel") {
+    out = CreativeInputActionId::CatalogContextAction;
+    return true;
+  }
   for (std::size_t index = 0;
        index < static_cast<std::size_t>(CreativeInputActionId::Count);
        ++index) {

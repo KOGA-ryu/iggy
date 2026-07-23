@@ -603,10 +603,79 @@ bool lineIsDeterministicAndEndpointInclusive() {
                     sameCell(forward.cells.back(), {3, 3, 1}),
                 "line includes canonical endpoints") &&
          expect(same, "reversed line has identical ordered plan") &&
-         expect(plan(cr::CreativeShapeBrushKind::Line,
-                     {4, -3, 2}, {4, -3, 2}, true)
-                        .generatedCellCount == 1U,
-                "degenerate hollow line remains one cell");
+         expect(!plan(cr::CreativeShapeBrushKind::Line,
+                      {4, -3, 2}, {4, -3, 2}, true)
+                         .accepted,
+                "line rejects hollow semantics without an interior");
+}
+
+bool thickShellOpeningsAndCornerRulesAreExplicit() {
+  cr::CreativeShapeBrushPlanRequest thick;
+  thick.kind = cr::CreativeShapeBrushKind::Box;
+  thick.firstCell = {0, 0, 0};
+  thick.secondCell = {4, 4, 4};
+  thick.hollow = true;
+  thick.shellThicknessCells = 2U;
+  const auto thickPlan = cr::planCreativeShapeBrush(thick);
+
+  cr::CreativeShapeBrushPlanRequest framed = thick;
+  framed.shellThicknessCells = 1U;
+  framed.shellOpening = cr::CreativeVolumeHollowOpening::PositiveEnd;
+  framed.shellCornerRule = cr::CreativeVolumeHollowCornerRule::KeepEdges;
+  const auto framedPlan = cr::planCreativeShapeBrush(framed);
+
+  cr::CreativeShapeBrushPlanRequest cutThrough = framed;
+  cutThrough.shellCornerRule =
+      cr::CreativeVolumeHollowCornerRule::CutThrough;
+  const auto cutThroughPlan = cr::planCreativeShapeBrush(cutThrough);
+
+  cr::CreativeShapeBrushPlanRequest both = cutThrough;
+  both.shellOpening = cr::CreativeVolumeHollowOpening::BothEnds;
+  const auto bothPlan = cr::planCreativeShapeBrush(both);
+
+  cr::CreativeShapeBrushPlanRequest xOpening = cutThrough;
+  xOpening.axis = cr::CreativeShapeBrushAxis::X;
+  xOpening.shellOpening = cr::CreativeVolumeHollowOpening::NegativeEnd;
+  const auto xOpeningPlan = cr::planCreativeShapeBrush(xOpening);
+
+  cr::CreativeShapeBrushPlanRequest tooSmall = thick;
+  tooSmall.secondCell = {3, 3, 3};
+  const auto tooSmallPlan = cr::planCreativeShapeBrush(tooSmall);
+  cr::CreativeShapeBrushPlanRequest invalidOpening = framed;
+  invalidOpening.shellOpening =
+      static_cast<cr::CreativeVolumeHollowOpening>(255U);
+  const auto invalidOpeningPlan =
+      cr::planCreativeShapeBrush(invalidOpening);
+
+  return expect(thickPlan.accepted &&
+                    thickPlan.generatedCellCount == 124U &&
+                    !containsCell(thickPlan, {2, 2, 2}) &&
+                    containsCell(thickPlan, {1, 1, 1}),
+                "two-cell shell removes only its one-cell cavity") &&
+         expect(framedPlan.accepted &&
+                    framedPlan.generatedCellCount == 89U &&
+                    containsCell(framedPlan, {0, 4, 0}) &&
+                    !containsCell(framedPlan, {2, 4, 2}),
+                "framed opening preserves shared edge and corner cells") &&
+         expect(cutThroughPlan.accepted &&
+                    cutThroughPlan.generatedCellCount == 73U &&
+                    !containsCell(cutThroughPlan, {0, 4, 0}),
+                "cut-through opening removes the entire positive end") &&
+         expect(bothPlan.accepted && bothPlan.generatedCellCount == 48U &&
+                    !containsCell(bothPlan, {2, 0, 2}) &&
+                    !containsCell(bothPlan, {2, 4, 2}),
+                "both-end opening removes both axis caps") &&
+         expect(xOpeningPlan.accepted &&
+                    !containsCell(xOpeningPlan, {0, 2, 2}) &&
+                    containsCell(xOpeningPlan, {4, 2, 2}),
+                "opening direction follows the selected shape axis") &&
+         expect(!tooSmallPlan.accepted && tooSmallPlan.cells.empty() &&
+                    tooSmallPlan.status ==
+                        cr::CreativeShapeBrushPlanStatus::InvalidShell,
+                "undersized thick shell rejects before enumeration") &&
+         expect(!invalidOpeningPlan.accepted &&
+                    invalidOpeningPlan.cells.empty(),
+                "invalid opening fails closed");
 }
 
 bool ellipsoidUsesSymmetricCellCenters() {
@@ -702,6 +771,7 @@ int main() {
                   materialBrushSymmetryFailuresClearPartialOutput() &&
                   boxParityAndHollowBoundary() &&
                   lineIsDeterministicAndEndpointInclusive() &&
+                  thickShellOpeningsAndCornerRulesAreExplicit() &&
                   ellipsoidUsesSymmetricCellCenters() &&
                   cylinderAxisAndDiskBehavior() &&
                   limitsAndInvalidEnumsFailClosed();

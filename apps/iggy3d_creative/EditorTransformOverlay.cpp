@@ -147,36 +147,47 @@ void appendConstraintGuide(
     cr::CreativeVec3 source,
     cr::CreativeVec3 target,
     cr::CreativeSelectionPlacementAxis axis,
+    cr::CreativeSelectionPlacementCoordinateSpace coordinateSpace,
+    cr::CreativeVec3 coordinateBasisEulerRadians,
     float thickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
   if (axis == cr::CreativeSelectionPlacementAxis::Free ||
       axis == cr::CreativeSelectionPlacementAxis::Count) {
     return;
   }
-  iggy3d::Vec3 start;
-  iggy3d::Vec3 end;
-  if (!renderPoint(source, start) || !renderPoint(target, end)) {
-    return;
-  }
-  if (start.x == end.x && start.y == end.y && start.z == end.z) {
-    constexpr float kHalfGuideLength = 0.65F;
+  if (cr::creativeVec3ExactlyEqual(source, target)) {
+    constexpr double kHalfGuideLength = 0.65;
+    cr::CreativeVec3 direction{};
     switch (axis) {
       case cr::CreativeSelectionPlacementAxis::X:
-        start.x -= kHalfGuideLength;
-        end.x += kHalfGuideLength;
+        direction.x = 1.0;
         break;
       case cr::CreativeSelectionPlacementAxis::Y:
-        start.y -= kHalfGuideLength;
-        end.y += kHalfGuideLength;
+        direction.y = 1.0;
         break;
       case cr::CreativeSelectionPlacementAxis::Z:
-        start.z -= kHalfGuideLength;
-        end.z += kHalfGuideLength;
+        direction.z = 1.0;
         break;
       case cr::CreativeSelectionPlacementAxis::Free:
       case cr::CreativeSelectionPlacementAxis::Count:
         return;
     }
+    if (coordinateSpace ==
+        cr::CreativeSelectionPlacementCoordinateSpace::Local) {
+      direction = cr::rotateCreativeVectorEulerXyz(
+          direction, coordinateBasisEulerRadians);
+    }
+    source = {source.x - direction.x * kHalfGuideLength,
+              source.y - direction.y * kHalfGuideLength,
+              source.z - direction.z * kHalfGuideLength};
+    target = {target.x + direction.x * kHalfGuideLength,
+              target.y + direction.y * kHalfGuideLength,
+              target.z + direction.z * kHalfGuideLength};
+  }
+  iggy3d::Vec3 start;
+  iggy3d::Vec3 end;
+  if (!renderPoint(source, start) || !renderPoint(target, end)) {
+    return;
   }
   appendAxisSegment(start, end, constraintColor(axis), thickness, wireLines);
 }
@@ -203,13 +214,11 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
 
 [[nodiscard]] std::string_view activeRotationAxisLabel(
     const CreativeEditorSelectionTransformState& state) noexcept {
-  switch (state.constraint) {
-    case cr::CreativeSelectionPlacementAxis::X: return "X";
-    case cr::CreativeSelectionPlacementAxis::Z: return "Z";
-    case cr::CreativeSelectionPlacementAxis::Free:
-    case cr::CreativeSelectionPlacementAxis::Y:
-    case cr::CreativeSelectionPlacementAxis::Count:
-      return "Y";
+  switch (state.rotationAxis) {
+    case cr::CreativeAxis3::X: return "X";
+    case cr::CreativeAxis3::Y: return "Y";
+    case cr::CreativeAxis3::Z: return "Z";
+    case cr::CreativeAxis3::Count: break;
   }
   return "Y";
 }
@@ -223,7 +232,10 @@ void appendText(std::vector<iggy3d::DebugHudGlyphQuad>& glyphs,
              std::string{activeRotationAxisLabel(state)} + " +90";
     case CreativeEditorTransformControl::MirrorX: return "MIRROR X";
     case CreativeEditorTransformControl::CycleConstraint:
-      return std::string{"AXIS "} + std::string{cr::toString(state.constraint)};
+      return std::string{"AXIS "} +
+             std::string{state.transformMode == CreativeEditorTransformMode::Rotate
+                             ? cr::toString(state.rotationAxis)
+                             : cr::toString(state.constraint)};
     case CreativeEditorTransformControl::ToggleMode:
       return state.mode == cr::CreativeSelectionPlacementMode::Move
                  ? "MODE COPY"
@@ -261,7 +273,7 @@ std::size_t appendCreativeEditorSelectionTransformPreview(
   if (state.mode == cr::CreativeSelectionPlacementMode::Move) {
     static_cast<void>(appendObjectBounds(state.sourceClipboard.objects, amber,
                                          thickness, wireLines));
-    appendAnchorMarker(state.sourceClipboard.placementAnchor, amber, thickness,
+    appendAnchorMarker(state.request.sourceAnchor, amber, thickness,
                        wireLines);
   }
   if (!state.targetPositionable || state.plan.objects.empty()) {
@@ -282,7 +294,9 @@ std::size_t appendCreativeEditorSelectionTransformPreview(
                           wireLines);
   }
   appendConstraintGuide(state.request.sourceAnchor, state.request.targetAnchor,
-                        state.constraint, std::max(0.035F, thickness * 1.1F),
+                        state.constraint, state.request.coordinateSpace,
+                        state.request.coordinateBasisEulerRadians,
+                        std::max(0.035F, thickness * 1.1F),
                         wireLines);
   return wireLines.size() - before;
 }
@@ -302,9 +316,9 @@ void appendCreativeEditorTransformOverlay(
       std::min(860U, drawableWidth > 16U ? drawableWidth - 16U : drawableWidth);
   const std::int32_t statusX =
       std::max(0, (width - static_cast<std::int32_t>(statusWidth)) / 2);
-  const std::int32_t statusY = std::max(4, height - 132);
+  const std::int32_t statusY = std::max(4, height - 150);
   uiRects.push_back(
-      {statusX, statusY, statusWidth, 54U, 0.045F, 0.052F, 0.058F, 0.94F});
+      {statusX, statusY, statusWidth, 72U, 0.045F, 0.052F, 0.058F, 0.94F});
   const cr::CreativeVec3 displacement{
       state.request.targetAnchor.x - state.request.sourceAnchor.x,
       state.request.targetAnchor.y - state.request.sourceAnchor.y,
@@ -313,9 +327,10 @@ void appendCreativeEditorTransformOverlay(
       state.snapStepMeters * (state.fineNudgeActive ? 0.25 : 1.0);
   char modeStatus[128];
   std::snprintf(
-      modeStatus, sizeof(modeStatus), "%s %s | AX %s | %s %.3g",
+      modeStatus, sizeof(modeStatus), "%s %s | %s AX %s | %s %.3g",
       std::string(cr::toString(state.mode)).c_str(),
       std::string(toString(state.transformMode)).c_str(),
+      std::string(cr::toString(state.request.coordinateSpace)).c_str(),
       std::string(cr::toString(state.constraint)).c_str(),
       state.fineNudgeActive ? "FINE" : "STEP", visibleStep);
   char valueStatus[160];
@@ -325,7 +340,7 @@ void appendCreativeEditorTransformOverlay(
       "D %+.3g %+.3g %+.3g | R%s %+.0f | S %.2g %.2g %.2g%s%s",
       displacement.x, displacement.y, displacement.z,
       std::string(cr::toString(state.request.rotationAxis)).c_str(),
-      static_cast<double>(state.rotationQuarterSteps) * 90.0, scale.x,
+      state.rotationDegrees, scale.x,
       scale.y, scale.z,
       state.request.mirrorX ? " | MX" : "",
       state.request.mirrorZ ? " | MZ" : "");
@@ -336,6 +351,28 @@ void appendCreativeEditorTransformOverlay(
   appendText(glyphs, valueStatus, statusX + 12, statusY + 30, drawableWidth,
              drawableHeight, ready ? 0.72F : 1.0F,
              ready ? 0.94F : 0.42F, ready ? 0.82F : 0.36F);
+  char reasonStatus[192]{};
+  if (!state.targetPositionable) {
+    std::snprintf(reasonStatus, sizeof(reasonStatus), "TARGET UNAVAILABLE");
+  } else if (state.clearance.evaluated && !state.clearance.allowed) {
+    if (state.clearance.blockingObjectId != cr::kInvalidObjectId) {
+      std::snprintf(
+          reasonStatus, sizeof(reasonStatus), "BLOCKED %s BY OBJECT #%llu",
+          std::string(cr::toString(state.clearance.status)).c_str(),
+          static_cast<unsigned long long>(state.clearance.blockingObjectId));
+    } else {
+      std::snprintf(reasonStatus, sizeof(reasonStatus), "BLOCKED %s",
+                    std::string(cr::toString(state.clearance.status)).c_str());
+    }
+  } else if (!state.plan.accepted) {
+    std::snprintf(reasonStatus, sizeof(reasonStatus), "%s",
+                  state.plan.reasonCode.c_str());
+  } else {
+    std::snprintf(reasonStatus, sizeof(reasonStatus), "CLEARANCE READY");
+  }
+  appendText(glyphs, reasonStatus, statusX + 12, statusY + 50, drawableWidth,
+             drawableHeight, ready ? 0.50F : 1.0F,
+             ready ? 0.82F : 0.42F, ready ? 0.62F : 0.36F);
 
   if (!state.controlsOpen) {
     return;

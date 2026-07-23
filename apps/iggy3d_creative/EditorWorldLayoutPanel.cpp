@@ -4,6 +4,7 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopWorldLayoutInspector.hpp"
+#include "EditorMeasurement.hpp"
 #include "EditorWorldLayoutElevationPanel.hpp"
 #include "EditorWorldLayoutHierarchyPanel.hpp"
 #include "EditorWorldLayoutTopography.hpp"
@@ -26,6 +27,67 @@
 
 namespace iggy3d_creative_app {
 namespace {
+
+const char* buildingRepairLabel(
+    cr::CreativeWorldLayoutBuildingRepairOperation operation) noexcept {
+  switch (operation) {
+    case cr::CreativeWorldLayoutBuildingRepairOperation::AddExteriorEntrance:
+      return "Add entrance";
+    case cr::CreativeWorldLayoutBuildingRepairOperation::ConnectRoom:
+      return "Connect room";
+    case cr::CreativeWorldLayoutBuildingRepairOperation::
+        ExpandOpeningClearance:
+      return "Fit player clearance";
+    case cr::CreativeWorldLayoutBuildingRepairOperation::None:
+    case cr::CreativeWorldLayoutBuildingRepairOperation::Count:
+      break;
+  }
+  return "Repair";
+}
+
+void drawWorldLayoutDiagnosticActions(
+    const CreativeEditorWorldLayoutDiagnostic& issue,
+    CreativeDesktopCommandFrame& commands, bool repairDisabled,
+    std::size_t issueIndex) {
+  const bool navigable =
+      issue.table != cr::CreativeWorldLayoutTable::None &&
+      issue.index != cr::kInvalidCreativeWorldLayoutIndex;
+  const bool hasRepair =
+      issue.buildingRepairOperation !=
+      cr::CreativeWorldLayoutBuildingRepairOperation::None;
+  if (!navigable && !hasRepair) {
+    return;
+  }
+
+  ImGui::PushID(static_cast<int>(issueIndex));
+  ImGui::Indent();
+  if (navigable && ImGui::SmallButton("Focus")) {
+    commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
+                  CreativeDesktopWorldLayoutSourcePayload{
+                      issue.table, issue.index, issue.stableKey});
+  }
+  if (hasRepair) {
+    if (navigable) {
+      ImGui::SameLine();
+    }
+    ImGui::BeginDisabled(repairDisabled || !issue.buildingRepairAvailable);
+    if (ImGui::SmallButton(buildingRepairLabel(
+            issue.buildingRepairOperation))) {
+      commands.push(
+          CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability,
+          CreativeDesktopWorldLayoutBuildingRepairPayload{
+              issue.buildingUsabilityIssue, issue.stableKey});
+    }
+    ImGui::EndDisabled();
+    if (!issue.buildingRepairAvailable && ImGui::IsItemHovered()) {
+      ImGui::SetTooltip(
+          "No deterministic repair fits this source; focus and edit it "
+          "directly");
+    }
+  }
+  ImGui::Unindent();
+  ImGui::PopID();
+}
 
 [[nodiscard]] bool worldLayoutRepairAssetCompatible(
     const CreativeEditorWorldLayoutDiagnostic& issue,
@@ -571,7 +633,9 @@ void drawRefinementConflictActions(
 
 void buildCreativeEditorWorldLayoutPanel(
     CreativeEditorDesktopUiState& desktopUi, CreativeEditorState& editor,
-    const cr::CreativeDocument& document, bool playModeActive,
+    const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& selection,
+    const cr::CreativeMeasurementState& measurement, bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
@@ -630,7 +694,8 @@ void buildCreativeEditorWorldLayoutPanel(
       }
       if (ImGui::BeginTabItem("Create")) {
         drawCreativeEditorWorldLayoutCreateTools(
-            desktopUi, state, editor.catalog.model, commands,
+            desktopUi, state, editor.catalog.model, document.gridSettings(),
+            commands,
             editingDisabled || state.buildingTransform.active ||
                 state.buildingTemplatePlacement.active ||
                 topography.region.editingEnabled);
@@ -763,9 +828,6 @@ void buildCreativeEditorWorldLayoutPanel(
            issueIndex < diagnostics.issueCount; ++issueIndex) {
         const CreativeEditorWorldLayoutDiagnostic& issue =
             diagnostics.issues[issueIndex];
-        const bool navigable =
-            issue.table != cr::CreativeWorldLayoutTable::None &&
-            issue.index != cr::kInvalidCreativeWorldLayoutIndex;
         const ImVec4 issueColor =
             issue.severity == CreativeEditorWorldLayoutDiagnosticSeverity::Warning
                 ? ImVec4{1.0F, 0.72F, 0.20F, 1.0F}
@@ -773,21 +835,8 @@ void buildCreativeEditorWorldLayoutPanel(
                           CreativeEditorWorldLayoutDiagnosticSeverity::Info
                       ? ImVec4{0.38F, 0.72F, 1.0F, 1.0F}
                       : ImVec4{1.0F, 0.34F, 0.30F, 1.0F};
-        const std::string label = issue.message + "##world_layout_issue_" +
-                                  std::to_string(issueIndex);
         ImGui::PushStyleColor(ImGuiCol_Text, issueColor);
-        if (navigable) {
-          if (ImGui::Selectable(label.c_str(), false,
-                                ImGuiSelectableFlags_None,
-                                ImVec2(0.0F, ImGui::GetFrameHeight()))) {
-            commands.push(
-                CreativeDesktopCommandId::WorldLayoutFocusSource,
-                CreativeDesktopWorldLayoutSourcePayload{issue.table,
-                                                         issue.index, {}});
-          }
-        } else {
-          ImGui::TextUnformatted(issue.message.c_str());
-        }
+        ImGui::TextWrapped("%s", issue.message.c_str());
         ImGui::PopStyleColor();
         if (ImGui::IsItemHovered()) {
           if (!issue.kernelReasonCode.empty() &&
@@ -799,6 +848,12 @@ void buildCreativeEditorWorldLayoutPanel(
             ImGui::SetTooltip("%s", issue.reasonCode.c_str());
           }
         }
+        drawWorldLayoutDiagnosticActions(
+            issue, commands,
+            editingDisabled || state.buildingTransform.active ||
+                state.buildingTemplatePlacement.active ||
+                topography.region.editingEnabled,
+            issueIndex);
         drawWorldLayoutAssetRepair(issue, state, editor.catalog.model, commands,
                                    editingDisabled, issueIndex);
       }
@@ -872,12 +927,13 @@ void buildCreativeEditorWorldLayoutPanel(
       ImGui::SameLine();
       if (state.viewMode == CreativeEditorWorldLayoutViewMode::Elevation) {
         drawCreativeEditorWorldLayoutElevationCanvas(
-            editor, document.gridSettings(), commands,
+            editor, document.gridSettings(),
+            document.measurementAnnotationStore(), measurement, commands,
             canvasInteractionEnabled);
       } else {
         drawCreativeEditorWorldLayoutCanvas(
-            editor, document, commands, canvasInteractionEnabled,
-            &canvasHover);
+            editor, document, selection, measurement, commands,
+            canvasInteractionEnabled, &canvasHover);
       }
     }
     ImGui::EndChild();

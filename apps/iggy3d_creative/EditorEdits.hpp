@@ -19,6 +19,15 @@ using StandaloneEditHistory = cr::CreativeDocumentHistory;
 using StandaloneEditTransaction = cr::CreativeDocumentHistoryTransaction;
 
 struct CreativeEditorWorldLayoutState;
+struct CreativeEditorObjectReattachmentPlan;
+struct CreativeEditorObjectReattachmentReceipt;
+
+// Direct World Layout output is edited through its 2D source. Pattern output is
+// excluded because its nearest editable owner is the pattern recipe, even when
+// copied objects retain underlying World Layout provenance tags.
+[[nodiscard]] bool creativeEditorObjectRequiresSourceEdit(
+    const cr::CreativeDocument& document,
+    cr::CreativeObjectId objectId) noexcept;
 
 void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
 
@@ -42,10 +51,28 @@ void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
                                 CreativeEditorWorldLayoutState* worldLayout =
                                     nullptr);
 
-[[nodiscard]] iggy3d::creative::CreativeDocumentRemoveReceipt
-deleteSelectedObject(iggy3d::creative::CreativeAppState& appState,
-                     std::string_view source,
-                     StandaloneEditHistory* history = nullptr);
+[[nodiscard]] cr::CreativeSemanticDeleteReceipt deleteSelectedObjectsWithUndo(
+    cr::CreativeAppState& appState,
+    std::string_view source,
+    StandaloneEditHistory* history = nullptr);
+
+struct CreativeEditorDeleteReceipt {
+  bool accepted = false;
+  bool changed = false;
+  bool worldLayoutSourceDeleted = false;
+  std::uint64_t affectedObjectCount = 0U;
+  std::string reasonCode = "creative_editor_delete_not_requested";
+};
+
+// Routes generated output to its nearest editable owner. Pattern outputs use
+// semantic document deletion; synchronized World Layout output edits the 2D
+// source; ordinary authored objects use semantic document deletion directly.
+[[nodiscard]] CreativeEditorDeleteReceipt
+deleteCreativeEditorSelectionWithUndo(
+    cr::CreativeAppState& appState,
+    std::string_view source,
+    StandaloneEditHistory* history = nullptr,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 [[nodiscard]] cr::CreativeTransformCommandReceipt
 transformSelectedObjectsWithUndo(
@@ -79,6 +106,12 @@ toggleSelectedObjectLockedWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
+    std::string_view source);
+
+[[nodiscard]] CreativeEditorObjectReattachmentReceipt reattachObjectWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    const CreativeEditorObjectReattachmentPlan& plan,
     std::string_view source);
 
 [[nodiscard]] cr::CreativeClipboardCopyReceipt copySelectionToClipboard(
@@ -165,6 +198,14 @@ setMovingPlatformSettingsWithUndo(
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeMovingPlatformSettings settings,
+    std::string_view source);
+
+[[nodiscard]] cr::CreativeDocumentMutationReceipt
+setPlayerSpawnSettingsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    cr::CreativePlayerSpawnSettings settings,
     std::string_view source);
 
 }  // namespace iggy3d_creative_app

@@ -126,8 +126,18 @@ CreativeEditorWorldLayoutSelection detail::hitTestWorldLayout(
   for (std::size_t index = layout.terrainProfiles.size(); index > 0U; --index) {
     const cr::CreativeWorldLayoutTerrainProfile& profile =
         layout.terrainProfiles[index - 1U];
-    if (std::hypot(point.x - profile.center.x, point.z - profile.center.z) <=
-        0.65) {
+    const bool hitLandform =
+        profile.usesLandformRecipe &&
+        point.x >= profile.landform.bounds.minimum.x &&
+        point.z >= profile.landform.bounds.minimum.z &&
+        point.x <= static_cast<double>(profile.landform.bounds.minimum.x) +
+                       profile.landform.bounds.widthCells &&
+        point.z <= static_cast<double>(profile.landform.bounds.minimum.z) +
+                       profile.landform.bounds.depthCells;
+    if (hitLandform ||
+        (!profile.usesLandformRecipe &&
+         std::hypot(point.x - profile.center.x,
+                    point.z - profile.center.z) <= 0.65)) {
       return {CreativeEditorWorldLayoutSelectionKind::TerrainProfile,
               index - 1U};
     }
@@ -135,18 +145,20 @@ CreativeEditorWorldLayoutSelection detail::hitTestWorldLayout(
   for (std::size_t index = layout.terrainPaths.size(); index > 0U; --index) {
     const cr::CreativeWorldLayoutTerrainPath& path =
         layout.terrainPaths[index - 1U];
-    if (path.pointCount < 2U ||
-        path.firstPointIndex > layout.terrainPathPoints.size() ||
-        path.pointCount >
-            layout.terrainPathPoints.size() - path.firstPointIndex) {
+    if (!cr::isValidCreativeTerrainPathSourceRecipe(path.recipe)) {
       continue;
     }
-    for (std::size_t pointIndex = path.firstPointIndex + 1U;
-         pointIndex < path.firstPointIndex + path.pointCount; ++pointIndex) {
+    for (std::size_t pointIndex = 1U;
+         pointIndex < path.recipe.points.size(); ++pointIndex) {
+      const cr::CreativeTerrainPathSourcePoint& start =
+          path.recipe.points[pointIndex - 1U];
+      const cr::CreativeTerrainPathSourcePoint& end =
+          path.recipe.points[pointIndex];
       if (distanceToSegment(
-              point, layout.terrainPathPoints[pointIndex - 1U].coord,
-              layout.terrainPathPoints[pointIndex].coord) <=
-          std::max(0.65, static_cast<double>(path.halfWidthCells))) {
+              point, start.coord, end.coord) <=
+          std::max(0.65, static_cast<double>(
+                             std::max(start.halfWidthCells,
+                                      end.halfWidthCells)))) {
         return {CreativeEditorWorldLayoutSelectionKind::TerrainPath,
                 index - 1U};
       }

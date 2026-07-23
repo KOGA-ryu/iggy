@@ -147,7 +147,6 @@ bool makeOpening(
   opening.roomIndex = roomIndex;
   opening.roomEdge = intent.roomEdge;
   opening.kind = intent.kind;
-  opening.pose = CreativeBuildingOpeningPose::Closed;
   opening.includeInsert = true;
   switch (intent.kind) {
     case CreativeBuildingOpeningKind::Door:
@@ -284,11 +283,14 @@ materializeCreativeWorldLayoutBuildingBlockout(
         static_cast<long double>(recipe.request.wallHeightCells) * storey);
     level.wallHeightCells = recipe.request.wallHeightCells;
     level.floorThicknessLayers = recipe.floorThicknessLayers;
+    level.ceilingThicknessLayers = recipe.ceilingThicknessLayers;
     level.roofThicknessLayers = recipe.roofThicknessLayers;
     level.roofStyle = recipe.roofStyle;
     level.roofRidgeAxis = recipe.roofRidgeAxis;
+    level.roofSlopeDirection = recipe.roofSlopeDirection;
     level.roofPitchDegrees = recipe.roofPitchDegrees;
     level.roofOverhangCells = recipe.roofOverhangCells;
+    level.roofMaterial = recipe.roofMaterial;
     candidate.levels.push_back(std::move(level));
   }
 

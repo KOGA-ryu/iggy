@@ -8,7 +8,10 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -19,6 +22,7 @@ namespace {
 void invalidateRegionPreview(CreativeTerrainRegionState& region) noexcept {
   region.preview.valid = false;
   region.preview.renderAccepted = false;
+  region.preview.operationPreview = {};
   region.preview.patches.clear();
 }
 
@@ -32,87 +36,176 @@ void setRegionFeedback(CreativeEditorState& editor, bool accepted) noexcept {
 
 [[nodiscard]] bool regionBounds(
     const cr::CreativeVolumeSelection& selection,
-    cr::CreativeTerrainCoord2& minimumCoord,
-    cr::CreativeTerrainCoord2& maximumCoord) noexcept {
+    cr::CreativeTerrainHeightFieldBounds& output) noexcept {
   if (!cr::creativeVolumeSelectionValid(selection)) {
     return false;
   }
-  minimumCoord = {
-      std::min(selection.firstCell.x, selection.secondCell.x),
-      std::min(selection.firstCell.z, selection.secondCell.z)};
-  maximumCoord = {
-      std::max(selection.firstCell.x, selection.secondCell.x),
-      std::max(selection.firstCell.z, selection.secondCell.z)};
-  return true;
+  const std::int64_t minimumX =
+      std::min(selection.firstCell.x, selection.secondCell.x);
+  const std::int64_t minimumZ =
+      std::min(selection.firstCell.z, selection.secondCell.z);
+  const std::uint64_t width = static_cast<std::uint64_t>(
+      std::max(selection.firstCell.x, selection.secondCell.x) - minimumX) +
+                              1U;
+  const std::uint64_t depth = static_cast<std::uint64_t>(
+      std::max(selection.firstCell.z, selection.secondCell.z) - minimumZ) +
+                              1U;
+  if (width > std::numeric_limits<std::uint16_t>::max() ||
+      depth > std::numeric_limits<std::uint16_t>::max() ||
+      width * depth > cr::kCreativeTerrainHeightFieldCellCapacity) {
+    return false;
+  }
+  output = {{static_cast<std::int32_t>(minimumX),
+             static_cast<std::int32_t>(minimumZ)},
+            static_cast<std::uint16_t>(width),
+            static_cast<std::uint16_t>(depth)};
+  return cr::isValidCreativeTerrainHeightFieldBounds(output);
 }
 
-[[nodiscard]] cr::CreativeTerrainRegionRequest regionRequest(
+[[nodiscard]] cr::CreativeTerrainOperationMutationRequest regionRequest(
     const cr::CreativeDocument& document,
-    const CreativeEditorState& editor,
-    cr::CreativeTerrainCoord2 minimumCoord,
-    cr::CreativeTerrainCoord2 maximumCoord) noexcept {
-  cr::CreativeTerrainRegionRequest request;
-  request.controls = document.terrainField().controls();
-  request.minimumCoord = minimumCoord;
-  request.maximumCoord = maximumCoord;
-  request.operation = editor.toolSettings.terrainRegionOperation;
-  request.amountCells = cr::creativeTerrainRegionAmountCells(
-      editor.toolSettings.terrainRegionAmount);
-  request.targetHeightCells = editor.terrain.region.targetHeightCells;
+    const CreativeTerrainRegionState& state,
+    const cr::CreativeTerrainRegionRecipe& recipe) {
+  cr::CreativeTerrainOperationMutationRequest request;
+  const cr::CreativeTerrainOperation* existing =
+      cr::findCreativeTerrainOperation(document.terrainOperationStack(),
+                                       state.editingOperationId);
+  request.kind = existing == nullptr
+                     ? cr::CreativeTerrainOperationMutationKind::Add
+                     : cr::CreativeTerrainOperationMutationKind::Update;
+  request.operationId = existing == nullptr
+                            ? cr::kInvalidCreativeTerrainOperationId
+                            : state.editingOperationId;
+  request.operationKind = cr::CreativeTerrainOperationKind::Region;
+  request.region = recipe;
+  request.enabled = existing == nullptr ? true : existing->enabled;
   return request;
 }
 
 [[nodiscard]] bool previewKeyMatches(
     const CreativeTerrainRegionPreviewCache& cache,
     const cr::CreativeDocument& document,
-    const CreativeEditorState& editor,
-    cr::CreativeTerrainCoord2 minimumCoord,
-    cr::CreativeTerrainCoord2 maximumCoord) noexcept {
+    cr::CreativeTerrainOperationId editingOperationId,
+    const cr::CreativeTerrainRegionRecipe& recipe) noexcept {
   return cache.valid && cache.documentId == document.id() &&
-         cache.terrainRevision == document.terrainField().revision() &&
-         cache.minimumCoord == minimumCoord &&
-         cache.maximumCoord == maximumCoord &&
-         cache.operation == editor.toolSettings.terrainRegionOperation &&
-         cache.amountCells == cr::creativeTerrainRegionAmountCells(
-                                  editor.toolSettings.terrainRegionAmount) &&
-         (!cr::creativeTerrainRegionUsesTargetHeight(cache.operation) ||
-          cache.targetHeightCells == editor.terrain.region.targetHeightCells);
+         cache.documentRevision == document.revision() &&
+         cache.editingOperationId == editingOperationId &&
+         cache.recipe == recipe;
 }
 
-template <typename Enum>
-[[nodiscard]] bool stepClampedEnum(Enum& value,
-                                   Enum count,
+[[nodiscard]] std::uint16_t terrainHeightAt(
+    const cr::CreativeDocument& document,
+    cr::CreativeTerrainCoord2 coord) noexcept {
+  const std::optional<std::uint16_t> authored =
+      document.terrainHeightField().heightAt(coord);
+  if (authored.has_value()) {
+    return *authored;
+  }
+  const cr::CreativeTerrainHeightSample legacy =
+      cr::sampleCreativeTerrainHeight(document.terrainField(), coord);
+  return legacy.present ? legacy.heightCells : 0U;
+}
+
+[[nodiscard]] bool stepRegionValue(std::uint16_t& value,
+                                   std::uint16_t minimum,
+                                   std::uint16_t maximum,
                                    int direction) noexcept {
-  const int before = static_cast<int>(value);
-  const int last = static_cast<int>(count) - 1;
-  const int after = std::clamp(before + direction, 0, last);
-  value = static_cast<Enum>(after);
+  const std::uint16_t before = value;
+  if (direction > 0 && value < maximum) {
+    ++value;
+  } else if (direction < 0 && value > minimum) {
+    --value;
+  }
+  return value != before;
+}
+
+[[nodiscard]] bool cycleRegionMode(
+    cr::CreativeTerrainRegionMode& mode,
+    int direction) noexcept {
+  const int count = static_cast<int>(cr::CreativeTerrainRegionMode::Count);
+  const int before = static_cast<int>(mode);
+  const int after = (before + (direction > 0 ? 1 : count - 1)) % count;
+  mode = static_cast<cr::CreativeTerrainRegionMode>(after);
   return after != before;
 }
 
-[[nodiscard]] bool cycleRegionOperation(
-    cr::CreativeTerrainRegionOperation& operation,
-    int direction) noexcept {
-  const int count = static_cast<int>(cr::CreativeTerrainRegionOperation::Count);
-  const int before = static_cast<int>(operation);
-  const int after = (before + (direction > 0 ? 1 : count - 1)) % count;
-  operation = static_cast<cr::CreativeTerrainRegionOperation>(after);
-  return after != before;
+[[nodiscard]] bool regionContainsCoord(
+    const cr::CreativeTerrainRegionRecipe& recipe,
+    cr::CreativeTerrainCoord2 coord) noexcept {
+  const std::int64_t localX =
+      static_cast<std::int64_t>(coord.x) - recipe.bounds.minimum.x;
+  const std::int64_t localZ =
+      static_cast<std::int64_t>(coord.z) - recipe.bounds.minimum.z;
+  if (localX < 0 || localZ < 0 || localX >= recipe.bounds.widthCells ||
+      localZ >= recipe.bounds.depthCells) {
+    return false;
+  }
+  return cr::creativeTerrainCompositionMaskWeight(
+             recipe.mask, static_cast<std::uint16_t>(localX),
+             static_cast<std::uint16_t>(localZ), recipe.bounds,
+             recipe.featherCells) > 0U;
+}
+
+[[nodiscard]] bool selectionForRegion(
+    const cr::CreativeDocument& document,
+    const cr::CreativeTerrainRegionRecipe& recipe,
+    cr::CreativeVolumeSelection& output) noexcept {
+  const std::int64_t maximumX =
+      static_cast<std::int64_t>(recipe.bounds.minimum.x) +
+      recipe.bounds.widthCells;
+  const std::int64_t maximumZ =
+      static_cast<std::int64_t>(recipe.bounds.minimum.z) +
+      recipe.bounds.depthCells;
+  if (maximumX > std::numeric_limits<std::int32_t>::max() ||
+      maximumZ > std::numeric_limits<std::int32_t>::max()) {
+    return false;
+  }
+  const cr::CreativeGridSettings grid = document.gridSettings();
+  if (!std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0 ||
+      !cr::isFiniteCreativeVec3(grid.origin)) {
+    return false;
+  }
+  cr::CreativeVolumeSelection candidate;
+  candidate.origin = grid.origin;
+  candidate.cellSize = grid.cellSizeMeters;
+  if (!cr::setCreativeVolumeSelectionGridBounds(
+          candidate,
+          {{recipe.bounds.minimum.x, 0, recipe.bounds.minimum.z},
+           {static_cast<std::int32_t>(maximumX), 1,
+            static_cast<std::int32_t>(maximumZ)}})) {
+    return false;
+  }
+  output = candidate;
+  return true;
 }
 
 }  // namespace
 
-cr::CreativeTerrainRegionPlan planCreativeEditorTerrainRegion(
+bool buildCreativeEditorTerrainRegionRecipe(
+    const CreativeEditorState& editor,
+    const cr::CreativeVolumeSelection& selection,
+    cr::CreativeTerrainRegionRecipe& output) noexcept {
+  cr::CreativeTerrainHeightFieldBounds bounds;
+  if (!regionBounds(selection, bounds)) {
+    return false;
+  }
+  output = editor.toolSettings.terrainRegionRecipe;
+  output.bounds = bounds;
+  return cr::isValidCreativeTerrainRegionRecipe(output);
+}
+
+cr::CreativeTerrainOperationMutationPlan planCreativeEditorTerrainRegion(
     const cr::CreativeDocument& document,
     const CreativeEditorState& editor,
     const cr::CreativeVolumeSelection& selection) noexcept {
-  cr::CreativeTerrainCoord2 minimumCoord{};
-  cr::CreativeTerrainCoord2 maximumCoord{};
-  if (!regionBounds(selection, minimumCoord, maximumCoord)) {
+  cr::CreativeTerrainRegionRecipe recipe;
+  if (!buildCreativeEditorTerrainRegionRecipe(editor, selection, recipe)) {
     return {};
   }
-  return cr::buildCreativeTerrainRegionPlan(
-      regionRequest(document, editor, minimumCoord, maximumCoord));
+  return cr::planCreativeTerrainOperationMutation(
+      document.terrainField(), document.terrainHeightField(),
+      document.terrainMaterialField(), document.terrainOperationStack(),
+      regionRequest(document, editor.terrain.region, recipe));
 }
 
 CreativeEditorTerrainRegionReceipt
@@ -122,36 +215,110 @@ applyCreativeEditorTerrainRegionWithHistory(cr::CreativeAppState& appState,
   CreativeEditorTerrainRegionReceipt receipt;
   receipt.requested = true;
   receipt.action = CreativeEditorTerrainRegionAction::Apply;
-  receipt.plan = planCreativeEditorTerrainRegion(
-      appState.facade.document(), editor, editor.volume.selection);
-  if (!receipt.plan.requested) {
+  const cr::CreativeDocument& document = appState.facade.document();
+  cr::CreativeTerrainRegionRecipe recipe;
+  if (!buildCreativeEditorTerrainRegionRecipe(
+          editor, editor.volume.selection, recipe)) {
     receipt.reasonCode = "creative_editor_terrain_region_selection_invalid";
     setRegionFeedback(editor, false);
     return receipt;
   }
-  receipt.accepted = receipt.plan.accepted;
-  receipt.reasonCode = receipt.plan.reasonCode;
-  if (!receipt.plan.accepted || receipt.plan.items().empty()) {
-    setRegionFeedback(editor, receipt.plan.accepted);
+  receipt.plan = planCreativeEditorTerrainRegion(
+      document, editor, editor.volume.selection);
+  if (!receipt.plan.receipt.accepted) {
+    receipt.reasonCode = receipt.plan.receipt.reasonCode;
+    setRegionFeedback(editor, false);
     return receipt;
   }
 
+  const cr::CreativeTerrainOperationMutationRequest request =
+      regionRequest(document, editor.terrain.region, recipe);
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  receipt.mutation =
-      appState.facade.applyTerrainControlEdits(receipt.plan.items());
-  editor.terrain.lastMutation = receipt.mutation;
-  receipt.accepted = receipt.mutation.accepted;
-  receipt.changed = receipt.mutation.changed;
-  receipt.reasonCode = receipt.mutation.reasonCode;
-  static_cast<void>(completeEditTransaction(
+  receipt.operation = appState.facade.applyTerrainOperationMutation(request);
+  receipt.history = completeEditTransaction(
       appState.history, std::move(transaction), appState.facade,
-      receipt.mutation.accepted && receipt.mutation.changed,
-      receipt.mutation.reasonCode));
-  if (receipt.changed) {
+      receipt.operation.accepted && receipt.operation.changed,
+      receipt.operation.reasonCode);
+  receipt.changed = receipt.operation.changed;
+  receipt.accepted = receipt.operation.accepted &&
+                     (!receipt.changed || receipt.history.accepted);
+  receipt.reasonCode = !receipt.operation.accepted
+                           ? receipt.operation.reasonCode
+                       : receipt.changed && !receipt.history.accepted
+                           ? receipt.history.reasonCode
+                           : "creative_editor_terrain_region_applied";
+  if (receipt.operation.accepted) {
+    editor.terrain.region.editingOperationId = receipt.operation.operationId;
     invalidateRegionPreview(editor.terrain.region);
   }
   setRegionFeedback(editor, receipt.accepted);
+  return receipt;
+}
+
+CreativeEditorTerrainRegionReceipt
+selectCreativeEditorTerrainRegionOperationAtPointer(
+    const cr::CreativeDocument& document,
+    CreativeEditorState& editor) noexcept {
+  CreativeEditorTerrainRegionReceipt receipt;
+  receipt.requested = true;
+  receipt.action = CreativeEditorTerrainRegionAction::SelectOperation;
+  cr::CreativeTerrainCoord2 target{};
+  if (!resolveCreativeEditorTerrainPointerCoord(editor, target)) {
+    receipt.reasonCode =
+        "creative_editor_terrain_region_select_target_invalid";
+    return receipt;
+  }
+
+  const cr::CreativeTerrainOperation* selected = nullptr;
+  for (auto operation = document.terrainOperationStack().operations.rbegin();
+       operation != document.terrainOperationStack().operations.rend();
+       ++operation) {
+    if (!operation->enabled ||
+        operation->owner != cr::CreativeTerrainOperationOwner::Manual ||
+        operation->kind != cr::CreativeTerrainOperationKind::Region ||
+        !regionContainsCoord(operation->region, target)) {
+      continue;
+    }
+    selected = &*operation;
+    break;
+  }
+  if (selected == nullptr) {
+    receipt.reasonCode = "creative_editor_terrain_region_select_not_found";
+    return receipt;
+  }
+
+  cr::CreativeVolumeSelection selection;
+  if (!selectionForRegion(document, selected->region, selection)) {
+    receipt.reasonCode =
+        "creative_editor_terrain_region_select_bounds_invalid";
+    return receipt;
+  }
+  receipt.accepted = true;
+  const cr::CreativeGridBounds3 currentBounds =
+      cr::creativeVolumeGridBounds(editor.volume.selection);
+  const cr::CreativeGridBounds3 selectedBounds =
+      cr::creativeVolumeGridBounds(selection);
+  const bool sameBounds =
+      cr::creativeVolumeSelectionComplete(editor.volume.selection) &&
+      currentBounds.min.x == selectedBounds.min.x &&
+      currentBounds.min.y == selectedBounds.min.y &&
+      currentBounds.min.z == selectedBounds.min.z &&
+      currentBounds.max.x == selectedBounds.max.x &&
+      currentBounds.max.y == selectedBounds.max.y &&
+      currentBounds.max.z == selectedBounds.max.z;
+  receipt.changed =
+      editor.terrain.region.editingOperationId != selected->id ||
+      editor.toolSettings.terrainRegionRecipe != selected->region ||
+      !sameBounds;
+  receipt.operationId = selected->id;
+  editor.terrain.region.editingOperationId = selected->id;
+  editor.toolSettings.terrainRegionRecipe = selected->region;
+  editor.volume.selection = selection;
+  editor.volume.lastReceipt = {};
+  invalidateRegionPreview(editor.terrain.region);
+  setRegionFeedback(editor, true);
+  receipt.reasonCode = "creative_editor_terrain_region_selected";
   return receipt;
 }
 
@@ -161,8 +328,8 @@ CreativeEditorTerrainRegionReceipt sampleCreativeEditorTerrainRegionHeight(
   CreativeEditorTerrainRegionReceipt receipt;
   receipt.requested = true;
   receipt.action = CreativeEditorTerrainRegionAction::SampleHeight;
-  if (!cr::creativeTerrainRegionUsesTargetHeight(
-          editor.toolSettings.terrainRegionOperation)) {
+  if (!cr::creativeTerrainRegionModeUsesTargetHeight(
+          editor.toolSettings.terrainRegionRecipe.mode)) {
     receipt.reasonCode = "creative_editor_terrain_region_sample_unused";
     return receipt;
   }
@@ -172,17 +339,16 @@ CreativeEditorTerrainRegionReceipt sampleCreativeEditorTerrainRegionHeight(
     setRegionFeedback(editor, false);
     return receipt;
   }
-  const cr::CreativeTerrainHeightSample sample =
-      cr::sampleCreativeTerrainHeight(document.terrainField(), target);
-  if (!sample.present) {
+  const std::uint16_t height = terrainHeightAt(document, target);
+  if (height < cr::kCreativeTerrainMinimumHeightCells) {
     receipt.reasonCode = "creative_editor_terrain_region_sample_missing";
     setRegionFeedback(editor, false);
     return receipt;
   }
   receipt.accepted = true;
   receipt.changed =
-      editor.terrain.region.targetHeightCells != sample.heightCells;
-  editor.terrain.region.targetHeightCells = sample.heightCells;
+      editor.toolSettings.terrainRegionRecipe.targetHeightCells != height;
+  editor.toolSettings.terrainRegionRecipe.targetHeightCells = height;
   receipt.reasonCode = "creative_editor_terrain_region_height_sampled";
   invalidateRegionPreview(editor.terrain.region);
   setRegionFeedback(editor, true);
@@ -196,8 +362,12 @@ CreativeEditorTerrainRegionReceipt cancelCreativeEditorTerrainRegion(
   receipt.accepted = true;
   receipt.action = CreativeEditorTerrainRegionAction::Cancel;
   receipt.changed = editor.volume.selection.phase !=
-                    cr::CreativeVolumeSelectionPhase::Empty;
+                        cr::CreativeVolumeSelectionPhase::Empty ||
+                    editor.terrain.region.editingOperationId !=
+                        cr::kInvalidCreativeTerrainOperationId;
   cr::clearCreativeVolumeSelection(editor.volume.selection);
+  editor.terrain.region.editingOperationId =
+      cr::kInvalidCreativeTerrainOperationId;
   invalidateRegionPreview(editor.terrain.region);
   clearCreativeEditorPlacementFeedback(editor.interaction);
   receipt.reasonCode = receipt.changed
@@ -213,35 +383,29 @@ bool processCreativeEditorTerrainRegionQuickEdit(
     return processCreativeEditorTerrainStampQuickEdit(editor, action);
   }
   bool changed = false;
-  const cr::CreativeTerrainRegionOperation operation =
-      editor.toolSettings.terrainRegionOperation;
+  cr::CreativeTerrainRegionRecipe& recipe =
+      editor.toolSettings.terrainRegionRecipe;
   switch (action) {
     case cr::CreativeInputActionId::QuickEditPrevious:
     case cr::CreativeInputActionId::QuickEditNext: {
       const int direction =
           action == cr::CreativeInputActionId::QuickEditPrevious ? 1 : -1;
-      if (cr::creativeTerrainRegionUsesTargetHeight(operation)) {
-        const std::uint16_t before = editor.terrain.region.targetHeightCells;
-        editor.terrain.region.targetHeightCells =
-            static_cast<std::uint16_t>(std::clamp(
-                static_cast<int>(before) + direction,
-                static_cast<int>(cr::kCreativeTerrainMinimumHeightCells),
-                static_cast<int>(cr::kCreativeTerrainMaximumHeightCells)));
-        changed = editor.terrain.region.targetHeightCells != before;
-      } else if (cr::creativeTerrainRegionUsesAmount(operation)) {
-        changed = stepClampedEnum(
-            editor.toolSettings.terrainRegionAmount,
-            cr::CreativeTerrainRegionAmount::Count, direction);
+      if (cr::creativeTerrainRegionModeUsesTargetHeight(recipe.mode)) {
+        changed = stepRegionValue(
+            recipe.targetHeightCells, cr::kCreativeTerrainMinimumHeightCells,
+            cr::kCreativeTerrainMaximumHeightCells, direction);
+      } else if (cr::creativeTerrainRegionModeUsesAmount(recipe.mode)) {
+        changed = stepRegionValue(
+            recipe.amountCells, 1U,
+            cr::kCreativeTerrainRegionMaximumAmountCells, direction);
       }
       break;
     }
     case cr::CreativeInputActionId::QuickEditDecrease:
-      changed = cycleRegionOperation(
-          editor.toolSettings.terrainRegionOperation, -1);
+      changed = cycleRegionMode(recipe.mode, -1);
       break;
     case cr::CreativeInputActionId::QuickEditIncrease:
-      changed = cycleRegionOperation(
-          editor.toolSettings.terrainRegionOperation, 1);
+      changed = cycleRegionMode(recipe.mode, 1);
       break;
     default:
       return false;
@@ -257,16 +421,15 @@ std::string creativeEditorTerrainRegionQuickEditLabel(
   if (editor.terrain.region.stamp.active) {
     return creativeEditorTerrainStampQuickEditLabel(editor);
   }
-  const cr::CreativeTerrainRegionOperation operation =
-      editor.toolSettings.terrainRegionOperation;
-  std::string label(cr::toString(operation));
-  if (cr::creativeTerrainRegionUsesTargetHeight(operation)) {
+  const cr::CreativeTerrainRegionRecipe& recipe =
+      editor.toolSettings.terrainRegionRecipe;
+  std::string label(cr::toString(recipe.mode));
+  if (cr::creativeTerrainRegionModeUsesTargetHeight(recipe.mode)) {
     label.append(" | TARGET ");
-    label.append(std::to_string(editor.terrain.region.targetHeightCells));
-  } else if (cr::creativeTerrainRegionUsesAmount(operation)) {
+    label.append(std::to_string(recipe.targetHeightCells));
+  } else if (cr::creativeTerrainRegionModeUsesAmount(recipe.mode)) {
     label.append(" | AMOUNT ");
-    label.append(std::to_string(cr::creativeTerrainRegionAmountCells(
-        editor.toolSettings.terrainRegionAmount)));
+    label.append(std::to_string(recipe.amountCells));
   }
   return label;
 }
@@ -277,14 +440,14 @@ bool refreshCreativeEditorTerrainRegionPreview(
     const CreativeEditorState& editor) {
   const cr::CreativeVolumeSelection selection =
       creativeEditorVolumePreviewSelection(editor.volume);
-  cr::CreativeTerrainCoord2 minimumCoord{};
-  cr::CreativeTerrainCoord2 maximumCoord{};
-  if (!regionBounds(selection, minimumCoord, maximumCoord)) {
+  cr::CreativeTerrainRegionRecipe recipe;
+  if (!buildCreativeEditorTerrainRegionRecipe(editor, selection, recipe)) {
     invalidateRegionPreview(state.region);
     return false;
   }
   CreativeTerrainRegionPreviewCache& cache = state.region.preview;
-  if (previewKeyMatches(cache, document, editor, minimumCoord, maximumCoord)) {
+  if (previewKeyMatches(cache, document, state.region.editingOperationId,
+                        recipe)) {
     return false;
   }
 
@@ -292,46 +455,44 @@ bool refreshCreativeEditorTerrainRegionPreview(
   cache = {};
   cache.valid = true;
   cache.documentId = document.id();
-  cache.terrainRevision = document.terrainField().revision();
+  cache.documentRevision = document.revision();
   cache.buildCount = nextBuildCount;
-  cache.minimumCoord = minimumCoord;
-  cache.maximumCoord = maximumCoord;
-  cache.operation = editor.toolSettings.terrainRegionOperation;
-  cache.amountCells = cr::creativeTerrainRegionAmountCells(
-      editor.toolSettings.terrainRegionAmount);
-  cache.targetHeightCells = state.region.targetHeightCells;
-  cache.plan = cr::buildCreativeTerrainRegionPlan(
-      regionRequest(document, editor, minimumCoord, maximumCoord));
-  if (!cache.plan.accepted) {
+  cache.editingOperationId = state.region.editingOperationId;
+  cache.recipe = recipe;
+  cache.operationPreview = cr::planCreativeTerrainOperationMutation(
+      document.terrainField(), document.terrainHeightField(),
+      document.terrainMaterialField(), document.terrainOperationStack(),
+      regionRequest(document, state.region, recipe));
+  if (!cache.operationPreview.receipt.accepted) {
     return true;
   }
 
   const cr::CreativeGridSettings grid = document.gridSettings();
-  const cr::CreativeTerrainMutationPreviewReceipt preview =
-      cr::buildCreativeTerrainMutationPreview(
-          document.terrainField(), cache.plan.items(), grid.origin,
+  const cr::CreativeTerrainSurfacePlan surface =
+      cr::buildCreativeComposedTerrainSurfacePlan(
+          document.terrainField(), cache.operationPreview.heightField,
+          cache.operationPreview.hardEdges);
+  const cr::CreativeTerrainRenderPlan render =
+      cr::buildCreativeTerrainRenderPlan(
+          surface, cache.operationPreview.materialField, grid.origin,
           grid.cellSizeMeters);
-  if (!preview.accepted) {
+  if (!render.accepted) {
     return true;
   }
 
-  std::uint16_t expansion = 1U;
-  for (const cr::CreativeTerrainControlPoint& control :
-       document.terrainField().controls()) {
-    if (cr::creativeTerrainCoordInsideRegion(
-            control.coord, minimumCoord, maximumCoord)) {
-      expansion = std::max(expansion, control.radiusCells);
-    }
-  }
+  const std::int64_t expansion =
+      static_cast<std::int64_t>(recipe.featherCells) + 1;
   const std::int64_t minimumX =
-      static_cast<std::int64_t>(minimumCoord.x) - expansion;
+      static_cast<std::int64_t>(recipe.bounds.minimum.x) - expansion;
   const std::int64_t minimumZ =
-      static_cast<std::int64_t>(minimumCoord.z) - expansion;
+      static_cast<std::int64_t>(recipe.bounds.minimum.z) - expansion;
   const std::int64_t maximumX =
-      static_cast<std::int64_t>(maximumCoord.x) + expansion;
+      static_cast<std::int64_t>(recipe.bounds.minimum.x) +
+      recipe.bounds.widthCells - 1 + expansion;
   const std::int64_t maximumZ =
-      static_cast<std::int64_t>(maximumCoord.z) + expansion;
-  for (const cr::CreativeTerrainSurfacePatch& patch : preview.render.patches) {
+      static_cast<std::int64_t>(recipe.bounds.minimum.z) +
+      recipe.bounds.depthCells - 1 + expansion;
+  for (const cr::CreativeTerrainSurfacePatch& patch : render.patches) {
     if (patch.coord.x >= minimumX && patch.coord.x <= maximumX &&
         patch.coord.z >= minimumZ && patch.coord.z <= maximumZ) {
       cache.patches.push_back(patch);
@@ -342,7 +503,7 @@ bool refreshCreativeEditorTerrainRegionPreview(
 }
 
 void appendCreativeEditorTerrainRegionOverlay(
-    const cr::CreativeDocument& document,
+    const cr::CreativeDocument&,
     const CreativeEditorState& editor,
     float wireThickness,
     std::vector<iggy3d::RenderCreativeWireframeDebugLine>& wireLines) {
@@ -351,37 +512,8 @@ void appendCreativeEditorTerrainRegionOverlay(
   if (!preview.valid) {
     return;
   }
-  constexpr iggy3d::RenderLineColor admitted{0.20F, 1.0F, 0.35F, 1.0F};
-  constexpr iggy3d::RenderLineColor removing{1.0F, 0.46F, 0.12F, 1.0F};
-  constexpr iggy3d::RenderLineColor rejected{1.0F, 0.20F, 0.18F, 1.0F};
-  const bool accepted = preview.plan.accepted && preview.renderAccepted;
-  const iggy3d::RenderLineColor color =
-      !accepted ? rejected
-                : preview.operation == cr::CreativeTerrainRegionOperation::Erase
-                      ? removing
-                      : admitted;
-  const cr::CreativeGridSettings grid = document.gridSettings();
-  const auto plannedEdits = preview.plan.items();
-  for (const cr::CreativeTerrainControlPoint& control :
-       document.terrainField().controls()) {
-    if (!cr::creativeTerrainCoordInsideRegion(
-            control.coord, preview.minimumCoord, preview.maximumCoord)) {
-      continue;
-    }
-    const cr::CreativeTerrainControlPoint* displayedControl = &control;
-    if (accepted) {
-      const auto planned = std::find_if(
-          plannedEdits.begin(), plannedEdits.end(),
-          [&control](const cr::CreativeTerrainControlEdit& edit) {
-            return edit.control.coord == control.coord;
-          });
-      if (planned != plannedEdits.end()) {
-        displayedControl = &planned->control;
-      }
-    }
-    appendCreativeEditorTerrainControlGuide(
-        wireLines, grid, *displayedControl, color, wireThickness * 1.5F);
-  }
+  const bool accepted =
+      preview.operationPreview.receipt.accepted && preview.renderAccepted;
   if (!accepted) {
     return;
   }

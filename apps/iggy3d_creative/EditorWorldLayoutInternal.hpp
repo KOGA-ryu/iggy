@@ -64,6 +64,11 @@ CreativeEditorWorldLayoutEditReceipt selectWorldLayoutAtPoint(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutPoint point);
 
+CreativeEditorWorldLayoutEditReceipt applyWorldLayoutToolPoint(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid);
+
 CreativeEditorWorldLayoutSelection hitTestWorldLayout(
     const cr::CreativeWorldLayout& layout,
     CreativeEditorWorldLayoutPoint point,
@@ -226,6 +231,7 @@ inline void invalidateWorldLayoutPreview(
   state.previewVisible = false;
   state.liveEditPreviewVisible = false;
   state.propertyPreviewKey = {};
+  state.previewSource = {};
   state.previewLayoutRevision = 0U;
   state.preview = {};
 }
@@ -239,9 +245,13 @@ inline std::uint64_t nextWorldLayoutSourceEpoch(
 
 inline void clearWorldLayoutInteraction(
     CreativeEditorWorldLayoutState& state) {
+  state.planRegionSelection = {};
+  state.terrainPathDraft = {};
   state.gesturePreviewGridPointValid = false;
   state.gesturePreviewGridPoint = {};
   state.roomManipulation = {};
+  state.roomBoundaryManipulation = {};
+  state.roomCornerManipulation = {};
   state.verticalConnectorManipulation = {};
   state.boxManipulation = {};
   state.wallManipulation = {};
@@ -250,12 +260,18 @@ inline void clearWorldLayoutInteraction(
   state.generatedBuildingDraft = {};
   state.buildingTemplatePlacement = {};
   state.openingManipulation = {};
+  state.roofApertureManipulation = {};
+  state.roofManipulation = {};
   state.elevationManipulation = {};
   state.roomSettingsDraft = {};
+  state.roomMetadataDraft = {};
+  state.roomTopologyDraft = {};
+  state.roomEdgeSettingsDraft = {};
   state.verticalConnectorSettingsDraft = {};
   state.boxSettingsDraft = {};
   state.wallSettingsDraft = {};
   state.openingSettingsDraft = {};
+  state.roofApertureSettingsDraft = {};
   state.levelSettingsDraft = {};
   state.generatedLevelSettingsDraft = {};
   state.terrainProfileSettingsDraft = {};

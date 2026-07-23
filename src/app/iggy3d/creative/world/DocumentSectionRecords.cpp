@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/world/DocumentSectionInternal.hpp"
 
+#include "content/assets/StaticMeshAsset.hpp"
+
 #include <limits>
 #include <optional>
 #include <string>
@@ -202,6 +204,8 @@ namespace {
   record.kind = std::string{creative::serializedObjectKindId(object.kind)};
   record.name = object.name;
   record.assetId = object.assetId;
+  record.assetContentHash = object.assetContentHash;
+  record.assetMaterialVariant = object.assetMaterialVariant;
   record.transform = toSaveTransform(object.transform);
   record.bounds = toSaveBounds(object.bounds);
   record.layerId = object.layerId;
@@ -222,6 +226,29 @@ namespace {
         std::string{creative::toString(object.movingPlatform.traversalMode)};
     record.movingPlatformStartsActive = object.movingPlatform.startsActive;
   }
+  if (object.kind == creative::CreativeObjectKind::Door) {
+    record.doorLeafArrangement =
+        std::string{creative::toString(object.door.leafArrangement)};
+    record.doorHingeSide =
+        std::string{creative::toString(object.door.hingeSide)};
+    record.doorSwingSide =
+        std::string{creative::toString(object.door.swingSide)};
+    record.doorInitialState =
+        std::string{creative::toString(object.door.initialState)};
+    record.doorGameplayLocked = object.door.gameplayLocked;
+    record.doorTransitionSeconds = object.door.transitionSeconds;
+  }
+  if (object.kind == creative::CreativeObjectKind::Window) {
+    record.windowInsertKind =
+        std::string{creative::toString(object.window.insertKind)};
+  }
+  if (object.kind == creative::CreativeObjectKind::SpawnPoint) {
+    record.playerSpawnProfileId = object.playerSpawn.playerProfileId;
+    record.playerSpawnGroup = object.playerSpawn.spawnGroup;
+    record.playerSpawnValidationRadiusMeters =
+        object.playerSpawn.validationRadiusMeters;
+    record.playerSpawnFallbackPriority = object.playerSpawn.fallbackPriority;
+  }
   return record;
 }
 
@@ -229,13 +256,22 @@ namespace {
     const SaveCreativeDocumentObjectRecord& record,
     creative::CreativeObject& out) noexcept {
   creative::CreativeObjectKind kind = creative::CreativeObjectKind::Unknown;
-  if (!creative::parseSerializedObjectKindId(record.kind, kind)) {
+  if (!creative::parseSerializedObjectKindId(record.kind, kind) ||
+      (!record.assetId.empty() &&
+       !validStaticMeshAssetId(record.assetId)) ||
+      (record.assetId.empty() &&
+       (record.assetContentHash != 0U ||
+        !record.assetMaterialVariant.empty())) ||
+      !creative::validCreativeAssetMaterialVariantName(
+          record.assetMaterialVariant)) {
     return false;
   }
   out.id = record.id;
   out.kind = kind;
   out.name = record.name;
   out.assetId = record.assetId;
+  out.assetContentHash = record.assetContentHash;
+  out.assetMaterialVariant = record.assetMaterialVariant;
   out.transform = toCreativeTransform(record.transform);
   out.bounds = toCreativeBounds(record.bounds);
   out.layerId = record.layerId;
@@ -261,6 +297,40 @@ namespace {
     out.movingPlatform.startsActive = record.movingPlatformStartsActive;
     if (!creative::isValidCreativeMovingPlatformSettings(
             out.movingPlatform)) {
+      return false;
+    }
+  }
+  if (kind == creative::CreativeObjectKind::Door) {
+    if (!creative::parseCreativeDoorLeafArrangement(
+            record.doorLeafArrangement, out.door.leafArrangement) ||
+        !creative::parseCreativeDoorHingeSide(record.doorHingeSide,
+                                              out.door.hingeSide) ||
+        !creative::parseCreativeDoorSwingSide(record.doorSwingSide,
+                                              out.door.swingSide) ||
+        !creative::parseCreativeDoorInitialState(record.doorInitialState,
+                                                 out.door.initialState)) {
+      return false;
+    }
+    out.door.gameplayLocked = record.doorGameplayLocked;
+    out.door.transitionSeconds = record.doorTransitionSeconds;
+    if (!creative::isValidCreativeDoorSettings(out.door)) {
+      return false;
+    }
+  }
+  if (kind == creative::CreativeObjectKind::Window) {
+    if (!creative::parseCreativeWindowInsertKind(record.windowInsertKind,
+                                                  out.window.insertKind) ||
+        !creative::isValidCreativeWindowSettings(out.window)) {
+      return false;
+    }
+  }
+  if (kind == creative::CreativeObjectKind::SpawnPoint) {
+    out.playerSpawn.playerProfileId = record.playerSpawnProfileId;
+    out.playerSpawn.spawnGroup = record.playerSpawnGroup;
+    out.playerSpawn.validationRadiusMeters =
+        record.playerSpawnValidationRadiusMeters;
+    out.playerSpawn.fallbackPriority = record.playerSpawnFallbackPriority;
+    if (!creative::isValidCreativePlayerSpawnSettings(out.playerSpawn)) {
       return false;
     }
   }

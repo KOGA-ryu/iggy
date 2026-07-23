@@ -1,6 +1,7 @@
 #include "EditorAssetScatter.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorPlacementClearance.hpp"
+#include "EditorPattern.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <limits>
 #include <numbers>
+#include <optional>
 #include <string_view>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -80,12 +82,49 @@ bool plannerIsDeterministicBoundedAndSpaced() {
       validCandidates = sx * sx + sz * sz >= 1.0 - 1.0e-9;
     }
   }
+  std::size_t readyEvaluations = 0U;
+  std::size_t densityEvaluations = 0U;
+  std::size_t spacingEvaluations = 0U;
+  bool validEvaluations = first.evaluationCount >= first.candidateCount;
+  for (const cr::CreativeAssetScatterEvaluation& evaluation :
+       first.evaluatedItems()) {
+    const double dx = evaluation.candidate.position.x - request.center.x;
+    const double dz = evaluation.candidate.position.z - request.center.z;
+    validEvaluations = validEvaluations &&
+                       cr::isFiniteCreativeVec3(evaluation.candidate.position) &&
+                       dx * dx + dz * dz <= 64.0 + 1.0e-9;
+    switch (evaluation.status) {
+      case cr::CreativeAssetScatterEvaluationStatus::Ready:
+        ++readyEvaluations;
+        break;
+      case cr::CreativeAssetScatterEvaluationStatus::DensityRejected:
+        ++densityEvaluations;
+        break;
+      case cr::CreativeAssetScatterEvaluationStatus::SpacingRejected:
+        ++spacingEvaluations;
+        break;
+      case cr::CreativeAssetScatterEvaluationStatus::CapacityRejected:
+      case cr::CreativeAssetScatterEvaluationStatus::Count:
+        break;
+    }
+  }
+  validEvaluations =
+      validEvaluations && readyEvaluations == first.candidateCount &&
+      densityEvaluations == first.densityRejectedCount &&
+      spacingEvaluations == first.spacingRejectedCount;
 
   cr::CreativeAssetScatterRequest sparseRequest = request;
   sparseRequest.radiusMeters = 4.0;
   sparseRequest.densityFraction = 0.35;
   const cr::CreativeAssetScatterPlan sparse =
       cr::planCreativeAssetScatter(sparseRequest);
+  const std::size_t sparseDensityEvaluations = static_cast<std::size_t>(
+      std::count_if(
+          sparse.evaluatedItems().begin(), sparse.evaluatedItems().end(),
+          [](const cr::CreativeAssetScatterEvaluation& evaluation) {
+            return evaluation.status ==
+                   cr::CreativeAssetScatterEvaluationStatus::DensityRejected;
+          }));
   sparseRequest.densityFraction = 1.0;
   const cr::CreativeAssetScatterPlan dense =
       cr::planCreativeAssetScatter(sparseRequest);
@@ -96,8 +135,13 @@ bool plannerIsDeterministicBoundedAndSpaced() {
   return expect(same, "same scatter seed produces byte-stable candidates") &&
          expect(validCandidates,
                 "scatter candidates stay finite, bounded, spaced, and tuned") &&
+         expect(validEvaluations,
+                "scatter planner reports every admitted and rejected grid candidate") &&
          expect(dense.candidateCount >= sparse.candidateCount,
                 "density monotonically increases candidate count") &&
+         expect(sparse.densityRejectedCount > 0U &&
+                    sparseDensityEvaluations == sparse.densityRejectedCount,
+                "density rejection positions remain available to preview") &&
          expect(otherSeed.candidateCount > 1U &&
                     !sameCandidate(dense.candidates[1],
                                    otherSeed.candidates[1]),
@@ -198,6 +242,184 @@ app::CreativeEditorState scatterEditor() {
   return editor;
 }
 
+[[nodiscard]] bool sameHorizontalPosition(cr::CreativeVec3 lhs,
+                                          cr::CreativeVec3 rhs) noexcept {
+  return std::fabs(lhs.x - rhs.x) < 1.0e-9 &&
+         std::fabs(lhs.z - rhs.z) < 1.0e-9;
+}
+
+bool recipePlannerHonorsMasksAndExclusions() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scatter Masks");
+  static_cast<void>(document.assignId(9010U));
+  app::CreativeEditorState editor = scatterEditor();
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  cr::CreativeAssetScatterRecipe circleRecipe =
+      app::makeCreativeEditorAssetScatterRecipe(editor, held);
+  circleRecipe.avoidCollisions = false;
+  circleRecipe.mask = cr::CreativeAssetScatterRecipeMask::Circle;
+  const app::CreativeEditorAssetScatterPlan circle =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor,
+                                                     circleRecipe);
+  cr::CreativeAssetScatterRecipe boxRecipe = circleRecipe;
+  boxRecipe.mask = cr::CreativeAssetScatterRecipeMask::Box;
+  const app::CreativeEditorAssetScatterPlan box =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor,
+                                                     boxRecipe);
+  const cr::CreativeVec3 center = circleRecipe.paintCenters.front();
+  bool circleInside = true;
+  for (const app::CreativeEditorAssetScatterCandidate& candidate :
+       circle.items()) {
+    if (!candidate.placeable) {
+      continue;
+    }
+    const double dx = candidate.surfacePosition.x - center.x;
+    const double dz = candidate.surfacePosition.z - center.z;
+    circleInside = circleInside &&
+                   dx * dx + dz * dz <=
+                       circleRecipe.radiusMeters * circleRecipe.radiusMeters +
+                           1.0e-9;
+  }
+  bool boxHasCorner = false;
+  bool boxInside = true;
+  for (const app::CreativeEditorAssetScatterCandidate& candidate : box.items()) {
+    if (!candidate.placeable) {
+      continue;
+    }
+    const double dx = std::fabs(candidate.surfacePosition.x - center.x);
+    const double dz = std::fabs(candidate.surfacePosition.z - center.z);
+    boxInside = boxInside && dx <= boxRecipe.radiusMeters + 1.0e-9 &&
+                dz <= boxRecipe.radiusMeters + 1.0e-9;
+    boxHasCorner = boxHasCorner ||
+                   dx * dx + dz * dz >
+                       boxRecipe.radiusMeters * boxRecipe.radiusMeters +
+                           1.0e-9;
+  }
+
+  const auto excludedSource = std::find_if(
+      circle.items().begin(), circle.items().end(),
+      [](const app::CreativeEditorAssetScatterCandidate& candidate) {
+        return candidate.placeable;
+      });
+  cr::CreativeAssetScatterRecipe excludedRecipe = circleRecipe;
+  if (excludedSource != circle.items().end()) {
+    excludedRecipe.exclusions.push_back(
+        {excludedSource->surfacePosition, 0.25});
+  }
+  const app::CreativeEditorAssetScatterPlan excluded =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor,
+                                                     excludedRecipe);
+  const bool targetExcluded =
+      excludedSource != circle.items().end() &&
+      std::any_of(
+          excluded.items().begin(), excluded.items().end(),
+          [&excludedSource](
+              const app::CreativeEditorAssetScatterCandidate& candidate) {
+            return sameHorizontalPosition(candidate.surfacePosition,
+                                          excludedSource->surfacePosition) &&
+                   candidate.status ==
+                       app::CreativeEditorAssetScatterCandidateStatus::Excluded;
+          });
+
+  cr::CreativeDocumentCreateRequest selectionRequest;
+  selectionRequest.kind = cr::CreativeObjectKind::Floor;
+  selectionRequest.name = "Scatter Selection Mask";
+  selectionRequest.hasBoundsOverride = true;
+  selectionRequest.bounds = {{-1.0, -0.2, -1.0}, {2.0, 0.0, 2.0}};
+  const cr::CreativeDocumentCreateReceipt selectionCreated =
+      document.createObject(selectionRequest);
+  cr::CreativeAssetScatterRecipe selectionRecipe = circleRecipe;
+  selectionRecipe.mask = cr::CreativeAssetScatterRecipeMask::Selection;
+  const app::CreativeEditorAssetScatterPlan missingSelection =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor,
+                                                     selectionRecipe);
+  const std::array selectionIds{selectionCreated.objectId};
+  const app::CreativeEditorAssetScatterPlan selection =
+      app::buildCreativeEditorAssetScatterRecipePlan(
+          document, editor, selectionRecipe, selectionIds, selectionIds);
+  bool selectionInside = selection.placeableCount > 0U;
+  bool selectionRejectedOutside = false;
+  for (const app::CreativeEditorAssetScatterCandidate& candidate :
+       selection.items()) {
+    if (candidate.placeable) {
+      selectionInside =
+          selectionInside && candidate.surfacePosition.x >= -1.0 - 1.0e-9 &&
+          candidate.surfacePosition.x <= 2.0 + 1.0e-9 &&
+          candidate.surfacePosition.z >= -1.0 - 1.0e-9 &&
+          candidate.surfacePosition.z <= 2.0 + 1.0e-9;
+    }
+    selectionRejectedOutside =
+        selectionRejectedOutside ||
+        candidate.status ==
+            app::CreativeEditorAssetScatterCandidateStatus::OutsideMask;
+  }
+
+  return expect(circle.accepted && box.accepted && circleInside && boxInside &&
+                    boxHasCorner && box.placeableCount > circle.placeableCount,
+                "circle and box masks produce distinct bounded footprints") &&
+         expect(targetExcluded &&
+                    excluded.placeableCount < circle.placeableCount,
+                "exclusion masks reject their deterministic candidate") &&
+         expect(selectionCreated.accepted &&
+                    missingSelection.kernelStatus ==
+                        cr::CreativeAssetScatterStatus::InvalidRequest &&
+                    selection.accepted && selectionInside &&
+                    selectionRejectedOutside,
+                "selection mask requires and clips to its durable source ids");
+}
+
+bool recipePlannerHonorsCollisionPolicy() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scatter Collision");
+  static_cast<void>(document.assignId(9011U));
+  app::CreativeEditorState editor = scatterEditor();
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  cr::CreativeAssetScatterRecipe recipe =
+      app::makeCreativeEditorAssetScatterRecipe(editor, held);
+  recipe.avoidCollisions = false;
+  const app::CreativeEditorAssetScatterPlan unobstructed =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor, recipe);
+  const auto source = std::find_if(
+      unobstructed.items().begin(), unobstructed.items().end(),
+      [](const app::CreativeEditorAssetScatterCandidate& candidate) {
+        return candidate.placeable;
+      });
+  if (!expect(source != unobstructed.items().end(),
+              "collision policy fixture has a placeable candidate")) {
+    return false;
+  }
+  const cr::CreativeDocumentCreateRequest blocker = app::buildBrushCreateRequest(
+      source->placement, 1U, "scatter_policy_blocker");
+  const cr::CreativeDocumentCreateReceipt blockerCreated =
+      document.createObject(blocker);
+  recipe.avoidCollisions = true;
+  const app::CreativeEditorAssetScatterPlan avoid =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor, recipe);
+  recipe.avoidCollisions = false;
+  const app::CreativeEditorAssetScatterPlan allow =
+      app::buildCreativeEditorAssetScatterRecipePlan(document, editor, recipe);
+  const auto statusAtSource = [&source](
+                                  const app::CreativeEditorAssetScatterPlan& plan) {
+    const auto found = std::find_if(
+        plan.items().begin(), plan.items().end(),
+        [&source](const app::CreativeEditorAssetScatterCandidate& candidate) {
+          return sameHorizontalPosition(candidate.surfacePosition,
+                                        source->surfacePosition);
+        });
+    return found != plan.items().end()
+               ? found->status
+               : app::CreativeEditorAssetScatterCandidateStatus::InvalidPlacement;
+  };
+
+  return expect(blockerCreated.accepted &&
+                    statusAtSource(avoid) ==
+                        app::CreativeEditorAssetScatterCandidateStatus::Obstructed,
+                "avoid policy rejects a candidate with blocker provenance") &&
+         expect(statusAtSource(allow) ==
+                    app::CreativeEditorAssetScatterCandidateStatus::Ready,
+                "allow policy admits the same overlapping candidate");
+}
+
 bool assetOnlyToolOptionsAreContextual() {
   cr::CreativeToolSettings settings;
   const cr::CreativeHotbarEntry ordinary{
@@ -209,6 +431,12 @@ bool assetOnlyToolOptionsAreContextual() {
       app::creativeEditorToolOptionsForEntry(ordinary, settings);
   const cr::CreativeToolOptionList singleOptions =
       app::creativeEditorToolOptionsForEntry(asset, settings);
+  cr::CreativeToolSettings alignmentSettings = settings;
+  const cr::CreativeToolOptionAdjustReceipt alignmentAdjusted =
+      cr::adjustCreativeToolOption(
+          alignmentSettings, cr::CreativeToolOptionId::AssetAlignmentMode, 1);
+  cr::CreativeToolSettings invalidAlignment = alignmentSettings;
+  invalidAlignment.assetAlignmentMode = cr::CreativeAssetAlignmentMode::Count;
   settings.assetPlacementMode = cr::CreativeAssetPlacementMode::Scatter;
   settings.placementAnchor = cr::CreativePlacementAnchor::Corner;
   const cr::CreativeToolOptionList scatterOptions =
@@ -234,21 +462,41 @@ bool assetOnlyToolOptionsAreContextual() {
          expect(optionsContain(singleOptions,
                                cr::CreativeToolOptionId::AssetPlacementMode) &&
                     optionsContain(singleOptions,
+                                   cr::CreativeToolOptionId::AssetAlignmentMode) &&
+                    optionsContain(singleOptions,
                                    cr::CreativeToolOptionId::PlacementYaw) &&
                     optionsContain(singleOptions,
                                    cr::CreativeToolOptionId::PlacementAnchor) &&
                     !optionsContain(singleOptions,
-                                    cr::CreativeToolOptionId::AssetScatterRadius),
-                "single asset mode keeps normal placement controls") &&
-         expect(scatterOptions.count == 7U &&
+                                    cr::CreativeToolOptionId::AssetScatterRadius) &&
+                    singleOptions.count == 9U &&
+                    !singleOptions.capacityExceeded,
+                "single asset mode exposes alignment and every normal placement control") &&
+         expect(scatterOptions.count == 9U &&
+                    optionsContain(scatterOptions,
+                                   cr::CreativeToolOptionId::AssetScatterMask) &&
                     optionsContain(scatterOptions,
                                    cr::CreativeToolOptionId::AssetScatterSlope) &&
+                    optionsContain(
+                        scatterOptions,
+                        cr::CreativeToolOptionId::AssetScatterCollision) &&
                     !optionsContain(scatterOptions,
                                     cr::CreativeToolOptionId::PlacementYaw) &&
                     !optionsContain(scatterOptions,
                                     cr::CreativeToolOptionId::PlacementAnchor) &&
+                    !optionsContain(scatterOptions,
+                                    cr::CreativeToolOptionId::AssetAlignmentMode) &&
                     !scatterOptions.capacityExceeded,
-                "scatter mode exposes seven bounded quick-edit settings") &&
+                "scatter mode exposes nine bounded quick-edit settings") &&
+         expect(alignmentAdjusted.accepted && alignmentAdjusted.changed &&
+                    alignmentSettings.assetAlignmentMode ==
+                        cr::CreativeAssetAlignmentMode::Floor &&
+                    cr::creativeToolOptionValueLabel(
+                        alignmentSettings,
+                        cr::CreativeToolOptionId::AssetAlignmentMode) ==
+                        "FLOOR" &&
+                    !cr::isValidCreativeToolSettings(invalidAlignment),
+                "alignment is a generic cyclic tool option") &&
          expect(scatterGrid.valid &&
                     scatterGrid.anchorKind ==
                         cr::CreativePlacementAnchorKind::BaseCenter,
@@ -316,6 +564,17 @@ bool previewIsTransientAndSolidGhostIsSuppressed() {
   std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
   const std::size_t edges = app::appendCreativeEditorAssetScatterWireframes(
       editor, 0.05F, lines);
+  const bool kernelRejectionVisible = std::any_of(
+      plan.rejectedItems().begin(), plan.rejectedItems().end(),
+      [](const app::CreativeEditorAssetScatterRejectedCandidate& candidate) {
+        return candidate.valid &&
+               (candidate.status ==
+                    app::CreativeEditorAssetScatterCandidateStatus::
+                        DensityRejected ||
+                candidate.status ==
+                    app::CreativeEditorAssetScatterCandidateStatus::
+                        SpacingRejected);
+      });
   bool grounded = true;
   for (const app::CreativeEditorAssetScatterCandidate& candidate :
        plan.items()) {
@@ -334,8 +593,12 @@ bool previewIsTransientAndSolidGhostIsSuppressed() {
 
   return expect(plan.accepted && plan.placeableCount > 0U,
                 "asset scatter preview plan is admitted") &&
-         expect(edges == plan.candidateCount * 12U && lines.size() == edges,
-                "every scatter candidate has one exact bounds wireframe") &&
+         expect(plan.rejectedCandidateCount > 0U && kernelRejectionVisible &&
+                    edges == (plan.candidateCount +
+                              plan.rejectedCandidateCount) *
+                                 12U &&
+                    lines.size() == edges,
+                "every accepted and rejected scatter candidate has one exact bounds wireframe") &&
          expect(grounded,
                 "random scale preserves imported asset ground alignment") &&
          expect(frame.creativePreview.itemCount == 1U &&
@@ -358,6 +621,17 @@ void setSecondary(cr::CreativeWorldActionFrame& actions,
   actions.released[index] = released;
 }
 
+void setPrimary(cr::CreativeWorldActionFrame& actions,
+                bool down,
+                bool pressed,
+                bool released) {
+  const std::size_t index =
+      static_cast<std::size_t>(cr::CreativeWorldActionId::Primary);
+  actions.down[index] = down;
+  actions.pressed[index] = pressed;
+  actions.released[index] = released;
+}
+
 bool gestureIsAtomicDeduplicatedAndOneUndoStep() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Scatter");
@@ -371,6 +645,22 @@ bool gestureIsAtomicDeduplicatedAndOneUndoStep() {
   setSecondary(press, true, true, false);
   app::processCreativeAssetScatterFrame(appState, editor, press, 0U);
   const std::size_t placed = appState.facade.document().objectCount();
+  const cr::CreativePatternRecipeStore& storeAfterPress =
+      appState.facade.document().patternRecipeStore();
+  const cr::CreativePatternRecipeId recipeId =
+      storeAfterPress.recipes.empty()
+          ? cr::kInvalidCreativePatternRecipeId
+          : storeAfterPress.recipes.front().id;
+  const std::vector<cr::CreativeObjectId> initialOutputIds =
+      storeAfterPress.recipes.empty()
+          ? std::vector<cr::CreativeObjectId>{}
+          : storeAfterPress.recipes.front().generatedObjectIds;
+  const bool initialRecipeValid =
+      storeAfterPress.recipes.size() == 1U &&
+      storeAfterPress.recipes.front().kind ==
+          cr::CreativePatternRecipeKind::AssetScatter &&
+      storeAfterPress.recipes.front().scatter.paintCenters.size() == 1U &&
+      storeAfterPress.recipes.front().generatedObjectIds.size() == placed;
   const std::uint64_t revisionAfterPress =
       appState.facade.document().revision();
 
@@ -383,25 +673,470 @@ bool gestureIsAtomicDeduplicatedAndOneUndoStep() {
   app::processCreativeAssetScatterFrame(
       appState, editor, beforeRepeat, 200'000'000ULL);
   const bool stationaryStable =
-      appState.facade.document().objectCount() == placed;
+      appState.facade.document().objectCount() == placed &&
+      appState.facade.document().revision() == revisionAfterPress;
+
+  editor.interaction.target.grid.placementAnchor = {10.5, 0.0, 0.5};
+  editor.interaction.target.grid.adjacentCellBounds =
+      {{10.0, 0.0, 0.0}, {11.0, 1.0, 1.0}};
+  app::processCreativeAssetScatterFrame(
+      appState, editor, beforeRepeat, 400'000'000ULL);
+  const cr::CreativePatternRecipeStore& storeAfterMove =
+      appState.facade.document().patternRecipeStore();
+  const cr::CreativePatternRecipe* movedRecipe =
+      cr::findCreativePatternRecipe(storeAfterMove, recipeId);
+  const std::size_t movedObjectCount =
+      appState.facade.document().objectCount();
+  const std::uint64_t revisionAfterMove =
+      appState.facade.document().revision();
+  const bool movedRecipeValid =
+      storeAfterMove.recipes.size() == 1U && movedRecipe != nullptr &&
+      movedRecipe->scatter.paintCenters.size() == 2U &&
+      movedRecipe->generatedObjectIds.size() == movedObjectCount &&
+      movedObjectCount > placed &&
+      std::all_of(initialOutputIds.begin(), initialOutputIds.end(),
+                  [&appState, movedRecipe](cr::CreativeObjectId objectId) {
+                    return appState.facade.findObject(objectId) != nullptr &&
+                           std::find(movedRecipe->generatedObjectIds.begin(),
+                                     movedRecipe->generatedObjectIds.end(),
+                                     objectId) !=
+                               movedRecipe->generatedObjectIds.end();
+                  });
+  const std::uint64_t movedRecipeFingerprint =
+      movedRecipe != nullptr
+          ? cr::fingerprintCreativePatternRecipeSource(*movedRecipe)
+          : 0U;
+  app::processCreativeAssetScatterFrame(
+      appState, editor, beforeRepeat, 600'000'000ULL);
+  const bool movedCenterDeduplicated =
+      appState.facade.document().revision() == revisionAfterMove &&
+      appState.facade.document().objectCount() == movedObjectCount;
 
   cr::CreativeWorldActionFrame release;
   setSecondary(release, false, false, true);
   app::processCreativeAssetScatterFrame(
-      appState, editor, release, 201'000'000ULL);
+      appState, editor, release, 601'000'000ULL);
   const std::size_t undoDepthBefore = cr::creativeUndoDepth(appState.history);
+  const cr::CreativeAuthoringOperationRecord* operation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
+      operation != nullptr
+          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
+          : std::nullopt;
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
 
-  return expect(placed > 1U && editor.placedCount == placed,
-                "first press atomically places the scatter patch") &&
+  return expect(placed > 1U && initialRecipeValid,
+                "first press atomically creates one scatter recipe and its outputs") &&
          expect(beforeStable,
                 "repeat kernel does not mutate before 200 milliseconds") &&
          expect(stationaryStable,
                 "stationary repeat cannot stack duplicate assets") &&
+         expect(movedRecipeValid &&
+                    editor.placedCount == movedObjectCount,
+                "moving the held stroke appends locally without rebuilding prior outputs") &&
+         expect(movedCenterDeduplicated,
+                "a revisited paint center cannot rebuild the recipe") &&
+         expect(expectedOperation.has_value() &&
+                    movedRecipeFingerprint != 0U &&
+                    expectedOperation->family ==
+                        cr::CreativeAuthoringFamily::AssetScatter &&
+                    expectedOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Apply &&
+                    expectedOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Parametric &&
+                    expectedOperation->action == "AssetScatter.Paint" &&
+                    expectedOperation->requestFingerprint ==
+                        movedRecipeFingerprint &&
+                    expectedOperation->affectedMemberCount ==
+                        movedObjectCount,
+                "scatter stroke records its final durable recipe source") &&
          expect(undoDepthBefore == 1U &&
-                    undo.accepted && undo.objectCountAfter == 0U,
-                "release records exactly one undo step for the gesture");
+                    undo.accepted && undo.objectCountAfter == 0U &&
+                    undo.targetOperation == expectedOperation &&
+                    appState.facade.document().patternRecipeStore().recipes.empty(),
+                "release records one undo step for recipe and outputs together");
+}
+
+bool activeStrokeCachesOneDirtyRegionPreview() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Scatter Preview Cache");
+  static_cast<void>(document.assignId(9006U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "scatter preview cache document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor = scatterEditor();
+  cr::CreativeWorldActionFrame press;
+  setSecondary(press, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, press, 0U);
+  if (!expect(editor.interaction.assetScatter.recipeActive &&
+                  editor.interaction.assetScatter.previewBuildCount == 1U,
+              "first scatter publication performs one preview plan")) {
+    return false;
+  }
+
+  editor.interaction.target.grid.placementAnchor = {12.5, 0.0, 0.5};
+  editor.interaction.target.grid.adjacentCellBounds =
+      {{12.0, 0.0, 0.0}, {13.0, 1.0, 1.0}};
+  cr::CreativeWorldActionFrame held;
+  setSecondary(held, true, false, false);
+  app::processCreativeAssetScatterFrame(
+      appState, editor, held, 100'000'000ULL);
+  const std::uint64_t revisionBeforeIdle =
+      appState.facade.document().revision();
+  const std::size_t objectCountBeforeIdle =
+      appState.facade.document().objectCount();
+  const std::uint64_t previewBuildsBeforeIdle =
+      editor.interaction.assetScatter.previewBuildCount;
+  const std::size_t pendingCandidateCount =
+      editor.interaction.assetScatter.preview.candidateCount;
+
+  for (std::size_t frame = 0U; frame < 300U; ++frame) {
+    app::processCreativeAssetScatterFrame(
+        appState, editor, held, 100'000'000ULL);
+  }
+
+  return expect(pendingCandidateCount > 0U &&
+                    pendingCandidateCount <=
+                        cr::kCreativeAssetScatterCandidateCapacity &&
+                    previewBuildsBeforeIdle == 2U,
+                "active scatter previews only one pending paint region") &&
+         expect(editor.interaction.assetScatter.previewBuildCount ==
+                        previewBuildsBeforeIdle &&
+                    appState.facade.document().revision() ==
+                        revisionBeforeIdle &&
+                    appState.facade.document().objectCount() ==
+                        objectCountBeforeIdle,
+                "three hundred idle frames reuse the pending-region preview");
+}
+
+bool generatedEraseAddsExclusionAndKeepsRecipeEditable() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scatter Erase");
+  static_cast<void>(document.assignId(9004U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "scatter erase document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor = scatterEditor();
+  cr::CreativeWorldActionFrame place;
+  setSecondary(place, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, place, 0U);
+  cr::CreativeWorldActionFrame placeRelease;
+  setSecondary(placeRelease, false, false, true);
+  app::processCreativeAssetScatterFrame(appState, editor, placeRelease, 1U);
+
+  const cr::CreativePatternRecipeStore& initialStore =
+      appState.facade.document().patternRecipeStore();
+  if (!expect(initialStore.recipes.size() == 1U &&
+                  initialStore.recipes.front().generatedObjectIds.size() > 1U,
+              "scatter erase fixture owns multiple generated outputs")) {
+    return false;
+  }
+  const cr::CreativePatternRecipeId recipeId = initialStore.recipes.front().id;
+  const std::vector<cr::CreativeObjectId> initialOutputs =
+      initialStore.recipes.front().generatedObjectIds;
+  const cr::CreativeObjectId erasedObjectId = initialOutputs.front();
+  static_cast<void>(appState.facade.selectTargets(
+      std::span{&erasedObjectId, 1U}, erasedObjectId));
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.voxelHit = false;
+  editor.interaction.target.objectId = erasedObjectId;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Prop;
+
+  cr::CreativeWorldActionFrame erase;
+  setPrimary(erase, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, erase,
+                                        1'000'000'000ULL);
+  const cr::CreativePatternRecipe* edited = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+  const std::size_t editedObjectCount =
+      appState.facade.document().objectCount();
+  const bool editedRecipeValid =
+      edited != nullptr && edited->scatter.exclusions.size() == 1U &&
+      edited->generatedObjectIds.size() == editedObjectCount &&
+      editedObjectCount < initialOutputs.size();
+  const bool onlyErasedOutputRetired =
+      appState.facade.findObject(erasedObjectId) == nullptr &&
+      std::all_of(initialOutputs.begin() + 1, initialOutputs.end(),
+                  [&appState](cr::CreativeObjectId objectId) {
+                    return appState.facade.findObject(objectId) != nullptr;
+                  });
+  std::vector<cr::CreativeObjectId> expectedSurvivors{initialOutputs.begin() + 1,
+                                                      initialOutputs.end()};
+  const bool survivorIdsStable =
+      edited != nullptr && edited->generatedObjectIds == expectedSurvivors;
+  const bool staleSelectionCleared =
+      appState.facade.selectionState().selectedTarget.value == cr::kInvalidId;
+  cr::CreativeWorldActionFrame eraseRelease;
+  setPrimary(eraseRelease, false, false, true);
+  app::processCreativeAssetScatterFrame(appState, editor, eraseRelease,
+                                        1'000'000'001ULL);
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(appState.history);
+  const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const cr::CreativePatternRecipe* restored = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+
+  return expect(editedRecipeValid,
+                "erasing one generated item adds an exclusion to the same recipe") &&
+         expect(onlyErasedOutputRetired && survivorIdsStable &&
+                    staleSelectionCleared,
+                "local exclusion preserves survivor ids and clears only stale selection") &&
+         expect(undoDepthBefore == 2U && undo.accepted &&
+                    restored != nullptr && restored->scatter.exclusions.empty() &&
+                    restored->generatedObjectIds == initialOutputs,
+                "one undo restores the pre-erase recipe and outputs exactly");
+}
+
+bool erasingLastGeneratedItemRemovesRecipeAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scatter Last");
+  static_cast<void>(document.assignId(9005U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "single-output scatter document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor = scatterEditor();
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  cr::CreativeAssetScatterRecipe recipe =
+      app::makeCreativeEditorAssetScatterRecipe(editor, held);
+  recipe.radiusMeters = 0.1;
+  recipe.spacingMeters = 2.0;
+  recipe.maxGeneratedObjects = 1U;
+  const app::CreativeEditorAssetScatterPlan plan =
+      app::buildCreativeEditorAssetScatterRecipePlan(
+          appState.facade.document(), editor, recipe);
+  const auto candidate = std::find_if(
+      plan.items().begin(), plan.items().end(),
+      [](const app::CreativeEditorAssetScatterCandidate& item) {
+        return item.placeable;
+      });
+  if (!expect(candidate != plan.items().end(),
+              "single-output scatter candidate planned")) {
+    return false;
+  }
+  const cr::CreativeDocumentCreateRequest request = app::buildBrushCreateRequest(
+      candidate->placement, 1U, recipe.assetId, recipe.assetContentHash,
+      recipe.assetMaterialVariant);
+  const cr::CreativeAssetScatterRecipeMutationReceipt created =
+      appState.facade.createAssetScatterRecipe(
+          std::span{&request, 1U}, std::span<const cr::CreativeObjectId>{},
+          recipe);
+  if (!expect(created.accepted && created.generatedObjectIds.size() == 1U,
+              "single-output scatter recipe created")) {
+    return false;
+  }
+  const cr::CreativeObjectId outputId = created.generatedObjectIds.front();
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.voxelHit = false;
+  editor.interaction.target.objectId = outputId;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Prop;
+  cr::CreativeWorldActionFrame erase;
+  setPrimary(erase, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, erase,
+                                        2'000'000'000ULL);
+
+  return expect(appState.facade.document().objectCount() == 0U &&
+                    appState.facade.document()
+                        .patternRecipeStore()
+                        .recipes.empty(),
+                "erasing the final output removes recipe and owned object together");
+}
+
+bool selectedScatterRegeneratesAndBakesWithHistory() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Scatter Edit");
+  static_cast<void>(document.assignId(9006U));
+  if (!expect(appState.facade.installDocument(std::move(document)).accepted,
+              "scatter edit document installed")) {
+    return false;
+  }
+  app::CreativeEditorState editor = scatterEditor();
+  cr::CreativeWorldActionFrame place;
+  setSecondary(place, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, place, 0U);
+  cr::CreativeWorldActionFrame release;
+  setSecondary(release, false, false, true);
+  app::processCreativeAssetScatterFrame(appState, editor, release, 1U);
+  const cr::CreativePatternRecipeStore& initialStore =
+      appState.facade.document().patternRecipeStore();
+  if (!expect(initialStore.recipes.size() == 1U,
+              "scatter edit fixture owns one recipe")) {
+    return false;
+  }
+  const cr::CreativePatternRecipeId recipeId = initialStore.recipes.front().id;
+  const std::uint64_t initialSeed = initialStore.recipes.front().scatter.seed;
+  const std::vector<cr::CreativeObjectId> initialOutputs =
+      initialStore.recipes.front().generatedObjectIds;
+  const cr::CreativeObjectId selectedOutput = initialOutputs.back();
+  static_cast<void>(appState.facade.selectTargets(
+      std::span{&selectedOutput, 1U}, selectedOutput));
+  const cr::CreativePatternRecipe* selectedRecipe =
+      app::creativeEditorSelectedPatternRecipe(appState);
+  const bool selectedRecipeResolved =
+      selectedRecipe != nullptr && selectedRecipe->id == recipeId;
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const app::CreativeEditorToolOptionsCommandList commands =
+      app::creativeEditorToolOptionCommandsForEntry(
+          held, cr::CreativeObjectKind::Prop, recipeId,
+          cr::CreativePatternRecipeKind::AssetScatter);
+  const bool regenerateCommand = std::find(
+                                     commands.ids.begin(),
+                                     commands.ids.begin() + commands.count,
+                                     app::CreativeEditorToolOptionsCommandId::
+                                         RegeneratePatternRecipe) !=
+                                 commands.ids.begin() + commands.count;
+  const bool bakeCommand =
+      std::find(commands.ids.begin(), commands.ids.begin() + commands.count,
+                app::CreativeEditorToolOptionsCommandId::DetachPatternRecipe) !=
+      commands.ids.begin() + commands.count;
+
+  const cr::CreativeAssetScatterRecipeMutationReceipt regenerated =
+      app::regenerateCreativeEditorAssetScatterRecipeWithHistory(
+          appState, editor, recipeId, nullptr, "test_regenerate_scatter");
+  const cr::CreativePatternRecipe* changed = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+  const std::vector<cr::CreativeObjectId> regeneratedOutputs =
+      changed != nullptr ? changed->generatedObjectIds
+                         : std::vector<cr::CreativeObjectId>{};
+  const bool oldOutputsRetired = std::none_of(
+      initialOutputs.begin(), initialOutputs.end(),
+      [&appState](cr::CreativeObjectId objectId) {
+        return appState.facade.findObject(objectId) != nullptr;
+      });
+  const cr::TargetRef regeneratedSelection =
+      appState.facade.selectionState().selectedTarget;
+  const bool selectedRegeneratedOutput =
+      regeneratedSelection.value != cr::kInvalidId &&
+      std::find(regeneratedOutputs.begin(), regeneratedOutputs.end(),
+                static_cast<cr::CreativeObjectId>(
+                    regeneratedSelection.value)) != regeneratedOutputs.end();
+  const bool regenerationApplied =
+      regenerated.accepted && regenerated.updatedExistingRecipe &&
+      changed != nullptr && changed->id == recipeId &&
+      changed->scatter.seed != initialSeed && oldOutputsRetired &&
+      selectedRegeneratedOutput;
+  const std::uint64_t changedFingerprint =
+      changed != nullptr
+          ? cr::fingerprintCreativePatternRecipeSource(*changed)
+          : 0U;
+  const cr::CreativeAuthoringOperationRecord* regenerateOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord>
+      expectedRegenerateOperation =
+          regenerateOperation != nullptr
+              ? std::optional<cr::CreativeAuthoringOperationRecord>{
+                    *regenerateOperation}
+              : std::nullopt;
+  const cr::CreativeHistoryApplyReceipt undoRegenerate =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
+  const cr::CreativePatternRecipe* restored = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+  const bool regenerateUndoRestored =
+      undoRegenerate.accepted && restored != nullptr &&
+      restored->scatter.seed == initialSeed &&
+      restored->generatedObjectIds == initialOutputs;
+
+  const std::size_t objectCountBeforeBake =
+      appState.facade.document().objectCount();
+  const cr::CreativePatternRecipeMutationReceipt baked =
+      app::detachCreativeEditorPatternRecipeWithHistory(
+          appState, recipeId, "test_bake_scatter_instances");
+  const cr::CreativeAuthoringOperationRecord* detachOperation =
+      cr::creativeHistoryTargetOperation(
+          appState.history, cr::CreativeHistoryDirection::Undo);
+  const std::optional<cr::CreativeAuthoringOperationRecord>
+      expectedDetachOperation =
+          detachOperation != nullptr
+              ? std::optional<cr::CreativeAuthoringOperationRecord>{
+                    *detachOperation}
+              : std::nullopt;
+  const bool bakedInstancesRemain =
+      baked.accepted && baked.changed &&
+      appState.facade.document().patternRecipeStore().recipes.empty() &&
+      appState.facade.document().objectCount() == objectCountBeforeBake;
+  const cr::CreativeHistoryApplyReceipt undoBake = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+
+  return expect(selectedRecipeResolved && regenerateCommand && bakeCommand,
+                "selected scatter output resolves regenerate and bake commands") &&
+         expect(regenerationApplied,
+                "regenerate keeps recipe identity and selects a replacement output") &&
+         expect(expectedRegenerateOperation.has_value() &&
+                    expectedRegenerateOperation->family ==
+                        cr::CreativeAuthoringFamily::AssetScatter &&
+                    expectedRegenerateOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Reconcile &&
+                    expectedRegenerateOperation->action ==
+                        "AssetScatter.Regenerate" &&
+                    expectedRegenerateOperation->requestFingerprint ==
+                        changedFingerprint &&
+                    undoRegenerate.targetOperation ==
+                        expectedRegenerateOperation &&
+                    regenerateUndoRestored,
+                "regenerate is one independently undoable recipe edit") &&
+         expect(bakedInstancesRemain && expectedDetachOperation.has_value() &&
+                    expectedDetachOperation->family ==
+                        cr::CreativeAuthoringFamily::AssetScatter &&
+                    expectedDetachOperation->kind ==
+                        cr::CreativeAuthoringOperationKind::Destructive &&
+                    expectedDetachOperation->lifecycle ==
+                        cr::CreativeAuthoringLifecycle::Destructive &&
+                    expectedDetachOperation->action ==
+                        "AssetScatter.Detach" &&
+                    undoBake.accepted &&
+                    undoBake.targetOperation == expectedDetachOperation &&
+                    cr::findCreativePatternRecipe(
+                        appState.facade.document().patternRecipeStore(),
+                        recipeId) != nullptr,
+                "bake keeps instances and is independently undoable");
+}
+
+bool scatterEraseRejectsSourceOwnedOutput() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Source Owned");
+  static_cast<void>(document.assignId(9003U));
+  app::CreativeEditorState editor = scatterEditor();
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Generated Crate";
+  request.tags = {"creative_world_layout:source_owned"};
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  editor.frameIndex = 77U;
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = created.objectId;
+  editor.interaction.target.objectKind = cr::CreativeObjectKind::Crate;
+
+  cr::CreativeWorldActionFrame remove;
+  setPrimary(remove, true, true, false);
+  app::processCreativeAssetScatterFrame(appState, editor, remove, 0U);
+  const app::CreativeEditorPlacementFeedback& feedback =
+      editor.interaction.placementFeedback;
+  const app::CreativeEditorPlacementFeedbackViewModel view =
+      app::creativeEditorPlacementFeedbackViewModel(
+          feedback, editor.frameIndex, &appState.facade.document());
+
+  return expect(created.accepted && installed.accepted,
+                "source-owned scatter erase fixture is valid") &&
+         expect(appState.facade.findObject(created.objectId) != nullptr &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "scatter erase cannot destroy direct World Layout output") &&
+         expect(feedback.rejectionReason ==
+                        app::CreativeEditorPlacementRejectionReason::
+                            SemanticSourceOwned &&
+                    view.label.view() == "Edit generated source",
+                "scatter erase explains the semantic owner");
 }
 
 bool scatterPreservesObstructionFeedback() {
@@ -504,10 +1239,17 @@ int main() {
   const bool ok = plannerIsDeterministicBoundedAndSpaced() &&
                   plannerRejectsInvalidAndOversizedRequests() &&
                   terrainSurfacePoseMatchesFlatRenderedPatch() &&
+                  recipePlannerHonorsMasksAndExclusions() &&
+                  recipePlannerHonorsCollisionPolicy() &&
                   assetOnlyToolOptionsAreContextual() &&
                   terrainScatterRejectsSteepAndMissingSurface() &&
                   previewIsTransientAndSolidGhostIsSuppressed() &&
                   gestureIsAtomicDeduplicatedAndOneUndoStep() &&
+                  activeStrokeCachesOneDirtyRegionPreview() &&
+                  generatedEraseAddsExclusionAndKeepsRecipeEditable() &&
+                  erasingLastGeneratedItemRemovesRecipeAtomically() &&
+                  selectedScatterRegeneratesAndBakesWithHistory() &&
+                  scatterEraseRejectsSourceOwnedOutput() &&
                   scatterPreservesObstructionFeedback() &&
                   sharedVisitedKernelIsBounded();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

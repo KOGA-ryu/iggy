@@ -125,6 +125,11 @@ bool isProjectedRoomMeshRole(std::string_view role) {
          role == "ledge" || role == "terrain";
 }
 
+bool isOpeningSemanticRole(std::string_view role) {
+  return role == "Door" || role == "Window" || role == "Arch" ||
+         role == "CaveOpening";
+}
+
 void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) {
   if (room == nullptr) {
     return;
@@ -150,6 +155,8 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     item.meshId = mesh.meshId;
     item.role = mesh.role;
     item.materialId = mesh.materialId;
+    item.materialVariant = mesh.materialVariant;
+    item.semanticRole = mesh.semanticRole;
     item.position = mesh.positionMeters;
     item.size = mesh.sizeMeters;
     item.rotationEulerRadians = mesh.rotationEulerRadians;
@@ -163,6 +170,8 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
     projected.floorVisible = projected.floorVisible || mesh.role == "floor" ||
                              mesh.role == "terrain";
     projected.wallVisible = projected.wallVisible || mesh.role == "wall";
+    projected.openingVisible =
+        projected.openingVisible || isOpeningSemanticRole(mesh.semanticRole);
     projected.propVisible = projected.propVisible || mesh.role == "prop" ||
                             mesh.role == "ledge";
     if (!mesh.materialId.empty()) {

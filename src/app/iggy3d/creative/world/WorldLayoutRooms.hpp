@@ -26,6 +26,7 @@ struct CreativeWorldLayoutRoomCompileResult {
   struct WallContributor {
     std::size_t roomIndex = kInvalidCreativeWorldLayoutIndex;
     CreativeWorldLayoutRoomEdge roomEdge = CreativeWorldLayoutRoomEdge::Count;
+    std::size_t topologyEdgeIndex = kInvalidCreativeWorldLayoutIndex;
   };
   struct WallProvenance {
     std::vector<WallContributor> contributors;

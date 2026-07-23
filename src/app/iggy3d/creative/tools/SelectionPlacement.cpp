@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "core/math/Snap.hpp"
 
@@ -96,10 +97,142 @@ struct ResolvedObjects {
          static_cast<std::size_t>(CreativeSelectionPlacementAxis::Count);
 }
 
+[[nodiscard]] bool validPivotMode(
+    CreativeSelectionPlacementPivotMode mode) noexcept {
+  return static_cast<std::size_t>(mode) <
+         static_cast<std::size_t>(CreativeSelectionPlacementPivotMode::Count);
+}
+
+[[nodiscard]] bool validCoordinateSpace(
+    CreativeSelectionPlacementCoordinateSpace space) noexcept {
+  return static_cast<std::size_t>(space) <
+         static_cast<std::size_t>(
+             CreativeSelectionPlacementCoordinateSpace::Count);
+}
+
+[[nodiscard]] bool placementTranslationRequested(
+    const CreativeSelectionPlacementRequest& request) noexcept {
+  return !creativeVec3ExactlyEqual(request.sourceAnchor, request.targetAnchor);
+}
+
+[[nodiscard]] bool placementRotationRequested(
+    const CreativeSelectionPlacementRequest& request) noexcept {
+  return request.quarterTurns != 0U ||
+         (request.hasAxisAngleRotation &&
+          std::abs(request.rotationRadians) > 1.0e-12);
+}
+
+[[nodiscard]] bool placementScaleRequested(
+    const CreativeSelectionPlacementRequest& request) noexcept {
+  return !creativeVec3ExactlyEqual(request.scaleFactor, {1.0, 1.0, 1.0});
+}
+
+[[nodiscard]] bool uniformScale(CreativeVec3 factor) noexcept {
+  return std::abs(factor.x - factor.y) <= 1.0e-12 &&
+         std::abs(factor.x - factor.z) <= 1.0e-12;
+}
+
+struct PlacementBasis {
+  CreativeVec3 x{1.0, 0.0, 0.0};
+  CreativeVec3 y{0.0, 1.0, 0.0};
+  CreativeVec3 z{0.0, 0.0, 1.0};
+};
+
+[[nodiscard]] bool cardinalDirection(CreativeVec3 direction) noexcept {
+  const double ax = std::abs(direction.x);
+  const double ay = std::abs(direction.y);
+  const double az = std::abs(direction.z);
+  const double maximum = std::max({ax, ay, az});
+  const double remainder = ax + ay + az - maximum;
+  return std::abs(maximum - 1.0) <= 1.0e-9 && remainder <= 1.0e-9;
+}
+
+[[nodiscard]] bool cardinalBasis(const PlacementBasis& basis) noexcept {
+  return cardinalDirection(basis.x) && cardinalDirection(basis.y) &&
+         cardinalDirection(basis.z);
+}
+
+[[nodiscard]] bool quarterTurnRadians(double radians) noexcept {
+  const double quarterTurns = radians / (std::numbers::pi * 0.5);
+  return std::isfinite(quarterTurns) &&
+         std::abs(quarterTurns - std::round(quarterTurns)) <= 1.0e-9;
+}
+
+[[nodiscard]] PlacementBasis placementBasis(
+    CreativeSelectionPlacementCoordinateSpace space,
+    CreativeVec3 eulerRadians) noexcept {
+  if (space == CreativeSelectionPlacementCoordinateSpace::World) {
+    return {};
+  }
+  return {
+      rotateCreativeVectorEulerXyz({1.0, 0.0, 0.0}, eulerRadians),
+      rotateCreativeVectorEulerXyz({0.0, 1.0, 0.0}, eulerRadians),
+      rotateCreativeVectorEulerXyz({0.0, 0.0, 1.0}, eulerRadians),
+  };
+}
+
+[[nodiscard]] double dot(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
+  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+}
+
+[[nodiscard]] CreativeVec3 scale(CreativeVec3 value,
+                                 double factor) noexcept {
+  return {value.x * factor, value.y * factor, value.z * factor};
+}
+
+[[nodiscard]] CreativeVec3 basisAxis(
+    const PlacementBasis& basis,
+    CreativeSelectionPlacementAxis axis) noexcept {
+  switch (axis) {
+    case CreativeSelectionPlacementAxis::X: return basis.x;
+    case CreativeSelectionPlacementAxis::Y: return basis.y;
+    case CreativeSelectionPlacementAxis::Z: return basis.z;
+    case CreativeSelectionPlacementAxis::Free:
+    case CreativeSelectionPlacementAxis::Count:
+      return {};
+  }
+  return {};
+}
+
+[[nodiscard]] CreativeVec3 basisAxis(
+    const PlacementBasis& basis,
+    CreativeAxis3 axis) noexcept {
+  switch (axis) {
+    case CreativeAxis3::X: return basis.x;
+    case CreativeAxis3::Y: return basis.y;
+    case CreativeAxis3::Z: return basis.z;
+    case CreativeAxis3::Count: return {};
+  }
+  return {};
+}
+
+[[nodiscard]] CreativeVec3 toBasis(CreativeVec3 value,
+                                   const PlacementBasis& basis) noexcept {
+  return {dot(value, basis.x), dot(value, basis.y), dot(value, basis.z)};
+}
+
+[[nodiscard]] CreativeVec3 fromBasis(CreativeVec3 value,
+                                     const PlacementBasis& basis) noexcept {
+  return add(add(scale(basis.x, value.x), scale(basis.y, value.y)),
+             scale(basis.z, value.z));
+}
+
 [[nodiscard]] CreativeVec3 constrainedDisplacement(
     CreativeVec3 displacement,
     CreativeSelectionPlacementAxis axis,
+    CreativeSelectionPlacementCoordinateSpace coordinateSpace,
+    CreativeVec3 coordinateBasisEulerRadians,
     double snapStepMeters) noexcept {
+  if (coordinateSpace == CreativeSelectionPlacementCoordinateSpace::Local &&
+      axis != CreativeSelectionPlacementAxis::Free &&
+      axis != CreativeSelectionPlacementAxis::Count) {
+    const PlacementBasis basis =
+        placementBasis(coordinateSpace, coordinateBasisEulerRadians);
+    const CreativeVec3 direction = basisAxis(basis, axis);
+    const double displacementOnAxis = dot(displacement, direction);
+    return scale(direction, iggy3d::snapScalarToGrid(
+                                displacementOnAxis, snapStepMeters, 0.0));
+  }
   switch (axis) {
     case CreativeSelectionPlacementAxis::Free:
       return displacement;
@@ -121,7 +254,19 @@ struct ResolvedObjects {
 
 void addAxisNudge(CreativeVec3& displacement,
                   CreativeVec3 nudgeOffset,
-                  CreativeSelectionPlacementAxis axis) noexcept {
+                  CreativeSelectionPlacementAxis axis,
+                  CreativeSelectionPlacementCoordinateSpace coordinateSpace,
+                  CreativeVec3 coordinateBasisEulerRadians) noexcept {
+  if (coordinateSpace == CreativeSelectionPlacementCoordinateSpace::Local &&
+      axis != CreativeSelectionPlacementAxis::Free &&
+      axis != CreativeSelectionPlacementAxis::Count) {
+    const PlacementBasis basis =
+        placementBasis(coordinateSpace, coordinateBasisEulerRadians);
+    const CreativeVec3 direction = basisAxis(basis, axis);
+    displacement = add(displacement,
+                       scale(direction, dot(nudgeOffset, direction)));
+    return;
+  }
   switch (axis) {
     case CreativeSelectionPlacementAxis::Free:
       displacement = add(displacement, nudgeOffset);
@@ -142,7 +287,17 @@ void addAxisNudge(CreativeVec3& displacement,
 
 void addNudgeStep(CreativeVec3& offset,
                   CreativeSelectionPlacementAxis axis,
+                  CreativeSelectionPlacementCoordinateSpace coordinateSpace,
+                  CreativeVec3 coordinateBasisEulerRadians,
                   double delta) noexcept {
+  if (coordinateSpace == CreativeSelectionPlacementCoordinateSpace::Local &&
+      axis != CreativeSelectionPlacementAxis::Free &&
+      axis != CreativeSelectionPlacementAxis::Count) {
+    const PlacementBasis basis =
+        placementBasis(coordinateSpace, coordinateBasisEulerRadians);
+    offset = add(offset, scale(basisAxis(basis, axis), delta));
+    return;
+  }
   switch (axis) {
     case CreativeSelectionPlacementAxis::X:
       offset.x += delta;
@@ -162,6 +317,12 @@ void addNudgeStep(CreativeVec3& offset,
 [[nodiscard]] CreativeVec3 transformPlacementOffset(
     CreativeVec3 offset,
     const CreativeSelectionPlacementRequest& request) noexcept {
+  const PlacementBasis basis = placementBasis(
+      request.coordinateSpace, request.coordinateBasisEulerRadians);
+  if (request.coordinateSpace ==
+      CreativeSelectionPlacementCoordinateSpace::Local) {
+    offset = toBasis(offset, basis);
+  }
   offset = multiply(offset, request.scaleFactor);
   if (request.mirrorX) {
     offset.x = -offset.x;
@@ -169,9 +330,26 @@ void addNudgeStep(CreativeVec3& offset,
   if (request.mirrorZ) {
     offset.z = -offset.z;
   }
+  if (request.coordinateSpace ==
+      CreativeSelectionPlacementCoordinateSpace::Local) {
+    offset = fromBasis(offset, basis);
+  }
   if (request.hasAxisAngleRotation) {
+    if (request.coordinateSpace ==
+        CreativeSelectionPlacementCoordinateSpace::Local) {
+      return rotateCreativeVectorAroundAxis(
+          offset, basisAxis(basis, request.rotationAxis),
+          request.rotationRadians);
+    }
     return rotateCreativeVectorAxisAngle(offset, request.rotationAxis,
                                          request.rotationRadians);
+  }
+  if (request.coordinateSpace ==
+          CreativeSelectionPlacementCoordinateSpace::Local &&
+      request.quarterTurns != 0U) {
+    return rotateCreativeVectorAroundAxis(
+        offset, basis.y,
+        static_cast<double>(request.quarterTurns) * std::numbers::pi * 0.5);
   }
   switch (request.quarterTurns) {
     case 0U: return offset;
@@ -190,9 +368,107 @@ void addNudgeStep(CreativeVec3& offset,
                                       request));
 }
 
+[[nodiscard]] CreativeVec3 transformPlacementPointAroundObjectOrigin(
+    CreativeVec3 point,
+    CreativeVec3 objectOrigin,
+    const CreativeSelectionPlacementRequest& request) noexcept {
+  const CreativeVec3 translation =
+      subtract(request.targetAnchor, request.sourceAnchor);
+  return add(add(objectOrigin, translation),
+             transformPlacementOffset(subtract(point, objectOrigin), request));
+}
+
+[[nodiscard]] CreativeMutationKind placementMutationForOperation(
+    const CreativeObject& object,
+    bool translation,
+    bool rotation,
+    bool scaleRequested,
+    bool mirrorRequested) noexcept {
+  if (objectHasTransform(object.kind)) {
+    if (translation) return CreativeMutationKind::Move;
+    if (rotation || mirrorRequested) return CreativeMutationKind::Rotate;
+    if (scaleRequested) return CreativeMutationKind::Scale;
+  }
+  if (objectHasBounds(object.kind)) {
+    return CreativeMutationKind::SetBounds;
+  }
+  if (objectStoresPathPoints(object.kind)) {
+    return CreativeMutationKind::SetPatrolRoute;
+  }
+  return CreativeMutationKind::Unknown;
+}
+
+[[nodiscard]] bool placementRequestSupportedByObject(
+    const CreativeObject& object,
+    const CreativeSelectionPlacementRequest& request,
+    CreativeMutationKind& failedMutation,
+    std::string_view& reasonCode) noexcept {
+  const CreativeObjectTransformCapabilities capabilities =
+      creativeObjectTransformCapabilities(object.kind);
+  const bool translation = placementTranslationRequested(request);
+  const bool rotation = placementRotationRequested(request);
+  const bool scaleRequested = placementScaleRequested(request);
+  const bool mirrorRequested = request.mirrorX || request.mirrorZ;
+  failedMutation = placementMutationForOperation(
+      object, translation, rotation, scaleRequested, mirrorRequested);
+
+  if (translation && !capabilities.translate) {
+    reasonCode = "selection_placement_translation_unsupported";
+    return false;
+  }
+  if (rotation &&
+      capabilities.rotation == CreativeObjectRotationSupport::None) {
+    reasonCode = "selection_placement_rotation_unsupported";
+    return false;
+  }
+  if (scaleRequested &&
+      capabilities.scale == CreativeObjectScaleSupport::None) {
+    reasonCode = "selection_placement_scale_unsupported";
+    return false;
+  }
+  if (scaleRequested &&
+      capabilities.scale == CreativeObjectScaleSupport::Uniform &&
+      !uniformScale(request.scaleFactor)) {
+    reasonCode = "selection_placement_nonuniform_scale_unsupported";
+    return false;
+  }
+  if (mirrorRequested && !capabilities.mirror) {
+    reasonCode = "selection_placement_mirror_unsupported";
+    return false;
+  }
+
+  const bool boundsOnly =
+      !objectHasTransform(object.kind) && objectHasBounds(object.kind);
+  if (!boundsOnly) {
+    return true;
+  }
+
+  const PlacementBasis basis = placementBasis(
+      request.coordinateSpace, request.coordinateBasisEulerRadians);
+  const bool basisRepresentable =
+      request.coordinateSpace == CreativeSelectionPlacementCoordinateSpace::World ||
+      cardinalBasis(basis);
+  if (rotation &&
+      (capabilities.rotation != CreativeObjectRotationSupport::QuarterTurns ||
+       (request.hasAxisAngleRotation &&
+        !quarterTurnRadians(request.rotationRadians)) ||
+       !basisRepresentable)) {
+    reasonCode = "selection_placement_rotation_not_representable";
+    return false;
+  }
+  if ((mirrorRequested || (scaleRequested && !uniformScale(request.scaleFactor))) &&
+      !basisRepresentable) {
+    reasonCode = "selection_placement_local_bounds_not_representable";
+    return false;
+  }
+  return true;
+}
+
 [[nodiscard]] CreativeVec3 transformPlacementRotation(
     CreativeVec3 eulerRadians,
     const CreativeSelectionPlacementRequest& request) noexcept {
+  const PlacementBasis basis = placementBasis(
+      request.coordinateSpace, request.coordinateBasisEulerRadians);
   double transformed = eulerRadians.y;
   if (request.mirrorX) {
     transformed = -transformed;
@@ -200,19 +476,36 @@ void addNudgeStep(CreativeVec3& offset,
   if (request.mirrorZ) {
     transformed = std::numbers::pi - transformed;
   }
-  transformed += static_cast<double>(request.quarterTurns) *
-                 std::numbers::pi * 0.5;
+  if (request.coordinateSpace ==
+      CreativeSelectionPlacementCoordinateSpace::World) {
+    transformed += static_cast<double>(request.quarterTurns) *
+                   std::numbers::pi * 0.5;
+  }
   eulerRadians.y = std::remainder(transformed, std::numbers::pi * 2.0);
   if (request.hasAxisAngleRotation) {
+    if (request.coordinateSpace ==
+        CreativeSelectionPlacementCoordinateSpace::Local) {
+      return composeCreativeWorldAxisRotation(
+          eulerRadians, basisAxis(basis, request.rotationAxis),
+          request.rotationRadians);
+    }
     return composeCreativeWorldAxisRotation(
         eulerRadians, request.rotationAxis, request.rotationRadians);
+  }
+  if (request.coordinateSpace ==
+          CreativeSelectionPlacementCoordinateSpace::Local &&
+      request.quarterTurns != 0U) {
+    return composeCreativeWorldAxisRotation(
+        eulerRadians, basis.y,
+        static_cast<double>(request.quarterTurns) * std::numbers::pi * 0.5);
   }
   return eulerRadians;
 }
 
 [[nodiscard]] CreativeBounds transformPlacementBounds(
     CreativeBounds bounds,
-    const CreativeSelectionPlacementRequest& request) noexcept {
+    const CreativeSelectionPlacementRequest& request,
+    CreativeVec3 objectOrigin) noexcept {
   CreativeBounds output{};
   bool initialized = false;
   for (std::size_t index = 0; index < 8U; ++index) {
@@ -221,7 +514,12 @@ void addNudgeStep(CreativeVec3& offset,
         (index & 2U) != 0U ? bounds.max.y : bounds.min.y,
         (index & 4U) != 0U ? bounds.max.z : bounds.min.z,
     };
-    const CreativeVec3 transformed = transformPlacementPoint(corner, request);
+    const CreativeVec3 transformed =
+        request.pivotMode ==
+                CreativeSelectionPlacementPivotMode::IndividualOrigins
+            ? transformPlacementPointAroundObjectOrigin(corner, objectOrigin,
+                                                        request)
+            : transformPlacementPoint(corner, request);
     if (!initialized) {
       output = {transformed, transformed};
       initialized = true;
@@ -256,9 +554,19 @@ void addNudgeStep(CreativeVec3& offset,
     const CreativeObject& source,
     const CreativeSelectionPlacementRequest& request) {
   CreativeObject output = source;
+  CreativeVec3 objectOrigin{};
+  if (!resolveCreativeSelectionPlacementObjectOrigin(source, objectOrigin)) {
+    return {};
+  }
+  const auto transformPoint = [&](CreativeVec3 point) {
+    return request.pivotMode ==
+                   CreativeSelectionPlacementPivotMode::IndividualOrigins
+               ? transformPlacementPointAroundObjectOrigin(point, objectOrigin,
+                                                           request)
+               : transformPlacementPoint(point, request);
+  };
   if (objectHasTransform(source.kind)) {
-    output.transform.position =
-        transformPlacementPoint(source.transform.position, request);
+    output.transform.position = transformPoint(source.transform.position);
     output.transform.rotationEulerRadians = transformPlacementRotation(
         source.transform.rotationEulerRadians, request);
     output.transform.scale =
@@ -269,10 +577,10 @@ void addNudgeStep(CreativeVec3& offset,
           subtract(output.transform.position, source.transform.position));
     }
   } else if (objectHasBounds(source.kind)) {
-    output.bounds = transformPlacementBounds(source.bounds, request);
+    output.bounds = transformPlacementBounds(source.bounds, request, objectOrigin);
   }
   for (CreativePathPoint& point : output.pathPoints) {
-    point.position = transformPlacementPoint(point.position, request);
+    point.position = transformPoint(point.position);
   }
   return output;
 }
@@ -404,6 +712,29 @@ std::string_view toString(CreativeSelectionPlacementAxis axis) noexcept {
   return "INVALID";
 }
 
+std::string_view toString(
+    CreativeSelectionPlacementPivotMode mode) noexcept {
+  switch (mode) {
+    case CreativeSelectionPlacementPivotMode::SharedAnchor:
+      return "SharedAnchor";
+    case CreativeSelectionPlacementPivotMode::IndividualOrigins:
+      return "IndividualOrigins";
+    case CreativeSelectionPlacementPivotMode::Count:
+      break;
+  }
+  return "INVALID";
+}
+
+std::string_view toString(
+    CreativeSelectionPlacementCoordinateSpace space) noexcept {
+  switch (space) {
+    case CreativeSelectionPlacementCoordinateSpace::World: return "WORLD";
+    case CreativeSelectionPlacementCoordinateSpace::Local: return "LOCAL";
+    case CreativeSelectionPlacementCoordinateSpace::Count: break;
+  }
+  return "INVALID";
+}
+
 std::string_view toString(CreativeSelectionPlacementStatus status) noexcept {
   switch (status) {
     case CreativeSelectionPlacementStatus::NotRequested: return "NotRequested";
@@ -430,9 +761,11 @@ resolveCreativeSelectionPlacementTarget(
   result.requested = true;
   result.request = request;
   if (!validPlacementAxis(request.axis) ||
+      !validCoordinateSpace(request.coordinateSpace) ||
       !isFiniteCreativeVec3(request.sourceAnchor) ||
       !isFiniteCreativeVec3(request.aimedAnchor) ||
       !isFiniteCreativeVec3(request.nudgeOffset) ||
+      !isFiniteCreativeVec3(request.coordinateBasisEulerRadians) ||
       !std::isfinite(request.snapStepMeters) ||
       request.snapStepMeters <= 0.0) {
     result.status = CreativeSelectionPlacementTargetStatus::InvalidRequest;
@@ -442,8 +775,11 @@ resolveCreativeSelectionPlacementTarget(
 
   result.displacement = constrainedDisplacement(
       subtract(request.aimedAnchor, request.sourceAnchor), request.axis,
+      request.coordinateSpace, request.coordinateBasisEulerRadians,
       request.snapStepMeters);
-  addAxisNudge(result.displacement, request.nudgeOffset, request.axis);
+  addAxisNudge(result.displacement, request.nudgeOffset, request.axis,
+               request.coordinateSpace,
+               request.coordinateBasisEulerRadians);
   result.targetAnchor = add(request.sourceAnchor, result.displacement);
   if (!isFiniteCreativeVec3(result.displacement) ||
       !isFiniteCreativeVec3(result.targetAnchor)) {
@@ -468,7 +804,9 @@ nudgeCreativeSelectionPlacementOffset(
   receipt.request = request;
   receipt.offset = request.offset;
   if (!validPlacementAxis(request.axis) ||
+      !validCoordinateSpace(request.coordinateSpace) ||
       !isFiniteCreativeVec3(request.offset) ||
+      !isFiniteCreativeVec3(request.coordinateBasisEulerRadians) ||
       !std::isfinite(request.snapStepMeters) ||
       request.snapStepMeters <= 0.0) {
     receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
@@ -503,7 +841,8 @@ nudgeCreativeSelectionPlacementOffset(
     receipt.reasonCode = "selection_placement_nudge_overflow";
     return receipt;
   }
-  addNudgeStep(receipt.offset, request.axis, delta);
+  addNudgeStep(receipt.offset, request.axis, request.coordinateSpace,
+               request.coordinateBasisEulerRadians, delta);
   if (!isFiniteCreativeVec3(receipt.offset)) {
     receipt.offset = request.offset;
     receipt.status = CreativeSelectionPlacementNudgeStatus::InvalidRequest;
@@ -518,6 +857,65 @@ nudgeCreativeSelectionPlacementOffset(
   return receipt;
 }
 
+bool resolveCreativeSelectionPlacementObjectOrigin(
+    const CreativeObject& object,
+    CreativeVec3& origin) noexcept {
+  origin = {};
+  if (objectHasTransform(object.kind)) {
+    if (!isFiniteCreativeVec3(object.transform.position)) {
+      return false;
+    }
+    origin = object.transform.position;
+    return true;
+  }
+
+  const CreativeObjectWorldExtent extent =
+      resolveCreativeObjectWorldExtent(object);
+  if (!extent.valid || !isFiniteCreativeVec3(extent.min) ||
+      !isFiniteCreativeVec3(extent.max)) {
+    return false;
+  }
+  origin = {
+      extent.min.x + (extent.max.x - extent.min.x) * 0.5,
+      extent.min.y + (extent.max.y - extent.min.y) * 0.5,
+      extent.min.z + (extent.max.z - extent.min.z) * 0.5,
+  };
+  return isFiniteCreativeVec3(origin);
+}
+
+CreativeSelectionPlacementCapabilities
+resolveCreativeSelectionPlacementCapabilities(
+    std::span<const CreativeObject> objects) noexcept {
+  CreativeSelectionPlacementCapabilities result;
+  result.objectCount = objects.size();
+  if (objects.empty()) {
+    return result;
+  }
+
+  result.resolved = true;
+  result.translate = true;
+  result.rotation = CreativeObjectRotationSupport::Arbitrary;
+  result.scale = CreativeObjectScaleSupport::NonUniform;
+  result.mirror = true;
+  for (const CreativeObject& object : objects) {
+    if (object.kind == CreativeObjectKind::Unknown ||
+        object.kind == CreativeObjectKind::Count) {
+      return {};
+    }
+    const CreativeObjectTransformCapabilities objectCapabilities =
+        creativeObjectTransformCapabilities(object.kind);
+    result.translate = result.translate && objectCapabilities.translate;
+    result.rotation = static_cast<CreativeObjectRotationSupport>(std::min(
+        static_cast<std::uint8_t>(result.rotation),
+        static_cast<std::uint8_t>(objectCapabilities.rotation)));
+    result.scale = static_cast<CreativeObjectScaleSupport>(std::min(
+        static_cast<std::uint8_t>(result.scale),
+        static_cast<std::uint8_t>(objectCapabilities.scale)));
+    result.mirror = result.mirror && objectCapabilities.mirror;
+  }
+  return result;
+}
+
 CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     std::span<const CreativeObject> objects,
     const CreativeSelectionPlacementRequest& request) {
@@ -530,9 +928,12 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     plan.reasonCode = "selection_placement_source_empty";
     return plan;
   }
-  if (!validPlacementMode(request.mode) || request.quarterTurns > 3U ||
+  if (!validPlacementMode(request.mode) ||
+      !validPivotMode(request.pivotMode) || request.quarterTurns > 3U ||
+      !validCoordinateSpace(request.coordinateSpace) ||
       !isFiniteCreativeVec3(request.sourceAnchor) ||
       !isFiniteCreativeVec3(request.targetAnchor) ||
+      !isFiniteCreativeVec3(request.coordinateBasisEulerRadians) ||
       !isPositiveCreativeVec3(request.scaleFactor) ||
       !isValidCreativeAxis3(request.rotationAxis) ||
       !std::isfinite(request.rotationRadians) ||
@@ -542,12 +943,41 @@ CreativeSelectionPlacementPlan planCreativeSelectionPlacement(
     return plan;
   }
 
+  const bool transformRequested =
+      placementTranslationRequested(request) ||
+      placementRotationRequested(request) ||
+      placementScaleRequested(request) || request.mirrorX || request.mirrorZ;
+  std::unordered_set<CreativeObjectId> sourceIds;
+  sourceIds.reserve(objects.size());
+  for (const CreativeObject& object : objects) {
+    sourceIds.insert(object.id);
+  }
+
   plan.objects.reserve(objects.size());
   for (const CreativeObject& source : objects) {
     if (!validPlacementObject(source)) {
       plan.failedObjectId = source.id;
       plan.status = CreativeSelectionPlacementStatus::InvalidSource;
       plan.reasonCode = "selection_placement_source_invalid";
+      return plan;
+    }
+    CreativeMutationKind failedMutation = CreativeMutationKind::Unknown;
+    std::string_view unsupportedReason;
+    if (!placementRequestSupportedByObject(
+            source, request, failedMutation, unsupportedReason)) {
+      plan.failedObjectId = source.id;
+      plan.failedMutationKind = failedMutation;
+      plan.status = CreativeSelectionPlacementStatus::UnsupportedObject;
+      plan.reasonCode = unsupportedReason;
+      return plan;
+    }
+    if (request.mode == CreativeSelectionPlacementMode::Move &&
+        transformRequested && source.parentId.has_value() &&
+        !sourceIds.contains(*source.parentId)) {
+      plan.failedObjectId = source.id;
+      plan.failedMutationKind = CreativeMutationKind::Move;
+      plan.status = CreativeSelectionPlacementStatus::UnsupportedObject;
+      plan.reasonCode = "selection_placement_external_parent";
       return plan;
     }
     CreativeObject transformed = transformPlacementObject(source, request);
@@ -615,6 +1045,15 @@ CreativeSelectionPlacementReceipt placeDocumentObjectsAtomically(
     receipt.status = CreativeSelectionPlacementStatus::MissingObject;
     receipt.reasonCode = "selection_placement_object_missing";
     return receipt;
+  }
+  for (const CreativeObject* object : resolved.objects) {
+    if (creativeObjectEffectivelyLocked(document, object->id)) {
+      receipt.failedObjectId = object->id;
+      receipt.failedMutationKind = CreativeMutationKind::Move;
+      receipt.status = CreativeSelectionPlacementStatus::LockedObject;
+      receipt.reasonCode = "selection_placement_object_locked";
+      return receipt;
+    }
   }
   std::vector<CreativeObject> sourceObjects;
   sourceObjects.reserve(resolved.objects.size());

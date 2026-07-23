@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/play/RuntimeDoors.hpp"
 #include "app/iggy3d/creative/play/RuntimeMovingPlatforms.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/ids/EntityId.hpp"
@@ -64,6 +65,7 @@ struct CreativeRuntimeInteractableDefinition {
   std::string itemId;
   Transform3 transform;
   Aabb3 localBounds;
+  CreativeRuntimeDoorDefinition door;
   CreativeRuntimeMovingPlatformDefinition movingPlatform;
 };
 
@@ -99,11 +101,13 @@ buildCreativeRuntimeInteractableCatalog(const CreativeDocument& document,
 struct CreativeRuntimeRoomMeshSnapshot {
   std::size_t sourceIndex = 0U;
   RoomStaticMeshAsset mesh;
+  std::uint8_t doorLeafIndex = kCreativeRuntimeDoorNoLeaf;
 };
 
 struct CreativeRuntimeRoomSurfaceSnapshot {
   std::size_t sourceIndex = 0U;
   RoomSpatialSurface surface;
+  std::uint8_t doorLeafIndex = kCreativeRuntimeDoorNoLeaf;
 };
 
 struct CreativeRuntimeInteractableState {
@@ -111,6 +115,7 @@ struct CreativeRuntimeInteractableState {
   EntityId entity;
   // Door: open when active. Platform: enabled/present when active.
   bool targetActive = false;
+  CreativeRuntimeDoorState door;
   CreativeRuntimeMovingPlatformState movingPlatform;
   bool pickupConsumed = false;
   std::size_t occupantCount = 0U;
@@ -178,9 +183,10 @@ enum class CreativeRuntimeInteractionEffectStatus : std::uint8_t {
   UnsupportedTarget,
   NoLinkedTarget,
   TargetOccupied,
+  DoorLocked,
   GeometryRejected,
-  DoorOpened,
-  DoorClosed,
+  DoorOpening,
+  DoorClosing,
   CircuitOpened,
   CircuitClosed,
   LinksApplied,

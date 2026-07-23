@@ -171,7 +171,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
              rootObjectId, rootObjectId);
       return receipt;
     }
-    if (root->locked) {
+    if (creativeObjectEffectivelyLocked(document, rootObjectId)) {
       reject(receipt, CreativeAuthoredAssetRefreshStatus::LockedObject,
              "creative_authored_asset_refresh_object_locked", rootObjectId,
              rootObjectId);
@@ -208,7 +208,7 @@ refreshCreativeAuthoredAssetInstancesAtomically(
                rootObjectId, objectId);
         return receipt;
       }
-      if (object->locked) {
+      if (creativeObjectEffectivelyLocked(document, objectId)) {
         reject(receipt, CreativeAuthoredAssetRefreshStatus::LockedObject,
                "creative_authored_asset_refresh_object_locked", rootObjectId,
                objectId);

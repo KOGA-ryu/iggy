@@ -1,5 +1,6 @@
 #include "EditorWorldLayout.hpp"
 
+#include "EditorToolDescriptor.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -17,59 +18,6 @@
 
 namespace iggy3d_creative_app {
 namespace {
-
-constexpr std::array<CreativeEditorWorldLayoutPaletteEntry, 16U>
-    kWorldLayoutPaletteEntries = {{
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Select",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Select, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Estate House",
-         CreativeEditorWorldLayoutPaletteActivation::BuildingTemplate,
-         CreativeEditorWorldLayoutTool::Select,
-         cr::kBuilderEstateHouseTemplateId},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Building Shell",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::BuildingShell, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Add Room",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Room, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Floor",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Floor, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Partition",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Wall, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Door",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Door, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Window",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Window, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Stair",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Stair, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Structure, "Ramp",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Ramp, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Plateau",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Plateau, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Road",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Road, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Terrain, "Ditch",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Ditch, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Object, "Bridge",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::Bridge, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Gameplay, "Player Spawn",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::PlayerSpawn, {}},
-        {CreativeEditorWorldLayoutPaletteCategory::Gameplay, "NPC Spawn",
-         CreativeEditorWorldLayoutPaletteActivation::Tool,
-         CreativeEditorWorldLayoutTool::NpcSpawn, {}},
-    }};
 
 struct VerticalConnectorToolSpec {
   CreativeEditorWorldLayoutTool tool = CreativeEditorWorldLayoutTool::Count;
@@ -151,6 +99,56 @@ cr::CreativeWorldLayoutRect normalizedRect(cr::CreativeTerrainCoord2 first,
           {std::max(first.x, second.x), std::max(first.z, second.z)}};
 }
 
+[[nodiscard]] bool rectContains(
+    const cr::CreativeWorldLayoutRect& rect,
+    cr::CreativeTerrainCoord2 point) noexcept {
+  return point.x >= rect.minimum.x && point.x <= rect.maximum.x &&
+         point.z >= rect.minimum.z && point.z <= rect.maximum.z;
+}
+
+[[nodiscard]] std::size_t findBridgeAttachments(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeWorldLayoutRect& footprint,
+    std::string& pathKey,
+    cr::CreativeTerrainWatercourseCrossingId& crossingId) {
+  std::size_t count = 0U;
+  for (const cr::CreativeWorldLayoutTerrainPath& path : layout.terrainPaths) {
+    if (path.recipe.kind != cr::CreativeTerrainPathKind::River &&
+        path.recipe.kind != cr::CreativeTerrainPathKind::Trench) {
+      continue;
+    }
+    for (const cr::CreativeTerrainWatercourseCrossing& crossing :
+         path.recipe.watercourse.crossings) {
+      const auto point = std::find_if(
+          path.recipe.points.begin(), path.recipe.points.end(),
+          [&](const cr::CreativeTerrainPathSourcePoint& candidate) {
+            return candidate.id == crossing.pointId;
+          });
+      if (point == path.recipe.points.end() ||
+          !rectContains(footprint, point->coord)) {
+        continue;
+      }
+      ++count;
+      pathKey = path.stableKey;
+      crossingId = crossing.id;
+    }
+  }
+  return count;
+}
+
+[[nodiscard]] bool bridgeAttachmentClaimed(
+    const cr::CreativeWorldLayout& layout,
+    std::string_view pathKey,
+    cr::CreativeTerrainWatercourseCrossingId crossingId) {
+  return std::any_of(
+      layout.objects.begin(), layout.objects.end(),
+      [&](const cr::CreativeWorldLayoutObject& object) {
+        return object.usesBridgeRecipe &&
+               object.bridge.watercoursePathKey == pathKey &&
+               object.bridge.crossingId == crossingId;
+      });
+}
+
 cr::CreativeTerrainCoord2 cardinalEnd(cr::CreativeTerrainCoord2 start,
                                       cr::CreativeTerrainCoord2 requested) {
   const std::int64_t deltaX = static_cast<std::int64_t>(requested.x) - start.x;
@@ -165,19 +163,30 @@ cr::CreativeTerrainCoord2 cardinalEnd(cr::CreativeTerrainCoord2 start,
 
 
 
+CreativeEditorWorldLayoutEditReceipt beginWorldLayoutDrag(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeTerrainCoord2 point) {
+  const CreativeEditorToolDescriptor& descriptor =
+      describeCreativeEditorWorldLayoutTool(state.tool);
+  if (descriptor.worldLayoutInputProfile !=
+      CreativeEditorWorldLayoutInputProfile::Drag) {
+    return {false, false, "creative_editor_world_layout_gesture_tool_invalid"};
+  }
+  state.anchorActive = true;
+  state.anchor = point;
+  state.statusMessage = descriptor.worldLayoutInteractionPrompt;
+  return {true, false, "creative_editor_world_layout_anchor_set"};
+}
+
 CreativeEditorWorldLayoutEditReceipt addRoomPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = "drag room to its opposite corner";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
   const cr::CreativeWorldLayoutRect rect = normalizedRect(state.anchor, point);
   state.anchorActive = false;
-  const CreativeEditorWorldLayoutRoomSettings settings{
-      rect, 0.0, cr::kDefaultCreativeWorldLayoutWallHeightCells,
-      cr::kDefaultCreativeWorldLayoutWallThicknessCells, 1U};
+  CreativeEditorWorldLayoutRoomSettings settings;
+  settings.footprint = rect;
   if (state.source.buildings.empty()) {
     return createCreativeEditorWorldLayoutBuildingShell(state, settings);
   }
@@ -209,26 +218,19 @@ CreativeEditorWorldLayoutEditReceipt addRoomPoint(
 CreativeEditorWorldLayoutEditReceipt addBuildingShellPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = "drag building shell to its opposite corner";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
   const cr::CreativeWorldLayoutRect rect = normalizedRect(state.anchor, point);
   state.anchorActive = false;
-  return createCreativeEditorWorldLayoutBuildingShell(
-      state,
-      {rect, 0.0, cr::kDefaultCreativeWorldLayoutWallHeightCells,
-       cr::kDefaultCreativeWorldLayoutWallThicknessCells, 1U});
+  CreativeEditorWorldLayoutRoomSettings settings;
+  settings.footprint = rect;
+  return createCreativeEditorWorldLayoutBuildingShell(state, settings);
 }
 
 CreativeEditorWorldLayoutEditReceipt addFloorPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = "floor start set; choose opposite corner";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
   const cr::CreativeWorldLayoutRect rect = normalizedRect(state.anchor, point);
   state.anchorActive = false;
@@ -254,10 +256,7 @@ CreativeEditorWorldLayoutEditReceipt addFloorPoint(
 CreativeEditorWorldLayoutEditReceipt addWallPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = "wall start set; choose end";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
   point = cardinalEnd(state.anchor, point);
   state.anchorActive = false;
@@ -357,13 +356,10 @@ verticalDirection(cr::CreativeTerrainCoord2 start,
 CreativeEditorWorldLayoutEditReceipt
 addVerticalConnectorPoint(CreativeEditorWorldLayoutState& state,
                           cr::CreativeTerrainCoord2 point,
-                          const VerticalConnectorToolSpec& spec) {
+                          const VerticalConnectorToolSpec& spec,
+                          cr::CreativeGridSettings grid) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage =
-        verticalConnectorMessage(spec, " low end set; choose high end");
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
 
   const cr::CreativeTerrainCoord2 start = state.anchor;
@@ -429,7 +425,7 @@ addVerticalConnectorPoint(CreativeEditorWorldLayoutState& state,
   const std::size_t connectorIndex =
       state.source.verticalConnectors.size() - 1U;
   const cr::CreativeWorldLayoutVerticalConnectorPlan plan =
-      cr::planCreativeWorldLayoutVerticalConnector({}, state.source,
+      cr::planCreativeWorldLayoutVerticalConnector(grid, state.source,
                                                    connectorIndex);
   if (!plan.accepted) {
     state.source.verticalConnectors.pop_back();
@@ -449,6 +445,17 @@ CreativeEditorWorldLayoutEditReceipt addPlateau(
   cr::CreativeWorldLayoutTerrainProfile profile;
   profile.stableKey = mintWorldLayoutStableKey(state, "plateau");
   profile.kind = cr::CreativeTerrainRecipeKind::Plateau;
+  profile.usesLandformRecipe = true;
+  profile.landform.kind = cr::CreativeTerrainLandformKind::Plateau;
+  profile.landform.bounds.minimum = {point.x - 4, point.z - 4};
+  profile.landform.bounds.widthCells = 8U;
+  profile.landform.bounds.depthCells = 8U;
+  profile.landform.baseHeightCells = 1U;
+  profile.landform.targetHeightCells = 4U;
+  profile.landform.terraceCount = 4U;
+  profile.landform.edge = cr::CreativeTerrainLandformEdge::Slope;
+  profile.landform.edgeWidthCells = 2U;
+  profile.landform.material = cr::CreativeTerrainMaterial::Grass;
   profile.center = point;
   profile.baseHeightCells = 4U;
   profile.radiusCells = 8U;
@@ -466,51 +473,98 @@ CreativeEditorWorldLayoutEditReceipt addPlateau(
 CreativeEditorWorldLayoutEditReceipt addTerrainPathPoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point,
     cr::CreativeTerrainRecipeKind kind) {
-  if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = kind == cr::CreativeTerrainRecipeKind::Road
-                              ? "road start set; choose end"
-                              : "ditch start set; choose end";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+  const CreativeEditorWorldLayoutTool draftTool =
+      kind == cr::CreativeTerrainRecipeKind::Road
+          ? CreativeEditorWorldLayoutTool::Road
+          : CreativeEditorWorldLayoutTool::Ditch;
+  CreativeEditorWorldLayoutTerrainPathDraft& draft = state.terrainPathDraft;
+  if (!draft.active || draft.tool != draftTool) {
+    draft = {};
+    draft.active = true;
+    draft.tool = draftTool;
+    draft.path.recipe.kind =
+        kind == cr::CreativeTerrainRecipeKind::Road
+            ? cr::CreativeTerrainPathKind::Road
+            : cr::CreativeTerrainPathKind::Trench;
+    draft.path.recipe.elevation = cr::CreativeTerrainPathElevation::Level;
+    draft.path.recipe.crossSection =
+        kind == cr::CreativeTerrainRecipeKind::Road
+            ? cr::CreativeTerrainPathCrossSection::Flat
+            : cr::CreativeTerrainPathCrossSection::Cut;
+    draft.path.recipe.paintSurface = true;
+    draft.path.recipe.material =
+        kind == cr::CreativeTerrainRecipeKind::Road
+            ? cr::CreativeTerrainMaterial::Dirt
+            : cr::CreativeTerrainMaterial::Sand;
+    if (kind != cr::CreativeTerrainRecipeKind::Road) {
+      draft.path.recipe.watercourse.bankSlopeCells = 1U;
+      draft.path.recipe.watercourse.drainageDirection =
+          cr::CreativeTerrainWatercourseDrainageDirection::StartToEnd;
+    }
+    draft.path.recipe.nextPointId = 1U;
   }
-  const cr::CreativeTerrainCoord2 start = state.anchor;
+  cr::CreativeTerrainPathSourceRecipe& recipe = draft.path.recipe;
+  if (!recipe.points.empty() && recipe.points.back().coord == point) {
+    state.statusMessage = "path point already added";
+    return {true, false,
+            "creative_editor_world_layout_path_point_current"};
+  }
+  if (recipe.points.size() >= cr::kCreativeTerrainPathPointCapacity ||
+      recipe.nextPointId ==
+          std::numeric_limits<cr::CreativeTerrainPathSourcePointId>::max()) {
+    state.statusMessage = "terrain path point limit reached";
+    return {false, false,
+            "creative_editor_world_layout_path_point_capacity"};
+  }
+  const bool road = kind == cr::CreativeTerrainRecipeKind::Road;
+  recipe.points.push_back({recipe.nextPointId++, point, 4U, 1U,
+                           static_cast<std::uint16_t>(road ? 0U : 1U), 0});
+  state.anchorActive = true;
+  state.anchor = recipe.points.front().coord;
+  state.statusMessage =
+      std::string(road ? "road" : "ditch") + " draft: " +
+      std::to_string(recipe.points.size()) +
+      " points; click to add, Enter or double-click to finish";
+  return {true, false,
+          "creative_editor_world_layout_path_point_added"};
+}
+
+CreativeEditorWorldLayoutEditReceipt finishTerrainPathDraft(
+    CreativeEditorWorldLayoutState& state) {
+  CreativeEditorWorldLayoutTerrainPathDraft& draft = state.terrainPathDraft;
+  if (!draft.active || draft.path.recipe.points.size() < 2U ||
+      !cr::isValidCreativeTerrainPathSourceRecipe(draft.path.recipe)) {
+    state.statusMessage = "terrain path needs at least two valid points";
+    return {false, false,
+            "creative_editor_world_layout_path_draft_incomplete"};
+  }
+  const bool road = draft.tool == CreativeEditorWorldLayoutTool::Road;
+  draft.path.stableKey =
+      mintWorldLayoutStableKey(state, road ? "road" : "ditch");
+  state.source.terrainPaths.push_back(std::move(draft.path));
   state.anchorActive = false;
-  if (start == point) {
-    state.statusMessage = "terrain path needs length";
-    return {false, false, "creative_editor_world_layout_path_degenerate"};
-  }
-  const std::uint16_t height =
-      kind == cr::CreativeTerrainRecipeKind::Ditch ? 2U : 1U;
-  cr::CreativeWorldLayoutTerrainPath path;
-  path.stableKey = mintWorldLayoutStableKey(
-      state, kind == cr::CreativeTerrainRecipeKind::Road ? "road" : "ditch");
-  path.kind = kind;
-  path.firstPointIndex = state.source.terrainPathPoints.size();
-  path.pointCount = 2U;
-  path.elevation = cr::CreativeTerrainPathElevation::Level;
-  path.halfWidthCells = 1U;
-  path.amplitudeCells = 1U;
-  path.paintSurface = true;
-  path.material = cr::CreativeTerrainMaterial::Count;
-  state.source.terrainPathPoints.push_back({start, height});
-  state.source.terrainPathPoints.push_back({point, height});
-  state.source.terrainPaths.push_back(std::move(path));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::TerrainPath,
                      state.source.terrainPaths.size() - 1U};
-  noteWorldLayoutSourceChange(
-      state, kind == cr::CreativeTerrainRecipeKind::Road ? "road added"
-                                                         : "ditch added");
+  noteWorldLayoutSourceChange(state, road ? "road added" : "ditch added");
   return {true, true, "creative_editor_world_layout_path_added"};
+}
+
+CreativeEditorWorldLayoutEditReceipt cancelTerrainPathDraft(
+    CreativeEditorWorldLayoutState& state) {
+  const bool changed = state.terrainPathDraft.active;
+  state.terrainPathDraft = {};
+  state.anchorActive = false;
+  state.gesturePreviewGridPointValid = false;
+  state.gesturePreviewGridPoint = {};
+  state.statusMessage = "terrain path draft cancelled";
+  return {true, changed,
+          "creative_editor_world_layout_path_draft_cancelled"};
 }
 
 CreativeEditorWorldLayoutEditReceipt addBridgePoint(
     CreativeEditorWorldLayoutState& state, cr::CreativeTerrainCoord2 point) {
   if (!state.anchorActive) {
-    state.anchorActive = true;
-    state.anchor = point;
-    state.statusMessage = "bridge start set; choose opposite corner";
-    return {true, false, "creative_editor_world_layout_anchor_set"};
+    return beginWorldLayoutDrag(state, point);
   }
   const cr::CreativeWorldLayoutRect footprint =
       normalizedRect(state.anchor, point);
@@ -520,6 +574,22 @@ CreativeEditorWorldLayoutEditReceipt addBridgePoint(
       footprint.minimum.z == footprint.maximum.z) {
     state.statusMessage = "bridge needs width and length";
     return {false, false, "creative_editor_world_layout_bridge_degenerate"};
+  }
+  std::string pathKey;
+  cr::CreativeTerrainWatercourseCrossingId crossingId =
+      cr::kInvalidCreativeTerrainWatercourseCrossingId;
+  const std::size_t attachmentCount =
+      findBridgeAttachments(state.source, footprint, pathKey, crossingId);
+  if (attachmentCount > 1U) {
+    state.statusMessage = "bridge footprint contains multiple crossings";
+    return {false, false,
+            "creative_editor_world_layout_bridge_attachment_ambiguous"};
+  }
+  if (attachmentCount == 1U &&
+      bridgeAttachmentClaimed(state.source, pathKey, crossingId)) {
+    state.statusMessage = "crossing already has a bridge";
+    return {false, false,
+            "creative_editor_world_layout_bridge_attachment_occupied"};
   }
   cr::CreativeWorldLayoutObject object;
   object.kind = cr::CreativeObjectKind::Bridge;
@@ -533,11 +603,21 @@ CreativeEditorWorldLayoutEditReceipt addBridgePoint(
        static_cast<double>(footprint.maximum.z)},
   };
   object.tags = {"world_layout:object"};
+  if (attachmentCount == 1U) {
+    object.usesBridgeRecipe = true;
+    object.bridge.watercoursePathKey = std::move(pathKey);
+    object.bridge.crossingId = crossingId;
+  }
   state.source.objects.push_back(std::move(object));
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
                      state.source.objects.size() - 1U};
-  noteWorldLayoutSourceChange(state, "bridge added");
-  return {true, true, "creative_editor_world_layout_bridge_added"};
+  const bool attached = attachmentCount == 1U;
+  noteWorldLayoutSourceChange(
+      state, attached ? "bridge attached to crossing" : "bridge added");
+  return {true, true,
+          attached
+              ? "creative_editor_world_layout_bridge_attached"
+              : "creative_editor_world_layout_bridge_added"};
 }
 
 CreativeEditorWorldLayoutEditReceipt addSpawnPoint(
@@ -572,43 +652,10 @@ CreativeEditorWorldLayoutEditReceipt addSpawnPoint(
 
 const char* creativeEditorWorldLayoutToolLabel(
     CreativeEditorWorldLayoutTool tool) noexcept {
-  switch (tool) {
-    case CreativeEditorWorldLayoutTool::Select:
-      return "Select";
-    case CreativeEditorWorldLayoutTool::BuildingShell:
-      return "Building Shell";
-    case CreativeEditorWorldLayoutTool::Room:
-      return "Room";
-    case CreativeEditorWorldLayoutTool::Floor:
-      return "Floor";
-    case CreativeEditorWorldLayoutTool::Wall:
-      return "Partition";
-    case CreativeEditorWorldLayoutTool::Door:
-      return "Door";
-    case CreativeEditorWorldLayoutTool::Window:
-      return "Window";
-    case CreativeEditorWorldLayoutTool::Stair:
-      return "Stair";
-    case CreativeEditorWorldLayoutTool::Ramp:
-      return "Ramp";
-    case CreativeEditorWorldLayoutTool::Plateau:
-      return "Plateau";
-    case CreativeEditorWorldLayoutTool::Road:
-      return "Road";
-    case CreativeEditorWorldLayoutTool::Ditch:
-      return "Ditch";
-    case CreativeEditorWorldLayoutTool::Bridge:
-      return "Bridge";
-    case CreativeEditorWorldLayoutTool::CatalogAsset:
-      return "Catalog Asset";
-    case CreativeEditorWorldLayoutTool::PlayerSpawn:
-      return "Player Spawn";
-    case CreativeEditorWorldLayoutTool::NpcSpawn:
-      return "NPC Spawn";
-    case CreativeEditorWorldLayoutTool::Count:
-      break;
-  }
-  return "Unknown";
+  const CreativeEditorToolDescriptor& descriptor =
+      describeCreativeEditorWorldLayoutTool(tool);
+  return descriptor.id == CreativeEditorToolId::Count ? "Unknown"
+                                                       : descriptor.name.data();
 }
 
 bool creativeEditorWorldLayoutToolIsVerticalConnector(
@@ -633,19 +680,16 @@ const char* creativeEditorWorldLayoutPaletteCategoryLabel(
   return "Unknown";
 }
 
-std::span<const CreativeEditorWorldLayoutPaletteEntry>
-creativeEditorWorldLayoutPaletteEntries() noexcept {
-  return kWorldLayoutPaletteEntries;
-}
-
-
 CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
     CreativeEditorWorldLayoutState& state, CreativeEditorWorldLayoutTool tool) {
   if (tool >= CreativeEditorWorldLayoutTool::Count) {
     return {false, false, "creative_editor_world_layout_tool_invalid"};
   }
   const bool changed = state.tool != tool || state.anchorActive ||
+                       state.terrainPathDraft.active ||
                        state.roomManipulation.active ||
+                       state.roomCornerManipulation.active ||
+                       state.roomBoundaryManipulation.active ||
                        state.verticalConnectorManipulation.active ||
                        state.boxManipulation.active ||
                        state.wallManipulation.active ||
@@ -669,9 +713,10 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutTool(
   return {true, changed, "creative_editor_world_layout_tool_set"};
 }
 
-CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
+CreativeEditorWorldLayoutEditReceipt detail::applyWorldLayoutToolPoint(
     CreativeEditorWorldLayoutState& state,
-    CreativeEditorWorldLayoutPoint point) {
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid) {
   if (!detail::finiteWorldLayoutPoint(point)) {
     return {false, false, "creative_editor_world_layout_point_non_finite"};
   }
@@ -702,7 +747,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   }
   if (const VerticalConnectorToolSpec* connector =
           verticalConnectorToolSpec(state.tool)) {
-    return addVerticalConnectorPoint(state, gridPoint, *connector);
+    return addVerticalConnectorPoint(state, gridPoint, *connector, grid);
   }
   if (state.tool == CreativeEditorWorldLayoutTool::Plateau) {
     return addPlateau(state, gridPoint);
@@ -725,12 +770,27 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
   return {false, false, "creative_editor_world_layout_tool_invalid"};
 }
 
+CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutPoint(
+    CreativeEditorWorldLayoutState& state,
+    CreativeEditorWorldLayoutPoint point) {
+  return detail::applyWorldLayoutToolPoint(state, point, {});
+}
+
 CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutGesturePhase phase,
-    CreativeEditorWorldLayoutPoint point) {
+    CreativeEditorWorldLayoutPoint point,
+    cr::CreativeGridSettings grid) {
   if (phase >= CreativeEditorWorldLayoutGesturePhase::Count) {
     return {false, false, "creative_editor_world_layout_gesture_invalid"};
+  }
+  if (state.terrainPathDraft.active) {
+    if (phase == CreativeEditorWorldLayoutGesturePhase::Cancel) {
+      return cancelTerrainPathDraft(state);
+    }
+    if (phase == CreativeEditorWorldLayoutGesturePhase::Commit) {
+      return finishTerrainPathDraft(state);
+    }
   }
   if (phase == CreativeEditorWorldLayoutGesturePhase::Cancel) {
     state.anchorActive = false;
@@ -739,16 +799,10 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     state.statusMessage = "layout gesture cancelled";
     return {true, false, "creative_editor_world_layout_gesture_cancelled"};
   }
-  const bool dragTool =
-      state.tool == CreativeEditorWorldLayoutTool::BuildingShell ||
-      state.tool == CreativeEditorWorldLayoutTool::Room ||
-      state.tool == CreativeEditorWorldLayoutTool::Floor ||
-      state.tool == CreativeEditorWorldLayoutTool::Wall ||
-      creativeEditorWorldLayoutToolIsVerticalConnector(state.tool) ||
-      state.tool == CreativeEditorWorldLayoutTool::Road ||
-      state.tool == CreativeEditorWorldLayoutTool::Ditch ||
-      state.tool == CreativeEditorWorldLayoutTool::Bridge;
-  if (!dragTool) {
+  const CreativeEditorToolDescriptor& descriptor =
+      describeCreativeEditorWorldLayoutTool(state.tool);
+  if (descriptor.worldLayoutInputProfile !=
+      CreativeEditorWorldLayoutInputProfile::Drag) {
     return {false, false, "creative_editor_world_layout_gesture_tool_invalid"};
   }
   if (phase == CreativeEditorWorldLayoutGesturePhase::Begin) {
@@ -756,30 +810,11 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
     if (!toGridCoord(point, gridPoint)) {
       return {false, false, "creative_editor_world_layout_point_out_of_range"};
     }
-    state.anchorActive = true;
-    state.anchor = gridPoint;
     clearWorldLayoutInteraction(state);
-    if (state.tool == CreativeEditorWorldLayoutTool::BuildingShell) {
-      state.statusMessage = "drag building shell to its opposite corner";
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Room) {
-      state.statusMessage = "drag room to its opposite corner";
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Floor) {
-      state.statusMessage = "drag floor to its opposite corner";
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Wall) {
-      state.statusMessage = "drag partition to its end";
-    } else if (const VerticalConnectorToolSpec* connector =
-                   verticalConnectorToolSpec(state.tool)) {
-      state.statusMessage = verticalConnectorMessage(
-          *connector,
-          " drag starts at the low end and finishes at the high end");
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Road) {
-      state.statusMessage = "drag road to its end";
-    } else if (state.tool == CreativeEditorWorldLayoutTool::Ditch) {
-      state.statusMessage = "drag ditch to its end";
-    } else {
-      state.statusMessage = "drag bridge to its opposite corner";
-    }
-    return {true, false, "creative_editor_world_layout_gesture_started"};
+    CreativeEditorWorldLayoutEditReceipt receipt =
+        beginWorldLayoutDrag(state, gridPoint);
+    receipt.reasonCode = "creative_editor_world_layout_gesture_started";
+    return receipt;
   }
   if (!state.anchorActive) {
     return {false, false,
@@ -800,7 +835,7 @@ CreativeEditorWorldLayoutEditReceipt applyCreativeEditorWorldLayoutGesture(
                     : "creative_editor_world_layout_gesture_preview_current"};
   }
   CreativeEditorWorldLayoutEditReceipt receipt =
-      applyCreativeEditorWorldLayoutPoint(state, point);
+      detail::applyWorldLayoutToolPoint(state, point, grid);
   state.gesturePreviewGridPointValid = false;
   state.gesturePreviewGridPoint = {};
   return receipt;

@@ -48,7 +48,28 @@ app::CreativeEditorWorldLayoutState roomLayout() {
   if (!created.accepted) {
     std::cerr << "FAIL: diagnostic fixture building shell\n";
   }
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Door));
+  const app::CreativeEditorWorldLayoutEditReceipt entrance =
+      app::applyCreativeEditorWorldLayoutPoint(state, {10.1, 23.0});
+  if (!entrance.accepted) {
+    std::cerr << "FAIL: diagnostic fixture exterior entrance\n";
+  }
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Select));
   return state;
+}
+
+app::CreativeEditorWorldLayoutEditReceipt raiseFirstLevel(
+    app::CreativeEditorWorldLayoutState& state) {
+  app::CreativeEditorWorldLayoutLevelSettings settings;
+  if (!app::readCreativeEditorWorldLayoutLevelSettings(state, 0U, settings)) {
+    return {false, false,
+            "creative_world_layout_diagnostic_fixture_level_missing"};
+  }
+  settings.floorTopLayer += 1.0;
+  return app::setCreativeEditorWorldLayoutLevelSettings(state, 0U,
+                                                        std::move(settings));
 }
 
 bool preflightCacheTracksBothTruthRevisions() {
@@ -91,6 +112,93 @@ bool preflightCacheTracksBothTruthRevisions() {
                 "layout revision invalidates preflight once") &&
          expect(afterDocumentChange == 3U,
                 "document identity invalidates preflight once");
+}
+
+bool buildingTraversalReceiptUsesGeneratedRuntimeCollision() {
+  cr::CreativeAppState live = makeApp("Diagnostic Traversal", 9211U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  const app::CreativeEditorWorldLayoutDiagnosticReport report =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          live.facade.document(), state.source);
+
+  return expect(report.ready && report.canGenerate && report.issueCount == 0U,
+                "valid generated building remains ready after physical proof") &&
+         expect(report.buildingTraversal.accepted &&
+                    report.buildingTraversal.traversable &&
+                    report.buildingTraversal.roomCount == 1U &&
+                    report.buildingTraversal.roomFloorContactCount == 1U &&
+                    report.buildingTraversal.roomStandingClearanceCount == 1U &&
+                    report.buildingTraversal.passageCount == 1U &&
+                    report.buildingTraversal.traversablePassageCount == 1U,
+                "diagnostics retain runtime floor body and door facts");
+}
+
+bool rejectedRoofApertureDiagnosticKeepsExactSource() {
+  cr::CreativeAppState live = makeApp("Diagnostic Roof Aperture", 9209U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  cr::CreativeWorldLayoutRoofAperture aperture;
+  aperture.levelIndex = 0U;
+  aperture.kind = cr::CreativeStructuralRoofApertureKind::Skylight;
+  aperture.stableKey = "roof_aperture.outside";
+  aperture.name = "Outside Skylight";
+  aperture.minimumXCells = 40.0;
+  aperture.maximumXCells = 41.0;
+  aperture.minimumZCells = 40.0;
+  aperture.maximumZCells = 41.0;
+  state.source.roofApertures.push_back(aperture);
+  ++state.revision;
+
+  const app::CreativeEditorWorldLayoutDiagnosticReport report =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          live.facade.document(), state.source);
+  return expect(!report.ready && !report.canGenerate &&
+                    report.issueCount == 1U,
+                "invalid roof closure blocks generation once") &&
+         expect(report.issues[0].status ==
+                        cr::CreativeWorldLayoutStatus::KernelRejected &&
+                    report.issues[0].table ==
+                        cr::CreativeWorldLayoutTable::RoofAperture &&
+                    report.issues[0].index == 0U &&
+                    report.issues[0].stableKey ==
+                        "roof_aperture.outside" &&
+                    !report.issues[0].kernelReasonCode.empty(),
+                "roof closure failure navigates to the authored aperture");
+}
+
+bool buildingUsabilityWarningsAreNavigableAndNonBlocking() {
+  cr::CreativeAppState live = makeApp("Diagnostic Usability", 9210U);
+  app::CreativeEditorWorldLayoutState state = roomLayout();
+  state.source.openings.clear();
+  ++state.revision;
+
+  const app::CreativeEditorWorldLayoutDiagnosticReport report =
+      app::buildCreativeEditorWorldLayoutDiagnosticReport(
+          live.facade.document(), state.source);
+  return expect(report.ready && report.canGenerate && report.hasChanges,
+                "building usability warnings do not block generation") &&
+         expect(report.buildingUsability.accepted &&
+                    !report.buildingUsability.usable &&
+                    report.buildingUsability.issueCount == 1U &&
+                    report.issueCount == 1U,
+                "diagnostics retain the typed usability receipt") &&
+         expect(report.issues[0].severity ==
+                        app::CreativeEditorWorldLayoutDiagnosticSeverity::
+                            Warning &&
+                    report.issues[0].table ==
+                        cr::CreativeWorldLayoutTable::Building &&
+                    report.issues[0].index == 0U &&
+                    !report.issues[0].stableKey.empty() &&
+                    report.issues[0].buildingUsabilityIssue.kind ==
+                        cr::CreativeWorldLayoutBuildingUsabilityIssueKind::
+                            MissingExteriorEntrance &&
+                    report.issues[0].buildingRepairOperation ==
+                        cr::CreativeWorldLayoutBuildingRepairOperation::
+                            AddExteriorEntrance &&
+                    report.issues[0].buildingRepairAvailable &&
+                    report.issues[0].reasonCode ==
+                        "creative_world_layout_building_exterior_entrance_"
+                        "missing",
+                "missing entrance warning identifies its source and safe repair");
 }
 
 bool missingOpeningAssetWarnsAndTracksCatalogMembership() {
@@ -290,8 +398,8 @@ bool stableIdPatchProjectsHonestMemberCounts() {
       cr::buildCreativeWorldLayoutPlan(live.facade.document(), state.source);
   const cr::CreativeWorldLayoutApplyReceipt applied =
       cr::applyCreativeWorldLayoutPlan(live.facade, initial.plan);
-  state.source.rooms[0].footprint.maximum.x += 1;
-  ++state.revision;
+  const app::CreativeEditorWorldLayoutEditReceipt edited =
+      raiseFirstLevel(state);
 
   const app::CreativeEditorWorldLayoutDiagnosticReport report =
       app::buildCreativeEditorWorldLayoutDiagnosticReport(
@@ -305,7 +413,8 @@ bool stableIdPatchProjectsHonestMemberCounts() {
       change.memberCounts.createCount + change.memberCounts.preserveCount +
       change.memberCounts.updateCount + change.memberCounts.removeCount;
 
-  return expect(initial.receipt.accepted && applied.accepted,
+  return expect(initial.receipt.accepted && applied.accepted &&
+                    edited.accepted && edited.changed,
                 "stable-id patch diagnostic fixture generated") &&
          expect(report.ready && report.hasChanges &&
                     report.compileReceipt.objectRecipePatchCount == 1U &&
@@ -334,13 +443,14 @@ bool refinementConflictProjectsExactManagedGroupAndSource() {
       live.facade.document().objects().front().id;
   const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
       live.facade.documentForPersistence(), refinedId, {4.0, 2.0, 3.0});
-  ++state.source.rooms[0].footprint.maximum.x;
-  ++state.revision;
+  const app::CreativeEditorWorldLayoutEditReceipt edited =
+      raiseFirstLevel(state);
 
   const app::CreativeEditorWorldLayoutDiagnosticReport report =
       app::buildCreativeEditorWorldLayoutDiagnosticReport(
           live.facade.document(), state.source);
-  return expect(refined.changed && !report.ready && !report.hasChanges,
+  return expect(edited.accepted && edited.changed && refined.changed &&
+                    !report.ready && !report.hasChanges,
                 "refined output blocks ordinary generation preflight") &&
          expect(report.compileReceipt.status ==
                         cr::CreativeWorldLayoutStatus::RefinementConflict &&
@@ -585,6 +695,9 @@ bool terrainReconciliationBlocksGenerationButKeepsPreviewAvailable() {
 
 int main() {
   const bool ok = preflightCacheTracksBothTruthRevisions() &&
+                  buildingTraversalReceiptUsesGeneratedRuntimeCollision() &&
+                  rejectedRoofApertureDiagnosticKeepsExactSource() &&
+                  buildingUsabilityWarningsAreNavigableAndNonBlocking() &&
                   missingOpeningAssetWarnsAndTracksCatalogMembership() &&
                   missingObjectAssetWarningIsNavigable() &&
                   diagnosticFocusSelectsFramesAndPreservesSource() &&

@@ -39,8 +39,11 @@ struct CreativeDesktopOutlinerRow {
   std::string name;
   std::uint32_t depth = 0U;
   bool hasChildren = false;
+  // Local flags are editable; effective flags include every ancestor.
   bool visible = true;
   bool locked = false;
+  bool effectivelyVisible = true;
+  bool effectivelyLocked = false;
   CreativeDesktopHierarchyRecovery recovery =
       CreativeDesktopHierarchyRecovery::None;
 };
@@ -63,6 +66,12 @@ enum class CreativeDesktopSelectionGesture : std::uint8_t {
   Replace,
   Toggle,
   VisibleRange,
+};
+
+enum class CreativeDesktopHierarchySelectionScope : std::uint8_t {
+  Parent,
+  DirectChildren,
+  Subtree,
 };
 
 // Modifier policy, pure so precedence is pinned by tests rather than by ImGui:
@@ -115,6 +124,16 @@ inline constexpr std::uint32_t kCreativeDesktopMaxOutlinerDepth = 64U;
     cr::CreativeObjectId clickedObjectId,
     cr::CreativeObjectId anchorObjectId,
     CreativeDesktopSelectionGesture gesture);
+
+// Plans explicit hierarchy navigation in deterministic Outliner row order.
+// Parent and direct-child scopes replace the selection with exactly that
+// relationship; Subtree includes the requested root and every descendant.
+// Results above the core selection capacity fail atomically.
+[[nodiscard]] CreativeDesktopSelectionPlan
+planCreativeDesktopHierarchySelection(
+    const CreativeDesktopOutlinerModel& model,
+    cr::CreativeObjectId objectId,
+    CreativeDesktopHierarchySelectionScope scope);
 
 // Keeps only ids the document still contains (order preserved) and resolves the
 // primary: the requested primary when still valid, else the first valid id.

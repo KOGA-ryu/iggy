@@ -228,6 +228,30 @@ void invalidateCollisionParts(StaticMeshAsset& asset,
              : 0U;
 }
 
+[[nodiscard]] bool importMaterialVariants(
+    const cgltf_data& data,
+    StaticMeshAsset& asset) {
+  if (data.variants_count > kMaxStaticMeshMaterialVariantCount) {
+    return false;
+  }
+  asset.materialVariants.reserve(data.variants_count);
+  for (cgltf_size index = 0U; index < data.variants_count; ++index) {
+    const char* sourceName = data.variants[index].name;
+    const std::string name = sourceName != nullptr ? sourceName : "";
+    const bool duplicate = std::any_of(
+        asset.materialVariants.begin(), asset.materialVariants.end(),
+        [&name](const StaticMeshMaterialVariant& variant) {
+          return variant.name == name;
+        });
+    if (name.empty() ||
+        name.size() > kMaxStaticMeshMaterialVariantNameLength || duplicate) {
+      return false;
+    }
+    asset.materialVariants.push_back({name});
+  }
+  return true;
+}
+
 [[nodiscard]] bool appendPrimitive(const cgltf_data& data,
                                    const cgltf_node& node,
                                    const cgltf_primitive& primitive,
@@ -301,6 +325,21 @@ void invalidateCollisionParts(StaticMeshAsset& asset,
   output.firstIndex = static_cast<std::uint32_t>(asset.indices.size());
   output.indexCount = static_cast<std::uint32_t>(indexCount);
   output.materialIndex = materialIndexFor(data, primitive.material);
+  output.variantMaterialIndices.assign(asset.materialVariants.size(),
+                                       output.materialIndex);
+  std::vector<bool> mappedVariants(asset.materialVariants.size(), false);
+  for (cgltf_size mappingIndex = 0U;
+       mappingIndex < primitive.mappings_count; ++mappingIndex) {
+    const cgltf_material_mapping& mapping = primitive.mappings[mappingIndex];
+    if (mapping.variant >= output.variantMaterialIndices.size() ||
+        mapping.material == nullptr || mappedVariants[mapping.variant]) {
+      failureReason = "static_mesh_material_variants_invalid";
+      return false;
+    }
+    output.variantMaterialIndices[mapping.variant] =
+        materialIndexFor(data, mapping.material);
+    mappedVariants[mapping.variant] = true;
+  }
   output.hasTexcoord0 = uvs != nullptr;
   asset.indices.reserve(asset.indices.size() + indexCount);
   for (cgltf_size index = 0; index < indexCount; ++index) {
@@ -330,6 +369,30 @@ bool validStaticMeshAssetId(std::string_view assetId) noexcept {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '/';
   });
+}
+
+std::optional<std::size_t> findStaticMeshMaterialVariantIndex(
+    std::span<const StaticMeshMaterialVariant> variants,
+    std::string_view name) noexcept {
+  if (name.empty()) {
+    return std::nullopt;
+  }
+  for (std::size_t index = 0U; index < variants.size(); ++index) {
+    if (variants[index].name == name) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+std::uint32_t resolveStaticMeshPrimitiveMaterialIndex(
+    const StaticMeshPrimitive& primitive,
+    std::optional<std::size_t> variantIndex) noexcept {
+  if (variantIndex.has_value() &&
+      *variantIndex < primitive.variantMaterialIndices.size()) {
+    return primitive.variantMaterialIndices[*variantIndex];
+  }
+  return primitive.materialIndex;
 }
 
 StaticMeshImportResult importStaticMeshGlb(
@@ -379,6 +442,12 @@ StaticMeshImportResult importStaticMeshGlb(
   result.asset.authoringMetadata =
       detail::importStaticMeshAuthoringMetadata(*data);
   detail::importStaticMeshMaterialsAndImages(*data, path, result.asset);
+  if (!importMaterialVariants(*data, result.asset)) {
+    freeData();
+    setFailure(result, StaticMeshImportStatus::ValidationFailed,
+               "static_mesh_material_variants_invalid");
+    return result;
+  }
   std::string failureReason;
   bool collisionPartContractInvalid = false;
   bool sawCollisionPart = false;
@@ -547,7 +616,9 @@ StaticMeshAssetCatalog discoverStaticMeshAssetCatalog(
         {assetId, assetLabel(assetId), imported.asset.boundsMin,
          imported.asset.boundsMax, imported.asset.contentHash,
          imported.asset.authoringMetadata, imported.asset.collisionParts,
-         imported.asset.attachmentSockets});
+         imported.asset.attachmentSockets, imported.asset.materialVariants,
+         imported.asset.materials.size(),
+         buildStaticMeshAssetThumbnail(imported.asset)});
   }
   return catalog;
 }

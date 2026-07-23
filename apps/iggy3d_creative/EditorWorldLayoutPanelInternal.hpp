@@ -13,6 +13,7 @@ void drawCreativeEditorWorldLayoutCreateTools(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorWorldLayoutState& state,
     const cr::CreativeCatalogState& catalog,
+    cr::CreativeGridSettings grid,
     CreativeDesktopCommandFrame& commands, bool unavailable);
 
 // The Create tab's Building Blockout pattern choices, in display order. Pure
@@ -26,6 +27,12 @@ struct CreativeEditorWorldLayoutBlockoutPatternChoice {
 
 [[nodiscard]] std::span<const CreativeEditorWorldLayoutBlockoutPatternChoice>
 creativeEditorWorldLayoutBlockoutPatternChoices() noexcept;
+
+[[nodiscard]] bool
+applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
+    cr::CreativeGridSettings grid,
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept;
 
 // Whether the selected-building blockout Edit draft still reflects the
 // source: active, pointing at a live building, read at the current revision.
@@ -74,6 +81,8 @@ void drawCreativeEditorWorldLayoutViewControls(
 
 void drawCreativeEditorWorldLayoutCanvas(
     CreativeEditorState& editor, const cr::CreativeDocument& document,
+    const cr::CreativeSelectionState& selection,
+    const cr::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands, bool interactionEnabled,
     CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus);
 

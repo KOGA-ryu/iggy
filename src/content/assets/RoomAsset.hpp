@@ -12,6 +12,10 @@ struct RoomStaticMeshAsset {
   std::string id;
   std::string meshId;
   std::string materialId;
+  std::string materialVariant;
+  // Stable source meaning (for example Floor, Roof, Door, or Stair). `role`
+  // remains the coarse geometry family used by draw and collision batching.
+  std::string semanticRole;
   std::string role;
   Vec3 positionMeters;
   Vec3 sizeMeters;
@@ -67,6 +71,9 @@ struct RoomSpatialSurface {
   std::vector<std::string> collisionMask;
   bool blocksActor = false;
   bool blocksProjectile = false;
+  // Physical collision and visual occlusion are separate facts. Transparent
+  // glazing can block actors/projectiles while preserving line of sight.
+  bool blocksVision = true;
   // Optional authored extrusion for Plane collision. Zero delegates thickness
   // to the runtime fallback policy used by legacy or genuinely planar assets.
   float collisionThicknessMeters = 0.0F;
