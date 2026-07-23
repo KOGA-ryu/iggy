@@ -40,6 +40,56 @@ Delivery:
 Automated green is not accepted if the result still needs visual or interactive
 judgment.
 
+## Audit And Implementation Loop
+
+Department work uses two distinct roles:
+
+1. **Sol audits and architects.** Sol traces live ownership and data flow,
+   classifies deficiencies from current evidence, defines the target file
+   layout and contracts, names proving tests, and writes bounded implementation
+   orders. A raw count or large file is not itself a deficiency.
+2. **Luna implements.** Luna receives an order only after the target state,
+   allowed files, invariants, migration map, tests, and stop conditions are
+   explicit. Luna should not make architecture or scope decisions while
+   editing.
+3. **Sol reviews the completed batch.** Review covers the aggregate diff,
+   contract closure, targeted headless gates, and department evidence. A batch
+   is either accepted or returned with a focused repair order.
+4. **The dashboard advances.** Accepted work updates `AUDIT.md`, `TODO.md`,
+   `TESTING.md`, generated maps, and the bounded checkpoint commit before the
+   next dependency wave begins.
+
+The repository receives a shallow inventory first, then deep audits and
+implementation in dependency order. Do not wait for a deep audit of every
+department before repairing the highest dependency wave; lower-wave findings
+must be revalidated after upstream contracts change.
+
+User-facing progress is reported at four milestones rather than per command:
+audit complete, implementation plan ready, implementation complete, and review
+accepted or repair requested.
+
+## Finding Standard
+
+Every finding must name a concrete surface, current evidence, a classification,
+a disposition, and a priority. Use the following interpretations:
+
+- **Canonical Owner**: the intended single source of truth.
+- **Required Adapter**: a live boundary whose translation or side effects make
+  it necessary.
+- **Duplicate Implementation**: multiple live owners implement the same policy.
+- **Legacy Reachable**: obsolete policy remains on a live route.
+- **Test-only Production**: production code has no production caller but is
+  retained by tests.
+- **Unreachable**: no live caller or state reader exists.
+- **Ownership Undecided**: the surface is live, but its department boundary is
+  unresolved.
+- **Contract Risk**: the route is live but permits stale, partial, bypassed, or
+  contradictory state.
+
+`Investigate` is not implementation authorization. A surface may be deleted,
+consolidated, moved, or repaired only when the audit names its replacement and
+the proving gate.
+
 ## Maintenance
 
 Run:

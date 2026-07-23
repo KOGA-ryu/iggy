@@ -27,9 +27,9 @@ replacement.
 | AUT-A1-001 | `CreativeDocument` | Canonical Owner | Owns durable identity, objects, revision, dirty domains, and validated restore | Keep | P0 |
 | AUT-A1-002 | `MutationApply` + `DocumentMutation` | Canonical Owner | Object mutation policy is separated from document lookup, hierarchy validation, rollback, dirty flags, and revision publication | Keep | P0 |
 | AUT-A1-003 | `Facade` document/editor boundary | Canonical Owner | Owns the live document and canonical tool, selection, measurement, snap, and ghost state; narrow its mutable surface during AUT-008 | Keep | P0 |
-| AUT-A1-004 | `Facade::documentForPersistence()` | Contract Risk | Seventeen production calls in five editor files use it for object/path/asset/structural mutation; no production persistence path uses it; repair callers before deleting the escape | Repair | P0 |
-| AUT-A1-005 | Staged-document publication | Duplicate Implementation | Twenty `document = std::move(staged)` publications coexist with only three uses of the documented one-revision `commitStagedMutation` primitive; Facade batch create publishes through full `installDocument` instead | Consolidate | P0 |
-| AUT-A1-006 | Editor history transaction composition | Contract Risk | Fifty-three `beginEditTransaction` calls are distributed across 25 editor files; callers manually decide cancel/commit and whether a changed mutation requires a history record; preserve domain receipts during consolidation | Consolidate | P0 |
+| AUT-A1-004 | `Facade::documentForPersistence()` | Contract Risk | Seventeen production calls in five editor files and 30 test calls in nine files obtain unrestricted mutable access; no persistence route uses the accessor. AUT-008 maps ordinary mutation, asset-refresh, hierarchy-transform, and reattachment callers to explicit Facade operations before deleting it | Repair | P0 |
+| AUT-A1-005 | Staged-document publication | Duplicate Implementation | Twenty-two direct `document = std::move(staged...)` publications coexist with three call sites of the documented one-revision `commitStagedMutation` primitive; Facade batch create and two recipe paths instead publish same-document edits through full `installDocument` | Consolidate | P0 |
+| AUT-A1-006 | Editor history transaction composition | Required Adapter | Fifty-three app transaction starts already pair with the shared `completeEditTransaction` wrapper; 11 direct core starts serve sidecar or multi-phase paths. Breadth alone is not a defect. Audit inconsistent success predicates and direct commit/cancel exceptions after mutation publication is singular | Investigate | P1 |
 | AUT-A1-007 | Desktop semantic command dispatcher | Required Adapter | ImGui surfaces emit typed command ids into one headless dispatcher and then reuse domain kernels | Keep | P0 |
 | AUT-A1-008 | Keyboard/controller command route | Contract Risk | `EditorCommandInput.cpp` and held-item paths invoke domain kernels directly rather than emitting the same semantic command ids as desktop UI; repair in Interaction and Controls after the mutation boundary is stable | Repair | P1 |
 | AUT-A1-009 | Generic recipe apply APIs | Test-only Production | `applyCreativeRecipeWithHistory`, `applyCreativeTerrainRecipeWithHistory`, and `applyCreativeWorldLayoutPlanWithHistory` have no product-app callers; decide whether to integrate or remove the unused apply layers while retaining materialization and provenance | Investigate | P1 |
@@ -40,7 +40,7 @@ replacement.
 | AUT-A1-014 | `CreativeEditorSceneCache` revision key | Required Adapter | Document id/revision gates the room bake, terrain plans, placement clearance, and downstream preview caches; add regression pins against stale publication during repair | Keep | P0 |
 | AUT-A1-015 | `creative/adapters/RoomBake*` ownership | Ownership Undecided | Thirteen adapter files do not mutate authored state; their consumers are preview, play, validation, and building traversal; rule their destination after Rendering and Playtest audits | Move | P2 |
 | AUT-A1-016 | `WorldService` | Required Adapter | Sole create/open/save bridge for Creative documents and optional World Layout source; audit save atomicity in Persistence and Validation | Keep | P1 |
-| AUT-A1-017 | `CreativeAppState.hpp` migration comments | Legacy Reachable | Comments still describe a retired `ProductAppWindowState` additive migration and mirror discipline that no longer exists; repair them with the identity deletion | Repair | P3 |
+| AUT-A1-017 | `CreativeAppState.hpp` migration comments | Legacy Reachable | AUT-007 removed the stale `ProductAppWindowState` migration and mirror-discipline comments together with the retired identity member | Retired | P3 |
 
 ## Repair Order
 
@@ -48,15 +48,15 @@ replacement.
    `State.hpp`, the obsolete frame/packet types and Facade methods, the old
    mirror writes, the test-only assertions, and `CreativeActiveIdentity`.
    `Tool`, `TargetRef`, and the canonical typed state owners remain.
-2. **Close the mutable document escape.** Add Facade entry points for generic
-   single and atomic object mutation. Route the ordinary mutation callers
-   through them. Give reattachment, hierarchy transform, and structural span
-   editing narrow domain entry points rather than a callback that exposes the
-   whole document. Delete `documentForPersistence()` once its tests use real
-   setup/install paths.
+2. **Close the mutable document escape.** Execute
+   [AUT-008](AUT-008-LUNA.md): add Facade entry points for generic single and
+   atomic object mutation, a locked-object-safe asset-bounds refresh, and narrow
+   hierarchy transform/reattachment operations. Delete
+   `documentForPersistence()` after all production and test callers use the
+   explicit contracts.
 3. **Make same-document publication singular.** Define
    `commitStagedMutation` as the only publication primitive for a staging copy
-   of the current document. Convert the 20 direct move-assignments and the
+   of the current document. Convert the 22 direct move-assignments and the
    Facade batch-create path. Reserve `installDocument` for new/open/history or
    source-reconciliation replacement where transient-state reset is explicit.
 4. **Resolve the recipe claim.** Either route real product actions through the
@@ -64,10 +64,10 @@ replacement.
    wrappers and state honestly that shared recipes own planning,
    materialization, fingerprints, and provenance while each durable source
    owns its own apply transaction.
-5. **Centralize transaction completion.** Keep explicit begin/apply/receipt
-   phases, but move the repeated changed/cancel/commit decision and operation
-   metadata into one Authoring Core helper. Preserve World Layout sidecars as a
-   supported extension.
+5. **Audit transaction exceptions.** Keep the existing shared completion
+   helper. Compare its success predicates with the 11 direct core transaction
+   starts, then consolidate only real policy differences. Preserve World
+   Layout and generated-source sidecars as supported extensions.
 6. **Converge interaction routes.** Once the mutation contract is stable, make
    desktop, keyboard, and controller actions resolve to the same semantic
    operation ids. Input-specific gesture state remains in Interaction and
