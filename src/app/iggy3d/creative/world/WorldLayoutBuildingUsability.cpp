@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingUsability.hpp"
 
 #include "app/iggy3d/creative/recipes/RampRecipe.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
@@ -193,9 +194,23 @@ bool connectorHasClearance(
       layout.rooms[connector.lowerRoomIndex];
   const CreativeWorldLayoutRoom& upper =
       layout.rooms[connector.upperRoomIndex];
-  const CreativeWorldLayoutLevel& lowerLevel = layout.levels[lower.levelIndex];
-  const CreativeWorldLayoutLevel& upperLevel = layout.levels[upper.levelIndex];
-  const double riseCells = upperLevel.floorTopLayer - lowerLevel.floorTopLayer;
+  CreativeGridSettings grid;
+  grid.cellSizeMeters = config.gridCellSizeMeters;
+  const CreativeWorldLayoutLevelDimensions lowerDimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                lower.levelIndex);
+  const CreativeWorldLayoutLevelDimensions upperDimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                upper.levelIndex);
+  if (!lowerDimensions.accepted || !upperDimensions.accepted ||
+      !lowerDimensions.hasUpperLevel ||
+      lowerDimensions.upperLevelIndex != upper.levelIndex) {
+    return false;
+  }
+  const double riseMeters = lowerDimensions.floorToFloorMeters;
+  const double availableHeadroomMeters =
+      std::min(lowerDimensions.clearHeightMeters,
+               upperDimensions.clearHeightMeters);
   const double widthCells =
       connector.direction == CreativeWorldLayoutVerticalDirection::PositiveX ||
               connector.direction ==
@@ -224,13 +239,11 @@ bool connectorHasClearance(
     rampRequest.authoredBounds = {
         {0.0, 0.0, 0.0},
         {widthCells * config.gridCellSizeMeters,
-         riseCells * config.gridCellSizeMeters,
+         riseMeters,
          runCells * config.gridCellSizeMeters}};
     rampRequest.transform.position =
         measureCreativeBounds(rampRequest.authoredBounds).center;
-    rampRequest.availableHeadroomMeters =
-        static_cast<double>(upperLevel.wallHeightCells) *
-        config.gridCellSizeMeters;
+    rampRequest.availableHeadroomMeters = availableHeadroomMeters;
     rampRequest.maximumWalkableSlopeDegrees =
         config.maximumRampSlopeDegrees;
     rampRequest.material = connector.material;

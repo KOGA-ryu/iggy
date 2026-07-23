@@ -634,14 +634,14 @@ bool applyBlockoutArchitecturalProfile(
     CreativeEditorWorldLayoutBuildingBlockoutSettings& draft,
     cr::CreativeGridSettings grid,
     cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
-  std::uint16_t wallHeightCells = 0U;
-  if (!blockoutProfileCellHeight(kind, grid, wallHeightCells)) {
+  std::uint16_t floorToFloorCells = 0U;
+  if (!blockoutProfileCellHeight(kind, grid, floorToFloorCells)) {
     return false;
   }
   const cr::CreativeWorldLayoutArchitecturalProfile profile =
       cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
   draft.architecturalProfileKind = kind;
-  draft.shell.wallHeightCells = wallHeightCells;
+  draft.floorToFloorCells = floorToFloorCells;
   draft.shell.floorThicknessLayers = profile.floorThicknessLayers;
   draft.ceilingThicknessLayers = profile.ceilingThicknessLayers;
   draft.shell.roofThicknessLayers = profile.roofThicknessLayers;
@@ -747,13 +747,13 @@ void drawWorldLayoutBlockoutSettingsDrawer(
 
   ImGui::SetNextItemWidth(152.0F);
   if (ImGui::InputScalar("Floor-to-floor##blockout", ImGuiDataType_U16,
-                         &draft.shell.wallHeightCells)) {
+                         &draft.floorToFloorCells)) {
     draft.architecturalProfileKind =
         cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
   }
   ImGui::SameLine();
   ImGui::TextDisabled("%.2f m",
-                      draft.shell.wallHeightCells * grid.cellSizeMeters);
+                      draft.floorToFloorCells * grid.cellSizeMeters);
   ImGui::SetNextItemWidth(120.0F);
   if (ImGui::InputScalar("Floor slab##blockout", ImGuiDataType_U16,
                          &draft.shell.floorThicknessLayers)) {

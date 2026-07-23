@@ -207,6 +207,8 @@ struct CreativeEditorWorldLayoutRoomMetadata {
 
 struct CreativeEditorWorldLayoutBuildingBlockoutSettings {
   CreativeEditorWorldLayoutRoomSettings shell;
+  std::uint16_t floorToFloorCells =
+      cr::kDefaultCreativeWorldLayoutWallHeightCells;
   cr::CreativeWorldLayoutArchitecturalProfileKind architecturalProfileKind =
       cr::CreativeWorldLayoutArchitecturalProfileKind::Custom;
   std::uint16_t ceilingThicknessLayers = 1U;

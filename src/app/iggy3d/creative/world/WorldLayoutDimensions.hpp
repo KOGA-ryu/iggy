@@ -47,6 +47,9 @@ struct CreativeWorldLayoutLevelDimensions {
   double nextFloorTopMeters = 0.0;
   double floorToFloorMeters = 0.0;
   double clearHeightMeters = 0.0;
+  double interiorPartitionTopMeters = 0.0;
+  double exteriorFacadeTopMeters = 0.0;
+  double exteriorFacadeHeightMeters = 0.0;
   double upperSurfaceSupportMeters = 0.0;
   // A non-top ceiling is backed against the underside of the next floor slab.
   // A top-level roof remains supported at the authored wall top.

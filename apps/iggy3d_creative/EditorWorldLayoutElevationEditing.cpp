@@ -64,6 +64,21 @@ bool levelOwnsRoom(const cr::CreativeWorldLayout& layout,
              layout.levels[levelIndex].buildingIndex;
 }
 
+double snapLevelDatum(const cr::CreativeWorldLayout& layout,
+                      std::size_t levelIndex,
+                      double requested) noexcept {
+  const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+  double anchor = level.floorTopLayer;
+  for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
+    const cr::CreativeWorldLayoutLevel& candidate = layout.levels[index];
+    if (candidate.buildingIndex == level.buildingIndex &&
+        cr::creativeWorldLayoutLevelHasRooms(layout, index)) {
+      anchor = std::min(anchor, candidate.floorTopLayer);
+    }
+  }
+  return anchor + std::round(requested - anchor);
+}
+
 }  // namespace
 
 CreativeEditorWorldLayoutElevationHandle
@@ -221,7 +236,8 @@ planCreativeEditorWorldLayoutElevationEdit(
     result.roofPitchDegrees = level.roofPitchDegrees;
     if (handle.kind ==
         CreativeEditorWorldLayoutElevationHandleKind::LevelFloor) {
-      const double candidate = snapQuarterCell(requestedVerticalCells);
+      const double candidate =
+          snapLevelDatum(layout, handle.levelIndex, requestedVerticalCells);
       if (!std::isfinite(candidate)) {
         result.reasonCode =
             "creative_editor_world_layout_elevation_floor_invalid";
@@ -235,16 +251,13 @@ planCreativeEditorWorldLayoutElevationEdit(
         }
         const cr::CreativeWorldLayoutLevel& other = layout.levels[index];
         if (other.floorTopLayer > level.floorTopLayer &&
-            candidate + static_cast<double>(level.wallHeightCells) >
-                other.floorTopLayer + kGeometryEpsilon) {
+            candidate >= other.floorTopLayer - kGeometryEpsilon) {
           result.reasonCode =
               "creative_editor_world_layout_elevation_floor_crosses_level";
           return result;
         }
         if (other.floorTopLayer < level.floorTopLayer &&
-            other.floorTopLayer +
-                    static_cast<double>(other.wallHeightCells) >
-                candidate + kGeometryEpsilon) {
+            candidate <= other.floorTopLayer + kGeometryEpsilon) {
           result.reasonCode =
               "creative_editor_world_layout_elevation_floor_crosses_level";
           return result;

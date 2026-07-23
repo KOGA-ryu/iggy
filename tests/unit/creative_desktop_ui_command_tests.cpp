@@ -5036,7 +5036,7 @@ bool generatedLevelSettingsRebuildEveryRoomAtomically() {
       appState.facade.document().revision();
   const std::uint64_t undoBeforeReject = cr::creativeUndoDepth(appState.history);
   app::CreativeEditorWorldLayoutLevelSettings connectorInvalid = settings;
-  connectorInvalid.floorTopLayer = 4.0;
+  connectorInvalid.floorTopLayer = 5.0;
   const app::CreativeDesktopCommandResult rejectedPreview = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings,
       context, app::CreativeDesktopGeneratedLevelSettingsPayload{
@@ -6705,7 +6705,7 @@ bool synchronizedPlanDragPreviewsAndCommitsOneStoreyAtomically() {
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = {{0, 0}, {8, 8}};
   settings.shell.floorTopLayer = 1.0;
-  settings.shell.wallHeightCells = 3U;
+  settings.floorToFloorCells = 3U;
   settings.facade.includeExteriorWindows = false;
   settings.storeys.count = 2U;
   const auto created = app::createCreativeEditorWorldLayoutBuildingBlockout(

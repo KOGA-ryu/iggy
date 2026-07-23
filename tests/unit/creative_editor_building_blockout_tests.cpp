@@ -90,7 +90,7 @@ app::CreativeEditorWorldLayoutBuildingBlockoutSettings gridBlockout() {
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = {{-5, -3}, {4, 4}};
   settings.shell.floorTopLayer = 2.0;
-  settings.shell.wallHeightCells = 4U;
+  settings.floorToFloorCells = 4U;
   settings.shell.wallThicknessCells = 0.25;
   settings.shell.floorThicknessLayers = 2U;
   settings.shell.roofThicknessLayers = 1U;
@@ -558,7 +558,7 @@ bool editorChecksTheWholeStoreySpanForOverlap() {
   app::resetCreativeEditorWorldLayout(state, "blockout_storey_overlap");
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings upper;
   upper.shell.footprint = {{0, 0}, {8, 8}};
-  upper.shell.floorTopLayer = 3.0;
+  upper.shell.floorTopLayer = 7.0;
   upper.facade.includeEntrance = false;
   upper.facade.includeExteriorWindows = false;
   const app::CreativeEditorWorldLayoutEditReceipt upperCreated =
@@ -570,6 +570,8 @@ bool editorChecksTheWholeStoreySpanForOverlap() {
       app::creativeEditorWorldLayoutSourceUndoDepth(state);
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings lower = upper;
   lower.shell.floorTopLayer = 0.0;
+  lower.shell.wallHeightCells = 0U;
+  lower.floorToFloorCells = 4U;
   lower.storeys.count = 2U;
   const app::CreativeEditorWorldLayoutEditReceipt rejected =
       app::createCreativeEditorWorldLayoutBuildingBlockout(state, lower);
@@ -624,7 +626,7 @@ bool editorRejectsOverlapWithoutPartialMutation() {
 
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings stacked = first;
   stacked.shell.floorTopLayer =
-      first.shell.floorTopLayer + first.shell.wallHeightCells;
+      first.shell.floorTopLayer + first.floorToFloorCells;
   const app::CreativeEditorWorldLayoutEditReceipt stackedResult =
       app::createCreativeEditorWorldLayoutBuildingBlockout(state, stacked);
 
@@ -856,7 +858,7 @@ bool editorCreatesOneAtomicMultiStoreyBlockout() {
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = {{0, 0}, {8, 8}};
   settings.shell.floorTopLayer = 1.0;
-  settings.shell.wallHeightCells = 3U;
+  settings.floorToFloorCells = 3U;
   settings.shell.floorThicknessLayers = 2U;
   settings.shell.roofThicknessLayers = 2U;
   settings.storeys.count = 3U;
@@ -1014,7 +1016,7 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   settings.shell.roofPitchDegrees = 37.0;
   settings.shell.roofOverhangCells = 0.5;
   settings.shell.roofMaterial = cr::CreativeStructuralMaterial::Stone;
-  settings.shell.wallHeightCells = 5U;
+  settings.floorToFloorCells = 5U;
   settings.shell.floorThicknessLayers = 6U;
   settings.architecturalProfileKind =
       cr::CreativeWorldLayoutArchitecturalProfileKind::Grand;
@@ -1288,7 +1290,7 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
                     version3Sync.provenance.recipe.version ==
                         cr::kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
                     version3Sync.provenance.recipe.request.floorToFloorCells ==
-                        legacySettings.shell.wallHeightCells,
+                        legacySettings.floorToFloorCells,
                 "version-three wall-height provenance migrates to floor-to-floor") &&
          expect(templateOwnsNoBlockoutRecipe,
                 "captured templates do not retain competing blockout ownership") &&

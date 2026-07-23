@@ -77,25 +77,55 @@ void rejectInvalidLevelMutation(CreativeEditorWorldLayoutState& state,
 [[nodiscard]] bool nextLevelElevation(
     const cr::CreativeWorldLayout& layout, std::size_t buildingIndex,
     double& output) noexcept {
-  bool found = false;
+  if (buildingIndex >= layout.buildings.size()) {
+    return false;
+  }
+  bool foundHighest = false;
+  bool foundPrevious = false;
   long double highest = 0.0L;
+  long double previous = 0.0L;
+  const cr::CreativeWorldLayoutLevel* highestLevel = nullptr;
   for (const cr::CreativeWorldLayoutLevel& level : layout.levels) {
     if (level.buildingIndex != buildingIndex ||
         !std::isfinite(level.floorTopLayer) || level.wallHeightCells == 0U) {
       continue;
     }
-    const long double top = static_cast<long double>(level.floorTopLayer) +
-                            level.wallHeightCells;
-    if (!found || top > highest) {
-      found = true;
-      highest = top;
+    const long double floorTop =
+        static_cast<long double>(level.floorTopLayer);
+    if (!foundHighest || floorTop > highest) {
+      if (foundHighest) {
+        previous = highest;
+        foundPrevious = true;
+      }
+      highest = floorTop;
+      highestLevel = &level;
+      foundHighest = true;
+    } else if (!foundPrevious || floorTop > previous) {
+      previous = floorTop;
+      foundPrevious = true;
     }
   }
-  if (!found || highest < -std::numeric_limits<double>::max() ||
-      highest > std::numeric_limits<double>::max()) {
+  if (!foundHighest || highestLevel == nullptr) {
     return false;
   }
-  output = static_cast<double>(highest);
+  long double floorToFloor = 0.0L;
+  if (foundPrevious) {
+    floorToFloor = highest - previous;
+  } else {
+    const std::uint16_t buildingDefault =
+        layout.buildings[buildingIndex].rootHeightCells;
+    floorToFloor =
+        buildingDefault > 0U ? static_cast<long double>(buildingDefault)
+                             : highestLevel->wallHeightCells;
+  }
+  const long double next = highest + floorToFloor;
+  if (!std::isfinite(next) || !std::isfinite(floorToFloor) ||
+      floorToFloor <= 0.0L ||
+      next < -static_cast<long double>(std::numeric_limits<double>::max()) ||
+      next > static_cast<long double>(std::numeric_limits<double>::max())) {
+    return false;
+  }
+  output = static_cast<double>(next);
   return std::isfinite(output);
 }
 

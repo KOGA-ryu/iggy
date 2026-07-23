@@ -26,6 +26,7 @@
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
@@ -4468,6 +4469,24 @@ bool elevationProjectionUsesExactRecipeGeometry() {
       app::CreativeEditorWorldLayoutElevationItemKind::Stair, 0U);
   const auto roofBase = item(
       app::CreativeEditorWorldLayoutElevationItemKind::RoofBase, 1U);
+  const auto lowerWall = std::find_if(
+      projection.items.begin(), projection.items.end(), [](const auto& value) {
+        return value.kind ==
+                   app::CreativeEditorWorldLayoutElevationItemKind::
+                       WallEnvelope &&
+               value.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Room &&
+               value.sourceIndex == 0U;
+      });
+  const auto lowerCeiling = std::find_if(
+      projection.items.begin(), projection.items.end(), [](const auto& value) {
+        return value.kind ==
+                   app::CreativeEditorWorldLayoutElevationItemKind::
+                       CeilingSlab &&
+               value.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::Room &&
+               value.sourceIndex == 0U;
+      });
   const auto explicitFloor = std::find_if(
       projection.items.begin(), projection.items.end(), [](const auto& value) {
         return value.kind ==
@@ -4511,6 +4530,19 @@ bool elevationProjectionUsesExactRecipeGeometry() {
   const double expectedRidgeVertical =
       (roofPlan.geometry.ridgeStart.y - grid.origin.y) /
       grid.cellSizeMeters;
+  const cr::CreativeWorldLayoutLevelDimensions lowerDimensions =
+      cr::measureCreativeWorldLayoutLevelDimensions(grid, layout, 0U);
+  const double expectedPartitionTop =
+      (std::min(lowerDimensions.wallTopMeters,
+                lowerDimensions.interiorPartitionTopMeters) -
+       grid.origin.y) /
+      grid.cellSizeMeters;
+  const double expectedCeilingMinimum =
+      (lowerDimensions.upperSurfaceSupportMeters - grid.origin.y) /
+      grid.cellSizeMeters;
+  const double expectedCeilingMaximum =
+      (lowerDimensions.upperSurfaceTopMeters - grid.origin.y) /
+      grid.cellSizeMeters;
 
   return expect(projection.accepted && projection.bounds.valid,
                 "elevation projection accepts one owned building") &&
@@ -4518,6 +4550,16 @@ bool elevationProjectionUsesExactRecipeGeometry() {
                     near(lowerFloor->minimumVertical, -floorThicknessCells) &&
                     near(lowerFloor->maximumVertical, 0.0),
                 "elevation floor uses descriptor-sized structural thickness") &&
+         expect(lowerDimensions.accepted &&
+                    lowerWall != projection.items.end() &&
+                    near(lowerWall->maximumVertical,
+                         expectedPartitionTop) &&
+                    lowerCeiling != projection.items.end() &&
+                    near(lowerCeiling->minimumVertical,
+                         expectedCeilingMinimum) &&
+                    near(lowerCeiling->maximumVertical,
+                         expectedCeilingMaximum),
+                "elevation partitions and ceilings share the compiled storey envelope") &&
          expect(roofPlan.accepted && roofPlan.geometry.accepted &&
                     roofBase != projection.items.end() &&
                     near(roofBase->minimumVertical, expectedRoofMinimum) &&
@@ -5106,8 +5148,10 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
     return expect(false, "elevation edit fixture exposes expected handles");
   }
 
-  const auto crossedFloor = app::planCreativeEditorWorldLayoutElevationEdit(
+  const auto raisedFloor = app::planCreativeEditorWorldLayoutElevationEdit(
       layout, projection, *groundFloor, 0.5);
+  const auto crossedFloor = app::planCreativeEditorWorldLayoutElevationEdit(
+      layout, projection, *groundFloor, 4.0);
   const auto shorterWall = app::planCreativeEditorWorldLayoutElevationEdit(
       layout, projection, *groundWall, 2.2);
   const auto roofSlope = std::find_if(
@@ -5140,10 +5184,13 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
   const auto* windowItem = app::findCreativeEditorWorldLayoutElevationItem(
       projection, {3.0, 2.0}, 0.01);
 
-  return expect(!crossedFloor.accepted &&
+  return expect(raisedFloor.accepted &&
+                    near(raisedFloor.floorTopLayer, 1.0),
+                "floor datum edits use the building lattice instead of authored wall height") &&
+         expect(!crossedFloor.accepted &&
                     crossedFloor.reasonCode ==
                         "creative_editor_world_layout_elevation_floor_crosses_level",
-                "floor edit cannot cross the next occupied storey") &&
+                "floor edit cannot cross the next occupied datum") &&
          expect(shorterWall.accepted && shorterWall.wallHeightCells == 2U,
                 "wall top snaps to whole-cell height") &&
          expect(roof45.accepted && sharedRoof45.accepted &&

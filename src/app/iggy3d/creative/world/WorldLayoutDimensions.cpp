@@ -156,6 +156,8 @@ CreativeWorldLayoutLevelDimensions measureCreativeWorldLayoutLevelDimensions(
     result.upperSurfaceSupportMeters = result.wallTopMeters;
     result.upperSurfaceTopMeters = result.upperSurfaceSupportMeters +
                                    result.upperSurfaceThicknessMeters;
+    result.interiorPartitionTopMeters = result.wallTopMeters;
+    result.exteriorFacadeTopMeters = result.wallTopMeters;
   } else {
     double nearestHigherLayer = std::numeric_limits<double>::infinity();
     for (std::size_t candidateIndex = 0U;
@@ -204,17 +206,26 @@ CreativeWorldLayoutLevelDimensions measureCreativeWorldLayoutLevelDimensions(
         result.upperSurfaceTopMeters - result.upperSurfaceThicknessMeters;
     result.clearHeightMeters =
         result.upperSurfaceSupportMeters - result.floorTopMeters;
+    result.interiorPartitionTopMeters = result.upperSurfaceSupportMeters;
+    result.exteriorFacadeTopMeters = result.nextFloorTopMeters;
   }
+  result.exteriorFacadeHeightMeters =
+      result.exteriorFacadeTopMeters - result.floorTopMeters;
 
   if (!std::isfinite(result.floorBottomMeters) ||
       !std::isfinite(result.wallTopMeters) ||
       !std::isfinite(result.upperSurfaceTopMeters) ||
       !std::isfinite(result.upperSurfaceSupportMeters) ||
       !std::isfinite(result.clearHeightMeters) ||
+      !std::isfinite(result.interiorPartitionTopMeters) ||
+      !std::isfinite(result.exteriorFacadeTopMeters) ||
+      !std::isfinite(result.exteriorFacadeHeightMeters) ||
       result.floorBottomMeters >= result.floorTopMeters ||
       result.wallTopMeters <= result.wallBaseMeters ||
       result.upperSurfaceTopMeters <= result.upperSurfaceSupportMeters ||
       result.clearHeightMeters <= 0.0 ||
+      result.interiorPartitionTopMeters <= result.floorTopMeters ||
+      result.exteriorFacadeHeightMeters <= 0.0 ||
       (result.hasUpperLevel &&
        (!std::isfinite(result.nextFloorBottomMeters) ||
         !std::isfinite(result.nextFloorTopMeters) ||
@@ -335,7 +346,8 @@ measureCreativeWorldLayoutBuildingDimensions(
     result.exteriorFacadeBaseMeters =
         std::min(result.exteriorFacadeBaseMeters, level.wallBaseMeters);
     result.exteriorFacadeTopMeters =
-        std::max(result.exteriorFacadeTopMeters, level.wallTopMeters);
+        std::max(result.exteriorFacadeTopMeters,
+                 level.exteriorFacadeTopMeters);
     result.minimumWallHeightMeters =
         std::min(result.minimumWallHeightMeters, level.wallHeightMeters);
     result.maximumWallHeightMeters =

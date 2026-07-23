@@ -363,13 +363,17 @@ CreativeWorldLayoutOpeningHostFrame resolveCreativeWorldLayoutOpeningHost(
       }
       result.start = start.position;
       result.end = end.position;
-      result.wallHeightCells = static_cast<double>(
-          edge.wallHeightCells == 0U ? level.wallHeightCells
-                                    : edge.wallHeightCells);
       result.wallThicknessCells = edge.wallThicknessCells;
       result.owningRoomCount =
           edgeOwnerCount(layout, opening.roomTopologyEdgeIndex);
       result.exterior = result.owningRoomCount == 1U;
+      result.wallHeightCells =
+          edge.wallHeightCells != 0U
+              ? static_cast<double>(edge.wallHeightCells)
+              : result.exterior
+                    ? creativeWorldLayoutLevelFacadeHeightCells(
+                          layout, room.levelIndex)
+                    : static_cast<double>(level.wallHeightCells);
       result.roomEdge = cardinalRoomEdge(room, result.start, result.end);
     } else {
       if (opening.roomEdge >= CreativeWorldLayoutRoomEdge::Count) {
@@ -380,7 +384,6 @@ CreativeWorldLayoutOpeningHostFrame resolveCreativeWorldLayoutOpeningHost(
       const auto segment = roomEdgeSegment(room, opening.roomEdge);
       result.start = segment.first;
       result.end = segment.second;
-      result.wallHeightCells = static_cast<double>(level.wallHeightCells);
       result.wallThicknessCells = room.wallThicknessCells;
       result.owningRoomCount =
           creativeWorldLayoutRoomEdgeIntervalIsShared(
@@ -389,6 +392,11 @@ CreativeWorldLayoutOpeningHostFrame resolveCreativeWorldLayoutOpeningHost(
               ? 2U
               : 1U;
       result.exterior = result.owningRoomCount == 1U;
+      result.wallHeightCells =
+          result.exterior
+              ? creativeWorldLayoutLevelFacadeHeightCells(layout,
+                                                          room.levelIndex)
+              : static_cast<double>(level.wallHeightCells);
     }
   } else {
     reject(result, CreativeWorldLayoutOpeningHostStatus::InvalidOpening,
@@ -579,9 +587,14 @@ evaluateCreativeWorldLayoutDoorSwingClearance(
       continue;
     }
     const CreativeWorldLayoutLevel& level = layout.levels[edge.levelIndex];
-    const double height = static_cast<double>(
-        edge.wallHeightCells == 0U ? level.wallHeightCells
-                                  : edge.wallHeightCells);
+    const double inheritedHeight =
+        creativeWorldLayoutLevelFacadeHeightCells(layout, edge.levelIndex);
+    const double height =
+        edge.wallHeightCells != 0U
+            ? static_cast<double>(edge.wallHeightCells)
+            : (std::isfinite(inheritedHeight)
+                   ? inheritedHeight
+                   : static_cast<double>(level.wallHeightCells));
     CreativeBounds obstacle;
     if (!segmentBounds(layout.topologyVertices[edge.startVertexIndex].position,
                        layout.topologyVertices[edge.endVertexIndex].position,

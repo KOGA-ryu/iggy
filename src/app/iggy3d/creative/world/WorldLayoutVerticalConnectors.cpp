@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 
 #include <algorithm>
@@ -162,10 +163,7 @@ planCreativeWorldLayoutVerticalConnector(
   const double riseCells = upperLevel.floorTopLayer - lowerLevel.floorTopLayer;
   if (lowerLevel.buildingIndex != connector.buildingIndex ||
       upperLevel.buildingIndex != connector.buildingIndex ||
-      !std::isfinite(riseCells) || riseCells <= 0.0 ||
-      std::fabs(riseCells - static_cast<double>(lowerLevel.wallHeightCells)) >
-          1.0e-9 ||
-      lowerLevel.wallHeightCells < 2U) {
+      !std::isfinite(riseCells) || riseCells <= 0.0) {
     reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidLevels,
            "creative_world_layout_vertical_connector_levels_invalid");
     return plan;
@@ -216,11 +214,28 @@ planCreativeWorldLayoutVerticalConnector(
     return plan;
   }
 
+  const CreativeWorldLayoutLevelDimensions lowerDimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                lower.levelIndex);
+  const CreativeWorldLayoutLevelDimensions upperDimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, layout,
+                                                upper.levelIndex);
+  if (!lowerDimensions.accepted || !upperDimensions.accepted ||
+      !lowerDimensions.hasUpperLevel ||
+      lowerDimensions.upperLevelIndex != upper.levelIndex) {
+    reject(plan, CreativeWorldLayoutVerticalConnectorStatus::InvalidLevels,
+           "creative_world_layout_vertical_connector_levels_invalid");
+    return plan;
+  }
+  const double availableHeadroomMeters =
+      std::min(lowerDimensions.clearHeightMeters,
+               upperDimensions.clearHeightMeters);
+
   plan.objectKind =
       connector.kind == CreativeWorldLayoutVerticalConnectorKind::Stair
           ? CreativeObjectKind::Stair
           : CreativeObjectKind::Ramp;
-  plan.riseMeters = riseCells * grid.cellSizeMeters;
+  plan.riseMeters = lowerDimensions.floorToFloorMeters;
   plan.runMeters = runCells * grid.cellSizeMeters;
   plan.widthMeters = widthCells * grid.cellSizeMeters;
   if (!std::isfinite(plan.riseMeters) || !std::isfinite(plan.runMeters) ||
@@ -287,9 +302,7 @@ planCreativeWorldLayoutVerticalConnector(
         describeObject(CreativeObjectKind::Stair)
             .generatedGeometry.maximumStepRiseMeters;
     stairRequest.landingDepthMeters = grid.cellSizeMeters;
-    stairRequest.availableHeadroomMeters =
-        static_cast<double>(upperLevel.wallHeightCells) *
-        grid.cellSizeMeters;
+    stairRequest.availableHeadroomMeters = availableHeadroomMeters;
     plan.stair = planCreativeStair(stairRequest);
     if (!plan.stair.accepted) {
       const bool headroom =
@@ -310,9 +323,7 @@ planCreativeWorldLayoutVerticalConnector(
         measureCreativeBounds(plan.authoredBounds).center;
     rampRequest.transform.rotationEulerRadians = plan.rotationEulerRadians;
     rampRequest.landingDepthMeters = grid.cellSizeMeters;
-    rampRequest.availableHeadroomMeters =
-        static_cast<double>(upperLevel.wallHeightCells) *
-        grid.cellSizeMeters;
+    rampRequest.availableHeadroomMeters = availableHeadroomMeters;
     rampRequest.material = connector.material;
     plan.ramp = planCreativeRamp(rampRequest);
     if (!plan.ramp.accepted) {

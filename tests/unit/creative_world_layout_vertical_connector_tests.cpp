@@ -220,8 +220,19 @@ bool rampPlanUsesTheSharedSlopeAndCompilerPath() {
 
 bool invalidStoriesFootprintsAndLandingsFailClosed() {
   const cr::CreativeGridSettings grid{{}, 1.0, {32, 16, 32}};
-  cr::CreativeWorldLayout wrongRise = twoStoreyLayout();
-  wrongRise.levels[1].floorTopLayer = 2.5;
+  cr::CreativeWorldLayout independentWallHeight = twoStoreyLayout();
+  independentWallHeight.levels[0].wallHeightCells = 2U;
+  cr::CreativeWorldLayout nonAdjacent = twoStoreyLayout();
+  cr::CreativeWorldLayoutLevel middleLevel = nonAdjacent.levels[0];
+  middleLevel.stableKey = "middle";
+  middleLevel.name = "Middle";
+  middleLevel.floorTopLayer = 1.5;
+  nonAdjacent.levels.push_back(middleLevel);
+  cr::CreativeWorldLayoutRoom middleRoom = nonAdjacent.rooms[0];
+  middleRoom.levelIndex = 2U;
+  middleRoom.stableKey = "middle_room";
+  middleRoom.name = "Middle Room";
+  nonAdjacent.rooms.push_back(middleRoom);
   cr::CreativeWorldLayout outside = twoStoreyLayout();
   outside.verticalConnectors[0].footprint = {{-1, 2}, {5, 4}};
   cr::CreativeWorldLayout noLanding = twoStoreyLayout();
@@ -235,11 +246,18 @@ bool invalidStoriesFootprintsAndLandingsFailClosed() {
   cr::CreativeWorldLayout lowHeadroom = twoStoreyLayout();
   lowHeadroom.levels[1].wallHeightCells = 1U;
 
-  return expect(
-             cr::planCreativeWorldLayoutVerticalConnector(grid, wrongRise, 0U)
+  const cr::CreativeWorldLayoutVerticalConnectorPlan independentPlan =
+      cr::planCreativeWorldLayoutVerticalConnector(grid,
+                                                   independentWallHeight, 0U);
+  return expect(independentPlan.accepted &&
+                    near(independentPlan.riseMeters, 3.0),
+                "connector rise follows floor datums instead of wall height") &&
+         expect(
+             cr::planCreativeWorldLayoutVerticalConnector(grid, nonAdjacent,
+                                                          0U)
                      .status ==
                  cr::CreativeWorldLayoutVerticalConnectorStatus::InvalidLevels,
-             "non-adjacent story elevations reject") &&
+             "connector cannot skip the nearest occupied storey") &&
          expect(cr::planCreativeWorldLayoutVerticalConnector(grid, outside, 0U)
                         .status ==
                     cr::CreativeWorldLayoutVerticalConnectorStatus::

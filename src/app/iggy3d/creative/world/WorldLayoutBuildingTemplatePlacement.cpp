@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 
 #include <algorithm>
@@ -81,10 +82,17 @@ void includeSpan(VerticalSpan& span, double minimum, double maximum) noexcept {
 VerticalSpan buildingSpan(const CreativeWorldLayout& layout,
                           std::size_t buildingIndex) noexcept {
   VerticalSpan span;
-  for (const CreativeWorldLayoutLevel& level : layout.levels) {
+  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
+       ++levelIndex) {
+    const CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
     if (level.buildingIndex == buildingIndex) {
+      const double facadeHeight =
+          creativeWorldLayoutLevelFacadeHeightCells(layout, levelIndex);
       includeSpan(span, level.floorTopLayer,
-                  level.floorTopLayer + level.wallHeightCells);
+                  level.floorTopLayer +
+                      (std::isfinite(facadeHeight)
+                           ? facadeHeight
+                           : static_cast<double>(level.wallHeightCells)));
     }
   }
   for (const CreativeWorldLayoutBox& box : layout.boxes) {

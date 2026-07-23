@@ -96,7 +96,7 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings blockout;
   blockout.shell.footprint = {{0, 0}, {12, 10}};
   blockout.shell.floorTopLayer = 0.0;
-  blockout.shell.wallHeightCells = 3U;
+  blockout.floorToFloorCells = 3U;
   blockout.shell.wallThicknessCells = 0.25;
   blockout.shell.floorThicknessLayers = 1U;
   blockout.shell.roofThicknessLayers = 1U;
@@ -151,7 +151,7 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
                 }))
           : 0U;
   const double expectedFloorToFloorMeters =
-      static_cast<double>(blockout.shell.wallHeightCells) *
+      static_cast<double>(blockout.floorToFloorCells) *
       appState.facade.document().gridSettings().cellSizeMeters;
   if (!expect(groundDimensions.accepted && upperDimensions.accepted &&
                   buildingDimensions.accepted &&

@@ -157,7 +157,7 @@ bool multiStoreyRefinementsSurviveTheCompleteLifecycle() {
 
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings blockout;
   blockout.shell.footprint = {{0, 0}, {12, 10}};
-  blockout.shell.wallHeightCells = 3U;
+  blockout.floorToFloorCells = 3U;
   blockout.shell.wallThicknessCells = 0.25;
   blockout.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;

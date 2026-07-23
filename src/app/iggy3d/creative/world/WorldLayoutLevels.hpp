@@ -57,6 +57,11 @@ creativeWorldLayoutLevelForRoom(const CreativeWorldLayout& layout,
 [[nodiscard]] bool creativeWorldLayoutLevelIsTopmostOccupied(
     const CreativeWorldLayout& layout, std::size_t levelIndex) noexcept;
 
+// Exterior facades inherit the complete storey band up to the next occupied
+// floor datum. The top storey inherits its authored wall height.
+[[nodiscard]] double creativeWorldLayoutLevelFacadeHeightCells(
+    const CreativeWorldLayout& layout, std::size_t levelIndex) noexcept;
+
 // Finds the nearest distinct visible floor datum without depending on level
 // table order. When several buildings share the target datum, the current
 // building wins; otherwise the lowest table index keeps the result stable.

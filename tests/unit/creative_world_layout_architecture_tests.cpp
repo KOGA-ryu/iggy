@@ -82,12 +82,13 @@ struct ArchitectureFixture {
 
 cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
     cr::CreativeWorldLayoutRect footprint,
-    std::uint16_t storeyCount) noexcept {
+    std::uint16_t storeyCount,
+    std::uint16_t floorToFloorCells = 4U) noexcept {
   cr::CreativeWorldLayoutBuildingBlockoutRecipe recipe;
   recipe.request.footprint = footprint;
   recipe.request.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
-  recipe.request.floorToFloorCells = 4U;
+  recipe.request.floorToFloorCells = floorToFloorCells;
   recipe.request.storeys.count = storeyCount;
   recipe.request.storeys.connectStoreys = storeyCount > 1U;
   recipe.floorTopLayer = 2.0;
@@ -96,14 +97,15 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   return recipe;
 }
 
-ArchitectureFixture makeFixture() {
+ArchitectureFixture makeFixture(std::uint16_t floorToFloorCells = 4U) {
   ArchitectureFixture fixture;
   fixture.grid.cellSizeMeters = 0.5;
   fixture.layout.stableKey = "architecture_fixture";
 
   const cr::CreativeWorldLayoutBuildingEditResult primary =
       cr::materializeCreativeWorldLayoutBuildingBlockout(
-          fixture.layout, blockoutRecipe({{0, 0}, {24, 24}}, 2U), 1U,
+          fixture.layout,
+          blockoutRecipe({{0, 0}, {24, 24}}, 2U, floorToFloorCells), 1U,
           {"Primary Estate", {}});
   if (!primary.accepted) {
     return fixture;
@@ -112,7 +114,8 @@ ArchitectureFixture makeFixture() {
 
   const cr::CreativeWorldLayoutBuildingEditResult neighbor =
       cr::materializeCreativeWorldLayoutBuildingBlockout(
-          primary.edited, blockoutRecipe({{32, 0}, {52, 20}}, 1U),
+          primary.edited,
+          blockoutRecipe({{32, 0}, {52, 20}}, 1U, floorToFloorCells),
           primary.nextStableOrdinal, {"Neighbor Estate", {}});
   if (!neighbor.accepted) {
     return fixture;
@@ -408,8 +411,12 @@ bool customGeometryRetainsAuthoredIntent() {
   const cr::CreativeWorldLayoutArchitectureResult normalized =
       cr::normalizeCreativeWorldLayoutBuildingArchitecture(
           fixture.grid, fixture.layout, request);
-  if (!expect(beforePlan.accepted && normalized.receipt.accepted,
-              "custom geometry remains normalizable")) {
+  if (!expect(!beforePlan.accepted &&
+                  beforePlan.reasonCode ==
+                      "creative_stair_headroom_insufficient" &&
+                  normalized.receipt.accepted,
+              "normalization repairs short headroom without rejecting custom "
+              "geometry")) {
     return false;
   }
 
@@ -502,6 +509,7 @@ bool explicitRoomTopologySurvivesArchitectureNormalization() {
 
 bool invalidProfilesPublishNoCandidate() {
   const ArchitectureFixture fixture = makeFixture();
+  const ArchitectureFixture validFixture = makeFixture(6U);
   cr::CreativeWorldLayoutArchitectureRequest request;
   request.buildingIndex = fixture.primaryBuildingIndex;
   request.profile = cr::defaultCreativeWorldLayoutArchitecturalProfile(
@@ -535,13 +543,13 @@ bool invalidProfilesPublishNoCandidate() {
 
   request.profile = cr::defaultCreativeWorldLayoutArchitecturalProfile(
       cr::CreativeWorldLayoutArchitecturalProfileKind::Custom);
-  request.profile.floorToFloorMeters = 2.0;
+  request.profile.floorToFloorMeters = 3.0;
   request.profile.floorThicknessLayers = 2U;
   request.profile.ceilingThicknessLayers = 1U;
   request.profile.roofThicknessLayers = 1U;
   const cr::CreativeWorldLayoutArchitectureResult noChange =
       cr::normalizeCreativeWorldLayoutBuildingArchitecture(
-          fixture.grid, fixture.layout, request);
+          validFixture.grid, validFixture.layout, request);
 
   return expect(!fractional.receipt.accepted &&
                     fractional.receipt.status ==

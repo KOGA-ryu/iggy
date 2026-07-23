@@ -43,9 +43,9 @@ CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
           kHouseArchitecturalProfileKind);
   CreativeGridSettings grid;
   grid.cellSizeMeters = kEstateGridCellSizeMeters;
-  std::uint16_t wallHeightCells = 0U;
+  std::uint16_t floorToFloorCells = 0U;
   if (!resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
-          grid, profile, wallHeightCells)) {
+          grid, profile, floorToFloorCells)) {
     CreativeWorldLayoutBuildingTemplateResult failed;
     failed.requested = true;
     failed.status = CreativeWorldLayoutBuildingTemplateStatus::InvalidTemplate;
@@ -58,7 +58,7 @@ CreativeWorldLayoutBuildingTemplateResult builderEstateHouseTemplate() {
   recipe.request.pattern =
       CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
   recipe.request.wallThicknessCells = 0.25;
-  recipe.request.floorToFloorCells = wallHeightCells;
+  recipe.request.floorToFloorCells = floorToFloorCells;
   recipe.request.storeys.count = 2U;
   recipe.request.storeys.connectStoreys = true;
   recipe.request.storeys.connectorKind =

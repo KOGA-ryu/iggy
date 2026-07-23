@@ -871,7 +871,7 @@ bool blockoutDraftAndPatternChoicesArePinned() {
                               draft.shell.footprint.maximum.z == 8;
   const bool shellKeepsDefaults =
       draft.shell.floorTopLayer == defaults.floorTopLayer &&
-      draft.shell.wallHeightCells == defaults.wallHeightCells &&
+      draft.floorToFloorCells == defaults.wallHeightCells &&
       draft.shell.wallThicknessCells == defaults.wallThicknessCells &&
       draft.shell.floorThicknessLayers == defaults.floorThicknessLayers &&
       draft.shell.roofThicknessLayers == defaults.roofThicknessLayers &&
@@ -953,7 +953,7 @@ bool blockoutArchitecturalProfilesResolveAgainstTheDocumentGrid() {
           settings, halfMeterGrid,
           cr::CreativeWorldLayoutArchitecturalProfileKind::Residential);
   const bool residentialRight =
-      residential && settings.shell.wallHeightCells == 6U &&
+      residential && settings.floorToFloorCells == 6U &&
       settings.shell.floorThicknessLayers == 4U &&
       settings.ceilingThicknessLayers == 1U &&
       settings.shell.roofThicknessLayers == 1U &&
@@ -964,7 +964,7 @@ bool blockoutArchitecturalProfilesResolveAgainstTheDocumentGrid() {
           settings, halfMeterGrid,
           cr::CreativeWorldLayoutArchitecturalProfileKind::Grand);
   const bool grandRight =
-      grand && settings.shell.wallHeightCells == 10U &&
+      grand && settings.floorToFloorCells == 10U &&
       settings.shell.floorThicknessLayers == 6U &&
       settings.ceilingThicknessLayers == 1U &&
       settings.shell.roofThicknessLayers == 1U &&
@@ -981,8 +981,8 @@ bool blockoutArchitecturalProfilesResolveAgainstTheDocumentGrid() {
                 "residential profile resolves to exact half-meter cells") &&
          expect(grandRight,
                 "grand profile resolves to exact half-meter cells") &&
-         expect(rejected && settings.shell.wallHeightCells ==
-                                unchanged.shell.wallHeightCells &&
+         expect(rejected && settings.floorToFloorCells ==
+                                unchanged.floorToFloorCells &&
                     settings.architecturalProfileKind ==
                         unchanged.architecturalProfileKind,
                 "unrepresentable profiles reject without mutating the draft");

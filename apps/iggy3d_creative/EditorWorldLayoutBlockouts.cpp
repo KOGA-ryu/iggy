@@ -4,6 +4,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
@@ -111,7 +112,9 @@ bool blockoutOverlapsExistingRoom(
     const cr::CreativeWorldLayoutLevel& level = layout.levels[room.levelIndex];
     const double existingBottom = level.floorTopLayer;
     const double existingTop =
-        existingBottom + static_cast<double>(level.wallHeightCells);
+        existingBottom +
+        cr::creativeWorldLayoutLevelFacadeHeightCells(layout,
+                                                      room.levelIndex);
     const bool verticalOverlap =
         std::max(candidateBottom, existingBottom) <
         std::min(candidateTop, existingTop) - kBlockoutGeometryEpsilon;
@@ -123,18 +126,26 @@ bool blockoutOverlapsExistingRoom(
 }
 
 bool blockoutTopLayer(
-    const CreativeEditorWorldLayoutRoomSettings& settings,
+    double floorTopLayer, std::uint16_t floorToFloorCells,
     std::uint16_t storeyCount, double& topLayer) noexcept {
   const long double value =
-      static_cast<long double>(settings.floorTopLayer) +
-      static_cast<long double>(settings.wallHeightCells) * storeyCount;
+      static_cast<long double>(floorTopLayer) +
+      static_cast<long double>(floorToFloorCells) * storeyCount;
   if (!std::isfinite(value) ||
       value < -static_cast<long double>(std::numeric_limits<double>::max()) ||
       value > static_cast<long double>(std::numeric_limits<double>::max())) {
     return false;
   }
   topLayer = static_cast<double>(value);
-  return std::isfinite(topLayer) && topLayer > settings.floorTopLayer;
+  return std::isfinite(topLayer) && topLayer > floorTopLayer;
+}
+
+bool validBlockoutShellSettings(
+    const CreativeEditorWorldLayoutBuildingBlockoutSettings& settings)
+    noexcept {
+  CreativeEditorWorldLayoutRoomSettings shell = settings.shell;
+  shell.wallHeightCells = settings.floorToFloorCells;
+  return detail::validWorldLayoutShellSettings(shell);
 }
 
 cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
@@ -145,7 +156,7 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   recipe.request.wallThicknessCells = settings.shell.wallThicknessCells;
   recipe.request.connectRooms = settings.connectRooms;
   recipe.request.facade = settings.facade;
-  recipe.request.floorToFloorCells = settings.shell.wallHeightCells;
+  recipe.request.floorToFloorCells = settings.floorToFloorCells;
   recipe.request.storeys = settings.storeys;
   recipe.floorTopLayer = settings.shell.floorTopLayer;
   recipe.floorThicknessLayers = settings.shell.floorThicknessLayers;
@@ -168,7 +179,7 @@ CreativeEditorWorldLayoutBuildingBlockoutSettings blockoutSettings(
   CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = recipe.request.footprint;
   settings.shell.floorTopLayer = recipe.floorTopLayer;
-  settings.shell.wallHeightCells = recipe.request.floorToFloorCells;
+  settings.floorToFloorCells = recipe.request.floorToFloorCells;
   settings.shell.wallThicknessCells = recipe.request.wallThicknessCells;
   settings.shell.floorThicknessLayers = recipe.floorThicknessLayers;
   settings.ceilingThicknessLayers = recipe.ceilingThicknessLayers;
@@ -244,7 +255,7 @@ CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutBuildingBlockout(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutBuildingBlockoutSettings settings) {
-  if (!detail::validWorldLayoutShellSettings(settings.shell)) {
+  if (!validBlockoutShellSettings(settings)) {
     state.statusMessage =
         "building blockout needs valid floor, wall, and roof dimensions";
     return {false, false,
@@ -260,7 +271,9 @@ createCreativeEditorWorldLayoutBuildingBlockout(
     return {false, false, std::string(blockout.reasonCode)};
   }
   double blockoutTop = 0.0;
-  if (!blockoutTopLayer(settings.shell, blockout.storeyCount, blockoutTop)) {
+  if (!blockoutTopLayer(settings.shell.floorTopLayer,
+                        settings.floorToFloorCells, blockout.storeyCount,
+                        blockoutTop)) {
     state.statusMessage = "building blockout elevation is outside supported limits";
     return {
         false, false,
@@ -364,7 +377,8 @@ updateCreativeEditorWorldLayoutBuildingBlockout(
   }
 
   double blockoutTop = 0.0;
-  if (!blockoutTopLayer(settings.shell, settings.storeys.count,
+  if (!blockoutTopLayer(settings.shell.floorTopLayer,
+                        settings.floorToFloorCells, settings.storeys.count,
                         blockoutTop)) {
     state.statusMessage =
         "building blockout elevation is outside supported limits";

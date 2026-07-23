@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <span>
@@ -204,9 +206,14 @@ constexpr std::string_view kRoomEdgePrefix =
   const double maximum = std::max(alongStart, alongEnd);
   const double halfThickness = edge.wallThicknessCells * 0.5;
   const CreativeWorldLayoutLevel& level = layout.levels[edge.levelIndex];
-  const double height = static_cast<double>(
-      edge.wallHeightCells == 0U ? level.wallHeightCells
-                                 : edge.wallHeightCells);
+  const double inheritedHeight =
+      creativeWorldLayoutLevelFacadeHeightCells(layout, edge.levelIndex);
+  const double height =
+      edge.wallHeightCells != 0U
+          ? static_cast<double>(edge.wallHeightCells)
+          : (std::isfinite(inheritedHeight)
+                 ? inheritedHeight
+                 : static_cast<double>(level.wallHeightCells));
   const double top = level.floorTopLayer + height;
   return along >= minimum - kSpanToleranceCells &&
          along <= maximum + kSpanToleranceCells &&

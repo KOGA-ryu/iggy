@@ -203,6 +203,34 @@ bool creativeWorldLayoutLevelIsTopmostOccupied(
   return true;
 }
 
+double creativeWorldLayoutLevelFacadeHeightCells(
+    const CreativeWorldLayout& layout, std::size_t levelIndex) noexcept {
+  if (levelIndex >= layout.levels.size() ||
+      !creativeWorldLayoutLevelHasRooms(layout, levelIndex)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  const CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+  double nextFloorTopLayer = std::numeric_limits<double>::infinity();
+  for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
+    const CreativeWorldLayoutLevel& candidate = layout.levels[index];
+    if (candidate.buildingIndex != level.buildingIndex ||
+        !creativeWorldLayoutLevelHasRooms(layout, index) ||
+        candidate.floorTopLayer <=
+            level.floorTopLayer + kLevelElevationEpsilon) {
+      continue;
+    }
+    nextFloorTopLayer =
+        std::min(nextFloorTopLayer, candidate.floorTopLayer);
+  }
+  if (!std::isfinite(nextFloorTopLayer)) {
+    return static_cast<double>(level.wallHeightCells);
+  }
+  const double heightCells = nextFloorTopLayer - level.floorTopLayer;
+  return std::isfinite(heightCells) && heightCells > kLevelElevationEpsilon
+             ? heightCells
+             : std::numeric_limits<double>::quiet_NaN();
+}
+
 CreativeWorldLayoutLevelNavigationResult navigateCreativeWorldLayoutLevel(
     const CreativeWorldLayout& layout, std::size_t activeLevelIndex,
     CreativeWorldLayoutLevelNavigationDirection direction) noexcept {

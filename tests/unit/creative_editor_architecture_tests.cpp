@@ -60,7 +60,7 @@ bool initialize(EditorFixture& fixture) {
   app::CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = {{0, 0}, {20, 16}};
   settings.shell.floorTopLayer = 2.0;
-  settings.shell.wallHeightCells = 4U;
+  settings.floorToFloorCells = 8U;
   settings.shell.floorThicknessLayers = 2U;
   settings.shell.roofThicknessLayers = 1U;
   settings.pattern =
@@ -148,8 +148,8 @@ bool profilePreviewApplyAndUndoShareOneTransaction() {
   const bool undoRestored =
       undone.accepted && undone.changed && afterUndo == original &&
       undoDimensions.accepted &&
-      near(undoDimensions.minimumFloorToFloorMeters, 2.0) &&
-      near(undoDimensions.exteriorFacadeHeightMeters, 4.0);
+      near(undoDimensions.minimumFloorToFloorMeters, 4.0) &&
+      near(undoDimensions.exteriorFacadeHeightMeters, 8.0);
 
   const app::CreativeDesktopCommandResult redone = dispatch(
       app::CreativeDesktopCommandId::Redo, context);

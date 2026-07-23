@@ -475,10 +475,15 @@ CreativeWorldLayoutPlanProjection projectCreativeWorldLayoutPlan(
   if (haveLevels) {
     activeBandTop = activeDatum;
     for (const std::size_t levelIndex : activeLevels) {
+      const CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+      const double facadeHeight =
+          creativeWorldLayoutLevelFacadeHeightCells(layout, levelIndex);
       activeBandTop = std::max(
           activeBandTop,
-          activeDatum +
-              static_cast<double>(layout.levels[levelIndex].wallHeightCells));
+          level.floorTopLayer +
+              (std::isfinite(facadeHeight)
+                   ? facadeHeight
+                   : static_cast<double>(level.wallHeightCells)));
     }
   }
   if (!projectObjects(projection, layout, request.grid, haveLevels, activeDatum,

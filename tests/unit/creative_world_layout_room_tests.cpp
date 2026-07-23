@@ -343,6 +343,61 @@ bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
   const cr::CreativeWorldLayoutCompileResult compiled =
       cr::buildCreativeWorldLayoutPlan(document, layout);
 
+  cr::CreativeWorldLayout independentWallHeight = layout;
+  independentWallHeight.levels[0].wallHeightCells = 4U;
+  const cr::CreativeWorldLayoutRoomCompileResult independentExpanded =
+      cr::expandCreativeWorldLayoutRooms(independentWallHeight);
+  std::size_t independentFacadeCount = 0U;
+  if (independentExpanded.accepted) {
+    independentFacadeCount = static_cast<std::size_t>(std::count_if(
+        independentExpanded.expanded.walls.begin(),
+        independentExpanded.expanded.walls.end(),
+        [](const cr::CreativeWorldLayoutWall& wall) {
+          return near(wall.baseLayer, 0.0) && wall.heightCells == 6U &&
+                 wall.profile ==
+                     cr::CreativeWorldLayoutWallProfile::Exterior;
+        }));
+  }
+  const cr::CreativeWorldLayoutLevelDimensions lowerDimensions =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          document.gridSettings(), independentWallHeight, 0U);
+  const cr::CreativeWorldLayoutCompileResult independentCompiled =
+      cr::buildCreativeWorldLayoutPlan(document, independentWallHeight);
+  const cr::CreativeWorldLayoutPreviewResult independentPreview =
+      independentCompiled.receipt.accepted
+          ? cr::previewCreativeWorldLayoutPlan(document,
+                                               independentCompiled.plan)
+          : cr::CreativeWorldLayoutPreviewResult{};
+  std::size_t lowerPartitionPartCount = 0U;
+  bool lowerPartitionEnvelopeMatches = independentPreview.accepted;
+  for (const cr::CreativeObject& object :
+       independentPreview.document.objects()) {
+    if (object.kind != cr::CreativeObjectKind::Wall) {
+      continue;
+    }
+    const cr::CreativeTransformedBounds geometry =
+        cr::resolveCreativeObjectBounds(object);
+    const double centerX =
+        (geometry.worldBounds.min.x + geometry.worldBounds.max.x) * 0.5;
+    if (!geometry.valid || !near(centerX, 4.0) ||
+        geometry.size.x >= 0.5 ||
+        geometry.worldBounds.min.y >=
+            lowerDimensions.nextFloorTopMeters - 1.0e-9) {
+      continue;
+    }
+    ++lowerPartitionPartCount;
+    lowerPartitionEnvelopeMatches =
+        lowerPartitionEnvelopeMatches &&
+        near(geometry.worldBounds.max.y,
+             lowerDimensions.interiorPartitionTopMeters);
+  }
+
+  cr::CreativeWorldLayout oversizedInteriorDoor = independentWallHeight;
+  oversizedInteriorDoor.openings[0].cutoutHeightCells = 3.0;
+  oversizedInteriorDoor.openings[0].insertHeightCells = 3.0;
+  const cr::CreativeWorldLayoutCompileResult oversizedDoorCompiled =
+      cr::buildCreativeWorldLayoutPlan(document, oversizedInteriorDoor);
+
   return expect(expanded.expanded.walls.size() == 6U && facadeCount == 4U,
                 "four exterior runs span both storeys exactly once") &&
          expect(partitionCount == 2U &&
@@ -355,7 +410,24 @@ bool stackedRoomsUseBuildingFacadesAndLevelPartitions() {
                     near(resolvedUpperWindow.insertBottomCells, 4.0),
                 "default upper window inserts align to their rebased cutouts") &&
          expect(compiled.receipt.accepted,
-                "stacked facades with default window inserts compile");
+                "stacked facades with default window inserts compile") &&
+         expect(independentExpanded.accepted &&
+                    independentFacadeCount == 4U,
+                "exterior facades follow floor datums instead of authored partition height") &&
+         expect(lowerDimensions.accepted &&
+                    independentCompiled.receipt.accepted &&
+                    independentPreview.accepted &&
+                    lowerPartitionPartCount > 0U &&
+                    lowerPartitionEnvelopeMatches,
+                "generated lower partitions stop at the exact ceiling support plane") &&
+         expect(!oversizedDoorCompiled.receipt.accepted &&
+                    oversizedDoorCompiled.receipt.failedTable ==
+                        cr::CreativeWorldLayoutTable::Opening &&
+                    oversizedDoorCompiled.receipt.reasonCode ==
+                        "creative_world_layout_opening_exceeds_wall_envelope" &&
+                    oversizedDoorCompiled.receipt.kernelReasonCode ==
+                        "creative_world_layout_opening_height_invalid",
+                "interior openings cannot exceed the compiled clear-height envelope");
 }
 
 bool invalidTopologyFailsClosed() {
@@ -837,9 +909,12 @@ bool architecturalDimensionsOwnCompilerAndOpeningScale() {
                     near(groundDimensions.nextFloorTopMeters, 5.5) &&
                     near(groundDimensions.floorToFloorMeters, 3.0) &&
                     near(groundDimensions.clearHeightMeters, 2.4) &&
+                    near(groundDimensions.interiorPartitionTopMeters, 4.9) &&
+                    near(groundDimensions.exteriorFacadeTopMeters, 5.5) &&
+                    near(groundDimensions.exteriorFacadeHeightMeters, 3.0) &&
                     near(groundDimensions.upperSurfaceSupportMeters, 4.9) &&
                     near(groundDimensions.upperSurfaceTopMeters, 5.4),
-                "level dimensions separate datum spacing, slab underside, and clear height") &&
+                "level dimensions separate partitions, facades, datum spacing, and clear height") &&
          expect(buildingDimensions.accepted &&
                     buildingDimensions.occupiedLevelCount == 2U &&
                     near(buildingDimensions.footprintMinimumXMeters, 10.0) &&

@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/creative/recipes/StructuralSurfaceRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
@@ -534,6 +535,24 @@ planCreativeEditorWorldLayoutElevation(
   }
 
   std::vector<LevelProjectionFacts> levelFacts(layout.levels.size());
+  std::vector<cr::CreativeWorldLayoutLevelDimensions> levelDimensions(
+      layout.levels.size());
+  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
+       ++levelIndex) {
+    if (layout.levels[levelIndex].buildingIndex != request.buildingIndex ||
+        !cr::creativeWorldLayoutLevelHasRooms(layout, levelIndex)) {
+      continue;
+    }
+    levelDimensions[levelIndex] =
+        cr::measureCreativeWorldLayoutLevelDimensions(request.grid, layout,
+                                                      levelIndex);
+    if (!levelDimensions[levelIndex].accepted) {
+      reject(projection,
+             CreativeEditorWorldLayoutElevationStatus::InvalidLayout,
+             levelDimensions[levelIndex].reasonCode);
+      return projection;
+    }
+  }
   std::string_view recipeReason;
   for (std::size_t roomIndex = 0U; roomIndex < layout.rooms.size();
        ++roomIndex) {
@@ -543,6 +562,16 @@ planCreativeEditorWorldLayoutElevation(
       continue;
     }
     const cr::CreativeWorldLayoutLevel& level = layout.levels[room.levelIndex];
+    const cr::CreativeWorldLayoutLevelDimensions& dimensions =
+        levelDimensions[room.levelIndex];
+    const double partitionTopMeters =
+        std::min(dimensions.wallTopMeters,
+                 dimensions.interiorPartitionTopMeters);
+    const double partitionTopLayer =
+        worldVerticalToCells(request.grid, partitionTopMeters);
+    const double ceilingSupportLayer =
+        worldVerticalToCells(request.grid,
+                             dimensions.upperSurfaceSupportMeters);
     LevelProjectionFacts& facts = levelFacts[room.levelIndex];
     const double minimumHorizontal = horizontalCoordinate(
         request.axis, room.footprint.minimum);
@@ -578,14 +607,14 @@ planCreativeEditorWorldLayoutElevation(
          minimumHorizontal,
          maximumHorizontal,
          level.floorTopLayer,
-         level.floorTopLayer + static_cast<double>(level.wallHeightCells)});
+         partitionTopLayer});
     if (!cr::creativeWorldLayoutLevelIsTopmostOccupied(layout,
                                                        room.levelIndex) &&
         !appendSurface(
             projection, request.grid, room, roomIndex, room.levelIndex,
             cr::CreativeObjectKind::Ceiling,
             CreativeEditorWorldLayoutElevationItemKind::CeilingSlab,
-            level.floorTopLayer + static_cast<double>(level.wallHeightCells),
+            ceilingSupportLayer,
             level.ceilingThicknessLayers, recipeReason)) {
       reject(projection,
              CreativeEditorWorldLayoutElevationStatus::RecipeRejected,
@@ -601,6 +630,12 @@ planCreativeEditorWorldLayoutElevation(
       continue;
     }
     const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+    const cr::CreativeWorldLayoutLevelDimensions& dimensions =
+        levelDimensions[levelIndex];
+    const double partitionTopLayer = worldVerticalToCells(
+        request.grid,
+        std::min(dimensions.wallTopMeters,
+                 dimensions.interiorPartitionTopMeters));
     projection.handles.push_back(
         {CreativeEditorWorldLayoutElevationHandleKind::LevelFloor,
          CreativeEditorWorldLayoutElevationSourceKind::Room,
@@ -612,8 +647,7 @@ planCreativeEditorWorldLayoutElevation(
          CreativeEditorWorldLayoutElevationSourceKind::Room,
          facts.representativeRoomIndex,
          levelIndex,
-         {facts.maximumHorizontal,
-          level.floorTopLayer + static_cast<double>(level.wallHeightCells)}});
+         {facts.maximumHorizontal, partitionTopLayer}});
     if (!cr::creativeWorldLayoutLevelIsTopmostOccupied(layout, levelIndex)) {
       continue;
     }

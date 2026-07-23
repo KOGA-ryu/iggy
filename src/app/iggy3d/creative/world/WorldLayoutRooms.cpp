@@ -18,6 +18,8 @@
 namespace iggy3d::creative {
 namespace {
 
+constexpr double kFacadeLayerEpsilon = 1.0e-9;
+
 struct EdgeBinding {
   std::size_t wallIndex = kInvalidCreativeWorldLayoutIndex;
   std::int32_t edgeBegin = 0;
@@ -55,7 +57,6 @@ bool sameFacadeRun(const CreativeWorldLayoutWall& lhs,
 bool mergeContiguousFacadeHeight(CreativeWorldLayoutWall& destination,
                                  const CreativeWorldLayoutWall& source)
     noexcept {
-  constexpr double kFacadeLayerEpsilon = 1.0e-9;
   const double destinationTop =
       destination.baseLayer + static_cast<double>(destination.heightCells);
   const double sourceTop =
@@ -79,6 +80,36 @@ bool mergeContiguousFacadeHeight(CreativeWorldLayoutWall& destination,
 
   destination.baseLayer = mergedBase;
   destination.heightCells = static_cast<std::uint16_t>(roundedHeight);
+  return true;
+}
+
+bool resolvedGeneratedWallHeightCells(
+    const CreativeWorldLayout& layout,
+    const CreativeWorldLayoutTopologyEdge& edge,
+    CreativeWorldLayoutWallProfile profile,
+    std::uint16_t& heightCells) noexcept {
+  if (edge.wallHeightCells != 0U) {
+    heightCells = edge.wallHeightCells;
+    return true;
+  }
+  if (edge.levelIndex >= layout.levels.size()) {
+    return false;
+  }
+  double resolved =
+      static_cast<double>(layout.levels[edge.levelIndex].wallHeightCells);
+  if (profile == CreativeWorldLayoutWallProfile::Exterior) {
+    resolved =
+        creativeWorldLayoutLevelFacadeHeightCells(layout, edge.levelIndex);
+  }
+  const double rounded = std::round(resolved);
+  if (!std::isfinite(resolved) ||
+      std::abs(resolved - rounded) > kFacadeLayerEpsilon ||
+      rounded <= 0.0 ||
+      rounded >
+          static_cast<double>(std::numeric_limits<std::uint16_t>::max())) {
+    return false;
+  }
+  heightCells = static_cast<std::uint16_t>(rounded);
   return true;
 }
 
@@ -333,12 +364,19 @@ CreativeWorldLayoutRoomCompileResult expandCreativeWorldLayoutRooms(
                      ? blockoutWallMaterials[level.buildingIndex].exterior
                      : blockoutWallMaterials[level.buildingIndex].interior;
     }
+    std::uint16_t heightCells = 0U;
+    if (!resolvedGeneratedWallHeightCells(canonical, edge, profile,
+                                          heightCells)) {
+      setFailure(result, CreativeWorldLayoutRoomCompileStatus::InvalidLevel,
+                 edge.levelIndex,
+                 "creative_world_layout_wall_height_unrepresentable");
+      return result;
+    }
     lanes.push_back({edgeIndex,
                      level.buildingIndex,
                      edge.levelIndex,
                      level.floorTopLayer,
-                     edge.wallHeightCells == 0U ? level.wallHeightCells
-                                                : edge.wallHeightCells,
+                     heightCells,
                      edge.wallThicknessCells,
                      profile,
                      material,

@@ -234,10 +234,34 @@ bool invalidTopologyRejectsWithoutConsumingIdentity() {
                 "rejected level mutation changes no source identity or history");
 }
 
+bool newLevelsPreserveFloorDatumSpacing() {
+  app::CreativeEditorWorldLayoutState state = explicitGroundFloor();
+  state.source.levels[0].wallHeightCells = 9U;
+  const app::CreativeEditorWorldLayoutEditReceipt added =
+      app::applyCreativeEditorWorldLayoutLevelOperation(
+          state, app::CreativeEditorWorldLayoutLevelOperation::Add, 0U);
+  if (!added.accepted || state.source.levels.size() != 2U) {
+    return expect(false, "first added level uses the building spacing");
+  }
+
+  state.source.levels[1].wallHeightCells = 8U;
+  const app::CreativeEditorWorldLayoutEditReceipt duplicated =
+      app::applyCreativeEditorWorldLayoutLevelOperation(
+          state, app::CreativeEditorWorldLayoutLevelOperation::Duplicate, 0U,
+          0U);
+  return expect(state.source.levels[1].floorTopLayer == 3.0,
+                "single-level fallback uses the building floor spacing") &&
+         expect(duplicated.accepted && duplicated.changed &&
+                    state.source.levels.size() == 3U &&
+                    state.source.levels[2].floorTopLayer == 6.0,
+                "later levels continue the floor-datum interval instead of wall height");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = duplicateReorderAndDeletePreserveExplicitTopology() &&
-                  invalidTopologyRejectsWithoutConsumingIdentity();
+                  invalidTopologyRejectsWithoutConsumingIdentity() &&
+                  newLevelsPreserveFloorDatumSpacing();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

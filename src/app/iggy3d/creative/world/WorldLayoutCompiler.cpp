@@ -90,6 +90,57 @@ namespace {
   return {};
 }
 
+[[nodiscard]] bool resolveCompiledWallHeightMeters(
+    const CreativeGridSettings& grid,
+    const CreativeWorldLayout& source,
+    const CreativeWorldLayoutRoomCompileResult& roomExpansion,
+    std::size_t wallIndex,
+    const CreativeWorldLayoutWall& wall,
+    double& heightMeters) noexcept {
+  heightMeters =
+      static_cast<double>(wall.heightCells) * grid.cellSizeMeters;
+  if (!std::isfinite(heightMeters) || heightMeters <= 0.0) {
+    return false;
+  }
+  if (wallIndex < source.walls.size() ||
+      wall.profile != CreativeWorldLayoutWallProfile::Interior ||
+      wallIndex >= roomExpansion.wallProvenance.size()) {
+    return true;
+  }
+
+  const auto& provenance = roomExpansion.wallProvenance[wallIndex];
+  if (provenance.contributors.empty()) {
+    return true;
+  }
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  for (const auto& contributor : provenance.contributors) {
+    if (contributor.roomIndex >= source.rooms.size()) {
+      return false;
+    }
+    const std::size_t contributorLevelIndex =
+        source.rooms[contributor.roomIndex].levelIndex;
+    if (contributor.topologyEdgeIndex < source.topologyEdges.size() &&
+        source.topologyEdges[contributor.topologyEdgeIndex].wallHeightCells !=
+            0U) {
+      return true;
+    }
+    if (levelIndex == kInvalidCreativeWorldLayoutIndex) {
+      levelIndex = contributorLevelIndex;
+    } else if (levelIndex != contributorLevelIndex) {
+      return false;
+    }
+  }
+  const CreativeWorldLayoutLevelDimensions dimensions =
+      measureCreativeWorldLayoutLevelDimensions(grid, source, levelIndex);
+  if (!dimensions.accepted ||
+      !std::isfinite(dimensions.clearHeightMeters) ||
+      dimensions.clearHeightMeters <= 0.0) {
+    return false;
+  }
+  heightMeters = std::min(heightMeters, dimensions.clearHeightMeters);
+  return true;
+}
+
 }  // namespace
 
 CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
@@ -697,6 +748,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
 
   std::vector<std::size_t> localWallIndices(
       expanded.walls.size(), kInvalidCreativeWorldLayoutIndex);
+  std::vector<double> compiledWallHeightsMeters(expanded.walls.size(), 0.0);
   for (std::size_t index = 0U; index < expanded.walls.size(); ++index) {
     const CreativeWorldLayoutWall& symbol = expanded.walls[index];
     if (symbol.buildingIndex >= buildings.size() || symbol.name.empty() ||
@@ -721,7 +773,16 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     CreativeBuildingWallSpec wall;
     wall.stableKey = key;
     wall.name = symbol.name;
-    wall.heightMeters = symbol.heightCells * grid.cellSizeMeters;
+    if (!resolveCompiledWallHeightMeters(
+            grid, layout, roomExpansion, index, symbol,
+            wall.heightMeters)) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Wall;
+      result.receipt.failedIndex = index;
+      setStatus(result.receipt, CreativeWorldLayoutStatus::InvalidSymbol,
+                "creative_world_layout_wall_height_unrepresentable");
+      return result;
+    }
+    compiledWallHeightsMeters[index] = wall.heightMeters;
     wall.thicknessMeters = symbol.thicknessCells * grid.cellSizeMeters;
     appendTagOnce(wall.tags, creativeStructuralMaterialTag(symbol.material));
     if (index < layout.walls.size()) {
@@ -772,6 +833,25 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
       result.receipt.kernelReasonCode = dimensions.reasonCode;
       setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
                 "creative_world_layout_opening_dimensions_rejected");
+      return result;
+    }
+    const double cutoutTopMeters =
+        dimensions.cutoutBottomOffsetMeters + dimensions.cutoutHeightMeters;
+    const double insertTopMeters =
+        dimensions.insertBottomOffsetMeters + dimensions.insertHeightMeters;
+    const double compiledWallHeightMeters =
+        compiledWallHeightsMeters[symbol.wallIndex];
+    if (!std::isfinite(cutoutTopMeters) ||
+        cutoutTopMeters > compiledWallHeightMeters + 1.0e-9 ||
+        (symbol.includeInsert &&
+         (!std::isfinite(insertTopMeters) ||
+          insertTopMeters > compiledWallHeightMeters + 1.0e-9))) {
+      result.receipt.failedTable = CreativeWorldLayoutTable::Opening;
+      result.receipt.failedIndex = index;
+      result.receipt.kernelReasonCode =
+          "creative_world_layout_opening_height_invalid";
+      setStatus(result.receipt, CreativeWorldLayoutStatus::KernelRejected,
+                "creative_world_layout_opening_exceeds_wall_envelope");
       return result;
     }
     const std::string key = childKey(
