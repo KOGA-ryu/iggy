@@ -14,6 +14,7 @@
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 
+#include "EditorEdits.hpp"
 #include "EditorTransform.hpp"
 
 namespace iggy3d_creative_app {
@@ -593,8 +594,10 @@ applyCreativeEditorVolumeOperationWithHistory(
         creative::beginCreativeHistoryTransaction(
             appState.facade, source, std::move(*operationRecord));
     state.lastReceipt = appState.facade.applyVolumeOperation(request);
-    historyReceipt = creative::commitCreativeHistoryTransaction(
-        appState.history, std::move(transaction), appState.facade);
+    historyReceipt = completeEditTransaction(
+        appState.history, std::move(transaction), appState.facade,
+        state.lastReceipt.accepted && state.lastReceipt.changed,
+        state.lastReceipt.reasonCode);
     invalidateCreativeEditorVolumeOperationPreview(state);
   }
 

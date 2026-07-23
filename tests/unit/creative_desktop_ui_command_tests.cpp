@@ -3510,11 +3510,15 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
       appState.facade.document().revision();
   const auto undone =
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const std::uint64_t documentRevisionAfterUndo =
+      appState.facade.document().revision();
   const auto siblingAfterUndo =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
   const auto redone =
       dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const std::uint64_t documentRevisionAfterRedo =
+      appState.facade.document().revision();
   const auto siblingAfterRedo =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(
           editor.worldLayout, 2U);
@@ -3565,8 +3569,8 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
                  redone.accepted && siblingAfterRedo.state ==
                                         cr::CreativeWorldLayoutBuildingTemplateSyncState::
                                             Current &&
-                 appState.facade.document().revision() ==
-                     documentRevisionAfterRefresh,
+                 documentRevisionAfterUndo > documentRevisionAfterRefresh &&
+                 documentRevisionAfterRedo > documentRevisionAfterUndo,
              "template rebuild source and geometry undo and redo together") &&
       expect(detached.accepted && detached.changed &&
                  detached.worldLayoutChanged && !detached.sceneChanged &&
@@ -6375,6 +6379,8 @@ bool synchronizedTerrainPathDraftPreviewsAndCommitsAtomically() {
       appState.facade.document().terrainOperationStack().operations[0].kind ==
           cr::CreativeTerrainOperationKind::Path &&
       cr::creativeUndoDepth(appState.history) == 1U;
+  const std::uint64_t documentRevisionAfterCommit =
+      appState.facade.document().revision();
 
   const bool undone =
       app::undoLastEdit(appState, "terrain-path-draft-undo",
@@ -6382,7 +6388,7 @@ bool synchronizedTerrainPathDraftPreviewsAndCommitsAtomically() {
   const bool wholePathUndone =
       undone && editor.worldLayout.source.terrainPaths.empty() &&
       appState.facade.document().terrainOperationStack().operations.empty() &&
-      appState.facade.document().revision() == initialDocumentRevision;
+      appState.facade.document().revision() > documentRevisionAfterCommit;
 
   return expect(onePointIsTransient,
                 "one dispatched path point remains a transient draft") &&
@@ -7448,6 +7454,22 @@ bool measurementAnnotationsUseTypedCommandsAndHistory() {
           appState.facade.document().measurementAnnotationStore(),
           annotationId) != nullptr;
 
+  const std::uint64_t revisionBeforeMissingRemove =
+      appState.facade.document().revision();
+  const std::uint64_t undoBeforeMissingRemove =
+      cr::creativeUndoDepth(appState.history);
+  const std::uint64_t redoBeforeMissingRemove =
+      cr::creativeRedoDepth(appState.history);
+  const app::CreativeDesktopCommandResult missingRemove = dispatchPayload(
+      app::CreativeDesktopCommandId::RemoveMeasurementAnnotation, context,
+      app::CreativeDesktopMeasurementAnnotationPayload{annotationId + 100U, {}});
+  const bool missingRemoveAtomic =
+      !missingRemove.accepted && !missingRemove.changed &&
+      !missingRemove.sceneChanged &&
+      appState.facade.document().revision() == revisionBeforeMissingRemove &&
+      cr::creativeUndoDepth(appState.history) == undoBeforeMissingRemove &&
+      cr::creativeRedoDepth(appState.history) == redoBeforeMissingRemove;
+
   const std::uint64_t revisionBeforeMismatch =
       appState.facade.document().revision();
   const std::uint64_t undoBeforeMismatch =
@@ -7468,6 +7490,8 @@ bool measurementAnnotationsUseTypedCommandsAndHistory() {
                 "measurement annotation save supports undo and redo") &&
          expect(removeRecordedOnce && removeUndoRestored,
                 "measurement annotation removal is one undoable command") &&
+         expect(missingRemoveAtomic,
+                "missing measurement removal preserves document and history") &&
          expect(mismatchAtomic,
                 "measurement payload mismatch mutates no document or history");
 }

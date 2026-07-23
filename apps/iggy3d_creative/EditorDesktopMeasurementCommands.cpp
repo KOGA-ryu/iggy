@@ -1,6 +1,6 @@
 #include "EditorDesktopCommandsInternal.hpp"
 
-#include "app/iggy3d/creative/history/History.hpp"
+#include "EditorEdits.hpp"
 
 namespace iggy3d_creative_app {
 namespace creative = iggy3d::creative;
@@ -22,12 +22,11 @@ bool dispatchCreativeDesktopMeasurementCommand(
   }
 
   creative::CreativeAppState& appState = context.appState;
-  creative::CreativeDocumentHistoryTransaction transaction =
-      creative::beginCreativeHistoryTransaction(
-          appState.facade,
-          command.id == CreativeDesktopCommandId::SaveMeasurementAnnotation
-              ? "desktop_save_measurement_annotation"
-              : "desktop_remove_measurement_annotation");
+  StandaloneEditTransaction transaction = beginEditTransaction(
+      appState.facade,
+      command.id == CreativeDesktopCommandId::SaveMeasurementAnnotation
+          ? "desktop_save_measurement_annotation"
+          : "desktop_remove_measurement_annotation");
   if (command.id == CreativeDesktopCommandId::SaveMeasurementAnnotation) {
     const creative::CreativeFacadeMeasurementAnnotationSaveReceipt receipt =
         appState.facade.saveMeasurementAnnotation(payload->name);
@@ -42,16 +41,12 @@ bool dispatchCreativeDesktopMeasurementCommand(
     result.message = std::string{receipt.reasonCode};
   }
 
-  if (result.changed) {
-    const creative::CreativeHistoryRecordReceipt history =
-        creative::commitCreativeHistoryTransaction(
-            appState.history, std::move(transaction), appState.facade);
-    if (!history.recorded) {
-      result.message += "; history not recorded: ";
-      result.message += history.reasonCode;
-    }
-  } else {
-    creative::cancelCreativeHistoryTransaction(transaction);
+  const creative::CreativeHistoryRecordReceipt history =
+      completeEditTransaction(appState.history, std::move(transaction),
+                              appState.facade, result.changed, result.message);
+  if (result.changed && !history.recorded) {
+    result.message += "; history not recorded: ";
+    result.message += history.reasonCode;
   }
   result.sceneChanged = result.changed;
   result.affectedObjectCount = result.changed ? 1U : 0U;

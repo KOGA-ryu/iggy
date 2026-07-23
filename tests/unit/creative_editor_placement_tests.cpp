@@ -2851,7 +2851,9 @@ bool replaceVolumePreviewClassifiesMembersAndGroupsHistory() {
          expect(exactApply,
                 "replace applies once and creates exactly one history record") &&
          expect(undo.accepted && undo.changed &&
-                    appState.facade.document().revision() == revisionBefore &&
+                    undo.revisionAfter > undo.revisionBefore &&
+                    appState.facade.document().revision() ==
+                        undo.revisionAfter &&
                     cr::creativeUndoDepth(appState.history) == 0U &&
                     appState.facade.document().voxelField().materialAt(
                         {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
@@ -3031,7 +3033,9 @@ bool eraseVolumePreviewProtectsSourcesAndGroupsHistory() {
          expect(eligibleOnlyRemoved,
                 "erase apply removes eligible members and preserves exclusions") &&
          expect(undo.accepted && undo.changed &&
-                    appState.facade.document().revision() == revisionBefore &&
+                    undo.revisionAfter > undo.revisionBefore &&
+                    appState.facade.document().revision() ==
+                        undo.revisionAfter &&
                     appState.facade.document().voxelField().materialAt(
                         {0, 0, 0}) == cr::CreativeObjectKind::Wall &&
                     appState.facade.document().voxelField().materialAt(
@@ -3190,7 +3194,9 @@ bool cloneVolumePreviewTransformsCachesAndGroupsHistory() {
          expect(exactAppliedTargets,
                 "mixed clone commits exact object and voxel targets") &&
          expect(undo.accepted && undo.changed &&
-                    appState.facade.document().revision() == revisionBefore &&
+                    undo.revisionAfter > undo.revisionBefore &&
+                    appState.facade.document().revision() ==
+                        undo.revisionAfter &&
                     appState.facade.document().objectCount() == 1U &&
                     appState.facade.document().voxelField().occupiedCellCount() ==
                         1U &&
