@@ -390,7 +390,6 @@ void applyCreativeEditorCommandInput(
                                 editor.worldLayout.generatedRevision ==
                                     editor.worldLayout.revision);
         if (saveResult.accepted && saveResult.saved) {
-          clearEditHistory(appState.history, "save_success");
           markCreativeEditorWorldLayoutSaved(editor.worldLayout);
           markCreativeEditorDocumentSaved(
               editor.persistence, appState.facade.document());

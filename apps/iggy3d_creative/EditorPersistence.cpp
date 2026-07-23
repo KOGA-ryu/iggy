@@ -8,6 +8,7 @@
 
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
+#include "app/iggy3d/creative/world/DocumentSection.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
@@ -186,18 +187,38 @@ cr::CreativeFacadeDocumentInstallReceipt clearToBlankScene(
 
 bool creativeEditorDocumentDirty(
     const CreativeEditorPersistenceState& state,
-    const cr::CreativeDocument& document) noexcept {
-  return !state.hasSavePoint || state.documentId != document.id() ||
-         state.savedRevision != document.revision();
+    const cr::CreativeDocument& document) {
+  if (!state.hasSavePoint || state.documentId != document.id()) {
+    return true;
+  }
+  if (!state.cachedFingerprintValid ||
+      state.cachedDocumentId != document.id() ||
+      state.cachedRevision != document.revision()) {
+    state.cachedDocumentId = document.id();
+    state.cachedRevision = document.revision();
+    state.cachedFingerprint =
+        iggy3d::fingerprintSaveCreativeDocumentSection(document);
+    state.cachedFingerprintValid = true;
+  }
+  return state.cachedFingerprint == 0U ||
+         state.cachedFingerprint != state.savedFingerprint;
 }
 
 void markCreativeEditorDocumentSaved(
     CreativeEditorPersistenceState& state,
-    const cr::CreativeDocument& document) noexcept {
+    const cr::CreativeDocument& document) {
+  const std::uint64_t fingerprint =
+      iggy3d::fingerprintSaveCreativeDocumentSection(document);
   state.documentId = document.id();
   state.savedRevision = document.revision();
+  state.savedFingerprint = fingerprint;
   state.hasSavePoint = document.isValid() &&
-                       document.id() != cr::kInvalidDocumentId;
+                       document.id() != cr::kInvalidDocumentId &&
+                       fingerprint != 0U;
+  state.cachedDocumentId = document.id();
+  state.cachedRevision = document.revision();
+  state.cachedFingerprint = fingerprint;
+  state.cachedFingerprintValid = true;
 }
 
 void clearCreativeEditorDocumentSavePoint(
@@ -205,7 +226,12 @@ void clearCreativeEditorDocumentSavePoint(
     cr::CreativeDocumentId documentId) noexcept {
   state.documentId = documentId;
   state.savedRevision = 0U;
+  state.savedFingerprint = 0U;
   state.hasSavePoint = false;
+  state.cachedDocumentId = cr::kInvalidDocumentId;
+  state.cachedRevision = 0U;
+  state.cachedFingerprint = 0U;
+  state.cachedFingerprintValid = false;
 }
 
 }  // namespace iggy3d_creative_app

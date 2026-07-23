@@ -56,11 +56,11 @@ void logDocumentSnapshot(const char* phase,
 
 [[nodiscard]] bool creativeEditorDocumentDirty(
     const CreativeEditorPersistenceState& state,
-    const cr::CreativeDocument& document) noexcept;
+    const cr::CreativeDocument& document);
 
 void markCreativeEditorDocumentSaved(
     CreativeEditorPersistenceState& state,
-    const cr::CreativeDocument& document) noexcept;
+    const cr::CreativeDocument& document);
 
 void clearCreativeEditorDocumentSavePoint(
     CreativeEditorPersistenceState& state,

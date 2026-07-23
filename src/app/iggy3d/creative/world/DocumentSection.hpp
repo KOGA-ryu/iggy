@@ -69,6 +69,11 @@ struct ProductCreativeDocumentSectionRestoreResult {
 [[nodiscard]] ProductCreativeDocumentSectionBuildResult
 buildSaveCreativeDocumentSection(const creative::CreativeDocument& document);
 
+// Canonical identity of the durable Creative document section. Runtime-only
+// revision counters and dirty flags are intentionally excluded.
+[[nodiscard]] std::uint64_t fingerprintSaveCreativeDocumentSection(
+    const creative::CreativeDocument& document);
+
 [[nodiscard]] ProductCreativeDocumentSectionRestoreResult
 restoreCreativeDocumentFromSaveSection(
     const SaveCreativeDocumentSection& section);

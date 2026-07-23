@@ -1194,6 +1194,14 @@ struct CreativeEditorWorldLayoutState {
   std::uint64_t sourceEpoch = 1U;
   std::uint64_t revision = 1U;
   std::uint64_t savedRevision = 1U;
+  // Save identity is session state, not content history. Undo/redo restores
+  // source snapshots while this checkpoint remains fixed.
+  std::uint64_t savedFingerprint = 0U;
+  bool hasSavedFingerprint = false;
+  mutable std::uint64_t cachedFingerprintSourceEpoch = 0U;
+  mutable std::uint64_t cachedFingerprintRevision = 0U;
+  mutable std::uint64_t cachedFingerprint = 0U;
+  mutable bool cachedFingerprintValid = false;
   std::uint64_t generatedRevision = 1U;
   std::uint64_t nextStableOrdinal = 1U;
   CreativeEditorWorldLayoutSnapshot generatedBaseline;

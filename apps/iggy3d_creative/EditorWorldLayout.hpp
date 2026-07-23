@@ -125,7 +125,7 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
 void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
                                       cr::CreativeWorldLayout layout);
 void markCreativeEditorWorldLayoutSaved(
-    CreativeEditorWorldLayoutState& state) noexcept;
+    CreativeEditorWorldLayoutState& state);
 
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 focusCreativeEditorWorldLayoutSource(
@@ -200,7 +200,7 @@ adoptCreativeEditorWorldLayoutObjectSource(
     cr::CreativeObjectId objectId);
 
 [[nodiscard]] bool creativeEditorWorldLayoutDirty(
-    const CreativeEditorWorldLayoutState& state) noexcept;
+    const CreativeEditorWorldLayoutState& state);
 [[nodiscard]] bool creativeEditorWorldLayoutPreviewActive(
     const CreativeEditorWorldLayoutState& state) noexcept;
 [[nodiscard]] const cr::CreativeDocument&

@@ -69,7 +69,6 @@ void installSourceHistoryEntry(
   state.sourceEpoch = detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
   state.source = entry.snapshot.source;
   state.revision = entry.snapshot.revision;
-  state.savedRevision = entry.snapshot.savedRevision;
   state.generatedRevision = entry.snapshot.generatedRevision;
   state.nextStableOrdinal = entry.snapshot.nextStableOrdinal;
   if (state.revision == state.generatedRevision) {
@@ -224,8 +223,14 @@ void installCreativeEditorWorldLayoutSnapshot(
   const float elevationPanY = state.elevationPanY;
   const std::uint64_t sourceEpoch =
       detail::nextWorldLayoutSourceEpoch(state.sourceEpoch);
+  const std::uint64_t savedRevision = state.savedRevision;
+  const std::uint64_t savedFingerprint = state.savedFingerprint;
+  const bool hasSavedFingerprint = state.hasSavedFingerprint;
   state = {};
   state.sourceEpoch = sourceEpoch;
+  state.savedRevision = savedRevision;
+  state.savedFingerprint = savedFingerprint;
+  state.hasSavedFingerprint = hasSavedFingerprint;
   state.buildingTemplates = std::move(buildingTemplates);
   state.canvasPixelsPerCell = canvasPixelsPerCell;
   state.canvasPanX = canvasPanX;
@@ -237,7 +242,6 @@ void installCreativeEditorWorldLayoutSnapshot(
   state.elevationPanY = elevationPanY;
   state.source = std::move(snapshot.source);
   state.revision = snapshot.revision;
-  state.savedRevision = snapshot.savedRevision;
   state.generatedRevision = snapshot.generatedRevision;
   state.nextStableOrdinal = snapshot.nextStableOrdinal;
   repairCreativeEditorWorldLayoutActiveLevel(state);

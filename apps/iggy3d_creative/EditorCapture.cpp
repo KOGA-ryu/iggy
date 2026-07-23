@@ -583,11 +583,8 @@ void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
       !captureScript.roundtripSaved) {
     captureScript.roundtripBefore = snapshotDocument(appState.facade.document());
     logDocumentSnapshot("BEFORE", captureScript.roundtripBefore);
-    const iggy3d::CreativeWorldSaveResult saveResult =
-        saveStandaloneScene(appState.facade, *request.saveRoot, *request.saveId);
-    if (saveResult.accepted && saveResult.saved) {
-      clearEditHistory(history, "capture_save_success");
-    }
+    static_cast<void>(
+        saveStandaloneScene(appState.facade, *request.saveRoot, *request.saveId));
     captureScript.roundtripSaved = true;
   } else if (request.frameIndex == StandaloneCaptureScript::kClearFrame &&
              !captureScript.roundtripCleared) {

@@ -412,6 +412,35 @@ cr::CreativeDocument authoredDocument() {
   return document;
 }
 
+bool saveSectionFingerprintTracksDurableContentOnly() {
+  cr::CreativeDocument document = authoredDocument();
+  const std::uint64_t initial =
+      iggy3d::fingerprintSaveCreativeDocumentSection(document);
+  const std::uint64_t repeated =
+      iggy3d::fingerprintSaveCreativeDocumentSection(document);
+  static_cast<void>(document.drainDirtyFlags());
+  const std::uint64_t afterDirtyDrain =
+      iggy3d::fingerprintSaveCreativeDocumentSection(document);
+
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Fingerprint Change";
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const std::uint64_t changed =
+      iggy3d::fingerprintSaveCreativeDocumentSection(document);
+
+  return expect(initial != 0U && repeated == initial,
+                "save fingerprint is deterministic") &&
+         expect(afterDirtyDrain == initial,
+                "save fingerprint excludes transient dirty flags") &&
+         expect(created.accepted && changed != 0U && changed != initial,
+                "save fingerprint changes with durable content") &&
+         expect(iggy3d::fingerprintSaveCreativeDocumentSection(
+                    cr::CreativeDocument{}) == 0U,
+                "invalid document has no save fingerprint");
+}
+
 cr::CreativeDocument authoredPathDocument() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Before Path");
   const cr::CreativeDocumentRestoreReceipt restored =
@@ -3145,6 +3174,7 @@ bool measurementAnnotationsEncodeDecodeRestoreAndLegacyDefault() {
 
 int main() {
   bool ok = true;
+  ok = saveSectionFingerprintTracksDurableContentOnly() && ok;
   ok = buildSectionCopiesDocumentExactly() && ok;
   ok = encodeDecodeAndRestoreRoundTripsDocument() && ok;
   ok = buildSectionCopiesPathPoints() && ok;

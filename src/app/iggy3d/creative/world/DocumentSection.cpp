@@ -2,6 +2,8 @@
 #include "app/iggy3d/creative/world/DocumentSectionInternal.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "core/hash/StableHash.hpp"
+#include "runtime/save/SaveCodec.hpp"
 
 #include <span>
 #include <string>
@@ -581,6 +583,28 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   receipt.message = "creative_document_section_converted";
   receipt.reasonCode = "creative_document_section_converted";
   return result;
+}
+
+std::uint64_t fingerprintSaveCreativeDocumentSection(
+    const creative::CreativeDocument& document) {
+  ProductCreativeDocumentSectionBuildResult built =
+      buildSaveCreativeDocumentSection(document);
+  if (!built.receipt.accepted) {
+    return 0U;
+  }
+
+  SaveEnvelope envelope;
+  envelope.creativeDocument = std::move(built.section);
+  const SaveEncodeResult encoded = encodeSaveEnvelope(envelope);
+  if (encoded.status != SaveCodecStatus::Ok) {
+    return 0U;
+  }
+
+  StableHasher hasher;
+  hasher.addString("creative_document_save_section_v1");
+  hasher.addString(encoded.encodedText);
+  const std::uint64_t fingerprint = hasher.value();
+  return fingerprint != 0U ? fingerprint : 0U;
 }
 
 }  // namespace iggy3d

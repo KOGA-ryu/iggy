@@ -374,14 +374,24 @@ bool savedCheckpointTracksAcrossSourceHistory() {
   const bool second = addFloor(state, {4, 0}, {6, 2});
   const bool branchUndone =
       app::undoLastEdit(live, "saved-checkpoint-branch-undo", &state);
+  const bool returnedToSavedContent =
+      second && branchUndone && state.revision == savedRevision &&
+      !app::creativeEditorWorldLayoutDirty(state);
+  const bool olderAgain =
+      app::undoLastEdit(live, "saved-checkpoint-alias-undo", &state);
+  const bool alternateBranch = addFloor(state, {8, 0}, {10, 2});
+  const bool aliasedRevisionStaysDirty =
+      olderAgain && alternateBranch && state.revision == savedRevision &&
+      app::creativeEditorWorldLayoutDirty(state);
   return expect(saved, "the current source can establish a save checkpoint") &&
          expect(olderStateIsDirty,
                 "undo before the save checkpoint reports dirty") &&
          expect(savedStateIsClean,
                 "redo to the save checkpoint reports clean") &&
-         expect(second && branchUndone && state.revision == savedRevision &&
-                    !app::creativeEditorWorldLayoutDirty(state),
-                "undoing a later edit returns to the clean checkpoint");
+         expect(returnedToSavedContent,
+                "undoing a later edit returns to the clean checkpoint") &&
+         expect(aliasedRevisionStaysDirty,
+                "alternate source content cannot impersonate a saved revision");
 }
 
 bool noChangeApplyPreservesSourceHistory() {

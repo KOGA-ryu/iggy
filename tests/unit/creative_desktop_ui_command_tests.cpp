@@ -621,7 +621,7 @@ bool worldLayoutSourceUndoRedoRoutesThroughDispatcher() {
                 "desktop Redo restores source without touching the document");
 }
 
-bool saveAsRebindsTheActiveSlotAndClearsHistory() {
+bool saveAsRebindsTheActiveSlotAndPreservesHistory() {
   const std::filesystem::path saveRoot =
       std::filesystem::temp_directory_path() / "iggy3d_desktop_cmd_tests";
   std::filesystem::remove_all(saveRoot);
@@ -633,7 +633,16 @@ bool saveAsRebindsTheActiveSlotAndClearsHistory() {
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   selectPrimary(appState.facade, createCrate(appState.facade, 0.0));
   static_cast<void>(app::duplicateSelectedObjectsWithUndo(
-      appState, appState.history, cr::CreativeDuplicateCommandRequest{}, "seed"));
+      appState, appState.history, cr::CreativeDuplicateCommandRequest{},
+      "save_seed_one"));
+  static_cast<void>(app::duplicateSelectedObjectsWithUndo(
+      appState, appState.history, cr::CreativeDuplicateCommandRequest{},
+      "save_seed_two"));
+  const bool preparedRedo =
+      app::undoLastEdit(appState, "save_seed_two_undo") &&
+      cr::creativeUndoDepth(appState.history) == 1U &&
+      cr::creativeRedoDepth(appState.history) == 1U &&
+      appState.facade.document().objectCount() == 2U;
 
   app::CreativeEditorState editor;
   std::string saveId = "world_start";
@@ -644,7 +653,9 @@ bool saveAsRebindsTheActiveSlotAndClearsHistory() {
       dispatchOne(app::CreativeDesktopCommandId::SaveDocumentAs, context,
                   "world_named");
   const bool rebounded = saveId == "world_named";
-  const bool historyCleared = cr::creativeUndoDepth(appState.history) == 0U;
+  const bool historyPreserved =
+      cr::creativeUndoDepth(appState.history) == 1U &&
+      cr::creativeRedoDepth(appState.history) == 1U;
   const bool liveDocumentAcknowledged =
       appState.facade.document().dirtyFlags() == 0U &&
       editor.persistence.hasSavePoint &&
@@ -653,17 +664,30 @@ bool saveAsRebindsTheActiveSlotAndClearsHistory() {
           appState.facade.document().revision() &&
       !app::creativeEditorDocumentDirty(editor.persistence,
                                         appState.facade.document());
+  const bool redoneAwayFromCheckpoint =
+      app::redoLastEdit(appState, "save_checkpoint_redo") &&
+      appState.facade.document().objectCount() == 3U &&
+      app::creativeEditorDocumentDirty(editor.persistence,
+                                       appState.facade.document());
+  const bool undoneBackToCheckpoint =
+      app::undoLastEdit(appState, "save_checkpoint_undo") &&
+      appState.facade.document().objectCount() == 2U &&
+      !app::creativeEditorDocumentDirty(editor.persistence,
+                                        appState.facade.document());
 
   const app::CreativeDesktopCommandResult emptyName =
       dispatchOne(app::CreativeDesktopCommandId::SaveDocumentAs, context,
                   std::string{});
 
   std::filesystem::remove_all(saveRoot);
-  return expect(saveAs.accepted && rebounded,
+  return expect(preparedRedo && saveAs.accepted && rebounded,
                 "save as accepts and rebinds the active save id") &&
-         expect(historyCleared, "save clears undo history like the keyboard path") &&
+         expect(historyPreserved,
+                "save preserves both undo and redo history") &&
          expect(liveDocumentAcknowledged,
-                "save as acknowledges the exact live document revision") &&
+                "save as acknowledges the exact durable document content") &&
+         expect(redoneAwayFromCheckpoint && undoneBackToCheckpoint,
+                "history moves away from and back to the saved content") &&
          expect(!emptyName.accepted,
                 "save as with an empty name is rejected");
 }
@@ -732,6 +756,8 @@ bool failedSaveAndOpenPreserveLiveState() {
       editor.worldLayout.sourceEpoch == layoutEpochBefore &&
       editor.persistence.documentId == persistenceBefore.documentId &&
       editor.persistence.savedRevision == persistenceBefore.savedRevision &&
+      editor.persistence.savedFingerprint ==
+          persistenceBefore.savedFingerprint &&
       editor.persistence.hasSavePoint == persistenceBefore.hasSavePoint;
 
   std::filesystem::remove_all(saveRoot, error);
@@ -781,8 +807,18 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
   const bool saved =
       appState.facade.document().objectCount() == 2U &&
       appState.facade.document().dirtyFlags() == 0U &&
-      cr::creativeUndoDepth(appState.history) == 0U &&
+      cr::creativeUndoDepth(appState.history) == 1U &&
       editor.persistence.hasSavePoint &&
+      !app::creativeEditorDocumentDirty(editor.persistence,
+                                        appState.facade.document());
+  const bool undoneAwayFromCheckpoint =
+      app::undoLastEdit(appState, "keyboard_saved_undo") &&
+      appState.facade.document().objectCount() == 1U &&
+      app::creativeEditorDocumentDirty(editor.persistence,
+                                       appState.facade.document());
+  const bool redoneBackToCheckpoint =
+      app::redoLastEdit(appState, "keyboard_saved_redo") &&
+      appState.facade.document().objectCount() == 2U &&
       !app::creativeEditorDocumentDirty(editor.persistence,
                                         appState.facade.document());
 
@@ -812,8 +848,9 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
                                         appState.facade.document());
 
   std::filesystem::remove_all(saveRoot, error);
-  return expect(!error && saved,
-                "keyboard Save acknowledges the shared document checkpoint") &&
+  return expect(!error && saved && undoneAwayFromCheckpoint &&
+                    redoneBackToCheckpoint,
+                "keyboard Save preserves history and tracks saved content") &&
          expect(replaced,
                 "keyboard New clears history and creates an unsaved document") &&
          expect(loaded,
@@ -7726,7 +7763,7 @@ int main() {
   ok = deleteGeneratedWorldLayoutOutputEditsItsSource() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
-  ok = saveAsRebindsTheActiveSlotAndClearsHistory() && ok;
+  ok = saveAsRebindsTheActiveSlotAndPreservesHistory() && ok;
   ok = failedSaveAndOpenPreserveLiveState() && ok;
   ok = keyboardPersistenceCommandsShareDocumentCheckpoint() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;

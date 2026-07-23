@@ -84,7 +84,13 @@ struct CreativeEditorPersistenceState {
   iggy3d::creative::CreativeDocumentId documentId =
       iggy3d::creative::kInvalidDocumentId;
   std::uint64_t savedRevision = 0U;
+  std::uint64_t savedFingerprint = 0U;
   bool hasSavePoint = false;
+  mutable iggy3d::creative::CreativeDocumentId cachedDocumentId =
+      iggy3d::creative::kInvalidDocumentId;
+  mutable std::uint64_t cachedRevision = 0U;
+  mutable std::uint64_t cachedFingerprint = 0U;
+  mutable bool cachedFingerprintValid = false;
 };
 
 struct CreativeEditorState {

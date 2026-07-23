@@ -2,6 +2,7 @@
 
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutInternal.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 
 #include <array>
 #include <span>
@@ -69,6 +70,20 @@ const cr::CreativeWorldLayout* inspectionDisplaySource(
     return &state.buildingTransform.candidate;
   }
   return &state.source;
+}
+
+std::uint64_t currentWorldLayoutFingerprint(
+    const CreativeEditorWorldLayoutState& state) {
+  if (!state.cachedFingerprintValid ||
+      state.cachedFingerprintSourceEpoch != state.sourceEpoch ||
+      state.cachedFingerprintRevision != state.revision) {
+    state.cachedFingerprintSourceEpoch = state.sourceEpoch;
+    state.cachedFingerprintRevision = state.revision;
+    state.cachedFingerprint =
+        cr::fingerprintCreativeWorldLayout(state.source);
+    state.cachedFingerprintValid = true;
+  }
+  return state.cachedFingerprint;
 }
 
 InspectionPreviewProbe activePreviewProbe(
@@ -150,6 +165,8 @@ void resetCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
   state.buildingTemplates = std::move(buildingTemplates);
   state.source.stableKey =
       layoutKey.empty() ? "world_layout" : std::move(layoutKey);
+  state.savedFingerprint = currentWorldLayoutFingerprint(state);
+  state.hasSavedFingerprint = true;
   state.generatedBaseline = {state.source, state.revision, state.savedRevision,
                              state.generatedRevision,
                              state.nextStableOrdinal};
@@ -177,6 +194,8 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
       state.source.openings.size() + state.source.objects.size() +
       state.source.terrainProfiles.size() + state.source.terrainPaths.size();
   state.generatedRevision = state.revision;
+  state.savedFingerprint = currentWorldLayoutFingerprint(state);
+  state.hasSavedFingerprint = true;
   repairCreativeEditorWorldLayoutActiveLevel(state);
   state.generatedBaseline = {state.source, state.revision, state.savedRevision,
                              state.generatedRevision,
@@ -186,9 +205,16 @@ void installCreativeEditorWorldLayout(CreativeEditorWorldLayoutState& state,
 }
 
 void markCreativeEditorWorldLayoutSaved(
-    CreativeEditorWorldLayoutState& state) noexcept {
+    CreativeEditorWorldLayoutState& state) {
   state.deferredSourceHistory = {};
   state.savedRevision = state.revision;
+  state.savedFingerprint =
+      cr::fingerprintCreativeWorldLayout(state.source);
+  state.hasSavedFingerprint = true;
+  state.cachedFingerprintSourceEpoch = state.sourceEpoch;
+  state.cachedFingerprintRevision = state.revision;
+  state.cachedFingerprint = state.savedFingerprint;
+  state.cachedFingerprintValid = true;
   if (state.generatedRevision == state.revision) {
     state.generatedBaseline.savedRevision = state.savedRevision;
   }
@@ -210,8 +236,12 @@ void markCreativeEditorWorldLayoutSaved(
 
 
 bool creativeEditorWorldLayoutDirty(
-    const CreativeEditorWorldLayoutState& state) noexcept {
-  return state.revision != state.savedRevision;
+    const CreativeEditorWorldLayoutState& state) {
+  if (!state.hasSavedFingerprint) {
+    return state.revision != state.savedRevision;
+  }
+  const std::uint64_t fingerprint = currentWorldLayoutFingerprint(state);
+  return fingerprint == 0U || fingerprint != state.savedFingerprint;
 }
 
 bool creativeEditorWorldLayoutPreviewActive(

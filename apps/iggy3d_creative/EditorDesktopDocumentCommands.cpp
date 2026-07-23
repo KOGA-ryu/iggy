@@ -208,7 +208,6 @@ bool dispatchCreativeDesktopDocumentCommand(
                                   editor.worldLayout.revision);
       const bool ok = saveResult.accepted && saveResult.saved;
       if (ok) {
-        clearEditHistory(appState.history, "desktop_save");
         markCreativeEditorWorldLayoutSaved(editor.worldLayout);
         markCreativeEditorDocumentSaved(
             editor.persistence, appState.facade.document());
@@ -235,7 +234,6 @@ bool dispatchCreativeDesktopDocumentCommand(
         if (context.activeSaveId != nullptr) {
           *context.activeSaveId = saveId;
         }
-        clearEditHistory(appState.history, "desktop_save_as");
         markCreativeEditorWorldLayoutSaved(editor.worldLayout);
         markCreativeEditorDocumentSaved(
             editor.persistence, appState.facade.document());
