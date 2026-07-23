@@ -51,15 +51,15 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Playtest and Simulation | Editor Shell and Drafting UI | 12 | 6 |
 | Playtest and Simulation | Interaction and Controls | 12 | 9 |
 | Terrain and Site | Foundation and Build | 12 | 12 |
+| Persistence and Validation | Authoring Core | 11 | 7 |
 | Rendering and Preview | Editor Shell and Drafting UI | 11 | 8 |
-| Persistence and Validation | Authoring Core | 10 | 6 |
 | Editor Shell and Drafting UI | Terrain and Site | 9 | 5 |
 | Terrain and Site | Playtest and Simulation | 9 | 6 |
+| Authoring Core | Foundation and Build | 8 | 6 |
 | Building and World Layout | Rendering and Preview | 8 | 7 |
 | Editor Shell and Drafting UI | Foundation and Build | 8 | 5 |
 | Terrain and Site | Building and World Layout | 8 | 6 |
 | Terrain and Site | Rendering and Preview | 8 | 6 |
-| Authoring Core | Foundation and Build | 7 | 5 |
 | Authoring Core | Terrain and Site | 7 | 3 |
 | Persistence and Validation | Foundation and Build | 7 | 4 |
 | Playtest and Simulation | Building and World Layout | 7 | 5 |
@@ -67,7 +67,7 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Building and World Layout | Foundation and Build | 6 | 6 |
 | Editor Shell and Drafting UI | Persistence and Validation | 6 | 5 |
 | Rendering and Preview | Building and World Layout | 6 | 3 |
-| Authoring Core | Persistence and Validation | 4 | 4 |
+| Authoring Core | Persistence and Validation | 5 | 5 |
 | Rendering and Preview | Persistence and Validation | 4 | 4 |
 | Assets and Object Composition | Persistence and Validation | 3 | 3 |
 | Assets and Object Composition | Terrain and Site | 3 | 3 |

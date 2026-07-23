@@ -7,7 +7,7 @@ This is the operational dashboard for the Creative-only repository. Maturity des
 | Rank | Tier | Department | Audit State | Files | Code | Tests | Needs Audit | Active | Manual Tests Pending | Retire or Consolidate | Blocked |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | P0 | [Authoring Core](authoring-core/DEPARTMENT.md) | [Complete](authoring-core/AUDIT.md) | 73 | 55 | 17 | 0 | 0 | 0 | 1 | 1 |
-| 2 | P0 | [Persistence and Validation](persistence-validation/DEPARTMENT.md) | [Complete](persistence-validation/AUDIT.md) | 48 | 42 | 6 | 0 | 8 | 1 | 1 | 0 |
+| 2 | P0 | [Persistence and Validation](persistence-validation/DEPARTMENT.md) | [Complete](persistence-validation/AUDIT.md) | 48 | 42 | 6 | 0 | 6 | 1 | 1 | 0 |
 | 3 | P0 | [Interaction and Controls](interaction-controls/DEPARTMENT.md) | [Not Started](interaction-controls/AUDIT.md) | 111 | 93 | 17 | 7 | 2 | 1 | 0 | 0 |
 | 4 | P1 | [Building and World Layout](building-layout/DEPARTMENT.md) | [Not Started](building-layout/AUDIT.md) | 205 | 161 | 44 | 10 | 2 | 1 | 0 | 0 |
 | 5 | P1 | [Assets and Object Composition](assets-objects/DEPARTMENT.md) | [Not Started](assets-objects/AUDIT.md) | 443 | 125 | 25 | 7 | 3 | 1 | 0 | 0 |

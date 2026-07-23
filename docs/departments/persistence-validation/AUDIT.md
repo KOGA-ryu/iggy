@@ -10,8 +10,8 @@ branching and the actual app call sites.
 
 | Workflow | Current route | Ruling |
 | --- | --- | --- |
-| Desktop save/save-as | menu command -> desktop dispatcher -> `saveStandaloneScene` -> `saveCreativeWorld` -> durable envelope write -> exact live Facade acknowledgement | Durable success now drains the exact live document's dirty domains and marks the shared checkpoint; successful save still erases undo |
-| Keyboard save | semantic input action -> `EditorCommandInput` -> the same save adapter and shared checkpoint | I/O and clean-state semantics match desktop; successful save still erases undo |
+| Desktop save/save-as | menu command -> desktop dispatcher -> `saveStandaloneScene` -> `saveCreativeWorld` -> durable envelope write -> exact live Facade acknowledgement -> durable-content checkpoint | Durable success drains the exact live document's dirty domains, preserves both history rings, and marks document/source fingerprints |
+| Keyboard save | semantic input action -> `EditorCommandInput` -> the same save adapter and shared checkpoint | I/O, history preservation, and clean-state semantics match desktop |
 | Open/startup load | `loadStandaloneScene` -> `openCreativeWorld` -> section/source decode -> Facade install -> World Layout publication | Document installation now precedes source publication; failure leaves both live owners unchanged |
 | New document | desktop/keyboard command -> `clearToBlankScene` -> Facade install receipt -> editor reset | Callers clear history/reset only after accepted installation and establish an unsaved checkpoint |
 | Creative section persistence | `CreativeDocument` -> `buildSaveCreativeDocumentSection` -> `SaveEnvelope` -> strict ordered codec -> `restoreCreativeDocumentFromSaveSection` | Active durable document fields are covered and legacy migrations are substantial; section-version refusal is missing |
@@ -24,9 +24,9 @@ branching and the actual app call sites.
 | --- | --- | --- | --- | --- | --- |
 | PER-A1-001 | `WorldService` + `SaveBridgeCreative` + `DocumentSection` + `SaveCodec` | Canonical Owner | These are the only Creative world create/open/save, durable section conversion, and envelope-codec routes | Keep | P0 |
 | PER-A1-002 | `saveStandaloneScene` live clean-state acknowledgement | Canonical Owner | AUT-005 writes a copy durably, then drains live dirty domains only through an exact Facade document-id/revision acknowledgement; mismatches reject atomically | Keep | P0 |
-| PER-A1-003 | Save and Save As history behavior | Contract Risk | Desktop Save, Desktop Save As, keyboard Save, and capture Save all call `clearEditHistory` after success. `creative_desktop_ui_command_tests` explicitly pins this behavior even though save is a checkpoint, not a document replacement | Repair | P0 |
-| PER-A1-004 | Shared editor document checkpoint | Canonical Owner | AUT-005 replaces desktop-only `lastSavedRevision` with `CreativeEditorPersistenceState`; desktop and keyboard New/Open/Save routes update the same document-id/revision checkpoint, and AUT-002B prevents live document revision reuse | Keep | P0 |
-| PER-A1-005 | World Layout `savedRevision` dirty test | Contract Risk | Dirty is `revision != savedRevision`. Undo to an older revision followed by a different edit can recreate the saved revision number with different source content and report clean | Repair | P0 |
+| PER-A1-003 | Save and Save As history behavior | Canonical Owner | PER-001 removes successful-save history clearing from desktop, keyboard, and capture routes. Focused command tests preserve simultaneous undo/redo rings across Save As and prove navigation away from and back to the checkpoint | Keep | P0 |
+| PER-A1-004 | Shared editor document checkpoint | Canonical Owner | `CreativeEditorPersistenceState` owns one document id plus canonical durable-section fingerprint. A document id/revision memoization key avoids per-frame re-encoding without making revisions the clean-state truth | Keep | P0 |
+| PER-A1-005 | World Layout clean-state identity | Canonical Owner | PER-001 compares a cached canonical World Layout fingerprint with the fixed saved fingerprint. The save checkpoint remains outside source/document history, so alternate content reusing the saved numeric revision stays dirty | Keep | P0 |
 | PER-A1-006 | Document cache and stale-plan keys | Canonical Owner | AUT-002B gives every Facade replacement, undo, redo, reset, and reinstall a monotonic live revision; document id/revision cache keys no longer alias alternate branches | Keep | P0 |
 | PER-A1-007 | Creative compatibility enforcement | Contract Risk | `loadCreativeDocumentSave` decodes and restores directly. Unlike runtime `SaveLoad`, it never calls `checkSaveCompatibility`, so schema/runtime/package/scenario policy is not enforced by the Creative open path | Repair | P0 |
 | PER-A1-008 | Creative save integrity hash | Contract Risk | `SaveBridgeCreative` writes `savedStateHash=0` and `0000000000000000`; Creative load never recomputes a content hash. A syntactically valid field edit is accepted without integrity evidence | Repair | P0 |
@@ -49,10 +49,10 @@ branching and the actual app call sites.
    same-document staging publish through one primitive, and AUT-002B makes the
    existing live document revision monotonic across replacement and history.
    Durable dirty state remains separate from publication freshness.
-2. **Finish honest editor save semantics.** AUT-005 now acknowledges the exact
-   live document, marks only the current World Layout source state clean, and
-   gives desktop and keyboard paths one checkpoint. The remaining repair is to
-   preserve undo/redo across successful save.
+2. **Keep honest editor save semantics.** AUT-005 acknowledges only exact
+   durable success; PER-001 preserves undo/redo and compares canonical durable
+   document/source fingerprints rather than revision numbers. New/Open remain
+   the only persistence commands that replace the history epoch.
 3. **Keep load/new publication atomic and observable.** AUT-005 publishes
    decoded source only after document installation succeeds and makes New
    callers observe the installation receipt.
@@ -97,4 +97,20 @@ AUT-005 implementation evidence recorded on 2026-07-23.
   PER-A1-011.
 - The 16/16 focused gate covers exact live acknowledgement, desktop/keyboard
   checkpoint parity, New/Open ordering, and rejected-operation atomicity.
-- PER-A1-003 remains open: successful save still clears undo/redo.
+- PER-A1-003 remained open at this checkpoint: successful save still cleared
+  undo/redo.
+
+PER-001 implementation evidence recorded on 2026-07-23.
+
+- Commit `3c55c35a` resolves PER-A1-003 and PER-A1-005 and strengthens
+  PER-A1-004.
+- Canonical document identity reuses the complete durable
+  `SaveCreativeDocumentSection`; dirty flags and live revision counters do not
+  enter the fingerprint.
+- Canonical World Layout identity reuses the versioned source codec. The saved
+  fingerprint is session checkpoint state and is intentionally not restored by
+  undo/redo snapshots.
+- The 12/12 Persistence and Validation gate passes, including simultaneous
+  undo/redo preservation, undo-away/redo-back cleanliness, alternate-branch
+  revision alias rejection, desktop/keyboard parity, and all prior
+  save/load/source/diagnostic tests.
