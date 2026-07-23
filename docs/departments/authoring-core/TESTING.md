@@ -30,15 +30,26 @@ Terrain, Assets, and Persistence rather than through a standalone UI.
 
 ## AUT-008 Targeted Evidence
 
-The prescribed AUT-008 CTest expression passed 9 of 10 tests. The following
-targets passed: `creative_facade_mutation_tests`, `creative_facade_tests`,
-`creative_document_create_tests`, `creative_editor_asset_reload_tests`,
-`creative_editor_placement_tests`, `creative_authored_asset_tests`,
-`creative_desktop_ui_command_tests`, `creative_world_layout_tests`, and
-`creative_world_layout_diagnostics_tests`. `creative_editor_attachment_tests`
-was not run because its executable could not be linked from the pre-existing
-empty `libiggy3d_creative_app.a` archive.
+Sol independently configured `/tmp/iggy3d-aut008-review-sol` and built `i3dc`
+plus the ten prescribed targets. The exact focused CTest expression passed
+10/10:
 
-The remaining AUT-002 inventory is 21 direct
-`document = std::move(staged)` publications. AUT-008 leaves those publications
-for AUT-002 as required.
+- `creative_facade_mutation_tests`
+- `creative_facade_tests`
+- `creative_document_create_tests`
+- `creative_editor_attachment_tests`
+- `creative_editor_asset_reload_tests`
+- `creative_editor_placement_tests`
+- `creative_authored_asset_tests`
+- `creative_desktop_ui_command_tests`
+- `creative_world_layout_tests`
+- `creative_world_layout_diagnostics_tests`
+
+The clean build disproved the prior empty-archive blocker; that failure belonged
+to a stale build tree. Source gates found no mutable Facade document accessor,
+no app-facing mutation options, and no retired editor-local hierarchy
+publication.
+
+The remaining AUT-002 inventory is 20 direct same-document staging
+assignments, five canonical `commitStagedMutation` call sites, and the Facade
+batch-create replacement path. AUT-002A and AUT-002B own those repairs.
