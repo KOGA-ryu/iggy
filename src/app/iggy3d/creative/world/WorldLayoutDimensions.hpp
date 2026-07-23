@@ -32,6 +32,8 @@ struct CreativeWorldLayoutLevelDimensions {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
   std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
   bool topmostOccupied = false;
+  bool hasUpperLevel = false;
+  std::size_t upperLevelIndex = kInvalidCreativeWorldLayoutIndex;
   CreativeObjectKind upperSurfaceKind = CreativeObjectKind::Unknown;
   std::uint16_t floorThicknessLayers = 0U;
   std::uint16_t upperSurfaceThicknessLayers = 0U;
@@ -41,9 +43,13 @@ struct CreativeWorldLayoutLevelDimensions {
   double wallTopMeters = 0.0;
   double wallHeightMeters = 0.0;
   double floorThicknessMeters = 0.0;
+  double nextFloorBottomMeters = 0.0;
+  double nextFloorTopMeters = 0.0;
+  double floorToFloorMeters = 0.0;
+  double clearHeightMeters = 0.0;
   double upperSurfaceSupportMeters = 0.0;
-  // Per-level measurement reports the structural slab above its support
-  // plane. Whole-building measurement resolves the full pitched roof envelope.
+  // A non-top ceiling is backed against the underside of the next floor slab.
+  // A top-level roof remains supported at the authored wall top.
   double upperSurfaceTopMeters = 0.0;
   double upperSurfaceThicknessMeters = 0.0;
   std::string_view reasonCode =

@@ -224,6 +224,8 @@ struct CreativeWorldLayoutWall {
   std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
   std::string stableKey;
   std::string name;
+  // Start/end own the wall centerline. Thickness changes must not move this
+  // reference line or invalidate opening offsets measured from start.
   CreativeTerrainCoord2 start{};
   CreativeTerrainCoord2 end{};
   double baseLayer = 0.0;
@@ -251,6 +253,7 @@ struct CreativeWorldLayoutOpening {
       CreativeBuildingOpeningFacing::PositiveNormal;
   std::string stableKey;
   std::string name;
+  // Hosted distance along the wall centerline from its authored start.
   double centerOffsetCells = 0.0;
   double widthCells = 1.0;
   double cutoutBottomCells = 0.0;

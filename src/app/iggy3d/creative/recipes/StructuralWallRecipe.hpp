@@ -16,6 +16,13 @@ enum class CreativeStructuralWallAxis : std::uint8_t {
   Count,
 };
 
+enum class CreativeStructuralWallReferenceLine : std::uint8_t {
+  // Authored endpoints remain fixed while thickness expands equally along
+  // both sides of the stable wall normal.
+  Centerline,
+  Count,
+};
+
 enum class CreativeStructuralWallOpeningPose : std::uint8_t {
   Closed,
   OpenFromStartNegativeNormal,
@@ -36,6 +43,8 @@ enum class CreativeStructuralWallRecipeStatus : std::uint8_t {
 
 struct CreativeStructuralWallFrame {
   CreativeStructuralWallAxis axis = CreativeStructuralWallAxis::Count;
+  CreativeStructuralWallReferenceLine referenceLine =
+      CreativeStructuralWallReferenceLine::Centerline;
   CreativeVec3 start;
   CreativeVec3 end;
   // Tangent follows authored start-to-end. Normal is the stable positive

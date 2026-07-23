@@ -5,17 +5,21 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingUsability.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 namespace app = iggy3d_creative_app;
@@ -26,6 +30,10 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool near(double lhs, double rhs, double epsilon = 1.0e-9) {
+  return std::fabs(lhs - rhs) <= epsilon;
 }
 
 app::CreativeDesktopCommandResult dispatchOne(
@@ -116,8 +124,104 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
     return false;
   }
 
+  const cr::CreativeWorldLayoutLevelDimensions groundDimensions =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 0U);
+  const cr::CreativeWorldLayoutLevelDimensions upperDimensions =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 1U);
+  const cr::CreativeWorldLayoutBuildingDimensions buildingDimensions =
+      cr::measureCreativeWorldLayoutBuildingDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 0U);
+  const cr::CreativeWorldLayoutRoomCompileResult expanded =
+      cr::expandCreativeWorldLayoutRooms(editor.worldLayout.source);
+  const std::size_t continuousFacadeCount =
+      expanded.accepted
+          ? static_cast<std::size_t>(std::count_if(
+                expanded.expanded.walls.begin(),
+                expanded.expanded.walls.end(),
+                [](const cr::CreativeWorldLayoutWall& wall) {
+                  return wall.profile ==
+                             cr::CreativeWorldLayoutWallProfile::Exterior &&
+                         near(wall.baseLayer, 0.0) &&
+                         wall.heightCells == 6U;
+                }))
+          : 0U;
+  const double expectedFloorToFloorMeters =
+      static_cast<double>(blockout.shell.wallHeightCells) *
+      appState.facade.document().gridSettings().cellSizeMeters;
+  if (!expect(groundDimensions.accepted && upperDimensions.accepted &&
+                  buildingDimensions.accepted &&
+                  groundDimensions.hasUpperLevel &&
+                  groundDimensions.upperLevelIndex == 1U &&
+                  !upperDimensions.hasUpperLevel &&
+                  near(groundDimensions.floorToFloorMeters,
+                       expectedFloorToFloorMeters) &&
+                  near(groundDimensions.wallTopMeters,
+                       groundDimensions.nextFloorTopMeters) &&
+                  near(groundDimensions.upperSurfaceTopMeters,
+                       upperDimensions.floorBottomMeters) &&
+                  groundDimensions.clearHeightMeters <
+                      groundDimensions.floorToFloorMeters &&
+                  buildingDimensions.occupiedLevelCount == 2U &&
+                  buildingDimensions.uniformFloorToFloor &&
+                  continuousFacadeCount == 4U,
+              "canonical fixture owns two datums, clear height, and four continuous facades")) {
+    return false;
+  }
+
   const app::CreativeDesktopCommandResult generated = dispatchOne(
       app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  std::vector<double> generatedFloorTopPlanes;
+  double generatedUpperFloorBottom = 0.0;
+  bool foundGeneratedUpperFloor = false;
+  bool foundGeneratedCeiling = false;
+  bool generatedCeilingsBackUpperSlab = true;
+  for (const cr::CreativeObject& object :
+       appState.facade.document().objects()) {
+    const cr::CreativeTransformedBounds bounds =
+        cr::resolveCreativeObjectBounds(object);
+    if (object.kind == cr::CreativeObjectKind::Floor && bounds.valid) {
+      const double top = bounds.worldBounds.max.y;
+      if (std::none_of(generatedFloorTopPlanes.begin(),
+                       generatedFloorTopPlanes.end(),
+                       [top](double existing) {
+                         return near(top, existing);
+                       })) {
+        generatedFloorTopPlanes.push_back(top);
+      }
+      if (near(top, upperDimensions.floorTopMeters)) {
+        if (!foundGeneratedUpperFloor) {
+          generatedUpperFloorBottom = bounds.worldBounds.min.y;
+        }
+        foundGeneratedUpperFloor = true;
+        generatedUpperFloorBottom =
+            std::min(generatedUpperFloorBottom, bounds.worldBounds.min.y);
+      }
+    } else if (object.kind == cr::CreativeObjectKind::Ceiling &&
+               bounds.valid) {
+      foundGeneratedCeiling = true;
+      generatedCeilingsBackUpperSlab =
+          generatedCeilingsBackUpperSlab &&
+          near(bounds.worldBounds.max.y,
+               groundDimensions.upperSurfaceTopMeters);
+    }
+  }
+  std::sort(generatedFloorTopPlanes.begin(),
+            generatedFloorTopPlanes.end());
+  const bool generatedStoreyPlanesMatch =
+      generatedFloorTopPlanes.size() == 2U &&
+      foundGeneratedUpperFloor && foundGeneratedCeiling &&
+      generatedCeilingsBackUpperSlab &&
+      near(generatedFloorTopPlanes[0],
+           groundDimensions.floorTopMeters) &&
+      near(generatedFloorTopPlanes[1],
+           upperDimensions.floorTopMeters) &&
+      near(groundDimensions.upperSurfaceTopMeters,
+           generatedUpperFloorBottom);
   if (!expect(generated.accepted && generated.changed &&
                   generated.sceneChanged &&
                   editor.worldLayout.generatedRevision ==
@@ -132,7 +236,8 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
                             cr::CreativeObjectKind::Stair) == 1U &&
                   countKind(appState.facade.document(),
                             cr::CreativeObjectKind::Door) == 1U &&
-                  cr::creativeUndoDepth(appState.history) == 1U,
+                  cr::creativeUndoDepth(appState.history) == 1U &&
+                  generatedStoreyPlanesMatch,
               "generation installs floors, ceiling, roof, and stair atomically")) {
     return false;
   }

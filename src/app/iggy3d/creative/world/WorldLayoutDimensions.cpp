@@ -140,22 +140,87 @@ CreativeWorldLayoutLevelDimensions measureCreativeWorldLayoutLevelDimensions(
       result.floorTopMeters - result.floorThicknessMeters;
   result.wallBaseMeters = result.floorTopMeters;
   result.wallTopMeters = result.wallBaseMeters + result.wallHeightMeters;
-  result.upperSurfaceSupportMeters = result.wallTopMeters;
 
   result.upperSurfaceThicknessMeters =
       static_cast<double>(result.upperSurfaceThicknessLayers) *
       defaultCreativeStructuralLayerThicknessMeters(result.upperSurfaceKind);
-  result.upperSurfaceTopMeters = result.upperSurfaceSupportMeters +
-                                 result.upperSurfaceThicknessMeters;
+  if (!std::isfinite(result.upperSurfaceThicknessMeters) ||
+      result.upperSurfaceThicknessMeters <= 0.0) {
+    reject(result, CreativeWorldLayoutDimensionStatus::Unrepresentable,
+           "creative_world_layout_dimensions_level_unrepresentable");
+    return result;
+  }
+
+  if (result.topmostOccupied) {
+    result.clearHeightMeters = result.wallHeightMeters;
+    result.upperSurfaceSupportMeters = result.wallTopMeters;
+    result.upperSurfaceTopMeters = result.upperSurfaceSupportMeters +
+                                   result.upperSurfaceThicknessMeters;
+  } else {
+    double nearestHigherLayer = std::numeric_limits<double>::infinity();
+    for (std::size_t candidateIndex = 0U;
+         candidateIndex < layout.levels.size(); ++candidateIndex) {
+      const CreativeWorldLayoutLevel& candidate =
+          layout.levels[candidateIndex];
+      if (candidate.buildingIndex != level.buildingIndex ||
+          !levelOccupied(layout, candidateIndex) ||
+          candidate.floorTopLayer <= level.floorTopLayer ||
+          candidate.floorTopLayer >= nearestHigherLayer) {
+        continue;
+      }
+      nearestHigherLayer = candidate.floorTopLayer;
+      result.upperLevelIndex = candidateIndex;
+    }
+    if (result.upperLevelIndex == kInvalidCreativeWorldLayoutIndex) {
+      reject(result, CreativeWorldLayoutDimensionStatus::InvalidLevel,
+             "creative_world_layout_dimensions_upper_level_invalid");
+      return result;
+    }
+
+    const CreativeWorldLayoutLevel& upperLevel =
+        layout.levels[result.upperLevelIndex];
+    const double upperFloorThicknessMeters =
+        static_cast<double>(upperLevel.floorThicknessLayers) *
+        defaultCreativeStructuralLayerThicknessMeters(
+            CreativeObjectKind::Floor);
+    if (upperLevel.floorThicknessLayers == 0U ||
+        !worldCoordinate(grid.origin.y, grid.cellSizeMeters,
+                         upperLevel.floorTopLayer,
+                         result.nextFloorTopMeters) ||
+        !std::isfinite(upperFloorThicknessMeters) ||
+        upperFloorThicknessMeters <= 0.0) {
+      reject(result, CreativeWorldLayoutDimensionStatus::InvalidLevel,
+             "creative_world_layout_dimensions_upper_level_invalid");
+      return result;
+    }
+
+    result.hasUpperLevel = true;
+    result.nextFloorBottomMeters =
+        result.nextFloorTopMeters - upperFloorThicknessMeters;
+    result.floorToFloorMeters =
+        result.nextFloorTopMeters - result.floorTopMeters;
+    result.upperSurfaceTopMeters = result.nextFloorBottomMeters;
+    result.upperSurfaceSupportMeters =
+        result.upperSurfaceTopMeters - result.upperSurfaceThicknessMeters;
+    result.clearHeightMeters =
+        result.upperSurfaceSupportMeters - result.floorTopMeters;
+  }
 
   if (!std::isfinite(result.floorBottomMeters) ||
       !std::isfinite(result.wallTopMeters) ||
       !std::isfinite(result.upperSurfaceTopMeters) ||
-      !std::isfinite(result.upperSurfaceThicknessMeters) ||
+      !std::isfinite(result.upperSurfaceSupportMeters) ||
+      !std::isfinite(result.clearHeightMeters) ||
       result.floorBottomMeters >= result.floorTopMeters ||
       result.wallTopMeters <= result.wallBaseMeters ||
       result.upperSurfaceTopMeters <= result.upperSurfaceSupportMeters ||
-      result.upperSurfaceThicknessMeters <= 0.0) {
+      result.clearHeightMeters <= 0.0 ||
+      (result.hasUpperLevel &&
+       (!std::isfinite(result.nextFloorBottomMeters) ||
+        !std::isfinite(result.nextFloorTopMeters) ||
+        !std::isfinite(result.floorToFloorMeters) ||
+        result.nextFloorBottomMeters >= result.nextFloorTopMeters ||
+        result.floorToFloorMeters <= 0.0))) {
     reject(result, CreativeWorldLayoutDimensionStatus::Unrepresentable,
            "creative_world_layout_dimensions_level_unrepresentable");
     return result;
@@ -247,6 +312,9 @@ measureCreativeWorldLayoutBuildingDimensions(
   result.minimumFloorThicknessMeters =
       std::numeric_limits<double>::infinity();
   result.maximumFloorThicknessMeters = 0.0;
+  result.minimumFloorToFloorMeters =
+      std::numeric_limits<double>::infinity();
+  result.maximumFloorToFloorMeters = 0.0;
 
   for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
     if (layout.levels[index].buildingIndex != buildingIndex ||
@@ -276,6 +344,14 @@ measureCreativeWorldLayoutBuildingDimensions(
         result.minimumFloorThicknessMeters, level.floorThicknessMeters);
     result.maximumFloorThicknessMeters = std::max(
         result.maximumFloorThicknessMeters, level.floorThicknessMeters);
+    if (level.hasUpperLevel) {
+      result.minimumFloorToFloorMeters =
+          std::min(result.minimumFloorToFloorMeters,
+                   level.floorToFloorMeters);
+      result.maximumFloorToFloorMeters =
+          std::max(result.maximumFloorToFloorMeters,
+                   level.floorToFloorMeters);
+    }
     if (level.topmostOccupied) {
       result.roofBaseMeters = level.upperSurfaceSupportMeters;
       const CreativeWorldLayoutLevel& sourceLevel = layout.levels[index];
@@ -304,44 +380,6 @@ measureCreativeWorldLayoutBuildingDimensions(
     return result;
   }
 
-  result.minimumFloorToFloorMeters =
-      std::numeric_limits<double>::infinity();
-  result.maximumFloorToFloorMeters = 0.0;
-  for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
-    const CreativeWorldLayoutLevel& level = layout.levels[index];
-    if (level.buildingIndex != buildingIndex ||
-        !levelOccupied(layout, index)) {
-      continue;
-    }
-    double nearestHigherLayers = std::numeric_limits<double>::infinity();
-    for (std::size_t candidateIndex = 0U;
-         candidateIndex < layout.levels.size(); ++candidateIndex) {
-      const CreativeWorldLayoutLevel& candidate =
-          layout.levels[candidateIndex];
-      if (candidate.buildingIndex != buildingIndex ||
-          !levelOccupied(layout, candidateIndex) ||
-          candidate.floorTopLayer <= level.floorTopLayer) {
-        continue;
-      }
-      nearestHigherLayers =
-          std::min(nearestHigherLayers,
-                   candidate.floorTopLayer - level.floorTopLayer);
-    }
-    if (std::isfinite(nearestHigherLayers)) {
-      double spacingMeters = 0.0;
-      if (!scaledLength(grid.cellSizeMeters, nearestHigherLayers,
-                        spacingMeters) ||
-          spacingMeters <= 0.0) {
-        reject(result, CreativeWorldLayoutDimensionStatus::Unrepresentable,
-               "creative_world_layout_dimensions_building_unrepresentable");
-        return result;
-      }
-      result.minimumFloorToFloorMeters =
-          std::min(result.minimumFloorToFloorMeters, spacingMeters);
-      result.maximumFloorToFloorMeters =
-          std::max(result.maximumFloorToFloorMeters, spacingMeters);
-    }
-  }
   if (!std::isfinite(result.minimumFloorToFloorMeters)) {
     result.minimumFloorToFloorMeters = 0.0;
   }

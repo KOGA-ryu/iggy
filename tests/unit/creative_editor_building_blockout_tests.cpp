@@ -106,7 +106,7 @@ bool sharedMaterializerOwnsCompleteAtomicBlockout() {
   recipe.request.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
   recipe.request.wallThicknessCells = 0.25;
-  recipe.request.wallHeightCells = 3U;
+  recipe.request.floorToFloorCells = 3U;
   recipe.request.storeys.count = 2U;
   recipe.floorTopLayer = 4.0;
   constexpr std::array<std::string_view, 1U> tags{"source:test"};
@@ -670,7 +670,7 @@ bool plannerRejectsInvalidOrUnbuildableRooms() {
       blockoutRequest(
           {{0, 0}, {8, 8}},
           cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom);
-  badHeightRequest.wallHeightCells = 0U;
+  badHeightRequest.floorToFloorCells = 0U;
   const cr::CreativeWorldLayoutBuildingBlockoutPlan badHeight =
       cr::planCreativeWorldLayoutBuildingBlockout(badHeightRequest);
   cr::CreativeWorldLayoutBuildingBlockoutRequest badEdgeRequest =
@@ -715,7 +715,7 @@ bool plannerRejectsInvalidOrUnbuildableRooms() {
          expect(!badHeight.accepted &&
                     badHeight.status ==
                         cr::CreativeWorldLayoutBuildingBlockoutStatus::
-                            InvalidWallHeight,
+                            InvalidFloorToFloor,
                 "zero wall height fails at the pure recipe boundary") &&
          expect(!badEdge.accepted &&
                     badEdge.status ==
@@ -1091,6 +1091,10 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
                                                            legacySettings);
   constexpr std::string_view versionPrefix =
       "iggy3d.world_layout.building_blockout.version=";
+  constexpr std::string_view legacyWallHeightPrefix =
+      "iggy3d.world_layout.building_blockout.wall_height=";
+  constexpr std::string_view floorToFloorPrefix =
+      "iggy3d.world_layout.building_blockout.floor_to_floor=";
   constexpr std::string_view slopeDirectionPrefix =
       "iggy3d.world_layout.building_blockout.roof_slope_direction=";
   constexpr std::string_view materialPrefix =
@@ -1104,8 +1108,19 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   constexpr std::string_view interiorMaterialPrefix =
       "iggy3d.world_layout.building_blockout.interior_wall_material=";
   cr::CreativeWorldLayout version2Layout = legacyState.source;
+  cr::CreativeWorldLayout version3Layout = legacyState.source;
+  const auto restoreLegacyWallHeightTag =
+      [&](std::vector<std::string>& tags) {
+        for (std::string& tag : tags) {
+          if (tag.starts_with(floorToFloorPrefix)) {
+            tag = std::string{legacyWallHeightPrefix} +
+                  tag.substr(floorToFloorPrefix.size());
+          }
+        }
+      };
   if (legacyCreated.accepted && !legacyState.source.buildings.empty()) {
     std::vector<std::string>& tags = legacyState.source.buildings[0].tags;
+    restoreLegacyWallHeightTag(tags);
     std::erase_if(tags, [&](const std::string& tag) {
       return tag.starts_with(slopeDirectionPrefix) ||
              tag.starts_with(materialPrefix) || tag.starts_with(ceilingPrefix) ||
@@ -1124,6 +1139,7 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
                                                          0U);
   if (legacyCreated.accepted && !version2Layout.buildings.empty()) {
     std::vector<std::string>& tags = version2Layout.buildings[0].tags;
+    restoreLegacyWallHeightTag(tags);
     std::erase_if(tags, [&](const std::string& tag) {
       return tag.starts_with(ceilingPrefix) ||
              tag.starts_with(architecturePrefix) ||
@@ -1138,6 +1154,29 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   }
   const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt version2Sync =
       cr::inspectCreativeWorldLayoutBuildingBlockoutSync(version2Layout, 0U);
+  if (legacyCreated.accepted && !version3Layout.buildings.empty()) {
+    std::vector<std::string>& tags = version3Layout.buildings[0].tags;
+    restoreLegacyWallHeightTag(tags);
+    for (std::string& tag : tags) {
+      if (tag.starts_with(versionPrefix)) {
+        tag = std::string{versionPrefix} + "3";
+      }
+    }
+  }
+  const cr::CreativeWorldLayoutBuildingBlockoutSyncReceipt version3Sync =
+      cr::inspectCreativeWorldLayoutBuildingBlockoutSync(version3Layout, 0U);
+  const bool currentUsesFloorToFloor =
+      !state.source.buildings.empty() &&
+      std::any_of(state.source.buildings[0].tags.begin(),
+                  state.source.buildings[0].tags.end(),
+                  [&](const std::string& tag) {
+                    return tag.starts_with(floorToFloorPrefix);
+                  }) &&
+      std::none_of(state.source.buildings[0].tags.begin(),
+                   state.source.buildings[0].tags.end(),
+                   [&](const std::string& tag) {
+                     return tag.starts_with(legacyWallHeightPrefix);
+                   });
   const cr::CreativeWorldLayoutBuildingTemplateResult captured =
       cr::captureCreativeWorldLayoutBuildingTemplate(
           state.source, {0U, "blockout_capture", "Blockout Capture"});
@@ -1166,7 +1205,8 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
   return expect(created.accepted && current.accepted &&
                     current.state ==
                         cr::CreativeWorldLayoutBuildingBlockoutSyncState::
-                            Current,
+                            Current &&
+                    currentUsesFloorToFloor,
                 "created blockout records a current semantic recipe") &&
          expect(read && sameRect(restored.shell.footprint,
                                  settings.shell.footprint) &&
@@ -1242,6 +1282,14 @@ bool blockoutProvenanceRoundTripsAndProtectsRefinements() {
                     version2Sync.provenance.recipe.interiorWallMaterial ==
                         cr::CreativeStructuralMaterial::Blockout,
                 "version-two blockout provenance migrates with wall-style defaults") &&
+         expect(version3Sync.accepted &&
+                    version3Sync.state ==
+                        cr::CreativeWorldLayoutBuildingBlockoutSyncState::Current &&
+                    version3Sync.provenance.recipe.version ==
+                        cr::kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+                    version3Sync.provenance.recipe.request.floorToFloorCells ==
+                        legacySettings.shell.wallHeightCells,
+                "version-three wall-height provenance migrates to floor-to-floor") &&
          expect(templateOwnsNoBlockoutRecipe,
                 "captured templates do not retain competing blockout ownership") &&
          expect(refinedSync.accepted &&

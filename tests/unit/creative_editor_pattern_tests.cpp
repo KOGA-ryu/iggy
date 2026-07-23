@@ -1316,7 +1316,7 @@ bool generatedBuildingTransformRoutesThroughWorldLayoutSource() {
   recipe.request.footprint = {{0, 0}, {6, 4}};
   recipe.request.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
-  recipe.request.wallHeightCells = 3U;
+  recipe.request.floorToFloorCells = 3U;
   recipe.request.wallThicknessCells = 0.25;
   const cr::CreativeWorldLayoutBuildingEditResult materialized =
       cr::materializeCreativeWorldLayoutBuildingBlockout(

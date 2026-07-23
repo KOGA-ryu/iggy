@@ -145,7 +145,7 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   recipe.request.wallThicknessCells = settings.shell.wallThicknessCells;
   recipe.request.connectRooms = settings.connectRooms;
   recipe.request.facade = settings.facade;
-  recipe.request.wallHeightCells = settings.shell.wallHeightCells;
+  recipe.request.floorToFloorCells = settings.shell.wallHeightCells;
   recipe.request.storeys = settings.storeys;
   recipe.floorTopLayer = settings.shell.floorTopLayer;
   recipe.floorThicknessLayers = settings.shell.floorThicknessLayers;
@@ -168,7 +168,7 @@ CreativeEditorWorldLayoutBuildingBlockoutSettings blockoutSettings(
   CreativeEditorWorldLayoutBuildingBlockoutSettings settings;
   settings.shell.footprint = recipe.request.footprint;
   settings.shell.floorTopLayer = recipe.floorTopLayer;
-  settings.shell.wallHeightCells = recipe.request.wallHeightCells;
+  settings.shell.wallHeightCells = recipe.request.floorToFloorCells;
   settings.shell.wallThicknessCells = recipe.request.wallThicknessCells;
   settings.shell.floorThicknessLayers = recipe.floorThicknessLayers;
   settings.ceilingThicknessLayers = recipe.ceilingThicknessLayers;
@@ -205,7 +205,7 @@ bool sameBlockoutRecipe(
              rhs.request.facade.entranceOffsetCells &&
          lhs.request.facade.includeExteriorWindows ==
              rhs.request.facade.includeExteriorWindows &&
-         lhs.request.wallHeightCells == rhs.request.wallHeightCells &&
+         lhs.request.floorToFloorCells == rhs.request.floorToFloorCells &&
          lhs.request.storeys.count == rhs.request.storeys.count &&
          lhs.request.storeys.connectStoreys ==
              rhs.request.storeys.connectStoreys &&

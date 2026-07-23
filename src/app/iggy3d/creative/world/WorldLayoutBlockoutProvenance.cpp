@@ -47,6 +47,8 @@ constexpr std::string_view kIncludeWindowsPrefix =
     "iggy3d.world_layout.building_blockout.include_windows=";
 constexpr std::string_view kWallHeightPrefix =
     "iggy3d.world_layout.building_blockout.wall_height=";
+constexpr std::string_view kFloorToFloorPrefix =
+    "iggy3d.world_layout.building_blockout.floor_to_floor=";
 constexpr std::string_view kStoreyCountPrefix =
     "iggy3d.world_layout.building_blockout.storey_count=";
 constexpr std::string_view kConnectStoreysPrefix =
@@ -211,7 +213,7 @@ bool validCreativeWorldLayoutBuildingBlockoutRecipe(
   }
   const long double top =
       static_cast<long double>(recipe.floorTopLayer) +
-      static_cast<long double>(recipe.request.wallHeightCells) *
+      static_cast<long double>(recipe.request.floorToFloorCells) *
           plan.storeyCount;
   return std::isfinite(top) &&
          top >= -static_cast<long double>(std::numeric_limits<double>::max()) &&
@@ -244,6 +246,8 @@ creativeWorldLayoutBuildingBlockoutProvenance(const CreativeWorldLayout& layout,
   }
 
   std::uint32_t seen = 0U;
+  bool parsedLegacyWallHeight = false;
+  bool parsedFloorToFloor = false;
   for (const std::string& ownedTag : layout.buildings[buildingIndex].tags) {
     const std::string_view tag = ownedTag;
     if (!isCreativeWorldLayoutBuildingBlockoutProvenanceTag(tag)) {
@@ -323,7 +327,14 @@ creativeWorldLayoutBuildingBlockoutProvenance(const CreativeWorldLayout& layout,
     }
     if (tag.starts_with(kWallHeightPrefix) && claim(seen, 1U << 13U) &&
         parseInteger(tag.substr(kWallHeightPrefix.size()),
-                     result.recipe.request.wallHeightCells)) {
+                     result.recipe.request.floorToFloorCells)) {
+      parsedLegacyWallHeight = true;
+      continue;
+    }
+    if (tag.starts_with(kFloorToFloorPrefix) && claim(seen, 1U << 13U) &&
+        parseInteger(tag.substr(kFloorToFloorPrefix.size()),
+                     result.recipe.request.floorToFloorCells)) {
+      parsedFloorToFloor = true;
       continue;
     }
     if (tag.starts_with(kStoreyCountPrefix) && claim(seen, 1U << 14U) &&
@@ -447,27 +458,36 @@ creativeWorldLayoutBuildingBlockoutProvenance(const CreativeWorldLayout& layout,
   }
 
   const bool version1 = result.recipe.version == 1U &&
-                        seen == kExpectedVersion1Fields;
+                        seen == kExpectedVersion1Fields &&
+                        parsedLegacyWallHeight;
   const bool version2 = result.recipe.version == 2U &&
-                        seen == kExpectedVersion2Fields;
-  const bool version3 =
-      result.recipe.version == kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
-      seen == kExpectedVersion3Fields;
+                        seen == kExpectedVersion2Fields &&
+                        parsedLegacyWallHeight;
+  const bool version3 = result.recipe.version == 3U &&
+                        seen == kExpectedVersion3Fields &&
+                        parsedLegacyWallHeight;
+  const bool version4 =
+      result.recipe.version ==
+          kCreativeWorldLayoutBuildingBlockoutRecipeVersion &&
+      seen == kExpectedVersion3Fields && parsedFloorToFloor;
   if (version1) {
     result.recipe.roofSlopeDirection =
         CreativeStructuralRoofSlopeDirection::PositiveZ;
     result.recipe.roofMaterial = CreativeStructuralMaterial::Blockout;
   }
-  if (version1 || version2) {
+  if (version1 || version2 || version3) {
     result.recipe.version = kCreativeWorldLayoutBuildingBlockoutRecipeVersion;
+  }
+  if (version1 || version2) {
     result.recipe.ceilingThicknessLayers = 1U;
     result.recipe.architecturalProfileKind =
         CreativeWorldLayoutArchitecturalProfileKind::Custom;
     result.recipe.exteriorWallMaterial = CreativeStructuralMaterial::Blockout;
     result.recipe.interiorWallMaterial = CreativeStructuralMaterial::Blockout;
   }
-  result.valid = result.present && (version1 || version2 || version3) &&
-                 validCreativeWorldLayoutBuildingBlockoutRecipe(result.recipe);
+  result.valid =
+      result.present && (version1 || version2 || version3 || version4) &&
+      validCreativeWorldLayoutBuildingBlockoutRecipe(result.recipe);
   return result;
 }
 
@@ -530,8 +550,8 @@ bool setCreativeWorldLayoutBuildingBlockoutProvenance(
                           encodeDouble(request.facade.entranceOffsetCells));
   building.tags.push_back(std::string{kIncludeWindowsPrefix} +
                           (request.facade.includeExteriorWindows ? "1" : "0"));
-  building.tags.push_back(std::string{kWallHeightPrefix} +
-                          std::to_string(request.wallHeightCells));
+  building.tags.push_back(std::string{kFloorToFloorPrefix} +
+                          std::to_string(request.floorToFloorCells));
   building.tags.push_back(std::string{kStoreyCountPrefix} +
                           std::to_string(request.storeys.count));
   building.tags.push_back(std::string{kConnectStoreysPrefix} +

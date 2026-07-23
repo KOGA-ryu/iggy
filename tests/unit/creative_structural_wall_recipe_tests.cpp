@@ -137,6 +137,53 @@ bool openPoseUsesStableWallLocalFrame() {
                 "open insert hinges from authored end toward positive normal");
 }
 
+bool thicknessChangesPreserveReferenceLineAndHostedOffsets() {
+  cr::CreativeStructuralWallOpeningRequest opening;
+  opening.sortKey = "hosted-window";
+  opening.centerOffsetMeters = 4.0;
+  opening.widthMeters = 2.0;
+  opening.cutoutBottomMeters = 1.0;
+  opening.cutoutHeightMeters = 1.0;
+  opening.insertBottomMeters = 1.0;
+  const std::vector openings{opening};
+  const cr::CreativeStructuralWallRecipeResult thin =
+      cr::planCreativeStructuralWall(
+          {{0.0, 0.0, 2.0}, {10.0, 0.0, 2.0}, 3.0, 0.2, 0.0, 0.0,
+           openings});
+  const cr::CreativeStructuralWallRecipeResult thick =
+      cr::planCreativeStructuralWall(
+          {{0.0, 0.0, 2.0}, {10.0, 0.0, 2.0}, 3.0, 1.0, 0.0, 0.0,
+           openings});
+
+  return expect(thin.accepted && thick.accepted,
+                "thin and thick hosted walls both compile") &&
+         expect(thin.frame.referenceLine ==
+                     cr::CreativeStructuralWallReferenceLine::Centerline &&
+                 thick.frame.referenceLine ==
+                     cr::CreativeStructuralWallReferenceLine::Centerline,
+                "wall frames publish the centerline reference law") &&
+         expect(sameVec3(thin.frame.start, thick.frame.start) &&
+                 sameVec3(thin.frame.end, thick.frame.end) &&
+                 sameVec3(thin.frame.tangent, thick.frame.tangent) &&
+                 near(thin.frame.lengthMeters, thick.frame.lengthMeters),
+             "wall thickness preserves the authored centerline frame") &&
+         expect(thin.openings.size() == 1U &&
+                    thick.openings.size() == 1U &&
+                    near(thin.openings[0].minimumOffsetMeters,
+                         thick.openings[0].minimumOffsetMeters) &&
+                    near(thin.openings[0].maximumOffsetMeters,
+                         thick.openings[0].maximumOffsetMeters) &&
+                    near((thin.openings[0].cutoutBounds.min.x +
+                          thin.openings[0].cutoutBounds.max.x) *
+                             0.5,
+                         4.0) &&
+                    near((thick.openings[0].cutoutBounds.min.x +
+                          thick.openings[0].cutoutBounds.max.x) *
+                             0.5,
+                         4.0),
+                "hosted opening offsets stay fixed on the centerline");
+}
+
 bool verticallyStackedSlotsUsePlanarPartition() {
   cr::CreativeStructuralWallOpeningRequest lower;
   lower.sortKey = "lower";
@@ -281,6 +328,7 @@ int main() {
   const bool ok = cardinalFramesRetainAuthoredDirection() &&
                   slotsProduceDeterministicSpansAndCutoutPieces() &&
                   openPoseUsesStableWallLocalFrame() &&
+                  thicknessChangesPreserveReferenceLineAndHostedOffsets() &&
                   verticallyStackedSlotsUsePlanarPartition() &&
                   invalidAndCrowdedGeometryFailsClosed() &&
                   nonFiniteAndOverflowingInputsReject();

@@ -304,7 +304,7 @@ bool planVerticalConnector(
   if (request.storeys.count <= 1U || !request.storeys.connectStoreys) {
     return true;
   }
-  if (request.wallHeightCells < 2U ||
+  if (request.floorToFloorCells < 2U ||
       request.storeys.connectorKind >=
           CreativeWorldLayoutVerticalConnectorKind::Count ||
       request.storeys.preferredDirection >=
@@ -341,7 +341,7 @@ bool planVerticalConnector(
     for (std::size_t roomIndex = 0U; roomIndex < plan.roomCount; ++roomIndex) {
       CreativeWorldLayoutRect candidateFootprint;
       if (!connectorFootprintForRoom(plan.rooms[roomIndex],
-                                     request.wallHeightCells,
+                                     request.floorToFloorCells,
                                      request.wallThicknessCells,
                                      request.storeys.connectorKind, direction,
                                      candidateFootprint)) {
@@ -406,8 +406,8 @@ std::string_view toString(
       return "InvalidFootprint";
     case CreativeWorldLayoutBuildingBlockoutStatus::InvalidWallThickness:
       return "InvalidWallThickness";
-    case CreativeWorldLayoutBuildingBlockoutStatus::InvalidWallHeight:
-      return "InvalidWallHeight";
+    case CreativeWorldLayoutBuildingBlockoutStatus::InvalidFloorToFloor:
+      return "InvalidFloorToFloor";
     case CreativeWorldLayoutBuildingBlockoutStatus::InvalidStoreyCount:
       return "InvalidStoreyCount";
     case CreativeWorldLayoutBuildingBlockoutStatus::InvalidEntranceEdge:
@@ -455,9 +455,9 @@ planCreativeWorldLayoutBuildingBlockout(
          "creative_world_layout_building_blockout_wall_thickness_invalid");
     return plan;
   }
-  if (request.wallHeightCells == 0U) {
-    fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidWallHeight,
-         "creative_world_layout_building_blockout_wall_height_invalid");
+  if (request.floorToFloorCells == 0U) {
+    fail(plan, CreativeWorldLayoutBuildingBlockoutStatus::InvalidFloorToFloor,
+         "creative_world_layout_building_blockout_floor_to_floor_invalid");
     return plan;
   }
   if (request.storeys.count == 0U ||

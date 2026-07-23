@@ -626,7 +626,7 @@ bool blockoutProfileCellHeight(
   }
   const cr::CreativeWorldLayoutArchitecturalProfile profile =
       cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
-  return cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+  return cr::resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
       grid, profile, output);
 }
 

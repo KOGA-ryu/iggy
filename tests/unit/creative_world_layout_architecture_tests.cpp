@@ -87,7 +87,7 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   recipe.request.footprint = footprint;
   recipe.request.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2;
-  recipe.request.wallHeightCells = 4U;
+  recipe.request.floorToFloorCells = 4U;
   recipe.request.storeys.count = storeyCount;
   recipe.request.storeys.connectStoreys = storeyCount > 1U;
   recipe.floorTopLayer = 2.0;
@@ -162,9 +162,9 @@ bool presetsAreExplicitAndValid() {
                     grand.roofThicknessLayers == 1U,
                 "grand profile owns one complete scale contract") &&
          expect(
-             cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+             cr::resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
                  halfMeterGrid, residential, residentialCells) &&
-                 cr::resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+                 cr::resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
                      halfMeterGrid, grand, grandCells) &&
                  residentialCells == 6U && grandCells == 10U,
              "one kernel resolves architectural profiles onto the document grid") &&
@@ -347,7 +347,7 @@ bool selectedBuildingNormalizesAtomically() {
                     sync.state ==
                         cr::CreativeWorldLayoutBuildingBlockoutSyncState::
                             Current &&
-                    sync.provenance.recipe.request.wallHeightCells == 6U &&
+                    sync.provenance.recipe.request.floorToFloorCells == 6U &&
                     sync.provenance.recipe.floorThicknessLayers == 4U &&
                     sync.provenance.recipe.ceilingThicknessLayers == 1U &&
                     sync.provenance.recipe.roofThicknessLayers == 1U &&

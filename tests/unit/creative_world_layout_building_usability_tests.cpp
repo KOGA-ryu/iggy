@@ -30,7 +30,7 @@ cr::CreativeWorldLayoutBuildingBlockoutRecipe blockoutRecipe(
   recipe.request.footprint = {{0, 0}, {12, 10}};
   recipe.request.pattern = pattern;
   recipe.request.wallThicknessCells = 0.25;
-  recipe.request.wallHeightCells = 3U;
+  recipe.request.floorToFloorCells = 3U;
   recipe.request.storeys.count = storeyCount;
   recipe.request.storeys.connectStoreys = storeyCount > 1U;
   recipe.request.facade.includeEntrance = true;

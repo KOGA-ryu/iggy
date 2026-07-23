@@ -59,7 +59,7 @@ struct CreativeWorldLayoutArchitectureReceipt {
   std::size_t updatedVerticalConnectorCount = 0U;
   std::size_t validatedOpeningCount = 0U;
   std::size_t validatedVerticalConnectorCount = 0U;
-  std::uint16_t resolvedWallHeightCells = 0U;
+  std::uint16_t resolvedFloorToFloorCells = 0U;
   double resolvedFloorToFloorMeters = 0.0;
   CreativeWorldLayoutBuildingDimensions before;
   CreativeWorldLayoutBuildingDimensions after;
@@ -82,7 +82,8 @@ defaultCreativeWorldLayoutArchitecturalProfile(
     CreativeWorldLayoutArchitecturalProfileKind kind) noexcept;
 [[nodiscard]] bool validCreativeWorldLayoutArchitecturalProfile(
     const CreativeWorldLayoutArchitecturalProfile& profile) noexcept;
-[[nodiscard]] bool resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+[[nodiscard]] bool
+resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
     const CreativeGridSettings& grid,
     const CreativeWorldLayoutArchitecturalProfile& profile,
     std::uint16_t& output) noexcept;

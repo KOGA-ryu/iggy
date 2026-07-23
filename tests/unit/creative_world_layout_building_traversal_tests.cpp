@@ -39,7 +39,7 @@ BuildingFixture twoStoreyFixture(
   recipe.request.pattern =
       cr::CreativeWorldLayoutBuildingBlockoutPattern::SingleRoom;
   recipe.request.wallThicknessCells = 0.25;
-  recipe.request.wallHeightCells = 3U;
+  recipe.request.floorToFloorCells = 3U;
   recipe.request.storeys.count = 2U;
   recipe.request.storeys.connectStoreys = true;
   recipe.request.storeys.connectorKind = connectorKind;

@@ -831,8 +831,15 @@ bool architecturalDimensionsOwnCompilerAndOpeningScale() {
                     near(groundDimensions.floorBottomMeters, 2.4) &&
                     near(groundDimensions.floorTopMeters, 2.5) &&
                     near(groundDimensions.wallTopMeters, 5.5) &&
-                    near(groundDimensions.upperSurfaceTopMeters, 6.0),
-                "level dimensions combine grid and descriptor-owned slabs") &&
+                    groundDimensions.hasUpperLevel &&
+                    groundDimensions.upperLevelIndex == 1U &&
+                    near(groundDimensions.nextFloorBottomMeters, 5.4) &&
+                    near(groundDimensions.nextFloorTopMeters, 5.5) &&
+                    near(groundDimensions.floorToFloorMeters, 3.0) &&
+                    near(groundDimensions.clearHeightMeters, 2.4) &&
+                    near(groundDimensions.upperSurfaceSupportMeters, 4.9) &&
+                    near(groundDimensions.upperSurfaceTopMeters, 5.4),
+                "level dimensions separate datum spacing, slab underside, and clear height") &&
          expect(buildingDimensions.accepted &&
                     buildingDimensions.occupiedLevelCount == 2U &&
                     near(buildingDimensions.footprintMinimumXMeters, 10.0) &&
@@ -952,9 +959,9 @@ bool occupiedLevelsGenerateCeilingsAndOneTopRoof() {
                     countKind(cr::CreativeObjectKind::Roof) == 1U,
                 "lower occupied level gets a ceiling and top level gets one roof") &&
          expect(lowerCeilingBounds.valid && upperFloorBounds.valid &&
-                    near(lowerCeilingBounds.worldBounds.min.y, 3.0) &&
-                    near(upperFloorBounds.worldBounds.max.y, 3.0),
-                "lower ceiling and upper floor share the story boundary") &&
+                    near(lowerCeilingBounds.worldBounds.max.y,
+                         upperFloorBounds.worldBounds.min.y),
+                "lower ceiling finishes against the underside of the upper floor") &&
          expect(upperRoofBounds.valid &&
                     near(upperRoofBounds.worldBounds.min.y, 6.0),
                 "roof begins at the upper wall support plane");

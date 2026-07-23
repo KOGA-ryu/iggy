@@ -24,7 +24,7 @@ enum class CreativeWorldLayoutBuildingBlockoutStatus : std::uint8_t {
   InvalidPattern,
   InvalidFootprint,
   InvalidWallThickness,
-  InvalidWallHeight,
+  InvalidFloorToFloor,
   InvalidStoreyCount,
   InvalidEntranceEdge,
   InvalidEntranceOffset,
@@ -79,13 +79,16 @@ struct CreativeWorldLayoutBuildingBlockoutRequest {
       kDefaultCreativeWorldLayoutWallThicknessCells;
   bool connectRooms = true;
   CreativeWorldLayoutBuildingBlockoutFacadeSettings facade;
-  std::uint16_t wallHeightCells =
+  // Distance between consecutive finished-floor datums. Generated walls use
+  // the next datum as their initial top constraint; later per-level edits can
+  // still override CreativeWorldLayoutLevel::wallHeightCells explicitly.
+  std::uint16_t floorToFloorCells =
       kDefaultCreativeWorldLayoutWallHeightCells;
   CreativeWorldLayoutBuildingBlockoutStoreySettings storeys;
 };
 
 inline constexpr std::uint32_t
-    kCreativeWorldLayoutBuildingBlockoutRecipeVersion = 3U;
+    kCreativeWorldLayoutBuildingBlockoutRecipeVersion = 4U;
 
 // The complete semantic input required to regenerate a blockout. This remains
 // independent of editor UI state so both 2D and 3D frontends can load and

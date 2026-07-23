@@ -34,7 +34,7 @@ bool nearlyEqual(double lhs, double rhs) noexcept {
   return std::fabs(lhs - rhs) <= kArchitectureEpsilon;
 }
 
-bool resolveWallHeightCells(
+bool resolveFloorToFloorCells(
     const CreativeGridSettings& grid,
     const CreativeWorldLayoutArchitecturalProfile& profile,
     std::uint16_t& output) noexcept {
@@ -331,11 +331,11 @@ bool validCreativeWorldLayoutArchitecturalProfile(
          profile.roofThicknessLayers > 0U;
 }
 
-bool resolveCreativeWorldLayoutArchitecturalProfileHeightCells(
+bool resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
     const CreativeGridSettings& grid,
     const CreativeWorldLayoutArchitecturalProfile& profile,
     std::uint16_t& output) noexcept {
-  return resolveWallHeightCells(grid, profile, output);
+  return resolveFloorToFloorCells(grid, profile, output);
 }
 
 CreativeWorldLayoutArchitectureResult
@@ -379,15 +379,16 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
            "creative_world_layout_architecture_levels_invalid");
     return result;
   }
-  if (!resolveWallHeightCells(grid, request.profile,
-                              result.receipt.resolvedWallHeightCells)) {
+  if (!resolveFloorToFloorCells(
+          grid, request.profile,
+          result.receipt.resolvedFloorToFloorCells)) {
     reject(result,
            CreativeWorldLayoutArchitectureStatus::UnrepresentableProfile,
            "creative_world_layout_architecture_profile_unrepresentable");
     return result;
   }
   result.receipt.resolvedFloorToFloorMeters =
-      result.receipt.resolvedWallHeightCells * grid.cellSizeMeters;
+      result.receipt.resolvedFloorToFloorCells * grid.cellSizeMeters;
 
   const CreativeWorldLayoutBuildingBlockoutSyncReceipt blockoutSync =
       inspectCreativeWorldLayoutBuildingBlockoutSync(source,
@@ -406,7 +407,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     double floorTop = 0.0;
     if (!normalizedFloorTop(source, request.buildingIndex, index,
                             lowestFloorTop,
-                            result.receipt.resolvedWallHeightCells,
+                            result.receipt.resolvedFloorToFloorCells,
                             floorTop)) {
       reject(result, CreativeWorldLayoutArchitectureStatus::UnrepresentableProfile,
              "creative_world_layout_architecture_elevation_unrepresentable");
@@ -415,7 +416,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     CreativeWorldLayoutLevel& level = edited.levels[index];
     changed |= assignChanged(level.floorTopLayer, floorTop);
     changed |= assignChanged(level.wallHeightCells,
-                             result.receipt.resolvedWallHeightCells);
+                             result.receipt.resolvedFloorToFloorCells);
     changed |= assignChanged(level.floorThicknessLayers,
                              request.profile.floorThicknessLayers);
     changed |= assignChanged(level.ceilingThicknessLayers,
@@ -427,7 +428,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
   CreativeWorldLayoutBuilding& building =
       edited.buildings[request.buildingIndex];
   changed |= assignChanged(building.rootHeightCells,
-                           result.receipt.resolvedWallHeightCells);
+                           result.receipt.resolvedFloorToFloorCells);
 
   for (std::size_t index = 0U; index < source.walls.size(); ++index) {
     const CreativeWorldLayoutWall& sourceWall = source.walls[index];
@@ -437,11 +438,11 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     double base = 0.0;
     double top = 0.0;
     if (!mapVerticalPlane(source, request.buildingIndex, lowestFloorTop,
-                          result.receipt.resolvedWallHeightCells,
+                          result.receipt.resolvedFloorToFloorCells,
                           sourceWall.baseLayer, base) ||
         !mapVerticalPlane(
             source, request.buildingIndex, lowestFloorTop,
-            result.receipt.resolvedWallHeightCells,
+            result.receipt.resolvedFloorToFloorCells,
             sourceWall.baseLayer + sourceWall.heightCells, top)) {
       reject(result, CreativeWorldLayoutArchitectureStatus::UnalignedStructure,
              "creative_world_layout_architecture_wall_unaligned");
@@ -476,7 +477,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     }
     double anchor = 0.0;
     if (!mapVerticalPlane(source, request.buildingIndex, lowestFloorTop,
-                          result.receipt.resolvedWallHeightCells,
+                          result.receipt.resolvedFloorToFloorCells,
                           sourceBox.anchorLayer, anchor)) {
       reject(result,
              CreativeWorldLayoutArchitectureStatus::UnalignedStructure,
@@ -521,7 +522,7 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
     }
     CreativeWorldLayoutRect footprint;
     if (!resizeVerticalConnector(
-            edited, index, result.receipt.resolvedWallHeightCells,
+            edited, index, result.receipt.resolvedFloorToFloorCells,
             result.receipt.blockoutWasCurrent, footprint)) {
       reject(
           result,
@@ -559,8 +560,8 @@ normalizeCreativeWorldLayoutBuildingArchitecture(
   if (changed && result.receipt.blockoutWasCurrent) {
     CreativeWorldLayoutBuildingBlockoutProvenance provenance =
         blockoutSync.provenance;
-    provenance.recipe.request.wallHeightCells =
-        result.receipt.resolvedWallHeightCells;
+    provenance.recipe.request.floorToFloorCells =
+        result.receipt.resolvedFloorToFloorCells;
     provenance.recipe.floorTopLayer = lowestFloorTop;
     provenance.recipe.floorThicknessLayers =
         request.profile.floorThicknessLayers;

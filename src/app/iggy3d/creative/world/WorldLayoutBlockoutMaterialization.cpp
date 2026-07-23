@@ -266,7 +266,7 @@ materializeCreativeWorldLayoutBuildingBlockout(
                       : std::string(options.buildingName);
   building.rootMode = CreativeBuildingRootMode::None;
   building.rootFootprint = blockout.footprint;
-  building.rootHeightCells = recipe.request.wallHeightCells;
+  building.rootHeightCells = recipe.request.floorToFloorCells;
   for (std::string_view tag : options.buildingTags) {
     building.tags.emplace_back(tag);
   }
@@ -280,8 +280,8 @@ materializeCreativeWorldLayoutBuildingBlockout(
     level.name = "Level " + std::to_string(storey);
     level.floorTopLayer = static_cast<double>(
         static_cast<long double>(recipe.floorTopLayer) +
-        static_cast<long double>(recipe.request.wallHeightCells) * storey);
-    level.wallHeightCells = recipe.request.wallHeightCells;
+        static_cast<long double>(recipe.request.floorToFloorCells) * storey);
+    level.wallHeightCells = recipe.request.floorToFloorCells;
     level.floorThicknessLayers = recipe.floorThicknessLayers;
     level.ceilingThicknessLayers = recipe.ceilingThicknessLayers;
     level.roofThicknessLayers = recipe.roofThicknessLayers;
