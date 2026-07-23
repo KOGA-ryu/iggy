@@ -18,16 +18,17 @@
 //     a ground sneaking path (courtyard gate -> warehouse aisles -> yard
 //     gate) and by either clamber bypass.
 //
-// Guards are authored as an NpcSpawn followed by its PatrolNode markers in
-// document order -- the runtime sandbox's patrol wiring (document-order
-// chaining) turns exactly this authoring shape into looping patrol routes.
-// Phase desync comes from rotated node orders and different route lengths.
+// Moving guards are children of explicit PatrolRoute objects. Route points
+// live on their owning route; runtime meaning is independent of document and
+// room-bake order. Phase desync comes from rotated point orders and different
+// route lengths.
 // Determinism: a fixed-seed LCG supplies cover jitter; no wall clock, no
 // std::random.
 
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -153,23 +154,35 @@ CreativeDocumentCreateRequest markerRequest(CreativeObjectKind kind,
   return request;
 }
 
-// A guard and its looping patrol route: the NpcSpawn is followed IMMEDIATELY
-// by its PatrolNode markers (document-order chaining). `phase` rotates the
-// node order so no two guards start toward the same leg beat.
+// A route and its explicitly parented guard. `phase` rotates point order so no
+// two guards start toward the same leg beat.
 void appendPatrolGuard(std::vector<CreativeDocumentCreateRequest>& requests,
+                       CreativeObjectId firstObjectId,
                        const std::string& label,
                        const std::vector<std::array<double, 2>>& nodes,
                        std::size_t phase) {
   const std::size_t count = nodes.size();
   const std::array<double, 2>& start = nodes[phase % count];
-  requests.push_back(markerRequest(CreativeObjectKind::NpcSpawn,
-                                   label + " Guard", start[0], start[1]));
+  CreativeDocumentCreateRequest route;
+  route.kind = CreativeObjectKind::PatrolRoute;
+  route.name = label + " Route";
+  route.hasPathOverride = true;
   for (std::size_t i = 0; i < count; ++i) {
     const std::array<double, 2>& node = nodes[(phase + i) % count];
-    requests.push_back(markerRequest(
-        CreativeObjectKind::PatrolNode,
-        label + " Post " + std::to_string(i + 1), node[0], node[1]));
+    route.pathPoints.push_back({{node[0], 0.0, node[1]}, 0.0, 1.0});
   }
+  const CreativeObjectId routeObjectId =
+      firstObjectId + static_cast<CreativeObjectId>(requests.size());
+  requests.push_back(std::move(route));
+
+  const std::array<double, 2>& next = nodes[(phase + 1U) % count];
+  CreativeDocumentCreateRequest guard =
+      markerRequest(CreativeObjectKind::NpcSpawn, label + " Guard",
+                    start[0], start[1]);
+  guard.parentId = routeObjectId;
+  guard.transform.rotationEulerRadians.y =
+      std::atan2(next[0] - start[0], -(next[1] - start[1]));
+  requests.push_back(std::move(guard));
 }
 
 void appendCoverField(std::vector<CreativeDocumentCreateRequest>& requests,
@@ -200,7 +213,8 @@ void appendCoverField(std::vector<CreativeDocumentCreateRequest>& requests,
   }
 }
 
-std::vector<CreativeDocumentCreateRequest> mapDemoObjects() {
+std::vector<CreativeDocumentCreateRequest> mapDemoObjects(
+    CreativeObjectId firstObjectId) {
   std::vector<CreativeDocumentCreateRequest> requests;
   requests.reserve(160U);
   DemoRng rng;
@@ -252,15 +266,15 @@ std::vector<CreativeDocumentCreateRequest> mapDemoObjects() {
   requests.push_back(kitRequest(kHighWall, "Gate Cover North", -9.0, -17.0));
   requests.push_back(kitRequest(kHighWall, "Gate Cover South", -9.0, 13.0));
 
-  appendPatrolGuard(requests, "Courtyard North",
+  appendPatrolGuard(requests, firstObjectId, "Courtyard North",
                     {{-28.0, -20.0}, {-14.0, -20.0}, {-14.0, -6.0},
                      {-28.0, -6.0}},
                     0U);
-  appendPatrolGuard(requests, "Courtyard South",
+  appendPatrolGuard(requests, firstObjectId, "Courtyard South",
                     {{-28.0, 8.0}, {-14.0, 8.0}, {-14.0, 24.0},
                      {-28.0, 24.0}},
                     2U);
-  // Stationary gate watch (no PatrolNodes follow -> stands its post).
+  // Parentless stationary watch.
   requests.push_back(markerRequest(CreativeObjectKind::NpcSpawn,
                                    "Gate Watch", -10.0, -14.0));
   requests.push_back(
@@ -286,11 +300,11 @@ std::vector<CreativeDocumentCreateRequest> mapDemoObjects() {
   appendCoverField(requests, rng, "Warehouse Apron Barrel", kBarrel, 4U, 4.0,
                    26.0, -10.0, -4.0, 1.0);
 
-  appendPatrolGuard(requests, "Aisle One",
+  appendPatrolGuard(requests, firstObjectId, "Aisle One",
                     {{6.0, -27.0}, {30.0, -27.0}}, 0U);
-  appendPatrolGuard(requests, "Aisle Two",
+  appendPatrolGuard(requests, firstObjectId, "Aisle Two",
                     {{6.0, -21.0}, {30.0, -21.0}}, 1U);
-  appendPatrolGuard(requests, "Aisle Three",
+  appendPatrolGuard(requests, firstObjectId, "Aisle Three",
                     {{6.0, -15.0}, {30.0, -15.0}}, 0U);
 
   // Clamber bypass #1: elevated walkway (top 1.5m) along the north edge,
@@ -339,7 +353,7 @@ std::vector<CreativeDocumentCreateRequest> mapDemoObjects() {
         26.0, kBypass2WalkwayTopMeters - 0.5));
   }
 
-  appendPatrolGuard(requests, "Yard",
+  appendPatrolGuard(requests, firstObjectId, "Yard",
                     {{4.0, 8.0}, {26.0, 8.0}, {26.0, 16.0}, {4.0, 16.0}},
                     3U);
   requests.push_back(markerRequest(CreativeObjectKind::NpcSpawn,
@@ -387,7 +401,8 @@ CreativeMapTemplateResult buildMapDemoMapTemplate(
     return result;
   }
 
-  const std::vector<CreativeDocumentCreateRequest> objects = mapDemoObjects();
+  const std::vector<CreativeDocumentCreateRequest> objects =
+      mapDemoObjects(facade.document().nextObjectId());
   const CreativeFacadeDocumentBatchCreateReceipt created =
       facade.createDocumentObjectsAtomically(objects);
   if (!created.accepted || !created.changed ||

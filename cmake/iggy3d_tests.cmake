@@ -1015,6 +1015,11 @@ iggy3d_add_unit_test(creative_player_spawn_tests
 set_tests_properties(creative_player_spawn_tests PROPERTIES
   LABELS "unit;app;creative;play;validation;iggy3d")
 
+iggy3d_add_unit_test(creative_npc_spawn_tests
+  tests/unit/creative_npc_spawn_tests.cpp)
+set_tests_properties(creative_npc_spawn_tests PROPERTIES
+  LABELS "unit;app;creative;play;validation;ai;iggy3d")
+
 iggy3d_add_unit_test(creative_play_preparation_tests
   tests/unit/creative_play_preparation_tests.cpp)
 set_tests_properties(creative_play_preparation_tests PROPERTIES

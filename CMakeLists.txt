@@ -134,6 +134,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
     src/app/iggy3d/creative/validation/MapValidation.cpp
     src/app/iggy3d/creative/play/PlayerSpawn.cpp
+    src/app/iggy3d/creative/play/NpcSpawn.cpp
     src/app/iggy3d/creative/play/PlayPreparation.cpp
     src/app/iggy3d/creative/play/RuntimeInteractableCatalog.cpp
     src/app/iggy3d/creative/play/RuntimeInteractables.cpp

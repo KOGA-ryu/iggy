@@ -1,7 +1,6 @@
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <utility>
 
@@ -16,32 +15,6 @@ constexpr Aabb3 kPlayerBounds{{-0.35F, 0.0F, -0.35F},
                               {0.35F, 1.8F, 0.35F}};
 constexpr Aabb3 kNpcBounds{{-0.30F, 0.0F, -0.30F},
                            {0.30F, 1.8F, 0.30F}};
-
-enum class RuntimeAnchorActorKind : std::uint8_t {
-  Npc,
-  Monster,
-};
-
-struct RuntimeAnchorActorPolicy {
-  std::string_view anchorKind;
-  RuntimeAnchorActorKind actorKind;
-};
-
-constexpr auto kRuntimeAnchorActorPolicies =
-    std::to_array<RuntimeAnchorActorPolicy>({
-        {"npc", RuntimeAnchorActorKind::Npc},
-        {"monster", RuntimeAnchorActorKind::Monster},
-    });
-
-const RuntimeAnchorActorPolicy* actorPolicyFor(
-    std::string_view anchorKind) noexcept {
-  const auto found = std::find_if(
-      kRuntimeAnchorActorPolicies.begin(), kRuntimeAnchorActorPolicies.end(),
-      [anchorKind](const RuntimeAnchorActorPolicy& policy) {
-        return policy.anchorKind == anchorKind;
-      });
-  return found == kRuntimeAnchorActorPolicies.end() ? nullptr : &*found;
-}
 
 bool samePosition(Vec3 lhs, Vec3 rhs) noexcept {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
@@ -71,6 +44,71 @@ bool anchorsHaveUniqueIdentity(
     }
   }
   return true;
+}
+
+const CreativeNpcPatrolRoutePlan* findPatrolRoute(
+    std::span<const CreativeNpcPatrolRoutePlan> routes,
+    CreativeObjectId objectId) noexcept {
+  const auto found = std::lower_bound(
+      routes.begin(), routes.end(), objectId,
+      [](const CreativeNpcPatrolRoutePlan& route,
+         CreativeObjectId candidateId) {
+        return route.objectId < candidateId;
+      });
+  return found != routes.end() && found->objectId == objectId ? &*found
+                                                              : nullptr;
+}
+
+bool npcPayloadShapeIsValid(
+    const CreativePlayActivationPayload& payload) noexcept {
+  CreativeObjectId previousRouteId = kInvalidObjectId;
+  for (const CreativeNpcPatrolRoutePlan& route : payload.npcPatrolRoutes) {
+    if (!isValidCreativeNpcPatrolRoutePlan(route) ||
+        (previousRouteId != kInvalidObjectId &&
+         route.objectId <= previousRouteId)) {
+      return false;
+    }
+    previousRouteId = route.objectId;
+  }
+
+  CreativeObjectId previousActorId = kInvalidObjectId;
+  for (const CreativeNpcSpawnPlan& actor : payload.npcSpawns) {
+    if (!isValidCreativeNpcSpawnPlan(actor) ||
+        (previousActorId != kInvalidObjectId &&
+         actor.objectId <= previousActorId) ||
+        (actor.hasPatrol() &&
+         findPatrolRoute(payload.npcPatrolRoutes,
+                         actor.patrolRouteObjectId) == nullptr)) {
+      return false;
+    }
+    previousActorId = actor.objectId;
+    const std::size_t matchingAnchors =
+        static_cast<std::size_t>(std::count_if(
+            payload.room.anchors.begin(), payload.room.anchors.end(),
+            [&actor](const RoomAnchorAsset& anchor) {
+              return sameAnchor(anchor, actor.anchor);
+            }));
+    if (matchingAnchors != 1U) {
+      return false;
+    }
+  }
+
+  for (const CreativeNpcPatrolRoutePlan& route : payload.npcPatrolRoutes) {
+    if (std::none_of(
+            payload.npcSpawns.begin(), payload.npcSpawns.end(),
+            [&route](const CreativeNpcSpawnPlan& actor) {
+              return actor.patrolRouteObjectId == route.objectId;
+            })) {
+      return false;
+    }
+  }
+  const std::size_t roomActorAnchorCount =
+      static_cast<std::size_t>(std::count_if(
+          payload.room.anchors.begin(), payload.room.anchors.end(),
+          [](const RoomAnchorAsset& anchor) {
+            return anchor.kind == "npc" || anchor.kind == "monster";
+          }));
+  return roomActorAnchorCount == payload.npcSpawns.size();
 }
 
 bool surfacesHaveUniqueIdentity(
@@ -212,6 +250,7 @@ bool payloadShapeIsValid(
   }
   return spawnCount == 1U && matchedPreparedSpawn &&
          anchorsHaveUniqueIdentity(payload.room.anchors) &&
+         npcPayloadShapeIsValid(payload) &&
          interactablesHaveUniqueIdentity(payload.interactables) &&
          logicLinksAreValid(payload.logicLinks, payload.interactables);
 }
@@ -257,6 +296,36 @@ ScenarioEntitySeed makeCombatantEntity(const RoomAnchorAsset& anchor,
   entity.combatant.hitPoints = hitPoints;
   entity.combatant.maxHitPoints = hitPoints;
   return entity;
+}
+
+Vec3 runtimePatrolPoint(const CreativePathPoint& point) noexcept {
+  return {
+      static_cast<float>(point.position.x),
+      static_cast<float>(point.position.y),
+      static_cast<float>(point.position.z),
+  };
+}
+
+float scenarioFacingDegrees(Vec3 facingDirection) noexcept {
+  constexpr float kRadiansToDegrees = 57.2957795131F;
+  return std::atan2(facingDirection.x, facingDirection.z) *
+         kRadiansToDegrees;
+}
+
+std::vector<Vec3> collectPatrolWaypoints(
+    std::span<const CreativeNpcPatrolRoutePlan> routes) {
+  std::size_t waypointCount = 0U;
+  for (const CreativeNpcPatrolRoutePlan& route : routes) {
+    waypointCount += route.path.size();
+  }
+  std::vector<Vec3> waypoints;
+  waypoints.reserve(waypointCount);
+  for (const CreativeNpcPatrolRoutePlan& route : routes) {
+    for (const CreativePathPoint& point : route.path) {
+      waypoints.push_back(runtimePatrolPoint(point));
+    }
+  }
+  return waypoints;
 }
 
 ScenarioEntitySeed makeInteractableEntity(
@@ -392,40 +461,26 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
   seed.objectives.push_back(makeSandboxObjective());
   result.summary.playerEntityCount = 1U;
 
-  // PATROL WIRING (activation seam): patrol_post anchors are adopted by the
-  // most recent npc/monster anchor BEFORE them in bake order (bake order ==
-  // document order), i.e. an author lays down a guard and then its route.
-  // The adopted positions become that guard's ScenarioAiActorSeed
-  // patrolWaypoints (Loop mode) -- the s6 patrol runtime and the reasoning
-  // graph (which already derives patrolPost nodes from these same anchors)
-  // consume them from there. A post with no preceding guard stays inert.
-  std::size_t currentAiActorIndex = seed.aiActors.size();
-  bool hasCurrentAiActor = false;
+  // Raw anchors remain useful to room and interactable owners, but actor
+  // meaning comes only from the normalized plans below. Legacy patrol_post
+  // markers are inert rather than being assigned by incidental bake order.
   for (const RoomAnchorAsset& anchor : payload.room.anchors) {
-    const RuntimeAnchorActorPolicy* policy = actorPolicyFor(anchor.kind);
-    if (policy == nullptr) {
-      if (anchor.kind == "patrol_post") {
-        if (hasCurrentAiActor) {
-          ScenarioAiActorSeed& actor = seed.aiActors[currentAiActorIndex];
-          if (actor.patrolWaypoints.empty()) {
-            ++result.summary.patrolRouteCount;
-          }
-          actor.patrolWaypoints.push_back(anchor.positionMeters);
-          ++result.summary.patrolWaypointCount;
-        } else {
-          ++result.summary.ignoredAnchorCount;
-        }
-        continue;
-      }
-      if (anchor.kind != "spawn" &&
-          !anchorBacksInteractable(anchor, payload.interactables)) {
-        ++result.summary.ignoredAnchorCount;
-      }
+    if (anchor.kind == "spawn" || anchor.kind == "npc" ||
+        anchor.kind == "monster") {
       continue;
     }
+    if (!anchorBacksInteractable(anchor, payload.interactables)) {
+      ++result.summary.ignoredAnchorCount;
+    }
+  }
 
+  result.summary.patrolRouteCount = payload.npcPatrolRoutes.size();
+  for (const CreativeNpcPatrolRoutePlan& route : payload.npcPatrolRoutes) {
+    result.summary.patrolWaypointCount += route.path.size();
+  }
+  for (const CreativeNpcSpawnPlan& actorPlan : payload.npcSpawns) {
     const bool monster =
-        policy->actorKind == RuntimeAnchorActorKind::Monster;
+        actorPlan.objectKind == CreativeObjectKind::EnemySpawn;
     const std::string& profileId =
         monster ? config.monsterBehaviorProfileId
                 : config.npcBehaviorProfileId;
@@ -434,10 +489,27 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
     const std::int32_t hitPoints =
         monster ? config.monsterHitPoints : config.npcHitPoints;
     seed.entities.push_back(makeCombatantEntity(
-        anchor, ScenarioEntityKind::Npc, kNpcBounds, factionId, hitPoints));
-    currentAiActorIndex = seed.aiActors.size();
-    hasCurrentAiActor = true;
-    seed.aiActors.push_back({anchor.runtimeStableName, profileId});
+        actorPlan.anchor, ScenarioEntityKind::Npc, kNpcBounds, factionId,
+        hitPoints));
+    seed.entities.back().transform.rotationEulerRadians.y =
+        actorPlan.yawRadians;
+
+    ScenarioAiActorSeed actor;
+    actor.actorStableName = actorPlan.anchor.runtimeStableName;
+    actor.behaviorProfileId = profileId;
+    actor.hasFacing = true;
+    actor.facingDegrees = scenarioFacingDegrees(actorPlan.facingDirection);
+    if (actorPlan.hasPatrol()) {
+      const CreativeNpcPatrolRoutePlan* route =
+          findPatrolRoute(payload.npcPatrolRoutes,
+                          actorPlan.patrolRouteObjectId);
+      actor.patrolWaypoints.reserve(route->path.size());
+      for (const CreativePathPoint& point : route->path) {
+        actor.patrolWaypoints.push_back(runtimePatrolPoint(point));
+      }
+      actor.patrolMode = ScenarioPatrolMode::Loop;
+    }
+    seed.aiActors.push_back(std::move(actor));
     if (monster) {
       ++result.summary.monsterEntityCount;
     } else {
@@ -552,8 +624,10 @@ CreativeRuntimeSandboxActivationResult activateCreativeRuntimeSandbox(
     return result;
   }
 
+  const std::vector<Vec3> patrolWaypoints =
+      collectPatrolWaypoints(request.payload.npcPatrolRoutes);
   ReasoningGraph reasoningGraph =
-      buildReasoningGraph(request.payload.room, {});
+      buildReasoningGraph(request.payload.room, patrolWaypoints);
   receipt.reasoningGraph = summarizeReasoningGraph(reasoningGraph);
 
   CreativeRuntimeInteractableStateBuildResult interactableStates =

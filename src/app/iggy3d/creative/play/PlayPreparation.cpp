@@ -76,6 +76,7 @@ CreativePlayPreparationResult prepareCreativePlay(
   CreativeMapEvaluationResult evaluation =
       evaluateCreativeMap(validationRequest);
   result.validation = std::move(evaluation.validation);
+  result.npcSpawns = std::move(evaluation.npcSpawns);
 
   if (!result.validation.accepted) {
     setValidationFailureStatus(result);
@@ -104,6 +105,7 @@ CreativePlayPreparationResult prepareCreativePlay(
   }
   const CreativePlayerSpawnPlan& spawn =
       result.validation.playerSpawn.selected;
+
   std::erase_if(evaluation.roomBake.room.anchors,
                 [](const RoomAnchorAsset& anchor) {
                   return anchor.kind == "spawn";
@@ -129,6 +131,8 @@ CreativePlayPreparationResult prepareCreativePlay(
   payload.playerSpawnSettings = spawn.settings;
   payload.playerSpawnYawRadians = spawn.yawRadians;
   payload.playerSpawnCameraPositionMeters = spawn.cameraPositionMeters;
+  payload.npcSpawns = result.npcSpawns.actors;
+  payload.npcPatrolRoutes = result.npcSpawns.patrolRoutes;
   payload.interactables = std::move(interactables.definitions);
   payload.logicLinks = std::move(interactables.logicLinks);
   payload.room = std::move(evaluation.roomBake.room);

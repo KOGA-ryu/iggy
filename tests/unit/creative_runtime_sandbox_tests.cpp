@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/play/RuntimeSandbox.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -13,6 +14,8 @@
 
 namespace {
 namespace cr = iggy3d::creative;
+
+constexpr double kPi = 3.14159265358979323846;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -95,6 +98,37 @@ cr::CreativePlayPreparationResult prepare(cr::CreativeDocument& document) {
   return cr::prepareCreativePlay(request);
 }
 
+cr::CreativeDocumentCreateReceipt addPatrolRoute(
+    cr::CreativeDocument& document,
+    std::string name,
+    std::initializer_list<cr::CreativeVec3> positions) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PatrolRoute;
+  request.name = std::move(name);
+  request.hasPathOverride = true;
+  for (cr::CreativeVec3 position : positions) {
+    request.pathPoints.push_back({position, 0.0, 1.0});
+  }
+  return document.createObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt addPatrollingActor(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    std::string name,
+    cr::CreativeVec3 position,
+    cr::CreativeObjectId routeObjectId,
+    double yawRadians) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::move(name);
+  request.transform.position = position;
+  request.transform.rotationEulerRadians.y = yawRadians;
+  request.hasTransformOverride = true;
+  request.parentId = routeObjectId;
+  return document.createObject(request);
+}
+
 const iggy3d::RoomAnchorAsset* findAnchor(const iggy3d::RoomAsset& room,
                                          std::string_view kind) {
   const auto found = std::find_if(
@@ -114,6 +148,17 @@ const iggy3d::ScenarioAiActorSeed* findAiSeed(
         return actor.actorStableName == stableName;
       });
   return found == seed.aiActors.end() ? nullptr : &*found;
+}
+
+const cr::CreativeNpcSpawnPlan* findNpcPlan(
+    const cr::CreativePlayActivationPayload& payload,
+    cr::CreativeObjectId objectId) {
+  const auto found = std::find_if(
+      payload.npcSpawns.begin(), payload.npcSpawns.end(),
+      [objectId](const cr::CreativeNpcSpawnPlan& plan) {
+        return plan.objectId == objectId;
+      });
+  return found == payload.npcSpawns.end() ? nullptr : &*found;
 }
 
 const iggy3d::AiActorState* findAiActor(const iggy3d::SessionState& state,
@@ -354,6 +399,71 @@ bool pureSeedMapsPlayerAndActorPolicies() {
                 "sandbox objective is inert but runtime-valid") &&
          expect(cr::toString(result.status) == "built",
                 "seed status string is stable");
+}
+
+bool explicitPatrolOwnershipIgnoresRoomAnchorOrder() {
+  cr::CreativeDocument document = playableDocument(false);
+  const cr::CreativeDocumentCreateReceipt northRoute =
+      addPatrolRoute(document, "North Route",
+                     {{-4.0, 0.25, -3.0}, {4.0, 0.25, -3.0}});
+  const cr::CreativeDocumentCreateReceipt southRoute =
+      addPatrolRoute(document, "South Route",
+                     {{-4.0, 0.25, 3.0}, {0.0, 0.25, 1.0},
+                      {4.0, 0.25, 3.0}});
+  const cr::CreativeDocumentCreateReceipt southActor = addPatrollingActor(
+      document, cr::CreativeObjectKind::NpcSpawn, "South Guard",
+      {-4.0, 0.25, 3.0}, southRoute.objectId, kPi * 0.5);
+  const cr::CreativeDocumentCreateReceipt northActor = addPatrollingActor(
+      document, cr::CreativeObjectKind::EnemySpawn, "North Monster",
+      {-4.0, 0.25, -3.0}, northRoute.objectId, 0.0);
+  const bool legacyPost = addObject(
+      document, cr::CreativeObjectKind::PatrolNode, "Legacy Post",
+      {20.0, 0.25, 20.0});
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "explicit patrol fixture prepares payload");
+  }
+
+  cr::CreativePlayActivationPayload payload = *prepared.payload;
+  std::reverse(payload.room.anchors.begin(), payload.room.anchors.end());
+  const cr::CreativeRuntimeScenarioSeedResult result =
+      cr::buildCreativeRuntimeScenarioSeed(payload);
+  const cr::CreativeNpcSpawnPlan* southPlan =
+      findNpcPlan(payload, southActor.objectId);
+  const cr::CreativeNpcSpawnPlan* northPlan =
+      findNpcPlan(payload, northActor.objectId);
+  const iggy3d::ScenarioAiActorSeed* south =
+      southPlan == nullptr
+          ? nullptr
+          : findAiSeed(result.seed, southPlan->anchor.runtimeStableName);
+  const iggy3d::ScenarioAiActorSeed* north =
+      northPlan == nullptr
+          ? nullptr
+          : findAiSeed(result.seed, northPlan->anchor.runtimeStableName);
+
+  return expect(northRoute.accepted && southRoute.accepted &&
+                    southActor.accepted && northActor.accepted && legacyPost &&
+                    prepared.accepted && result.accepted,
+                "explicit patrol ownership fixture builds") &&
+         expect(result.summary.patrolRouteCount == 2U &&
+                    result.summary.patrolWaypointCount == 5U &&
+                    result.summary.ignoredAnchorCount == 1U,
+                "unique routes are counted and legacy post stays inert") &&
+         expect(southPlan != nullptr && northPlan != nullptr &&
+                    southPlan->patrolRouteObjectId == southRoute.objectId &&
+                    northPlan->patrolRouteObjectId == northRoute.objectId,
+                "actor plans retain explicit route ids after anchor reversal") &&
+         expect(south != nullptr && south->hasFacing &&
+                    south->facingDegrees == 90.0F &&
+                    south->patrolWaypoints.size() == 3U &&
+                    south->patrolWaypoints[1U].x == 0.0F &&
+                    south->patrolWaypoints[1U].z == 1.0F,
+                "south guard consumes its authored facing and route") &&
+         expect(north != nullptr && north->hasFacing &&
+                    std::fabs(north->facingDegrees - 180.0F) < 0.0001F &&
+                    north->patrolWaypoints.size() == 2U &&
+                    north->patrolWaypoints.front().z == -3.0F,
+                "north monster cannot adopt the south or legacy route");
 }
 
 bool activationOwnsCollisionSessionAndReasoning() {
@@ -1427,6 +1537,7 @@ bool retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore() {
 int main() {
   const bool ok = pureLogicPlannerPairsAutomaticSignals() &&
                   pureSeedMapsPlayerAndActorPolicies() &&
+                  explicitPatrolOwnershipIgnoresRoomAnchorOrder() &&
                   activationOwnsCollisionSessionAndReasoning() &&
                   activationRejectsStaleAndMalformedPayloads() &&
                   sandboxFreshnessAndStopAreExplicit() &&

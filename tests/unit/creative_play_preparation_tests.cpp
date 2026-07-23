@@ -46,6 +46,28 @@ cr::CreativeDocumentCreateReceipt addSpawn(
   return document.createObject(request);
 }
 
+cr::CreativeDocumentCreateReceipt addPatrolRoute(
+    cr::CreativeDocument& document) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PatrolRoute;
+  request.name = "Play Route";
+  request.hasPathOverride = true;
+  request.pathPoints = {{{-2.0, 0.25, 0.0}}, {{2.0, 0.25, 0.0}}};
+  return document.createObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt addNpc(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectId routeObjectId) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::NpcSpawn;
+  request.name = "Play Guard";
+  request.transform.position = {-2.0, 0.25, 0.0};
+  request.hasTransformOverride = true;
+  request.parentId = routeObjectId;
+  return document.createObject(request);
+}
+
 bool addRock(cr::CreativeDocument& document,
              std::string assetId = {}) {
   cr::CreativeDocumentCreateRequest request;
@@ -143,10 +165,43 @@ bool validMapProducesActivationSnapshot() {
                     result.validation.roomBake.bakedAnchorCount ==
                         payload.room.anchors.size(),
                 "validation and payload share one bake result") &&
+         expect(result.npcSpawns.accepted &&
+                    result.npcSpawns.actors.empty() &&
+                    result.npcSpawns.patrolRoutes.empty() &&
+                    payload.npcSpawns.empty() &&
+                    payload.npcPatrolRoutes.empty(),
+                "maps without authored npcs carry an explicit empty plan") &&
          expect(cr::creativePlayActivationIsCurrent(payload, document),
                 "fresh payload matches source document") &&
          expect(cr::toString(result.status) == "prepared",
                 "prepared status string is stable");
+}
+
+bool explicitNpcRouteEntersActivationSnapshot() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument(31U);
+  const cr::CreativeDocumentCreateReceipt route = addPatrolRoute(document);
+  const cr::CreativeDocumentCreateReceipt actor =
+      addNpc(document, route.objectId);
+  const cr::CreativePlayPreparationResult result =
+      cr::prepareCreativePlay({&document, &catalog});
+
+  if (!result.payload.has_value()) {
+    return expect(false, "explicit npc route prepares a payload");
+  }
+  const cr::CreativePlayActivationPayload& payload = *result.payload;
+  return expect(route.accepted && actor.accepted && result.accepted &&
+                    result.npcSpawns.accepted,
+                "explicit npc route passes preparation") &&
+         expect(payload.npcSpawns.size() == 1U &&
+                    payload.npcPatrolRoutes.size() == 1U &&
+                    payload.npcSpawns.front().objectId == actor.objectId &&
+                    payload.npcSpawns.front().patrolRouteObjectId ==
+                        route.objectId &&
+                    payload.npcPatrolRoutes.front().objectId ==
+                        route.objectId &&
+                    payload.npcPatrolRoutes.front().path.size() == 2U,
+                "activation snapshot carries normalized ownership once");
 }
 
 bool prioritySelectsOneActivationSpawn() {
@@ -358,6 +413,7 @@ bool payloadFreshnessRejectsRevisionAndIdentityDrift() {
 
 int main() {
   const bool ok = validMapProducesActivationSnapshot() &&
+                  explicitNpcRouteEntersActivationSnapshot() &&
                   prioritySelectsOneActivationSpawn() &&
                   validationFailureReturnsDiagnosticsWithoutPayload() &&
                   linkedPlatformWithoutCollisionCannotPrepare() &&

@@ -83,6 +83,20 @@ class DiagnosticCollector {
   return bakedObjectIds.contains(objectId);
 }
 
+[[nodiscard]] bool patrolRouteHasRuntimeOwner(
+    const CreativeDocument& document,
+    CreativeObjectId routeObjectId,
+    bool includeHidden) noexcept {
+  return std::any_of(
+      document.objects().begin(), document.objects().end(),
+      [&document, routeObjectId, includeHidden](const CreativeObject& object) {
+        const bool isActor = object.kind == CreativeObjectKind::NpcSpawn ||
+                             object.kind == CreativeObjectKind::EnemySpawn;
+        return isActor && object.parentId == routeObjectId &&
+               includedObject(document, object, includeHidden);
+      });
+}
+
 void appendAssetMetadataDiagnostic(
     const CreativeObject& object,
     const StaticMeshAssetCatalogEntry& entry,
@@ -356,6 +370,8 @@ std::string_view toString(CreativeMapDiagnosticCode code) noexcept {
       return "player_spawn_unreachable";
     case CreativeMapDiagnosticCode::PlayerSpawnGroupUnavailable:
       return "player_spawn_group_unavailable";
+    case CreativeMapDiagnosticCode::NpcSpawnPlanInvalid:
+      return "npc_spawn_plan_invalid";
     case CreativeMapDiagnosticCode::RoomBakeRejected:
       return "room_bake_rejected";
     case CreativeMapDiagnosticCode::RuntimeObjectSkipped:
@@ -541,6 +557,19 @@ CreativeMapEvaluationResult evaluateCreativeMap(
           kInvalidObjectId, {}, std::string(result.playerSpawn.reasonCode),
           result.playerSpawn.groupCandidateCount);
     }
+
+    evaluation.npcSpawns =
+        planCreativeNpcSpawns({&document, &baked, request.includeHidden});
+    if (!evaluation.npcSpawns.accepted) {
+      const CreativeObject* failedObject =
+          document.findObject(evaluation.npcSpawns.failedObjectId);
+      diagnostics.add(
+          CreativeMapDiagnosticSeverity::Error,
+          CreativeMapDiagnosticCode::NpcSpawnPlanInvalid,
+          evaluation.npcSpawns.failedObjectId,
+          failedObject == nullptr ? std::string{} : failedObject->name,
+          std::string(evaluation.npcSpawns.reasonCode));
+    }
   }
 
   std::unordered_set<CreativeObjectId> bakedObjectIds;
@@ -554,14 +583,20 @@ CreativeMapEvaluationResult evaluateCreativeMap(
     bakedObjectIds.insert(source.objectId);
   }
   for (const CreativeObject* object : runtimeObjects) {
-    if (!bakedObject(object->id, bakedObjectIds)) {
-      diagnostics.add(CreativeMapDiagnosticSeverity::Error,
-                      CreativeMapDiagnosticCode::RuntimeObjectSkipped,
-                      object->id,
-                      object->name,
-                      std::string(toString(describeObject(object->kind)
-                                               .shapeKind)));
+    if (bakedObject(object->id, bakedObjectIds)) {
+      continue;
     }
+    if (object->kind == CreativeObjectKind::PatrolRoute &&
+        patrolRouteHasRuntimeOwner(document, object->id,
+                                   request.includeHidden)) {
+      continue;
+    }
+    diagnostics.add(CreativeMapDiagnosticSeverity::Error,
+                    CreativeMapDiagnosticCode::RuntimeObjectSkipped,
+                    object->id,
+                    object->name,
+                    std::string(toString(describeObject(object->kind)
+                                             .shapeKind)));
   }
 
   if (baked.receipt.skippedNoBoundsCount > 0U) {

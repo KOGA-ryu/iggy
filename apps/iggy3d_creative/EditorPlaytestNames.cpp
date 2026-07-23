@@ -1,35 +1,9 @@
 #include "EditorPlaytestNames.hpp"
 
-#include <string_view>
-
 namespace iggy3d_creative_app {
 namespace {
 
 namespace cr = iggy3d::creative;
-
-constexpr std::string_view kStableObjectPrefix = "creative_object_";
-
-// "creative_object_17" -> 17; 0 when the name is not of that shape.
-[[nodiscard]] cr::CreativeObjectId objectIdFromStableName(
-    std::string_view stableName) noexcept {
-  if (stableName.substr(0, kStableObjectPrefix.size()) !=
-      kStableObjectPrefix) {
-    return cr::kInvalidObjectId;
-  }
-  const std::string_view digits =
-      stableName.substr(kStableObjectPrefix.size());
-  if (digits.empty()) {
-    return cr::kInvalidObjectId;
-  }
-  cr::CreativeObjectId id = 0;
-  for (const char value : digits) {
-    if (value < '0' || value > '9') {
-      return cr::kInvalidObjectId;
-    }
-    id = id * 10U + static_cast<cr::CreativeObjectId>(value - '0');
-  }
-  return id;
-}
 
 [[nodiscard]] std::string labelForObjectId(const cr::CreativeDocument& document,
                                            cr::CreativeObjectId objectId) {
@@ -53,13 +27,9 @@ PlaytestEntityNameMap buildPlaytestNameMap(
   std::uint64_t nextEntityId = 1U;
   names.emplace(nextEntityId, "player");
   ++nextEntityId;
-  // Then npc/monster anchors, in payload anchor order (== bake order).
-  for (const iggy3d::RoomAnchorAsset& anchor : payload.room.anchors) {
-    if (anchor.kind != "npc" && anchor.kind != "monster") {
-      continue;
-    }
-    const std::string label = labelForObjectId(
-        document, objectIdFromStableName(anchor.runtimeStableName));
+  // Then explicit actor plans, in the same object-id order runtime consumes.
+  for (const cr::CreativeNpcSpawnPlan& actor : payload.npcSpawns) {
+    const std::string label = labelForObjectId(document, actor.objectId);
     if (!label.empty()) {
       names.emplace(nextEntityId, label);
     }

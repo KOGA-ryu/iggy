@@ -1,6 +1,6 @@
 // THE MAP DEMO proof (Leg C). Drives the REAL chain end-to-end, headless:
 // template -> document -> prepareCreativePlay (validation + bake + catalog)
-// -> activateCreativeRuntimeSandbox (reasoning graph + patrol wiring +
+// -> activateCreativeRuntimeSandbox (reasoning graph + explicit patrol plans +
 // session) -> 2000-tick patrol simulation (twice, position-hashed) ->
 // grid flood-fill reachability -> clamber-only bypass geometry pins.
 // Also keeps the committed fixture save in sync with the generator.
@@ -13,6 +13,7 @@
 #include <cstring>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -54,6 +55,24 @@ struct ActivatedDemo {
   std::optional<cr::CreativeRuntimeSandbox> sandbox;
 };
 
+bool samePath(std::span<const cr::CreativePathPoint> left,
+              std::span<const cr::CreativePathPoint> right) {
+  if (left.size() != right.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < left.size(); ++index) {
+    if (left[index].position.x != right[index].position.x ||
+        left[index].position.y != right[index].position.y ||
+        left[index].position.z != right[index].position.z ||
+        left[index].dwellSeconds != right[index].dwellSeconds ||
+        left[index].outgoingSpeedMultiplier !=
+            right[index].outgoingSpeedMultiplier) {
+      return false;
+    }
+  }
+  return true;
+}
+
 ActivatedDemo activateDemo(const cr::CreativeDocument& document,
                            const iggy3d::StaticMeshAssetCatalog& catalog) {
   ActivatedDemo result;
@@ -89,14 +108,55 @@ bool generatorIsDeterministic() {
   for (std::size_t i = 0; identical && i < firstObjects.size(); ++i) {
     identical = firstObjects[i].name == secondObjects[i].name &&
                 firstObjects[i].kind == secondObjects[i].kind &&
+                firstObjects[i].parentId == secondObjects[i].parentId &&
+                samePath(firstObjects[i].pathPoints,
+                         secondObjects[i].pathPoints) &&
                 firstObjects[i].transform.position.x ==
                     secondObjects[i].transform.position.x &&
                 firstObjects[i].transform.position.z ==
                     secondObjects[i].transform.position.z;
   }
   return expect(identical, "two template builds are object-identical") &&
-         expect(first.document.objectCount() >= 100U,
+         expect(first.document.objectCount() >= 90U,
                 "map has expected object volume");
+}
+
+bool generatorUsesExplicitPatrolTopology() {
+  const cr::CreativeMapTemplateResult map = buildMap();
+  if (!expect(map.accepted, "explicit patrol map builds")) {
+    return false;
+  }
+  std::size_t routeCount = 0U;
+  std::size_t waypointCount = 0U;
+  std::size_t parentedActorCount = 0U;
+  std::size_t stationaryActorCount = 0U;
+  std::size_t legacyPatrolNodeCount = 0U;
+  bool ownersValid = true;
+  for (const cr::CreativeObject& object : map.document.objects()) {
+    if (object.kind == cr::CreativeObjectKind::PatrolRoute) {
+      ++routeCount;
+      waypointCount += object.pathPoints.size();
+    } else if (object.kind == cr::CreativeObjectKind::PatrolNode) {
+      ++legacyPatrolNodeCount;
+    } else if (object.kind == cr::CreativeObjectKind::NpcSpawn) {
+      if (!object.parentId.has_value()) {
+        ++stationaryActorCount;
+        continue;
+      }
+      ++parentedActorCount;
+      const cr::CreativeObject* owner =
+          map.document.findObject(*object.parentId);
+      ownersValid = ownersValid && owner != nullptr &&
+                    owner->kind == cr::CreativeObjectKind::PatrolRoute;
+    }
+  }
+  return expect(routeCount == 6U && waypointCount == 18U,
+                "six explicit routes own eighteen waypoints") &&
+         expect(parentedActorCount == 6U && stationaryActorCount == 2U &&
+                    ownersValid,
+                "six moving guards reference routes; two watches are stationary") &&
+         expect(legacyPatrolNodeCount == 0U,
+                "map no longer encodes patrol meaning as loose markers");
 }
 
 bool fixtureMatchesGenerator() {
@@ -106,8 +166,22 @@ bool fixtureMatchesGenerator() {
     return false;
   }
   const cr::CreativeMapTemplateResult built = buildMap();
-  return expect(opened.document.objectCount() == built.document.objectCount(),
-                "fixture object count matches the generator") &&
+  bool topologyMatches =
+      opened.document.objectCount() == built.document.objectCount();
+  const auto& openedObjects = opened.document.objects();
+  const auto& builtObjects = built.document.objects();
+  for (std::size_t index = 0U;
+       topologyMatches && index < builtObjects.size(); ++index) {
+    topologyMatches =
+        openedObjects[index].id == builtObjects[index].id &&
+        openedObjects[index].kind == builtObjects[index].kind &&
+        openedObjects[index].name == builtObjects[index].name &&
+        openedObjects[index].parentId == builtObjects[index].parentId &&
+        samePath(openedObjects[index].pathPoints,
+                 builtObjects[index].pathPoints);
+  }
+  return expect(topologyMatches,
+                "fixture preserves generated ids, parents, and route paths") &&
          expect(opened.objectCount == built.objectCount,
                 "fixture receipt count matches");
 }
@@ -128,10 +202,17 @@ bool activationSeedsGraphAndPatrols() {
     std::cerr << "  preparation status: "
               << toString(demo.preparation.status)
               << " activation: " << toString(demo.receipt.status) << '\n';
+    for (const cr::CreativeMapDiagnostic& diagnostic :
+         demo.preparation.validation.diagnostics) {
+      std::cerr << "  diagnostic: " << toString(diagnostic.code)
+                << " object=" << diagnostic.objectId
+                << " subject='" << diagnostic.subject
+                << "' detail='" << diagnostic.detail << "'\n";
+    }
     return false;
   }
   // Leg A pin: play activation produced a non-empty reasoning graph whose
-  // patrol posts came from the authored anchors.
+  // patrol posts came from explicit PatrolRoute plans.
   const iggy3d::ReasoningGraphSummary& graph = demo.receipt.reasoningGraph;
   const std::size_t patrolPostNodes = graph.perKindCounts[static_cast<std::size_t>(
       iggy3d::ReasoningNodeKind::patrolPost)];
@@ -409,11 +490,16 @@ bool reachabilityProvesSneakPathAndPatrols() {
                    "objective is walk-reachable from spawn (sneak path)");
   std::size_t waypointCount = 0U;
   for (const cr::CreativeObject& object : world.document.objects()) {
-    if (object.kind == cr::CreativeObjectKind::PatrolNode) {
-      ++waypointCount;
-      ok = ok && expect(reached(object.transform.position.x,
-                                object.transform.position.z),
-                        ("patrol waypoint walkable: " + object.name).c_str());
+    if (object.kind == cr::CreativeObjectKind::PatrolRoute) {
+      for (std::size_t index = 0U; index < object.pathPoints.size(); ++index) {
+        const cr::CreativeVec3 position = object.pathPoints[index].position;
+        ++waypointCount;
+        ok = ok && expect(
+                       reached(position.x, position.z),
+                       ("patrol waypoint walkable: " + object.name + " " +
+                        std::to_string(index + 1U))
+                           .c_str());
+      }
     } else if (object.kind == cr::CreativeObjectKind::NpcSpawn) {
       ok = ok && expect(reached(object.transform.position.x,
                                 object.transform.position.z),
@@ -492,6 +578,7 @@ bool clamberBypassesAreClamberOnly() {
 
 int main() {
   const bool ok = generatorIsDeterministic() &&
+                  generatorUsesExplicitPatrolTopology() &&
                   fixtureMatchesGenerator() &&
                   activationSeedsGraphAndPatrols() &&
                   patrolSimulationProgressesAndIsDeterministic() &&

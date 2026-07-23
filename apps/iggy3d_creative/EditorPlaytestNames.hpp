@@ -9,7 +9,7 @@
 // Determinism bridge (verified two slices ago, re-verified here): session
 // entity ids are assigned 1..N in seed order (SessionStateTransitions
 // createWorld), and the sandbox seed order is player first (id 1, the
-// local-player contract), then npc/monster anchors in bake order, then
+// local-player contract), then normalized NPC plans in object-id order, then
 // interactables -- all reproducible editor-side from the activation payload.
 
 #include <cstdint>

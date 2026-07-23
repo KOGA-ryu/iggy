@@ -96,13 +96,26 @@ bool addAsset(cr::CreativeDocument& document,
   return document.createObject(request).accepted;
 }
 
-bool addPatrolRoute(cr::CreativeDocument& document) {
+cr::CreativeDocumentCreateReceipt addPatrolRoute(
+    cr::CreativeDocument& document) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::PatrolRoute;
   request.name = "Unbridged Patrol Route";
   request.hasPathOverride = true;
   request.pathPoints = {{{-1.0, 0.25, 0.0}}, {{1.0, 0.25, 0.0}}};
-  return document.createObject(request).accepted;
+  return document.createObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt addNpc(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectId routeObjectId) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::NpcSpawn;
+  request.name = "Route Guard";
+  request.transform.position = {-1.0, 0.25, 0.0};
+  request.hasTransformOverride = true;
+  request.parentId = routeObjectId;
+  return document.createObject(request);
 }
 
 bool addEditorOnlyReference(cr::CreativeDocument& document) {
@@ -456,18 +469,80 @@ bool lostAssetWalkabilityIsWarningOnly() {
 bool skippedRuntimeObjectFailsValidation() {
   iggy3d::StaticMeshAssetCatalog catalog;
   cr::CreativeDocument document = playableDocument("Runtime Gap");
-  const bool routeCreated = addPatrolRoute(document);
+  const cr::CreativeDocumentCreateReceipt route = addPatrolRoute(document);
   const cr::CreativeMapValidationResult result =
       cr::validateCreativeMap({&document, &catalog});
   const cr::CreativeMapDiagnostic* diagnostic = findDiagnostic(
       result, cr::CreativeMapDiagnosticCode::RuntimeObjectSkipped);
 
-  return expect(routeCreated && result.roomBake.accepted,
+  return expect(route.accepted && result.roomBake.accepted,
                 "runtime gap map still bakes its supported content") &&
          expect(!result.passed && diagnostic != nullptr &&
                     diagnostic->subject == "Unbridged Patrol Route" &&
                     diagnostic->detail == "Path",
                 "unbridged runtime object is named and rejected");
+}
+
+bool assignedPatrolRouteUsesCanonicalNpcPlan() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument("Assigned Route");
+  const cr::CreativeDocumentCreateReceipt route = addPatrolRoute(document);
+  const cr::CreativeDocumentCreateReceipt actor =
+      addNpc(document, route.objectId);
+  const cr::CreativeMapEvaluationResult evaluation =
+      cr::evaluateCreativeMap({&document, &catalog});
+  const cr::CreativeMapValidationResult& result = evaluation.validation;
+
+  return expect(route.accepted && actor.accepted && result.passed,
+                "assigned route is consumed outside the room bake") &&
+         expect(evaluation.npcSpawns.accepted &&
+                    evaluation.npcSpawns.actors.size() == 1U &&
+                    evaluation.npcSpawns.patrolRoutes.size() == 1U &&
+                    evaluation.npcSpawns.actors.front().objectId ==
+                        actor.objectId &&
+                    evaluation.npcSpawns.actors.front()
+                            .patrolRouteObjectId == route.objectId &&
+                    evaluation.npcSpawns.patrolRoutes.front().objectId ==
+                        route.objectId,
+                "validation exposes the canonical actor and route plan") &&
+         expect(findDiagnostic(
+                    result,
+                    cr::CreativeMapDiagnosticCode::RuntimeObjectSkipped) ==
+                    nullptr,
+                "assigned route is not reported as skipped runtime work");
+}
+
+bool malformedAssignedPatrolRouteHasOneSpecificDiagnostic() {
+  iggy3d::StaticMeshAssetCatalog catalog;
+  cr::CreativeDocument document = playableDocument("Bad Assigned Route");
+  const cr::CreativeDocumentCreateReceipt route = addPatrolRoute(document);
+  const cr::CreativeDocumentCreateReceipt actor =
+      addNpc(document, route.objectId);
+  document.findObject(route.objectId)->pathPoints.front().dwellSeconds = 1.0;
+  const cr::CreativeMapEvaluationResult evaluation =
+      cr::evaluateCreativeMap({&document, &catalog});
+  const cr::CreativeMapValidationResult& result = evaluation.validation;
+  const cr::CreativeMapDiagnostic* diagnostic = findDiagnostic(
+      result, cr::CreativeMapDiagnosticCode::NpcSpawnPlanInvalid);
+
+  return expect(route.accepted && actor.accepted && result.accepted &&
+                    !result.passed && !evaluation.npcSpawns.accepted,
+                "unsupported route timing fails map validation") &&
+         expect(diagnostic != nullptr &&
+                    diagnostic->objectId == route.objectId &&
+                    diagnostic->subject == "Unbridged Patrol Route" &&
+                    diagnostic->detail ==
+                        "creative_npc_spawn_patrol_timing_unsupported",
+                "npc-plan diagnostic names the failed route and reason") &&
+         expect(diagnosticCount(
+                    result,
+                    cr::CreativeMapDiagnosticCode::NpcSpawnPlanInvalid) ==
+                    1U &&
+                    findDiagnostic(
+                        result,
+                        cr::CreativeMapDiagnosticCode::RuntimeObjectSkipped) ==
+                        nullptr,
+                "malformed assigned route emits no duplicate skip error");
 }
 
 bool linkedPlatformWithoutCollisionFailsValidation() {
@@ -663,6 +738,8 @@ int main() {
                   importedAssetFailuresAreActionable() &&
                   lostAssetWalkabilityIsWarningOnly() &&
                   skippedRuntimeObjectFailsValidation() &&
+                  assignedPatrolRouteUsesCanonicalNpcPlan() &&
+                  malformedAssignedPatrolRouteHasOneSpecificDiagnostic() &&
                   linkedPlatformWithoutCollisionFailsValidation() &&
                   disconnectedWalkableIslandFailsValidation() &&
                   invalidReachabilityConfigurationFailsClosed() &&

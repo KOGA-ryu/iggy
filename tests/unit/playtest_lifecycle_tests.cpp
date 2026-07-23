@@ -4,7 +4,10 @@
 
 #include "EditorPlaytestNames.hpp"
 
+#include <initializer_list>
 #include <iostream>
+#include <string>
+#include <utility>
 
 namespace {
 
@@ -98,14 +101,23 @@ bool monitorRowFormatting() {
 }
 
 iggy3d::creative::CreativePlayActivationPayload payloadWithNpcAnchors(
-    std::initializer_list<std::string> stableNames) {
+    std::initializer_list<iggy3d::creative::CreativeObjectId> objectIds) {
+  namespace cr = iggy3d::creative;
   iggy3d::creative::CreativePlayActivationPayload payload;
-  for (const std::string& stableName : stableNames) {
+  for (cr::CreativeObjectId objectId : objectIds) {
+    const std::string stableName =
+        "creative_object_" + std::to_string(objectId);
     iggy3d::RoomAnchorAsset anchor;
     anchor.id = stableName + "_anchor";
     anchor.kind = "npc";
     anchor.runtimeStableName = stableName;
     payload.room.anchors.push_back(anchor);
+    cr::CreativeNpcSpawnPlan actor;
+    actor.objectId = objectId;
+    actor.objectKind = cr::CreativeObjectKind::NpcSpawn;
+    actor.anchor = anchor;
+    actor.facingDirection = {0.0F, 0.0F, -1.0F};
+    payload.npcSpawns.push_back(std::move(actor));
   }
   return payload;
 }
@@ -125,10 +137,7 @@ bool nameMapBuildAndStaleness() {
   const cr::CreativeObjectId unnamedId =
       document.createObject(unnamed).objectId;
 
-  const auto payload = payloadWithNpcAnchors(
-      {"creative_object_" + std::to_string(guardId),
-       "creative_object_" + std::to_string(unnamedId),
-       "creative_object_9999"});
+  const auto payload = payloadWithNpcAnchors({guardId, unnamedId, 9999U});
   app::PlaytestEntityNameMap names =
       app::buildPlaytestNameMap(payload, document);
 

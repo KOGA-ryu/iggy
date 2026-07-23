@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/play/NpcSpawn.hpp"
 #include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 
 #include <cstddef>
@@ -43,6 +44,7 @@ enum class CreativeMapDiagnosticCode : std::uint8_t {
   PlayerSpawnObstructed,
   PlayerSpawnUnreachable,
   PlayerSpawnGroupUnavailable,
+  NpcSpawnPlanInvalid,
   RoomBakeRejected,
   RuntimeObjectSkipped,
   InvalidRuntimeBounds,
@@ -115,6 +117,7 @@ struct CreativeMapValidationResult {
 struct CreativeMapEvaluationResult {
   CreativeMapValidationResult validation;
   CreativeRoomBakeResult roomBake;
+  CreativeNpcSpawnPlanResult npcSpawns;
 };
 
 [[nodiscard]] std::string_view toString(

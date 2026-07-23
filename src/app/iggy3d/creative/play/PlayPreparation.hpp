@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/play/NpcSpawn.hpp"
 #include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
 #include "app/iggy3d/creative/validation/MapValidation.hpp"
 
@@ -41,6 +42,8 @@ struct CreativePlayActivationPayload {
   CreativePlayerSpawnSettings playerSpawnSettings{};
   float playerSpawnYawRadians = 0.0F;
   Vec3 playerSpawnCameraPositionMeters;
+  std::vector<CreativeNpcSpawnPlan> npcSpawns;
+  std::vector<CreativeNpcPatrolRoutePlan> npcPatrolRoutes;
   std::vector<CreativeRuntimeInteractableDefinition> interactables;
   std::vector<CreativeRuntimeLogicLink> logicLinks;
   RoomAsset room;
@@ -53,6 +56,7 @@ struct CreativePlayPreparationResult {
       CreativePlayPreparationStatus::NotRequested;
   std::string_view reasonCode = "creative_play_not_requested";
   CreativeMapValidationResult validation;
+  CreativeNpcSpawnPlanResult npcSpawns;
   std::optional<CreativePlayActivationPayload> payload;
 };
 
