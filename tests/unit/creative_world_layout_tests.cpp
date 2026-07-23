@@ -1929,9 +1929,9 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
   const cr::CreativeObjectId crateBId = firstCrateB->id;
 
   const cr::CreativeVec3 refinedPosition{77.0, 3.0, 88.0};
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             crateBId, refinedPosition);
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      crateBId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(refinedPosition));
   const cr::CreativeWorldLayoutCompileResult unchanged =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt unchangedApplied =
@@ -2074,9 +2074,9 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
   }
   const cr::CreativeObjectId generatedId = generated->id;
   const cr::CreativeVec3 refinedPosition{40.0, 2.0, 30.0};
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             generatedId, refinedPosition);
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      generatedId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(refinedPosition));
 
   layout.objects[0].name = "Revised Managed Crate";
   const std::uint64_t revisionBeforeBlocked =
@@ -2154,9 +2154,9 @@ bool detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() {
   }
   const cr::CreativeObjectId refinedId = generated->id;
   const cr::CreativeVec3 refinedPosition{22.0, 4.0, 18.0};
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             refinedId, refinedPosition);
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      refinedId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(refinedPosition));
   layout.objects[0].name = "Fresh Managed Crate";
 
   const std::array detachDecision{
@@ -2224,9 +2224,9 @@ bool removedSourceCannotSilentlyDeleteRefinedOutput() {
     return expect(false, "removed-source fixture generated its managed object");
   }
   const cr::CreativeObjectId refinedId = generated->id;
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             refinedId, {16.0, 3.0, 12.0});
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      refinedId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload({16.0, 3.0, 12.0}));
   layout.objects.clear();
 
   const cr::CreativeWorldLayoutCompileResult blocked =
@@ -2292,12 +2292,12 @@ bool conflictDecisionsAreExactCompleteAndIndependentlyApplied() {
   const cr::CreativeObjectId barrelId = barrel->id;
   const cr::CreativeVec3 crateRefinement{20.0, 2.0, 10.0};
   const cr::CreativeVec3 barrelRefinement{24.0, 2.0, 10.0};
-  const cr::CreativeDocumentMutationReceipt crateMoved =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(), crateId,
-                             crateRefinement);
-  const cr::CreativeDocumentMutationReceipt barrelMoved =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(), barrelId,
-                             barrelRefinement);
+  const cr::CreativeDocumentMutationReceipt crateMoved = appState.facade.mutateObject(
+      crateId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(crateRefinement));
+  const cr::CreativeDocumentMutationReceipt barrelMoved = appState.facade.mutateObject(
+      barrelId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(barrelRefinement));
   layout.objects[0].name = "Rebuilt Crate A";
   layout.objects[1].name = "Fresh Barrel B";
 
@@ -2600,9 +2600,9 @@ bool refinementOnUnchangedMemberSurvivesSiblingSourceEdit() {
   const cr::CreativeObjectId northId = north->id;
   const cr::CreativeObjectId westId = west->id;
   const cr::CreativeVec3 refinedPosition{31.0, 4.0, 27.0};
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             northId, refinedPosition);
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      northId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(refinedPosition));
 
   layout.walls[2].name = "West Wall Revised";
   const cr::CreativeWorldLayoutCompileResult changed =
@@ -2660,9 +2660,9 @@ bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
   const cr::CreativeVec3 generatedPosition = north->transform.position;
   const std::string generatedName = north->name;
   const cr::CreativeVec3 refinedPosition{31.0, 4.0, 27.0};
-  const cr::CreativeDocumentMutationReceipt refined =
-      cr::moveDocumentObject(appState.facade.documentForPersistence(),
-                             northId, refinedPosition);
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      northId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(refinedPosition));
   const std::array selectedIds{northId};
   const cr::CreativeSelectionReceipt selected =
       appState.facade.selectTargets(selectedIds, northId);

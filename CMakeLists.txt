@@ -107,6 +107,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/SelectionResolution.cpp
     src/app/iggy3d/creative/tools/Clipboard.cpp
     src/app/iggy3d/creative/tools/Group.cpp
+    src/app/iggy3d/creative/tools/HierarchyTransform.cpp
     src/app/iggy3d/creative/tools/SelectionPlacement.cpp
     src/app/iggy3d/creative/tools/StructuralPlacement.cpp
     src/app/iggy3d/creative/tools/SelectionTransformCommands.cpp

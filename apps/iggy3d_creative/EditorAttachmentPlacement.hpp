@@ -4,6 +4,10 @@
 #include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
+namespace iggy3d::creative {
+class Facade;
+}
+
 namespace iggy3d_creative_app {
 
 struct CreativeEditorWorldTarget;
@@ -102,7 +106,7 @@ planCreativeEditorObjectReattachment(
 
 [[nodiscard]] CreativeEditorObjectReattachmentReceipt
 applyCreativeEditorObjectReattachment(
-    iggy3d::creative::CreativeDocument& document,
+    iggy3d::creative::Facade& facade,
     const CreativeEditorObjectReattachmentPlan& plan);
 
 [[nodiscard]] CreativeEditorPlacementResolution

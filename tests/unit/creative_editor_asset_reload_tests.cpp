@@ -782,8 +782,9 @@ bool replacementPlansFailClosedAndCancelCleanly() {
       app::beginCreativeEditorAssetReplacement(
           appState, catalog, cr::CreativeObjectKind::Rock, "asset_b", state);
   const cr::CreativeDocumentMutationReceipt externalChange =
-      cr::renameDocumentObject(appState.facade.documentForPersistence(),
-                               created.objectId, "Changed elsewhere");
+      appState.facade.mutateObject(
+          created.objectId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Changed elsewhere"));
   const app::CreativeAssetReplacementCommitReceipt stale =
       app::commitCreativeEditorAssetReplacement(appState, state);
   ok = expect(begin.accepted && externalChange.changed && !stale.accepted &&

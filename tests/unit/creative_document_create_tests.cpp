@@ -441,7 +441,9 @@ bool facadeGenericCreateFailureRecordsFailureOnly() {
 
 bool facadeBatchCreateAppliesAllRequestsAtomically() {
   cr::Facade facade;
-  static_cast<void>(facade.documentForPersistence().assignId(7U));
+  cr::CreativeDocument document = cr::CreativeDocument::create("Batch");
+  static_cast<void>(document.assignId(7U));
+  static_cast<void>(facade.installDocument(std::move(document)));
 
   std::array<cr::CreativeDocumentCreateRequest, 2> requests{};
   requests[0].kind = cr::CreativeObjectKind::Room;
@@ -482,7 +484,9 @@ bool facadeBatchCreateAppliesAllRequestsAtomically() {
 
 bool facadeBatchCreateRejectionPreservesLiveDocument() {
   cr::Facade facade;
-  static_cast<void>(facade.documentForPersistence().assignId(8U));
+  cr::CreativeDocument document = cr::CreativeDocument::create("Batch");
+  static_cast<void>(document.assignId(8U));
+  static_cast<void>(facade.installDocument(std::move(document)));
 
   std::array<cr::CreativeDocumentCreateRequest, 2> requests{};
   requests[0].kind = cr::CreativeObjectKind::Room;

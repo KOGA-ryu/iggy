@@ -441,8 +441,9 @@ bool refinementConflictProjectsExactManagedGroupAndSource() {
   }
   const cr::CreativeObjectId refinedId =
       live.facade.document().objects().front().id;
-  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
-      live.facade.documentForPersistence(), refinedId, {4.0, 2.0, 3.0});
+  const cr::CreativeDocumentMutationReceipt refined = live.facade.mutateObject(
+      refinedId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload({4.0, 2.0, 3.0}));
   const app::CreativeEditorWorldLayoutEditReceipt edited =
       raiseFirstLevel(state);
 
@@ -567,8 +568,7 @@ bool terrainImpactCacheOverlayAndFramingShareOneSourcePlan() {
   const cr::CreativeTerrainControlEdit driftEdit{
       cr::CreativeTerrainEditKind::Upsert, drifted};
   const cr::CreativeTerrainMutationReceipt driftReceipt =
-      live.facade.documentForPersistence().applyTerrainControlEdits(
-          {&driftEdit, 1U});
+      live.facade.applyTerrainControlEdits({&driftEdit, 1U});
   static_cast<void>(app::refreshCreativeEditorWorldLayoutDiagnostics(
       editor.worldLayout.diagnosticCache, live.facade.document(),
       editor.worldLayout.source, editor.worldLayout.revision, nullptr,
@@ -651,8 +651,7 @@ bool terrainReconciliationBlocksGenerationButKeepsPreviewAvailable() {
   const cr::CreativeTerrainControlEdit edit{
       cr::CreativeTerrainEditKind::Upsert, drifted};
   const cr::CreativeTerrainMutationReceipt driftReceipt =
-      live.facade.documentForPersistence().applyTerrainControlEdits(
-          {&edit, 1U});
+      live.facade.applyTerrainControlEdits({&edit, 1U});
   const std::uint64_t documentRevisionBeforePreview =
       live.facade.document().revision();
   const std::uint64_t terrainRevisionBeforePreview =

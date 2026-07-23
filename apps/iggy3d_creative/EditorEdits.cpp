@@ -387,10 +387,9 @@ creative::CreativeDocumentMutationReceipt detachObjectWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::DetachFrom,
-          creative::CreativeMutationPayload{});
+      appState.facade.mutateObject(objectId,
+                                   creative::CreativeMutationKind::DetachFrom,
+                                   creative::CreativeMutationPayload{});
   const bool accepted = creative::documentMutationSucceeded(receipt.status);
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
@@ -414,8 +413,7 @@ CreativeEditorObjectReattachmentReceipt reattachObjectWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   CreativeEditorObjectReattachmentReceipt receipt =
-      applyCreativeEditorObjectReattachment(
-          appState.facade.documentForPersistence(), plan);
+      applyCreativeEditorObjectReattachment(appState.facade, plan);
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
       receipt.accepted && receipt.changed, toString(receipt.status)));
@@ -560,8 +558,9 @@ creative::CreativeDocumentMutationReceipt renameObjectWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::renameDocumentObject(appState.facade.documentForPersistence(),
-                                     objectId, std::move(name));
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::Rename,
+          creative::makeRenamePayload(std::move(name)));
   const bool applied =
       receipt.status == creative::CreativeDocumentMutationStatus::Applied;
   (void)completeEditTransaction(history, std::move(transaction),
@@ -605,8 +604,7 @@ CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   const creative::CreativeDocumentBatchMutationReceipt batch =
-      creative::applyDocumentMutationsAtomically(
-          appState.facade.documentForPersistence(), requests);
+      appState.facade.mutateObjectsAtomically(requests);
   outcome.accepted = batch.committed &&
                      creative::documentMutationSucceeded(batch.status);
   outcome.changed = outcome.accepted && batch.changed;
@@ -674,142 +672,15 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
     return outcome;
   }
 
-  creative::CreativeDocument& document =
-      appState.facade.documentForPersistence();
-  const creative::CreativeHierarchySelection hierarchy =
-      creative::resolveCreativeObjectHierarchy(
-          document, std::span<const creative::CreativeObjectId>{&objectId, 1U});
-  if (!hierarchy.accepted) {
-    outcome.message = std::string(hierarchy.reasonCode);
-    return outcome;
-  }
-  const bool hasDescendants = hierarchy.objectIds.size() > 1U;
-
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  if (!hasDescendants) {
-    std::vector<creative::CreativeMutationRequest> requests;
-    requests.reserve(setPosition && setRotation && setScale ? 1U : 3U);
-    if (setPosition && setRotation && setScale) {
-      requests.push_back(
-          {0U, objectId, creative::CreativeMutationKind::SetTransform,
-           creative::makeSetTransformPayload(transform)});
-    } else {
-      if (setPosition) {
-        requests.push_back(
-            {0U, objectId, creative::CreativeMutationKind::Move,
-             creative::makeMovePayload(transform.position)});
-      }
-      if (setRotation) {
-        requests.push_back(
-            {0U, objectId, creative::CreativeMutationKind::Rotate,
-             creative::makeRotatePayload(transform.rotationEulerRadians)});
-      }
-      if (setScale) {
-        requests.push_back(
-            {0U, objectId, creative::CreativeMutationKind::Scale,
-             creative::makeScalePayload(transform.scale)});
-      }
-    }
-    const creative::CreativeDocumentBatchMutationReceipt batch =
-        creative::applyDocumentMutationsAtomically(document, requests);
-    outcome.accepted = batch.committed &&
-                       creative::documentMutationSucceeded(batch.status);
-    outcome.changed = outcome.accepted && batch.changed;
-    outcome.affectedObjectCount = outcome.changed ? batch.appliedCount : 0U;
-    outcome.message = batch.message;
-  } else {
-    creative::CreativeDocument staged = document;
-    bool changed = false;
-    std::uint64_t affectedObjectCount = 0U;
-    std::string failure;
-    const auto applyHierarchyPlacement =
-        [&](const creative::CreativeSelectionPlacementRequest& request) {
-          const creative::CreativeSelectionPlacementReceipt receipt =
-              creative::placeDocumentObjectsAtomically(
-                  staged, hierarchy.objectIds, request);
-          if (!receipt.accepted) {
-            failure = receipt.reasonCode;
-            return false;
-          }
-          changed = changed || receipt.changed;
-          if (receipt.changed) {
-            affectedObjectCount =
-                std::max(affectedObjectCount, receipt.objectCount);
-          }
-          return true;
-        };
-
-    if (setScale) {
-      const creative::CreativeObject* current = staged.findObject(objectId);
-      creative::CreativeSelectionPlacementRequest request;
-      request.mode = creative::CreativeSelectionPlacementMode::Move;
-      request.sourceAnchor = current->transform.position;
-      request.targetAnchor = request.sourceAnchor;
-      request.scaleFactor = {
-          transform.scale.x / current->transform.scale.x,
-          transform.scale.y / current->transform.scale.y,
-          transform.scale.z / current->transform.scale.z};
-      if (!applyHierarchyPlacement(request)) {
-        outcome.message = failure;
-      }
-    }
-    if (outcome.message.empty() && setRotation) {
-      const creative::CreativeObject* current = staged.findObject(objectId);
-      const creative::CreativeVec3 pivot = current->transform.position;
-      const auto rotateAroundPivot =
-          [&](creative::CreativeAxis3 axis, double radians) {
-            if (radians == 0.0) {
-              return true;
-            }
-            creative::CreativeSelectionPlacementRequest request;
-            request.mode = creative::CreativeSelectionPlacementMode::Move;
-            request.sourceAnchor = pivot;
-            request.targetAnchor = pivot;
-            request.hasAxisAngleRotation = true;
-            request.rotationAxis = axis;
-            request.rotationRadians = radians;
-            return applyHierarchyPlacement(request);
-          };
-      const creative::CreativeVec3 currentRotation =
-          current->transform.rotationEulerRadians;
-      if (!rotateAroundPivot(creative::CreativeAxis3::Z,
-                             -currentRotation.z) ||
-          !rotateAroundPivot(creative::CreativeAxis3::Y,
-                             -currentRotation.y) ||
-          !rotateAroundPivot(creative::CreativeAxis3::X,
-                             -currentRotation.x) ||
-          !rotateAroundPivot(creative::CreativeAxis3::X,
-                             transform.rotationEulerRadians.x) ||
-          !rotateAroundPivot(creative::CreativeAxis3::Y,
-                             transform.rotationEulerRadians.y) ||
-          !rotateAroundPivot(creative::CreativeAxis3::Z,
-                             transform.rotationEulerRadians.z)) {
-        outcome.message = failure.empty() ? "hierarchy_rotation_rejected"
-                                          : failure;
-      }
-    }
-    if (outcome.message.empty() && setPosition) {
-      const creative::CreativeObject* current = staged.findObject(objectId);
-      creative::CreativeSelectionPlacementRequest request;
-      request.mode = creative::CreativeSelectionPlacementMode::Move;
-      request.sourceAnchor = current->transform.position;
-      request.targetAnchor = transform.position;
-      if (!applyHierarchyPlacement(request)) {
-        outcome.message = failure;
-      }
-    }
-    if (outcome.message.empty()) {
-      if (changed) {
-        document = std::move(staged);
-      }
-      outcome.accepted = true;
-      outcome.changed = changed;
-      outcome.affectedObjectCount = changed ? affectedObjectCount : 0U;
-      outcome.message = changed ? "set_hierarchy_transform"
-                                : "transform_no_change";
-    }
-  }
+  const creative::CreativeHierarchyTransformReceipt receipt =
+      appState.facade.transformObjectHierarchyAtomically(
+          {objectId, transform, setPosition, setRotation, setScale});
+  outcome.accepted = receipt.accepted;
+  outcome.changed = receipt.changed;
+  outcome.affectedObjectCount = receipt.changed ? receipt.hierarchyObjectCount : 0U;
+  outcome.message = receipt.message;
   (void)completeEditTransaction(history, std::move(transaction),
                                 appState.facade, outcome.changed,
                                 outcome.message);
@@ -831,9 +702,8 @@ creative::CreativeDocumentMutationReceipt setMovingPlatformSettingsWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::SetMovingPlatformSettings,
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::SetMovingPlatformSettings,
           creative::makeMovingPlatformSettingsPayload(settings));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
@@ -852,9 +722,8 @@ creative::CreativeDocumentMutationReceipt setPlayerSpawnSettingsWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::SetPlayerSpawnSettings,
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::SetPlayerSpawnSettings,
           creative::makePlayerSpawnSettingsPayload(std::move(settings)));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
@@ -873,9 +742,8 @@ creative::CreativeDocumentMutationReceipt setNpcSpawnSettingsWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::SetNpcSpawnSettings,
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::SetNpcSpawnSettings,
           creative::makeNpcSpawnSettingsPayload(std::move(settings)));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
@@ -894,9 +762,8 @@ creative::CreativeDocumentMutationReceipt setLootPointSettingsWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::SetLootPointSettings,
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::SetLootPointSettings,
           creative::makeLootPointSettingsPayload(std::move(settings)));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,
@@ -915,9 +782,8 @@ creative::CreativeDocumentMutationReceipt setExitPointSettingsWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   creative::CreativeDocumentMutationReceipt receipt =
-      creative::applyDocumentMutation(
-          appState.facade.documentForPersistence(), objectId,
-          creative::CreativeMutationKind::SetExitPointSettings,
+      appState.facade.mutateObject(
+          objectId, creative::CreativeMutationKind::SetExitPointSettings,
           creative::makeExitPointSettingsPayload(std::move(settings)));
   static_cast<void>(completeEditTransaction(
       history, std::move(transaction), appState.facade,

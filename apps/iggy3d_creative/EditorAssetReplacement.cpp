@@ -289,8 +289,7 @@ CreativeAssetReplacementCommitReceipt commitCreativeEditorAssetReplacement(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, "creative_asset_replace");
   const cr::CreativeDocumentBatchMutationReceipt mutation =
-      cr::applyDocumentMutationsAtomically(
-          appState.facade.documentForPersistence(), state.plan.mutations);
+      appState.facade.mutateObjectsAtomically(state.plan.mutations);
   receipt.changed = mutation.committed && mutation.changed &&
                     cr::documentMutationSucceeded(mutation.status);
   receipt.historyReceipt = completeEditTransaction(

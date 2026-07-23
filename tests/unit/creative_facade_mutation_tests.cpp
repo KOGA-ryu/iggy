@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -828,6 +829,117 @@ bool orphanReleaseThroughFacadeIsNoOp() {
                 "orphan release no revision bump");
 }
 
+bool explicitMutationTracksNoChangeMissingObjectAndStats() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  const cr::CreativeVec3 position = facade.findObject(roomId)->transform.position;
+  const std::uint64_t attemptsBefore = facade.stats().commandAttempts;
+  const std::uint64_t successesBefore = facade.stats().commandSuccesses;
+  const std::uint64_t failuresBefore = facade.stats().commandFailures;
+  const cr::CreativeDocumentMutationReceipt noChange = facade.mutateObject(
+      roomId, cr::CreativeMutationKind::Move, cr::makeMovePayload(position));
+  const cr::CreativeDocumentMutationReceipt missing = facade.mutateObject(
+      999999U, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload(position));
+
+  return expect(cr::documentMutationSucceeded(noChange.status) &&
+                    !noChange.changed &&
+                    noChange.status == cr::CreativeDocumentMutationStatus::NoChange,
+                "explicit mutation no-change receipt") &&
+         expect(missing.status == cr::CreativeDocumentMutationStatus::MissingObject,
+                "explicit mutation missing object receipt") &&
+         expect(facade.stats().commandAttempts == attemptsBefore + 2U,
+                "explicit mutation attempts") &&
+         expect(facade.stats().commandSuccesses == successesBefore + 1U,
+                "explicit mutation no-change success") &&
+         expect(facade.stats().commandFailures == failuresBefore + 1U,
+                "explicit mutation missing failure");
+}
+
+bool explicitAtomicBatchRollsBackLateFailure() {
+  cr::Facade facade;
+  const cr::CreativeObjectId first = createRoom(facade);
+  const cr::CreativeObjectId second = createRoom(facade);
+  const cr::CreativeVec3 firstBefore = facade.findObject(first)->transform.position;
+  const cr::CreativeVec3 secondBefore = facade.findObject(second)->transform.position;
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::array requests{
+      cr::CreativeMutationRequest{0U, first, cr::CreativeMutationKind::Move,
+                                  cr::makeMovePayload({10.0, 0.0, 0.0})},
+      cr::CreativeMutationRequest{0U, 999999U, cr::CreativeMutationKind::Move,
+                                  cr::makeMovePayload({20.0, 0.0, 0.0})}};
+  const cr::CreativeDocumentBatchMutationReceipt batch =
+      facade.mutateObjectsAtomically(requests);
+
+  return expect(!batch.committed && batch.rolledBack && !batch.changed,
+                "explicit atomic batch rolls back") &&
+         expect(facade.document().revision() == revisionBefore,
+                "explicit atomic batch revision unchanged") &&
+         expect(cr::creativeVec3ExactlyEqual(
+                    facade.findObject(first)->transform.position, firstBefore) &&
+                    cr::creativeVec3ExactlyEqual(
+                        facade.findObject(second)->transform.position, secondBefore),
+                "explicit atomic batch preserves earlier objects");
+}
+
+bool assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() {
+  cr::Facade facade;
+  const cr::CreativeObjectId crate = createRoom(facade);
+  static_cast<void>(facade.mutateObject(
+      crate, cr::CreativeMutationKind::SetLocked, cr::makeLockPayload(true)));
+  const cr::CreativeBounds bounds{{-2.0, -1.0, -2.0}, {2.0, 1.0, 2.0}};
+  const std::array boundsRequest{cr::CreativeMutationRequest{
+      0U, crate, cr::CreativeMutationKind::SetBounds,
+      cr::makeBoundsPayload(bounds)}};
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const cr::CreativeDocumentBatchMutationReceipt refreshed =
+      facade.refreshAssetBoundsAtomically(boundsRequest);
+  const std::array invalidRequest{cr::CreativeMutationRequest{
+      0U, crate, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload({5.0, 0.0, 0.0})}};
+  const cr::CreativeDocumentBatchMutationReceipt rejected =
+      facade.refreshAssetBoundsAtomically(invalidRequest);
+
+  return expect(refreshed.committed && refreshed.changed &&
+                    refreshed.revisionAfter == revisionBefore + 1U,
+                "locked asset bounds refresh applies") &&
+         expect(rejected.failedCount == 1U && !rejected.committed &&
+                    facade.findObject(crate)->transform.position.x == 0.0,
+                "asset bounds refresh rejects non-bounds atomically");
+}
+
+bool hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() {
+  cr::Facade facade;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Hierarchy");
+  static_cast<void>(document.assignId(12345U));
+  static_cast<void>(facade.installDocument(std::move(document)));
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Group";
+  const cr::CreativeObjectId group =
+      facade.createDocumentObject(groupRequest).objectId;
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Child";
+  childRequest.transform.position = {1.0, 0.0, 0.0};
+  childRequest.hasTransformOverride = true;
+  childRequest.parentId = group;
+  const cr::CreativeObjectId child =
+      facade.createDocumentObject(childRequest).objectId;
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const cr::CreativeHierarchyTransformReceipt receipt =
+      facade.transformObjectHierarchyAtomically(
+          {group, {{4.0, 0.0, 0.0}, {}, {1.0, 1.0, 1.0}}, true, false, false});
+
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.revisionAfter == revisionBefore + 1U &&
+                    receipt.hierarchyObjectCount == 2U,
+                "hierarchy transform applies one revision") &&
+         expect(facade.findObject(group)->transform.position.x == 4.0 &&
+                    facade.findObject(child)->transform.position.x == 5.0,
+                "hierarchy transform preserves descendant offset");
+}
+
 }  // namespace
 
 int main() {
@@ -851,6 +963,10 @@ int main() {
                   dragCancelDiscardsWithoutMutation() &&
                   dragPressOnObjectSelectsAndTargetsIt() &&
                   orphanReleaseThroughFacadeIsNoOp() &&
+                  explicitMutationTracksNoChangeMissingObjectAndStats() &&
+                  explicitAtomicBatchRollsBackLateFailure() &&
+                  assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() &&
+                  hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() &&
                   facadeMutationStatusStringsAreStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

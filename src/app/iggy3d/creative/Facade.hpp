@@ -11,6 +11,7 @@
 #include "app/iggy3d/creative/tools/AssetScatter.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
+#include "app/iggy3d/creative/tools/HierarchyTransform.hpp"
 #include "app/iggy3d/creative/tools/Pattern.hpp"
 #include "app/iggy3d/creative/tools/RecipeTransform.hpp"
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
@@ -272,6 +273,23 @@ class Facade {
   acknowledgeAuthoredAssetInstanceSource(
       const CreativeAuthoredAssetDefinition& definition,
       CreativeObjectId instanceRootObjectId);
+  [[nodiscard]] CreativeDocumentMutationReceipt mutateObject(
+      const CreativeMutationRequest& request);
+  [[nodiscard]] CreativeDocumentMutationReceipt mutateObject(
+      CreativeObjectId objectId,
+      CreativeMutationKind kind,
+      CreativeMutationPayload payload);
+  [[nodiscard]] CreativeDocumentBatchMutationReceipt mutateObjectsAtomically(
+      std::span<const CreativeMutationRequest> requests);
+  [[nodiscard]] CreativeDocumentBatchMutationReceipt
+  refreshAssetBoundsAtomically(
+      std::span<const CreativeMutationRequest> requests);
+  [[nodiscard]] CreativeHierarchyTransformReceipt
+  transformObjectHierarchyAtomically(
+      const CreativeHierarchyTransformRequest& request);
+  [[nodiscard]] CreativeHierarchyReattachmentReceipt
+  reattachObjectHierarchyAtomically(
+      const CreativeHierarchyReattachmentRequest& request);
   [[nodiscard]] CreativeLinearArrayReceipt createLinearArrayFromSelection(
       const CreativeLinearArrayRequest& request = {});
   [[nodiscard]] CreativeRadialArrayReceipt createRadialArrayFromSelection(
@@ -362,7 +380,6 @@ class Facade {
   [[nodiscard]] const CreativeObject* findObject(
       CreativeObjectId id) const noexcept;
   [[nodiscard]] const CreativeDocument& document() const noexcept;
-  [[nodiscard]] CreativeDocument& documentForPersistence() noexcept;
   [[nodiscard]] const Stats& stats() const noexcept;
 
  private:

@@ -515,9 +515,8 @@ bool roomCommandsStillWorkThroughFacade() {
   cr::Facade facade;
   const cr::CreativeObjectId id = createRoom(facade, "Facade Room");
   const cr::CreativeDocumentMutationReceipt renamed =
-      cr::renameDocumentObject(facade.documentForPersistence(),
-                               id,
-                               "Facade Room Renamed");
+      facade.mutateObject(id, cr::CreativeMutationKind::Rename,
+                          cr::makeRenamePayload("Facade Room Renamed"));
   const bool removed = removeObject(facade, id);
 
   return expect(id != cr::kInvalidObjectId, "facade room id") &&
@@ -526,9 +525,9 @@ bool roomCommandsStillWorkThroughFacade() {
          expect(removed, "facade room removed") &&
          expect(facade.document().objectCount() == 0U,
                 "facade room document empty") &&
-         expect(facade.stats().commandAttempts == 2U,
+         expect(facade.stats().commandAttempts == 3U,
                 "facade room attempts") &&
-         expect(facade.stats().commandSuccesses == 2U,
+         expect(facade.stats().commandSuccesses == 3U,
                 "facade room successes");
 }
 

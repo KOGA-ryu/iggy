@@ -562,8 +562,9 @@ bool lockedAttachmentChildRejectsCascadeWithoutPartialDelete() {
   }
   const AttachedDoorPair pair = createAttachedDoorPair(appState.facade);
   const cr::CreativeDocumentMutationReceipt locked =
-      cr::setDocumentObjectLocked(
-          appState.facade.documentForPersistence(), pair.doorId, true);
+      appState.facade.mutateObject(pair.doorId,
+                                   cr::CreativeMutationKind::SetLocked,
+                                   cr::makeLockPayload(true));
   appState.history = {};
   select(appState.facade, pair.frameId);
 

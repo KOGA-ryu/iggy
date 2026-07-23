@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
-#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
-#include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/tools/HierarchyTransform.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -58,115 +58,6 @@ constexpr std::array kAssetAlignmentRules{
         CreativeAssetAlignmentStatus::InvalidTarget, false},
 };
 
-[[nodiscard]] bool stageAbsoluteHierarchyTransform(
-    cr::CreativeDocument& document,
-    std::span<const cr::CreativeObjectId> objectIds,
-    cr::CreativeObjectId sourceObjectId,
-    const cr::CreativeTransform& transform,
-    std::string& failure,
-    bool& changed) {
-  const cr::CreativeObject* source = document.findObject(sourceObjectId);
-  if (source == nullptr) {
-    failure = "creative_attachment_source_object_missing";
-    return false;
-  }
-  if (source->parentId.has_value() &&
-      std::find(objectIds.begin(), objectIds.end(), *source->parentId) ==
-          objectIds.end()) {
-    const cr::CreativeDocumentMutationReceipt detached =
-        cr::applyDocumentMutation(document, sourceObjectId,
-                                  cr::CreativeMutationKind::DetachFrom,
-                                  cr::CreativeMutationPayload{});
-    if (!cr::documentMutationSucceeded(detached.status)) {
-      failure = detached.message;
-      return false;
-    }
-  }
-  const auto applyPlacement =
-      [&](const cr::CreativeSelectionPlacementRequest& request) {
-        const cr::CreativeSelectionPlacementReceipt receipt =
-            cr::placeDocumentObjectsAtomically(document, objectIds, request);
-        if (!receipt.accepted) {
-          failure = receipt.reasonCode;
-          return false;
-        }
-        changed = changed || receipt.changed;
-        return true;
-      };
-
-  const cr::CreativeObject* current = document.findObject(sourceObjectId);
-  if (current == nullptr || !cr::isPositiveCreativeVec3(current->transform.scale)) {
-    failure = "creative_attachment_source_object_missing";
-    return false;
-  }
-  const cr::CreativeVec3 scaleFactor{
-      transform.scale.x / current->transform.scale.x,
-      transform.scale.y / current->transform.scale.y,
-      transform.scale.z / current->transform.scale.z};
-  if (!cr::creativeVec3ExactlyEqual(scaleFactor, {1.0, 1.0, 1.0})) {
-    cr::CreativeSelectionPlacementRequest scale;
-    scale.mode = cr::CreativeSelectionPlacementMode::Move;
-    scale.sourceAnchor = current->transform.position;
-    scale.targetAnchor = scale.sourceAnchor;
-    scale.scaleFactor = scaleFactor;
-    if (!applyPlacement(scale)) {
-      return false;
-    }
-  }
-
-  current = document.findObject(sourceObjectId);
-  if (current == nullptr) {
-    failure = "creative_attachment_source_object_missing";
-    return false;
-  }
-  const cr::CreativeVec3 pivot = current->transform.position;
-  const cr::CreativeVec3 currentRotation = current->transform.rotationEulerRadians;
-  const auto rotateAroundPivot =
-      [&](cr::CreativeAxis3 axis, double radians) {
-        if (radians == 0.0) {
-          return true;
-        }
-        cr::CreativeSelectionPlacementRequest rotation;
-        rotation.mode = cr::CreativeSelectionPlacementMode::Move;
-        rotation.sourceAnchor = pivot;
-        rotation.targetAnchor = pivot;
-        rotation.hasAxisAngleRotation = true;
-        rotation.rotationAxis = axis;
-        rotation.rotationRadians = radians;
-        return applyPlacement(rotation);
-      };
-  if (!rotateAroundPivot(cr::CreativeAxis3::Z, -currentRotation.z) ||
-      !rotateAroundPivot(cr::CreativeAxis3::Y, -currentRotation.y) ||
-      !rotateAroundPivot(cr::CreativeAxis3::X, -currentRotation.x) ||
-      !rotateAroundPivot(cr::CreativeAxis3::X,
-                         transform.rotationEulerRadians.x) ||
-      !rotateAroundPivot(cr::CreativeAxis3::Y,
-                         transform.rotationEulerRadians.y) ||
-      !rotateAroundPivot(cr::CreativeAxis3::Z,
-                         transform.rotationEulerRadians.z)) {
-    if (failure.empty()) {
-      failure = "creative_attachment_hierarchy_rotation_rejected";
-    }
-    return false;
-  }
-
-  current = document.findObject(sourceObjectId);
-  if (current == nullptr) {
-    failure = "creative_attachment_source_object_missing";
-    return false;
-  }
-  if (!cr::creativeVec3ExactlyEqual(current->transform.position,
-                                    transform.position)) {
-    cr::CreativeSelectionPlacementRequest move;
-    move.mode = cr::CreativeSelectionPlacementMode::Move;
-    move.sourceAnchor = current->transform.position;
-    move.targetAnchor = transform.position;
-    if (!applyPlacement(move)) {
-      return false;
-    }
-  }
-  return true;
-}
 static_assert(kAssetAlignmentRules.size() ==
               static_cast<std::size_t>(cr::CreativeAssetAlignmentMode::Count));
 
@@ -372,11 +263,10 @@ CreativeEditorObjectReattachmentPlan planCreativeEditorObjectReattachment(
   }
 
   cr::CreativeDocument staged = document;
-  std::string transformFailure;
-  bool transformChanged = false;
-  if (!stageAbsoluteHierarchyTransform(
-          staged, hierarchy.objectIds, sourceObjectId, plan.snap.transform,
-          transformFailure, transformChanged)) {
+  const cr::CreativeHierarchyTransformReceipt transformReceipt =
+      cr::applyCreativeHierarchyTransformAtomically(
+          staged, {sourceObjectId, plan.snap.transform, true, true, true});
+  if (!transformReceipt.accepted) {
     plan.status =
         CreativeEditorObjectReattachmentStatus::HierarchyTransformRejected;
     return plan;
@@ -407,68 +297,38 @@ CreativeEditorObjectReattachmentPlan planCreativeEditorObjectReattachment(
 }
 
 CreativeEditorObjectReattachmentReceipt applyCreativeEditorObjectReattachment(
-    cr::CreativeDocument& document,
+    cr::Facade& facade,
     const CreativeEditorObjectReattachmentPlan& plan) {
   CreativeEditorObjectReattachmentReceipt receipt;
   receipt.status = CreativeEditorObjectReattachmentStatus::InvalidRequest;
   receipt.sourceObjectId = plan.sourceObjectId;
   receipt.targetObjectId = plan.targetObjectId;
+  const cr::CreativeDocument& document = facade.document();
   receipt.revisionBefore = document.revision();
   receipt.revisionAfter = receipt.revisionBefore;
   if (!plan.accepted ||
-      plan.status != CreativeEditorObjectReattachmentStatus::Ready ||
-      plan.documentId != document.id() ||
-      plan.documentRevision != document.revision()) {
+      plan.status != CreativeEditorObjectReattachmentStatus::Ready) {
     return receipt;
   }
-
-  const cr::CreativeHierarchySelection hierarchy =
-      cr::resolveCreativeObjectHierarchy(
-          document,
-          std::span<const cr::CreativeObjectId>{&plan.sourceObjectId, 1U});
-  if (!hierarchy.accepted || hierarchy.objectIds.empty() ||
-      hierarchy.objectIds.size() != plan.hierarchyObjectCount) {
+  const cr::CreativeHierarchyReattachmentReceipt coreReceipt =
+      facade.reattachObjectHierarchyAtomically(
+          {plan.documentId, plan.documentRevision, plan.sourceObjectId,
+           plan.targetObjectId, std::string(plan.snap.targetSocket),
+           plan.snap.transform});
+  receipt.accepted = coreReceipt.accepted;
+  receipt.changed = coreReceipt.changed;
+  receipt.revisionBefore = coreReceipt.revisionBefore;
+  receipt.revisionAfter = coreReceipt.revisionAfter;
+  receipt.status = coreReceipt.accepted
+                       ? CreativeEditorObjectReattachmentStatus::Applied
+                       : CreativeEditorObjectReattachmentStatus::MutationRejected;
+  if (coreReceipt.status == cr::CreativeHierarchyTransformStatus::StalePlan) {
+    receipt.status = CreativeEditorObjectReattachmentStatus::InvalidRequest;
+  } else if (coreReceipt.status ==
+             cr::CreativeHierarchyTransformStatus::TargetInsideSourceHierarchy) {
     receipt.status =
-        CreativeEditorObjectReattachmentStatus::HierarchyTransformRejected;
-    return receipt;
+        CreativeEditorObjectReattachmentStatus::TargetInsideSourceHierarchy;
   }
-  const cr::CreativeObject* sourceBefore =
-      document.findObject(plan.sourceObjectId);
-  if (sourceBefore == nullptr) {
-    receipt.status = CreativeEditorObjectReattachmentStatus::SourceObjectMissing;
-    return receipt;
-  }
-  const bool relationshipChanged =
-      sourceBefore->parentId !=
-          std::optional<cr::CreativeObjectId>{plan.targetObjectId} ||
-      sourceBefore->attachmentSocket != plan.snap.targetSocket;
-  cr::CreativeDocument staged = document;
-  std::string transformFailure;
-  bool transformChanged = false;
-  if (!stageAbsoluteHierarchyTransform(
-          staged, hierarchy.objectIds, plan.sourceObjectId, plan.snap.transform,
-          transformFailure, transformChanged)) {
-    receipt.status =
-        CreativeEditorObjectReattachmentStatus::HierarchyTransformRejected;
-    return receipt;
-  }
-  const cr::CreativeDocumentMutationReceipt attached =
-      cr::applyDocumentMutation(
-          staged, plan.sourceObjectId, cr::CreativeMutationKind::AttachTo,
-          cr::makeAttachPayload(plan.targetObjectId,
-                                std::string(plan.snap.targetSocket)));
-  if (!cr::documentMutationSucceeded(attached.status)) {
-    receipt.status = CreativeEditorObjectReattachmentStatus::MutationRejected;
-    return receipt;
-  }
-
-  receipt.accepted = true;
-  receipt.changed = transformChanged || relationshipChanged;
-  receipt.status = CreativeEditorObjectReattachmentStatus::Applied;
-  if (receipt.changed) {
-    document = std::move(staged);
-  }
-  receipt.revisionAfter = document.revision();
   return receipt;
 }
 

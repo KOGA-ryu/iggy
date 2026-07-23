@@ -794,6 +794,8 @@ src/app/iggy3d/creative/tools/ConnectedFill.cpp	assets-objects
 src/app/iggy3d/creative/tools/ConnectedFill.hpp	assets-objects
 src/app/iggy3d/creative/tools/Group.cpp	interaction-controls
 src/app/iggy3d/creative/tools/Group.hpp	interaction-controls
+src/app/iggy3d/creative/tools/HierarchyTransform.cpp	authoring-core
+src/app/iggy3d/creative/tools/HierarchyTransform.hpp	authoring-core
 src/app/iggy3d/creative/tools/MaterialBrush.cpp	assets-objects
 src/app/iggy3d/creative/tools/MaterialBrushPath.cpp	assets-objects
 src/app/iggy3d/creative/tools/Measure.cpp	interaction-controls

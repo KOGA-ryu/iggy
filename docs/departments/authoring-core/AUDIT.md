@@ -27,7 +27,7 @@ replacement.
 | AUT-A1-001 | `CreativeDocument` | Canonical Owner | Owns durable identity, objects, revision, dirty domains, and validated restore | Keep | P0 |
 | AUT-A1-002 | `MutationApply` + `DocumentMutation` | Canonical Owner | Object mutation policy is separated from document lookup, hierarchy validation, rollback, dirty flags, and revision publication | Keep | P0 |
 | AUT-A1-003 | `Facade` document/editor boundary | Canonical Owner | Owns the live document and canonical tool, selection, measurement, snap, and ghost state; narrow its mutable surface during AUT-008 | Keep | P0 |
-| AUT-A1-004 | `Facade::documentForPersistence()` | Contract Risk | Seventeen production calls in five editor files and 30 test calls in nine files obtain unrestricted mutable access; no persistence route uses the accessor. AUT-008 maps ordinary mutation, asset-refresh, hierarchy-transform, and reattachment callers to explicit Facade operations before deleting it | Repair | P0 |
+| AUT-A1-004 | `Facade::documentForPersistence()` | Contract Risk | The 17 production and 30 test callers are migrated to explicit mutation, locked asset-bounds refresh, hierarchy-transform, and reattachment contracts; the mutable accessor is deleted and the final repository search is empty | Retired | P0 |
 | AUT-A1-005 | Staged-document publication | Duplicate Implementation | Twenty-two direct `document = std::move(staged...)` publications coexist with three call sites of the documented one-revision `commitStagedMutation` primitive; Facade batch create and two recipe paths instead publish same-document edits through full `installDocument` | Consolidate | P0 |
 | AUT-A1-006 | Editor history transaction composition | Required Adapter | Fifty-three app transaction starts already pair with the shared `completeEditTransaction` wrapper; 11 direct core starts serve sidecar or multi-phase paths. Breadth alone is not a defect. Audit inconsistent success predicates and direct commit/cancel exceptions after mutation publication is singular | Investigate | P1 |
 | AUT-A1-007 | Desktop semantic command dispatcher | Required Adapter | ImGui surfaces emit typed command ids into one headless dispatcher and then reuse domain kernels | Keep | P0 |
@@ -78,6 +78,26 @@ replacement.
 Retired by AUT-007:
 
 - `src/app/iggy3d/creative/State.hpp`.
+
+## AUT-008 Evidence
+
+AUT-008 implementation evidence for the accepted baseline `bbd1c76f`:
+
+- `Facade` now owns single-object mutation, atomic batch mutation, locked
+  asset-bounds refresh, hierarchy transform, and hierarchy reattachment.
+- `HierarchyTransform` owns resolve-once validation, staged hierarchy edits,
+  deterministic transform ordering, one-revision publication, and failure
+  receipts.
+- All 47 mutable-accessor callers were migrated: 17 production calls and 30
+  test calls. No app-facing mutation options or local staged publication remain
+  in the retired editor implementations.
+- Focused tests pin rollback, no-change, missing-object rejection, locked
+  refresh policy, stale reattachment, hierarchy offsets, revision behavior,
+  and Facade diagnostics.
+- The prescribed app link gate remains blocked by the pre-existing empty
+  `libiggy3d_creative_app.a` archive and unrelated missing app symbols; the
+  attachment test therefore has no executable. This batch did not widen scope
+  to repair that baseline build closure.
 - `PacketKind`, `FrameRef`, `Flags`, `FramePacket`, and `Packet` from
   `Core.hpp`.
 - `Facade::beginFrame`, `Facade::handle`, `Facade::state`, and the duplicate

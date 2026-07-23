@@ -164,9 +164,8 @@ movingPlatformPathPointAtPlacementAnchor(
 
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  result.mutation = cr::applyDocumentMutation(
-      appState.facade.documentForPersistence(), objectId,
-      cr::CreativeMutationKind::SetPatrolRoute,
+  result.mutation = appState.facade.mutateObject(
+      objectId, cr::CreativeMutationKind::SetPatrolRoute,
       cr::makePathPointsPayload(std::move(plan.pathPoints)));
   result.changed = result.mutation.status ==
                        cr::CreativeDocumentMutationStatus::Applied &&
@@ -710,9 +709,8 @@ setMovingPlatformPathPointScalarWithUndo(
 
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
-  result.mutation = cr::applyDocumentMutation(
-      appState.facade.documentForPersistence(), objectId,
-      cr::CreativeMutationKind::SetPatrolRoute,
+  result.mutation = appState.facade.mutateObject(
+      objectId, cr::CreativeMutationKind::SetPatrolRoute,
       cr::makePathPointsPayload(std::move(pathPoints)));
   result.changed = result.mutation.status ==
                        cr::CreativeDocumentMutationStatus::Applied &&
@@ -788,10 +786,9 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   const cr::CreativeDocumentMutationReceipt receipt =
-      cr::applyDocumentMutation(appState.facade.documentForPersistence(),
-                                objectId,
-                                cr::CreativeMutationKind::SetPatrolRoute,
-                                cr::makePathPointsPayload(afterPoints));
+      appState.facade.mutateObject(
+          objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(afterPoints));
   (void)completeEditTransaction(
       history, std::move(transaction), appState.facade,
       receipt.status == cr::CreativeDocumentMutationStatus::Applied &&
@@ -873,10 +870,9 @@ cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   const cr::CreativeDocumentMutationReceipt receipt =
-      cr::applyDocumentMutation(appState.facade.documentForPersistence(),
-                                objectId,
-                                cr::CreativeMutationKind::SetPatrolRoute,
-                                cr::makePathPointsPayload(afterPoints));
+      appState.facade.mutateObject(
+          objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(afterPoints));
   (void)completeEditTransaction(
       history, std::move(transaction), appState.facade,
       receipt.status == cr::CreativeDocumentMutationStatus::Applied &&

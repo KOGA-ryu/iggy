@@ -116,11 +116,8 @@ void restoreCatalogState(const cr::CreativeCatalogState& previous,
   }
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, "creative_asset_reload_bounds");
-  cr::CreativeDocumentMutationOptions options;
-  options.applyOptions.rejectLockedObjects = false;
   const cr::CreativeDocumentBatchMutationReceipt mutation =
-      cr::applyDocumentMutationsAtomically(
-          appState.facade.documentForPersistence(), plan.mutations, options);
+      appState.facade.refreshAssetBoundsAtomically(plan.mutations);
   const bool changed = mutation.committed && mutation.changed &&
                        cr::documentMutationSucceeded(mutation.status);
   static_cast<void>(completeEditTransaction(

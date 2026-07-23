@@ -75,6 +75,20 @@ cr::CreativeObjectId createCrate(cr::CreativeDocument& document,
   return document.createObject(request).objectId;
 }
 
+cr::CreativeObjectId createCrate(cr::Facade& facade,
+                                 std::string_view name,
+                                 cr::CreativeVec3 position,
+                                 std::optional<cr::CreativeObjectId> parent =
+                                     std::nullopt) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = std::string{name};
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  request.parentId = parent;
+  return facade.createDocumentObject(request).objectId;
+}
+
 void selectOnly(cr::Facade& facade, cr::CreativeObjectId objectId) {
   static_cast<void>(facade.setActiveTool(cr::Tool::Select));
   cr::CreativeToolInputPacket input;
@@ -1526,7 +1540,7 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
   cr::CreativeAppState& workspace =
       app::activeCreativeEditorAppState(editor, mapState);
   const cr::CreativeObjectId detailId = createCrate(
-      workspace.facade.documentForPersistence(), "Capital", {0.0, 2.0, 0.0});
+      workspace.facade, "Capital", {0.0, 2.0, 0.0});
   const app::CreativeEditorAuthoredAssetMutationReceipt committed =
       app::saveCreativeEditorAuthoredAssetEdit(editor);
   const cr::CreativeAuthoredAssetDefinition* updated =
@@ -1559,8 +1573,7 @@ bool isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() {
   cr::CreativeAppState& discardedWorkspace =
       app::activeCreativeEditorAppState(editor, mapState);
   static_cast<void>(
-      createCrate(discardedWorkspace.facade.documentForPersistence(),
-                  "Discarded", {0.0, 4.0, 0.0}));
+      createCrate(discardedWorkspace.facade, "Discarded", {0.0, 4.0, 0.0}));
   const bool cancelled = app::cancelCreativeEditorAuthoredAssetEdit(editor);
   const cr::CreativeAuthoredAssetDefinition* afterCancel =
       app::findCreativeEditorAuthoredAsset(editor.authoredAssets,

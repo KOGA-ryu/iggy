@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/FacadeInternal.hpp"
 
 #include <span>
+#include <string>
 #include <vector>
 
 namespace iggy3d::creative {
@@ -14,6 +15,114 @@ using facade_internal::recordCommandSuccess;
 using facade_internal::recordObjectCreated;
 using facade_internal::recordRoomCreated;
 using facade_internal::invalidateRemovedObjectEditorState;
+
+namespace {
+
+[[nodiscard]] CreativeDocumentBatchMutationReceipt rejectMutationBatch(
+    CreativeDocument& document,
+    std::span<const CreativeMutationRequest> requests,
+    const CreativeMutationRequest& failedRequest,
+    std::string message) {
+  CreativeDocumentBatchMutationReceipt receipt;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  receipt.attemptedCount = requests.size();
+  receipt.failedCount = 1U;
+  receipt.stoppedEarly = true;
+  receipt.atomic = true;
+  receipt.status = CreativeDocumentMutationStatus::ApplyFailed;
+  receipt.receipts.push_back(rejectDocumentMutation(
+      document, failedRequest.objectId, failedRequest.kind,
+      CreativeDocumentMutationStatus::ApplyFailed, message));
+  receipt.message = std::move(message);
+  return receipt;
+}
+
+}  // namespace
+
+CreativeDocumentMutationReceipt Facade::mutateObject(
+    const CreativeMutationRequest& request) {
+  recordCommandAttempt(stats_);
+  const CreativeDocumentMutationReceipt receipt =
+      applyDocumentMutation(document_, request);
+  if (documentMutationSucceeded(receipt.status)) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
+
+CreativeDocumentMutationReceipt Facade::mutateObject(
+    CreativeObjectId objectId,
+    CreativeMutationKind kind,
+    CreativeMutationPayload payload) {
+  return mutateObject(CreativeMutationRequest{0U, objectId, kind,
+                                               std::move(payload)});
+}
+
+CreativeDocumentBatchMutationReceipt Facade::mutateObjectsAtomically(
+    std::span<const CreativeMutationRequest> requests) {
+  recordCommandAttempt(stats_);
+  const CreativeDocumentBatchMutationReceipt receipt =
+      applyDocumentMutationsAtomically(document_, requests);
+  if (documentMutationSucceeded(receipt.status)) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
+
+CreativeDocumentBatchMutationReceipt Facade::refreshAssetBoundsAtomically(
+    std::span<const CreativeMutationRequest> requests) {
+  recordCommandAttempt(stats_);
+  for (const CreativeMutationRequest& request : requests) {
+    if (request.kind != CreativeMutationKind::SetBounds) {
+      const CreativeDocumentBatchMutationReceipt receipt = rejectMutationBatch(
+          document_, requests, request,
+          "asset bounds refresh accepts only SetBounds mutations");
+      recordCommandFailure(stats_);
+      return receipt;
+    }
+  }
+  CreativeDocumentMutationOptions options;
+  options.applyOptions.rejectLockedObjects = false;
+  const CreativeDocumentBatchMutationReceipt receipt =
+      applyDocumentMutationsAtomically(document_, requests, options);
+  if (documentMutationSucceeded(receipt.status)) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
+
+CreativeHierarchyTransformReceipt Facade::transformObjectHierarchyAtomically(
+    const CreativeHierarchyTransformRequest& request) {
+  recordCommandAttempt(stats_);
+  const CreativeHierarchyTransformReceipt receipt =
+      applyCreativeHierarchyTransformAtomically(document_, request);
+  if (receipt.accepted) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
+
+CreativeHierarchyReattachmentReceipt Facade::reattachObjectHierarchyAtomically(
+    const CreativeHierarchyReattachmentRequest& request) {
+  recordCommandAttempt(stats_);
+  const CreativeHierarchyReattachmentReceipt receipt =
+      reattachCreativeObjectHierarchyAtomically(document_, request);
+  if (receipt.accepted) {
+    recordCommandSuccess(stats_);
+  } else {
+    recordCommandFailure(stats_);
+  }
+  return receipt;
+}
 
 CreativeVolumeOperationReceipt Facade::applyVolumeOperation(
     const CreativeVolumeOperationRequest& request) {

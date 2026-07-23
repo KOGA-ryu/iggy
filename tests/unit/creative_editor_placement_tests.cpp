@@ -5702,10 +5702,9 @@ bool removalStrokePreservesSemanticOwners() {
       appState.facade.createDocumentObject(sourceRequest).objectId;
   cr::CreativeLinearArrayRequest arrayRequest;
   arrayRequest.copyCount = cr::CreativeLinearArrayCopyCount::Two;
+  static_cast<void>(appState.facade.selectTargets({source}, source));
   const cr::CreativeLinearArrayReceipt array =
-      cr::createCreativeLinearArrayAtomically(
-          appState.facade.documentForPersistence(), std::span{&source, 1U},
-          arrayRequest);
+      appState.facade.createLinearArrayFromSelection(arrayRequest);
   appState.history = {};
   CreativeEditorState editor = materialEditor(cr::CreativeObjectKind::Group);
   editor.interaction.target.objectHit = true;

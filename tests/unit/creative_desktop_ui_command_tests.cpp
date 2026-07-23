@@ -925,9 +925,9 @@ bool deleteObjectsCommandRemovesGroupHierarchy() {
   const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
   const cr::CreativeObjectId b = createCrate(appState.facade, 2.0);
   const std::array<cr::CreativeObjectId, 2U> members{a, b};
+  static_cast<void>(appState.facade.selectTargets(members, b));
   const cr::CreativeGroupCommandReceipt grouped =
-      cr::groupDocumentObjectsAtomically(
-          appState.facade.documentForPersistence(), members);
+      appState.facade.groupSelectedObjects();
   appState.history = {};
 
   app::CreativeEditorState editor;
@@ -964,8 +964,9 @@ bool deleteObjectsRejectsWithoutPartialHierarchy() {
   static_cast<void>(document.assignId(422U));
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   const AttachedPair pair = createAttachedPair(appState.facade);
-  static_cast<void>(cr::setDocumentObjectLocked(
-      appState.facade.documentForPersistence(), pair.childId, true));
+  static_cast<void>(appState.facade.mutateObject(
+      pair.childId, cr::CreativeMutationKind::SetLocked,
+      cr::makeLockPayload(true)));
   appState.history = {};
 
   app::CreativeEditorState editor;
@@ -984,8 +985,9 @@ bool deleteObjectsRejectsWithoutPartialHierarchy() {
       appState.facade.document().revision() == revisionBefore &&
       cr::creativeUndoDepth(appState.history) == 0U;
 
-  static_cast<void>(cr::setDocumentObjectLocked(
-      appState.facade.documentForPersistence(), pair.childId, false));
+  static_cast<void>(appState.facade.mutateObject(
+      pair.childId, cr::CreativeMutationKind::SetLocked,
+      cr::makeLockPayload(false)));
   appState.history = {};
   const std::uint64_t missingRevisionBefore =
       appState.facade.document().revision();
@@ -1084,8 +1086,8 @@ bool visibilityAndLockBatchesRollBackOnFailure() {
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
   const cr::CreativeObjectId b = createCrate(appState.facade, 2.0);
-  static_cast<void>(cr::setDocumentObjectLocked(
-      appState.facade.documentForPersistence(), b, true));
+  static_cast<void>(appState.facade.mutateObject(
+      b, cr::CreativeMutationKind::SetLocked, cr::makeLockPayload(true)));
   appState.history = {};
 
   app::CreativeEditorState editor;
@@ -1102,8 +1104,8 @@ bool visibilityAndLockBatchesRollBackOnFailure() {
       appState.facade.findObject(b)->visible &&
       cr::creativeUndoDepth(appState.history) == 0U;
 
-  static_cast<void>(cr::setDocumentObjectLocked(
-      appState.facade.documentForPersistence(), b, false));
+  static_cast<void>(appState.facade.mutateObject(
+      b, cr::CreativeMutationKind::SetLocked, cr::makeLockPayload(false)));
   appState.history = {};
   const app::CreativeDesktopCommandResult locking = dispatchPayload(
       app::CreativeDesktopCommandId::SetObjectsLocked, context,
@@ -1961,16 +1963,14 @@ bool assetAndInstanceCommandsCompleteSuccessPaths() {
   firstPlacement.definition = renamedDefinition;
   firstPlacement.instanceTransform.position = {10.0, 0.0, 10.0};
   const cr::CreativeAuthoredAssetInstanceReceipt first =
-      cr::instantiateCreativeAuthoredAssetAtomically(
-          appState.facade.documentForPersistence(), firstPlacement);
+      appState.facade.instantiateAuthoredAsset(firstPlacement);
   renamedDefinition = app::findCreativeEditorAuthoredAsset(
       editor.authoredAssets, saved.assetId);
   cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
   secondPlacement.definition = renamedDefinition;
   secondPlacement.instanceTransform.position = {20.0, 0.0, 20.0};
   const cr::CreativeAuthoredAssetInstanceReceipt second =
-      cr::instantiateCreativeAuthoredAssetAtomically(
-          appState.facade.documentForPersistence(), secondPlacement);
+      appState.facade.instantiateAuthoredAsset(secondPlacement);
   cr::CreativeDocumentCreateRequest detail;
   detail.kind = cr::CreativeObjectKind::Crate;
   detail.name = "Instance Detail";
@@ -3806,9 +3806,9 @@ bool worldLayoutConflictResolutionUsesTypedConfirmPayload() {
       appState.facade.document().objects().front().id;
   const cr::CreativeVec3 generatedPosition =
       appState.facade.document().objects().front().transform.position;
-  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
-      appState.facade.documentForPersistence(), originalId,
-      {12.0, 2.0, 8.0});
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      originalId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload({12.0, 2.0, 8.0}));
   editor.worldLayout.source.objects[0].name = "Command Crate Revised";
   ++editor.worldLayout.revision;
 
@@ -3900,8 +3900,7 @@ bool worldLayoutTerrainReconciliationUsesTypedConfirmPayload() {
   const cr::CreativeTerrainControlEdit driftEdit{
       cr::CreativeTerrainEditKind::Upsert, drifted};
   const cr::CreativeTerrainMutationReceipt driftReceipt =
-      appState.facade.documentForPersistence().applyTerrainControlEdits(
-          {&driftEdit, 1U});
+      appState.facade.applyTerrainControlEdits({&driftEdit, 1U});
   const std::uint64_t undoBeforeBlocked =
       cr::creativeUndoDepth(appState.history);
   const std::uint64_t terrainRevisionBeforeBlocked =
@@ -4148,8 +4147,7 @@ bool generatedSettingsCannotBypassTerrainReconciliation() {
   const cr::CreativeTerrainControlEdit edit{
       cr::CreativeTerrainEditKind::Upsert, drifted};
   const cr::CreativeTerrainMutationReceipt driftReceipt =
-      appState.facade.documentForPersistence().applyTerrainControlEdits(
-          {&edit, 1U});
+      appState.facade.applyTerrainControlEdits({&edit, 1U});
   const std::uint64_t sourceRevisionBefore = state.revision;
   const std::uint64_t documentRevisionBefore =
       appState.facade.document().revision();
@@ -5262,11 +5260,11 @@ bool generatedWallAndOpeningSettingsCommitSourceAndSceneTogether() {
   if (refinedWallObject == nullptr) {
     return expect(false, "generated wall survives semantic redo");
   }
-  const cr::CreativeDocumentMutationReceipt refined = cr::moveDocumentObject(
-      appState.facade.documentForPersistence(), refinedWallObjectId,
-      {refinedWallObject->transform.position.x + 0.5,
-       refinedWallObject->transform.position.y,
-       refinedWallObject->transform.position.z});
+  const cr::CreativeDocumentMutationReceipt refined = appState.facade.mutateObject(
+      refinedWallObjectId, cr::CreativeMutationKind::Move,
+      cr::makeMovePayload({refinedWallObject->transform.position.x + 0.5,
+                           refinedWallObject->transform.position.y,
+                           refinedWallObject->transform.position.z}));
   const std::uint64_t sourceRevisionBeforeConflict =
       editor.worldLayout.revision;
   const std::uint64_t documentRevisionBeforeConflict =

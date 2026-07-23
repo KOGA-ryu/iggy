@@ -462,7 +462,7 @@ bool processCreativeEditorStructuralSpanEditInput(
     return true;
   }
 
-  cr::CreativeDocument& document = appState.facade.documentForPersistence();
+  const cr::CreativeDocument& document = appState.facade.document();
   const cr::CreativeObject* object = document.findObject(state.objectId);
   if (document.id() != state.documentId ||
       document.revision() != state.sourceRevision || object == nullptr ||
@@ -491,7 +491,7 @@ bool processCreativeEditorStructuralSpanEditInput(
           cr::makeBoundsPayload(state.preview.authoredBounds)},
   };
   const cr::CreativeDocumentBatchMutationReceipt receipt =
-      cr::applyDocumentMutationsAtomically(document, mutations);
+      appState.facade.mutateObjectsAtomically(mutations);
   const bool changed = receipt.committed &&
                        cr::documentMutationSucceeded(receipt.status) &&
                        receipt.changed;
