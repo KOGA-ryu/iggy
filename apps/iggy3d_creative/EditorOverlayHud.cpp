@@ -310,8 +310,9 @@ void appendCreativeEditorHudOverlays(
   appendCreativeEditorSelectionDimensionLabel(request, output, hasSelection);
   appendCreativeEditorActionHintsOverlay(
       editor, request.inputContext, request.activeControlDevice,
-      request.captureMode, request.drawableWidth, request.drawableHeight,
-      output.uiRects, output.glyphs);
+      request.captureMode, request.controllerCommandLayerActive,
+      request.drawableWidth, request.drawableHeight, output.uiRects,
+      output.glyphs);
 }
 
 }  // namespace iggy3d_creative_app

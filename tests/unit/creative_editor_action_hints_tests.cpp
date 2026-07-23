@@ -1216,6 +1216,42 @@ bool everyInteractiveContextResolvesOnlyLiveBindings() {
   return ok;
 }
 
+bool controllerCommandLayerReplacesTheViewportRibbon() {
+  CreativeEditorState editor;
+  setHeld(editor, cr::CreativeHeldItemKind::Material,
+          cr::CreativeObjectKind::Wall);
+  const cr::CreativeActionHintFrame hints = resolveCreativeEditorActionHints(
+      editor, cr::CreativeInputContext::EditorViewport,
+      cr::CreativeControlDevice::Gamepad, false, true);
+  const cr::CreativeActionHint* undo =
+      findHint(hints, cr::CreativeInputActionId::Undo);
+  const cr::CreativeActionHint* redo =
+      findHint(hints, cr::CreativeInputActionId::Redo);
+  const cr::CreativeActionHint* save =
+      findHint(hints, cr::CreativeInputActionId::Save);
+  const cr::CreativeUiWidgetFrame widgets =
+      buildCreativeEditorActionHintWidgetFrame(hints, 1280U, 720U);
+
+  return expect(hints.count == 3U && !hints.invalidInput &&
+                    !hints.capacityExceeded && !hints.textTruncated,
+                "Options replaces tool hints with three bounded commands") &&
+         expect(undo != nullptr &&
+                    undo->chord.view() == "Options+D-pad Left" &&
+                    undo->label.view() == "Undo",
+                "command ribbon exposes the Undo chord") &&
+         expect(redo != nullptr &&
+                    redo->chord.view() == "Options+D-pad Right" &&
+                    redo->label.view() == "Redo",
+                "command ribbon exposes the Redo chord") &&
+         expect(save != nullptr &&
+                    save->chord.view() == "Options+D-pad Up" &&
+                    save->label.view() == "Save",
+                "command ribbon exposes the Save chord") &&
+         expect(widgets.visualCount == 12U && widgetTextFits(widgets),
+                "command ribbon uses the standard non-overlapping widget "
+                "projection");
+}
+
 bool widgetProjectionIsResponsiveAndUsesTheStandardFrame() {
   CreativeEditorState editor;
   setHeld(editor, cr::CreativeHeldItemKind::Material,
@@ -1262,6 +1298,7 @@ int main() {
   ok = buildingRoomHintsTrackCornerState() && ok;
   ok = measurementHintsUseConfirmCancelAndSharedSettings() && ok;
   ok = everyInteractiveContextResolvesOnlyLiveBindings() && ok;
+  ok = controllerCommandLayerReplacesTheViewportRibbon() && ok;
   ok = widgetProjectionIsResponsiveAndUsesTheStandardFrame() && ok;
   return ok ? 0 : 1;
 }

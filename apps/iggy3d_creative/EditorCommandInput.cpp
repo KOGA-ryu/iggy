@@ -1,5 +1,6 @@
 #include "EditorFrame.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -50,6 +51,47 @@ void resetCreativeEditorForDocumentReplacement(
 
 namespace {
 
+struct DocumentInputCommand {
+  creative::CreativeInputActionId action;
+  CreativeDesktopCommandId command;
+};
+
+constexpr std::array kDocumentInputCommands{
+    DocumentInputCommand{creative::CreativeInputActionId::Undo,
+                         CreativeDesktopCommandId::Undo},
+    DocumentInputCommand{creative::CreativeInputActionId::Redo,
+                         CreativeDesktopCommandId::Redo},
+    DocumentInputCommand{creative::CreativeInputActionId::Save,
+                         CreativeDesktopCommandId::SaveDocument},
+    DocumentInputCommand{creative::CreativeInputActionId::NewDocument,
+                         CreativeDesktopCommandId::NewDocument},
+    DocumentInputCommand{creative::CreativeInputActionId::Load,
+                         CreativeDesktopCommandId::OpenDocument},
+};
+
+void dispatchDocumentInputCommand(
+    creative::CreativeInputActionId action,
+    creative::CreativeAppState& documentRootAppState,
+    CreativeEditorState& editor,
+    const std::filesystem::path& saveRoot,
+    const std::string& saveId) {
+  for (const DocumentInputCommand& row : kDocumentInputCommands) {
+    if (row.action != action) {
+      continue;
+    }
+    CreativeDesktopCommandFrame frame;
+    frame.push(row.command);
+    std::string activeSaveId = saveId;
+    const CreativeDesktopCommandResult result =
+        dispatchCreativeDesktopCommands(
+            frame, {documentRootAppState, editor, saveRoot, &activeSaveId});
+    if (!result.message.empty()) {
+      editor.desktopUi.statusMessage = result.message;
+    }
+    return;
+  }
+}
+
 [[nodiscard]] bool isControllerTransformShortcut(
     const CreativeEditorState& editor,
     const creative::CreativeInputActionEvent& event) noexcept {
@@ -89,7 +131,8 @@ void applyCreativeEditorCommandInput(
     creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId) {
+    const std::string& saveId,
+    creative::CreativeAppState* documentRootAppState) {
   if (!routedInput.actionEvents().empty()) {
     finalizeCreativeEditorContinuousGestures(
         appState, editor, "creative_continuous_gesture_command");
@@ -306,14 +349,14 @@ void applyCreativeEditorCommandInput(
         }
         break;
       case creative::CreativeInputActionId::Undo:
-        (void)undoLastEdit(appState, "keyboard_undo",
-                           editor.assetEdit.active ? nullptr
-                                                   : &editor.worldLayout);
-        break;
       case creative::CreativeInputActionId::Redo:
-        (void)redoLastEdit(appState, "keyboard_redo",
-                           editor.assetEdit.active ? nullptr
-                                                   : &editor.worldLayout);
+      case creative::CreativeInputActionId::Save:
+      case creative::CreativeInputActionId::NewDocument:
+      case creative::CreativeInputActionId::Load:
+        dispatchDocumentInputCommand(
+            event.action,
+            documentRootAppState != nullptr ? *documentRootAppState : appState,
+            editor, saveRoot, saveId);
         break;
       case creative::CreativeInputActionId::CopySelection:
         if (terrainRegionHeld()) {
@@ -381,46 +424,6 @@ void applyCreativeEditorCommandInput(
         (void)transformSelectedObjectsWithUndo(
             appState, appState.history, request,
             factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up");
-        break;
-      }
-      case creative::CreativeInputActionId::Save: {
-        const iggy3d::CreativeWorldSaveResult saveResult =
-            saveStandaloneScene(appState.facade, saveRoot, saveId,
-                                &editor.worldLayout.source,
-                                editor.worldLayout.generatedRevision ==
-                                    editor.worldLayout.revision);
-        if (saveResult.accepted && saveResult.saved) {
-          markCreativeEditorWorldLayoutSaved(editor.worldLayout);
-          markCreativeEditorDocumentSaved(
-              editor.persistence, appState.facade.document());
-        }
-        break;
-      }
-      case creative::CreativeInputActionId::NewDocument: {
-        const creative::CreativeFacadeDocumentInstallReceipt replaced =
-            clearToBlankScene(appState);
-        if (replaced.accepted) {
-          clearEditHistory(appState.history, "new_clear");
-          resetCreativeEditorForDocumentReplacement(
-              editor, appState.facade.document().id());
-          clearCreativeEditorDocumentSavePoint(
-              editor.persistence, appState.facade.document().id());
-        }
-        break;
-      }
-      case creative::CreativeInputActionId::Load: {
-        creative::CreativeWorldLayout loadedLayout;
-        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId,
-                                                &loadedLayout);
-        if (loaded) {
-          clearEditHistory(appState.history, "load_success");
-          resetCreativeEditorForDocumentReplacement(
-              editor, appState.facade.document().id());
-          installCreativeEditorWorldLayout(editor.worldLayout,
-                                           std::move(loadedLayout));
-          markCreativeEditorDocumentSaved(
-              editor.persistence, appState.facade.document());
-        }
         break;
       }
     }

@@ -233,6 +233,203 @@ bool heldActionsDoNotPressWhenContextReturns() {
                 "held action resumes down without fabricating a press");
 }
 
+bool controllerCommandLayerIsExclusiveAndEdgeTriggered() {
+  const std::span<const cr::CreativeControllerCommandChord> chords =
+      cr::defaultCreativeControllerCommandChords();
+  const bool tableIsExact =
+      chords.size() == 3U &&
+      chords[0].trigger == cr::CreativeInputKey::GamepadDpadLeft &&
+      chords[0].action == cr::CreativeInputActionId::Undo &&
+      chords[1].trigger == cr::CreativeInputKey::GamepadDpadRight &&
+      chords[1].action == cr::CreativeInputActionId::Redo &&
+      chords[2].trigger == cr::CreativeInputKey::GamepadDpadUp &&
+      chords[2].action == cr::CreativeInputActionId::Save;
+
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputRouterState router;
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, true);
+  const cr::CreativeInputRouteResult layerEntered =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadLeft, true);
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadRightTrigger, true);
+  const cr::CreativeInputRouteResult undo =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  const cr::CreativeInputRouteResult undoHeld =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadLeft, false);
+  const cr::CreativeInputRouteResult undoReleased =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, false);
+  const cr::CreativeInputRouteResult layerReleased =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  return expect(tableIsExact,
+                "PS5 command layer has the approved Undo Redo Save map") &&
+         expect(layerEntered.controllerCommandLayerActive &&
+                    layerEntered.actionCount == 0U &&
+                    cr::creativeInputKeyConsumed(
+                        layerEntered,
+                        cr::kCreativeControllerCommandModifier),
+                "Options enters the exclusive command layer without opening "
+                "Controls") &&
+         expect(undo.actionCount == 1U &&
+                    undo.actions[0].action ==
+                        cr::CreativeInputActionId::Undo &&
+                    undo.actions[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadLeft &&
+                    cr::creativeInputActionDown(
+                        undo, cr::CreativeInputActionId::Undo) &&
+                    cr::creativeInputActionPressed(
+                        undo, cr::CreativeInputActionId::Undo) &&
+                    cr::creativeInputKeyConsumed(
+                        undo, cr::CreativeInputKey::GamepadDpadLeft) &&
+                    cr::creativeInputKeyConsumed(
+                        undo, cr::CreativeInputKey::GamepadRightTrigger) &&
+                    !cr::creativeInputActionDown(
+                        undo, cr::CreativeInputActionId::FlyUp),
+                "Options plus D-pad Left emits Undo without trigger flight") &&
+         expect(undoHeld.actionCount == 0U &&
+                    cr::creativeInputActionDown(
+                        undoHeld, cr::CreativeInputActionId::Undo) &&
+                    !cr::creativeInputActionPressed(
+                        undoHeld, cr::CreativeInputActionId::Undo),
+                "holding a document chord never repeats it") &&
+         expect(cr::creativeInputActionReleased(
+                    undoReleased, cr::CreativeInputActionId::Undo),
+                "document chord exposes its release edge") &&
+         expect(layerReleased.actionCount == 0U &&
+                    !cr::creativeInputRouteContains(
+                        layerReleased,
+                        cr::CreativeInputActionId::ToggleControls),
+                "a used command gesture does not also open Controls");
+}
+
+bool controllerCommandLayerPreservesOptionsTapAndCancelsSafely() {
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::EditorViewport;
+
+  cr::CreativeInputRouterState tapRouter;
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, true);
+  const cr::CreativeInputRouteResult tapPressed =
+      cr::routeCreativeInput(tapRouter, frame, profile.bindingSpan());
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, false);
+  const cr::CreativeInputRouteResult tapReleased =
+      cr::routeCreativeInput(tapRouter, frame, profile.bindingSpan());
+
+  cr::CreativeInputRouterState saveRouter;
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, true);
+  static_cast<void>(
+      cr::routeCreativeInput(saveRouter, frame, profile.bindingSpan()));
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadUp, true);
+  const cr::CreativeInputRouteResult save =
+      cr::routeCreativeInput(saveRouter, frame, profile.bindingSpan());
+
+  cr::CreativeInputRouterState redoRouter;
+  cr::CreativeInputFrame redoFrame;
+  redoFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      redoFrame, cr::kCreativeControllerCommandModifier, true);
+  static_cast<void>(
+      cr::routeCreativeInput(redoRouter, redoFrame, profile.bindingSpan()));
+  cr::setCreativeInputKey(
+      redoFrame, cr::CreativeInputKey::GamepadDpadRight, true);
+  const cr::CreativeInputRouteResult redo =
+      cr::routeCreativeInput(redoRouter, redoFrame, profile.bindingSpan());
+
+  cr::CreativeInputRouterState cancelledRouter;
+  cr::CreativeInputFrame cancelledFrame;
+  cancelledFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      cancelledFrame, cr::kCreativeControllerCommandModifier, true);
+  static_cast<void>(cr::routeCreativeInput(
+      cancelledRouter, cancelledFrame, profile.bindingSpan()));
+  cancelledFrame.context = cr::CreativeInputContext::DesktopUi;
+  static_cast<void>(cr::routeCreativeInput(
+      cancelledRouter, cancelledFrame, profile.bindingSpan()));
+  cancelledFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      cancelledFrame, cr::kCreativeControllerCommandModifier, false);
+  const cr::CreativeInputRouteResult cancelled =
+      cr::routeCreativeInput(
+          cancelledRouter, cancelledFrame, profile.bindingSpan());
+
+  return expect(tapPressed.actionCount == 0U &&
+                    tapReleased.actionCount == 1U &&
+                    tapReleased.actions[0].action ==
+                        cr::CreativeInputActionId::ToggleControls,
+                "an unused Options tap opens Controls exactly once on "
+                "release") &&
+         expect(save.actionCount == 1U &&
+                    save.actions[0].action ==
+                        cr::CreativeInputActionId::Save &&
+                    save.actions[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadUp,
+                "Options plus D-pad Up emits semantic Save") &&
+         expect(redo.actionCount == 1U &&
+                    redo.actions[0].action ==
+                        cr::CreativeInputActionId::Redo &&
+                    redo.actions[0].trigger ==
+                        cr::CreativeInputKey::GamepadDpadRight,
+                "Options plus D-pad Right emits semantic Redo") &&
+         expect(cancelled.actionCount == 0U,
+                "context loss cancels a pending Options tap");
+}
+
+bool controllerCommandLayerRequiresAFreshTriggerPress() {
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputRouterState router;
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadLeft, true);
+  static_cast<void>(
+      cr::routeCreativeInput(router, frame, profile.bindingSpan()));
+
+  cr::setCreativeInputKey(
+      frame, cr::kCreativeControllerCommandModifier, true);
+  const cr::CreativeInputRouteResult preHeld =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadLeft, false);
+  static_cast<void>(
+      cr::routeCreativeInput(router, frame, profile.bindingSpan()));
+  cr::setCreativeInputKey(
+      frame, cr::CreativeInputKey::GamepadDpadLeft, true);
+  const cr::CreativeInputRouteResult freshlyPressed =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  return expect(preHeld.actionCount == 0U &&
+                    !cr::creativeInputActionDown(
+                        preHeld, cr::CreativeInputActionId::Undo) &&
+                    !cr::creativeInputActionPressed(
+                        preHeld, cr::CreativeInputActionId::Undo),
+                "a D-pad direction held before Options cannot become a "
+                "document command") &&
+         expect(freshlyPressed.actionCount == 1U &&
+                    freshlyPressed.actions[0].action ==
+                        cr::CreativeInputActionId::Undo &&
+                    cr::creativeInputActionPressed(
+                        freshlyPressed, cr::CreativeInputActionId::Undo),
+                "a fresh trigger press after Options emits the command");
+}
+
 bool requiredPs5ActionsRemainReachable() {
   const cr::CreativeControlProfile profile =
       cr::makeDefaultCreativeControlProfile();
@@ -621,6 +818,9 @@ int main() {
   ok = defaultsAreBoundedConflictFreeAndMinecraftShaped() && ok;
   ok = continuousBindingsAreQueryableWithoutEdgeEvents() && ok;
   ok = heldActionsDoNotPressWhenContextReturns() && ok;
+  ok = controllerCommandLayerIsExclusiveAndEdgeTriggered() && ok;
+  ok = controllerCommandLayerPreservesOptionsTapAndCancelsSafely() && ok;
+  ok = controllerCommandLayerRequiresAFreshTriggerPress() && ok;
   ok = requiredPs5ActionsRemainReachable() && ok;
   ok = conflictPoliciesRejectReplaceAndSwapDeterministically() && ok;
   ok = barePressBindingsCannotShadowHeldActions() && ok;

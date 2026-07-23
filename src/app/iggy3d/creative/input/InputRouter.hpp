@@ -196,6 +196,18 @@ enum class CreativeInputKey : std::uint8_t {
   Count,
 };
 
+// Fixed system-command layer for gamepads. Holding the modifier temporarily
+// replaces ordinary gamepad actions with these semantic commands; the router
+// consumes the physical chord so tool, flight, and menu bindings cannot also
+// fire. These commands remain device-independent after routing.
+struct CreativeControllerCommandChord {
+  CreativeInputKey trigger = CreativeInputKey::Unbound;
+  CreativeInputActionId action = CreativeInputActionId::Undo;
+};
+
+inline constexpr CreativeInputKey kCreativeControllerCommandModifier =
+    CreativeInputKey::GamepadStart;
+
 using CreativeInputModifierMask = std::uint8_t;
 
 inline constexpr CreativeInputModifierMask kCreativeInputModifierNone = 0;
@@ -272,6 +284,9 @@ struct CreativeInputRouterState {
   // closes and returns focus to the viewport.
   std::array<bool, kCreativeInputBindingCapacity> bindingActive{};
   std::array<bool, kCreativeInputActionCount> actionDown{};
+  std::array<bool, kCreativeInputKeyCount> previousKeysDown{};
+  bool controllerCommandGestureEligible = false;
+  bool controllerCommandGestureUsed = false;
 };
 
 struct CreativeInputActionEvent {
@@ -287,6 +302,7 @@ struct CreativeInputRouteResult {
   std::array<bool, kCreativeInputActionCount> pressed{};
   std::array<bool, kCreativeInputActionCount> released{};
   std::array<bool, kCreativeInputKeyCount> consumedKeys{};
+  bool controllerCommandLayerActive = false;
   bool bindingCapacityExceeded = false;
 
   [[nodiscard]] std::span<const CreativeInputActionEvent>
@@ -346,6 +362,8 @@ struct CreativeInputBindingAuditResult {
 
 [[nodiscard]] std::span<const CreativeInputBinding>
 defaultCreativeInputBindings() noexcept;
+[[nodiscard]] std::span<const CreativeControllerCommandChord>
+defaultCreativeControllerCommandChords() noexcept;
 
 [[nodiscard]] bool parseCreativeInputActionId(
     std::string_view value,

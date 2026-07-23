@@ -16,7 +16,8 @@ resolveCreativeEditorActionHints(
     const CreativeEditorState& editor,
     iggy3d::creative::CreativeInputContext inputContext,
     iggy3d::creative::CreativeControlDevice activeDevice,
-    bool captureMode) noexcept;
+    bool captureMode,
+    bool controllerCommandLayerActive = false) noexcept;
 
 [[nodiscard]] iggy3d::creative::CreativeUiWidgetFrame
 buildCreativeEditorActionHintWidgetFrame(
@@ -29,6 +30,7 @@ void appendCreativeEditorActionHintsOverlay(
     iggy3d::creative::CreativeInputContext inputContext,
     iggy3d::creative::CreativeControlDevice activeDevice,
     bool captureMode,
+    bool controllerCommandLayerActive,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     std::vector<iggy3d::RenderUiRect>& uiRects,

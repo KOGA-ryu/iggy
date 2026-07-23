@@ -93,7 +93,8 @@ void applyCreativeEditorCommandInput(
     iggy3d::creative::CreativeAppState& appState,
     CreativeEditorState& editor,
     const std::filesystem::path& saveRoot,
-    const std::string& saveId);
+    const std::string& saveId,
+    iggy3d::creative::CreativeAppState* documentRootAppState = nullptr);
 
 // Resets editor transient state (volume/terrain/brush/fill caches) after the
 // live document is swapped (New / Open / tab switch). Shared by the keyboard

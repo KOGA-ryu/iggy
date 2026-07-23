@@ -11,6 +11,15 @@ constexpr CreativeInputModifierMask kAllModifiers =
     kCreativeInputModifierShift | kCreativeInputModifierControl |
     kCreativeInputModifierAlt | kCreativeInputModifierCommand;
 
+constexpr std::array kControllerCommandChords{
+    CreativeControllerCommandChord{CreativeInputKey::GamepadDpadLeft,
+                                   CreativeInputActionId::Undo},
+    CreativeControllerCommandChord{CreativeInputKey::GamepadDpadRight,
+                                   CreativeInputActionId::Redo},
+    CreativeControllerCommandChord{CreativeInputKey::GamepadDpadUp,
+                                   CreativeInputActionId::Save},
+};
+
 [[nodiscard]] std::size_t keyIndex(CreativeInputKey key) noexcept {
   return static_cast<std::size_t>(key);
 }
@@ -73,6 +82,93 @@ void consumeModifierKeys(CreativeInputRouteResult& result,
                      [action](const CreativeInputActionEvent& event) {
                        return event.action == action;
                      });
+}
+
+[[nodiscard]] bool keyWasDown(const CreativeInputRouterState& state,
+                              CreativeInputKey key) noexcept {
+  return key != CreativeInputKey::Unbound && key != CreativeInputKey::Count &&
+         state.previousKeysDown[keyIndex(key)];
+}
+
+void appendCommandAction(CreativeInputRouteResult& result,
+                         CreativeInputActionId action,
+                         CreativeInputKey trigger) noexcept {
+  if (actionAlreadyEmitted(result, action)) {
+    return;
+  }
+  if (result.actionCount >= result.actions.size()) {
+    result.bindingCapacityExceeded = true;
+    return;
+  }
+  result.actions[result.actionCount++] = {action, trigger};
+}
+
+void routeControllerCommandLayer(
+    CreativeInputRouterState& state,
+    const CreativeInputFrame& frame,
+    CreativeInputRouteResult& result,
+    std::array<bool, kCreativeInputActionCount>& actionActivationEdge) {
+  const bool modifierDown =
+      creativeInputKeyDown(frame, kCreativeControllerCommandModifier);
+  const bool modifierWasDown =
+      keyWasDown(state, kCreativeControllerCommandModifier);
+
+  if (modifierDown && !modifierWasDown) {
+    state.controllerCommandGestureEligible =
+        frame.context == CreativeInputContext::EditorViewport;
+    state.controllerCommandGestureUsed = false;
+  }
+  if (modifierDown && state.controllerCommandGestureEligible &&
+      frame.context != CreativeInputContext::EditorViewport) {
+    state.controllerCommandGestureEligible = false;
+    state.controllerCommandGestureUsed = true;
+  }
+
+  result.controllerCommandLayerActive =
+      modifierDown && state.controllerCommandGestureEligible &&
+      frame.context == CreativeInputContext::EditorViewport;
+  if (result.controllerCommandLayerActive) {
+    // This layer is exclusive: a document shortcut cannot also move, place,
+    // rotate, or navigate a menu.
+    for (std::size_t index = 0U; index < kCreativeInputKeyCount; ++index) {
+      const CreativeInputKey key = static_cast<CreativeInputKey>(index);
+      if (!creativeInputKeyIsGamepad(key)) {
+        continue;
+      }
+      consumeKey(result, key);
+      if (key != kCreativeControllerCommandModifier &&
+          creativeInputKeyDown(frame, key)) {
+        state.controllerCommandGestureUsed = true;
+      }
+    }
+
+    for (const CreativeControllerCommandChord& chord :
+         kControllerCommandChords) {
+      const bool triggerDown = creativeInputKeyDown(frame, chord.trigger);
+      const bool triggerWasDown = keyWasDown(state, chord.trigger);
+      const std::size_t action = actionIndex(chord.action);
+      const bool activated = triggerDown && !triggerWasDown;
+      if (action < result.down.size()) {
+        result.down[action] =
+            triggerDown && (state.actionDown[action] || activated);
+        actionActivationEdge[action] = actionActivationEdge[action] || activated;
+      }
+      if (activated) {
+        appendCommandAction(result, chord.action, chord.trigger);
+      }
+    }
+  }
+
+  if (!modifierDown && modifierWasDown) {
+    if (state.controllerCommandGestureEligible &&
+        !state.controllerCommandGestureUsed &&
+        frame.context == CreativeInputContext::EditorViewport) {
+      appendCommandAction(result, CreativeInputActionId::ToggleControls,
+                          kCreativeControllerCommandModifier);
+    }
+    state.controllerCommandGestureEligible = false;
+    state.controllerCommandGestureUsed = false;
+  }
 }
 
 void appendNamedModifier(std::string& label,
@@ -375,6 +471,11 @@ std::string creativeInputChordLabel(const CreativeInputBinding& binding,
   return label;
 }
 
+std::span<const CreativeControllerCommandChord>
+defaultCreativeControllerCommandChords() noexcept {
+  return kControllerCommandChords;
+}
+
 bool parseCreativeInputActionId(std::string_view value,
                                 CreativeInputActionId& out) noexcept {
   // Keep pre-inspection control profiles readable after the semantic rename.
@@ -556,6 +657,7 @@ CreativeInputRouteResult routeCreativeInput(
       std::min(bindings.size(), kCreativeInputBindingCapacity);
   std::array<std::size_t, kCreativeInputBindingCapacity> activeBindings{};
   std::array<bool, kCreativeInputActionCount> actionActivationEdge{};
+  routeControllerCommandLayer(state, frame, result, actionActivationEdge);
   std::size_t activeBindingCount = 0;
   for (std::size_t index = 0; index < bindingCount; ++index) {
     if (bindings[index].context == frame.context &&
@@ -608,6 +710,7 @@ CreativeInputRouteResult routeCreativeInput(
        index < state.bindingActive.size(); ++index) {
     state.bindingActive[index] = false;
   }
+  state.previousKeysDown = frame.keysDown;
   return result;
 }
 

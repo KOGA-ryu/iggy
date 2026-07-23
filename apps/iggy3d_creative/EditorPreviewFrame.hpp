@@ -46,6 +46,7 @@ struct CreativeEditorOverlayFrameRequest {
   const iggy3d::creative::CreativeTerrainSurfacePlan* terrainSurface = nullptr;
   std::uint64_t terrainSurfaceKey = 0U;
   const CreativePlayerSpawnPreviewGeometry* playerSpawnPreview = nullptr;
+  bool controllerCommandLayerActive = false;
 };
 
 struct CreativeEditorOverlayFrame {

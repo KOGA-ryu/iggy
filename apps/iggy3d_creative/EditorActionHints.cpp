@@ -635,18 +635,62 @@ void appendContextHints(HintSpecBuffer& buffer,
 #endif
 }
 
+[[nodiscard]] bool appendFixedText(
+    cr::CreativeActionHintFixedText& output,
+    std::string_view text) noexcept {
+  const std::size_t available = output.bytes.size() - output.length;
+  const std::size_t copied = std::min(available, text.size());
+  for (std::size_t index = 0U; index < copied; ++index) {
+    output.bytes[output.length + index] = text[index];
+  }
+  output.length = static_cast<std::uint8_t>(output.length + copied);
+  return copied == text.size();
+}
+
+[[nodiscard]] cr::CreativeActionHintFrame
+controllerCommandLayerHints() noexcept {
+  cr::CreativeActionHintFrame frame;
+  for (const cr::CreativeControllerCommandChord& chord :
+       cr::defaultCreativeControllerCommandChords()) {
+    if (frame.count >= frame.hints.size()) {
+      frame.capacityExceeded = true;
+      frame.count = 0U;
+      return frame;
+    }
+    cr::CreativeActionHint& hint = frame.hints[frame.count++];
+    hint.actions[0] = chord.action;
+    hint.triggers[0] = chord.trigger;
+    hint.actionCount = 1U;
+    const bool chordComplete =
+        appendFixedText(hint.chord, "Options+") &&
+        appendFixedText(
+            hint.chord, cr::creativeControlKeyDisplayLabelView(chord.trigger));
+    const bool labelComplete =
+        appendFixedText(hint.label, cr::toString(chord.action));
+    frame.textTruncated =
+        frame.textTruncated || !chordComplete || !labelComplete;
+  }
+  return frame;
+}
+
 }  // namespace
 
 cr::CreativeActionHintFrame resolveCreativeEditorActionHints(
     const CreativeEditorState& editor,
     cr::CreativeInputContext inputContext,
     cr::CreativeControlDevice activeDevice,
-    bool captureMode) noexcept {
+    bool captureMode,
+    bool controllerCommandLayerActive) noexcept {
   if (captureMode || inputContext == cr::CreativeInputContext::Capture ||
       inputContext == cr::CreativeInputContext::TextEntry ||
       inputContext == cr::CreativeInputContext::Modal ||
       inputContext == cr::CreativeInputContext::DesktopUi) {
     return {};
+  }
+  if (controllerCommandLayerActive &&
+      inputContext == cr::CreativeInputContext::EditorViewport &&
+      activeDevice == cr::CreativeControlDevice::Gamepad) {
+    return controllerCommandLayerHints();
   }
   HintSpecBuffer specs;
   if (inputContext == cr::CreativeInputContext::EditorViewport) {
@@ -744,6 +788,7 @@ void appendCreativeEditorActionHintsOverlay(
     cr::CreativeInputContext inputContext,
     cr::CreativeControlDevice activeDevice,
     bool captureMode,
+    bool controllerCommandLayerActive,
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     std::vector<iggy3d::RenderUiRect>& uiRects,
@@ -755,7 +800,8 @@ void appendCreativeEditorActionHintsOverlay(
     return;
   }
   const cr::CreativeActionHintFrame hints = resolveCreativeEditorActionHints(
-      editor, inputContext, activeDevice, captureMode);
+      editor, inputContext, activeDevice, captureMode,
+      controllerCommandLayerActive);
   const cr::CreativeUiWidgetFrame widgetFrame =
       buildCreativeEditorActionHintWidgetFrame(hints, drawableWidth,
                                                drawableHeight);

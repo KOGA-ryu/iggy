@@ -691,11 +691,12 @@ int main(int argc, char** argv) {
     }
     if (!catalogFrame.deferredCommandInput.actionEvents().empty()) {
       applyCreativeEditorCommandInput(catalogFrame.deferredCommandInput,
-                                      activeAppState, editor, saveRoot, saveId);
+                                      activeAppState, editor, saveRoot, saveId,
+                                      &appState);
     }
     if (!modalBlocksWorldActions && frameInput.windowFocused) {
       applyCreativeEditorCommandInput(
-          routedInput, activeAppState, editor, saveRoot, saveId);
+          routedInput, activeAppState, editor, saveRoot, saveId, &appState);
     }
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
@@ -960,7 +961,8 @@ int main(int argc, char** argv) {
          &renderDocument,
          terrainContourSurface,
          terrainContourSurfaceKey,
-         &playerSpawnPreviewCache.geometry},
+         &playerSpawnPreviewCache.geometry,
+         frameInput.routedInput.controllerCommandLayerActive},
         overlayFrame);
 
     iggy3d_creative_app::endCreativeEditorDesktopFrame(editor.desktopUi);

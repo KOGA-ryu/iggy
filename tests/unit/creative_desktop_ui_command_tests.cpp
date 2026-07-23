@@ -773,7 +773,7 @@ bool failedSaveAndOpenPreserveLiveState() {
                 "save point");
 }
 
-bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
+bool semanticPersistenceCommandsShareDocumentDispatcher() {
   const std::filesystem::path saveRoot =
       std::filesystem::temp_directory_path() /
       "iggy3d_keyboard_persistence_tests";
@@ -802,6 +802,21 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
   };
 
   app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Undo), appState, editor, saveRoot,
+      saveId);
+  const bool semanticUndo =
+      appState.facade.document().objectCount() == 1U &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      editor.desktopUi.statusMessage == "undo";
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Redo), appState, editor, saveRoot,
+      saveId);
+  const bool semanticRedo =
+      appState.facade.document().objectCount() == 2U &&
+      cr::creativeUndoDepth(appState.history) == 1U &&
+      editor.desktopUi.statusMessage == "redo";
+
+  app::applyCreativeEditorCommandInput(
       route(cr::CreativeInputActionId::Save), appState, editor, saveRoot,
       saveId);
   const bool saved =
@@ -810,7 +825,8 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
       cr::creativeUndoDepth(appState.history) == 1U &&
       editor.persistence.hasSavePoint &&
       !app::creativeEditorDocumentDirty(editor.persistence,
-                                        appState.facade.document());
+                                        appState.facade.document()) &&
+      editor.desktopUi.statusMessage == "saved " + saveId;
   const bool undoneAwayFromCheckpoint =
       app::undoLastEdit(appState, "keyboard_saved_undo") &&
       appState.facade.document().objectCount() == 1U &&
@@ -834,7 +850,8 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
       cr::creativeUndoDepth(appState.history) == 0U &&
       !editor.persistence.hasSavePoint &&
       app::creativeEditorDocumentDirty(editor.persistence,
-                                       appState.facade.document());
+                                       appState.facade.document()) &&
+      editor.desktopUi.statusMessage == "new document";
 
   app::applyCreativeEditorCommandInput(
       route(cr::CreativeInputActionId::Load), appState, editor, saveRoot,
@@ -845,16 +862,82 @@ bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
       cr::creativeUndoDepth(appState.history) == 0U &&
       editor.persistence.hasSavePoint &&
       !app::creativeEditorDocumentDirty(editor.persistence,
-                                        appState.facade.document());
+                                        appState.facade.document()) &&
+      editor.desktopUi.statusMessage == "opened " + saveId;
 
   std::filesystem::remove_all(saveRoot, error);
-  return expect(!error && saved && undoneAwayFromCheckpoint &&
+  return expect(semanticUndo && semanticRedo,
+                "semantic Undo and Redo use the desktop document owner") &&
+         expect(!error && saved && undoneAwayFromCheckpoint &&
                     redoneBackToCheckpoint,
-                "keyboard Save preserves history and tracks saved content") &&
+                "semantic Save preserves history and tracks saved content") &&
          expect(replaced,
-                "keyboard New clears history and creates an unsaved document") &&
+                "semantic New clears history and creates an unsaved document") &&
          expect(loaded,
-                "keyboard Load restores content and the shared save point");
+                "semantic Open restores content and the shared save point");
+}
+
+bool semanticAssetUndoKeepsRootWorldLayoutHistorySeparate() {
+  cr::CreativeAppState rootAppState;
+  cr::CreativeDocument rootDocument =
+      cr::CreativeDocument::create("Command Root");
+  static_cast<void>(rootDocument.assignId(416U));
+  static_cast<void>(
+      rootAppState.facade.installDocument(std::move(rootDocument)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "command_asset_history_root");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {4, 4}}, 0.0, 3U, 0.25, 1U});
+  const std::size_t rootSourceUndoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+
+  cr::CreativeDocument assetDocument =
+      cr::CreativeDocument::create("Command Asset");
+  static_cast<void>(assetDocument.assignId(417U));
+  static_cast<void>(
+      editor.assetEdit.workspace.facade.installDocument(
+          std::move(assetDocument)));
+  selectPrimary(editor.assetEdit.workspace.facade,
+                createCrate(editor.assetEdit.workspace.facade, 0.0));
+  static_cast<void>(app::duplicateSelectedObjectsWithUndo(
+      editor.assetEdit.workspace, editor.assetEdit.workspace.history,
+      cr::CreativeDuplicateCommandRequest{}, "command_asset_seed"));
+  editor.assetEdit.active = true;
+
+  const auto route = [](cr::CreativeInputActionId action) {
+    cr::CreativeInputRouteResult routed;
+    routed.context = cr::CreativeInputContext::EditorViewport;
+    routed.actions[0].action = action;
+    routed.actionCount = 1U;
+    return routed;
+  };
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Undo), editor.assetEdit.workspace,
+      editor, {}, "unused", &rootAppState);
+  const bool assetUndone =
+      editor.assetEdit.workspace.facade.document().objectCount() == 1U &&
+      cr::creativeUndoDepth(editor.assetEdit.workspace.history) == 0U &&
+      editor.worldLayout.source.buildings.size() == 1U &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          rootSourceUndoBefore;
+
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Redo), editor.assetEdit.workspace,
+      editor, {}, "unused", &rootAppState);
+  const bool assetRedone =
+      editor.assetEdit.workspace.facade.document().objectCount() == 2U &&
+      cr::creativeUndoDepth(editor.assetEdit.workspace.history) == 1U &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          rootSourceUndoBefore;
+
+  return expect(shell.accepted && shell.changed,
+                "asset command history fixture has root source history") &&
+         expect(assetUndone,
+                "semantic asset Undo does not consume root source history") &&
+         expect(assetRedone,
+                "semantic asset Redo stays in the asset workspace");
 }
 
 bool playIsUnsupportedAndFrameIsBounded() {
@@ -7765,7 +7848,8 @@ int main() {
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndPreservesHistory() && ok;
   ok = failedSaveAndOpenPreserveLiveState() && ok;
-  ok = keyboardPersistenceCommandsShareDocumentCheckpoint() && ok;
+  ok = semanticPersistenceCommandsShareDocumentDispatcher() && ok;
+  ok = semanticAssetUndoKeepsRootWorldLayoutHistorySeparate() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
