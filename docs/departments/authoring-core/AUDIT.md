@@ -11,8 +11,8 @@ production behavior was changed.
 | Desktop object edit | ImGui panel -> `CreativeDesktopCommandId` -> `EditorDesktopCommands.cpp` -> domain dispatcher -> `EditorEdits.cpp` `*WithUndo` adapter -> explicit Facade/domain mutation contract -> history -> document revision -> scene cache | Connected through explicit single, batch, hierarchy-transform, and reattachment contracts; no mutable Facade document escape remains |
 | Keyboard or controller edit | `InputRouter` -> `EditorCommandInput.cpp` or held-item dispatcher -> the same `*WithUndo`/tool kernels -> history -> document revision -> scene cache | Reuses many kernels, but bypasses the desktop semantic command dispatcher |
 | World Layout edit | drafting UI -> World Layout command dispatcher -> source-store edit -> compile/reconcile -> `applyCreativeEditorWorldLayoutPlanWithHistory` -> Facade document install -> history sidecar -> scene cache | Valid dedicated source-authoring route; it must remain distinct because undo also restores the 2D source |
-| Terrain generation edit | terrain UI/command -> `EditorTerrainGeneration.cpp` -> Facade terrain-operation mutation -> manually composed history transaction -> scene cache | Connected, but the advertised `applyCreativeTerrainRecipeWithHistory` route is not used by the product |
-| Generic recipe apply | recipe plan -> `applyCreativeRecipeWithHistory` -> Facade atomic create -> history | Test-only in the product build; no `apps/iggy3d_creative` caller |
+| Terrain generation edit | terrain UI/command -> semantic terrain recipe/tool kernel -> Facade terrain-operation mutation -> caller-owned history transaction -> scene cache | Connected; the durable terrain owner composes history around shared semantic output |
+| Generic recipe apply | recipe plan -> `applyCreativeRecipe`, `applyCreativeTerrainRecipe`, or `applyCreativeWorldLayoutPlan` -> atomic Facade publication | Shared kernels own semantics and atomic publication; durable callers own history and sidecars |
 | Save/open/new | desktop or keyboard command -> `EditorPersistence.cpp` -> `WorldService` -> SaveBridge -> Facade install on open/new | Required persistence adapter; detailed save-contract review belongs to Persistence and Validation |
 | 3D projection | document id/revision -> `CreativeEditorSceneCache` in `EditorScenePreview.cpp` -> RoomBake/render plans -> frame submission | Canonical downstream invalidation route |
 
@@ -32,7 +32,7 @@ replacement.
 | AUT-A1-006 | Editor history transaction composition | Required Adapter | Fifty-three ordinary app transaction call sites use `beginEditTransaction`; 8 direct starts attach required authoring-operation records and 2 own sidecar/multi-phase protocols. AUT-003 removed the plain measurement duplicate and routed volume completion through `completeEditTransaction` | Keep | P1 |
 | AUT-A1-007 | Desktop semantic command dispatcher | Required Adapter | ImGui surfaces emit typed command ids into one headless dispatcher and then reuse domain kernels | Keep | P0 |
 | AUT-A1-008 | Keyboard/controller command route | Contract Risk | `EditorCommandInput.cpp` and held-item paths invoke domain kernels directly rather than emitting the same semantic command ids as desktop UI; repair in Interaction and Controls after the mutation boundary is stable | Repair | P1 |
-| AUT-A1-009 | Generic recipe apply APIs | Test-only Production | `applyCreativeRecipeWithHistory`, `applyCreativeTerrainRecipeWithHistory`, and `applyCreativeWorldLayoutPlanWithHistory` have no product-app callers; decide whether to integrate or remove the unused apply layers while retaining materialization and provenance | Investigate | P1 |
+| AUT-A1-009 | Generic recipe history wrappers | Test-only Production | AUT-001 removed `applyCreativeRecipeWithHistory`, `applyCreativeTerrainRecipeWithHistory`, and `applyCreativeWorldLayoutPlanWithHistory`; shared semantic kernels and atomic apply receipts remain, while test workflows now compose history explicitly at the durable caller | Retired | P1 |
 | AUT-A1-010 | Facade `State`, frame packet, and packet handler compatibility path | Test-only Production | AUT-007 removed `State.hpp`, the packet types, Facade stubs, mirror writes, and mirror assertions; tests now inspect the canonical typed states | Retired | P1 |
 | AUT-A1-011 | `CreativeActiveIdentity` | Unreachable | AUT-007 removed the unread type and `CreativeAppState::identity` member | Retired | P1 |
 | AUT-A1-012 | Facade `Stats` | Test-only Production | Counters have no product readers and are asserted only by tests; install, batch-create, and mutable escape routes do not form a complete product-command metric; decide whether deliberate diagnostics replace them | Investigate | P2 |
@@ -63,11 +63,11 @@ replacement.
    [AUT-002B](AUT-002B-LUNA.md): preserve a monotonic live revision lineage
    across replacement, undo, redo, reset, and reinstall without adding a
    second publication stamp.
-4. **Resolve the recipe claim.** Either route real product actions through the
-   three generic `*WithHistory` APIs, or remove those unused application
-   wrappers and state honestly that shared recipes own planning,
-   materialization, fingerprints, and provenance while each durable source
-   owns its own apply transaction.
+4. **Resolve the recipe claim (complete).** AUT-001 removed the three unused
+   generic `*WithHistory` wrappers. Shared recipes own planning, preview,
+   materialization, fingerprints, provenance, and atomic Facade publication.
+   Each durable source owns the history transaction that includes its source
+   model, sidecars, and user-visible operation metadata.
 5. **Audit transaction exceptions (complete).** AUT-003 keeps the existing
    shared completion helper, routes ordinary measurement and volume completion
    through it, and leaves 10 justified direct starts: 8 attach authoring
@@ -198,3 +198,21 @@ AUT-003 completed on 2026-07-23.
 - Five older assertions discovered by the gate now pin the AUT-002B law:
   undo/redo restore exact content while advancing, rather than rewinding, the
   live document revision.
+
+AUT-001 completed on 2026-07-23.
+
+- Commit `96df5d86` removes the three generic app-state history wrappers and
+  the unused history fields from generic and terrain recipe apply receipts.
+- `CreativeRecipe.hpp` and `TerrainRecipe.hpp` no longer depend on
+  `CreativeAppState`; their public boundary is semantic planning plus atomic
+  Facade publication.
+- World Layout keeps its history receipt because the app-specific
+  `applyCreativeEditorWorldLayoutPlanWithHistory` owner also restores the 2D
+  source sidecar. Core World Layout tests compose the same transaction
+  explicitly rather than advertising a generic product entry.
+- Two stale workflow premises found by the baseline were corrected: conflict
+  non-mutation is observed before later mutations, and reopened composition
+  history is exercised through the actual group-pivot semantic command.
+- The AUT-001 recipe/workflow gate passed 4/4. The full Authoring Core
+  automated gate passed 10/10, and repository search found no remaining
+  generic `applyCreative*WithHistory` recipe wrapper.
