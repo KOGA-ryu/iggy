@@ -873,6 +873,19 @@ CreativeWorldLayoutOpeningValidationResult validateCreativeWorldLayoutOpening(
   return result;
 }
 
+bool validCreativeWorldLayoutOpenings(
+    const CreativeWorldLayout& layout) noexcept {
+  for (std::size_t openingIndex = 0U;
+       openingIndex < layout.openings.size(); ++openingIndex) {
+    if (!validateCreativeWorldLayoutOpening(
+             {&layout, &layout.openings[openingIndex], openingIndex})
+             .accepted) {
+      return false;
+    }
+  }
+  return true;
+}
+
 CreativeWorldLayoutOpeningClearanceResult
 evaluateCreativeWorldLayoutOpeningClearance(
     const CreativeWorldLayoutOpeningClearanceRequest& request) noexcept {

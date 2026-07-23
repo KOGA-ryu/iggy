@@ -74,7 +74,7 @@ void appendCreativeDesktopGeneratedLevelSettings(
       editActivity, nameEdited, ImGui::IsItemDeactivatedAfterEdit());
   ImGui::SetNextItemWidth(112.0F);
   const bool floorTopEdited = ImGui::InputDouble(
-      "Floor top##generated_level", &settings.floorTopLayer, 0.5, 1.0,
+      "Floor top##generated_level", &settings.floorTopLayer, 1.0, 4.0,
       "%.2f");
   observeCreativeDesktopContinuousPropertyEdit(
       editActivity, floorTopEdited, ImGui::IsItemDeactivatedAfterEdit());

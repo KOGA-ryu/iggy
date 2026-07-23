@@ -190,10 +190,29 @@ RoomSettingsValidation validateRoomSettings(
     return {};
   }
 
-  cr::CreativeWorldLayout prepared = state.source;
-  cr::CreativeWorldLayoutRoom& candidateRoom = prepared.rooms[roomIndex];
   const cr::CreativeWorldLayoutRoom& existingRoom =
       state.source.rooms[roomIndex];
+  const cr::CreativeWorldLayoutLevel& existingLevel =
+      state.source.levels[existingRoom.levelIndex];
+  if (settings.floorTopLayer != existingLevel.floorTopLayer ||
+      settings.wallHeightCells != existingLevel.wallHeightCells ||
+      settings.floorThicknessLayers != existingLevel.floorThicknessLayers ||
+      settings.roofThicknessLayers != existingLevel.roofThicknessLayers ||
+      settings.roofStyle != existingLevel.roofStyle ||
+      settings.roofRidgeAxis != existingLevel.roofRidgeAxis ||
+      settings.roofSlopeDirection != existingLevel.roofSlopeDirection ||
+      settings.roofPitchDegrees != existingLevel.roofPitchDegrees ||
+      settings.roofOverhangCells != existingLevel.roofOverhangCells ||
+      settings.roofMaterial != existingLevel.roofMaterial) {
+    RoomSettingsValidation rejected;
+    rejected.reasonCode =
+        "creative_editor_world_layout_room_settings_level_owned";
+    rejected.message = "edit storey dimensions on the owning level";
+    return rejected;
+  }
+
+  cr::CreativeWorldLayout prepared = state.source;
+  cr::CreativeWorldLayoutRoom& candidateRoom = prepared.rooms[roomIndex];
   const bool explicitTopology = !state.source.roomBoundaries.empty();
   if (explicitTopology &&
       !(settings.footprint.minimum == existingRoom.footprint.minimum &&
@@ -215,18 +234,6 @@ RoomSettingsValidation validateRoomSettings(
     return rejected;
   }
   candidateRoom.wallThicknessCells = settings.wallThicknessCells;
-  cr::CreativeWorldLayoutLevel& candidateLevel =
-      prepared.levels[candidateRoom.levelIndex];
-  candidateLevel.floorTopLayer = settings.floorTopLayer;
-  candidateLevel.wallHeightCells = settings.wallHeightCells;
-  candidateLevel.floorThicknessLayers = settings.floorThicknessLayers;
-  candidateLevel.roofThicknessLayers = settings.roofThicknessLayers;
-  candidateLevel.roofStyle = settings.roofStyle;
-  candidateLevel.roofRidgeAxis = settings.roofRidgeAxis;
-  candidateLevel.roofSlopeDirection = settings.roofSlopeDirection;
-  candidateLevel.roofPitchDegrees = settings.roofPitchDegrees;
-  candidateLevel.roofOverhangCells = settings.roofOverhangCells;
-  candidateLevel.roofMaterial = settings.roofMaterial;
 
   cr::CreativeWorldLayout candidate;
   bool footprintChanged = false;
@@ -255,28 +262,11 @@ RoomSettingsValidation validateRoomSettings(
     candidate = std::move(topology.edited);
   }
 
-  const cr::CreativeWorldLayoutLevel& existingLevel =
-      state.source.levels[existingRoom.levelIndex];
   RoomSettingsValidation accepted;
   accepted.accepted = true;
   accepted.changed = footprintChanged ||
                      existingRoom.wallThicknessCells !=
-                         settings.wallThicknessCells ||
-                     existingLevel.floorTopLayer != settings.floorTopLayer ||
-                     existingLevel.wallHeightCells != settings.wallHeightCells ||
-                     existingLevel.floorThicknessLayers !=
-                         settings.floorThicknessLayers ||
-                     existingLevel.roofThicknessLayers !=
-                         settings.roofThicknessLayers ||
-                     existingLevel.roofStyle != settings.roofStyle ||
-                     existingLevel.roofRidgeAxis != settings.roofRidgeAxis ||
-                     existingLevel.roofSlopeDirection !=
-                         settings.roofSlopeDirection ||
-                     existingLevel.roofPitchDegrees !=
-                         settings.roofPitchDegrees ||
-                     existingLevel.roofOverhangCells !=
-                         settings.roofOverhangCells ||
-                     existingLevel.roofMaterial != settings.roofMaterial;
+                         settings.wallThicknessCells;
   accepted.reasonCode =
       "creative_editor_world_layout_room_settings_ready";
   accepted.message = "room shell settings ready";

@@ -21,17 +21,7 @@ bool sameRoomSettings(
     const CreativeEditorWorldLayoutRoomSettings& rhs) noexcept {
   return lhs.footprint.minimum == rhs.footprint.minimum &&
          lhs.footprint.maximum == rhs.footprint.maximum &&
-         lhs.floorTopLayer == rhs.floorTopLayer &&
-         lhs.wallHeightCells == rhs.wallHeightCells &&
-         lhs.wallThicknessCells == rhs.wallThicknessCells &&
-         lhs.floorThicknessLayers == rhs.floorThicknessLayers &&
-         lhs.roofThicknessLayers == rhs.roofThicknessLayers &&
-         lhs.roofStyle == rhs.roofStyle &&
-         lhs.roofRidgeAxis == rhs.roofRidgeAxis &&
-         lhs.roofSlopeDirection == rhs.roofSlopeDirection &&
-         lhs.roofPitchDegrees == rhs.roofPitchDegrees &&
-         lhs.roofOverhangCells == rhs.roofOverhangCells &&
-         lhs.roofMaterial == rhs.roofMaterial;
+         lhs.wallThicknessCells == rhs.wallThicknessCells;
 }
 
 }  // namespace
@@ -70,12 +60,6 @@ void appendCreativeDesktopGeneratedRoomSettings(
 
   const cr::CreativeWorldLayoutLevel& level =
       worldLayout.source.levels[room.levelIndex];
-  const std::size_t levelRoomCount = static_cast<std::size_t>(std::count_if(
-      worldLayout.source.rooms.begin(), worldLayout.source.rooms.end(),
-      [&room](const cr::CreativeWorldLayoutRoom& candidate) {
-        return candidate.buildingIndex == room.buildingIndex &&
-               candidate.levelIndex == room.levelIndex;
-      }));
   ImGui::TextDisabled("%s  |  %s", room.name.c_str(), level.name.c_str());
   if (provenance.roomEdge < cr::CreativeWorldLayoutRoomEdge::Count) {
     const std::string edgeLabel(cr::toString(provenance.roomEdge));
@@ -106,9 +90,6 @@ void appendCreativeDesktopGeneratedRoomSettings(
       static_cast<int>(std::clamp<std::int64_t>(
           depth64, std::numeric_limits<int>::min(),
           std::numeric_limits<int>::max()))};
-  int wallHeight = settings.wallHeightCells;
-  int floorLayers = settings.floorThicknessLayers;
-  int roofLayers = settings.roofThicknessLayers;
   const bool roomEditActive = worldLayout.roomManipulation.active ||
                               worldLayout.roomCornerManipulation.active ||
                               worldLayout.roomBoundaryManipulation.active;
@@ -139,34 +120,6 @@ void appendCreativeDesktopGeneratedRoomSettings(
     ImGui::TextDisabled("Shape and thickness use floor-plan boundary controls");
   }
 
-  ImGui::SeparatorText("Level-wide shell");
-  ImGui::TextDisabled("Affects %zu room%s on this level", levelRoomCount,
-                      levelRoomCount == 1U ? "" : "s");
-  ImGui::SetNextItemWidth(112.0F);
-  const bool floorTopEdited = ImGui::InputDouble(
-      "Floor top##generated_room", &settings.floorTopLayer, 0.5, 1.0,
-      "%.2f");
-  observeCreativeDesktopContinuousPropertyEdit(
-      editActivity, floorTopEdited, ImGui::IsItemDeactivatedAfterEdit());
-  ImGui::SetNextItemWidth(112.0F);
-  const bool wallHeightEdited = ImGui::InputInt(
-      "Wall height##generated_room", &wallHeight, 1, 2);
-  observeCreativeDesktopContinuousPropertyEdit(
-      editActivity, wallHeightEdited, ImGui::IsItemDeactivatedAfterEdit());
-  ImGui::SetNextItemWidth(112.0F);
-  const bool floorLayersEdited = ImGui::InputInt(
-      "Floor layers##generated_room", &floorLayers, 1, 2);
-  observeCreativeDesktopContinuousPropertyEdit(
-      editActivity, floorLayersEdited, ImGui::IsItemDeactivatedAfterEdit());
-
-  ImGui::SeparatorText("Level roof");
-  ImGui::SetNextItemWidth(112.0F);
-  const bool roofLayersEdited = ImGui::InputInt(
-      "Roof layers##generated_room", &roofLayers, 1, 2);
-  observeCreativeDesktopContinuousPropertyEdit(
-      editActivity, roofLayersEdited, ImGui::IsItemDeactivatedAfterEdit());
-  drawCreativeStructuralRoofSettingsWidgets(
-      settings, editActivity, "generated_room_roof");
   ImGui::EndDisabled();
 
   const std::int64_t maximumX =
@@ -179,9 +132,6 @@ void appendCreativeDesktopGeneratedRoomSettings(
       maximumZ >= std::numeric_limits<std::int32_t>::min() &&
       maximumZ <= std::numeric_limits<std::int32_t>::max() && size[0] > 0 &&
       size[1] > 0;
-  const bool layersRepresentable =
-      wallHeight > 0 && wallHeight <= 65535 && floorLayers > 0 &&
-      floorLayers <= 65535 && roofLayers > 0 && roofLayers <= 65535;
   if ((originEdited || sizeEdited) && footprintRepresentable) {
     settings.footprint = {
         {static_cast<std::int32_t>(origin[0]),
@@ -189,25 +139,12 @@ void appendCreativeDesktopGeneratedRoomSettings(
         {static_cast<std::int32_t>(maximumX),
          static_cast<std::int32_t>(maximumZ)}};
   }
-  if (layersRepresentable) {
-    settings.wallHeightCells = static_cast<std::uint16_t>(wallHeight);
-    settings.floorThicknessLayers =
-        static_cast<std::uint16_t>(floorLayers);
-    settings.roofThicknessLayers = static_cast<std::uint16_t>(roofLayers);
-  }
   const bool representable =
-      footprintRepresentable && layersRepresentable &&
-      std::isfinite(settings.floorTopLayer) &&
+      footprintRepresentable &&
       std::isfinite(settings.wallThicknessCells) &&
       settings.wallThicknessCells > 0.0 &&
       static_cast<double>(size[0]) > settings.wallThicknessCells * 2.0 &&
-      static_cast<double>(size[1]) > settings.wallThicknessCells * 2.0 &&
-      cr::validCreativeStructuralRoofSettings(
-          settings.roofStyle, settings.roofRidgeAxis,
-          settings.roofSlopeDirection, settings.roofPitchDegrees,
-          settings.roofOverhangCells, settings.roofMaterial) &&
-      settings.roofOverhangCells <=
-          cr::kMaximumCreativeWorldLayoutRoofOverhangCells;
+      static_cast<double>(size[1]) > settings.wallThicknessCells * 2.0;
   if (!representable) {
     ImGui::TextColored({0.94F, 0.45F, 0.32F, 1.0F},
                        "Room shell settings are outside valid bounds");

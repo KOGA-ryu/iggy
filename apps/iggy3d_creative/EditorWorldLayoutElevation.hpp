@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "app/iggy3d/creative/world/WorldLayout.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -82,17 +82,13 @@ enum class CreativeEditorWorldLayoutElevationHandleKind : std::uint8_t {
   Count,
 };
 
-enum class CreativeEditorWorldLayoutLevelEditScope : std::uint8_t {
-  Selected,
-  SelectedAndAbove,
-  SelectedAndBelow,
-  All,
-  Count,
-};
+using CreativeEditorWorldLayoutLevelEditScope =
+    cr::CreativeWorldLayoutLevelDatumEditScope;
 
-enum class CreativeEditorWorldLayoutSectionWallConstraint : std::uint8_t {
-  FixedHeight,
-  TopLinked,
+enum class CreativeEditorWorldLayoutSectionPartitionExtent : std::uint8_t {
+  None,
+  AuthoredHeight,
+  ClippedByUpperFloor,
   Count,
 };
 
@@ -158,18 +154,15 @@ struct CreativeEditorWorldLayoutElevationHandle {
 
 struct CreativeEditorWorldLayoutSectionLevel {
   std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  std::size_t representativeRoomIndex =
-      cr::kInvalidCreativeWorldLayoutIndex;
   std::string name;
+  bool occupied = false;
   double floorDatumCells = 0.0;
   double floorDatumMeters = 0.0;
   double floorToFloorMeters = 0.0;
   double clearHeightMeters = 0.0;
   double partitionTopCells = 0.0;
-  double exteriorFacadeTopCells = 0.0;
-  bool topmostOccupied = false;
-  CreativeEditorWorldLayoutSectionWallConstraint partitionConstraint =
-      CreativeEditorWorldLayoutSectionWallConstraint::FixedHeight;
+  CreativeEditorWorldLayoutSectionPartitionExtent partitionExtent =
+      CreativeEditorWorldLayoutSectionPartitionExtent::None;
 };
 
 struct CreativeEditorWorldLayoutElevationProjection {
@@ -196,35 +189,18 @@ struct CreativeEditorWorldLayoutElevationRequest {
       CreativeEditorWorldLayoutElevationAxis::X;
 };
 
-struct CreativeEditorWorldLayoutLevelDatumEditRequest {
-  std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  CreativeEditorWorldLayoutLevelEditScope scope =
-      CreativeEditorWorldLayoutLevelEditScope::Selected;
-  double requestedFloorTopLayer = 0.0;
-};
-
-struct CreativeEditorWorldLayoutLevelDatumEditPlan {
-  bool accepted = false;
-  bool changed = false;
-  std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  std::size_t selectedLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  CreativeEditorWorldLayoutLevelEditScope scope =
-      CreativeEditorWorldLayoutLevelEditScope::Selected;
-  double selectedFloorTopLayerBefore = 0.0;
-  double snappedFloorTopLayer = 0.0;
-  double deltaCells = 0.0;
-  std::size_t affectedLevelCount = 0U;
-  std::string_view reasonCode =
-      "creative_editor_world_layout_level_datum_edit_not_requested";
-};
+using CreativeEditorWorldLayoutLevelDatumEditRequest =
+    cr::CreativeWorldLayoutLevelDatumEditRequest;
+using CreativeEditorWorldLayoutLevelDatumEditPlan =
+    cr::CreativeWorldLayoutLevelDatumEditPlan;
 
 [[nodiscard]] std::string_view
 creativeEditorWorldLayoutLevelEditScopeLabel(
     CreativeEditorWorldLayoutLevelEditScope scope) noexcept;
 
 [[nodiscard]] std::string_view
-creativeEditorWorldLayoutSectionWallConstraintLabel(
-    CreativeEditorWorldLayoutSectionWallConstraint constraint) noexcept;
+creativeEditorWorldLayoutSectionPartitionExtentLabel(
+    CreativeEditorWorldLayoutSectionPartitionExtent extent) noexcept;
 
 struct CreativeEditorWorldLayoutElevationEditResult {
   bool accepted = false;
@@ -268,17 +244,6 @@ cycleCreativeEditorWorldLayoutElevationItem(
     const CreativeEditorWorldLayoutElevationHitStack& stack,
     CreativeEditorWorldLayoutElevationSourceKind currentSourceKind,
     std::size_t currentSourceIndex) noexcept;
-
-// Plans one building-local datum edit. Every mutation in the returned batch
-// must be committed together so one section gesture remains one undo step.
-[[nodiscard]] CreativeEditorWorldLayoutLevelDatumEditPlan
-planCreativeEditorWorldLayoutLevelDatumEdit(
-    const cr::CreativeWorldLayout& layout,
-    CreativeEditorWorldLayoutLevelDatumEditRequest request);
-
-[[nodiscard]] bool applyCreativeEditorWorldLayoutLevelDatumEditPlan(
-    cr::CreativeWorldLayout& layout,
-    const CreativeEditorWorldLayoutLevelDatumEditPlan& plan) noexcept;
 
 // Resolves one snapped vertical handle edit without mutating layout source.
 // The caller commits the returned values through the existing room/opening

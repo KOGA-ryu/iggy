@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace iggy3d::creative {
 
@@ -39,6 +40,39 @@ struct CreativeWorldLayoutLevelNavigationResult {
   double targetFloorTopLayer = 0.0;
 };
 
+enum class CreativeWorldLayoutLevelDatumEditScope : std::uint8_t {
+  Selected,
+  SelectedAndAbove,
+  SelectedAndBelow,
+  All,
+  Count,
+};
+
+struct CreativeWorldLayoutLevelDatumEditRequest {
+  std::size_t levelIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutLevelDatumEditScope scope =
+      CreativeWorldLayoutLevelDatumEditScope::Selected;
+  double requestedFloorTopLayer = 0.0;
+};
+
+struct CreativeWorldLayoutLevelDatumEditPlan {
+  bool accepted = false;
+  bool changed = false;
+  std::size_t buildingIndex = kInvalidCreativeWorldLayoutIndex;
+  std::size_t selectedLevelIndex = kInvalidCreativeWorldLayoutIndex;
+  CreativeWorldLayoutLevelDatumEditScope scope =
+      CreativeWorldLayoutLevelDatumEditScope::Selected;
+  double selectedFloorTopLayerBefore = 0.0;
+  double snappedFloorTopLayer = 0.0;
+  double deltaCells = 0.0;
+  std::size_t affectedLevelCount = 0U;
+  std::size_t affectedBoxCount = 0U;
+  std::size_t adjustedWallCount = 0U;
+  bool buildingRootAdjusted = false;
+  std::string_view reasonCode =
+      "creative_world_layout_level_datum_edit_not_requested";
+};
+
 // Validates the normalized building -> level -> room ownership graph. Levels
 // within one building must have distinct elevations.
 [[nodiscard]] std::size_t firstInvalidCreativeWorldLayoutLevelIndex(
@@ -70,6 +104,19 @@ creativeWorldLayoutLevelForRoom(const CreativeWorldLayout& layout,
 navigateCreativeWorldLayoutLevel(
     const CreativeWorldLayout& layout, std::size_t activeLevelIndex,
     CreativeWorldLayoutLevelNavigationDirection direction) noexcept;
+
+// Plans one building-local datum transaction in
+// O(levels^2 + (boxes + walls) * levels) time without allocating. Sources
+// attached by vertical ownership move or resize with their affected level
+// endpoints. Application validates the complete plan before writing anything.
+[[nodiscard]] CreativeWorldLayoutLevelDatumEditPlan
+planCreativeWorldLayoutLevelDatumEdit(
+    const CreativeWorldLayout& layout,
+    CreativeWorldLayoutLevelDatumEditRequest request) noexcept;
+
+[[nodiscard]] bool applyCreativeWorldLayoutLevelDatumEditPlan(
+    CreativeWorldLayout& layout,
+    const CreativeWorldLayoutLevelDatumEditPlan& plan) noexcept;
 
 // Resolves whether a semantic source participates in one storey. Structural
 // spans use half-open vertical bands so adjacent storeys never claim the same

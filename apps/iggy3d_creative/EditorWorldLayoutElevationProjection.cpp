@@ -75,6 +75,27 @@ struct OpeningHostFacts {
   return origin + coordinate * cellSize;
 }
 
+[[nodiscard]] double sectionFloorToFloorMeters(
+    const cr::CreativeWorldLayout& layout,
+    const cr::CreativeGridSettings& grid,
+    std::size_t levelIndex) noexcept {
+  if (levelIndex >= layout.levels.size()) {
+    return 0.0;
+  }
+  const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+  double nextDatum = std::numeric_limits<double>::infinity();
+  for (const cr::CreativeWorldLayoutLevel& candidate : layout.levels) {
+    if (candidate.buildingIndex == level.buildingIndex &&
+        candidate.floorTopLayer > level.floorTopLayer &&
+        candidate.floorTopLayer < nextDatum) {
+      nextDatum = candidate.floorTopLayer;
+    }
+  }
+  return std::isfinite(nextDatum)
+             ? (nextDatum - level.floorTopLayer) * grid.cellSizeMeters
+             : 0.0;
+}
+
 void extendBounds(CreativeEditorWorldLayoutElevationBounds& bounds,
                   double minimumHorizontal,
                   double maximumHorizontal,
@@ -650,21 +671,20 @@ planCreativeEditorWorldLayoutElevation(
          {facts.maximumHorizontal, partitionTopLayer}});
     projection.sectionLevels.push_back(
         {levelIndex,
-         facts.representativeRoomIndex,
          level.name,
+         true,
          level.floorTopLayer,
          dimensions.floorTopMeters,
-         dimensions.floorToFloorMeters,
+         sectionFloorToFloorMeters(layout, request.grid, levelIndex),
          dimensions.clearHeightMeters,
          partitionTopLayer,
-         worldVerticalToCells(request.grid,
-                              dimensions.exteriorFacadeTopMeters),
-         dimensions.topmostOccupied,
          dimensions.hasUpperLevel &&
                  dimensions.wallTopMeters >=
                      dimensions.interiorPartitionTopMeters - 1.0e-6
-             ? CreativeEditorWorldLayoutSectionWallConstraint::TopLinked
-             : CreativeEditorWorldLayoutSectionWallConstraint::FixedHeight});
+             ? CreativeEditorWorldLayoutSectionPartitionExtent::
+                   ClippedByUpperFloor
+             : CreativeEditorWorldLayoutSectionPartitionExtent::
+                   AuthoredHeight});
     if (!cr::creativeWorldLayoutLevelIsTopmostOccupied(layout, levelIndex)) {
       continue;
     }
@@ -854,6 +874,28 @@ planCreativeEditorWorldLayoutElevation(
            facts.representativeRoomIndex, levelIndex,
            {firstRidge, ridgeVertical}});
     }
+  }
+
+  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
+       ++levelIndex) {
+    const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
+    if (level.buildingIndex != request.buildingIndex ||
+        levelFacts[levelIndex].found) {
+      continue;
+    }
+    projection.sectionLevels.push_back(
+        {levelIndex,
+         level.name,
+         false,
+         level.floorTopLayer,
+         cellsToWorld(request.grid.origin.y, request.grid.cellSizeMeters,
+                      level.floorTopLayer),
+         sectionFloorToFloorMeters(layout, request.grid, levelIndex),
+         0.0,
+         level.floorTopLayer,
+         CreativeEditorWorldLayoutSectionPartitionExtent::None});
+    extendBounds(projection.bounds, 0.0, 1.0, level.floorTopLayer,
+                 level.floorTopLayer);
   }
 
   for (std::size_t boxIndex = 0U; boxIndex < layout.boxes.size(); ++boxIndex) {

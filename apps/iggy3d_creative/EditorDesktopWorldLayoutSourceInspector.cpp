@@ -406,7 +406,7 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
   observeCreativeDesktopContinuousPropertyWidget(
       activity,
       ImGui::InputDouble("Floor top##layout_level_properties",
-                         &draft.floorTopLayer, 0.25, 1.0, "%.3f"));
+                         &draft.floorTopLayer, 1.0, 4.0, "%.3f"));
   ImGui::SetNextItemWidth(140.0F);
   observeCreativeDesktopContinuousPropertyWidget(
       activity,

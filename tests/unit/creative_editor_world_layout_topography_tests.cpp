@@ -609,6 +609,8 @@ bool regionPreviewAndApplyAreExactAtomicAndUndoable() {
   const app::CreativeDesktopCommandResult preview =
       app::dispatchCreativeDesktopCommands(
           previewFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
+  const std::uint64_t revisionAfterPreview =
+      appState.facade.document().revision();
   const bool previewOwned = region.ownsPreview;
   const cr::CreativeTerrainHeightField& candidate =
       editor.terrainGeneration.operationPreview.heightField;
@@ -670,7 +672,7 @@ bool regionPreviewAndApplyAreExactAtomicAndUndoable() {
           cancelFrame, {appState, editor, {}, nullptr, nullptr, nullptr});
 
   return expect(preview.accepted && preview.changed && previewOwned &&
-                    appState.facade.document().revision() == revisionBefore,
+                    revisionAfterPreview == revisionBefore,
                 "preview computes exact candidate without document mutation") &&
          expect(changedSample.present && changedSample.heightCells == 9U &&
                     preservedSample.present &&

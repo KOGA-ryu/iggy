@@ -143,10 +143,13 @@ bool explicitTopologyRejectsLegacyRectangleEdits() {
   settings.wallThicknessCells = 0.5;
   const app::CreativeEditorWorldLayoutEditReceipt thickened =
       app::setCreativeEditorWorldLayoutRoomSettings(state, 0U, settings);
-  settings.wallThicknessCells = 0.25;
-  settings.wallHeightCells = 4U;
+  app::CreativeEditorWorldLayoutLevelSettings levelSettings;
+  const bool levelRead = app::readCreativeEditorWorldLayoutLevelSettings(
+      state, state.source.rooms[0U].levelIndex, levelSettings);
+  levelSettings.wallHeightCells = 4U;
   const app::CreativeEditorWorldLayoutEditReceipt raised =
-      app::setCreativeEditorWorldLayoutRoomSettings(state, 0U, settings);
+      app::setCreativeEditorWorldLayoutLevelSettings(
+          state, state.source.rooms[0U].levelIndex, levelSettings);
   const cr::CreativeWorldLayoutRoomGraph graph =
       cr::buildCreativeWorldLayoutRoomGraph(state.source);
   const app::CreativeEditorWorldLayoutRoomTarget target =
@@ -155,7 +158,8 @@ bool explicitTopologyRejectsLegacyRectangleEdits() {
   return expect(split.accepted && read && !resized.accepted &&
                     !thickened.accepted && state.revision == revisionBefore + 1U,
                 "explicit rooms reject bounding-box and scalar wall edits") &&
-         expect(raised.accepted && raised.changed && graph.accepted &&
+         expect(levelRead && raised.accepted && raised.changed &&
+                    graph.accepted &&
                     state.source.levels[0].wallHeightCells == 4U &&
                     target.handle ==
                         app::CreativeEditorWorldLayoutRoomHandle::None,

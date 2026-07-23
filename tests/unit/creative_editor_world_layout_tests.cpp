@@ -27,6 +27,7 @@
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
@@ -1403,13 +1404,25 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
       state, app::CreativeEditorWorldLayoutTool::Door));
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {3.0, 0.1});
-  app::CreativeEditorWorldLayoutRoomSettings settings{
-      {{0, 0}, {8, 5}}, 2.0, 5U, 0.5, 2U};
-  settings.roofThicknessLayers = 2U;
-  settings.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
-  settings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
-  settings.roofPitchDegrees = 35.0;
-  settings.roofOverhangCells = 0.5;
+  const std::size_t levelIndex = state.source.rooms[0U].levelIndex;
+  app::CreativeEditorWorldLayoutLevelSettings levelSettings;
+  const bool levelRead = app::readCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, levelSettings);
+  levelSettings.floorTopLayer = 2.0;
+  levelSettings.wallHeightCells = 5U;
+  levelSettings.floorThicknessLayers = 2U;
+  levelSettings.roofThicknessLayers = 2U;
+  levelSettings.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
+  levelSettings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
+  levelSettings.roofPitchDegrees = 35.0;
+  levelSettings.roofOverhangCells = 0.5;
+  const auto levelUpdated = app::setCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, levelSettings);
+  app::CreativeEditorWorldLayoutRoomSettings settings;
+  const bool roomRead = app::readCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, settings);
+  settings.footprint = {{0, 0}, {8, 5}};
+  settings.wallThicknessCells = 0.5;
   const auto updated = app::setCreativeEditorWorldLayoutRoomSettings(
       state, 0U, settings);
 
@@ -1425,7 +1438,8 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
                     state.source.openings[0].roomEdge ==
                         cr::CreativeWorldLayoutRoomEdge::North,
                 "door slots into a semantic room edge") &&
-         expect(updated.accepted && updated.changed &&
+         expect(levelRead && levelUpdated.accepted && levelUpdated.changed &&
+                    roomRead && updated.accepted && updated.changed &&
                     state.source.rooms[0].footprint.maximum ==
                         cr::CreativeTerrainCoord2{8, 5} &&
                     state.source.levels[state.source.rooms[0].levelIndex]
@@ -1447,7 +1461,7 @@ bool roomGestureHostsOpeningsAndSupportsResize() {
                             .roofPitchDegrees == 35.0 &&
                     state.source.levels[state.source.rooms[0].levelIndex]
                             .roofOverhangCells == 0.5,
-                "selected room and shared roof settings change as one source edit");
+                "room geometry and shared level settings use their owning edits");
 }
 
 bool buildingShellCreatesOwnedRoomAndGeneratesAsOneEdit() {
@@ -1755,27 +1769,42 @@ bool invalidRoomShellSettingsFailWithoutMutation() {
       state.revision == revisionBefore &&
       state.source.rooms[0].wallThicknessCells ==
           cr::kDefaultCreativeWorldLayoutWallThicknessCells;
+  app::CreativeEditorWorldLayoutRoomSettings misplacedLevelSettings;
+  const bool roomRead = app::readCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, misplacedLevelSettings);
+  misplacedLevelSettings.wallHeightCells += 1U;
+  const auto misplacedLevelEdit =
+      app::setCreativeEditorWorldLayoutRoomSettings(
+          state, 0U, misplacedLevelSettings);
 
   static_cast<void>(app::setCreativeEditorWorldLayoutTool(
       state, app::CreativeEditorWorldLayoutTool::Door));
   const auto door =
       app::applyCreativeEditorWorldLayoutPoint(state, {2.0, 0.1});
-  app::CreativeEditorWorldLayoutRoomSettings clippedSettings;
-  const bool read = app::readCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, clippedSettings);
+  const std::size_t levelIndex = state.source.rooms[0U].levelIndex;
+  app::CreativeEditorWorldLayoutLevelSettings clippedSettings;
+  const bool read = app::readCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, clippedSettings);
   clippedSettings.wallHeightCells = 1U;
   const std::uint64_t heightRevisionBefore = state.revision;
-  const auto clipped = app::setCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, clippedSettings);
+  const auto clipped = app::setCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, clippedSettings);
 
   return expect(!rejected.accepted && !rejected.changed,
                 "room shell rejects walls that consume the interior") &&
          expect(rejectedAtomic,
                 "invalid room shell settings do not mutate source truth") &&
+         expect(roomRead && !misplacedLevelEdit.accepted &&
+                    !misplacedLevelEdit.changed &&
+                    misplacedLevelEdit.reasonCode ==
+                        "creative_editor_world_layout_room_settings_level_owned",
+                "room settings reject fields owned by the shared level") &&
          expect(door.accepted && door.changed && read && !clipped.accepted &&
                     !clipped.changed && state.revision == heightRevisionBefore &&
-                    state.source.levels[0].wallHeightCells == 3U,
-                "room settings cannot clip a hosted opening vertically");
+                    state.source.levels[0].wallHeightCells == 3U &&
+                    clipped.reasonCode ==
+                        "creative_editor_world_layout_level_settings_rejected",
+                "level settings cannot clip a hosted opening vertically");
 }
 
 bool roomMovePreviewCommitsOnceAndKeepsOpeningHosted() {
@@ -3032,15 +3061,12 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const std::size_t firstRoomIndex = roomIndexForBuilding(1U);
   const cr::CreativeWorldLayoutRoom& firstRoom =
       state.source.rooms[firstRoomIndex];
-  const cr::CreativeWorldLayoutLevel& firstLevel =
-      state.source.levels[firstRoom.levelIndex];
-  app::CreativeEditorWorldLayoutRoomSettings firstSettings{
-      firstRoom.footprint, firstLevel.floorTopLayer,
-      firstLevel.wallHeightCells, firstRoom.wallThicknessCells,
-      firstLevel.floorThicknessLayers};
+  app::CreativeEditorWorldLayoutLevelSettings firstSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      state, firstRoom.levelIndex, firstSettings));
   firstSettings.wallHeightCells += 2U;
-  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
-      state, firstRoomIndex, firstSettings));
+  static_cast<void>(app::setCreativeEditorWorldLayoutLevelSettings(
+      state, firstRoom.levelIndex, firstSettings));
   const auto localBeforeUpdate =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 1U);
   const std::uint64_t revisionBeforeUpdate = state.revision;
@@ -3066,15 +3092,12 @@ bool buildingTemplateUpdateAndRefreshLifecycleIsExplicit() {
   const std::size_t secondRoomIndex = roomIndexForBuilding(2U);
   const cr::CreativeWorldLayoutRoom& secondRoom =
       state.source.rooms[secondRoomIndex];
-  const cr::CreativeWorldLayoutLevel& secondLevel =
-      state.source.levels[secondRoom.levelIndex];
-  app::CreativeEditorWorldLayoutRoomSettings secondSettings{
-      secondRoom.footprint, secondLevel.floorTopLayer,
-      secondLevel.wallHeightCells, secondRoom.wallThicknessCells,
-      secondLevel.floorThicknessLayers};
+  app::CreativeEditorWorldLayoutLevelSettings secondSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      state, secondRoom.levelIndex, secondSettings));
   secondSettings.wallHeightCells += 3U;
-  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
-      state, secondRoomIndex, secondSettings));
+  static_cast<void>(app::setCreativeEditorWorldLayoutLevelSettings(
+      state, secondRoom.levelIndex, secondSettings));
   const auto secondLocal =
       app::inspectCreativeEditorWorldLayoutBuildingTemplateSync(state, 2U);
   const std::uint64_t revisionBeforeSkippedSafe = state.revision;
@@ -3522,8 +3545,22 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
       state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {0, 0}));
   static_cast<void>(app::applyCreativeEditorWorldLayoutGesture(
       state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {6, 5}));
-  const auto settings = app::setCreativeEditorWorldLayoutRoomSettings(
-      state, 0U, {{{0, 0}, {8, 6}}, 1.0, 4U, 0.5, 2U});
+  const std::size_t levelIndex = state.source.rooms[0U].levelIndex;
+  app::CreativeEditorWorldLayoutLevelSettings levelSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, levelSettings));
+  levelSettings.floorTopLayer = 1.0;
+  levelSettings.wallHeightCells = 4U;
+  levelSettings.floorThicknessLayers = 2U;
+  const auto levelUpdated = app::setCreativeEditorWorldLayoutLevelSettings(
+      state, levelIndex, levelSettings);
+  app::CreativeEditorWorldLayoutRoomSettings roomSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, roomSettings));
+  roomSettings.footprint = {{0, 0}, {8, 6}};
+  roomSettings.wallThicknessCells = 0.5;
+  const auto roomUpdated = app::setCreativeEditorWorldLayoutRoomSettings(
+      state, 0U, roomSettings);
 
   const std::uint64_t liveCountBefore = live.facade.document().objectCount();
   const auto preview =
@@ -3577,8 +3614,9 @@ bool exactPreviewAndConfirmUseOneHistoryEntry() {
       state.source.rooms.size() == 1U &&
       state.generatedRevision == state.revision;
 
-  return expect(settings.accepted && settings.changed,
-                "room shell settings are accepted before generation") &&
+  return expect(levelUpdated.accepted && levelUpdated.changed &&
+                    roomUpdated.accepted && roomUpdated.changed,
+                "room and level settings are accepted before generation") &&
          expect(preview.accepted &&
                     app::creativeEditorWorldLayoutPreviewActive(state) == false,
                 "confirm closes an accepted exact preview") &&
@@ -4571,14 +4609,15 @@ bool elevationProjectionUsesExactRecipeGeometry() {
                          lowerDimensions.clearHeightMeters) &&
                     near(lowerSection->partitionTopCells,
                          expectedPartitionTop) &&
-                    lowerSection->partitionConstraint ==
-                        app::CreativeEditorWorldLayoutSectionWallConstraint::
-                            TopLinked &&
+                    lowerSection->occupied &&
+                    lowerSection->partitionExtent ==
+                        app::CreativeEditorWorldLayoutSectionPartitionExtent::
+                            ClippedByUpperFloor &&
                     upperDimensions.accepted &&
-                    upperSection->topmostOccupied &&
-                    upperSection->partitionConstraint ==
-                        app::CreativeEditorWorldLayoutSectionWallConstraint::
-                            FixedHeight &&
+                    upperSection->occupied &&
+                    upperSection->partitionExtent ==
+                        app::CreativeEditorWorldLayoutSectionPartitionExtent::
+                            AuthoredHeight &&
                     app::creativeEditorWorldLayoutLevelEditScopeLabel(
                         app::CreativeEditorWorldLayoutLevelEditScope::
                             SelectedAndAbove) == "Selected + above",
@@ -4623,6 +4662,50 @@ bool elevationProjectionUsesExactRecipeGeometry() {
                 "elevation includes explicit floor and partition symbols");
 }
 
+bool elevationSectionExposesUnoccupiedLevelDatums() {
+  const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0,
+                                      {32, 16, 32}};
+  cr::CreativeWorldLayout layout = elevationFixture();
+  cr::CreativeWorldLayoutLevel emptyLevel = layout.levels[1U];
+  emptyLevel.stableKey = "elevation_empty_attic";
+  emptyLevel.name = "Empty Attic";
+  emptyLevel.floorTopLayer = 8.0;
+  layout.levels.push_back(emptyLevel);
+
+  const app::CreativeEditorWorldLayoutElevationProjection projection =
+      app::planCreativeEditorWorldLayoutElevation(
+          {&layout, grid, 0U,
+           app::CreativeEditorWorldLayoutElevationAxis::X});
+  const auto upper = std::find_if(
+      projection.sectionLevels.begin(), projection.sectionLevels.end(),
+      [](const app::CreativeEditorWorldLayoutSectionLevel& level) {
+        return level.levelIndex == 1U;
+      });
+  const auto empty = std::find_if(
+      projection.sectionLevels.begin(), projection.sectionLevels.end(),
+      [](const app::CreativeEditorWorldLayoutSectionLevel& level) {
+        return level.levelIndex == 2U;
+      });
+
+  return expect(projection.accepted &&
+                    projection.sectionLevels.size() == 3U &&
+                    upper != projection.sectionLevels.end() &&
+                    empty != projection.sectionLevels.end(),
+                "section projection includes occupied and empty levels") &&
+         expect(upper->occupied && near(upper->floorToFloorMeters, 4.0) &&
+                    !empty->occupied && empty->name == "Empty Attic" &&
+                    near(empty->floorDatumCells, 8.0) &&
+                    near(empty->floorDatumMeters, 8.0) &&
+                    near(empty->floorToFloorMeters, 0.0) &&
+                    empty->partitionExtent ==
+                        app::CreativeEditorWorldLayoutSectionPartitionExtent::
+                            None,
+                "empty level row exposes its datum without fabricated geometry") &&
+         expect(projection.bounds.valid &&
+                    projection.bounds.maximumVertical >= 8.0,
+                "empty level datum remains visible in section bounds");
+}
+
 bool scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() {
   cr::CreativeWorldLayout layout = elevationFixture();
 
@@ -4637,6 +4720,35 @@ bool scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() {
   atticRoom.stableKey = "elevation_attic_room";
   atticRoom.name = "Attic Room";
   layout.rooms.push_back(atticRoom);
+  cr::CreativeWorldLayoutBox upperBox = layout.boxes[0U];
+  upperBox.stableKey = "elevation_upper_terrace";
+  upperBox.name = "Upper Terrace";
+  upperBox.anchorLayer = 4.0;
+  layout.boxes.push_back(upperBox);
+  cr::CreativeWorldLayoutBox atticBox = upperBox;
+  atticBox.stableKey = "elevation_attic_terrace";
+  atticBox.name = "Attic Terrace";
+  atticBox.anchorLayer = 8.0;
+  layout.boxes.push_back(atticBox);
+  cr::CreativeWorldLayoutWall upperWall = layout.walls[0U];
+  upperWall.stableKey = "elevation_upper_partition";
+  upperWall.name = "Upper Partition";
+  upperWall.baseLayer = 4.0;
+  layout.walls.push_back(upperWall);
+  cr::CreativeWorldLayoutWall atticWall = upperWall;
+  atticWall.stableKey = "elevation_attic_partition";
+  atticWall.name = "Attic Partition";
+  atticWall.baseLayer = 8.0;
+  layout.walls.push_back(atticWall);
+  cr::CreativeWorldLayoutWall facadeWall = layout.walls[0U];
+  facadeWall.stableKey = "elevation_continuous_facade";
+  facadeWall.name = "Continuous Facade";
+  facadeWall.baseLayer = 0.0;
+  facadeWall.heightCells = 11U;
+  layout.walls.push_back(facadeWall);
+  layout.buildings[0U].rootMode =
+      cr::CreativeBuildingRootMode::CreateRoom;
+  layout.buildings[0U].rootHeightCells = 12U;
 
   cr::CreativeWorldLayoutBuilding annex = layout.buildings[0U];
   annex.stableKey = "elevation_annex";
@@ -4654,20 +4766,20 @@ bool scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() {
   annexRoom.name = "Annex Room";
   layout.rooms.push_back(annexRoom);
 
-  const auto selected = app::planCreativeEditorWorldLayoutLevelDatumEdit(
+  const auto selected = cr::planCreativeWorldLayoutLevelDatumEdit(
       layout,
       {1U, app::CreativeEditorWorldLayoutLevelEditScope::Selected, 6.0});
-  const auto above = app::planCreativeEditorWorldLayoutLevelDatumEdit(
+  const auto above = cr::planCreativeWorldLayoutLevelDatumEdit(
       layout,
       {1U, app::CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove,
        6.0});
-  const auto below = app::planCreativeEditorWorldLayoutLevelDatumEdit(
+  const auto below = cr::planCreativeWorldLayoutLevelDatumEdit(
       layout,
       {1U, app::CreativeEditorWorldLayoutLevelEditScope::SelectedAndBelow,
        2.0});
-  const auto all = app::planCreativeEditorWorldLayoutLevelDatumEdit(
+  const auto all = cr::planCreativeWorldLayoutLevelDatumEdit(
       layout, {1U, app::CreativeEditorWorldLayoutLevelEditScope::All, 5.0});
-  const auto crossing = app::planCreativeEditorWorldLayoutLevelDatumEdit(
+  const auto crossing = cr::planCreativeWorldLayoutLevelDatumEdit(
       layout,
       {1U, app::CreativeEditorWorldLayoutLevelEditScope::Selected, 8.0});
   cr::CreativeWorldLayout selectedLayout = layout;
@@ -4678,19 +4790,16 @@ bool scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() {
   auto malformed = above;
   ++malformed.affectedLevelCount;
   const bool selectedApplied =
-      app::applyCreativeEditorWorldLayoutLevelDatumEditPlan(
-          selectedLayout, selected);
+      cr::applyCreativeWorldLayoutLevelDatumEditPlan(selectedLayout, selected);
   const bool aboveApplied =
-      app::applyCreativeEditorWorldLayoutLevelDatumEditPlan(aboveLayout,
-                                                            above);
+      cr::applyCreativeWorldLayoutLevelDatumEditPlan(aboveLayout, above);
   const bool belowApplied =
-      app::applyCreativeEditorWorldLayoutLevelDatumEditPlan(belowLayout,
-                                                            below);
+      cr::applyCreativeWorldLayoutLevelDatumEditPlan(belowLayout, below);
   const bool allApplied =
-      app::applyCreativeEditorWorldLayoutLevelDatumEditPlan(allLayout, all);
+      cr::applyCreativeWorldLayoutLevelDatumEditPlan(allLayout, all);
   const bool malformedApplied =
-      app::applyCreativeEditorWorldLayoutLevelDatumEditPlan(
-          malformedLayout, malformed);
+      cr::applyCreativeWorldLayoutLevelDatumEditPlan(malformedLayout,
+                                                     malformed);
 
   app::CreativeEditorWorldLayoutState state;
   state.source = layout;
@@ -4702,46 +4811,129 @@ bool scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() {
       {1U, app::CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove,
        6.0});
 
+  app::CreativeEditorWorldLayoutState clippedState;
+  clippedState.source = layout;
+  clippedState.revision = 70U;
+  clippedState.sourceHistory.maxDepth = 16U;
+  cr::CreativeWorldLayoutOpening highWindow;
+  highWindow.hostKind = cr::CreativeWorldLayoutOpeningHostKind::Wall;
+  highWindow.wallIndex = 3U;
+  highWindow.kind = cr::CreativeBuildingOpeningKind::Window;
+  highWindow.stableKey = "elevation_facade_high_window";
+  highWindow.name = "Facade High Window";
+  highWindow.centerOffsetCells = 2.0;
+  highWindow.widthCells = 1.0;
+  highWindow.cutoutBottomCells = 9.5;
+  highWindow.cutoutHeightCells = 1.0;
+  clippedState.source.openings.push_back(highWindow);
+  const auto openingBefore =
+      cr::validateCreativeWorldLayoutOpening(
+          {&clippedState.source, &clippedState.source.openings.back(),
+           clippedState.source.openings.size() - 1U});
+  const auto clipped = app::setCreativeEditorWorldLayoutLevelDatum(
+      clippedState,
+      {1U, app::CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove,
+       2.0});
+
   return expect(selected.accepted && selected.changed &&
                     selected.affectedLevelCount == 1U &&
+                    selected.affectedBoxCount == 1U &&
+                    selected.adjustedWallCount == 1U &&
+                    !selected.buildingRootAdjusted &&
                     selectedApplied &&
                     near(selectedLayout.levels[1U].floorTopLayer, 6.0) &&
-                    near(selectedLayout.levels[2U].floorTopLayer, 8.0),
-                "selected section scope moves exactly one level") &&
+                    near(selectedLayout.levels[2U].floorTopLayer, 8.0) &&
+                    near(selectedLayout.boxes[0U].anchorLayer, 0.0) &&
+                    near(selectedLayout.boxes[1U].anchorLayer, 6.0) &&
+                    near(selectedLayout.boxes[2U].anchorLayer, 8.0) &&
+                    near(selectedLayout.walls[1U].baseLayer, 6.0) &&
+                    selectedLayout.walls[3U].heightCells == 11U &&
+                    selectedLayout.buildings[0U].rootBaseLayer == 0 &&
+                    selectedLayout.buildings[0U].rootHeightCells == 12U,
+                "selected section scope moves one level and its attached sources") &&
          expect(above.accepted && above.changed &&
-                    above.affectedLevelCount == 2U && aboveApplied &&
+                    above.affectedLevelCount == 2U &&
+                    above.affectedBoxCount == 2U &&
+                    above.adjustedWallCount == 3U &&
+                    above.buildingRootAdjusted && aboveApplied &&
                     near(aboveLayout.levels[1U].floorTopLayer, 6.0) &&
-                    near(aboveLayout.levels[2U].floorTopLayer, 10.0),
-                "above section scope preserves the upper level stack") &&
+                    near(aboveLayout.levels[2U].floorTopLayer, 10.0) &&
+                    near(aboveLayout.boxes[1U].anchorLayer, 6.0) &&
+                    near(aboveLayout.boxes[2U].anchorLayer, 10.0) &&
+                    near(aboveLayout.walls[1U].baseLayer, 6.0) &&
+                    near(aboveLayout.walls[2U].baseLayer, 10.0) &&
+                    aboveLayout.walls[3U].baseLayer == 0.0 &&
+                    aboveLayout.walls[3U].heightCells == 13U &&
+                    aboveLayout.buildings[0U].rootBaseLayer == 0 &&
+                    aboveLayout.buildings[0U].rootHeightCells == 14U,
+                "above section scope preserves and stretches the upper stack") &&
          expect(below.accepted && below.changed &&
-                    below.affectedLevelCount == 2U && belowApplied &&
+                    below.affectedLevelCount == 2U &&
+                    below.affectedBoxCount == 2U &&
+                    below.adjustedWallCount == 3U &&
+                    below.buildingRootAdjusted && belowApplied &&
                     near(belowLayout.levels[0U].floorTopLayer, -2.0) &&
-                    near(belowLayout.levels[1U].floorTopLayer, 2.0),
-                "below section scope preserves the lower level stack") &&
+                    near(belowLayout.levels[1U].floorTopLayer, 2.0) &&
+                    near(belowLayout.boxes[0U].anchorLayer, -2.0) &&
+                    near(belowLayout.boxes[1U].anchorLayer, 2.0) &&
+                    near(belowLayout.walls[0U].baseLayer, -2.0) &&
+                    near(belowLayout.walls[1U].baseLayer, 2.0) &&
+                    near(belowLayout.walls[3U].baseLayer, -2.0) &&
+                    belowLayout.walls[3U].heightCells == 13U &&
+                    belowLayout.buildings[0U].rootBaseLayer == -2 &&
+                    belowLayout.buildings[0U].rootHeightCells == 14U,
+                "below section scope preserves and stretches the lower stack") &&
          expect(all.accepted && all.changed &&
-                    all.affectedLevelCount == 3U && allApplied &&
+                    all.affectedLevelCount == 3U &&
+                    all.affectedBoxCount == 3U &&
+                    all.adjustedWallCount == 4U &&
+                    all.buildingRootAdjusted && allApplied &&
                     near(allLayout.levels[0U].floorTopLayer, 1.0) &&
                     near(allLayout.levels[1U].floorTopLayer, 5.0) &&
                     near(allLayout.levels[2U].floorTopLayer, 9.0) &&
-                    near(allLayout.levels[3U].floorTopLayer, 0.0),
-                "all section scope translates one building only") &&
+                    near(allLayout.levels[3U].floorTopLayer, 0.0) &&
+                    near(allLayout.boxes[0U].anchorLayer, 1.0) &&
+                    near(allLayout.boxes[1U].anchorLayer, 5.0) &&
+                    near(allLayout.boxes[2U].anchorLayer, 9.0) &&
+                    near(allLayout.walls[3U].baseLayer, 1.0) &&
+                    allLayout.walls[3U].heightCells == 11U &&
+                    allLayout.buildings[0U].rootBaseLayer == 1 &&
+                    allLayout.buildings[0U].rootHeightCells == 12U &&
+                    allLayout.buildings[1U].rootBaseLayer == 0 &&
+                    allLayout.buildings[1U].rootHeightCells == 12U,
+                "all section scope translates one building and its geometry only") &&
          expect(!crossing.accepted && !crossing.changed &&
                     crossing.reasonCode ==
-                        "creative_editor_world_layout_elevation_floor_crosses_level",
+                        "creative_world_layout_level_datum_edit_crosses_level",
                 "selected section scope cannot cross an adjacent datum") &&
          expect(!malformedApplied &&
                     near(malformedLayout.levels[0U].floorTopLayer, 0.0) &&
                     near(malformedLayout.levels[1U].floorTopLayer, 4.0) &&
-                    near(malformedLayout.levels[2U].floorTopLayer, 8.0),
-                "malformed section plans cannot partially mutate datums") &&
+                    near(malformedLayout.levels[2U].floorTopLayer, 8.0) &&
+                    near(malformedLayout.boxes[1U].anchorLayer, 4.0) &&
+                    near(malformedLayout.walls[1U].baseLayer, 4.0) &&
+                    malformedLayout.buildings[0U].rootBaseLayer == 0 &&
+                    malformedLayout.buildings[0U].rootHeightCells == 12U,
+                "malformed section plans cannot partially mutate attached geometry") &&
          expect(applied.accepted && applied.changed &&
                     state.revision == 41U &&
                     state.sourceHistory.undoEntries.size() ==
                         undoBefore + 1U &&
                     near(state.source.levels[1U].floorTopLayer, 6.0) &&
                     near(state.source.levels[2U].floorTopLayer, 10.0) &&
-                    near(state.source.levels[3U].floorTopLayer, 0.0),
-                "scoped datum commit is one history step and stays building-local");
+                    near(state.source.levels[3U].floorTopLayer, 0.0) &&
+                    near(state.source.boxes[1U].anchorLayer, 6.0) &&
+                    near(state.source.walls[3U].baseLayer, 0.0) &&
+                    state.source.walls[3U].heightCells == 13U &&
+                    state.source.buildings[0U].rootHeightCells == 14U,
+                "scoped datum commit is one history step and stays building-local") &&
+         expect(openingBefore.accepted && !clipped.accepted &&
+                    !clipped.changed && clippedState.revision == 70U &&
+                    clippedState.sourceHistory.undoEntries.empty() &&
+                    near(clippedState.source.levels[1U].floorTopLayer, 4.0) &&
+                    near(clippedState.source.levels[2U].floorTopLayer, 8.0) &&
+                    clippedState.source.walls[3U].heightCells == 11U,
+                "datum edits reject atomically when a resized wall clips an opening");
 }
 
 bool roofAperturesProjectIntoElevationFromExactClosureGeometry() {
@@ -5347,8 +5539,8 @@ bool elevationHitTestingAndEditMathAreTransactionalInputs() {
                 "floor datum edits use the building lattice instead of authored wall height") &&
          expect(!crossedFloor.accepted &&
                     crossedFloor.reasonCode ==
-                        "creative_editor_world_layout_elevation_floor_crosses_level",
-                "floor edit cannot cross the next occupied datum") &&
+                        "creative_world_layout_level_datum_edit_crosses_level",
+                "floor edit cannot cross the next building datum") &&
          expect(shorterWall.accepted && shorterWall.wallHeightCells == 2U,
                 "wall top snaps to whole-cell height") &&
          expect(roof45.accepted && sharedRoof45.accepted &&
@@ -5557,6 +5749,7 @@ int main() {
       verticalConnectorDirectionHandleOwnsCardinalRise() &&
       verticalConnectorHandlesShareElevationAnd3dGeometry() &&
       elevationProjectionUsesExactRecipeGeometry() &&
+      elevationSectionExposesUnoccupiedLevelDatums() &&
       scopedSectionDatumEditsPreserveLevelOrderAndOneHistoryStep() &&
       roofAperturesProjectIntoElevationFromExactClosureGeometry() &&
       shedAndHipElevationsUseCanonicalProfilesAndPitchHandles() &&

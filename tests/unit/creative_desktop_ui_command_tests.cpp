@@ -3746,16 +3746,13 @@ bool worldLayoutBuildingTemplateSyncCommandsRouteThroughDispatcher() {
       [](const cr::CreativeWorldLayoutRoom& value) {
         return value.buildingIndex == 1U;
       });
-  const std::size_t roomIndex = static_cast<std::size_t>(
-      std::distance(editor.worldLayout.source.rooms.begin(), room));
-  const cr::CreativeWorldLayoutLevel& level =
-      editor.worldLayout.source.levels[room->levelIndex];
-  app::CreativeEditorWorldLayoutRoomSettings settings{
-      room->footprint, level.floorTopLayer,
-      static_cast<std::uint16_t>(level.wallHeightCells + 1U),
-      room->wallThicknessCells, level.floorThicknessLayers};
-  static_cast<void>(app::setCreativeEditorWorldLayoutRoomSettings(
-      editor.worldLayout, roomIndex, settings));
+  const std::size_t levelIndex = room->levelIndex;
+  app::CreativeEditorWorldLayoutLevelSettings settings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      editor.worldLayout, levelIndex, settings));
+  settings.wallHeightCells += 1U;
+  static_cast<void>(app::setCreativeEditorWorldLayoutLevelSettings(
+      editor.worldLayout, levelIndex, settings));
 
   const std::uint64_t revisionBeforeUpdate = editor.worldLayout.revision;
   const auto updated = dispatchPayload(
@@ -3904,10 +3901,28 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
       cr::creativeUndoDepth(appState.history);
   const std::size_t objectCountAfterRoomCreation =
       appState.facade.document().objectCount();
+  const std::size_t levelIndex =
+      editor.worldLayout.source.rooms[0U].levelIndex;
+  app::CreativeEditorWorldLayoutLevelSettings levelSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutLevelSettings(
+      editor.worldLayout, levelIndex, levelSettings));
+  levelSettings.floorTopLayer = 1.0;
+  levelSettings.wallHeightCells = 4U;
+  const app::CreativeDesktopCommandResult levelResized = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutSetLevelSettings, context,
+      app::CreativeDesktopWorldLayoutLevelSettingsPayload{
+          levelIndex,
+          editor.worldLayout.source.levels[levelIndex].stableKey,
+          levelSettings});
+  app::CreativeEditorWorldLayoutRoomSettings roomSettings;
+  static_cast<void>(app::readCreativeEditorWorldLayoutRoomSettings(
+      editor.worldLayout, 0U, roomSettings));
+  roomSettings.footprint = {{0, 0}, {8, 6}};
+  roomSettings.wallThicknessCells = 0.5;
   const app::CreativeDesktopCommandResult resized = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSetRoomSettings, context,
       app::CreativeDesktopWorldLayoutRoomSettingsPayload{
-          0U, {{{0, 0}, {8, 6}}, 1, 4U, 0.5, 1U}});
+          0U, roomSettings});
   const app::CreativeDesktopCommandResult selectTool = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
       app::CreativeDesktopWorldLayoutToolPayload{
@@ -4015,6 +4030,8 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
                     room.accepted && room.worldLayoutChanged &&
                     room.sceneChanged && undoDepthAfterRoomCreation == 1U &&
                     objectCountAfterRoomCreation > 0U &&
+                    levelResized.accepted &&
+                    levelResized.worldLayoutChanged &&
                     resized.accepted && resized.worldLayoutChanged &&
                     selectTool.accepted && moveBegin.accepted &&
                     moveBegin.changed && !moveBegin.worldLayoutChanged &&
@@ -5099,6 +5116,15 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
       {0U, "ground", "Ground", 0.0, 3U, 1U, 1U, 1U});
   editor.worldLayout.source.levels.push_back(
       {0U, "upper", "Upper", 3.0, 3U, 1U, 1U, 1U});
+  editor.worldLayout.source.levels[1].wallHeightCells = 4U;
+  editor.worldLayout.source.levels[1].floorThicknessLayers = 2U;
+  editor.worldLayout.source.levels[1].roofThicknessLayers = 2U;
+  editor.worldLayout.source.levels[1].roofStyle =
+      cr::CreativeStructuralRoofStyle::Gable;
+  editor.worldLayout.source.levels[1].roofRidgeAxis =
+      cr::CreativeStructuralRoofRidgeAxis::Z;
+  editor.worldLayout.source.levels[1].roofPitchDegrees = 35.0;
+  editor.worldLayout.source.levels[1].roofOverhangCells = 0.5;
   editor.worldLayout.source.rooms.push_back(
       {0U, 0U, "ground_room", "Ground Room", {{0, 0}, {8, 8}}, 0.25});
   editor.worldLayout.source.rooms.push_back(
@@ -5206,13 +5232,6 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   static_cast<void>(app::readCreativeEditorWorldLayoutRoomSettings(
       editor.worldLayout, 1U, settings));
   settings.footprint.maximum.x = 10;
-  settings.wallHeightCells = 4U;
-  settings.floorThicknessLayers = 2U;
-  settings.roofThicknessLayers = 2U;
-  settings.roofStyle = cr::CreativeStructuralRoofStyle::Gable;
-  settings.roofRidgeAxis = cr::CreativeStructuralRoofRidgeAxis::Z;
-  settings.roofPitchDegrees = 35.0;
-  settings.roofOverhangCells = 0.5;
 
   const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
   const std::uint64_t documentRevisionBefore =
@@ -5233,7 +5252,7 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
       hasPreviewFloorBounds &&
       near(previewFloorBounds.max.x - previewFloorBounds.min.x, 10.0) &&
       editor.worldLayout.source.rooms[1].footprint.maximum.x == 8 &&
-      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 4U &&
       editor.worldLayout.revision == sourceRevisionBefore &&
       appState.facade.document().revision() == documentRevisionBefore &&
       cr::creativeUndoDepth(appState.history) == undoBefore;
@@ -5243,6 +5262,11 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
       context,
       app::CreativeDesktopGeneratedRoomSettingsPayload{
           roomScopeObjectId, 1U, "upper_room", settings});
+  if (!applied.accepted || editor.worldLayout.source.rooms.size() < 2U ||
+      editor.worldLayout.source.levels.size() < 2U) {
+    return expect(false,
+                  "generated room settings apply preserves source topology");
+  }
   const cr::CreativeObject* resizedFloor = generatedObject(
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
   const cr::CreativeObject* resizedWall = generatedObject(
@@ -5289,6 +5313,10 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
 
   const app::CreativeDesktopCommandResult undone =
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  if (!undone.accepted || editor.worldLayout.source.rooms.size() < 2U ||
+      editor.worldLayout.source.levels.size() < 2U) {
+    return expect(false, "generated room settings undo preserves topology");
+  }
   const cr::CreativeObject* undoneFloor = generatedObject(
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
   cr::CreativeBounds undoneFloorBounds;
@@ -5298,13 +5326,17 @@ bool generatedRoomSettingsRebuildTopologyAtomically() {
   const bool undoRestoredTopology =
       undone.accepted &&
       editor.worldLayout.source.rooms[1].footprint.maximum.x == 8 &&
-      editor.worldLayout.source.levels[1].wallHeightCells == 3U &&
+      editor.worldLayout.source.levels[1].wallHeightCells == 4U &&
       editor.worldLayout.source.levels[1].roofStyle ==
-          cr::CreativeStructuralRoofStyle::Flat &&
+          cr::CreativeStructuralRoofStyle::Gable &&
       undoneFloor != nullptr && hasUndoneFloorBounds &&
       near(undoneFloorBounds.max.x - undoneFloorBounds.min.x, 8.0);
   const app::CreativeDesktopCommandResult redone =
       dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  if (!redone.accepted || editor.worldLayout.source.rooms.size() < 2U ||
+      editor.worldLayout.source.levels.size() < 2U) {
+    return expect(false, "generated room settings redo preserves topology");
+  }
   const cr::CreativeObject* redoneFloor = generatedObject(
       cr::CreativeWorldLayoutTable::Room, 1U, cr::CreativeObjectKind::Floor);
   cr::CreativeBounds redoneFloorBounds;

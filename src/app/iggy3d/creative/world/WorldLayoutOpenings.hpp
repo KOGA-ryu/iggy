@@ -210,6 +210,11 @@ findNearestCreativeWorldLayoutOpeningHost(
 validateCreativeWorldLayoutOpening(
     const CreativeWorldLayoutOpeningValidationRequest& request) noexcept;
 
+// Validates every authored opening against the complete layout, including
+// mutual overlap and door-swing clearance. Runs without allocating.
+[[nodiscard]] bool validCreativeWorldLayoutOpenings(
+    const CreativeWorldLayout& layout) noexcept;
+
 [[nodiscard]] CreativeWorldLayoutOpeningClearanceResult
 evaluateCreativeWorldLayoutOpeningClearance(
     const CreativeWorldLayoutOpeningClearanceRequest& request) noexcept;

@@ -64,117 +64,6 @@ bool levelOwnsRoom(const cr::CreativeWorldLayout& layout,
              layout.levels[levelIndex].buildingIndex;
 }
 
-double snapLevelDatum(const cr::CreativeWorldLayout& layout,
-                      std::size_t levelIndex,
-                      double requested) noexcept {
-  const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
-  double anchor = level.floorTopLayer;
-  for (std::size_t index = 0U; index < layout.levels.size(); ++index) {
-    const cr::CreativeWorldLayoutLevel& candidate = layout.levels[index];
-    if (candidate.buildingIndex == level.buildingIndex &&
-        cr::creativeWorldLayoutLevelHasRooms(layout, index)) {
-      anchor = std::min(anchor, candidate.floorTopLayer);
-    }
-  }
-  return anchor + std::round(requested - anchor);
-}
-
-bool scopeIncludesLevel(
-    CreativeEditorWorldLayoutLevelEditScope scope,
-    std::size_t candidateIndex,
-    std::size_t selectedIndex,
-    double candidateDatum,
-    double selectedDatum) noexcept {
-  switch (scope) {
-    case CreativeEditorWorldLayoutLevelEditScope::Selected:
-      return candidateIndex == selectedIndex;
-    case CreativeEditorWorldLayoutLevelEditScope::SelectedAndAbove:
-      return candidateDatum >= selectedDatum - kGeometryEpsilon;
-    case CreativeEditorWorldLayoutLevelEditScope::SelectedAndBelow:
-      return candidateDatum <= selectedDatum + kGeometryEpsilon;
-    case CreativeEditorWorldLayoutLevelEditScope::All:
-      return true;
-    case CreativeEditorWorldLayoutLevelEditScope::Count:
-      return false;
-  }
-  return false;
-}
-
-bool plannedLevelDatum(
-    const cr::CreativeWorldLayout& layout,
-    std::size_t selectedLevelIndex,
-    CreativeEditorWorldLayoutLevelEditScope scope,
-    double delta,
-    std::size_t levelIndex,
-    double& output) noexcept {
-  if (selectedLevelIndex >= layout.levels.size() ||
-      levelIndex >= layout.levels.size()) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutLevel& selected =
-      layout.levels[selectedLevelIndex];
-  const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
-  output = level.floorTopLayer;
-  if (level.buildingIndex != selected.buildingIndex ||
-      !scopeIncludesLevel(scope, levelIndex, selectedLevelIndex,
-                          level.floorTopLayer,
-                          selected.floorTopLayer)) {
-    return true;
-  }
-  const long double moved =
-      static_cast<long double>(level.floorTopLayer) +
-      static_cast<long double>(delta);
-  if (!std::isfinite(moved) ||
-      moved <
-          -static_cast<long double>(std::numeric_limits<double>::max()) ||
-      moved >
-          static_cast<long double>(std::numeric_limits<double>::max())) {
-    return false;
-  }
-  output = static_cast<double>(moved);
-  return std::isfinite(output);
-}
-
-bool levelOrderPreserved(
-    const cr::CreativeWorldLayout& layout,
-    std::size_t buildingIndex,
-    std::size_t selectedLevelIndex,
-    CreativeEditorWorldLayoutLevelEditScope scope,
-    double delta) noexcept {
-  for (std::size_t first = 0U; first < layout.levels.size(); ++first) {
-    if (layout.levels[first].buildingIndex != buildingIndex) {
-      continue;
-    }
-    double firstDatum = 0.0;
-    if (!plannedLevelDatum(layout, selectedLevelIndex, scope, delta, first,
-                           firstDatum)) {
-      return false;
-    }
-    for (std::size_t second = first + 1U; second < layout.levels.size();
-         ++second) {
-      if (layout.levels[second].buildingIndex != buildingIndex) {
-        continue;
-      }
-      double secondDatum = 0.0;
-      if (!plannedLevelDatum(layout, selectedLevelIndex, scope, delta, second,
-                             secondDatum)) {
-        return false;
-      }
-      const double originalDelta =
-          layout.levels[first].floorTopLayer -
-          layout.levels[second].floorTopLayer;
-      const double candidateDelta = firstDatum - secondDatum;
-      if ((originalDelta < -kGeometryEpsilon &&
-           candidateDelta >= -kGeometryEpsilon) ||
-          (originalDelta > kGeometryEpsilon &&
-           candidateDelta <= kGeometryEpsilon)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
 }  // namespace
 
 std::string_view creativeEditorWorldLayoutLevelEditScopeLabel(
@@ -194,157 +83,19 @@ std::string_view creativeEditorWorldLayoutLevelEditScopeLabel(
   return "Invalid";
 }
 
-std::string_view creativeEditorWorldLayoutSectionWallConstraintLabel(
-    CreativeEditorWorldLayoutSectionWallConstraint constraint) noexcept {
-  switch (constraint) {
-    case CreativeEditorWorldLayoutSectionWallConstraint::FixedHeight:
-      return "fixed";
-    case CreativeEditorWorldLayoutSectionWallConstraint::TopLinked:
-      return "top-linked";
-    case CreativeEditorWorldLayoutSectionWallConstraint::Count:
+std::string_view creativeEditorWorldLayoutSectionPartitionExtentLabel(
+    CreativeEditorWorldLayoutSectionPartitionExtent extent) noexcept {
+  switch (extent) {
+    case CreativeEditorWorldLayoutSectionPartitionExtent::None:
+      return "unoccupied";
+    case CreativeEditorWorldLayoutSectionPartitionExtent::AuthoredHeight:
+      return "authored height";
+    case CreativeEditorWorldLayoutSectionPartitionExtent::ClippedByUpperFloor:
+      return "clipped by floor above";
+    case CreativeEditorWorldLayoutSectionPartitionExtent::Count:
       return "invalid";
   }
   return "invalid";
-}
-
-CreativeEditorWorldLayoutLevelDatumEditPlan
-planCreativeEditorWorldLayoutLevelDatumEdit(
-    const cr::CreativeWorldLayout& layout,
-    CreativeEditorWorldLayoutLevelDatumEditRequest request) {
-  CreativeEditorWorldLayoutLevelDatumEditPlan result;
-  result.selectedLevelIndex = request.levelIndex;
-  result.scope = request.scope;
-  if (request.levelIndex >= layout.levels.size() ||
-      request.scope >= CreativeEditorWorldLayoutLevelEditScope::Count ||
-      !std::isfinite(request.requestedFloorTopLayer) ||
-      cr::firstInvalidCreativeWorldLayoutLevelIndex(layout) !=
-          cr::kInvalidCreativeWorldLayoutIndex) {
-    result.reasonCode =
-        "creative_editor_world_layout_level_datum_edit_request_invalid";
-    return result;
-  }
-
-  const cr::CreativeWorldLayoutLevel& selected =
-      layout.levels[request.levelIndex];
-  if (selected.buildingIndex >= layout.buildings.size()) {
-    result.reasonCode =
-        "creative_editor_world_layout_level_datum_edit_request_invalid";
-    return result;
-  }
-  result.buildingIndex = selected.buildingIndex;
-  result.selectedFloorTopLayerBefore = selected.floorTopLayer;
-  result.snappedFloorTopLayer =
-      snapLevelDatum(layout, request.levelIndex,
-                     request.requestedFloorTopLayer);
-  if (!std::isfinite(result.snappedFloorTopLayer)) {
-    result.reasonCode =
-        "creative_editor_world_layout_level_datum_edit_unrepresentable";
-    return result;
-  }
-
-  result.deltaCells =
-      result.snappedFloorTopLayer - selected.floorTopLayer;
-  result.accepted = true;
-  if (std::abs(result.deltaCells) <= kGeometryEpsilon) {
-    result.reasonCode =
-        "creative_editor_world_layout_level_datum_edit_no_change";
-    return result;
-  }
-
-  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
-       ++levelIndex) {
-    const cr::CreativeWorldLayoutLevel& level = layout.levels[levelIndex];
-    if (level.buildingIndex != selected.buildingIndex ||
-        !scopeIncludesLevel(request.scope, levelIndex, request.levelIndex,
-                            level.floorTopLayer,
-                            selected.floorTopLayer)) {
-      continue;
-    }
-    double moved = 0.0;
-    if (!plannedLevelDatum(layout, request.levelIndex, request.scope,
-                           result.deltaCells, levelIndex, moved)) {
-      result.accepted = false;
-      result.reasonCode =
-          "creative_editor_world_layout_level_datum_edit_unrepresentable";
-      return result;
-    }
-    ++result.affectedLevelCount;
-  }
-
-  if (result.affectedLevelCount == 0U ||
-      !levelOrderPreserved(layout, selected.buildingIndex,
-                           request.levelIndex, request.scope,
-                           result.deltaCells)) {
-    result.accepted = false;
-    result.affectedLevelCount = 0U;
-    result.reasonCode =
-        request.scope == CreativeEditorWorldLayoutLevelEditScope::Selected
-            ? "creative_editor_world_layout_elevation_floor_crosses_level"
-            : "creative_editor_world_layout_level_datum_scope_crosses_level";
-    return result;
-  }
-
-  result.changed = true;
-  result.reasonCode =
-      "creative_editor_world_layout_level_datum_edit_ready";
-  return result;
-}
-
-bool applyCreativeEditorWorldLayoutLevelDatumEditPlan(
-    cr::CreativeWorldLayout& layout,
-    const CreativeEditorWorldLayoutLevelDatumEditPlan& plan) noexcept {
-  if (!plan.accepted || !plan.changed ||
-      plan.selectedLevelIndex >= layout.levels.size() ||
-      plan.scope >= CreativeEditorWorldLayoutLevelEditScope::Count) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutLevel& selected =
-      layout.levels[plan.selectedLevelIndex];
-  if (selected.buildingIndex != plan.buildingIndex ||
-      std::abs(selected.floorTopLayer -
-               plan.selectedFloorTopLayerBefore) >
-          kGeometryEpsilon) {
-    return false;
-  }
-
-  std::size_t affectedLevelCount = 0U;
-  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
-       ++levelIndex) {
-    if (layout.levels[levelIndex].buildingIndex != plan.buildingIndex ||
-        !scopeIncludesLevel(
-            plan.scope, levelIndex, plan.selectedLevelIndex,
-            layout.levels[levelIndex].floorTopLayer,
-            plan.selectedFloorTopLayerBefore)) {
-      continue;
-    }
-    const long double moved =
-        static_cast<long double>(
-            layout.levels[levelIndex].floorTopLayer) +
-        static_cast<long double>(plan.deltaCells);
-    if (!std::isfinite(moved) ||
-        moved <
-            -static_cast<long double>(std::numeric_limits<double>::max()) ||
-        moved >
-            static_cast<long double>(std::numeric_limits<double>::max())) {
-      return false;
-    }
-    ++affectedLevelCount;
-  }
-  if (affectedLevelCount != plan.affectedLevelCount) {
-    return false;
-  }
-  for (std::size_t levelIndex = 0U; levelIndex < layout.levels.size();
-       ++levelIndex) {
-    if (layout.levels[levelIndex].buildingIndex != plan.buildingIndex ||
-        !scopeIncludesLevel(
-            plan.scope, levelIndex, plan.selectedLevelIndex,
-            layout.levels[levelIndex].floorTopLayer,
-            plan.selectedFloorTopLayerBefore)) {
-      continue;
-    }
-    layout.levels[levelIndex].floorTopLayer += plan.deltaCells;
-  }
-  return true;
 }
 
 CreativeEditorWorldLayoutElevationHandle
@@ -504,7 +255,7 @@ planCreativeEditorWorldLayoutElevationEdit(
     if (handle.kind ==
         CreativeEditorWorldLayoutElevationHandleKind::LevelFloor) {
       result.levelDatumPlan =
-          planCreativeEditorWorldLayoutLevelDatumEdit(
+          cr::planCreativeWorldLayoutLevelDatumEdit(
               layout, {handle.levelIndex, levelScope,
                        requestedVerticalCells});
       if (!result.levelDatumPlan.accepted) {

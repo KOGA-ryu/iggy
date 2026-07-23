@@ -14,6 +14,7 @@
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRoofs.hpp"
 
 namespace iggy3d_creative_app {
@@ -277,10 +278,26 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelSettings(
     return {false, false,
             "creative_editor_world_layout_level_settings_invalid"};
   }
+  const cr::CreativeWorldLayoutLevelDatumEditPlan datumPlan =
+      cr::planCreativeWorldLayoutLevelDatumEdit(
+          state.source,
+          {levelIndex,
+           cr::CreativeWorldLayoutLevelDatumEditScope::Selected,
+           settings.floorTopLayer});
+  if (!datumPlan.accepted) {
+    state.statusMessage = "level datum conflicts with building geometry";
+    return {false, false, std::string(datumPlan.reasonCode)};
+  }
   cr::CreativeWorldLayout candidate = state.source;
+  if (datumPlan.changed &&
+      !cr::applyCreativeWorldLayoutLevelDatumEditPlan(candidate, datumPlan)) {
+    state.statusMessage = "level datum edit is stale";
+    return {false, false,
+            "creative_editor_world_layout_level_settings_datum_stale"};
+  }
   cr::CreativeWorldLayoutLevel& level = candidate.levels[levelIndex];
+  settings.floorTopLayer = level.floorTopLayer;
   level.name = settings.name;
-  level.floorTopLayer = settings.floorTopLayer;
   level.wallHeightCells = settings.wallHeightCells;
   level.floorThicknessLayers = settings.floorThicknessLayers;
   level.ceilingThicknessLayers = settings.ceilingThicknessLayers;
@@ -292,7 +309,8 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelSettings(
   level.roofOverhangCells = settings.roofOverhangCells;
   level.roofMaterial = settings.roofMaterial;
   if (cr::firstInvalidCreativeWorldLayoutLevelIndex(candidate) !=
-      cr::kInvalidCreativeWorldLayoutIndex) {
+          cr::kInvalidCreativeWorldLayoutIndex ||
+      !cr::validCreativeWorldLayoutOpenings(candidate)) {
     state.statusMessage = "level settings conflict with building geometry";
     return {false, false,
             "creative_editor_world_layout_level_settings_rejected"};
@@ -302,7 +320,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelSettings(
     return {true, false,
             "creative_editor_world_layout_level_settings_no_change"};
   }
-  state.source.levels[levelIndex] = std::move(level);
+  state.source = std::move(candidate);
   state.activeLevelIndex = levelIndex;
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Level,
                      levelIndex};
@@ -315,11 +333,11 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelDatum(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutLevelDatumEditRequest request) {
   const CreativeEditorWorldLayoutLevelDatumEditPlan plan =
-      planCreativeEditorWorldLayoutLevelDatumEdit(state.source, request);
+      cr::planCreativeWorldLayoutLevelDatumEdit(state.source, request);
   if (!plan.accepted) {
     state.statusMessage =
         plan.reasonCode ==
-                "creative_editor_world_layout_level_datum_scope_crosses_level"
+                "creative_world_layout_level_datum_edit_crosses_level"
             ? "section edit would cross another building level"
             : "level datum edit is invalid";
     return {false, false, std::string(plan.reasonCode)};
@@ -331,9 +349,10 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutLevelDatum(
   }
 
   cr::CreativeWorldLayout candidate = state.source;
-  if (!applyCreativeEditorWorldLayoutLevelDatumEditPlan(candidate, plan) ||
+  if (!cr::applyCreativeWorldLayoutLevelDatumEditPlan(candidate, plan) ||
       cr::firstInvalidCreativeWorldLayoutLevelIndex(candidate) !=
-      cr::kInvalidCreativeWorldLayoutIndex) {
+          cr::kInvalidCreativeWorldLayoutIndex ||
+      !cr::validCreativeWorldLayoutOpenings(candidate)) {
     state.statusMessage = "section edit conflicts with building levels";
     return {false, false,
             "creative_editor_world_layout_level_datum_rejected"};

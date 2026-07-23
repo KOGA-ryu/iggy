@@ -184,6 +184,10 @@ bool validationPinsCutoutInsertAndOverlapLaws() {
   upperWindow.insertHeightCells = 1.0;
   const auto verticallySeparated =
       cr::validateCreativeWorldLayoutOpening({&layout, &upperWindow});
+  const bool validCollection = cr::validCreativeWorldLayoutOpenings(layout);
+  layout.openings.front().cutoutHeightCells = 8.0;
+  const bool invalidCollection =
+      !cr::validCreativeWorldLayoutOpenings(layout);
 
   return expect(ready.accepted && ready.sillTopCells == 0.0 &&
                     ready.lintelBottomCells == 2.1 &&
@@ -219,7 +223,9 @@ bool validationPinsCutoutInsertAndOverlapLaws() {
                         cr::CreativeWorldLayoutOpeningValidationStatus::Overlap,
                 "same-height hosted openings cannot overlap") &&
          expect(verticallySeparated.accepted,
-                "vertically separated cutouts may share one host interval");
+                "vertically separated cutouts may share one host interval") &&
+         expect(validCollection && invalidCollection,
+                "layout validation checks every authored opening");
 }
 
 bool sharedEdgeWindowAndMovementObstructionAreDiagnosed() {

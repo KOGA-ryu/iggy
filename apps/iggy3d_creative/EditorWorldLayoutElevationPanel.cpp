@@ -13,6 +13,7 @@
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
 #include "EditorWorldLayoutVerticalConnectorHandles.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
@@ -207,8 +208,9 @@ bool buildElevationDatumPreview(
     return false;
   }
   cr::CreativeWorldLayout candidate = state.source;
-  if (!applyCreativeEditorWorldLayoutLevelDatumEditPlan(
-          candidate, manipulation.preview.levelDatumPlan)) {
+  if (!cr::applyCreativeWorldLayoutLevelDatumEditPlan(
+          candidate, manipulation.preview.levelDatumPlan) ||
+      !cr::validCreativeWorldLayoutOpenings(candidate)) {
     return false;
   }
   output = planCreativeEditorWorldLayoutElevation(
@@ -237,21 +239,25 @@ void drawElevationSectionAnnotations(
                      active ? 1.8F : 1.0F);
 
     char label[256];
-    const std::string_view constraint =
-        creativeEditorWorldLayoutSectionWallConstraintLabel(
-            level.partitionConstraint);
-    if (level.floorToFloorMeters > 0.0) {
+    const std::string_view extent =
+        creativeEditorWorldLayoutSectionPartitionExtentLabel(
+            level.partitionExtent);
+    if (!level.occupied) {
+      std::snprintf(label, sizeof(label), "%s  %+.2f m  |  %.*s",
+                    level.name.c_str(), level.floorDatumMeters,
+                    static_cast<int>(extent.size()), extent.data());
+    } else if (level.floorToFloorMeters > 0.0) {
       std::snprintf(label, sizeof(label),
                     "%s  %+.2f m  |  clear %.2f m  |  F2F %.2f m  |  %.*s",
                     level.name.c_str(), level.floorDatumMeters,
                     level.clearHeightMeters, level.floorToFloorMeters,
-                    static_cast<int>(constraint.size()), constraint.data());
+                    static_cast<int>(extent.size()), extent.data());
     } else {
       std::snprintf(label, sizeof(label),
                     "%s  %+.2f m  |  clear %.2f m  |  %.*s",
                     level.name.c_str(), level.floorDatumMeters,
                     level.clearHeightMeters,
-                    static_cast<int>(constraint.size()), constraint.data());
+                    static_cast<int>(extent.size()), extent.data());
     }
     const ImVec2 textSize = ImGui::CalcTextSize(label);
     const ImVec2 textMinimum{minimum.x + 8.0F, datumY - textSize.y - 3.0F};
@@ -262,7 +268,7 @@ void drawElevationSectionAnnotations(
     drawList.AddText({textMinimum.x + 4.0F, textMinimum.y + 2.0F},
                      datumColor, label);
 
-    if (!active) {
+    if (!active || !level.occupied) {
       continue;
     }
     const float partitionY =
@@ -769,31 +775,23 @@ bool queueElevationEdit(
               edit.floorTopLayer});
       return true;
     }
-    CreativeEditorWorldLayoutRoomSettings settings;
-    if (!readCreativeEditorWorldLayoutRoomSettings(
-            state, edit.handle.sourceIndex, settings)) {
+    if (edit.handle.kind !=
+            CreativeEditorWorldLayoutElevationHandleKind::WallTop ||
+        edit.handle.levelIndex >= state.source.levels.size()) {
       return false;
     }
-    switch (edit.handle.kind) {
-      case CreativeEditorWorldLayoutElevationHandleKind::LevelFloor:
-        return false;
-      case CreativeEditorWorldLayoutElevationHandleKind::WallTop:
-        settings.wallHeightCells = edit.wallHeightCells;
-        break;
-      case CreativeEditorWorldLayoutElevationHandleKind::RoofRidge:
-        return false;
-      case CreativeEditorWorldLayoutElevationHandleKind::None:
-      case CreativeEditorWorldLayoutElevationHandleKind::OpeningBottom:
-      case CreativeEditorWorldLayoutElevationHandleKind::OpeningTop:
-      case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow:
-      case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh:
-      case CreativeEditorWorldLayoutElevationHandleKind::Count:
-        return false;
+    CreativeEditorWorldLayoutLevelSettings settings;
+    if (!readCreativeEditorWorldLayoutLevelSettings(
+            state, edit.handle.levelIndex, settings)) {
+      return false;
     }
+    settings.wallHeightCells = edit.wallHeightCells;
     commands.push(
-        CreativeDesktopCommandId::WorldLayoutSetRoomSettings,
-        CreativeDesktopWorldLayoutRoomSettingsPayload{edit.handle.sourceIndex,
-                                                      settings});
+        CreativeDesktopCommandId::WorldLayoutSetLevelSettings,
+        CreativeDesktopWorldLayoutLevelSettingsPayload{
+            edit.handle.levelIndex,
+            state.source.levels[edit.handle.levelIndex].stableKey,
+            settings});
     return true;
   }
   if (edit.handle.sourceKind ==
