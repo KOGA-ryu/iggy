@@ -1,0 +1,11 @@
+department_id	title	priority	focus_tier	audit_state	summary
+authoring-core	Authoring Core	1	P0	Complete	Document state, atomic mutations, history, semantic recipes, provenance, and world-authoring orchestration.
+persistence-validation	Persistence and Validation	2	P0	Not Started	Save and load, codecs, schemas, diagnostics, deterministic records, replay, package validation, and migration safety.
+interaction-controls	Interaction and Controls	3	P0	Not Started	Semantic input routing, keyboard, touchpad and gamepad behavior, selection, transform, gizmos, measurements, and tool interaction.
+building-layout	Building and World Layout	4	P1	Not Started	Buildings, rooms, storeys, shells, openings, vertical connectors, roofs, plans, elevations, and generated-source maintenance.
+assets-objects	Assets and Object Composition	5	P1	Not Started	Asset catalog and import, object placement, snapping, attachments, scatter, authored assets, patterns, volumes, and reusable object composition.
+rendering-preview	Rendering and Preview	6	P1	Not Started	Scene projection, preview geometry, overlays, scene caching, renderer resources, shaders, Vulkan integration, and capture.
+terrain-site	Terrain and Site	7	P1	Not Started	Terrain fields, sculpting, grading, contours, paths, roads, watercourses, bridges, retaining edges, and site reconciliation.
+editor-shell-ui	Editor Shell and Drafting UI	8	P2	Not Started	Desktop shell, docking, shared panels, outliner, inspector framework, common widgets, glyphs, and drafting presentation.
+playtest-simulation	Playtest and Simulation	9	P2	Not Started	Playtest process ownership, runtime world preparation, player, NPC, physics, navigation, combat, objectives, and gameplay integration.
+foundation-build	Foundation and Build	10	P3	Not Started	Core types, platform integration, build system, third-party dependencies, repository tooling, and architectural enforcement.
