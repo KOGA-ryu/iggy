@@ -1090,7 +1090,11 @@ bool hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() {
   const cr::CreativeHierarchyTransformReceipt leafReceipt =
       facade.transformObjectHierarchyAtomically(
           {leaf, leafTarget, true, true, true});
-  const cr::CreativeObject* transformedLeaf = facade.findObject(leaf);
+  const cr::CreativeObject* transformedLeafObject = facade.findObject(leaf);
+  const bool transformedLeafAvailable = transformedLeafObject != nullptr;
+  const cr::CreativeTransform transformedLeaf =
+      transformedLeafAvailable ? transformedLeafObject->transform
+                               : cr::CreativeTransform{};
 
   const cr::CreativeTransform hierarchyTarget{{6.0, 7.0, 8.0},
                                               {-0.2, 0.3, -0.4},
@@ -1104,14 +1108,14 @@ bool hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() {
 
   return expect(leafReceipt.accepted && leafReceipt.changed &&
                     leafReceipt.revisionAfter == leafRevisionBefore + 1U &&
-                    transformedLeaf != nullptr &&
+                    transformedLeafAvailable &&
                     cr::creativeVec3ExactlyEqual(
-                        transformedLeaf->transform.position,
+                        transformedLeaf.position,
                         leafTarget.position) &&
                     cr::creativeVec3ExactlyEqual(
-                        transformedLeaf->transform.scale, leafTarget.scale) &&
+                        transformedLeaf.scale, leafTarget.scale) &&
                     nearVec3(
-                        transformedLeaf->transform.rotationEulerRadians,
+                        transformedLeaf.rotationEulerRadians,
                         leafTarget.rotationEulerRadians),
                 "leaf absolute transform pins position scale and orientation") &&
          expect(hierarchyReceipt.accepted && hierarchyReceipt.changed &&
