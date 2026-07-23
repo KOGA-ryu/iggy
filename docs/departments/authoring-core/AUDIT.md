@@ -162,3 +162,18 @@ AUT-008 completed on 2026-07-23.
   retired editor hierarchy implementations.
 - `tools/repo_departments.py check` passed with 10 departments, 1,482 governed
   files, 93 work items, 10 manual tests, and 37 audit findings.
+
+AUT-002 completed on 2026-07-23.
+
+- AUT-002A commit `57fe7800` routes all staged same-document publication
+  through `CreativeDocument::commitStagedMutation`; the clean focused gate
+  passed 11/11.
+- AUT-002B commit `aa0b7882` gives `Facade` a transient live-revision
+  high-water mark and narrowly rebases later whole-document replacements.
+  Initial install remains unchanged, while undo, redo, reset/reinstall,
+  alternate branches, copied/moved Facades, rejection atomicity, frozen
+  reattachment plans, and map-validation cache staleness are pinned.
+- The cache and stale-plan proofs use the existing document revision. No
+  publication id, generation, epoch, persistence field, or source-layout
+  revision contract was added.
+- A clean cache-disabled build passed the exact 7/7 AUT-002B CTest gate.
