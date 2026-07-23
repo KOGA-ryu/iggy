@@ -36,7 +36,7 @@ replacement.
 | AUT-A1-010 | Facade `State`, frame packet, and packet handler compatibility path | Test-only Production | AUT-007 removed `State.hpp`, the packet types, Facade stubs, mirror writes, and mirror assertions; tests now inspect the canonical typed states | Retired | P1 |
 | AUT-A1-011 | `CreativeActiveIdentity` | Unreachable | AUT-007 removed the unread type and `CreativeAppState::identity` member | Retired | P1 |
 | AUT-A1-012 | Facade `Stats` | Test-only Production | Counters have no product readers and are asserted only by tests; install, batch-create, and mutable escape routes do not form a complete product-command metric; decide whether deliberate diagnostics replace them | Investigate | P2 |
-| AUT-A1-013 | World Layout source history and sidecar | Required Adapter | The app-specific wrapper records both document history and the 2D source snapshot, which the generic recipe helper cannot represent | Keep | P0 |
+| AUT-A1-013 | World Layout source history and sidecar | Required Adapter | The app-specific wrapper records both document history and the 2D source snapshot, which the generic recipe helper cannot represent; mixed reconciliation is classified under the `WorldLayout` operation family rather than falsely as `Building` | Keep | P0 |
 | AUT-A1-014 | `CreativeEditorSceneCache` revision key | Contract Risk | Document id/revision gates the room bake, terrain plans, placement clearance, and downstream preview caches, but history currently reinstalls old revisions and permits an alternate branch to reuse the same key; AUT-002B owns the revision-lineage repair | Repair | P0 |
 | AUT-A1-015 | `creative/adapters/RoomBake*` ownership | Ownership Undecided | Thirteen adapter files do not mutate authored state; their consumers are preview, play, validation, and building traversal; rule their destination after Rendering and Playtest audits | Move | P2 |
 | AUT-A1-016 | `WorldService` | Required Adapter | Sole create/open/save bridge for Creative documents and optional World Layout source; audit save atomicity in Persistence and Validation | Keep | P1 |
@@ -216,3 +216,28 @@ AUT-001 completed on 2026-07-23.
 - The AUT-001 recipe/workflow gate passed 4/4. The full Authoring Core
   automated gate passed 10/10, and repository search found no remaining
   generic `applyCreative*WithHistory` recipe wrapper.
+
+AUT-004 completed on 2026-07-23.
+
+- Commit `af45a7da` replaces the false `ObjectProvenance` source-store label
+  with `AuthoredAssetLibrary`, maps object-library recipes to their actual
+  `WorldLayoutSource`, and adds an append-only `WorldLayout` operation family.
+  Existing family numeric values remain unchanged.
+- Durable-source ownership is now explicit: building, object-library, road,
+  watercourse, bridge, retaining-edge, and World Layout use
+  `WorldLayoutSource`; terrain uses `TerrainOperationStack`; pattern and asset
+  scatter use `PatternRecipeStore`; prefab uses `AuthoredAssetLibrary`; volume
+  remains intentionally destructive with no durable source.
+- World Layout history no longer claims every mixed plan is a building edit.
+  Its operation record now identifies `WorldLayout.Apply` as a
+  `WorldLayout` reconciliation while preserving the exact plan fingerprint and
+  affected-member count.
+- Tests prove regeneration, detach, explicit removal, prefab deletion, undo,
+  and redo across every generated-source store. Terrain stack bake already
+  carried exact undo/redo coverage and remains unchanged.
+- Selection remains transient editor state and is deliberately not restored by
+  document history. Provenance tests require durable source, generated objects,
+  hierarchy, and authored links to round-trip without inventing selection
+  persistence.
+- The generated-source gate passed 8/8. The expanded Authoring Core and direct
+  operation-record gate passed 19/19; no window was launched.
