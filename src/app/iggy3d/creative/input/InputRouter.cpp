@@ -327,6 +327,8 @@ std::string_view toString(CreativeInputBindingConflictKind kind) noexcept {
       return "PriorityShadow";
     case CreativeInputBindingConflictKind::AmbiguousPriority:
       return "AmbiguousPriority";
+    case CreativeInputBindingConflictKind::ActivationShadow:
+      return "ActivationShadow";
   }
   return "Unknown";
 }
@@ -582,7 +584,6 @@ CreativeInputBindingAuditResult auditCreativeInputBindings(
       const CreativeInputBinding& second = bindings[secondIndex];
       if (first.trigger == CreativeInputKey::Unbound ||
           second.trigger == CreativeInputKey::Unbound ||
-          first.activation != second.activation ||
           first.context != second.context || first.trigger != second.trigger) {
         continue;
       }
@@ -590,6 +591,14 @@ CreativeInputBindingAuditResult auditCreativeInputBindings(
       CreativeInputModifierMask overlappingModifiers =
           kCreativeInputModifierNone;
       if (!modifierDomainsOverlap(first, second, overlappingModifiers)) {
+        continue;
+      }
+      const bool activationShadow =
+          first.activation != second.activation &&
+          overlappingModifiers == kCreativeInputModifierNone &&
+          (first.consumePolicy != CreativeInputConsumePolicy::PassThrough ||
+           second.consumePolicy != CreativeInputConsumePolicy::PassThrough);
+      if (first.activation != second.activation && !activationShadow) {
         continue;
       }
 
@@ -601,15 +610,23 @@ CreativeInputBindingAuditResult auditCreativeInputBindings(
       conflict.context = first.context;
       conflict.trigger = first.trigger;
       conflict.overlappingModifiers = overlappingModifiers;
-      if (first.action == second.action) {
+      if (activationShadow) {
+        conflict.kind = CreativeInputBindingConflictKind::ActivationShadow;
+      } else if (first.action == second.action) {
         conflict.kind = CreativeInputBindingConflictKind::DuplicateAction;
       } else if (first.priority != second.priority) {
         conflict.kind = CreativeInputBindingConflictKind::PriorityShadow;
       } else {
         conflict.kind = CreativeInputBindingConflictKind::AmbiguousPriority;
       }
-      conflict.winningBindingIndex =
-          second.priority > first.priority ? secondIndex : firstIndex;
+      if (second.priority > first.priority ||
+          (second.priority == first.priority &&
+           first.consumePolicy == CreativeInputConsumePolicy::PassThrough &&
+           second.consumePolicy != CreativeInputConsumePolicy::PassThrough)) {
+        conflict.winningBindingIndex = secondIndex;
+      } else {
+        conflict.winningBindingIndex = firstIndex;
+      }
       result.conflicts[result.conflictCount++] = conflict;
     }
   }

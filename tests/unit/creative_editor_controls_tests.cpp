@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -174,6 +175,46 @@ bool missingAndMalformedFilesDoNotReplaceLiveProfile() {
                     app::CreativeEditorControlPersistenceStatus::Invalid &&
                     profile.mouseLookSensitivity == 0.42F,
                 "unexpected persisted fields fail atomically");
+}
+
+bool activationShadowFileDoesNotReplaceLiveProfile() {
+  const cr::CreativeControlProfile defaults =
+      cr::makeDefaultCreativeControlProfile();
+  std::string serialized;
+  const app::CreativeEditorControlPersistenceReceipt encoded =
+      app::serializeCreativeEditorControlProfile(defaults, serialized);
+  constexpr std::string_view kUndoPrefix =
+      "bind Undo KeyboardMouse 0 ";
+  const std::size_t lineBegin = serialized.find(kUndoPrefix);
+  const std::size_t lineEnd =
+      lineBegin == std::string::npos
+          ? std::string::npos
+          : serialized.find('\n', lineBegin);
+  if (!encoded.accepted || lineBegin == std::string::npos ||
+      lineEnd == std::string::npos) {
+    return expect(false, "default Undo row serializes");
+  }
+  serialized.replace(
+      lineBegin, lineEnd - lineBegin,
+      "bind Undo KeyboardMouse 0 MousePrimary 0 0 0");
+
+  cr::CreativeControlProfile live = defaults;
+  live.mouseLookSensitivity = 0.42F;
+  const app::CreativeEditorControlPersistenceReceipt parsed =
+      app::parseCreativeEditorControlProfile(serialized, live);
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(live);
+  const cr::CreativeControlBindingRow* undo =
+      findRow(rows, cr::CreativeInputActionId::Undo,
+              cr::CreativeControlDevice::KeyboardMouse);
+
+  return expect(parsed.status ==
+                        app::CreativeEditorControlPersistenceStatus::Invalid &&
+                    !parsed.accepted,
+                "persisted activation shadow is rejected") &&
+         expect(live.mouseLookSensitivity == 0.42F && undo != nullptr &&
+                    undo->trigger == cr::CreativeInputKey::Z,
+                "invalid persisted profile leaves live controls untouched");
 }
 
 bool legacySquarePickMigratesWithoutDiscardingProfileTuning() {
@@ -464,6 +505,7 @@ int main() {
   bool ok = true;
   ok = profileRoundTripPreservesBindingsAndTuning() && ok;
   ok = missingAndMalformedFilesDoNotReplaceLiveProfile() && ok;
+  ok = activationShadowFileDoesNotReplaceLiveProfile() && ok;
   ok = legacySquarePickMigratesWithoutDiscardingProfileTuning() && ok;
   ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;

@@ -327,6 +327,85 @@ bool conflictPoliciesRejectReplaceAndSwapDeterministically() {
                 "swap exchanges complete chords");
 }
 
+bool barePressBindingsCannotShadowHeldActions() {
+  const cr::CreativeControlProfile defaults =
+      cr::makeDefaultCreativeControlProfile();
+  const cr::CreativeControlBindingList rows =
+      cr::buildCreativeControlBindingList(defaults);
+  const cr::CreativeControlBindingRow* undo =
+      findRow(rows, cr::CreativeInputActionId::Undo,
+              cr::CreativeControlDevice::KeyboardMouse);
+  const cr::CreativeControlBindingRow* primary =
+      findRow(rows, cr::CreativeInputActionId::PrimaryAction,
+              cr::CreativeControlDevice::KeyboardMouse);
+  if (undo == nullptr || primary == nullptr) {
+    return expect(false, "undo and primary action rows exist");
+  }
+
+  cr::CreativeControlProfile stored = defaults;
+  const bool storedChordApplied = cr::applyStoredCreativeControlChord(
+      stored, undo->group, cr::CreativeInputKey::MousePrimary,
+      cr::kCreativeInputModifierNone, cr::kCreativeInputModifierNone,
+      cr::kCreativeInputModifierNone);
+  const cr::CreativeInputBindingAuditResult storedAudit =
+      cr::auditCreativeInputBindings(stored.bindingSpan());
+
+  cr::CreativeControlProfile rebound = defaults;
+  const cr::CreativeControlRebindReceipt rejected =
+      cr::rebindCreativeControl(
+          rebound,
+          {undo->group, cr::CreativeInputKey::MousePrimary,
+           cr::kCreativeInputModifierNone,
+           cr::CreativeControlConflictPolicy::Reject});
+
+  const std::array passThroughPair{
+      cr::CreativeInputBinding{
+          cr::CreativeInputActionId::Undo,
+          cr::CreativeInputKey::MousePrimary,
+          cr::CreativeInputContext::EditorViewport,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          0U,
+          cr::CreativeInputConsumePolicy::PassThrough},
+      cr::CreativeInputBinding{
+          cr::CreativeInputActionId::PrimaryAction,
+          cr::CreativeInputKey::MousePrimary,
+          cr::CreativeInputContext::EditorViewport,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          0U,
+          cr::CreativeInputConsumePolicy::PassThrough,
+          {},
+          cr::CreativeInputBindingActivation::Continuous},
+  };
+  const cr::CreativeInputBindingAuditResult passThroughAudit =
+      cr::auditCreativeInputBindings(passThroughPair);
+
+  return expect(storedChordApplied && storedAudit.conflictCount == 1U &&
+                    storedAudit.conflicts[0].kind ==
+                        cr::CreativeInputBindingConflictKind::
+                            ActivationShadow &&
+                    storedAudit.conflicts[0].firstAction ==
+                        cr::CreativeInputActionId::Undo &&
+                    storedAudit.conflicts[0].secondAction ==
+                        cr::CreativeInputActionId::PrimaryAction &&
+                    storedAudit.conflicts[0].overlappingModifiers ==
+                        cr::kCreativeInputModifierNone &&
+                    !cr::isValidCreativeControlProfile(stored),
+                "bare consuming press cannot shadow a held action") &&
+         expect(rejected.status ==
+                        cr::CreativeControlRebindStatus::Conflict &&
+                    !rejected.changed && rejected.conflictCount == 1U &&
+                    rejected.conflictGroups[0] == primary->group &&
+                    cr::isValidCreativeControlProfile(rebound),
+                "interactive rebind rejects the same activation shadow") &&
+         expect(passThroughAudit.conflictCount == 0U,
+                "non-consuming press and held actions may intentionally "
+                "coexist");
+}
+
 bool deviceAndReservedBoundariesFailClosed() {
   cr::CreativeControlProfile profile =
       cr::makeDefaultCreativeControlProfile();
@@ -497,6 +576,7 @@ int main() {
   ok = continuousBindingsAreQueryableWithoutEdgeEvents() && ok;
   ok = requiredPs5ActionsRemainReachable() && ok;
   ok = conflictPoliciesRejectReplaceAndSwapDeterministically() && ok;
+  ok = barePressBindingsCannotShadowHeldActions() && ok;
   ok = deviceAndReservedBoundariesFailClosed() && ok;
   ok = standaloneModifierKeysRemainBindable() && ok;
   ok = reservedBindingsAndConsumedHeldActionsStayIsolated() && ok;

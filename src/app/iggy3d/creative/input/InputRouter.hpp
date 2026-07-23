@@ -292,6 +292,7 @@ enum class CreativeInputBindingConflictKind : std::uint8_t {
   DuplicateAction,
   PriorityShadow,
   AmbiguousPriority,
+  ActivationShadow,
 };
 
 struct CreativeInputBindingConflict {

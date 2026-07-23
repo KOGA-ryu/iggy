@@ -238,6 +238,7 @@ bool resolverUsesLiveBindingsAndBoundedPairs() {
   rebind.group = groupFor(profile, cr::CreativeInputActionId::AcceptAction,
                           cr::CreativeControlDevice::Gamepad);
   rebind.trigger = cr::CreativeInputKey::GamepadBack;
+  rebind.conflictPolicy = cr::CreativeControlConflictPolicy::Replace;
   const cr::CreativeControlRebindReceipt rebound =
       cr::rebindCreativeControl(profile, rebind);
   frame = cr::resolveCreativeActionHints(
