@@ -491,6 +491,11 @@ set_tests_properties(creative_editor_controls_tests PROPERTIES
 set_tests_properties(creative_editor_controls_tests PROPERTIES
   LABELS "unit;app;creative;editor;controls;persistence;iggy3d")
 
+iggy3d_add_unit_test(creative_ui_input_boundary_tests
+  tests/unit/creative_ui_input_boundary_tests.cpp)
+set_tests_properties(creative_ui_input_boundary_tests PROPERTIES
+  LABELS "unit;app;creative;editor;controls;boundary;iggy3d")
+
 add_executable(creative_editor_action_hints_tests
   tests/unit/creative_editor_action_hints_tests.cpp)
 target_link_libraries(creative_editor_action_hints_tests PRIVATE

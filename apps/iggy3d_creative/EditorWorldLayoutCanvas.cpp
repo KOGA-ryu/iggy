@@ -710,6 +710,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
                       const cr::CreativeMeasurementState& measurement,
                       CreativeDesktopCommandFrame& commands,
                       bool interactionEnabled,
+                      const CreativeEditorUiInputFrame& input,
                       CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
@@ -749,35 +750,36 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle |
           ImGuiButtonFlags_MouseButtonRight);
   const bool hovered = ImGui::IsItemHovered();
-  ImGuiIO& io = ImGui::GetIO();
+  const ImVec2 pointerPosition{input.pointer.x, input.pointer.y};
 
   CanvasTransform transform{
       {minimum.x + canvasSize.x * 0.5F + state.canvasPanX,
        minimum.y + canvasSize.y * 0.5F + state.canvasPanZ},
       state.canvasPixelsPerCell};
 
-  if (hovered && io.MouseWheel != 0.0F) {
+  if (hovered && input.pointer.wheelY != 0.0F) {
     const CreativeEditorWorldLayoutPoint before =
-        toWorld(transform, io.MousePos);
+        toWorld(transform, pointerPosition);
     state.canvasPixelsPerCell = std::clamp(
-        state.canvasPixelsPerCell * (io.MouseWheel > 0.0F ? 1.15F : 0.87F),
+        state.canvasPixelsPerCell *
+            (input.pointer.wheelY > 0.0F ? 1.15F : 0.87F),
         12.0F, 80.0F);
     transform.pixelsPerCell = state.canvasPixelsPerCell;
     const ImVec2 anchored = toScreen(transform, before.x, before.z);
-    state.canvasPanX += io.MousePos.x - anchored.x;
-    state.canvasPanZ += io.MousePos.y - anchored.y;
-    transform.origin.x += io.MousePos.x - anchored.x;
-    transform.origin.y += io.MousePos.y - anchored.y;
+    state.canvasPanX += pointerPosition.x - anchored.x;
+    state.canvasPanZ += pointerPosition.y - anchored.y;
+    transform.origin.x += pointerPosition.x - anchored.x;
+    transform.origin.y += pointerPosition.y - anchored.y;
   }
-  if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
-    state.canvasPanX += io.MouseDelta.x;
-    state.canvasPanZ += io.MouseDelta.y;
-    transform.origin.x += io.MouseDelta.x;
-    transform.origin.y += io.MouseDelta.y;
+  if (hovered && input.pointer.middleDragging) {
+    state.canvasPanX += input.pointer.deltaX;
+    state.canvasPanZ += input.pointer.deltaY;
+    transform.origin.x += input.pointer.deltaX;
+    transform.origin.y += input.pointer.deltaY;
   }
   const ImVec2 boundedPointer{
-      std::clamp(io.MousePos.x, minimum.x, maximum.x),
-      std::clamp(io.MousePos.y, minimum.y, maximum.y)};
+      std::clamp(pointerPosition.x, minimum.x, maximum.x),
+      std::clamp(pointerPosition.y, minimum.y, maximum.y)};
   const CreativeEditorWorldLayoutPoint semanticHoverPoint =
       toWorld(transform, boundedPointer);
   const double semanticHitTolerance = std::clamp(
@@ -830,7 +832,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
           *ImGui::GetWindowDrawList(), minimum, maximum, transform, state,
           topography, editor.worldLayoutPlanView,
           hoveredPlanHit.primitiveIndex, grid,
-          document.measurementAnnotationStore(), measurement, io.MousePos,
+          document.measurementAnnotationStore(), measurement, pointerPosition,
           hovered);
   const CreativeEditorWorldLayoutPoint pointerPoint =
       pointerGeometry.pointerPoint;
@@ -857,9 +859,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       ImGui::SetMouseCursor(terrainRegionHandleCursor(regionHandle));
     }
     const bool cancel =
-        io.AppFocusLost ||
-        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-        ImGui::IsKeyPressed(ImGuiKey_Escape);
+        input.pointer.focusLost ||
+        (hovered && input.pointer.secondaryPressed) || input.cancelPressed;
     if (cancel) {
       if (terrainRegion.manipulation.active) {
         if (cancelCreativeEditorWorldLayoutTerrainRegionManipulation(
@@ -879,9 +880,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     if (previewOwnedElsewhere) {
       return;
     }
-    const bool leftClicked =
-        hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
-    if (leftClicked && io.KeyShift) {
+    const bool leftClicked = hovered && input.pointer.primaryPressed;
+    if (leftClicked && input.selectionAdditiveDown) {
       const CreativeEditorWorldLayoutTerrainAnalysisEditPlan edit =
           planCreativeEditorWorldLayoutTerrainAnalysisEdit(
               topography.plan, semanticHoverPoint.x, semanticHoverPoint.z,
@@ -919,25 +919,21 @@ void drawLayoutCanvas(CreativeEditorState& editor,
             terrainRegion, hoveredPoint.x, hoveredPoint.z));
       }
     }
-    if (terrainRegion.manipulation.active &&
-        ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    if (terrainRegion.manipulation.active && input.pointer.primaryDown) {
       static_cast<void>(
           updateCreativeEditorWorldLayoutTerrainRegionManipulation(
               terrainRegion, hoveredPoint.x, hoveredPoint.z));
-    } else if (terrainRegion.selecting &&
-        ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    } else if (terrainRegion.selecting && input.pointer.primaryDown) {
       static_cast<void>(updateCreativeEditorWorldLayoutTerrainRegion(
           terrainRegion, hoveredPoint.x, hoveredPoint.z));
     }
-    if (terrainRegion.manipulation.active &&
-        ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    if (terrainRegion.manipulation.active && input.pointer.primaryReleased) {
       if (finishCreativeEditorWorldLayoutTerrainRegionManipulation(
               terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
         commands.push(
             CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
       }
-    } else if (terrainRegion.selecting &&
-        ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    } else if (terrainRegion.selecting && input.pointer.primaryReleased) {
       if (finishCreativeEditorWorldLayoutTerrainRegion(
               terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
         commands.push(
@@ -950,9 +946,8 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   if (state.buildingTemplatePlacement.active) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     const bool cancelPlacement =
-        io.AppFocusLost ||
-        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-        ImGui::IsKeyPressed(ImGuiKey_Escape);
+        input.pointer.focusLost ||
+        (hovered && input.pointer.secondaryPressed) || input.cancelPressed;
     if (cancelPlacement) {
       queueBuildingTemplatePlacement(
           commands,
@@ -964,7 +959,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
           commands,
           CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Update,
           hoveredPoint);
-      if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+      if (input.pointer.primaryPressed) {
         queueBuildingTemplatePlacement(
             commands,
             CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Commit,
@@ -977,13 +972,13 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   if (state.planRegionSelection.active) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
     const bool cancelSelection =
-        io.AppFocusLost || ImGui::IsKeyPressed(ImGuiKey_Escape) ||
-        ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+        input.pointer.focusLost || input.cancelPressed ||
+        input.pointer.secondaryPressed;
     if (cancelSelection) {
       state.planRegionSelection = {};
       return;
     }
-    if (!ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    if (!input.pointer.primaryReleased) {
       return;
     }
 
@@ -1182,10 +1177,10 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     }
   }
 
-  if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+  if (hovered && input.pointer.primaryPressed) {
     if (selectionToolActive) {
-      const bool additive = io.KeyShift;
-      const bool toggle = io.KeySuper || io.KeyCtrl;
+      const bool additive = input.selectionAdditiveDown;
+      const bool toggle = input.selectionToggleDown;
       if ((additive || toggle) && hoveredPlanHit.hit) {
         const cr::CreativeWorldLayoutSourceRef source{
             hoveredPlanHit.table, hoveredPlanHit.sourceIndex};
@@ -1234,14 +1229,14 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelObjectManipulation =
       state.objectManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelObjectManipulation) {
     static_cast<void>(
         cancelCreativeEditorWorldLayoutObjectManipulation(state));
   } else if (state.objectManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     const CreativeEditorWorldLayoutEditReceipt updated =
         updateCreativeEditorWorldLayoutObjectManipulation(state, pointerPoint);
     if (updated.accepted && state.objectManipulation.active &&
@@ -1259,29 +1254,29 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       state.objectManipulation = {};
     }
   } else if (state.objectManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     static_cast<void>(updateCreativeEditorWorldLayoutObjectManipulation(
         state, pointerPoint));
   }
 
   const bool cancelRoofManipulation =
       state.roofManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelRoofManipulation) {
     queueRoofManipulation(
         commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
         state.roofManipulation.target, 0.0);
   } else if (state.roofManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueRoofManipulation(
         commands, CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
         state.roofManipulation.target,
         planRoofHandleCoordinate(state.roofManipulation.target.handle,
                                  pointerPoint));
   } else if (state.roofManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueRoofManipulation(
         commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
         state.roofManipulation.target,
@@ -1291,22 +1286,22 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelBuildingManipulation =
       state.buildingManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelBuildingManipulation) {
     queueBuildingManipulation(
         commands,
         CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.buildingManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueBuildingManipulation(
         commands,
         CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.buildingManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueBuildingManipulation(
         commands,
         CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
@@ -1315,20 +1310,20 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelOpeningManipulation =
       state.openingManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelOpeningManipulation) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.openingManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.openingManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueOpeningManipulation(
         commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
         pointerPoint, handleTolerance);
@@ -1336,20 +1331,20 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelWallManipulation =
       state.wallManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelWallManipulation) {
     queueWallManipulation(
         commands, CreativeEditorWorldLayoutWallManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.wallManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueWallManipulation(
         commands, CreativeEditorWorldLayoutWallManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.wallManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueWallManipulation(
         commands, CreativeEditorWorldLayoutWallManipulationPhase::Update,
         pointerPoint, handleTolerance);
@@ -1357,20 +1352,20 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelRoomManipulation =
       state.roomManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelRoomManipulation) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.roomManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.roomManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueRoomManipulation(
         commands, CreativeEditorWorldLayoutRoomManipulationPhase::Update,
         pointerPoint, handleTolerance);
@@ -1378,22 +1373,22 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelRoomBoundaryManipulation =
       state.roomBoundaryManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelRoomBoundaryManipulation) {
     queueRoomBoundaryManipulation(
         commands,
         CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.roomBoundaryManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueRoomBoundaryManipulation(
         commands,
         CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.roomBoundaryManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueRoomBoundaryManipulation(
         commands,
         CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Update,
@@ -1402,22 +1397,22 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelRoomCornerManipulation =
       state.roomCornerManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelRoomCornerManipulation) {
     queueRoomCornerManipulation(
         commands,
         CreativeEditorWorldLayoutRoomCornerManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.roomCornerManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueRoomCornerManipulation(
         commands,
         CreativeEditorWorldLayoutRoomCornerManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.roomCornerManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueRoomCornerManipulation(
         commands,
         CreativeEditorWorldLayoutRoomCornerManipulationPhase::Update,
@@ -1426,22 +1421,22 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelVerticalConnectorManipulation =
       state.verticalConnectorManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelVerticalConnectorManipulation) {
     queueVerticalConnectorManipulation(
         commands,
         CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.verticalConnectorManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueVerticalConnectorManipulation(
         commands,
         CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.verticalConnectorManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueVerticalConnectorManipulation(
         commands,
         CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
@@ -1450,20 +1445,20 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelBoxManipulation =
       state.boxManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelBoxManipulation) {
     queueBoxManipulation(
         commands, CreativeEditorWorldLayoutBoxManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.boxManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueBoxManipulation(
         commands, CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.boxManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueBoxManipulation(
         commands, CreativeEditorWorldLayoutBoxManipulationPhase::Update,
         pointerPoint, handleTolerance);
@@ -1471,22 +1466,22 @@ void drawLayoutCanvas(CreativeEditorState& editor,
 
   const bool cancelRoofApertureManipulation =
       state.roofApertureManipulation.active &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   if (cancelRoofApertureManipulation) {
     queueRoofApertureManipulation(
         commands,
         CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
         pointerPoint, handleTolerance);
   } else if (state.roofApertureManipulation.active &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+             input.pointer.primaryReleased) {
     queueRoofApertureManipulation(
         commands,
         CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
         pointerPoint, handleTolerance);
   } else if (state.roofApertureManipulation.active &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueRoofApertureManipulation(
         commands,
         CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
@@ -1504,24 +1499,24 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       !state.roofApertureManipulation.active &&
       !state.roofManipulation.active &&
       state.anchorActive &&
-      (io.AppFocusLost ||
-       (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-       ImGui::IsKeyPressed(ImGuiKey_Escape));
+      (input.pointer.focusLost ||
+       (hovered && input.pointer.secondaryPressed) ||
+       input.cancelPressed);
   const bool finishTerrainPathDraft =
       state.terrainPathDraft.active &&
-      (ImGui::IsKeyPressed(ImGuiKey_Enter) ||
-       (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)));
+      (input.confirmPressed ||
+       (hovered && input.pointer.primaryDoubleClicked));
   if (cancelGesture) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Cancel);
   } else if (finishTerrainPathDraft) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit);
   } else if (dragTool(state.tool) &&
-             ImGui::IsMouseReleased(ImGuiMouseButton_Left) &&
+             input.pointer.primaryReleased &&
              ImGui::IsItemDeactivated()) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit,
                  hoveredPoint);
   } else if (state.anchorActive && dragTool(state.tool) &&
-             ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+             input.pointer.primaryDown) {
     queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Update,
                  hoveredPoint);
   }
@@ -1548,9 +1543,10 @@ void drawCreativeEditorWorldLayoutCanvas(
     const cr::CreativeSelectionState& selection,
     const cr::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands, bool interactionEnabled,
+    const CreativeEditorUiInputFrame& input,
     CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus) {
   drawLayoutCanvas(editor, document, selection, measurement, commands,
-                   interactionEnabled, hoverStatus);
+                   interactionEnabled, input, hoverStatus);
 }
 
 }  // namespace iggy3d_creative_app

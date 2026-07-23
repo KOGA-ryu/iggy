@@ -119,6 +119,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
     bool playModeActive,
+    const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands) {
   CreativeDesktopOutlinerState& state = desktopUi.outliner;
   const cr::CreativeDocument& document = appState.facade.document();
@@ -160,7 +161,6 @@ void buildCreativeEditorDesktopOutlinerPanel(
     visibleIds.push_back(state.model.rows[index].objectId);
   }
 
-  const ImGuiIO& io = ImGui::GetIO();
   ImGui::BeginChild("##outliner_rows");
   if (state.filteredRows.empty()) {
     ImGui::TextDisabled(document.objectCount() == 0U ? "No objects"
@@ -208,8 +208,8 @@ void buildCreativeEditorDesktopOutlinerPanel(
       const CreativeDesktopSelectionPlan plan = planCreativeDesktopSelection(
           visibleIds, live.objectIds, live.primaryObjectId, row.objectId,
           state.selectionAnchor,
-          creativeDesktopSelectionGestureFor(io.KeyShift,
-                                             io.KeyCtrl || io.KeySuper));
+          creativeDesktopSelectionGestureFor(input.selectionAdditiveDown,
+                                             input.selectionToggleDown));
       if (plan.accepted) {
         commands.push(CreativeDesktopCommandId::SelectObjects,
                       CreativeDesktopSelectPayload{plan.objectIds,

@@ -805,7 +805,8 @@ void drawElevationCanvas(CreativeEditorState& editor,
                              measurementAnnotations,
                          const cr::CreativeMeasurementState& measurement,
                          CreativeDesktopCommandFrame& commands,
-                         bool interactionEnabled) {
+                         bool interactionEnabled,
+                         const CreativeEditorUiInputFrame& input) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   const CreativeEditorWorldLayoutInspection inspection =
       inspectCreativeEditorWorldLayout(state);
@@ -823,7 +824,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
       ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonMiddle |
           ImGuiButtonFlags_MouseButtonRight);
   const bool hovered = ImGui::IsItemHovered();
-  ImGuiIO& io = ImGui::GetIO();
+  const ImVec2 pointerPosition{input.pointer.x, input.pointer.y};
 
   const double centerHorizontal =
       projection.bounds.valid
@@ -848,21 +849,22 @@ void drawElevationCanvas(CreativeEditorState& editor,
         state.elevationPixelsPerCell};
   };
   ElevationCanvasTransform transform = makeTransform();
-  if (hovered && io.MouseWheel != 0.0F) {
+  if (hovered && input.pointer.wheelY != 0.0F) {
     const CreativeEditorWorldLayoutElevationPoint before =
-        toElevationWorld(transform, io.MousePos);
+        toElevationWorld(transform, pointerPosition);
     state.elevationPixelsPerCell = std::clamp(
-        state.elevationPixelsPerCell * (io.MouseWheel > 0.0F ? 1.15F : 0.87F),
+        state.elevationPixelsPerCell *
+            (input.pointer.wheelY > 0.0F ? 1.15F : 0.87F),
         12.0F, 80.0F);
     transform = makeTransform();
     const ImVec2 anchored = toElevationScreen(transform, before);
-    state.elevationPanHorizontal += io.MousePos.x - anchored.x;
-    state.elevationPanY += io.MousePos.y - anchored.y;
+    state.elevationPanHorizontal += pointerPosition.x - anchored.x;
+    state.elevationPanY += pointerPosition.y - anchored.y;
     transform = makeTransform();
   }
-  if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
-    state.elevationPanHorizontal += io.MouseDelta.x;
-    state.elevationPanY += io.MouseDelta.y;
+  if (hovered && input.pointer.middleDragging) {
+    state.elevationPanHorizontal += input.pointer.deltaX;
+    state.elevationPanY += input.pointer.deltaY;
     transform = makeTransform();
   }
 
@@ -984,7 +986,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
     return;
   }
   const CreativeEditorWorldLayoutElevationPoint pointer =
-      toElevationWorld(transform, io.MousePos);
+      toElevationWorld(transform, pointerPosition);
   const double handleTolerance = std::clamp(
       8.0 / static_cast<double>(transform.pixelsPerCell), 0.10, 0.45);
   const CreativeEditorWorldLayoutElevationHandle hoveredHandle =
@@ -1005,7 +1007,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
   }
 
-  if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+  if (hovered && input.pointer.primaryPressed) {
     if (hoveredHandle.kind !=
         CreativeEditorWorldLayoutElevationHandleKind::None) {
       selectElevationHandle(state, hoveredHandle);
@@ -1053,19 +1055,19 @@ void drawElevationCanvas(CreativeEditorState& editor,
 
   if (state.roofManipulation.active) {
     const bool cancelRoof =
-        io.AppFocusLost ||
+        input.pointer.focusLost ||
         state.roofManipulation.sourceRevision != state.revision ||
-        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-        ImGui::IsKeyPressed(ImGuiKey_Escape);
+        (hovered && input.pointer.secondaryPressed) ||
+        input.cancelPressed;
     if (cancelRoof) {
       queueElevationRoofManipulation(
           commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
           state.roofManipulation.target.levelIndex, pointer.vertical);
-    } else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    } else if (input.pointer.primaryReleased) {
       queueElevationRoofManipulation(
           commands, CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
           state.roofManipulation.target.levelIndex, pointer.vertical);
-    } else if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    } else if (input.pointer.primaryDown) {
       queueElevationRoofManipulation(
           commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
           state.roofManipulation.target.levelIndex, pointer.vertical);
@@ -1075,10 +1077,10 @@ void drawElevationCanvas(CreativeEditorState& editor,
 
   if (state.verticalConnectorManipulation.active) {
     const bool cancelConnector =
-        io.AppFocusLost ||
+        input.pointer.focusLost ||
         state.verticalConnectorManipulation.sourceRevision != state.revision ||
-        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-        ImGui::IsKeyPressed(ImGuiKey_Escape);
+        (hovered && input.pointer.secondaryPressed) ||
+        input.cancelPressed;
     const CreativeEditorWorldLayoutVerticalConnectorTarget target =
         state.verticalConnectorManipulation.target;
     if (cancelConnector) {
@@ -1086,12 +1088,12 @@ void drawElevationCanvas(CreativeEditorState& editor,
           state, commands,
           CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
           target, pointer.horizontal);
-    } else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+    } else if (input.pointer.primaryReleased) {
       queueElevationConnectorManipulation(
           state, commands,
           CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Commit,
           target, pointer.horizontal);
-    } else if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+    } else if (input.pointer.primaryDown) {
       queueElevationConnectorManipulation(
           state, commands,
           CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
@@ -1104,10 +1106,10 @@ void drawElevationCanvas(CreativeEditorState& editor,
     return;
   }
   const bool cancel =
-      io.AppFocusLost || state.elevationManipulation.sourceRevision !=
+      input.pointer.focusLost || state.elevationManipulation.sourceRevision !=
                              state.revision ||
-      (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
-      ImGui::IsKeyPressed(ImGuiKey_Escape);
+      (hovered && input.pointer.secondaryPressed) ||
+      input.cancelPressed;
   if (cancel) {
     state.elevationManipulation = {};
     return;
@@ -1116,7 +1118,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
       planCreativeEditorWorldLayoutElevationEdit(
           state.source, projection, state.elevationManipulation.handle,
           pointer.vertical);
-  if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+  if (input.pointer.primaryReleased) {
     static_cast<void>(queueElevationEdit(
         state, state.elevationManipulation.preview, commands));
     state.elevationManipulation = {};
@@ -1131,9 +1133,10 @@ void drawCreativeEditorWorldLayoutElevationCanvas(
     CreativeEditorState& editor, const cr::CreativeGridSettings& grid,
     const cr::CreativeMeasurementAnnotationStore& measurementAnnotations,
     const cr::CreativeMeasurementState& measurement,
-    CreativeDesktopCommandFrame& commands, bool interactionEnabled) {
+    CreativeDesktopCommandFrame& commands, bool interactionEnabled,
+    const CreativeEditorUiInputFrame& input) {
   drawElevationCanvas(editor, grid, measurementAnnotations, measurement,
-                      commands, interactionEnabled);
+                      commands, interactionEnabled, input);
 }
 
 }  // namespace iggy3d_creative_app

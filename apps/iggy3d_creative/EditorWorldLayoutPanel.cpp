@@ -636,6 +636,7 @@ void buildCreativeEditorWorldLayoutPanel(
     const cr::CreativeDocument& document,
     const cr::CreativeSelectionState& selection,
     const cr::CreativeMeasurementState& measurement, bool playModeActive,
+    const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands) {
   CreativeEditorWorldLayoutState& state = editor.worldLayout;
   CreativeEditorWorldLayoutTopographyState& topography =
@@ -671,7 +672,7 @@ void buildCreativeEditorWorldLayoutPanel(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
   }
-  if (state.buildingTransform.active && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+  if (state.buildingTransform.active && input.cancelPressed) {
     commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
                       CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
@@ -929,11 +930,11 @@ void buildCreativeEditorWorldLayoutPanel(
         drawCreativeEditorWorldLayoutElevationCanvas(
             editor, document.gridSettings(),
             document.measurementAnnotationStore(), measurement, commands,
-            canvasInteractionEnabled);
+            canvasInteractionEnabled, input);
       } else {
         drawCreativeEditorWorldLayoutCanvas(
             editor, document, selection, measurement, commands,
-            canvasInteractionEnabled, &canvasHover);
+            canvasInteractionEnabled, input, &canvasHover);
       }
     }
     ImGui::EndChild();

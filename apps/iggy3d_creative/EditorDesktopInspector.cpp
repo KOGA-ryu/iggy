@@ -972,6 +972,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const CreativeMovingPlatformPreviewState& preview,
                            const CreativeMovingPlatformPathEditState& pathEdit,
                            bool playModeActive,
+                           const CreativeEditorUiInputFrame& input,
                            CreativeDesktopCommandFrame& commands) {
   CreativeDesktopInspectorDraft& draft = desktopUi.inspectorDraft;
   refreshInspectorDraft(draft, document, object);
@@ -1117,7 +1118,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   ImGui::EndDisabled();
 
   // Escape cancels the active draft; the next frame restores document truth.
-  if (draft.editing && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+  if (draft.editing && input.cancelPressed) {
     draft.valid = false;
   }
 }
@@ -1147,6 +1148,7 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
+    const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   // The playtest runs out of process (i3dp); no in-process play state.
@@ -1185,7 +1187,7 @@ void buildCreativeEditorDesktopInspectorPanel(
                         editor.generatedSourceScopeCache,
                         editor.movingPlatformPreview,
                         editor.interaction.movingPlatformPathEdit,
-                        playModeActive,
+                        playModeActive, input,
                         commands);
   appendLogicSection(desktopUi, editor, document, *object, playModeActive, commands);
 }

@@ -84,6 +84,7 @@ void drawCreativeEditorWorldLayoutCanvas(
     const cr::CreativeSelectionState& selection,
     const cr::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands, bool interactionEnabled,
+    const CreativeEditorUiInputFrame& input,
     CreativeEditorWorldLayoutCanvasHoverStatus* hoverStatus);
 
 }  // namespace iggy3d_creative_app

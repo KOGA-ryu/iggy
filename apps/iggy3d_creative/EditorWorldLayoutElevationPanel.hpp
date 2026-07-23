@@ -4,6 +4,7 @@
 
 #include "EditorDesktopCommands.hpp"
 #include "EditorState.hpp"
+#include "EditorUiInput.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -14,6 +15,7 @@ void drawCreativeEditorWorldLayoutElevationCanvas(
         measurementAnnotations,
     const iggy3d::creative::CreativeMeasurementState& measurement,
     CreativeDesktopCommandFrame& commands,
-    bool interactionEnabled);
+    bool interactionEnabled,
+    const CreativeEditorUiInputFrame& input);
 
 }  // namespace iggy3d_creative_app

@@ -55,6 +55,104 @@ void setSdlKey(creative::CreativeInputFrame& frame,
                                 keys != nullptr && keys[scancode] != 0);
 }
 
+struct SdlKeyMapping {
+  creative::CreativeInputKey key;
+  SDL_Scancode scancode;
+};
+
+constexpr std::array kSdlKeyMappings{
+    SdlKeyMapping{creative::CreativeInputKey::Digit1, SDL_SCANCODE_1},
+    SdlKeyMapping{creative::CreativeInputKey::Digit2, SDL_SCANCODE_2},
+    SdlKeyMapping{creative::CreativeInputKey::Digit3, SDL_SCANCODE_3},
+    SdlKeyMapping{creative::CreativeInputKey::Digit4, SDL_SCANCODE_4},
+    SdlKeyMapping{creative::CreativeInputKey::Digit5, SDL_SCANCODE_5},
+    SdlKeyMapping{creative::CreativeInputKey::Digit6, SDL_SCANCODE_6},
+    SdlKeyMapping{creative::CreativeInputKey::Digit7, SDL_SCANCODE_7},
+    SdlKeyMapping{creative::CreativeInputKey::Digit8, SDL_SCANCODE_8},
+    SdlKeyMapping{creative::CreativeInputKey::Digit9, SDL_SCANCODE_9},
+    SdlKeyMapping{creative::CreativeInputKey::C, SDL_SCANCODE_C},
+    SdlKeyMapping{creative::CreativeInputKey::D, SDL_SCANCODE_D},
+    SdlKeyMapping{creative::CreativeInputKey::E, SDL_SCANCODE_E},
+    SdlKeyMapping{creative::CreativeInputKey::N, SDL_SCANCODE_N},
+    SdlKeyMapping{creative::CreativeInputKey::O, SDL_SCANCODE_O},
+    SdlKeyMapping{creative::CreativeInputKey::R, SDL_SCANCODE_R},
+    SdlKeyMapping{creative::CreativeInputKey::S, SDL_SCANCODE_S},
+    SdlKeyMapping{creative::CreativeInputKey::V, SDL_SCANCODE_V},
+    SdlKeyMapping{creative::CreativeInputKey::X, SDL_SCANCODE_X},
+    SdlKeyMapping{creative::CreativeInputKey::Y, SDL_SCANCODE_Y},
+    SdlKeyMapping{creative::CreativeInputKey::Z, SDL_SCANCODE_Z},
+    SdlKeyMapping{creative::CreativeInputKey::LeftBracket,
+                  SDL_SCANCODE_LEFTBRACKET},
+    SdlKeyMapping{creative::CreativeInputKey::RightBracket,
+                  SDL_SCANCODE_RIGHTBRACKET},
+    SdlKeyMapping{creative::CreativeInputKey::Minus, SDL_SCANCODE_MINUS},
+    SdlKeyMapping{creative::CreativeInputKey::Equals, SDL_SCANCODE_EQUALS},
+    SdlKeyMapping{creative::CreativeInputKey::Delete, SDL_SCANCODE_DELETE},
+    SdlKeyMapping{creative::CreativeInputKey::Backspace,
+                  SDL_SCANCODE_BACKSPACE},
+    SdlKeyMapping{creative::CreativeInputKey::Enter, SDL_SCANCODE_RETURN},
+    SdlKeyMapping{creative::CreativeInputKey::Escape, SDL_SCANCODE_ESCAPE},
+    SdlKeyMapping{creative::CreativeInputKey::ArrowUp, SDL_SCANCODE_UP},
+    SdlKeyMapping{creative::CreativeInputKey::ArrowDown, SDL_SCANCODE_DOWN},
+    SdlKeyMapping{creative::CreativeInputKey::ArrowLeft, SDL_SCANCODE_LEFT},
+    SdlKeyMapping{creative::CreativeInputKey::ArrowRight, SDL_SCANCODE_RIGHT},
+    SdlKeyMapping{creative::CreativeInputKey::W, SDL_SCANCODE_W},
+    SdlKeyMapping{creative::CreativeInputKey::A, SDL_SCANCODE_A},
+    SdlKeyMapping{creative::CreativeInputKey::Space, SDL_SCANCODE_SPACE},
+    SdlKeyMapping{creative::CreativeInputKey::LeftControl, SDL_SCANCODE_LCTRL},
+    SdlKeyMapping{creative::CreativeInputKey::RightControl,
+                  SDL_SCANCODE_RCTRL},
+    SdlKeyMapping{creative::CreativeInputKey::LeftShift, SDL_SCANCODE_LSHIFT},
+    SdlKeyMapping{creative::CreativeInputKey::RightShift,
+                  SDL_SCANCODE_RSHIFT},
+    SdlKeyMapping{creative::CreativeInputKey::LeftAlt, SDL_SCANCODE_LALT},
+    SdlKeyMapping{creative::CreativeInputKey::RightAlt, SDL_SCANCODE_RALT},
+    SdlKeyMapping{creative::CreativeInputKey::LeftCommand, SDL_SCANCODE_LGUI},
+    SdlKeyMapping{creative::CreativeInputKey::RightCommand, SDL_SCANCODE_RGUI},
+};
+
+struct ControllerKeyMapping {
+  creative::CreativeInputKey key;
+  creative::CreativeControllerButton button;
+};
+
+constexpr std::array kControllerKeyMappings{
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadInventory,
+                         creative::CreativeControllerButton::North},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadDpadUp,
+                         creative::CreativeControllerButton::DpadUp},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadDpadDown,
+                         creative::CreativeControllerButton::DpadDown},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadConfirm,
+                         creative::CreativeControllerButton::South},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadCancel,
+                         creative::CreativeControllerButton::East},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadDpadLeft,
+                         creative::CreativeControllerButton::DpadLeft},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadDpadRight,
+                         creative::CreativeControllerButton::DpadRight},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadLeftShoulder,
+                         creative::CreativeControllerButton::LeftShoulder},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadRightShoulder,
+                         creative::CreativeControllerButton::RightShoulder},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadWest,
+                         creative::CreativeControllerButton::West},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadBack,
+                         creative::CreativeControllerButton::Back},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadStart,
+                         creative::CreativeControllerButton::Start},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadLeftStick,
+                         creative::CreativeControllerButton::LeftStick},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadRightStick,
+                         creative::CreativeControllerButton::RightStick},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadLeftTrigger,
+                         creative::CreativeControllerButton::LeftTrigger},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadRightTrigger,
+                         creative::CreativeControllerButton::RightTrigger},
+    ControllerKeyMapping{creative::CreativeInputKey::GamepadTouchpad,
+                         creative::CreativeControllerButton::Touchpad},
+};
+
 [[nodiscard]] creative::CreativeInputFrame makeCreativeInputFrame(
     const bool* keys,
     SDL_Keymod modifiers,
@@ -75,70 +173,9 @@ void setSdlKey(creative::CreativeInputFrame& frame,
     frame.modifiers |= creative::kCreativeInputModifierCommand;
   }
 
-  setSdlKey(frame, creative::CreativeInputKey::Digit1, keys, SDL_SCANCODE_1);
-  setSdlKey(frame, creative::CreativeInputKey::Digit2, keys, SDL_SCANCODE_2);
-  setSdlKey(frame, creative::CreativeInputKey::Digit3, keys, SDL_SCANCODE_3);
-  setSdlKey(frame, creative::CreativeInputKey::Digit4, keys, SDL_SCANCODE_4);
-  setSdlKey(frame, creative::CreativeInputKey::Digit5, keys, SDL_SCANCODE_5);
-  setSdlKey(frame, creative::CreativeInputKey::Digit6, keys, SDL_SCANCODE_6);
-  setSdlKey(frame, creative::CreativeInputKey::Digit7, keys, SDL_SCANCODE_7);
-  setSdlKey(frame, creative::CreativeInputKey::Digit8, keys, SDL_SCANCODE_8);
-  setSdlKey(frame, creative::CreativeInputKey::Digit9, keys, SDL_SCANCODE_9);
-  setSdlKey(frame, creative::CreativeInputKey::C, keys, SDL_SCANCODE_C);
-  setSdlKey(frame, creative::CreativeInputKey::D, keys, SDL_SCANCODE_D);
-  setSdlKey(frame, creative::CreativeInputKey::E, keys, SDL_SCANCODE_E);
-  setSdlKey(frame, creative::CreativeInputKey::N, keys, SDL_SCANCODE_N);
-  setSdlKey(frame, creative::CreativeInputKey::O, keys, SDL_SCANCODE_O);
-  setSdlKey(frame, creative::CreativeInputKey::R, keys, SDL_SCANCODE_R);
-  setSdlKey(frame, creative::CreativeInputKey::S, keys, SDL_SCANCODE_S);
-  setSdlKey(frame, creative::CreativeInputKey::V, keys, SDL_SCANCODE_V);
-  setSdlKey(frame, creative::CreativeInputKey::X, keys, SDL_SCANCODE_X);
-  setSdlKey(frame, creative::CreativeInputKey::Y, keys, SDL_SCANCODE_Y);
-  setSdlKey(frame, creative::CreativeInputKey::Z, keys, SDL_SCANCODE_Z);
-  setSdlKey(frame, creative::CreativeInputKey::LeftBracket, keys,
-            SDL_SCANCODE_LEFTBRACKET);
-  setSdlKey(frame, creative::CreativeInputKey::RightBracket, keys,
-            SDL_SCANCODE_RIGHTBRACKET);
-  setSdlKey(frame, creative::CreativeInputKey::Minus, keys,
-            SDL_SCANCODE_MINUS);
-  setSdlKey(frame, creative::CreativeInputKey::Equals, keys,
-            SDL_SCANCODE_EQUALS);
-  setSdlKey(frame, creative::CreativeInputKey::Delete, keys,
-            SDL_SCANCODE_DELETE);
-  setSdlKey(frame, creative::CreativeInputKey::Backspace, keys,
-            SDL_SCANCODE_BACKSPACE);
-  setSdlKey(frame, creative::CreativeInputKey::Enter, keys,
-            SDL_SCANCODE_RETURN);
-  setSdlKey(frame, creative::CreativeInputKey::Escape, keys,
-            SDL_SCANCODE_ESCAPE);
-  setSdlKey(frame, creative::CreativeInputKey::ArrowUp, keys,
-            SDL_SCANCODE_UP);
-  setSdlKey(frame, creative::CreativeInputKey::ArrowDown, keys,
-            SDL_SCANCODE_DOWN);
-  setSdlKey(frame, creative::CreativeInputKey::ArrowLeft, keys,
-            SDL_SCANCODE_LEFT);
-  setSdlKey(frame, creative::CreativeInputKey::ArrowRight, keys,
-            SDL_SCANCODE_RIGHT);
-  setSdlKey(frame, creative::CreativeInputKey::W, keys, SDL_SCANCODE_W);
-  setSdlKey(frame, creative::CreativeInputKey::A, keys, SDL_SCANCODE_A);
-  setSdlKey(frame, creative::CreativeInputKey::Space, keys,
-            SDL_SCANCODE_SPACE);
-  setSdlKey(frame, creative::CreativeInputKey::LeftControl, keys,
-            SDL_SCANCODE_LCTRL);
-  setSdlKey(frame, creative::CreativeInputKey::RightControl, keys,
-            SDL_SCANCODE_RCTRL);
-  setSdlKey(frame, creative::CreativeInputKey::LeftShift, keys,
-            SDL_SCANCODE_LSHIFT);
-  setSdlKey(frame, creative::CreativeInputKey::RightShift, keys,
-            SDL_SCANCODE_RSHIFT);
-  setSdlKey(frame, creative::CreativeInputKey::LeftAlt, keys,
-            SDL_SCANCODE_LALT);
-  setSdlKey(frame, creative::CreativeInputKey::RightAlt, keys,
-            SDL_SCANCODE_RALT);
-  setSdlKey(frame, creative::CreativeInputKey::LeftCommand, keys,
-            SDL_SCANCODE_LGUI);
-  setSdlKey(frame, creative::CreativeInputKey::RightCommand, keys,
-            SDL_SCANCODE_RGUI);
+  for (const SdlKeyMapping& mapping : kSdlKeyMappings) {
+    setSdlKey(frame, mapping.key, keys, mapping.scancode);
+  }
   const SDL_MouseButtonFlags mouseButtons =
       SDL_GetMouseState(nullptr, nullptr);
   creative::setCreativeInputKey(
@@ -150,81 +187,11 @@ void setSdlKey(creative::CreativeInputFrame& frame,
   creative::setCreativeInputKey(
       frame, creative::CreativeInputKey::MouseMiddle,
       (mouseButtons & SDL_BUTTON_MMASK) != 0U);
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadInventory,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::North));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadDpadUp,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::DpadUp));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadDpadDown,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::DpadDown));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadConfirm,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::South));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadCancel,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::East));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadDpadLeft,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::DpadLeft));
-  creative::setCreativeInputKey(frame,
-                                creative::CreativeInputKey::GamepadDpadRight,
-                                creative::creativeControllerButtonDown(
-                                    controller,
-                                    creative::CreativeControllerButton::DpadRight));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadLeftShoulder,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::LeftShoulder));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadRightShoulder,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::RightShoulder));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadWest,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::West));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadBack,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::Back));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadStart,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::Start));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadLeftStick,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::LeftStick));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadRightStick,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::RightStick));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadLeftTrigger,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::LeftTrigger));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadRightTrigger,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::RightTrigger));
-  creative::setCreativeInputKey(
-      frame, creative::CreativeInputKey::GamepadTouchpad,
-      creative::creativeControllerButtonDown(
-          controller, creative::CreativeControllerButton::Touchpad));
+  for (const ControllerKeyMapping& mapping : kControllerKeyMappings) {
+    creative::setCreativeInputKey(
+        frame, mapping.key,
+        creative::creativeControllerButtonDown(controller, mapping.button));
+  }
   return frame;
 }
 

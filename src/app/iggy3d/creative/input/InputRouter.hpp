@@ -125,6 +125,9 @@ enum class CreativeInputActionId : std::uint8_t {
   Count,
 };
 
+inline constexpr std::size_t kCreativeInputActionCount =
+    static_cast<std::size_t>(CreativeInputActionId::Count);
+
 enum class CreativeInputKey : std::uint8_t {
   Digit1,
   Digit2,
@@ -268,6 +271,7 @@ struct CreativeInputRouterState {
   // held shortcut therefore cannot fire merely because a text field or modal
   // closes and returns focus to the viewport.
   std::array<bool, kCreativeInputBindingCapacity> bindingActive{};
+  std::array<bool, kCreativeInputActionCount> actionDown{};
 };
 
 struct CreativeInputActionEvent {
@@ -279,6 +283,9 @@ struct CreativeInputRouteResult {
   CreativeInputContext context = CreativeInputContext::EditorViewport;
   std::array<CreativeInputActionEvent, kCreativeInputBindingCapacity> actions{};
   std::size_t actionCount = 0;
+  std::array<bool, kCreativeInputActionCount> down{};
+  std::array<bool, kCreativeInputActionCount> pressed{};
+  std::array<bool, kCreativeInputActionCount> released{};
   std::array<bool, kCreativeInputKeyCount> consumedKeys{};
   bool bindingCapacityExceeded = false;
 
@@ -377,6 +384,15 @@ void setCreativeInputKey(CreativeInputFrame& frame,
 
 // Whether a routed action is present this frame.
 [[nodiscard]] bool creativeInputRouteContains(
+    const CreativeInputRouteResult& route,
+    CreativeInputActionId action) noexcept;
+[[nodiscard]] bool creativeInputActionDown(
+    const CreativeInputRouteResult& route,
+    CreativeInputActionId action) noexcept;
+[[nodiscard]] bool creativeInputActionPressed(
+    const CreativeInputRouteResult& route,
+    CreativeInputActionId action) noexcept;
+[[nodiscard]] bool creativeInputActionReleased(
     const CreativeInputRouteResult& route,
     CreativeInputActionId action) noexcept;
 

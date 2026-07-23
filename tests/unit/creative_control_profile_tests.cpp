@@ -174,17 +174,63 @@ bool continuousBindingsAreQueryableWithoutEdgeEvents() {
   frame.context = cr::CreativeInputContext::EditorViewport;
   cr::setCreativeInputKey(frame, cr::CreativeInputKey::W, true);
   cr::CreativeInputRouterState router;
-  const cr::CreativeInputRouteResult routed =
+  const cr::CreativeInputRouteResult first =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  const bool firstPhysicalDown = cr::creativeInputActionDown(
+      frame, cr::CreativeInputActionId::MoveForward, profile.bindingSpan(),
+      &first);
+  const cr::CreativeInputRouteResult held =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  cr::setCreativeInputKey(frame, cr::CreativeInputKey::W, false);
+  const cr::CreativeInputRouteResult released =
       cr::routeCreativeInput(router, frame, profile.bindingSpan());
 
   return expect(cr::creativeInputActionDown(
-                    frame, cr::CreativeInputActionId::MoveForward,
-                    profile.bindingSpan()),
-                "continuous movement action is down") &&
-         expect(routed.actionCount == 0U,
+                    first, cr::CreativeInputActionId::MoveForward) &&
+                    cr::creativeInputActionPressed(
+                        first, cr::CreativeInputActionId::MoveForward) &&
+                    !cr::creativeInputActionReleased(
+                        first, cr::CreativeInputActionId::MoveForward),
+                "continuous action exposes its first semantic edge") &&
+         expect(cr::creativeInputActionDown(
+                    held, cr::CreativeInputActionId::MoveForward) &&
+                    !cr::creativeInputActionPressed(
+                        held, cr::CreativeInputActionId::MoveForward),
+                "held semantic action does not repeat its press edge") &&
+         expect(!cr::creativeInputActionDown(
+                    released, cr::CreativeInputActionId::MoveForward) &&
+                    cr::creativeInputActionReleased(
+                        released, cr::CreativeInputActionId::MoveForward),
+                "continuous action exposes its release edge") &&
+         expect(firstPhysicalDown,
+                "legacy physical query agrees with semantic frame") &&
+         expect(first.actionCount == 0U,
                 "continuous action does not emit command edge") &&
-         expect(!cr::creativeInputKeyConsumed(routed, cr::CreativeInputKey::W),
+         expect(!cr::creativeInputKeyConsumed(first, cr::CreativeInputKey::W),
                 "continuous action leaves physical key available");
+}
+
+bool heldActionsDoNotPressWhenContextReturns() {
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::DesktopUi;
+  cr::setCreativeInputKey(frame, cr::CreativeInputKey::W, true);
+  cr::CreativeInputRouterState router;
+  const cr::CreativeInputRouteResult hidden =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  frame.context = cr::CreativeInputContext::EditorViewport;
+  const cr::CreativeInputRouteResult returned =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  return expect(!cr::creativeInputActionDown(
+                    hidden, cr::CreativeInputActionId::MoveForward),
+                "desktop UI context does not expose viewport movement") &&
+         expect(cr::creativeInputActionDown(
+                    returned, cr::CreativeInputActionId::MoveForward) &&
+                    !cr::creativeInputActionPressed(
+                        returned, cr::CreativeInputActionId::MoveForward),
+                "held action resumes down without fabricating a press");
 }
 
 bool requiredPs5ActionsRemainReachable() {
@@ -574,6 +620,7 @@ int main() {
   bool ok = true;
   ok = defaultsAreBoundedConflictFreeAndMinecraftShaped() && ok;
   ok = continuousBindingsAreQueryableWithoutEdgeEvents() && ok;
+  ok = heldActionsDoNotPressWhenContextReturns() && ok;
   ok = requiredPs5ActionsRemainReachable() && ok;
   ok = conflictPoliciesRejectReplaceAndSwapDeterministically() && ok;
   ok = barePressBindingsCannotShadowHeldActions() && ok;

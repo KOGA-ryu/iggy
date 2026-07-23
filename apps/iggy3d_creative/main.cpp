@@ -556,7 +556,8 @@ int main(int argc, char** argv) {
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
           editor.desktopUi, editor, activeAppState,
           &bootstrapData.staticMeshAssetCatalog, &playMode,
-          &playtestOwner.monitor(), desktopCommands);
+          &playtestOwner.monitor(), assetLibraryFrame.remainingInput,
+          desktopCommands);
       if (desktopCommands.count > 0U) {
         const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
             iggy3d_creative_app::dispatchCreativeDesktopCommands(

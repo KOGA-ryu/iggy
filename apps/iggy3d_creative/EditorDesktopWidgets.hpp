@@ -14,6 +14,7 @@
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopUi.hpp"
 #include "EditorState.hpp"
+#include "EditorUiInput.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
 // Internal cluster header for the desktop panel widget owners. One header for
@@ -43,6 +44,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const iggy3d::creative::CreativeAppState& appState,
     bool playModeActive,
+    const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands);
 
 // Inspector-panel body: zero/single/multi general object properties, then the
@@ -52,6 +54,7 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands);
 
 // Exact controls for the live transform preview. These mutate only the

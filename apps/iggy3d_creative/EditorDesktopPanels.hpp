@@ -5,6 +5,7 @@
 #include "EditorDesktopCommands.hpp"
 #include "EditorDesktopUi.hpp"
 #include "EditorState.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 
 namespace iggy3d {
 struct StaticMeshAssetCatalog;
@@ -37,6 +38,7 @@ void buildCreativeEditorDesktopPanels(
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativePlaySession* playMode,
     const PlaytestMonitorState* playtestMonitor,
+    const iggy3d::creative::CreativeInputRouteResult& routedInput,
     CreativeDesktopCommandFrame& commands);
 
 // Renders the bottom status bar — a read-only projection of document + editor

@@ -318,6 +318,11 @@ bool routeRemoveDropsActionForEscRelease() {
   route.actions[1].action = cr::CreativeInputActionId::Undo;
   route.actions[2].action = cr::CreativeInputActionId::ToggleControls;
   route.actionCount = 3;
+  const std::size_t toggleIndex =
+      static_cast<std::size_t>(cr::CreativeInputActionId::ToggleControls);
+  route.down[toggleIndex] = true;
+  route.pressed[toggleIndex] = true;
+  route.released[toggleIndex] = true;
   const bool had = cr::creativeInputRouteContains(
       route, cr::CreativeInputActionId::ToggleControls);
   cr::creativeInputRouteRemove(route,
@@ -329,7 +334,14 @@ bool routeRemoveDropsActionForEscRelease() {
          expect(route.actionCount == 1U &&
                     route.actions[0].action ==
                         cr::CreativeInputActionId::Undo,
-                "remove compacts the route and preserves other actions");
+                "remove compacts the route and preserves other actions") &&
+         expect(!cr::creativeInputActionDown(
+                    route, cr::CreativeInputActionId::ToggleControls) &&
+                    !cr::creativeInputActionPressed(
+                        route, cr::CreativeInputActionId::ToggleControls) &&
+                    !cr::creativeInputActionReleased(
+                        route, cr::CreativeInputActionId::ToggleControls),
+                "remove suppresses every semantic state for the action");
 }
 
 bool desktopUiContextDisablesFlyNavigation() {

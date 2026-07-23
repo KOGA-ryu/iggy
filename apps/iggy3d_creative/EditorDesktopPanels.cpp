@@ -18,6 +18,7 @@
 #include "EditorPersistence.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorToolGlyphs.hpp"
+#include "EditorUiInput.hpp"
 #include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
@@ -36,6 +37,46 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
 namespace {
+
+[[nodiscard]] CreativeEditorUiInputFrame sampleCreativeEditorUiInputFrame(
+    const cr::CreativeInputRouteResult& routedInput) {
+  const ImGuiIO& io = ImGui::GetIO();
+  CreativeEditorUiInputFrame input;
+  input.pointer.x = io.MousePos.x;
+  input.pointer.y = io.MousePos.y;
+  input.pointer.deltaX = io.MouseDelta.x;
+  input.pointer.deltaY = io.MouseDelta.y;
+  input.pointer.wheelY = io.MouseWheel;
+  input.pointer.primaryPressed =
+      ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+  input.pointer.primaryDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+  input.pointer.primaryReleased =
+      ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+  input.pointer.primaryDoubleClicked =
+      ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+  input.pointer.secondaryPressed =
+      ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+  input.pointer.middleDragging =
+      ImGui::IsMouseDragging(ImGuiMouseButton_Middle);
+  input.pointer.focusLost = io.AppFocusLost;
+  input.confirmPressed =
+      cr::creativeInputActionPressed(
+          routedInput, cr::CreativeInputActionId::ConfirmActiveTool) ||
+      cr::creativeInputActionPressed(
+          routedInput, cr::CreativeInputActionId::AcceptAction) ||
+      ImGui::IsKeyPressed(ImGuiKey_Enter, false);
+  input.cancelPressed =
+      cr::creativeInputActionPressed(
+          routedInput, cr::CreativeInputActionId::CancelActiveTool) ||
+      cr::creativeInputActionPressed(
+          routedInput, cr::CreativeInputActionId::RejectAction) ||
+      cr::creativeInputActionPressed(
+          routedInput, cr::CreativeInputActionId::ToggleControls) ||
+      ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+  input.selectionAdditiveDown = io.KeyShift;
+  input.selectionToggleDown = io.KeySuper || io.KeyCtrl;
+  return input;
+}
 
 const char* controlDeviceName(cr::CreativeControlDevice device) noexcept {
   switch (device) {
@@ -415,7 +456,10 @@ void buildCreativeEditorDesktopPanels(
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativePlaySession* playMode,
     const PlaytestMonitorState* playtestMonitor,
+    const cr::CreativeInputRouteResult& routedInput,
     CreativeDesktopCommandFrame& commands) {
+  const CreativeEditorUiInputFrame input =
+      sampleCreativeEditorUiInputFrame(routedInput);
   const cr::CreativeDocument& document = appState.facade.document();
   // Logic topology is document-revision owned, so idle UI frames reuse one
   // bounded report instead of rescanning links.
@@ -503,7 +547,7 @@ void buildCreativeEditorDesktopPanels(
     if (desktopUi.showOutliner) {
       if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
         buildCreativeEditorDesktopOutlinerPanel(desktopUi, appState,
-                                                playModeActive, commands);
+                                                playModeActive, input, commands);
       }
       ImGui::End();
     }
@@ -514,7 +558,7 @@ void buildCreativeEditorDesktopPanels(
         if (ImGui::BeginTabBar("##creative_desktop_inspector_tabs")) {
           if (ImGui::BeginTabItem("Selection")) {
             buildCreativeEditorDesktopInspectorPanel(
-                desktopUi, editor, appState, commands);
+                desktopUi, editor, appState, input, commands);
             ImGui::EndTabItem();
           }
           const ImGuiTabItemFlags terrainFlags =
@@ -576,7 +620,7 @@ void buildCreativeEditorDesktopPanels(
 
   buildCreativeEditorWorldLayoutPanel(
       desktopUi, editor, document, appState.facade.selectionState(),
-      appState.facade.measurementState(), playModeActive, commands);
+      appState.facade.measurementState(), playModeActive, input, commands);
 }
 
 void buildCreativeEditorDesktopStatusBar(

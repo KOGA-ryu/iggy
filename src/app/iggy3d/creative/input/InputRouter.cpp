@@ -15,6 +15,11 @@ constexpr CreativeInputModifierMask kAllModifiers =
   return static_cast<std::size_t>(key);
 }
 
+[[nodiscard]] std::size_t actionIndex(
+    CreativeInputActionId action) noexcept {
+  return static_cast<std::size_t>(action);
+}
+
 [[nodiscard]] bool modifiersMatch(
     CreativeInputModifierMask modifiers,
     const CreativeInputBinding& binding) noexcept {
@@ -500,6 +505,24 @@ bool creativeInputRouteContains(const CreativeInputRouteResult& route,
   return false;
 }
 
+bool creativeInputActionDown(const CreativeInputRouteResult& route,
+                             CreativeInputActionId action) noexcept {
+  const std::size_t index = actionIndex(action);
+  return index < route.down.size() && route.down[index];
+}
+
+bool creativeInputActionPressed(const CreativeInputRouteResult& route,
+                                CreativeInputActionId action) noexcept {
+  const std::size_t index = actionIndex(action);
+  return index < route.pressed.size() && route.pressed[index];
+}
+
+bool creativeInputActionReleased(const CreativeInputRouteResult& route,
+                                 CreativeInputActionId action) noexcept {
+  const std::size_t index = actionIndex(action);
+  return index < route.released.size() && route.released[index];
+}
+
 void creativeInputRouteRemove(CreativeInputRouteResult& route,
                               CreativeInputActionId action) noexcept {
   std::size_t write = 0;
@@ -512,6 +535,12 @@ void creativeInputRouteRemove(CreativeInputRouteResult& route,
     }
   }
   route.actionCount = write;
+  const std::size_t index = actionIndex(action);
+  if (index < route.down.size()) {
+    route.down[index] = false;
+    route.pressed[index] = false;
+    route.released[index] = false;
+  }
 }
 
 CreativeInputRouteResult routeCreativeInput(
@@ -526,6 +555,7 @@ CreativeInputRouteResult routeCreativeInput(
   const std::size_t bindingCount =
       std::min(bindings.size(), kCreativeInputBindingCapacity);
   std::array<std::size_t, kCreativeInputBindingCapacity> activeBindings{};
+  std::array<bool, kCreativeInputActionCount> actionActivationEdge{};
   std::size_t activeBindingCount = 0;
   for (std::size_t index = 0; index < bindingCount; ++index) {
     if (bindings[index].context == frame.context &&
@@ -552,6 +582,12 @@ CreativeInputRouteResult routeCreativeInput(
     if (binding.consumePolicy == CreativeInputConsumePolicy::ConsumeChord) {
       consumeModifierKeys(result, frame);
     }
+    const std::size_t action = actionIndex(binding.action);
+    if (action < result.down.size()) {
+      result.down[action] = true;
+      actionActivationEdge[action] =
+          actionActivationEdge[action] || !state.bindingActive[index];
+    }
     if (binding.activation == CreativeInputBindingActivation::Press &&
         !state.bindingActive[index] &&
         !actionAlreadyEmitted(result, binding.action)) {
@@ -559,6 +595,12 @@ CreativeInputRouteResult routeCreativeInput(
     }
   }
 
+  for (std::size_t index = 0; index < result.down.size(); ++index) {
+    result.pressed[index] = result.down[index] && !state.actionDown[index] &&
+                            actionActivationEdge[index];
+    result.released[index] = !result.down[index] && state.actionDown[index];
+  }
+  state.actionDown = result.down;
   for (std::size_t index = 0; index < bindingCount; ++index) {
     state.bindingActive[index] = physicalChordActive(frame, bindings[index]);
   }
