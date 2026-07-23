@@ -1048,6 +1048,53 @@ bool hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() {
                 "hierarchy transform preserves descendant offset");
 }
 
+bool attachedHierarchyTransformPreservesParentAndSocket() {
+  cr::Facade facade;
+  if (!expect(installDocument(facade, 12348U),
+              "attached transform document installed")) {
+    return false;
+  }
+  cr::CreativeDocumentCreateRequest parentRequest;
+  parentRequest.kind = cr::CreativeObjectKind::Group;
+  parentRequest.name = "Attachment Parent";
+  const cr::CreativeObjectId parent =
+      facade.createDocumentObject(parentRequest).objectId;
+  cr::CreativeDocumentCreateRequest rootRequest;
+  rootRequest.kind = cr::CreativeObjectKind::Door;
+  rootRequest.name = "Attached Root";
+  rootRequest.assetId = "door_leaf";
+  rootRequest.transform.position = {1.0, 0.0, 0.0};
+  rootRequest.hasTransformOverride = true;
+  rootRequest.parentId = parent;
+  rootRequest.attachmentSocket = "source_socket";
+  const cr::CreativeObjectId root =
+      facade.createDocumentObject(rootRequest).objectId;
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Prop;
+  childRequest.name = "Attached Child";
+  childRequest.transform.position = {2.0, 0.0, 0.0};
+  childRequest.hasTransformOverride = true;
+  childRequest.parentId = root;
+  const cr::CreativeObjectId child =
+      facade.createDocumentObject(childRequest).objectId;
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const cr::CreativeHierarchyTransformReceipt receipt =
+      facade.transformObjectHierarchyAtomically(
+          {root, {{4.0, 0.0, 0.0}, {}, {1.0, 1.0, 1.0}}, true, false, false});
+  const cr::CreativeObject* transformedRoot = facade.findObject(root);
+  const cr::CreativeObject* transformedChild = facade.findObject(child);
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.revisionAfter == revisionBefore + 1U &&
+                    transformedRoot != nullptr && transformedChild != nullptr &&
+                    transformedRoot->parentId == parent &&
+                    transformedRoot->attachmentSocket == "source_socket" &&
+                    transformedChild->parentId == root &&
+                    transformedRoot->transform.position.x == 4.0 &&
+                    transformedChild->transform.position.x == 5.0,
+                "attached hierarchy transform preserves relationship and pose");
+}
+
 bool hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() {
   cr::Facade facade;
   if (!expect(installDocument(facade, 12346U),
@@ -1215,6 +1262,7 @@ int main() {
                   explicitMutationPreservesFacadeEditorState() &&
                   assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() &&
                   hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() &&
+                  attachedHierarchyTransformPreservesParentAndSocket() &&
                   hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() &&
                   invalidMissingAndEffectivelyLockedHierarchyRequestsPublishNothing() &&
                   facadeMutationStatusStringsAreStable();

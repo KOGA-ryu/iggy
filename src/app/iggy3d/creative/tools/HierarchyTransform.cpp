@@ -98,6 +98,11 @@ struct StageResult {
   std::string message = "creative_hierarchy_transform_not_requested";
 };
 
+enum class ExternalParentPolicy {
+  Preserve,
+  Detach,
+};
+
 [[nodiscard]] StageResult stageAbsoluteHierarchyTransform(
     CreativeDocument& document,
     std::span<const CreativeObjectId> objectIds,
@@ -105,7 +110,8 @@ struct StageResult {
     const CreativeTransform& targetTransform,
     bool setPosition,
     bool setRotation,
-    bool setScale) {
+    bool setScale,
+    ExternalParentPolicy externalParentPolicy) {
   StageResult result;
   const CreativeObject* root = document.findObject(rootObjectId);
   if (root == nullptr) {
@@ -116,11 +122,13 @@ struct StageResult {
     return result;
   }
 
-  // The root's parent is outside a child-only selection. Detach on the staged
-  // copy so the placement kernel operates on the requested world hierarchy.
-  if (root->parentId.has_value() &&
+  const std::optional<CreativeObjectId> originalParent = root->parentId;
+  const std::string originalAttachmentSocket = root->attachmentSocket;
+  const bool hasExternalParent =
+      originalParent.has_value() &&
       std::find(objectIds.begin(), objectIds.end(), *root->parentId) ==
-          objectIds.end()) {
+          objectIds.end();
+  if (hasExternalParent) {
     const CreativeDocumentMutationReceipt detached = applyDocumentMutation(
         document, rootObjectId, CreativeMutationKind::DetachFrom,
         CreativeMutationPayload{});
@@ -248,6 +256,20 @@ struct StageResult {
     }
   }
 
+  if (externalParentPolicy == ExternalParentPolicy::Preserve &&
+      originalParent.has_value() && hasExternalParent) {
+    const CreativeDocumentMutationReceipt restored = applyDocumentMutation(
+        document, rootObjectId, CreativeMutationKind::AttachTo,
+        makeAttachPayload(*originalParent, originalAttachmentSocket));
+    if (!documentMutationSucceeded(restored.status)) {
+      result.phase = CreativeHierarchyTransformPhase::Relationship;
+      result.failedObjectId = rootObjectId;
+      result.reasonCode = restored.message;
+      result.message = restored.message;
+      return result;
+    }
+  }
+
   result.accepted = true;
   result.phase = CreativeHierarchyTransformPhase::Commit;
   result.reasonCode = result.changed ? "creative_hierarchy_transform_staged"
@@ -357,7 +379,8 @@ CreativeHierarchyTransformReceipt applyCreativeHierarchyTransformAtomically(
   CreativeDocument staged = document;
   const StageResult stagedResult = stageAbsoluteHierarchyTransform(
       staged, hierarchy.objectIds, request.rootObjectId, request.targetTransform,
-      request.setPosition, request.setRotation, request.setScale);
+      request.setPosition, request.setRotation, request.setScale,
+      ExternalParentPolicy::Preserve);
   if (!stagedResult.accepted) {
     reject(receipt, CreativeHierarchyTransformStatus::MutationRejected,
            stagedResult.phase, stagedResult.reasonCode, stagedResult.message,
@@ -469,7 +492,7 @@ CreativeHierarchyReattachmentReceipt reattachCreativeObjectHierarchyAtomically(
   CreativeDocument staged = document;
   const StageResult stagedResult = stageAbsoluteHierarchyTransform(
       staged, hierarchy.objectIds, request.sourceRootObjectId,
-      request.targetTransform, true, true, true);
+      request.targetTransform, true, true, true, ExternalParentPolicy::Detach);
   if (!stagedResult.accepted) {
     reject(receipt, CreativeHierarchyTransformStatus::MutationRejected,
            stagedResult.phase, stagedResult.reasonCode, stagedResult.message,
