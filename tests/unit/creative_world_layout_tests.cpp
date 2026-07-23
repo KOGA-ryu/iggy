@@ -3362,6 +3362,8 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
           : cr::CreativeWorldLayoutApplyReceipt{};
   const auto& replacedOperations =
       appState.facade.document().terrainOperationStack().operations;
+  const cr::CreativeWorldLayoutCompileResult replaceStable =
+      cr::buildCreativeWorldLayoutPlan(appState.facade.document(), replaced);
 
   return expect(manualTerrain.accepted && manualAdded.accepted &&
                     first.receipt.accepted &&
@@ -3398,7 +3400,12 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
                     appState.facade.document().terrainField().controlAt({40, 40}) ==
                         nullptr &&
                     cr::creativeUndoDepth(appState.history) == 5U,
-                "ReplaceAll removes manual terrain and rebuilds only desired paths");
+                "ReplaceAll removes manual terrain and rebuilds only desired paths") &&
+         expect(replaceStable.receipt.accepted &&
+                    replaceStable.receipt.status ==
+                        cr::CreativeWorldLayoutStatus::NoChange &&
+                    replaceStable.plan.terrainOperationMutations.empty(),
+                "stable ReplaceAll compile preserves desired operation identity");
 }
 
 bool roadConstructionReconcilesAndKeepsTravelSurfaceTraversable() {

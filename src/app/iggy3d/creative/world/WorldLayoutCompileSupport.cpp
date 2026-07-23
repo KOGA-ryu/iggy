@@ -345,60 +345,49 @@ void appendTagOnce(std::vector<std::string>& tags, std::string tag) {
     }
   }
 
-  if (layout.terrainOwnership ==
-      CreativeWorldLayoutTerrainOwnership::ReplaceAll) {
-    std::vector<CreativeTerrainOperationId> removeIds;
-    removeIds.reserve(staged.terrainOperationStack().operations.size());
-    for (const CreativeTerrainOperation& operation :
-         staged.terrainOperationStack().operations) {
+  std::unordered_set<std::string> desiredKeys;
+  desiredKeys.reserve(layout.terrainProfiles.size() +
+                      layout.terrainPaths.size() +
+                      layout.objects.size() * 2U);
+  for (const CreativeWorldLayoutTerrainProfile& profile :
+       layout.terrainProfiles) {
+    if (profile.usesLandformRecipe) {
+      desiredKeys.insert(creativeWorldLayoutTerrainLandformSourceKey(
+          layout.stableKey, profile.stableKey));
+    }
+  }
+  for (const CreativeWorldLayoutTerrainPath& path : layout.terrainPaths) {
+    desiredKeys.insert(creativeWorldLayoutTerrainPathSourceKey(
+        layout.stableKey, path.stableKey));
+  }
+  for (const CreativeWorldLayoutObject& object : layout.objects) {
+    if (!object.usesBridgeRecipe) {
+      continue;
+    }
+    const std::string base = bridgeApproachPrefix + object.stableKey;
+    desiredKeys.insert(base + "/left");
+    desiredKeys.insert(base + "/right");
+  }
+
+  const bool replaceAll =
+      layout.terrainOwnership == CreativeWorldLayoutTerrainOwnership::ReplaceAll;
+  std::vector<CreativeTerrainOperationId> removeIds;
+  removeIds.reserve(staged.terrainOperationStack().operations.size());
+  for (const CreativeTerrainOperation& operation :
+       staged.terrainOperationStack().operations) {
+    if ((replaceAll && (!managed(operation) ||
+                        !desiredKeys.contains(operation.sourceKey))) ||
+        (!replaceAll && managed(operation) &&
+         !desiredKeys.contains(operation.sourceKey))) {
       removeIds.push_back(operation.id);
     }
-    for (const CreativeTerrainOperationId id : removeIds) {
-      CreativeTerrainOperationMutationRequest remove;
-      remove.kind = CreativeTerrainOperationMutationKind::Remove;
-      remove.operationId = id;
-      if (!applyTerrainOperationMutation(staged, std::move(remove), result)) {
-        return false;
-      }
-    }
-    existing.clear();
-  } else {
-    std::unordered_set<std::string> desiredKeys;
-    desiredKeys.reserve(layout.terrainProfiles.size() +
-                        layout.terrainPaths.size() +
-                        layout.objects.size() * 2U);
-    for (const CreativeWorldLayoutTerrainProfile& profile :
-         layout.terrainProfiles) {
-      if (profile.usesLandformRecipe) {
-        desiredKeys.insert(creativeWorldLayoutTerrainLandformSourceKey(
-            layout.stableKey, profile.stableKey));
-      }
-    }
-    for (const CreativeWorldLayoutTerrainPath& path : layout.terrainPaths) {
-      desiredKeys.insert(creativeWorldLayoutTerrainPathSourceKey(
-          layout.stableKey, path.stableKey));
-    }
-    for (const CreativeWorldLayoutObject& object : layout.objects) {
-      if (!object.usesBridgeRecipe) {
-        continue;
-      }
-      const std::string base = bridgeApproachPrefix + object.stableKey;
-      desiredKeys.insert(base + "/left");
-      desiredKeys.insert(base + "/right");
-    }
-    std::vector<CreativeTerrainOperationId> removeIds;
-    for (const auto& [sourceKey, operationId] : existing) {
-      if (!desiredKeys.contains(sourceKey)) {
-        removeIds.push_back(operationId);
-      }
-    }
-    for (const CreativeTerrainOperationId id : removeIds) {
-      CreativeTerrainOperationMutationRequest remove;
-      remove.kind = CreativeTerrainOperationMutationKind::Remove;
-      remove.operationId = id;
-      if (!applyTerrainOperationMutation(staged, std::move(remove), result)) {
-        return false;
-      }
+  }
+  for (const CreativeTerrainOperationId id : removeIds) {
+    CreativeTerrainOperationMutationRequest remove;
+    remove.kind = CreativeTerrainOperationMutationKind::Remove;
+    remove.operationId = id;
+    if (!applyTerrainOperationMutation(staged, std::move(remove), result)) {
+      return false;
     }
   }
 

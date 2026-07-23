@@ -337,7 +337,8 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
       cr::encodeCreativeWorldLayout(map.worldLayout);
   const cr::CreativeWorldLayoutEncodeResult repeatedEncoded =
       cr::encodeCreativeWorldLayout(repeated.worldLayout);
-  const cr::CreativeObject* bridge = findNamed(map.document, "Ditch Bridge");
+  const cr::CreativeObject* bridge =
+      findNamed(map.document, "Ditch Bridge Deck");
   const cr::CreativeObject* westBoulder =
       findNamed(map.document, "Ditch West Boulder");
   const cr::CreativeObject* floor =
@@ -388,8 +389,8 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
     std::cerr << "Builder Estate generation rejected: " << map.reasonCode
               << '\n';
   }
-  if (map.objectCount != 211U || map.terrainControlCount != 111U ||
-      map.document.terrainOperationStack().operations.size() != 2U) {
+  if (map.objectCount != 215U || map.terrainControlCount != 111U ||
+      map.document.terrainOperationStack().operations.size() != 4U) {
     std::cerr << "Builder Estate counts: objects=" << map.objectCount
               << " terrain-controls=" << map.terrainControlCount
               << " terrain-operations="
@@ -403,10 +404,10 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
          expect(map.document.id() == 31U &&
                     map.document.name() == "Builder Estate",
                 "builder estate identity") &&
-         expect(map.objectCount == 211U &&
+         expect(map.objectCount == 215U &&
                     map.terrainControlCount == 111U &&
                     map.document.terrainOperationStack().operations.size() ==
-                        2U &&
+                        4U &&
                     map.document.terrainHeightField().cellCount() >
                         map.terrainControlCount,
                 "builder estate stable authored terrain sources") &&
@@ -440,7 +441,13 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                 "builder estate exposes reference-map semantic counts") &&
          expect(map.worldLayout.terrainProfiles.size() == 9U &&
                     map.worldLayout.terrainPaths.size() == 2U &&
-                    map.worldLayout.terrainPaths[0].recipe.points.size() == 2U &&
+                    map.worldLayout.terrainPaths[0].recipe.points.size() == 3U &&
+                    map.worldLayout.terrainPaths[0]
+                            .recipe.watercourse.crossings.size() == 1U &&
+                    map.worldLayout.terrainPaths[0]
+                            .recipe.watercourse.crossings[0].id == 1U &&
+                    map.worldLayout.terrainPaths[0]
+                            .recipe.watercourse.crossings[0].pointId == 2U &&
                     map.worldLayout.terrainPaths[1].recipe.points.size() == 2U,
                 "builder estate terrain stays in bounded semantic recipes") &&
          expect(firstProvenance.valid &&
@@ -461,17 +468,19 @@ bool builderEstateIsDeterministicLinkedSemanticMap() {
                 "template instance does not retain competing blockout ownership") &&
          expect(bridge != nullptr &&
                     cr::creativeRecipeObjectHasInstanceProvenance(
-                        *bridge, cr::CreativeRecipeKind::ObjectLibrary,
-                        "builder_estate_layout.objects.bridge.ditch",
-                        cr::CreativeRecipeObjectRole::Source,
-                        "bridge.ditch"),
-                "builder estate bridge uses layout-owned object recipe") &&
+                        *bridge, cr::CreativeRecipeKind::Bridge, "bridge.ditch",
+                        cr::CreativeRecipeObjectRole::Generated, "deck"),
+                "builder estate bridge is generated from semantic attachment") &&
          expect(westBoulder != nullptr &&
                     westBoulder->assetId == "boulder_01",
                 "builder estate carries reusable asset reference") &&
          expect(map.worldLayout.objects.size() == 9U &&
                     map.worldLayout.objects[0].kind ==
                         cr::CreativeObjectKind::Bridge &&
+                    map.worldLayout.objects[0].usesBridgeRecipe &&
+                    map.worldLayout.objects[0].bridge.watercoursePathKey ==
+                        "path.ditch" &&
+                    map.worldLayout.objects[0].bridge.crossingId == 1U &&
                     map.worldLayout.objects[5].assetId == "boulder_01" &&
                     map.worldLayout.objects[7].mode ==
                         cr::CreativeObjectLibraryPlacementMode::Point,
@@ -550,13 +559,17 @@ bool builderEstateBakesAndSurvivesWorldLayoutRoundTrip() {
       expect(saved.accepted && saved.worldLayoutPresent,
              "builder estate durable save includes world layout") &&
       expect(opened.accepted && opened.worldLayoutPresent &&
-                 opened.document.objectCount() == 211U &&
+                 opened.document.objectCount() == 215U &&
                  opened.worldLayout.buildings.size() == 1U &&
                  opened.worldLayout.levels.size() == 2U &&
                  opened.worldLayout.rooms.size() == 8U &&
                  opened.worldLayout.openings.size() == 22U &&
                  opened.worldLayout.verticalConnectors.size() == 1U &&
                  opened.worldLayout.objects.size() == 9U &&
+                 opened.worldLayout.objects[0].usesBridgeRecipe &&
+                 opened.worldLayout.objects[0].bridge.watercoursePathKey ==
+                     "path.ditch" &&
+                 opened.worldLayout.objects[0].bridge.crossingId == 1U &&
                  opened.worldLayout.objects[5].assetId == "boulder_01" &&
                  opened.worldLayout.terrainProfiles.size() == 9U &&
                  std::all_of(opened.worldLayout.terrainProfiles.begin(),

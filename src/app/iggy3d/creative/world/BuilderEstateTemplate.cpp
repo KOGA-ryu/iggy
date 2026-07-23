@@ -156,7 +156,13 @@ CreativeWorldLayoutBuildingEditResult builderEstateLayout(
   appendPlateau(layout, "plateau.row_3.col_2", {40, 68});
   appendPlateau(layout, "plateau.row_3.col_3", {60, 68});
   appendTerrainPath(layout, "path.ditch", CreativeTerrainPathKind::Trench,
-                    {{{12, 20}, 4U}, {{64, 20}, 4U}}, 0U, 4U);
+                    {{{12, 20}, 4U}, {{36, 20}, 4U}, {{64, 20}, 4U}},
+                    1U, 4U);
+  CreativeTerrainPathSourceRecipe& ditch =
+      layout.terrainPaths.back().recipe;
+  ditch.watercourse.bankSlopeCells = 1U;
+  ditch.watercourse.nextCrossingId = 2U;
+  ditch.watercourse.crossings = {{1U, 2U, 1U, 2U, 12U}};
   appendTerrainPath(layout, "path.estate_road",
                     CreativeTerrainPathKind::Road,
                     {{{12, 78}, 3U}, {{64, 78}, 3U}}, 0U, 3U);
@@ -201,10 +207,16 @@ void appendBuilderEstateObjects(CreativeWorldLayout& layout) {
   // These values are grid-cell coordinates. Builder Estate's grid origin is
   // {-40, 0, -40}, so the compiler reconstructs the original world-space
   // placement without embedding document-specific coordinates in the recipe.
-  layout.objects = {
+  CreativeWorldLayoutObject ditchBridge =
       boundedPlacement(CreativeObjectKind::Bridge, "bridge.ditch",
                        "Ditch Bridge",
-                       {{34.0, 4.0, 17.0}, {38.0, 4.35, 23.0}}),
+                       {{34.0, 4.0, 17.0}, {38.0, 5.0, 23.0}});
+  ditchBridge.usesBridgeRecipe = true;
+  ditchBridge.bridge.watercoursePathKey = "path.ditch";
+  ditchBridge.bridge.crossingId = 1U;
+  ditchBridge.bridge.settings.deckWidthMeters = 4.0;
+  layout.objects = {
+      std::move(ditchBridge),
       boundedPlacement(CreativeObjectKind::Platform, "platform.main_approach",
                        "Main House Approach",
                        {{38.5, 4.0, 76.0}, {41.5, 4.2, 79.0}}),
@@ -305,8 +317,13 @@ CreativeMapTemplateResult buildBuilderEstateMapTemplate(
   const CreativeWorldLayoutCompileResult compiled =
       buildCreativeWorldLayoutPlan(facade.document(), authored.edited);
   if (!compiled.receipt.accepted) {
+    const std::string_view reasonCode =
+        compiled.receipt.kernelReasonCode !=
+                "creative_world_layout_kernel_not_requested"
+            ? std::string_view{compiled.receipt.kernelReasonCode}
+            : std::string_view{compiled.receipt.reasonCode};
     setStatus(result, CreativeMapTemplateStatus::WorldLayoutFailed,
-              compiled.receipt.reasonCode);
+              reasonCode);
     return result;
   }
   const CreativeWorldLayoutApplyReceipt applied =

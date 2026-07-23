@@ -1046,9 +1046,12 @@ tests prove cross-frontend recipe and preview parity, overlap fallthrough,
 stable-id updates, one-record undo, schema persistence, room bake, collision,
 and reasoning-route compatibility.
 
-This remains M2 rather than M3/M4 until universal discovery, complete
-keyboard/touchpad/PS5 operation, stress and visual-regression coverage, manual
-acceptance, and the full road/river/bridge corridor workflow are complete.
+The canonical Builder Estate now supplies a real Road, Trench, attached Bridge,
+and generated approach-grade corridor for this tool's remaining integration
+proof. Terrain Region has not yet been used to refine that corridor inside the
+same end-to-end task. This remains M2 rather than M3/M4 until that proof,
+universal discovery, complete keyboard/touchpad/PS5 operation, stress and
+visual-regression coverage, and manual acceptance are complete.
 
 ### T8. Terrain Stamp - Current M2 Stable Recipe + Durable Catalog
 
@@ -1129,9 +1132,12 @@ contour/height precedence, shared recipe adoption, exact preview/apply parity,
 3D contour parity, and room-baked walkable collision matching the same smoothed
 render patch before and after the edit.
 
-This remains M2 rather than M3/M4 until universal discovery, complete
-keyboard/touchpad/PS5 operation, stress and visual-regression coverage, manual
-acceptance, and the complete site-work corridor workflow are satisfied.
+The canonical site-work corridor now survives generation, save/reopen, a durable
+path-point edit, synchronized Bridge regeneration, runtime traversal, and exact
+undo. This remains M2 rather than M3/M4 until contour refinement and slope
+inspection are exercised through that same product task, universal discovery
+and keyboard/touchpad/PS5 operation are complete, and stress,
+visual-regression, and manual acceptance are satisfied.
 
 ### T11. Hydrology And Erosion - Missing - Deferred
 
@@ -1619,6 +1625,17 @@ collision, a clear center travel lane, and a preserved reasoning-graph edge.
 `i3dc` and the nine bridge-adjacent recipe, World Layout, persistence, editor,
 and projection tests build and pass headlessly.
 
+Integration checkpoint (2026-07-23): Builder Estate's former generic bridge box
+is now one durable S4 source attached to the middle control point of its S3
+Trench. The generated deck, supports, rails, and two approach grades replace the
+box in the reference map. A desktop-command workflow generates the estate,
+saves and reopens both source and output, moves the crossing's source point,
+retains generated member identity while moving the structure, proves the
+room-baked center lane through collision and reasoning, and undoes to the exact
+source and 3D state. `ReplaceAll` terrain ownership now removes manual, foreign,
+and stale operations while preserving already-correct desired operation IDs, so
+an unchanged authoritative layout converges to `NoChange`.
+
 This remains M2 rather than M3/M4 until the generated bridge has exact preview
 and direct retargeting in every relevant 2D/3D view, discovery and complete
 keyboard/touchpad/PS5 workflows are manually accepted, long and diagonal
@@ -2014,6 +2031,16 @@ than advertisements for unfinished capabilities.
 - [ ] Finish T2-T7, T9-T10 and S1-S4 around one road/river/bridge corridor.
 - [ ] Prove: generate base terrain, refine contours, grade a road, cut a riverbed,
   place a bridge, inspect slopes, traverse, save, reopen, and modify the spline.
+
+Integration checkpoint (2026-07-23): the canonical Builder Estate now composes
+base plateau terrain, a Road, a three-point Trench, one stable crossing, a
+semantic Bridge, and two approach Grade operations. Headless product proof runs
+through the desktop command dispatcher, durable save/open, source-point
+modification, synchronized in-place regeneration, room bake, collision and
+reasoning traversal, and one-step undo. The remaining Wave 2 proof is to perform
+Terrain Region refinement, road-grade adjustment, contour/elevation editing,
+and slope inspection inside this same task, then close direct-manipulation,
+stress, visual-regression, and manual input gates.
 
 ### Wave 3 - Complete Asset And Gameplay Placement
 

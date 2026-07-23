@@ -5,8 +5,15 @@
 #include "EditorWorldLayout.hpp"
 
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/recipes/CreativeRecipe.hpp"
 #include "app/iggy3d/creative/recipes/TerrainRecipe.hpp"
+#include "app/iggy3d/creative/world/MapTemplate.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/physics/PhysicsCollisionQueries.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 #include <algorithm>
 #include <array>
@@ -42,6 +49,27 @@ bool sameTransform(const cr::CreativeTransform& lhs,
          lhs.rotationEulerRadians.z == rhs.rotationEulerRadians.z &&
          lhs.scale.x == rhs.scale.x && lhs.scale.y == rhs.scale.y &&
          lhs.scale.z == rhs.scale.z;
+}
+
+bool sameBounds(const cr::CreativeBounds& lhs,
+                const cr::CreativeBounds& rhs) noexcept {
+  return lhs.min.x == rhs.min.x && lhs.min.y == rhs.min.y &&
+         lhs.min.z == rhs.min.z && lhs.max.x == rhs.max.x &&
+         lhs.max.y == rhs.max.y && lhs.max.z == rhs.max.z;
+}
+
+const cr::CreativeObject* findRecipeMember(
+    const cr::CreativeDocument& document,
+    std::string_view instanceKey,
+    std::string_view stableKey) {
+  const auto found = std::find_if(
+      document.objects().begin(), document.objects().end(),
+      [instanceKey, stableKey](const cr::CreativeObject& object) {
+        return cr::creativeRecipeObjectHasInstanceProvenance(
+            object, cr::CreativeRecipeKind::Bridge, instanceKey,
+            cr::CreativeRecipeObjectRole::Generated, stableKey);
+      });
+  return found == document.objects().end() ? nullptr : &*found;
 }
 
 class TemporarySaveRoot {
@@ -303,6 +331,251 @@ bool canonicalTerrainCorridorTaskSurvivesLifecycle() {
                 "terrain corridor undo restores exact height and material");
 }
 
+bool canonicalSiteCorridorTaskSurvivesLifecycle() {
+  CreatorTaskHarness task{"canonical_site_corridor", 20'004U};
+  if (!expect(task.saveRoot.ready() && task.installed,
+              "site corridor task harness initializes")) {
+    return false;
+  }
+
+  const app::CreativeDesktopCommandResult generated = dispatchPayload(
+      app::CreativeDesktopCommandId::RegenerateMapTemplate, task.context,
+      app::CreativeDesktopMapTemplatePayload{
+          std::string{cr::kBuilderEstateMapTemplateId}});
+  const auto ditch = std::find_if(
+      task.editor.worldLayout.source.terrainPaths.begin(),
+      task.editor.worldLayout.source.terrainPaths.end(),
+      [](const cr::CreativeWorldLayoutTerrainPath& path) {
+        return path.stableKey == "path.ditch";
+      });
+  const auto road = std::find_if(
+      task.editor.worldLayout.source.terrainPaths.begin(),
+      task.editor.worldLayout.source.terrainPaths.end(),
+      [](const cr::CreativeWorldLayoutTerrainPath& path) {
+        return path.stableKey == "path.estate_road";
+      });
+  const cr::CreativeObject* generatedDeck = findRecipeMember(
+      task.appState.facade.document(), "bridge.ditch", "deck");
+  if (!expect(
+          generated.accepted && generated.documentReplaced &&
+              generated.worldLayoutChanged && generated.sceneChanged &&
+              ditch != task.editor.worldLayout.source.terrainPaths.end() &&
+              road != task.editor.worldLayout.source.terrainPaths.end() &&
+              ditch->recipe.kind == cr::CreativeTerrainPathKind::Trench &&
+              road->recipe.kind == cr::CreativeTerrainPathKind::Road &&
+              ditch->recipe.watercourse.crossings.size() == 1U &&
+              !task.editor.worldLayout.source.objects.empty() &&
+              task.editor.worldLayout.source.objects[0].usesBridgeRecipe &&
+              task.editor.worldLayout.source.objects[0]
+                      .bridge.watercoursePathKey == "path.ditch" &&
+              generatedDeck != nullptr &&
+              task.appState.facade.document()
+                      .terrainOperationStack()
+                      .operations.size() == 4U,
+          "site corridor generates terrain road trench bridge and approaches")) {
+    return false;
+  }
+
+  const cr::CreativeObjectId deckId = generatedDeck->id;
+  const cr::CreativeTransform originalDeckTransform = generatedDeck->transform;
+  const cr::CreativeBounds originalDeckBounds = generatedDeck->bounds;
+  const std::size_t objectCount =
+      task.appState.facade.document().objectCount();
+  if (!saveReopen(task)) {
+    return false;
+  }
+
+  const auto reopenedDitch = std::find_if(
+      task.editor.worldLayout.source.terrainPaths.begin(),
+      task.editor.worldLayout.source.terrainPaths.end(),
+      [](const cr::CreativeWorldLayoutTerrainPath& path) {
+        return path.stableKey == "path.ditch";
+      });
+  const cr::CreativeObject* reopenedDeck = findRecipeMember(
+      task.appState.facade.document(), "bridge.ditch", "deck");
+  if (!expect(
+          reopenedDitch !=
+                  task.editor.worldLayout.source.terrainPaths.end() &&
+              reopenedDeck != nullptr && reopenedDeck->id == deckId &&
+              sameTransform(reopenedDeck->transform, originalDeckTransform) &&
+              sameBounds(reopenedDeck->bounds, originalDeckBounds) &&
+              task.appState.facade.document().objectCount() == objectCount,
+          "site corridor source and generated bridge reopen with stable identity")) {
+    return false;
+  }
+
+  const std::size_t ditchIndex = static_cast<std::size_t>(
+      std::distance(task.editor.worldLayout.source.terrainPaths.begin(),
+                    reopenedDitch));
+  app::CreativeEditorWorldLayoutTerrainPathSettings settings;
+  if (!expect(app::readCreativeEditorWorldLayoutTerrainPathSettings(
+                  task.editor.worldLayout, ditchIndex, settings) &&
+                  settings.recipe.points.size() == 3U,
+              "reopened site corridor remains editable")) {
+    return false;
+  }
+  const cr::CreativeTerrainPathSourceRecipe originalRecipe = settings.recipe;
+  settings.recipe.points[1].coord.z += 1;
+  const app::CreativeDesktopCommandResult modified = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty,
+      task.context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::TerrainPath, ditchIndex,
+          reopenedDitch->stableKey, settings});
+  const cr::CreativeObject* movedDeck = findRecipeMember(
+      task.appState.facade.document(), "bridge.ditch", "deck");
+  const cr::CreativeWorldLayoutCompileResult synchronized =
+      cr::buildCreativeWorldLayoutPlan(task.appState.facade.document(),
+                                       task.editor.worldLayout.source);
+
+  cr::CreativeRoomBakeRequest bakeRequest;
+  bakeRequest.document = &task.appState.facade.document();
+  bakeRequest.roomId = "canonical_site_corridor";
+  bakeRequest.validateReachability = false;
+  const cr::CreativeRoomBakeResult baked =
+      cr::buildRoomAssetFromCreativeDocument(bakeRequest);
+  const iggy3d::SpatialSurfaceSet surfaces =
+      iggy3d::buildSpatialSurfaceSet(baked.room);
+  const float deckX =
+      movedDeck != nullptr
+          ? static_cast<float>(movedDeck->transform.position.x)
+          : 0.0F;
+  const float deckZ =
+      movedDeck != nullptr
+          ? static_cast<float>(movedDeck->transform.position.z)
+          : 0.0F;
+  const iggy3d::CollisionQueryResult deckTop =
+      iggy3d::sampleSurfaceHeight(surfaces, {deckX, 0.0F, deckZ});
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult physics =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces({&surfaces, {}});
+  const bool centerlineBlocked =
+      deckTop.status == iggy3d::CollisionQueryStatus::Hit &&
+      iggy3d::segmentHitsAnyPhysicsAabb(
+          physics.colliders, {deckX, deckTop.heightMeters + 0.5F, deckZ - 4.0F},
+          {deckX, deckTop.heightMeters + 0.5F, deckZ + 4.0F}, 0.05F,
+          nullptr);
+  const std::array<iggy3d::Vec3, 2U> bridgeWaypoints{
+      iggy3d::Vec3{deckX, deckTop.heightMeters, deckZ - 4.0F},
+      iggy3d::Vec3{deckX, deckTop.heightMeters, deckZ + 4.0F},
+  };
+  const iggy3d::ReasoningGraph bridgeReasoning =
+      iggy3d::buildReasoningGraph(baked.room, bridgeWaypoints);
+  std::array<std::uint32_t, 2U> bridgeNodeIds{};
+  std::size_t bridgeNodeCount = 0U;
+  for (const iggy3d::ReasoningNode& node : bridgeReasoning.nodes) {
+    if (node.kind == iggy3d::ReasoningNodeKind::patrolPost &&
+        node.sourceLabel == "waypoint" &&
+        bridgeNodeCount < bridgeNodeIds.size()) {
+      bridgeNodeIds[bridgeNodeCount++] = node.id;
+    }
+  }
+  const bool bridgeEdge =
+      bridgeNodeCount == bridgeNodeIds.size() &&
+      std::any_of(bridgeReasoning.edges.begin(), bridgeReasoning.edges.end(),
+                  [&](const iggy3d::ReasoningEdge& edge) {
+                    return (edge.from == bridgeNodeIds[0] &&
+                            edge.to == bridgeNodeIds[1]) ||
+                           (edge.from == bridgeNodeIds[1] &&
+                            edge.to == bridgeNodeIds[0]);
+                  });
+  if (!modified.accepted || !modified.changed ||
+      !modified.worldLayoutChanged || !modified.sceneChanged ||
+      cr::creativeUndoDepth(task.appState.history) != 1U ||
+      movedDeck == nullptr || movedDeck->id != deckId ||
+      movedDeck->transform.position.z !=
+          originalDeckTransform.position.z + 1.0 ||
+      task.appState.facade.document().objectCount() != objectCount ||
+      !synchronized.receipt.accepted ||
+      synchronized.receipt.status != cr::CreativeWorldLayoutStatus::NoChange) {
+    std::cerr << "Site corridor edit: accepted=" << modified.accepted
+              << " changed=" << modified.changed
+              << " layout=" << modified.worldLayoutChanged
+              << " scene=" << modified.sceneChanged
+              << " undo=" << cr::creativeUndoDepth(task.appState.history)
+              << " deck=" << (movedDeck != nullptr)
+              << " deck-id="
+              << (movedDeck != nullptr ? movedDeck->id : cr::kInvalidObjectId)
+              << " expected-id=" << deckId
+              << " deck-z="
+              << (movedDeck != nullptr ? movedDeck->transform.position.z : 0.0)
+              << " expected-z=" << originalDeckTransform.position.z + 1.0
+              << " objects=" << task.appState.facade.document().objectCount()
+              << " expected-objects=" << objectCount
+              << " sync-status=" << cr::toString(synchronized.receipt.status)
+              << " sync-reason=" << synchronized.receipt.reasonCode
+              << " sync-kernel=" << synchronized.receipt.kernelReasonCode
+              << " sync-recipes="
+              << synchronized.receipt.objectRecipeCount
+              << " sync-patches="
+              << synchronized.receipt.objectRecipePatchCount
+              << " sync-removes=" << synchronized.receipt.objectRemoveCount
+              << " sync-terrain="
+              << synchronized.receipt.terrainControlEditCount
+              << " sync-materials="
+              << synchronized.receipt.terrainMaterialEditCount
+              << " sync-operations="
+              << synchronized.receipt.terrainOperationMutationCount
+              << '\n';
+  }
+  if (!baked.receipt.accepted || !physics.ok ||
+      deckTop.status != iggy3d::CollisionQueryStatus::Hit ||
+      centerlineBlocked || !bridgeEdge) {
+    std::cerr << "Site corridor traversal: bake=" << baked.receipt.accepted
+              << " bake-reason=" << baked.receipt.reasonCode
+              << " physics=" << physics.ok
+              << " surface-status=" << static_cast<int>(deckTop.status)
+              << " surface-y=" << deckTop.heightMeters
+              << " blocked=" << centerlineBlocked
+              << " nodes=" << bridgeReasoning.nodes.size()
+              << " edges=" << bridgeReasoning.edges.size()
+              << " bridge-nodes=" << bridgeNodeCount
+              << " bridge-edge=" << bridgeEdge
+              << " deck-x=" << deckX << " deck-z=" << deckZ << '\n';
+  }
+  if (!expect(
+          modified.accepted && modified.changed &&
+              modified.worldLayoutChanged && modified.sceneChanged &&
+              cr::creativeUndoDepth(task.appState.history) == 1U &&
+              movedDeck != nullptr && movedDeck->id == deckId &&
+              movedDeck->transform.position.z ==
+                  originalDeckTransform.position.z + 1.0 &&
+              task.appState.facade.document().objectCount() == objectCount &&
+              synchronized.receipt.accepted &&
+              synchronized.receipt.status ==
+                  cr::CreativeWorldLayoutStatus::NoChange,
+          "site corridor edit regenerates its attached bridge in one history record") ||
+      !expect(baked.receipt.accepted && physics.ok &&
+                  deckTop.status == iggy3d::CollisionQueryStatus::Hit &&
+                  !centerlineBlocked && bridgeEdge,
+              "regenerated bridge remains baked collidable and traversable")) {
+    return false;
+  }
+
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, task.context);
+  const cr::CreativeObject* restoredDeck = findRecipeMember(
+      task.appState.facade.document(), "bridge.ditch", "deck");
+  const cr::CreativeWorldLayoutCompileResult restored =
+      cr::buildCreativeWorldLayoutPlan(task.appState.facade.document(),
+                                       task.editor.worldLayout.source);
+  return expect(
+             undone.accepted &&
+                 cr::creativeUndoDepth(task.appState.history) == 0U &&
+                 task.editor.worldLayout.source.terrainPaths[ditchIndex].recipe ==
+                     originalRecipe &&
+                 task.editor.worldLayout.generatedRevision ==
+                     task.editor.worldLayout.revision &&
+                 restoredDeck != nullptr && restoredDeck->id == deckId &&
+                 sameTransform(restoredDeck->transform, originalDeckTransform) &&
+                 sameBounds(restoredDeck->bounds, originalDeckBounds) &&
+                 task.appState.facade.document().objectCount() == objectCount &&
+                 restored.receipt.accepted &&
+                 restored.receipt.status ==
+                     cr::CreativeWorldLayoutStatus::NoChange,
+             "site corridor undo restores source structure and generated output");
+}
+
 cr::CreativeDocumentCreateReceipt createAssetObject(
     cr::CreativeDocument& document, cr::CreativeObjectKind kind,
     std::string name, std::string assetId, cr::CreativeVec3 position) {
@@ -423,6 +696,7 @@ int main() {
   bool ok = true;
   ok = canonicalBuildingTaskSurvivesLifecycle() && ok;
   ok = canonicalTerrainCorridorTaskSurvivesLifecycle() && ok;
+  ok = canonicalSiteCorridorTaskSurvivesLifecycle() && ok;
   ok = canonicalAssetCompositionTaskSurvivesLifecycle() && ok;
   if (ok) {
     std::cout << "creative creator task workflow tests passed\n";
