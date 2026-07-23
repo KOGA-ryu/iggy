@@ -24,6 +24,7 @@ enum class CreativeAuthoringFamily : std::uint8_t {
   Pattern,
   AssetScatter,
   Prefab,
+  WorldLayout,
   Count,
 };
 
@@ -43,7 +44,7 @@ enum class CreativeAuthoringOperationKind : std::uint8_t {
 
 enum class CreativeAuthoringSourceStore : std::uint8_t {
   None,
-  ObjectProvenance,
+  AuthoredAssetLibrary,
   TerrainOperationStack,
   PatternRecipeStore,
   WorldLayoutSource,
@@ -141,7 +142,9 @@ inline constexpr CreativeAuthoringCapabilities kDestructiveCapabilities =
     CreativeAuthoringCapability::DestructiveRecord |
     CreativeAuthoringCapability::FrontendNeutral;
 
-inline constexpr std::array<CreativeAuthoringContract, 11U>
+inline constexpr std::array<
+    CreativeAuthoringContract,
+    static_cast<std::size_t>(CreativeAuthoringFamily::Count)>
     kCreativeAuthoringContracts{{
         {CreativeAuthoringFamily::Building,
          CreativeAuthoringLifecycle::Parametric,
@@ -150,7 +153,7 @@ inline constexpr std::array<CreativeAuthoringContract, 11U>
          "building"},
         {CreativeAuthoringFamily::ObjectLibrary,
          CreativeAuthoringLifecycle::Parametric,
-         CreativeAuthoringSourceStore::ObjectProvenance,
+         CreativeAuthoringSourceStore::WorldLayoutSource,
          kParametricCapabilities,
          "object_library"},
         {CreativeAuthoringFamily::Road,
@@ -197,10 +200,15 @@ inline constexpr std::array<CreativeAuthoringContract, 11U>
          "asset_scatter"},
         {CreativeAuthoringFamily::Prefab,
          CreativeAuthoringLifecycle::Parametric,
-         CreativeAuthoringSourceStore::ObjectProvenance,
+         CreativeAuthoringSourceStore::AuthoredAssetLibrary,
          kParametricCapabilities |
              CreativeAuthoringCapability::DestructiveRecord,
          "prefab"},
+        {CreativeAuthoringFamily::WorldLayout,
+         CreativeAuthoringLifecycle::Parametric,
+         CreativeAuthoringSourceStore::WorldLayoutSource,
+         kParametricCapabilities,
+         "world_layout"},
     }};
 
 [[nodiscard]] constexpr std::span<const CreativeAuthoringContract>

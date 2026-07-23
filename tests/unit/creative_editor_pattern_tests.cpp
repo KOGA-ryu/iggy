@@ -627,6 +627,16 @@ bool editableArrayReopensUpdatesAndDetachesWithHistory() {
   const cr::CreativeHistoryApplyReceipt undoDetach =
       cr::applyCreativeHistory(appState.facade, appState.history,
                                cr::CreativeHistoryDirection::Undo);
+  const bool undoDetachRestored =
+      cr::findCreativePatternRecipe(
+          appState.facade.document().patternRecipeStore(), recipeId) !=
+      nullptr;
+  const cr::CreativeHistoryApplyReceipt redoDetach =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Redo);
+  const bool redoDetachRestored =
+      appState.facade.document().patternRecipeStore().recipes.empty() &&
+      appState.facade.document().objectCount() == bakedObjectCount;
   return expect(detachCommandPresent && detached && !editor.toolOptions.open &&
                     historyDepthAfterDetach ==
                         historyDepthBeforeDetach + 1U &&
@@ -640,10 +650,13 @@ bool editableArrayReopensUpdatesAndDetachesWithHistory() {
                         cr::CreativeAuthoringOperationKind::Destructive &&
                     undoDetach.targetOperation->lifecycle ==
                         cr::CreativeAuthoringLifecycle::Destructive &&
-                    cr::findCreativePatternRecipe(
-                        appState.facade.document().patternRecipeStore(),
-                        recipeId) != nullptr,
+                    undoDetachRestored,
                 "detach is independently undoable") &&
+         expect(redoDetach.accepted &&
+                    redoDetach.targetOperation ==
+                        undoDetach.targetOperation &&
+                    redoDetachRestored,
+                "detach reapplies without deleting baked outputs") &&
          ok;
 }
 

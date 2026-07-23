@@ -1877,6 +1877,14 @@ bool authoredEraseRemovesTheWholeSemanticInstance() {
   const std::size_t undoDepth = cr::creativeUndoDepth(appState.history);
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const bool undoRestored =
+      appState.facade.document().objectCount() == 3U &&
+      appState.facade.document().containsObject(rootId);
+  const cr::CreativeHistoryApplyReceipt redo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const bool redoRemoved =
+      appState.facade.document().objectCount() == 0U &&
+      !appState.facade.document().containsObject(rootId);
 
   return expect(captured.accepted && rootId != cr::kInvalidObjectId,
                 "authored erase fixture places one expanded instance") &&
@@ -1896,8 +1904,11 @@ bool authoredEraseRemovesTheWholeSemanticInstance() {
                     expectedOperation->affectedMemberCount == 3U,
                 "authored erase records the exact removed instance") &&
          expect(undo.accepted && undo.targetOperation == expectedOperation &&
-                    appState.facade.document().objectCount() == 3U,
-                "undo restores the complete authored instance hierarchy");
+                    undoRestored,
+                "undo restores the complete authored instance hierarchy") &&
+         expect(redo.accepted && redo.targetOperation == expectedOperation &&
+                    redoRemoved,
+                "redo removes the complete authored instance hierarchy");
 }
 
 bool editorPrefabDetachRecordsTheSourceItBakes() {
@@ -1933,6 +1944,15 @@ bool editorPrefabDetachRecordsTheSourceItBakes() {
           : std::nullopt;
   const cr::CreativeHistoryApplyReceipt undo = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const bool undoRestoredRoot =
+      appState.facade.document().containsObject(
+          placed.instanceRootObjectId);
+  const cr::CreativeHistoryApplyReceipt redo = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const bool redoDetachedRoot =
+      !appState.facade.document().containsObject(
+          placed.instanceRootObjectId) &&
+      appState.facade.document().objectCount() == detachedObjectCount;
 
   return expect(captured.accepted && placed.accepted && installed &&
                     fingerprint.valid,
@@ -1953,9 +1973,11 @@ bool editorPrefabDetachRecordsTheSourceItBakes() {
                     expectedOperation->affectedMemberCount == 3U,
                 "prefab detach records the exact baked source") &&
          expect(undo.accepted && undo.targetOperation == expectedOperation &&
-                    appState.facade.document().containsObject(
-                        placed.instanceRootObjectId),
-                "prefab detach metadata survives undo");
+                    undoRestoredRoot,
+                "prefab detach metadata survives undo") &&
+         expect(redo.accepted && redo.targetOperation == expectedOperation &&
+                    redoDetachedRoot,
+                "prefab detach metadata survives redo");
 }
 
 bool authoredPlacementPreservesClearanceRejection() {

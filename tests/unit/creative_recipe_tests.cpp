@@ -36,6 +36,21 @@ bool authoringFamilyContractsAreExhaustiveAndEnforceLifecycleLaws() {
   const cr::CreativeAuthoringContract* retainingEdge =
       cr::findCreativeAuthoringContract(
           cr::CreativeAuthoringFamily::RetainingEdge);
+  const cr::CreativeAuthoringContract* building =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Building);
+  const cr::CreativeAuthoringContract* objectLibrary =
+      cr::findCreativeAuthoringContract(
+          cr::CreativeAuthoringFamily::ObjectLibrary);
+  const cr::CreativeAuthoringContract* pattern =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Pattern);
+  const cr::CreativeAuthoringContract* assetScatter =
+      cr::findCreativeAuthoringContract(
+          cr::CreativeAuthoringFamily::AssetScatter);
+  const cr::CreativeAuthoringContract* prefab =
+      cr::findCreativeAuthoringContract(cr::CreativeAuthoringFamily::Prefab);
+  const cr::CreativeAuthoringContract* worldLayout =
+      cr::findCreativeAuthoringContract(
+          cr::CreativeAuthoringFamily::WorldLayout);
 
   auto brokenParametric = cr::kCreativeAuthoringContracts;
   brokenParametric[static_cast<std::size_t>(
@@ -87,8 +102,14 @@ bool authoringFamilyContractsAreExhaustiveAndEnforceLifecycleLaws() {
                         *terrain,
                         cr::CreativeAuthoringCapability::Reconcile),
                 "terrain declares durable parametric ownership") &&
-         expect(road != nullptr && watercourse != nullptr &&
+         expect(building != nullptr && objectLibrary != nullptr &&
+                    road != nullptr && watercourse != nullptr &&
                     bridge != nullptr && retainingEdge != nullptr &&
+                    worldLayout != nullptr &&
+                    building->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
+                    objectLibrary->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
                     road->sourceStore ==
                         cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
                     watercourse->sourceStore ==
@@ -96,8 +117,21 @@ bool authoringFamilyContractsAreExhaustiveAndEnforceLifecycleLaws() {
                     bridge->sourceStore ==
                         cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
                     retainingEdge->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::WorldLayoutSource &&
+                    worldLayout->sourceStore ==
                         cr::CreativeAuthoringSourceStore::WorldLayoutSource,
-                "structural and authored path recipe families are explicit") &&
+                "world-layout families name their durable source owner") &&
+         expect(pattern != nullptr && assetScatter != nullptr &&
+                    pattern->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::PatternRecipeStore &&
+                    assetScatter->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::PatternRecipeStore,
+                "pattern families name their durable source owner") &&
+         expect(prefab != nullptr &&
+                    prefab->sourceStore ==
+                        cr::CreativeAuthoringSourceStore::
+                            AuthoredAssetLibrary,
+                "prefab names its authored asset source owner") &&
          expect(volume != nullptr &&
                     volume->lifecycle ==
                         cr::CreativeAuthoringLifecycle::Destructive &&

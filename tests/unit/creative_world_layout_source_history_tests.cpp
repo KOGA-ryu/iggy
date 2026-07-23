@@ -240,7 +240,7 @@ bool confirmHandsHistoryBackToTheDocumentOwner() {
          expect(expectedPlan.receipt.accepted &&
                     expectedOperation.has_value() &&
                     expectedOperation->family ==
-                        cr::CreativeAuthoringFamily::Building &&
+                        cr::CreativeAuthoringFamily::WorldLayout &&
                     expectedOperation->kind ==
                         cr::CreativeAuthoringOperationKind::Reconcile &&
                     expectedOperation->action == "WorldLayout.Apply" &&

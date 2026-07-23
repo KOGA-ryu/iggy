@@ -1177,6 +1177,24 @@ bool selectedScatterRegeneratesAndBakesWithHistory() {
       undoRegenerate.accepted && restored != nullptr &&
       restored->scatter.seed == initialSeed &&
       restored->generatedObjectIds == initialOutputs;
+  const cr::CreativeHistoryApplyReceipt redoRegenerate =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Redo);
+  const cr::CreativePatternRecipe* redone = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+  const bool regenerateRedoRestored =
+      redoRegenerate.accepted && redone != nullptr &&
+      redone->scatter.seed != initialSeed &&
+      redone->generatedObjectIds == regeneratedOutputs;
+  const cr::CreativeHistoryApplyReceipt reundoRegenerate =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
+  const cr::CreativePatternRecipe* rerestored = cr::findCreativePatternRecipe(
+      appState.facade.document().patternRecipeStore(), recipeId);
+  const bool regenerateReundoRestored =
+      reundoRegenerate.accepted && rerestored != nullptr &&
+      rerestored->scatter.seed == initialSeed &&
+      rerestored->generatedObjectIds == initialOutputs;
 
   const std::size_t objectCountBeforeBake =
       appState.facade.document().objectCount();
@@ -1198,6 +1216,15 @@ bool selectedScatterRegeneratesAndBakesWithHistory() {
       appState.facade.document().objectCount() == objectCountBeforeBake;
   const cr::CreativeHistoryApplyReceipt undoBake = cr::applyCreativeHistory(
       appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+  const bool bakeUndoRestored =
+      cr::findCreativePatternRecipe(
+          appState.facade.document().patternRecipeStore(), recipeId) !=
+      nullptr;
+  const cr::CreativeHistoryApplyReceipt redoBake = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const bool bakeRedoRestored =
+      appState.facade.document().patternRecipeStore().recipes.empty() &&
+      appState.facade.document().objectCount() == objectCountBeforeBake;
 
   return expect(selectedRecipeResolved && regenerateCommand && bakeCommand,
                 "selected scatter output resolves regenerate and bake commands") &&
@@ -1216,6 +1243,13 @@ bool selectedScatterRegeneratesAndBakesWithHistory() {
                         expectedRegenerateOperation &&
                     regenerateUndoRestored,
                 "regenerate is one independently undoable recipe edit") &&
+         expect(redoRegenerate.targetOperation ==
+                        expectedRegenerateOperation &&
+                    regenerateRedoRestored &&
+                    reundoRegenerate.targetOperation ==
+                        expectedRegenerateOperation &&
+                    regenerateReundoRestored,
+                "regenerate reapplies and restores the same durable source") &&
          expect(bakedInstancesRemain && expectedDetachOperation.has_value() &&
                     expectedDetachOperation->family ==
                         cr::CreativeAuthoringFamily::AssetScatter &&
@@ -1227,10 +1261,12 @@ bool selectedScatterRegeneratesAndBakesWithHistory() {
                         "AssetScatter.Detach" &&
                     undoBake.accepted &&
                     undoBake.targetOperation == expectedDetachOperation &&
-                    cr::findCreativePatternRecipe(
-                        appState.facade.document().patternRecipeStore(),
-                        recipeId) != nullptr,
-                "bake keeps instances and is independently undoable");
+                    bakeUndoRestored,
+                "bake keeps instances and is independently undoable") &&
+         expect(redoBake.accepted &&
+                    redoBake.targetOperation == expectedDetachOperation &&
+                    bakeRedoRestored,
+                "bake redo detaches source without deleting instances");
 }
 
 bool scatterEraseRejectsSourceOwnedOutput() {

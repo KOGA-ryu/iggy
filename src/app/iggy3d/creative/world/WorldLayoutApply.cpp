@@ -442,7 +442,7 @@ std::uint64_t creativeWorldLayoutPlanAffectedMemberCount(
 std::optional<CreativeAuthoringOperationRecord>
 makeCreativeWorldLayoutOperationRecord(const CreativeWorldLayoutPlan& plan) {
   return makeCreativeAuthoringOperationRecord(
-      CreativeAuthoringFamily::Building,
+      CreativeAuthoringFamily::WorldLayout,
       CreativeAuthoringOperationKind::Reconcile, "WorldLayout.Apply",
       fingerprintCreativeWorldLayoutPlanSource(plan),
       creativeWorldLayoutPlanAffectedMemberCount(plan));

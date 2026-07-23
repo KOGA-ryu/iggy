@@ -2002,6 +2002,21 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
       appState.facade.document().findObject(crateAId);
   const cr::CreativeObject* restoredCrateB =
       appState.facade.document().findObject(crateBId);
+  const bool undoRestored =
+      restoredCrateA != nullptr && restoredCrateA->name == "Crate A" &&
+      restoredCrateB != nullptr &&
+      sameVec3(restoredCrateB->transform.position, refinedPosition);
+  const cr::CreativeHistoryApplyReceipt redone = cr::applyCreativeHistory(
+      appState.facade, appState.history, cr::CreativeHistoryDirection::Redo);
+  const cr::CreativeObject* redoneCrateA =
+      appState.facade.document().findObject(crateAId);
+  const cr::CreativeObject* redoneCrateB =
+      appState.facade.document().findObject(crateBId);
+  const bool redoRestored =
+      redoneCrateA != nullptr &&
+      redoneCrateA->name == "Crate A Revised" &&
+      redoneCrateB != nullptr &&
+      sameVec3(redoneCrateB->transform.position, refinedPosition);
 
   return expect(first.receipt.accepted && firstApplied.accepted &&
                     first.receipt.objectRecipeCreateCount == 3U &&
@@ -2054,7 +2069,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                 "selective patch retains matching identity and unrelated edits") &&
          expect(expectedOperation.has_value() &&
                     expectedOperation->family ==
-                        cr::CreativeAuthoringFamily::Building &&
+                        cr::CreativeAuthoringFamily::WorldLayout &&
                     expectedOperation->kind ==
                         cr::CreativeAuthoringOperationKind::Reconcile &&
                     expectedOperation->lifecycle ==
@@ -2069,12 +2084,12 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
                 "world layout history records its exact source plan") &&
          expect(undone.accepted && undone.changed &&
                     undone.targetOperation == expectedOperation &&
-                    restoredCrateA != nullptr &&
-                    restoredCrateA->name == "Crate A" &&
-                    restoredCrateB != nullptr &&
-                    sameVec3(restoredCrateB->transform.position,
-                             refinedPosition),
-                "selective generation remains one undo transaction");
+                    undoRestored,
+                "selective generation remains one undo transaction") &&
+         expect(redone.accepted && redone.changed &&
+                    redone.targetOperation == expectedOperation &&
+                    redoRestored,
+                "selective generation restores its source patch on redo");
 }
 
 cr::CreativeWorldLayout singleCrateLayout(std::string name = "Managed Crate") {
@@ -2883,6 +2898,19 @@ bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
   const bool detachUndoRestoredLink =
       appState.facade.document().findLogicLink(trigger.objectId, doorId) !=
       nullptr;
+  const cr::CreativeHistoryApplyReceipt detachRedone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Redo);
+  const cr::CreativeObject* redetachedDoor =
+      appState.facade.document().findObject(doorId);
+  const bool detachRedoState =
+      redetachedDoor != nullptr &&
+      cr::creativeRecipeObjectInstanceKey(*redetachedDoor).empty() &&
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) !=
+          nullptr;
+  const cr::CreativeHistoryApplyReceipt detachReUndone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
 
   const cr::CreativeWorldLayoutCompileResult blockedAgain =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
@@ -2900,6 +2928,28 @@ bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
   const cr::CreativeWorldLayoutApplyReceipt removed =
       applyWorldLayoutForTestTransaction(
           appState, remove.plan, "world_layout_linked_member_remove");
+  const bool removeState =
+      appState.facade.document().findObject(doorId) == nullptr &&
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) ==
+          nullptr &&
+      !cr::selectionContainsTarget(appState.facade.selectionState(),
+                                   {static_cast<cr::Id>(doorId)});
+  const cr::CreativeHistoryApplyReceipt removeUndone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Undo);
+  const bool removeUndoState =
+      appState.facade.document().findObject(doorId) != nullptr &&
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) !=
+          nullptr;
+  const cr::CreativeHistoryApplyReceipt removeRedone =
+      cr::applyCreativeHistory(appState.facade, appState.history,
+                               cr::CreativeHistoryDirection::Redo);
+  const bool removeRedoState =
+      appState.facade.document().findObject(doorId) == nullptr &&
+      appState.facade.document().findLogicLink(trigger.objectId, doorId) ==
+          nullptr &&
+      !cr::selectionContainsTarget(appState.facade.selectionState(),
+                                   {static_cast<cr::Id>(doorId)});
 
   return expect(initial.receipt.accepted && initialApplied.accepted &&
                     trigger.accepted && linked.accepted && selected.accepted,
@@ -2925,18 +2975,23 @@ bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
                 "detach undo restores managed door identity") &&
          expect(detachUndoRestoredLink,
                 "detach undo restores the authored door link") &&
+         expect(detachRedone.accepted && detachRedone.changed,
+                "detach redo reapplies the history transaction") &&
+         expect(detachRedoState,
+                "detach redo restores the detached source state") &&
+         expect(detachReUndone.accepted && detachReUndone.changed,
+                "detached source can be undone again") &&
          expect(remove.receipt.accepted &&
                     remove.receipt.objectRecipeConflictCount == 1U &&
                     remove.receipt.objectRecipePatchCount == 1U &&
                     !remove.plan.objectRemoveIds.empty() && removed.accepted &&
                     removed.changed && removed.historyReceipt.recorded &&
-                    appState.facade.document().findObject(doorId) == nullptr &&
-                    appState.facade.document().findLogicLink(
-                        trigger.objectId, doorId) == nullptr &&
-                    !cr::selectionContainsTarget(
-                        appState.facade.selectionState(),
-                        {static_cast<cr::Id>(doorId)}),
-                "Remove explicitly deletes the door and its incident link");
+                    removeState,
+                "Remove explicitly deletes the door and its incident link") &&
+         expect(removeUndone.accepted && removeUndone.changed &&
+                    removeUndoState && removeRedone.accepted &&
+                    removeRedone.changed && removeRedoState,
+                "Remove restores and reapplies source-owned deletion");
 }
 
 bool authoredChildBlocksRemovalOfManagedParent() {
