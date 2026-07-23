@@ -2,7 +2,7 @@
 
 ## Status
 
-Blocked until AUT-008 is accepted.
+Ready after accepted AUT-008 checkpoint `695f25be`.
 
 This is one coherent Authoring Core batch. It replaces every live
 same-document staging-copy assignment with one validated publication
