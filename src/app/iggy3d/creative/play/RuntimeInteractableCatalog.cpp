@@ -251,7 +251,7 @@ CreativeRuntimeInteractableCatalog buildCreativeRuntimeInteractableCatalog(
     definition.circuitId = object.parentId.value_or(kInvalidObjectId);
     definition.kind = *kind;
     definition.logicSourceMode =
-        creativeRuntimeLogicSourceModeForObject(object.kind);
+        creativeLogicSourceEventForObject(object.kind);
     definition.stableName = stableObjectName(object.id);
     definition.displayName = object.name.empty()
                                  ? std::string(toString(object.kind))

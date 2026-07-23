@@ -31,13 +31,7 @@ enum class CreativeRuntimeInteractableKind : std::uint8_t {
     CreativeRuntimeInteractableKind targetKind,
     CreativeLogicLinkAction action) noexcept;
 
-enum class CreativeRuntimeLogicSourceMode : std::uint8_t {
-  None,
-  Manual,
-  PulseOnEnter,
-  HoldWhileOccupied,
-  Count,
-};
+using CreativeRuntimeLogicSourceMode = CreativeLogicSourceEvent;
 
 enum class CreativeRuntimeOccupancyTransition : std::uint8_t {
   None,
@@ -45,10 +39,6 @@ enum class CreativeRuntimeOccupancyTransition : std::uint8_t {
   Exited,
 };
 
-[[nodiscard]] CreativeRuntimeLogicSourceMode
-creativeRuntimeLogicSourceModeForObject(CreativeObjectKind kind) noexcept;
-[[nodiscard]] std::string_view toString(
-    CreativeRuntimeLogicSourceMode mode) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeRuntimeOccupancyTransition transition) noexcept;
 

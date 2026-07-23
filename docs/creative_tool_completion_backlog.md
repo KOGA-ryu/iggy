@@ -1765,13 +1765,40 @@ the sole facing and patrol authorities. This is not M3/M4 until patrol
 reachability and risk diagnostics exist, simulation preview is non-mutating and
 useful, and the workflow receives manual visual/input acceptance.
 
-### G3. Logic Link - Current M1 - Finish Later
+### G3. Logic Link - Current M2 Typed Link Graph - Continue
 
-- [ ] Define typed source events, target actions, compatibility, direction, and
-  visible graph ownership.
-- [ ] Configure conditions, delays, one-shot/repeat, state, and failure behavior.
-- [ ] Prevent cycles or permit them only with explicit bounded semantics.
-- [ ] Debug live signal flow and persist stable links through object replacement.
+- [x] Define typed source events, target actions, compatibility, direction, and
+  visible graph ownership through one document-layer endpoint descriptor table.
+- [x] Keep authored cycles impossible while source and target object roles are
+  disjoint; any future relay/gate role must add explicit bounded cycle semantics.
+- [x] Persist canonical links through save/load and remap complete internal link
+  closures through clipboard, volume clone, and authored-asset placement.
+- [ ] Add conditions, delays, one-shot/repeat, and failure policy only with a
+  runtime execution owner and bounded deterministic receipts.
+- [ ] Add a bounded live event trace; the current Play overlay shows source
+  occupancy, directed links, invalid targets, and target active state but not
+  historical signal flow.
+- [ ] Preserve external links through authored-asset source replacement after
+  asset members gain stable local endpoint identities. Refresh currently rejects
+  crossing references rather than guessing a replacement endpoint.
+
+The M2 checkpoint makes source behavior an authored contract rather than a
+runtime/editor convention. TriggerZone emits a pulse on entry, PressurePlate
+holds while occupied, and Switch/Lever/Button use manual activation. Door,
+Platform, and MovingPlatform each expose an ordered, target-specific action
+roster from the same fixed descriptor table consumed by document validation,
+the Inspector, editor action cycling, runtime catalog construction, and runtime
+action validation. The Inspector presents product-facing source-event labels
+without importing the play/runtime layer.
+
+Directed 3D authoring arrows, source/target diagnostics, undoable semantic
+commands, save/load, clipboard remapping, automatic-source execution, and the
+Play occupancy/target-state overlay were already operational and are now
+recorded here instead of being mislabeled M1. Compile-time and focused unit
+proofs pin unique endpoint descriptors, complete target action order, and the
+disjoint source/target role law. This remains M2 until replacement-stable
+endpoint identity, bounded event history, and manually accepted authoring/play
+workflows exist; speculative delay or condition fields would not advance it.
 
 ### G4. Triggers, Objectives, Interactables, And Encounters - Missing - Deferred
 

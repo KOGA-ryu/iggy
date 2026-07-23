@@ -12,15 +12,6 @@ namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 namespace {
 
-constexpr std::array kEditableActions{
-    cr::CreativeLogicLinkAction::Toggle,
-    cr::CreativeLogicLinkAction::Open,
-    cr::CreativeLogicLinkAction::Close,
-    cr::CreativeLogicLinkAction::Enable,
-    cr::CreativeLogicLinkAction::Disable,
-    cr::CreativeLogicLinkAction::Reverse,
-};
-
 void applySelectedSource(cr::CreativeAppState& appState,
                          CreativeEditorLogicLinkState& state,
                          cr::CreativeObjectId objectId) {
@@ -111,20 +102,25 @@ bool clearCreativeEditorLogicLinkSource(
 bool cycleCreativeEditorLogicLinkAction(
     CreativeEditorLogicLinkState& state,
     std::int32_t direction) noexcept {
+  const std::span<const cr::CreativeLogicLinkAction> actions =
+      cr::creativeLogicLinkActions();
+  if (actions.empty()) {
+    return false;
+  }
   std::size_t index = 0U;
-  for (std::size_t candidate = 0U; candidate < kEditableActions.size();
+  for (std::size_t candidate = 0U; candidate < actions.size();
        ++candidate) {
-    if (kEditableActions[candidate] == state.action) {
+    if (actions[candidate] == state.action) {
       index = candidate;
       break;
     }
   }
-  const std::int32_t count = static_cast<std::int32_t>(kEditableActions.size());
+  const std::int32_t count = static_cast<std::int32_t>(actions.size());
   const std::int32_t stepped =
       (static_cast<std::int32_t>(index) + (direction < 0 ? -1 : 1) + count) %
       count;
   const cr::CreativeLogicLinkAction before = state.action;
-  state.action = kEditableActions[static_cast<std::size_t>(stepped)];
+  state.action = actions[static_cast<std::size_t>(stepped)];
   return state.action != before;
 }
 

@@ -7,6 +7,71 @@
 namespace iggy3d::creative {
 namespace {
 
+constexpr std::array kLogicLinkActions{
+    CreativeLogicLinkAction::Toggle,
+    CreativeLogicLinkAction::Open,
+    CreativeLogicLinkAction::Close,
+    CreativeLogicLinkAction::Enable,
+    CreativeLogicLinkAction::Disable,
+    CreativeLogicLinkAction::Reverse,
+};
+
+constexpr std::array<CreativeLogicEndpointDescriptor, 8U>
+    kLogicEndpointDescriptors{{
+        {CreativeObjectKind::TriggerZone,
+         CreativeLogicSourceEvent::PulseOnEnter, {}, 0U},
+        {CreativeObjectKind::Switch, CreativeLogicSourceEvent::Manual, {}, 0U},
+        {CreativeObjectKind::Lever, CreativeLogicSourceEvent::Manual, {}, 0U},
+        {CreativeObjectKind::PressurePlate,
+         CreativeLogicSourceEvent::HoldWhileOccupied, {}, 0U},
+        {CreativeObjectKind::Button, CreativeLogicSourceEvent::Manual, {}, 0U},
+        {CreativeObjectKind::Door,
+         CreativeLogicSourceEvent::None,
+         {CreativeLogicLinkAction::Toggle, CreativeLogicLinkAction::Open,
+          CreativeLogicLinkAction::Close, CreativeLogicLinkAction::Count},
+         3U},
+        {CreativeObjectKind::Platform,
+         CreativeLogicSourceEvent::None,
+         {CreativeLogicLinkAction::Toggle, CreativeLogicLinkAction::Enable,
+          CreativeLogicLinkAction::Disable, CreativeLogicLinkAction::Count},
+         3U},
+        {CreativeObjectKind::MovingPlatform,
+         CreativeLogicSourceEvent::None,
+         {CreativeLogicLinkAction::Toggle, CreativeLogicLinkAction::Enable,
+          CreativeLogicLinkAction::Disable, CreativeLogicLinkAction::Reverse},
+         4U},
+    }};
+
+consteval bool logicEndpointDescriptorsValid() {
+  for (std::size_t index = 0U; index < kLogicEndpointDescriptors.size();
+       ++index) {
+    const CreativeLogicEndpointDescriptor& descriptor =
+        kLogicEndpointDescriptors[index];
+    if (descriptor.objectKind == CreativeObjectKind::Unknown ||
+        descriptor.objectKind == CreativeObjectKind::Count ||
+        descriptor.targetActionCount > descriptor.targetActions.size() ||
+        (descriptor.canSource() && descriptor.canTarget())) {
+      return false;
+    }
+    for (const CreativeLogicLinkAction action :
+         descriptor.supportedTargetActions()) {
+      if (static_cast<std::uint8_t>(action) >=
+          static_cast<std::uint8_t>(CreativeLogicLinkAction::Count)) {
+        return false;
+      }
+    }
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      if (kLogicEndpointDescriptors[prior].objectKind ==
+          descriptor.objectKind) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static_assert(logicEndpointDescriptorsValid());
+
 struct LogicLinkPair {
   CreativeObjectId sourceObjectId = kInvalidObjectId;
   CreativeObjectId targetObjectId = kInvalidObjectId;
@@ -120,6 +185,44 @@ bool isValidCreativeLogicLinkAction(
          static_cast<std::uint8_t>(CreativeLogicLinkAction::Count);
 }
 
+std::span<const CreativeLogicLinkAction>
+creativeLogicLinkActions() noexcept {
+  return kLogicLinkActions;
+}
+
+std::string_view toString(CreativeLogicSourceEvent event) noexcept {
+  switch (event) {
+    case CreativeLogicSourceEvent::None:
+      return "none";
+    case CreativeLogicSourceEvent::Manual:
+      return "manual";
+    case CreativeLogicSourceEvent::PulseOnEnter:
+      return "pulse_on_enter";
+    case CreativeLogicSourceEvent::HoldWhileOccupied:
+      return "hold_while_occupied";
+    case CreativeLogicSourceEvent::Count:
+      break;
+  }
+  return "none";
+}
+
+std::string_view creativeLogicSourceEventLabel(
+    CreativeLogicSourceEvent event) noexcept {
+  switch (event) {
+    case CreativeLogicSourceEvent::None:
+      return "Not a logic source";
+    case CreativeLogicSourceEvent::Manual:
+      return "Manual activation";
+    case CreativeLogicSourceEvent::PulseOnEnter:
+      return "Pulse when entered";
+    case CreativeLogicSourceEvent::HoldWhileOccupied:
+      return "Active while occupied";
+    case CreativeLogicSourceEvent::Count:
+      break;
+  }
+  return "Invalid source event";
+}
+
 std::string_view toString(CreativeLogicLinkValidationStatus status) noexcept {
   switch (status) {
     case CreativeLogicLinkValidationStatus::Unknown:
@@ -207,39 +310,55 @@ std::string_view toString(CreativeLogicLinkMutationStatus status) noexcept {
   return "NotRequested";
 }
 
+std::span<const CreativeLogicEndpointDescriptor>
+creativeLogicEndpointDescriptors() noexcept {
+  return kLogicEndpointDescriptors;
+}
+
+const CreativeLogicEndpointDescriptor* creativeLogicEndpointDescriptor(
+    CreativeObjectKind kind) noexcept {
+  const auto found =
+      std::find_if(kLogicEndpointDescriptors.begin(),
+                   kLogicEndpointDescriptors.end(),
+                   [kind](const CreativeLogicEndpointDescriptor& descriptor) {
+                     return descriptor.objectKind == kind;
+                   });
+  return found == kLogicEndpointDescriptors.end() ? nullptr : &*found;
+}
+
+CreativeLogicSourceEvent creativeLogicSourceEventForObject(
+    CreativeObjectKind kind) noexcept {
+  const CreativeLogicEndpointDescriptor* descriptor =
+      creativeLogicEndpointDescriptor(kind);
+  return descriptor != nullptr ? descriptor->sourceEvent
+                               : CreativeLogicSourceEvent::None;
+}
+
+std::span<const CreativeLogicLinkAction>
+creativeLogicTargetActionsForObject(CreativeObjectKind kind) noexcept {
+  const CreativeLogicEndpointDescriptor* descriptor =
+      creativeLogicEndpointDescriptor(kind);
+  return descriptor != nullptr ? descriptor->supportedTargetActions()
+                               : std::span<const CreativeLogicLinkAction>{};
+}
+
 bool creativeObjectCanSourceLogicLink(CreativeObjectKind kind) noexcept {
-  return kind == CreativeObjectKind::TriggerZone ||
-         kind == CreativeObjectKind::Switch ||
-         kind == CreativeObjectKind::Lever ||
-         kind == CreativeObjectKind::PressurePlate ||
-         kind == CreativeObjectKind::Button;
+  const CreativeLogicEndpointDescriptor* descriptor =
+      creativeLogicEndpointDescriptor(kind);
+  return descriptor != nullptr && descriptor->canSource();
 }
 
 bool creativeObjectCanTargetLogicLink(CreativeObjectKind kind) noexcept {
-  return kind == CreativeObjectKind::Door ||
-         kind == CreativeObjectKind::Platform ||
-         kind == CreativeObjectKind::MovingPlatform;
+  const CreativeLogicEndpointDescriptor* descriptor =
+      creativeLogicEndpointDescriptor(kind);
+  return descriptor != nullptr && descriptor->canTarget();
 }
 
 bool creativeLogicLinkActionSupported(CreativeObjectKind targetKind,
                                       CreativeLogicLinkAction action) noexcept {
-  switch (targetKind) {
-    case CreativeObjectKind::Door:
-      return action == CreativeLogicLinkAction::Toggle ||
-             action == CreativeLogicLinkAction::Open ||
-             action == CreativeLogicLinkAction::Close;
-    case CreativeObjectKind::Platform:
-      return action == CreativeLogicLinkAction::Toggle ||
-             action == CreativeLogicLinkAction::Enable ||
-             action == CreativeLogicLinkAction::Disable;
-    case CreativeObjectKind::MovingPlatform:
-      return action == CreativeLogicLinkAction::Toggle ||
-             action == CreativeLogicLinkAction::Enable ||
-             action == CreativeLogicLinkAction::Disable ||
-             action == CreativeLogicLinkAction::Reverse;
-    default:
-      return false;
-  }
+  const std::span actions =
+      creativeLogicTargetActionsForObject(targetKind);
+  return std::find(actions.begin(), actions.end(), action) != actions.end();
 }
 
 CreativeLogicLinkValidationReceipt validateCreativeLogicLinks(

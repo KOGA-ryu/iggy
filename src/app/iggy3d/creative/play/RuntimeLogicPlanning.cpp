@@ -7,22 +7,6 @@
 namespace iggy3d::creative {
 namespace {
 
-[[nodiscard]] CreativeRuntimeLogicSourceMode logicSourceModeForObjectInternal(
-    CreativeObjectKind kind) noexcept {
-  switch (kind) {
-    case CreativeObjectKind::Switch:
-    case CreativeObjectKind::Lever:
-    case CreativeObjectKind::Button:
-      return CreativeRuntimeLogicSourceMode::Manual;
-    case CreativeObjectKind::TriggerZone:
-      return CreativeRuntimeLogicSourceMode::PulseOnEnter;
-    case CreativeObjectKind::PressurePlate:
-      return CreativeRuntimeLogicSourceMode::HoldWhileOccupied;
-    default:
-      return CreativeRuntimeLogicSourceMode::None;
-  }
-}
-
 [[nodiscard]] std::optional<CreativeObjectKind> authoredKindForLogicTarget(
     CreativeRuntimeInteractableKind kind) noexcept {
   switch (kind) {
@@ -55,27 +39,6 @@ bool creativeRuntimeLogicActionSupported(
       authoredKindForLogicTarget(targetKind);
   return authoredKind.has_value() &&
          creativeLogicLinkActionSupported(*authoredKind, action);
-}
-
-CreativeRuntimeLogicSourceMode creativeRuntimeLogicSourceModeForObject(
-    CreativeObjectKind kind) noexcept {
-  return logicSourceModeForObjectInternal(kind);
-}
-
-std::string_view toString(CreativeRuntimeLogicSourceMode mode) noexcept {
-  switch (mode) {
-    case CreativeRuntimeLogicSourceMode::None:
-      return "none";
-    case CreativeRuntimeLogicSourceMode::Manual:
-      return "manual";
-    case CreativeRuntimeLogicSourceMode::PulseOnEnter:
-      return "pulse_on_enter";
-    case CreativeRuntimeLogicSourceMode::HoldWhileOccupied:
-      return "hold_while_occupied";
-    case CreativeRuntimeLogicSourceMode::Count:
-      break;
-  }
-  return "none";
 }
 
 std::string_view toString(

@@ -2,6 +2,8 @@
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
 #include "app/iggy3d/creative/world/DocumentSection.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -32,6 +34,88 @@ cr::CreativeDocument documentWithId() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Logic");
   static_cast<void>(document.assignId(91U));
   return document;
+}
+
+bool endpointPolicyIsCanonicalAndAcyclic() {
+  const std::span<const cr::CreativeLogicEndpointDescriptor> descriptors =
+      cr::creativeLogicEndpointDescriptors();
+  std::size_t sourceCount = 0U;
+  std::size_t targetCount = 0U;
+  bool uniqueKinds = true;
+  bool rolesDisjoint = true;
+  bool wrappersMatch = true;
+  for (std::size_t index = 0U; index < descriptors.size(); ++index) {
+    const cr::CreativeLogicEndpointDescriptor& descriptor =
+        descriptors[index];
+    sourceCount += descriptor.canSource() ? 1U : 0U;
+    targetCount += descriptor.canTarget() ? 1U : 0U;
+    rolesDisjoint =
+        rolesDisjoint && !(descriptor.canSource() && descriptor.canTarget());
+    wrappersMatch =
+        wrappersMatch &&
+        cr::creativeObjectCanSourceLogicLink(descriptor.objectKind) ==
+            descriptor.canSource() &&
+        cr::creativeObjectCanTargetLogicLink(descriptor.objectKind) ==
+            descriptor.canTarget() &&
+        cr::creativeLogicSourceEventForObject(descriptor.objectKind) ==
+            descriptor.sourceEvent &&
+        cr::creativeLogicTargetActionsForObject(descriptor.objectKind)
+                .size() == descriptor.targetActionCount;
+    for (std::size_t prior = 0U; prior < index; ++prior) {
+      uniqueKinds =
+          uniqueKinds &&
+          descriptors[prior].objectKind != descriptor.objectKind;
+    }
+  }
+
+  const std::array doorActions{
+      cr::CreativeLogicLinkAction::Toggle,
+      cr::CreativeLogicLinkAction::Open,
+      cr::CreativeLogicLinkAction::Close,
+  };
+  const std::array movingPlatformActions{
+      cr::CreativeLogicLinkAction::Toggle,
+      cr::CreativeLogicLinkAction::Enable,
+      cr::CreativeLogicLinkAction::Disable,
+      cr::CreativeLogicLinkAction::Reverse,
+  };
+  const std::span<const cr::CreativeLogicLinkAction> actualDoorActions =
+      cr::creativeLogicTargetActionsForObject(cr::CreativeObjectKind::Door);
+  const std::span<const cr::CreativeLogicLinkAction>
+      actualMovingPlatformActions = cr::creativeLogicTargetActionsForObject(
+          cr::CreativeObjectKind::MovingPlatform);
+
+  return expect(descriptors.size() == 8U && sourceCount == 5U &&
+                    targetCount == 3U && uniqueKinds && rolesDisjoint,
+                "one canonical descriptor table owns an acyclic role split") &&
+         expect(wrappersMatch,
+                "legacy policy queries delegate to endpoint descriptors") &&
+         expect(std::ranges::equal(actualDoorActions, doorActions) &&
+                    std::ranges::equal(actualMovingPlatformActions,
+                                       movingPlatformActions),
+                "target action order is explicit and target-specific") &&
+         expect(cr::creativeLogicSourceEventForObject(
+                    cr::CreativeObjectKind::Switch) ==
+                    cr::CreativeLogicSourceEvent::Manual &&
+                    cr::creativeLogicSourceEventForObject(
+                        cr::CreativeObjectKind::TriggerZone) ==
+                        cr::CreativeLogicSourceEvent::PulseOnEnter &&
+                    cr::creativeLogicSourceEventForObject(
+                        cr::CreativeObjectKind::PressurePlate) ==
+                        cr::CreativeLogicSourceEvent::HoldWhileOccupied &&
+                    cr::creativeLogicSourceEventForObject(
+                        cr::CreativeObjectKind::Floor) ==
+                        cr::CreativeLogicSourceEvent::None,
+                "source kinds own typed event semantics") &&
+         expect(cr::toString(cr::CreativeLogicSourceEvent::PulseOnEnter) ==
+                        "pulse_on_enter" &&
+                    cr::creativeLogicSourceEventLabel(
+                        cr::CreativeLogicSourceEvent::PulseOnEnter) ==
+                        "Pulse when entered" &&
+                    cr::creativeLogicLinkActions().size() ==
+                        static_cast<std::size_t>(
+                            cr::CreativeLogicLinkAction::Count),
+                "source event ids, labels, and action roster are stable");
 }
 
 bool mutationsAreCanonicalAndReceipted() {
@@ -324,7 +408,8 @@ bool validRepairClearsUnlinkedDiagnostic() {
 }  // namespace
 
 int main() {
-  const bool ok = mutationsAreCanonicalAndReceipted() &&
+  const bool ok = endpointPolicyIsCanonicalAndAcyclic() &&
+                  mutationsAreCanonicalAndReceipted() &&
                   endpointDeletionRemovesIncidentLinksInOneRevision() &&
                   restoreValidatesAndCanonicalizesLinks() &&
                   clipboardRemapsInternalLinks() &&

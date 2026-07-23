@@ -16,7 +16,6 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/play/NpcSpawn.hpp"
 #include "app/iggy3d/creative/play/PlayerSpawn.hpp"
-#include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
@@ -50,15 +49,6 @@ bool creativeDesktopInputTextStdString(const char* label, std::string* str,
 }
 
 namespace {
-
-constexpr std::array kInspectorLogicActions{
-    cr::CreativeLogicLinkAction::Toggle,
-    cr::CreativeLogicLinkAction::Open,
-    cr::CreativeLogicLinkAction::Close,
-    cr::CreativeLogicLinkAction::Enable,
-    cr::CreativeLogicLinkAction::Disable,
-    cr::CreativeLogicLinkAction::Reverse,
-};
 
 // ---- shared small helpers -------------------------------------------------
 
@@ -223,17 +213,16 @@ void appendLogicLinkRow(const cr::CreativeDocument& document,
     ImGui::SetNextItemWidth(132.0F);
     if (ImGui::BeginCombo("##logic_action",
                           std::string(cr::toString(link.action)).c_str())) {
-      for (const cr::CreativeLogicLinkAction action : kInspectorLogicActions) {
-        if (target == nullptr ||
-            !cr::creativeLogicLinkActionSupported(target->kind, action)) {
-          continue;
-        }
-        const bool selected = action == link.action;
-        if (ImGui::Selectable(std::string(cr::toString(action)).c_str(),
-                              selected) &&
-            !selected) {
-          queueSetLogicLink(commands, link.sourceObjectId, link.targetObjectId,
-                            action);
+      if (target != nullptr) {
+        for (const cr::CreativeLogicLinkAction action :
+             cr::creativeLogicTargetActionsForObject(target->kind)) {
+          const bool selected = action == link.action;
+          if (ImGui::Selectable(std::string(cr::toString(action)).c_str(),
+                                selected) &&
+              !selected) {
+            queueSetLogicLink(commands, link.sourceObjectId,
+                              link.targetObjectId, action);
+          }
         }
       }
       ImGui::EndCombo();
@@ -269,10 +258,8 @@ void appendNewLogicLinkControl(const cr::CreativeDocument& document,
   ImGui::TextUnformatted(source->name.c_str());
   ImGui::SetNextItemWidth(160.0F);
   if (ImGui::BeginCombo("##new_logic_action", "Add link...")) {
-    for (const cr::CreativeLogicLinkAction action : kInspectorLogicActions) {
-      if (!cr::creativeLogicLinkActionSupported(target.kind, action)) {
-        continue;
-      }
+    for (const cr::CreativeLogicLinkAction action :
+         cr::creativeLogicTargetActionsForObject(target.kind)) {
       if (ImGui::Selectable(std::string(cr::toString(action)).c_str())) {
         queueSetLogicLink(commands, source->id, target.id, action);
       }
@@ -289,10 +276,12 @@ void appendLogicSection(CreativeEditorDesktopUiState& desktopUi,
                         bool playModeActive,
                         CreativeDesktopCommandFrame& commands) {
   if (cr::creativeObjectCanSourceLogicLink(inspected.kind)) {
-    const cr::CreativeRuntimeLogicSourceMode sourceMode =
-        cr::creativeRuntimeLogicSourceModeForObject(inspected.kind);
-    ImGui::Text("Source mode: %s",
-                std::string(cr::toString(sourceMode)).c_str());
+    const cr::CreativeLogicSourceEvent sourceEvent =
+        cr::creativeLogicSourceEventForObject(inspected.kind);
+    ImGui::Text("Source event: %s",
+                std::string(
+                    cr::creativeLogicSourceEventLabel(sourceEvent))
+                    .c_str());
     const cr::CreativeLogicDiagnostic* sourceDiagnostic =
         diagnosticForSource(desktopUi.logicDiagnostics, inspected.id);
     if (sourceDiagnostic != nullptr) {
