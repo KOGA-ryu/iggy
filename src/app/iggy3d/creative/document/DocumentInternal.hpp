@@ -20,6 +20,22 @@ constexpr CreativeObjectDirtyFlags documentSettingsDirtyFlags() noexcept {
          dirtyFlagValue(CreativeObjectDirtyFlag::Serialization);
 }
 
+// Facade replacement may only advance the transient live revision. Durable
+// content and dirty state remain owned by the document's normal mutations.
+struct CreativeDocumentRevisionAccess {
+  [[nodiscard]] static bool rebaseForLiveInstall(
+      CreativeDocument& document,
+      std::uint64_t revision) noexcept {
+    if (!document.isValid() || document.id() == kInvalidDocumentId ||
+        revision <= document.revision()) {
+      return false;
+    }
+
+    document.revision_ = revision;
+    return true;
+  }
+};
+
 [[nodiscard]] std::string_view validateCreatePathPayload(
     const CreativeObjectDescriptor& descriptor,
     const CreativeDocumentCreateRequest& request) noexcept;

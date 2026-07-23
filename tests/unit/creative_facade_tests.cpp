@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -548,6 +549,17 @@ bool installingValidDocumentReplacesDocumentAndPreservesContentState() {
          expect(receipt.previousDocumentId == cr::kInvalidDocumentId,
                 "install previous id invalid") &&
          expect(receipt.nextDocumentId == 77U, "install next id") &&
+         expect(receipt.previousLiveRevision == 0U,
+                "initial install previous live revision") &&
+         expect(receipt.incomingRevision == revisionBefore,
+                "initial install incoming revision") &&
+         expect(receipt.installedRevision == revisionBefore,
+                "initial install preserves incoming revision fact") &&
+         expect(receipt.revisionHighWaterBefore == 0U &&
+                    receipt.revisionHighWaterAfter == revisionBefore,
+                "initial install establishes revision high water") &&
+         expect(!receipt.revisionRebased && receipt.initialInstall,
+                "initial install reports no rebase") &&
          expect(receipt.previousObjectCount == 0U,
                 "install previous object count") &&
          expect(receipt.nextObjectCount == 1U, "install next object count") &&
@@ -607,6 +619,16 @@ bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
                 "install invalid previous id") &&
          expect(receipt.nextDocumentId == cr::kInvalidDocumentId,
                 "install invalid next id") &&
+         expect(receipt.previousLiveRevision == revisionBefore &&
+                    receipt.installedRevision == revisionBefore,
+                "install invalid reports unchanged live revision") &&
+         expect(receipt.revisionHighWaterBefore ==
+                    setup.revisionHighWaterAfter &&
+                    receipt.revisionHighWaterAfter ==
+                        setup.revisionHighWaterAfter,
+                "install invalid leaves revision high water unchanged") &&
+         expect(!receipt.revisionRebased && !receipt.initialInstall,
+                "install invalid reports no publication") &&
          expect(receipt.status == "creative_facade_document_id_missing",
                 "install invalid status") &&
          expect(facade.document().id() == 88U,
@@ -666,6 +688,13 @@ bool installingDocumentClearsTransientEditorState() {
   cr::CreativeDocument nextDocument = documentWithRooms("Next", 91, 1);
   const std::uint64_t nextRevision = nextDocument.revision();
   const cr::CreativeObjectDirtyFlags nextDirty = nextDocument.dirtyFlags();
+  const std::uint64_t liveRevisionBeforeInstall =
+      facade.document().revision();
+  const std::uint64_t expectedInstalledRevision =
+      std::max({setup.revisionHighWaterAfter,
+                liveRevisionBeforeInstall,
+                nextRevision}) +
+      1U;
   const cr::CreativeFacadeDocumentInstallReceipt receipt =
       facade.installDocument(std::move(nextDocument));
 
@@ -681,10 +710,21 @@ bool installingDocumentClearsTransientEditorState() {
                 "install clear next object count") &&
          expect(receipt.nextDirtyFlags == nextDirty,
                 "install clear next dirty flags") &&
+         expect(receipt.previousLiveRevision == liveRevisionBeforeInstall &&
+                    receipt.incomingRevision == nextRevision &&
+                    receipt.installedRevision == expectedInstalledRevision,
+                "replacement install reports revision lineage") &&
+         expect(receipt.revisionHighWaterBefore ==
+                    setup.revisionHighWaterAfter &&
+                    receipt.revisionHighWaterAfter ==
+                        expectedInstalledRevision,
+                "replacement install advances revision high water") &&
+         expect(receipt.revisionRebased && !receipt.initialInstall,
+                "replacement install reports rebase") &&
          expect(facade.document().id() == 91U,
                 "install clear document id") &&
-         expect(facade.document().revision() == nextRevision,
-                "install clear preserves revision") &&
+         expect(facade.document().revision() == expectedInstalledRevision,
+                "install clear rebases revision") &&
          expect(facade.document().dirtyFlags() == nextDirty,
                 "install clear preserves dirty") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
@@ -732,6 +772,11 @@ bool installingSecondDocumentDoesNotLeakOldSelection() {
          expect(secondInstall.accepted, "install second accepted") &&
          expect(secondInstall.selectionCleared,
                 "install second selection cleared") &&
+         expect(secondInstall.revisionRebased &&
+                    !secondInstall.initialInstall &&
+                    secondInstall.installedRevision >
+                        firstInstall.installedRevision,
+                "install second advances live revision") &&
          expect(facade.document().id() == 102U,
                 "install second document id") &&
          expect(facade.document().objectCount() == 1U,
@@ -740,6 +785,92 @@ bool installingSecondDocumentDoesNotLeakOldSelection() {
                 "install second clears selected target") &&
          expect(facade.selectionState().candidateTarget.value == cr::kInvalidId,
                 "install second clears candidate target");
+}
+
+bool resetAndFacadeCopiesPreserveRevisionLineage() {
+  cr::Facade facade;
+  cr::CreativeDocument initial = documentWithRooms("Initial", 120U, 2U);
+  const cr::CreativeFacadeDocumentInstallReceipt initialInstall =
+      facade.installDocument(std::move(initial));
+  static_cast<void>(
+      facade.createDocumentObject(cr::CreativeObjectKind::Room));
+  const std::uint64_t revisionBeforeReset = facade.document().revision();
+
+  facade.reset();
+  cr::Facade copied = facade;
+  cr::CreativeDocument copyReplacement =
+      documentWithRooms("Copy Replacement", 121U, 1U);
+  const std::uint64_t copyIncomingRevision = copyReplacement.revision();
+  const cr::CreativeFacadeDocumentInstallReceipt copyInstall =
+      copied.installDocument(std::move(copyReplacement));
+
+  cr::Facade moved = std::move(copied);
+  cr::CreativeDocument moveReplacement =
+      documentWithRooms("Move Replacement", 122U, 0U);
+  const cr::CreativeFacadeDocumentInstallReceipt moveInstall =
+      moved.installDocument(std::move(moveReplacement));
+
+  return expect(initialInstall.accepted && initialInstall.initialInstall,
+                "lineage fixture initial install") &&
+         expect(revisionBeforeReset > initialInstall.installedRevision,
+                "lineage fixture advances before reset") &&
+         expect(facade.document().id() == cr::kInvalidDocumentId &&
+                    facade.document().revision() == 0U,
+                "reset clears the live document") &&
+         expect(copyInstall.accepted && copyInstall.revisionRebased &&
+                    !copyInstall.initialInstall &&
+                    copyInstall.revisionHighWaterBefore ==
+                        revisionBeforeReset &&
+                    copyInstall.incomingRevision == copyIncomingRevision &&
+                    copyInstall.installedRevision > revisionBeforeReset,
+                "copied Facade preserves reset revision lineage") &&
+         expect(moveInstall.accepted && moveInstall.revisionRebased &&
+                    !moveInstall.initialInstall &&
+                    moveInstall.revisionHighWaterBefore ==
+                        copyInstall.revisionHighWaterAfter &&
+                    moveInstall.installedRevision >
+                        copyInstall.installedRevision,
+                "moved Facade preserves revision lineage");
+}
+
+bool rejectedInstallDoesNotAdvanceRevisionLineage() {
+  cr::Facade facade;
+  cr::CreativeDocument initial =
+      documentWithRooms("Rejected Install Baseline", 123U, 1U);
+  const cr::CreativeFacadeDocumentInstallReceipt initialInstall =
+      facade.installDocument(std::move(initial));
+  static_cast<void>(
+      facade.createDocumentObject(cr::CreativeObjectKind::Room));
+  const std::uint64_t liveRevisionBeforeReject =
+      facade.document().revision();
+
+  cr::CreativeDocument invalid =
+      cr::CreativeDocument::create("Missing Document Id");
+  const cr::CreativeFacadeDocumentInstallReceipt rejected =
+      facade.installDocument(std::move(invalid));
+
+  cr::CreativeDocument replacement =
+      documentWithRooms("After Rejection", 124U, 0U);
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      facade.installDocument(std::move(replacement));
+
+  return expect(initialInstall.accepted,
+                "rejected lineage fixture initial install") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    rejected.installedRevision == liveRevisionBeforeReject &&
+                    rejected.revisionHighWaterBefore ==
+                        initialInstall.revisionHighWaterAfter &&
+                    rejected.revisionHighWaterAfter ==
+                        initialInstall.revisionHighWaterAfter,
+                "rejected install leaves revision lineage unchanged") &&
+         expect(installed.accepted && installed.revisionRebased &&
+                    installed.previousLiveRevision ==
+                        liveRevisionBeforeReject &&
+                    installed.revisionHighWaterBefore ==
+                        rejected.revisionHighWaterAfter &&
+                    installed.installedRevision ==
+                        liveRevisionBeforeReject + 1U,
+                "next accepted install advances from unchanged live truth");
 }
 
 bool removingSelectedObjectClearsCanonicalState() {
@@ -1079,6 +1210,8 @@ int main() {
                   installingInvalidIdDocumentDoesNotMutateExistingFacade() &&
                   installingDocumentClearsTransientEditorState() &&
                   installingSecondDocumentDoesNotLeakOldSelection() &&
+                  resetAndFacadeCopiesPreserveRevisionLineage() &&
+                  rejectedInstallDoesNotAdvanceRevisionLineage() &&
                   removingSelectedObjectClearsCanonicalState() &&
                   removingHoveredObjectPreservesSelection() &&
                   removingMissingObjectPreservesEditorTargets() &&

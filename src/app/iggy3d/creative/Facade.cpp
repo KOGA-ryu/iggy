@@ -1,7 +1,10 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include "app/iggy3d/creative/FacadeInternal.hpp"
+#include "app/iggy3d/creative/document/DocumentInternal.hpp"
 
+#include <algorithm>
+#include <limits>
 #include <span>
 #include <utility>
 
@@ -176,6 +179,8 @@ std::string_view toString(CreativeFacadeDocumentBatchCreateStatus status)
 }
 
 void Facade::reset() noexcept {
+  liveRevisionHighWater_ =
+      std::max(liveRevisionHighWater_, document_.revision());
   document_.reset();
   resetTransientFacadeState(stats_,
                             toolState_,
@@ -370,6 +375,11 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   receipt.hadPreviousDocument = document_.isValid();
   receipt.previousDocumentId = document_.id();
   receipt.nextDocumentId = document.id();
+  receipt.previousLiveRevision = document_.revision();
+  receipt.incomingRevision = document.revision();
+  receipt.installedRevision = document_.revision();
+  receipt.revisionHighWaterBefore = liveRevisionHighWater_;
+  receipt.revisionHighWaterAfter = liveRevisionHighWater_;
   receipt.previousObjectCount = document_.objectCount();
   receipt.nextObjectCount = document.objectCount();
   receipt.previousDirtyFlags = document_.dirtyFlags();
@@ -385,6 +395,28 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   if (document.id() == kInvalidDocumentId) {
     setInstallStatus(receipt, "creative_facade_document_id_missing");
     return receipt;
+  }
+
+  const bool initialInstall = !hasInstalledDocument_;
+  const std::uint64_t nextHighWater =
+      std::max({liveRevisionHighWater_,
+                document_.revision(),
+                document.revision()});
+  if (!initialInstall) {
+    if (nextHighWater == std::numeric_limits<std::uint64_t>::max()) {
+      setInstallStatus(receipt,
+                       "creative_facade_document_revision_exhausted");
+      return receipt;
+    }
+
+    const std::uint64_t rebasedRevision = nextHighWater + 1U;
+    if (!document_internal::CreativeDocumentRevisionAccess::
+            rebaseForLiveInstall(document, rebasedRevision)) {
+      setInstallStatus(receipt,
+                       "creative_facade_document_revision_rebase_rejected");
+      return receipt;
+    }
+    receipt.revisionRebased = true;
   }
 
   receipt.selectionCleared = hasSelectionState(selectionState_);
@@ -406,10 +438,16 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   moveDragStartAnchor_ = {};
   moveDragObjectIds_.clear();
   moveDragReceipt_ = {};
+  liveRevisionHighWater_ =
+      std::max(nextHighWater, document_.revision());
+  hasInstalledDocument_ = true;
 
   receipt.accepted = true;
   receipt.changed = true;
+  receipt.initialInstall = initialInstall;
   receipt.nextDocumentId = document_.id();
+  receipt.installedRevision = document_.revision();
+  receipt.revisionHighWaterAfter = liveRevisionHighWater_;
   receipt.nextObjectCount = document_.objectCount();
   receipt.nextDirtyFlags = document_.dirtyFlags();
   receipt.activeToolAfter = toolState_.activeTool;

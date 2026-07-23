@@ -131,10 +131,17 @@ struct CreativeFacadeDocumentInstallReceipt {
   bool hadPreviousDocument = false;
   CreativeDocumentId previousDocumentId = kInvalidDocumentId;
   CreativeDocumentId nextDocumentId = kInvalidDocumentId;
+  std::uint64_t previousLiveRevision = 0;
+  std::uint64_t incomingRevision = 0;
+  std::uint64_t installedRevision = 0;
+  std::uint64_t revisionHighWaterBefore = 0;
+  std::uint64_t revisionHighWaterAfter = 0;
   std::uint64_t previousObjectCount = 0;
   std::uint64_t nextObjectCount = 0;
   CreativeObjectDirtyFlags previousDirtyFlags = 0;
   CreativeObjectDirtyFlags nextDirtyFlags = 0;
+  bool revisionRebased = false;
+  bool initialInstall = false;
   bool selectionCleared = false;
   bool measurementCleared = false;
   bool ghostCleared = false;
@@ -389,6 +396,10 @@ class Facade {
       const CreativeToolIntent& intent);
 
   CreativeDocument document_;
+  // Live replacement lineage is transient and deliberately excluded from
+  // document persistence.
+  std::uint64_t liveRevisionHighWater_ = 0;
+  bool hasInstalledDocument_ = false;
   Stats stats_;
   CreativeToolState toolState_;
   CreativeSelectionState selectionState_;

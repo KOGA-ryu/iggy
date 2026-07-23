@@ -400,6 +400,93 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
                 "reattach is one undoable and redoable hierarchy edit");
 }
 
+bool branchRevisionPreventsFrozenReattachmentPlanReuse() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, 323U, "Branch-Safe Reattach"),
+              "branch-safe reattach document installed")) {
+    return false;
+  }
+  const iggy3d::StaticMeshAssetCatalog catalog = attachmentCatalog();
+  const cr::CreativeDocumentCreateReceipt firstFrame = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Prop, "First Frame",
+      "door_frame", {0.0, 0.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt secondFrame = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Prop, "Second Frame",
+      "door_frame", {4.0, 0.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt leaf = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Door, "Door Leaf", "door_leaf",
+      {0.0, 0.0, 0.0}, firstFrame.objectId, "door_frame");
+  if (!expect(firstFrame.accepted && secondFrame.accepted && leaf.accepted,
+              "branch-safe reattach fixture created")) {
+    return false;
+  }
+  appState.history = {};
+
+  cr::CreativeDocumentHistoryTransaction editA =
+      cr::beginCreativeHistoryTransaction(
+          appState.facade, "reattach_branch_a");
+  const cr::CreativeDocumentMutationReceipt renamedA =
+      appState.facade.mutateObject(
+          secondFrame.objectId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Second Frame A"));
+  const cr::CreativeHistoryRecordReceipt recordedA =
+      cr::commitCreativeHistoryTransaction(
+          appState.history, std::move(editA), appState.facade);
+  const app::CreativeEditorObjectReattachmentPlan planA =
+      app::planCreativeEditorObjectReattachment(
+          appState.facade.document(), catalog, leaf.objectId,
+          secondFrame.objectId, {4.0, 0.0, 0.0});
+  const std::uint64_t revisionA = appState.facade.document().revision();
+
+  const cr::CreativeHistoryApplyReceipt undone =
+      cr::applyCreativeHistory(
+          appState.facade, appState.history,
+          cr::CreativeHistoryDirection::Undo);
+  const std::uint64_t revisionAfterUndo =
+      appState.facade.document().revision();
+
+  cr::CreativeDocumentHistoryTransaction editB =
+      cr::beginCreativeHistoryTransaction(
+          appState.facade, "reattach_branch_b");
+  const cr::CreativeDocumentMutationReceipt renamedB =
+      appState.facade.mutateObject(
+          secondFrame.objectId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Second Frame B"));
+  const cr::CreativeHistoryRecordReceipt recordedB =
+      cr::commitCreativeHistoryTransaction(
+          appState.history, std::move(editB), appState.facade);
+  const std::uint64_t revisionB = appState.facade.document().revision();
+  const cr::CreativeObject* leafBefore =
+      appState.facade.findObject(leaf.objectId);
+  const cr::CreativeTransform transformBefore =
+      leafBefore != nullptr ? leafBefore->transform : cr::CreativeTransform{};
+  const app::CreativeEditorObjectReattachmentReceipt stale =
+      app::applyCreativeEditorObjectReattachment(appState.facade, planA);
+  const cr::CreativeObject* leafAfter =
+      appState.facade.findObject(leaf.objectId);
+
+  return expect(renamedA.changed && recordedA.recorded &&
+                    planA.accepted && planA.documentRevision == revisionA,
+                "edit A produces one accepted frozen reattachment plan") &&
+         expect(undone.accepted && revisionAfterUndo > revisionA,
+                "undo rebases beyond the frozen plan revision") &&
+         expect(renamedB.changed && recordedB.recorded &&
+                    recordedB.clearedRedoCount == 1U &&
+                    revisionB > revisionAfterUndo &&
+                    revisionB != planA.documentRevision,
+                "alternate branch cannot alias the frozen plan revision") &&
+         expect(!stale.accepted && !stale.changed &&
+                    stale.status ==
+                        app::CreativeEditorObjectReattachmentStatus::
+                            InvalidRequest &&
+                    stale.revisionBefore == revisionB &&
+                    stale.revisionAfter == revisionB &&
+                    leafAfter != nullptr &&
+                    leafAfter->parentId == firstFrame.objectId &&
+                    sameTransform(leafAfter->transform, transformBefore),
+                "branch-stale reattachment plan publishes nothing");
+}
+
 bool reattachRejectsStaleAndInsideHierarchyWithoutMutation() {
   cr::CreativeAppState appState;
   if (!expect(installDocument(appState, 322U, "Reattach Contract Rejections"),
@@ -654,6 +741,7 @@ int main() {
   return attachedChildrenFollowParentTransformsAsOneHistoryStep() &&
                  detachActionPreservesWorldPoseAndRestoresRelationship() &&
                  reattachMovesHierarchyAndIsOneUndoableEdit() &&
+                 branchRevisionPreventsFrozenReattachmentPlanReuse() &&
                  reattachRejectsOccupiedAndPenetratingHosts() &&
                  reattachRejectsStaleAndInsideHierarchyWithoutMutation() &&
                  reattachObjectActionUsesFrozenAimTarget() &&

@@ -40,6 +40,98 @@ bool addFloor(app::CreativeEditorWorldLayoutState& state,
   return begin.accepted && !begin.changed && commit.accepted && commit.changed;
 }
 
+bool documentHistoryRevisionsRemainUniqueAcrossBranches() {
+  cr::CreativeAppState live;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Branch-Safe History");
+  static_cast<void>(document.assignId(9700U));
+  cr::CreativeDocumentCreateRequest room;
+  room.kind = cr::CreativeObjectKind::Room;
+  room.name = "Baseline";
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(room);
+  const std::uint64_t initialRevision = document.revision();
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      live.facade.installDocument(std::move(document));
+  live.history = {};
+
+  cr::CreativeDocumentHistoryTransaction editA =
+      cr::beginCreativeHistoryTransaction(live.facade, "branch_edit_a");
+  const cr::CreativeDocumentMutationReceipt appliedA =
+      live.facade.mutateObject(
+          created.objectId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Branch A"));
+  const cr::CreativeHistoryRecordReceipt recordedA =
+      cr::commitCreativeHistoryTransaction(
+          live.history, std::move(editA), live.facade);
+  const std::uint64_t revisionA = live.facade.document().revision();
+
+  const cr::CreativeHistoryApplyReceipt undoneA =
+      cr::applyCreativeHistory(
+          live.facade, live.history, cr::CreativeHistoryDirection::Undo);
+  const std::uint64_t revisionAfterUndo =
+      live.facade.document().revision();
+  const cr::CreativeObject* afterUndo =
+      live.facade.findObject(created.objectId);
+  const bool undoRestoredBaseline =
+      afterUndo != nullptr && afterUndo->name == "Baseline";
+
+  const cr::CreativeHistoryApplyReceipt redoneA =
+      cr::applyCreativeHistory(
+          live.facade, live.history, cr::CreativeHistoryDirection::Redo);
+  const std::uint64_t revisionAfterRedo =
+      live.facade.document().revision();
+  const cr::CreativeObject* afterRedo =
+      live.facade.findObject(created.objectId);
+  const bool redoRestoredA =
+      afterRedo != nullptr && afterRedo->name == "Branch A";
+
+  const cr::CreativeHistoryApplyReceipt undoneForBranch =
+      cr::applyCreativeHistory(
+          live.facade, live.history, cr::CreativeHistoryDirection::Undo);
+  const std::uint64_t revisionBeforeBranch =
+      live.facade.document().revision();
+
+  cr::CreativeDocumentHistoryTransaction editB =
+      cr::beginCreativeHistoryTransaction(live.facade, "branch_edit_b");
+  const cr::CreativeDocumentMutationReceipt appliedB =
+      live.facade.mutateObject(
+          created.objectId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Branch B"));
+  const cr::CreativeHistoryRecordReceipt recordedB =
+      cr::commitCreativeHistoryTransaction(
+          live.history, std::move(editB), live.facade);
+  const std::uint64_t revisionB = live.facade.document().revision();
+  const cr::CreativeObject* branchB =
+      live.facade.findObject(created.objectId);
+
+  return expect(created.accepted && installed.accepted &&
+                    installed.initialInstall &&
+                    installed.installedRevision == initialRevision,
+                "initial history install preserves its incoming revision") &&
+         expect(appliedA.changed && recordedA.recorded &&
+                    revisionA > initialRevision,
+                "edit A advances and records one live revision") &&
+         expect(undoneA.accepted && undoRestoredBaseline &&
+                    revisionAfterUndo > revisionA &&
+                    undoneA.installReceipt.revisionRebased,
+                "undo restores baseline content at a newer live revision") &&
+         expect(redoneA.accepted && redoRestoredA &&
+                    revisionAfterRedo > revisionAfterUndo &&
+                    redoneA.installReceipt.revisionRebased,
+                "redo restores edit A at another newer live revision") &&
+         expect(undoneForBranch.accepted &&
+                    revisionBeforeBranch > revisionAfterRedo,
+                "branch point restoration advances live revision again") &&
+         expect(appliedB.changed && recordedB.recorded &&
+                    recordedB.clearedRedoCount == 1U &&
+                    branchB != nullptr && branchB->name == "Branch B" &&
+                    revisionB > revisionBeforeBranch &&
+                    revisionB != revisionA &&
+                    !cr::creativeRedoAvailable(live.history),
+                "alternate edit B cannot reuse edit A's revision");
+}
+
 bool gestureCommitsOneEntryAndBranchesClearRedo() {
   cr::CreativeAppState live = makeApp(9701U);
   app::CreativeEditorWorldLayoutState state;
@@ -384,7 +476,8 @@ bool sourceRestorePreservesIndependentInspectionCameras() {
 }  // namespace
 
 int main() {
-  const bool ok = gestureCommitsOneEntryAndBranchesClearRedo() &&
+  const bool ok = documentHistoryRevisionsRemainUniqueAcrossBranches() &&
+                  gestureCommitsOneEntryAndBranchesClearRedo() &&
                   sourceHistoryTrimsToItsConfiguredBound() &&
                   confirmHandsHistoryBackToTheDocumentOwner() &&
                   sourceRedoSurvivesDocumentHistoryRoundTrip() &&

@@ -1,8 +1,10 @@
 #include "EditorMapValidationDiagnostics.hpp"
+#include "app/iggy3d/creative/history/History.hpp"
 
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -115,6 +117,81 @@ bool validationCacheIsExplicitAndRevisionOwned() {
                 "stale asset catalog refresh runs exactly once");
 }
 
+bool validationCacheCannotHitAnAlternateHistoryBranch() {
+  cr::Facade facade;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Branch-Safe Validation Cache");
+  static_cast<void>(document.assignId(92U));
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      facade.installDocument(std::move(document));
+  cr::CreativeDocumentHistory history;
+  iggy3d::StaticMeshAssetCatalog catalog;
+
+  cr::CreativeDocumentHistoryTransaction editA =
+      cr::beginCreativeHistoryTransaction(facade, "validation_branch_a");
+  cr::CreativeDocumentCreateRequest floorA;
+  floorA.kind = cr::CreativeObjectKind::Floor;
+  floorA.name = "Floor A";
+  floorA.bounds = {{0.0, 0.0, 0.0}, {2.0, 0.25, 2.0}};
+  floorA.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt createdA =
+      facade.createDocumentObject(floorA);
+  const cr::CreativeHistoryRecordReceipt recordedA =
+      cr::commitCreativeHistoryTransaction(
+          history, std::move(editA), facade);
+  const std::uint64_t revisionA = facade.document().revision();
+
+  app::CreativeEditorMapValidationCache cache;
+  static_cast<void>(app::refreshCreativeEditorMapValidation(
+      cache, facade.document(), &catalog));
+  const std::uint64_t buildCountA = cache.buildCount;
+  const std::uint64_t cachedRevisionA = cache.documentRevision;
+
+  const cr::CreativeHistoryApplyReceipt undone =
+      cr::applyCreativeHistory(
+          facade, history, cr::CreativeHistoryDirection::Undo);
+  const std::uint64_t revisionAfterUndo = facade.document().revision();
+
+  cr::CreativeDocumentHistoryTransaction editB =
+      cr::beginCreativeHistoryTransaction(facade, "validation_branch_b");
+  cr::CreativeDocumentCreateRequest floorB = floorA;
+  floorB.name = "Floor B";
+  floorB.bounds = {{4.0, 0.0, 4.0}, {7.0, 0.25, 7.0}};
+  const cr::CreativeDocumentCreateReceipt createdB =
+      facade.createDocumentObject(floorB);
+  const cr::CreativeHistoryRecordReceipt recordedB =
+      cr::commitCreativeHistoryTransaction(
+          history, std::move(editB), facade);
+  const std::uint64_t revisionB = facade.document().revision();
+
+  const bool alternateBranchIsStale =
+      app::creativeEditorMapValidationCacheStatus(
+          cache, facade.document(), &catalog) ==
+      app::CreativeEditorMapValidationCacheStatus::Stale;
+  static_cast<void>(app::refreshCreativeEditorMapValidation(
+      cache, facade.document(), &catalog));
+
+  return expect(installed.accepted && installed.initialInstall,
+                "validation branch fixture initial install") &&
+         expect(createdA.accepted && recordedA.recorded &&
+                    cachedRevisionA == revisionA,
+                "validation cache is built on edit A") &&
+         expect(undone.accepted && revisionAfterUndo > revisionA,
+                "validation branch undo advances live revision") &&
+         expect(createdB.accepted && recordedB.recorded &&
+                    recordedB.clearedRedoCount == 1U &&
+                    revisionB > revisionAfterUndo &&
+                    revisionB != revisionA,
+                "validation alternate branch has a unique revision") &&
+         expect(alternateBranchIsStale &&
+                    cache.buildCount == buildCountA + 1U &&
+                    cache.documentRevision == revisionB &&
+                    app::creativeEditorMapValidationCacheStatus(
+                        cache, facade.document(), &catalog) ==
+                        app::CreativeEditorMapValidationCacheStatus::Current,
+                "edit A cache rebuilds exactly once for edit B");
+}
+
 bool catalogSignatureDistinguishesUnavailableAndChangedCatalogs() {
   iggy3d::StaticMeshAssetCatalog catalog;
   const std::uint64_t missing =
@@ -142,6 +219,7 @@ bool catalogSignatureDistinguishesUnavailableAndChangedCatalogs() {
 int main() {
   const bool ok = descriptorTableIsCompleteAndActionable() &&
                   validationCacheIsExplicitAndRevisionOwned() &&
+                  validationCacheCannotHitAnAlternateHistoryBranch() &&
                   catalogSignatureDistinguishesUnavailableAndChangedCatalogs();
   if (!ok) {
     return EXIT_FAILURE;

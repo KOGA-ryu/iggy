@@ -25,6 +25,10 @@
 
 namespace iggy3d::creative {
 
+namespace document_internal {
+struct CreativeDocumentRevisionAccess;
+}
+
 using CreativeDocumentId = std::uint64_t;
 
 inline constexpr CreativeDocumentId kInvalidDocumentId = 0;
@@ -358,9 +362,11 @@ class CreativeDocument {
   // [[nodiscard]] bool addTag(CreativeObjectId id, std::string tag);
   // [[nodiscard]] bool removeTag(CreativeObjectId id, std::string_view tag);
   // [[nodiscard]] std::string_view notes() const noexcept;
-  // bool setNotes(std::string notes);
+ // bool setNotes(std::string notes);
 
  private:
+  friend struct document_internal::CreativeDocumentRevisionAccess;
+
   [[nodiscard]] CreativeObjectId appendObject(CreativeObject object);
   [[nodiscard]] std::size_t eraseLogicLinksForObject(
       CreativeObjectId objectId) noexcept;
