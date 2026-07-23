@@ -411,8 +411,6 @@ bool facadeGenericCreateWrapsDocumentAndPreservesInteractionState() {
                 "facade rooms created") &&
          expect(facade.toolState().activeTool == cr::Tool::Move,
                 "facade tool preserved") &&
-         expect(facade.state().tool == cr::Tool::Move,
-                "facade old state tool preserved") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "facade selection preserved");
 }

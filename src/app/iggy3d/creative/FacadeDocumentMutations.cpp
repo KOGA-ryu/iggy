@@ -26,7 +26,7 @@ CreativeVolumeOperationReceipt Facade::applyVolumeOperation(
   }
 
   for (CreativeObjectId objectId : receipt.removedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -48,7 +48,6 @@ CreativeVolumeOperationReceipt Facade::applyVolumeOperation(
     const TargetRef primary = createdTargets.back();
     static_cast<void>(
         setSelectedTargets(selectionState_, createdTargets, primary));
-    state_.selected = selectionState_.selectedTarget;
   }
 
   recordCommandSuccess(stats_);
@@ -209,7 +208,7 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
       return rejected;
     }
     for (CreativeObjectId objectId : hierarchy.removedObjectIds) {
-      invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+      invalidateRemovedObjectEditorState(objectId, toolState_,
                                          selectionState_, measurementState_,
                                          ghostState_);
     }
@@ -223,7 +222,6 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   }
 
   invalidateRemovedObjectEditorState(receipt.objectId,
-                                     state_,
                                      toolState_,
                                      selectionState_,
                                      measurementState_,
@@ -275,7 +273,7 @@ CreativeHierarchyBatchRemoveReceipt Facade::removeDocumentObjectsAtomically(
     return receipt;
   }
   for (CreativeObjectId objectId : receipt.removedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -293,7 +291,7 @@ CreativeSemanticDeleteReceipt Facade::deleteDocumentObjectsSemantically(
     return receipt;
   }
   for (CreativeObjectId objectId : receipt.removedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }

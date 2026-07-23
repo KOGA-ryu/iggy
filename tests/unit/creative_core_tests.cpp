@@ -14,16 +14,17 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-bool defaultStateIsStable() {
-  const cr::State state;
+bool defaultFacadeEditorStateIsStable() {
+  const cr::Facade facade;
 
-  return expect(!state.flags.enabled, "state disabled") &&
-         expect(!state.flags.active, "state inactive") &&
-         expect(!state.flags.dirty, "state clean") &&
-         expect(state.tool == cr::Tool::Select, "default tool") &&
-         expect(state.frame.value == 0U, "default frame") &&
-         expect(state.hovered.value == cr::kInvalidId, "default hovered") &&
-         expect(state.selected.value == cr::kInvalidId, "default selected");
+  return expect(facade.toolState().activeTool == cr::Tool::Select,
+                "default tool") &&
+         expect(facade.toolState().pointer.target.value == cr::kInvalidId,
+                "default pointer target") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "default selected target") &&
+         expect(facade.selectionState().candidateTarget.value == cr::kInvalidId,
+                "default candidate target");
 }
 
 bool defaultStatsAreStable() {
@@ -36,11 +37,8 @@ bool defaultStatsAreStable() {
          expect(stats.roomsCreated == 0U, "default rooms created");
 }
 
-bool facadeStubsLeaveStatsStable() {
-  cr::Facade facade;
-
-  facade.beginFrame({});
-  facade.handle({});
+bool facadeDefaultsLeaveStatsStable() {
+  const cr::Facade facade;
   const cr::Stats& stats = facade.stats();
 
   return expect(stats.commandAttempts == 0U, "facade command attempts") &&
@@ -53,8 +51,8 @@ bool facadeStubsLeaveStatsStable() {
 }  // namespace
 
 int main() {
-  const bool ok = defaultStateIsStable() &&
+  const bool ok = defaultFacadeEditorStateIsStable() &&
                   defaultStatsAreStable() &&
-                  facadeStubsLeaveStatsStable();
+                  facadeDefaultsLeaveStatsStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

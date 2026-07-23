@@ -33,8 +33,8 @@ replacement.
 | AUT-A1-007 | Desktop semantic command dispatcher | Required Adapter | ImGui surfaces emit typed command ids into one headless dispatcher and then reuse domain kernels | Keep | P0 |
 | AUT-A1-008 | Keyboard/controller command route | Contract Risk | `EditorCommandInput.cpp` and held-item paths invoke domain kernels directly rather than emitting the same semantic command ids as desktop UI; repair in Interaction and Controls after the mutation boundary is stable | Repair | P1 |
 | AUT-A1-009 | Generic recipe apply APIs | Test-only Production | `applyCreativeRecipeWithHistory`, `applyCreativeTerrainRecipeWithHistory`, and `applyCreativeWorldLayoutPlanWithHistory` have no product-app callers; decide whether to integrate or remove the unused apply layers while retaining materialization and provenance | Investigate | P1 |
-| AUT-A1-010 | Facade `State`, frame packet, and packet handler compatibility path | Test-only Production | `Facade::state()`, `beginFrame`, and `handle` have no production callers; the old state mirror is read only by unit tests while canonical typed states are live | Delete Candidate | P1 |
-| AUT-A1-011 | `CreativeActiveIdentity` | Unreachable | The type and `CreativeAppState::identity` member have no source, app, or unit-test readers outside their declaration | Delete Candidate | P1 |
+| AUT-A1-010 | Facade `State`, frame packet, and packet handler compatibility path | Test-only Production | AUT-007 removed `State.hpp`, the packet types, Facade stubs, mirror writes, and mirror assertions; tests now inspect the canonical typed states | Retired | P1 |
+| AUT-A1-011 | `CreativeActiveIdentity` | Unreachable | AUT-007 removed the unread type and `CreativeAppState::identity` member | Retired | P1 |
 | AUT-A1-012 | Facade `Stats` | Test-only Production | Counters have no product readers and are asserted only by tests; install, batch-create, and mutable escape routes do not form a complete product-command metric; decide whether deliberate diagnostics replace them | Investigate | P2 |
 | AUT-A1-013 | World Layout source history and sidecar | Required Adapter | The app-specific wrapper records both document history and the 2D source snapshot, which the generic recipe helper cannot represent | Keep | P0 |
 | AUT-A1-014 | `CreativeEditorSceneCache` revision key | Required Adapter | Document id/revision gates the room bake, terrain plans, placement clearance, and downstream preview caches; add regression pins against stale publication during repair | Keep | P0 |
@@ -44,11 +44,10 @@ replacement.
 
 ## Repair Order
 
-1. **Retire dead compatibility state.** Remove `State.hpp`, the obsolete
-   frame/packet types and Facade methods, the old mirror writes, and the
-   test-only assertions. Remove `CreativeActiveIdentity` independently in the
-   same bounded batch. Keep `Tool`, `TargetRef`, and the canonical typed state
-   owners.
+1. **Retire dead compatibility state (complete).** AUT-007 removed
+   `State.hpp`, the obsolete frame/packet types and Facade methods, the old
+   mirror writes, the test-only assertions, and `CreativeActiveIdentity`.
+   `Tool`, `TargetRef`, and the canonical typed state owners remain.
 2. **Close the mutable document escape.** Add Facade entry points for generic
    single and atomic object mutation. Route the ordinary mutation callers
    through them. Give reattachment, hierarchy transform, and structural span
@@ -76,7 +75,7 @@ replacement.
 
 ## Deletion Ruling
 
-Safe deletion candidates after focused compile/test updates:
+Retired by AUT-007:
 
 - `src/app/iggy3d/creative/State.hpp`.
 - `PacketKind`, `FrameRef`, `Flags`, `FramePacket`, and `Packet` from
@@ -104,6 +103,15 @@ Audit A1 completed on 2026-07-23.
 
 - `python3 tools/repo_departments.py check` passed with 10 departments, 1,481
   governed files, 90 work items, 10 manual tests, and 17 audit findings.
-- The nine targets listed in `TESTING.md` built with `CCACHE_DISABLE=1`.
-- The matching focused CTest gate passed 9/9.
+- The Audit A1 baseline target set built with `CCACHE_DISABLE=1` and passed
+  9/9 focused tests.
 - No production code or runtime behavior changed during this audit.
+
+AUT-007 completed on 2026-07-23.
+
+- `i3dc` built with `CCACHE_DISABLE=1`; no window was launched.
+- The ten targets currently listed in `TESTING.md` built successfully.
+- The matching focused CTest gate passed 10/10.
+- Repository searches found no remaining `State.hpp`, Facade compatibility
+  accessor, frame/packet stub, mirror member, or `CreativeActiveIdentity`
+  reference.

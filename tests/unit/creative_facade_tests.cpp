@@ -67,9 +67,7 @@ cr::CreativeDocument documentWithRooms(std::string_view name,
 bool defaultsExposeDefaultEditorState() {
   const cr::Facade facade;
 
-  return expect(facade.state().tool == cr::Tool::Select,
-                "default state tool") &&
-         expect(facade.toolState().activeTool == cr::Tool::Select,
+  return expect(facade.toolState().activeTool == cr::Tool::Select,
                 "default tool state") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "default selection") &&
@@ -80,7 +78,7 @@ bool defaultsExposeDefaultEditorState() {
          expect(!facade.ghostState().visible, "default ghost hidden");
 }
 
-bool setActiveToolUpdatesKernelAndOldState() {
+bool setActiveToolUpdatesCanonicalState() {
   cr::Facade facade;
   const bool changed = facade.setActiveTool(cr::Tool::Move);
   const bool same = facade.setActiveTool(cr::Tool::Move);
@@ -88,9 +86,7 @@ bool setActiveToolUpdatesKernelAndOldState() {
   return expect(changed, "set active changed") &&
          expect(!same, "set active same no change") &&
          expect(facade.toolState().activeTool == cr::Tool::Move,
-                "tool state move") &&
-         expect(facade.state().tool == cr::Tool::Move,
-                "old state move");
+                "tool state move");
 }
 
 bool selectPressUpdatesSelectionOnlyAndNotDocument() {
@@ -109,10 +105,8 @@ bool selectPressUpdatesSelectionOnlyAndNotDocument() {
          expect(!receipt.measurementChanged, "select measurement unchanged") &&
          expect(facade.selectionState().selectedTarget.value == 42U,
                 "select state target") &&
-         expect(facade.state().selected.value == 42U,
-                "old state selected") &&
-         expect(facade.state().hovered.value == 42U,
-                "old state hovered") &&
+         expect(facade.toolState().pointer.target.value == 42U,
+                "select pointer target") &&
          expect(facade.document().objectCount() == initialObjects,
                 "select did not mutate document");
 }
@@ -164,8 +158,8 @@ bool navigatePointerInputDoesNotTouchEditorState() {
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "navigate selection untouched") &&
-         expect(facade.state().hovered.value == cr::kInvalidId,
-                "navigate hovered untouched") &&
+         expect(facade.toolState().pointer.target.value == cr::kInvalidId,
+                "navigate pointer target untouched") &&
          expect(facade.document().objectCount() == 0U,
                 "navigate did not mutate document");
 }
@@ -292,8 +286,6 @@ bool leavingMeasureCancelsActiveMeasurement() {
          expect(selectToolChanged, "leave measure changed to select") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
                 "leave measure active tool select") &&
-         expect(facade.state().tool == cr::Tool::Select,
-                "leave measure old state select") &&
          expect(!facade.measurementState().active,
                 "leave measure measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -313,8 +305,6 @@ bool sameMeasureToolActivationKeepsActiveMeasurement() {
   return expect(!changed, "same measure no change") &&
          expect(facade.toolState().activeTool == cr::Tool::Measure,
                 "same measure active tool") &&
-         expect(facade.state().tool == cr::Tool::Measure,
-                "same measure old state") &&
          expect(facade.measurementState().active,
                 "same measure remains active") &&
          expect(facade.measurementState().hasMeasurement,
@@ -336,8 +326,6 @@ bool leavingMeasurePreservesCompletedMeasurement() {
   return expect(changed, "completed measure leave changed") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
                 "completed measure active select") &&
-         expect(facade.state().tool == cr::Tool::Select,
-                "completed measure old state select") &&
          expect(!facade.measurementState().active,
                 "completed measure remains inactive") &&
          expect(facade.measurementState().hasMeasurement,
@@ -358,8 +346,6 @@ bool nonMeasureToolSwitchDoesNotTouchMeasurement() {
   return expect(changed, "non-measure switch changed") &&
          expect(facade.toolState().activeTool == cr::Tool::Move,
                 "non-measure active move") &&
-         expect(facade.state().tool == cr::Tool::Move,
-                "non-measure old state move") &&
          expect(!facade.measurementState().active,
                 "non-measure measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -413,8 +399,6 @@ bool toolSwitchHidesVisibleGhost() {
   return expect(changed, "ghost switch changed") &&
          expect(facade.toolState().activeTool == cr::Tool::Move,
                 "ghost switch active move") &&
-         expect(facade.state().tool == cr::Tool::Move,
-                "ghost switch old state move") &&
          expect(!facade.ghostState().visible, "ghost switch hidden");
 }
 
@@ -441,8 +425,6 @@ bool sameToolActivationKeepsVisibleGhost() {
   return expect(!changed, "same tool ghost no change") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
                 "same tool ghost active select") &&
-         expect(facade.state().tool == cr::Tool::Select,
-                "same tool ghost old state select") &&
          expect(facade.ghostState().visible, "same tool ghost remains visible") &&
          expect(facade.ghostState().sourceTool == cr::Tool::Select,
                 "same tool ghost source preserved") &&
@@ -640,9 +622,7 @@ bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
                 "install invalid keeps active tool") &&
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
-                "install invalid keeps selection") &&
-         expect(facade.state().selected.value == targetId(selectedId),
-                "install invalid keeps old selected");
+                "install invalid keeps selection");
 }
 
 bool installingDocumentClearsTransientEditorState() {
@@ -710,8 +690,6 @@ bool installingDocumentClearsTransientEditorState() {
                 "install clear preserves dirty") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
                 "install clear active tool default") &&
-         expect(facade.state().tool == cr::Tool::Select,
-                "install clear old tool default") &&
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "install clear selection empty") &&
@@ -727,10 +705,6 @@ bool installingDocumentClearsTransientEditorState() {
          expect(!facade.ghostState().visible, "install clear ghost hidden") &&
          expect(facade.toolState().pointer.target.value == cr::kInvalidId,
                 "install clear tool pointer target") &&
-         expect(facade.state().selected.value == cr::kInvalidId,
-                "install clear old selected") &&
-         expect(facade.state().hovered.value == cr::kInvalidId,
-                "install clear old hovered") &&
          expect(facade.stats().commandAttempts == 0U,
                 "install clear stats reset attempts");
 }
@@ -766,12 +740,10 @@ bool installingSecondDocumentDoesNotLeakOldSelection() {
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "install second clears selected target") &&
          expect(facade.selectionState().candidateTarget.value == cr::kInvalidId,
-                "install second clears candidate target") &&
-         expect(facade.state().selected.value == cr::kInvalidId,
-                "install second clears compatibility selection");
+                "install second clears candidate target");
 }
 
-bool removingSelectedObjectClearsSelectionAndOldState() {
+bool removingSelectedObjectClearsCanonicalState() {
   cr::Facade facade;
   const cr::CreativeObjectId id = createRoom(facade, "Selected Room");
   static_cast<void>(facade.dispatchToolInput(
@@ -794,10 +766,6 @@ bool removingSelectedObjectClearsSelectionAndOldState() {
                 "remove selected clears selection") &&
          expect(facade.selectionState().candidateTarget.value == cr::kInvalidId,
                 "remove selected candidate empty") &&
-         expect(facade.state().selected.value == cr::kInvalidId,
-                "remove selected clears old selected") &&
-         expect(facade.state().hovered.value == cr::kInvalidId,
-                "remove selected clears old hovered") &&
          expect(facade.toolState().pointer.target.value == cr::kInvalidId,
                 "remove selected clears tool pointer target");
 }
@@ -827,10 +795,6 @@ bool removingHoveredObjectPreservesSelection() {
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
                 "remove hovered preserves selection") &&
-         expect(facade.state().selected.value == targetId(selectedId),
-                "remove hovered preserves old selected") &&
-         expect(facade.state().hovered.value == cr::kInvalidId,
-                "remove hovered clears hovered") &&
          expect(facade.toolState().pointer.target.value == cr::kInvalidId,
                 "remove hovered clears tool pointer target");
 }
@@ -861,10 +825,8 @@ bool removingMissingObjectPreservesEditorTargets() {
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
                 "remove missing preserves selection") &&
-         expect(facade.state().selected.value == targetId(selectedId),
-                "remove missing preserves old selected") &&
-         expect(facade.state().hovered.value == targetId(hoveredId),
-                "remove missing preserves hovered");
+         expect(facade.toolState().pointer.target.value == targetId(hoveredId),
+                "remove missing preserves pointer target");
 }
 
 bool removingGhostTargetHidesGhost() {
@@ -1021,8 +983,7 @@ bool linearArrayCreatesCopiesAndSelectsOnlyFinalInstance() {
                 "receipt identifies final generated copy") &&
          expect(selected.size() == 2U && selected[0].value == 5U &&
                     selected[1].value == 6U &&
-                    facade.selectionState().selectedTarget.value == 6U &&
-                    facade.state().selected.value == 6U,
+                    facade.selectionState().selectedTarget.value == 6U,
                 "only final copy becomes selected") &&
          expect(finalFirst != nullptr && finalSecond != nullptr &&
                     finalFirst->bounds.min.x == firstMinX + 2.0 &&
@@ -1074,8 +1035,7 @@ bool radialArrayUsesPivotAndSelectsOnlyFinalInstance() {
                     receipt.generatedObjectCount == 3U,
                 "radial facade command accepted") &&
          expect(selected.size() == 1U && selected.front().value == 4U &&
-                    facade.selectionState().selectedTarget.value == 4U &&
-                    facade.state().selected.value == 4U,
+                    facade.selectionState().selectedTarget.value == 4U,
                 "radial facade selects final instance only") &&
          expect(final != nullptr && near(final->bounds.min.x, -1.0) &&
                     near(final->bounds.max.x, 0.0) &&
@@ -1095,7 +1055,7 @@ bool radialArrayUsesPivotAndSelectsOnlyFinalInstance() {
 
 int main() {
   const bool ok = defaultsExposeDefaultEditorState() &&
-                  setActiveToolUpdatesKernelAndOldState() &&
+                  setActiveToolUpdatesCanonicalState() &&
                   selectPressUpdatesSelectionOnlyAndNotDocument() &&
                   movePressSelectsLikeSelect() &&
                   navigatePointerInputDoesNotTouchEditorState() &&
@@ -1120,7 +1080,7 @@ int main() {
                   installingInvalidIdDocumentDoesNotMutateExistingFacade() &&
                   installingDocumentClearsTransientEditorState() &&
                   installingSecondDocumentDoesNotLeakOldSelection() &&
-                  removingSelectedObjectClearsSelectionAndOldState() &&
+                  removingSelectedObjectClearsCanonicalState() &&
                   removingHoveredObjectPreservesSelection() &&
                   removingMissingObjectPreservesEditorTargets() &&
                   removingGhostTargetHidesGhost() &&

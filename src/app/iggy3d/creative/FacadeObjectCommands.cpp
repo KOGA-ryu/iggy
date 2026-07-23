@@ -168,7 +168,6 @@ CreativeSelectionPlacementReceipt Facade::placeObjects(
   }
   const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
   static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -196,7 +195,6 @@ CreativeSelectionReceipt Facade::selectTargets(
   }
   CreativeSelectionReceipt receipt =
       setSelectedTargets(selectionState_, targets, primary);
-  state_.selected = selectionState_.selectedTarget;
   if (receipt.accepted) {
     recordCommandSuccess(stats_);
   } else {
@@ -253,7 +251,6 @@ CreativeDuplicateCommandReceipt Facade::duplicateSelectedObjects(
                                       : duplicateTargets.back();
   static_cast<void>(setSelectedTargets(selectionState_, duplicateTargets,
                                        primaryTarget));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -278,7 +275,6 @@ CreativeGroupCommandReceipt Facade::groupSelectedObjects() {
   }
   const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
   static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
-  state_.selected = selectionState_.selectedTarget;
   recordObjectCreated(stats_);
   recordCommandSuccess(stats_);
   return receipt;
@@ -320,7 +316,6 @@ CreativeGroupCommandReceipt Facade::ungroupObject(
   }
   const TargetRef primary = targets.empty() ? TargetRef{} : targets.back();
   static_cast<void>(setSelectedTargets(selectionState_, targets, primary));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -351,7 +346,6 @@ CreativeAuthoredAssetInstanceReceipt Facade::instantiateAuthoredAsset(
   const TargetRef root = objectIdToTargetRef(receipt.instanceRootObjectId);
   static_cast<void>(setSelectedTargets(selectionState_, std::span{&root, 1U},
                                        root));
-  state_.selected = selectionState_.selectedTarget;
   for (std::size_t index = 0U;
        index < receipt.instanceObjectIds.size() + 1U; ++index) {
     recordObjectCreated(stats_);
@@ -386,7 +380,6 @@ CreativeAuthoredAssetRefreshReceipt Facade::refreshAuthoredAssetInstances(
     const TargetRef root = objectIdToTargetRef(preferredInstanceRootObjectId);
     static_cast<void>(setSelectedTargets(selectionState_,
                                          std::span{&root, 1U}, root));
-    state_.selected = selectionState_.selectedTarget;
   }
   for (std::size_t index = 0U; index < receipt.createdObjectCount; ++index) {
     recordObjectCreated(stats_);
@@ -488,7 +481,6 @@ CreativeLinearArrayReceipt Facade::createLinearArrayFromSelection(
                                       : finalCopyTargets.back();
   static_cast<void>(setSelectedTargets(selectionState_, finalCopyTargets,
                                        primaryTarget));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -570,7 +562,6 @@ CreativeRadialArrayReceipt Facade::createRadialArrayFromSelection(
                                       : finalCopyTargets.back();
   static_cast<void>(setSelectedTargets(selectionState_, finalCopyTargets,
                                        primaryTarget));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }
@@ -673,7 +664,7 @@ CreativeAssetScatterRecipeMutationReceipt Facade::updateAssetScatterRecipe(
     return receipt;
   }
   for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -698,7 +689,7 @@ CreativeAssetScatterRecipeMutationReceipt Facade::removeAssetScatterRecipe(
     return receipt;
   }
   for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -742,7 +733,7 @@ CreativeAssetScatterRecipeMutationReceipt Facade::excludeAssetScatterOutput(
     return receipt;
   }
   for (CreativeObjectId objectId : receipt.replacedGeneratedObjectIds) {
-    invalidateRemovedObjectEditorState(objectId, state_, toolState_,
+    invalidateRemovedObjectEditorState(objectId, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -799,7 +790,7 @@ CreativeClipboardCutReceipt Facade::cutSelectedObjectsToClipboard(
     return receipt;
   }
   for (const CreativeObject& object : outClipboard.objects) {
-    invalidateRemovedObjectEditorState(object.id, state_, toolState_,
+    invalidateRemovedObjectEditorState(object.id, toolState_,
                                        selectionState_, measurementState_,
                                        ghostState_);
   }
@@ -842,7 +833,6 @@ CreativeClipboardPasteReceipt Facade::pasteClipboard(
   const TargetRef primary =
       pastedTargets.empty() ? TargetRef{} : pastedTargets.back();
   static_cast<void>(setSelectedTargets(selectionState_, pastedTargets, primary));
-  state_.selected = selectionState_.selectedTarget;
   recordCommandSuccess(stats_);
   return receipt;
 }

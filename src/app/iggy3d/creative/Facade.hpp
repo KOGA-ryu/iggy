@@ -17,7 +17,6 @@
 #include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
 #include "app/iggy3d/creative/spatial/Snap.hpp"
-#include "app/iggy3d/creative/State.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 
 #include <cstddef>
@@ -209,10 +208,7 @@ struct Stats {
 class Facade {
  public:
   void reset() noexcept;
-  void beginFrame(const FramePacket& packet) noexcept;
-  void handle(const Packet& packet) noexcept;
 
-  [[nodiscard]] const State& state() const noexcept;
   [[nodiscard]] const CreativeToolState& toolState() const noexcept;
   [[nodiscard]] const CreativeSelectionState& selectionState() const noexcept;
   [[nodiscard]] const CreativeMeasurementState& measurementState() const noexcept;
@@ -375,7 +371,6 @@ class Facade {
   CreativeFacadeMoveDragReceipt applyMoveDragIntent(
       const CreativeToolIntent& intent);
 
-  State state_;
   CreativeDocument document_;
   Stats stats_;
   CreativeToolState toolState_;

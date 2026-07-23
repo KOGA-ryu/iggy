@@ -74,6 +74,7 @@ AUDIT_DISPOSITION_VALUES = {
     "Keep",
     "Consolidate",
     "Delete Candidate",
+    "Retired",
     "Investigate",
     "Move",
     "Repair",
@@ -139,7 +140,12 @@ def run_git(*args: str) -> str:
 
 
 def tracked_files() -> list[str]:
-    return sorted(line for line in run_git("ls-files").splitlines() if line)
+    deleted = set(run_git("ls-files", "--deleted").splitlines())
+    return sorted(
+        line
+        for line in run_git("ls-files").splitlines()
+        if line and line not in deleted
+    )
 
 
 def governed_files() -> list[str]:

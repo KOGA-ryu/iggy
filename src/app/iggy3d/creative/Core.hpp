@@ -15,34 +15,8 @@ enum class Tool : std::uint8_t {
   Navigate,
 };
 
-enum class PacketKind : std::uint8_t {
-  None,
-};
-
-struct FrameRef {
-  std::uint64_t value = 0;
-};
-
 struct TargetRef {
   Id value = kInvalidId;
-};
-
-struct Flags {
-  bool enabled = false;
-  bool active = false;
-  bool dirty = false;
-};
-
-struct FramePacket {
-  FrameRef frame;
-  Flags flags;
-};
-
-struct Packet {
-  PacketKind kind = PacketKind::None;
-  FrameRef frame;
-  TargetRef target;
-  Flags flags;
 };
 
 }  // namespace iggy3d::creative

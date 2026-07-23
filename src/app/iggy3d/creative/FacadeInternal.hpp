@@ -11,7 +11,6 @@ struct CreativeGhostState;
 struct CreativeMeasurementState;
 struct CreativeSelectionState;
 struct CreativeToolState;
-struct State;
 struct Stats;
 
 }  // namespace iggy3d::creative
@@ -27,7 +26,6 @@ void recordRoomCreated(Stats& stats) noexcept;
 
 void invalidateRemovedObjectEditorState(
     CreativeObjectId objectId,
-    State& state,
     CreativeToolState& toolState,
     CreativeSelectionState& selectionState,
     CreativeMeasurementState& measurementState,

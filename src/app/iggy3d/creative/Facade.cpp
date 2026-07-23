@@ -48,7 +48,6 @@ void clearTargetRefIfMatches(TargetRef& target,
 
 void invalidateRemovedObjectEditorState(
     CreativeObjectId objectId,
-    State& state,
     CreativeToolState& toolState,
     CreativeSelectionState& selectionState,
     CreativeMeasurementState& measurementState,
@@ -60,8 +59,6 @@ void invalidateRemovedObjectEditorState(
   }
 
   clearTargetRefIfMatches(toolState.pointer.target, objectId);
-  state.selected = selectionState.selectedTarget;
-  clearTargetRefIfMatches(state.hovered, objectId);
 
   if (ghostState.visible && targetRefMatchesObject(ghostState.target, objectId)) {
     static_cast<void>(hideGhost(ghostState));
@@ -91,14 +88,12 @@ using facade_internal::resetStats;
 }
 
 void resetTransientFacadeState(
-    State& state,
     Stats& stats,
     CreativeToolState& toolState,
     CreativeSelectionState& selectionState,
     CreativeMeasurementState& measurementState,
     CreativeSnapSettings& snapSettings,
     CreativeGhostState& ghostState) noexcept {
-  state = State{};
   resetStats(stats);
   toolState = makeDefaultCreativeToolState();
   selectionState = makeDefaultCreativeSelectionState();
@@ -108,10 +103,8 @@ void resetTransientFacadeState(
 }
 
 [[nodiscard]] bool hasSelectionState(
-    const State& state,
     const CreativeSelectionState& selectionState) noexcept {
-  return state.selected.value != kInvalidId ||
-         selectedTargetCount(selectionState) > 0 ||
+  return selectedTargetCount(selectionState) > 0 ||
          selectionState.candidateTarget.value != kInvalidId;
 }
 
@@ -123,10 +116,8 @@ void resetTransientFacadeState(
 }
 
 [[nodiscard]] bool hasToolPointerState(
-    const State& state,
     const CreativeToolState& toolState) noexcept {
-  return state.hovered.value != kInvalidId ||
-         toolState.pointer.target.value != kInvalidId ||
+  return toolState.pointer.target.value != kInvalidId ||
          toolState.pointer.x != 0.0 || toolState.pointer.y != 0.0 ||
          toolState.pointer.button != CreativeToolPointerButton::None ||
          toolState.pointer.modifiers != kCreativeToolModifierNone;
@@ -186,8 +177,7 @@ std::string_view toString(CreativeFacadeDocumentBatchCreateStatus status)
 
 void Facade::reset() noexcept {
   document_.reset();
-  resetTransientFacadeState(state_,
-                            stats_,
+  resetTransientFacadeState(stats_,
                             toolState_,
                             selectionState_,
                             measurementState_,
@@ -199,21 +189,6 @@ void Facade::reset() noexcept {
   moveDragStartAnchor_ = {};
   moveDragObjectIds_.clear();
   moveDragReceipt_ = {};
-}
-
-void Facade::beginFrame(const FramePacket& packet) noexcept {
-  state_.frame = packet.frame;
-  state_.flags = packet.flags;
-}
-
-void Facade::handle(const Packet& packet) noexcept {
-  state_.frame = packet.frame;
-  state_.hovered = packet.target;
-  state_.flags = packet.flags;
-}
-
-const State& Facade::state() const noexcept {
-  return state_;
 }
 
 const CreativeToolState& Facade::toolState() const noexcept {
@@ -259,7 +234,6 @@ bool Facade::setActiveTool(Tool tool) noexcept {
     moveDragStartAnchor_ = {};
     moveDragObjectIds_.clear();
   }
-  state_.tool = toolState_.activeTool;
   return changed;
 }
 
@@ -338,9 +312,6 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
     moveDragReceipt_ = receipt.moveDrag;
   }
   toolState_.measurementActive = measurementState_.active;
-  state_.tool = toolState_.activeTool;
-  state_.selected = selectionState_.selectedTarget;
-  state_.hovered = toolState_.pointer.target;
   return receipt;
 }
 
@@ -416,15 +387,14 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
     return receipt;
   }
 
-  receipt.selectionCleared = hasSelectionState(state_, selectionState_);
+  receipt.selectionCleared = hasSelectionState(selectionState_);
   receipt.measurementCleared = hasMeasurementState(measurementState_,
                                                    toolState_);
   receipt.ghostCleared = ghostState_.visible;
-  receipt.toolPointerCleared = hasToolPointerState(state_, toolState_);
+  receipt.toolPointerCleared = hasToolPointerState(toolState_);
 
   document_ = std::move(document);
-  resetTransientFacadeState(state_,
-                            stats_,
+  resetTransientFacadeState(stats_,
                             toolState_,
                             selectionState_,
                             measurementState_,

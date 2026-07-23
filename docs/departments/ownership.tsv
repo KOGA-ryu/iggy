@@ -591,7 +591,6 @@ src/app/iggy3d/creative/FacadeMoveDrag.cpp	authoring-core
 src/app/iggy3d/creative/FacadeObjectCommands.cpp	authoring-core
 src/app/iggy3d/creative/Geometry.cpp	authoring-core
 src/app/iggy3d/creative/Geometry.hpp	authoring-core
-src/app/iggy3d/creative/State.hpp	authoring-core
 src/app/iggy3d/creative/adapters/RoomBake.cpp	authoring-core
 src/app/iggy3d/creative/adapters/RoomBake.hpp	authoring-core
 src/app/iggy3d/creative/adapters/RoomBakeAssetSurfaces.cpp	authoring-core

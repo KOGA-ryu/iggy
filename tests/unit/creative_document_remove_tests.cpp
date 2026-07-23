@@ -304,10 +304,8 @@ bool facadeReceiptedRemoveInvalidatesSelectedTarget() {
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "facade remove clears selection") &&
-         expect(facade.state().selected.value == cr::kInvalidId,
-                "facade remove clears old selected") &&
-         expect(facade.state().hovered.value == cr::kInvalidId,
-                "facade remove clears hovered") &&
+         expect(facade.toolState().pointer.target.value == cr::kInvalidId,
+                "facade remove clears pointer target") &&
          expect(facade.stats().commandAttempts == 2U,
                 "facade remove attempts") &&
          expect(facade.stats().commandSuccesses == 2U,
@@ -341,9 +339,9 @@ bool facadeReceiptedMissingRemovePreservesStateAndRecordsFailure() {
          expect(facade.selectionState().selectedTarget.value ==
                     static_cast<cr::Id>(created.objectId),
                 "facade missing preserves selection") &&
-         expect(facade.state().hovered.value ==
+         expect(facade.toolState().pointer.target.value ==
                     static_cast<cr::Id>(created.objectId),
-                "facade missing preserves hovered") &&
+                "facade missing preserves pointer target") &&
          expect(facade.stats().commandAttempts == 2U,
                 "facade missing attempts") &&
          expect(facade.stats().commandSuccesses == 1U,

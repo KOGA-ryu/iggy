@@ -6,7 +6,7 @@ This is the operational dashboard for the Creative-only repository. Maturity des
 
 | Rank | Tier | Department | Audit State | Files | Code | Tests | Needs Audit | Active | Manual Tests Pending | Retire or Consolidate | Blocked |
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | P0 | [Authoring Core](authoring-core/DEPARTMENT.md) | [Complete](authoring-core/AUDIT.md) | 72 | 54 | 17 | 2 | 5 | 0 | 4 | 1 |
+| 1 | P0 | [Authoring Core](authoring-core/DEPARTMENT.md) | [Complete](authoring-core/AUDIT.md) | 71 | 53 | 17 | 2 | 4 | 0 | 2 | 1 |
 | 2 | P0 | [Persistence and Validation](persistence-validation/DEPARTMENT.md) | [Not Started](persistence-validation/AUDIT.md) | 48 | 42 | 6 | 5 | 2 | 1 | 0 | 0 |
 | 3 | P0 | [Interaction and Controls](interaction-controls/DEPARTMENT.md) | [Not Started](interaction-controls/AUDIT.md) | 111 | 93 | 17 | 7 | 2 | 1 | 0 | 0 |
 | 4 | P1 | [Building and World Layout](building-layout/DEPARTMENT.md) | [Not Started](building-layout/AUDIT.md) | 205 | 161 | 44 | 10 | 2 | 1 | 0 | 0 |
