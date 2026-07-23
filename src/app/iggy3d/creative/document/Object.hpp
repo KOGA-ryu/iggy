@@ -20,6 +20,8 @@ inline constexpr std::size_t kCreativeAttachmentSocketNameCapacity = 64U;
 inline constexpr std::size_t kCreativeAssetMaterialVariantNameCapacity = 64U;
 inline constexpr std::size_t kCreativePlayerProfileIdCapacity = 64U;
 inline constexpr std::size_t kCreativeSpawnGroupCapacity = 64U;
+inline constexpr std::size_t kCreativeNpcBehaviorProfileIdCapacity = 64U;
+inline constexpr std::uint16_t kCreativeNpcMaximumHitPoints = 32767U;
 inline constexpr double kCreativePlayerSpawnMinimumValidationRadiusMeters =
     0.30;
 inline constexpr double kCreativePlayerSpawnMaximumValidationRadiusMeters =
@@ -150,6 +152,36 @@ struct CreativePlayerSpawnSettings {
   std::uint16_t fallbackPriority{0U};
 
   bool operator==(const CreativePlayerSpawnSettings&) const = default;
+};
+
+// Actor kind owns the broad archetype (civilian NPC versus enemy), while
+// Rotation Y owns authored facing and parentId owns an optional PatrolRoute.
+// These settings therefore contain only facts owned by the actor itself.
+//
+// Empty profile id, ActorDefault team, and zero hit points deliberately mean
+// "use the activation config for this actor kind". That preserves old authored
+// maps while allowing each spawn to override the policy explicitly.
+enum class CreativeNpcTeam : std::uint8_t {
+  ActorDefault,
+  PlayerAllied,
+  Hostile,
+  Count,
+};
+
+enum class CreativeNpcSpawnPolicy : std::uint8_t {
+  AtPlayStart,
+  Disabled,
+  Count,
+};
+
+struct CreativeNpcSpawnSettings {
+  std::string behaviorProfileId{};
+  CreativeNpcTeam team{CreativeNpcTeam::ActorDefault};
+  std::uint16_t hitPoints{0U};
+  double initialAlertLevel{0.0};
+  CreativeNpcSpawnPolicy spawnPolicy{CreativeNpcSpawnPolicy::AtPlayStart};
+
+  bool operator==(const CreativeNpcSpawnSettings&) const = default;
 };
 
 enum class CreativeObjectKind {
@@ -319,6 +351,7 @@ struct CreativeObject {
   CreativeDoorSettings door{};
   CreativeWindowSettings window{};
   CreativePlayerSpawnSettings playerSpawn{};
+  CreativeNpcSpawnSettings npcSpawn{};
 };
 
 struct CreativeTransformedBounds {
@@ -395,6 +428,19 @@ struct CreativeTransformedBounds {
 [[nodiscard]] bool isValidCreativeSpawnGroup(std::string_view value) noexcept;
 [[nodiscard]] bool isValidCreativePlayerSpawnSettings(
     const CreativePlayerSpawnSettings& settings) noexcept;
+[[nodiscard]] std::string_view toString(CreativeNpcTeam team) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeNpcSpawnPolicy policy) noexcept;
+[[nodiscard]] bool parseCreativeNpcTeam(
+    std::string_view value,
+    CreativeNpcTeam& output) noexcept;
+[[nodiscard]] bool parseCreativeNpcSpawnPolicy(
+    std::string_view value,
+    CreativeNpcSpawnPolicy& output) noexcept;
+[[nodiscard]] bool isValidCreativeNpcBehaviorProfileId(
+    std::string_view value) noexcept;
+[[nodiscard]] bool isValidCreativeNpcSpawnSettings(
+    const CreativeNpcSpawnSettings& settings) noexcept;
 [[nodiscard]] bool isValidCreativePathPoint(
     const CreativePathPoint& point) noexcept;
 [[nodiscard]] bool isValidCreativeMovingPlatformPath(

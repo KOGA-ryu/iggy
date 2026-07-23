@@ -1740,13 +1740,30 @@ visual regression proves the plan/3D symbols at production scale, and G5
 provides the separate explicit game/playtest lane. Those are productization
 requirements, not reasons to fork or reinterpret the stable spawn recipe.
 
-### G2. NPC Spawn And Patrol - Current M0/M1 Marker - Finish Later
+### G2. NPC Spawn And Patrol - Current M2 Durable Authoring Slice - Continue
 
-- [ ] Configure archetype/profile, team, facing, patrol, alert state, equipment,
-  schedule, and spawn conditions.
+- [x] Configure actor archetype through object kind, optional behavior profile,
+  team, authored facing, explicit PatrolRoute ownership, health override,
+  normalized initial alert, and play-start/disabled policy.
+- [x] Preserve the actor policy through document creation and mutation,
+  clipboard duplication, object-library recipes and fingerprints, World Layout
+  source editing/compilation/adoption, versioned World Layout and save codecs,
+  undo/redo, play preparation, runtime seed creation, and Session startup.
+- [ ] Add equipment, schedules, and conditional spawn rules only after those
+  concepts have explicit runtime owners; do not add inert editor-only fields.
 - [ ] Author patrol points/paths with previewed nav reachability.
 - [ ] Validate collision, reasoning graph, LOS/cover relevance, and stuck risk.
 - [ ] Provide simulation preview without mutating the authored map.
+
+The M2 checkpoint stores NPC settings only on NPC/Enemy spawn objects and
+rejects invalid cross-kind payloads. Empty profile, actor-default team, and zero
+health retain the prior actor-kind defaults; disabled actors remain authored but
+are omitted from play. Save section v31 and World Layout v28 migrate older
+actors to those defaults. The 3D Inspector and World Layout source Inspector
+edit the same durable settings, while Rotation Y and a PatrolRoute parent remain
+the sole facing and patrol authorities. This is not M3/M4 until patrol
+reachability and risk diagnostics exist, simulation preview is non-mutating and
+useful, and the workflow receives manual visual/input acceptance.
 
 ### G3. Logic Link - Current M1 - Finish Later
 

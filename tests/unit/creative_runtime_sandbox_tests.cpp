@@ -150,6 +150,17 @@ const iggy3d::ScenarioAiActorSeed* findAiSeed(
   return found == seed.aiActors.end() ? nullptr : &*found;
 }
 
+const iggy3d::ScenarioEntitySeed* findEntitySeed(
+    const iggy3d::FixtureScenarioSeed& seed,
+    std::string_view stableName) {
+  const auto found = std::find_if(
+      seed.entities.begin(), seed.entities.end(),
+      [stableName](const iggy3d::ScenarioEntitySeed& entity) {
+        return entity.stableName == stableName;
+      });
+  return found == seed.entities.end() ? nullptr : &*found;
+}
+
 const cr::CreativeNpcSpawnPlan* findNpcPlan(
     const cr::CreativePlayActivationPayload& payload,
     cr::CreativeObjectId objectId) {
@@ -399,6 +410,109 @@ bool pureSeedMapsPlayerAndActorPolicies() {
                 "sandbox objective is inert but runtime-valid") &&
          expect(cr::toString(result.status) == "built",
                 "seed status string is stable");
+}
+
+bool authoredNpcSettingsDriveSeedAndSession() {
+  cr::CreativeDocument document = playableDocument(false);
+  cr::CreativeNpcSpawnSettings configuredSettings;
+  configuredSettings.behaviorProfileId = "default";
+  configuredSettings.team = cr::CreativeNpcTeam::Hostile;
+  configuredSettings.hitPoints = 37U;
+  configuredSettings.initialAlertLevel = 0.65;
+  cr::CreativeDocumentCreateRequest configuredRequest;
+  configuredRequest.kind = cr::CreativeObjectKind::NpcSpawn;
+  configuredRequest.name = "Configured Guard";
+  configuredRequest.transform.position = {2.0, 0.25, 0.0};
+  configuredRequest.hasTransformOverride = true;
+  configuredRequest.hasNpcSpawnSettingsOverride = true;
+  configuredRequest.npcSpawn = configuredSettings;
+  const cr::CreativeDocumentCreateReceipt configured =
+      document.createObject(configuredRequest);
+
+  cr::CreativeNpcSpawnSettings disabledSettings;
+  disabledSettings.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  cr::CreativeDocumentCreateRequest disabledRequest;
+  disabledRequest.kind = cr::CreativeObjectKind::EnemySpawn;
+  disabledRequest.name = "Disabled Monster";
+  disabledRequest.transform.position = {-2.0, 0.25, 0.0};
+  disabledRequest.hasTransformOverride = true;
+  disabledRequest.hasNpcSpawnSettingsOverride = true;
+  disabledRequest.npcSpawn = disabledSettings;
+  const cr::CreativeDocumentCreateReceipt disabled =
+      document.createObject(disabledRequest);
+
+  cr::CreativePlayPreparationResult prepared = prepare(document);
+  if (!prepared.payload.has_value()) {
+    return expect(false, "configured actor fixture prepares payload");
+  }
+  const cr::CreativeNpcSpawnPlan* configuredPlan =
+      findNpcPlan(*prepared.payload, configured.objectId);
+  const cr::CreativeNpcSpawnPlan* disabledPlan =
+      findNpcPlan(*prepared.payload, disabled.objectId);
+  if (configuredPlan == nullptr || disabledPlan == nullptr) {
+    return expect(false, "configured actor fixture exposes canonical plans");
+  }
+  const std::string configuredStableName =
+      configuredPlan->anchor.runtimeStableName;
+  const std::string disabledStableName =
+      disabledPlan->anchor.runtimeStableName;
+
+  const cr::CreativeRuntimeScenarioSeedResult seed =
+      cr::buildCreativeRuntimeScenarioSeed(*prepared.payload);
+  const iggy3d::ScenarioAiActorSeed* configuredAi =
+      findAiSeed(seed.seed, configuredStableName);
+  const iggy3d::ScenarioEntitySeed* configuredEntity =
+      findEntitySeed(seed.seed, configuredStableName);
+  const iggy3d::ScenarioEntitySeed* disabledEntity =
+      findEntitySeed(seed.seed, disabledStableName);
+
+  cr::CreativeRuntimeSandboxActivationRequest activationRequest;
+  activationRequest.sourceDocument = &document;
+  activationRequest.payload = std::move(*prepared.payload);
+  cr::CreativeRuntimeSandboxActivationResult activated =
+      cr::activateCreativeRuntimeSandbox(std::move(activationRequest));
+  if (!activated.sandbox.has_value()) {
+    return expect(false, "configured actor fixture activates");
+  }
+  const iggy3d::EntityState* runtimeEntity =
+      activated.sandbox->session.state().world.findByStableName(
+          configuredStableName);
+  const iggy3d::EntityState* disabledRuntimeEntity =
+      activated.sandbox->session.state().world.findByStableName(
+          disabledStableName);
+  const iggy3d::AiActorState* runtimeAi =
+      runtimeEntity == nullptr
+          ? nullptr
+          : findAiActor(activated.sandbox->session.state(),
+                        runtimeEntity->id);
+  const iggy3d::CombatantState* runtimeCombatant =
+      runtimeEntity == nullptr
+          ? nullptr
+          : findCombatant(activated.sandbox->session.state(),
+                          runtimeEntity->id);
+
+  return expect(configured.accepted && disabled.accepted && seed.accepted,
+                "configured actor seed builds") &&
+         expect(seed.summary.npcEntityCount == 1U &&
+                    seed.summary.monsterEntityCount == 0U &&
+                    seed.summary.disabledNpcSpawnCount == 1U &&
+                    disabledEntity == nullptr,
+                "disabled actor remains authored but is omitted from play") &&
+         expect(configuredAi != nullptr &&
+                    configuredAi->behaviorProfileId == "default" &&
+                    std::fabs(configuredAi->initialAlertLevel - 0.65F) <
+                        0.0001F &&
+                    configuredEntity != nullptr &&
+                    configuredEntity->combatant.factionId == 2U &&
+                    configuredEntity->combatant.hitPoints == 37,
+                "seed consumes profile team health and initial alert") &&
+         expect(activated.receipt.accepted && runtimeEntity != nullptr &&
+                    disabledRuntimeEntity == nullptr && runtimeAi != nullptr &&
+                    std::fabs(runtimeAi->alertLevel - 0.65F) < 0.0001F &&
+                    runtimeCombatant != nullptr &&
+                    runtimeCombatant->factionId == 2U &&
+                    runtimeCombatant->hitPoints == 37,
+                "session starts with the authored actor state");
 }
 
 bool explicitPatrolOwnershipIgnoresRoomAnchorOrder() {
@@ -1537,6 +1651,7 @@ bool retractablePlatformPublishesAtomicallyAndRejectsOccupiedRestore() {
 int main() {
   const bool ok = pureLogicPlannerPairsAutomaticSignals() &&
                   pureSeedMapsPlayerAndActorPolicies() &&
+                  authoredNpcSettingsDriveSeedAndSession() &&
                   explicitPatrolOwnershipIgnoresRoomAnchorOrder() &&
                   activationOwnsCollisionSessionAndReasoning() &&
                   activationRejectsStaleAndMalformedPayloads() &&

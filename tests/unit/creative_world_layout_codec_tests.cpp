@@ -180,10 +180,10 @@ bool writeLegacyObjectLine(std::ostringstream& output,
   for (std::string token; fields >> token;) {
     tokens.push_back(std::move(token));
   }
-  // v25 inserts bridge source state and v27 appends player-spawn state after
-  // scale. Neither field family exists in the legacy object record.
+  // v25 inserts bridge source state, v27 appends player-spawn state, and v28
+  // appends NPC-spawn state after scale. None exists in this legacy record.
   constexpr std::size_t kBridgeFieldsBegin = 27U;
-  constexpr std::size_t kCurrentExtensionFieldsEnd = 53U;
+  constexpr std::size_t kCurrentExtensionFieldsEnd = 58U;
   if (tokens.size() <= kCurrentExtensionFieldsEnd) {
     return false;
   }
@@ -261,12 +261,57 @@ std::string versionTwentySixTextWithoutPlayerSpawnFields(std::string encoded) {
       tokens.push_back(std::move(token));
     }
     constexpr std::size_t kPlayerSpawnFieldsBegin = 49U;
-    constexpr std::size_t kPlayerSpawnFieldsEnd = 53U;
-    if (tokens.size() <= kPlayerSpawnFieldsEnd) {
+    constexpr std::size_t kPostVersionTwentySixFieldsEnd = 58U;
+    if (tokens.size() <= kPostVersionTwentySixFieldsEnd) {
       return {};
     }
     tokens.erase(tokens.begin() + kPlayerSpawnFieldsBegin,
-                 tokens.begin() + kPlayerSpawnFieldsEnd);
+                 tokens.begin() + kPostVersionTwentySixFieldsEnd);
+    for (std::size_t index = 0U; index < tokens.size(); ++index) {
+      output << (index == 0U ? "" : " ") << tokens[index];
+    }
+    output << '\n';
+  }
+  return output.str();
+}
+
+std::string versionTwentySevenTextWithoutNpcSpawnFields(std::string encoded) {
+  const std::string currentHeader =
+      "IGGY3D_WORLD_LAYOUT " +
+      std::to_string(cr::kCreativeWorldLayoutCodecVersion);
+  const std::size_t header = encoded.find(currentHeader);
+  if (header == std::string::npos) {
+    return {};
+  }
+  encoded.replace(header, currentHeader.size(), "IGGY3D_WORLD_LAYOUT 27");
+
+  const std::string currentLayout =
+      "L " + std::to_string(cr::kCreativeWorldLayoutSchemaVersion) + " ";
+  const std::size_t layout = encoded.find(currentLayout);
+  if (layout == std::string::npos) {
+    return {};
+  }
+  encoded.replace(layout, currentLayout.size(), "L 27 ");
+
+  std::istringstream lines(encoded);
+  std::ostringstream output;
+  for (std::string line; std::getline(lines, line);) {
+    if (!line.starts_with("Y ")) {
+      output << line << '\n';
+      continue;
+    }
+    std::istringstream fields(line);
+    std::vector<std::string> tokens;
+    for (std::string token; fields >> token;) {
+      tokens.push_back(std::move(token));
+    }
+    constexpr std::size_t kNpcSpawnFieldsBegin = 53U;
+    constexpr std::size_t kNpcSpawnFieldsEnd = 58U;
+    if (tokens.size() <= kNpcSpawnFieldsEnd) {
+      return {};
+    }
+    tokens.erase(tokens.begin() + kNpcSpawnFieldsBegin,
+                 tokens.begin() + kNpcSpawnFieldsEnd);
     for (std::size_t index = 0U; index < tokens.size(); ++index) {
       output << (index == 0U ? "" : " ") << tokens[index];
     }
@@ -1208,6 +1253,75 @@ bool playerSpawnSettingsRoundTripAndVersionTwentySixDefaults() {
                 "invalid player spawn settings fail encode") &&
          expect(!invalidNonSpawnResult.accepted,
                 "non-spawn object cannot carry spawn settings");
+}
+
+bool npcSpawnSettingsRoundTripAndVersionTwentySevenDefaults() {
+  cr::CreativeWorldLayout source;
+  source.stableKey = "npc_spawn_codec";
+  cr::CreativeWorldLayoutObject actor;
+  actor.kind = cr::CreativeObjectKind::NpcSpawn;
+  actor.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  actor.stableKey = "guard.courtyard";
+  actor.name = "Courtyard Guard";
+  actor.pointCells = {4.0, 0.25, 2.0};
+  actor.yawRadians = -0.75;
+  actor.npcSpawn.behaviorProfileId = "default";
+  actor.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  actor.npcSpawn.hitPoints = 37U;
+  actor.npcSpawn.initialAlertLevel = 0.6;
+  actor.npcSpawn.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  source.objects.push_back(actor);
+
+  const cr::CreativeWorldLayoutEncodeResult encoded =
+      cr::encodeCreativeWorldLayout(source);
+  const cr::CreativeWorldLayoutDecodeResult decoded =
+      encoded.accepted
+          ? cr::decodeCreativeWorldLayout(encoded.encodedText)
+          : cr::CreativeWorldLayoutDecodeResult{};
+  const cr::CreativeWorldLayoutEncodeResult reencoded =
+      decoded.accepted ? cr::encodeCreativeWorldLayout(decoded.layout)
+                       : cr::CreativeWorldLayoutEncodeResult{};
+  const std::string legacyText =
+      encoded.accepted
+          ? versionTwentySevenTextWithoutNpcSpawnFields(encoded.encodedText)
+          : std::string{};
+  const cr::CreativeWorldLayoutDecodeResult migrated =
+      cr::decodeCreativeWorldLayout(legacyText);
+
+  cr::CreativeWorldLayout invalidActor = source;
+  invalidActor.objects[0].npcSpawn.initialAlertLevel = 2.0;
+  const cr::CreativeWorldLayoutEncodeResult invalidActorResult =
+      cr::encodeCreativeWorldLayout(invalidActor);
+  cr::CreativeWorldLayout invalidNonActor = source;
+  invalidNonActor.objects[0].kind = cr::CreativeObjectKind::Prop;
+  const cr::CreativeWorldLayoutEncodeResult invalidNonActorResult =
+      cr::encodeCreativeWorldLayout(invalidNonActor);
+
+  return expect(encoded.accepted && decoded.accepted && reencoded.accepted,
+                "npc spawn codec operations accepted") &&
+         expect(encoded.encodedText == reencoded.encodedText &&
+                    decoded.layout.objects.size() == 1U,
+                "npc spawn codec is byte deterministic") &&
+         expect(decoded.layout.objects[0].pointCells.x == actor.pointCells.x &&
+                    decoded.layout.objects[0].pointCells.y ==
+                        actor.pointCells.y &&
+                    decoded.layout.objects[0].pointCells.z ==
+                        actor.pointCells.z &&
+                    decoded.layout.objects[0].yawRadians ==
+                        actor.yawRadians &&
+                    decoded.layout.objects[0].npcSpawn == actor.npcSpawn,
+                "npc spawn pose and settings round trip") &&
+         expect(!legacyText.empty() && migrated.accepted &&
+                    migrated.layout.schemaVersion ==
+                        cr::kCreativeWorldLayoutSchemaVersion &&
+                    migrated.layout.objects.size() == 1U &&
+                    migrated.layout.objects[0].npcSpawn ==
+                        cr::CreativeNpcSpawnSettings{},
+                "version-twenty-seven actor receives safe defaults") &&
+         expect(!invalidActorResult.accepted,
+                "invalid npc spawn settings fail encode") &&
+         expect(!invalidNonActorResult.accepted,
+                "non-actor object cannot carry npc spawn settings");
 }
 
 bool sourceFingerprintUsesExactVersionedEncoding() {
@@ -2550,6 +2664,7 @@ bool retainingEdgesRoundTripAndVersionTwentyFiveDefaultsDisabled() {
 int main() {
   const bool ok = deterministicRoundTripPreservesEveryTable() &&
                   playerSpawnSettingsRoundTripAndVersionTwentySixDefaults() &&
+                  npcSpawnSettingsRoundTripAndVersionTwentySevenDefaults() &&
                   sourceFingerprintUsesExactVersionedEncoding() &&
                   roofAperturesRoundTripAndVersionNineteenMigratesEmpty() &&
                   directTopologyHostDoesNotInventACardinalRoomSide() &&

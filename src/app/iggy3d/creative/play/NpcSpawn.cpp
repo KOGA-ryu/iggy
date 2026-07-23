@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/play/NpcSpawn.hpp"
 
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -149,6 +150,10 @@ std::string_view toString(CreativeNpcSpawnPlanStatus status) noexcept {
       return "missing_spawn_anchor";
     case CreativeNpcSpawnPlanStatus::InvalidSpawnAnchor:
       return "invalid_spawn_anchor";
+    case CreativeNpcSpawnPlanStatus::InvalidSettings:
+      return "invalid_settings";
+    case CreativeNpcSpawnPlanStatus::UnsupportedBehaviorProfile:
+      return "unsupported_behavior_profile";
     case CreativeNpcSpawnPlanStatus::InvalidFacing:
       return "invalid_facing";
     case CreativeNpcSpawnPlanStatus::InvalidPatrolOwner:
@@ -170,7 +175,10 @@ bool isValidCreativeNpcSpawnPlan(
   if (plan.objectId == kInvalidObjectId || !actorKind(plan.objectKind) ||
       plan.anchor.kind != expectedAnchorKind(plan.objectKind) ||
       !anchorIsValid(plan.anchor) || !std::isfinite(plan.yawRadians) ||
-      !isFinite(plan.facingDirection)) {
+      !isFinite(plan.facingDirection) ||
+      !isValidCreativeNpcSpawnSettings(plan.settings) ||
+      !isSupportedCreativeNpcBehaviorProfileId(
+          plan.settings.behaviorProfileId)) {
     return false;
   }
   const Vec3 expectedFacing{std::sin(plan.yawRadians), 0.0F,
@@ -193,6 +201,15 @@ bool isValidCreativeNpcPatrolRoutePlan(
     const CreativeNpcPatrolRoutePlan& plan) noexcept {
   return plan.objectId != kInvalidObjectId && pathIsValid(plan.path) &&
          pathUsesSupportedTiming(plan.path);
+}
+
+bool isSupportedCreativeNpcBehaviorProfileId(std::string_view profileId) {
+  if (profileId.empty()) {
+    return true;
+  }
+  static const NpcBehaviorProfileCatalog catalog =
+      makeBuiltInNpcBehaviorProfileCatalog();
+  return resolveNpcBehaviorProfile({&catalog, profileId}).ok;
 }
 
 CreativeNpcSpawnPlanResult planCreativeNpcSpawns(
@@ -248,6 +265,21 @@ CreativeNpcSpawnPlanResult planCreativeNpcSpawns(
     CreativeNpcSpawnPlan plan;
     plan.objectId = object->id;
     plan.objectKind = object->kind;
+    plan.settings = object->npcSpawn;
+    if (!isValidCreativeNpcSpawnSettings(plan.settings)) {
+      reject(result, CreativeNpcSpawnPlanStatus::InvalidSettings,
+             "creative_npc_spawn_settings_invalid", object->id);
+      return result;
+    }
+    if (!isSupportedCreativeNpcBehaviorProfileId(
+            plan.settings.behaviorProfileId)) {
+      reject(result, CreativeNpcSpawnPlanStatus::UnsupportedBehaviorProfile,
+             "creative_npc_spawn_profile_unsupported", object->id);
+      return result;
+    }
+    if (plan.settings.spawnPolicy == CreativeNpcSpawnPolicy::Disabled) {
+      ++result.disabledActorCount;
+    }
     plan.yawRadians =
         static_cast<float>(object->transform.rotationEulerRadians.y);
     if (!std::isfinite(plan.yawRadians)) {

@@ -54,7 +54,8 @@ cr::CreativeDocumentCreateReceipt addActor(
     std::string_view name,
     cr::CreativeVec3 position,
     std::optional<cr::CreativeObjectId> routeId = std::nullopt,
-    double yawRadians = 0.0) {
+    double yawRadians = 0.0,
+    std::optional<cr::CreativeNpcSpawnSettings> settings = std::nullopt) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = kind;
   request.name = std::string(name);
@@ -62,6 +63,10 @@ cr::CreativeDocumentCreateReceipt addActor(
   request.transform.rotationEulerRadians.y = yawRadians;
   request.hasTransformOverride = true;
   request.parentId = routeId;
+  if (settings.has_value()) {
+    request.hasNpcSpawnSettingsOverride = true;
+    request.npcSpawn = *settings;
+  }
   return document.createObject(request);
 }
 
@@ -288,13 +293,69 @@ bool unsupportedTimingAndNonfiniteFacingAreHonest() {
                 "nonfinite authored facing fails closed");
 }
 
+bool actorSettingsAreExplicitAndUnsupportedProfilesFailClosed() {
+  cr::CreativeDocument document = baseDocument();
+  cr::CreativeNpcSpawnSettings guardSettings;
+  guardSettings.behaviorProfileId = "default";
+  guardSettings.team = cr::CreativeNpcTeam::Hostile;
+  guardSettings.hitPoints = 37U;
+  guardSettings.initialAlertLevel = 0.6;
+  const cr::CreativeDocumentCreateReceipt guard =
+      addActor(document, cr::CreativeObjectKind::NpcSpawn, "Configured Guard",
+               {1.0, 0.25, 0.0}, std::nullopt, 0.25, guardSettings);
+  cr::CreativeNpcSpawnSettings disabledSettings;
+  disabledSettings.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  const cr::CreativeDocumentCreateReceipt disabled =
+      addActor(document, cr::CreativeObjectKind::EnemySpawn,
+               "Disabled Monster", {-1.0, 0.25, 0.0}, std::nullopt, 0.0,
+               disabledSettings);
+  const cr::CreativeRoomBakeResult roomBake = bake(document);
+  const cr::CreativeNpcSpawnPlanResult result =
+      cr::planCreativeNpcSpawns({&document, &roomBake});
+  const cr::CreativeNpcSpawnPlan* configured =
+      findPlan(result, guard.objectId);
+  const cr::CreativeNpcSpawnPlan* disabledPlan =
+      findPlan(result, disabled.objectId);
+
+  cr::CreativeDocument unsupportedDocument = baseDocument();
+  cr::CreativeNpcSpawnSettings unsupportedSettings;
+  unsupportedSettings.behaviorProfileId = "unknown_profile";
+  const cr::CreativeDocumentCreateReceipt unsupported =
+      addActor(unsupportedDocument, cr::CreativeObjectKind::NpcSpawn,
+               "Unsupported", {0.0, 0.25, 0.0}, std::nullopt, 0.0,
+               unsupportedSettings);
+  const cr::CreativeRoomBakeResult unsupportedBake =
+      bake(unsupportedDocument);
+  const cr::CreativeNpcSpawnPlanResult unsupportedResult =
+      cr::planCreativeNpcSpawns(
+          {&unsupportedDocument, &unsupportedBake});
+
+  return expect(guard.accepted && disabled.accepted && result.accepted,
+                "configured and disabled actor fixture plans") &&
+         expect(configured != nullptr &&
+                    configured->settings == guardSettings &&
+                    cr::isValidCreativeNpcSpawnPlan(*configured),
+                "actor plan retains every authored setting") &&
+         expect(disabledPlan != nullptr &&
+                    disabledPlan->settings == disabledSettings &&
+                    result.disabledActorCount == 1U,
+                "disabled policy is explicit in the canonical plan") &&
+         expect(unsupported.accepted && !unsupportedResult.accepted &&
+                    unsupportedResult.status ==
+                        cr::CreativeNpcSpawnPlanStatus::
+                            UnsupportedBehaviorProfile &&
+                    unsupportedResult.failedObjectId == unsupported.objectId,
+                "syntactically valid unavailable profile fails closed");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = explicitOwnersSurviveBakeOrderChanges() &&
                   routeSharingAndUnusedRoutesAreExplicit() &&
                   invalidOwnerAnchorAndPathFailClosed() &&
-                  unsupportedTimingAndNonfiniteFacingAreHonest();
+                  unsupportedTimingAndNonfiniteFacingAreHonest() &&
+                  actorSettingsAreExplicitAndUnsupportedProfilesFailClosed();
   if (ok) {
     std::cout << "creative_npc_spawn_tests: PASS\n";
   }

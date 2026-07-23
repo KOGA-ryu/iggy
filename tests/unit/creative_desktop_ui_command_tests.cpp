@@ -93,6 +93,15 @@ cr::CreativeObjectId createPlayerSpawn(cr::Facade& facade) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createNpcSpawn(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::NpcSpawn;
+  request.name = "Command NPC Spawn";
+  request.transform.position = {2.0, 0.0, 3.0};
+  request.hasTransformOverride = true;
+  return facade.createDocumentObject(request).objectId;
+}
+
 struct AttachedPair {
   cr::CreativeObjectId parentId = cr::kInvalidObjectId;
   cr::CreativeObjectId childId = cr::kInvalidObjectId;
@@ -1484,6 +1493,81 @@ bool playerSpawnSettingsUseTypedCommandAndOneUndoStep() {
          expect(redo.accepted && redo.changed && afterRedo != nullptr &&
                     afterRedo->playerSpawn == settings,
                 "player spawn settings redo restores edited values");
+}
+
+bool npcSpawnSettingsUseTypedCommandAndOneUndoStep() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd NPC Spawn");
+  static_cast<void>(document.assignId(428U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  const cr::CreativeObjectId npcId = createNpcSpawn(appState.facade);
+  const cr::CreativeObjectId crateId = createCrate(appState.facade, 4.0);
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{appState, editor,
+                                                    std::filesystem::path{},
+                                                    &saveId};
+  cr::CreativeNpcSpawnSettings settings;
+  settings.behaviorProfileId = "default";
+  settings.team = cr::CreativeNpcTeam::Hostile;
+  settings.hitPoints = 37U;
+  settings.initialAlertLevel = 0.6;
+  settings.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  const app::CreativeDesktopCommandResult changed = dispatchPayload(
+      app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+      app::CreativeDesktopNpcSpawnPayload{npcId, settings});
+  const cr::CreativeObject* afterChange = appState.facade.findObject(npcId);
+  const bool settingsApplied =
+      afterChange != nullptr && afterChange->npcSpawn == settings;
+  const std::size_t depthAfterChange =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeDesktopCommandResult unchanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+      app::CreativeDesktopNpcSpawnPayload{npcId, settings});
+
+  cr::CreativeNpcSpawnSettings invalid = settings;
+  invalid.initialAlertLevel = 2.0;
+  const app::CreativeDesktopCommandResult rejected = dispatchPayload(
+      app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+      app::CreativeDesktopNpcSpawnPayload{npcId, invalid});
+  const app::CreativeDesktopCommandResult wrongKind = dispatchPayload(
+      app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+      app::CreativeDesktopNpcSpawnPayload{crateId, settings});
+  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
+      app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+      app::CreativeDesktopDeletePayload{{npcId}});
+  const app::CreativeDesktopCommandResult undo =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+  const cr::CreativeObject* afterUndo = appState.facade.findObject(npcId);
+  const bool restoredDefaults =
+      afterUndo != nullptr &&
+      afterUndo->npcSpawn == cr::CreativeNpcSpawnSettings{};
+  const app::CreativeDesktopCommandResult redo =
+      dispatchOne(app::CreativeDesktopCommandId::Redo, context);
+  const cr::CreativeObject* afterRedo = appState.facade.findObject(npcId);
+
+  return expect(changed.accepted && changed.changed &&
+                    changed.affectedObjectCount == 1U && settingsApplied,
+                "npc spawn settings command applies typed values") &&
+         expect(depthAfterChange == 1U && unchanged.accepted &&
+                    !unchanged.changed &&
+                    cr::creativeUndoDepth(appState.history) == 1U,
+                "unchanged npc spawn settings add no undo entry") &&
+         expect(!rejected.accepted && !rejected.changed,
+                "invalid npc spawn settings are rejected") &&
+         expect(!wrongKind.accepted && !wrongKind.changed,
+                "npc spawn settings reject non-actor objects") &&
+         expect(!mismatch.accepted && !mismatch.changed &&
+                    mismatch.message == "npc spawn settings: payload mismatch",
+                "npc spawn settings reject a mismatched payload") &&
+         expect(undo.accepted && undo.changed && restoredDefaults,
+                "npc spawn settings undo restores defaults") &&
+         expect(redo.accepted && redo.changed && afterRedo != nullptr &&
+                    afterRedo->npcSpawn == settings,
+                "npc spawn settings redo restores edited values");
 }
 
 bool movingPlatformWaypointCommandsSelectEditAndUndo() {
@@ -7348,6 +7432,7 @@ int main() {
   ok = groupPivotUsesItsDedicatedTypedCommand() && ok;
   ok = movingPlatformSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = playerSpawnSettingsUseTypedCommandAndOneUndoStep() && ok;
+  ok = npcSpawnSettingsUseTypedCommandAndOneUndoStep() && ok;
   ok = movingPlatformWaypointCommandsSelectEditAndUndo() && ok;
   ok = movingPlatformPreviewCommandsStayTransient() && ok;
   ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;

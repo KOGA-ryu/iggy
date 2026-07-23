@@ -115,6 +115,12 @@ CreativeObject resolveCreativeDocumentCreateObject(
               request.hasPlayerSpawnSettingsOverride
           ? request.playerSpawn
           : CreativePlayerSpawnSettings{};
+  const bool npcActor = request.kind == CreativeObjectKind::NpcSpawn ||
+                        request.kind == CreativeObjectKind::EnemySpawn;
+  const CreativeNpcSpawnSettings npcSpawn =
+      npcActor && request.hasNpcSpawnSettingsOverride
+          ? request.npcSpawn
+          : CreativeNpcSpawnSettings{};
 
   CreativeObject object;
   object.id = objectId;
@@ -142,6 +148,7 @@ CreativeObject resolveCreativeDocumentCreateObject(
   object.door = door;
   object.window = window;
   object.playerSpawn = playerSpawn;
+  object.npcSpawn = npcSpawn;
   return object;
 }
 
@@ -322,6 +329,13 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                     "player_spawn_settings_unsupported");
     return receipt;
   }
+  const bool npcActor = request.kind == CreativeObjectKind::NpcSpawn ||
+                        request.kind == CreativeObjectKind::EnemySpawn;
+  if (request.hasNpcSpawnSettingsOverride && !npcActor) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "npc_spawn_settings_unsupported");
+    return receipt;
+  }
   const CreativeMovingPlatformSettings movingPlatform =
       request.kind == CreativeObjectKind::MovingPlatform &&
               request.hasMovingPlatformSettingsOverride
@@ -364,6 +378,15 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
       !isValidCreativePlayerSpawnSettings(playerSpawn)) {
     setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
                     "player_spawn_settings_invalid");
+    return receipt;
+  }
+  const CreativeNpcSpawnSettings npcSpawn =
+      npcActor && request.hasNpcSpawnSettingsOverride
+          ? request.npcSpawn
+          : CreativeNpcSpawnSettings{};
+  if (npcActor && !isValidCreativeNpcSpawnSettings(npcSpawn)) {
+    setCreateStatus(receipt, CreativeDocumentCreateStatus::Rejected,
+                    "npc_spawn_settings_invalid");
     return receipt;
   }
 

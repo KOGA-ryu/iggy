@@ -249,11 +249,21 @@ namespace {
         object.playerSpawn.validationRadiusMeters;
     record.playerSpawnFallbackPriority = object.playerSpawn.fallbackPriority;
   }
+  if (object.kind == creative::CreativeObjectKind::NpcSpawn ||
+      object.kind == creative::CreativeObjectKind::EnemySpawn) {
+    record.npcBehaviorProfileId = object.npcSpawn.behaviorProfileId;
+    record.npcTeam = std::string{creative::toString(object.npcSpawn.team)};
+    record.npcHitPoints = object.npcSpawn.hitPoints;
+    record.npcInitialAlertLevel = object.npcSpawn.initialAlertLevel;
+    record.npcSpawnPolicy =
+        std::string{creative::toString(object.npcSpawn.spawnPolicy)};
+  }
   return record;
 }
 
 [[nodiscard]] bool toCreativeObject(
     const SaveCreativeDocumentObjectRecord& record,
+    std::uint32_t sectionVersion,
     creative::CreativeObject& out) noexcept {
   creative::CreativeObjectKind kind = creative::CreativeObjectKind::Unknown;
   if (!creative::parseSerializedObjectKindId(record.kind, kind) ||
@@ -332,6 +342,20 @@ namespace {
     out.playerSpawn.fallbackPriority = record.playerSpawnFallbackPriority;
     if (!creative::isValidCreativePlayerSpawnSettings(out.playerSpawn)) {
       return false;
+    }
+  }
+  if (kind == creative::CreativeObjectKind::NpcSpawn ||
+      kind == creative::CreativeObjectKind::EnemySpawn) {
+    if (sectionVersion >= kSaveCreativeDocumentNpcSpawnVersion) {
+      out.npcSpawn.behaviorProfileId = record.npcBehaviorProfileId;
+      out.npcSpawn.hitPoints = record.npcHitPoints;
+      out.npcSpawn.initialAlertLevel = record.npcInitialAlertLevel;
+      if (!creative::parseCreativeNpcTeam(record.npcTeam, out.npcSpawn.team) ||
+          !creative::parseCreativeNpcSpawnPolicy(
+              record.npcSpawnPolicy, out.npcSpawn.spawnPolicy) ||
+          !creative::isValidCreativeNpcSpawnSettings(out.npcSpawn)) {
+        return false;
+      }
     }
   }
   return true;

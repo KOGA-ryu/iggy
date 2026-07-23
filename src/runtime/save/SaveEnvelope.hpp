@@ -54,8 +54,9 @@ inline constexpr std::uint32_t kSaveCreativeDocumentTerrainRoadVersion = 28;
 inline constexpr std::uint32_t
     kSaveCreativeDocumentTerrainWatercourseVersion = 29;
 inline constexpr std::uint32_t kSaveCreativeDocumentPlayerSpawnVersion = 30;
+inline constexpr std::uint32_t kSaveCreativeDocumentNpcSpawnVersion = 31;
 inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion =
-    kSaveCreativeDocumentPlayerSpawnVersion;
+    kSaveCreativeDocumentNpcSpawnVersion;
 inline constexpr std::uint32_t kSaveCreativeWorldLayoutSectionVersion = 1U;
 
 struct SaveEnvelopeMetadata {
@@ -247,6 +248,11 @@ struct SaveCreativeDocumentObjectRecord {
   std::string playerSpawnGroup = "default";
   double playerSpawnValidationRadiusMeters = 0.45;
   std::uint16_t playerSpawnFallbackPriority = 0U;
+  std::string npcBehaviorProfileId;
+  std::string npcTeam = "ActorDefault";
+  std::uint16_t npcHitPoints = 0U;
+  double npcInitialAlertLevel = 0.0;
+  std::string npcSpawnPolicy = "AtPlayStart";
 };
 
 struct SaveCreativeDocumentLogicLinkRecord {

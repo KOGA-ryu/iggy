@@ -104,6 +104,8 @@ struct CreativeDocumentCreateRequest {
   CreativeWindowSettings window;
   bool hasPlayerSpawnSettingsOverride = false;
   CreativePlayerSpawnSettings playerSpawn;
+  bool hasNpcSpawnSettingsOverride = false;
+  CreativeNpcSpawnSettings npcSpawn;
 };
 
 // Resolves descriptor defaults into the exact durable object shape used by

@@ -43,6 +43,7 @@ struct CreativeObjectLibraryPlacementSpec {
   CreativeVec3 scale{1.0, 1.0, 1.0};
   bool visible = true;
   CreativePlayerSpawnSettings playerSpawn{};
+  CreativeNpcSpawnSettings npcSpawn{};
   std::vector<std::string> tags;
 };
 

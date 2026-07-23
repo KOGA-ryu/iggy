@@ -19,6 +19,8 @@ enum class CreativeNpcSpawnPlanStatus : std::uint8_t {
   InvalidRoomBake,
   MissingSpawnAnchor,
   InvalidSpawnAnchor,
+  InvalidSettings,
+  UnsupportedBehaviorProfile,
   InvalidFacing,
   InvalidPatrolOwner,
   InvalidPatrolRoute,
@@ -34,6 +36,7 @@ struct CreativeNpcSpawnPlan {
   CreativeObjectId objectId = kInvalidObjectId;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   RoomAnchorAsset anchor;
+  CreativeNpcSpawnSettings settings;
   float yawRadians = 0.0F;
   Vec3 facingDirection;
   CreativeObjectId patrolRouteObjectId = kInvalidObjectId;
@@ -64,6 +67,7 @@ struct CreativeNpcSpawnPlanResult {
   std::string_view reasonCode = "creative_npc_spawn_plan_not_requested";
   CreativeObjectId failedObjectId = kInvalidObjectId;
   std::size_t sourceActorCount = 0U;
+  std::size_t disabledActorCount = 0U;
   std::size_t stationaryActorCount = 0U;
   std::size_t patrollingActorCount = 0U;
   std::size_t assignedPatrolRouteCount = 0U;
@@ -79,6 +83,8 @@ struct CreativeNpcSpawnPlanResult {
     const CreativeNpcSpawnPlan& plan) noexcept;
 [[nodiscard]] bool isValidCreativeNpcPatrolRoutePlan(
     const CreativeNpcPatrolRoutePlan& plan) noexcept;
+[[nodiscard]] bool isSupportedCreativeNpcBehaviorProfileId(
+    std::string_view profileId);
 [[nodiscard]] CreativeNpcSpawnPlanResult planCreativeNpcSpawns(
     const CreativeNpcSpawnPlanRequest& request);
 

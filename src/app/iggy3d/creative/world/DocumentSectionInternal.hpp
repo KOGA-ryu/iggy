@@ -33,6 +33,7 @@ namespace iggy3d::document_section_internal {
     const creative::CreativeObject& object);
 [[nodiscard]] bool toCreativeObject(
     const SaveCreativeDocumentObjectRecord& record,
+    std::uint32_t sectionVersion,
     creative::CreativeObject& out) noexcept;
 [[nodiscard]] SaveCreativeDocumentLogicLinkRecord toSaveLogicLink(
     const creative::CreativeLogicLink& link);

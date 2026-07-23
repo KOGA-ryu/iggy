@@ -298,6 +298,21 @@ ScenarioEntitySeed makeCombatantEntity(const RoomAnchorAsset& anchor,
   return entity;
 }
 
+std::uint32_t resolvedNpcFaction(CreativeNpcTeam team,
+                                 bool monster) noexcept {
+  switch (team) {
+    case CreativeNpcTeam::ActorDefault:
+      return monster ? kMonsterFaction : kPlayerFaction;
+    case CreativeNpcTeam::PlayerAllied:
+      return kPlayerFaction;
+    case CreativeNpcTeam::Hostile:
+      return kMonsterFaction;
+    case CreativeNpcTeam::Count:
+      break;
+  }
+  return 0U;
+}
+
 Vec3 runtimePatrolPoint(const CreativePathPoint& point) noexcept {
   return {
       static_cast<float>(point.position.x),
@@ -481,13 +496,22 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
   for (const CreativeNpcSpawnPlan& actorPlan : payload.npcSpawns) {
     const bool monster =
         actorPlan.objectKind == CreativeObjectKind::EnemySpawn;
+    if (actorPlan.settings.spawnPolicy ==
+        CreativeNpcSpawnPolicy::Disabled) {
+      ++result.summary.disabledNpcSpawnCount;
+      continue;
+    }
     const std::string& profileId =
-        monster ? config.monsterBehaviorProfileId
-                : config.npcBehaviorProfileId;
+        actorPlan.settings.behaviorProfileId.empty()
+            ? (monster ? config.monsterBehaviorProfileId
+                       : config.npcBehaviorProfileId)
+            : actorPlan.settings.behaviorProfileId;
     const std::uint32_t factionId =
-        monster ? kMonsterFaction : kPlayerFaction;
+        resolvedNpcFaction(actorPlan.settings.team, monster);
     const std::int32_t hitPoints =
-        monster ? config.monsterHitPoints : config.npcHitPoints;
+        actorPlan.settings.hitPoints == 0U
+            ? (monster ? config.monsterHitPoints : config.npcHitPoints)
+            : static_cast<std::int32_t>(actorPlan.settings.hitPoints);
     seed.entities.push_back(makeCombatantEntity(
         actorPlan.anchor, ScenarioEntityKind::Npc, kNpcBounds, factionId,
         hitPoints));
@@ -499,6 +523,8 @@ CreativeRuntimeScenarioSeedResult buildCreativeRuntimeScenarioSeed(
     actor.behaviorProfileId = profileId;
     actor.hasFacing = true;
     actor.facingDegrees = scenarioFacingDegrees(actorPlan.facingDirection);
+    actor.initialAlertLevel =
+        static_cast<float>(actorPlan.settings.initialAlertLevel);
     if (actorPlan.hasPatrol()) {
       const CreativeNpcPatrolRoutePlan* route =
           findPatrolRoute(payload.npcPatrolRoutes,

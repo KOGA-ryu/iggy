@@ -14,6 +14,7 @@
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/play/NpcSpawn.hpp"
 #include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 #include "app/iggy3d/creative/play/RuntimeInteractables.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
@@ -439,6 +440,7 @@ void refreshInspectorDraft(CreativeDesktopInspectorDraft& draft,
                  object.transform.scale.z};
   draft.movingPlatform = object.movingPlatform;
   draft.playerSpawn = object.playerSpawn;
+  draft.npcSpawn = object.npcSpawn;
   draft.movingPlatformWaypointIndex = 0U;
   draft.movingPlatformWaypointDwellSeconds =
       object.pathPoints.empty() ? 0.0 : object.pathPoints.front().dwellSeconds;
@@ -503,6 +505,121 @@ void appendPlayerSpawnFields(CreativeDesktopInspectorDraft& draft,
           draft.playerSpawn.playerProfileId) &&
       !cr::isSupportedCreativePlayerProfileId(
           draft.playerSpawn.playerProfileId)) {
+    ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
+                       "Profile is not available in the current runtime");
+  }
+}
+
+void appendNpcSpawnFields(CreativeDesktopInspectorDraft& draft,
+                          const cr::CreativeDocument& document,
+                          const cr::CreativeObject& object,
+                          bool fieldsDisabled,
+                          CreativeDesktopCommandFrame& commands) {
+  const bool npcActor = object.kind == cr::CreativeObjectKind::NpcSpawn ||
+                        object.kind == cr::CreativeObjectKind::EnemySpawn;
+  if (!npcActor) {
+    return;
+  }
+  const auto commit = [&]() {
+    if (!cr::isValidCreativeNpcSpawnSettings(draft.npcSpawn)) {
+      draft.validation =
+          "Profile must be a lowercase identifier; health is 0-32767; alert is 0-1";
+      return;
+    }
+    draft.validation.clear();
+    commands.push(
+        CreativeDesktopCommandId::SetNpcSpawnSettings,
+        CreativeDesktopNpcSpawnPayload{object.id, draft.npcSpawn});
+  };
+
+  ImGui::SeparatorText("NPC Spawn");
+  ImGui::BeginDisabled(fieldsDisabled);
+  const bool profileCommitted = creativeDesktopInputTextStdString(
+      "Behavior profile", &draft.npcSpawn.behaviorProfileId,
+      ImGuiInputTextFlags_EnterReturnsTrue);
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (profileCommitted || ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+
+  constexpr std::array teams{
+      cr::CreativeNpcTeam::ActorDefault,
+      cr::CreativeNpcTeam::PlayerAllied,
+      cr::CreativeNpcTeam::Hostile,
+  };
+  const std::string teamLabel =
+      std::string(cr::toString(draft.npcSpawn.team));
+  if (ImGui::BeginCombo("Team", teamLabel.c_str())) {
+    for (const cr::CreativeNpcTeam team : teams) {
+      const bool selected = team == draft.npcSpawn.team;
+      const std::string label = std::string(cr::toString(team));
+      if (ImGui::Selectable(label.c_str(), selected) && !selected) {
+        draft.npcSpawn.team = team;
+        commit();
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
+  constexpr std::uint16_t kHealthStep = 1U;
+  constexpr std::uint16_t kHealthFastStep = 10U;
+  if (ImGui::InputScalar("Health override", ImGuiDataType_U16,
+                         &draft.npcSpawn.hitPoints, &kHealthStep,
+                         &kHealthFastStep, "%u")) {
+    commit();
+  }
+  ImGui::TextDisabled("0 uses the actor-kind default");
+
+  constexpr double kMinimumAlert = 0.0;
+  constexpr double kMaximumAlert = 1.0;
+  ImGui::SliderScalar("Initial alert", ImGuiDataType_Double,
+                      &draft.npcSpawn.initialAlertLevel, &kMinimumAlert,
+                      &kMaximumAlert, "%.2f");
+  draft.editing = draft.editing || ImGui::IsItemActive();
+  if (ImGui::IsItemDeactivatedAfterEdit()) {
+    commit();
+  }
+
+  constexpr std::array policies{
+      cr::CreativeNpcSpawnPolicy::AtPlayStart,
+      cr::CreativeNpcSpawnPolicy::Disabled,
+  };
+  const std::string policyLabel =
+      std::string(cr::toString(draft.npcSpawn.spawnPolicy));
+  if (ImGui::BeginCombo("Spawn policy", policyLabel.c_str())) {
+    for (const cr::CreativeNpcSpawnPolicy policy : policies) {
+      const bool selected = policy == draft.npcSpawn.spawnPolicy;
+      const std::string label = std::string(cr::toString(policy));
+      if (ImGui::Selectable(label.c_str(), selected) && !selected) {
+        draft.npcSpawn.spawnPolicy = policy;
+        commit();
+      }
+      if (selected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::EndDisabled();
+
+  ImGui::TextDisabled("Facing follows Rotation Y");
+  const cr::CreativeObject* patrol =
+      object.parentId.has_value()
+          ? document.findObject(object.parentId.value())
+          : nullptr;
+  if (patrol != nullptr &&
+      patrol->kind == cr::CreativeObjectKind::PatrolRoute) {
+    ImGui::TextDisabled("Patrol: %s", patrol->name.c_str());
+  } else {
+    ImGui::TextDisabled("Patrol: stationary");
+  }
+  if (cr::isValidCreativeNpcBehaviorProfileId(
+          draft.npcSpawn.behaviorProfileId) &&
+      !cr::isSupportedCreativeNpcBehaviorProfileId(
+          draft.npcSpawn.behaviorProfileId)) {
     ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
                        "Profile is not available in the current runtime");
   }
@@ -830,6 +947,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     appendTransformFields(draft, object.id, fieldsDisabled, commands);
   }
   appendPlayerSpawnFields(draft, object, fieldsDisabled, commands);
+  appendNpcSpawnFields(draft, document, object, fieldsDisabled, commands);
   appendMovingPlatformFields(draft, object, preview, pathEdit, fieldsDisabled,
                              commands);
 

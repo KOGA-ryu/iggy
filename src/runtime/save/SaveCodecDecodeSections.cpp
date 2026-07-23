@@ -283,6 +283,15 @@ void Reader::readCreativeDocumentObject(const std::string& prefix,
     readUnsigned(prefix + "playerSpawn.fallbackPriority",
                  object.playerSpawnFallbackPriority);
   }
+  if (nextKeyIs(prefix + "npcSpawn.behaviorProfileId")) {
+    readString(prefix + "npcSpawn.behaviorProfileId",
+               object.npcBehaviorProfileId);
+    readString(prefix + "npcSpawn.team", object.npcTeam);
+    readUnsigned(prefix + "npcSpawn.hitPoints", object.npcHitPoints);
+    readDouble(prefix + "npcSpawn.initialAlertLevel",
+               object.npcInitialAlertLevel);
+    readString(prefix + "npcSpawn.spawnPolicy", object.npcSpawnPolicy);
+  }
 }
 
 void Reader::readCreativeTerrainHeightField(

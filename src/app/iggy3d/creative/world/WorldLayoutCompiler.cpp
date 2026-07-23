@@ -884,6 +884,7 @@ CreativeWorldLayoutCompileResult buildCreativeWorldLayoutPlan(
     placement.scale = symbol.scale;
     placement.visible = symbol.visible;
     placement.playerSpawn = symbol.playerSpawn;
+    placement.npcSpawn = symbol.npcSpawn;
     placement.tags = symbol.tags;
     appendTagOnce(placement.tags, layoutTag);
     appendTagOnce(placement.tags, creativeWorldLayoutProvenanceTag(

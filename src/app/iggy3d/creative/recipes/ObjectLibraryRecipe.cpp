@@ -36,6 +36,13 @@ bool validPlacement(const CreativeObjectLibraryPlacementSpec& placement) {
        !(placement.playerSpawn == CreativePlayerSpawnSettings{}))) {
     return false;
   }
+  const bool npcActor = placement.kind == CreativeObjectKind::NpcSpawn ||
+                        placement.kind == CreativeObjectKind::EnemySpawn;
+  if ((npcActor && !isValidCreativeNpcSpawnSettings(placement.npcSpawn)) ||
+      (!npcActor &&
+       !(placement.npcSpawn == CreativeNpcSpawnSettings{}))) {
+    return false;
+  }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!objectHasTransform(placement.kind) ||
         !isFiniteCreativeVec3(placement.point) ||
@@ -73,6 +80,11 @@ CreativeDocumentCreateRequest createRequest(
   if (placement.kind == CreativeObjectKind::SpawnPoint) {
     request.hasPlayerSpawnSettingsOverride = true;
     request.playerSpawn = placement.playerSpawn;
+  }
+  if (placement.kind == CreativeObjectKind::NpcSpawn ||
+      placement.kind == CreativeObjectKind::EnemySpawn) {
+    request.hasNpcSpawnSettingsOverride = true;
+    request.npcSpawn = placement.npcSpawn;
   }
   if (placement.mode == CreativeObjectLibraryPlacementMode::Bounds) {
     request.bounds = placement.bounds;

@@ -111,6 +111,7 @@ enum class CreativeMutationKind {
     // Navigation / movement authoring
     SetSpawnFacing,
     SetPlayerSpawnSettings,
+    SetNpcSpawnSettings,
     SetCheckpointId,
     SetNavCost,
     SetPatrolRoute,
@@ -266,6 +267,10 @@ struct PlayerSpawnSettingsMutation {
     CreativePlayerSpawnSettings settings{};
 };
 
+struct NpcSpawnSettingsMutation {
+    CreativeNpcSpawnSettings settings{};
+};
+
 struct ObjectKindMutation {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
 };
@@ -299,6 +304,7 @@ struct CreativeMutationPayload {
         PathPointsMutation,
         MovingPlatformSettingsMutation,
         PlayerSpawnSettingsMutation,
+        NpcSpawnSettingsMutation,
         ObjectKindMutation>;
 
     Value value{};
@@ -390,5 +396,7 @@ struct CreativeMutationDescriptor {
     CreativeMovingPlatformSettings settings);
 [[nodiscard]] CreativeMutationPayload makePlayerSpawnSettingsPayload(
     CreativePlayerSpawnSettings settings);
+[[nodiscard]] CreativeMutationPayload makeNpcSpawnSettingsPayload(
+    CreativeNpcSpawnSettings settings);
 
 } // namespace iggy3d::creative

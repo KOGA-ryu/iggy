@@ -1063,6 +1063,24 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
     } else if (codecVersion < 27U) {
       object.playerSpawn = {};
     }
+    std::uint64_t npcTeam = 0U;
+    std::uint64_t npcSpawnPolicy = 0U;
+    if (parsed && codecVersion >= 28U) {
+      parsed = reader.readHex(object.npcSpawn.behaviorProfileId) &&
+               reader.readUnsigned(npcTeam) &&
+               npcTeam < enumValue(CreativeNpcTeam::Count) &&
+               reader.readUnsigned(object.npcSpawn.hitPoints) &&
+               reader.readDouble(object.npcSpawn.initialAlertLevel) &&
+               reader.readUnsigned(npcSpawnPolicy) &&
+               npcSpawnPolicy < enumValue(CreativeNpcSpawnPolicy::Count);
+      if (parsed) {
+        object.npcSpawn.team = static_cast<CreativeNpcTeam>(npcTeam);
+        object.npcSpawn.spawnPolicy =
+            static_cast<CreativeNpcSpawnPolicy>(npcSpawnPolicy);
+      }
+    } else if (codecVersion < 28U) {
+      object.npcSpawn = {};
+    }
     parsed = parsed && reader.readSize(tagCount) &&
              tagCount <= kCreativeWorldLayoutCodecMaxRecords - totalTagCount;
     const bool finite = std::isfinite(object.boundsCells.min.x) &&
@@ -1112,8 +1130,15 @@ CreativeWorldLayoutDecodeResult decodeCreativeWorldLayout(
         static_cast<CreativeObjectKind>(kind) == CreativeObjectKind::SpawnPoint
             ? isValidCreativePlayerSpawnSettings(object.playerSpawn)
             : object.playerSpawn == CreativePlayerSpawnSettings{};
+    const bool npcActor =
+        static_cast<CreativeObjectKind>(kind) == CreativeObjectKind::NpcSpawn ||
+        static_cast<CreativeObjectKind>(kind) == CreativeObjectKind::EnemySpawn;
+    const bool validNpcSpawn =
+        npcActor ? isValidCreativeNpcSpawnSettings(object.npcSpawn)
+                 : object.npcSpawn == CreativeNpcSpawnSettings{};
     if (!parsed || !finite || !validScale || !validAssetBounds ||
-        !validBoundsModePose || !validBridgeMode || !validPlayerSpawn) {
+        !validBoundsModePose || !validBridgeMode || !validPlayerSpawn ||
+        !validNpcSpawn) {
       return false;
     }
     object.kind = static_cast<CreativeObjectKind>(kind);

@@ -147,6 +147,7 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
   source.name = object.name;
   source.visible = object.visible;
   source.playerSpawn = object.playerSpawn;
+  source.npcSpawn = object.npcSpawn;
   if (source.mode == CreativeObjectLibraryPlacementMode::Point) {
     if (!nearZero(object.transform.rotationEulerRadians.x) ||
         !nearZero(object.transform.rotationEulerRadians.z) ||
@@ -185,6 +186,7 @@ void reject(CreativeWorldLayoutAdoptionResult& result,
     result.changed = previous.name != source.name ||
                      previous.visible != source.visible ||
                      !(previous.playerSpawn == source.playerSpawn) ||
+                     !(previous.npcSpawn == source.npcSpawn) ||
                      !sameVec(previous.pointCells, source.pointCells) ||
                      previous.yawRadians != source.yawRadians ||
                      !sameVec(previous.scale, source.scale) ||

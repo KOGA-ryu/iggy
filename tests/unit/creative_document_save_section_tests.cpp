@@ -292,6 +292,25 @@ cr::CreativeObject restoredPlayerSpawnObject() {
   return object;
 }
 
+cr::CreativeObject restoredNpcSpawnObject() {
+  cr::CreativeObject object;
+  object.id = 18;
+  object.kind = cr::CreativeObjectKind::NpcSpawn;
+  object.name = "Alert Courtyard Guard";
+  object.transform.position = {4.0, 0.25, 2.0};
+  object.transform.rotationEulerRadians.y = -0.75;
+  object.layerId = 10;
+  object.visible = true;
+  object.locked = false;
+  object.tags = {"npc", "courtyard"};
+  object.npcSpawn.behaviorProfileId = "default";
+  object.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  object.npcSpawn.hitPoints = 37U;
+  object.npcSpawn.initialAlertLevel = 0.6;
+  object.npcSpawn.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  return object;
+}
+
 cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   cr::CreativeDocumentRestoreRequest request;
   request.documentId = 9001;
@@ -370,6 +389,19 @@ cr::CreativeDocumentRestoreRequest authoredPlayerSpawnRestoreRequest() {
   return request;
 }
 
+cr::CreativeDocumentRestoreRequest authoredNpcSpawnRestoreRequest() {
+  cr::CreativeDocumentRestoreRequest request;
+  request.documentId = 9007;
+  request.name = "NPC Spawn Creative";
+  request.units = cr::CreativeUnits::Meters;
+  request.gridSettings = authoredGridSettings();
+  request.snapSettings = authoredSnapSettings();
+  request.worldBounds = authoredWorldBounds();
+  request.nextObjectId = 30;
+  request.objects = {restoredNpcSpawnObject()};
+  return request;
+}
+
 cr::CreativeDocument authoredDocument() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Before");
   const cr::CreativeDocumentRestoreReceipt restored =
@@ -434,6 +466,17 @@ cr::CreativeDocument authoredPlayerSpawnDocument() {
   return document;
 }
 
+cr::CreativeDocument authoredNpcSpawnDocument() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Before NPC Spawn");
+  const cr::CreativeDocumentRestoreReceipt restored =
+      document.restoreForLoad(authoredNpcSpawnRestoreRequest());
+  if (!restored.accepted) {
+    std::cerr << "FAIL: authored npc spawn document restore setup\n";
+  }
+  return document;
+}
+
 iggy3d::SaveEnvelope minimalEnvelope() {
   iggy3d::SaveEnvelope envelope;
   envelope.metadata.savedStateHash = 0;
@@ -492,7 +535,13 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
          save.playerSpawnValidationRadiusMeters ==
              object.playerSpawn.validationRadiusMeters &&
          save.playerSpawnFallbackPriority ==
-             object.playerSpawn.fallbackPriority;
+             object.playerSpawn.fallbackPriority &&
+         save.npcBehaviorProfileId == object.npcSpawn.behaviorProfileId &&
+         save.npcTeam == std::string{cr::toString(object.npcSpawn.team)} &&
+         save.npcHitPoints == object.npcSpawn.hitPoints &&
+         save.npcInitialAlertLevel == object.npcSpawn.initialAlertLevel &&
+         save.npcSpawnPolicy ==
+             std::string{cr::toString(object.npcSpawn.spawnPolicy)};
 }
 
 bool documentObjectMatches(const cr::CreativeObject& lhs,
@@ -509,7 +558,8 @@ bool documentObjectMatches(const cr::CreativeObject& lhs,
          lhs.tags == rhs.tags &&
          samePathPoints(lhs.pathPoints, rhs.pathPoints) &&
          lhs.movingPlatform == rhs.movingPlatform && lhs.door == rhs.door &&
-         lhs.window == rhs.window && lhs.playerSpawn == rhs.playerSpawn;
+         lhs.window == rhs.window && lhs.playerSpawn == rhs.playerSpawn &&
+         lhs.npcSpawn == rhs.npcSpawn;
 }
 
 bool buildSectionCopiesDocumentExactly() {
@@ -1016,6 +1066,77 @@ bool playerSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() {
                     migratedSpawn->playerSpawn ==
                         cr::CreativePlayerSpawnSettings{},
                 "pre-player-spawn versions receive safe defaults");
+}
+
+bool npcSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() {
+  const cr::CreativeDocument document = authoredNpcSpawnDocument();
+  const cr::CreativeObject original = restoredNpcSpawnObject();
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+
+  const iggy3d::SaveEncodeResult encoded =
+      iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::SaveCreativeDocumentObjectRecord* decodedObject =
+      decoded.envelope.creativeDocument.objects.empty()
+          ? nullptr
+          : &decoded.envelope.creativeDocument.objects.front();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeObject* restoredObject =
+      restored.document.findObject(original.id);
+
+  iggy3d::SaveCreativeDocumentSection legacy = built.section;
+  legacy.version = iggy3d::kSaveCreativeDocumentNpcSpawnVersion - 1U;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult migrated =
+      iggy3d::restoreCreativeDocumentFromSaveSection(legacy);
+  const cr::CreativeObject* migratedNpc =
+      migrated.document.findObject(original.id);
+
+  iggy3d::SaveCreativeDocumentSection malformed = built.section;
+  malformed.objects.front().npcTeam = "Unknown";
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult rejected =
+      iggy3d::restoreCreativeDocumentFromSaveSection(malformed);
+
+  return expect(built.receipt.accepted && built.section.objects.size() == 1U,
+                "npc spawn codec build accepted") &&
+         expect(sectionObjectMatches(built.section.objects.front(), original),
+                "npc spawn save record owns every setting") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.npcSpawn."
+                        "behaviorProfileId=default\n") != std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.npcSpawn.team=Hostile\n") !=
+                        std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.npcSpawn.hitPoints=37\n") !=
+                        std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.npcSpawn."
+                        "initialAlertLevel=0.6\n") !=
+                        std::string::npos &&
+                    encoded.encodedText.find(
+                        "creativeDocument.object.0.npcSpawn."
+                        "spawnPolicy=Disabled\n") != std::string::npos,
+                "npc spawn settings encode explicitly") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok &&
+                    decodedObject != nullptr &&
+                    sectionObjectMatches(*decodedObject, original),
+                "npc spawn settings decode exactly") &&
+         expect(restored.receipt.accepted && restoredObject != nullptr &&
+                    documentObjectMatches(*restoredObject, original),
+                "npc spawn settings restore exactly") &&
+         expect(migrated.receipt.accepted && migratedNpc != nullptr &&
+                    migratedNpc->npcSpawn == cr::CreativeNpcSpawnSettings{},
+                "pre-npc-spawn versions receive safe defaults") &&
+         expect(!rejected.receipt.accepted &&
+                    rejected.document.objectCount() == 0U,
+                "current invalid npc settings fail closed");
 }
 
 bool legacyMovingPlatformReceivesDefaultRouteAndSettings() {
@@ -2917,6 +3038,7 @@ int main() {
   ok = doorSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = windowSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = playerSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
+  ok = npcSpawnSettingsEncodeDecodeRestoreAndLegacyDefault() && ok;
   ok = legacyMovingPlatformReceivesDefaultRouteAndSettings() && ok;
   ok = restoreRejectsInvalidPathPayloads() && ok;
   ok = restoreRejectsInvalidLineEndpointPayloads() && ok;

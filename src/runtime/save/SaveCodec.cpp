@@ -378,6 +378,18 @@ private:
       line(prefix + "playerSpawn.fallbackPriority",
            unsignedText(object.playerSpawnFallbackPriority));
     }
+    if (envelope_.creativeDocument.version >=
+            kSaveCreativeDocumentNpcSpawnVersion &&
+        (object.kind == "NpcSpawn" || object.kind == "EnemySpawn")) {
+      lineString(prefix + "npcSpawn.behaviorProfileId",
+                 object.npcBehaviorProfileId);
+      lineString(prefix + "npcSpawn.team", object.npcTeam);
+      line(prefix + "npcSpawn.hitPoints",
+           unsignedText(object.npcHitPoints));
+      line(prefix + "npcSpawn.initialAlertLevel",
+           formatDoubleLossless(object.npcInitialAlertLevel));
+      lineString(prefix + "npcSpawn.spawnPolicy", object.npcSpawnPolicy);
+    }
   }
 
   void writeCreativeTerrainHeightField(

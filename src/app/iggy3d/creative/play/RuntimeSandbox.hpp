@@ -38,6 +38,7 @@ struct CreativeRuntimeScenarioSummary {
   std::size_t playerEntityCount = 0;
   std::size_t npcEntityCount = 0;
   std::size_t monsterEntityCount = 0;
+  std::size_t disabledNpcSpawnCount = 0;
   std::size_t doorEntityCount = 0;
   std::size_t platformEntityCount = 0;
   std::size_t controlEntityCount = 0;

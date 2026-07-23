@@ -9,8 +9,10 @@
 #include "runtime/objective/ObjectiveSystem.hpp"
 
 #include <iostream>
+#include <limits>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -310,12 +312,16 @@ iggy3d::Session makeNpcCombatSession(float npcX = 1.0F,
 iggy3d::Result<iggy3d::Session> createNpcCombatSessionWithAiSeed(
     std::string_view actorStableName,
     std::string_view behaviorProfileId,
-    float npcX = 1.0F) {
+    float npcX = 1.0F,
+    float initialAlertLevel = 0.0F) {
   iggy3d::SessionCreateRequest request;
   request.config = iggy3d::makeDefaultRuntimeConfig();
   request.seed = makeNpcCombatSeed(npcX);
-  request.seed.aiActors.push_back(
-      {std::string(actorStableName), std::string(behaviorProfileId)});
+  iggy3d::ScenarioAiActorSeed actor;
+  actor.actorStableName = std::string(actorStableName);
+  actor.behaviorProfileId = std::string(behaviorProfileId);
+  actor.initialAlertLevel = initialAlertLevel;
+  request.seed.aiActors.push_back(std::move(actor));
   return iggy3d::Session::create(request);
 }
 
@@ -1281,7 +1287,8 @@ bool authoredNpcFacingOverridesDefaultAndGatesVision() {
 
 bool sessionCreateSeedsAiActorProfileIntoStateAndBaseline() {
   const iggy3d::Result<iggy3d::Session> created =
-      createNpcCombatSessionWithAiSeed("training_npc", "passive");
+      createNpcCombatSessionWithAiSeed("training_npc", "passive", 1.0F,
+                                       0.5F);
   if (!expect(created.status == iggy3d::ResultStatus::Ok, "ai seed create ok")) {
     return false;
   }
@@ -1293,11 +1300,14 @@ bool sessionCreateSeedsAiActorProfileIntoStateAndBaseline() {
   return expect(aiActor != nullptr, "seeded ai actor exists") &&
          expect(aiActor != nullptr && aiActor->behaviorProfileId == "passive",
                 "seeded ai actor profile") &&
-         expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Idle,
-                "seeded ai actor default behavior") &&
+         expect(aiActor != nullptr && aiActor->alertLevel == 0.5F,
+                "seeded ai actor initial alert") &&
          expect(baselineAiActor != nullptr, "baseline ai actor exists") &&
          expect(baselineAiActor != nullptr && baselineAiActor->behaviorProfileId == "passive",
-                "baseline ai actor profile");
+                "baseline ai actor profile") &&
+         expect(baselineAiActor != nullptr &&
+                    baselineAiActor->alertLevel == 0.5F,
+                "baseline retains seeded initial alert");
 }
 
 bool sessionCreateRejectsInvalidAiActorSeeds() {
@@ -1323,6 +1333,18 @@ bool sessionCreateRejectsInvalidAiActorSeeds() {
   const iggy3d::Result<iggy3d::Session> duplicateResult =
       iggy3d::Session::create(duplicate);
 
+  iggy3d::SessionCreateRequest invalidAlert;
+  invalidAlert.config = iggy3d::makeDefaultRuntimeConfig();
+  invalidAlert.seed = makeNpcCombatSeed();
+  iggy3d::ScenarioAiActorSeed invalidAlertActor;
+  invalidAlertActor.actorStableName = "training_npc";
+  invalidAlertActor.behaviorProfileId = "passive";
+  invalidAlertActor.initialAlertLevel =
+      std::numeric_limits<float>::quiet_NaN();
+  invalidAlert.seed.aiActors.push_back(std::move(invalidAlertActor));
+  const iggy3d::Result<iggy3d::Session> invalidAlertResult =
+      iggy3d::Session::create(invalidAlert);
+
   return expect(missingResult.status == iggy3d::ResultStatus::Error,
                 "missing ai actor rejects") &&
          expect(missingResult.error.code == "session.ai_seed_missing_actor",
@@ -1334,7 +1356,11 @@ bool sessionCreateRejectsInvalidAiActorSeeds() {
          expect(duplicateResult.status == iggy3d::ResultStatus::Error,
                 "duplicate ai actor rejects") &&
          expect(duplicateResult.error.code == "session.ai_seed_duplicate_actor",
-                "duplicate ai actor error");
+                "duplicate ai actor error") &&
+         expect(invalidAlertResult.status == iggy3d::ResultStatus::Error &&
+                    invalidAlertResult.error.code ==
+                        "session.ai_seed_invalid_initial_alert",
+                "nonfinite initial alert rejects");
 }
 
 bool sessionCreateSeedsGuardAnchorIntoStateAndBaseline() {

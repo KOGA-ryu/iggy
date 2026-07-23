@@ -70,6 +70,7 @@ struct CreativeDesktopInspectorDraft {
   std::array<double, 3> scale{1.0, 1.0, 1.0};
   iggy3d::creative::CreativeMovingPlatformSettings movingPlatform;
   iggy3d::creative::CreativePlayerSpawnSettings playerSpawn;
+  iggy3d::creative::CreativeNpcSpawnSettings npcSpawn;
   std::size_t movingPlatformWaypointIndex = 0U;
   double movingPlatformWaypointDwellSeconds = 0.0;
   // A draft field is being edited this frame, so a revision bump must not

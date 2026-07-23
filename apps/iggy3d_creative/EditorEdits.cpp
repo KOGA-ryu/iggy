@@ -864,4 +864,25 @@ creative::CreativeDocumentMutationReceipt setPlayerSpawnSettingsWithUndo(
   return receipt;
 }
 
+creative::CreativeDocumentMutationReceipt setNpcSpawnSettingsWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativeNpcSpawnSettings settings,
+    std::string_view source) {
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(), objectId,
+          creative::CreativeMutationKind::SetNpcSpawnSettings,
+          creative::makeNpcSpawnSettingsPayload(std::move(settings)));
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade,
+      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
+          receipt.changed,
+      receipt.message));
+  return receipt;
+}
+
 }  // namespace iggy3d_creative_app

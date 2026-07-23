@@ -541,7 +541,7 @@ ProductCreativeDocumentSectionRestoreResult restoreCreativeDocumentFromSaveSecti
   request.objects.reserve(section.objects.size());
   for (const SaveCreativeDocumentObjectRecord& objectRecord : section.objects) {
     creative::CreativeObject object;
-    if (!toCreativeObject(objectRecord, object)) {
+    if (!toCreativeObject(objectRecord, section.version, object)) {
       setStatus(receipt,
                 ProductCreativeDocumentSectionStatus::InvalidObjectKind,
                 "invalid_object_kind");

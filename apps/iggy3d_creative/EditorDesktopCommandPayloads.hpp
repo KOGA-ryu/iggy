@@ -109,6 +109,12 @@ struct CreativeDesktopPlayerSpawnPayload {
   iggy3d::creative::CreativePlayerSpawnSettings settings;
 };
 
+struct CreativeDesktopNpcSpawnPayload {
+  iggy3d::creative::CreativeObjectId objectId =
+      iggy3d::creative::kInvalidObjectId;
+  iggy3d::creative::CreativeNpcSpawnSettings settings;
+};
+
 struct CreativeDesktopMovingPlatformPreviewPayload {
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
@@ -628,6 +634,7 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopGroupPivotPayload,
     CreativeDesktopMovingPlatformPayload,
     CreativeDesktopPlayerSpawnPayload,
+    CreativeDesktopNpcSpawnPayload,
     CreativeDesktopMovingPlatformPreviewPayload,
     CreativeDesktopMovingPlatformWaypointPayload,
     CreativeDesktopAssetOpPayload,

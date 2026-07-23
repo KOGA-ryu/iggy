@@ -35,7 +35,8 @@ enum class CreativeMutationPayloadKind {
     AudioSource,
     PathPointsOrLegacyText,
     MovingPlatformSettings,
-    PlayerSpawnSettings
+    PlayerSpawnSettings,
+    NpcSpawnSettings
 };
 
 struct CreativeMutationMetadataRow {
@@ -200,6 +201,10 @@ constexpr std::array kCreativeMutationMetadataRows{
                      "SetPlayerSpawnSettings",
                      CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::PlayerSpawnSettings),
+    mutationMetadata(CreativeMutationKind::SetNpcSpawnSettings,
+                     "SetNpcSpawnSettings",
+                     CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::NpcSpawnSettings),
     mutationMetadata(CreativeMutationKind::SetCheckpointId, "SetCheckpointId", CreativeMutationCategory::Navigation,
                      CreativeMutationPayloadKind::TextOrStringId, false, false,
                      CreativeMutationStoragePolicy::FutureStoragePlaceholder),
@@ -365,6 +370,8 @@ constexpr std::array kCreativeMutationMetadataRows{
         return std::holds_alternative<MovingPlatformSettingsMutation>(value);
     case CreativeMutationPayloadKind::PlayerSpawnSettings:
         return std::holds_alternative<PlayerSpawnSettingsMutation>(value);
+    case CreativeMutationPayloadKind::NpcSpawnSettings:
+        return std::holds_alternative<NpcSpawnSettingsMutation>(value);
     }
 
     return false;
@@ -615,6 +622,11 @@ CreativeMutationPayload makeMovingPlatformSettingsPayload(
 CreativeMutationPayload makePlayerSpawnSettingsPayload(
     CreativePlayerSpawnSettings settings) {
     return CreativeMutationPayload{PlayerSpawnSettingsMutation{std::move(settings)}};
+}
+
+CreativeMutationPayload makeNpcSpawnSettingsPayload(
+    CreativeNpcSpawnSettings settings) {
+    return CreativeMutationPayload{NpcSpawnSettingsMutation{std::move(settings)}};
 }
 
 } // namespace iggy3d::creative

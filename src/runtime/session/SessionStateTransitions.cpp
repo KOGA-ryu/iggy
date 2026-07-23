@@ -9,6 +9,7 @@
 
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/objective/ObjectiveOutcome.hpp"
 #include "runtime/replay/StateHash.hpp"
@@ -172,6 +173,31 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     AiActorState actorState;
     actorState.actor = actor->id;
     actorState.behaviorProfileId = aiSeed.behaviorProfileId;
+    if (!std::isfinite(aiSeed.initialAlertLevel) ||
+        aiSeed.initialAlertLevel < 0.0F ||
+        aiSeed.initialAlertLevel > 1.0F) {
+      return session_detail::statusError(
+          "session.ai_seed_invalid_initial_alert",
+          "ai actor initial alert level must be finite and normalized");
+    }
+    actorState.alertLevel = aiSeed.initialAlertLevel;
+    if (actorState.alertLevel > 0.0F) {
+      const NpcBehaviorProfileCatalog catalog =
+          makeBuiltInNpcBehaviorProfileCatalog();
+      const NpcBehaviorProfileResolveResult profile =
+          resolveNpcBehaviorProfile(
+              {&catalog, actorState.behaviorProfileId});
+      if (!profile.ok) {
+        return session_detail::statusError(
+            "session.ai_seed_initial_alert_profile_unresolved",
+            "initially alerted ai actor requires a resolvable behavior profile");
+      }
+      actorState.maxAlertIndexThisEngagement =
+          alertBandIndex(actorState.alertLevel, profile.profile.alertProfile);
+      actorState.behavior =
+          alertBehaviorForLevel(actorState.alertLevel,
+                                profile.profile.alertProfile);
+    }
     actorState.facingDirection =
         aiSeed.hasFacing
             ? facingDirectionFromDegrees(aiSeed.facingDegrees)

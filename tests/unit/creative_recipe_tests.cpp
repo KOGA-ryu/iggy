@@ -391,6 +391,38 @@ bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
   const std::uint64_t changedWindowStateFingerprint =
       cr::fingerprintCreativeRecipeObjectState(windowState, {});
 
+  cr::CreativeRecipePlan npcPlan = parentedRecipe();
+  cr::CreativeDocumentCreateRequest& npcRequest =
+      npcPlan.objects[1].createRequest;
+  npcRequest.kind = cr::CreativeObjectKind::NpcSpawn;
+  npcRequest.name = "Fingerprint Guard";
+  npcRequest.hasNpcSpawnSettingsOverride = true;
+  npcRequest.npcSpawn.behaviorProfileId = "guard_sentry";
+  npcRequest.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  npcRequest.npcSpawn.hitPoints = 180U;
+  npcRequest.npcSpawn.initialAlertLevel = 0.25;
+  const std::uint64_t npcPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(npcPlan);
+  const std::uint64_t npcObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(npcPlan, 1U);
+  cr::CreativeRecipePlan changedNpcPlan = npcPlan;
+  changedNpcPlan.objects[1].createRequest.npcSpawn.initialAlertLevel = 0.75;
+  const std::uint64_t changedNpcPlanFingerprint =
+      cr::fingerprintCreativeRecipePlan(changedNpcPlan);
+  const std::uint64_t changedNpcObjectFingerprint =
+      cr::fingerprintCreativeRecipeObjectPlan(changedNpcPlan, 1U);
+
+  cr::CreativeObject npcState;
+  npcState.id = 11U;
+  npcState.kind = cr::CreativeObjectKind::NpcSpawn;
+  npcState.name = npcRequest.name;
+  npcState.npcSpawn = npcRequest.npcSpawn;
+  const std::uint64_t npcStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(npcState, {});
+  npcState.npcSpawn.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  const std::uint64_t changedNpcStateFingerprint =
+      cr::fingerprintCreativeRecipeObjectState(npcState, {});
+
   return expect(fingerprint != 0U && fingerprint == identicalFingerprint,
                 "identical recipe semantics have one fingerprint") &&
          expect(changedFingerprint != 0U &&
@@ -425,6 +457,13 @@ bool definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() {
          expect(windowStateFingerprint != 0U &&
                     changedWindowStateFingerprint != windowStateFingerprint,
                 "window treatment participates in live fingerprints") &&
+         expect(npcPlanFingerprint != 0U && npcObjectFingerprint != 0U &&
+                    changedNpcPlanFingerprint != npcPlanFingerprint &&
+                    changedNpcObjectFingerprint != npcObjectFingerprint,
+                "NPC spawn settings participate in plan fingerprints") &&
+         expect(npcStateFingerprint != 0U &&
+                    changedNpcStateFingerprint != npcStateFingerprint,
+                "NPC spawn settings participate in live fingerprints") &&
          expect(cr::fingerprintCreativeRecipePlan(invalid) == 0U,
                 "non-finite recipe semantics cannot be fingerprinted");
 }
@@ -602,12 +641,24 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
   asset.scale = {2.0, 0.5, 1.5};
   request.placements.push_back(asset);
 
+  cr::CreativeObjectLibraryPlacementSpec npc;
+  npc.kind = cr::CreativeObjectKind::EnemySpawn;
+  npc.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  npc.stableKey = "actor.warehouse_guard";
+  npc.name = "Warehouse Guard";
+  npc.point = {16.0, 0.0, 6.0};
+  npc.npcSpawn.behaviorProfileId = "guard_sentry";
+  npc.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  npc.npcSpawn.hitPoints = 220U;
+  npc.npcSpawn.initialAlertLevel = 0.4;
+  request.placements.push_back(npc);
+
   const cr::CreativeObjectLibraryRecipeResult recipe =
       cr::buildCreativeObjectLibraryRecipe(request);
   const cr::CreativeRecipeMaterializeResult materialized =
       cr::materializeCreativeRecipe(recipe.plan, 20U);
   const bool placementParity =
-      materialized.createRequests.size() == 3U &&
+      materialized.createRequests.size() == 4U &&
       materialized.createRequests[0].kind == cr::CreativeObjectKind::Bridge &&
       materialized.createRequests[0].hasBoundsOverride &&
       materialized.createRequests[0].bounds.min.x == 1.0 &&
@@ -627,7 +678,13 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
           asset.yawRadians &&
       materialized.createRequests[2].transform.scale.x == 2.0 &&
       materialized.createRequests[2].transform.scale.y == 0.5 &&
-      materialized.createRequests[2].transform.scale.z == 1.5;
+      materialized.createRequests[2].transform.scale.z == 1.5 &&
+      materialized.createRequests[3].kind ==
+          cr::CreativeObjectKind::EnemySpawn &&
+      materialized.createRequests[3].hasTransformOverride &&
+      materialized.createRequests[3].transform.position.x == 16.0 &&
+      materialized.createRequests[3].hasNpcSpawnSettingsOverride &&
+      materialized.createRequests[3].npcSpawn == npc.npcSpawn;
 
   return expect(recipe.receipt.accepted &&
                     recipe.receipt.status ==
@@ -635,7 +692,7 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
                 "object library recipe accepted") &&
          expect(recipe.plan.kind == cr::CreativeRecipeKind::ObjectLibrary &&
                     recipe.receipt.boundedPlacementCount == 1U &&
-                    recipe.receipt.pointPlacementCount == 2U,
+                    recipe.receipt.pointPlacementCount == 3U,
                 "object library recipe owns placement modes") &&
          expect(materialized.receipt.accepted && placementParity,
                 "object library materialization preserves exact placement") &&
@@ -647,7 +704,12 @@ bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
                         materialized.createRequests[1],
                         cr::CreativeRecipeKind::ObjectLibrary,
                         "estate_props", cr::CreativeRecipeObjectRole::Source,
-                        "anchor.player"),
+                        "anchor.player") &&
+                    cr::creativeRecipeRequestHasInstanceProvenance(
+                        materialized.createRequests[3],
+                        cr::CreativeRecipeKind::ObjectLibrary,
+                        "estate_props", cr::CreativeRecipeObjectRole::Source,
+                        "actor.warehouse_guard"),
                 "object library emits shared recipe provenance");
 }
 
@@ -678,6 +740,20 @@ bool invalidObjectLibraryPlacementsFailWithoutPartialPlan() {
   const cr::CreativeObjectLibraryRecipeResult point =
       cr::buildCreativeObjectLibraryRecipe(invalidPoint);
 
+  cr::CreativeObjectLibraryRecipeRequest invalidNpc;
+  invalidNpc.stableKey = "invalid_npc";
+  invalidNpc.name = "Invalid NPC";
+  cr::CreativeObjectLibraryPlacementSpec npc;
+  npc.kind = cr::CreativeObjectKind::NpcSpawn;
+  npc.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  npc.stableKey = "npc";
+  npc.name = "NPC";
+  npc.npcSpawn.initialAlertLevel =
+      std::numeric_limits<double>::quiet_NaN();
+  invalidNpc.placements.push_back(npc);
+  const cr::CreativeObjectLibraryRecipeResult npcResult =
+      cr::buildCreativeObjectLibraryRecipe(invalidNpc);
+
   return expect(!bounded.receipt.accepted && bounded.plan.objects.empty() &&
                     bounded.receipt.status ==
                         cr::CreativeObjectLibraryRecipeStatus::InvalidPlacement,
@@ -685,7 +761,12 @@ bool invalidObjectLibraryPlacementsFailWithoutPartialPlan() {
          expect(!point.receipt.accepted && point.plan.objects.empty() &&
                     point.receipt.status ==
                         cr::CreativeObjectLibraryRecipeStatus::InvalidPlacement,
-                "non-finite object library point rejects atomically");
+                "non-finite object library point rejects atomically") &&
+         expect(!npcResult.receipt.accepted &&
+                    npcResult.plan.objects.empty() &&
+                    npcResult.receipt.status ==
+                        cr::CreativeObjectLibraryRecipeStatus::InvalidPlacement,
+                "invalid NPC settings reject object library atomically");
 }
 
 }  // namespace

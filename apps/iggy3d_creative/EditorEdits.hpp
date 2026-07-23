@@ -208,4 +208,12 @@ setPlayerSpawnSettingsWithUndo(
     cr::CreativePlayerSpawnSettings settings,
     std::string_view source);
 
+[[nodiscard]] cr::CreativeDocumentMutationReceipt
+setNpcSpawnSettingsWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    cr::CreativeNpcSpawnSettings settings,
+    std::string_view source);
+
 }  // namespace iggy3d_creative_app

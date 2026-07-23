@@ -186,6 +186,11 @@ void includePlacementPoint(CreativeObjectWorldExtent& extent,
     create.playerSpawn = object.playerSpawn;
     create.hasPlayerSpawnSettingsOverride = true;
   }
+  if (object.kind == CreativeObjectKind::NpcSpawn ||
+      object.kind == CreativeObjectKind::EnemySpawn) {
+    create.npcSpawn = object.npcSpawn;
+    create.hasNpcSpawnSettingsOverride = true;
+  }
   return create;
 }
 

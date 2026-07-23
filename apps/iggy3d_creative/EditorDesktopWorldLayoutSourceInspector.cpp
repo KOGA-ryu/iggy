@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/play/NpcSpawn.hpp"
 #include "app/iggy3d/creative/play/PlayerSpawn.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
@@ -1498,9 +1499,67 @@ void drawObjectInspector(CreativeEditorWorldLayoutState& state,
     }
   }
 
+  const bool npcActor = draft.kind == cr::CreativeObjectKind::NpcSpawn ||
+                        draft.kind == cr::CreativeObjectKind::EnemySpawn;
+  const bool npcSettingsValid =
+      !npcActor || cr::isValidCreativeNpcSpawnSettings(draft.npcSpawn);
+  if (npcActor) {
+    ImGui::SeparatorText("NPC Spawn");
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        inputText("Behavior profile##layout_object_properties",
+                  draft.npcSpawn.behaviorProfileId));
+    constexpr std::array teams{
+        cr::CreativeNpcTeam::ActorDefault,
+        cr::CreativeNpcTeam::PlayerAllied,
+        cr::CreativeNpcTeam::Hostile,
+    };
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Team##layout_object_properties", draft.npcSpawn.team, teams,
+                  [](cr::CreativeNpcTeam team) {
+                    return cr::toString(team);
+                  }));
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::InputScalar("Health override##layout_object_properties",
+                           ImGuiDataType_U16, &draft.npcSpawn.hitPoints));
+    ImGui::TextDisabled("0 uses the actor-kind default");
+    constexpr double kMinimumAlert = 0.0;
+    constexpr double kMaximumAlert = 1.0;
+    observeCreativeDesktopContinuousPropertyWidget(
+        activity,
+        ImGui::SliderScalar("Initial alert##layout_object_properties",
+                            ImGuiDataType_Double,
+                            &draft.npcSpawn.initialAlertLevel, &kMinimumAlert,
+                            &kMaximumAlert, "%.2f"));
+    constexpr std::array policies{
+        cr::CreativeNpcSpawnPolicy::AtPlayStart,
+        cr::CreativeNpcSpawnPolicy::Disabled,
+    };
+    observeCreativeDesktopDiscretePropertyWidget(
+        activity,
+        enumCombo("Spawn policy##layout_object_properties",
+                  draft.npcSpawn.spawnPolicy, policies,
+                  [](cr::CreativeNpcSpawnPolicy policy) {
+                    return cr::toString(policy);
+                  }));
+    ImGui::TextDisabled("Facing follows Yaw");
+    ImGui::TextDisabled("Patrol ownership is authored in the 3D hierarchy");
+    if (!npcSettingsValid) {
+      ImGui::TextColored(
+          ImVec4{0.94F, 0.45F, 0.32F, 1.0F},
+          "Profile identifier, health override, or initial alert is invalid");
+    } else if (!cr::isSupportedCreativeNpcBehaviorProfileId(
+                   draft.npcSpawn.behaviorProfileId)) {
+      ImGui::TextColored(ImVec4{1.0F, 0.72F, 0.22F, 1.0F},
+                         "Profile is not available in the current runtime");
+    }
+  }
+
   finishCreativeDesktopWorldLayoutPropertyEdit(
-      activity, current, draft, spawnSettingsValid, "Reset object", state,
-      objectIndex, object.stableKey, commands);
+      activity, current, draft, spawnSettingsValid && npcSettingsValid,
+      "Reset object", state, objectIndex, object.stableKey, commands);
 }
 
 }  // namespace

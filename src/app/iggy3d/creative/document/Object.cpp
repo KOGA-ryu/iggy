@@ -515,6 +515,82 @@ bool isValidCreativePlayerSpawnSettings(
              kCreativePlayerSpawnMaximumValidationRadiusMeters;
 }
 
+std::string_view toString(CreativeNpcTeam team) noexcept {
+  switch (team) {
+    case CreativeNpcTeam::ActorDefault:
+      return "ActorDefault";
+    case CreativeNpcTeam::PlayerAllied:
+      return "PlayerAllied";
+    case CreativeNpcTeam::Hostile:
+      return "Hostile";
+    case CreativeNpcTeam::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeNpcSpawnPolicy policy) noexcept {
+  switch (policy) {
+    case CreativeNpcSpawnPolicy::AtPlayStart:
+      return "AtPlayStart";
+    case CreativeNpcSpawnPolicy::Disabled:
+      return "Disabled";
+    case CreativeNpcSpawnPolicy::Count:
+      break;
+  }
+  return "Unknown";
+}
+
+bool parseCreativeNpcTeam(std::string_view value,
+                          CreativeNpcTeam& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(CreativeNpcTeam::Count); ++index) {
+    const auto candidate = static_cast<CreativeNpcTeam>(index);
+    if (toString(candidate) == value) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool parseCreativeNpcSpawnPolicy(
+    std::string_view value,
+    CreativeNpcSpawnPolicy& output) noexcept {
+  for (std::uint8_t index = 0U;
+       index < static_cast<std::uint8_t>(CreativeNpcSpawnPolicy::Count);
+       ++index) {
+    const auto candidate = static_cast<CreativeNpcSpawnPolicy>(index);
+    if (toString(candidate) == value) {
+      output = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool isValidCreativeNpcBehaviorProfileId(std::string_view value) noexcept {
+  if (value.size() > kCreativeNpcBehaviorProfileIdCapacity) {
+    return false;
+  }
+  return std::all_of(value.begin(), value.end(), [](char valueByte) {
+    const unsigned char byte = static_cast<unsigned char>(valueByte);
+    return (byte >= 'a' && byte <= 'z') ||
+           (byte >= '0' && byte <= '9') || byte == '_';
+  });
+}
+
+bool isValidCreativeNpcSpawnSettings(
+    const CreativeNpcSpawnSettings& settings) noexcept {
+  return isValidCreativeNpcBehaviorProfileId(settings.behaviorProfileId) &&
+         settings.team < CreativeNpcTeam::Count &&
+         settings.hitPoints <= kCreativeNpcMaximumHitPoints &&
+         std::isfinite(settings.initialAlertLevel) &&
+         settings.initialAlertLevel >= 0.0 &&
+         settings.initialAlertLevel <= 1.0 &&
+         settings.spawnPolicy < CreativeNpcSpawnPolicy::Count;
+}
+
 bool isValidCreativePathPoint(const CreativePathPoint& point) noexcept {
   return std::isfinite(point.position.x) &&
          std::isfinite(point.position.y) &&

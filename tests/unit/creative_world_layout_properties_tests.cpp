@@ -355,6 +355,50 @@ bool objectSettingsPreserveSemanticIdentity() {
                 "zero-volume object bounds reject atomically");
 }
 
+bool npcObjectSettingsRoundTripAtomically() {
+  app::CreativeEditorWorldLayoutState state = shellState();
+  cr::CreativeWorldLayoutObject actor;
+  actor.kind = cr::CreativeObjectKind::NpcSpawn;
+  actor.mode = cr::CreativeObjectLibraryPlacementMode::Point;
+  actor.stableKey = "guard_courtyard";
+  actor.name = "Courtyard Guard";
+  actor.pointCells = {4.0, 0.25, 2.0};
+  actor.tags = {"world_layout:object"};
+  state.source.objects.push_back(actor);
+
+  app::CreativeEditorWorldLayoutObjectSettings settings;
+  const bool read = app::readCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+  settings.npcSpawn.behaviorProfileId = "default";
+  settings.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  settings.npcSpawn.hitPoints = 85U;
+  settings.npcSpawn.initialAlertLevel = 0.4;
+  settings.npcSpawn.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  const std::uint64_t before = state.revision;
+  const auto updated = app::setCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+  const std::uint64_t afterUpdate = state.revision;
+
+  settings.npcSpawn.initialAlertLevel = 2.0;
+  const auto rejected = app::setCreativeEditorWorldLayoutObjectSettings(
+      state, 0U, settings);
+
+  return expect(read && updated.accepted && updated.changed &&
+                    afterUpdate == before + 1U &&
+                    state.source.objects[0].npcSpawn.behaviorProfileId ==
+                        "default" &&
+                    state.source.objects[0].npcSpawn.team ==
+                        cr::CreativeNpcTeam::Hostile &&
+                    state.source.objects[0].npcSpawn.hitPoints == 85U &&
+                    state.source.objects[0].npcSpawn.initialAlertLevel == 0.4 &&
+                    state.source.objects[0].npcSpawn.spawnPolicy ==
+                        cr::CreativeNpcSpawnPolicy::Disabled,
+                "world layout object settings preserve every NPC policy") &&
+         expect(!rejected.accepted && !rejected.changed &&
+                    state.revision == afterUpdate,
+                "invalid NPC settings reject without partial source edits");
+}
+
 bool bridgeRecipeSettingsRetainAttachmentAndGeneratedPlacementOwnership() {
   app::CreativeEditorWorldLayoutState state = shellState();
   cr::CreativeWorldLayoutTerrainPath river;
@@ -823,6 +867,7 @@ int main() {
                   terrainLandformSettingsRoundTripAtomically() &&
                   terrainPathSettingsUseTheSharedRecipe() &&
                   objectSettingsPreserveSemanticIdentity() &&
+                  npcObjectSettingsRoundTripAtomically() &&
                   bridgeRecipeSettingsRetainAttachmentAndGeneratedPlacementOwnership() &&
                   objectManipulationPreviewsThenCommitsOnce() &&
                   pointObjectManipulationCancelsAndRejectsStaleInput() &&

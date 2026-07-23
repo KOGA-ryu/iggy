@@ -376,6 +376,27 @@ bool dispatchCreativeDesktopObjectCommand(
                            : receipt.message;
       break;
     }
+    case CreativeDesktopCommandId::SetNpcSpawnSettings: {
+      const auto* payload =
+          payloadAs<CreativeDesktopNpcSpawnPayload>(command);
+      if (payload == nullptr) {
+        result.message = "npc spawn settings: payload mismatch";
+        break;
+      }
+      const creative::CreativeDocumentMutationReceipt receipt =
+          setNpcSpawnSettingsWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->settings, "desktop_set_npc_spawn_settings");
+      result.accepted =
+          creative::documentMutationSucceeded(receipt.status);
+      result.changed = receipt.changed;
+      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.message = result.accepted
+                           ? (result.changed ? "npc spawn settings updated"
+                                             : "npc spawn settings unchanged")
+                           : receipt.message;
+      break;
+    }
     case CreativeDesktopCommandId::ToggleMovingPlatformPreview:
     case CreativeDesktopCommandId::RestartMovingPlatformPreview:
     case CreativeDesktopCommandId::SeekMovingPlatformPreview: {

@@ -88,6 +88,16 @@ void appendPlayerSpawnSettings(
   builder.appendUnsigned(settings.fallbackPriority);
 }
 
+void appendNpcSpawnSettings(
+    RecipeFingerprintBuilder& builder,
+    const CreativeNpcSpawnSettings& settings) noexcept {
+  builder.appendString(settings.behaviorProfileId);
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.team));
+  builder.appendUnsigned(settings.hitPoints);
+  builder.appendDouble(settings.initialAlertLevel);
+  builder.appendUnsigned(static_cast<std::uint8_t>(settings.spawnPolicy));
+}
+
 void appendCreateRequest(RecipeFingerprintBuilder& builder,
                          const CreativeDocumentCreateRequest& request) noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(request.kind));
@@ -152,6 +162,10 @@ void appendCreateRequest(RecipeFingerprintBuilder& builder,
   builder.appendBool(request.hasPlayerSpawnSettingsOverride);
   if (request.hasPlayerSpawnSettingsOverride) {
     appendPlayerSpawnSettings(builder, request.playerSpawn);
+  }
+  builder.appendBool(request.hasNpcSpawnSettingsOverride);
+  if (request.hasNpcSpawnSettingsOverride) {
+    appendNpcSpawnSettings(builder, request.npcSpawn);
   }
 }
 
@@ -270,7 +284,8 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
                        const CreativeMovingPlatformSettings& movingPlatform,
                        const CreativeDoorSettings& door,
                        const CreativeWindowSettings& window,
-                       const CreativePlayerSpawnSettings& playerSpawn)
+                       const CreativePlayerSpawnSettings& playerSpawn,
+                       const CreativeNpcSpawnSettings& npcSpawn)
     noexcept {
   builder.appendUnsigned(static_cast<std::uint32_t>(kind));
   builder.appendString(name);
@@ -302,6 +317,7 @@ void appendObjectState(RecipeFingerprintBuilder& builder,
   appendDoorSettings(builder, door);
   appendWindowSettings(builder, window);
   appendPlayerSpawnSettings(builder, playerSpawn);
+  appendNpcSpawnSettings(builder, npcSpawn);
 }
 
 void setStatus(CreativeRecipeMaterializeReceipt& receipt,
@@ -574,6 +590,13 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
               object.createRequest.hasPlayerSpawnSettingsOverride
           ? object.createRequest.playerSpawn
           : CreativePlayerSpawnSettings{};
+  const bool npcActor =
+      object.createRequest.kind == CreativeObjectKind::NpcSpawn ||
+      object.createRequest.kind == CreativeObjectKind::EnemySpawn;
+  const CreativeNpcSpawnSettings npcSpawn =
+      npcActor && object.createRequest.hasNpcSpawnSettingsOverride
+          ? object.createRequest.npcSpawn
+          : CreativeNpcSpawnSettings{};
 
   RecipeFingerprintBuilder builder;
   appendObjectState(
@@ -594,7 +617,7 @@ std::uint64_t fingerprintCreativeRecipeObjectPlan(
       object.createRequest.tags, hasParent, parentUsesStableKey,
       parentStableKey, parentId,
       object.createRequest.attachmentSocket, object.createRequest.pathPoints,
-      movingPlatform, door, window, playerSpawn);
+      movingPlatform, door, window, playerSpawn, npcSpawn);
   return finishFingerprint(builder);
 }
 
@@ -611,7 +634,7 @@ std::uint64_t fingerprintCreativeRecipeObjectState(
                     hasParent ? *object.parentId : kInvalidObjectId,
                     object.attachmentSocket, object.pathPoints,
                     object.movingPlatform, object.door, object.window,
-                    object.playerSpawn);
+                    object.playerSpawn, object.npcSpawn);
   return finishFingerprint(builder);
 }
 

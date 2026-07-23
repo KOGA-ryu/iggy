@@ -856,6 +856,7 @@ struct CreativeEditorWorldLayoutObjectSettings {
   bool usesBridgeRecipe = false;
   cr::CreativeBridgeSourceRecipe bridge;
   cr::CreativePlayerSpawnSettings playerSpawn{};
+  cr::CreativeNpcSpawnSettings npcSpawn{};
 
   [[nodiscard]] friend bool operator==(
       const CreativeEditorWorldLayoutObjectSettings& lhs,
@@ -888,7 +889,8 @@ struct CreativeEditorWorldLayoutObjectSettings {
            lhs.scale.y == rhs.scale.y && lhs.scale.z == rhs.scale.z &&
            lhs.visible == rhs.visible &&
            lhs.usesBridgeRecipe == rhs.usesBridgeRecipe &&
-           lhs.bridge == rhs.bridge && lhs.playerSpawn == rhs.playerSpawn;
+           lhs.bridge == rhs.bridge && lhs.playerSpawn == rhs.playerSpawn &&
+           lhs.npcSpawn == rhs.npcSpawn;
   }
 };
 

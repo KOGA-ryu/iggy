@@ -62,6 +62,9 @@ CreativeMutationApplyReceipt applyMovingPlatformSettingsMutation(
 CreativeMutationApplyReceipt applyPlayerSpawnSettingsMutation(
     CreativeObject& object,
     const PlayerSpawnSettingsMutation& mutation);
+CreativeMutationApplyReceipt applyNpcSpawnSettingsMutation(
+    CreativeObject& object,
+    const NpcSpawnSettingsMutation& mutation);
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
 CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
 CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);
@@ -372,6 +375,9 @@ void translateStoredPath(CreativeObject& object, CreativeVec3 delta) noexcept {
     case CreativeMutationKind::SetPlayerSpawnSettings:
         return applyPlayerSpawnSettingsMutation(
             object, std::get<PlayerSpawnSettingsMutation>(value));
+    case CreativeMutationKind::SetNpcSpawnSettings:
+        return applyNpcSpawnSettingsMutation(
+            object, std::get<NpcSpawnSettingsMutation>(value));
 
     case CreativeMutationKind::SetReferenceSource:
         return applyReferenceSourceMutation(object, mutationKind, std::get<ReferenceSourceMutation>(value));
@@ -809,6 +815,28 @@ CreativeMutationApplyReceipt applyPlayerSpawnSettingsMutation(
     return makeAppliedReceipt(
         object, CreativeMutationKind::SetPlayerSpawnSettings,
         "player spawn settings changed");
+}
+
+CreativeMutationApplyReceipt applyNpcSpawnSettingsMutation(
+    CreativeObject& object,
+    const NpcSpawnSettingsMutation& mutation) {
+    const bool npcActor = object.kind == CreativeObjectKind::NpcSpawn ||
+                          object.kind == CreativeObjectKind::EnemySpawn;
+    if (!npcActor || !isValidCreativeNpcSpawnSettings(mutation.settings)) {
+        return rejectMutation(
+            object, CreativeMutationKind::SetNpcSpawnSettings,
+            CreativeMutationApplyStatus::Rejected,
+            "npc spawn settings are invalid");
+    }
+    if (object.npcSpawn == mutation.settings) {
+        return makeNoChangeReceipt(
+            object, CreativeMutationKind::SetNpcSpawnSettings,
+            "npc spawn settings already match requested value");
+    }
+    object.npcSpawn = mutation.settings;
+    return makeAppliedReceipt(
+        object, CreativeMutationKind::SetNpcSpawnSettings,
+        "npc spawn settings changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

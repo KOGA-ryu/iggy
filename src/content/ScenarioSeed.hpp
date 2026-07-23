@@ -148,6 +148,7 @@ struct ScenarioAiActorSeed {
   std::string behaviorProfileId = "default";
   bool hasFacing = false;
   float facingDegrees = 0.0F;
+  float initialAlertLevel = 0.0F;
   std::vector<Vec3> patrolWaypoints{};
   ScenarioPatrolMode patrolMode = ScenarioPatrolMode::Loop;
 };

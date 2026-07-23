@@ -142,6 +142,14 @@ namespace {
        !(settings.playerSpawn == cr::CreativePlayerSpawnSettings{}))) {
     return false;
   }
+  const bool npcActor = settings.kind == cr::CreativeObjectKind::NpcSpawn ||
+                        settings.kind == cr::CreativeObjectKind::EnemySpawn;
+  if ((npcActor &&
+       !cr::isValidCreativeNpcSpawnSettings(settings.npcSpawn)) ||
+      (!npcActor &&
+       !(settings.npcSpawn == cr::CreativeNpcSpawnSettings{}))) {
+    return false;
+  }
   if (settings.usesBridgeRecipe) {
     return settings.kind == cr::CreativeObjectKind::Bridge &&
            settings.mode == cr::CreativeObjectLibraryPlacementMode::Bounds &&
@@ -173,6 +181,7 @@ namespace {
   placement.scale = settings.scale;
   placement.visible = settings.visible;
   placement.playerSpawn = settings.playerSpawn;
+  placement.npcSpawn = settings.npcSpawn;
   placement.tags = current.tags;
   cr::CreativeObjectLibraryRecipeRequest request;
   request.placements.push_back(std::move(placement));
@@ -654,6 +663,7 @@ bool readCreativeEditorWorldLayoutObjectSettings(
   output.usesBridgeRecipe = object.usesBridgeRecipe;
   output.bridge = object.bridge;
   output.playerSpawn = object.playerSpawn;
+  output.npcSpawn = object.npcSpawn;
   return true;
 }
 
@@ -687,6 +697,7 @@ CreativeEditorWorldLayoutEditReceipt setCreativeEditorWorldLayoutObjectSettings(
   object.usesBridgeRecipe = settings.usesBridgeRecipe;
   object.bridge = std::move(settings.bridge);
   object.playerSpawn = std::move(settings.playerSpawn);
+  object.npcSpawn = std::move(settings.npcSpawn);
   state.selection = {CreativeEditorWorldLayoutSelectionKind::Object,
                      objectIndex};
   detail::noteWorldLayoutSourceChange(state, "object settings updated");

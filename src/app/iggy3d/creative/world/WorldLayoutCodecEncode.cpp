@@ -409,6 +409,11 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
         object.kind == CreativeObjectKind::SpawnPoint
             ? isValidCreativePlayerSpawnSettings(object.playerSpawn)
             : object.playerSpawn == CreativePlayerSpawnSettings{};
+    const bool npcActor = object.kind == CreativeObjectKind::NpcSpawn ||
+                          object.kind == CreativeObjectKind::EnemySpawn;
+    const bool validNpcSpawn =
+        npcActor ? isValidCreativeNpcSpawnSettings(object.npcSpawn)
+                 : object.npcSpawn == CreativeNpcSpawnSettings{};
     if (object.tags.size() >
         kCreativeWorldLayoutCodecMaxRecords - totalTagCount) {
       failure = {CreativeWorldLayoutCodecStatus::CapacityExceeded,
@@ -423,7 +428,7 @@ bool validateForEncoding(const CreativeWorldLayout& layout,
         enumValue(object.mode) >=
             enumValue(CreativeObjectLibraryPlacementMode::Count) ||
         !validScale || !validAssetBounds || !validBoundsModePose ||
-        !validBridgeMode || !validPlayerSpawn ||
+        !validBridgeMode || !validPlayerSpawn || !validNpcSpawn ||
         !std::all_of(object.tags.begin(), object.tags.end(), validString)) {
       failure = {finite ? CreativeWorldLayoutCodecStatus::InvalidRecord
                         : CreativeWorldLayoutCodecStatus::NonFiniteValue,
@@ -686,7 +691,13 @@ CreativeWorldLayoutEncodeResult encodeCreativeWorldLayout(
            << ' ' << hexString(object.playerSpawn.playerProfileId) << ' '
            << hexString(object.playerSpawn.spawnGroup) << ' '
            << object.playerSpawn.validationRadiusMeters << ' '
-           << object.playerSpawn.fallbackPriority << ' ' << object.tags.size();
+           << object.playerSpawn.fallbackPriority << ' '
+           << hexString(object.npcSpawn.behaviorProfileId) << ' '
+           << static_cast<unsigned>(enumValue(object.npcSpawn.team)) << ' '
+           << object.npcSpawn.hitPoints << ' '
+           << object.npcSpawn.initialAlertLevel << ' '
+           << static_cast<unsigned>(enumValue(object.npcSpawn.spawnPolicy))
+           << ' ' << object.tags.size();
     for (const std::string& tag : object.tags) {
       output << ' ' << hexString(tag);
     }

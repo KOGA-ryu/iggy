@@ -58,6 +58,7 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   SetGroupPivot,
   SetMovingPlatformSettings,
   SetPlayerSpawnSettings,
+  SetNpcSpawnSettings,
   SelectMovingPlatformWaypoint,
   SetMovingPlatformWaypointDwell,
   ToggleMovingPlatformPreview,

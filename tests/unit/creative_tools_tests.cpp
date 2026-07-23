@@ -2238,6 +2238,48 @@ bool selectionPlacementPivotModesSharePreviewAndCommitGeometry() {
          ok;
 }
 
+bool clipboardPreservesNpcSpawnSettings() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("NPC Clipboard");
+  static_cast<void>(document.assignId(27U));
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::NpcSpawn;
+  create.name = "Sentry";
+  create.transform.position = {2.0, 0.0, 3.0};
+  create.hasTransformOverride = true;
+  create.hasNpcSpawnSettingsOverride = true;
+  create.npcSpawn.behaviorProfileId = "guard_sentry";
+  create.npcSpawn.team = cr::CreativeNpcTeam::Hostile;
+  create.npcSpawn.hitPoints = 175U;
+  create.npcSpawn.initialAlertLevel = 0.35;
+  create.npcSpawn.spawnPolicy = cr::CreativeNpcSpawnPolicy::Disabled;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(create);
+
+  cr::CreativeClipboard clipboard;
+  const std::array ids{created.objectId};
+  const cr::CreativeClipboardCopyReceipt copied =
+      cr::copyDocumentObjectsToClipboard(document, ids, clipboard);
+  cr::CreativeClipboardPasteRequest paste;
+  paste.offset = {4.0, 0.0, -2.0};
+  const cr::CreativeClipboardPasteReceipt pasted =
+      cr::pasteCreativeClipboardAtomically(document, clipboard, paste);
+  const cr::CreativeObject* duplicate =
+      pasted.pastedObjectIds.size() == 1U
+          ? document.findObject(pasted.pastedObjectIds.front())
+          : nullptr;
+  return expect(created.accepted && copied.accepted && pasted.accepted &&
+                    pasted.changed && duplicate != nullptr,
+                "NPC spawn duplicates through the clipboard") &&
+         expect(duplicate != nullptr &&
+                    duplicate->npcSpawn == create.npcSpawn,
+                "clipboard preserves every NPC spawn setting") &&
+         expect(duplicate != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        duplicate->transform.position, {6.0, 0.0, 1.0}),
+                "clipboard still applies the requested placement offset");
+}
+
 bool selectionPlacementLocalSpaceUsesFrozenBasis() {
   const auto near = [](double actual, double expected) {
     return std::fabs(actual - expected) <= 1.0e-9;
@@ -2504,6 +2546,7 @@ int main() {
                   selectionPlacementPlanOwnsPreviewAndCommitGeometry() &&
                   selectionPlacementScalePlanMatchesAtomicCommit() &&
                   selectionPlacementPivotModesSharePreviewAndCommitGeometry() &&
+                  clipboardPreservesNpcSpawnSettings() &&
                   selectionPlacementLocalSpaceUsesFrozenBasis() &&
                   selectionPlacementCapabilitiesAreExplicitAndFailClosed() &&
                   selectionPlacementPreservesExternalAttachments() &&

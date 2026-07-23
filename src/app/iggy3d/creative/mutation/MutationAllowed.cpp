@@ -278,6 +278,10 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
     if (objectKind == CreativeObjectKind::SpawnPoint) {
         mutations.push_back(CreativeMutationKind::SetPlayerSpawnSettings);
     }
+    if (objectKind == CreativeObjectKind::NpcSpawn ||
+        objectKind == CreativeObjectKind::EnemySpawn) {
+        mutations.push_back(CreativeMutationKind::SetNpcSpawnSettings);
+    }
     if (supportsImportedAssetReplacement(objectKind)) {
         mutations.push_back(CreativeMutationKind::SetAsset);
     }

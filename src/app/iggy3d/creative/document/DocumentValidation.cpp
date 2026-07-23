@@ -226,7 +226,13 @@ bool isValidRestoreObject(const CreativeObject& object) noexcept {
          (object.kind != CreativeObjectKind::SpawnPoint ||
           isValidCreativePlayerSpawnSettings(object.playerSpawn)) &&
          (object.kind == CreativeObjectKind::SpawnPoint ||
-          object.playerSpawn == CreativePlayerSpawnSettings{});
+          object.playerSpawn == CreativePlayerSpawnSettings{}) &&
+         ((object.kind != CreativeObjectKind::NpcSpawn &&
+           object.kind != CreativeObjectKind::EnemySpawn) ||
+          isValidCreativeNpcSpawnSettings(object.npcSpawn)) &&
+         (object.kind == CreativeObjectKind::NpcSpawn ||
+          object.kind == CreativeObjectKind::EnemySpawn ||
+          object.npcSpawn == CreativeNpcSpawnSettings{});
 }
 
 }  // namespace iggy3d::creative::document_internal
