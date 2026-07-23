@@ -1,5 +1,5 @@
 #include "EditorLogicLinks.hpp"
-#include "EditorLogicLinkOverlay.hpp"
+#include "app/iggy3d/creative/overlay/LogicLinkOverlay.hpp"
 #include "EditorDesktopModel.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"

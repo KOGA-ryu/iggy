@@ -1,5 +1,9 @@
 #include "EditorDesktopPanels.hpp"
 
+#include "EditorPlaytestProcess.hpp"
+
+#include <SDL3/SDL.h>
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -12,8 +16,8 @@
 #include "EditorInteraction.hpp"
 #include "EditorMapValidationPanel.hpp"
 #include "EditorPlacementFeedback.hpp"
-#include "EditorPlayMode.hpp"
 #include "EditorToolGlyphs.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
@@ -337,12 +341,79 @@ void buildCreativeEditorDesktopMenuBar(
   }
 }
 
+// Read-only projection of the out-of-process playtest (the IGGY3DP1 feed).
+// Backfills the in-process runtime monitor the split removed.
+void appendPlayMonitorTab(const PlaytestMonitorState* monitor,
+                          CreativeDesktopCommandFrame& commands) {
+  if (monitor == nullptr || !monitor->everRan) {
+    ImGui::TextDisabled("no playtest this session -- press Play");
+    return;
+  }
+  if (monitor->childRunning) {
+    if (ImGui::SmallButton("Pause##playtest")) {
+      commands.push(CreativeDesktopCommandId::PlaytestPause);
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Resume##playtest")) {
+      commands.push(CreativeDesktopCommandId::PlaytestResume);
+    }
+    ImGui::SameLine();
+    if (monitor->stalled) {
+      ImGui::TextColored(
+          ImVec4{1.0F, 0.30F, 0.25F, 1.0F}, "STALLED (%.1fs) -- Play to replace",
+          static_cast<float>(monitor->stallAgeMs) / 1000.0F);
+    } else {
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
+                         std::string(playtestRunningStatusMessage()).c_str());
+    }
+    if (!monitor->lastHeartbeatState.empty()) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("| sim %s", monitor->lastHeartbeatState.c_str());
+    }
+    if (monitor->lastHeartbeatAtMs != 0U) {
+      const float ageSeconds =
+          static_cast<float>(SDL_GetTicks() - monitor->lastHeartbeatAtMs) /
+          1000.0F;
+      ImGui::SameLine();
+      ImGui::TextDisabled("| heartbeat tick %llu (%.1fs ago)",
+                          static_cast<unsigned long long>(
+                              monitor->lastHeartbeatTick),
+                          ageSeconds);
+    }
+  } else {
+    ImGui::TextUnformatted(monitor->lastExitMessage.empty()
+                               ? "playtest not running"
+                               : monitor->lastExitMessage.c_str());
+  }
+  if (monitor->lastAckSeq != 0U) {
+    ImGui::TextDisabled(
+        "last ack: seq %llu %s %s%s%s",
+        static_cast<unsigned long long>(monitor->lastAckSeq),
+        monitor->lastAckVerb.c_str(), monitor->lastAckStatus.c_str(),
+        monitor->lastAckReason.empty() ? "" : " ",
+        monitor->lastAckReason.c_str());
+  }
+  ImGui::TextDisabled(
+      "events %llu  unknown %llu  malformed %llu  foreign %llu",
+      static_cast<unsigned long long>(monitor->totalEventCount),
+      static_cast<unsigned long long>(monitor->unknownKindCount),
+      static_cast<unsigned long long>(monitor->malformedLineCount),
+      static_cast<unsigned long long>(monitor->nonProtocolLineCount));
+  ImGui::Separator();
+  for (auto it = monitor->events.rbegin(); it != monitor->events.rend();
+       ++it) {
+    ImGui::TextUnformatted(
+        formatPlaytestMonitorRow(*it, &monitor->entityNames).c_str());
+  }
+}
+
 void buildCreativeEditorDesktopPanels(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
-    const CreativeEditorPlayMode* playMode,
+    const CreativePlaySession* playMode,
+    const PlaytestMonitorState* playtestMonitor,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
   // Logic topology is document-revision owned, so idle UI frames reuse one
@@ -359,7 +430,7 @@ void buildCreativeEditorDesktopPanels(
   const cr::CreativeLogicDiagnosticReport& logicDiagnostics =
       desktopUi.logicDiagnostics;
   const bool playModeActive =
-      playMode != nullptr && creativeEditorPlayModeActive(*playMode);
+      playMode != nullptr && creativePlaySessionActive(*playMode);
 
   const ImGuiWindowFlags toolbarFlags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
@@ -442,7 +513,7 @@ void buildCreativeEditorDesktopPanels(
         if (ImGui::BeginTabBar("##creative_desktop_inspector_tabs")) {
           if (ImGui::BeginTabItem("Selection")) {
             buildCreativeEditorDesktopInspectorPanel(
-                desktopUi, editor, appState, playMode, commands);
+                desktopUi, editor, appState, commands);
             ImGui::EndTabItem();
           }
           const ImGuiTabItemFlags terrainFlags =
@@ -482,6 +553,10 @@ void buildCreativeEditorDesktopPanels(
           if (ImGui::BeginTabItem("Pass Status")) {
             buildCreativeEditorMapValidationPassStatus(
                 desktopUi.mapValidation, document, assetCatalog);
+            ImGui::EndTabItem();
+          }
+          if (ImGui::BeginTabItem("Play Monitor")) {
+            appendPlayMonitorTab(playtestMonitor, commands);
             ImGui::EndTabItem();
           }
           ImGui::EndTabBar();
@@ -546,6 +621,13 @@ void buildCreativeEditorDesktopStatusBar(
     ImGui::TextDisabled("|");
     ImGui::SameLine();
     ImGui::Text("device %s", controlDeviceName(editor.activeControlDevice));
+    if (desktopUi.playtestRunning) {
+      ImGui::SameLine();
+      ImGui::TextDisabled("|");
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "%s",
+                         std::string(playtestRunningStatusMessage()).c_str());
+    }
     if (!desktopUi.statusMessage.empty()) {
       ImGui::SameLine();
       ImGui::TextDisabled("|");

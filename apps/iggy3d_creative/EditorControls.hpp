@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorPlaytestLaunch.hpp"
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/ui/UiWidgets.hpp"
@@ -89,14 +90,20 @@ parseCreativeEditorControlProfile(
 serializeCreativeEditorControlProfile(
     const iggy3d::creative::CreativeControlProfile& profile,
     std::string& text);
+// The optional trailing [playtest] section rides the same file: load fills
+// *playtestPreferences when supplied; save re-emits the section when the
+// preferences are present (so editor control saves preserve Ace's hand
+// edit). Absent section + null params -> byte-identical legacy behavior.
 [[nodiscard]] CreativeEditorControlPersistenceReceipt
 loadCreativeEditorControlProfile(
     iggy3d::creative::CreativeControlProfile& profile,
-    const std::filesystem::path& path);
+    const std::filesystem::path& path,
+    PlaytestWindowPreferences* playtestPreferences = nullptr);
 [[nodiscard]] CreativeEditorControlPersistenceReceipt
 saveCreativeEditorControlProfile(
     const iggy3d::creative::CreativeControlProfile& profile,
-    const std::filesystem::path& path);
+    const std::filesystem::path& path,
+    const PlaytestWindowPreferences* playtestPreferences = nullptr);
 
 [[nodiscard]] CreativeEditorControlsFrameResult
 processCreativeEditorControlsFrame(

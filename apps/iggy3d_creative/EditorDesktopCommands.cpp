@@ -8,7 +8,9 @@
 #include <utility>
 #include <variant>
 
-#include "EditorPlayMode.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
+#include "EditorPlaytestProcess.hpp"
+#include "app/iggy3d/creative/play/PlaytestEventProtocol.hpp"
 
 namespace iggy3d_creative_app {
 
@@ -73,7 +75,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.message.clear();
 
   if (context.playMode != nullptr &&
-      creativeEditorPlayModeActive(*context.playMode) &&
+      creativePlaySessionActive(*context.playMode) &&
       !commandAllowedDuringPlay(command.id)) {
     result.message = "stop play before editing";
     return;
@@ -96,14 +98,34 @@ void dispatchOne(const CreativeDesktopCommand& command,
   }
 
   switch (command.id) {
+    case CreativeDesktopCommandId::PlaytestPause:
+    case CreativeDesktopCommandId::PlaytestResume: {
+      // Pure decision + owner executes: the hang guard inside the owner is
+      // the gatekeeper (no child / stalled -> rejected, nothing queued).
+      if (context.playtestControl == nullptr) {
+        result.message = "playtest command rejected: no child";
+        break;
+      }
+      const std::string_view verb =
+          command.id == CreativeDesktopCommandId::PlaytestPause
+              ? kPlaytestCommandVerbPause
+              : kPlaytestCommandVerbResume;
+      std::string sendReason;
+      const bool sent = context.playtestControl->sendPlaytestCommand(
+          verb, {}, sendReason);
+      result.accepted = sent;
+      result.message = sent ? std::string(verb) + " sent"
+                            : "playtest command rejected: " + sendReason;
+      break;
+    }
     case CreativeDesktopCommandId::Play:
       if (context.playMode == nullptr) {
         result.message = "play owner is unavailable";
         break;
       }
-      if (creativeEditorPlayModeActive(*context.playMode)) {
+      if (creativePlaySessionActive(*context.playMode)) {
         const creative::CreativeRuntimeSandboxStopReceipt stopped =
-            stopCreativeEditorPlayMode(*context.playMode);
+            stopCreativePlaySession(*context.playMode);
         result.accepted = stopped.stopped;
         result.changed = stopped.stopped;
         result.message = stopped.stopped ? "play stopped"
@@ -115,11 +137,11 @@ void dispatchOne(const CreativeDesktopCommand& command,
         break;
       }
       {
-        CreativeEditorPlayStartRequest request;
+        CreativePlayStartRequest request;
         request.document = &appState.facade.document();
         request.staticMeshAssetCatalog = context.staticMeshAssetCatalog;
-        const CreativeEditorPlayStartReceipt started =
-            startCreativeEditorPlayMode(*context.playMode, std::move(request));
+        const CreativePlayStartReceipt started =
+            startCreativePlaySession(*context.playMode, std::move(request));
         result.accepted = started.accepted;
         result.changed = started.accepted;
         result.message = started.accepted

@@ -280,92 +280,11 @@ void appendNewLogicLinkControl(const cr::CreativeDocument& document,
   }
 }
 
-void appendRuntimeLogicMonitor(const CreativeEditorPlayMode* playMode,
-                               cr::CreativeObjectId sourceObjectId,
-                               const cr::CreativeDocument& document,
-                               CreativeDesktopCommandFrame& commands) {
-  if (playMode == nullptr || !playMode->sandbox.has_value()) {
-    return;
-  }
-  const cr::CreativeRuntimeSandbox& sandbox = *playMode->sandbox;
-  const cr::CreativeRuntimeInteractableState* source =
-      cr::findCreativeRuntimeInteractableByObjectId(sandbox, sourceObjectId);
-  if (source == nullptr ||
-      source->definition.logicSourceMode ==
-          cr::CreativeRuntimeLogicSourceMode::None) {
-    return;
-  }
-
-  ImGui::SeparatorText("Play monitor");
-  ImGui::Text("Mode: %s",
-              std::string(cr::toString(source->definition.logicSourceMode))
-                  .c_str());
-  ImGui::Text("Occupants: %llu",
-              static_cast<unsigned long long>(source->occupantCount));
-  ImGui::TextColored(source->occupantCount > 0U
-                         ? ImVec4{0.20F, 1.0F, 0.35F, 1.0F}
-                         : ImVec4{0.65F, 0.72F, 0.76F, 1.0F},
-                     "%s", source->occupantCount > 0U ? "ACTIVE" : "ARMED");
-  ImGui::Text("Last transition: %s  tick %llu",
-              std::string(cr::toString(source->lastOccupancyTransition)).c_str(),
-              static_cast<unsigned long long>(
-                  source->lastOccupancyTransitionTick));
-  ImGui::Text("Geometry revision: %llu",
-              static_cast<unsigned long long>(sandbox.geometryRevision));
-  ImGui::TextDisabled(
-      "Last automatic pass: %s",
-      std::string(cr::toString(playMode->lastAutomaticLogic.status)).c_str());
-
-  for (const cr::CreativeRuntimeLogicLink& runtimeLink : sandbox.logicLinks) {
-    if (runtimeLink.sourceObjectId != sourceObjectId) {
-      continue;
-    }
-    const cr::CreativeRuntimeInteractableState* target =
-        cr::findCreativeRuntimeInteractableByObjectId(
-            sandbox, runtimeLink.targetObjectId);
-    const cr::CreativeObject* authoredTarget =
-        document.findObject(runtimeLink.targetObjectId);
-    const std::string targetName =
-        authoredTarget != nullptr ? authoredTarget->name : "<missing>";
-    const char* targetState = "INVALID";
-    if (target != nullptr) {
-      switch (target->definition.kind) {
-        case cr::CreativeRuntimeInteractableKind::Door:
-          targetState = target->targetActive ? "OPEN" : "CLOSED";
-          break;
-        case cr::CreativeRuntimeInteractableKind::Platform:
-          targetState = target->targetActive ? "ENABLED" : "DISABLED";
-          break;
-        case cr::CreativeRuntimeInteractableKind::MovingPlatform:
-          targetState = target->targetActive
-                            ? (target->movingPlatform.blocked ? "BLOCKED"
-                                                              : "MOVING")
-                            : "PAUSED";
-          break;
-        case cr::CreativeRuntimeInteractableKind::Control:
-        case cr::CreativeRuntimeInteractableKind::Pickup:
-          break;
-      }
-    }
-    const std::string label = targetName + "  [" +
-                              std::string(cr::toString(runtimeLink.action)) +
-                              "]  " + targetState;
-    ImGui::PushID(static_cast<int>(runtimeLink.targetObjectId));
-    if (ImGui::Selectable(label.c_str())) {
-      queueCreativeDesktopObjectNavigation(commands, runtimeLink.targetObjectId,
-                                           /*playModeActive=*/true);
-    }
-    ImGui::PopID();
-  }
-}
-
-// The moved logic authoring block, unchanged in behavior. It now sits beneath
 // the general single-object properties.
 void appendLogicSection(CreativeEditorDesktopUiState& desktopUi,
                         const CreativeEditorState& editor,
                         const cr::CreativeDocument& document,
                         const cr::CreativeObject& inspected,
-                        const CreativeEditorPlayMode* playMode,
                         bool playModeActive,
                         CreativeDesktopCommandFrame& commands) {
   if (cr::creativeObjectCanSourceLogicLink(inspected.kind)) {
@@ -415,7 +334,6 @@ void appendLogicSection(CreativeEditorDesktopUiState& desktopUi,
   ImGui::TextDisabled(
       "Document links: %llu",
       static_cast<unsigned long long>(document.logicLinks().size()));
-  appendRuntimeLogicMonitor(playMode, inspected.id, document, commands);
 }
 
 // ---- general object properties -------------------------------------------
@@ -993,11 +911,10 @@ void buildCreativeEditorDesktopInspectorPanel(
     CreativeEditorDesktopUiState& desktopUi,
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
-    const CreativeEditorPlayMode* playMode,
     CreativeDesktopCommandFrame& commands) {
   const cr::CreativeDocument& document = appState.facade.document();
-  const bool playModeActive =
-      playMode != nullptr && creativeEditorPlayModeActive(*playMode);
+  // The playtest runs out of process (i3dp); no in-process play state.
+  constexpr bool playModeActive = false;
 
   // Valid ids are resolved from document truth every frame; a cached id is
   // never trusted after a revision.
@@ -1034,8 +951,7 @@ void buildCreativeEditorDesktopInspectorPanel(
                         editor.interaction.movingPlatformPathEdit,
                         playModeActive,
                         commands);
-  appendLogicSection(desktopUi, editor, document, *object, playMode,
-                     playModeActive, commands);
+  appendLogicSection(desktopUi, editor, document, *object, playModeActive, commands);
 }
 
 }  // namespace iggy3d_creative_app

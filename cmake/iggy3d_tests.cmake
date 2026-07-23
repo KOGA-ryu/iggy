@@ -23,6 +23,26 @@ iggy3d_add_unit_test(static_mesh_asset_tests
 set_tests_properties(static_mesh_asset_tests PROPERTIES
   LABELS "unit;content;asset;glb;render;creative;iggy3d")
 
+iggy3d_add_unit_test(calibration_bay_tests
+  tests/unit/calibration_bay_tests.cpp)
+set_tests_properties(calibration_bay_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
+iggy3d_add_unit_test(facade_slice_tests
+  tests/unit/facade_slice_tests.cpp)
+set_tests_properties(facade_slice_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
+iggy3d_add_unit_test(framing_bay_tests
+  tests/unit/framing_bay_tests.cpp)
+set_tests_properties(framing_bay_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
+iggy3d_add_unit_test(two_storey_estate_tests
+  tests/unit/two_storey_estate_tests.cpp)
+set_tests_properties(two_storey_estate_tests PROPERTIES
+  LABELS "unit;content;asset;glb;creative;fixture;iggy3d")
+
 iggy3d_add_unit_test(creative_asset_room_bake_tests
   tests/unit/creative_asset_room_bake_tests.cpp)
 set_tests_properties(creative_asset_room_bake_tests PROPERTIES
@@ -879,14 +899,14 @@ set_tests_properties(creative_world_layout_source_history_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;history;iggy3d")
 
-add_executable(creative_editor_play_mode_tests
-  tests/unit/creative_editor_play_mode_tests.cpp)
-target_link_libraries(creative_editor_play_mode_tests PRIVATE
+add_executable(creative_play_session_tests
+  tests/unit/creative_play_session_tests.cpp)
+target_link_libraries(creative_play_session_tests PRIVATE
   iggy3d_creative_app)
-iggy3d_apply_warnings(creative_editor_play_mode_tests)
-add_test(NAME creative_editor_play_mode_tests
-  COMMAND "$<TARGET_FILE:creative_editor_play_mode_tests>")
-set_tests_properties(creative_editor_play_mode_tests PROPERTIES
+iggy3d_apply_warnings(creative_play_session_tests)
+add_test(NAME creative_play_session_tests
+  COMMAND "$<TARGET_FILE:creative_play_session_tests>")
+set_tests_properties(creative_play_session_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;play;runtime;session;iggy3d")
 
@@ -1350,3 +1370,85 @@ set_tests_properties(creative_capture_stability_smoke PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   SKIP_RETURN_CODE 77
   LABELS "smoke;vulkan;render;creative;iggy3d")
+
+add_executable(creative_playtest_launch_tests
+  tests/unit/creative_playtest_launch_tests.cpp)
+target_link_libraries(creative_playtest_launch_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_playtest_launch_tests)
+add_test(NAME creative_playtest_launch_tests
+  COMMAND "$<TARGET_FILE:creative_playtest_launch_tests>")
+set_tests_properties(creative_playtest_launch_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;launch;iggy3d")
+
+# i3dp headless smokes (verification-hold pins): the playtest binary must
+# boot offscreen on the committed map fixture and exit 0 within the frame
+# limit, and must refuse a missing save id nonzero BEFORE any window work.
+add_test(NAME i3dp_headless_smoke
+  COMMAND "$<TARGET_FILE:i3dp>" --offscreen
+          --save-root "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds"
+          --load map_demo --frames 60)
+set_tests_properties(i3dp_headless_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;play;iggy3d")
+
+add_test(NAME i3dp_missing_save_refusal
+  COMMAND "$<TARGET_FILE:i3dp>" --offscreen
+          --save-root "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds"
+          --load missing_id)
+set_tests_properties(i3dp_missing_save_refusal PROPERTIES
+  WILL_FAIL TRUE
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;play;iggy3d")
+
+# Guards the missing-.spv trap: a build whose shader set is absent or a
+# capture readback regression fails this loudly instead of silently. Only
+# registered when the shader compiler is available to this configure.
+if(IGGY3D_SHADER_COMPILER_AVAILABLE)
+  add_test(NAME i3dc_capture_smoke
+    COMMAND "$<TARGET_FILE:i3dc>"
+            --capture "${CMAKE_CURRENT_BINARY_DIR}/capture_smoke.png"
+            --frames 4)
+  set_tests_properties(i3dc_capture_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    ENVIRONMENT "SDL_VIDEODRIVER=offscreen"
+    LABELS "smoke;app;creative;capture;iggy3d")
+endif()
+
+add_executable(playtest_lifecycle_tests
+  tests/unit/playtest_lifecycle_tests.cpp)
+target_link_libraries(playtest_lifecycle_tests PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_lifecycle_tests)
+add_test(NAME playtest_lifecycle_tests
+  COMMAND "$<TARGET_FILE:playtest_lifecycle_tests>")
+set_tests_properties(playtest_lifecycle_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;lifecycle;iggy3d")
+
+# Headless-REAL child lifecycle: drives actual offscreen i3dp children
+# through the production owner (spawn -> natural exit reap; kill-and-replace;
+# shutdown reap). Depends on the i3dp target at test time.
+add_executable(playtest_process_owner_tests
+  tests/unit/playtest_process_owner_tests.cpp)
+target_link_libraries(playtest_process_owner_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_process_owner_tests)
+add_test(NAME playtest_process_owner_tests
+  COMMAND "$<TARGET_FILE:playtest_process_owner_tests>"
+          "$<TARGET_FILE:i3dp>"
+          "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/worlds")
+set_tests_properties(playtest_process_owner_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "integration;app;creative;play;lifecycle;smoke;iggy3d")
+
+add_executable(playtest_event_protocol_tests
+  tests/unit/playtest_event_protocol_tests.cpp)
+target_link_libraries(playtest_event_protocol_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(playtest_event_protocol_tests)
+add_test(NAME playtest_event_protocol_tests
+  COMMAND "$<TARGET_FILE:playtest_event_protocol_tests>")
+set_tests_properties(playtest_event_protocol_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;play;events;iggy3d")

@@ -18,7 +18,6 @@ struct StaticMeshAssetCatalog;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorState;
-struct CreativeEditorPlayMode;
 
 // Fixed-layout semantic command IDs the desktop UI emits. Widgets never touch
 // documents/history/assets directly — they push one of these (plus a typed
@@ -39,6 +38,8 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   DuplicateSelection,
   DeleteSelection,
   Play,
+  PlaytestPause,
+  PlaytestResume,
   // Step 3 — Desktop Command Expansion.
   SelectObjects,
   FocusObject,
@@ -204,13 +205,20 @@ struct CreativeDesktopCommandResult {
   std::string message;
 };
 
+class PlaytestProcessControl;
+struct CreativePlaySession;
+
 struct CreativeDesktopCommandContext {
   iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;
   std::filesystem::path saveRoot;
   std::string* activeSaveId = nullptr;  // Save As rebinds the active id here.
-  CreativeEditorPlayMode* playMode = nullptr;
+  CreativePlaySession* playMode = nullptr;
   const iggy3d::StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
+  // Narrow seam to the app-shell playtest child owner; null in headless
+  // dispatch tests. The Play command binds to the in-editor play mode; the
+  // child owner serves the PlaytestPause/PlaytestResume channel commands.
+  PlaytestProcessControl* playtestControl = nullptr;
 };
 
 // Applies every command in the frame to the existing kernels (New/Open/Save/
