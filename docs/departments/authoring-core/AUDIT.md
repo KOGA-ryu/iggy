@@ -241,3 +241,21 @@ AUT-004 completed on 2026-07-23.
   persistence.
 - The generated-source gate passed 8/8. The expanded Authoring Core and direct
   operation-record gate passed 19/19; no window was launched.
+
+AUT-005 completed on 2026-07-23.
+
+- Commit `7594b078` adds an exact Facade save acknowledgement keyed by live
+  document id and revision. Durable success drains the live dirty domains
+  without changing revision; stale id/revision acknowledgements are atomic
+  rejections.
+- `CreativeEditorPersistenceState` is the shared document checkpoint for the
+  desktop status bar, desktop commands, and keyboard commands. New clears the
+  checkpoint; successful Open, Save, and Save As establish it.
+- New observes the Facade installation receipt before clearing history or
+  resetting editor state. Open installs the decoded document before publishing
+  its optional World Layout source. Failed Save and Open preserve document,
+  source, history, active checkpoint, and live dirty domains.
+- Save still clears undo/redo by existing product policy. AUT-005 does not
+  claim that separate Persistence repair or cross-save undo support.
+- `i3dc` and 16 focused Authoring Core/persistence targets built. The exact
+  focused CTest gate passed 16/16; no window was launched.

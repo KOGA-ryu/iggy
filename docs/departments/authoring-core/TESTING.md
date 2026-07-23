@@ -53,3 +53,19 @@ publication.
 The remaining AUT-002 inventory is 20 direct same-document staging
 assignments, five canonical `commitStagedMutation` call sites, and the Facade
 batch-create replacement path. AUT-002A and AUT-002B own those repairs.
+
+## AUT-005 Targeted Evidence
+
+The accepted lifecycle gate adds these persistence-facing targets to the
+ten-test Authoring Core gate:
+
+- `creative_document_persistence_state_tests`
+- `creative_document_save_section_tests`
+- `creative_world_layout_persistence_tests`
+- `creative_desktop_ui_command_tests`
+- `creative_creator_task_workflow_tests`
+- `creative_editor_world_layout_tests`
+
+The resulting 16/16 CTest gate proves exact live-save acknowledgement,
+desktop/keyboard checkpoint parity, New/Open replacement behavior, and failure
+atomicity. Save history clearing remains explicitly outside AUT-005.
