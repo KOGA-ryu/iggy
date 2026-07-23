@@ -471,6 +471,7 @@ struct CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload {
       CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin;
   CreativeEditorWorldLayoutPoint point;
   double toleranceCells = 0.25;
+  CreativeEditorWorldLayoutVerticalConnectorTarget target;
 };
 
 struct CreativeDesktopWorldLayoutBoxSettingsPayload {

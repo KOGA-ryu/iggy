@@ -489,7 +489,8 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
                       phase) {
                 return applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
                     target, phase, payload->point, payload->toleranceCells,
-                    appState.facade.document().gridSettings());
+                    appState.facade.document().gridSettings(),
+                    payload->target);
               },
               "desktop_world_layout_vertical_connector_drag",
               "connector drag preview ready in 3D",

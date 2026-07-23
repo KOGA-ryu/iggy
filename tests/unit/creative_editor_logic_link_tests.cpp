@@ -6,6 +6,7 @@
 #include "EditorPreviewFrameInternal.hpp"
 #include "EditorState.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
@@ -482,14 +483,29 @@ bool roofHandlesRenderIn3dAndRespectInteractionGates() {
       {0U, "roof_level", "Roof Level", 0.0, 4U, 1U, 1U, 1U,
        cr::CreativeStructuralRoofStyle::Gable,
        cr::CreativeStructuralRoofRidgeAxis::X, 35.0, 0.0});
+  editor.worldLayout.source.levels.push_back(
+      {0U, "upper_level", "Upper Level", 4.0, 4U, 1U, 1U, 1U,
+       cr::CreativeStructuralRoofStyle::Gable,
+       cr::CreativeStructuralRoofRidgeAxis::X, 35.0, 0.0});
   editor.worldLayout.source.rooms.push_back(
       {0U, 0U, "roof_room", "Roof Room", {{0, 0}, {8, 6}}, 0.25});
+  editor.worldLayout.source.rooms.push_back(
+      {0U, 1U, "upper_room", "Upper Room", {{0, 0}, {8, 6}}, 0.25});
+  editor.worldLayout.source.verticalConnectors.push_back(
+      {0U,
+       0U,
+       1U,
+       cr::CreativeWorldLayoutVerticalConnectorKind::Stair,
+       cr::CreativeWorldLayoutVerticalDirection::PositiveX,
+       "roof_stair",
+       "Roof Stair",
+       {{1, 2}, {5, 4}}});
   editor.worldLayout.revision = 4U;
   editor.worldLayout.generatedRevision = 4U;
   editor.worldLayout.tool = app::CreativeEditorWorldLayoutTool::Select;
-  editor.worldLayout.activeLevelIndex = 0U;
+  editor.worldLayout.activeLevelIndex = 1U;
   editor.worldLayout.selection = {
-      app::CreativeEditorWorldLayoutSelectionKind::Level, 0U};
+      app::CreativeEditorWorldLayoutSelectionKind::Level, 1U};
   editor.interaction.hotbar.entries[0].kind =
       cr::CreativeHeldItemKind::ObjectSelect;
 
@@ -508,6 +524,11 @@ bool roofHandlesRenderIn3dAndRespectInteractionGates() {
 
   app::CreativeEditorOverlayFrame visible;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, visible));
+  editor.worldLayout.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector, 0U};
+  app::CreativeEditorOverlayFrame connectorVisible;
+  static_cast<void>(
+      app::buildCreativeEditorWorldWireframes(request, connectorVisible));
   app::CreativeEditorOverlayFrame captured;
   request.captureMode = true;
   static_cast<void>(app::buildCreativeEditorWorldWireframes(request, captured));
@@ -518,10 +539,17 @@ bool roofHandlesRenderIn3dAndRespectInteractionGates() {
 
   return expect(visible.worldLayoutRoofHandleEdgeCount == 19U,
                 "3D roof overlay draws exact perimeter and five handles") &&
-         expect(captured.worldLayoutRoofHandleEdgeCount == 0U,
-                "capture mode hides roof manipulation affordances") &&
-         expect(stale.worldLayoutRoofHandleEdgeCount == 0U,
-                "stale source hides roof handles that cannot commit");
+         expect(connectorVisible.worldLayoutRoofHandleEdgeCount == 0U &&
+                    connectorVisible
+                            .worldLayoutVerticalConnectorHandleEdgeCount ==
+                        30U,
+                "3D connector overlay draws exact envelope and six handles") &&
+         expect(captured.worldLayoutRoofHandleEdgeCount == 0U &&
+                    captured.worldLayoutVerticalConnectorHandleEdgeCount == 0U,
+                "capture mode hides structure manipulation affordances") &&
+         expect(stale.worldLayoutRoofHandleEdgeCount == 0U &&
+                    stale.worldLayoutVerticalConnectorHandleEdgeCount == 0U,
+                "stale source hides structure handles that cannot commit");
 }
 
 }  // namespace

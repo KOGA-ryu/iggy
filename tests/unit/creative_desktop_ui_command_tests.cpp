@@ -3241,14 +3241,14 @@ bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
       app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
           app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
               Begin,
-          directionHandle, 0.2});
+          directionHandle, 0.2, {}});
   const auto directionUpdate = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
       context,
       app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
           app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
               Update,
-          {3.0, 0.0}, 0.2});
+          {3.0, 0.0}, 0.2, {}});
   const bool directionPreviewOnly =
       handleResolved && directionBegin.accepted && directionBegin.changed &&
       !directionBegin.worldLayoutChanged && directionUpdate.accepted &&
@@ -3264,7 +3264,7 @@ bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
       app::CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
           app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
               Commit,
-          {3.0, 0.0}, 0.2});
+          {3.0, 0.0}, 0.2, {}});
   const bool directionCommittedOnce =
       directionCommit.accepted && directionCommit.changed &&
       directionCommit.worldLayoutChanged && !directionCommit.sceneChanged &&

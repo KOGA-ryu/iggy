@@ -76,6 +76,8 @@ enum class CreativeEditorWorldLayoutElevationHandleKind : std::uint8_t {
   RoofRidge,
   OpeningBottom,
   OpeningTop,
+  ConnectorRunLow,
+  ConnectorRunHigh,
   Count,
 };
 

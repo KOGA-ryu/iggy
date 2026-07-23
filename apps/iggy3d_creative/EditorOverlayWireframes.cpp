@@ -25,6 +25,7 @@
 #include "EditorStructuralPlacement.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
@@ -65,6 +66,7 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.architectureScaleGuideActive = false;
   output.architectureScaleGuideLineCount = 0;
   output.worldLayoutRoofHandleEdgeCount = 0;
+  output.worldLayoutVerticalConnectorHandleEdgeCount = 0;
   output.architecturalDimensions = {};
   output.pointMarkerEdgeCount = 0;
   output.lineMarkerEdgeCount = 0;
@@ -747,6 +749,9 @@ void appendCreativeEditorWorldLayoutRoofHandles(
                     CreativeEditorWorldLayoutSelectionKind::Level
                 ? editor.worldLayout.selection.index
                 : cr::kInvalidCreativeWorldLayoutIndex;
+  if (levelIndex == cr::kInvalidCreativeWorldLayoutIndex) {
+    return;
+  }
   const cr::CreativeGridSettings grid =
       request.appState.facade.document().gridSettings();
   const CreativeEditorWorldLayoutRoofHandleFrame frame =
@@ -808,6 +813,107 @@ void appendCreativeEditorWorldLayoutRoofHandles(
                      0U, 0U, 0U, 0U, thickness});
   }
   output.worldLayoutRoofHandleEdgeCount = lines.size() - before;
+}
+
+void appendCreativeEditorWorldLayoutVerticalConnectorHandles(
+    const CreativeEditorOverlayFrameRequest& request,
+    CreativeEditorOverlayFrame& output) {
+  const CreativeEditorState& editor = request.editor;
+  const cr::CreativeHeldItemDefinition& held =
+      cr::describeCreativeHeldItem(
+          cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind);
+  if (request.captureMode ||
+      request.inputContext != cr::CreativeInputContext::EditorViewport ||
+      !held.hierarchySelectionTool ||
+      editor.worldLayout.tool != CreativeEditorWorldLayoutTool::Select) {
+    return;
+  }
+  const std::size_t connectorIndex =
+      editor.worldLayout.verticalConnectorManipulation.active
+          ? editor.worldLayout.verticalConnectorManipulation.target
+                .connectorIndex
+          : editor.worldLayout.selection.kind ==
+                    CreativeEditorWorldLayoutSelectionKind::VerticalConnector
+                ? editor.worldLayout.selection.index
+                : cr::kInvalidCreativeWorldLayoutIndex;
+  const cr::CreativeGridSettings grid =
+      request.appState.facade.document().gridSettings();
+  const CreativeEditorWorldLayoutVerticalConnectorHandleFrame frame =
+      buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          editor.worldLayout, grid, connectorIndex);
+  if (!frame.accepted ||
+      connectorIndex >=
+          editor.worldLayout.source.verticalConnectors.size()) {
+    return;
+  }
+
+  const bool active =
+      editor.worldLayout.verticalConnectorManipulation.active;
+  const RenderLineColor tint =
+      active &&
+              !editor.worldLayout.verticalConnectorManipulation.previewValid
+          ? RenderLineColor{1.0F, 0.18F, 0.16F, 1.0F}
+          : active ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
+                   : RenderLineColor{1.0F, 0.82F, 0.18F, 1.0F};
+  const float thickness = std::max(0.045F, request.gizmoThickness);
+  std::vector<RenderCreativeWireframeDebugLine>& lines =
+      output.combinedWireLines;
+  const std::size_t before = lines.size();
+
+  cr::CreativeWorldLayoutRect footprint =
+      editor.worldLayout.source.verticalConnectors[connectorIndex].footprint;
+  if (active &&
+      editor.worldLayout.verticalConnectorManipulation.previewValid) {
+    footprint =
+        editor.worldLayout.verticalConnectorManipulation.previewFootprint;
+  }
+  const cr::CreativeCoreVec3Conversion minimum =
+      cr::creativeVec3ToCoreChecked(
+          {grid.origin.x + footprint.minimum.x * grid.cellSizeMeters,
+           frame.connector.authoredBounds.min.y,
+           grid.origin.z + footprint.minimum.z * grid.cellSizeMeters});
+  const cr::CreativeCoreVec3Conversion maximum =
+      cr::creativeVec3ToCoreChecked(
+          {grid.origin.x + footprint.maximum.x * grid.cellSizeMeters,
+           frame.connector.authoredBounds.max.y,
+           grid.origin.z + footprint.maximum.z * grid.cellSizeMeters});
+  if (minimum.converted && maximum.converted) {
+    appendStandaloneWireframeBoxEdges(lines, minimum.value, maximum.value,
+                                      tint, thickness * 0.72F);
+  }
+
+  const float shaftHalfLength = static_cast<float>(std::clamp(
+      grid.cellSizeMeters * 0.24, 0.12, 0.40));
+  const float crossHalfLength = shaftHalfLength * 0.52F;
+  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
+    const CreativeEditorWorldLayoutVerticalConnectorHandle& handle =
+        frame.handles[index];
+    if (!handle.valid) {
+      continue;
+    }
+    const Vec3 position = handle.worldPosition;
+    const Vec3 axis = handle.planeSample
+                          ? Vec3{0.0F, 1.0F, 0.0F}
+                          : handle.worldAxis;
+    const Vec3 firstCross =
+        std::fabs(axis.y) > 0.5F ? Vec3{1.0F, 0.0F, 0.0F}
+                                : Vec3{0.0F, 1.0F, 0.0F};
+    const Vec3 secondCross =
+        std::fabs(axis.y) > 0.5F
+            ? Vec3{0.0F, 0.0F, 1.0F}
+            : Vec3{-axis.z, 0.0F, axis.x};
+    lines.push_back({position - axis * shaftHalfLength,
+                     position + axis * shaftHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+    lines.push_back({position - firstCross * crossHalfLength,
+                     position + firstCross * crossHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+    lines.push_back({position - secondCross * crossHalfLength,
+                     position + secondCross * crossHalfLength, tint,
+                     0U, 0U, 0U, 0U, thickness});
+  }
+  output.worldLayoutVerticalConnectorHandleEdgeCount =
+      lines.size() - before;
 }
 
 void appendCreativeEditorMeasurementWireframe(
@@ -1006,6 +1112,7 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
   appendCreativeEditorArchitectureScaleGuide(request, output);
   appendCreativeEditorPlacementGridOverlay(request, output);
   appendCreativeEditorWorldLayoutRoofHandles(request, output);
+  appendCreativeEditorWorldLayoutVerticalConnectorHandles(request, output);
   appendCreativeEditorAssetCollisionPreview(request, placementVisualization,
                                             output);
   const creative::CreativeObjectId focusedGroupId =

@@ -10,6 +10,7 @@
 #include "EditorMeasurement.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
@@ -319,6 +320,13 @@ bool elevationHandleVisible(
     case CreativeEditorWorldLayoutElevationSourceKind::RoofAperture:
       return false;
     case CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector:
+      return (state.verticalConnectorManipulation.active &&
+              state.verticalConnectorManipulation.target.connectorIndex ==
+                  handle.sourceIndex) ||
+             selected(
+                 state,
+                 CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
+                 handle.sourceIndex);
     case CreativeEditorWorldLayoutElevationSourceKind::None:
     case CreativeEditorWorldLayoutElevationSourceKind::Count:
       break;
@@ -442,6 +450,16 @@ void selectElevationHandle(
     if (handle.levelIndex < state.source.levels.size()) {
       state.activeLevelIndex = handle.levelIndex;
     }
+  } else if (handle.sourceKind ==
+                 CreativeEditorWorldLayoutElevationSourceKind::
+                     VerticalConnector &&
+             handle.sourceIndex < state.source.verticalConnectors.size()) {
+    state.selection = {
+        CreativeEditorWorldLayoutSelectionKind::VerticalConnector,
+        handle.sourceIndex};
+    if (handle.levelIndex < state.source.levels.size()) {
+      state.activeLevelIndex = handle.levelIndex;
+    }
   }
 }
 
@@ -516,6 +534,88 @@ void queueElevationRoofManipulation(
           verticalCells});
 }
 
+CreativeEditorWorldLayoutVerticalConnectorTarget
+elevationConnectorTarget(
+    const CreativeEditorWorldLayoutState& state,
+    const CreativeEditorWorldLayoutElevationHandle& handle) {
+  CreativeEditorWorldLayoutVerticalConnectorTarget target;
+  if (handle.sourceKind !=
+          CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector ||
+      handle.sourceIndex >= state.source.verticalConnectors.size()) {
+    return target;
+  }
+  target.connectorIndex = handle.sourceIndex;
+  const cr::CreativeWorldLayoutVerticalDirection direction =
+      state.source.verticalConnectors[handle.sourceIndex].direction;
+  const bool low =
+      handle.kind ==
+      CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow;
+  const bool high =
+      handle.kind ==
+      CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh;
+  if (!low && !high) {
+    return {};
+  }
+  switch (direction) {
+    case cr::CreativeWorldLayoutVerticalDirection::PositiveX:
+      target.handle = low ? CreativeEditorWorldLayoutRectHandle::West
+                          : CreativeEditorWorldLayoutRectHandle::East;
+      break;
+    case cr::CreativeWorldLayoutVerticalDirection::NegativeX:
+      target.handle = low ? CreativeEditorWorldLayoutRectHandle::East
+                          : CreativeEditorWorldLayoutRectHandle::West;
+      break;
+    case cr::CreativeWorldLayoutVerticalDirection::PositiveZ:
+      target.handle = low ? CreativeEditorWorldLayoutRectHandle::North
+                          : CreativeEditorWorldLayoutRectHandle::South;
+      break;
+    case cr::CreativeWorldLayoutVerticalDirection::NegativeZ:
+      target.handle = low ? CreativeEditorWorldLayoutRectHandle::South
+                          : CreativeEditorWorldLayoutRectHandle::North;
+      break;
+    case cr::CreativeWorldLayoutVerticalDirection::Count:
+      return {};
+  }
+  return target;
+}
+
+CreativeEditorWorldLayoutPoint elevationConnectorPoint(
+    cr::CreativeWorldLayoutRect footprint,
+    CreativeEditorWorldLayoutRectHandle handle,
+    double horizontal) {
+  CreativeEditorWorldLayoutPoint point{
+      (static_cast<double>(footprint.minimum.x) + footprint.maximum.x) * 0.5,
+      (static_cast<double>(footprint.minimum.z) + footprint.maximum.z) * 0.5};
+  if (handle == CreativeEditorWorldLayoutRectHandle::East ||
+      handle == CreativeEditorWorldLayoutRectHandle::West) {
+    point.x = horizontal;
+  } else if (handle == CreativeEditorWorldLayoutRectHandle::North ||
+             handle == CreativeEditorWorldLayoutRectHandle::South) {
+    point.z = horizontal;
+  }
+  return point;
+}
+
+void queueElevationConnectorManipulation(
+    const CreativeEditorWorldLayoutState& state,
+    CreativeDesktopCommandFrame& commands,
+    CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
+    CreativeEditorWorldLayoutVerticalConnectorTarget target,
+    double horizontal) {
+  if (target.connectorIndex >= state.source.verticalConnectors.size()) {
+    return;
+  }
+  const cr::CreativeWorldLayoutRect footprint =
+      state.source.verticalConnectors[target.connectorIndex].footprint;
+  commands.push(
+      CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
+      CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
+          phase,
+          elevationConnectorPoint(footprint, target.handle, horizontal),
+          0.25,
+          target});
+}
+
 bool queueElevationEdit(
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutElevationEditResult& edit,
@@ -542,6 +642,8 @@ bool queueElevationEdit(
       case CreativeEditorWorldLayoutElevationHandleKind::None:
       case CreativeEditorWorldLayoutElevationHandleKind::OpeningBottom:
       case CreativeEditorWorldLayoutElevationHandleKind::OpeningTop:
+      case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow:
+      case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh:
       case CreativeEditorWorldLayoutElevationHandleKind::Count:
         return false;
     }
@@ -602,6 +704,30 @@ CreativeEditorWorldLayoutElevationPoint previewElevationHandlePosition(
     const CreativeEditorWorldLayoutElevationProjection& projection,
     const CreativeEditorWorldLayoutElevationHandle& handle) {
   CreativeEditorWorldLayoutElevationPoint position = handle.position;
+  if ((handle.kind ==
+           CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow ||
+       handle.kind ==
+           CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh) &&
+      handle.sourceIndex < state.source.verticalConnectors.size() &&
+      state.verticalConnectorManipulation.active &&
+      state.verticalConnectorManipulation.target.connectorIndex ==
+          handle.sourceIndex &&
+      state.verticalConnectorManipulation.previewValid) {
+    const CreativeEditorWorldLayoutVerticalConnectorTarget target =
+        elevationConnectorTarget(state, handle);
+    const cr::CreativeWorldLayoutRect footprint =
+        state.verticalConnectorManipulation.previewFootprint;
+    if (target.handle == CreativeEditorWorldLayoutRectHandle::East) {
+      position.horizontal = footprint.maximum.x;
+    } else if (target.handle == CreativeEditorWorldLayoutRectHandle::West) {
+      position.horizontal = footprint.minimum.x;
+    } else if (target.handle == CreativeEditorWorldLayoutRectHandle::North) {
+      position.horizontal = footprint.minimum.z;
+    } else if (target.handle == CreativeEditorWorldLayoutRectHandle::South) {
+      position.horizontal = footprint.maximum.z;
+    }
+    return position;
+  }
   const CreativeEditorWorldLayoutElevationManipulationState& manipulation =
       state.elevationManipulation;
   if (!manipulation.active || !manipulation.preview.accepted ||
@@ -661,6 +787,9 @@ CreativeEditorWorldLayoutElevationPoint previewElevationHandlePosition(
                              opening.cutoutBottomCells -
                              opening.cutoutHeightCells;
       }
+      break;
+    case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow:
+    case CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh:
       break;
     case CreativeEditorWorldLayoutElevationHandleKind::None:
     case CreativeEditorWorldLayoutElevationHandleKind::Count:
@@ -796,10 +925,21 @@ void drawElevationCanvas(CreativeEditorState& editor,
           state.elevationManipulation.handle.kind == handle.kind &&
           state.elevationManipulation.handle.sourceKind == handle.sourceKind &&
           state.elevationManipulation.handle.sourceIndex == handle.sourceIndex;
-      const bool active = roofActive || elevationActive;
+      const bool connectorActive =
+          handle.sourceKind ==
+              CreativeEditorWorldLayoutElevationSourceKind::
+                  VerticalConnector &&
+          state.verticalConnectorManipulation.active &&
+          state.verticalConnectorManipulation.target.connectorIndex ==
+              handle.sourceIndex;
+      const bool active = roofActive || elevationActive || connectorActive;
       const bool valid =
-          !active || (roofActive ? state.roofManipulation.previewValid
-                                 : state.elevationManipulation.preview.accepted);
+          !active ||
+          (roofActive
+               ? state.roofManipulation.previewValid
+               : connectorActive
+                     ? state.verticalConnectorManipulation.previewValid
+                     : state.elevationManipulation.preview.accepted);
       drawList->AddCircleFilled(
           toElevationScreen(transform, position), active ? 6.0F : 4.0F,
           valid ? color({0.30F, 0.95F, 0.42F, 1.0F})
@@ -834,6 +974,12 @@ void drawElevationCanvas(CreativeEditorState& editor,
           commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
           state.roofManipulation.target.levelIndex, 0.0);
     }
+    if (state.verticalConnectorManipulation.active) {
+      queueElevationConnectorManipulation(
+          state, commands,
+          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
+          state.verticalConnectorManipulation.target, 0.0);
+    }
     state.elevationManipulation = {};
     return;
   }
@@ -845,8 +991,15 @@ void drawElevationCanvas(CreativeEditorState& editor,
       hovered ? findVisibleElevationHandle(state, projection, pointer,
                                             handleTolerance)
               : CreativeEditorWorldLayoutElevationHandle{};
-  if (state.elevationManipulation.active ||
-      state.roofManipulation.active ||
+  const bool connectorHandle =
+      hoveredHandle.kind ==
+          CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow ||
+      hoveredHandle.kind ==
+          CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh;
+  if (state.verticalConnectorManipulation.active || connectorHandle) {
+    ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+  } else if (state.elevationManipulation.active ||
+             state.roofManipulation.active ||
       hoveredHandle.kind !=
           CreativeEditorWorldLayoutElevationHandleKind::None) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
@@ -862,6 +1015,16 @@ void drawElevationCanvas(CreativeEditorState& editor,
         queueElevationRoofManipulation(
             commands, CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
             hoveredHandle.levelIndex, pointer.vertical);
+      } else if (connectorHandle) {
+        const CreativeEditorWorldLayoutVerticalConnectorTarget target =
+            elevationConnectorTarget(state, hoveredHandle);
+        queueElevationSourceSelection(
+            state, hoveredHandle.sourceKind, hoveredHandle.sourceIndex,
+            hoveredHandle.levelIndex, commands);
+        queueElevationConnectorManipulation(
+            state, commands,
+            CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin,
+            target, pointer.horizontal);
       } else {
         state.elevationManipulation = {
             true,
@@ -906,6 +1069,33 @@ void drawElevationCanvas(CreativeEditorState& editor,
       queueElevationRoofManipulation(
           commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
           state.roofManipulation.target.levelIndex, pointer.vertical);
+    }
+    return;
+  }
+
+  if (state.verticalConnectorManipulation.active) {
+    const bool cancelConnector =
+        io.AppFocusLost ||
+        state.verticalConnectorManipulation.sourceRevision != state.revision ||
+        (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) ||
+        ImGui::IsKeyPressed(ImGuiKey_Escape);
+    const CreativeEditorWorldLayoutVerticalConnectorTarget target =
+        state.verticalConnectorManipulation.target;
+    if (cancelConnector) {
+      queueElevationConnectorManipulation(
+          state, commands,
+          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
+          target, pointer.horizontal);
+    } else if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      queueElevationConnectorManipulation(
+          state, commands,
+          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Commit,
+          target, pointer.horizontal);
+    } else if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+      queueElevationConnectorManipulation(
+          state, commands,
+          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
+          target, pointer.horizontal);
     }
     return;
   }

@@ -403,6 +403,11 @@ struct CreativeEditorWorldLayoutVerticalConnectorTarget {
   CreativeEditorWorldLayoutRectHandle handle =
       CreativeEditorWorldLayoutRectHandle::None;
   bool directionHandle = false;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeEditorWorldLayoutVerticalConnectorTarget&,
+      const CreativeEditorWorldLayoutVerticalConnectorTarget&) noexcept =
+      default;
 };
 
 struct CreativeEditorWorldLayoutVerticalConnectorManipulationState {

@@ -1325,8 +1325,17 @@ fixture traverses all twelve risers through the real player motor and reaches
 the upper landing grounded. The bounded 96-step capacity also covers the
 reference estate's deliberate 88-step scale without restoring the old silent
 clamp; unsafe tread/run, headroom, transform, and over-capacity requests reject
-atomically. This remains M2 until stair discovery, direct plan/elevation/3D
-manipulation, refinement controls, keyboard/touchpad/PS5 parity, stress and
+atomically.
+
+Milestone note (2026-07-23): selected stairs now expose one canonical
+six-handle frame for move, four-edge resize, and rise direction. Plan,
+run-aligned elevation, and 3D reticle manipulation all route through the
+existing vertical-connector transaction and rebuild the same stair recipe.
+Preview remains source-, document-, and history-free; release commits one
+source revision and one undo record; cancel and stale geometry fail closed.
+Elevation now projects rotated connectors from their exact authored footprint
+instead of their unrotated local bounds. This remains M2 until stair discovery,
+remaining refinement controls, keyboard/touchpad/PS5 parity, stress and
 visual-regression coverage, and manual product acceptance satisfy the universal
 tool gates.
 
@@ -1346,10 +1355,16 @@ direct and generated-source inspectors, renderer, exact height-patch collision,
 attachment snapping, navigation anchors, reasoning nodes, and the gameplay
 movement system consume that contract. Focused tests prove a complete authored
 ramp traversal and fail-closed slope, headroom, material, and malformed-input
-paths. This remains M2 until ramp discovery, direct plan/elevation/3D
-manipulation, refinement controls, keyboard/touchpad/PS5 parity, stress and
-visual-regression coverage, and manual product acceptance satisfy the universal
-tool gates.
+paths.
+
+Milestone note (2026-07-23): ramps consume the same six-handle frame and
+plan/elevation/3D manipulation transaction as stairs while retaining the ramp
+recipe's slope, headroom, material, collision-normal, and navigation
+validation. Exact reticle picking, source-free preview, one-record commit,
+cancel, generated-output refresh, and stale-handle suppression are pinned
+headlessly. This closes the direct manipulation gap; ramp discovery, remaining
+refinement controls, keyboard/touchpad/PS5 parity, stress and visual-regression
+coverage, and manual product acceptance still block M3.
 
 ### B11. Roofs - Current M2 - Product Gates Pending
 

@@ -6,6 +6,7 @@
 #include "EditorWorldLayoutElevation.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 
 #include <algorithm>
 #include <array>
@@ -4272,6 +4273,177 @@ cr::CreativeWorldLayout elevationFixture() {
   return layout;
 }
 
+bool verticalConnectorHandlesShareElevationAnd3dGeometry() {
+  const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0,
+                                      {32, 16, 32}};
+  app::CreativeEditorWorldLayoutState state;
+  state.source = elevationFixture();
+  state.revision = 7U;
+  state.generatedRevision = 7U;
+  state.tool = app::CreativeEditorWorldLayoutTool::Select;
+  state.activeLevelIndex = 0U;
+  state.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector, 0U};
+
+  const auto elevationX = app::planCreativeEditorWorldLayoutElevation(
+      {&state.source, grid, 0U,
+       app::CreativeEditorWorldLayoutElevationAxis::X});
+  const auto elevationZ = app::planCreativeEditorWorldLayoutElevation(
+      {&state.source, grid, 0U,
+       app::CreativeEditorWorldLayoutElevationAxis::Z});
+  const auto elevationHandle =
+      [&](app::CreativeEditorWorldLayoutElevationHandleKind kind) {
+        return std::find_if(
+            elevationX.handles.begin(), elevationX.handles.end(),
+            [kind](const auto& handle) {
+              return handle.kind == kind &&
+                     handle.sourceKind ==
+                         app::CreativeEditorWorldLayoutElevationSourceKind::
+                             VerticalConnector &&
+                     handle.sourceIndex == 0U;
+            });
+      };
+  const auto low = elevationHandle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow);
+  const auto high = elevationHandle(
+      app::CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh);
+  const std::size_t perpendicularHandleCount =
+      static_cast<std::size_t>(std::count_if(
+          elevationZ.handles.begin(), elevationZ.handles.end(),
+          [](const auto& handle) {
+            return handle.sourceKind ==
+                   app::CreativeEditorWorldLayoutElevationSourceKind::
+                       VerticalConnector;
+          }));
+
+  const auto frame =
+      app::buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          state, grid, 0U);
+  const app::CreativeEditorWorldLayoutVerticalConnectorTarget eastTarget{
+      0U, app::CreativeEditorWorldLayoutRectHandle::East, false};
+  const app::CreativeEditorWorldLayoutVerticalConnectorTarget moveTarget{
+      0U, app::CreativeEditorWorldLayoutRectHandle::Move, false};
+  const app::CreativeEditorWorldLayoutVerticalConnectorTarget directionTarget{
+      0U, app::CreativeEditorWorldLayoutRectHandle::None, true};
+  const auto* east =
+      app::findCreativeEditorWorldLayoutVerticalConnectorHandle(frame,
+                                                                 eastTarget);
+  const auto* move =
+      app::findCreativeEditorWorldLayoutVerticalConnectorHandle(frame,
+                                                                 moveTarget);
+  const auto* direction =
+      app::findCreativeEditorWorldLayoutVerticalConnectorHandle(
+          frame, directionTarget);
+  app::CreativeEditorWorldLayoutPoint sampled;
+  const bool sampledEast =
+      east != nullptr &&
+      app::sampleCreativeEditorWorldLayoutVerticalConnectorHandlePoint(
+          *east, {6.0F, 10.0F, 3.0F}, {0.0F, -1.0F, 0.0F}, grid, sampled);
+
+  const auto pickFrame =
+      app::buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          state, grid, 0U);
+  const auto* pickEast =
+      app::findCreativeEditorWorldLayoutVerticalConnectorHandle(
+          pickFrame, eastTarget);
+  iggy3d::RenderCameraFrame camera;
+  camera.clipFromWorld = iggy3d::identityMat4();
+  camera.clipFromWorld.m[0] = 0.1F;
+  camera.clipFromWorld.m[5] = 0.1F;
+  camera.clipFromWorld.m[10] = 0.1F;
+  const iggy3d::RenderContentViewport viewport{0U, 0U, 800U, 600U};
+  const cr::CreativeScreenPoint projectedEast =
+      pickEast == nullptr
+          ? cr::CreativeScreenPoint{}
+          : cr::projectCreativeWorldPointToScreen(
+                camera.clipFromWorld, pickEast->worldPosition, viewport.width,
+                viewport.height);
+  const auto pickedEast =
+      app::pickCreativeEditorWorldLayoutVerticalConnectorHandleAtPixel(
+          pickFrame, camera, viewport, projectedEast.x, projectedEast.y,
+          2.0F);
+
+  app::CreativeEditorWorldLayoutState previewState = state;
+  const auto previewBegin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          previewState,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {50.0, 50.0}, 0.01, grid, eastTarget);
+  const auto previewUpdate =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          previewState,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {51.0, 50.0}, 0.01, grid);
+  const auto previewFrame =
+      app::buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          previewState, grid, 0U);
+  const auto* previewEast =
+      app::findCreativeEditorWorldLayoutVerticalConnectorHandle(
+          previewFrame, eastTarget);
+  static_cast<void>(
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
+          previewState,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Cancel));
+
+  app::CreativeEditorWorldLayoutState rampState = state;
+  rampState.source.verticalConnectors[0].kind =
+      cr::CreativeWorldLayoutVerticalConnectorKind::Ramp;
+  rampState.source.verticalConnectors[0].footprint.maximum.x = 7;
+  rampState.revision = 8U;
+  rampState.generatedRevision = 8U;
+  const auto rampFrame =
+      app::buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          rampState, grid, 0U);
+
+  app::CreativeEditorWorldLayoutState staleState = state;
+  staleState.generatedRevision = state.revision - 1U;
+  const auto staleFrame =
+      app::buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+          staleState, grid, 0U);
+
+  return expect(elevationX.accepted &&
+                    low != elevationX.handles.end() &&
+                    high != elevationX.handles.end() &&
+                    near(low->position.horizontal, 1.0) &&
+                    near(low->position.vertical, 0.0) &&
+                    near(high->position.horizontal, 5.0) &&
+                    near(high->position.vertical, 4.0) &&
+                    perpendicularHandleCount == 0U,
+                "elevation exposes connector run ends only on its run axis") &&
+         expect(frame.accepted && frame.handleCount == 6U &&
+                    frame.connector.accepted &&
+                    frame.connector.objectKind ==
+                        cr::CreativeObjectKind::Stair &&
+                    frame.connector.stair.accepted && east != nullptr &&
+                    move != nullptr && direction != nullptr,
+                "3D stair handles wrap one accepted canonical recipe") &&
+         expect(sampledEast && near(sampled.x, 6.0) &&
+                    near(sampled.z, 3.0),
+                "3D edge sampling converts the axis ray into plan cells") &&
+         expect(projectedEast.valid && pickedEast.hit &&
+                    pickedEast.handleIndex < pickFrame.handleCount &&
+                    pickFrame.handles[pickedEast.handleIndex].target ==
+                        eastTarget,
+                "3D reticle picking resolves the exact connector handle") &&
+         expect(previewBegin.accepted && previewUpdate.accepted &&
+                    previewFrame.accepted && previewEast != nullptr &&
+                    near(previewEast->planPosition.x, 6.0) &&
+                    state.source.verticalConnectors[0].footprint.maximum.x ==
+                        5,
+                "explicit handle target drives source-free preview geometry") &&
+         expect(rampFrame.accepted &&
+                    rampFrame.connector.objectKind ==
+                        cr::CreativeObjectKind::Ramp &&
+                    rampFrame.connector.ramp.accepted &&
+                    rampFrame.handleCount == 6U,
+                "ramps reuse the same six-handle manipulation surface") &&
+         expect(!staleFrame.accepted && staleFrame.handleCount == 0U,
+                "stale generated geometry exposes no connector handles");
+}
+
 bool elevationProjectionUsesExactRecipeGeometry() {
   const cr::CreativeGridSettings grid{{10.0, 2.0, -5.0}, 2.0, {32, 16, 32}};
   const cr::CreativeWorldLayout layout = elevationFixture();
@@ -4762,6 +4934,126 @@ bool directRoofManipulationPreviewsAndCommitsOneDocumentEdit() {
                 "direct 3D roof release commits source scene and history once");
 }
 
+bool directVerticalConnectorManipulationCommitsOneDocumentEdit() {
+  cr::CreativeAppState live = appState();
+  app::CreativeEditorWorldLayoutState state;
+  const bool setupAccepted =
+      prepareTwoStoreyEditorLayout(state, "direct_connector_edit");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      state, app::CreativeEditorWorldLayoutTool::Stair));
+  const auto gestureBegin = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Begin, {1, 2});
+  const auto gestureCommit = app::applyCreativeEditorWorldLayoutGesture(
+      state, app::CreativeEditorWorldLayoutGesturePhase::Commit, {5, 4});
+  const auto generated = app::confirmCreativeEditorWorldLayout(state, live);
+  if (!setupAccepted || !gestureBegin.accepted || !gestureCommit.accepted ||
+      !generated.accepted || state.source.verticalConnectors.size() != 1U) {
+    return expect(false, "direct connector live-edit fixture generates");
+  }
+
+  state.tool = app::CreativeEditorWorldLayoutTool::Select;
+  state.selection = {
+      app::CreativeEditorWorldLayoutSelectionKind::VerticalConnector, 0U};
+  const app::CreativeEditorWorldLayoutVerticalConnectorTarget eastTarget{
+      0U, app::CreativeEditorWorldLayoutRectHandle::East, false};
+  const std::int32_t originalMaximumX =
+      state.source.verticalConnectors[0].footprint.maximum.x;
+  const std::uint64_t sourceRevisionBefore = state.revision;
+  const std::uint64_t documentRevisionBefore =
+      live.facade.document().revision();
+  const std::uint64_t undoDepthBefore = cr::creativeUndoDepth(live.history);
+  const auto begin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {50.0, 50.0}, eastTarget);
+  const auto update =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {51.0, 50.0});
+  const bool previewOnly =
+      begin.accepted && begin.changed && update.accepted && update.changed &&
+      update.sceneChanged && !update.worldLayoutChanged &&
+      app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.verticalConnectors[0].footprint.maximum.x ==
+          originalMaximumX &&
+      state.previewSource.verticalConnectors[0].footprint.maximum.x ==
+          originalMaximumX + 1 &&
+      state.revision == sourceRevisionBefore &&
+      live.facade.document().revision() == documentRevisionBefore &&
+      cr::creativeUndoDepth(live.history) == undoDepthBefore;
+  const auto committed =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Commit,
+          {51.0, 50.0});
+  const bool committedOnce =
+      committed.accepted && committed.changed &&
+      committed.worldLayoutChanged && committed.sceneChanged &&
+      !state.verticalConnectorManipulation.active &&
+      !app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.verticalConnectors[0].footprint.maximum.x ==
+          originalMaximumX + 1 &&
+      state.revision == sourceRevisionBefore + 1U &&
+      state.generatedRevision == state.revision &&
+      live.facade.document().revision() != documentRevisionBefore &&
+      cr::creativeUndoDepth(live.history) == undoDepthBefore + 1U &&
+      std::count_if(
+          live.facade.document().objects().begin(),
+          live.facade.document().objects().end(), [](const auto& object) {
+            return object.kind == cr::CreativeObjectKind::Stair;
+          }) == 1;
+
+  const cr::CreativeWorldLayoutRect committedFootprint =
+      state.source.verticalConnectors[0].footprint;
+  const std::uint64_t committedDocumentRevision =
+      live.facade.document().revision();
+  const std::uint64_t committedUndoDepth =
+      cr::creativeUndoDepth(live.history);
+  const app::CreativeEditorWorldLayoutVerticalConnectorTarget moveTarget{
+      0U, app::CreativeEditorWorldLayoutRectHandle::Move, false};
+  const auto cancelBegin =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Begin,
+          {70.0, 70.0}, moveTarget);
+  const auto cancelUpdate =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Update,
+          {71.0, 70.0});
+  const auto cancelled =
+      app::applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+          state, live,
+          app::CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+              Cancel);
+  const bool cancelledCleanly =
+      cancelBegin.accepted && cancelUpdate.accepted &&
+      cancelUpdate.sceneChanged && cancelled.accepted && cancelled.changed &&
+      cancelled.sceneChanged &&
+      !state.verticalConnectorManipulation.active &&
+      !app::creativeEditorWorldLayoutPreviewActive(state) &&
+      state.source.verticalConnectors[0].footprint.minimum ==
+          committedFootprint.minimum &&
+      state.source.verticalConnectors[0].footprint.maximum ==
+          committedFootprint.maximum &&
+      live.facade.document().revision() == committedDocumentRevision &&
+      cr::creativeUndoDepth(live.history) == committedUndoDepth;
+
+  return expect(previewOnly,
+                "direct 3D connector drag previews without publishing source") &&
+         expect(committedOnce,
+                "direct 3D connector release commits scene and history once") &&
+         expect(cancelledCleanly,
+                "cancelled 3D connector drag leaves no source or history edit");
+}
+
 bool elevationHitTestingAndEditMathAreTransactionalInputs() {
   const cr::CreativeGridSettings grid{{0.0, 0.0, 0.0}, 1.0, {32, 16, 32}};
   const cr::CreativeWorldLayout layout = elevationFixture();
@@ -5058,11 +5350,13 @@ int main() {
       verticalConnectorSettingsConvertAndRejectAtomically() &&
       verticalConnectorManipulationIsTransactional() &&
       verticalConnectorDirectionHandleOwnsCardinalRise() &&
+      verticalConnectorHandlesShareElevationAnd3dGeometry() &&
       elevationProjectionUsesExactRecipeGeometry() &&
       roofAperturesProjectIntoElevationFromExactClosureGeometry() &&
       shedAndHipElevationsUseCanonicalProfilesAndPitchHandles() &&
       roofHandlesAndGesturesShareExactClosureGeometry() &&
       directRoofManipulationPreviewsAndCommitsOneDocumentEdit() &&
+      directVerticalConnectorManipulationCommitsOneDocumentEdit() &&
       elevationHitTestingAndEditMathAreTransactionalInputs() &&
       elevationHitStackCyclesDistinctSemanticSources() &&
       unsynchronizedLayoutCannotBeSaved() &&

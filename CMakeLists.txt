@@ -447,6 +447,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldLayoutSource.cpp
   apps/iggy3d_creative/EditorWorldLayoutStructures.cpp
   apps/iggy3d_creative/EditorWorldLayoutVerticalConnectors.cpp
+  apps/iggy3d_creative/EditorWorldLayoutVerticalConnectorHandles.cpp
   apps/iggy3d_creative/EditorWorldLayoutGroups.cpp
   apps/iggy3d_creative/EditorWorldLayoutTemplates.cpp
   apps/iggy3d_creative/EditorWorldLayoutTopography.cpp

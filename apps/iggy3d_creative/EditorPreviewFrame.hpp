@@ -70,6 +70,7 @@ struct CreativeEditorOverlayFrame {
   bool architectureScaleGuideActive = false;
   std::size_t architectureScaleGuideLineCount = 0;
   std::size_t worldLayoutRoofHandleEdgeCount = 0;
+  std::size_t worldLayoutVerticalConnectorHandleEdgeCount = 0;
   iggy3d::creative::CreativeWorldLayoutBuildingDimensions
       architecturalDimensions{};
   std::size_t pointMarkerEdgeCount = 0;

@@ -312,7 +312,8 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells,
-    cr::CreativeGridSettings grid) {
+    cr::CreativeGridSettings grid,
+    CreativeEditorWorldLayoutVerticalConnectorTarget requestedTarget) {
   if (phase >=
       CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Count) {
     return {
@@ -335,9 +336,14 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
   }
   if (phase ==
       CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin) {
+    const bool explicitTarget =
+        requestedTarget.directionHandle ||
+        requestedTarget.handle != CreativeEditorWorldLayoutRectHandle::None;
     const CreativeEditorWorldLayoutVerticalConnectorTarget target =
-        findCreativeEditorWorldLayoutVerticalConnectorTarget(
-            state, point, toleranceCells);
+        explicitTarget
+            ? requestedTarget
+            : findCreativeEditorWorldLayoutVerticalConnectorTarget(
+                  state, point, toleranceCells);
     if ((!target.directionHandle &&
          target.handle == CreativeEditorWorldLayoutRectHandle::None) ||
         target.connectorIndex >= state.source.verticalConnectors.size()) {
@@ -450,7 +456,7 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
       applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
           state,
           CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
-          point, toleranceCells, grid);
+          point, toleranceCells, grid, {});
   if (!updated.accepted) {
     return updated;
   }

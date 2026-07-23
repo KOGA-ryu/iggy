@@ -14,6 +14,7 @@
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 
@@ -408,6 +409,13 @@ void processCreativeEditorWorldInteractionFrame(
     editor.volume.cursorCell = editor.interaction.target.grid.targetCell;
   }
   if (request.captureMode) {
+    if (editor.worldLayout.verticalConnectorManipulation.active) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Cancel));
+    }
     if (editor.worldLayout.roofManipulation.active) {
       static_cast<void>(
           applyCreativeEditorWorldLayoutRoofManipulationToDocument(
@@ -420,6 +428,62 @@ void processCreativeEditorWorldInteractionFrame(
         CreativeMovingPlatformPathEditCommand::None;
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_continuous_gesture_capture");
+    return;
+  }
+
+  if (editor.worldLayout.verticalConnectorManipulation.active) {
+    const CreativeEditorWorldLayoutVerticalConnectorTarget target =
+        editor.worldLayout.verticalConnectorManipulation.target;
+    const CreativeEditorWorldLayoutVerticalConnectorHandleFrame handles =
+        buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+            editor.worldLayout, documentGrid, target.connectorIndex, false);
+    const CreativeEditorWorldLayoutVerticalConnectorHandle* handle =
+        findCreativeEditorWorldLayoutVerticalConnectorHandle(handles, target);
+    const bool cancel =
+        handle == nullptr ||
+        editor.worldLayout.verticalConnectorManipulation.sourceRevision !=
+            editor.worldLayout.revision ||
+        cr::creativeWorldActionPressed(request.actions,
+                                       cr::CreativeWorldActionId::Reject);
+    if (cancel) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Cancel));
+      return;
+    }
+
+    CreativeEditorWorldLayoutPoint point;
+    const bool sampled =
+        editor.interaction.target.ray.valid &&
+        sampleCreativeEditorWorldLayoutVerticalConnectorHandlePoint(
+            *handle, editor.interaction.target.ray.origin,
+            editor.interaction.target.ray.direction, documentGrid, point);
+    if (sampled) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+              editor.worldLayout, request.appState,
+              CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                  Update,
+              point));
+    }
+    const bool released =
+        cr::creativeWorldActionReleased(request.actions,
+                                        cr::CreativeWorldActionId::Primary) ||
+        cr::creativeWorldActionReleased(request.actions,
+                                        cr::CreativeWorldActionId::Accept);
+    if (released) {
+      static_cast<void>(
+          applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+              editor.worldLayout, request.appState,
+              sampled
+                  ? CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                        Commit
+                  : CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                        Cancel,
+              point));
+    }
     return;
   }
 
@@ -469,6 +533,55 @@ void processCreativeEditorWorldInteractionFrame(
               target, coordinateCells));
     }
     return;
+  }
+
+  const bool connectorHandlePressed =
+      hierarchySelectionTool &&
+      editor.worldLayout.tool == CreativeEditorWorldLayoutTool::Select &&
+      editor.worldLayout.selection.kind ==
+          CreativeEditorWorldLayoutSelectionKind::VerticalConnector &&
+      editor.worldLayout.selection.index <
+          editor.worldLayout.source.verticalConnectors.size() &&
+      editor.interaction.target.ray.valid &&
+      (cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Primary) ||
+       cr::creativeWorldActionPressed(request.actions,
+                                      cr::CreativeWorldActionId::Accept));
+  if (connectorHandlePressed) {
+    const std::size_t connectorIndex = editor.worldLayout.selection.index;
+    const CreativeEditorWorldLayoutVerticalConnectorHandleFrame handles =
+        buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
+            editor.worldLayout, documentGrid, connectorIndex, false);
+    const float centerX = static_cast<float>(request.contentRegion.x) +
+                          static_cast<float>(request.contentRegion.width) *
+                              0.5F;
+    const float centerY = static_cast<float>(request.contentRegion.y) +
+                          static_cast<float>(request.contentRegion.height) *
+                              0.5F;
+    const CreativeEditorWorldLayoutVerticalConnectorHandlePick picked =
+        pickCreativeEditorWorldLayoutVerticalConnectorHandleAtPixel(
+            handles, request.camera, request.contentRegion, centerX, centerY);
+    if (picked.hit && picked.handleIndex < handles.handleCount) {
+      const CreativeEditorWorldLayoutVerticalConnectorHandle& handle =
+          handles.handles[picked.handleIndex];
+      CreativeEditorWorldLayoutPoint point;
+      if (sampleCreativeEditorWorldLayoutVerticalConnectorHandlePoint(
+              handle, editor.interaction.target.ray.origin,
+              editor.interaction.target.ray.direction, documentGrid, point)) {
+        const CreativeEditorWorldLayoutVerticalConnectorLiveEditReceipt begun =
+            applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
+                editor.worldLayout, request.appState,
+                CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::
+                    Begin,
+                point, handle.target);
+        if (begun.accepted) {
+          finalizeCreativeEditorContinuousGestures(
+              request.appState, editor,
+              "creative_vertical_connector_handle_begin");
+          return;
+        }
+      }
+    }
   }
 
   const bool roofHandlePressed =

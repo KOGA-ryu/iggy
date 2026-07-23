@@ -875,14 +875,14 @@ planCreativeEditorWorldLayoutElevation(
              connectorPlan.reasonCode);
       return projection;
     }
-    const double minimumHorizontal = worldHorizontalToCells(
-        request.grid, request.axis,
-        horizontalCoordinate(request.axis, connectorPlan.authoredBounds.min.x,
-                             connectorPlan.authoredBounds.min.z));
-    const double maximumHorizontal = worldHorizontalToCells(
-        request.grid, request.axis,
-        horizontalCoordinate(request.axis, connectorPlan.authoredBounds.max.x,
-                             connectorPlan.authoredBounds.max.z));
+    const double minimumHorizontal =
+        request.axis == CreativeEditorWorldLayoutElevationAxis::X
+            ? connector.footprint.minimum.x
+            : connector.footprint.minimum.z;
+    const double maximumHorizontal =
+        request.axis == CreativeEditorWorldLayoutElevationAxis::X
+            ? connector.footprint.maximum.x
+            : connector.footprint.maximum.z;
     const double minimumVertical =
         worldVerticalToCells(request.grid, connectorPlan.authoredBounds.min.y);
     const double maximumVertical =
@@ -934,6 +934,31 @@ planCreativeEditorWorldLayoutElevation(
          levelIndex,
          {lowHorizontal, minimumVertical},
          {highHorizontal, maximumVertical}});
+    const bool directionAlongProjection =
+        (request.axis == CreativeEditorWorldLayoutElevationAxis::X &&
+         (connector.direction ==
+              cr::CreativeWorldLayoutVerticalDirection::PositiveX ||
+          connector.direction ==
+              cr::CreativeWorldLayoutVerticalDirection::NegativeX)) ||
+        (request.axis == CreativeEditorWorldLayoutElevationAxis::Z &&
+         (connector.direction ==
+              cr::CreativeWorldLayoutVerticalDirection::PositiveZ ||
+          connector.direction ==
+              cr::CreativeWorldLayoutVerticalDirection::NegativeZ));
+    if (directionAlongProjection) {
+      projection.handles.push_back(
+          {CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunLow,
+           CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector,
+           connectorIndex,
+           levelIndex,
+           {lowHorizontal, minimumVertical}});
+      projection.handles.push_back(
+          {CreativeEditorWorldLayoutElevationHandleKind::ConnectorRunHigh,
+           CreativeEditorWorldLayoutElevationSourceKind::VerticalConnector,
+           connectorIndex,
+           levelIndex,
+           {highHorizontal, maximumVertical}});
+    }
   }
 
   for (std::size_t openingIndex = 0U; openingIndex < layout.openings.size();

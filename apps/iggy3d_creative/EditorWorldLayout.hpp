@@ -375,7 +375,8 @@ applyCreativeEditorWorldLayoutVerticalConnectorManipulation(
     CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point = {},
     double toleranceCells = 0.25,
-    cr::CreativeGridSettings grid = {});
+    cr::CreativeGridSettings grid = {},
+    CreativeEditorWorldLayoutVerticalConnectorTarget target = {});
 [[nodiscard]] bool readCreativeEditorWorldLayoutBoxSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t boxIndex,
     CreativeEditorWorldLayoutBoxSettings& output) noexcept;

@@ -129,7 +129,7 @@ void queueVerticalConnectorManipulation(
   commands.push(
       CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
       CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
-          phase, point, toleranceCells});
+          phase, point, toleranceCells, {}});
 }
 
 void queueBuildingManipulation(
