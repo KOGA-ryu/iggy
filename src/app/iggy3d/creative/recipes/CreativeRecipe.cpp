@@ -930,40 +930,4 @@ CreativeRecipeApplyReceipt applyCreativeRecipe(Facade& facade,
   return receipt;
 }
 
-CreativeRecipeApplyReceipt applyCreativeRecipeWithHistory(
-    CreativeAppState& appState,
-    const CreativeRecipePlan& plan,
-    std::string_view source) {
-  std::optional<CreativeAuthoringOperationRecord> operation =
-      makeCreativeAuthoringOperationRecord(
-          creativeAuthoringFamily(plan.kind),
-          CreativeAuthoringOperationKind::Apply, toString(plan.kind),
-          fingerprintCreativeRecipePlan(plan), plan.objects.size());
-  if (!operation.has_value()) {
-    CreativeRecipeApplyReceipt receipt;
-    receipt.requested = true;
-    setStatus(receipt, CreativeRecipeStatus::InvalidRecipe,
-              "creative_recipe_operation_record_invalid");
-    return receipt;
-  }
-  CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source,
-                                      std::move(*operation));
-  CreativeRecipeApplyReceipt receipt = applyCreativeRecipe(appState.facade, plan);
-  if (!receipt.accepted || !receipt.changed) {
-    cancelCreativeHistoryTransaction(transaction);
-    return receipt;
-  }
-
-  receipt.historyReceipt = commitCreativeHistoryTransaction(
-      appState.history, std::move(transaction), appState.facade);
-  if (!receipt.historyReceipt.accepted || !receipt.historyReceipt.recorded) {
-    // The document mutation remains valid if history is disabled; the receipt
-    // exposes that fact so the caller can report it rather than silently claim
-    // undo support.
-    receipt.reasonCode = std::string(receipt.historyReceipt.reasonCode);
-  }
-  return receipt;
-}
-
 }  // namespace iggy3d::creative

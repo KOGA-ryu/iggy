@@ -1,6 +1,7 @@
 #pragma once
 
-#include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/history/History.hpp"
 #include "app/iggy3d/creative/recipes/BridgeRecipe.hpp"
 #include "app/iggy3d/creative/recipes/BuildingRecipe.hpp"
 #include "app/iggy3d/creative/recipes/ObjectLibraryRecipe.hpp"
@@ -572,9 +573,5 @@ makeCreativeWorldLayoutOperationRecord(const CreativeWorldLayoutPlan& plan);
 [[nodiscard]] CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlan(
     Facade& facade,
     const CreativeWorldLayoutPlan& plan);
-[[nodiscard]] CreativeWorldLayoutApplyReceipt
-applyCreativeWorldLayoutPlanWithHistory(CreativeAppState& appState,
-                                        const CreativeWorldLayoutPlan& plan,
-                                        std::string_view source);
 
 }  // namespace iggy3d::creative

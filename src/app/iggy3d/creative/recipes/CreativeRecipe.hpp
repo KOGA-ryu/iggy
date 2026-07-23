@@ -1,6 +1,5 @@
 #pragma once
 
-#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/recipes/AuthoringContract.hpp"
@@ -97,7 +96,6 @@ struct CreativeRecipeApplyReceipt {
   CreativeRecipeStatus status = CreativeRecipeStatus::NotRequested;
   CreativeRecipeMaterializeReceipt materializeReceipt;
   CreativeFacadeDocumentBatchCreateReceipt createReceipt;
-  CreativeHistoryRecordReceipt historyReceipt;
   std::string reasonCode = "creative_recipe_apply_not_requested";
 };
 
@@ -174,17 +172,11 @@ struct CreativeRecipeApplyReceipt {
     const CreativeRecipePlan& plan,
     std::span<const CreativeObjectId> objectIds);
 
-// Applies a materialized recipe as one atomic document replacement. Callers
-// that expose undo should use applyCreativeRecipeWithHistory below.
+// Applies a materialized recipe as one atomic document mutation. Durable
+// callers own history because only they know the complete user action and any
+// sidecar state that must share its transaction.
 [[nodiscard]] CreativeRecipeApplyReceipt applyCreativeRecipe(
     Facade& facade,
     const CreativeRecipePlan& plan);
-
-// The shared authoring entry point for both 3D tools and future 2D symbols.
-// A successful recipe application records exactly one document snapshot.
-[[nodiscard]] CreativeRecipeApplyReceipt applyCreativeRecipeWithHistory(
-    CreativeAppState& appState,
-    const CreativeRecipePlan& plan,
-    std::string_view source);
 
 }  // namespace iggy3d::creative

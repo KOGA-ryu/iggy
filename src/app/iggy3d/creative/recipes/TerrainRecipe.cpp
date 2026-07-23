@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -650,40 +649,6 @@ CreativeTerrainRecipeApplyReceipt applyCreativeTerrainRecipe(
   receipt.changed = true;
   setStatus(receipt, CreativeTerrainRecipeStatus::Applied,
             "creative_terrain_recipe_applied", true);
-  return receipt;
-}
-
-CreativeTerrainRecipeApplyReceipt applyCreativeTerrainRecipeWithHistory(
-    CreativeAppState& appState,
-    const CreativeTerrainRecipePlan& plan,
-    std::string_view source) {
-  std::optional<CreativeAuthoringOperationRecord> operation =
-      makeCreativeAuthoringOperationRecord(
-          CreativeAuthoringFamily::Terrain,
-          CreativeAuthoringOperationKind::Apply, toString(plan.kind),
-          fingerprintCreativeTerrainRecipePlan(plan),
-          plan.controlEdits.size() + plan.materialEdits.size());
-  if (!operation.has_value()) {
-    CreativeTerrainRecipeApplyReceipt receipt;
-    receipt.requested = true;
-    setStatus(receipt, CreativeTerrainRecipeStatus::InvalidKind,
-              "creative_terrain_recipe_operation_record_invalid");
-    return receipt;
-  }
-  CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source,
-                                      std::move(*operation));
-  CreativeTerrainRecipeApplyReceipt receipt =
-      applyCreativeTerrainRecipe(appState.facade, plan);
-  if (!receipt.accepted || !receipt.changed) {
-    cancelCreativeHistoryTransaction(transaction);
-    return receipt;
-  }
-  receipt.historyReceipt = commitCreativeHistoryTransaction(
-      appState.history, std::move(transaction), appState.facade);
-  if (!receipt.historyReceipt.accepted || !receipt.historyReceipt.recorded) {
-    receipt.reasonCode = std::string(receipt.historyReceipt.reasonCode);
-  }
   return receipt;
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/TerrainMaterialField.hpp"
 #include "app/iggy3d/creative/recipes/TerrainLandform.hpp"
 #include "app/iggy3d/creative/tools/TerrainPath.hpp"
@@ -124,7 +124,6 @@ struct CreativeTerrainRecipeApplyReceipt {
   CreativeTerrainMutationReceipt terrainReceipt;
   CreativeTerrainMaterialMutationReceipt materialReceipt;
   CreativeFacadeDocumentInstallReceipt installReceipt;
-  CreativeHistoryRecordReceipt historyReceipt;
   std::string reasonCode = "creative_terrain_recipe_apply_not_requested";
 };
 
@@ -153,9 +152,5 @@ struct CreativeTerrainRecipeApplyReceipt {
 [[nodiscard]] CreativeTerrainRecipeApplyReceipt applyCreativeTerrainRecipe(
     Facade& facade,
     const CreativeTerrainRecipePlan& plan);
-[[nodiscard]] CreativeTerrainRecipeApplyReceipt
-applyCreativeTerrainRecipeWithHistory(CreativeAppState& appState,
-                                      const CreativeTerrainRecipePlan& plan,
-                                      std::string_view source);
 
 }  // namespace iggy3d::creative

@@ -1,3 +1,4 @@
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutAdoption.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
@@ -205,6 +206,35 @@ cr::CreativeAppState makeAppState(cr::CreativeDocumentId id) {
   cr::CreativeAppState appState;
   static_cast<void>(appState.facade.installDocument(makeDocument(id)));
   return appState;
+}
+
+cr::CreativeWorldLayoutApplyReceipt applyWorldLayoutForTestTransaction(
+    cr::CreativeAppState& appState,
+    const cr::CreativeWorldLayoutPlan& plan,
+    std::string_view source) {
+  cr::CreativeWorldLayoutApplyReceipt receipt;
+  receipt.requested = true;
+  std::optional<cr::CreativeAuthoringOperationRecord> operation =
+      cr::makeCreativeWorldLayoutOperationRecord(plan);
+  if (!operation.has_value()) {
+    receipt.status = cr::CreativeWorldLayoutStatus::InvalidSchema;
+    receipt.reasonCode = "creative_world_layout_operation_invalid";
+    return receipt;
+  }
+  cr::CreativeDocumentHistoryTransaction transaction =
+      cr::beginCreativeHistoryTransaction(appState.facade, source,
+                                          std::move(*operation));
+  receipt = cr::applyCreativeWorldLayoutPlan(appState.facade, plan);
+  if (!receipt.accepted || !receipt.changed) {
+    cr::cancelCreativeHistoryTransaction(transaction);
+    return receipt;
+  }
+  receipt.historyReceipt = cr::commitCreativeHistoryTransaction(
+      appState.history, std::move(transaction), appState.facade);
+  if (!receipt.historyReceipt.accepted || !receipt.historyReceipt.recorded) {
+    receipt.reasonCode = std::string(receipt.historyReceipt.reasonCode);
+  }
+  return receipt;
 }
 
 cr::CreativeWorldLayoutTerrainPath terrainPath(std::string key,
@@ -1946,7 +1976,7 @@ bool selectiveRegenerationPreservesIdentityAndManualRefinement() {
   const cr::CreativeWorldLayoutCompileResult replacement =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt replaced =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, replacement.plan, "selective_world_layout_test");
   const cr::CreativeObject* replacedCrateA =
       findNamed(appState.facade.document(), "Crate A Revised");
@@ -2083,6 +2113,8 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
       appState.facade.document().revision();
   const cr::CreativeWorldLayoutCompileResult blocked =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
+  const std::uint64_t revisionAfterBlocked =
+      appState.facade.document().revision();
   const std::array regenerateDecision{
       cr::CreativeWorldLayoutConflictDecision{
           "reconciliation_layout.objects.crate",
@@ -2091,7 +2123,7 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
       cr::buildCreativeWorldLayoutPlan(
           appState.facade.document(), layout, {regenerateDecision});
   const cr::CreativeWorldLayoutApplyReceipt overwritten =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, overwrite.plan, "world_layout_conflict_overwrite");
   const cr::CreativeObject* replacement =
       findNamed(appState.facade.document(), "Revised Managed Crate");
@@ -2114,8 +2146,7 @@ bool refinedOutputBlocksSourceChangesUntilExplicitlyRegenerated() {
                     blocked.recipeChanges.size() == 1U &&
                     blocked.recipeChanges[0].kind ==
                         cr::CreativeWorldLayoutRecipeChangeKind::Conflict &&
-                    appState.facade.document().revision() ==
-                        revisionBeforeBlocked,
+                    revisionAfterBlocked == revisionBeforeBlocked,
                 "source change over refined output fails closed without mutation") &&
          expect(overwrite.receipt.accepted &&
                     overwrite.receipt.objectRecipePatchCount == 0U &&
@@ -2167,7 +2198,7 @@ bool detachResolutionPreservesRefinementAndCreatesFreshManagedOutput() {
       cr::buildCreativeWorldLayoutPlan(
           appState.facade.document(), layout, {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, detached.plan, "world_layout_conflict_detach");
   const cr::CreativeObject* preserved =
       appState.facade.document().findObject(refinedId);
@@ -2239,7 +2270,7 @@ bool removedSourceCannotSilentlyDeleteRefinedOutput() {
       cr::buildCreativeWorldLayoutPlan(
           appState.facade.document(), layout, {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, detached.plan, "world_layout_removed_source_detach");
   const cr::CreativeObject* preserved =
       appState.facade.document().findObject(refinedId);
@@ -2336,7 +2367,7 @@ bool conflictDecisionsAreExactCompleteAndIndependentlyApplied() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
                                        {decisions});
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, resolved.plan, "world_layout_mixed_conflict_resolution");
   const cr::CreativeObject* rebuiltCrate =
       findNamed(appState.facade.document(), "Rebuilt Crate A");
@@ -2511,7 +2542,7 @@ bool openingEditsPatchGeometryWithoutIdentityChurn() {
   const cr::CreativeWorldLayoutCompileResult changed =
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, changed.plan, "opening_identity_patch_test");
   const auto changedIds = managedObjectIds(appState.facade.document(),
                                            instanceKey);
@@ -2693,7 +2724,7 @@ bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
                                        {useSourceDecisions});
   const cr::CreativeWorldLayoutApplyReceipt sourceApplied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, useSource.plan, "world_layout_exact_member_use_source");
   const cr::CreativeObject* sourcedNorth =
       appState.facade.document().findObject(northId);
@@ -2729,7 +2760,7 @@ bool exactMemberConflictChoicesPreserveIdentityAndRejectStaleState() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
                                        {keepDecisions});
   const cr::CreativeWorldLayoutApplyReceipt keepApplied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, keep.plan, "world_layout_exact_member_keep_refinement");
   const cr::CreativeObject* keptNorth =
       appState.facade.document().findObject(northId);
@@ -2834,7 +2865,7 @@ bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
                                        {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt detached =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, detach.plan, "world_layout_linked_member_detach");
   const cr::CreativeObject* authoredDoor =
       appState.facade.document().findObject(doorId);
@@ -2867,7 +2898,7 @@ bool linkedRemovedMemberCanDetachOrExplicitlyRemove() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout,
                                        {removeDecision});
   const cr::CreativeWorldLayoutApplyReceipt removed =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, remove.plan, "world_layout_linked_member_remove");
 
   return expect(initial.receipt.accepted && initialApplied.accepted &&
@@ -2958,7 +2989,7 @@ bool authoredChildBlocksRemovalOfManagedParent() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed,
                                        {detachDecision});
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, detached.plan, "world_layout_parent_member_detach");
   const cr::CreativeObject* detachedRoot =
       appState.facade.document().findObject(rootId);
@@ -3117,7 +3148,7 @@ bool authoritativeTerrainAndMaterialApplyAsOneHistoryStep() {
       cr::previewCreativeWorldLayoutPlan(appState.facade.document(),
                                          compiled.plan);
   const cr::CreativeWorldLayoutApplyReceipt applied =
-      cr::applyCreativeWorldLayoutPlanWithHistory(
+      applyWorldLayoutForTestTransaction(
           appState, compiled.plan, "world_layout_terrain_test");
   const bool replacedOldTerrain =
       appState.facade.document().terrainField().controlAt({50, 50}) == nullptr &&
@@ -3279,7 +3310,7 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt firstApplied =
       first.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, first.plan, "world_layout_path_first")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const cr::CreativeTerrainOperation* firstA =
@@ -3304,7 +3335,7 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), changed);
   const cr::CreativeWorldLayoutApplyReceipt updated =
       update.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, update.plan, "world_layout_path_update")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const cr::CreativeTerrainOperation* updatedA =
@@ -3319,7 +3350,7 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), reordered);
   const cr::CreativeWorldLayoutApplyReceipt reorderedApplied =
       reorder.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, reorder.plan, "world_layout_path_reorder")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const auto& reorderedOperations =
@@ -3338,7 +3369,7 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
   const cr::CreativeWorldLayoutApplyReceipt removedApplied =
       remove.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, remove.plan, "world_layout_path_remove")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const auto& preservedOperations =
@@ -3357,7 +3388,7 @@ bool terrainPathOperationsReconcileOwnershipOrderAndIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), replaced);
   const cr::CreativeWorldLayoutApplyReceipt replacedApplied =
       replace.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, replace.plan, "world_layout_path_replace_all")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const auto& replacedOperations =
@@ -3429,7 +3460,7 @@ bool roadConstructionReconcilesAndKeepsTravelSurfaceTraversable() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt applied =
       first.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, first.plan, "world_layout_road_structure")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> generated =
@@ -3464,7 +3495,7 @@ bool roadConstructionReconcilesAndKeepsTravelSurfaceTraversable() {
                                        withoutCurbs);
   const cr::CreativeWorldLayoutApplyReceipt removed =
       removal.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, removal.plan, "world_layout_road_remove_curbs")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> afterRemoval =
@@ -3535,7 +3566,7 @@ bool watercourseBridgeReconcilesStructureGradesCollisionAndTraversal() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt applied =
       first.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, first.plan, "world_layout_bridge_recipe")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> generated =
@@ -3581,7 +3612,7 @@ bool watercourseBridgeReconcilesStructureGradesCollisionAndTraversal() {
                                        updatedLayout);
   const cr::CreativeWorldLayoutApplyReceipt updatedApplied =
       updated.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, updated.plan, "world_layout_bridge_update")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> updatedMembers =
@@ -3630,7 +3661,7 @@ bool watercourseBridgeReconcilesStructureGradesCollisionAndTraversal() {
                                        removedLayout);
   const cr::CreativeWorldLayoutApplyReceipt removed =
       removal.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, removal.plan, "world_layout_bridge_remove")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> afterRemoval =
@@ -3736,7 +3767,7 @@ bool terrainLandformsReconcileBeforePathsWithStableIdentity() {
           cr::CreativeTerrainOperationKind::Path;
   const cr::CreativeWorldLayoutApplyReceipt firstApplied =
       first.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, first.plan, "world_layout_landform_first")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const cr::CreativeTerrainOperation* firstLandform =
@@ -3775,7 +3806,7 @@ bool terrainLandformsReconcileBeforePathsWithStableIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), changed);
   const cr::CreativeWorldLayoutApplyReceipt updated =
       update.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, update.plan, "world_layout_landform_update")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const cr::CreativeTerrainOperation* updatedLandform =
@@ -3793,7 +3824,7 @@ bool terrainLandformsReconcileBeforePathsWithStableIdentity() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), removed);
   const cr::CreativeWorldLayoutApplyReceipt removedApplied =
       remove.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, remove.plan, "world_layout_landform_remove")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const cr::CreativeTerrainOperation* remainingPath =
@@ -3851,7 +3882,7 @@ bool retainingEdgesReconcileCollisionAndStairTraversal() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt applied =
       first.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, first.plan, "world_layout_retaining_edge")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> generated =
@@ -3887,7 +3918,7 @@ bool retainingEdgesReconcileCollisionAndStairTraversal() {
                                        updatedLayout);
   const cr::CreativeWorldLayoutApplyReceipt updatedApplied =
       updated.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, updated.plan, "world_layout_retaining_edge_update")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> updatedMembers =
@@ -3946,7 +3977,7 @@ bool retainingEdgesReconcileCollisionAndStairTraversal() {
                                        removedLayout);
   const cr::CreativeWorldLayoutApplyReceipt removed =
       removal.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, removal.plan, "world_layout_retaining_edge_remove")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const std::map<std::string, cr::CreativeObjectId> afterRemoval =
@@ -4118,7 +4149,7 @@ bool terrainPathNetworkRequiresExactIntersectionAndBridgeSeams() {
       cr::buildCreativeWorldLayoutPlan(appState.facade.document(), layout);
   const cr::CreativeWorldLayoutApplyReceipt applied =
       compiled.receipt.accepted
-          ? cr::applyCreativeWorldLayoutPlanWithHistory(
+          ? applyWorldLayoutForTestTransaction(
                 appState, compiled.plan, "world_layout_path_network")
           : cr::CreativeWorldLayoutApplyReceipt{};
   const bool networkApplied =

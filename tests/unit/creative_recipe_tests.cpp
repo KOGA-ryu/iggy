@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
-#include <optional>
 #include <string_view>
 
 namespace {
@@ -187,12 +186,12 @@ cr::CreativeRecipePlan parentedRecipe() {
   return plan;
 }
 
-cr::CreativeAppState appStateWithDocument(cr::CreativeDocumentId id) {
-  cr::CreativeAppState appState;
+cr::Facade facadeWithDocument(cr::CreativeDocumentId id) {
+  cr::Facade facade;
   cr::CreativeDocument document = cr::CreativeDocument::create("Recipe Test");
   static_cast<void>(document.assignId(id));
-  static_cast<void>(appState.facade.installDocument(std::move(document)));
-  return appState;
+  static_cast<void>(facade.installDocument(std::move(document)));
+  return facade;
 }
 
 bool symbolicParentAndProvenanceMaterializeDeterministically() {
@@ -528,83 +527,50 @@ bool generatedOutputFingerprintDetectsLaterSemanticRefinement() {
                 "manual mutation changes live state without rewriting baseline");
 }
 
-bool historyApplyIsAtomicAndCreatesOneUndoStep() {
-  cr::CreativeAppState appState = appStateWithDocument(71U);
+bool applyIsAtomicAndPublishesSemanticRecipe() {
+  cr::Facade facade = facadeWithDocument(71U);
   const cr::CreativeRecipePlan plan = parentedRecipe();
   const cr::CreativeRecipeApplyReceipt applied =
-      cr::applyCreativeRecipeWithHistory(appState, plan, "recipe_test");
-  const cr::CreativeObject* root = appState.facade.document().findObject(1U);
-  const cr::CreativeObject* floor = appState.facade.document().findObject(2U);
+      cr::applyCreativeRecipe(facade, plan);
+  const cr::CreativeObject* root = facade.document().findObject(1U);
+  const cr::CreativeObject* floor = facade.document().findObject(2U);
   const bool hierarchyCommitted = floor != nullptr && floor->parentId == 1U;
   const bool sourceProvenanceCommitted =
       root != nullptr && cr::creativeRecipeObjectHasProvenance(
                              *root, cr::CreativeRecipeKind::Building,
                              cr::CreativeRecipeObjectRole::Source, "root");
-  const cr::CreativeAuthoringOperationRecord* operation =
-      cr::creativeHistoryTargetOperation(
-          appState.history, cr::CreativeHistoryDirection::Undo);
-  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
-      operation != nullptr
-          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
-          : std::nullopt;
-  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
-      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
 
   return expect(applied.accepted && applied.changed,
-                "recipe history apply accepted") &&
+                "recipe atomic apply accepted") &&
          expect(applied.status == cr::CreativeRecipeStatus::Applied,
-                "recipe history apply status") &&
+                "recipe atomic apply status") &&
          expect(applied.createReceipt.appliedCreateCount == 2U,
                 "recipe atomic create count") &&
-         expect(applied.historyReceipt.recorded &&
-                    cr::creativeUndoDepth(appState.history) == 0U,
-                "recipe undo consumes sole snapshot") &&
          expect(root != nullptr && floor != nullptr,
-                "recipe objects existed before undo") &&
+                "recipe publishes both objects") &&
          expect(hierarchyCommitted, "recipe hierarchy committed") &&
          expect(sourceProvenanceCommitted,
                 "recipe committed source provenance") &&
-         expect(expectedOperation.has_value() &&
-                    expectedOperation->family ==
-                        cr::CreativeAuthoringFamily::Building &&
-                    expectedOperation->kind ==
-                        cr::CreativeAuthoringOperationKind::Apply &&
-                    expectedOperation->lifecycle ==
-                        cr::CreativeAuthoringLifecycle::Parametric &&
-                    expectedOperation->action == "Building" &&
-                    expectedOperation->requestFingerprint ==
-                        cr::fingerprintCreativeRecipePlan(plan) &&
-                    expectedOperation->affectedMemberCount == 2U,
-                "recipe history records its exact family plan") &&
-         expect(undone.accepted && undone.changed,
-                "recipe one-step undo accepted") &&
-         expect(undone.targetOperation == expectedOperation,
-                "recipe operation metadata survives undo") &&
-         expect(appState.facade.document().objectCount() == 0U,
-                "recipe undo removes complete transaction") &&
-         expect(cr::creativeRedoDepth(appState.history) == 1U,
-                "recipe undo creates one redo snapshot");
+         expect(cr::fingerprintCreativeRecipePlan(plan) != 0U,
+                "recipe retains a stable semantic fingerprint");
 }
 
-bool rejectedAtomicApplyPreservesDocumentAndHistory() {
-  cr::CreativeAppState appState = appStateWithDocument(72U);
+bool rejectedAtomicApplyPreservesDocument() {
+  cr::Facade facade = facadeWithDocument(72U);
   cr::CreativeRecipePlan plan = parentedRecipe();
   plan.objects.erase(plan.objects.begin());
   plan.objects[0].parentObjectIndex.reset();
   plan.objects[0].createRequest.parentId = 999U;
 
   const cr::CreativeRecipeApplyReceipt applied =
-      cr::applyCreativeRecipeWithHistory(appState, plan, "recipe_reject");
+      cr::applyCreativeRecipe(facade, plan);
   return expect(!applied.accepted && !applied.changed,
                 "rejected recipe not accepted") &&
          expect(applied.status == cr::CreativeRecipeStatus::ApplyRejected,
                 "rejected recipe status") &&
-         expect(appState.facade.document().objectCount() == 0U &&
-                    appState.facade.document().revision() == 0U,
-                "rejected recipe preserves document") &&
-         expect(cr::creativeUndoDepth(appState.history) == 0U &&
-                    cr::creativeRedoDepth(appState.history) == 0U,
-                "rejected recipe records no history");
+         expect(facade.document().objectCount() == 0U &&
+                    facade.document().revision() == 0U,
+                "rejected recipe preserves document");
 }
 
 bool objectLibraryRecipeOwnsBoundedAndPointPlacementParity() {
@@ -779,8 +745,8 @@ int main() {
       invalidKeysParentsAndAllocatorOverflowFailClosed() &&
       definitionFingerprintPinsSemanticOutputAndRejectsStalePlans() &&
       generatedOutputFingerprintDetectsLaterSemanticRefinement() &&
-      historyApplyIsAtomicAndCreatesOneUndoStep() &&
-      rejectedAtomicApplyPreservesDocumentAndHistory() &&
+      applyIsAtomicAndPublishesSemanticRecipe() &&
+      rejectedAtomicApplyPreservesDocument() &&
       objectLibraryRecipeOwnsBoundedAndPointPlacementParity() &&
       invalidObjectLibraryPlacementsFailWithoutPartialPlan();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

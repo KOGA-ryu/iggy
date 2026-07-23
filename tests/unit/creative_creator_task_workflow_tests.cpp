@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -261,6 +262,41 @@ cr::CreativeTerrainPathRecipeRequest roadRequest(
   return request;
 }
 
+cr::CreativeTerrainRecipeApplyReceipt applyTerrainForTaskTransaction(
+    cr::CreativeAppState& appState,
+    const cr::CreativeTerrainRecipePlan& plan,
+    std::string_view source) {
+  const std::optional<cr::CreativeAuthoringOperationRecord> operation =
+      cr::makeCreativeAuthoringOperationRecord(
+          cr::CreativeAuthoringFamily::Terrain,
+          cr::CreativeAuthoringOperationKind::Apply, cr::toString(plan.kind),
+          cr::fingerprintCreativeTerrainRecipePlan(plan),
+          plan.controlEdits.size() + plan.materialEdits.size());
+  if (!operation.has_value()) {
+    cr::CreativeTerrainRecipeApplyReceipt receipt;
+    receipt.requested = true;
+    receipt.status = cr::CreativeTerrainRecipeStatus::InvalidKind;
+    receipt.reasonCode = "creative_terrain_recipe_operation_record_invalid";
+    return receipt;
+  }
+
+  cr::CreativeDocumentHistoryTransaction transaction =
+      cr::beginCreativeHistoryTransaction(appState.facade, source, *operation);
+  cr::CreativeTerrainRecipeApplyReceipt receipt =
+      cr::applyCreativeTerrainRecipe(appState.facade, plan);
+  if (!receipt.accepted || !receipt.changed) {
+    cr::cancelCreativeHistoryTransaction(transaction);
+    return receipt;
+  }
+  const cr::CreativeHistoryRecordReceipt historyReceipt =
+      cr::commitCreativeHistoryTransaction(
+          appState.history, std::move(transaction), appState.facade);
+  if (!historyReceipt.accepted || !historyReceipt.recorded) {
+    receipt.reasonCode = std::string(historyReceipt.reasonCode);
+  }
+  return receipt;
+}
+
 bool canonicalTerrainCorridorTaskSurvivesLifecycle() {
   CreatorTaskHarness task{"canonical_terrain_corridor", 20'002U};
   if (!expect(task.saveRoot.ready() && task.installed,
@@ -277,7 +313,7 @@ bool canonicalTerrainCorridorTaskSurvivesLifecycle() {
       cr::buildCreativeTerrainPathRecipe(
           roadRequest(task.appState.facade.document(), initialPoints));
   const cr::CreativeTerrainRecipeApplyReceipt applied =
-      cr::applyCreativeTerrainRecipeWithHistory(
+      applyTerrainForTaskTransaction(
           task.appState, recipe.plan, "canonical_terrain_corridor_create");
   if (!expect(recipe.receipt.accepted && applied.accepted && applied.changed &&
                   applied.terrainReceipt.changed &&
@@ -314,7 +350,7 @@ bool canonicalTerrainCorridorTaskSurvivesLifecycle() {
       cr::buildCreativeTerrainPathRecipe(
           roadRequest(task.appState.facade.document(), extendedPoints));
   const cr::CreativeTerrainRecipeApplyReceipt modified =
-      cr::applyCreativeTerrainRecipeWithHistory(
+      applyTerrainForTaskTransaction(
           task.appState, extension.plan, "canonical_terrain_corridor_extend");
   const app::CreativeDesktopCommandResult undone =
       dispatchOne(app::CreativeDesktopCommandId::Undo, task.context);
@@ -873,25 +909,30 @@ bool canonicalAssetCompositionTaskSurvivesLifecycle() {
     return false;
   }
 
-  const cr::CreativeTransform originalTransform = reopenedCrate->transform;
-  cr::CreativeTransform movedTransform = originalTransform;
-  movedTransform.position.x += 1.25;
+  const cr::CreativeTransform originalGroupTransform = reopenedGroup->transform;
+  const cr::CreativeTransform originalCrateTransform = reopenedCrate->transform;
+  cr::CreativeVec3 movedPivot = originalGroupTransform.position;
+  movedPivot.x += 1.25;
   const app::CreativeDesktopCommandResult modified = dispatchPayload(
-      app::CreativeDesktopCommandId::SetObjectTransform, task.context,
-      app::CreativeDesktopTransformPayload{crate.objectId, movedTransform, true,
-                                           false, false});
+      app::CreativeDesktopCommandId::SetGroupPivot, task.context,
+      app::CreativeDesktopGroupPivotPayload{grouped.groupObjectId, movedPivot});
   const app::CreativeDesktopCommandResult undone =
       dispatchOne(app::CreativeDesktopCommandId::Undo, task.context);
+  const cr::CreativeObject* restoredGroup =
+      task.appState.facade.findObject(grouped.groupObjectId);
   const cr::CreativeObject* restoredCrate =
       task.appState.facade.findObject(crate.objectId);
   return expect(modified.accepted && modified.changed && undone.accepted &&
                     cr::creativeUndoDepth(task.appState.history) == 0U,
                 "reopened composition edit is one undoable action") &&
-         expect(restoredCrate != nullptr &&
-                    sameTransform(restoredCrate->transform, originalTransform) &&
+         expect(restoredGroup != nullptr && restoredCrate != nullptr &&
+                    sameTransform(restoredGroup->transform,
+                                  originalGroupTransform) &&
+                    sameTransform(restoredCrate->transform,
+                                  originalCrateTransform) &&
                     restoredCrate->parentId == grouped.groupObjectId &&
                     restoredCrate->assetId == "settlement/supply_crate",
-                "composition undo restores transform, hierarchy, and asset id");
+                "composition undo restores pivot, hierarchy, and asset id");
 }
 
 }  // namespace

@@ -530,33 +530,4 @@ CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlan(
   return receipt;
 }
 
-CreativeWorldLayoutApplyReceipt applyCreativeWorldLayoutPlanWithHistory(
-    CreativeAppState& appState,
-    const CreativeWorldLayoutPlan& plan,
-    std::string_view source) {
-  CreativeWorldLayoutApplyReceipt receipt;
-  receipt.requested = true;
-  std::optional<CreativeAuthoringOperationRecord> operation =
-      makeCreativeWorldLayoutOperationRecord(plan);
-  if (!operation.has_value()) {
-    setStatus(receipt, CreativeWorldLayoutStatus::InvalidSchema,
-              "creative_world_layout_operation_invalid");
-    return receipt;
-  }
-  CreativeDocumentHistoryTransaction transaction =
-      beginCreativeHistoryTransaction(appState.facade, source,
-                                      std::move(*operation));
-  receipt = applyCreativeWorldLayoutPlan(appState.facade, plan);
-  if (!receipt.accepted || !receipt.changed) {
-    cancelCreativeHistoryTransaction(transaction);
-    return receipt;
-  }
-  receipt.historyReceipt = commitCreativeHistoryTransaction(
-      appState.history, std::move(transaction), appState.facade);
-  if (!receipt.historyReceipt.accepted || !receipt.historyReceipt.recorded) {
-    receipt.reasonCode = std::string(receipt.historyReceipt.reasonCode);
-  }
-  return receipt;
-}
-
 }  // namespace iggy3d::creative

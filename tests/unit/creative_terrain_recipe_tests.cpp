@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
-#include <optional>
 #include <string_view>
 
 namespace {
@@ -25,10 +24,10 @@ cr::CreativeDocument makeDocument(cr::CreativeDocumentId id) {
   return document;
 }
 
-cr::CreativeAppState makeAppState(cr::CreativeDocumentId id) {
-  cr::CreativeAppState appState;
-  static_cast<void>(appState.facade.installDocument(makeDocument(id)));
-  return appState;
+cr::Facade makeFacade(cr::CreativeDocumentId id) {
+  cr::Facade facade;
+  static_cast<void>(facade.installDocument(makeDocument(id)));
+  return facade;
 }
 
 bool sameEdit(const cr::CreativeTerrainControlEdit& lhs,
@@ -209,32 +208,20 @@ bool pathRecipeAddsSemanticMaterialAndExactPreview() {
                 "terrain recipe preview leaves source document unchanged");
 }
 
-bool heightAndMaterialCommitAsOneUndoStep() {
-  cr::CreativeAppState appState = makeAppState(103U);
+bool heightAndMaterialCommitAtomically() {
+  cr::Facade facade = makeFacade(103U);
   constexpr std::array points{
       cr::CreativeTerrainPathPoint{{0, 0}, 12U},
       cr::CreativeTerrainPathPoint{{2, 0}, 12U},
   };
   const cr::CreativeTerrainRecipeResult recipe =
       cr::buildCreativeTerrainPathRecipe(
-          riverRequest(appState.facade.document(), points));
+          riverRequest(facade.document(), points));
   const cr::CreativeTerrainRecipeApplyReceipt applied =
-      cr::applyCreativeTerrainRecipeWithHistory(appState, recipe.plan,
-                                                "terrain_recipe_test");
+      cr::applyCreativeTerrainRecipe(facade, recipe.plan);
   const bool bothCommitted =
-      appState.facade.document().terrainField().controlCount() > 0U &&
-      appState.facade.document().terrainMaterialField().overrideCount() > 0U;
-  const std::uint64_t undoDepthAfterApply =
-      cr::creativeUndoDepth(appState.history);
-  const cr::CreativeAuthoringOperationRecord* operation =
-      cr::creativeHistoryTargetOperation(
-          appState.history, cr::CreativeHistoryDirection::Undo);
-  const std::optional<cr::CreativeAuthoringOperationRecord> expectedOperation =
-      operation != nullptr
-          ? std::optional<cr::CreativeAuthoringOperationRecord>{*operation}
-          : std::nullopt;
-  const cr::CreativeHistoryApplyReceipt undone = cr::applyCreativeHistory(
-      appState.facade, appState.history, cr::CreativeHistoryDirection::Undo);
+      facade.document().terrainField().controlCount() > 0U &&
+      facade.document().terrainMaterialField().overrideCount() > 0U;
 
   return expect(applied.accepted && applied.changed &&
                     applied.status == cr::CreativeTerrainRecipeStatus::Applied,
@@ -242,70 +229,44 @@ bool heightAndMaterialCommitAsOneUndoStep() {
          expect(applied.terrainReceipt.changed && applied.materialReceipt.changed,
                 "terrain recipe changes height and material") &&
          expect(bothCommitted, "terrain recipe commits both authored fields") &&
-         expect(applied.historyReceipt.recorded && undoDepthAfterApply == 1U,
-                "terrain recipe records exactly one undo snapshot") &&
-         expect(expectedOperation.has_value() &&
-                    expectedOperation->family ==
-                        cr::CreativeAuthoringFamily::Terrain &&
-                    expectedOperation->kind ==
-                        cr::CreativeAuthoringOperationKind::Apply &&
-                    expectedOperation->lifecycle ==
-                        cr::CreativeAuthoringLifecycle::Parametric &&
-                    expectedOperation->action == "River" &&
-                    expectedOperation->requestFingerprint ==
-                        cr::fingerprintCreativeTerrainRecipePlan(recipe.plan) &&
-                    expectedOperation->affectedMemberCount ==
-                        recipe.plan.controlEdits.size() +
-                            recipe.plan.materialEdits.size(),
-                "terrain history records the exact semantic plan") &&
-         expect(undone.accepted && undone.changed,
-                "terrain recipe one-step undo accepted") &&
-         expect(undone.targetOperation == expectedOperation,
-                "terrain operation metadata survives undo") &&
-         expect(appState.facade.document().terrainField().controlCount() == 0U &&
-                    appState.facade.document()
-                            .terrainMaterialField()
-                            .overrideCount() == 0U,
-                "terrain recipe undo restores both authored fields");
+         expect(cr::fingerprintCreativeTerrainRecipePlan(recipe.plan) != 0U,
+                "terrain recipe retains a stable semantic fingerprint");
 }
 
 bool staleAndRejectedPlansNeverPartiallyMutate() {
-  cr::CreativeAppState staleState = makeAppState(104U);
+  cr::Facade staleFacade = makeFacade(104U);
   constexpr std::array points{
       cr::CreativeTerrainPathPoint{{0, 0}, 10U},
       cr::CreativeTerrainPathPoint{{2, 0}, 10U},
   };
   const cr::CreativeTerrainRecipeResult staleRecipe =
       cr::buildCreativeTerrainPathRecipe(
-          riverRequest(staleState.facade.document(), points));
+          riverRequest(staleFacade.document(), points));
   const cr::CreativeTerrainControlEdit external{
       cr::CreativeTerrainEditKind::Upsert, {{50, 50}, 4U, 1U}};
-  static_cast<void>(staleState.facade.applyTerrainControlEdits(
+  static_cast<void>(staleFacade.applyTerrainControlEdits(
       std::span{&external, 1U}));
   const std::uint64_t staleRevisionBefore =
-      staleState.facade.document().revision();
+      staleFacade.document().revision();
   const cr::CreativeTerrainRecipeApplyReceipt stale =
-      cr::applyCreativeTerrainRecipeWithHistory(staleState, staleRecipe.plan,
-                                                "stale_recipe");
+      cr::applyCreativeTerrainRecipe(staleFacade, staleRecipe.plan);
 
-  cr::CreativeAppState atomicState = makeAppState(105U);
+  cr::Facade atomicFacade = makeFacade(105U);
   cr::CreativeTerrainRecipeResult atomicRecipe =
       cr::buildCreativeTerrainPathRecipe(
-          riverRequest(atomicState.facade.document(), points));
+          riverRequest(atomicFacade.document(), points));
   atomicRecipe.plan.materialEdits.push_back(
       atomicRecipe.plan.materialEdits.front());
   const cr::CreativeTerrainRecipeApplyReceipt rejected =
-      cr::applyCreativeTerrainRecipeWithHistory(atomicState, atomicRecipe.plan,
-                                                "invalid_recipe");
+      cr::applyCreativeTerrainRecipe(atomicFacade, atomicRecipe.plan);
 
   return expect(!stale.accepted && !stale.changed &&
                     stale.status == cr::CreativeTerrainRecipeStatus::StalePlan,
                 "stale terrain recipe rejected") &&
-         expect(staleState.facade.document().revision() == staleRevisionBefore &&
-                    staleState.facade.document().terrainField().controlCount() ==
-                        1U &&
-                    cr::creativeUndoDepth(staleState.history) == 0U,
-                "stale terrain recipe preserves live document and history") &&
+         expect(staleFacade.document().revision() == staleRevisionBefore &&
+                    staleFacade.document().terrainField().controlCount() ==
+                        1U,
+                "stale terrain recipe preserves live document") &&
          expect(!rejected.accepted && !rejected.changed &&
                     rejected.status ==
                         cr::CreativeTerrainRecipeStatus::MutationRejected,
@@ -313,14 +274,13 @@ bool staleAndRejectedPlansNeverPartiallyMutate() {
          expect(rejected.terrainReceipt.changed &&
                     !rejected.materialReceipt.accepted,
                 "atomic staging reaches material failure after staged height") &&
-         expect(atomicState.facade.document().revision() == 0U &&
-                    atomicState.facade.document()
+         expect(atomicFacade.document().revision() == 0U &&
+                    atomicFacade.document()
                             .terrainField()
                             .controlCount() == 0U &&
-                    atomicState.facade.document()
+                    atomicFacade.document()
                             .terrainMaterialField()
-                            .overrideCount() == 0U &&
-                    cr::creativeUndoDepth(atomicState.history) == 0U,
+                            .overrideCount() == 0U,
                 "failed terrain recipe publishes no partial mutation");
 }
 
@@ -370,7 +330,7 @@ int main() {
   const bool ok = profileRecipeIsExactKernelOutput() &&
                   plateauRecipeUsesCanonicalLatticeAndAbsoluteHeight() &&
                   pathRecipeAddsSemanticMaterialAndExactPreview() &&
-                  heightAndMaterialCommitAsOneUndoStep() &&
+                  heightAndMaterialCommitAtomically() &&
                   staleAndRejectedPlansNeverPartiallyMutate() &&
                   invalidFamiliesAndEnumsFailClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
