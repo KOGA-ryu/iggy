@@ -112,6 +112,7 @@ using iggy3d_creative_app::syncCreativeEditorGroupFocus;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::initializeCreativeEditorBootstrapData;
 using iggy3d_creative_app::loadStandaloneScene;
+using iggy3d_creative_app::markCreativeEditorDocumentSaved;
 using iggy3d_creative_app::reloadCreativeEditorAssets;
 
 std::filesystem::path creativeStandaloneSaveRoot() {
@@ -309,6 +310,8 @@ int main(int argc, char** argv) {
   CreativeEditorState& editor = bootstrapData.editor;
   editor.desktopUi.shellEnabled = desktopShellEnabled;
   creative::CreativeAppState& appState = bootstrapData.appState;
+  markCreativeEditorDocumentSaved(
+      editor.persistence, appState.facade.document());
   creative::CreativeObjectId floorObjectId = bootstrapData.floorObjectId;
   const std::filesystem::path& saveRoot = bootstrapData.saveRoot;
   std::string saveId = bootstrapData.saveId;
@@ -322,6 +325,8 @@ int main(int argc, char** argv) {
     }
     installCreativeEditorWorldLayout(editor.worldLayout,
                                      std::move(loadedLayout));
+    markCreativeEditorDocumentSaved(
+        editor.persistence, appState.facade.document());
     floorObjectId = firstFloorObjectId(appState.facade.document());
     if (mapTemplateId == creative::kDitchHouseMapTemplateId) {
       editor.flyPos = {4.0F, 16.0F, 34.0F};
@@ -565,14 +570,6 @@ int main(int argc, char** argv) {
                  &playtestOwner});
         if (!desktopResult.message.empty()) {
           editor.desktopUi.statusMessage = desktopResult.message;
-        }
-        if (desktopResult.accepted &&
-            (desktopResult.lastCommand ==
-                 iggy3d_creative_app::CreativeDesktopCommandId::SaveDocument ||
-             desktopResult.lastCommand ==
-                 iggy3d_creative_app::CreativeDesktopCommandId::SaveDocumentAs)) {
-          editor.desktopUi.lastSavedRevision =
-              activeAppState.facade.document().revision();
         }
         if (desktopResult.documentReplaced || desktopResult.sceneChanged) {
           invalidateCreativeEditorSceneCache(sceneCache);

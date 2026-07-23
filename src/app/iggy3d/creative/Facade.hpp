@@ -153,6 +153,26 @@ struct CreativeFacadeDocumentInstallReceipt {
   std::string_view message = "creative_facade_document_not_requested";
 };
 
+struct CreativeFacadeDocumentSaveAcknowledgeReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeDocumentId expectedDocumentId = kInvalidDocumentId;
+  CreativeDocumentId actualDocumentId = kInvalidDocumentId;
+  std::uint64_t expectedRevision = 0U;
+  std::uint64_t revisionBefore = 0U;
+  std::uint64_t revisionAfter = 0U;
+  CreativeObjectDirtyFlags dirtyFlagsBefore = 0U;
+  CreativeObjectDirtyFlags dirtyFlagsDrained = 0U;
+  CreativeObjectDirtyFlags dirtyFlagsAfter = 0U;
+  std::string_view status =
+      "creative_facade_document_save_not_requested";
+  std::string_view reasonCode =
+      "creative_facade_document_save_not_requested";
+  std::string_view message =
+      "creative_facade_document_save_not_requested";
+};
+
 struct CreativeFacadeMeasurementAnnotationSaveReceipt {
   bool requested = false;
   bool accepted = false;
@@ -381,6 +401,10 @@ class Facade {
       std::span<const CreativeObjectId> objectIds);
   [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
       CreativeDocument document);
+  [[nodiscard]] CreativeFacadeDocumentSaveAcknowledgeReceipt
+  acknowledgeDocumentSaved(
+      CreativeDocumentId expectedDocumentId,
+      std::uint64_t expectedRevision) noexcept;
   [[nodiscard]] CreativeFacadeDocumentBatchCreateReceipt
   createDocumentObjectsAtomically(
       std::span<const CreativeDocumentCreateRequest> requests);

@@ -591,8 +591,11 @@ void runPersistenceProof(const StandaloneCaptureScenarioStepRequest& request) {
     captureScript.roundtripSaved = true;
   } else if (request.frameIndex == StandaloneCaptureScript::kClearFrame &&
              !captureScript.roundtripCleared) {
-    clearToBlankScene(appState);
-    clearEditHistory(history, "capture_clear");
+    const cr::CreativeFacadeDocumentInstallReceipt cleared =
+        clearToBlankScene(appState);
+    if (cleared.accepted) {
+      clearEditHistory(history, "capture_clear");
+    }
     captureScript.roundtripCountAfterClear =
         appState.facade.document().objectCount();
     captureScript.roundtripCleared = true;

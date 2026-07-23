@@ -13,6 +13,8 @@
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
+struct CreativeEditorPersistenceState;
+
 // A minimal per-object snapshot captured from the live document: id + kind +
 // position + bounds. Used to prove the standalone save/load round-trip is
 // lossless without depending on ids re-minting exactly.
@@ -37,7 +39,7 @@ void logDocumentSnapshot(const char* phase,
     const std::vector<ObjectSnapshotEntry>& after);
 
 [[nodiscard]] iggy3d::CreativeWorldSaveResult saveStandaloneScene(
-    const cr::Facade& facade,
+    cr::Facade& facade,
     const std::filesystem::path& saveRoot,
     const std::string& saveId,
     const cr::CreativeWorldLayout* worldLayout = nullptr,
@@ -49,6 +51,19 @@ void logDocumentSnapshot(const char* phase,
                                        cr::CreativeWorldLayout* worldLayout =
                                            nullptr);
 
-void clearToBlankScene(cr::CreativeAppState& appState);
+[[nodiscard]] cr::CreativeFacadeDocumentInstallReceipt clearToBlankScene(
+    cr::CreativeAppState& appState);
+
+[[nodiscard]] bool creativeEditorDocumentDirty(
+    const CreativeEditorPersistenceState& state,
+    const cr::CreativeDocument& document) noexcept;
+
+void markCreativeEditorDocumentSaved(
+    CreativeEditorPersistenceState& state,
+    const cr::CreativeDocument& document) noexcept;
+
+void clearCreativeEditorDocumentSavePoint(
+    CreativeEditorPersistenceState& state,
+    cr::CreativeDocumentId documentId) noexcept;
 
 }  // namespace iggy3d_creative_app

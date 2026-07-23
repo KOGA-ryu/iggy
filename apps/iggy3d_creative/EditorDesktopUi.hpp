@@ -192,8 +192,6 @@ struct CreativeEditorDesktopUiState {
   std::string statusMessage;
   // True while a playtest child process is running (polled each frame).
   bool playtestRunning = false;
-  // Document revision at the last successful save; dirty = current != this.
-  std::uint64_t lastSavedRevision = 0;
 
   // Inspector/Diagnostics cache. Logic topology is document-revision owned,
   // so idle UI frames reuse one bounded report instead of rescanning links.

@@ -133,6 +133,14 @@ void setInstallStatus(CreativeFacadeDocumentInstallReceipt& receipt,
   receipt.message = status;
 }
 
+void setSaveAcknowledgeStatus(
+    CreativeFacadeDocumentSaveAcknowledgeReceipt& receipt,
+    std::string_view status) noexcept {
+  receipt.status = status;
+  receipt.reasonCode = status;
+  receipt.message = status;
+}
+
 void setBatchCreateStatus(CreativeFacadeDocumentBatchCreateReceipt& receipt,
                           CreativeFacadeDocumentBatchCreateStatus status,
                           std::string_view reason) noexcept {
@@ -452,6 +460,47 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   receipt.nextDirtyFlags = document_.dirtyFlags();
   receipt.activeToolAfter = toolState_.activeTool;
   setInstallStatus(receipt, "creative_facade_document_installed");
+  return receipt;
+}
+
+CreativeFacadeDocumentSaveAcknowledgeReceipt
+Facade::acknowledgeDocumentSaved(
+    CreativeDocumentId expectedDocumentId,
+    std::uint64_t expectedRevision) noexcept {
+  CreativeFacadeDocumentSaveAcknowledgeReceipt receipt;
+  receipt.requested = true;
+  receipt.expectedDocumentId = expectedDocumentId;
+  receipt.actualDocumentId = document_.id();
+  receipt.expectedRevision = expectedRevision;
+  receipt.revisionBefore = document_.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  receipt.dirtyFlagsBefore = document_.dirtyFlags();
+  receipt.dirtyFlagsAfter = receipt.dirtyFlagsBefore;
+
+  if (!document_.isValid() || document_.id() == kInvalidDocumentId) {
+    setSaveAcknowledgeStatus(
+        receipt, "creative_facade_document_save_invalid");
+    return receipt;
+  }
+  if (expectedDocumentId == kInvalidDocumentId ||
+      document_.id() != expectedDocumentId) {
+    setSaveAcknowledgeStatus(
+        receipt, "creative_facade_document_save_id_mismatch");
+    return receipt;
+  }
+  if (document_.revision() != expectedRevision) {
+    setSaveAcknowledgeStatus(
+        receipt, "creative_facade_document_save_revision_mismatch");
+    return receipt;
+  }
+
+  receipt.dirtyFlagsDrained = document_.drainDirtyFlags();
+  receipt.dirtyFlagsAfter = document_.dirtyFlags();
+  receipt.revisionAfter = document_.revision();
+  receipt.accepted = true;
+  receipt.changed = receipt.dirtyFlagsDrained != 0U;
+  setSaveAcknowledgeStatus(
+      receipt, "creative_facade_document_save_acknowledged");
   return receipt;
 }
 

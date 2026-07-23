@@ -7,6 +7,7 @@
 #include <SDL3/SDL.h>
 
 #include "EditorPlacement.hpp"
+#include "EditorState.hpp"
 
 namespace iggy3d_creative_app {
 namespace {
@@ -93,7 +94,7 @@ bool snapshotsMatch(const std::vector<ObjectSnapshotEntry>& before,
 }
 
 iggy3d::CreativeWorldSaveResult saveStandaloneScene(
-    const cr::Facade& facade,
+    cr::Facade& facade,
     const std::filesystem::path& saveRoot,
     const std::string& saveId,
     const cr::CreativeWorldLayout* worldLayout,
@@ -106,6 +107,8 @@ iggy3d::CreativeWorldSaveResult saveStandaloneScene(
     SDL_Log("iggy3d_creative: SAVE rejected unsynchronized world layout");
     return rejected;
   }
+  const cr::CreativeDocumentId documentId = facade.document().id();
+  const std::uint64_t documentRevision = facade.document().revision();
   cr::CreativeDocument docCopy = facade.document();  // Copy: save drains.
   iggy3d::CreativeWorldSaveRequest request;
   request.saveRoot = saveRoot;
@@ -114,8 +117,20 @@ iggy3d::CreativeWorldSaveResult saveStandaloneScene(
   request.worldLayout = worldLayout;
   request.worldTitle = "standalone";
   request.saveTitle = "scene";
-  const iggy3d::CreativeWorldSaveResult result =
+  iggy3d::CreativeWorldSaveResult result =
       iggy3d::saveCreativeWorld(request);
+  if (result.accepted && result.saved) {
+    const cr::CreativeFacadeDocumentSaveAcknowledgeReceipt acknowledged =
+        facade.acknowledgeDocumentSaved(documentId, documentRevision);
+    result.dirtyFlagsDrained = acknowledged.dirtyFlagsDrained;
+    result.dirtyFlagsAfter = acknowledged.dirtyFlagsAfter;
+    if (!acknowledged.accepted) {
+      result.accepted = false;
+      result.status =
+          "creative_world_save_live_acknowledgement_failed";
+      result.reasonCode = std::string(acknowledged.reasonCode);
+    }
+  }
   SDL_Log("iggy3d_creative: SAVE accepted=%d saved=%d objectCount=%llu "
           "path='%s' reasonCode='%s'",
           result.accepted ? 1 : 0, result.saved ? 1 : 0,
@@ -139,29 +154,58 @@ bool loadStandaloneScene(cr::CreativeAppState& appState,
   if (!result.accepted) {
     return false;
   }
-  if (worldLayout != nullptr) {
-    *worldLayout = result.worldLayoutPresent
-                       ? std::move(result.worldLayout)
-                       : cr::CreativeWorldLayout{};
-  }
   const cr::CreativeFacadeDocumentInstallReceipt installReceipt =
       appState.facade.installDocument(std::move(result.document));
   SDL_Log("iggy3d_creative: LOAD install accepted=%d objectCount=%llu",
           installReceipt.accepted ? 1 : 0,
           static_cast<unsigned long long>(
               appState.facade.document().objectCount()));
-  return installReceipt.accepted;
+  if (!installReceipt.accepted) {
+    return false;
+  }
+  if (worldLayout != nullptr) {
+    *worldLayout = result.worldLayoutPresent
+                       ? std::move(result.worldLayout)
+                       : cr::CreativeWorldLayout{};
+  }
+  return true;
 }
 
-void clearToBlankScene(cr::CreativeAppState& appState) {
+cr::CreativeFacadeDocumentInstallReceipt clearToBlankScene(
+    cr::CreativeAppState& appState) {
   cr::CreativeDocument blank = cr::CreativeDocument::create("blank");
   (void)blank.assignId(1);
-  const cr::CreativeFacadeDocumentInstallReceipt installReceipt =
+  cr::CreativeFacadeDocumentInstallReceipt installReceipt =
       appState.facade.installDocument(std::move(blank));
   SDL_Log("iggy3d_creative: NEW/CLEAR install accepted=%d objectCount=%llu",
           installReceipt.accepted ? 1 : 0,
           static_cast<unsigned long long>(
               appState.facade.document().objectCount()));
+  return installReceipt;
+}
+
+bool creativeEditorDocumentDirty(
+    const CreativeEditorPersistenceState& state,
+    const cr::CreativeDocument& document) noexcept {
+  return !state.hasSavePoint || state.documentId != document.id() ||
+         state.savedRevision != document.revision();
+}
+
+void markCreativeEditorDocumentSaved(
+    CreativeEditorPersistenceState& state,
+    const cr::CreativeDocument& document) noexcept {
+  state.documentId = document.id();
+  state.savedRevision = document.revision();
+  state.hasSavePoint = document.isValid() &&
+                       document.id() != cr::kInvalidDocumentId;
+}
+
+void clearCreativeEditorDocumentSavePoint(
+    CreativeEditorPersistenceState& state,
+    cr::CreativeDocumentId documentId) noexcept {
+  state.documentId = documentId;
+  state.savedRevision = 0U;
+  state.hasSavePoint = false;
 }
 
 }  // namespace iggy3d_creative_app

@@ -591,6 +591,57 @@ bool installingValidDocumentReplacesDocumentAndPreservesContentState() {
                 "install object findable");
 }
 
+bool saveAcknowledgementDrainsOnlyTheExactPublishedDocument() {
+  cr::Facade facade;
+  cr::CreativeDocument document =
+      documentWithRooms("Save Acknowledge", 78U, 1U);
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      facade.installDocument(std::move(document));
+  const cr::CreativeDocumentId documentId = facade.document().id();
+  const std::uint64_t revision = facade.document().revision();
+  const cr::CreativeObjectDirtyFlags dirtyFlags =
+      facade.document().dirtyFlags();
+
+  const cr::CreativeFacadeDocumentSaveAcknowledgeReceipt wrongId =
+      facade.acknowledgeDocumentSaved(documentId + 1U, revision);
+  const cr::CreativeFacadeDocumentSaveAcknowledgeReceipt wrongRevision =
+      facade.acknowledgeDocumentSaved(documentId, revision + 1U);
+  const bool rejectedAcknowledgementsPreservedDocument =
+      facade.document().id() == documentId &&
+      facade.document().revision() == revision &&
+      facade.document().dirtyFlags() == dirtyFlags;
+  const cr::CreativeFacadeDocumentSaveAcknowledgeReceipt acknowledged =
+      facade.acknowledgeDocumentSaved(documentId, revision);
+  const cr::CreativeFacadeDocumentSaveAcknowledgeReceipt clean =
+      facade.acknowledgeDocumentSaved(documentId, revision);
+
+  return expect(installed.accepted && dirtyFlags != 0U,
+                "save acknowledgement fixture is dirty") &&
+         expect(!wrongId.accepted && !wrongId.changed &&
+                    wrongId.reasonCode ==
+                        "creative_facade_document_save_id_mismatch" &&
+                    facade.document().revision() == revision,
+                "save acknowledgement rejects a different document") &&
+         expect(!wrongRevision.accepted && !wrongRevision.changed &&
+                    wrongRevision.reasonCode ==
+                        "creative_facade_document_save_revision_mismatch",
+                "save acknowledgement rejects a stale revision") &&
+         expect(rejectedAcknowledgementsPreservedDocument,
+                "rejected save acknowledgements preserve the live document") &&
+         expect(acknowledged.accepted && acknowledged.changed &&
+                    acknowledged.dirtyFlagsBefore == dirtyFlags &&
+                    acknowledged.dirtyFlagsDrained == dirtyFlags &&
+                    acknowledged.dirtyFlagsAfter == 0U &&
+                    acknowledged.revisionBefore == revision &&
+                    acknowledged.revisionAfter == revision &&
+                    facade.document().dirtyFlags() == 0U,
+                "save acknowledgement drains dirty domains without mutation") &&
+         expect(clean.accepted && !clean.changed &&
+                    clean.dirtyFlagsDrained == 0U &&
+                    clean.revisionAfter == revision,
+                "save acknowledgement is idempotent for a clean document");
+}
+
 bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
   cr::Facade facade;
   cr::CreativeDocument existing = documentWithRooms("Existing", 88, 1);
@@ -1207,6 +1258,7 @@ int main() {
                   unknownInputDoesNotChangeKernels() &&
                   roomCommandsStillWorkThroughFacade() &&
                   installingValidDocumentReplacesDocumentAndPreservesContentState() &&
+                  saveAcknowledgementDrainsOnlyTheExactPublishedDocument() &&
                   installingInvalidIdDocumentDoesNotMutateExistingFacade() &&
                   installingDocumentClearsTransientEditorState() &&
                   installingSecondDocumentDoesNotLeakOldSelection() &&

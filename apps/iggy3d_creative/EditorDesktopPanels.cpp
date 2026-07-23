@@ -15,6 +15,7 @@
 #include "EditorDesktopWidgets.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorMapValidationPanel.hpp"
+#include "EditorPersistence.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorToolGlyphs.hpp"
 #include "app/iggy3d/creative/play/PlaySession.hpp"
@@ -596,8 +597,9 @@ void buildCreativeEditorDesktopStatusBar(
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
   if (ImGui::Begin("##creative_desktop_status", nullptr, flags)) {
     const cr::CreativeDocument& document = appState.facade.document();
-    const bool dirty = document.revision() != desktopUi.lastSavedRevision ||
-                       creativeEditorWorldLayoutDirty(editor.worldLayout);
+    const bool dirty =
+        creativeEditorDocumentDirty(editor.persistence, document) ||
+        creativeEditorWorldLayoutDirty(editor.worldLayout);
     const std::uint64_t selectionCount =
         cr::selectedTargetCount(appState.facade.selectionState());
     const std::string_view name = document.name();

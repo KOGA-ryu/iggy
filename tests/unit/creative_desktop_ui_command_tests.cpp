@@ -317,6 +317,8 @@ bool newDocumentReplacesAndClearsHistory() {
       appState, appState.history, cr::CreativeDuplicateCommandRequest{}, "seed"));
 
   app::CreativeEditorState editor;
+  app::markCreativeEditorDocumentSaved(
+      editor.persistence, appState.facade.document());
   std::string saveId = "unused";
   const app::CreativeDesktopCommandContext context{appState, editor,
                                                     std::filesystem::path{},
@@ -329,7 +331,13 @@ bool newDocumentReplacesAndClearsHistory() {
          expect(appState.facade.document().objectCount() == 0U,
                 "new document is blank") &&
          expect(cr::creativeUndoDepth(appState.history) == 0U,
-                "new document clears undo history");
+                "new document clears undo history") &&
+         expect(!editor.persistence.hasSavePoint &&
+                    editor.persistence.documentId ==
+                        appState.facade.document().id() &&
+                    app::creativeEditorDocumentDirty(
+                        editor.persistence, appState.facade.document()),
+                "new document has no save point and is dirty");
 }
 
 bool builderEstateRegenerationIsExplicitUndoableAndUnsaved() {
@@ -637,6 +645,14 @@ bool saveAsRebindsTheActiveSlotAndClearsHistory() {
                   "world_named");
   const bool rebounded = saveId == "world_named";
   const bool historyCleared = cr::creativeUndoDepth(appState.history) == 0U;
+  const bool liveDocumentAcknowledged =
+      appState.facade.document().dirtyFlags() == 0U &&
+      editor.persistence.hasSavePoint &&
+      editor.persistence.documentId == appState.facade.document().id() &&
+      editor.persistence.savedRevision ==
+          appState.facade.document().revision() &&
+      !app::creativeEditorDocumentDirty(editor.persistence,
+                                        appState.facade.document());
 
   const app::CreativeDesktopCommandResult emptyName =
       dispatchOne(app::CreativeDesktopCommandId::SaveDocumentAs, context,
@@ -646,8 +662,162 @@ bool saveAsRebindsTheActiveSlotAndClearsHistory() {
   return expect(saveAs.accepted && rebounded,
                 "save as accepts and rebinds the active save id") &&
          expect(historyCleared, "save clears undo history like the keyboard path") &&
+         expect(liveDocumentAcknowledged,
+                "save as acknowledges the exact live document revision") &&
          expect(!emptyName.accepted,
                 "save as with an empty name is rejected");
+}
+
+bool failedSaveAndOpenPreserveLiveState() {
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_desktop_failed_persistence_tests";
+  std::error_code error;
+  std::filesystem::remove_all(saveRoot, error);
+
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Persistence Failure");
+  static_cast<void>(document.assignId(414U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  selectPrimary(appState.facade, createCrate(appState.facade, 0.0));
+  static_cast<void>(app::duplicateSelectedObjectsWithUndo(
+      appState, appState.history, cr::CreativeDuplicateCommandRequest{},
+      "seed"));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "failed_persistence");
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {5, 4}}, 0.0, 3U, 0.25, 1U});
+  app::markCreativeEditorDocumentSaved(
+      editor.persistence, appState.facade.document());
+  static_cast<void>(createCrate(appState.facade, 4.0));
+
+  const cr::CreativeDocumentId documentIdBefore =
+      appState.facade.document().id();
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const cr::CreativeObjectDirtyFlags dirtyFlagsBefore =
+      appState.facade.document().dirtyFlags();
+  const std::vector<cr::CreativeObjectId> objectIdsBefore =
+      documentObjectIds(appState.facade.document());
+  const std::size_t undoDepthBefore =
+      cr::creativeUndoDepth(appState.history);
+  const std::size_t buildingCountBefore =
+      editor.worldLayout.source.buildings.size();
+  const std::uint64_t layoutRevisionBefore = editor.worldLayout.revision;
+  const std::uint64_t layoutEpochBefore = editor.worldLayout.sourceEpoch;
+  const app::CreativeEditorPersistenceState persistenceBefore =
+      editor.persistence;
+
+  std::string saveId;
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, saveRoot, &saveId};
+  const app::CreativeDesktopCommandResult save =
+      dispatchOne(app::CreativeDesktopCommandId::SaveDocument, context);
+
+  saveId = "missing_scene";
+  const app::CreativeDesktopCommandResult open =
+      dispatchOne(app::CreativeDesktopCommandId::OpenDocument, context);
+
+  const bool liveStatePreserved =
+      appState.facade.document().id() == documentIdBefore &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      appState.facade.document().dirtyFlags() == dirtyFlagsBefore &&
+      documentObjectIds(appState.facade.document()) == objectIdsBefore &&
+      cr::creativeUndoDepth(appState.history) == undoDepthBefore &&
+      editor.worldLayout.source.buildings.size() == buildingCountBefore &&
+      editor.worldLayout.revision == layoutRevisionBefore &&
+      editor.worldLayout.sourceEpoch == layoutEpochBefore &&
+      editor.persistence.documentId == persistenceBefore.documentId &&
+      editor.persistence.savedRevision == persistenceBefore.savedRevision &&
+      editor.persistence.hasSavePoint == persistenceBefore.hasSavePoint;
+
+  std::filesystem::remove_all(saveRoot, error);
+  return expect(shell.accepted && shell.changed,
+                "failed persistence fixture has a World Layout source") &&
+         expect(!save.accepted && !save.changed,
+                "invalid save id is rejected") &&
+         expect(!open.accepted && !open.changed &&
+                    !open.documentReplaced,
+                "missing open target is rejected") &&
+         expect(liveStatePreserved,
+                "failed save and open preserve document, source, history, and "
+                "save point");
+}
+
+bool keyboardPersistenceCommandsShareDocumentCheckpoint() {
+  const std::filesystem::path saveRoot =
+      std::filesystem::temp_directory_path() /
+      "iggy3d_keyboard_persistence_tests";
+  std::error_code error;
+  std::filesystem::remove_all(saveRoot, error);
+  std::filesystem::create_directories(saveRoot, error);
+
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Keyboard Persistence");
+  static_cast<void>(document.assignId(415U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  selectPrimary(appState.facade, createCrate(appState.facade, 0.0));
+  static_cast<void>(app::duplicateSelectedObjectsWithUndo(
+      appState, appState.history, cr::CreativeDuplicateCommandRequest{},
+      "keyboard_save_seed"));
+
+  app::CreativeEditorState editor;
+  const std::string saveId = "keyboard_scene";
+  const auto route = [](cr::CreativeInputActionId action) {
+    cr::CreativeInputRouteResult routed;
+    routed.context = cr::CreativeInputContext::EditorViewport;
+    routed.actions[0].action = action;
+    routed.actionCount = 1U;
+    return routed;
+  };
+
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Save), appState, editor, saveRoot,
+      saveId);
+  const bool saved =
+      appState.facade.document().objectCount() == 2U &&
+      appState.facade.document().dirtyFlags() == 0U &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      editor.persistence.hasSavePoint &&
+      !app::creativeEditorDocumentDirty(editor.persistence,
+                                        appState.facade.document());
+
+  selectPrimary(appState.facade, createCrate(appState.facade, 4.0));
+  static_cast<void>(app::duplicateSelectedObjectsWithUndo(
+      appState, appState.history, cr::CreativeDuplicateCommandRequest{},
+      "keyboard_new_seed"));
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::NewDocument), appState, editor,
+      saveRoot, saveId);
+  const bool replaced =
+      appState.facade.document().objectCount() == 0U &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      !editor.persistence.hasSavePoint &&
+      app::creativeEditorDocumentDirty(editor.persistence,
+                                       appState.facade.document());
+
+  app::applyCreativeEditorCommandInput(
+      route(cr::CreativeInputActionId::Load), appState, editor, saveRoot,
+      saveId);
+  const bool loaded =
+      appState.facade.document().objectCount() == 2U &&
+      appState.facade.document().dirtyFlags() == 0U &&
+      cr::creativeUndoDepth(appState.history) == 0U &&
+      editor.persistence.hasSavePoint &&
+      !app::creativeEditorDocumentDirty(editor.persistence,
+                                        appState.facade.document());
+
+  std::filesystem::remove_all(saveRoot, error);
+  return expect(!error && saved,
+                "keyboard Save acknowledges the shared document checkpoint") &&
+         expect(replaced,
+                "keyboard New clears history and creates an unsaved document") &&
+         expect(loaded,
+                "keyboard Load restores content and the shared save point");
 }
 
 bool playIsUnsupportedAndFrameIsBounded() {
@@ -7557,6 +7727,8 @@ int main() {
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndClearsHistory() && ok;
+  ok = failedSaveAndOpenPreserveLiveState() && ok;
+  ok = keyboardPersistenceCommandsShareDocumentCheckpoint() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;

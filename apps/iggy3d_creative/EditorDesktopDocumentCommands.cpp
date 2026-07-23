@@ -159,16 +159,24 @@ bool dispatchCreativeDesktopDocumentCommand(
   creative::CreativeAppState& activeAppState =
       activeCreativeEditorAppState(editor, appState);
   switch (command.id) {
-    case CreativeDesktopCommandId::NewDocument:
-      clearToBlankScene(appState);
-      clearEditHistory(appState.history, "desktop_new");
-      resetCreativeEditorForDocumentReplacement(
-          editor, appState.facade.document().id());
-      result.accepted = true;
-      result.changed = true;
-      result.documentReplaced = true;
-      result.message = "new document";
+    case CreativeDesktopCommandId::NewDocument: {
+      const creative::CreativeFacadeDocumentInstallReceipt replaced =
+          clearToBlankScene(appState);
+      if (replaced.accepted) {
+        clearEditHistory(appState.history, "desktop_new");
+        resetCreativeEditorForDocumentReplacement(
+            editor, appState.facade.document().id());
+        clearCreativeEditorDocumentSavePoint(
+            editor.persistence, appState.facade.document().id());
+      }
+      result.accepted = replaced.accepted;
+      result.changed = replaced.changed;
+      result.documentReplaced = replaced.accepted && replaced.changed;
+      result.message = replaced.accepted
+                           ? "new document"
+                           : std::string(replaced.reasonCode);
       break;
+    }
     case CreativeDesktopCommandId::OpenDocument: {
       const std::string saveId =
           context.activeSaveId != nullptr ? *context.activeSaveId : std::string{};
@@ -181,6 +189,8 @@ bool dispatchCreativeDesktopDocumentCommand(
             editor, appState.facade.document().id());
         installCreativeEditorWorldLayout(editor.worldLayout,
                                          std::move(loadedLayout));
+        markCreativeEditorDocumentSaved(
+            editor.persistence, appState.facade.document());
       }
       result.accepted = loaded;
       result.changed = loaded;
@@ -200,6 +210,8 @@ bool dispatchCreativeDesktopDocumentCommand(
       if (ok) {
         clearEditHistory(appState.history, "desktop_save");
         markCreativeEditorWorldLayoutSaved(editor.worldLayout);
+        markCreativeEditorDocumentSaved(
+            editor.persistence, appState.facade.document());
       }
       result.accepted = ok;
       result.changed = ok;
@@ -225,6 +237,8 @@ bool dispatchCreativeDesktopDocumentCommand(
         }
         clearEditHistory(appState.history, "desktop_save_as");
         markCreativeEditorWorldLayoutSaved(editor.worldLayout);
+        markCreativeEditorDocumentSaved(
+            editor.persistence, appState.facade.document());
       }
       result.accepted = ok;
       result.changed = ok;

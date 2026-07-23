@@ -80,6 +80,13 @@ struct CreativeEditorAuthoredAssetEditSession {
   std::string statusLabel;
 };
 
+struct CreativeEditorPersistenceState {
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t savedRevision = 0U;
+  bool hasSavePoint = false;
+};
+
 struct CreativeEditorState {
   iggy3d::ProductCreativeFlyConfig flyConfig{};
   iggy3d::Vec3 flyPos{0.0F, 6.0F, 12.0F};
@@ -101,6 +108,7 @@ struct CreativeEditorState {
   iggy3d::creative::CreativeControllerState controllerInputState;
   CreativeEditorControlsState controls;
   CreativeEditorDesktopUiState desktopUi;
+  CreativeEditorPersistenceState persistence;
   CreativeEditorInteractionState interaction;
   CreativeEditorCatalogState catalog;
   CreativeEditorAuthoredAssetLibrary authoredAssets;

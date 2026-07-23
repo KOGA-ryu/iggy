@@ -392,15 +392,23 @@ void applyCreativeEditorCommandInput(
         if (saveResult.accepted && saveResult.saved) {
           clearEditHistory(appState.history, "save_success");
           markCreativeEditorWorldLayoutSaved(editor.worldLayout);
+          markCreativeEditorDocumentSaved(
+              editor.persistence, appState.facade.document());
         }
         break;
       }
-      case creative::CreativeInputActionId::NewDocument:
-        clearToBlankScene(appState);
-        clearEditHistory(appState.history, "new_clear");
-        resetCreativeEditorForDocumentReplacement(
-            editor, appState.facade.document().id());
+      case creative::CreativeInputActionId::NewDocument: {
+        const creative::CreativeFacadeDocumentInstallReceipt replaced =
+            clearToBlankScene(appState);
+        if (replaced.accepted) {
+          clearEditHistory(appState.history, "new_clear");
+          resetCreativeEditorForDocumentReplacement(
+              editor, appState.facade.document().id());
+          clearCreativeEditorDocumentSavePoint(
+              editor.persistence, appState.facade.document().id());
+        }
         break;
+      }
       case creative::CreativeInputActionId::Load: {
         creative::CreativeWorldLayout loadedLayout;
         const bool loaded = loadStandaloneScene(appState, saveRoot, saveId,
@@ -411,6 +419,8 @@ void applyCreativeEditorCommandInput(
               editor, appState.facade.document().id());
           installCreativeEditorWorldLayout(editor.worldLayout,
                                            std::move(loadedLayout));
+          markCreativeEditorDocumentSaved(
+              editor.persistence, appState.facade.document());
         }
         break;
       }
