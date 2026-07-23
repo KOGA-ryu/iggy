@@ -1,11 +1,13 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -15,6 +17,14 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool nearVec3(cr::CreativeVec3 lhs,
+              cr::CreativeVec3 rhs,
+              double epsilon = 1.0e-9) {
+  return std::fabs(lhs.x - rhs.x) <= epsilon &&
+         std::fabs(lhs.y - rhs.y) <= epsilon &&
+         std::fabs(lhs.z - rhs.z) <= epsilon;
 }
 
 cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
@@ -32,10 +42,36 @@ cr::CreativeObjectId createRoom(cr::Facade& facade) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createCrate(cr::Facade& facade, cr::CreativeVec3 position) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Crate";
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  return facade.createDocumentObject(request).objectId;
+}
+
 void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
   static_cast<void>(facade.setActiveTool(cr::Tool::Select));
   static_cast<void>(facade.dispatchToolInput(
       pointerPress(static_cast<cr::Id>(objectId))));
+}
+
+bool installDocument(cr::Facade& facade, cr::CreativeDocumentId documentId) {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Mutation");
+  if (!document.assignId(documentId)) {
+    return false;
+  }
+  return facade.installDocument(std::move(document)).accepted;
+}
+
+cr::CreativeToolInputPacket pointerMove(double x, double y, cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerMove;
+  input.pointer.x = x;
+  input.pointer.y = y;
+  input.pointer.target.value = targetId;
+  return input;
 }
 
 bool defaultNoSelectionRejects() {
@@ -882,6 +918,78 @@ bool explicitAtomicBatchRollsBackLateFailure() {
                 "explicit atomic batch preserves earlier objects");
 }
 
+bool explicitAtomicBatchCommitsOneRevision() {
+  cr::Facade facade;
+  const cr::CreativeObjectId first = createCrate(facade, {0.0, 0.0, 0.0});
+  const cr::CreativeObjectId second = createCrate(facade, {1.0, 0.0, 0.0});
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::array requests{
+      cr::CreativeMutationRequest{0U, first, cr::CreativeMutationKind::Move,
+                                  cr::makeMovePayload({10.0, 0.0, 0.0})},
+      cr::CreativeMutationRequest{0U, second, cr::CreativeMutationKind::Move,
+                                  cr::makeMovePayload({20.0, 0.0, 0.0})}};
+  const cr::CreativeDocumentBatchMutationReceipt batch =
+      facade.mutateObjectsAtomically(requests);
+
+  return expect(batch.atomic && batch.committed && batch.changed &&
+                    batch.appliedCount == 2U && batch.failedCount == 0U &&
+                    batch.revisionAfter == revisionBefore + 1U,
+                "explicit atomic batch commits one revision") &&
+         expect(facade.findObject(first)->transform.position.x == 10.0 &&
+                    facade.findObject(second)->transform.position.x == 20.0,
+                "explicit atomic batch applies every request");
+}
+
+bool explicitMutationPreservesFacadeEditorState() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  cr::CreativeSnapSettings snap = cr::makeDefaultCreativeSnapSettings();
+  snap.stepX = 0.5;
+  snap.stepY = 0.25;
+  snap.originX = 2.0;
+  facade.setSnapSettings(snap);
+  static_cast<void>(facade.configureMeasurement(
+      cr::CreativeMeasurementMode::Distance, cr::CreativeMeasurementAxis::X,
+      false));
+  cr::CreativeMeasurementPoint firstPoint;
+  firstPoint.x = 1.0;
+  firstPoint.y = 2.0;
+  firstPoint.z = 3.0;
+  cr::CreativeMeasurementPoint secondPoint;
+  secondPoint.x = 4.0;
+  secondPoint.y = 2.0;
+  secondPoint.z = 3.0;
+  static_cast<void>(facade.appendMeasurementPoint(firstPoint));
+  static_cast<void>(facade.appendMeasurementPoint(secondPoint));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerMove(1.2, 2.7, static_cast<cr::Id>(roomId))));
+
+  const cr::CreativeDocumentMutationReceipt receipt = facade.mutateObject(
+      roomId, cr::CreativeMutationKind::Rename,
+      cr::makeRenamePayload("Preserved State"));
+
+  return expect(cr::documentMutationSucceeded(receipt.status) && receipt.changed,
+                "explicit mutation state setup changed document") &&
+         expect(facade.selectionState().selectedTarget.value == roomId &&
+                    facade.selectionState().selectedTargets.size() == 1U,
+                "explicit mutation preserves selection state") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "explicit mutation preserves active tool") &&
+         expect(facade.measurementState().hasMeasurement &&
+                    facade.measurementState().pointCount == 2U,
+                "explicit mutation preserves measurement state") &&
+         expect(facade.snapSettings().stepX == 0.5 &&
+                    facade.snapSettings().stepY == 0.25 &&
+                    facade.snapSettings().originX == 2.0,
+                "explicit mutation preserves snap state") &&
+         expect(facade.ghostState().visible &&
+                    facade.ghostState().sourceTool == cr::Tool::Move &&
+                    facade.ghostState().target.value == roomId,
+                "explicit mutation preserves ghost state");
+}
+
 bool assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() {
   cr::Facade facade;
   const cr::CreativeObjectId crate = createRoom(facade);
@@ -940,6 +1048,140 @@ bool hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() {
                 "hierarchy transform preserves descendant offset");
 }
 
+bool hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() {
+  cr::Facade facade;
+  if (!expect(installDocument(facade, 12346U),
+              "absolute transform document installed")) {
+    return false;
+  }
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Absolute Group";
+  groupRequest.transform.position = {1.0, 2.0, 3.0};
+  groupRequest.transform.rotationEulerRadians = {0.31, -0.47, 0.59};
+  groupRequest.transform.scale = {2.0, 3.0, 4.0};
+  groupRequest.hasTransformOverride = true;
+  const cr::CreativeObjectId group =
+      facade.createDocumentObject(groupRequest).objectId;
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Absolute Child";
+  childRequest.transform.position = {2.0, 2.0, 3.0};
+  childRequest.transform.rotationEulerRadians = {-0.21, 0.37, -0.43};
+  childRequest.transform.scale = {1.0, 1.5, 2.0};
+  childRequest.hasTransformOverride = true;
+  childRequest.parentId = group;
+  const cr::CreativeObjectId child =
+      facade.createDocumentObject(childRequest).objectId;
+  cr::CreativeDocumentCreateRequest leafRequest;
+  leafRequest.kind = cr::CreativeObjectKind::Crate;
+  leafRequest.name = "Absolute Leaf";
+  leafRequest.transform.position = {-1.0, 0.0, 2.0};
+  leafRequest.transform.rotationEulerRadians = {0.41, -0.53, 0.67};
+  leafRequest.transform.scale = {1.5, 2.0, 2.5};
+  leafRequest.hasTransformOverride = true;
+  const cr::CreativeObjectId leaf =
+      facade.createDocumentObject(leafRequest).objectId;
+
+  const cr::CreativeTransform leafTarget{{8.0, 9.0, 10.0},
+                                         {0.2, -0.3, 0.4},
+                                         {3.0, 4.0, 5.0}};
+  const std::uint64_t leafRevisionBefore = facade.document().revision();
+  const cr::CreativeHierarchyTransformReceipt leafReceipt =
+      facade.transformObjectHierarchyAtomically(
+          {leaf, leafTarget, true, true, true});
+  const cr::CreativeObject* transformedLeaf = facade.findObject(leaf);
+
+  const cr::CreativeTransform hierarchyTarget{{6.0, 7.0, 8.0},
+                                              {-0.2, 0.3, -0.4},
+                                              {4.0, 5.0, 6.0}};
+  const std::uint64_t hierarchyRevisionBefore = facade.document().revision();
+  const cr::CreativeHierarchyTransformReceipt hierarchyReceipt =
+      facade.transformObjectHierarchyAtomically(
+          {group, hierarchyTarget, true, true, true});
+  const cr::CreativeObject* transformedGroup = facade.findObject(group);
+  const cr::CreativeObject* transformedChild = facade.findObject(child);
+
+  return expect(leafReceipt.accepted && leafReceipt.changed &&
+                    leafReceipt.revisionAfter == leafRevisionBefore + 1U &&
+                    transformedLeaf != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        transformedLeaf->transform.position,
+                        leafTarget.position) &&
+                    cr::creativeVec3ExactlyEqual(
+                        transformedLeaf->transform.scale, leafTarget.scale) &&
+                    nearVec3(
+                        transformedLeaf->transform.rotationEulerRadians,
+                        leafTarget.rotationEulerRadians),
+                "leaf absolute transform pins position scale and orientation") &&
+         expect(hierarchyReceipt.accepted && hierarchyReceipt.changed &&
+                    hierarchyReceipt.revisionAfter == hierarchyRevisionBefore + 1U &&
+                    transformedGroup != nullptr && transformedChild != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        transformedGroup->transform.position,
+                        hierarchyTarget.position) &&
+                    cr::creativeVec3ExactlyEqual(
+                        transformedGroup->transform.scale, hierarchyTarget.scale) &&
+                    nearVec3(
+                        transformedGroup->transform.rotationEulerRadians,
+                        hierarchyTarget.rotationEulerRadians),
+                "hierarchy absolute transform pins three-axis orientation");
+}
+
+bool invalidMissingAndEffectivelyLockedHierarchyRequestsPublishNothing() {
+  cr::Facade facade;
+  if (!expect(installDocument(facade, 12347U),
+              "hierarchy rejection document installed")) {
+    return false;
+  }
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Locked Group";
+  const cr::CreativeObjectId group =
+      facade.createDocumentObject(groupRequest).objectId;
+  cr::CreativeDocumentCreateRequest childRequest;
+  childRequest.kind = cr::CreativeObjectKind::Crate;
+  childRequest.name = "Locked Child";
+  childRequest.parentId = group;
+  childRequest.hasTransformOverride = true;
+  childRequest.transform.position = {1.0, 0.0, 0.0};
+  const cr::CreativeObjectId child =
+      facade.createDocumentObject(childRequest).objectId;
+  const cr::CreativeTransform childBefore = facade.findObject(child)->transform;
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const cr::CreativeHierarchyTransformReceipt invalid =
+      facade.transformObjectHierarchyAtomically(
+          {group, {{4.0, 0.0, 0.0}, {}, {1.0, 1.0, 1.0}}, false, false, false});
+  const cr::CreativeHierarchyTransformReceipt missing =
+      facade.transformObjectHierarchyAtomically(
+          {999999U, {{4.0, 0.0, 0.0}, {}, {1.0, 1.0, 1.0}}, true, false, false});
+  static_cast<void>(facade.mutateObject(
+      group, cr::CreativeMutationKind::SetLocked, cr::makeLockPayload(true)));
+  const std::uint64_t lockedRevisionBefore = facade.document().revision();
+  const cr::CreativeHierarchyTransformReceipt locked =
+      facade.transformObjectHierarchyAtomically(
+          {child, {{5.0, 0.0, 0.0}, {}, {1.0, 1.0, 1.0}}, true, false, false});
+
+  return expect(invalid.status == cr::CreativeHierarchyTransformStatus::InvalidRequest &&
+                    invalid.revisionAfter == revisionBefore &&
+                    missing.status == cr::CreativeHierarchyTransformStatus::MissingObject &&
+                    missing.revisionAfter == revisionBefore,
+                "invalid and missing hierarchy requests publish nothing") &&
+         expect(locked.status == cr::CreativeHierarchyTransformStatus::LockedObject &&
+                    locked.revisionAfter == lockedRevisionBefore &&
+                    facade.findObject(child) != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        facade.findObject(child)->transform.position,
+                        childBefore.position) &&
+                    cr::creativeVec3ExactlyEqual(
+                        facade.findObject(child)->transform.rotationEulerRadians,
+                        childBefore.rotationEulerRadians) &&
+                    cr::creativeVec3ExactlyEqual(
+                        facade.findObject(child)->transform.scale,
+                        childBefore.scale),
+                "effectively locked hierarchy request publishes nothing");
+}
+
 }  // namespace
 
 int main() {
@@ -965,8 +1207,12 @@ int main() {
                   orphanReleaseThroughFacadeIsNoOp() &&
                   explicitMutationTracksNoChangeMissingObjectAndStats() &&
                   explicitAtomicBatchRollsBackLateFailure() &&
+                  explicitAtomicBatchCommitsOneRevision() &&
+                  explicitMutationPreservesFacadeEditorState() &&
                   assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() &&
                   hierarchyTransformPublishesOneRevisionAndPreservesDescendantOffset() &&
+                  hierarchyTransformsPinAbsoluteLeafAndThreeAxisOrientation() &&
+                  invalidMissingAndEffectivelyLockedHierarchyRequestsPublishNothing() &&
                   facadeMutationStatusStringsAreStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

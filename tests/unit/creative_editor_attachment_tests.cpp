@@ -339,6 +339,7 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
   const cr::CreativeTransform handleBefore =
       appState.facade.findObject(handle.objectId)->transform;
   appState.history = {};
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
 
   const app::CreativeEditorObjectReattachmentPlan plan =
       app::planCreativeEditorObjectReattachment(
@@ -362,7 +363,8 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
       cr::creativeVec3ExactlyEqual(movedHandle->transform.position,
                                    {4.0, 1.0, 1.0}) &&
       movedHandle->parentId == leaf.objectId &&
-      cr::creativeUndoDepth(appState.history) == 1U;
+      cr::creativeUndoDepth(appState.history) == 1U &&
+      appState.facade.document().revision() == revisionBefore + 1U;
   const cr::CreativeTransform movedLeafTransform =
       movedLeaf != nullptr ? movedLeaf->transform : cr::CreativeTransform{};
   const cr::CreativeTransform movedHandleTransform =
@@ -396,6 +398,69 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
                     sameTransform(redoneHandle->transform,
                                   movedHandleTransform),
                 "reattach is one undoable and redoable hierarchy edit");
+}
+
+bool reattachRejectsStaleAndInsideHierarchyWithoutMutation() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, 322U, "Reattach Contract Rejections"),
+              "reattach contract document installed")) {
+    return false;
+  }
+  const cr::CreativeDocumentCreateReceipt source = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Prop, "Source", "door_frame",
+      {0.0, 0.0, 0.0});
+  const cr::CreativeDocumentCreateReceipt child = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Door, "Child", "door_leaf",
+      {0.5, 0.0, 0.0}, source.objectId, "door_frame");
+  const cr::CreativeDocumentCreateReceipt target = createAttachmentObject(
+      appState.facade, cr::CreativeObjectKind::Prop, "Target", "door_frame",
+      {4.0, 0.0, 0.0});
+  if (!expect(source.accepted && child.accepted && target.accepted,
+              "reattach contract rejection objects created")) {
+    return false;
+  }
+
+  const cr::CreativeHierarchyReattachmentRequest stale{
+      appState.facade.document().id(), appState.facade.document().revision(),
+      child.objectId, target.objectId, "door_frame",
+      {{4.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}}};
+  static_cast<void>(appState.facade.mutateObject(
+      target.objectId, cr::CreativeMutationKind::Rename,
+      cr::makeRenamePayload("Changed Before Commit")));
+  const std::uint64_t staleRevision = appState.facade.document().revision();
+  const cr::CreativeTransform staleTransform =
+      appState.facade.findObject(child.objectId)->transform;
+  const cr::CreativeHierarchyReattachmentReceipt staleReceipt =
+      appState.facade.reattachObjectHierarchyAtomically(stale);
+
+  const cr::CreativeTransform insideTransform =
+      appState.facade.findObject(source.objectId)->transform;
+  const std::uint64_t insideRevision = appState.facade.document().revision();
+  const cr::CreativeHierarchyReattachmentReceipt insideReceipt =
+      appState.facade.reattachObjectHierarchyAtomically(
+          {appState.facade.document().id(), insideRevision, source.objectId,
+           child.objectId, "door_frame", insideTransform});
+
+  return expect(staleReceipt.status == cr::CreativeHierarchyTransformStatus::StalePlan &&
+                    staleReceipt.revisionAfter == staleRevision &&
+                    appState.facade.findObject(child.objectId)->parentId ==
+                        source.objectId &&
+                    cr::creativeVec3ExactlyEqual(
+                        appState.facade.findObject(child.objectId)->transform.position,
+                        staleTransform.position) &&
+                    cr::creativeVec3ExactlyEqual(
+                        appState.facade.findObject(child.objectId)->transform.rotationEulerRadians,
+                        staleTransform.rotationEulerRadians) &&
+                    cr::creativeVec3ExactlyEqual(
+                        appState.facade.findObject(child.objectId)->transform.scale,
+                        staleTransform.scale),
+                "stale reattachment publishes nothing") &&
+         expect(insideReceipt.status ==
+                    cr::CreativeHierarchyTransformStatus::TargetInsideSourceHierarchy &&
+                    insideReceipt.revisionAfter == insideRevision &&
+                    appState.facade.findObject(child.objectId)->parentId ==
+                        source.objectId,
+                "inside-hierarchy reattachment publishes nothing");
 }
 
 bool reattachRejectsOccupiedAndPenetratingHosts() {
@@ -590,6 +655,7 @@ int main() {
                  detachActionPreservesWorldPoseAndRestoresRelationship() &&
                  reattachMovesHierarchyAndIsOneUndoableEdit() &&
                  reattachRejectsOccupiedAndPenetratingHosts() &&
+                 reattachRejectsStaleAndInsideHierarchyWithoutMutation() &&
                  reattachObjectActionUsesFrozenAimTarget() &&
                  deletingAttachmentParentCascadesAsOneUndoableEdit() &&
                  lockedAttachmentChildRejectsCascadeWithoutPartialDelete()
