@@ -29,7 +29,7 @@ replacement.
 | AUT-A1-003 | `Facade` document/editor boundary | Canonical Owner | Owns the live document and canonical tool, selection, measurement, snap, and ghost state; narrow its mutable surface during AUT-008 | Keep | P0 |
 | AUT-A1-004 | `Facade::documentForPersistence()` | Contract Risk | The 17 production and 30 test callers are migrated to explicit mutation, locked asset-bounds refresh, hierarchy-transform, and reattachment contracts; the mutable accessor is deleted and the final repository search is empty | Retired | P0 |
 | AUT-A1-005 | Staged-document publication | Duplicate Implementation | Twenty direct `document = std::move(staged...)` publications coexist with five call sites of the documented one-revision `commitStagedMutation` primitive; Facade batch create also publishes a same-document edit through full `installDocument`; AUT-002A owns the repair | Consolidate | P0 |
-| AUT-A1-006 | Editor history transaction composition | Required Adapter | Fifty-three app transaction starts already pair with the shared `completeEditTransaction` wrapper; 11 direct core starts serve sidecar or multi-phase paths. Breadth alone is not a defect. Audit inconsistent success predicates and direct commit/cancel exceptions after mutation publication is singular | Investigate | P1 |
+| AUT-A1-006 | Editor history transaction composition | Required Adapter | Fifty-three ordinary app transaction call sites use `beginEditTransaction`; 8 direct starts attach required authoring-operation records and 2 own sidecar/multi-phase protocols. AUT-003 removed the plain measurement duplicate and routed volume completion through `completeEditTransaction` | Keep | P1 |
 | AUT-A1-007 | Desktop semantic command dispatcher | Required Adapter | ImGui surfaces emit typed command ids into one headless dispatcher and then reuse domain kernels | Keep | P0 |
 | AUT-A1-008 | Keyboard/controller command route | Contract Risk | `EditorCommandInput.cpp` and held-item paths invoke domain kernels directly rather than emitting the same semantic command ids as desktop UI; repair in Interaction and Controls after the mutation boundary is stable | Repair | P1 |
 | AUT-A1-009 | Generic recipe apply APIs | Test-only Production | `applyCreativeRecipeWithHistory`, `applyCreativeTerrainRecipeWithHistory`, and `applyCreativeWorldLayoutPlanWithHistory` have no product-app callers; decide whether to integrate or remove the unused apply layers while retaining materialization and provenance | Investigate | P1 |
@@ -68,10 +68,14 @@ replacement.
    wrappers and state honestly that shared recipes own planning,
    materialization, fingerprints, and provenance while each durable source
    owns its own apply transaction.
-5. **Audit transaction exceptions.** Keep the existing shared completion
-   helper. Compare its success predicates with the 11 direct core transaction
-   starts, then consolidate only real policy differences. Preserve World
-   Layout and generated-source sidecars as supported extensions.
+5. **Audit transaction exceptions (complete).** AUT-003 keeps the existing
+   shared completion helper, routes ordinary measurement and volume completion
+   through it, and leaves 10 justified direct starts: 8 attach authoring
+   operation metadata, World Layout owns its document/source sidecar, and map
+   regeneration owns rollback if history recording fails. Authored asset
+   cancellation remains explicit before durable-write, source, provenance, or
+   operation-record failure. No generic helper was added over these distinct
+   protocols.
 6. **Converge interaction routes.** Once the mutation contract is stable, make
    desktop, keyboard, and controller actions resolve to the same semantic
    operation ids. Input-specific gesture state remains in Interaction and
@@ -177,3 +181,20 @@ AUT-002 completed on 2026-07-23.
   publication id, generation, epoch, persistence field, or source-layout
   revision contract was added.
 - A clean cache-disabled build passed the exact 7/7 AUT-002B CTest gate.
+
+AUT-003 completed on 2026-07-23.
+
+- Commit `671d67c4` replaces the plain measurement transaction duplicate with
+  `beginEditTransaction` plus `completeEditTransaction`, while retaining its
+  user-visible history failure reason.
+- Volume operations retain their exact destructive authoring-operation record
+  but now use the shared changed/rejected completion policy.
+- The remaining direct starts are classified and intentional: 8 operation
+  metadata owners and 2 sidecar/multi-phase owners. Direct cancellation outside
+  the shared helper is limited to authored-asset preconditions, World Layout
+  source history, and map-regeneration rollback.
+- Focused placement and desktop command tests passed 2/2. The full Authoring
+  Core automated gate passed 10/10.
+- Five older assertions discovered by the gate now pin the AUT-002B law:
+  undo/redo restore exact content while advancing, rather than rewinding, the
+  live document revision.
