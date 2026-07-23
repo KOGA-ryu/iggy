@@ -18,6 +18,28 @@ inline constexpr std::size_t kMaximumOrderedCellCount =
     static_cast<std::size_t>((kMaximumGridRadius * 2 + 1) *
                              (kMaximumGridRadius * 2 + 1));
 
+void normalizeScatterReceiptRevisionRange(
+    CreativeAssetScatterRecipeMutationReceipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  receipt.revisionAfter = revisionAfter;
+  if (receipt.patternMutationReceipt.requested) {
+    receipt.patternMutationReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.patternMutationReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+void clearGeneratedScatterOutputs(
+    CreativeAssetScatterRecipeMutationReceipt& receipt) noexcept {
+  receipt.generatedObjectIds.clear();
+  receipt.generatedObjectCount = 0U;
+}
+
+void clearReplacedScatterOutputs(
+    CreativeAssetScatterRecipeMutationReceipt& receipt) noexcept {
+  receipt.replacedGeneratedObjectIds.clear();
+  receipt.replacedGeneratedObjectCount = 0U;
+}
+
 struct OrderedCell {
   std::int32_t x = 0;
   std::int32_t z = 0;
@@ -445,17 +467,27 @@ createCreativeAssetScatterRecipeAtomically(
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
     receipt.message =
         std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.generatedObjectIds.clear();
-    receipt.generatedObjectCount = 0U;
+    clearGeneratedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
   receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeScatterReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message = std::string{publication.reasonCode};
+    receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
+    clearGeneratedScatterOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_asset_scatter_recipe_created";
   return receipt;
 }
@@ -509,6 +541,7 @@ updateCreativeAssetScatterRecipeAtomically(
   receipt.replacedGeneratedObjectIds = oldGeneratedObjectIds;
   CreativeDocument staged = document;
   if (!createScatterOutputs(staged, createRequests, receipt)) {
+    clearReplacedScatterOutputs(receipt);
     return receipt;
   }
   CreativePatternRecipe replacement;
@@ -526,8 +559,9 @@ updateCreativeAssetScatterRecipeAtomically(
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
     receipt.message =
         std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.generatedObjectIds.clear();
-    receipt.generatedObjectCount = 0U;
+    clearGeneratedScatterOutputs(receipt);
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -540,17 +574,28 @@ updateCreativeAssetScatterRecipeAtomically(
     receipt.failedObjectId = removed.failedObjectId;
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
     receipt.message = std::string{removed.reasonCode};
-    receipt.generatedObjectIds.clear();
-    receipt.generatedObjectCount = 0U;
+    clearGeneratedScatterOutputs(receipt);
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeScatterReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{publication.reasonCode};
+    clearGeneratedScatterOutputs(receipt);
+    clearReplacedScatterOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.updatedExistingRecipe = true;
   receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_asset_scatter_recipe_updated";
   return receipt;
 }
@@ -614,17 +659,26 @@ extendCreativeAssetScatterRecipeAtomically(
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
     receipt.message =
         std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.generatedObjectIds.clear();
-    receipt.generatedObjectCount = 0U;
+    clearGeneratedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeScatterReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
+    receipt.message = std::string{publication.reasonCode};
+    clearGeneratedScatterOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.updatedExistingRecipe = true;
   receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_asset_scatter_recipe_extended";
   return receipt;
 }
@@ -690,6 +744,8 @@ excludeCreativeAssetScatterOutputAtomically(
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
     receipt.message =
         std::string{receipt.patternMutationReceipt.reasonCode};
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
   unlockScatterOutputs(staged, std::span{&outputObjectId, 1U});
@@ -701,17 +757,29 @@ excludeCreativeAssetScatterOutputAtomically(
     receipt.failedObjectId = removed.failedObjectId;
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
     receipt.message = std::string{removed.reasonCode};
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
   receipt.replacedGeneratedObjectIds.push_back(outputObjectId);
   receipt.replacedGeneratedObjectCount = 1U;
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeScatterReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{publication.reasonCode};
+    receipt.replacedGeneratedObjectIds.clear();
+    receipt.replacedGeneratedObjectCount = 0U;
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.updatedExistingRecipe = true;
   receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_asset_scatter_output_excluded";
   return receipt;
 }
@@ -759,6 +827,8 @@ removeCreativeAssetScatterRecipeAtomically(
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RecipeRejected;
     receipt.message =
         std::string{receipt.patternMutationReceipt.reasonCode};
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
   unlockScatterOutputs(staged, receipt.replacedGeneratedObjectIds);
@@ -771,15 +841,27 @@ removeCreativeAssetScatterRecipeAtomically(
     receipt.failedObjectId = removed.failedObjectId;
     receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
     receipt.message = std::string{removed.reasonCode};
+    clearReplacedScatterOutputs(receipt);
+    normalizeScatterReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeScatterReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeAssetScatterRecipeMutationStatus::RemoveRejected;
+    receipt.message = std::string{publication.reasonCode};
+    receipt.replacedGeneratedObjectIds.clear();
+    receipt.replacedGeneratedObjectCount = 0U;
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.updatedExistingRecipe = true;
   receipt.status = CreativeAssetScatterRecipeMutationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_asset_scatter_recipe_removed";
   return receipt;
 }

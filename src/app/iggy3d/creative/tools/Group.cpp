@@ -67,6 +67,60 @@ void reject(CreativeGroupCommandReceipt& receipt,
   receipt.reasonCode = reasonCode;
 }
 
+void normalizeMutationBatchRevisionRange(
+    CreativeDocumentBatchMutationReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+  if (receipt.status == CreativeDocumentMutationStatus::Unknown) {
+    return;
+  }
+  receipt.revisionBefore = revisionBefore;
+  receipt.revisionAfter = revisionAfter;
+  for (CreativeDocumentMutationReceipt& item : receipt.receipts) {
+    item.revisionBefore = revisionBefore;
+    item.revisionAfter = revisionAfter;
+  }
+  if (receipt.publicationAttempted) {
+    receipt.publicationReceipt.revisionBefore = revisionBefore;
+    receipt.publicationReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+void normalizeGroupNestedRevisionRange(
+    CreativeGroupCommandReceipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  if (receipt.createReceipt.requested) {
+    receipt.createReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.createReceipt.revisionAfter = revisionAfter;
+  }
+  normalizeMutationBatchRevisionRange(
+      receipt.mutationReceipt, receipt.revisionBefore, revisionAfter);
+  if (receipt.removeReceipt.requested) {
+    receipt.removeReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.removeReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+void clearUnpublishedGroupOutputs(
+    CreativeGroupCommandReceipt& receipt) noexcept {
+  if (receipt.kind == CreativeGroupCommandKind::Group) {
+    receipt.groupObjectId = kInvalidObjectId;
+  }
+  receipt.affectedObjectCount = 0U;
+  receipt.selectionObjectIds.clear();
+}
+
+void normalizeRemoveReceiptRevisionRange(
+    CreativeDocumentRemoveReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+  if (!receipt.requested) {
+    return;
+  }
+  receipt.revisionBefore = revisionBefore;
+  receipt.revisionAfter = revisionAfter;
+}
+
 [[nodiscard]] bool includeExtent(CreativeObjectWorldExtent& aggregate,
                                  const CreativeObjectWorldExtent& extent) {
   if (!extent.valid) {
@@ -406,15 +460,27 @@ CreativeGroupCommandReceipt groupDocumentObjectsAtomically(
       !documentMutationSucceeded(receipt.mutationReceipt.status)) {
     reject(receipt, CreativeGroupCommandStatus::MutationRejected,
            "creative_group_parenting_rejected");
+    normalizeGroupNestedRevisionRange(receipt, receipt.revisionBefore);
+    clearUnpublishedGroupOutputs(receipt);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeGroupNestedRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    reject(receipt, CreativeGroupCommandStatus::MutationRejected,
+           publication.reasonCode);
+    clearUnpublishedGroupOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeGroupCommandStatus::Applied;
   receipt.affectedObjectCount = hierarchy.objectIds.size();
-  receipt.revisionAfter = document.revision();
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.selectionObjectIds.push_back(receipt.groupObjectId);
   receipt.reasonCode = "creative_group_applied";
   return receipt;
@@ -473,6 +539,8 @@ CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
         !documentMutationSucceeded(receipt.mutationReceipt.status)) {
       reject(receipt, CreativeGroupCommandStatus::MutationRejected,
              "creative_ungroup_parenting_rejected");
+      normalizeGroupNestedRevisionRange(receipt, receipt.revisionBefore);
+      clearUnpublishedGroupOutputs(receipt);
       return receipt;
     }
   }
@@ -481,15 +549,27 @@ CreativeGroupCommandReceipt ungroupDocumentObjectAtomically(
       !receipt.removeReceipt.objectRemoved) {
     reject(receipt, CreativeGroupCommandStatus::RemoveRejected,
            receipt.removeReceipt.reasonCode, groupObjectId);
+    normalizeGroupNestedRevisionRange(receipt, receipt.revisionBefore);
+    clearUnpublishedGroupOutputs(receipt);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeGroupNestedRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    reject(receipt, CreativeGroupCommandStatus::MutationRejected,
+           publication.reasonCode);
+    clearUnpublishedGroupOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeGroupCommandStatus::Applied;
   receipt.affectedObjectCount = receipt.selectionObjectIds.size();
-  receipt.revisionAfter = document.revision();
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.reasonCode = "creative_ungroup_applied";
   return receipt;
 }
@@ -580,6 +660,9 @@ CreativeHierarchyRemoveReceipt removeCreativeObjectHierarchyAtomically(
     if (!item.accepted || !item.objectRemoved) {
       receipt.failedObjectId = objectId;
       receipt.reasonCode = item.reasonCode;
+      normalizeRemoveReceiptRevisionRange(
+          receipt.rootReceipt, receipt.revisionBefore, receipt.revisionBefore);
+      receipt.removedObjectIds.clear();
       return receipt;
     }
     if (objectId == rootObjectId) {
@@ -588,12 +671,20 @@ CreativeHierarchyRemoveReceipt removeCreativeObjectHierarchyAtomically(
     receipt.removedObjectIds.push_back(objectId);
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeRemoveReceiptRevisionRange(
+      receipt.rootReceipt, receipt.revisionBefore,
+      publication.accepted ? publication.revisionAfter
+                           : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.reasonCode = publication.reasonCode;
+    receipt.removedObjectIds.clear();
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
-  receipt.revisionAfter = document.revision();
-  receipt.rootReceipt.revisionBefore = receipt.revisionBefore;
-  receipt.rootReceipt.revisionAfter = receipt.revisionAfter;
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.rootReceipt.reasonCode = "object_hierarchy_removed";
   receipt.rootReceipt.message = "object_hierarchy_removed";
   receipt.reasonCode = "creative_hierarchy_removed";
@@ -636,15 +727,34 @@ removeCreativeObjectHierarchiesAtomically(
       receipt.failedObjectId = objectId;
       receipt.reasonCode = item.reasonCode;
       receipt.removedObjectIds.clear();
+      for (CreativeDocumentRemoveReceipt& stagedReceipt :
+           receipt.removeReceipts) {
+        normalizeRemoveReceiptRevisionRange(
+            stagedReceipt, receipt.revisionBefore, receipt.revisionBefore);
+      }
       return receipt;
     }
     receipt.removedObjectIds.push_back(objectId);
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  const std::uint64_t nestedRevisionAfter =
+      publication.accepted ? publication.revisionAfter
+                           : receipt.revisionBefore;
+  for (CreativeDocumentRemoveReceipt& stagedReceipt :
+       receipt.removeReceipts) {
+    normalizeRemoveReceiptRevisionRange(
+        stagedReceipt, receipt.revisionBefore, nestedRevisionAfter);
+  }
+  if (!publication.accepted) {
+    receipt.reasonCode = publication.reasonCode;
+    receipt.removedObjectIds.clear();
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
-  receipt.revisionAfter = document.revision();
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.reasonCode = "creative_hierarchy_batch_removed";
   return receipt;
 }

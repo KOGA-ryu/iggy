@@ -7,13 +7,16 @@
 #include "EditorToolOptions.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <numbers>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
@@ -38,6 +41,136 @@ bool expect(bool condition, std::string_view message) {
   return cr::creativeVec3ExactlyEqual(lhs.position, rhs.position) &&
          lhs.yawOffsetRadians == rhs.yawOffsetRadians &&
          lhs.uniformScale == rhs.uniformScale;
+}
+
+cr::CreativeDocumentCreateRequest scatterCreateRequest(
+    std::string_view name,
+    cr::CreativeVec3 position) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Prop;
+  request.name = std::string{name};
+  request.assetId = "test/scatter_prop";
+  request.assetContentHash = 17U;
+  request.bounds = {position,
+                    {position.x + 1.0, position.y + 1.0,
+                     position.z + 1.0}};
+  request.hasBoundsOverride = true;
+  return request;
+}
+
+cr::CreativeAssetScatterRecipe scatterMutationRecipe() {
+  cr::CreativeAssetScatterRecipe recipe;
+  recipe.objectKind = cr::CreativeObjectKind::Prop;
+  recipe.assetId = "test/scatter_prop";
+  recipe.assetContentHash = 17U;
+  recipe.assetSourceBounds = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  recipe.paintCenters.push_back({0.0, 0.0, 0.0});
+  recipe.maxGeneratedObjects = 8U;
+  return recipe;
+}
+
+bool scatterRecipeMutationsPublishOneTruthfulRevision() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Scatter Publication");
+  static_cast<void>(document.assignId(8900U));
+  const auto nestedRangeMatches =
+      [](const cr::CreativeAssetScatterRecipeMutationReceipt& receipt) {
+        return receipt.patternMutationReceipt.requested &&
+               receipt.patternMutationReceipt.revisionBefore ==
+                   receipt.revisionBefore &&
+               receipt.patternMutationReceipt.revisionAfter ==
+                   receipt.revisionAfter;
+      };
+
+  const cr::CreativeAssetScatterRecipe recipe = scatterMutationRecipe();
+  const std::array createRequests{
+      scatterCreateRequest("Initial A", {0.0, 0.0, 0.0}),
+      scatterCreateRequest("Initial B", {2.0, 0.0, 0.0})};
+  const cr::CreativeAssetScatterRecipeMutationReceipt created =
+      cr::createCreativeAssetScatterRecipeAtomically(
+          document, createRequests,
+          std::span<const cr::CreativeObjectId>{}, recipe);
+  if (!expect(created.accepted && created.generatedObjectIds.size() == 2U,
+              "scatter publication create setup")) {
+    return false;
+  }
+  const std::vector<cr::CreativeObjectId> initialIds =
+      created.generatedObjectIds;
+  const cr::CreativePatternRecipeId recipeId = created.patternRecipeId;
+  const std::array updateRequests{
+      scatterCreateRequest("Updated A", {4.0, 0.0, 0.0}),
+      scatterCreateRequest("Updated B", {6.0, 0.0, 0.0})};
+  const cr::CreativeAssetScatterRecipeMutationReceipt updated =
+      cr::updateCreativeAssetScatterRecipeAtomically(
+          document, recipeId, updateRequests, recipe);
+  if (!expect(updated.accepted && updated.generatedObjectIds.size() == 2U,
+              "scatter publication update setup")) {
+    return false;
+  }
+  const bool initialOutputsRetired = std::all_of(
+      initialIds.begin(), initialIds.end(),
+      [&document](cr::CreativeObjectId objectId) {
+        return document.findObject(objectId) == nullptr;
+      });
+
+  const cr::CreativePatternRecipe* current = cr::findCreativePatternRecipe(
+      document.patternRecipeStore(), recipeId);
+  if (!expect(current != nullptr, "scatter publication recipe survives update")) {
+    return false;
+  }
+  cr::CreativeAssetScatterRecipe extendedRecipe = current->scatter;
+  extendedRecipe.paintCenters.push_back({8.0, 0.0, 0.0});
+  const cr::CreativeDocumentCreateRequest extensionRequest =
+      scatterCreateRequest("Extended", {8.0, 0.0, 0.0});
+  const cr::CreativeAssetScatterRecipeMutationReceipt extended =
+      cr::extendCreativeAssetScatterRecipeAtomically(
+          document, recipeId, std::span{&extensionRequest, 1U},
+          extendedRecipe);
+  if (!expect(extended.accepted, "scatter publication extension setup")) {
+    return false;
+  }
+
+  current =
+      cr::findCreativePatternRecipe(document.patternRecipeStore(), recipeId);
+  if (!expect(current != nullptr && current->generatedObjectIds.size() == 3U,
+              "scatter publication exclusion setup")) {
+    return false;
+  }
+  const cr::CreativeObjectId excludedObjectId =
+      current->generatedObjectIds.front();
+  cr::CreativeAssetScatterRecipe excludedRecipe = current->scatter;
+  excludedRecipe.exclusions.push_back({{4.0, 0.0, 0.0}, 1.0});
+  const cr::CreativeAssetScatterRecipeMutationReceipt excluded =
+      cr::excludeCreativeAssetScatterOutputAtomically(
+          document, recipeId, excludedObjectId, excludedRecipe);
+  const bool excludedOutputRetired =
+      document.findObject(excludedObjectId) == nullptr;
+  const cr::CreativeAssetScatterRecipeMutationReceipt removed =
+      cr::removeCreativeAssetScatterRecipeAtomically(document, recipeId);
+
+  return expect(created.revisionAfter == created.revisionBefore + 1U &&
+                    nestedRangeMatches(created),
+                "scatter create publishes one truthful revision") &&
+         expect(updated.revisionAfter == updated.revisionBefore + 1U &&
+                    nestedRangeMatches(updated) &&
+                    updated.replacedGeneratedObjectCount == 2U &&
+                    initialOutputsRetired,
+                "scatter update publishes one truthful revision") &&
+         expect(extended.revisionAfter == extended.revisionBefore + 1U &&
+                    nestedRangeMatches(extended),
+                "scatter extension publishes one truthful revision") &&
+         expect(excluded.accepted &&
+                    excluded.revisionAfter == excluded.revisionBefore + 1U &&
+                    nestedRangeMatches(excluded) &&
+                    excluded.replacedGeneratedObjectCount == 1U &&
+                    excludedOutputRetired,
+                "scatter exclusion publishes one truthful revision") &&
+         expect(removed.accepted &&
+                    removed.revisionAfter == removed.revisionBefore + 1U &&
+                    nestedRangeMatches(removed) &&
+                    document.patternRecipeStore().recipes.empty() &&
+                    document.objectCount() == 0U,
+                "scatter removal publishes one truthful revision");
 }
 
 bool plannerIsDeterministicBoundedAndSpaced() {
@@ -1236,7 +1369,8 @@ bool sharedVisitedKernelIsBounded() {
 }  // namespace
 
 int main() {
-  const bool ok = plannerIsDeterministicBoundedAndSpaced() &&
+  const bool ok = scatterRecipeMutationsPublishOneTruthfulRevision() &&
+                  plannerIsDeterministicBoundedAndSpaced() &&
                   plannerRejectsInvalidAndOversizedRequests() &&
                   terrainSurfacePoseMatchesFlatRenderedPatch() &&
                   recipePlannerHonorsMasksAndExclusions() &&

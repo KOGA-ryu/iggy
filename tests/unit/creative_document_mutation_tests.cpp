@@ -19,6 +19,7 @@ bool expect(bool condition, std::string_view message) {
 
 cr::CreativeDocument makeDocumentWithRoom(cr::CreativeObjectId& roomId) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  static_cast<void>(document.assignId(1U));
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
   request.name = "Room";
@@ -51,6 +52,7 @@ cr::CreativeDocument makeDocumentWithObjectKind(
 
 cr::CreativeDocument makeDocumentWithDefaultRoom(cr::CreativeObjectId& roomId) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  static_cast<void>(document.assignId(1U));
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
   request.name = "Room";
@@ -60,6 +62,7 @@ cr::CreativeDocument makeDocumentWithDefaultRoom(cr::CreativeObjectId& roomId) {
 
 cr::CreativeDocument makeDocumentWithCrate(cr::CreativeObjectId& crateId) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  static_cast<void>(document.assignId(1U));
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Crate;
   request.name = "Crate";
@@ -1626,6 +1629,222 @@ bool lootAndExitSettingsAreDurableTypedMutations() {
          ok;
 }
 
+bool documentPublicationRejectsInvalidAndMismatchedState() {
+  cr::CreativeDocument invalidLive =
+      cr::CreativeDocument::create("Invalid Live");
+  static_cast<void>(invalidLive.assignId(41U));
+  cr::CreativeDocument invalidLiveStage = invalidLive;
+  static_cast<void>(invalidLiveStage.rename("Advanced Invalid Live Stage"));
+  auto& invalidLiveStack =
+      const_cast<cr::CreativeTerrainOperationStack&>(
+          invalidLive.terrainOperationStack());
+  invalidLiveStack.version = 0U;
+  const cr::CreativeDocumentPublicationReceipt invalidLiveReceipt =
+      invalidLive.commitStagedMutation(std::move(invalidLiveStage));
+
+  cr::CreativeDocument invalidStaged =
+      cr::CreativeDocument::create("Invalid Staged");
+  static_cast<void>(invalidStaged.assignId(42U));
+  cr::CreativeDocument corruptedStage = invalidStaged;
+  static_cast<void>(corruptedStage.rename("Advanced Corrupted Stage"));
+  auto& invalidStagedStack =
+      const_cast<cr::CreativeTerrainOperationStack&>(
+          corruptedStage.terrainOperationStack());
+  invalidStagedStack.version = 0U;
+  const cr::CreativeDocumentPublicationReceipt invalidStagedReceipt =
+      invalidStaged.commitStagedMutation(std::move(corruptedStage));
+
+  cr::CreativeDocument missingLive =
+      cr::CreativeDocument::create("Missing Id");
+  cr::CreativeDocument missingStage = missingLive;
+  static_cast<void>(missingStage.rename("Advanced Missing Id"));
+  const cr::CreativeDocumentPublicationReceipt missingIdReceipt =
+      missingLive.commitStagedMutation(std::move(missingStage));
+
+  cr::CreativeDocument mismatchedLive =
+      cr::CreativeDocument::create("Mismatch Live");
+  static_cast<void>(mismatchedLive.assignId(43U));
+  cr::CreativeDocument mismatchedStage =
+      cr::CreativeDocument::create("Mismatch Stage");
+  static_cast<void>(mismatchedStage.assignId(44U));
+  static_cast<void>(mismatchedStage.rename("Advanced Mismatch Stage"));
+  const cr::CreativeDocumentPublicationReceipt mismatchReceipt =
+      mismatchedLive.commitStagedMutation(std::move(mismatchedStage));
+
+  cr::CreativeDocument unchanged =
+      cr::CreativeDocument::create("Unchanged");
+  static_cast<void>(unchanged.assignId(45U));
+  cr::CreativeDocument unchangedStage = unchanged;
+  const cr::CreativeDocumentPublicationReceipt unchangedReceipt =
+      unchanged.commitStagedMutation(std::move(unchangedStage));
+
+  return expect(
+             invalidLiveReceipt.status ==
+                     cr::CreativeDocumentPublicationStatus::
+                         InvalidLiveDocument &&
+                 !invalidLiveReceipt.accepted &&
+                 invalidLiveReceipt.revisionAfter ==
+                     invalidLiveReceipt.revisionBefore,
+             "publication rejects invalid live document") &&
+         expect(
+             invalidStagedReceipt.status ==
+                     cr::CreativeDocumentPublicationStatus::
+                         InvalidStagedDocument &&
+                 !invalidStagedReceipt.accepted &&
+                 invalidStagedReceipt.revisionAfter ==
+                     invalidStagedReceipt.revisionBefore,
+             "publication rejects invalid staged document") &&
+         expect(
+             missingIdReceipt.status ==
+                     cr::CreativeDocumentPublicationStatus::MissingDocumentId &&
+                 !missingIdReceipt.accepted &&
+                 missingIdReceipt.documentId == cr::kInvalidDocumentId,
+             "publication rejects missing document identity") &&
+         expect(
+             mismatchReceipt.status ==
+                     cr::CreativeDocumentPublicationStatus::
+                         DocumentIdMismatch &&
+                 !mismatchReceipt.accepted &&
+                 mismatchedLive.id() == 43U &&
+                 mismatchedLive.name() == "Mismatch Live",
+             "publication rejects mismatched document identity") &&
+         expect(
+             unchangedReceipt.status ==
+                     cr::CreativeDocumentPublicationStatus::
+                         StagedRevisionNotAdvanced &&
+                 !unchangedReceipt.accepted &&
+                 unchangedReceipt.revisionAfter ==
+                     unchangedReceipt.revisionBefore,
+             "publication rejects an unadvanced staging copy") &&
+         expect(
+             cr::toString(
+                 cr::CreativeDocumentPublicationStatus::RevisionExhausted) ==
+                 "RevisionExhausted",
+             "publication overflow status has stable vocabulary");
+}
+
+bool documentPublicationCollapsesStagedWorkIntoOneLiveRevision() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Publication");
+  static_cast<void>(document.assignId(51U));
+  static_cast<void>(document.drainDirtyFlags());
+  cr::CreativeDocument staged = document;
+  const cr::CreativeDocumentCreateReceipt first =
+      createObject(staged, cr::CreativeObjectKind::Room, "First");
+  const cr::CreativeDocumentCreateReceipt second =
+      createObject(staged, cr::CreativeObjectKind::Crate, "Second");
+  const std::uint64_t stagedRevision = staged.revision();
+  const cr::CreativeObjectDirtyFlags stagedDirtyFlags = staged.dirtyFlags();
+
+  const cr::CreativeDocumentPublicationReceipt receipt =
+      document.commitStagedMutation(std::move(staged));
+
+  return expect(first.accepted && second.accepted && stagedRevision == 2U,
+                "publication fixture contains multiple staged changes") &&
+         expect(receipt.requested && receipt.accepted && receipt.changed &&
+                    receipt.status ==
+                        cr::CreativeDocumentPublicationStatus::Published,
+                "publication accepts a valid advanced staging copy") &&
+         expect(receipt.documentId == 51U &&
+                    receipt.revisionBefore == 0U &&
+                    receipt.stagedRevision == stagedRevision &&
+                    receipt.revisionAfter == 1U,
+                "publication separates staging revision from live revision") &&
+         expect(receipt.objectCountBefore == 0U &&
+                    receipt.objectCountAfter == 2U &&
+                    document.objectCount() == 2U,
+                "publication reports live object counts") &&
+         expect(receipt.dirtyFlagsBefore == 0U &&
+                    receipt.dirtyFlagsAfter == stagedDirtyFlags &&
+                    document.dirtyFlags() == stagedDirtyFlags,
+                "publication preserves accumulated staged dirty flags") &&
+         expect(document.revision() == 1U &&
+                    document.findObject(first.objectId) != nullptr &&
+                    document.findObject(second.objectId) != nullptr,
+                "publication installs durable staged content once");
+}
+
+bool atomicMutationPublicationHasOneRevisionAndTruthfulNestedReceipts() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithRoom(roomId);
+  const cr::CreativeObject* roomBefore = document.findObject(roomId);
+  if (!expect(roomBefore != nullptr, "atomic mutation fixture room exists")) {
+    return false;
+  }
+  const std::uint64_t revisionBefore = document.revision();
+  const std::array mutations{
+      cr::CreativeMutationRequest{
+          0U, roomId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Renamed")},
+      cr::CreativeMutationRequest{
+          0U, roomId, cr::CreativeMutationKind::SetVisible,
+          cr::makeVisibilityPayload(false)},
+  };
+  const cr::CreativeDocumentBatchMutationReceipt applied =
+      cr::applyDocumentMutationsAtomically(document, mutations);
+  const cr::CreativeObject* roomAfter = document.findObject(roomId);
+  bool nestedTruth =
+      applied.receipts.size() == mutations.size();
+  for (const cr::CreativeDocumentMutationReceipt& item : applied.receipts) {
+    nestedTruth =
+        nestedTruth && item.revisionBefore == revisionBefore &&
+        item.revisionAfter == revisionBefore + 1U;
+  }
+
+  const std::array rejectedMutations{
+      cr::CreativeMutationRequest{
+          0U, roomId, cr::CreativeMutationKind::Rename,
+          cr::makeRenamePayload("Not Published")},
+      cr::CreativeMutationRequest{
+          0U, cr::CreativeObjectId{999U},
+          cr::CreativeMutationKind::SetVisible,
+          cr::makeVisibilityPayload(true)},
+  };
+  const std::uint64_t rejectionRevision = document.revision();
+  const std::string nameBeforeRejection =
+      roomAfter == nullptr ? std::string{} : roomAfter->name;
+  const cr::CreativeDocumentBatchMutationReceipt rejected =
+      cr::applyDocumentMutationsAtomically(document, rejectedMutations);
+  const cr::CreativeObject* roomAfterRejection =
+      document.findObject(roomId);
+  bool rejectedNestedTruth = !rejected.receipts.empty();
+  for (const cr::CreativeDocumentMutationReceipt& item : rejected.receipts) {
+    rejectedNestedTruth =
+        rejectedNestedTruth && item.revisionBefore == rejectionRevision &&
+        item.revisionAfter == rejectionRevision;
+  }
+
+  return expect(applied.committed && applied.changed &&
+                    applied.status ==
+                        cr::CreativeDocumentMutationStatus::BatchApplied &&
+                    applied.revisionBefore == revisionBefore &&
+                    applied.revisionAfter == revisionBefore + 1U,
+                "atomic mutation publishes once") &&
+         expect(applied.publicationAttempted &&
+                    applied.publicationReceipt.accepted &&
+                    applied.publicationReceipt.revisionBefore ==
+                        revisionBefore &&
+                    applied.publicationReceipt.revisionAfter ==
+                        revisionBefore + 1U,
+                "atomic mutation exposes accepted publication") &&
+         expect(nestedTruth,
+                "atomic mutation nested receipts use live revision range") &&
+         expect(roomAfter != nullptr && roomAfter->name == "Renamed" &&
+                    !roomAfter->visible,
+                "atomic mutation publishes every staged field") &&
+         expect(!rejected.committed && !rejected.changed &&
+                    rejected.status ==
+                        cr::CreativeDocumentMutationStatus::ApplyFailed &&
+                    rejected.revisionBefore == rejectionRevision &&
+                    rejected.revisionAfter == rejectionRevision &&
+                    document.revision() == rejectionRevision,
+                "failed atomic mutation preserves live revision") &&
+         expect(rejectedNestedTruth &&
+                    roomAfterRejection != nullptr &&
+                    roomAfterRejection->name == nameBeforeRejection,
+                "failed atomic mutation rolls back content and nested ranges");
+}
+
 int main() {
   const bool ok = mutationMetadataRegistryIsInternallyConsistent() &&
                   mutationStoragePolicySignalDistinguishesStoredAndFuturePlaceholders() &&
@@ -1654,6 +1873,9 @@ int main() {
                   lockedObjectRenameRejectsThroughPipeline() &&
                   lockedObjectUnlockThenRenameApplies() &&
                   setAssetAtomicallyChangesImportedRenderIdentity() &&
-                  lootAndExitSettingsAreDurableTypedMutations();
+                  lootAndExitSettingsAreDurableTypedMutations() &&
+                  documentPublicationRejectsInvalidAndMismatchedState() &&
+                  documentPublicationCollapsesStagedWorkIntoOneLiveRevision() &&
+                  atomicMutationPublicationHasOneRevisionAndTruthfulNestedReceipts();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -266,22 +266,89 @@ const CreativeTerrainMaterialField& CreativeDocument::terrainMaterialField()
   return terrainMaterialField_;
 }
 
+std::string_view toString(CreativeDocumentPublicationStatus status) noexcept {
+  switch (status) {
+    case CreativeDocumentPublicationStatus::NotRequested:
+      return "NotRequested";
+    case CreativeDocumentPublicationStatus::InvalidLiveDocument:
+      return "InvalidLiveDocument";
+    case CreativeDocumentPublicationStatus::InvalidStagedDocument:
+      return "InvalidStagedDocument";
+    case CreativeDocumentPublicationStatus::MissingDocumentId:
+      return "MissingDocumentId";
+    case CreativeDocumentPublicationStatus::DocumentIdMismatch:
+      return "DocumentIdMismatch";
+    case CreativeDocumentPublicationStatus::StagedRevisionNotAdvanced:
+      return "StagedRevisionNotAdvanced";
+    case CreativeDocumentPublicationStatus::RevisionExhausted:
+      return "RevisionExhausted";
+    case CreativeDocumentPublicationStatus::Published:
+      return "Published";
+  }
+  return "NotRequested";
+}
+
 void CreativeDocument::markContentChanged() noexcept {
   if (valid_) {
     ++revision_;
   }
 }
 
-bool CreativeDocument::commitStagedMutation(
+CreativeDocumentPublicationReceipt CreativeDocument::commitStagedMutation(
     CreativeDocument&& staged) noexcept {
-  if (!valid_ || !staged.valid_ || id_ == kInvalidDocumentId ||
-      staged.id_ != id_ || staged.revision_ <= revision_ ||
-      revision_ == std::numeric_limits<std::uint64_t>::max()) {
-    return false;
+  CreativeDocumentPublicationReceipt receipt;
+  receipt.requested = true;
+  receipt.documentId = id_;
+  receipt.revisionBefore = revision_;
+  receipt.stagedRevision = staged.revision_;
+  receipt.revisionAfter = revision_;
+  receipt.objectCountBefore = objectCount();
+  receipt.objectCountAfter = receipt.objectCountBefore;
+  receipt.dirtyFlagsBefore = dirtyFlags_;
+  receipt.dirtyFlagsAfter = receipt.dirtyFlagsBefore;
+
+  if (!isValid()) {
+    receipt.status = CreativeDocumentPublicationStatus::InvalidLiveDocument;
+    receipt.reasonCode = "creative_document_publication_live_invalid";
+    return receipt;
   }
+  if (!staged.isValid()) {
+    receipt.status = CreativeDocumentPublicationStatus::InvalidStagedDocument;
+    receipt.reasonCode = "creative_document_publication_staged_invalid";
+    return receipt;
+  }
+  if (id_ == kInvalidDocumentId || staged.id_ == kInvalidDocumentId) {
+    receipt.status = CreativeDocumentPublicationStatus::MissingDocumentId;
+    receipt.reasonCode = "creative_document_publication_document_id_missing";
+    return receipt;
+  }
+  if (staged.id_ != id_) {
+    receipt.status = CreativeDocumentPublicationStatus::DocumentIdMismatch;
+    receipt.reasonCode = "creative_document_publication_document_id_mismatch";
+    return receipt;
+  }
+  if (revision_ == std::numeric_limits<std::uint64_t>::max()) {
+    receipt.status = CreativeDocumentPublicationStatus::RevisionExhausted;
+    receipt.reasonCode = "creative_document_publication_revision_exhausted";
+    return receipt;
+  }
+  if (staged.revision_ <= revision_) {
+    receipt.status =
+        CreativeDocumentPublicationStatus::StagedRevisionNotAdvanced;
+    receipt.reasonCode = "creative_document_publication_revision_not_advanced";
+    return receipt;
+  }
+
   staged.revision_ = revision_ + 1U;
   *this = std::move(staged);
-  return true;
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeDocumentPublicationStatus::Published;
+  receipt.revisionAfter = revision_;
+  receipt.objectCountAfter = objectCount();
+  receipt.dirtyFlagsAfter = dirtyFlags_;
+  receipt.reasonCode = "creative_document_published";
+  return receipt;
 }
 
 void CreativeDocument::markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept {

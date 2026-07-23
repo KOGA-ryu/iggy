@@ -19,6 +19,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -157,6 +158,41 @@ struct CreativeDocumentRemoveReceipt {
   std::string_view reasonCode = "document_remove_not_requested";
 };
 
+enum class CreativeDocumentPublicationStatus : std::uint8_t {
+  NotRequested,
+  InvalidLiveDocument,
+  InvalidStagedDocument,
+  MissingDocumentId,
+  DocumentIdMismatch,
+  StagedRevisionNotAdvanced,
+  RevisionExhausted,
+  Published,
+};
+
+struct CreativeDocumentPublicationReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeDocumentPublicationStatus status =
+      CreativeDocumentPublicationStatus::NotRequested;
+  CreativeDocumentId documentId = kInvalidDocumentId;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t stagedRevision = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t objectCountBefore = 0;
+  std::uint64_t objectCountAfter = 0;
+  CreativeObjectDirtyFlags dirtyFlagsBefore = 0;
+  CreativeObjectDirtyFlags dirtyFlagsAfter = 0;
+  std::string_view reasonCode = "creative_document_publication_not_requested";
+};
+
+static_assert(
+    std::is_trivially_copyable_v<CreativeDocumentPublicationReceipt>);
+static_assert(std::is_standard_layout_v<CreativeDocumentPublicationReceipt>);
+
+[[nodiscard]] std::string_view toString(
+    CreativeDocumentPublicationStatus status) noexcept;
+
 struct CreativeDocumentRestoreRequest {
   CreativeDocumentId documentId = kInvalidDocumentId;
   std::string name;
@@ -282,7 +318,8 @@ class CreativeDocument {
       CreativeObjectId sourceObjectId,
       CreativeObjectId targetObjectId);
   // Publishes a validated multi-domain staging copy as one document revision.
-  [[nodiscard]] bool commitStagedMutation(CreativeDocument&& staged) noexcept;
+  [[nodiscard]] CreativeDocumentPublicationReceipt commitStagedMutation(
+      CreativeDocument&& staged) noexcept;
   void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
   [[nodiscard]] CreativeVoxelMutationReceipt applyVoxelEdits(
       std::span<const CreativeVoxelEdit> edits,

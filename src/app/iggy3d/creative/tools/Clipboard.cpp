@@ -22,6 +22,28 @@ namespace {
   return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
 }
 
+void normalizeRemoveReceiptRevisionRange(
+    CreativeDocumentRemoveReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+  if (!receipt.requested) {
+    return;
+  }
+  receipt.revisionBefore = revisionBefore;
+  receipt.revisionAfter = revisionAfter;
+}
+
+void normalizeCutReceiptRevisions(
+    CreativeClipboardCutReceipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  receipt.revisionAfter = revisionAfter;
+  for (CreativeDocumentRemoveReceipt& removeReceipt :
+       receipt.removeReceipts) {
+    normalizeRemoveReceiptRevisionRange(
+        removeReceipt, receipt.revisionBefore, revisionAfter);
+  }
+}
+
 void includePlacementPoint(CreativeObjectWorldExtent& extent,
                            CreativeVec3 point) noexcept {
   if (!extent.valid) {
@@ -855,12 +877,19 @@ CreativeClipboardBatchPasteReceipt pasteCreativeClipboardBatchAtomically(
     ++receipt.pastedPasteCount;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
+    receipt.status = CreativeClipboardStatus::CreateRejected;
+    receipt.reasonCode = std::string{publication.reasonCode};
+    clearPublishedPasteOutputs(receipt);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeClipboardStatus::Pasted;
   receipt.pastedObjectCount = receipt.pastedObjectIds.size();
-  receipt.revisionAfter = document.revision();
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.reasonCode = "creative_clipboard_pasted";
   return receipt;
 }
@@ -1002,18 +1031,27 @@ CreativeClipboardCutReceipt cutDocumentObjectsAtomically(
       receipt.failedObjectId = objectId;
       receipt.status = CreativeClipboardStatus::RemoveRejected;
       receipt.reasonCode = std::string(removeReceipt.reasonCode);
+      normalizeCutReceiptRevisions(receipt, receipt.revisionBefore);
       return receipt;
     }
   }
 
-  document = std::move(stagedDocument);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(stagedDocument));
+  normalizeCutReceiptRevisions(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.status = CreativeClipboardStatus::RemoveRejected;
+    receipt.reasonCode = std::string{publication.reasonCode};
+    return receipt;
+  }
   outClipboard = std::move(stagedClipboard);
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeClipboardStatus::Cut;
   receipt.cutObjectCount = receipt.removeReceipts.size();
   receipt.cutPatternRecipeCount = outClipboard.patternRecipes.size();
-  receipt.revisionAfter = document.revision();
   receipt.reasonCode = "creative_clipboard_cut";
   return receipt;
 }

@@ -10,6 +10,43 @@
 namespace iggy3d::creative {
 namespace {
 
+void normalizePlacementRevisionRange(
+    CreativeSelectionPlacementReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+  if (!receipt.requested) {
+    return;
+  }
+  receipt.revisionBefore = revisionBefore;
+  receipt.revisionAfter = revisionAfter;
+  CreativeDocumentBatchMutationReceipt& batch = receipt.mutationReceipt;
+  if (batch.status == CreativeDocumentMutationStatus::Unknown) {
+    return;
+  }
+  batch.revisionBefore = revisionBefore;
+  batch.revisionAfter = revisionAfter;
+  for (CreativeDocumentMutationReceipt& item : batch.receipts) {
+    item.revisionBefore = revisionBefore;
+    item.revisionAfter = revisionAfter;
+  }
+  if (batch.publicationAttempted) {
+    batch.publicationReceipt.revisionBefore = revisionBefore;
+    batch.publicationReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+void normalizePatternTranslationRevisionRange(
+    CreativePatternRecipeTranslationReceipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  receipt.revisionAfter = revisionAfter;
+  normalizePlacementRevisionRange(
+      receipt.placement, receipt.revisionBefore, revisionAfter);
+  if (receipt.recipeMutation.requested) {
+    receipt.recipeMutation.revisionBefore = receipt.revisionBefore;
+    receipt.recipeMutation.revisionAfter = revisionAfter;
+  }
+}
+
 void setPatternStatus(CreativePatternRecipeTranslationPlan& plan,
                       CreativeRecipeTranslationStatus status,
                       std::string_view reasonCode) noexcept {
@@ -396,6 +433,8 @@ CreativePatternRecipeTranslationReceipt applyCreativePatternRecipeTranslation(
     receipt.failedObjectId = receipt.placement.failedObjectId;
     receipt.status = CreativeRecipeTranslationStatus::ApplyRejected;
     receipt.reasonCode = receipt.placement.reasonCode;
+    normalizePatternTranslationRevisionRange(
+        receipt, receipt.revisionBefore);
     return receipt;
   }
   CreativePatternRecipeMutationRequest mutation;
@@ -406,9 +445,16 @@ CreativePatternRecipeTranslationReceipt applyCreativePatternRecipeTranslation(
   if (!receipt.recipeMutation.accepted) {
     receipt.status = CreativeRecipeTranslationStatus::ApplyRejected;
     receipt.reasonCode = receipt.recipeMutation.reasonCode;
+    normalizePatternTranslationRevisionRange(
+        receipt, receipt.revisionBefore);
     return receipt;
   }
-  if (!document.commitStagedMutation(std::move(staged))) {
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizePatternTranslationRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
     receipt.status = CreativeRecipeTranslationStatus::StaleSource;
     receipt.reasonCode = "creative_pattern_recipe_translation_publish_stale";
     return receipt;
@@ -416,7 +462,6 @@ CreativePatternRecipeTranslationReceipt applyCreativePatternRecipeTranslation(
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeRecipeTranslationStatus::Applied;
-  receipt.revisionAfter = document.revision();
   receipt.reasonCode = "creative_pattern_recipe_translation_applied";
   return receipt;
 }

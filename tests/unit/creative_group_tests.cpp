@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/tools/SelectionPlacement.hpp"
 #include "app/iggy3d/creative/tools/SelectionTransformCommands.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <iostream>
@@ -19,6 +20,21 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool mutationBatchUsesLiveRevisionRange(
+    const cr::CreativeDocumentBatchMutationReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) {
+  return receipt.revisionBefore == revisionBefore &&
+         receipt.revisionAfter == revisionAfter &&
+         std::all_of(
+             receipt.receipts.begin(), receipt.receipts.end(),
+             [revisionBefore, revisionAfter](
+                 const cr::CreativeDocumentMutationReceipt& item) {
+               return item.revisionBefore == revisionBefore &&
+                      item.revisionAfter == revisionAfter;
+             });
 }
 
 cr::CreativeObjectId createCrate(cr::CreativeDocument& document,
@@ -45,6 +61,7 @@ bool groupingPreservesGeometryAndCanonicalHierarchy() {
   const cr::CreativeTransform rightBefore =
       document.findObject(right)->transform;
   const std::array selected{right, left, right};
+  const std::uint64_t revisionBefore = document.revision();
   const cr::CreativeGroupCommandReceipt grouped =
       cr::groupDocumentObjectsAtomically(document, selected);
   const cr::CreativeObject* group =
@@ -61,6 +78,17 @@ bool groupingPreservesGeometryAndCanonicalHierarchy() {
   return expect(grouped.accepted && grouped.changed &&
                     grouped.status == cr::CreativeGroupCommandStatus::Applied,
                 "two unique roots group atomically") &&
+         expect(grouped.revisionBefore == revisionBefore &&
+                    grouped.revisionAfter == revisionBefore + 1U &&
+                    document.revision() == revisionBefore + 1U,
+                "group publishes one live revision") &&
+         expect(grouped.createReceipt.revisionBefore == revisionBefore &&
+                    grouped.createReceipt.revisionAfter ==
+                        revisionBefore + 1U &&
+                    mutationBatchUsesLiveRevisionRange(
+                        grouped.mutationReceipt, revisionBefore,
+                        revisionBefore + 1U),
+                "group nested receipts use the live revision range") &&
          expect(group != nullptr && group->kind == cr::CreativeObjectKind::Group &&
                     grouped.selectionObjectIds.size() == 1U &&
                     grouped.selectionObjectIds.front() == group->id,
@@ -143,6 +171,7 @@ bool ungroupAndHierarchyRemovalAreAtomic() {
   const cr::CreativeGroupCommandReceipt grouped =
       cr::groupDocumentObjectsAtomically(document, selected);
   const cr::CreativeObjectId groupId = grouped.groupObjectId;
+  const std::uint64_t ungroupRevisionBefore = document.revision();
   const cr::CreativeGroupCommandReceipt ungrouped =
       cr::ungroupDocumentObjectAtomically(document, groupId);
   bool ok = expect(ungrouped.accepted && ungrouped.changed &&
@@ -151,6 +180,17 @@ bool ungroupAndHierarchyRemovalAreAtomic() {
                        !document.findObject(second)->parentId.has_value() &&
                        ungrouped.selectionObjectIds.size() == 2U,
                    "ungroup restores children and removes only the container");
+  ok = expect(ungrouped.revisionBefore == ungroupRevisionBefore &&
+                  ungrouped.revisionAfter == ungroupRevisionBefore + 1U &&
+                  mutationBatchUsesLiveRevisionRange(
+                      ungrouped.mutationReceipt, ungroupRevisionBefore,
+                      ungroupRevisionBefore + 1U) &&
+                  ungrouped.removeReceipt.revisionBefore ==
+                      ungroupRevisionBefore &&
+                  ungrouped.removeReceipt.revisionAfter ==
+                      ungroupRevisionBefore + 1U,
+              "ungroup publishes once with truthful nested receipts") &&
+       ok;
 
   const cr::CreativeGroupCommandReceipt regrouped =
       cr::groupDocumentObjectsAtomically(document, selected);
@@ -169,10 +209,18 @@ bool ungroupAndHierarchyRemovalAreAtomic() {
                       regrouped.groupObjectId,
               "locked child rejects ungroup without a partial hierarchy") &&
        ok;
+  ok = expect(rejected.revisionAfter == revisionBeforeReject &&
+                  mutationBatchUsesLiveRevisionRange(
+                      rejected.mutationReceipt, revisionBeforeReject,
+                      revisionBeforeReject) &&
+                  rejected.selectionObjectIds.empty(),
+              "rejected ungroup reports unchanged live revision and no outputs") &&
+       ok;
 
   static_cast<void>(cr::applyDocumentMutation(
       document, first, cr::CreativeMutationKind::SetLocked,
       cr::makeLockPayload(false)));
+  const std::uint64_t removeRevisionBefore = document.revision();
   const cr::CreativeHierarchyRemoveReceipt removed =
       cr::removeCreativeObjectHierarchyAtomically(
           document, regrouped.groupObjectId);
@@ -180,6 +228,13 @@ bool ungroupAndHierarchyRemovalAreAtomic() {
                     removed.removedObjectIds.size() == 3U &&
                     document.objectCount() == 0U,
                 "hierarchy removal deletes descendants before the group") &&
+         expect(removed.revisionBefore == removeRevisionBefore &&
+                    removed.revisionAfter == removeRevisionBefore + 1U &&
+                    removed.rootReceipt.revisionBefore ==
+                        removeRevisionBefore &&
+                    removed.rootReceipt.revisionAfter ==
+                        removeRevisionBefore + 1U,
+                "hierarchy removal publishes one truthful revision") &&
          ok;
 }
 
@@ -210,6 +265,7 @@ bool batchHierarchyRemovalPublishesOnlyOnCompleteSuccess() {
       document.findObject(independent) != nullptr;
 
   static_cast<void>(cr::setDocumentObjectLocked(document, child, false));
+  const std::uint64_t removalRevisionBefore = document.revision();
   const cr::CreativeHierarchyBatchRemoveReceipt removed =
       cr::removeCreativeObjectHierarchiesAtomically(document, roots);
   return expect(rolledBack,
@@ -218,7 +274,20 @@ bool batchHierarchyRemovalPublishesOnlyOnCompleteSuccess() {
                     removed.rootObjectIds.size() == 2U &&
                     removed.removedObjectIds.size() == 4U &&
                     document.objectCount() == 0U,
-                "batch hierarchy removal publishes every requested root once");
+                "batch hierarchy removal publishes every requested root once") &&
+         expect(
+             removed.revisionBefore == removalRevisionBefore &&
+                 removed.revisionAfter == removalRevisionBefore + 1U &&
+                 std::all_of(
+                     removed.removeReceipts.begin(),
+                     removed.removeReceipts.end(),
+                     [removalRevisionBefore](
+                         const cr::CreativeDocumentRemoveReceipt& item) {
+                       return item.revisionBefore == removalRevisionBefore &&
+                              item.revisionAfter ==
+                                  removalRevisionBefore + 1U;
+                     }),
+             "batch hierarchy removal nested receipts use one live revision");
 }
 
 }  // namespace

@@ -56,6 +56,22 @@ namespace {
     return CreativeDocumentMutationStatus::BatchNoChange;
 }
 
+void normalizeBatchRevisionRange(
+    CreativeDocumentBatchMutationReceipt& batch,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+    batch.revisionBefore = revisionBefore;
+    batch.revisionAfter = revisionAfter;
+    for (CreativeDocumentMutationReceipt& receipt : batch.receipts) {
+        receipt.revisionBefore = revisionBefore;
+        receipt.revisionAfter = revisionAfter;
+    }
+    if (batch.publicationAttempted) {
+        batch.publicationReceipt.revisionBefore = revisionBefore;
+        batch.publicationReceipt.revisionAfter = revisionAfter;
+    }
+}
+
 void incrementDocumentRevisionForMutation(CreativeDocument& document,
                                           CreativeObjectDirtyFlags dirtyFlags) {
     // This function intentionally exists as the only revision bridge for object
@@ -392,12 +408,26 @@ CreativeDocumentBatchMutationReceipt applyDocumentMutationsAtomically(
         batch.message = batch.rolledBack
                             ? "atomic document mutation batch rolled back"
                             : "atomic document mutation batch rejected";
+        normalizeBatchRevisionRange(
+            batch, document.revision(), document.revision());
         return batch;
     }
 
     if (batch.changed) {
         stagedDocument.markObjectMutationChanged(batch.dirtyFlags);
-        document = std::move(stagedDocument);
+        batch.publicationAttempted = true;
+        batch.publicationReceipt =
+            document.commitStagedMutation(std::move(stagedDocument));
+        if (!batch.publicationReceipt.accepted) {
+            batch.status = CreativeDocumentMutationStatus::ApplyFailed;
+            batch.revisionAfter = document.revision();
+            batch.rolledBack = batch.appliedCount > 0;
+            batch.changed = false;
+            batch.message = "atomic document mutation publication rejected";
+            normalizeBatchRevisionRange(
+                batch, document.revision(), document.revision());
+            return batch;
+        }
     }
 
     batch.committed = true;
@@ -405,6 +435,8 @@ CreativeDocumentBatchMutationReceipt applyDocumentMutationsAtomically(
     batch.message = batch.changed
                         ? "atomic document mutation batch committed"
                         : "atomic document mutation batch had no changes";
+    normalizeBatchRevisionRange(
+        batch, batch.revisionBefore, batch.revisionAfter);
     return batch;
 }
 

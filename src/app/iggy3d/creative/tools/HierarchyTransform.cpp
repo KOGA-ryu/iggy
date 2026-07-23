@@ -40,6 +40,8 @@ void reject(CreativeHierarchyTransformReceipt& receipt,
             std::string_view reasonCode,
             std::string_view message,
             CreativeObjectId failedObjectId = kInvalidObjectId) {
+  receipt.accepted = false;
+  receipt.changed = false;
   receipt.status = status;
   receipt.phase = phase;
   receipt.failedObjectId = failedObjectId;
@@ -53,6 +55,8 @@ void reject(CreativeHierarchyReattachmentReceipt& receipt,
             std::string_view reasonCode,
             std::string_view message,
             CreativeObjectId failedObjectId = kInvalidObjectId) {
+  receipt.accepted = false;
+  receipt.changed = false;
   receipt.status = status;
   receipt.phase = phase;
   receipt.failedObjectId = failedObjectId;
@@ -395,7 +399,9 @@ CreativeHierarchyTransformReceipt applyCreativeHierarchyTransformAtomically(
     receipt.message = receipt.reasonCode;
     return receipt;
   }
-  if (!document.commitStagedMutation(std::move(staged))) {
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
     reject(receipt, CreativeHierarchyTransformStatus::Rejected,
            CreativeHierarchyTransformPhase::Commit,
            "creative_hierarchy_transform_commit_rejected",
@@ -519,7 +525,9 @@ CreativeHierarchyReattachmentReceipt reattachCreativeObjectHierarchyAtomically(
     receipt.message = receipt.reasonCode;
     return receipt;
   }
-  if (!document.commitStagedMutation(std::move(staged))) {
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
     reject(receipt, CreativeHierarchyTransformStatus::Rejected,
            CreativeHierarchyTransformPhase::Commit,
            "creative_hierarchy_reattachment_commit_rejected",

@@ -349,7 +349,9 @@ bool batchPasteRemapsEachCopyIndependently() {
                     secondParent->transform.position.z == -3.0 &&
                     secondChild->transform.position.z == -3.0,
                 "second copy has independent parent remap") &&
-         expect(document.revision() == revisionBefore + 4U,
+         expect(document.revision() == revisionBefore + 1U &&
+                    receipt.revisionBefore == revisionBefore &&
+                    receipt.revisionAfter == revisionBefore + 1U,
                 "batch publishes all generated revisions together");
 }
 
@@ -547,8 +549,18 @@ bool arrayExecutionCreatesCopiesAndIdentifiesFinalGroup() {
                     finalChild->parentId == finalParent->id,
                 "array execution final copy uses ordinal offset and remap") &&
          expect(document.objectCount() == 6U &&
-                    document.revision() == revisionBefore + 5U,
+                    document.revision() == revisionBefore + 1U,
                 "array execution records copies and one relationship") &&
+         expect(receipt.revisionBefore == revisionBefore &&
+                    receipt.revisionAfter == revisionBefore + 1U &&
+                    receipt.pasteReceipt.revisionBefore == revisionBefore &&
+                    receipt.pasteReceipt.revisionAfter ==
+                        revisionBefore + 1U &&
+                    receipt.patternMutationReceipt.revisionBefore ==
+                        revisionBefore &&
+                    receipt.patternMutationReceipt.revisionAfter ==
+                        revisionBefore + 1U,
+                "array nested receipts use one live revision range") &&
          expect(recipe != nullptr &&
                     recipe->kind == cr::CreativePatternRecipeKind::LinearArray &&
                     recipe->sourceObjectIds ==
@@ -622,8 +634,18 @@ bool radialExecutionRotatesGroupAndRemapsParents() {
                     finalChild->parentId == finalParent->id,
                 "radial execution rotates rigid group and remaps parent") &&
          expect(document.objectCount() == 8U &&
-                    document.revision() == revisionBefore + 7U,
+                    document.revision() == revisionBefore + 1U,
                 "radial execution publishes copies and relationship") &&
+         expect(receipt.revisionBefore == revisionBefore &&
+                    receipt.revisionAfter == revisionBefore + 1U &&
+                    receipt.pasteReceipt.revisionBefore == revisionBefore &&
+                    receipt.pasteReceipt.revisionAfter ==
+                        revisionBefore + 1U &&
+                    receipt.patternMutationReceipt.revisionBefore ==
+                        revisionBefore &&
+                    receipt.patternMutationReceipt.revisionAfter ==
+                        revisionBefore + 1U,
+                "radial nested receipts use one live revision range") &&
          expect(recipe != nullptr &&
                     recipe->kind == cr::CreativePatternRecipeKind::RadialArray &&
                     recipe->sourceObjectIds ==
@@ -968,6 +990,7 @@ bool semanticCutAndDuplicatePreserveWholePatternAtomically() {
   const cr::CreativeObjectId cutGenerated =
       cutArray.generatedObjectIds().front();
   cr::CreativeClipboard cutClipboard;
+  const std::uint64_t cutRevisionBefore = cutDocument.revision();
   const cr::CreativeClipboardCutReceipt cut =
       cr::cutDocumentObjectsAtomically(
           cutDocument, std::span{&cutGenerated, 1U}, cutClipboard);
@@ -977,6 +1000,17 @@ bool semanticCutAndDuplicatePreserveWholePatternAtomically() {
                   cutDocument.objectCount() == 0U &&
                   cutDocument.patternRecipeStore().recipes.empty(),
               "cut of generated member removes the whole semantic pattern") &&
+       expect(
+           cut.revisionBefore == cutRevisionBefore &&
+               cut.revisionAfter == cutRevisionBefore + 1U &&
+               std::all_of(
+                   cut.removeReceipts.begin(), cut.removeReceipts.end(),
+                   [cutRevisionBefore](
+                       const cr::CreativeDocumentRemoveReceipt& item) {
+                     return item.revisionBefore == cutRevisionBefore &&
+                            item.revisionAfter == cutRevisionBefore + 1U;
+                   }),
+           "cut nested removes use one live revision range") &&
        ok;
 
   cr::CreativeDocument dependent = ::document("semantic cut dependency");
@@ -1169,6 +1203,7 @@ bool linearArrayUpdateKeepsIdentityAndReplacesOnlyOwnedOutputs() {
   updatedRequest.copyCount = cr::CreativeLinearArrayCopyCount::Four;
   updatedRequest.spacing = cr::CreativeLinearArraySpacing::TwoCells;
   updatedRequest.cellSize = 0.5;
+  const std::uint64_t revisionBeforeUpdate = document.revision();
   const cr::CreativeLinearArrayReceipt updated =
       cr::updateCreativeLinearArrayRecipeAtomically(
           document, created.patternRecipeId, updatedRequest);
@@ -1187,6 +1222,17 @@ bool linearArrayUpdateKeepsIdentityAndReplacesOnlyOwnedOutputs() {
          expect(updated.replacedGeneratedObjectCount == 2U &&
                     updated.generatedObjectIds().size() == 4U,
                 "linear update reports old and replacement output counts") &&
+         expect(updated.revisionBefore == revisionBeforeUpdate &&
+                    updated.revisionAfter == revisionBeforeUpdate + 1U &&
+                    updated.pasteReceipt.revisionBefore ==
+                        revisionBeforeUpdate &&
+                    updated.pasteReceipt.revisionAfter ==
+                        revisionBeforeUpdate + 1U &&
+                    updated.patternMutationReceipt.revisionBefore ==
+                        revisionBeforeUpdate &&
+                    updated.patternMutationReceipt.revisionAfter ==
+                        revisionBeforeUpdate + 1U,
+                "linear update nested receipts use one live revision range") &&
          expect(document.findObject(oldGenerated[0]) == nullptr &&
                     document.findObject(oldGenerated[1]) == nullptr &&
                     document.findObject(source) != nullptr &&
@@ -1227,6 +1273,7 @@ bool radialArrayUpdateKeepsIdentityAndRemovesOldRing() {
   updatedRequest.instanceCount =
       cr::CreativeRadialArrayInstanceCount::Two;
   updatedRequest.sweep = cr::CreativeRadialArraySweep::Degrees180;
+  const std::uint64_t revisionBeforeUpdate = document.revision();
   const cr::CreativeRadialArrayReceipt updated =
       cr::updateCreativeRadialArrayRecipeAtomically(
           document, created.patternRecipeId, updatedRequest);
@@ -1241,6 +1288,17 @@ bool radialArrayUpdateKeepsIdentityAndRemovesOldRing() {
                     updated.replacedGeneratedObjectCount == 3U &&
                     updated.generatedObjectIds().size() == 1U,
                 "radial update replaces the prior ring") &&
+         expect(updated.revisionBefore == revisionBeforeUpdate &&
+                    updated.revisionAfter == revisionBeforeUpdate + 1U &&
+                    updated.pasteReceipt.revisionBefore ==
+                        revisionBeforeUpdate &&
+                    updated.pasteReceipt.revisionAfter ==
+                        revisionBeforeUpdate + 1U &&
+                    updated.patternMutationReceipt.revisionBefore ==
+                        revisionBeforeUpdate &&
+                    updated.patternMutationReceipt.revisionAfter ==
+                        revisionBeforeUpdate + 1U,
+                "radial update nested receipts use one live revision range") &&
          expect(std::all_of(oldGenerated.begin(), oldGenerated.end(),
                             [&document](cr::CreativeObjectId objectId) {
                               return document.findObject(objectId) == nullptr;

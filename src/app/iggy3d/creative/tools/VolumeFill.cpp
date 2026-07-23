@@ -376,7 +376,13 @@ struct HollowPlanBounds {
                      : "creative_volume_cells_already_occupied");
     return receipt;
   }
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
+    reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
+           publication.reasonCode);
+    return receipt;
+  }
   acceptApplied(receipt, document,
                 hollow ? "creative_volume_hollow_applied"
                        : "creative_volume_fill_applied");
@@ -512,7 +518,13 @@ CreativeVolumeOperationReceipt replaceVolumeCells(
     staged.markObjectMutationChanged(objectDirtyFlags);
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
+    reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
+           publication.reasonCode);
+    return receipt;
+  }
   acceptApplied(receipt, document, "creative_volume_replace_applied");
   return receipt;
 }

@@ -463,23 +463,118 @@ bool facadeBatchCreateAppliesAllRequestsAtomically() {
          expect(receipt.reasonCode == "creative_facade_batch_create_applied",
                 "batch applied reason") &&
          expect(receipt.revisionBefore == 0U, "batch revision before") &&
-         expect(receipt.revisionAfter == 2U, "batch revision after") &&
+         expect(receipt.revisionAfter == 1U, "batch revision after") &&
          expect(receipt.attemptedCreateCount == 2U,
                 "batch attempted count") &&
          expect(receipt.appliedCreateCount == 2U,
                 "batch applied count") &&
          expect(!receipt.hasFailedCreate, "batch no failed create") &&
-         expect(receipt.installAttempted, "batch install attempted") &&
-         expect(receipt.installReceipt.accepted, "batch install accepted") &&
-         expect(receipt.installReceipt.changed, "batch install changed") &&
+         expect(receipt.publicationAttempted, "batch publication attempted") &&
+         expect(receipt.publicationReceipt.accepted,
+                "batch publication accepted") &&
+         expect(receipt.publicationReceipt.changed,
+                "batch publication changed") &&
          expect(facade.document().objectCount() == 2U,
                 "batch object count") &&
-         expect(facade.document().revision() == 2U,
+         expect(facade.document().revision() == 1U,
                 "batch document revision") &&
          expect(facade.document().findObject(1U) != nullptr,
                 "batch first object installed") &&
          expect(facade.document().findObject(2U) != nullptr,
                 "batch second object installed");
+}
+
+bool facadeBatchCreatePreservesTransientEditorState() {
+  cr::Facade facade;
+  cr::CreativeDocument document = cr::CreativeDocument::create("Batch State");
+  static_cast<void>(document.assignId(71U));
+  if (!expect(facade.installDocument(std::move(document)).accepted,
+              "batch state document installed")) {
+    return false;
+  }
+
+  cr::CreativeDocumentCreateRequest existingRequest;
+  existingRequest.kind = cr::CreativeObjectKind::Room;
+  existingRequest.name = "Existing";
+  const cr::CreativeObjectId existingId =
+      facade.createDocumentObject(existingRequest).objectId;
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  cr::CreativeSnapSettings snap = cr::makeDefaultCreativeSnapSettings();
+  snap.stepX = 0.5;
+  snap.stepY = 0.25;
+  snap.originX = 3.0;
+  facade.setSnapSettings(snap);
+  static_cast<void>(facade.configureMeasurement(
+      cr::CreativeMeasurementMode::Distance, cr::CreativeMeasurementAxis::X,
+      false));
+  cr::CreativeMeasurementPoint measurementPoint;
+  measurementPoint.x = 2.0;
+  measurementPoint.y = 3.0;
+  measurementPoint.z = 4.0;
+  static_cast<void>(facade.appendMeasurementPoint(measurementPoint));
+  cr::CreativeToolInputPacket press;
+  press.kind = cr::CreativeToolInputKind::PointerPress;
+  press.pointer.button = cr::CreativeToolPointerButton::Primary;
+  press.pointer.x = 1.25;
+  press.pointer.y = 2.75;
+  press.pointer.target.value = static_cast<cr::Id>(existingId);
+  static_cast<void>(facade.dispatchToolInput(press));
+
+  const cr::Stats statsBefore = facade.stats();
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t ghostUpdatesBefore = facade.ghostState().updateCount;
+  const cr::CreativeFacadeMoveDragReceipt dragBefore =
+      facade.moveDragReceipt();
+  std::array<cr::CreativeDocumentCreateRequest, 2> requests{};
+  requests[0].kind = cr::CreativeObjectKind::Crate;
+  requests[0].name = "Batch State A";
+  requests[1].kind = cr::CreativeObjectKind::Crate;
+  requests[1].name = "Batch State B";
+
+  const cr::CreativeFacadeDocumentBatchCreateReceipt receipt =
+      facade.createDocumentObjectsAtomically(requests);
+
+  return expect(receipt.accepted && receipt.changed &&
+                    receipt.revisionBefore == revisionBefore &&
+                    receipt.revisionAfter == revisionBefore + 1U,
+                "batch state publishes once") &&
+         expect(facade.selectionState().selectedTarget.value == existingId &&
+                    facade.selectionState().selectedTargets.size() == 1U,
+                "batch state preserves selection") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move &&
+                    facade.toolState().pointer.target.value == existingId &&
+                    facade.toolState().pointer.x == 1.25 &&
+                    facade.toolState().pointer.y == 2.75 &&
+                    facade.toolState().moveDragActive,
+                "batch state preserves tool and pointer") &&
+         expect(facade.measurementState().active &&
+                    facade.measurementState().hasMeasurement &&
+                    facade.measurementState().pointCount == 1U &&
+                    facade.measurementState().currentPoint.x == 2.0,
+                "batch state preserves measurement") &&
+         expect(facade.snapSettings().stepX == 0.5 &&
+                    facade.snapSettings().stepY == 0.25 &&
+                    facade.snapSettings().originX == 3.0,
+                "batch state preserves snap settings") &&
+         expect(facade.ghostState().visible &&
+                    facade.ghostState().sourceTool == cr::Tool::Move &&
+                    facade.ghostState().target.value == existingId &&
+                    facade.ghostState().updateCount == ghostUpdatesBefore,
+                "batch state preserves ghost") &&
+         expect(facade.moveDragReceipt().stage == dragBefore.stage &&
+                    facade.moveDragReceipt().outcome == dragBefore.outcome &&
+                    facade.moveDragReceipt().objectId == dragBefore.objectId &&
+                    facade.moveDragReceipt().startAnchor.x ==
+                        dragBefore.startAnchor.x,
+                "batch state preserves move drag") &&
+         expect(facade.stats().commandAttempts == statsBefore.commandAttempts &&
+                    facade.stats().commandSuccesses ==
+                        statsBefore.commandSuccesses &&
+                    facade.stats().commandFailures ==
+                        statsBefore.commandFailures &&
+                    facade.stats().objectsCreated == statsBefore.objectsCreated &&
+                    facade.stats().roomsCreated == statsBefore.roomsCreated,
+                "batch state preserves facade stats");
 }
 
 bool facadeBatchCreateRejectionPreservesLiveDocument() {
@@ -523,7 +618,8 @@ bool facadeBatchCreateRejectionPreservesLiveDocument() {
                 "batch failed create status") &&
          expect(receipt.firstFailedCreateReasonCode == "missing_parent",
                 "batch failed create reason") &&
-         expect(!receipt.installAttempted, "batch reject no install") &&
+         expect(!receipt.publicationAttempted,
+                "batch reject no publication") &&
          expect(facade.document().objectCount() == 0U,
                 "batch reject live object count") &&
          expect(facade.document().revision() == 0U,
@@ -545,11 +641,11 @@ bool facadeBatchCreateInstallFailurePreservesLiveDocument() {
          expect(!receipt.changed, "batch install fail unchanged") &&
          expect(receipt.status ==
                     cr::CreativeFacadeDocumentBatchCreateStatus::
-                        InstallRejected,
-                "batch install rejected status") &&
+                        PublicationRejected,
+                "batch publication rejected status") &&
          expect(receipt.reasonCode ==
-                    "creative_facade_batch_create_install_rejected",
-                "batch install rejected reason") &&
+                    "creative_facade_batch_create_publication_rejected",
+                "batch publication rejected reason") &&
          expect(receipt.revisionBefore == 0U,
                 "batch install fail revision before") &&
          expect(receipt.revisionAfter == 0U,
@@ -560,13 +656,13 @@ bool facadeBatchCreateInstallFailurePreservesLiveDocument() {
                 "batch install fail applied count") &&
          expect(!receipt.hasFailedCreate,
                 "batch install fail no create failure") &&
-         expect(receipt.installAttempted,
-                "batch install fail attempted install") &&
-         expect(!receipt.installReceipt.accepted,
-                "batch install fail rejected install") &&
-         expect(receipt.installReceipt.reasonCode ==
-                    "creative_facade_document_id_missing",
-                "batch install fail reason") &&
+         expect(receipt.publicationAttempted,
+                "batch publication fail attempted publication") &&
+         expect(!receipt.publicationReceipt.accepted,
+                "batch publication fail rejected publication") &&
+         expect(receipt.publicationReceipt.reasonCode ==
+                    "creative_document_publication_document_id_missing",
+                "batch publication fail reason") &&
          expect(facade.document().objectCount() == 0U,
                 "batch install fail live object count") &&
          expect(facade.document().revision() == 0U,
@@ -615,6 +711,7 @@ int main() {
                   facadeGenericCreateWrapsDocumentAndPreservesInteractionState() &&
                   facadeGenericCreateFailureRecordsFailureOnly() &&
                   facadeBatchCreateAppliesAllRequestsAtomically() &&
+                  facadeBatchCreatePreservesTransientEditorState() &&
                   facadeBatchCreateRejectionPreservesLiveDocument() &&
                   facadeBatchCreateInstallFailurePreservesLiveDocument() &&
                   staticAssetReferenceIsStoredAndUnsafeReferenceRejected();

@@ -443,7 +443,9 @@ CreativeVolumeOperationReceipt eraseVolumeObjects(
     copyVoxelMutationFacts(receipt, voxelReceipt);
   }
 
-  if (!document.commitStagedMutation(std::move(staged))) {
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
     reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
            "creative_volume_erase_commit_rejected");
     return receipt;
@@ -700,7 +702,9 @@ CreativeVolumeOperationReceipt cloneVolumeObjects(
     acceptNoChange(receipt, "creative_volume_clone_no_change");
     return receipt;
   }
-  if (!document.commitStagedMutation(std::move(staged))) {
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
     reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
            "creative_volume_clone_commit_rejected");
     return receipt;

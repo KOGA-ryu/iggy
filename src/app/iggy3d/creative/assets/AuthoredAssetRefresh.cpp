@@ -347,11 +347,17 @@ refreshCreativeAuthoredAssetInstancesAtomically(
     ++receipt.refreshedInstanceCount;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  if (!publication.accepted) {
+    reject(receipt, CreativeAuthoredAssetRefreshStatus::MutationRejected,
+           publication.reasonCode);
+    return receipt;
+  }
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeAuthoredAssetRefreshStatus::Refreshed;
-  receipt.revisionAfter = document.revision();
+  receipt.revisionAfter = publication.revisionAfter;
   receipt.reasonCode = "creative_authored_asset_instances_refreshed";
   return receipt;
 }

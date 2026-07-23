@@ -167,8 +167,8 @@ std::string_view toString(CreativeFacadeDocumentBatchCreateStatus status)
       return "Empty";
     case CreativeFacadeDocumentBatchCreateStatus::CreateRejected:
       return "CreateRejected";
-    case CreativeFacadeDocumentBatchCreateStatus::InstallRejected:
-      return "InstallRejected";
+    case CreativeFacadeDocumentBatchCreateStatus::PublicationRejected:
+      return "PublicationRejected";
     case CreativeFacadeDocumentBatchCreateStatus::Applied:
       return "Applied";
   }
@@ -454,20 +454,21 @@ CreativeFacadeDocumentBatchCreateReceipt Facade::createDocumentObjectsAtomically
     return receipt;
   }
 
-  receipt.installAttempted = true;
-  receipt.installReceipt = installDocument(std::move(stagedDocument));
+  receipt.publicationAttempted = true;
+  receipt.publicationReceipt =
+      document_.commitStagedMutation(std::move(stagedDocument));
   receipt.revisionAfter = document_.revision();
-  if (!receipt.installReceipt.accepted || !receipt.installReceipt.changed) {
+  if (!receipt.publicationReceipt.accepted) {
     setBatchCreateStatus(receipt,
                          CreativeFacadeDocumentBatchCreateStatus::
-                             InstallRejected,
-                         "creative_facade_batch_create_install_rejected");
+                             PublicationRejected,
+                         "creative_facade_batch_create_publication_rejected");
     return receipt;
   }
 
   receipt.accepted = true;
   receipt.changed = true;
-  receipt.revisionAfter = document_.revision();
+  receipt.revisionAfter = receipt.publicationReceipt.revisionAfter;
   setBatchCreateStatus(receipt,
                        CreativeFacadeDocumentBatchCreateStatus::Applied,
                        "creative_facade_batch_create_applied");

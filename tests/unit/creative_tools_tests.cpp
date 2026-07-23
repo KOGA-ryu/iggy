@@ -1648,6 +1648,7 @@ bool replaceFilterAndCloneOffsetUseExplicitInputs() {
 
 bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Transform");
+  static_cast<void>(document.assignId(21U));
   cr::CreativeDocumentCreateRequest create;
   create.kind = cr::CreativeObjectKind::Wall;
   create.name = "Rotated Wall";
@@ -1711,6 +1712,7 @@ bool transformCommandsStoreRadiansAndResolveLiveGeometry() {
 bool immediateTransformUsesSelectionPlacementKernel() {
   cr::CreativeDocument commandDocument =
       cr::CreativeDocument::create("Immediate Transform");
+  static_cast<void>(commandDocument.assignId(22U));
   cr::CreativeDocumentCreateRequest create;
   create.kind = cr::CreativeObjectKind::Crate;
   create.name = "First";
@@ -1769,6 +1771,7 @@ bool immediateTransformUsesSelectionPlacementKernel() {
 
 bool resetTransformPreservesPositionAndAppliesAtomically() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Reset Transform");
+  static_cast<void>(document.assignId(23U));
   cr::CreativeDocumentCreateRequest create;
   create.kind = cr::CreativeObjectKind::Wall;
   create.name = "Transformed Wall";
@@ -1810,6 +1813,7 @@ bool resetTransformPreservesPositionAndAppliesAtomically() {
 
   cr::CreativeDocument unsupported =
       cr::CreativeDocument::create("Unsupported Reset");
+  static_cast<void>(unsupported.assignId(24U));
   create = {};
   create.kind = cr::CreativeObjectKind::SoundEmitter;
   const cr::CreativeDocumentCreateReceipt sound = unsupported.createObject(create);
@@ -2003,6 +2007,7 @@ bool selectionPlacementPrecisionIsExactAndFailClosed() {
 
 bool selectionPlacementScalePlanMatchesAtomicCommit() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Scale Plan");
+  static_cast<void>(document.assignId(25U));
   cr::CreativeDocumentCreateRequest create;
   create.kind = cr::CreativeObjectKind::Crate;
   create.name = "Left";
@@ -2544,6 +2549,7 @@ bool selectionPlacementPreservesExternalAttachments() {
 
 bool selectionPlacementMoveIsAtomicAndFailClosed() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Placement");
+  static_cast<void>(document.assignId(26U));
   cr::CreativeDocumentCreateRequest wallRequest;
   wallRequest.kind = cr::CreativeObjectKind::Wall;
   wallRequest.name = "Wall";

@@ -19,6 +19,35 @@ template <typename Enum>
          static_cast<std::size_t>(count);
 }
 
+template <typename Receipt>
+void normalizeArrayReceiptRevisionRange(
+    Receipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  receipt.revisionAfter = revisionAfter;
+  if (receipt.pasteReceipt.requested) {
+    receipt.pasteReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.pasteReceipt.revisionAfter = revisionAfter;
+  }
+  if (receipt.patternMutationReceipt.requested) {
+    receipt.patternMutationReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.patternMutationReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+template <typename Receipt>
+void clearUnpublishedArrayOutputs(Receipt& receipt,
+                                  bool clearRecipeId) noexcept {
+  receipt.pasteReceipt.pastedObjectIds.clear();
+  receipt.pasteReceipt.idRemaps.clear();
+  receipt.pasteReceipt.patternRecipeIdRemaps.clear();
+  receipt.generatedObjectCount = 0U;
+  receipt.finalCopyFirstObjectIndex = 0U;
+  receipt.finalCopyObjectCount = 0U;
+  if (clearRecipeId) {
+    receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
+  }
+}
+
 [[nodiscard]] CreativeVec3 directionUnit(
     CreativeLinearArrayDirection direction) noexcept {
   switch (direction) {
@@ -517,6 +546,7 @@ CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
   CreativeLinearArrayReceipt receipt =
       createCreativeLinearArrayCopiesAtomically(staged, objectIds, request);
   if (!receipt.accepted) {
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -539,15 +569,26 @@ CreativeLinearArrayReceipt createCreativeLinearArrayAtomically(
     receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, true);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
   receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
-  document = std::move(staged);
-  receipt.revisionAfter = document.revision();
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeArrayReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeLinearArrayStatus::RecipeRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{publication.reasonCode};
+    clearUnpublishedArrayOutputs(receipt, true);
+    return receipt;
+  }
   return receipt;
 }
 
@@ -559,6 +600,7 @@ CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
   CreativeRadialArrayReceipt receipt =
       createCreativeRadialArrayCopiesAtomically(staged, objectIds, request);
   if (!receipt.accepted) {
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -581,15 +623,26 @@ CreativeRadialArrayReceipt createCreativeRadialArrayAtomically(
     receipt.patternRecipeId = kInvalidCreativePatternRecipeId;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, true);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
   receipt.patternRecipeId = receipt.patternMutationReceipt.recipeId;
-  document = std::move(staged);
-  receipt.revisionAfter = document.revision();
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeArrayReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeRadialArrayStatus::RecipeRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{publication.reasonCode};
+    clearUnpublishedArrayOutputs(receipt, true);
+    return receipt;
+  }
   return receipt;
 }
 
@@ -635,6 +688,7 @@ CreativeLinearArrayReceipt updateCreativeLinearArrayRecipeAtomically(
   receipt.patternRecipeId = recipeId;
   receipt.replacedGeneratedObjectCount = oldGeneratedObjectIds.size();
   if (!receipt.accepted) {
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -657,9 +711,8 @@ CreativeLinearArrayReceipt updateCreativeLinearArrayRecipeAtomically(
     receipt.status = CreativeLinearArrayStatus::RecipeRejected;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, false);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -675,15 +728,26 @@ CreativeLinearArrayReceipt updateCreativeLinearArrayRecipeAtomically(
     receipt.status = CreativeLinearArrayStatus::RemoveRejected;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{removed.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, false);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeArrayReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeLinearArrayStatus::RemoveRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{publication.reasonCode};
+    clearUnpublishedArrayOutputs(receipt, false);
+    return receipt;
+  }
   receipt.updatedExistingRecipe = true;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_linear_array_updated";
   return receipt;
 }
@@ -730,6 +794,7 @@ CreativeRadialArrayReceipt updateCreativeRadialArrayRecipeAtomically(
   receipt.patternRecipeId = recipeId;
   receipt.replacedGeneratedObjectCount = oldGeneratedObjectIds.size();
   if (!receipt.accepted) {
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -752,9 +817,8 @@ CreativeRadialArrayReceipt updateCreativeRadialArrayRecipeAtomically(
     receipt.status = CreativeRadialArrayStatus::RecipeRejected;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{receipt.patternMutationReceipt.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, false);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
@@ -770,15 +834,26 @@ CreativeRadialArrayReceipt updateCreativeRadialArrayRecipeAtomically(
     receipt.status = CreativeRadialArrayStatus::RemoveRejected;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.message = std::string{removed.reasonCode};
-    receipt.pasteReceipt.pastedObjectIds.clear();
-    receipt.pasteReceipt.idRemaps.clear();
-    receipt.generatedObjectCount = 0U;
+    clearUnpublishedArrayOutputs(receipt, false);
+    normalizeArrayReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeArrayReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    receipt.accepted = false;
+    receipt.changed = false;
+    receipt.status = CreativeRadialArrayStatus::RemoveRejected;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.message = std::string{publication.reasonCode};
+    clearUnpublishedArrayOutputs(receipt, false);
+    return receipt;
+  }
   receipt.updatedExistingRecipe = true;
-  receipt.revisionAfter = document.revision();
   receipt.message = "creative_radial_array_updated";
   return receipt;
 }

@@ -42,6 +42,21 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+bool mutationBatchUsesLiveRevisionRange(
+    const cr::CreativeDocumentBatchMutationReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) {
+  return receipt.revisionBefore == revisionBefore &&
+         receipt.revisionAfter == revisionAfter &&
+         std::all_of(
+             receipt.receipts.begin(), receipt.receipts.end(),
+             [revisionBefore, revisionAfter](
+                 const cr::CreativeDocumentMutationReceipt& item) {
+               return item.revisionBefore == revisionBefore &&
+                      item.revisionAfter == revisionAfter;
+             });
+}
+
 bool near(double lhs, double rhs) {
   return std::fabs(lhs - rhs) < 1.0e-8;
 }
@@ -236,6 +251,7 @@ bool captureInstantiateSelectAndUnpack() {
   placement.definition = &captured.definition;
   placement.instanceTransform.position = {5.0, 1.0, -3.0};
   placement.instanceTransform.rotationEulerRadians.y = 1.5707963267948966;
+  const std::uint64_t placementRevisionBefore = target.revision();
   const cr::CreativeAuthoredAssetInstanceReceipt placed =
       cr::instantiateCreativeAuthoredAssetAtomically(target, placement);
   const cr::CreativeObject* root =
@@ -271,6 +287,7 @@ bool captureInstantiateSelectAndUnpack() {
       child != nullptr && child->parentId == placed.instanceRootObjectId &&
       selectedRoot == placed.instanceRootObjectId;
   const std::size_t placedObjectCount = target.objectCount();
+  const std::uint64_t placementRevisionAfter = target.revision();
 
   const cr::CreativeGroupCommandReceipt unpacked =
       cr::ungroupDocumentObjectAtomically(target,
@@ -278,6 +295,22 @@ bool captureInstantiateSelectAndUnpack() {
   return expect(placed.accepted && placed.changed &&
                     placedObjectCount == 3U,
                 "authored definition instantiates root and expanded children") &&
+         expect(
+             placed.revisionBefore == placementRevisionBefore &&
+                 placed.revisionAfter == placementRevisionBefore + 1U &&
+                 placementRevisionAfter == placementRevisionBefore + 1U &&
+                 placed.rootCreateReceipt.revisionBefore ==
+                     placementRevisionBefore &&
+                 placed.rootCreateReceipt.revisionAfter ==
+                     placementRevisionBefore + 1U &&
+                 placed.contentPasteReceipt.revisionBefore ==
+                     placementRevisionBefore &&
+                 placed.contentPasteReceipt.revisionAfter ==
+                     placementRevisionBefore + 1U &&
+                 mutationBatchUsesLiveRevisionRange(
+                     placed.parentMutationReceipt, placementRevisionBefore,
+                     placementRevisionBefore + 1U),
+             "authored placement publishes once with truthful nested receipts") &&
          expect(rootFacts,
                 "instance root carries semantic identity without rendering") &&
          expect(rootExtent.valid &&
@@ -312,7 +345,18 @@ bool invalidDefinitionCannotPartiallyMutate() {
   return expect(!rejected.accepted && !rejected.changed &&
                     target.objectCount() == 0U &&
                     target.revision() == revisionBefore,
-                "missing source-root remap rejects the complete transaction");
+                "missing source-root remap rejects the complete transaction") &&
+         expect(rejected.instanceRootObjectId == cr::kInvalidObjectId &&
+                    rejected.instanceObjectIds.empty() &&
+                    rejected.rootCreateReceipt.revisionBefore ==
+                        revisionBefore &&
+                    rejected.rootCreateReceipt.revisionAfter ==
+                        revisionBefore &&
+                    rejected.contentPasteReceipt.revisionBefore ==
+                        revisionBefore &&
+                    rejected.contentPasteReceipt.revisionAfter ==
+                        revisionBefore,
+                "rejected authored placement exposes no unpublished outputs");
 }
 
 bool refreshAllInstancesIsAtomic() {
@@ -367,6 +411,7 @@ bool refreshAllInstancesIsAtomic() {
   oldChildIds.insert(oldChildIds.end(), second.instanceObjectIds.begin(),
                      second.instanceObjectIds.end());
 
+  const std::uint64_t refreshRevisionBefore = target.revision();
   const cr::CreativeAuthoredAssetRefreshReceipt refreshed =
       cr::refreshCreativeAuthoredAssetInstancesAtomically(target,
                                                           updated.definition);
@@ -492,6 +537,8 @@ bool refreshAllInstancesIsAtomic() {
   return expect(refreshed.accepted && refreshed.changed &&
                     refreshed.status ==
                         cr::CreativeAuthoredAssetRefreshStatus::Refreshed &&
+                    refreshed.revisionBefore == refreshRevisionBefore &&
+                    refreshed.revisionAfter == refreshRevisionBefore + 1U &&
                     refreshed.matchedInstanceCount == 2U &&
                     refreshed.refreshedInstanceCount == 2U &&
                     refreshed.removedObjectCount == 4U &&

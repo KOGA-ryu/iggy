@@ -98,6 +98,9 @@ struct CreativeDocumentBatchMutationReceipt {
     bool committed{false};
     bool rolledBack{false};
 
+    bool publicationAttempted{false};
+    CreativeDocumentPublicationReceipt publicationReceipt{};
+
     std::vector<CreativeDocumentMutationReceipt> receipts{};
     std::string message{};
 };

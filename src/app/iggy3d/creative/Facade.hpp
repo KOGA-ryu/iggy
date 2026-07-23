@@ -163,7 +163,7 @@ enum class CreativeFacadeDocumentBatchCreateStatus : std::uint8_t {
   Unknown,
   Empty,
   CreateRejected,
-  InstallRejected,
+  PublicationRejected,
   Applied,
 };
 
@@ -185,8 +185,8 @@ struct CreativeFacadeDocumentBatchCreateReceipt {
       "document_create_not_requested";
   std::string_view firstFailedCreateMessage =
       "document_create_not_requested";
-  bool installAttempted = false;
-  CreativeFacadeDocumentInstallReceipt installReceipt;
+  bool publicationAttempted = false;
+  CreativeDocumentPublicationReceipt publicationReceipt;
   std::string_view reasonCode =
       "creative_facade_batch_create_not_requested";
   std::string_view message =

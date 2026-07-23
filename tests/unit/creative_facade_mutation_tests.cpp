@@ -465,6 +465,10 @@ bool facadeMutationStatusStringsAreStable() {
 cr::CreativeObjectId createRoomAt(cr::Facade& facade,
                                   cr::CreativeVec3 corner,
                                   bool locked = false) {
+  if (facade.document().id() == cr::kInvalidDocumentId &&
+      !installDocument(facade, 701U)) {
+    return cr::kInvalidObjectId;
+  }
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
   request.name = "Room";
@@ -920,6 +924,9 @@ bool explicitAtomicBatchRollsBackLateFailure() {
 
 bool explicitAtomicBatchCommitsOneRevision() {
   cr::Facade facade;
+  if (!installDocument(facade, 702U)) {
+    return false;
+  }
   const cr::CreativeObjectId first = createCrate(facade, {0.0, 0.0, 0.0});
   const cr::CreativeObjectId second = createCrate(facade, {1.0, 0.0, 0.0});
   const std::uint64_t revisionBefore = facade.document().revision();
@@ -992,6 +999,9 @@ bool explicitMutationPreservesFacadeEditorState() {
 
 bool assetBoundsRefreshUsesLockedPolicyAndRejectsOtherKinds() {
   cr::Facade facade;
+  if (!installDocument(facade, 703U)) {
+    return false;
+  }
   const cr::CreativeObjectId crate = createRoom(facade);
   static_cast<void>(facade.mutateObject(
       crate, cr::CreativeMutationKind::SetLocked, cr::makeLockPayload(true)));

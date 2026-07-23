@@ -86,8 +86,15 @@ bool patternTranslationMovesTheWholeRelationship() {
                                              {6.0, 1.0, 5.0}),
                 "radial pivot translates with relationship") &&
          expect(applied.accepted && applied.changed &&
-                    document.revision() == revisionBefore + 1U,
-                "pattern translation publishes one document revision") &&
+                    applied.revisionBefore == revisionBefore &&
+                    applied.revisionAfter == revisionBefore + 1U &&
+                    document.revision() == revisionBefore + 1U &&
+                    applied.placement.revisionBefore == revisionBefore &&
+                    applied.placement.revisionAfter == revisionBefore + 1U &&
+                    applied.recipeMutation.revisionBefore == revisionBefore &&
+                    applied.recipeMutation.revisionAfter ==
+                        revisionBefore + 1U,
+                "pattern translation publishes one truthful revision range") &&
          expect(translated != nullptr && movedSource != nullptr &&
                     movedA != nullptr && movedB != nullptr &&
                     translated->sourceObjectIds == recipe.sourceObjectIds &&

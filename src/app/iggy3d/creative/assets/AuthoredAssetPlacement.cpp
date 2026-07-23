@@ -18,6 +18,47 @@ void reject(CreativeAuthoredAssetInstanceReceipt& receipt,
   receipt.reasonCode = reasonCode;
 }
 
+void normalizeMutationBatchRevisionRange(
+    CreativeDocumentBatchMutationReceipt& receipt,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter) noexcept {
+  if (receipt.status == CreativeDocumentMutationStatus::Unknown) {
+    return;
+  }
+  receipt.revisionBefore = revisionBefore;
+  receipt.revisionAfter = revisionAfter;
+  for (CreativeDocumentMutationReceipt& item : receipt.receipts) {
+    item.revisionBefore = revisionBefore;
+    item.revisionAfter = revisionAfter;
+  }
+  if (receipt.publicationAttempted) {
+    receipt.publicationReceipt.revisionBefore = revisionBefore;
+    receipt.publicationReceipt.revisionAfter = revisionAfter;
+  }
+}
+
+void normalizeInstanceReceiptRevisionRange(
+    CreativeAuthoredAssetInstanceReceipt& receipt,
+    std::uint64_t revisionAfter) noexcept {
+  receipt.revisionAfter = revisionAfter;
+  if (receipt.rootCreateReceipt.requested) {
+    receipt.rootCreateReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.rootCreateReceipt.revisionAfter = revisionAfter;
+  }
+  if (receipt.contentPasteReceipt.requested) {
+    receipt.contentPasteReceipt.revisionBefore = receipt.revisionBefore;
+    receipt.contentPasteReceipt.revisionAfter = revisionAfter;
+  }
+  normalizeMutationBatchRevisionRange(
+      receipt.parentMutationReceipt, receipt.revisionBefore, revisionAfter);
+}
+
+void clearUnpublishedInstanceOutputs(
+    CreativeAuthoredAssetInstanceReceipt& receipt) noexcept {
+  receipt.instanceRootObjectId = kInvalidObjectId;
+  receipt.instanceObjectIds.clear();
+}
+
 }  // namespace
 
 CreativeAuthoredAssetPlacementPlan planCreativeAuthoredAssetPlacement(
@@ -117,6 +158,7 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
       !receipt.rootCreateReceipt.objectCreated) {
     reject(receipt, CreativeAuthoredAssetStatus::CreateRejected,
            receipt.rootCreateReceipt.reasonCode);
+    normalizeInstanceReceiptRevisionRange(receipt, receipt.revisionBefore);
     return receipt;
   }
   receipt.instanceRootObjectId = receipt.rootCreateReceipt.objectId;
@@ -128,6 +170,8 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
                                      request.instanceTransform, false)) {
     reject(receipt, CreativeAuthoredAssetStatus::InvalidGeometry,
            "creative_authored_asset_content_transform_invalid");
+    normalizeInstanceReceiptRevisionRange(receipt, receipt.revisionBefore);
+    clearUnpublishedInstanceOutputs(receipt);
     return receipt;
   }
   receipt.contentPasteReceipt = pasteCreativeClipboardAtomically(
@@ -135,6 +179,8 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
   if (!receipt.contentPasteReceipt.accepted) {
     reject(receipt, CreativeAuthoredAssetStatus::CreateRejected,
            receipt.contentPasteReceipt.reasonCode);
+    normalizeInstanceReceiptRevisionRange(receipt, receipt.revisionBefore);
+    clearUnpublishedInstanceOutputs(receipt);
     return receipt;
   }
 
@@ -151,6 +197,8 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
     if (pasted == remaps.end()) {
       reject(receipt, CreativeAuthoredAssetStatus::InvalidDefinition,
              "creative_authored_asset_root_remap_missing");
+      normalizeInstanceReceiptRevisionRange(receipt, receipt.revisionBefore);
+      clearUnpublishedInstanceOutputs(receipt);
       return receipt;
     }
     parentMutations.push_back(
@@ -163,17 +211,26 @@ CreativeAuthoredAssetInstanceReceipt instantiateCreativeAuthoredAssetAtomically(
       !documentMutationSucceeded(receipt.parentMutationReceipt.status)) {
     reject(receipt, CreativeAuthoredAssetStatus::MutationRejected,
            "creative_authored_asset_parenting_rejected");
+    normalizeInstanceReceiptRevisionRange(receipt, receipt.revisionBefore);
+    clearUnpublishedInstanceOutputs(receipt);
     return receipt;
   }
 
-  document = std::move(staged);
+  const CreativeDocumentPublicationReceipt publication =
+      document.commitStagedMutation(std::move(staged));
+  normalizeInstanceReceiptRevisionRange(
+      receipt, publication.accepted ? publication.revisionAfter
+                                    : receipt.revisionBefore);
+  if (!publication.accepted) {
+    clearUnpublishedInstanceOutputs(receipt);
+    reject(receipt, CreativeAuthoredAssetStatus::MutationRejected,
+           publication.reasonCode);
+    return receipt;
+  }
   receipt.instanceObjectIds = receipt.contentPasteReceipt.pastedObjectIds;
   receipt.accepted = true;
   receipt.changed = true;
   receipt.status = CreativeAuthoredAssetStatus::Instantiated;
-  receipt.revisionAfter = document.revision();
-  receipt.rootCreateReceipt.revisionBefore = receipt.revisionBefore;
-  receipt.rootCreateReceipt.revisionAfter = receipt.revisionAfter;
   receipt.reasonCode = "creative_authored_asset_instantiated";
   return receipt;
 }
