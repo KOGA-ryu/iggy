@@ -226,11 +226,6 @@ validateCreativeDesktopTransformDraft(cr::CreativeVec3 position,
                                       cr::CreativeVec3 rotationDegrees,
                                       cr::CreativeVec3 scale) noexcept;
 
-// Generated Object/Box outputs have a one-to-one inverse and may be refined
-// then adopted. Structural and condensed outputs remain source-owned.
-[[nodiscard]] bool creativeDesktopGeneratedSourceSupportsAdoption(
-    const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept;
-
 inline constexpr std::size_t kCreativeDesktopGeneratedSourceScopeCapacity = 4U;
 
 struct CreativeDesktopGeneratedSourceScopeEntry {

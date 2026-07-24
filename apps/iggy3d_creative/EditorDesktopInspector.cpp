@@ -11,6 +11,7 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorMeasurement.hpp"
+#include "EditorObjectActions.hpp"
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
@@ -983,8 +984,21 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                                            &worldLayout.source);
   const cr::CreativeWorldLayoutObjectProvenance& provenance =
       semanticSelection.worldLayoutSource;
+  const cr::CreativeObjectHierarchyState hierarchyState =
+      cr::resolveCreativeObjectHierarchyState(document, object.id);
+  const bool effectivelyLocked =
+      !hierarchyState.resolved || hierarchyState.effectivelyLocked;
+  const bool sourceSynchronized =
+      worldLayout.generatedRevision == worldLayout.revision;
+  const CreativeEditorObjectActionCapabilities actionCapabilities =
+      buildCreativeEditorObjectActionCapabilities(
+          semanticSelection, !effectivelyLocked, sourceSynchronized);
   const bool sourceSupportsAdoption =
-      creativeDesktopGeneratedSourceSupportsAdoption(provenance);
+      creativeEditorObjectActionCapability(
+          actionCapabilities,
+          cr::CreativeSemanticObjectAction::SetTransform)
+          .route ==
+      cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
   const bool sourceOwnedOnly =
       provenance.owned && !sourceSupportsAdoption;
   const bool generatedSettingsSource = provenance.owned;
@@ -1007,33 +1021,20 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     }
   }
 
-  // A locked object can still be unlocked, inspected, and navigated; only its
-  // name and transform are frozen. Play freezes every document edit.
-  const cr::CreativeObjectHierarchyState hierarchyState =
-      cr::resolveCreativeObjectHierarchyState(document, object.id);
-  const bool effectivelyLocked =
-      !hierarchyState.resolved || hierarchyState.effectivelyLocked;
-  const bool sourceSynchronized =
-      worldLayout.generatedRevision == worldLayout.revision;
+  // A locked object remains inspectable and can change its local lock flag.
+  // Other document edits stay frozen. Play freezes every document edit.
   const auto actionAvailable =
       [&](cr::CreativeSemanticObjectAction action) {
-        const cr::CreativeSemanticObjectActionPolicy policy =
-            cr::resolveCreativeSemanticObjectAction(semanticSelection, action);
-        return policy.allowed &&
-               ((policy.route !=
-                     cr::CreativeSemanticObjectActionRoute::WorldLayoutSource &&
-                 policy.route !=
-                     cr::CreativeSemanticObjectActionRoute::RefineThenAdopt) ||
-                sourceSynchronized);
+        return creativeEditorObjectActionAvailable(actionCapabilities, action);
       };
   const bool rawFieldsDisabled =
-      playModeActive || effectivelyLocked ||
+      playModeActive ||
       !actionAvailable(cr::CreativeSemanticObjectAction::StructuralMutation);
   const bool renameDisabled =
-      playModeActive || effectivelyLocked ||
+      playModeActive ||
       !actionAvailable(cr::CreativeSemanticObjectAction::Rename);
   const bool transformDisabled =
-      playModeActive || effectivelyLocked ||
+      playModeActive ||
       !actionAvailable(cr::CreativeSemanticObjectAction::SetTransform);
 
   ImGui::BeginDisabled(renameDisabled);

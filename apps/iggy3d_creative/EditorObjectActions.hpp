@@ -14,6 +14,26 @@ namespace iggy3d_creative_app {
 struct CreativeEditorAuthoredAssetLibrary;
 struct CreativeEditorWorldLayoutState;
 
+// Resolves presentation-time availability from the same semantic policy used
+// by mutation owners. Owners still validate at execution time; this snapshot
+// keeps every UI surface and input hint consistent before dispatch.
+[[nodiscard]] CreativeEditorObjectActionCapabilities
+buildCreativeEditorObjectActionCapabilities(
+    const iggy3d::creative::CreativeSemanticSelectionResolution& selection,
+    bool allUnlocked, bool worldLayoutSynchronized) noexcept;
+[[nodiscard]] CreativeEditorObjectActionCapabilities
+buildCreativeEditorObjectActionCapabilities(
+    const iggy3d::creative::CreativeSemanticSelectionSetResolution& selection,
+    bool allUnlocked, bool worldLayoutSynchronized) noexcept;
+
+[[nodiscard]] CreativeEditorObjectActionCapability
+creativeEditorObjectActionCapability(
+    const CreativeEditorObjectActionCapabilities& capabilities,
+    iggy3d::creative::CreativeSemanticObjectAction action) noexcept;
+[[nodiscard]] bool creativeEditorObjectActionAvailable(
+    const CreativeEditorObjectActionCapabilities& capabilities,
+    iggy3d::creative::CreativeSemanticObjectAction action) noexcept;
+
 // Equips a saved authored-asset definition into the active hotbar slot
 // (extracted from the SaveSelectionAsAsset object action so the desktop command
 // dispatcher can equip too). Returns whether the hotbar accepted the asset. Does

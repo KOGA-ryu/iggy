@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
@@ -69,6 +70,23 @@ struct CreativeEditorToolOptionsCommandList {
   std::size_t count = 0U;
 };
 
+inline constexpr std::size_t kCreativeEditorObjectActionCapabilityCount =
+    static_cast<std::size_t>(
+        iggy3d::creative::CreativeSemanticObjectAction::Count);
+
+struct CreativeEditorObjectActionCapability {
+  bool available = false;
+  iggy3d::creative::CreativeSemanticObjectActionRoute route =
+      iggy3d::creative::CreativeSemanticObjectActionRoute::Reject;
+  std::string_view reasonCode = "creative_editor_object_action_not_requested";
+};
+
+struct CreativeEditorObjectActionCapabilities {
+  std::array<CreativeEditorObjectActionCapability,
+             kCreativeEditorObjectActionCapabilityCount>
+      actions{};
+};
+
 struct CreativeEditorToolOptionsState {
   bool open = false;
   iggy3d::creative::CreativeHotbarEntry targetEntry{};
@@ -114,6 +132,7 @@ struct CreativeEditorToolOptionsState {
   bool contextAllUnlocked = false;
   bool contextAllMovable = false;
   bool contextAllResettable = false;
+  CreativeEditorObjectActionCapabilities contextActionCapabilities;
   bool contextPrefabUpdateTransformSupported = false;
   bool contextPrefabSyncInspected = false;
   bool contextMovingPlatformPointSelected = false;

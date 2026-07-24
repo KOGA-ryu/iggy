@@ -2,7 +2,6 @@
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 
 #include "app/iggy3d/creative/tools/Select.hpp"
-#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <algorithm>
@@ -526,16 +525,6 @@ CreativeDesktopTransformDraft validateCreativeDesktopTransformDraft(
   draft.transform.scale = scale;
   draft.valid = true;
   return draft;
-}
-
-bool creativeDesktopGeneratedSourceSupportsAdoption(
-    const cr::CreativeWorldLayoutObjectProvenance& provenance) noexcept {
-  return provenance.owned &&
-         cr::resolveCreativeSemanticObjectAction(
-             cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
-             cr::CreativeSemanticObjectAction::SetTransform,
-             provenance.table, provenance.contributorCount)
-      .route == cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
 }
 
 CreativeDesktopGeneratedSourceScopeModel

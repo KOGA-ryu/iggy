@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <initializer_list>
 #include <iostream>
 #include <span>
 #include <string_view>
@@ -28,6 +29,24 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool capabilityAvailabilityMatches(
+    const app::CreativeEditorObjectActionCapabilities& capabilities,
+    const std::array<bool,
+                     app::kCreativeEditorObjectActionCapabilityCount>&
+        expected,
+    std::string_view message) {
+  for (std::size_t index = 0U; index < expected.size(); ++index) {
+    const auto action =
+        static_cast<cr::CreativeSemanticObjectAction>(index);
+    if (app::creativeEditorObjectActionAvailable(capabilities, action) !=
+        expected[index]) {
+      std::cerr << "FAIL: " << message << " at action " << index << '\n';
+      return false;
+    }
+  }
+  return true;
 }
 
 bool creativePathPointsExactlyEqual(
@@ -613,8 +632,163 @@ bool objectActionsInspectCompleteGroupCapability() {
                     !app::creativeEditorObjectActionEnabled(
                         editor, editor.toolOptions,
                         app::CreativeEditorToolOptionsCommandId::
-                            DuplicateSelection),
-                "Locked descendants disable atomic hierarchy actions");
+                            DuplicateSelection) &&
+                    !app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            DeleteSelection) &&
+                    !app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            ToggleSelectionVisibility) &&
+                    !app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            UngroupSelection) &&
+                    app::creativeEditorObjectActionEnabled(
+                        editor, editor.toolOptions,
+                        app::CreativeEditorToolOptionsCommandId::
+                            ToggleSelectionLocked),
+                "Locked descendants disable atomic edits but preserve lock access");
+}
+
+bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
+  using Action = cr::CreativeSemanticObjectAction;
+  constexpr std::size_t count =
+      app::kCreativeEditorObjectActionCapabilityCount;
+  const auto setExpected = [](std::initializer_list<Action> available) {
+    std::array<bool, count> expected{};
+    for (Action action : available) {
+      expected[static_cast<std::size_t>(action)] = true;
+    }
+    return expected;
+  };
+
+  cr::CreativeSemanticSelectionSetResolution authored;
+  authored.requested = true;
+  authored.accepted = true;
+  authored.status = cr::CreativeSemanticSelectionStatus::Ready;
+  authored.primaryOwner = cr::CreativeSemanticSelectionOwner::AuthoredObject;
+  authored.selectedCount = 1U;
+  authored.resolvedCount = 1U;
+  authored.authoredOwnerCount = 1U;
+  const app::CreativeEditorObjectActionCapabilities authoredUnlocked =
+      app::buildCreativeEditorObjectActionCapabilities(authored, true, true);
+  const app::CreativeEditorObjectActionCapabilities authoredLocked =
+      app::buildCreativeEditorObjectActionCapabilities(authored, false, true);
+  const std::array<bool, count> allAuthored = setExpected(
+      {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
+       Action::Cut, Action::Rename, Action::SetVisible, Action::SetLocked,
+       Action::TransformSelection, Action::SetTransform,
+       Action::StructuralMutation});
+  const std::array<bool, count> lockedAuthored =
+      setExpected({Action::Inspect, Action::Copy, Action::SetLocked});
+
+  cr::CreativeSemanticSelectionSetResolution pattern = authored;
+  pattern.primaryOwner = cr::CreativeSemanticSelectionOwner::PatternRecipe;
+  pattern.authoredOwnerCount = 0U;
+  pattern.patternOwnerCount = 1U;
+  const app::CreativeEditorObjectActionCapabilities patternUnlocked =
+      app::buildCreativeEditorObjectActionCapabilities(pattern, true, true);
+  const std::array<bool, count> expectedPattern = setExpected(
+      {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
+       Action::Cut, Action::TransformSelection});
+
+  cr::CreativeSemanticSelectionSetResolution generated = authored;
+  generated.primaryOwner =
+      cr::CreativeSemanticSelectionOwner::WorldLayoutSource;
+  generated.authoredOwnerCount = 0U;
+  generated.worldLayoutOwnerCount = 1U;
+  generated.commonWorldLayoutSource.table =
+      cr::CreativeWorldLayoutTable::Object;
+  const app::CreativeEditorObjectActionCapabilities generatedSynchronized =
+      app::buildCreativeEditorObjectActionCapabilities(generated, true, true);
+  const app::CreativeEditorObjectActionCapabilities generatedStale =
+      app::buildCreativeEditorObjectActionCapabilities(generated, true, false);
+  const std::array<bool, count> expectedGenerated = setExpected(
+      {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
+       Action::Rename, Action::SetVisible});
+  const std::array<bool, count> expectedGeneratedStale =
+      setExpected({Action::Inspect, Action::Copy});
+
+  const app::CreativeEditorObjectActionCapability lockedRename =
+      app::creativeEditorObjectActionCapability(authoredLocked, Action::Rename);
+  const app::CreativeEditorObjectActionCapability staleDuplicate =
+      app::creativeEditorObjectActionCapability(generatedStale,
+                                                Action::Duplicate);
+  const app::CreativeEditorObjectActionCapability invalid =
+      app::creativeEditorObjectActionCapability(
+          authoredUnlocked, Action::Count);
+  return capabilityAvailabilityMatches(authoredUnlocked, allAuthored,
+                                       "authored action matrix") &&
+         capabilityAvailabilityMatches(authoredLocked, lockedAuthored,
+                                       "locked action matrix") &&
+         capabilityAvailabilityMatches(patternUnlocked, expectedPattern,
+                                       "pattern action matrix") &&
+         capabilityAvailabilityMatches(generatedSynchronized,
+                                       expectedGenerated,
+                                       "generated action matrix") &&
+         capabilityAvailabilityMatches(generatedStale,
+                                       expectedGeneratedStale,
+                                       "stale generated action matrix") &&
+         expect(lockedRename.reasonCode ==
+                    "creative_editor_object_action_selection_locked",
+                "locked capability reports one shared reason") &&
+         expect(staleDuplicate.reasonCode ==
+                    "creative_editor_object_action_world_layout_unsynchronized",
+                "stale source capability reports one shared reason") &&
+         expect(!invalid.available &&
+                    invalid.route ==
+                        cr::CreativeSemanticObjectActionRoute::Reject,
+                "invalid action lookup fails closed");
+}
+
+bool objectActionCapabilitiesPinGeneratedAdoptionRoutes() {
+  const auto transformCapability =
+      [](cr::CreativeWorldLayoutTable table, std::size_t contributors,
+         bool synchronized) {
+        cr::CreativeSemanticSelectionResolution selection;
+        selection.requested = true;
+        selection.accepted = true;
+        selection.status = cr::CreativeSemanticSelectionStatus::Ready;
+        selection.primaryOwner =
+            cr::CreativeSemanticSelectionOwner::WorldLayoutSource;
+        selection.worldLayoutSource.owned = true;
+        selection.worldLayoutSource.table = table;
+        selection.worldLayoutSource.contributorCount = contributors;
+        return app::creativeEditorObjectActionCapability(
+            app::buildCreativeEditorObjectActionCapabilities(
+                selection, true, synchronized),
+            cr::CreativeSemanticObjectAction::SetTransform);
+      };
+  const auto supportsAdoption =
+      [&](cr::CreativeWorldLayoutTable table, std::size_t contributors) {
+        const app::CreativeEditorObjectActionCapability capability =
+            transformCapability(table, contributors, true);
+        return capability.available &&
+               capability.route ==
+                   cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
+      };
+
+  const app::CreativeEditorObjectActionCapability staleObject =
+      transformCapability(cr::CreativeWorldLayoutTable::Object, 1U, false);
+  return expect(
+             supportsAdoption(cr::CreativeWorldLayoutTable::Object, 1U) &&
+                 supportsAdoption(cr::CreativeWorldLayoutTable::Box, 1U),
+             "one-to-one object and box outputs permit adoption") &&
+         expect(
+             !supportsAdoption(cr::CreativeWorldLayoutTable::Level, 1U) &&
+                 !supportsAdoption(cr::CreativeWorldLayoutTable::Room, 1U) &&
+                 !supportsAdoption(cr::CreativeWorldLayoutTable::Wall, 1U) &&
+                 !supportsAdoption(
+                     cr::CreativeWorldLayoutTable::VerticalConnector, 1U) &&
+                 !supportsAdoption(cr::CreativeWorldLayoutTable::Opening, 1U) &&
+                 !supportsAdoption(cr::CreativeWorldLayoutTable::Object, 2U),
+             "structural and condensed outputs remain source-owned") &&
+         expect(!staleObject.available &&
+                    staleObject.route ==
+                        cr::CreativeSemanticObjectActionRoute::RefineThenAdopt,
+                "stale source retains its route while disabling adoption");
 }
 
 bool generatedObjectActionsExposeOnlyOwnedCapabilities() {
@@ -1110,6 +1284,8 @@ int main() {
                  groupToolOptionsExposeEditAndUngroupCommands() &&
                  transformToolOptionsExposeAndRouteSharedObjectActions() &&
                  objectActionsInspectCompleteGroupCapability() &&
+                 objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() &&
+                 objectActionCapabilitiesPinGeneratedAdoptionRoutes() &&
                  generatedObjectActionsExposeOnlyOwnedCapabilities() &&
                  groupToolOptionsEnterFocusAndUngroupWithHistory() &&
                  controllerTransformScalesAGroupAsOneUndoableHierarchy() &&
