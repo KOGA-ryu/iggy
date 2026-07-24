@@ -362,6 +362,104 @@ creative::CreativeDuplicateCommandReceipt duplicateSelectedObjectsWithUndo(
   return receipt;
 }
 
+CreativeEditorDuplicateReceipt duplicateCreativeEditorSelectionWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    const creative::CreativeDuplicateCommandRequest& request,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  CreativeEditorDuplicateReceipt outcome;
+  const std::vector<creative::CreativeObjectId> selectedIds =
+      gatherDesktopTargetIds(appState, {});
+  if (selectedIds.empty()) {
+    outcome.reasonCode = "creative_editor_duplicate_selection_empty";
+    return outcome;
+  }
+
+  if (worldLayout != nullptr) {
+    creative::CreativeObjectId primaryObjectId = creative::kInvalidObjectId;
+    if (appState.facade.selectionState().selectedTarget.value !=
+        creative::kInvalidId) {
+      primaryObjectId = static_cast<creative::CreativeObjectId>(
+          appState.facade.selectionState().selectedTarget.value);
+    }
+    const creative::CreativeSemanticSelectionSetResolution resolution =
+        creative::resolveCreativeSemanticSelectionSet(
+            appState.facade.document(), selectedIds, primaryObjectId,
+            &worldLayout->source);
+    if (!resolution.accepted) {
+      outcome.reasonCode = resolution.reasonCode;
+      return outcome;
+    }
+
+    if (resolution.primaryOwner ==
+        creative::CreativeSemanticSelectionOwner::WorldLayoutSource) {
+      if (worldLayout->generatedRevision != worldLayout->revision) {
+        outcome.reasonCode =
+            "creative_editor_duplicate_world_layout_unsynchronized";
+        return outcome;
+      }
+      if (!creativeEditorWorldLayoutSourceCanDuplicate(
+              resolution.commonWorldLayoutSource.table)) {
+        outcome.reasonCode =
+            "creative_editor_duplicate_world_layout_source_unsupported";
+        worldLayout->statusMessage = "source type cannot be duplicated";
+        return outcome;
+      }
+      const CreativeEditorSelectionSynchronizationReceipt synchronized =
+          synchronizeCreativeEditorWorldLayoutSelection(
+              *worldLayout, appState.facade.document(),
+              appState.facade.selectionState(),
+              resolution.commonWorldLayoutSource);
+      if (!synchronized.accepted || !synchronized.sourceSelected) {
+        outcome.reasonCode = std::string(synchronized.reasonCode);
+        return outcome;
+      }
+      const CreativeEditorWorldLayoutEditReceipt duplicated =
+          duplicateCreativeEditorWorldLayoutSource(
+              *worldLayout, resolution.commonWorldLayoutSource.table,
+              resolution.commonWorldLayoutSource.index,
+              appState.facade.document().gridSettings());
+      outcome.accepted = duplicated.accepted;
+      outcome.changed = duplicated.changed;
+      outcome.worldLayoutSourceDuplicated = duplicated.changed;
+      outcome.affectedObjectCount = selectedIds.size();
+      outcome.reasonCode = duplicated.reasonCode;
+      return outcome;
+    }
+
+    if (resolution.primaryOwner ==
+        creative::CreativeSemanticSelectionOwner::AuthoredObject) {
+      const bool containsOwnedOutput =
+          std::any_of(selectedIds.begin(), selectedIds.end(),
+                      [&](creative::CreativeObjectId objectId) {
+                        const creative::CreativeSemanticSelectionResolution
+                            semantic =
+                                creative::resolveCreativeSemanticSelection(
+                                    appState.facade.document(), objectId,
+                                    &worldLayout->source);
+                        return semantic.accepted &&
+                               semantic.primaryOwner !=
+                                   creative::CreativeSemanticSelectionOwner::
+                                       AuthoredObject;
+                      });
+      if (containsOwnedOutput) {
+        outcome.reasonCode =
+            "creative_editor_duplicate_mixed_ownership_unsupported";
+        return outcome;
+      }
+    }
+  }
+
+  const creative::CreativeDuplicateCommandReceipt duplicated =
+      duplicateSelectedObjectsWithUndo(appState, history, request, source);
+  outcome.accepted = duplicated.accepted;
+  outcome.changed = duplicated.changed;
+  outcome.affectedObjectCount = duplicated.duplicatedObjectCount;
+  outcome.reasonCode = duplicated.message;
+  return outcome;
+}
+
 creative::CreativeFacadeMutationReceipt
 toggleSelectedObjectVisibilityWithUndo(
     creative::CreativeAppState& appState,

@@ -548,6 +548,114 @@ bool deleteGeneratedWorldLayoutOutputEditsItsSource() {
                 "source delete leaves compiled geometry intact until generation and undoes through source history");
 }
 
+bool duplicateGeneratedWorldLayoutOutputEditsItsSource() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Source Duplicate");
+  static_cast<void>(document.assignId(4102U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "generated_duplicate_source");
+  static_cast<void>(app::setCreativeEditorWorldLayoutTool(
+      editor.worldLayout, app::CreativeEditorWorldLayoutTool::Room));
+  const app::CreativeEditorWorldLayoutEditReceipt began =
+      app::applyCreativeEditorWorldLayoutGesture(
+          editor.worldLayout,
+          app::CreativeEditorWorldLayoutGesturePhase::Begin, {0.0, 0.0});
+  const app::CreativeEditorWorldLayoutEditReceipt committed =
+      app::applyCreativeEditorWorldLayoutGesture(
+          editor.worldLayout,
+          app::CreativeEditorWorldLayoutGesturePhase::Commit, {6.0, 4.0});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const app::CreativeDesktopCommandResult generated =
+      dispatchOne(app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+  if (!began.accepted || !committed.accepted || !generated.accepted) {
+    return expect(false, "generated source duplicate setup accepted");
+  }
+
+  const auto generatedRoomObject = std::find_if(
+      appState.facade.document().objects().begin(),
+      appState.facade.document().objects().end(),
+      [&](const cr::CreativeObject& object) {
+        const cr::CreativeWorldLayoutObjectProvenance provenance =
+            cr::resolveCreativeWorldLayoutObjectProvenance(
+                editor.worldLayout.source, object);
+        return provenance.owned &&
+               provenance.table == cr::CreativeWorldLayoutTable::Room &&
+               provenance.index == 0U;
+      });
+  if (generatedRoomObject == appState.facade.document().objects().end()) {
+    return expect(false, "generated source duplicate found room output");
+  }
+
+  selectPrimary(appState.facade, generatedRoomObject->id);
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::size_t documentObjectCountBefore =
+      appState.facade.document().objectCount();
+  const std::uint64_t documentUndoBefore =
+      cr::creativeUndoDepth(appState.history);
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::size_t sourceUndoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  const std::size_t roomCountBefore =
+      editor.worldLayout.source.rooms.size();
+
+  const app::CreativeDesktopCommandResult duplicated =
+      dispatchOne(app::CreativeDesktopCommandId::DuplicateSelection, context);
+  const bool sourceOnlyDuplicate =
+      duplicated.accepted && duplicated.changed &&
+      duplicated.worldLayoutChanged && !duplicated.sceneChanged &&
+      editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+      editor.worldLayout.generatedRevision != editor.worldLayout.revision &&
+      editor.worldLayout.source.rooms.size() == roomCountBefore + 1U &&
+      editor.worldLayout.selection.kind ==
+          app::CreativeEditorWorldLayoutSelectionKind::Room &&
+      editor.worldLayout.selection.index == roomCountBefore &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          sourceUndoBefore + 1U &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      appState.facade.document().objectCount() == documentObjectCountBefore &&
+      cr::creativeUndoDepth(appState.history) == documentUndoBefore;
+  const app::CreativeDesktopCommandResult staleDuplicate =
+      dispatchOne(app::CreativeDesktopCommandId::DuplicateSelection, context);
+  const bool staleRejected =
+      !staleDuplicate.accepted && !staleDuplicate.changed &&
+      editor.worldLayout.source.rooms.size() == roomCountBefore + 1U &&
+      editor.worldLayout.sourceHistory.undoEntries.size() ==
+          sourceUndoBefore + 1U &&
+      appState.facade.document().revision() == documentRevisionBefore &&
+      appState.facade.document().objectCount() == documentObjectCountBefore;
+  const app::CreativeDesktopCommandResult undone =
+      dispatchOne(app::CreativeDesktopCommandId::Undo, context);
+
+  return expect(
+             sourceOnlyDuplicate,
+             "3D generated duplicate routes to the World Layout source") &&
+         expect(staleRejected,
+                "stale generated output cannot duplicate source twice") &&
+         expect(
+             undone.accepted && undone.changed &&
+                 editor.worldLayout.revision == sourceRevisionBefore &&
+                 editor.worldLayout.source.rooms.size() == roomCountBefore &&
+                 editor.worldLayout.selection.kind ==
+                     app::CreativeEditorWorldLayoutSelectionKind::Room &&
+                 editor.worldLayout.selection.index == 0U &&
+                 editor.worldLayout.sourceHistory.undoEntries.size() ==
+                     sourceUndoBefore &&
+                 appState.facade.document().revision() ==
+                     documentRevisionBefore &&
+                 appState.facade.document().objectCount() ==
+                     documentObjectCountBefore &&
+                 cr::creativeUndoDepth(appState.history) ==
+                     documentUndoBefore,
+             "source duplicate leaves compiled geometry intact and undoes through source history");
+}
+
 bool undoRedoMoveTheHistoryRings() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Undo");
@@ -7876,6 +7984,7 @@ int main() {
   ok = builderEstateRegenerationIsExplicitUndoableAndUnsaved() && ok;
   ok = deleteAndDuplicateHitTheKernels() && ok;
   ok = deleteGeneratedWorldLayoutOutputEditsItsSource() && ok;
+  ok = duplicateGeneratedWorldLayoutOutputEditsItsSource() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndPreservesHistory() && ok;

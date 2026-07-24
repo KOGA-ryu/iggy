@@ -184,6 +184,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutReconciliation.cpp
     src/app/iggy3d/creative/world/WorldLayoutLevels.cpp
+    src/app/iggy3d/creative/world/WorldLayoutSourceDuplication.cpp
     src/app/iggy3d/creative/world/WorldLayoutDimensions.cpp
     src/app/iggy3d/creative/world/WorldLayoutArchitecture.cpp
     src/app/iggy3d/creative/world/WorldLayoutPlanProjection.cpp

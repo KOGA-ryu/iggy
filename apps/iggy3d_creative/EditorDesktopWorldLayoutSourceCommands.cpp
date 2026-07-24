@@ -526,7 +526,8 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutEditReceipt receipt =
           duplicateCreativeEditorWorldLayoutSource(
-              editor.worldLayout, payload->table, payload->index);
+              editor.worldLayout, payload->table, payload->index,
+              activeAppState.facade.document().gridSettings());
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;

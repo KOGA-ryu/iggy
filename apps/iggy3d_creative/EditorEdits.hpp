@@ -88,6 +88,25 @@ duplicateSelectedObjectsWithUndo(
     const cr::CreativeDuplicateCommandRequest& request,
     std::string_view source);
 
+struct CreativeEditorDuplicateReceipt {
+  bool accepted = false;
+  bool changed = false;
+  bool worldLayoutSourceDuplicated = false;
+  std::uint64_t affectedObjectCount = 0U;
+  std::string reasonCode = "creative_editor_duplicate_not_requested";
+};
+
+// Routes generated output to its nearest editable owner. Synchronized World
+// Layout output duplicates source truth; pattern output and ordinary authored
+// objects continue through the atomic document duplicate kernel.
+[[nodiscard]] CreativeEditorDuplicateReceipt
+duplicateCreativeEditorSelectionWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    const cr::CreativeDuplicateCommandRequest& request,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+
 [[nodiscard]] cr::CreativeFacadeMutationReceipt
 toggleSelectedObjectVisibilityWithUndo(
     cr::CreativeAppState& appState,

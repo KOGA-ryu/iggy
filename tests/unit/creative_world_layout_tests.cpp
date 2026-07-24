@@ -4,8 +4,10 @@
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingTemplatePlacement.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutCodec.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutOrthogonalRooms.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
@@ -1329,6 +1331,324 @@ bool explicitTopologyFollowsBuildingOwnershipKernels() {
                     refreshed.edited.topologyEdges.front().material ==
                         cr::CreativeStructuralMaterial::Stone,
                 "linked template refresh keeps wall identity and updates semantics");
+}
+
+bool sourceDuplicationKernelsAreAtomicAndOwnershipSafe() {
+  const cr::CreativeGridSettings grid = makeDocument(780U).gridSettings();
+  const auto sourceFixture = [] {
+    cr::CreativeWorldLayout layout;
+    layout.stableKey = "source_duplicate_layout";
+    cr::CreativeWorldLayoutBuilding building;
+    building.stableKey = "source_duplicate_building";
+    building.name = "Source Duplicate Building";
+    building.rootFootprint = {{0, 0}, {16, 12}};
+    layout.buildings.push_back(building);
+    layout.levels.push_back(
+        {0U, "source_duplicate_level", "Ground", 0.0, 4U, 1U, 1U, 1U});
+    layout.rooms.push_back({0U,
+                            0U,
+                            "source_duplicate_room",
+                            "Source Room",
+                            {{0, 0}, {16, 12}},
+                            0.25});
+    layout.boxes.push_back({0U,
+                            cr::CreativeObjectKind::Floor,
+                            "source_duplicate_box",
+                            "Source Box",
+                            {{1, 1}, {4, 3}},
+                            0.0,
+                            1U});
+    cr::CreativeWorldLayoutOpening opening;
+    opening.hostKind = cr::CreativeWorldLayoutOpeningHostKind::RoomEdge;
+    opening.roomIndex = 0U;
+    opening.roomEdge = cr::CreativeWorldLayoutRoomEdge::North;
+    opening.stableKey = "source_duplicate_opening";
+    opening.name = "Source Opening";
+    opening.centerOffsetCells = 3.0;
+    opening.widthCells = 1.0;
+    opening.cutoutHeightCells = 2.0;
+    layout.openings.push_back(opening);
+    cr::CreativeWorldLayoutRoofAperture aperture;
+    aperture.levelIndex = 0U;
+    aperture.stableKey = "source_duplicate_aperture";
+    aperture.name = "Source Aperture";
+    aperture.minimumXCells = 8.0;
+    aperture.maximumXCells = 10.0;
+    aperture.minimumZCells = 4.0;
+    aperture.maximumZCells = 6.0;
+    layout.roofApertures.push_back(aperture);
+    cr::CreativeWorldLayoutObject object;
+    object.kind = cr::CreativeObjectKind::Furniture;
+    object.mode = cr::CreativeObjectLibraryPlacementMode::Bounds;
+    object.stableKey = "source_duplicate_object";
+    object.name = "Source Object";
+    object.boundsCells = {{1.0, 0.0, 6.0}, {3.0, 2.0, 7.0}};
+    layout.objects.push_back(object);
+    return layout;
+  };
+  const cr::CreativeWorldLayout flatSource = sourceFixture();
+  const cr::CreativeWorldLayoutRoomGraphMaterializeResult materialized =
+      cr::materializeCreativeWorldLayoutRoomGraph(flatSource);
+  if (!expect(materialized.accepted && materialized.changed,
+              "source duplicate topology fixture materializes")) {
+    return false;
+  }
+
+  const cr::CreativeWorldLayout& roomSource = materialized.edited;
+  const std::size_t roomVertexCount = roomSource.topologyVertices.size();
+  const std::size_t roomEdgeCount = roomSource.topologyEdges.size();
+  const std::size_t roomBoundaryCount = roomSource.roomBoundaries.size();
+  const std::size_t roomOpeningCount = roomSource.openings.size();
+  const cr::CreativeWorldLayoutSourceDuplicateResult room =
+      cr::duplicateCreativeWorldLayoutSource(
+          roomSource,
+          {cr::CreativeWorldLayoutTable::Room, 0U, grid, 500U});
+  const cr::CreativeWorldLayoutSourceDuplicateResult repeatedRoom =
+      cr::duplicateCreativeWorldLayoutSource(
+          roomSource,
+          {cr::CreativeWorldLayoutTable::Room, 0U, grid, 500U});
+  bool roomOpeningHostsRemapped = room.accepted;
+  for (std::size_t index = roomOpeningCount;
+       roomOpeningHostsRemapped && index < room.edited.openings.size();
+       ++index) {
+    const cr::CreativeWorldLayoutOpening& opening =
+        room.edited.openings[index];
+    roomOpeningHostsRemapped =
+        opening.roomIndex == 1U &&
+        opening.roomTopologyEdgeIndex >= roomEdgeCount;
+  }
+  const bool roomDuplicateAccepted =
+      room.accepted && room.changed &&
+      room.status == cr::CreativeWorldLayoutSourceDuplicateStatus::Ready &&
+      room.duplicate.table == cr::CreativeWorldLayoutTable::Room &&
+      room.duplicate.index == 1U && room.edited.rooms.size() == 2U;
+  const bool roomPlacementDeterministic =
+      roomDuplicateAccepted && repeatedRoom.accepted &&
+      room.edited.rooms[1].footprint.minimum ==
+          repeatedRoom.edited.rooms[1].footprint.minimum &&
+      room.edited.rooms[1].footprint.maximum ==
+          repeatedRoom.edited.rooms[1].footprint.maximum;
+  const bool roomPlacementClear =
+      roomDuplicateAccepted &&
+      (room.edited.rooms[1].footprint.maximum.x <=
+           roomSource.rooms[0].footprint.minimum.x ||
+       room.edited.rooms[1].footprint.minimum.x >=
+           roomSource.rooms[0].footprint.maximum.x ||
+       room.edited.rooms[1].footprint.maximum.z <=
+           roomSource.rooms[0].footprint.minimum.z ||
+       room.edited.rooms[1].footprint.minimum.z >=
+           roomSource.rooms[0].footprint.maximum.z);
+  const bool roomTopologyExact =
+      room.accepted &&
+      room.edited.topologyVertices.size() == roomVertexCount * 2U &&
+      room.edited.topologyEdges.size() == roomEdgeCount * 2U &&
+      room.edited.roomBoundaries.size() == roomBoundaryCount * 2U;
+  const bool roomOpeningsExact =
+      room.accepted &&
+      room.edited.openings.size() == roomOpeningCount + 1U &&
+      roomOpeningHostsRemapped;
+  const bool roomResultValid =
+      room.accepted &&
+      cr::buildCreativeWorldLayoutRoomGraph(room.edited).accepted &&
+      cr::validCreativeWorldLayoutOpenings(room.edited) &&
+      roomSource.rooms.size() == 1U;
+
+  const cr::CreativeWorldLayoutSourceDuplicateResult box =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::Box, 0U, grid, 600U});
+  const bool boxExact =
+      box.accepted && box.duplicate.index == 1U &&
+      box.edited.boxes.size() == 2U &&
+      box.edited.boxes[1].footprint.minimum ==
+          cr::CreativeTerrainCoord2{5, 1} &&
+      box.edited.boxes[1].stableKey != flatSource.boxes[0].stableKey;
+
+  const cr::CreativeWorldLayoutSourceDuplicateResult opening =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::Opening, 0U, grid, 700U});
+  const bool openingAccepted =
+      opening.accepted &&
+      opening.duplicate.index == flatSource.openings.size() &&
+      opening.edited.openings.size() == flatSource.openings.size() + 1U;
+  const bool openingHostExact =
+      openingAccepted &&
+      opening.edited.openings.back().roomIndex == 0U &&
+      opening.edited.openings.back().roomEdge ==
+          cr::CreativeWorldLayoutRoomEdge::North &&
+      opening.edited.openings.back().centerOffsetCells == 5.0;
+  const bool openingResultValid =
+      openingAccepted &&
+      cr::validCreativeWorldLayoutOpenings(opening.edited);
+
+  const cr::CreativeWorldLayoutSourceDuplicateResult objectCopy =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::Object, 0U, grid, 800U});
+  const bool objectExact =
+      objectCopy.accepted && objectCopy.duplicate.index == 1U &&
+      objectCopy.edited.objects.size() == 2U &&
+      sameBounds(objectCopy.edited.objects[1].boundsCells,
+                 {{4.0, 0.0, 6.0}, {6.0, 2.0, 7.0}}) &&
+      objectCopy.edited.objects[1].name == "Source Object Copy";
+  cr::CreativeWorldLayout objectOnlySource;
+  objectOnlySource.stableKey = "object_only_source";
+  objectOnlySource.objects.push_back(flatSource.objects[0]);
+  const cr::CreativeWorldLayoutSourceDuplicateResult objectOnlyCopy =
+      cr::duplicateCreativeWorldLayoutSource(
+          objectOnlySource,
+          {cr::CreativeWorldLayoutTable::Object, 0U, grid, 850U});
+  const bool objectOnlyExact =
+      objectOnlyCopy.accepted && objectOnlyCopy.edited.objects.size() == 2U &&
+      objectOnlyCopy.edited.rooms.empty() &&
+      objectOnlySource.objects.size() == 1U;
+
+  const cr::CreativeWorldLayoutSourceDuplicateResult aperture =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::RoofAperture, 0U, grid, 900U});
+  const bool apertureExact =
+      aperture.accepted && aperture.duplicate.index == 1U &&
+      aperture.edited.roofApertures.size() == 2U &&
+      aperture.edited.roofApertures[1].minimumXCells == 11.0 &&
+      aperture.edited.roofApertures[1].maximumXCells == 13.0;
+
+  const cr::CreativeWorldLayout connectorSource =
+      verticalConnectorBuildingLayout();
+  const cr::CreativeWorldLayoutSourceDuplicateResult connector =
+      cr::duplicateCreativeWorldLayoutSource(
+          connectorSource,
+          {cr::CreativeWorldLayoutTable::VerticalConnector, 0U, grid, 1000U});
+  const bool connectorUnsupported =
+      !connector.accepted && !connector.changed &&
+      connector.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::UnsupportedSource &&
+      connector.edited.buildings.empty() &&
+      connectorSource.verticalConnectors.size() == 1U;
+
+  const cr::CreativeWorldLayoutSourceDuplicateResult zeroOffset =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::Box, 0U, grid, 1100U, true, 0, 0});
+  const cr::CreativeWorldLayoutSourceDuplicateResult overlap =
+      cr::duplicateCreativeWorldLayoutSource(
+          flatSource,
+          {cr::CreativeWorldLayoutTable::Box, 0U, grid, 1100U, true, 1, 0});
+  const cr::CreativeWorldLayoutSourceDuplicateResult overflow =
+      cr::duplicateCreativeWorldLayoutSource(
+          roomSource,
+          {cr::CreativeWorldLayoutTable::Room,
+           0U,
+           grid,
+           1100U,
+           true,
+           std::numeric_limits<std::int64_t>::max(),
+           0});
+  const cr::CreativeWorldLayoutSourceDuplicateResult derivedWall =
+      cr::duplicateCreativeWorldLayoutSource(
+          transformableBuildingLayout(),
+          {cr::CreativeWorldLayoutTable::Wall, 0U, grid, 1100U});
+  cr::CreativeWorldLayout bridgeSource = objectOnlySource;
+  bridgeSource.objects[0].usesBridgeRecipe = true;
+  const cr::CreativeWorldLayoutSourceDuplicateResult bridge =
+      cr::duplicateCreativeWorldLayoutSource(
+          bridgeSource,
+          {cr::CreativeWorldLayoutTable::Object, 0U, grid, 1100U});
+  cr::CreativeWorldLayout invalid = flatSource;
+  invalid.openings[0].roomEdge = cr::CreativeWorldLayoutRoomEdge::Count;
+  const cr::CreativeWorldLayoutSourceDuplicateResult invalidSource =
+      cr::duplicateCreativeWorldLayoutSource(
+          invalid,
+          {cr::CreativeWorldLayoutTable::Box, 0U, grid, 1100U});
+  const bool zeroOffsetAtomic =
+      !zeroOffset.accepted &&
+      zeroOffset.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::InvalidRequest &&
+      zeroOffset.edited.buildings.empty();
+  const bool overlapAtomic =
+      !overlap.accepted &&
+      overlap.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::NoValidPlacement &&
+      overlap.edited.buildings.empty();
+  const bool overflowAtomic =
+      !overflow.accepted &&
+      overflow.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::CoordinateOverflow &&
+      overflow.edited.buildings.empty();
+  const bool derivedWallAtomic =
+      !derivedWall.accepted &&
+      derivedWall.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::UnsupportedSource &&
+      derivedWall.edited.buildings.empty();
+  const bool bridgeAtomic =
+      !bridge.accepted &&
+      bridge.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::UnsupportedSource &&
+      bridge.edited.objects.empty() &&
+      bridgeSource.objects.size() == 1U;
+  const bool invalidSourceAtomic =
+      !invalidSource.accepted &&
+      invalidSource.status ==
+          cr::CreativeWorldLayoutSourceDuplicateStatus::InvalidSource &&
+      invalidSource.edited.buildings.empty() &&
+      flatSource.boxes.size() == 1U && roomSource.rooms.size() == 1U;
+
+  return expect(
+             cr::creativeWorldLayoutSourceDuplicatePolicy(
+                 cr::CreativeWorldLayoutTable::Building) ==
+                     cr::CreativeWorldLayoutSourceDuplicatePolicy::
+                         SpecializedOwner &&
+                 cr::creativeWorldLayoutSourceDuplicatePolicy(
+                     cr::CreativeWorldLayoutTable::Room) ==
+                     cr::CreativeWorldLayoutSourceDuplicatePolicy::OffsetCopy &&
+                 cr::creativeWorldLayoutSourceDuplicatePolicy(
+                     cr::CreativeWorldLayoutTable::VerticalConnector) ==
+                     cr::CreativeWorldLayoutSourceDuplicatePolicy::Unsupported &&
+                 cr::creativeWorldLayoutSourceDuplicatePolicy(
+                     cr::CreativeWorldLayoutTable::Wall) ==
+                     cr::CreativeWorldLayoutSourceDuplicatePolicy::Unsupported,
+             "source duplicate policy separates aggregate, leaf, and derived owners") &&
+         expect(roomDuplicateAccepted,
+                "room duplicate accepts one semantic source") &&
+         expect(roomPlacementDeterministic,
+                "room duplicate chooses a deterministic offset") &&
+         expect(roomPlacementClear,
+                "room duplicate chooses a non-overlapping offset") &&
+         expect(roomTopologyExact,
+                "room duplicate remaps its private topology") &&
+         expect(roomOpeningsExact,
+                "room duplicate remaps its hosted openings") &&
+         expect(roomResultValid,
+                "room duplicate publishes a valid result without mutating input") &&
+         expect(boxExact,
+                "box duplicate preserves its building owner") &&
+         expect(openingAccepted,
+                "opening duplicate accepts one semantic source") &&
+         expect(openingHostExact,
+                "opening duplicate preserves its room-edge host") &&
+         expect(openingResultValid,
+                "opening duplicate publishes a valid result") &&
+         expect(objectExact,
+                "object duplicate preserves its placement semantics") &&
+         expect(objectOnlyExact,
+                "object-only layouts do not require an invented room graph") &&
+         expect(apertureExact,
+                "roof aperture duplicate remains valid on its level") &&
+         expect(connectorUnsupported,
+                "vertical connector duplicate refuses to invent new room owners") &&
+         expect(zeroOffsetAtomic,
+                "zero-offset duplicate publishes no partial candidate") &&
+         expect(overlapAtomic,
+                "overlapping duplicate publishes no partial candidate") &&
+         expect(overflowAtomic,
+                "coordinate overflow publishes no partial candidate") &&
+         expect(derivedWallAtomic,
+                "derived wall duplicate publishes no partial candidate") &&
+         expect(bridgeAtomic,
+                "coupled bridge duplicate publishes no partial candidate") &&
+         expect(invalidSourceAtomic,
+                "invalid source duplicate publishes no partial candidate");
 }
 
 bool buildingTemplatesNormalizeTransformPersistAndStamp() {
@@ -4538,6 +4858,7 @@ int main() {
       roofAperturesFollowBuildingOwnershipAndTemplateSync() &&
       verticalConnectorOwnershipFollowsBuildingKernels() &&
       explicitTopologyFollowsBuildingOwnershipKernels() &&
+      sourceDuplicationKernelsAreAtomicAndOwnershipSafe() &&
       buildingTemplatesNormalizeTransformPersistAndStamp() &&
       buildingTemplatePlacementAnalysisAndDetachAreExact() &&
       buildingTemplateSyncIsSafeAtomicAndPersistent() &&

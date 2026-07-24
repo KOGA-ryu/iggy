@@ -164,6 +164,11 @@ duplicateCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+duplicateCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    cr::CreativeGridSettings grid);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 deleteCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index);

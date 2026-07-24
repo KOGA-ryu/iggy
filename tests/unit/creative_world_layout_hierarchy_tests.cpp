@@ -376,9 +376,19 @@ bool sourceOperationsRespectCapabilities() {
   app::CreativeEditorWorldLayoutState levelState = shellState();
   const auto duplicateLevel = app::duplicateCreativeEditorWorldLayoutSource(
       levelState, cr::CreativeWorldLayoutTable::Level, 0U);
+  app::CreativeEditorWorldLayoutState roomState = shellState();
+  const std::size_t roomVertexCount =
+      roomState.source.topologyVertices.size();
+  const std::size_t roomEdgeCount = roomState.source.topologyEdges.size();
+  const std::size_t roomBoundaryCount =
+      roomState.source.roomBoundaries.size();
+  const std::size_t roomUndoCount =
+      roomState.sourceHistory.undoEntries.size();
+  const auto duplicateRoom = app::duplicateCreativeEditorWorldLayoutSource(
+      roomState, cr::CreativeWorldLayoutTable::Room, 0U);
   const auto unsupportedDuplicate =
       app::duplicateCreativeEditorWorldLayoutSource(
-          levelState, cr::CreativeWorldLayoutTable::Room, 0U);
+          roomState, cr::CreativeWorldLayoutTable::Wall, 0U);
 
   app::CreativeEditorWorldLayoutState deleteState = shellState();
   cr::CreativeWorldLayoutOpening opening;
@@ -405,8 +415,24 @@ bool sourceOperationsRespectCapabilities() {
                     levelState.source.levels.size() == 2U &&
                     levelState.source.rooms.size() == 2U,
                 "generic duplication delegates to the ownership-safe level kernel") &&
-         expect(!unsupportedDuplicate.accepted,
-                "unsupported symbol duplication is rejected") &&
+         expect(duplicateRoom.accepted && duplicateRoom.changed &&
+                    roomState.source.rooms.size() == 2U &&
+                    roomState.source.topologyVertices.size() ==
+                        roomVertexCount * 2U &&
+                    roomState.source.topologyEdges.size() ==
+                        roomEdgeCount * 2U &&
+                    roomState.source.roomBoundaries.size() ==
+                        roomBoundaryCount * 2U &&
+                    roomState.selection.kind ==
+                        app::CreativeEditorWorldLayoutSelectionKind::Room &&
+                    roomState.selection.index == 1U &&
+                    roomState.sourceHistory.undoEntries.size() ==
+                        roomUndoCount + 1U,
+                "room duplication copies owned topology and records one source edit") &&
+         expect(!unsupportedDuplicate.accepted &&
+                    !app::creativeEditorWorldLayoutSourceCanDuplicate(
+                        cr::CreativeWorldLayoutTable::Wall),
+                "derived wall duplication is rejected") &&
          expect(removed.accepted && removed.changed &&
                     deleteState.source.rooms.empty() &&
                     deleteState.source.openings.empty(),

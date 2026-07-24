@@ -390,10 +390,10 @@ void applyCreativeEditorCommandInput(
                 beginCreativeEditorTerrainStampPreview(appState, editor));
           }
         } else {
-          (void)duplicateSelectedObjectsWithUndo(
+          (void)duplicateCreativeEditorSelectionWithUndo(
               appState, appState.history,
               creative::CreativeDuplicateCommandRequest{},
-              "keyboard_duplicate");
+              "keyboard_duplicate", &editor.worldLayout);
         }
         break;
       case creative::CreativeInputActionId::RotateYawNegative:

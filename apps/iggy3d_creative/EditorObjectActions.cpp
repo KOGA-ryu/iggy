@@ -478,10 +478,10 @@ bool activateCreativeEditorObjectAction(
       break;
     }
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
-      accepted = duplicateSelectedObjectsWithUndo(
+      accepted = duplicateCreativeEditorSelectionWithUndo(
                      appState, appState.history,
                      cr::CreativeDuplicateCommandRequest{},
-                     "object_actions_duplicate")
+                     "object_actions_duplicate", &editor.worldLayout)
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::DeleteSelection:

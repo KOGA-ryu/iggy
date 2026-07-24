@@ -30,13 +30,20 @@ bool dispatchCreativeDesktopObjectCommand(
   };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
-      const creative::CreativeDuplicateCommandReceipt receipt =
-          duplicateSelectedObjectsWithUndo(
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorDuplicateReceipt receipt =
+          duplicateCreativeEditorSelectionWithUndo(
               activeAppState, activeAppState.history,
-              creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate");
+              creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate",
+              &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      if (receipt.accepted) {
+      result.worldLayoutChanged = receipt.worldLayoutSourceDuplicated;
+      result.sceneChanged =
+          receipt.worldLayoutSourceDuplicated && previewWasActive;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      if (receipt.accepted && !receipt.worldLayoutSourceDuplicated) {
         static_cast<void>(synchronizeSelection());
       }
       result.message = receipt.changed ? "duplicated selection"

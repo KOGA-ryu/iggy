@@ -3,6 +3,7 @@
 #include "EditorWorldLayoutInternal.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -478,8 +479,8 @@ bool creativeEditorWorldLayoutSourceCanRename(
 
 bool creativeEditorWorldLayoutSourceCanDuplicate(
     cr::CreativeWorldLayoutTable table) noexcept {
-  return table == cr::CreativeWorldLayoutTable::Building ||
-         table == cr::CreativeWorldLayoutTable::Level;
+  return cr::creativeWorldLayoutSourceDuplicatePolicy(table) !=
+         cr::CreativeWorldLayoutSourceDuplicatePolicy::Unsupported;
 }
 
 bool creativeEditorWorldLayoutSourceCanDelete(
@@ -519,6 +520,13 @@ CreativeEditorWorldLayoutEditReceipt renameCreativeEditorWorldLayoutSource(
 CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index) {
+  return duplicateCreativeEditorWorldLayoutSource(state, table, index, {});
+}
+
+CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutSource(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    cr::CreativeGridSettings grid) {
   if (table == cr::CreativeWorldLayoutTable::Building) {
     std::int64_t deltaX = 0;
     std::int64_t deltaZ = 0;
@@ -536,9 +544,62 @@ CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutSource(
         state, CreativeEditorWorldLayoutLevelOperation::Duplicate,
         cr::kInvalidCreativeWorldLayoutIndex, index);
   }
-  state.statusMessage = "source type cannot be duplicated";
-  return {false, false,
-          "creative_editor_world_layout_source_duplicate_unsupported"};
+  cr::CreativeWorldLayoutSourceDuplicateResult duplicated =
+      cr::duplicateCreativeWorldLayoutSource(
+          state.source, {table, index, grid, state.nextStableOrdinal});
+  if (!duplicated.accepted || !duplicated.changed) {
+    switch (duplicated.status) {
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::NoValidPlacement:
+        state.statusMessage = "source has no valid duplicate location";
+        break;
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::CoordinateOverflow:
+        state.statusMessage = "source duplicate exceeds the coordinate range";
+        break;
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::InvalidSource:
+        state.statusMessage = "source is invalid and cannot be duplicated";
+        break;
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::NotRequested:
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::InvalidRequest:
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::UnsupportedSource:
+      case cr::CreativeWorldLayoutSourceDuplicateStatus::Ready:
+        state.statusMessage = "source type cannot be duplicated";
+        break;
+    }
+    return {false, false, duplicated.reasonCode};
+  }
+  cr::CreativeWorldLayout previousSource = std::move(state.source);
+  const std::uint64_t previousNextStableOrdinal = state.nextStableOrdinal;
+  const CreativeEditorWorldLayoutSelection previousSelection =
+      state.selection;
+  const std::size_t previousActiveLevelIndex = state.activeLevelIndex;
+  const CreativeEditorWorldLayoutTool previousTool = state.tool;
+  state.source = std::move(duplicated.edited);
+  state.nextStableOrdinal = duplicated.nextStableOrdinal;
+  const CreativeEditorWorldLayoutEditReceipt selected =
+      selectCreativeEditorWorldLayoutSource(
+          state, duplicated.duplicate.table, duplicated.duplicate.index);
+  if (!selected.accepted) {
+    state.source = std::move(previousSource);
+    state.nextStableOrdinal = previousNextStableOrdinal;
+    state.selection = previousSelection;
+    state.activeLevelIndex = previousActiveLevelIndex;
+    state.tool = previousTool;
+    state.statusMessage = "duplicated source cannot be selected";
+    return {false, false,
+            "creative_editor_world_layout_source_duplicate_selection_invalid"};
+  }
+  const CreativeEditorWorldLayoutSelection duplicateSelection =
+      state.selection;
+  const std::size_t duplicateActiveLevelIndex = state.activeLevelIndex;
+  state.selection = previousSelection;
+  state.activeLevelIndex = previousActiveLevelIndex;
+  state.tool = previousTool;
+  detail::noteWorldLayoutSourceChange(state, "layout source duplicated");
+  state.selection = duplicateSelection;
+  state.activeLevelIndex = duplicateActiveLevelIndex;
+  state.tool = CreativeEditorWorldLayoutTool::Select;
+  return {true, true,
+          "creative_editor_world_layout_source_duplicated"};
 }
 
 CreativeEditorWorldLayoutEditReceipt deleteCreativeEditorWorldLayoutSource(
