@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -27,6 +28,29 @@ void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
 [[nodiscard]] StandaloneEditTransaction beginEditTransaction(
     const cr::Facade& facade,
     std::string_view source);
+[[nodiscard]] StandaloneEditTransaction beginEditTransaction(
+    const cr::Facade& facade,
+    std::string_view source,
+    cr::CreativeHistorySidecar beforeSidecar);
+[[nodiscard]] StandaloneEditTransaction beginEditTransaction(
+    const cr::Facade& facade,
+    std::string_view source,
+    cr::CreativeAuthoringOperationRecord operation);
+[[nodiscard]] StandaloneEditTransaction beginEditTransaction(
+    const cr::Facade& facade,
+    std::string_view source,
+    std::optional<cr::CreativeHistorySidecar> beforeSidecar,
+    std::optional<cr::CreativeAuthoringOperationRecord> operation);
+
+[[nodiscard]] bool setEditTransactionOperation(
+    StandaloneEditTransaction& transaction,
+    cr::CreativeAuthoringFamily family,
+    cr::CreativeAuthoringOperationKind kind,
+    std::string_view action,
+    std::uint64_t requestFingerprint,
+    std::uint64_t affectedMemberCount);
+
+void cancelEditTransaction(StandaloneEditTransaction& transaction) noexcept;
 
 [[nodiscard]] cr::CreativeHistoryRecordReceipt completeEditTransaction(
     StandaloneEditHistory& history,

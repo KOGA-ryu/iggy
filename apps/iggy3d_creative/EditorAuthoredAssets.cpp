@@ -190,7 +190,7 @@ void ensureTransaction(cr::CreativeAppState& appState,
       cr::foldCreativeAuthoredAssetOperationFingerprint(
           stroke.operationFingerprint, requestFingerprint);
   if (!folded.valid ||
-      !cr::setCreativeHistoryTransactionOperation(
+      !setEditTransactionOperation(
           stroke.transaction, cr::CreativeAuthoringFamily::Prefab, kind,
           action, folded.value, affectedMemberCount)) {
     return false;
@@ -276,7 +276,7 @@ void applyPlacement(cr::CreativeAppState& appState,
   }
   stroke.operationFingerprint = nextFingerprint;
   stroke.affectedMemberCount += receipt.instanceObjectIds.size() + 1U;
-  static_cast<void>(cr::setCreativeHistoryTransactionOperation(
+  static_cast<void>(setEditTransactionOperation(
       stroke.transaction, cr::CreativeAuthoringFamily::Prefab,
       cr::CreativeAuthoringOperationKind::Apply, "Prefab.PlaceStroke",
       stroke.operationFingerprint,
@@ -349,7 +349,7 @@ void applyRemoval(cr::CreativeAppState& appState,
   }
   stroke.operationFingerprint = nextFingerprint;
   stroke.affectedMemberCount += receipt.removedObjectCount;
-  static_cast<void>(cr::setCreativeHistoryTransactionOperation(
+  static_cast<void>(setEditTransactionOperation(
       stroke.transaction, cr::CreativeAuthoringFamily::Prefab,
       cr::CreativeAuthoringOperationKind::Destructive,
       "Prefab.RemoveStroke", stroke.operationFingerprint,
@@ -574,9 +574,8 @@ updateCreativeEditorAuthoredAssetFromInstance(
     return receipt;
   }
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade,
-                                          "creative_authored_asset_update",
-                                          *operation);
+      beginEditTransaction(appState.facade, "creative_authored_asset_update",
+                           *operation);
 
   const iggy3d::ProductCreativeSaveWriteResult write =
       writeAuthoredAssetDocument(
@@ -584,7 +583,7 @@ updateCreativeEditorAuthoredAssetFromInstance(
           receipt.capture.storageDocument, true);
   receipt.durableWriteOk = write.ok;
   if (!write.ok) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     receipt.reasonCode = write.reasonCode;
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -596,7 +595,7 @@ updateCreativeEditorAuthoredAssetFromInstance(
         return candidate.assetId == receipt.assetId;
       });
   if (definition == library.definitions.end()) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_update_source_missing";
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -606,19 +605,19 @@ updateCreativeEditorAuthoredAssetFromInstance(
           receipt.capture.definition, instanceRootObjectId);
   if (!receipt.provenance.committed ||
       !cr::documentMutationSucceeded(receipt.provenance.status)) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_update_provenance_rejected";
     library.statusLabel = receipt.reasonCode;
     return receipt;
   }
   *definition = receipt.capture.definition;
   ++library.nextDocumentId;
-  if (!cr::setCreativeHistoryTransactionOperation(
+  if (!setEditTransactionOperation(
           transaction, cr::CreativeAuthoringFamily::Prefab,
           cr::CreativeAuthoringOperationKind::Reconcile,
           "Prefab.AcknowledgeSourceUpdate", updateFingerprint.value,
           receipt.provenance.appliedCount)) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_update_operation_invalid";
     library.statusLabel = receipt.reasonCode;
     return receipt;
@@ -691,8 +690,7 @@ refreshCreativeEditorAuthoredAssetInstances(
     return receipt;
   }
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, transactionSource,
-                                          *operation);
+      beginEditTransaction(appState.facade, transactionSource, *operation);
   receipt.refresh = appState.facade.refreshAuthoredAssetInstances(
       *definition, instanceRootObjectId, mode);
   const std::uint64_t affectedMemberCount =
@@ -700,11 +698,11 @@ refreshCreativeEditorAuthoredAssetInstances(
       receipt.refresh.createdObjectCount +
       receipt.refresh.refreshedInstanceCount;
   if (receipt.refresh.accepted && receipt.refresh.changed &&
-      !cr::setCreativeHistoryTransactionOperation(
+      !setEditTransactionOperation(
           transaction, cr::CreativeAuthoringFamily::Prefab,
           cr::CreativeAuthoringOperationKind::Reconcile, action,
           requestFingerprint.value, affectedMemberCount)) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     receipt.reasonCode = "creative_authored_asset_refresh_operation_invalid";
     library.statusLabel = receipt.reasonCode;
     return receipt;

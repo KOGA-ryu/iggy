@@ -1,5 +1,6 @@
 #include "EditorWorldLayoutHistory.hpp"
 
+#include "EditorEdits.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 
 #include <optional>
@@ -296,12 +297,11 @@ cr::CreativeWorldLayoutApplyReceipt applyCreativeEditorWorldLayoutPlanWithHistor
     return receipt;
   }
   cr::CreativeDocumentHistoryTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(beforeSidecar),
-                                          std::move(operation));
+      beginEditTransaction(appState.facade, source, std::move(beforeSidecar),
+                           std::move(operation));
   receipt = cr::applyCreativeWorldLayoutPlan(appState.facade, plan);
   if (!receipt.accepted) {
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     return receipt;
   }
 
@@ -314,11 +314,12 @@ cr::CreativeWorldLayoutApplyReceipt applyCreativeEditorWorldLayoutPlanWithHistor
     state.sourceHistory = std::move(sourceHistory);
     state.sourceHistory.current =
         detail::captureWorldLayoutSourceHistoryEntry(state);
-    cr::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     return receipt;
   }
-  receipt.historyReceipt = cr::commitCreativeHistoryTransaction(
-      appState.history, std::move(transaction), appState.facade);
+  receipt.historyReceipt = completeEditTransaction(
+      appState.history, std::move(transaction), appState.facade, true,
+      receipt.reasonCode);
   if (!receipt.historyReceipt.accepted || !receipt.historyReceipt.recorded) {
     receipt.reasonCode = std::string(receipt.historyReceipt.reasonCode);
   }

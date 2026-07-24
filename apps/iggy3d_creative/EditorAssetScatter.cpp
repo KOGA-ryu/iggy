@@ -488,7 +488,7 @@ void rejectScatter(CreativeEditorState& editor,
       stroke.transaction.operation.has_value()
           ? stroke.transaction.operation->kind
           : kind;
-  return cr::setCreativeHistoryTransactionOperation(
+  return setEditTransactionOperation(
       stroke.transaction, cr::CreativeAuthoringFamily::AssetScatter,
       transactionKind, action,
       cr::fingerprintCreativePatternRecipeSource(source),
@@ -1107,8 +1107,7 @@ regenerateCreativeEditorAssetScatterRecipeWithHistory(
     return receipt;
   }
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(*operation));
+      beginEditTransaction(appState.facade, source, std::move(*operation));
   receipt = appState.facade.updateAssetScatterRecipe(recipeId, requests,
                                                      proposed);
   if (receipt.accepted && receipt.changed &&

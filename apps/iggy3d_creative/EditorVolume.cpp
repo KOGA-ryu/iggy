@@ -591,8 +591,8 @@ applyCreativeEditorVolumeOperationWithHistory(
       return state.lastReceipt;
     }
     creative::CreativeDocumentHistoryTransaction transaction =
-        creative::beginCreativeHistoryTransaction(
-            appState.facade, source, std::move(*operationRecord));
+        beginEditTransaction(appState.facade, source,
+                             std::move(*operationRecord));
     state.lastReceipt = appState.facade.applyVolumeOperation(request);
     historyReceipt = completeEditTransaction(
         appState.history, std::move(transaction), appState.facade,

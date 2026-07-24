@@ -256,6 +256,47 @@ StandaloneEditTransaction beginEditTransaction(const creative::Facade& facade,
   return creative::beginCreativeHistoryTransaction(facade, source);
 }
 
+StandaloneEditTransaction beginEditTransaction(
+    const creative::Facade& facade,
+    std::string_view source,
+    creative::CreativeHistorySidecar beforeSidecar) {
+  return creative::beginCreativeHistoryTransaction(
+      facade, source, std::move(beforeSidecar));
+}
+
+StandaloneEditTransaction beginEditTransaction(
+    const creative::Facade& facade,
+    std::string_view source,
+    creative::CreativeAuthoringOperationRecord operation) {
+  return creative::beginCreativeHistoryTransaction(facade, source,
+                                                    std::move(operation));
+}
+
+StandaloneEditTransaction beginEditTransaction(
+    const creative::Facade& facade,
+    std::string_view source,
+    std::optional<creative::CreativeHistorySidecar> beforeSidecar,
+    std::optional<creative::CreativeAuthoringOperationRecord> operation) {
+  return creative::beginCreativeHistoryTransaction(
+      facade, source, std::move(beforeSidecar), std::move(operation));
+}
+
+bool setEditTransactionOperation(
+    StandaloneEditTransaction& transaction,
+    creative::CreativeAuthoringFamily family,
+    creative::CreativeAuthoringOperationKind kind,
+    std::string_view action,
+    std::uint64_t requestFingerprint,
+    std::uint64_t affectedMemberCount) {
+  return creative::setCreativeHistoryTransactionOperation(
+      transaction, family, kind, action, requestFingerprint,
+      affectedMemberCount);
+}
+
+void cancelEditTransaction(StandaloneEditTransaction& transaction) noexcept {
+  creative::cancelCreativeHistoryTransaction(transaction);
+}
+
 creative::CreativeHistoryRecordReceipt completeEditTransaction(
     StandaloneEditHistory& history,
     StandaloneEditTransaction transaction,
@@ -263,8 +304,25 @@ creative::CreativeHistoryRecordReceipt completeEditTransaction(
     bool changed,
     std::string_view reasonCode) {
   const std::string source = transaction.source;
-  if (!changed) {
-    creative::cancelCreativeHistoryTransaction(transaction);
+  const creative::CreativeDocument& current = facade.document();
+  const bool documentChanged =
+      transaction.active && transaction.before.isValid() &&
+      current.isValid() &&
+      transaction.before.id() == current.id() &&
+      transaction.before.revision() != current.revision();
+  if (!changed && documentChanged) {
+    SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "iggy3d_creative: HISTORY changed-result mismatch "
+                "source='%s' reportedChanged=0 revisionBefore=%llu "
+                "revisionAfter=%llu reasonCode='%s'",
+                source.c_str(),
+                static_cast<unsigned long long>(
+                    transaction.before.revision()),
+                static_cast<unsigned long long>(current.revision()),
+                std::string(reasonCode).c_str());
+  }
+  if (!changed && !documentChanged) {
+    cancelEditTransaction(transaction);
     SDL_Log("iggy3d_creative: HISTORY cancelled source='%s' undo=%llu redo=%llu "
             "reasonCode='%s'",
             source.c_str(),

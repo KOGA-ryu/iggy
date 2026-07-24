@@ -105,9 +105,9 @@ void regenerateMapTemplate(
   }
   const creative::CreativeDocument beforeDocument = appState.facade.document();
   creative::CreativeDocumentHistoryTransaction transaction =
-      creative::beginCreativeHistoryTransaction(
-          appState.facade, "desktop_regenerate_map_template",
-          std::move(beforeSidecar));
+      beginEditTransaction(appState.facade,
+                           "desktop_regenerate_map_template",
+                           std::move(beforeSidecar));
   if (!transaction.active ||
       !makeReplacementRevisionDistinct(map.document,
                                        beforeDocument.revision())) {
@@ -119,13 +119,14 @@ void regenerateMapTemplate(
   const creative::CreativeFacadeDocumentInstallReceipt installed =
       appState.facade.installDocument(std::move(map.document));
   if (!installed.accepted) {
-    creative::cancelCreativeHistoryTransaction(transaction);
+    cancelEditTransaction(transaction);
     result.message = "map regeneration document install failed";
     return;
   }
   const creative::CreativeHistoryRecordReceipt recorded =
-      creative::commitCreativeHistoryTransaction(
-          appState.history, std::move(transaction), appState.facade);
+      completeEditTransaction(appState.history, std::move(transaction),
+                              appState.facade, true,
+                              "desktop_regenerate_map_template");
   if (!recorded.accepted || !recorded.recorded) {
     static_cast<void>(appState.facade.installDocument(beforeDocument));
     result.message = "map regeneration history record failed";

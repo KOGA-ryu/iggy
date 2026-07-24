@@ -340,8 +340,7 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
   }
   cr::CreativeDocumentHistoryTransaction transaction =
       prefabOperation.has_value()
-          ? cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                                *prefabOperation)
+          ? beginEditTransaction(appState.facade, source, *prefabOperation)
           : beginEditTransaction(appState.facade, source);
   cr::CreativeGroupCommandReceipt receipt =
       ungroupObjectId != cr::kInvalidObjectId

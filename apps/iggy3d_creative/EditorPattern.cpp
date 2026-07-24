@@ -796,8 +796,7 @@ cr::CreativeLinearArrayReceipt applyCreativeEditorLinearArrayWithHistory(
     return state.lastReceipt;
   }
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(*operation));
+      beginEditTransaction(appState.facade, source, std::move(*operation));
   state.lastReceipt =
       updating
           ? appState.facade.updateLinearArrayRecipe(recipe->id, request)
@@ -863,8 +862,7 @@ cr::CreativeRadialArrayReceipt applyCreativeEditorRadialArrayWithHistory(
     return state.lastRadialReceipt;
   }
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(*operation));
+      beginEditTransaction(appState.facade, source, std::move(*operation));
   state.lastRadialReceipt =
       updating
           ? appState.facade.updateRadialArrayRecipe(recipe->id, request)
@@ -961,8 +959,7 @@ detachCreativeEditorPatternRecipeWithHistory(
   }
   operation->affectedMemberCount = recipe->generatedObjectIds.size();
   StandaloneEditTransaction transaction =
-      cr::beginCreativeHistoryTransaction(appState.facade, source,
-                                          std::move(*operation));
+      beginEditTransaction(appState.facade, source, std::move(*operation));
   cr::CreativePatternRecipeMutationReceipt receipt =
       appState.facade.detachPatternRecipe(recipeId);
   static_cast<void>(completeEditTransaction(
