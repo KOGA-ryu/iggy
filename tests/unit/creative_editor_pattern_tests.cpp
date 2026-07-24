@@ -6,6 +6,8 @@
 #include "EditorPlacementClearance.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorTransform.hpp"
+#include "EditorTransformOverlay.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 

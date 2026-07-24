@@ -198,7 +198,10 @@ apps/iggy3d_creative/EditorToolWheelPreferences.hpp	interaction-controls
 apps/iggy3d_creative/EditorTransform.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransform.hpp	interaction-controls
 apps/iggy3d_creative/EditorTransformFrame.cpp	interaction-controls
+apps/iggy3d_creative/EditorTransformFrame.hpp	interaction-controls
 apps/iggy3d_creative/EditorTransformOverlay.cpp	rendering-preview
+apps/iggy3d_creative/EditorTransformOverlay.hpp	rendering-preview
+apps/iggy3d_creative/EditorTransformState.hpp	interaction-controls
 apps/iggy3d_creative/EditorUiInput.hpp	interaction-controls
 apps/iggy3d_creative/EditorVolume.cpp	assets-objects
 apps/iggy3d_creative/EditorVolume.hpp	assets-objects

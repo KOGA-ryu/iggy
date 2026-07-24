@@ -1,6 +1,8 @@
-#include "EditorTransform.hpp"
+#include "EditorTransformFrame.hpp"
 
+#include "EditorTransform.hpp"
 #include "EditorState.hpp"
+#include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 

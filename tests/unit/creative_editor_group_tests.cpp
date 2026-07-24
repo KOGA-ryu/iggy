@@ -6,6 +6,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
+#include "EditorTransform.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/recipes/PatternRecipe.hpp"

@@ -28,7 +28,7 @@
 #include "EditorTerrainPaint.hpp"
 #include "EditorTerrainStampLibrary.hpp"
 #include "EditorToolOptions.hpp"
-#include "EditorTransform.hpp"
+#include "EditorTransformState.hpp"
 #include "EditorVolume.hpp"
 #include "EditorWorldLayoutState.hpp"
 #include "EditorWorldLayoutPlanView.hpp"

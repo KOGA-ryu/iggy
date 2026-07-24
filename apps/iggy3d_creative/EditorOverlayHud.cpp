@@ -12,7 +12,7 @@
 #include "EditorCatalog.hpp"
 #include "EditorControls.hpp"
 #include "EditorToolOptions.hpp"
-#include "EditorTransform.hpp"
+#include "EditorTransformOverlay.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorState.hpp"
 #include "EditorToolDescriptor.hpp"

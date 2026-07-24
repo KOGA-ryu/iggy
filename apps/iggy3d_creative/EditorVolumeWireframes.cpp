@@ -11,7 +11,7 @@
 #include "EditorShapePreview.hpp"
 #include "EditorState.hpp"
 #include "EditorTerrain.hpp"
-#include "EditorTransform.hpp"
+#include "EditorTransformOverlay.hpp"
 #include "EditorVolume.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 

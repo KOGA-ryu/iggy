@@ -65,6 +65,7 @@
 #include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
+#include "EditorTransformFrame.hpp"
 #include "EditorVolume.hpp"
 #include "EditorWorldLayout.hpp"
 

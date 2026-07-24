@@ -1,4 +1,4 @@
-#include "EditorTransform.hpp"
+#include "EditorTransformOverlay.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -7,6 +7,7 @@
 #include <string>
 
 #include "EditorPreviewProxies.hpp"
+#include "EditorTransform.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "render/debug/DebugHudText.hpp"
 

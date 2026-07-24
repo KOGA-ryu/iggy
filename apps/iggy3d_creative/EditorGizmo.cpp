@@ -8,7 +8,7 @@
 #include <limits>
 #include <string>
 
-#include "EditorTransform.hpp"
+#include "EditorTransformState.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
