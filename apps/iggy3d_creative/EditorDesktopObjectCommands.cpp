@@ -4,6 +4,7 @@
 #include "EditorGroup.hpp"
 #include "EditorLogicLinks.hpp"
 #include "EditorMovingPlatformPreview.hpp"
+#include "EditorObjectActionExecutor.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorWorldLayout.hpp"
@@ -41,45 +42,32 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message =
             formatCreativeEditorObjectActionOutcome(result.objectAction);
       };
+  const auto applyExecutedObjectAction =
+      [&](CreativeEditorObjectActionExecution execution) {
+        applyObjectAction(std::move(execution.outcome));
+        result.message = std::move(execution.status);
+        result.worldLayoutChanged =
+            creativeEditorObjectActionHasIntegrationImpact(
+                execution,
+                CreativeEditorObjectActionIntegrationImpact::
+                    WorldLayoutSourceChanged);
+        result.sceneChanged =
+            creativeEditorObjectActionHasIntegrationImpact(
+                execution,
+                CreativeEditorObjectActionIntegrationImpact::
+                    SceneRefreshRequired);
+      };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorDuplicateReceipt receipt =
-          duplicateCreativeEditorSelectionWithUndo(
-              activeAppState, activeAppState.history,
-              creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate",
-              &editor.worldLayout);
-      applyObjectAction(makeCreativeEditorObjectActionOutcome(
-          creative::CreativeSemanticObjectAction::Duplicate,
-          CreativeEditorObjectActionTarget::Selection, receipt.accepted,
-          receipt.changed, receipt.affectedObjectCount,
-          receipt.reasonCode));
-      result.worldLayoutChanged = receipt.worldLayoutSourceDuplicated;
-      result.sceneChanged =
-          receipt.worldLayoutSourceDuplicated && previewWasActive;
-      if (receipt.accepted && !receipt.worldLayoutSourceDuplicated) {
-        static_cast<void>(synchronizeSelection());
-      }
+      applyExecutedObjectAction(executeCreativeEditorSceneObjectAction(
+          {activeAppState, &editor.worldLayout},
+          {CreativeEditorDuplicateSelectionAction{}, "desktop_duplicate"}));
       break;
     }
     case CreativeDesktopCommandId::DeleteSelection: {
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorDeleteReceipt receipt =
-          deleteCreativeEditorSelectionWithUndo(
-              activeAppState, "desktop_delete", &activeAppState.history,
-              &editor.worldLayout);
-      applyObjectAction(makeCreativeEditorObjectActionOutcome(
-          creative::CreativeSemanticObjectAction::Delete,
-          CreativeEditorObjectActionTarget::Selection, receipt.accepted,
-          receipt.changed, receipt.affectedObjectCount,
-          receipt.reasonCode));
-      result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
-      result.sceneChanged = receipt.worldLayoutSourceDeleted && previewWasActive;
-      if (receipt.accepted) {
-        static_cast<void>(synchronizeSelection());
-      }
+      applyExecutedObjectAction(executeCreativeEditorSceneObjectAction(
+          {activeAppState, &editor.worldLayout},
+          {CreativeEditorDeleteSelectionAction{}, "desktop_delete"}));
       break;
     }
     case CreativeDesktopCommandId::SelectObjects: {
@@ -315,28 +303,12 @@ bool dispatchCreativeDesktopObjectCommand(
             "creative_desktop_transform_payload_mismatch"));
         break;
       }
-      const creative::CreativeObject* object =
-          activeAppState.facade.findObject(payload->objectId);
-      if (object != nullptr &&
-          creative::creativeObjectIsHierarchyContainer(object->kind)) {
-        applyObjectAction(rejectCreativeEditorObjectAction(
-            creative::CreativeSemanticObjectAction::SetTransform,
-            CreativeEditorObjectActionTarget::Object,
-            CreativeEditorObjectActionOutcomeStatus::InvalidRequest,
-            "creative_editor_transform_container_requires_selection_transform"));
-        break;
-      }
-      const CreativeEditorSemanticEditReceipt receipt =
-          setCreativeEditorObjectTransformWithUndo(
-              activeAppState, activeAppState.history, payload->objectId,
-              payload->transform, payload->setPosition, payload->setRotation,
-              payload->setScale, "desktop_set_transform",
-              &editor.worldLayout);
-      applyObjectAction(makeCreativeEditorObjectActionOutcome(
-          creative::CreativeSemanticObjectAction::SetTransform,
-          CreativeEditorObjectActionTarget::Object, receipt.accepted,
-          receipt.changed, receipt.affectedObjectCount,
-          receipt.reasonCode, receipt.requiresAdoption));
+      applyExecutedObjectAction(executeCreativeEditorSceneObjectAction(
+          {activeAppState, &editor.worldLayout},
+          {CreativeEditorSetObjectTransformAction{
+               payload->objectId, payload->transform, payload->setPosition,
+               payload->setRotation, payload->setScale},
+           "desktop_set_transform"}));
       break;
     }
     case CreativeDesktopCommandId::SetGroupPivot: {

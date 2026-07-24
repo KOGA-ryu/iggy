@@ -11,8 +11,8 @@
 
 #include "EditorConnectedFill.hpp"
 #include "EditorDesktopCommandsInternal.hpp"
-#include "EditorEdits.hpp"
 #include "EditorInteraction.hpp"
+#include "EditorObjectActionExecutor.hpp"
 #include "EditorPathEditing.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorSurfaceExtrude.hpp"
@@ -340,12 +340,12 @@ void applyCreativeEditorCommandInput(
                      queueCreativeMovingPlatformPathEdit(
                        appState, editor.interaction.movingPlatformPathEdit,
                        CreativeMovingPlatformPathEditCommand::RemoveSelected))) {
-          (void)deleteCreativeEditorSelectionWithUndo(
-              appState,
-              event.trigger == creative::CreativeInputKey::Backspace
-                  ? "backspace_key"
-                  : "delete_key",
-              &appState.history, &editor.worldLayout);
+          static_cast<void>(executeCreativeEditorSceneObjectAction(
+              {appState, &editor.worldLayout},
+              {CreativeEditorDeleteSelectionAction{},
+               event.trigger == creative::CreativeInputKey::Backspace
+                   ? "backspace_key"
+                   : "delete_key"}));
         }
         break;
       case creative::CreativeInputActionId::Undo:
@@ -391,10 +391,10 @@ void applyCreativeEditorCommandInput(
                 beginCreativeEditorTerrainStampPreview(appState, editor));
           }
         } else {
-          (void)duplicateCreativeEditorSelectionWithUndo(
-              appState, appState.history,
-              creative::CreativeDuplicateCommandRequest{},
-              "keyboard_duplicate", &editor.worldLayout);
+          static_cast<void>(executeCreativeEditorSceneObjectAction(
+              {appState, &editor.worldLayout},
+              {CreativeEditorDuplicateSelectionAction{},
+               "keyboard_duplicate"}));
         }
         break;
       case creative::CreativeInputActionId::RotateYawNegative:
@@ -408,11 +408,11 @@ void applyCreativeEditorCommandInput(
             event.action == creative::CreativeInputActionId::RotateYawNegative
                 ? -rotationStep
                 : rotationStep;
-        (void)transformCreativeEditorSelectionWithUndo(
-            appState, appState.history, request,
-            request.yawDegrees < 0.0 ? "keyboard_rotate_yaw_negative"
-                                     : "keyboard_rotate_yaw_positive",
-            &editor.worldLayout);
+        static_cast<void>(executeCreativeEditorSceneObjectAction(
+            {appState, &editor.worldLayout},
+            {CreativeEditorTransformSelectionAction{request},
+             request.yawDegrees < 0.0 ? "keyboard_rotate_yaw_negative"
+                                      : "keyboard_rotate_yaw_positive"}));
         break;
       }
       case creative::CreativeInputActionId::ScaleDown:
@@ -423,10 +423,11 @@ void applyCreativeEditorCommandInput(
             event.action == creative::CreativeInputActionId::ScaleDown ? 0.9
                                                                         : 1.1;
         request.scaleFactor = {factor, factor, factor};
-        (void)transformCreativeEditorSelectionWithUndo(
-            appState, appState.history, request,
-            factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up",
-            &editor.worldLayout);
+        static_cast<void>(executeCreativeEditorSceneObjectAction(
+            {appState, &editor.worldLayout},
+            {CreativeEditorTransformSelectionAction{request},
+             factor < 1.0 ? "keyboard_scale_down"
+                           : "keyboard_scale_up"}));
         break;
       }
     }

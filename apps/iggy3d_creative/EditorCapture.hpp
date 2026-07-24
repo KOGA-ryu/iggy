@@ -20,6 +20,7 @@
 
 #include "EditorPersistence.hpp"
 #include "EditorEdits.hpp"
+#include "EditorObjectActionExecutor.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -128,7 +129,7 @@ struct StandaloneCaptureScript {
 };
 
 using StandaloneCaptureDeleteSelectedFn =
-    std::function<CreativeEditorDeleteReceipt(std::string_view)>;
+    std::function<CreativeEditorObjectActionExecution(std::string_view)>;
 
 struct StandaloneCaptureScenarioStepRequest {
   bool enabled = false;

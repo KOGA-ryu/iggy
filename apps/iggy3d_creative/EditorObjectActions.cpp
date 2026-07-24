@@ -9,6 +9,7 @@
 #include "EditorDesktopUi.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
+#include "EditorObjectActionExecutor.hpp"
 #include "EditorState.hpp"
 #include "EditorTransform.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
@@ -574,25 +575,35 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
       cr::CreativeTransformCommandRequest reset;
       reset.kind = cr::CreativeTransformCommandKind::ResetRotationScale;
-      accepted = transformCreativeEditorSelectionWithUndo(
-                     appState, appState.history, reset,
-                     "object_actions_reset_transform", &editor.worldLayout)
-                     .accepted;
+      const CreativeEditorObjectActionExecution execution =
+          executeCreativeEditorSceneObjectAction(
+              {appState, &editor.worldLayout},
+              {CreativeEditorTransformSelectionAction{reset},
+               "object_actions_reset_transform"});
+      accepted =
+          creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
     }
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
-      accepted = duplicateCreativeEditorSelectionWithUndo(
-                     appState, appState.history,
-                     cr::CreativeDuplicateCommandRequest{},
-                     "object_actions_duplicate", &editor.worldLayout)
-                     .accepted;
+    case CreativeEditorToolOptionsCommandId::DuplicateSelection: {
+      const CreativeEditorObjectActionExecution execution =
+          executeCreativeEditorSceneObjectAction(
+              {appState, &editor.worldLayout},
+              {CreativeEditorDuplicateSelectionAction{},
+               "object_actions_duplicate"});
+      accepted =
+          creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
-    case CreativeEditorToolOptionsCommandId::DeleteSelection:
-      accepted = deleteCreativeEditorSelectionWithUndo(
-                     appState, "object_actions_delete", &appState.history,
-                     &editor.worldLayout)
-                     .accepted;
+    }
+    case CreativeEditorToolOptionsCommandId::DeleteSelection: {
+      const CreativeEditorObjectActionExecution execution =
+          executeCreativeEditorSceneObjectAction(
+              {appState, &editor.worldLayout},
+              {CreativeEditorDeleteSelectionAction{},
+               "object_actions_delete"});
+      accepted =
+          creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
+    }
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
       accepted = toggleCreativeEditorSelectionVisibilityWithUndo(
                      appState, appState.history,
