@@ -236,19 +236,15 @@ void appendText(CreativePlayHudFrame& hud,
 }  // namespace
 
 CreativePlayActionSample sampleCreativePlayActions(
-    const iggy3d::creative::CreativeInputFrame& inputFrame,
-    const iggy3d::creative::CreativeInputRouteResult& routedInput,
-    std::span<const iggy3d::creative::CreativeInputBinding> bindings) noexcept {
-  const bool enabled = inputFrame.context ==
-                       iggy3d::creative::CreativeInputContext::RuntimePlay;
-  iggy3d::creative::CreativeInputFrame playFrame = inputFrame;
-  playFrame.context = iggy3d::creative::CreativeInputContext::RuntimePlay;
-  const auto actionDown = [&](iggy3d::creative::CreativeInputActionId action) {
-    return iggy3d::creative::creativeInputActionDown(
-        playFrame, action, bindings, enabled ? &routedInput : nullptr);
-  };
-  return {actionDown(iggy3d::creative::CreativeInputActionId::RuntimeAttack),
-          actionDown(
+    const iggy3d::creative::CreativeInputRouteResult& routedInput) noexcept {
+  const bool enabled =
+      routedInput.context ==
+      iggy3d::creative::CreativeInputContext::RuntimePlay;
+  return {iggy3d::creative::creativeInputActionDown(
+              routedInput,
+              iggy3d::creative::CreativeInputActionId::RuntimeAttack),
+          iggy3d::creative::creativeInputActionDown(
+              routedInput,
               iggy3d::creative::CreativeInputActionId::RuntimeInteract),
           enabled};
 }
@@ -256,15 +252,16 @@ CreativePlayActionSample sampleCreativePlayActions(
 CreativePlayAction routeCreativePlayAction(
     CreativePlayActionRouterState& state,
     CreativePlayActionSample sample) noexcept {
+  if (!sample.enabled) {
+    state.rearmRequired = true;
+    return CreativePlayAction::None;
+  }
   const bool attackPressed = sample.attackDown && !state.attackDown;
   const bool interactPressed = sample.interactDown && !state.interactDown;
   state.attackDown = sample.attackDown;
   state.interactDown = sample.interactDown;
   if (state.rearmRequired) {
     state.rearmRequired = sample.attackDown || sample.interactDown;
-    return CreativePlayAction::None;
-  }
-  if (!sample.enabled) {
     return CreativePlayAction::None;
   }
   if (attackPressed) {

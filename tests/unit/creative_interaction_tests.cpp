@@ -460,26 +460,45 @@ bool viewportNavigationSharesOneFocusAndPhysicalScaleModel() {
 }
 
 bool worldActionsAreEdgeTriggered() {
-  cr::CreativeWorldActionRouterState state;
-  cr::CreativeWorldInputSample sample;
-  cr::setCreativeWorldAction(sample, cr::CreativeWorldActionId::Primary, true);
-  sample.hotbarWheelSteps = -2;
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputRouterState inputRouter;
+  cr::CreativeInputFrame inputFrame;
+  inputFrame.context = cr::CreativeInputContext::EditorViewport;
+  cr::setCreativeInputKey(inputFrame, cr::CreativeInputKey::MousePrimary,
+                          true);
 
+  cr::CreativeWorldActionRouterState state;
+  const cr::CreativeInputRouteResult firstRoute =
+      cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame pressed =
-      cr::routeCreativeWorldActions(state, sample);
+      cr::routeCreativeWorldActions(
+          state, cr::sampleCreativeWorldInput(firstRoute, true, -2));
+  const cr::CreativeInputRouteResult heldRoute =
+      cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame held =
-      cr::routeCreativeWorldActions(state, sample);
-  cr::setCreativeWorldAction(sample, cr::CreativeWorldActionId::Primary, false);
-  sample.hotbarWheelSteps = 0;
+      cr::routeCreativeWorldActions(
+          state, cr::sampleCreativeWorldInput(heldRoute, true, 0));
+  const cr::CreativeWorldActionFrame disabled =
+      cr::routeCreativeWorldActions(
+          state, cr::sampleCreativeWorldInput(heldRoute, false, 3));
+  const cr::CreativeWorldActionFrame disabledAgain =
+      cr::routeCreativeWorldActions(
+          state, cr::sampleCreativeWorldInput(heldRoute, false, 0));
+  cr::setCreativeInputKey(inputFrame, cr::CreativeInputKey::MousePrimary,
+                          false);
+  const cr::CreativeInputRouteResult releasedRoute =
+      cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame released =
-      cr::routeCreativeWorldActions(state, sample);
+      cr::routeCreativeWorldActions(
+          state, cr::sampleCreativeWorldInput(releasedRoute, true, 0));
 
   return expect(cr::creativeWorldActionDown(
                     pressed, cr::CreativeWorldActionId::Primary),
-                "primary down routed") &&
+                "routed primary down is sampled") &&
          expect(cr::creativeWorldActionPressed(
                     pressed, cr::CreativeWorldActionId::Primary),
-                "primary press edge routed") &&
+                "routed primary press edge is sampled") &&
          expect(!cr::creativeWorldActionReleased(
                     pressed, cr::CreativeWorldActionId::Primary),
                 "primary press is not release") &&
@@ -491,10 +510,17 @@ bool worldActionsAreEdgeTriggered() {
                         held, cr::CreativeWorldActionId::Primary),
                 "held action does not repeat press") &&
          expect(cr::creativeWorldActionReleased(
+                    disabled, cr::CreativeWorldActionId::Primary) &&
+                    disabled.hotbarWheelSteps == 0 &&
+                    !cr::creativeWorldActionReleased(
+                        disabledAgain,
+                        cr::CreativeWorldActionId::Primary),
+                "disabled sampling emits exactly one release and no wheel") &&
+         expect(!cr::creativeWorldActionReleased(
                     released, cr::CreativeWorldActionId::Primary) &&
                     !cr::creativeWorldActionDown(
                         released, cr::CreativeWorldActionId::Primary),
-                "primary release edge routed");
+                "physical release after disabled sampling does not repeat");
 }
 
 bool worldActionIntentsArePolicyOwnedAndDisjoint() {

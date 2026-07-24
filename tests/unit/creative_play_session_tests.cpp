@@ -161,11 +161,11 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
   cr::CreativeInputFrame mouse;
   mouse.context = cr::CreativeInputContext::RuntimePlay;
   cr::setCreativeInputKey(mouse, cr::CreativeInputKey::MousePrimary, true);
-  cr::CreativeInputRouteResult mouseRoute;
-  mouseRoute.context = mouse.context;
+  cr::CreativeInputRouterState mouseInputRouter;
+  const cr::CreativeInputRouteResult mouseRoute =
+      cr::routeCreativeInput(mouseInputRouter, mouse, profile.bindingSpan());
   const app::CreativePlayActionSample mouseSample =
-      app::sampleCreativePlayActions(
-          mouse, mouseRoute, profile.bindingSpan());
+      app::sampleCreativePlayActions(mouseRoute);
 
   cr::CreativeInputFrame gamepad;
   gamepad.context = cr::CreativeInputContext::RuntimePlay;
@@ -173,11 +173,12 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
       gamepad, cr::CreativeInputKey::GamepadRightTrigger, true);
   cr::setCreativeInputKey(
       gamepad, cr::CreativeInputKey::GamepadLeftTrigger, true);
-  cr::CreativeInputRouteResult gamepadRoute;
-  gamepadRoute.context = gamepad.context;
+  cr::CreativeInputRouterState gamepadInputRouter;
+  const cr::CreativeInputRouteResult gamepadRoute =
+      cr::routeCreativeInput(gamepadInputRouter, gamepad,
+                             profile.bindingSpan());
   const app::CreativePlayActionSample gamepadSample =
-      app::sampleCreativePlayActions(
-          gamepad, gamepadRoute, profile.bindingSpan());
+      app::sampleCreativePlayActions(gamepadRoute);
 
   app::CreativePlayActionRouterState router;
   const app::CreativePlayAction first =
@@ -187,18 +188,48 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
   static_cast<void>(app::routeCreativePlayAction(router, {}));
   const app::CreativePlayAction interact =
       app::routeCreativePlayAction(router, {false, true});
+
+  cr::CreativeInputRouterState contextInputRouter;
+  cr::CreativeInputFrame contextFrame;
+  contextFrame.context = cr::CreativeInputContext::DesktopUi;
+  cr::setCreativeInputKey(
+      contextFrame, cr::CreativeInputKey::GamepadRightTrigger, true);
+  const cr::CreativeInputRouteResult hiddenRoute =
+      cr::routeCreativeInput(contextInputRouter, contextFrame,
+                             profile.bindingSpan());
+  const app::CreativePlayActionSample hiddenSample =
+      app::sampleCreativePlayActions(hiddenRoute);
   app::CreativePlayActionRouterState contextRouter;
   const app::CreativePlayAction hiddenPress =
-      app::routeCreativePlayAction(
-          contextRouter, {true, false, false});
+      app::routeCreativePlayAction(contextRouter, hiddenSample);
+
+  contextFrame.context = cr::CreativeInputContext::RuntimePlay;
+  const cr::CreativeInputRouteResult heldOnReturnRoute =
+      cr::routeCreativeInput(contextInputRouter, contextFrame,
+                             profile.bindingSpan());
   const app::CreativePlayAction heldOnReturn =
       app::routeCreativePlayAction(
-          contextRouter, {true, false, true});
-  static_cast<void>(app::routeCreativePlayAction(
-      contextRouter, {false, false, true}));
+          contextRouter,
+          app::sampleCreativePlayActions(heldOnReturnRoute));
+
+  cr::setCreativeInputKey(
+      contextFrame, cr::CreativeInputKey::GamepadRightTrigger, false);
+  const cr::CreativeInputRouteResult releaseRoute =
+      cr::routeCreativeInput(contextInputRouter, contextFrame,
+                             profile.bindingSpan());
+  const app::CreativePlayAction release =
+      app::routeCreativePlayAction(
+          contextRouter, app::sampleCreativePlayActions(releaseRoute));
+
+  cr::setCreativeInputKey(
+      contextFrame, cr::CreativeInputKey::GamepadRightTrigger, true);
+  const cr::CreativeInputRouteResult freshPressRoute =
+      cr::routeCreativeInput(contextInputRouter, contextFrame,
+                             profile.bindingSpan());
   const app::CreativePlayAction pressedAfterRelease =
       app::routeCreativePlayAction(
-          contextRouter, {true, false, true});
+          contextRouter,
+          app::sampleCreativePlayActions(freshPressRoute));
 
   return expect(profile.bindingCount <= cr::kCreativeInputBindingCapacity &&
                     audit.conflictCount == 0U,
@@ -212,10 +243,12 @@ bool runtimeBindingsAndActionEdgesAreDeterministic() {
                     interact == app::CreativePlayAction::Interact,
                 "attack wins simultaneous press and held actions do not repeat") &&
          expect(hiddenPress == app::CreativePlayAction::None &&
+                    !hiddenSample.enabled && !hiddenSample.attackDown &&
                     heldOnReturn == app::CreativePlayAction::None &&
+                    release == app::CreativePlayAction::None &&
                     pressedAfterRelease ==
                         app::CreativePlayAction::Attack,
-                "UI context changes cannot turn a held trigger into an edge") &&
+                "UI context requires release before a held trigger can fire") &&
          expect(cr::toString(cr::CreativeInputContext::RuntimePlay) ==
                         "RuntimePlay" &&
                     cr::toString(cr::CreativeInputActionId::RuntimeAttack) ==

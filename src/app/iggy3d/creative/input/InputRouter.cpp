@@ -592,21 +592,6 @@ bool creativeInputKeyConsumed(const CreativeInputRouteResult& result,
          result.consumedKeys[keyIndex(key)];
 }
 
-bool creativeInputActionDown(
-    const CreativeInputFrame& frame,
-    CreativeInputActionId action,
-    std::span<const CreativeInputBinding> bindings,
-    const CreativeInputRouteResult* routedInput) noexcept {
-  return std::any_of(
-      bindings.begin(), bindings.end(),
-      [&frame, action, routedInput](const CreativeInputBinding& binding) {
-        return binding.action == action && binding.context == frame.context &&
-               physicalChordActive(frame, binding) &&
-               (routedInput == nullptr ||
-                !creativeInputKeyConsumed(*routedInput, binding.trigger));
-      });
-}
-
 bool creativeInputRouteContains(const CreativeInputRouteResult& route,
                                 CreativeInputActionId action) noexcept {
   for (std::size_t index = 0; index < route.actionCount; ++index) {

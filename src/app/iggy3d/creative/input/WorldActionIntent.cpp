@@ -175,9 +175,7 @@ CreativeInputActionId creativeWorldInputAction(
 }
 
 CreativeWorldInputSample sampleCreativeWorldInput(
-    const CreativeInputFrame& inputFrame,
     const CreativeInputRouteResult& routedInput,
-    std::span<const CreativeInputBinding> bindings,
     bool enabled,
     std::int32_t hotbarWheelSteps) noexcept {
   CreativeWorldInputSample sample;
@@ -189,9 +187,8 @@ CreativeWorldInputSample sampleCreativeWorldInput(
         static_cast<CreativeWorldActionId>(index);
     setCreativeWorldAction(
         sample, worldAction,
-        creativeInputActionDown(inputFrame, creativeWorldInputAction(worldAction),
-                                bindings,
-                                &routedInput));
+        creativeInputActionDown(routedInput,
+                                creativeWorldInputAction(worldAction)));
   }
   sample.hotbarWheelSteps = hotbarWheelSteps;
   return sample;

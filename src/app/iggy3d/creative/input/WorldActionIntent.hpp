@@ -3,7 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <type_traits>
 
 #include "app/iggy3d/creative/input/ControlProfile.hpp"
@@ -73,9 +72,7 @@ describeCreativeWorldIntentPolicy(CreativeWorldIntentPolicy policy) noexcept;
     CreativeWorldActionId action) noexcept;
 
 [[nodiscard]] CreativeWorldInputSample sampleCreativeWorldInput(
-    const CreativeInputFrame& inputFrame,
     const CreativeInputRouteResult& routedInput,
-    std::span<const CreativeInputBinding> bindings,
     bool enabled,
     std::int32_t hotbarWheelSteps) noexcept;
 

@@ -47,9 +47,7 @@ struct CreativePlayActionRouterState {
 };
 
 [[nodiscard]] CreativePlayActionSample sampleCreativePlayActions(
-    const iggy3d::creative::CreativeInputFrame& inputFrame,
-    const iggy3d::creative::CreativeInputRouteResult& routedInput,
-    std::span<const iggy3d::creative::CreativeInputBinding> bindings) noexcept;
+    const iggy3d::creative::CreativeInputRouteResult& routedInput) noexcept;
 [[nodiscard]] CreativePlayAction routeCreativePlayAction(
     CreativePlayActionRouterState& state,
     CreativePlayActionSample sample) noexcept;

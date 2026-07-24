@@ -1200,9 +1200,11 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
   touchpadFrame.context = cr::CreativeInputContext::EditorViewport;
   cr::setCreativeInputKey(touchpadFrame,
                           cr::CreativeInputKey::GamepadTouchpad, true);
+  cr::CreativeInputRouterState touchpadRouter;
+  const cr::CreativeInputRouteResult touchpadRouted =
+      cr::routeCreativeInput(touchpadRouter, touchpadFrame, bindings);
   ok = expect(cr::creativeInputActionDown(
-                  touchpadFrame, cr::CreativeInputActionId::PickAction,
-                  bindings),
+                  touchpadRouted, cr::CreativeInputActionId::PickAction),
               "touchpad preserves continuous pick and sample input") &&
        ok;
 
@@ -1215,9 +1217,8 @@ bool modalBindingsAreIsolatedAndDoNotRetrigger() {
       cr::routeCreativeInput(wheelSecondaryRouter, wheelSecondaryFrame,
                              bindings);
   ok = expect(!cr::creativeInputActionDown(
-                  wheelSecondaryFrame,
-                  cr::CreativeInputActionId::FlyDown, bindings,
-                  &wheelSecondaryRouted) &&
+                  wheelSecondaryRouted,
+                  cr::CreativeInputActionId::FlyDown) &&
                   wheelSecondaryRouted.actionCount == 0U,
               "tool-wheel L2 cannot leak into flight") &&
        ok;

@@ -376,9 +376,8 @@ int main(int argc, char** argv) {
     playTick.input.pitchDeltaDegrees = frameInput.navigationPitchDeltaDegrees;
     playTick.input.sprinting = frameInput.navigationSprinting;
     playTick.input.windowFocused = frameInput.windowFocused && !userPaused;
-    playTick.input.actions = app::sampleCreativePlayActions(
-        frameInput.inputFrame, frameInput.routedInput,
-        editor.controlProfile.bindingSpan());
+    playTick.input.actions =
+        app::sampleCreativePlayActions(frameInput.routedInput);
     playTick.monotonicTimeNanoseconds = frameInput.monotonicTimeNanoseconds;
     const app::CreativePlayTickReceipt tickReceipt =
         app::tickCreativePlaySession(playSession, playTick);

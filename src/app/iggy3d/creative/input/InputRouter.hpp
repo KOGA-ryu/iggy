@@ -388,12 +388,6 @@ void setCreativeInputKey(CreativeInputFrame& frame,
 [[nodiscard]] bool creativeInputKeyConsumed(
     const CreativeInputRouteResult& result,
     CreativeInputKey key) noexcept;
-[[nodiscard]] bool creativeInputActionDown(
-    const CreativeInputFrame& frame,
-    CreativeInputActionId action,
-    std::span<const CreativeInputBinding> bindings =
-        defaultCreativeInputBindings(),
-    const CreativeInputRouteResult* routedInput = nullptr) noexcept;
 
 [[nodiscard]] CreativeInputRouteResult routeCreativeInput(
     CreativeInputRouterState& state,

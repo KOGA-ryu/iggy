@@ -6,7 +6,6 @@
 #include <array>
 #include <chrono>
 #include <cmath>
-#include <span>
 #include <thread>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
@@ -292,9 +291,7 @@ constexpr std::array kControllerKeyMappings{
 }
 
 [[nodiscard]] iggy3d::ProductCreativeFlyInput makeCreativeEditorFlyInput(
-    const creative::CreativeInputFrame& inputFrame,
     const creative::CreativeInputRouteResult& routedInput,
-    std::span<const creative::CreativeInputBinding> bindings,
     creative::CreativeStickSignal moveStick,
     bool navigationActive,
     bool transformContext,
@@ -305,8 +302,7 @@ constexpr std::array kControllerKeyMappings{
     return flyInput;
   }
   const auto actionDown = [&](creative::CreativeInputActionId action) {
-    return creative::creativeInputActionDown(inputFrame, action, bindings,
-                                             &routedInput);
+    return creative::creativeInputActionDown(routedInput, action);
   };
   const bool precisionNudgeRequested =
       transformContext &&
@@ -491,8 +487,7 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                                                            EditorViewport);
   const creative::CreativeWorldInputSample worldInput =
       creative::sampleCreativeWorldInput(
-          inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
-          !captureMode && result.windowFocused,
+          result.routedInput, !captureMode && result.windowFocused,
           viewportDollyRequested ? 0 : wheelSteps);
   result.worldActions = creative::routeCreativeWorldActions(
       editor.interaction.actionRouter, worldInput);
@@ -517,8 +512,8 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
       pointerMode == CreativeDesktopPointerCaptureMode::Pan;
   const bool viewportGesture = orbitGesture || panGesture;
   iggy3d::ProductCreativeFlyInput flyInput = makeCreativeEditorFlyInput(
-      inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
-      moveStick, navigation.navigationActive && !viewportGesture,
+      result.routedInput, moveStick,
+      navigation.navigationActive && !viewportGesture,
       inputContext == creative::CreativeInputContext::TransformPreview,
       result.transformNudgeWheelSteps, result.transformFineNudge);
 

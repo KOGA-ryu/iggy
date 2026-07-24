@@ -176,9 +176,6 @@ bool continuousBindingsAreQueryableWithoutEdgeEvents() {
   cr::CreativeInputRouterState router;
   const cr::CreativeInputRouteResult first =
       cr::routeCreativeInput(router, frame, profile.bindingSpan());
-  const bool firstPhysicalDown = cr::creativeInputActionDown(
-      frame, cr::CreativeInputActionId::MoveForward, profile.bindingSpan(),
-      &first);
   const cr::CreativeInputRouteResult held =
       cr::routeCreativeInput(router, frame, profile.bindingSpan());
   cr::setCreativeInputKey(frame, cr::CreativeInputKey::W, false);
@@ -202,8 +199,6 @@ bool continuousBindingsAreQueryableWithoutEdgeEvents() {
                     cr::creativeInputActionReleased(
                         released, cr::CreativeInputActionId::MoveForward),
                 "continuous action exposes its release edge") &&
-         expect(firstPhysicalDown,
-                "legacy physical query agrees with semantic frame") &&
          expect(first.actionCount == 0U,
                 "continuous action does not emit command edge") &&
          expect(!cr::creativeInputKeyConsumed(first, cr::CreativeInputKey::W),
@@ -943,8 +938,7 @@ bool reservedBindingsAndConsumedHeldActionsStayIsolated() {
                     controlsBinding->trigger == cr::CreativeInputKey::Escape,
                 "replace cannot steal the Controls escape hatch") &&
          expect(!cr::creativeInputActionDown(
-                    frame, cr::CreativeInputActionId::MoveBackward,
-                    profile.bindingSpan(), &routed),
+                    routed, cr::CreativeInputActionId::MoveBackward),
                 "consumed command chord suppresses its held movement action") &&
          expect(cr::isValidCreativeControlProfile(profile),
                 "rejected conflicts leave the profile valid");
