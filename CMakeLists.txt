@@ -530,6 +530,10 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopWorldLayoutArchitectureInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutInspector.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspector.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspectorLevel.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspectorObject.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspectorShared.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspectorTerrain.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp
   apps/iggy3d_creative/EditorMapValidationDiagnostics.cpp
   apps/iggy3d_creative/EditorMapValidationPanel.cpp
