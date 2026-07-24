@@ -265,6 +265,16 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);
 
+bool dispatchCreativeDesktopWorldLayoutPropertyCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result);
+
+bool dispatchCreativeDesktopWorldLayoutLevelCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result);
+
 bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
     const CreativeDesktopCommand& command,
     const CreativeDesktopCommandContext& context,

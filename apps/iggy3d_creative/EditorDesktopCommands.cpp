@@ -155,6 +155,10 @@ void dispatchOne(const CreativeDesktopCommand& command,
       dispatchCreativeDesktopTerrainCommand(command, context, result) ||
       dispatchCreativeDesktopWorldLayoutSourceCommand(command, context,
                                                        result) ||
+      dispatchCreativeDesktopWorldLayoutPropertyCommand(command, context,
+                                                         result) ||
+      dispatchCreativeDesktopWorldLayoutLevelCommand(command, context,
+                                                      result) ||
       dispatchCreativeDesktopWorldLayoutBuildingCommand(command, context,
                                                          result) ||
       dispatchCreativeDesktopWorldLayoutStructureCommand(command, context,

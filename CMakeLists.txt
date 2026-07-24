@@ -503,7 +503,9 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopTerrainCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutBuildingCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutCommandSupport.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutLevelCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutLifecycleCommands.cpp
+  apps/iggy3d_creative/EditorDesktopWorldLayoutPropertyCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutSourceCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutStructureCommands.cpp
   apps/iggy3d_creative/EditorDesktopUi.cpp
