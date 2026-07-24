@@ -364,14 +364,22 @@ enum class TriState : std::uint8_t { Off, On, Mixed };
 
 void appendMultiInspector(const cr::CreativeDocument& document,
                           const CreativeDesktopSelectionResolution& resolved,
+                          const cr::CreativeSemanticObjectActionAdmissions&
+                              actionAdmissions,
                           bool playModeActive,
                           CreativeDesktopCommandFrame& commands) {
+  const auto actionAvailable =
+      [&](cr::CreativeSemanticObjectAction action) {
+        return creativeEditorObjectActionAvailable(actionAdmissions, action);
+      };
   ImGui::Text("%llu objects selected",
               static_cast<unsigned long long>(resolved.objectIds.size()));
   ImGui::Text("Visibility: %s",
               triStateLabel(foldFlag(document, resolved.objectIds, false)));
   if (!playModeActive) {
     ImGui::SameLine();
+    ImGui::BeginDisabled(
+        !actionAvailable(cr::CreativeSemanticObjectAction::SetVisible));
     if (ImGui::SmallButton("Show##multi")) {
       commands.push(CreativeDesktopCommandId::SetObjectsVisible,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, true});
@@ -381,11 +389,14 @@ void appendMultiInspector(const cr::CreativeDocument& document,
       commands.push(CreativeDesktopCommandId::SetObjectsVisible,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, false});
     }
+    ImGui::EndDisabled();
   }
   ImGui::Text("Lock: %s",
               triStateLabel(foldFlag(document, resolved.objectIds, true)));
   if (!playModeActive) {
     ImGui::SameLine();
+    ImGui::BeginDisabled(
+        !actionAvailable(cr::CreativeSemanticObjectAction::SetLocked));
     if (ImGui::SmallButton("Lock##multi")) {
       commands.push(CreativeDesktopCommandId::SetObjectsLocked,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, true});
@@ -395,14 +406,21 @@ void appendMultiInspector(const cr::CreativeDocument& document,
       commands.push(CreativeDesktopCommandId::SetObjectsLocked,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, false});
     }
+    ImGui::EndDisabled();
     ImGui::Separator();
+    ImGui::BeginDisabled(
+        !actionAvailable(cr::CreativeSemanticObjectAction::Duplicate));
     if (ImGui::Button("Duplicate##multi")) {
       commands.push(CreativeDesktopCommandId::DuplicateSelection);
     }
+    ImGui::EndDisabled();
     ImGui::SameLine();
+    ImGui::BeginDisabled(
+        !actionAvailable(cr::CreativeSemanticObjectAction::Delete));
     if (ImGui::Button("Delete##multi")) {
       commands.push(CreativeDesktopCommandId::DeleteSelection);
     }
+    ImGui::EndDisabled();
   }
 }
 
@@ -967,6 +985,10 @@ void appendGroupPivotFields(CreativeDesktopInspectorDraft& draft,
 void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                            const cr::CreativeDocument& document,
                            const cr::CreativeObject& object,
+                           const cr::CreativeSemanticObjectActionFacts&
+                               actionFacts,
+                           const cr::CreativeSemanticObjectActionAdmissions&
+                               actionAdmissions,
                            CreativeEditorWorldLayoutState& worldLayout,
                            CreativeDesktopGeneratedSourceScopeCache&
                                generatedSourceScopeCache,
@@ -979,26 +1001,20 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   refreshInspectorDraft(draft, document, object);
   draft.editing = false;  // recomputed from this frame's active items.
 
-  const cr::CreativeSemanticSelectionResolution semanticSelection =
-      cr::resolveCreativeSemanticSelection(document, object.id,
-                                           &worldLayout.source);
-  const cr::CreativeWorldLayoutObjectProvenance& provenance =
-      semanticSelection.worldLayoutSource;
+  const cr::CreativeWorldLayoutObjectProvenance provenance =
+      actionFacts.hasSingleSelection
+          ? actionFacts.singleSelection.worldLayoutSource
+          : cr::CreativeWorldLayoutObjectProvenance{};
   const cr::CreativeObjectHierarchyState hierarchyState =
       cr::resolveCreativeObjectHierarchyState(document, object.id);
-  const bool effectivelyLocked =
-      !hierarchyState.resolved || hierarchyState.effectivelyLocked;
-  const bool sourceSynchronized =
-      worldLayout.generatedRevision == worldLayout.revision;
-  const CreativeEditorObjectActionCapabilities actionCapabilities =
-      buildCreativeEditorObjectActionCapabilities(
-          semanticSelection, !effectivelyLocked, sourceSynchronized);
-  const bool sourceSupportsAdoption =
+  const bool sourceSynchronized = actionFacts.worldLayoutSynchronized;
+  const CreativeEditorObjectActionCapability transformAdmission =
       creativeEditorObjectActionCapability(
-          actionCapabilities,
-          cr::CreativeSemanticObjectAction::SetTransform)
-          .route ==
+          actionAdmissions, cr::CreativeSemanticObjectAction::SetTransform);
+  const bool sourceSupportsAdoption = transformAdmission.route ==
       cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
+  const bool sourceAdoptionAvailable =
+      sourceSupportsAdoption && transformAdmission.allowed;
   const bool sourceOwnedOnly =
       provenance.owned && !sourceSupportsAdoption;
   const bool generatedSettingsSource = provenance.owned;
@@ -1025,7 +1041,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   // Other document edits stay frozen. Play freezes every document edit.
   const auto actionAvailable =
       [&](cr::CreativeSemanticObjectAction action) {
-        return creativeEditorObjectActionAvailable(actionCapabilities, action);
+        return creativeEditorObjectActionAvailable(actionAdmissions, action);
       };
   const bool rawFieldsDisabled =
       playModeActive ||
@@ -1115,8 +1131,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
 
   if (provenance.owned) {
     ImGui::SeparatorText("World Layout");
-    ImGui::BeginDisabled(playModeActive || !sourceSynchronized ||
-                         !sourceSupportsAdoption);
+    ImGui::BeginDisabled(playModeActive || !sourceAdoptionAvailable);
     if (ImGui::Button("Adopt 3D Edit")) {
       commands.push(
           CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
@@ -1192,6 +1207,9 @@ void buildCreativeEditorDesktopInspectorPanel(
   const CreativeDesktopSelectionResolution resolved =
       resolveCreativeDesktopSelection(document, live.objectIds,
                                       live.primaryObjectId);
+  const CreativeDesktopObjectActionContext& actionContext =
+      refreshCreativeEditorDesktopObjectActionContext(
+          desktopUi, appState, &editor.worldLayout);
 
   appendMeasurementInspector(
       appState.facade.measurementState(), document.measurementAnnotationStore(),
@@ -1205,7 +1223,9 @@ void buildCreativeEditorDesktopInspectorPanel(
     return;
   }
   if (resolved.objectIds.size() > 1U) {
-    appendMultiInspector(document, resolved, playModeActive, commands);
+    appendMultiInspector(document, resolved, actionContext.admissions,
+                         playModeActive,
+                         commands);
     return;
   }
 
@@ -1215,7 +1235,8 @@ void buildCreativeEditorDesktopInspectorPanel(
     ImGui::TextUnformatted("No object selected");
     return;
   }
-  appendSingleInspector(desktopUi, document, *object, editor.worldLayout,
+  appendSingleInspector(desktopUi, document, *object, actionContext.facts,
+                        actionContext.admissions, editor.worldLayout,
                         editor.generatedSourceScopeCache,
                         editor.movingPlatformPreview,
                         editor.interaction.movingPlatformPathEdit,

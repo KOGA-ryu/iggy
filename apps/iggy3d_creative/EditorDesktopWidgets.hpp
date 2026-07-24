@@ -43,6 +43,7 @@ struct CreativeDesktopLiveSelection {
 void buildCreativeEditorDesktopOutlinerPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout,
     bool playModeActive,
     const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands);

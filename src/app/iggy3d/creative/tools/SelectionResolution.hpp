@@ -3,10 +3,12 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string_view>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -38,6 +40,91 @@ enum class CreativeSemanticObjectAction : std::uint8_t {
   StructuralMutation,
   Count,
 };
+
+inline constexpr std::size_t kCreativeSemanticObjectActionAdmissionCount =
+    static_cast<std::size_t>(CreativeSemanticObjectAction::Count);
+
+enum class CreativeSemanticObjectActionEffect : std::uint8_t {
+  ReadOnly,
+  Mutation,
+};
+
+enum class CreativeSemanticObjectActionLockPolicy : std::uint8_t {
+  Ignore,
+  RequireUnlocked,
+};
+
+// Stable action metadata belongs beside the action enum. Presentation,
+// admission, and engineering-contract tests can enumerate one table instead
+// of maintaining parallel action classifications.
+struct CreativeSemanticObjectActionDescriptor {
+  CreativeSemanticObjectAction action =
+      CreativeSemanticObjectAction::Count;
+  std::string_view id;
+  CreativeSemanticObjectActionEffect effect =
+      CreativeSemanticObjectActionEffect::ReadOnly;
+  CreativeSemanticObjectActionLockPolicy lockPolicy =
+      CreativeSemanticObjectActionLockPolicy::Ignore;
+};
+
+inline constexpr std::array<CreativeSemanticObjectActionDescriptor,
+                            kCreativeSemanticObjectActionAdmissionCount>
+    kCreativeSemanticObjectActionDescriptors{{
+        {CreativeSemanticObjectAction::Inspect, "inspect",
+         CreativeSemanticObjectActionEffect::ReadOnly,
+         CreativeSemanticObjectActionLockPolicy::Ignore},
+        {CreativeSemanticObjectAction::Copy, "copy",
+         CreativeSemanticObjectActionEffect::ReadOnly,
+         CreativeSemanticObjectActionLockPolicy::Ignore},
+        {CreativeSemanticObjectAction::Duplicate, "duplicate",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::Delete, "delete",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::Cut, "cut",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::Rename, "rename",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::SetVisible, "set_visible",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::SetLocked, "set_locked",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::Ignore},
+        {CreativeSemanticObjectAction::TransformSelection,
+         "transform_selection",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::SetTransform, "set_transform",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+        {CreativeSemanticObjectAction::StructuralMutation,
+         "structural_mutation",
+         CreativeSemanticObjectActionEffect::Mutation,
+         CreativeSemanticObjectActionLockPolicy::RequireUnlocked},
+    }};
+
+[[nodiscard]] constexpr const CreativeSemanticObjectActionDescriptor*
+creativeSemanticObjectActionDescriptor(
+    CreativeSemanticObjectAction action) noexcept {
+  const std::size_t index = static_cast<std::size_t>(action);
+  return index < kCreativeSemanticObjectActionDescriptors.size()
+             ? &kCreativeSemanticObjectActionDescriptors[index]
+             : nullptr;
+}
+
+[[nodiscard]] constexpr bool
+creativeSemanticObjectActionRequiresUnlockedSelection(
+    CreativeSemanticObjectAction action) noexcept {
+  const CreativeSemanticObjectActionDescriptor* descriptor =
+      creativeSemanticObjectActionDescriptor(action);
+  return descriptor != nullptr &&
+         descriptor->lockPolicy ==
+             CreativeSemanticObjectActionLockPolicy::RequireUnlocked;
+}
 
 enum class CreativeSemanticObjectActionRoute : std::uint8_t {
   Reject,
@@ -147,6 +234,61 @@ struct CreativeSemanticSelectionSetResolution {
   std::string_view reasonCode = "creative_selection_set_not_requested";
 };
 
+enum class CreativeSemanticObjectActionAdmissionStatus : std::uint8_t {
+  NotRequested,
+  InvalidSelection,
+  OwnershipRejected,
+  WorldLayoutUnsynchronized,
+  SelectionLocked,
+  Ready,
+};
+
+// Immutable facts shared by execution owners and presentation surfaces. The
+// hierarchy list expands selected containers once so lock admission cannot
+// disagree between a Group row, its Inspector, and the mutation command.
+struct CreativeSemanticObjectActionFacts {
+  bool requested = false;
+  bool selectionResolved = false;
+  bool hierarchyResolved = false;
+  bool hasSingleSelection = false;
+  bool allUnlocked = false;
+  bool worldLayoutSynchronized = false;
+  CreativeSemanticSelectionResolution singleSelection;
+  CreativeSemanticSelectionSetResolution selection;
+  CreativeWorldLayoutSourceRef completeWorldLayoutBuildingSource{};
+  std::vector<CreativeObjectId> hierarchyObjectIds;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::string_view reasonCode = "creative_semantic_action_facts_not_requested";
+};
+
+struct CreativeSemanticObjectActionAdmission {
+  bool requested = false;
+  bool allowed = false;
+  CreativeSemanticObjectAction action =
+      CreativeSemanticObjectAction::Count;
+  CreativeSemanticObjectActionAdmissionStatus status =
+      CreativeSemanticObjectActionAdmissionStatus::NotRequested;
+  CreativeSemanticObjectActionRoute route =
+      CreativeSemanticObjectActionRoute::Reject;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::string_view reasonCode =
+      "creative_semantic_action_admission_not_requested";
+};
+
+[[nodiscard]] constexpr bool creativeSemanticActionUsesDocumentMutation(
+    const CreativeSemanticObjectActionAdmission& admission) noexcept {
+  return admission.allowed &&
+         (admission.route == CreativeSemanticObjectActionRoute::Document ||
+          admission.route ==
+              CreativeSemanticObjectActionRoute::SemanticDocument);
+}
+
+struct CreativeSemanticObjectActionAdmissions {
+  std::array<CreativeSemanticObjectActionAdmission,
+             kCreativeSemanticObjectActionAdmissionCount>
+      actions{};
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeSemanticSelectionOwner owner) noexcept;
 [[nodiscard]] std::string_view toString(
@@ -213,6 +355,39 @@ resolveCreativeSemanticObjectAction(
 [[nodiscard]] CreativeSemanticObjectActionPolicy
 resolveCreativeSemanticObjectAction(
     const CreativeSemanticSelectionSetResolution& selection,
+    CreativeSemanticObjectAction action) noexcept;
+
+[[nodiscard]] CreativeSemanticObjectActionFacts
+resolveCreativeSemanticObjectActionFacts(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    CreativeObjectId primaryObjectId,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized);
+[[nodiscard]] CreativeSemanticObjectActionFacts
+resolveCreativeSemanticObjectActionFacts(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized);
+
+[[nodiscard]] CreativeSemanticObjectActionAdmission
+resolveCreativeSemanticObjectActionAdmission(
+    const CreativeSemanticObjectActionFacts& facts,
+    CreativeSemanticObjectAction action) noexcept;
+[[nodiscard]] CreativeSemanticObjectActionAdmission
+resolveCreativeSemanticObjectActionAdmission(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeSemanticObjectAction action,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized);
+[[nodiscard]] CreativeSemanticObjectActionAdmissions
+resolveCreativeSemanticObjectActionAdmissions(
+    const CreativeSemanticObjectActionFacts& facts) noexcept;
+[[nodiscard]] CreativeSemanticObjectActionAdmission
+creativeSemanticObjectActionAdmission(
+    const CreativeSemanticObjectActionAdmissions& admissions,
     CreativeSemanticObjectAction action) noexcept;
 
 // Structural mutation owners admit only the exact raw Document route.

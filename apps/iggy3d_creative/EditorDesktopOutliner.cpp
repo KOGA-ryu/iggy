@@ -54,6 +54,7 @@ void refreshOutlinerCaches(CreativeDesktopOutlinerState& state,
     state.model = buildCreativeDesktopOutlinerModel(document);
     state.modelValid = true;
     state.filteredRowsValid = false;
+    state.rowActionAdmissionsValid = false;
   }
   const std::string query(state.searchBuffer.data());
   if (!state.filteredRowsValid || query != state.appliedQuery) {
@@ -63,28 +64,80 @@ void refreshOutlinerCaches(CreativeDesktopOutlinerState& state,
   }
 }
 
+void refreshOutlinerActionAdmissions(
+    CreativeDesktopOutlinerState& state,
+    const cr::CreativeDocument& document,
+    const CreativeEditorWorldLayoutState* worldLayout) {
+  const std::uint64_t sourceRevision =
+      worldLayout != nullptr ? worldLayout->revision : 0U;
+  const std::uint64_t generatedRevision =
+      worldLayout != nullptr ? worldLayout->generatedRevision : 0U;
+  const std::uint64_t sourceEpoch =
+      worldLayout != nullptr ? worldLayout->sourceEpoch : 0U;
+  const bool worldLayoutAvailable = worldLayout != nullptr;
+  if (state.rowActionAdmissionsValid &&
+      state.rowActionAdmissions.size() == state.model.rows.size() &&
+      state.actionWorldLayoutAvailable == worldLayoutAvailable &&
+      state.actionWorldLayoutRevision == sourceRevision &&
+      state.actionWorldLayoutGeneratedRevision == generatedRevision &&
+      state.actionWorldLayoutSourceEpoch == sourceEpoch) {
+    return;
+  }
+
+  state.rowActionAdmissions.clear();
+  state.rowActionAdmissions.reserve(state.model.rows.size());
+  const cr::CreativeWorldLayout* source =
+      worldLayout != nullptr ? &worldLayout->source : nullptr;
+  const bool sourceSynchronized =
+      worldLayout != nullptr && sourceRevision == generatedRevision;
+  for (const CreativeDesktopOutlinerRow& row : state.model.rows) {
+    const cr::CreativeSemanticObjectActionFacts facts =
+        cr::resolveCreativeSemanticObjectActionFacts(
+            document, row.objectId, source, sourceSynchronized);
+    state.rowActionAdmissions.push_back(
+        cr::resolveCreativeSemanticObjectActionAdmissions(facts));
+  }
+  state.actionWorldLayoutRevision = sourceRevision;
+  state.actionWorldLayoutGeneratedRevision = generatedRevision;
+  state.actionWorldLayoutSourceEpoch = sourceEpoch;
+  state.actionWorldLayoutAvailable = worldLayoutAvailable;
+  state.rowActionAdmissionsValid = true;
+}
+
 // The visibility/lock controls. They emit only their own flag command and must
 // never also select the row, so they are drawn as separate items before the
 // row's selectable. Absent during Play (document edits are read-only there).
 void appendRowFlagControls(const CreativeDesktopOutlinerRow& row,
+                           const cr::CreativeSemanticObjectActionAdmissions&
+                               admissions,
                            CreativeDesktopCommandFrame& commands) {
   const bool inheritedHidden = row.visible && !row.effectivelyVisible;
   const bool inheritedLocked = !row.locked && row.effectivelyLocked;
+  ImGui::BeginDisabled(
+      !cr::creativeSemanticObjectActionAdmission(
+           admissions, cr::CreativeSemanticObjectAction::SetVisible)
+           .allowed);
   if (ImGui::SmallButton(inheritedHidden ? "o*" : row.visible ? "o" : "-")) {
     commands.push(CreativeDesktopCommandId::SetObjectsVisible,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.visible});
   }
+  ImGui::EndDisabled();
   appendHoverTooltip(inheritedHidden
                          ? "Locally visible; hidden by an ancestor"
                      : row.visible ? "Visible — click to hide"
                                    : "Hidden — click to show");
   ImGui::SameLine();
+  ImGui::BeginDisabled(
+      !cr::creativeSemanticObjectActionAdmission(
+           admissions, cr::CreativeSemanticObjectAction::SetLocked)
+           .allowed);
   if (ImGui::SmallButton(inheritedLocked ? "L*" : row.locked ? "L" : ".")) {
     commands.push(CreativeDesktopCommandId::SetObjectsLocked,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.locked});
   }
+  ImGui::EndDisabled();
   appendHoverTooltip(inheritedLocked
                          ? "Unlocked locally; locked by an ancestor"
                      : row.locked ? "Locked — click to unlock"
@@ -118,6 +171,7 @@ CreativeDesktopLiveSelection creativeDesktopLiveSelection(
 void buildCreativeEditorDesktopOutlinerPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout,
     bool playModeActive,
     const CreativeEditorUiInputFrame& input,
     CreativeDesktopCommandFrame& commands) {
@@ -133,6 +187,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
   }
 
   refreshOutlinerCaches(state, document);
+  refreshOutlinerActionAdmissions(state, document, worldLayout);
 
   ImGui::SetNextItemWidth(-1.0F);
   if (ImGui::InputTextWithHint("##outliner_search", "Search name, kind, or id",
@@ -178,7 +233,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
     // Play stays inspectable: rows still select, but the flag controls (which
     // mutate the document) are absent.
     if (!playModeActive) {
-      appendRowFlagControls(row, commands);
+      appendRowFlagControls(row, state.rowActionAdmissions[index], commands);
     }
     if (row.recovery != CreativeDesktopHierarchyRecovery::None) {
       ImGui::TextColored(ImVec4{1.0F, 0.82F, 0.25F, 1.0F}, "!");

@@ -6,6 +6,7 @@
 
 #include "EditorAuthoredAssets.hpp"
 #include "EditorAttachmentPlacement.hpp"
+#include "EditorDesktopUi.hpp"
 #include "EditorEdits.hpp"
 #include "EditorGroup.hpp"
 #include "EditorState.hpp"
@@ -15,99 +16,91 @@
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
-namespace {
 
-[[nodiscard]] constexpr bool actionRequiresUnlockedSelection(
-    cr::CreativeSemanticObjectAction action) noexcept {
-  switch (action) {
-    case cr::CreativeSemanticObjectAction::Duplicate:
-    case cr::CreativeSemanticObjectAction::Delete:
-    case cr::CreativeSemanticObjectAction::Cut:
-    case cr::CreativeSemanticObjectAction::Rename:
-    case cr::CreativeSemanticObjectAction::SetVisible:
-    case cr::CreativeSemanticObjectAction::TransformSelection:
-    case cr::CreativeSemanticObjectAction::SetTransform:
-    case cr::CreativeSemanticObjectAction::StructuralMutation:
-      return true;
-    case cr::CreativeSemanticObjectAction::Inspect:
-    case cr::CreativeSemanticObjectAction::Copy:
-    case cr::CreativeSemanticObjectAction::SetLocked:
-    case cr::CreativeSemanticObjectAction::Count:
-      return false;
-  }
-  return false;
-}
-
-[[nodiscard]] constexpr bool actionNeedsSynchronizedWorldLayout(
-    cr::CreativeSemanticObjectActionRoute route) noexcept {
-  return route == cr::CreativeSemanticObjectActionRoute::WorldLayoutSource ||
-         route == cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
-}
-
-template <typename Selection>
-[[nodiscard]] CreativeEditorObjectActionCapabilities buildCapabilities(
-    const Selection& selection, bool allUnlocked,
-    bool worldLayoutSynchronized) noexcept {
-  CreativeEditorObjectActionCapabilities result;
-  for (std::size_t index = 0U;
-       index < kCreativeEditorObjectActionCapabilityCount; ++index) {
-    const auto action =
-        static_cast<cr::CreativeSemanticObjectAction>(index);
-    const cr::CreativeSemanticObjectActionPolicy policy =
-        cr::resolveCreativeSemanticObjectAction(selection, action);
-    CreativeEditorObjectActionCapability& capability = result.actions[index];
-    capability.available = policy.allowed;
-    capability.route = policy.route;
-    capability.reasonCode = policy.reasonCode;
-    if (!capability.available) {
-      continue;
-    }
-    if (actionNeedsSynchronizedWorldLayout(capability.route) &&
-        !worldLayoutSynchronized) {
-      capability.available = false;
-      capability.reasonCode =
-          "creative_editor_object_action_world_layout_unsynchronized";
-      continue;
-    }
-    if (actionRequiresUnlockedSelection(action) && !allUnlocked) {
-      capability.available = false;
-      capability.reasonCode =
-          "creative_editor_object_action_selection_locked";
+cr::CreativeSemanticObjectActionFacts
+resolveCreativeEditorObjectActionFacts(
+    const cr::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout) {
+  const cr::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  std::vector<cr::CreativeObjectId> objectIds;
+  objectIds.reserve(cr::selectedTargetCount(selection));
+  for (cr::TargetRef target : cr::selectedTargetList(selection)) {
+    if (target.value != cr::kInvalidId) {
+      objectIds.push_back(
+          static_cast<cr::CreativeObjectId>(target.value));
     }
   }
-  return result;
+  if (objectIds.empty() &&
+      selection.selectedTarget.value != cr::kInvalidId) {
+    objectIds.push_back(static_cast<cr::CreativeObjectId>(
+        selection.selectedTarget.value));
+  }
+  const cr::CreativeObjectId primaryObjectId =
+      selection.selectedTarget.value == cr::kInvalidId
+          ? cr::kInvalidObjectId
+          : static_cast<cr::CreativeObjectId>(
+                selection.selectedTarget.value);
+  return cr::resolveCreativeSemanticObjectActionFacts(
+      appState.facade.document(), objectIds, primaryObjectId,
+      worldLayout != nullptr ? &worldLayout->source : nullptr,
+      worldLayout != nullptr &&
+          worldLayout->generatedRevision == worldLayout->revision);
 }
 
-}  // namespace
+const CreativeDesktopObjectActionContext&
+refreshCreativeEditorDesktopObjectActionContext(
+    CreativeEditorDesktopUiState& desktopUi,
+    const cr::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout) {
+  CreativeDesktopObjectActionContext& context =
+      desktopUi.objectActionContext;
+  const cr::CreativeDocument& document = appState.facade.document();
+  const cr::CreativeSelectionState& selection =
+      appState.facade.selectionState();
+  const bool worldLayoutAvailable = worldLayout != nullptr;
+  const std::uint64_t worldLayoutRevision =
+      worldLayoutAvailable ? worldLayout->revision : 0U;
+  const std::uint64_t worldLayoutGeneratedRevision =
+      worldLayoutAvailable ? worldLayout->generatedRevision : 0U;
+  const std::uint64_t worldLayoutSourceEpoch =
+      worldLayoutAvailable ? worldLayout->sourceEpoch : 0U;
+  if (context.valid && context.documentId == document.id() &&
+      context.documentRevision == document.revision() &&
+      context.selectionRevision == selection.selectionRevision &&
+      context.worldLayoutAvailable == worldLayoutAvailable &&
+      context.worldLayoutRevision == worldLayoutRevision &&
+      context.worldLayoutGeneratedRevision == worldLayoutGeneratedRevision &&
+      context.worldLayoutSourceEpoch == worldLayoutSourceEpoch) {
+    return context;
+  }
 
-CreativeEditorObjectActionCapabilities
-buildCreativeEditorObjectActionCapabilities(
-    const cr::CreativeSemanticSelectionResolution& selection,
-    bool allUnlocked, bool worldLayoutSynchronized) noexcept {
-  return buildCapabilities(selection, allUnlocked, worldLayoutSynchronized);
-}
-
-CreativeEditorObjectActionCapabilities
-buildCreativeEditorObjectActionCapabilities(
-    const cr::CreativeSemanticSelectionSetResolution& selection,
-    bool allUnlocked, bool worldLayoutSynchronized) noexcept {
-  return buildCapabilities(selection, allUnlocked, worldLayoutSynchronized);
+  context.documentId = document.id();
+  context.documentRevision = document.revision();
+  context.selectionRevision = selection.selectionRevision;
+  context.worldLayoutAvailable = worldLayoutAvailable;
+  context.worldLayoutRevision = worldLayoutRevision;
+  context.worldLayoutGeneratedRevision = worldLayoutGeneratedRevision;
+  context.worldLayoutSourceEpoch = worldLayoutSourceEpoch;
+  context.facts =
+      resolveCreativeEditorObjectActionFacts(appState, worldLayout);
+  context.admissions =
+      cr::resolveCreativeSemanticObjectActionAdmissions(context.facts);
+  ++context.rebuildCount;
+  context.valid = true;
+  return context;
 }
 
 CreativeEditorObjectActionCapability creativeEditorObjectActionCapability(
     const CreativeEditorObjectActionCapabilities& capabilities,
     cr::CreativeSemanticObjectAction action) noexcept {
-  const std::size_t index = static_cast<std::size_t>(action);
-  if (index >= capabilities.actions.size()) {
-    return {};
-  }
-  return capabilities.actions[index];
+  return cr::creativeSemanticObjectActionAdmission(capabilities, action);
 }
 
 bool creativeEditorObjectActionAvailable(
     const CreativeEditorObjectActionCapabilities& capabilities,
     cr::CreativeSemanticObjectAction action) noexcept {
-  return creativeEditorObjectActionCapability(capabilities, action).available;
+  return creativeEditorObjectActionCapability(capabilities, action).allowed;
 }
 
 bool equipCreativeEditorAuthoredAssetToHotbar(
@@ -177,6 +170,8 @@ void refreshCreativeEditorObjectActionContext(
     const CreativeEditorWorldLayoutState* worldLayout) noexcept {
   state.contextDocumentId = appState.facade.document().id();
   state.contextDocumentRevision = appState.facade.document().revision();
+  state.contextSelectionRevision =
+      appState.facade.selectionState().selectionRevision;
   state.contextGroupId = cr::kInvalidObjectId;
   state.contextPrimaryObjectId = cr::kInvalidObjectId;
   state.contextPrimaryObjectKind = cr::CreativeObjectKind::Unknown;
@@ -187,19 +182,21 @@ void refreshCreativeEditorObjectActionContext(
   state.contextAttachmentSocket.clear();
   state.contextSelectionCount = 0U;
   state.contextSemanticSelection = {};
-  state.contextActionCapabilities = {};
+  state.contextActionAdmissions = {};
   state.contextWorldLayoutRevision =
       worldLayout != nullptr ? worldLayout->revision : 0U;
   state.contextWorldLayoutGeneratedRevision =
       worldLayout != nullptr ? worldLayout->generatedRevision : 0U;
+  state.contextWorldLayoutSourceEpoch =
+      worldLayout != nullptr ? worldLayout->sourceEpoch : 0U;
   state.contextWorldLayoutSynchronized =
       worldLayout != nullptr &&
       worldLayout->generatedRevision == worldLayout->revision;
   state.contextPrimaryVisible = true;
   state.contextPrimaryLocked = false;
-  state.contextAllUnlocked = true;
-  state.contextAllMovable = true;
-  state.contextAllResettable = true;
+  state.contextAllUnlocked = false;
+  state.contextAllMovable = false;
+  state.contextAllResettable = false;
   state.contextPrefabUpdateTransformSupported = false;
   state.contextPrefabSyncInspected = false;
   state.contextPrefabSyncState =
@@ -212,49 +209,22 @@ void refreshCreativeEditorObjectActionContext(
 
   const cr::CreativeSelectionState& selection =
       appState.facade.selectionState();
-  std::vector<cr::CreativeObjectId> selectedObjectIds;
-  selectedObjectIds.reserve(cr::selectedTargetCount(selection));
-  for (cr::TargetRef target : cr::selectedTargetList(selection)) {
-    if (target.value != cr::kInvalidId) {
-      selectedObjectIds.push_back(
-          static_cast<cr::CreativeObjectId>(target.value));
-    }
-  }
-  if (selectedObjectIds.empty() &&
-      selection.selectedTarget.value != cr::kInvalidId) {
-    selectedObjectIds.push_back(static_cast<cr::CreativeObjectId>(
-        selection.selectedTarget.value));
-  }
-  state.contextSelectionCount = selectedObjectIds.size();
-  const cr::CreativeObjectId semanticPrimary =
-      selection.selectedTarget.value == cr::kInvalidId
-          ? cr::kInvalidObjectId
-          : static_cast<cr::CreativeObjectId>(
-                selection.selectedTarget.value);
-  state.contextSemanticSelection =
-      cr::resolveCreativeSemanticSelectionSet(
-          appState.facade.document(), selectedObjectIds, semanticPrimary,
-          worldLayout != nullptr ? &worldLayout->source : nullptr);
-
-  const cr::CreativeHierarchySelection hierarchy =
-      cr::resolveCreativeObjectHierarchy(appState.facade.document(),
-                                         selectedObjectIds);
-  const std::span<const cr::CreativeObjectId> capabilityObjectIds =
-      hierarchy.accepted
-          ? std::span<const cr::CreativeObjectId>{hierarchy.objectIds}
-          : std::span<const cr::CreativeObjectId>{selectedObjectIds};
-  for (cr::CreativeObjectId objectId : capabilityObjectIds) {
+  const cr::CreativeSemanticObjectActionFacts actionFacts =
+      resolveCreativeEditorObjectActionFacts(appState, worldLayout);
+  state.contextSelectionCount = actionFacts.selection.selectedCount;
+  state.contextSemanticSelection = actionFacts.selection;
+  state.contextAllUnlocked = actionFacts.allUnlocked;
+  state.contextAllMovable =
+      actionFacts.hierarchyResolved &&
+      !actionFacts.hierarchyObjectIds.empty();
+  state.contextAllResettable = state.contextAllMovable;
+  for (cr::CreativeObjectId objectId : actionFacts.hierarchyObjectIds) {
     const cr::CreativeObject* object = appState.facade.findObject(objectId);
     if (object == nullptr) {
-      state.contextAllUnlocked = false;
       state.contextAllMovable = false;
       state.contextAllResettable = false;
       continue;
     }
-    state.contextAllUnlocked =
-        state.contextAllUnlocked &&
-        !cr::creativeObjectEffectivelyLocked(appState.facade.document(),
-                                             object->id);
     state.contextAllMovable =
         state.contextAllMovable &&
         cr::descriptorAllowsMutation(object->kind, cr::CreativeMutationKind::Move);
@@ -265,15 +235,8 @@ void refreshCreativeEditorObjectActionContext(
         cr::descriptorAllowsMutation(object->kind,
                                      cr::CreativeMutationKind::Scale);
   }
-  if (state.contextSelectionCount == 0U) {
-    state.contextAllUnlocked = false;
-    state.contextAllMovable = false;
-    state.contextAllResettable = false;
-  }
-  state.contextActionCapabilities =
-      buildCreativeEditorObjectActionCapabilities(
-          state.contextSemanticSelection, state.contextAllUnlocked,
-          state.contextWorldLayoutSynchronized);
+  state.contextActionAdmissions =
+      cr::resolveCreativeSemanticObjectActionAdmissions(actionFacts);
 
   const cr::TargetRef primary = selection.selectedTarget;
   if (primary.value == cr::kInvalidId) {
@@ -364,42 +327,42 @@ bool creativeEditorObjectActionEnabled(
   const auto capability =
       [&](cr::CreativeSemanticObjectAction action) {
         return creativeEditorObjectActionCapability(
-            state.contextActionCapabilities, action);
+            state.contextActionAdmissions, action);
       };
   switch (command) {
     case CreativeEditorToolOptionsCommandId::TransformSelection: {
       const CreativeEditorObjectActionCapability transform =
           capability(cr::CreativeSemanticObjectAction::TransformSelection);
       return state.contextSelectionCount > 0U &&
-             state.contextAllMovable && transform.available;
+             state.contextAllMovable && transform.allowed;
     }
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
       const CreativeEditorObjectActionCapability transform =
           capability(cr::CreativeSemanticObjectAction::TransformSelection);
       return state.contextSelectionCount > 0U &&
-             state.contextAllResettable && transform.available &&
+             state.contextAllResettable && transform.allowed &&
              transform.route ==
                  cr::CreativeSemanticObjectActionRoute::Document;
     }
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
       return state.contextSelectionCount > 0U &&
-             capability(cr::CreativeSemanticObjectAction::Duplicate).available;
+             capability(cr::CreativeSemanticObjectAction::Duplicate).allowed;
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::Delete).available;
+             capability(cr::CreativeSemanticObjectAction::Delete).allowed;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::SetVisible).available;
+             capability(cr::CreativeSemanticObjectAction::SetVisible).allowed;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::SetLocked).available;
+             capability(cr::CreativeSemanticObjectAction::SetLocked).allowed;
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
              state.contextAttachmentParentId != cr::kInvalidObjectId &&
              !state.contextAttachmentSocket.empty() &&
              capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .available;
+                 .allowed;
     case CreativeEditorToolOptionsCommandId::ReattachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
@@ -409,15 +372,15 @@ bool creativeEditorObjectActionEnabled(
              state.contextAttachmentAimTargetId !=
                  state.contextPrimaryObjectId &&
              capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .available;
+                 .allowed;
     case CreativeEditorToolOptionsCommandId::GroupSelection:
       return state.contextSelectionCount > 1U &&
              capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .available;
+                 .allowed;
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
       return state.contextGroupId != cr::kInvalidObjectId &&
              capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .available;
+                 .allowed;
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();

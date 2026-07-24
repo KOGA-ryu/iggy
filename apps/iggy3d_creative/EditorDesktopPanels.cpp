@@ -15,6 +15,7 @@
 #include "EditorDesktopWidgets.hpp"
 #include "EditorInteraction.hpp"
 #include "EditorMapValidationPanel.hpp"
+#include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorToolGlyphs.hpp"
@@ -245,8 +246,13 @@ void buildCreativeEditorDesktopMenuBar(
     const CreativeEditorWorldLayoutState* worldLayout,
     bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
-  const cr::CreativeSelectionState& selection = appState.facade.selectionState();
-  const bool hasSelection = cr::selectedTargetCount(selection) > 0U;
+  const CreativeDesktopObjectActionContext& actionContext =
+      refreshCreativeEditorDesktopObjectActionContext(
+          desktopUi, appState, worldLayout);
+  const bool canDuplicate = creativeEditorObjectActionAvailable(
+      actionContext.admissions, cr::CreativeSemanticObjectAction::Duplicate);
+  const bool canDelete = creativeEditorObjectActionAvailable(
+      actionContext.admissions, cr::CreativeSemanticObjectAction::Delete);
   const bool sourceSynchronized =
       worldLayout == nullptr ||
       worldLayout->revision == worldLayout->generatedRevision;
@@ -295,10 +301,12 @@ void buildCreativeEditorDesktopMenuBar(
         commands.push(CreativeDesktopCommandId::Redo);
       }
       ImGui::Separator();
-      if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection)) {
+      if (ImGui::MenuItem("Duplicate", "Ctrl+D", false,
+                          !playModeActive && canDuplicate)) {
         commands.push(CreativeDesktopCommandId::DuplicateSelection);
       }
-      if (ImGui::MenuItem("Delete", "Del", false, hasSelection)) {
+      if (ImGui::MenuItem("Delete", "Del", false,
+                          !playModeActive && canDelete)) {
         commands.push(CreativeDesktopCommandId::DeleteSelection);
       }
       ImGui::EndMenu();
@@ -546,8 +554,9 @@ void buildCreativeEditorDesktopPanels(
     // Project / Outliner (left).
     if (desktopUi.showOutliner) {
       if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
-        buildCreativeEditorDesktopOutlinerPanel(desktopUi, appState,
-                                                playModeActive, input, commands);
+        buildCreativeEditorDesktopOutlinerPanel(
+            desktopUi, appState, &editor.worldLayout, playModeActive, input,
+            commands);
       }
       ImGui::End();
     }

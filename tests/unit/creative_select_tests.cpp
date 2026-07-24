@@ -154,6 +154,34 @@ bool updatingCandidateDoesNotMutateSelected() {
                 "candidate updates candidate");
 }
 
+bool selectionRevisionTracksCommittedIdentityOnly() {
+  cr::CreativeSelectionState state = cr::makeDefaultCreativeSelectionState();
+  const std::uint64_t initialRevision = state.selectionRevision;
+  const cr::CreativeSelectionReceipt candidate =
+      cr::updateSelectionCandidate(state, target(9));
+  const std::uint64_t candidateRevision = state.selectionRevision;
+  const std::array firstTargets{target(1), target(2)};
+  const cr::CreativeSelectionReceipt first =
+      cr::setSelectedTargets(state, firstTargets, target(2));
+  const std::uint64_t firstRevision = state.selectionRevision;
+  const cr::CreativeSelectionReceipt unchanged =
+      cr::setSelectedTargets(state, firstTargets, target(2));
+  const std::uint64_t unchangedRevision = state.selectionRevision;
+  const std::array replacementTargets{target(1), target(3)};
+  const cr::CreativeSelectionReceipt replacement =
+      cr::setSelectedTargets(state, replacementTargets, target(3));
+
+  return expect(candidate.changed && candidateRevision == initialRevision,
+                "candidate changes do not consume a selection revision") &&
+         expect(first.changed && firstRevision == initialRevision + 1U,
+                "first committed selection advances revision") &&
+         expect(!unchanged.changed && unchangedRevision == firstRevision,
+                "identical committed selection remains unchanged") &&
+         expect(replacement.changed &&
+                    state.selectionRevision == initialRevision + 2U,
+                "same-count identity replacement advances revision");
+}
+
 bool applyingSelectObjectCandidateSelectsTarget() {
   cr::CreativeSelectionState state = cr::makeDefaultCreativeSelectionState();
   const cr::CreativeSelectionReceipt receipt =
@@ -483,6 +511,79 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
                 "missing members fail the complete requested set closed");
 }
 
+bool semanticActionDescriptorsCoverTheClosedActionSet() {
+  using Action = cr::CreativeSemanticObjectAction;
+  using Effect = cr::CreativeSemanticObjectActionEffect;
+  using LockPolicy = cr::CreativeSemanticObjectActionLockPolicy;
+  struct Expected {
+    Action action = Action::Count;
+    std::string_view id;
+    Effect effect = Effect::ReadOnly;
+    LockPolicy lockPolicy = LockPolicy::Ignore;
+  };
+  constexpr std::array expected{
+      Expected{Action::Inspect, "inspect", Effect::ReadOnly,
+               LockPolicy::Ignore},
+      Expected{Action::Copy, "copy", Effect::ReadOnly,
+               LockPolicy::Ignore},
+      Expected{Action::Duplicate, "duplicate", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::Delete, "delete", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::Cut, "cut", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::Rename, "rename", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::SetVisible, "set_visible", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::SetLocked, "set_locked", Effect::Mutation,
+               LockPolicy::Ignore},
+      Expected{Action::TransformSelection, "transform_selection",
+               Effect::Mutation, LockPolicy::RequireUnlocked},
+      Expected{Action::SetTransform, "set_transform", Effect::Mutation,
+               LockPolicy::RequireUnlocked},
+      Expected{Action::StructuralMutation, "structural_mutation",
+               Effect::Mutation, LockPolicy::RequireUnlocked},
+  };
+  bool ok = expect(
+      expected.size() == cr::kCreativeSemanticObjectActionAdmissionCount &&
+          cr::kCreativeSemanticObjectActionDescriptors.size() ==
+              expected.size(),
+      "semantic action descriptor table covers every closed action");
+  for (std::size_t index = 0U; index < expected.size(); ++index) {
+    const Expected& want = expected[index];
+    const cr::CreativeSemanticObjectActionDescriptor& descriptor =
+        cr::kCreativeSemanticObjectActionDescriptors[index];
+    ok = expect(
+             descriptor.action == static_cast<Action>(index) &&
+                 descriptor.action == want.action &&
+                 descriptor.id == want.id &&
+                 descriptor.effect == want.effect &&
+                 descriptor.lockPolicy == want.lockPolicy &&
+                 cr::creativeSemanticObjectActionDescriptor(want.action) ==
+                     &descriptor &&
+                 cr::creativeSemanticObjectActionRequiresUnlockedSelection(
+                     want.action) ==
+                     (want.lockPolicy == LockPolicy::RequireUnlocked),
+             "semantic action descriptor matches its closed-enum row") &&
+         ok;
+    for (std::size_t earlier = 0U; earlier < index; ++earlier) {
+      ok = expect(
+               descriptor.id !=
+                   cr::kCreativeSemanticObjectActionDescriptors[earlier].id,
+               "semantic action descriptor ids are unique") &&
+           ok;
+    }
+  }
+  return expect(
+             cr::creativeSemanticObjectActionDescriptor(Action::Count) ==
+                     nullptr &&
+                 !cr::creativeSemanticObjectActionRequiresUnlockedSelection(
+                     Action::Count),
+             "invalid semantic action descriptor lookup fails closed") &&
+         ok;
+}
+
 bool semanticActionPolicyRoutesEveryOwnerClass() {
   using Action = cr::CreativeSemanticObjectAction;
   using Owner = cr::CreativeSemanticSelectionOwner;
@@ -788,6 +889,7 @@ int main() {
                   clearingEmptySelectionIsNoChange() &&
                   clearingNonEmptySelectionClearsCandidate() &&
                   updatingCandidateDoesNotMutateSelected() &&
+                  selectionRevisionTracksCommittedIdentityOnly() &&
                   applyingSelectObjectCandidateSelectsTarget() &&
                   invalidSelectObjectCandidateClearsSelection() &&
                   nonSelectionIntentIsNoOp() &&
@@ -796,6 +898,7 @@ int main() {
                   semanticResolutionReportsInheritedInspectionFacts() &&
                   semanticResolutionPreservesNestedRecipeAncestry() &&
                   semanticSetResolutionFindsTheDeepestSharedOwner() &&
+                  semanticActionDescriptorsCoverTheClosedActionSet() &&
                   semanticActionPolicyRoutesEveryOwnerClass() &&
                   structuralMutationAdmissionIsExplicitAndFailClosed() &&
                   orphanedGeneratedOutputFailsClosed();

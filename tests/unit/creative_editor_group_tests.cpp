@@ -34,7 +34,7 @@ bool expect(bool condition, std::string_view message) {
 bool capabilityAvailabilityMatches(
     const app::CreativeEditorObjectActionCapabilities& capabilities,
     const std::array<bool,
-                     app::kCreativeEditorObjectActionCapabilityCount>&
+                     cr::kCreativeSemanticObjectActionAdmissionCount>&
         expected,
     std::string_view message) {
   for (std::size_t index = 0U; index < expected.size(); ++index) {
@@ -47,6 +47,37 @@ bool capabilityAvailabilityMatches(
     }
   }
   return true;
+}
+
+cr::CreativeSemanticObjectActionAdmissions actionAdmissionsFor(
+    const cr::CreativeSemanticSelectionSetResolution& selection,
+    bool allUnlocked,
+    bool worldLayoutSynchronized) {
+  cr::CreativeSemanticObjectActionFacts facts;
+  facts.requested = true;
+  facts.selectionResolved = selection.accepted;
+  facts.hierarchyResolved = true;
+  facts.allUnlocked = allUnlocked;
+  facts.worldLayoutSynchronized = worldLayoutSynchronized;
+  facts.selection = selection;
+  facts.reasonCode = selection.reasonCode;
+  return cr::resolveCreativeSemanticObjectActionAdmissions(facts);
+}
+
+cr::CreativeSemanticObjectActionAdmissions actionAdmissionsFor(
+    const cr::CreativeSemanticSelectionResolution& selection,
+    bool allUnlocked,
+    bool worldLayoutSynchronized) {
+  cr::CreativeSemanticObjectActionFacts facts;
+  facts.requested = true;
+  facts.selectionResolved = selection.accepted;
+  facts.hierarchyResolved = true;
+  facts.hasSingleSelection = selection.accepted;
+  facts.allUnlocked = allUnlocked;
+  facts.worldLayoutSynchronized = worldLayoutSynchronized;
+  facts.singleSelection = selection;
+  facts.reasonCode = selection.reasonCode;
+  return cr::resolveCreativeSemanticObjectActionAdmissions(facts);
 }
 
 bool creativePathPointsExactlyEqual(
@@ -655,7 +686,7 @@ bool objectActionsInspectCompleteGroupCapability() {
 bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
   using Action = cr::CreativeSemanticObjectAction;
   constexpr std::size_t count =
-      app::kCreativeEditorObjectActionCapabilityCount;
+      cr::kCreativeSemanticObjectActionAdmissionCount;
   const auto setExpected = [](std::initializer_list<Action> available) {
     std::array<bool, count> expected{};
     for (Action action : available) {
@@ -673,9 +704,9 @@ bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
   authored.resolvedCount = 1U;
   authored.authoredOwnerCount = 1U;
   const app::CreativeEditorObjectActionCapabilities authoredUnlocked =
-      app::buildCreativeEditorObjectActionCapabilities(authored, true, true);
+      actionAdmissionsFor(authored, true, true);
   const app::CreativeEditorObjectActionCapabilities authoredLocked =
-      app::buildCreativeEditorObjectActionCapabilities(authored, false, true);
+      actionAdmissionsFor(authored, false, true);
   const std::array<bool, count> allAuthored = setExpected(
       {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
        Action::Cut, Action::Rename, Action::SetVisible, Action::SetLocked,
@@ -689,7 +720,7 @@ bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
   pattern.authoredOwnerCount = 0U;
   pattern.patternOwnerCount = 1U;
   const app::CreativeEditorObjectActionCapabilities patternUnlocked =
-      app::buildCreativeEditorObjectActionCapabilities(pattern, true, true);
+      actionAdmissionsFor(pattern, true, true);
   const std::array<bool, count> expectedPattern = setExpected(
       {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
        Action::Cut, Action::TransformSelection});
@@ -702,9 +733,9 @@ bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
   generated.commonWorldLayoutSource.table =
       cr::CreativeWorldLayoutTable::Object;
   const app::CreativeEditorObjectActionCapabilities generatedSynchronized =
-      app::buildCreativeEditorObjectActionCapabilities(generated, true, true);
+      actionAdmissionsFor(generated, true, true);
   const app::CreativeEditorObjectActionCapabilities generatedStale =
-      app::buildCreativeEditorObjectActionCapabilities(generated, true, false);
+      actionAdmissionsFor(generated, true, false);
   const std::array<bool, count> expectedGenerated = setExpected(
       {Action::Inspect, Action::Copy, Action::Duplicate, Action::Delete,
        Action::Rename, Action::SetVisible});
@@ -737,7 +768,7 @@ bool objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() {
          expect(staleDuplicate.reasonCode ==
                     "creative_editor_object_action_world_layout_unsynchronized",
                 "stale source capability reports one shared reason") &&
-         expect(!invalid.available &&
+         expect(!invalid.allowed &&
                     invalid.route ==
                         cr::CreativeSemanticObjectActionRoute::Reject,
                 "invalid action lookup fails closed");
@@ -757,15 +788,14 @@ bool objectActionCapabilitiesPinGeneratedAdoptionRoutes() {
         selection.worldLayoutSource.table = table;
         selection.worldLayoutSource.contributorCount = contributors;
         return app::creativeEditorObjectActionCapability(
-            app::buildCreativeEditorObjectActionCapabilities(
-                selection, true, synchronized),
+            actionAdmissionsFor(selection, true, synchronized),
             cr::CreativeSemanticObjectAction::SetTransform);
       };
   const auto supportsAdoption =
       [&](cr::CreativeWorldLayoutTable table, std::size_t contributors) {
         const app::CreativeEditorObjectActionCapability capability =
             transformCapability(table, contributors, true);
-        return capability.available &&
+        return capability.allowed &&
                capability.route ==
                    cr::CreativeSemanticObjectActionRoute::RefineThenAdopt;
       };
@@ -785,7 +815,7 @@ bool objectActionCapabilitiesPinGeneratedAdoptionRoutes() {
                  !supportsAdoption(cr::CreativeWorldLayoutTable::Opening, 1U) &&
                  !supportsAdoption(cr::CreativeWorldLayoutTable::Object, 2U),
              "structural and condensed outputs remain source-owned") &&
-         expect(!staleObject.available &&
+         expect(!staleObject.allowed &&
                     staleObject.route ==
                         cr::CreativeSemanticObjectActionRoute::RefineThenAdopt,
                 "stale source retains its route while disabling adoption");

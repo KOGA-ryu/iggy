@@ -120,12 +120,14 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
     const cr::CreativeObjectId targetObjectId =
         target.voxelHit ? cr::kInvalidObjectId : target.objectId;
     if (targetObjectId != cr::kInvalidObjectId) {
-      const cr::CreativeSemanticObjectActionPolicy deletePolicy =
-          cr::resolveCreativeSemanticObjectAction(
-              cr::resolveCreativeSemanticSelection(
-                  appState.facade.document(), targetObjectId),
-              cr::CreativeSemanticObjectAction::Delete);
-      if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
+      const cr::CreativeSemanticObjectActionAdmission deleteAdmission =
+          cr::resolveCreativeSemanticObjectActionAdmission(
+              appState.facade.document(), targetObjectId,
+              cr::CreativeSemanticObjectAction::Delete,
+              &editor.worldLayout.source,
+              editor.worldLayout.generatedRevision ==
+                  editor.worldLayout.revision);
+      if (!cr::creativeSemanticActionUsesDocumentMutation(deleteAdmission)) {
         rejectMaterialStroke(
             editor, target.objectKind,
             CreativeEditorPlacementRejectionReason::SemanticSourceOwned);

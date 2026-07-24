@@ -29,6 +29,9 @@ struct CreativeSelectionState {
   TargetRef selectedTarget;
   std::vector<TargetRef> selectedTargets;
   TargetRef candidateTarget;
+  // Advances only when the committed selected ids or primary change. Pointer
+  // hover/candidate churn does not invalidate selection-owned UI caches.
+  std::uint64_t selectionRevision = 0U;
 };
 
 struct CreativeSelectionReceipt {

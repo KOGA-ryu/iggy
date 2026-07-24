@@ -772,9 +772,12 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       (state.contextDocumentId != request.appState.facade.document().id() ||
        state.contextDocumentRevision !=
            request.appState.facade.document().revision() ||
+       state.contextSelectionRevision != liveSelection.selectionRevision ||
        state.contextWorldLayoutRevision != request.editor.worldLayout.revision ||
        state.contextWorldLayoutGeneratedRevision !=
            request.editor.worldLayout.generatedRevision ||
+       state.contextWorldLayoutSourceEpoch !=
+           request.editor.worldLayout.sourceEpoch ||
        state.contextPrimaryObjectId != livePrimaryObjectId ||
        state.contextSelectionCount != liveSelectionCount)) {
     refreshCreativeEditorObjectActionContext(

@@ -88,9 +88,14 @@ CreativeSelectionReceipt clearSelection(CreativeSelectionState& state) noexcept 
     return receipt;
   }
 
+  const bool selectedTargetsChanged =
+      isValidTarget(state.selectedTarget) || !state.selectedTargets.empty();
   state.selectedTarget = {};
   state.selectedTargets.clear();
   state.candidateTarget = {};
+  if (selectedTargetsChanged) {
+    ++state.selectionRevision;
+  }
   refreshAfter(receipt, state);
   receipt.changed = true;
   receipt.appliedChange = CreativeSelectionChangeKind::ClearSelection;
@@ -119,6 +124,7 @@ CreativeSelectionReceipt setSelectedTarget(CreativeSelectionState& state,
   if (isValidTarget(target)) {
     state.selectedTargets.push_back(target);
   }
+  ++state.selectionRevision;
   refreshAfter(receipt, state);
   receipt.changed = true;
   receipt.appliedChange = CreativeSelectionChangeKind::SetSelectedTarget;
@@ -172,6 +178,7 @@ CreativeSelectionReceipt setSelectedTargets(
 
   state.selectedTargets = std::move(normalized);
   state.selectedTarget = nextPrimary;
+  ++state.selectionRevision;
   refreshAfter(receipt, state);
   receipt.changed = true;
   receipt.appliedChange = CreativeSelectionChangeKind::ReplaceSelectedTargets;
@@ -214,6 +221,7 @@ CreativeSelectionReceipt toggleSelectedTarget(CreativeSelectionState& state,
     receipt.message = "selected_target_removed";
   }
 
+  ++state.selectionRevision;
   refreshAfter(receipt, state);
   receipt.changed = true;
   receipt.appliedChange = CreativeSelectionChangeKind::ToggleSelectedTarget;
@@ -243,6 +251,7 @@ CreativeSelectionReceipt removeSelectedTarget(CreativeSelectionState& state,
                                ? TargetRef{}
                                : state.selectedTargets.back();
   }
+  ++state.selectionRevision;
   refreshAfter(receipt, state);
   receipt.changed = true;
   receipt.appliedChange = CreativeSelectionChangeKind::RemoveSelectedTarget;

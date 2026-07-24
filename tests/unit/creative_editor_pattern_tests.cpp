@@ -1392,7 +1392,7 @@ bool generatedBuildingTransformRoutesThroughWorldLayoutSource() {
           &editor.worldLayout);
   if (!expect(!staleDirect.accepted &&
                   staleDirect.reasonCode ==
-                      "creative_editor_transform_world_layout_unsynchronized" &&
+                      "creative_editor_object_action_world_layout_unsynchronized" &&
                   !stalePreview &&
                   editor.transform.preflight.reasonCode ==
                       "editor_transform_world_layout_source_unsynchronized",

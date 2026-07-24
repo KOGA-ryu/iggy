@@ -94,14 +94,20 @@ bool applyHistoryDirection(creative::CreativeAppState& appState,
 
 struct CreativeEditorResolvedAction {
   std::vector<creative::CreativeObjectId> objectIds;
-  creative::CreativeSemanticSelectionSetResolution selection;
-  creative::CreativeSemanticObjectActionPolicy policy;
+  creative::CreativeSemanticObjectActionFacts facts;
+  creative::CreativeSemanticObjectActionAdmission admission;
 };
 
 struct CreativeEditorResolvedObjectAction {
-  creative::CreativeSemanticSelectionResolution selection;
-  creative::CreativeSemanticObjectActionPolicy policy;
+  creative::CreativeSemanticObjectActionFacts facts;
+  creative::CreativeSemanticObjectActionAdmission admission;
 };
+
+[[nodiscard]] bool worldLayoutSourceSynchronized(
+    const CreativeEditorWorldLayoutState* worldLayout) noexcept {
+  return worldLayout != nullptr &&
+         worldLayout->generatedRevision == worldLayout->revision;
+}
 
 [[nodiscard]] creative::CreativeDocumentMutationReceipt
 renameDocumentObjectWithUndo(
@@ -160,25 +166,13 @@ setDocumentObjectTransformWithUndo(
       !result.objectIds.empty()) {
     primaryObjectId = result.objectIds.front();
   }
-  result.selection = creative::resolveCreativeSemanticSelectionSet(
+  result.facts = creative::resolveCreativeSemanticObjectActionFacts(
       appState.facade.document(), result.objectIds, primaryObjectId,
-      worldLayout != nullptr ? &worldLayout->source : nullptr);
-  if (action == creative::CreativeSemanticObjectAction::TransformSelection &&
-      worldLayout != nullptr &&
-      result.selection.worldLayoutOwnerCount > 0U &&
-      result.selection.authoredOwnerCount == 0U &&
-      result.selection.patternOwnerCount == 0U) {
-    const creative::CreativeWorldLayoutSourceRef buildingSource =
-        creative::resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
-            appState.facade.document(), result.objectIds,
-            worldLayout->source);
-    if (buildingSource.table ==
-        creative::CreativeWorldLayoutTable::Building) {
-      result.selection.commonWorldLayoutSource = buildingSource;
-    }
-  }
-  result.policy =
-      creative::resolveCreativeSemanticObjectAction(result.selection, action);
+      worldLayout != nullptr ? &worldLayout->source : nullptr,
+      worldLayoutSourceSynchronized(worldLayout));
+  result.admission =
+      creative::resolveCreativeSemanticObjectActionAdmission(
+          result.facts, action);
   return result;
 }
 
@@ -188,18 +182,14 @@ setDocumentObjectTransformWithUndo(
     const CreativeEditorWorldLayoutState* worldLayout,
     creative::CreativeSemanticObjectAction action) {
   CreativeEditorResolvedObjectAction result;
-  result.selection = creative::resolveCreativeSemanticSelection(
+  result.facts = creative::resolveCreativeSemanticObjectActionFacts(
       appState.facade.document(), objectId,
-      worldLayout != nullptr ? &worldLayout->source : nullptr);
-  result.policy =
-      creative::resolveCreativeSemanticObjectAction(result.selection, action);
+      worldLayout != nullptr ? &worldLayout->source : nullptr,
+      worldLayoutSourceSynchronized(worldLayout));
+  result.admission =
+      creative::resolveCreativeSemanticObjectActionAdmission(
+          result.facts, action);
   return result;
-}
-
-[[nodiscard]] bool worldLayoutSourceSynchronized(
-    const CreativeEditorWorldLayoutState* worldLayout) noexcept {
-  return worldLayout != nullptr &&
-         worldLayout->generatedRevision == worldLayout->revision;
 }
 
 [[nodiscard]] CreativeEditorSemanticEditReceipt
@@ -396,22 +386,18 @@ CreativeEditorDeleteReceipt deleteCreativeEditorObjectsWithUndo(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, objectIds, worldLayout,
       creative::CreativeSemanticObjectAction::Delete);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
 
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
-    if (!worldLayoutSourceSynchronized(worldLayout)) {
-      outcome.reasonCode =
-          "creative_editor_delete_world_layout_unsynchronized";
-      return outcome;
-    }
     const CreativeEditorWorldLayoutEditReceipt selected =
         selectCreativeEditorWorldLayoutSource(
-            *worldLayout, action.selection.commonWorldLayoutSource.table,
-            action.selection.commonWorldLayoutSource.index);
+            *worldLayout,
+            action.facts.selection.commonWorldLayoutSource.table,
+            action.facts.selection.commonWorldLayoutSource.index);
     if (!selected.accepted) {
       outcome.reasonCode = selected.reasonCode;
       return outcome;
@@ -426,7 +412,7 @@ CreativeEditorDeleteReceipt deleteCreativeEditorObjectsWithUndo(
     return outcome;
   }
 
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::SemanticDocument) {
     const creative::CreativeSemanticDeleteReceipt deleted =
         deleteSemanticObjectsWithUndo(appState, action.objectIds, source,
@@ -530,30 +516,27 @@ CreativeEditorDuplicateReceipt duplicateCreativeEditorSelectionWithUndo(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, {}, worldLayout,
       creative::CreativeSemanticObjectAction::Duplicate);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
 
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
-    if (!worldLayoutSourceSynchronized(worldLayout)) {
-      outcome.reasonCode =
-          "creative_editor_duplicate_world_layout_unsynchronized";
-      return outcome;
-    }
     const CreativeEditorWorldLayoutEditReceipt selected =
         selectCreativeEditorWorldLayoutSource(
-            *worldLayout, action.selection.commonWorldLayoutSource.table,
-            action.selection.commonWorldLayoutSource.index);
+            *worldLayout,
+            action.facts.selection.commonWorldLayoutSource.table,
+            action.facts.selection.commonWorldLayoutSource.index);
     if (!selected.accepted) {
       outcome.reasonCode = selected.reasonCode;
       return outcome;
     }
     const CreativeEditorWorldLayoutEditReceipt duplicated =
         duplicateCreativeEditorWorldLayoutSource(
-            *worldLayout, action.selection.commonWorldLayoutSource.table,
-            action.selection.commonWorldLayoutSource.index,
+            *worldLayout,
+            action.facts.selection.commonWorldLayoutSource.table,
+            action.facts.selection.commonWorldLayoutSource.index,
             appState.facade.document().gridSettings());
     outcome.accepted = duplicated.accepted;
     outcome.changed = duplicated.changed;
@@ -582,11 +565,11 @@ CreativeEditorSemanticEditReceipt transformCreativeEditorSelectionWithUndo(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, {}, worldLayout,
       creative::CreativeSemanticObjectAction::TransformSelection);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::Document) {
     const creative::CreativeTransformCommandReceipt transformed =
         transformSelectedObjectsWithUndo(appState, history, request, source);
@@ -596,23 +579,18 @@ CreativeEditorSemanticEditReceipt transformCreativeEditorSelectionWithUndo(
     outcome.reasonCode = transformed.message;
     return outcome;
   }
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::PatternRecipe) {
     outcome.reasonCode =
         "creative_editor_transform_pattern_requires_transform_tool";
     return outcome;
   }
-  if (action.policy.route !=
-          creative::CreativeSemanticObjectActionRoute::WorldLayoutSource ||
-      !worldLayoutSourceSynchronized(worldLayout)) {
-    outcome.reasonCode =
-        action.policy.route ==
-                creative::CreativeSemanticObjectActionRoute::WorldLayoutSource
-            ? "creative_editor_transform_world_layout_unsynchronized"
-            : std::string(action.policy.reasonCode);
+  if (action.admission.route !=
+      creative::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
-  if (action.selection.commonWorldLayoutSource.table !=
+  if (action.facts.selection.commonWorldLayoutSource.table !=
           creative::CreativeWorldLayoutTable::Building ||
       request.kind != creative::CreativeTransformCommandKind::RotateYaw ||
       std::fabs(std::fabs(request.yawDegrees) - 90.0) > 1.0e-6) {
@@ -625,7 +603,7 @@ CreativeEditorSemanticEditReceipt transformCreativeEditorSelectionWithUndo(
   const CreativeEditorWorldLayoutEditReceipt selected =
       selectCreativeEditorWorldLayoutSource(
           *worldLayout, creative::CreativeWorldLayoutTable::Building,
-          action.selection.commonWorldLayoutSource.index);
+          action.facts.selection.commonWorldLayoutSource.index);
   if (!selected.accepted) {
     outcome.reasonCode = selected.reasonCode;
     return outcome;
@@ -638,7 +616,8 @@ CreativeEditorSemanticEditReceipt transformCreativeEditorSelectionWithUndo(
                 RotateLeft90;
   const CreativeEditorWorldLayoutEditReceipt rotated =
       rotateCreativeEditorWorldLayoutBuildingSource(
-          *worldLayout, action.selection.commonWorldLayoutSource.index,
+          *worldLayout,
+          action.facts.selection.commonWorldLayoutSource.index,
           operation);
   outcome.accepted = rotated.accepted;
   outcome.changed = rotated.changed;
@@ -659,21 +638,18 @@ CreativeEditorSemanticEditReceipt renameCreativeEditorObjectWithUndo(
   const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
       appState, objectId, worldLayout,
       creative::CreativeSemanticObjectAction::Rename);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
-    if (!worldLayoutSourceSynchronized(worldLayout)) {
-      outcome.reasonCode =
-          "creative_editor_rename_world_layout_unsynchronized";
-      return outcome;
-    }
     const CreativeEditorWorldLayoutEditReceipt renamed =
         renameCreativeEditorWorldLayoutSource(
-            *worldLayout, action.selection.worldLayoutSource.table,
-            action.selection.worldLayoutSource.index, std::move(name));
+            *worldLayout,
+            action.facts.singleSelection.worldLayoutSource.table,
+            action.facts.singleSelection.worldLayoutSource.index,
+            std::move(name));
     outcome.accepted = renamed.accepted;
     outcome.changed = renamed.changed;
     outcome.worldLayoutSourceChanged = renamed.changed;
@@ -703,21 +679,17 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectsVisibleWithUndo(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, objectIds, worldLayout,
       creative::CreativeSemanticObjectAction::SetVisible);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
-  if (action.policy.route ==
+  if (action.admission.route ==
       creative::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
-    if (!worldLayoutSourceSynchronized(worldLayout)) {
-      outcome.reasonCode =
-          "creative_editor_visibility_world_layout_unsynchronized";
-      return outcome;
-    }
     const CreativeEditorWorldLayoutEditReceipt updated =
         setCreativeEditorWorldLayoutSourceVisible(
-            *worldLayout, action.selection.commonWorldLayoutSource.table,
-            action.selection.commonWorldLayoutSource.index, visible);
+            *worldLayout,
+            action.facts.selection.commonWorldLayoutSource.table,
+            action.facts.selection.commonWorldLayoutSource.index, visible);
     outcome.accepted = updated.accepted;
     outcome.changed = updated.changed;
     outcome.worldLayoutSourceChanged = updated.changed;
@@ -747,10 +719,10 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectsLockedWithUndo(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, objectIds, worldLayout,
       creative::CreativeSemanticObjectAction::SetLocked);
-  if (!action.policy.allowed ||
-      action.policy.route !=
+  if (!action.admission.allowed ||
+      action.admission.route !=
           creative::CreativeSemanticObjectActionRoute::Document) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
   const CreativeStandaloneBatchEditReceipt updated =
@@ -777,15 +749,8 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectTransformWithUndo(
   const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
       appState, objectId, worldLayout,
       creative::CreativeSemanticObjectAction::SetTransform);
-  if (!action.policy.allowed) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
-    return outcome;
-  }
-  if (action.policy.route ==
-          creative::CreativeSemanticObjectActionRoute::RefineThenAdopt &&
-      !worldLayoutSourceSynchronized(worldLayout)) {
-    outcome.reasonCode =
-        "creative_editor_transform_world_layout_unsynchronized";
+  if (!action.admission.allowed) {
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
   const CreativeStandaloneBatchEditReceipt transformed =
@@ -796,7 +761,7 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectTransformWithUndo(
   outcome.changed = transformed.changed;
   outcome.requiresAdoption =
       transformed.changed &&
-      action.policy.route ==
+      action.admission.route ==
           creative::CreativeSemanticObjectActionRoute::RefineThenAdopt;
   outcome.affectedObjectCount = transformed.affectedObjectCount;
   outcome.reasonCode = transformed.message;
@@ -974,12 +939,12 @@ cutCreativeEditorSelectionToClipboardWithHistory(
   const CreativeEditorResolvedAction action = resolveEditorAction(
       appState, {}, worldLayout,
       creative::CreativeSemanticObjectAction::Cut);
-  if (!action.policy.allowed ||
-      (action.policy.route !=
+  if (!action.admission.allowed ||
+      (action.admission.route !=
            creative::CreativeSemanticObjectActionRoute::Document &&
-       action.policy.route !=
+       action.admission.route !=
            creative::CreativeSemanticObjectActionRoute::SemanticDocument)) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+    outcome.reasonCode = std::string(action.admission.reasonCode);
     return outcome;
   }
   const creative::CreativeClipboardCutReceipt cut =

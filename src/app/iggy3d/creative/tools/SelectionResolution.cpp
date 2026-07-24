@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
 
 #include <algorithm>
@@ -8,6 +9,12 @@
 
 namespace iggy3d::creative {
 namespace {
+
+[[nodiscard]] constexpr bool actionNeedsSynchronizedWorldLayout(
+    CreativeSemanticObjectActionRoute route) noexcept {
+  return route == CreativeSemanticObjectActionRoute::WorldLayoutSource ||
+         route == CreativeSemanticObjectActionRoute::RefineThenAdopt;
+}
 
 [[nodiscard]] CreativeWorldLayoutSourceRef
 resolveCompleteWorldLayoutBuildingSource(
@@ -491,6 +498,185 @@ CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(
   }
   return resolveCreativeSemanticObjectAction(
       owner, action, selection.commonWorldLayoutSource.table);
+}
+
+CreativeSemanticObjectActionFacts resolveCreativeSemanticObjectActionFacts(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    CreativeObjectId primaryObjectId,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized) {
+  CreativeSemanticObjectActionFacts facts;
+  facts.requested = true;
+  facts.worldLayoutSynchronized =
+      worldLayout != nullptr && worldLayoutSynchronized;
+  facts.selection = resolveCreativeSemanticSelectionSet(
+      document, objectIds, primaryObjectId, worldLayout);
+  if (!facts.selection.accepted) {
+    facts.failedObjectId = facts.selection.primaryObjectId;
+    facts.reasonCode = facts.selection.reasonCode;
+    return facts;
+  }
+  facts.selectionResolved = true;
+
+  if (objectIds.size() == 1U) {
+    facts.singleSelection =
+        resolveCreativeSemanticSelection(document, objectIds.front(), worldLayout);
+    facts.hasSingleSelection = facts.singleSelection.accepted;
+    if (!facts.hasSingleSelection) {
+      facts.selectionResolved = false;
+      facts.failedObjectId = objectIds.front();
+      facts.reasonCode = facts.singleSelection.reasonCode;
+      return facts;
+    }
+  }
+
+  const bool onlyWorldLayoutOwned =
+      facts.selection.worldLayoutOwnerCount > 0U &&
+      facts.selection.authoredOwnerCount == 0U &&
+      facts.selection.patternOwnerCount == 0U;
+  if (worldLayout != nullptr && onlyWorldLayoutOwned) {
+    facts.completeWorldLayoutBuildingSource =
+        resolveCompleteWorldLayoutBuildingSource(
+            document, objectIds, *worldLayout);
+  }
+
+  const CreativeHierarchySelection hierarchy =
+      resolveCreativeObjectHierarchy(document, objectIds);
+  if (!hierarchy.accepted) {
+    facts.failedObjectId = hierarchy.missingObjectId;
+    facts.reasonCode = hierarchy.reasonCode;
+    return facts;
+  }
+  facts.hierarchyResolved = true;
+  facts.hierarchyObjectIds = hierarchy.objectIds;
+  facts.allUnlocked = true;
+  for (CreativeObjectId objectId : facts.hierarchyObjectIds) {
+    if (creativeObjectEffectivelyLocked(document, objectId)) {
+      facts.allUnlocked = false;
+      facts.failedObjectId = objectId;
+      break;
+    }
+  }
+  facts.reasonCode = "creative_semantic_action_facts_ready";
+  return facts;
+}
+
+CreativeSemanticObjectActionFacts resolveCreativeSemanticObjectActionFacts(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized) {
+  const std::array objectIds{objectId};
+  return resolveCreativeSemanticObjectActionFacts(
+      document, objectIds, objectId, worldLayout, worldLayoutSynchronized);
+}
+
+CreativeSemanticObjectActionAdmission
+resolveCreativeSemanticObjectActionAdmission(
+    const CreativeSemanticObjectActionFacts& facts,
+    CreativeSemanticObjectAction action) noexcept {
+  CreativeSemanticObjectActionAdmission admission;
+  admission.requested = true;
+  admission.action = action;
+  admission.failedObjectId = facts.failedObjectId;
+  if (action >= CreativeSemanticObjectAction::Count) {
+    admission.status =
+        CreativeSemanticObjectActionAdmissionStatus::OwnershipRejected;
+    admission.reasonCode = "creative_semantic_action_invalid";
+    return admission;
+  }
+  if (!facts.selectionResolved) {
+    admission.status =
+        CreativeSemanticObjectActionAdmissionStatus::InvalidSelection;
+    admission.reasonCode = facts.reasonCode;
+    return admission;
+  }
+
+  CreativeSemanticObjectActionPolicy policy;
+  if (action == CreativeSemanticObjectAction::TransformSelection &&
+      facts.completeWorldLayoutBuildingSource.table ==
+          CreativeWorldLayoutTable::Building) {
+    policy = resolveCreativeSemanticObjectAction(
+        CreativeSemanticSelectionOwner::WorldLayoutSource, action,
+        facts.completeWorldLayoutBuildingSource.table);
+  } else {
+    policy = facts.hasSingleSelection
+                 ? resolveCreativeSemanticObjectAction(facts.singleSelection,
+                                                      action)
+                 : resolveCreativeSemanticObjectAction(facts.selection, action);
+  }
+  admission.route = policy.route;
+  admission.reasonCode = policy.reasonCode;
+  if (!policy.allowed) {
+    admission.status =
+        CreativeSemanticObjectActionAdmissionStatus::OwnershipRejected;
+    return admission;
+  }
+  if (actionNeedsSynchronizedWorldLayout(policy.route) &&
+      !facts.worldLayoutSynchronized) {
+    admission.status =
+        CreativeSemanticObjectActionAdmissionStatus::
+            WorldLayoutUnsynchronized;
+    admission.reasonCode =
+        "creative_editor_object_action_world_layout_unsynchronized";
+    return admission;
+  }
+  if (creativeSemanticObjectActionRequiresUnlockedSelection(action)) {
+    if (!facts.hierarchyResolved) {
+      admission.status =
+          CreativeSemanticObjectActionAdmissionStatus::InvalidSelection;
+      admission.reasonCode = facts.reasonCode;
+      return admission;
+    }
+    if (!facts.allUnlocked) {
+      admission.status =
+          CreativeSemanticObjectActionAdmissionStatus::SelectionLocked;
+      admission.reasonCode =
+          "creative_editor_object_action_selection_locked";
+      return admission;
+    }
+  }
+
+  admission.allowed = true;
+  admission.status = CreativeSemanticObjectActionAdmissionStatus::Ready;
+  return admission;
+}
+
+CreativeSemanticObjectActionAdmission
+resolveCreativeSemanticObjectActionAdmission(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeSemanticObjectAction action,
+    const CreativeWorldLayout* worldLayout,
+    bool worldLayoutSynchronized) {
+  return resolveCreativeSemanticObjectActionAdmission(
+      resolveCreativeSemanticObjectActionFacts(
+          document, objectId, worldLayout, worldLayoutSynchronized),
+      action);
+}
+
+CreativeSemanticObjectActionAdmissions
+resolveCreativeSemanticObjectActionAdmissions(
+    const CreativeSemanticObjectActionFacts& facts) noexcept {
+  CreativeSemanticObjectActionAdmissions admissions;
+  for (std::size_t index = 0U;
+       index < kCreativeSemanticObjectActionAdmissionCount; ++index) {
+    admissions.actions[index] =
+        resolveCreativeSemanticObjectActionAdmission(
+            facts, static_cast<CreativeSemanticObjectAction>(index));
+  }
+  return admissions;
+}
+
+CreativeSemanticObjectActionAdmission
+creativeSemanticObjectActionAdmission(
+    const CreativeSemanticObjectActionAdmissions& admissions,
+    CreativeSemanticObjectAction action) noexcept {
+  const std::size_t index = static_cast<std::size_t>(action);
+  return index < admissions.actions.size()
+             ? admissions.actions[index]
+             : CreativeSemanticObjectActionAdmission{};
 }
 
 CreativeStructuralMutationAdmission

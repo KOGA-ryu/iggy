@@ -12,19 +12,28 @@ struct CreativeAuthoredAssetDefinition;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorAuthoredAssetLibrary;
+struct CreativeDesktopObjectActionContext;
+struct CreativeEditorDesktopUiState;
 struct CreativeEditorWorldLayoutState;
 
-// Resolves presentation-time availability from the same semantic policy used
-// by mutation owners. Owners still validate at execution time; this snapshot
-// keeps every UI surface and input hint consistent before dispatch.
-[[nodiscard]] CreativeEditorObjectActionCapabilities
-buildCreativeEditorObjectActionCapabilities(
-    const iggy3d::creative::CreativeSemanticSelectionResolution& selection,
-    bool allUnlocked, bool worldLayoutSynchronized) noexcept;
-[[nodiscard]] CreativeEditorObjectActionCapabilities
-buildCreativeEditorObjectActionCapabilities(
-    const iggy3d::creative::CreativeSemanticSelectionSetResolution& selection,
-    bool allUnlocked, bool worldLayoutSynchronized) noexcept;
+using CreativeEditorObjectActionCapability =
+    iggy3d::creative::CreativeSemanticObjectActionAdmission;
+using CreativeEditorObjectActionCapabilities =
+    iggy3d::creative::CreativeSemanticObjectActionAdmissions;
+
+// Resolves the current Facade selection once for execution hints and every UI
+// surface. Selection identity, hierarchy locks, ownership, and source freshness
+// are carried together so callers cannot reconstruct only part of admission.
+[[nodiscard]] iggy3d::creative::CreativeSemanticObjectActionFacts
+resolveCreativeEditorObjectActionFacts(
+    const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout = nullptr);
+
+[[nodiscard]] const CreativeDesktopObjectActionContext&
+refreshCreativeEditorDesktopObjectActionContext(
+    CreativeEditorDesktopUiState& desktopUi,
+    const iggy3d::creative::CreativeAppState& appState,
+    const CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 [[nodiscard]] CreativeEditorObjectActionCapability
 creativeEditorObjectActionCapability(

@@ -304,12 +304,13 @@ void applyRemoval(cr::CreativeAppState& appState,
     stroke.capacityReached = true;
     return;
   }
-  const cr::CreativeSemanticObjectActionPolicy deletePolicy =
-      cr::resolveCreativeSemanticObjectAction(
-          cr::resolveCreativeSemanticSelection(appState.facade.document(),
-                                               rootId),
-          cr::CreativeSemanticObjectAction::Delete);
-  if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
+  const cr::CreativeSemanticObjectActionAdmission deleteAdmission =
+      cr::resolveCreativeSemanticObjectActionAdmission(
+          appState.facade.document(), rootId,
+          cr::CreativeSemanticObjectAction::Delete,
+          &editor.worldLayout.source,
+          editor.worldLayout.generatedRevision == editor.worldLayout.revision);
+  if (!cr::creativeSemanticActionUsesDocumentMutation(deleteAdmission)) {
     setCreativeEditorPlacementRejectionFeedback(
         editor.interaction, editor.frameIndex,
         cr::CreativeObjectKind::PrefabInstance, {},

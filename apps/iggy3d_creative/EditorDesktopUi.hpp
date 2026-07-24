@@ -9,6 +9,7 @@
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "render/FrameInput.hpp"
 
@@ -33,9 +34,36 @@ struct CreativeDesktopOutlinerState {
   std::vector<std::size_t> filteredRows;
   std::string appliedQuery;
   bool filteredRowsValid = false;
+  // Row-action admission is revision-owned just like the hierarchy model.
+  // Rebuilding it may inspect descendants, so idle frames reuse this cache.
+  std::vector<iggy3d::creative::CreativeSemanticObjectActionAdmissions>
+      rowActionAdmissions;
+  std::uint64_t actionWorldLayoutRevision = 0U;
+  std::uint64_t actionWorldLayoutGeneratedRevision = 0U;
+  std::uint64_t actionWorldLayoutSourceEpoch = 0U;
+  bool actionWorldLayoutAvailable = false;
+  bool rowActionAdmissionsValid = false;
   std::array<char, 128> searchBuffer{};
   iggy3d::creative::CreativeObjectId selectionAnchor =
       iggy3d::creative::kInvalidObjectId;
+};
+
+// One revision-owned semantic action snapshot shared by the menu and
+// Inspector. This prevents presentation surfaces from independently walking
+// the same selected hierarchy every frame.
+struct CreativeDesktopObjectActionContext {
+  iggy3d::creative::CreativeDocumentId documentId =
+      iggy3d::creative::kInvalidDocumentId;
+  std::uint64_t documentRevision = 0U;
+  std::uint64_t selectionRevision = 0U;
+  std::uint64_t worldLayoutRevision = 0U;
+  std::uint64_t worldLayoutGeneratedRevision = 0U;
+  std::uint64_t worldLayoutSourceEpoch = 0U;
+  std::uint64_t rebuildCount = 0U;
+  bool worldLayoutAvailable = false;
+  bool valid = false;
+  iggy3d::creative::CreativeSemanticObjectActionFacts facts;
+  iggy3d::creative::CreativeSemanticObjectActionAdmissions admissions;
 };
 
 // World Layout's source tree is a transient revision-owned projection. Search
@@ -208,6 +236,7 @@ struct CreativeEditorDesktopUiState {
 
   // UI-4A Project/Inspector transient state (caches + drafts only).
   CreativeDesktopOutlinerState outliner;
+  CreativeDesktopObjectActionContext objectActionContext;
   CreativeDesktopWorldLayoutHierarchyState worldLayoutHierarchy;
   CreativeDesktopInspectorDraft inspectorDraft;
 

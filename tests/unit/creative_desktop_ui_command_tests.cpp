@@ -4,6 +4,7 @@
 #include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
+#include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorState.hpp"
 #include "EditorWorldLayout.hpp"
@@ -3454,6 +3455,14 @@ bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
       app::CreativeDesktopCommandId::SelectObjects, context,
       app::CreativeDesktopSelectPayload{{directRoomObjectId},
                                         directRoomObjectId});
+  const std::uint64_t documentRevisionBeforeRejectedDelete =
+      appState.facade.document().revision();
+  const std::uint64_t worldLayoutRevisionBeforeRejectedDelete =
+      editor.worldLayout.revision;
+  const std::size_t roomCountBeforeRejectedDelete =
+      editor.worldLayout.source.rooms.size();
+  const auto rejectedDelete =
+      dispatchOne(app::CreativeDesktopCommandId::DeleteSelection, context);
   const cr::CreativeObject* directRoomObject =
       appState.facade.findObject(directRoomObjectId);
   const bool hiddenLockedRemainsInspectable =
@@ -3469,13 +3478,89 @@ bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
       editor.worldLayout.selection.kind ==
           app::CreativeEditorWorldLayoutSelectionKind::Room &&
       editor.worldLayout.selection.index == 0U;
+  const bool lockedGeneratedDeleteFailsBeforeMutation =
+      !rejectedDelete.accepted && !rejectedDelete.changed &&
+      rejectedDelete.message ==
+          "creative_editor_object_action_selection_locked" &&
+      appState.facade.document().revision() ==
+          documentRevisionBeforeRejectedDelete &&
+      editor.worldLayout.revision ==
+          worldLayoutRevisionBeforeRejectedDelete &&
+      editor.worldLayout.source.rooms.size() ==
+          roomCountBeforeRejectedDelete &&
+      appState.facade.findObject(directRoomObjectId) != nullptr;
 
   return expect(roomSynchronized,
                 "Outliner object selection synchronizes its common 2D room") &&
          expect(mixedClearsSource,
                 "mixed authored and generated selection clears 2D source") &&
          expect(hiddenLockedRemainsInspectable,
-                "hidden locked generated output remains Outliner-selectable");
+                "hidden locked generated output remains Outliner-selectable") &&
+         expect(lockedGeneratedDeleteFailsBeforeMutation,
+                "locked generated output rejects deletion before either owner "
+                "mutates");
+}
+
+bool desktopActionContextCachesAndTracksSelectionIdentity() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Desktop Action Context");
+  static_cast<void>(document.assignId(444U));
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Unlocked";
+  const cr::CreativeObjectId unlocked = document.createObject(request).objectId;
+  request.name = "Locked";
+  request.locked = true;
+  request.hasLockedOverride = true;
+  const cr::CreativeObjectId locked = document.createObject(request).objectId;
+
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const std::array firstSelection{unlocked};
+  static_cast<void>(appState.facade.selectTargets(firstSelection, unlocked));
+  const app::CreativeDesktopObjectActionContext& first =
+      app::refreshCreativeEditorDesktopObjectActionContext(
+          editor.desktopUi, appState, &editor.worldLayout);
+  const bool firstAllowsDelete =
+      cr::creativeSemanticObjectActionAdmission(
+          first.admissions, cr::CreativeSemanticObjectAction::Delete)
+          .allowed;
+  const std::uint64_t firstBuildCount = first.rebuildCount;
+  const app::CreativeDesktopObjectActionContext& reused =
+      app::refreshCreativeEditorDesktopObjectActionContext(
+          editor.desktopUi, appState, &editor.worldLayout);
+  const std::uint64_t reusedBuildCount = reused.rebuildCount;
+
+  const std::array replacementSelection{locked};
+  static_cast<void>(
+      appState.facade.selectTargets(replacementSelection, locked));
+  const app::CreativeDesktopObjectActionContext& replaced =
+      app::refreshCreativeEditorDesktopObjectActionContext(
+          editor.desktopUi, appState, &editor.worldLayout);
+  const cr::CreativeSemanticObjectActionAdmission lockedDelete =
+      cr::creativeSemanticObjectActionAdmission(
+          replaced.admissions, cr::CreativeSemanticObjectAction::Delete);
+  const std::uint64_t replacementBuildCount = replaced.rebuildCount;
+
+  ++editor.worldLayout.sourceEpoch;
+  const app::CreativeDesktopObjectActionContext& sourceMoved =
+      app::refreshCreativeEditorDesktopObjectActionContext(
+          editor.desktopUi, appState, &editor.worldLayout);
+
+  return expect(firstAllowsDelete && firstBuildCount == 1U &&
+                    reusedBuildCount == firstBuildCount,
+                "unchanged desktop action context reuses one semantic snapshot") &&
+         expect(!lockedDelete.allowed &&
+                    lockedDelete.status ==
+                        cr::CreativeSemanticObjectActionAdmissionStatus::
+                            SelectionLocked &&
+                    replacementBuildCount == firstBuildCount + 1U,
+                "same-count selection identity change rebuilds lock admission") &&
+         expect(sourceMoved.rebuildCount == replacementBuildCount + 1U &&
+                    sourceMoved.worldLayoutSourceEpoch ==
+                        editor.worldLayout.sourceEpoch,
+                "World Layout source epoch invalidates desktop admission");
 }
 
 bool worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() {
@@ -8436,6 +8521,7 @@ int main() {
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() && ok;
   ok = objectSelectionSynchronizesGeneratedSourcesAcrossViews() && ok;
+  ok = desktopActionContextCachesAndTracksSelectionIdentity() && ok;
   ok = worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() && ok;
   ok = worldLayoutStructuralCommandsRouteThroughDispatcher() && ok;
   ok = synchronizedStructuralPreviewsShareInspectionSource() && ok;

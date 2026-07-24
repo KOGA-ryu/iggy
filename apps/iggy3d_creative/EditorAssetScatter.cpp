@@ -543,12 +543,14 @@ void applyScatterRemoval(cr::CreativeAppState& appState,
     return;
   }
   if (target.objectHit) {
-    const cr::CreativeSemanticObjectActionPolicy deletePolicy =
-        cr::resolveCreativeSemanticObjectAction(
-            cr::resolveCreativeSemanticSelection(appState.facade.document(),
-                                                 target.objectId),
-            cr::CreativeSemanticObjectAction::Delete);
-    if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
+    const cr::CreativeSemanticObjectActionAdmission deleteAdmission =
+        cr::resolveCreativeSemanticObjectActionAdmission(
+            appState.facade.document(), target.objectId,
+            cr::CreativeSemanticObjectAction::Delete,
+            &editor.worldLayout.source,
+            editor.worldLayout.generatedRevision ==
+                editor.worldLayout.revision);
+    if (!cr::creativeSemanticActionUsesDocumentMutation(deleteAdmission)) {
       rejectScatter(
           editor, target.objectKind, {},
           CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
