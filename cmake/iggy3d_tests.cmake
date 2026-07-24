@@ -643,8 +643,16 @@ set_tests_properties(creative_viewport_layout_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;render;frame_input;iggy3d")
 
+set(IGGY3D_CREATIVE_DESKTOP_COMMAND_TEST_SOURCES
+  tests/unit/creative_desktop_document_command_tests.cpp
+  tests/unit/creative_desktop_object_command_tests.cpp
+  tests/unit/creative_desktop_world_layout_structure_command_tests.cpp
+  tests/unit/creative_desktop_world_layout_generated_command_tests.cpp
+  tests/unit/creative_desktop_world_layout_tool_command_tests.cpp)
+
 add_executable(creative_desktop_ui_command_tests
-  tests/unit/creative_desktop_ui_command_tests.cpp)
+  tests/unit/creative_desktop_command_test_aggregate.cpp
+  ${IGGY3D_CREATIVE_DESKTOP_COMMAND_TEST_SOURCES})
 target_link_libraries(creative_desktop_ui_command_tests PRIVATE
   iggy3d_creative_app)
 iggy3d_apply_warnings(creative_desktop_ui_command_tests)
@@ -653,6 +661,43 @@ add_test(NAME creative_desktop_ui_command_tests
 set_tests_properties(creative_desktop_ui_command_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;desktop;command;iggy3d")
+
+function(iggy3d_add_creative_desktop_command_test target source runner)
+  add_executable(${target}
+    tests/unit/creative_desktop_command_test_main.cpp
+    ${source})
+  target_compile_definitions(${target} PRIVATE
+    CREATIVE_DESKTOP_COMMAND_TEST_RUNNER=${runner})
+  target_link_libraries(${target} PRIVATE
+    iggy3d_creative_app)
+  iggy3d_apply_warnings(${target})
+  add_test(NAME ${target}
+    COMMAND "$<TARGET_FILE:${target}>")
+  set_tests_properties(${target} PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "unit;app;creative;editor;desktop;command;focused;iggy3d")
+endfunction()
+
+iggy3d_add_creative_desktop_command_test(
+  creative_desktop_document_command_tests
+  tests/unit/creative_desktop_document_command_tests.cpp
+  runCreativeDesktopDocumentCommandTests)
+iggy3d_add_creative_desktop_command_test(
+  creative_desktop_object_command_tests
+  tests/unit/creative_desktop_object_command_tests.cpp
+  runCreativeDesktopObjectCommandTests)
+iggy3d_add_creative_desktop_command_test(
+  creative_desktop_world_layout_structure_command_tests
+  tests/unit/creative_desktop_world_layout_structure_command_tests.cpp
+  runCreativeDesktopWorldLayoutStructureCommandTests)
+iggy3d_add_creative_desktop_command_test(
+  creative_desktop_world_layout_generated_command_tests
+  tests/unit/creative_desktop_world_layout_generated_command_tests.cpp
+  runCreativeDesktopWorldLayoutGeneratedCommandTests)
+iggy3d_add_creative_desktop_command_test(
+  creative_desktop_world_layout_tool_command_tests
+  tests/unit/creative_desktop_world_layout_tool_command_tests.cpp
+  runCreativeDesktopWorldLayoutToolCommandTests)
 
 add_executable(creative_editor_architecture_tests
   tests/unit/creative_editor_architecture_tests.cpp)

@@ -1262,8 +1262,16 @@ tests/unit/creative_connected_fill_tests.cpp	assets-objects
 tests/unit/creative_control_profile_tests.cpp	interaction-controls
 tests/unit/creative_core_tests.cpp	authoring-core
 tests/unit/creative_creator_task_workflow_tests.cpp	authoring-core
+tests/unit/creative_desktop_command_test_aggregate.cpp	editor-shell-ui
+tests/unit/creative_desktop_command_test_main.cpp	editor-shell-ui
+tests/unit/creative_desktop_command_test_runners.hpp	editor-shell-ui
+tests/unit/creative_desktop_command_test_support.hpp	editor-shell-ui
+tests/unit/creative_desktop_document_command_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_model_tests.cpp	editor-shell-ui
-tests/unit/creative_desktop_ui_command_tests.cpp	editor-shell-ui
+tests/unit/creative_desktop_object_command_tests.cpp	editor-shell-ui
+tests/unit/creative_desktop_world_layout_generated_command_tests.cpp	editor-shell-ui
+tests/unit/creative_desktop_world_layout_structure_command_tests.cpp	editor-shell-ui
+tests/unit/creative_desktop_world_layout_tool_command_tests.cpp	editor-shell-ui
 tests/unit/creative_edit_transaction_boundary_tests.cpp	interaction-controls
 tests/unit/creative_edit_transaction_tests.cpp	interaction-controls
 tests/unit/creative_document_create_tests.cpp	authoring-core
