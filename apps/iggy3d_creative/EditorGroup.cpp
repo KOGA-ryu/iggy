@@ -6,10 +6,13 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "EditorEdits.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/assets/AuthoredAsset.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -33,6 +36,62 @@ void selectOnly(cr::Facade& facade, cr::CreativeObjectId objectId) {
   receipt.depthBefore = state.depth;
   receipt.depthAfter = state.depth;
   return receipt;
+}
+
+[[nodiscard]] std::string_view structuralMutationRejectionReason(
+    const cr::CreativeDocument& document,
+    cr::CreativeObjectId objectId) noexcept {
+  const cr::CreativeSemanticSelectionResolution selection =
+      cr::resolveCreativeSemanticSelection(document, objectId);
+  if (!selection.accepted) {
+    return {};
+  }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      cr::resolveCreativeSemanticObjectAction(
+          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
+  return cr::creativeSemanticActionUsesDocumentMutation(policy)
+             ? std::string_view{}
+             : policy.reasonCode;
+}
+
+[[nodiscard]] std::vector<cr::CreativeObjectId> selectedObjectIds(
+    const cr::CreativeSelectionState& selection) {
+  std::vector<cr::CreativeObjectId> objectIds;
+  const std::span<const cr::TargetRef> targets =
+      cr::selectedTargetList(selection);
+  objectIds.reserve(targets.empty() ? 1U : targets.size());
+  for (const cr::TargetRef target : targets) {
+    if (target.value != cr::kInvalidId) {
+      objectIds.push_back(static_cast<cr::CreativeObjectId>(target.value));
+    }
+  }
+  if (objectIds.empty() &&
+      selection.selectedTarget.value != cr::kInvalidId) {
+    objectIds.push_back(static_cast<cr::CreativeObjectId>(
+        selection.selectedTarget.value));
+  }
+  return objectIds;
+}
+
+[[nodiscard]] std::string_view selectionStructuralMutationRejectionReason(
+    const cr::CreativeDocument& document,
+    std::span<const cr::CreativeObjectId> objectIds,
+    cr::CreativeObjectId primaryObjectId) noexcept {
+  if (objectIds.empty()) {
+    return {};
+  }
+  const cr::CreativeSemanticSelectionSetResolution selection =
+      cr::resolveCreativeSemanticSelectionSet(document, objectIds,
+                                              primaryObjectId);
+  if (!selection.accepted) {
+    return {};
+  }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      cr::resolveCreativeSemanticObjectAction(
+          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
+  return cr::creativeSemanticActionUsesDocumentMutation(policy)
+             ? std::string_view{}
+             : policy.reasonCode;
 }
 
 }  // namespace
@@ -247,6 +306,45 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
       }
     }
   }
+  const std::vector<cr::CreativeObjectId> selectedIds =
+      selectedObjectIds(selection);
+  std::vector<cr::CreativeObjectId> semanticMutationIds = selectedIds;
+  if (ungroupObjectId != cr::kInvalidObjectId) {
+    semanticMutationIds.clear();
+    semanticMutationIds.push_back(ungroupObjectId);
+    for (const cr::CreativeObject& object :
+         appState.facade.document().objects()) {
+      if (object.parentId == ungroupObjectId) {
+        semanticMutationIds.push_back(object.id);
+      }
+    }
+  }
+  const std::string_view semanticRejection =
+      selectionStructuralMutationRejectionReason(
+          appState.facade.document(), semanticMutationIds,
+          ungroupObjectId != cr::kInvalidObjectId
+              ? ungroupObjectId
+              : primary != nullptr ? primary->id : cr::kInvalidObjectId);
+  if (!semanticRejection.empty()) {
+    cr::CreativeGroupCommandReceipt rejected;
+    rejected.requested = true;
+    rejected.kind = ungroupObjectId != cr::kInvalidObjectId
+                        ? cr::CreativeGroupCommandKind::Ungroup
+                        : cr::CreativeGroupCommandKind::Group;
+    rejected.status = cr::CreativeGroupCommandStatus::MutationRejected;
+    rejected.requestedObjectCount =
+        ungroupObjectId != cr::kInvalidObjectId ? 1U : selectedIds.size();
+    rejected.groupObjectId = ungroupObjectId;
+    rejected.failedObjectId =
+        ungroupObjectId != cr::kInvalidObjectId
+            ? ungroupObjectId
+            : primary != nullptr ? primary->id : cr::kInvalidObjectId;
+    rejected.revisionBefore = appState.facade.document().revision();
+    rejected.revisionAfter = rejected.revisionBefore;
+    rejected.selectionObjectIds = selectedIds;
+    rejected.reasonCode = semanticRejection;
+    return rejected;
+  }
   std::optional<cr::CreativeAuthoringOperationRecord> prefabOperation;
   const cr::CreativeObject* ungroupObject =
       appState.facade.findObject(ungroupObjectId);
@@ -307,6 +405,19 @@ cr::CreativeGroupPivotReceipt setCreativeEditorGroupPivotWithHistory(
     cr::CreativeObjectId groupObjectId,
     cr::CreativeVec3 pivot,
     std::string_view source) {
+  const std::string_view semanticRejection =
+      structuralMutationRejectionReason(appState.facade.document(),
+                                        groupObjectId);
+  if (!semanticRejection.empty()) {
+    cr::CreativeGroupPivotReceipt rejected;
+    rejected.requested = true;
+    rejected.status = cr::CreativeGroupPivotStatus::Rejected;
+    rejected.groupObjectId = groupObjectId;
+    rejected.revisionBefore = appState.facade.document().revision();
+    rejected.revisionAfter = rejected.revisionBefore;
+    rejected.reasonCode = semanticRejection;
+    return rejected;
+  }
   cr::CreativeDocumentHistoryTransaction transaction =
       beginEditTransaction(appState.facade, source);
   cr::CreativeGroupPivotReceipt receipt =

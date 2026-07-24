@@ -8,6 +8,7 @@
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <algorithm>
@@ -879,6 +880,150 @@ bool groupPivotEditsOnePersistentPivotWithoutMovingMembers() {
          ok;
 }
 
+bool generatedGroupMutationsFailClosedBeforeHistory() {
+  cr::CreativeDocument patternDocument =
+      cr::CreativeDocument::create("Pattern Group Rejection");
+  static_cast<void>(patternDocument.assignId(314U));
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Crate;
+  sourceRequest.name = "Pattern Source";
+  const cr::CreativeObjectId sourceId =
+      patternDocument.createObject(sourceRequest).objectId;
+  cr::CreativeDocumentCreateRequest outputRequest;
+  outputRequest.kind = cr::CreativeObjectKind::Crate;
+  outputRequest.name = "Pattern Output A";
+  const cr::CreativeObjectId outputA =
+      patternDocument.createObject(outputRequest).objectId;
+  outputRequest.name = "Pattern Output B";
+  const cr::CreativeObjectId outputB =
+      patternDocument.createObject(outputRequest).objectId;
+  cr::CreativePatternRecipeMutationRequest recipeRequest;
+  recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipeRequest.recipe.sourceObjectIds = {sourceId};
+  recipeRequest.recipe.generatedObjectIds = {outputA, outputB};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      patternDocument.applyPatternRecipeMutation(recipeRequest);
+
+  cr::CreativeAppState patternState;
+  const bool patternInstalled =
+      patternState.facade.installDocument(std::move(patternDocument)).accepted;
+  select(patternState.facade, outputA, false);
+  select(patternState.facade, outputB, true);
+  patternState.history = {};
+  const std::uint64_t patternRevisionBefore =
+      patternState.facade.document().revision();
+  const std::size_t patternObjectCountBefore =
+      patternState.facade.document().objectCount();
+  const cr::CreativeGroupCommandReceipt grouped =
+      app::applyCreativeEditorGroupCommandWithHistory(
+          patternState, "test_pattern_group_rejection");
+
+  cr::CreativeDocument nestedDocument =
+      cr::CreativeDocument::create("Generated Group Child Rejection");
+  static_cast<void>(nestedDocument.assignId(315U));
+  cr::CreativeDocumentCreateRequest nestedGroupRequest;
+  nestedGroupRequest.kind = cr::CreativeObjectKind::Group;
+  nestedGroupRequest.name = "Authored Group";
+  const cr::CreativeDocumentCreateReceipt nestedGroup =
+      nestedDocument.createObject(nestedGroupRequest);
+  cr::CreativeDocumentCreateRequest nestedSourceRequest;
+  nestedSourceRequest.kind = cr::CreativeObjectKind::Crate;
+  nestedSourceRequest.name = "Pattern Seed";
+  const cr::CreativeObjectId nestedSourceId =
+      nestedDocument.createObject(nestedSourceRequest).objectId;
+  cr::CreativeDocumentCreateRequest nestedChildRequest;
+  nestedChildRequest.kind = cr::CreativeObjectKind::Crate;
+  nestedChildRequest.name = "Generated Child";
+  nestedChildRequest.parentId = nestedGroup.objectId;
+  const cr::CreativeObjectId nestedChildId =
+      nestedDocument.createObject(nestedChildRequest).objectId;
+  cr::CreativePatternRecipeMutationRequest nestedRecipeRequest;
+  nestedRecipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  nestedRecipeRequest.recipe.kind =
+      cr::CreativePatternRecipeKind::LinearArray;
+  nestedRecipeRequest.recipe.sourceObjectIds = {nestedSourceId};
+  nestedRecipeRequest.recipe.generatedObjectIds = {nestedChildId};
+  const cr::CreativePatternRecipeMutationReceipt nestedRecipe =
+      nestedDocument.applyPatternRecipeMutation(nestedRecipeRequest);
+  cr::CreativeAppState nestedState;
+  const bool nestedInstalled =
+      nestedState.facade.installDocument(std::move(nestedDocument)).accepted;
+  select(nestedState.facade, nestedChildId, false);
+  nestedState.history = {};
+  const std::uint64_t nestedRevisionBefore =
+      nestedState.facade.document().revision();
+  const cr::CreativeGroupCommandReceipt ungrouped =
+      app::applyCreativeEditorGroupCommandWithHistory(
+          nestedState, "test_generated_child_ungroup_rejection");
+  const cr::CreativeObject* nestedChildAfter =
+      nestedState.facade.findObject(nestedChildId);
+
+  cr::CreativeDocument worldDocument =
+      cr::CreativeDocument::create("World Group Pivot Rejection");
+  static_cast<void>(worldDocument.assignId(316U));
+  cr::CreativeDocumentCreateRequest groupRequest;
+  groupRequest.kind = cr::CreativeObjectKind::Group;
+  groupRequest.name = "Generated Group";
+  groupRequest.transform.position = {2.0, 0.0, 3.0};
+  groupRequest.hasTransformOverride = true;
+  groupRequest.tags = {"creative_world_layout:group_fixture"};
+  const cr::CreativeDocumentCreateReceipt worldGroup =
+      worldDocument.createObject(groupRequest);
+  cr::CreativeAppState worldState;
+  const bool worldInstalled =
+      worldState.facade.installDocument(std::move(worldDocument)).accepted;
+  worldState.history = {};
+  const std::uint64_t worldRevisionBefore =
+      worldState.facade.document().revision();
+  const cr::CreativeGroupPivotReceipt pivoted =
+      app::setCreativeEditorGroupPivotWithHistory(
+          worldState, worldGroup.objectId, {9.0, 4.0, -1.0},
+          "test_world_group_pivot_rejection");
+  const cr::CreativeObject* groupAfter =
+      worldState.facade.findObject(worldGroup.objectId);
+
+  return expect(recipe.accepted && patternInstalled &&
+                    !grouped.accepted && !grouped.changed &&
+                    grouped.status ==
+                        cr::CreativeGroupCommandStatus::MutationRejected &&
+                    grouped.reasonCode ==
+                        "creative_semantic_action_pattern_owned" &&
+                    patternState.facade.document().revision() ==
+                        patternRevisionBefore &&
+                    patternState.facade.document().objectCount() ==
+                        patternObjectCountBefore &&
+                    cr::creativeUndoDepth(patternState.history) == 0U,
+                "pattern outputs reject grouping before history") &&
+         expect(nestedGroup.accepted && nestedRecipe.accepted &&
+                    nestedInstalled && !ungrouped.accepted &&
+                    !ungrouped.changed &&
+                    ungrouped.status ==
+                        cr::CreativeGroupCommandStatus::MutationRejected &&
+                    ungrouped.reasonCode ==
+                        "creative_semantic_action_mixed_ownership" &&
+                    nestedChildAfter != nullptr &&
+                    nestedChildAfter->parentId == nestedGroup.objectId &&
+                    nestedState.facade.findObject(nestedGroup.objectId) !=
+                        nullptr &&
+                    nestedState.facade.document().revision() ==
+                        nestedRevisionBefore &&
+                    cr::creativeUndoDepth(nestedState.history) == 0U,
+                "authored group cannot ungroup a generated child") &&
+         expect(worldGroup.accepted && worldInstalled &&
+                    !pivoted.accepted && !pivoted.changed &&
+                    pivoted.status == cr::CreativeGroupPivotStatus::Rejected &&
+                    pivoted.reasonCode ==
+                        "creative_semantic_action_world_layout_owned" &&
+                    groupAfter != nullptr &&
+                    cr::creativeVec3ExactlyEqual(
+                        groupAfter->transform.position, {2.0, 0.0, 3.0}) &&
+                    worldState.facade.document().revision() ==
+                        worldRevisionBefore &&
+                    cr::creativeUndoDepth(worldState.history) == 0U,
+                "World Layout group pivot rejects before history");
+}
+
 bool groupHierarchyDepthAndInheritedFlagsFailClosed() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Group Hierarchy Laws");
@@ -969,6 +1114,7 @@ int main() {
                  groupToolOptionsEnterFocusAndUngroupWithHistory() &&
                  controllerTransformScalesAGroupAsOneUndoableHierarchy() &&
                  groupPivotEditsOnePersistentPivotWithoutMovingMembers() &&
+                 generatedGroupMutationsFailClosedBeforeHistory() &&
                  groupHierarchyDepthAndInheritedFlagsFailClosed()
              ? EXIT_SUCCESS
              : EXIT_FAILURE;

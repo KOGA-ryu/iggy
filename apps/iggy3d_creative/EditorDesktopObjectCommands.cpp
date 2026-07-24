@@ -8,8 +8,6 @@
 #include "EditorPathEditing.hpp"
 #include "EditorWorldLayout.hpp"
 
-#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
-
 #include <span>
 #include <string>
 
@@ -30,25 +28,6 @@ bool dispatchCreativeDesktopObjectCommand(
         editor.worldLayout, activeAppState.facade.document(),
         activeAppState.facade.selectionState());
   };
-  const auto semanticDocumentMutationAllowed =
-      [&](creative::CreativeObjectId objectId, std::string_view operation) {
-        const creative::CreativeSemanticSelectionResolution selection =
-            creative::resolveCreativeSemanticSelection(
-                activeAppState.facade.document(), objectId,
-                &editor.worldLayout.source);
-        const creative::CreativeSemanticObjectActionPolicy policy =
-            creative::resolveCreativeSemanticObjectAction(
-                selection,
-                creative::CreativeSemanticObjectAction::StructuralMutation);
-        if (policy.allowed &&
-            policy.route ==
-                creative::CreativeSemanticObjectActionRoute::Document) {
-          return true;
-        }
-        result.message = std::string(operation) + ": " +
-                         std::string(policy.reasonCode);
-        return false;
-      };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
       const bool previewWasActive =
@@ -213,12 +192,6 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "set logic link: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->sourceObjectId,
-                                           "set logic link") ||
-          !semanticDocumentMutationAllowed(payload->targetObjectId,
-                                           "set logic link")) {
-        break;
-      }
       const CreativeEditorLogicLinkReceipt receipt =
           setCreativeEditorLogicLink(
               activeAppState, editor.logicLinks, payload->sourceObjectId,
@@ -237,12 +210,6 @@ bool dispatchCreativeDesktopObjectCommand(
       const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
       if (payload == nullptr) {
         result.message = "remove logic link: payload mismatch";
-        break;
-      }
-      if (!semanticDocumentMutationAllowed(payload->sourceObjectId,
-                                           "remove logic link") ||
-          !semanticDocumentMutationAllowed(payload->targetObjectId,
-                                           "remove logic link")) {
         break;
       }
       const CreativeEditorLogicLinkReceipt receipt =
@@ -381,10 +348,6 @@ bool dispatchCreativeDesktopObjectCommand(
       const auto* payload = payloadAs<CreativeDesktopGroupPivotPayload>(command);
       if (payload == nullptr) {
         result.message = "group pivot: payload mismatch";
-        break;
-      }
-      if (!semanticDocumentMutationAllowed(payload->groupObjectId,
-                                           "group pivot")) {
         break;
       }
       const creative::CreativeGroupPivotReceipt receipt =
@@ -557,10 +520,6 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = result.accepted
                              ? "moving platform waypoint selected"
                              : "moving platform waypoint selection rejected";
-        break;
-      }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "moving platform waypoint")) {
         break;
       }
       const CreativeMovingPlatformPathEditReceipt receipt =

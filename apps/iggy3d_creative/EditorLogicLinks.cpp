@@ -7,6 +7,7 @@
 #include "EditorEdits.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -65,6 +66,41 @@ void applySelectedSource(cr::CreativeAppState& appState,
   receipt.targetObjectId = targetObjectId;
   receipt.action = action;
   receipt.reasonCode = state.lastMutation.reasonCode;
+  return receipt;
+}
+
+[[nodiscard]] std::string_view structuralMutationRejectionReason(
+    const cr::CreativeDocument& document,
+    cr::CreativeObjectId objectId) noexcept {
+  const cr::CreativeSemanticSelectionResolution selection =
+      cr::resolveCreativeSemanticSelection(document, objectId);
+  if (!selection.accepted) {
+    return {};
+  }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      cr::resolveCreativeSemanticObjectAction(
+          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
+  return cr::creativeSemanticActionUsesDocumentMutation(policy)
+             ? std::string_view{}
+             : policy.reasonCode;
+}
+
+[[nodiscard]] CreativeEditorLogicLinkReceipt semanticMutationRejection(
+    CreativeEditorLogicLinkState& state,
+    cr::CreativeObjectId sourceObjectId,
+    cr::CreativeObjectId targetObjectId,
+    cr::CreativeLogicLinkAction action,
+    bool sourceRejected,
+    std::string_view reasonCode) noexcept {
+  state.status = sourceRejected ? CreativeEditorLogicLinkStatus::InvalidSource
+                                : CreativeEditorLogicLinkStatus::InvalidTarget;
+  state.lastMutation = {};
+  CreativeEditorLogicLinkReceipt receipt;
+  receipt.status = state.status;
+  receipt.sourceObjectId = sourceObjectId;
+  receipt.targetObjectId = targetObjectId;
+  receipt.action = action;
+  receipt.reasonCode = reasonCode;
   return receipt;
 }
 
@@ -166,7 +202,20 @@ CreativeEditorLogicLinkReceipt setCreativeEditorLogicLink(
     cr::CreativeObjectId targetObjectId,
     cr::CreativeLogicLinkAction action,
     std::string_view source) {
-  syncCreativeEditorLogicLinkState(state, appState.facade.document());
+  const cr::CreativeDocument& document = appState.facade.document();
+  syncCreativeEditorLogicLinkState(state, document);
+  const std::string_view sourceRejection =
+      structuralMutationRejectionReason(document, sourceObjectId);
+  if (!sourceRejection.empty()) {
+    return semanticMutationRejection(
+        state, sourceObjectId, targetObjectId, action, true, sourceRejection);
+  }
+  const std::string_view targetRejection =
+      structuralMutationRejectionReason(document, targetObjectId);
+  if (!targetRejection.empty()) {
+    return semanticMutationRejection(
+        state, sourceObjectId, targetObjectId, action, false, targetRejection);
+  }
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   state.lastMutation = appState.facade.setLogicLink(
@@ -190,6 +239,18 @@ CreativeEditorLogicLinkReceipt removeCreativeEditorLogicLink(
       document.findLogicLink(sourceObjectId, targetObjectId);
   const cr::CreativeLogicLinkAction action =
       existing != nullptr ? existing->action : state.action;
+  const std::string_view sourceRejection =
+      structuralMutationRejectionReason(document, sourceObjectId);
+  if (!sourceRejection.empty()) {
+    return semanticMutationRejection(
+        state, sourceObjectId, targetObjectId, action, true, sourceRejection);
+  }
+  const std::string_view targetRejection =
+      structuralMutationRejectionReason(document, targetObjectId);
+  if (!targetRejection.empty()) {
+    return semanticMutationRejection(
+        state, sourceObjectId, targetObjectId, action, false, targetRejection);
+  }
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
   state.lastMutation =

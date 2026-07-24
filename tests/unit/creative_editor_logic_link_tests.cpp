@@ -8,6 +8,7 @@
 #include "EditorWorldLayoutRoofs.hpp"
 #include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <cmath>
@@ -94,6 +95,98 @@ bool selectionLinkingAndHistoryAreOneKernel() {
                     appState.facade.document().findLogicLink(source, target) ==
                         nullptr,
                 "undo restores link-free document snapshot");
+}
+
+bool generatedLogicEndpointsRejectBeforeHistory() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Logic Rejection");
+  static_cast<void>(document.assignId(708U));
+
+  cr::CreativeDocumentCreateRequest seedRequest;
+  seedRequest.kind = cr::CreativeObjectKind::Crate;
+  seedRequest.name = "Pattern Seed";
+  const cr::CreativeDocumentCreateReceipt seed =
+      document.createObject(seedRequest);
+  cr::CreativeDocumentCreateRequest patternSourceRequest;
+  patternSourceRequest.kind = cr::CreativeObjectKind::Switch;
+  patternSourceRequest.name = "Generated Switch";
+  const cr::CreativeDocumentCreateReceipt patternSource =
+      document.createObject(patternSourceRequest);
+  cr::CreativeDocumentCreateRequest authoredSourceRequest;
+  authoredSourceRequest.kind = cr::CreativeObjectKind::PressurePlate;
+  authoredSourceRequest.name = "Authored Plate";
+  const cr::CreativeDocumentCreateReceipt authoredSource =
+      document.createObject(authoredSourceRequest);
+  cr::CreativeDocumentCreateRequest authoredTargetRequest;
+  authoredTargetRequest.kind = cr::CreativeObjectKind::Door;
+  authoredTargetRequest.name = "Authored Door";
+  const cr::CreativeDocumentCreateReceipt authoredTarget =
+      document.createObject(authoredTargetRequest);
+  cr::CreativeDocumentCreateRequest worldTargetRequest =
+      authoredTargetRequest;
+  worldTargetRequest.name = "Generated Door";
+  worldTargetRequest.tags = {"creative_world_layout:logic_fixture"};
+  const cr::CreativeDocumentCreateReceipt worldTarget =
+      document.createObject(worldTargetRequest);
+
+  cr::CreativePatternRecipeMutationRequest recipeRequest;
+  recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipeRequest.recipe.sourceObjectIds = {seed.objectId};
+  recipeRequest.recipe.generatedObjectIds = {patternSource.objectId};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(recipeRequest);
+
+  cr::CreativeAppState appState;
+  const bool installed =
+      appState.facade.installDocument(std::move(document)).accepted;
+  appState.history = {};
+  app::CreativeEditorLogicLinkState state;
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+  const app::CreativeEditorLogicLinkReceipt patternSet =
+      app::setCreativeEditorLogicLink(
+          appState, state, patternSource.objectId, authoredTarget.objectId,
+          cr::CreativeLogicLinkAction::Toggle, "generated_logic_pattern_set");
+  const app::CreativeEditorLogicLinkReceipt worldSet =
+      app::setCreativeEditorLogicLink(
+          appState, state, authoredSource.objectId, worldTarget.objectId,
+          cr::CreativeLogicLinkAction::Toggle, "generated_logic_world_set");
+  const app::CreativeEditorLogicLinkReceipt patternRemove =
+      app::removeCreativeEditorLogicLink(
+          appState, state, patternSource.objectId, authoredTarget.objectId,
+          "generated_logic_pattern_remove");
+  const app::CreativeEditorLogicLinkReceipt worldRemove =
+      app::removeCreativeEditorLogicLink(
+          appState, state, authoredSource.objectId, worldTarget.objectId,
+          "generated_logic_world_remove");
+
+  return expect(seed.accepted && patternSource.accepted &&
+                    authoredSource.accepted && authoredTarget.accepted &&
+                    worldTarget.accepted && recipe.accepted && installed,
+                "generated logic ownership fixture is valid") &&
+         expect(!patternSet.accepted && !patternSet.changed &&
+                    patternSet.status ==
+                        app::CreativeEditorLogicLinkStatus::InvalidSource &&
+                    patternSet.reasonCode ==
+                        "creative_semantic_action_pattern_owned" &&
+                    !patternRemove.accepted && !patternRemove.changed &&
+                    patternRemove.reasonCode ==
+                        "creative_semantic_action_pattern_owned",
+                "pattern-owned logic source rejects set and remove") &&
+         expect(!worldSet.accepted && !worldSet.changed &&
+                    worldSet.status ==
+                        app::CreativeEditorLogicLinkStatus::InvalidTarget &&
+                    worldSet.reasonCode ==
+                        "creative_semantic_action_world_layout_owned" &&
+                    !worldRemove.accepted && !worldRemove.changed &&
+                    worldRemove.reasonCode ==
+                        "creative_semantic_action_world_layout_owned",
+                "World Layout logic target rejects set and remove") &&
+         expect(appState.facade.document().logicLinks().empty() &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "generated logic rejections preserve document and history");
 }
 
 bool actionCycleAndDocumentSyncAreBounded() {
@@ -556,6 +649,7 @@ bool roofHandlesRenderIn3dAndRespectInteractionGates() {
 
 int main() {
   const bool ok = selectionLinkingAndHistoryAreOneKernel() &&
+                  generatedLogicEndpointsRejectBeforeHistory() &&
                   actionCycleAndDocumentSyncAreBounded() &&
                   explicitInspectorKernelsShareHistoryAndReceipts() &&
                   connectInputMappingMatchesMouseAndControllerLanguage() &&
