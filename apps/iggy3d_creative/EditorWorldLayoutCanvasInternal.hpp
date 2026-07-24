@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EditorWorldLayoutCanvasPlanner.hpp"
+#include "EditorWorldLayoutCanvasGeometry.hpp"
 #include "EditorWorldLayoutPanelInternal.hpp"
 #include "EditorWorldLayoutPlanView.hpp"
 

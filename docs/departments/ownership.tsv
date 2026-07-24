@@ -224,6 +224,7 @@ apps/iggy3d_creative/EditorWorldLayoutBuildingRepairs.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutBuildings.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutCanvas.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutCanvasDraw.cpp	building-layout
+apps/iggy3d_creative/EditorWorldLayoutCanvasGeometry.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutCanvasInternal.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutCanvasPlanner.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutCanvasPlanner.hpp	building-layout

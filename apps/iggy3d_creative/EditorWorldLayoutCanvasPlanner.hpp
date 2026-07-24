@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EditorDesktopCommands.hpp"
+#include "EditorWorldLayoutCanvasGeometry.hpp"
 #include "EditorWorldLayoutPlanView.hpp"
 #include "EditorWorldLayoutState.hpp"
 
@@ -10,26 +11,6 @@
 #include <variant>
 
 namespace iggy3d_creative_app {
-
-struct CreativeEditorWorldLayoutCanvasScreenPoint {
-  float x = 0.0F;
-  float y = 0.0F;
-};
-
-struct CreativeEditorWorldLayoutCanvasTransform {
-  CreativeEditorWorldLayoutCanvasScreenPoint origin;
-  float pixelsPerCell = 28.0F;
-};
-
-[[nodiscard]] CreativeEditorWorldLayoutCanvasScreenPoint
-planCreativeEditorWorldLayoutCanvasScreenPoint(
-    const CreativeEditorWorldLayoutCanvasTransform& transform,
-    double x, double z) noexcept;
-
-[[nodiscard]] CreativeEditorWorldLayoutPoint
-planCreativeEditorWorldLayoutCanvasWorldPoint(
-    const CreativeEditorWorldLayoutCanvasTransform& transform,
-    CreativeEditorWorldLayoutCanvasScreenPoint screen) noexcept;
 
 enum class CreativeEditorWorldLayoutCanvasHoverTargetKind : std::uint8_t {
   None,
