@@ -195,14 +195,16 @@ apps/iggy3d_creative/EditorToolOptionsPanel.cpp	interaction-controls
 apps/iggy3d_creative/EditorToolWheel.cpp	interaction-controls
 apps/iggy3d_creative/EditorToolWheelPreferences.cpp	interaction-controls
 apps/iggy3d_creative/EditorToolWheelPreferences.hpp	interaction-controls
-apps/iggy3d_creative/EditorTransform.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransform.hpp	interaction-controls
+apps/iggy3d_creative/EditorTransformCommit.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformFrame.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformFrame.hpp	interaction-controls
+apps/iggy3d_creative/EditorTransformGeometry.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformInternal.hpp	interaction-controls
 apps/iggy3d_creative/EditorTransformOverlay.cpp	rendering-preview
 apps/iggy3d_creative/EditorTransformOverlay.hpp	rendering-preview
 apps/iggy3d_creative/EditorTransformPlan.cpp	interaction-controls
+apps/iggy3d_creative/EditorTransformSettings.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformSource.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformState.hpp	interaction-controls
 apps/iggy3d_creative/EditorUiInput.hpp	interaction-controls

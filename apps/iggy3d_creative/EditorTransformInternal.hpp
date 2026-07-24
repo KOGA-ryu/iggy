@@ -30,6 +30,8 @@ namespace detail {
     const CreativeEditorSelectionTransformState& state) noexcept;
 [[nodiscard]] bool planarSourceRoute(
     const CreativeEditorSelectionTransformState& state) noexcept;
+[[nodiscard]] bool transformTranslationAvailable(
+    const CreativeEditorSelectionTransformState& state) noexcept;
 void refreshTransformPlan(
     const cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state);

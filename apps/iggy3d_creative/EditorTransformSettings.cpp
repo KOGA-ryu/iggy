@@ -1,62 +1,19 @@
 #include "EditorTransform.hpp"
 #include "EditorTransformInternal.hpp"
 
-#include <SDL3/SDL_log.h>
-
 #include <algorithm>
+#include <array>
 #include <cmath>
-#include <limits>
 #include <numbers>
-#include <span>
-#include <string>
-#include <utility>
+#include <string_view>
 
-#include "EditorEdits.hpp"
-#include "EditorWorldLayout.hpp"
-#include "EditorWorldLayoutHistory.hpp"
-#include "EditorWorldLayoutInternal.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
 
 namespace iggy3d_creative_app {
-namespace detail {
-
-[[nodiscard]] cr::CreativeVec3 subtract(cr::CreativeVec3 lhs,
-                                        cr::CreativeVec3 rhs) noexcept {
-  return {lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z};
-}
-
-}  // namespace detail
-
 namespace {
-
-[[nodiscard]] cr::CreativeVec3 add(cr::CreativeVec3 lhs,
-                                   cr::CreativeVec3 rhs) noexcept {
-  return {lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z};
-}
-
-[[nodiscard]] cr::CreativeVec3 scale(cr::CreativeVec3 value,
-                                     double factor) noexcept {
-  return {value.x * factor, value.y * factor, value.z * factor};
-}
-
-[[nodiscard]] double dot(cr::CreativeVec3 lhs,
-                         cr::CreativeVec3 rhs) noexcept {
-  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
-}
-
-[[nodiscard]] bool normalized(cr::CreativeVec3 value,
-                              cr::CreativeVec3& output) noexcept {
-  const double lengthSquared = dot(value, value);
-  if (!std::isfinite(lengthSquared) || lengthSquared <= 1.0e-16) {
-    return false;
-  }
-  output = scale(value, 1.0 / std::sqrt(lengthSquared));
-  return cr::isFiniteCreativeVec3(output);
-}
-
 
 [[nodiscard]] cr::CreativeSelectionPlacementAxis nextConstraint(
     cr::CreativeSelectionPlacementAxis constraint) noexcept {
@@ -123,17 +80,12 @@ namespace {
          cr::CreativeObjectRotationSupport::None;
 }
 
-[[nodiscard]] bool transformTranslationAvailable(
-    const CreativeEditorSelectionTransformState& state) noexcept {
-  return state.preflight.capabilities.translate;
-}
-
 [[nodiscard]] bool transformModeAvailable(
     const CreativeEditorSelectionTransformState& state,
     CreativeEditorTransformMode mode) noexcept {
   switch (mode) {
     case CreativeEditorTransformMode::Move:
-      return transformTranslationAvailable(state);
+      return detail::transformTranslationAvailable(state);
     case CreativeEditorTransformMode::Rotate:
       return transformRotationAvailable(state);
     case CreativeEditorTransformMode::Scale:
@@ -147,6 +99,11 @@ namespace {
 }  // namespace
 
 namespace detail {
+
+[[nodiscard]] bool transformTranslationAvailable(
+    const CreativeEditorSelectionTransformState& state) noexcept {
+  return state.preflight.capabilities.translate;
+}
 
 [[nodiscard]] CreativeEditorTransformMode firstAvailableTransformMode(
     const CreativeEditorSelectionTransformState& state) noexcept {
@@ -323,169 +280,6 @@ void syncRotation(CreativeEditorSelectionTransformState& state) noexcept {
   return cr::isFiniteCreativeVec3(basisEulerRadians);
 }
 
-[[nodiscard]] cr::CreativeSelectionPlacementReceipt placeObjectsWithHistory(
-    cr::CreativeAppState& appState,
-    std::span<const cr::CreativeObjectId> objectIds,
-    const cr::CreativeSelectionPlacementRequest& request,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  cr::CreativeSelectionPlacementReceipt receipt =
-      appState.facade.placeObjects(objectIds, request);
-  static_cast<void>(completeEditTransaction(
-      appState.history, std::move(transaction), appState.facade,
-      receipt.accepted && receipt.changed, receipt.reasonCode));
-  SDL_Log("iggy3d_creative: TRANSFORM move source='%s' accepted=%d changed=%d "
-          "status='%s' objects=%llu reasonCode='%s'",
-          std::string(source).c_str(), receipt.accepted ? 1 : 0,
-          receipt.changed ? 1 : 0,
-          std::string(cr::toString(receipt.status)).c_str(),
-          static_cast<unsigned long long>(receipt.objectCount),
-          receipt.reasonCode.c_str());
-  return receipt;
-}
-
-[[nodiscard]] cr::CreativeClipboardPasteRequest clipboardPasteRequest(
-    const CreativeEditorSelectionTransformState& state) noexcept {
-  cr::CreativeClipboardPasteRequest request;
-  request.offset = detail::subtract(state.request.targetAnchor,
-                            state.request.sourceAnchor);
-  request.hasTransformAnchor = true;
-  request.transformAnchor = state.request.sourceAnchor;
-  request.pivotMode = state.request.pivotMode;
-  request.coordinateSpace = state.request.coordinateSpace;
-  request.coordinateBasisEulerRadians =
-      state.request.coordinateBasisEulerRadians;
-  request.scaleFactor = state.request.scaleFactor;
-  request.quarterTurns = state.request.quarterTurns;
-  request.mirrorX = state.request.mirrorX;
-  request.mirrorZ = state.request.mirrorZ;
-  request.hasAxisAngleRotation = state.request.hasAxisAngleRotation;
-  request.rotationAxis = state.request.rotationAxis;
-  request.rotationRadians = state.request.rotationRadians;
-  return request;
-}
-
-[[nodiscard]] CreativeEditorTransformCommitReceipt
-commitPatternRecipeTransform(
-    cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    std::string_view source) {
-  CreativeEditorTransformCommitReceipt receipt;
-  receipt.requested = true;
-  receipt.mode = state.mode;
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  receipt.patternReceipt = appState.facade.applyPatternRecipeTranslation(
-      state.candidatePatternTranslation);
-  static_cast<void>(completeEditTransaction(
-      appState.history, std::move(transaction), appState.facade,
-      receipt.patternReceipt.accepted && receipt.patternReceipt.changed,
-      receipt.patternReceipt.reasonCode));
-  receipt.accepted = receipt.patternReceipt.accepted;
-  receipt.changed = receipt.patternReceipt.changed;
-  receipt.reasonCode = std::string{receipt.patternReceipt.reasonCode};
-  return receipt;
-}
-
-[[nodiscard]] CreativeEditorTransformCommitReceipt
-commitTerrainOperationTransform(
-    cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    std::string_view source) {
-  CreativeEditorTransformCommitReceipt receipt;
-  receipt.requested = true;
-  receipt.mode = state.mode;
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  receipt.terrainReceipt = appState.facade.applyTerrainOperationTranslation(
-      state.candidateTerrainTranslation);
-  static_cast<void>(completeEditTransaction(
-      appState.history, std::move(transaction), appState.facade,
-      receipt.terrainReceipt.accepted && receipt.terrainReceipt.changed,
-      receipt.terrainReceipt.reasonCode));
-  receipt.accepted = receipt.terrainReceipt.accepted;
-  receipt.changed = receipt.terrainReceipt.changed;
-  receipt.reasonCode = std::string{receipt.terrainReceipt.reasonCode};
-  return receipt;
-}
-
-[[nodiscard]] CreativeEditorTransformCommitReceipt
-commitWorldLayoutBuildingTransform(
-    cr::CreativeAppState& appState,
-    CreativeEditorWorldLayoutState* worldLayout,
-    CreativeEditorSelectionTransformState& state,
-    std::string_view source) {
-  CreativeEditorTransformCommitReceipt receipt;
-  receipt.requested = true;
-  receipt.mode = state.mode;
-  if (worldLayout == nullptr || !state.candidateWorldLayoutReady ||
-      state.preflight.worldLayoutSource.table !=
-          cr::CreativeWorldLayoutTable::Building) {
-    receipt.reasonCode =
-        "editor_transform_world_layout_commit_owner_missing";
-    return receipt;
-  }
-  if (worldLayout->revision != state.preflight.worldLayoutRevision ||
-      worldLayout->sourceEpoch != state.preflight.worldLayoutSourceEpoch ||
-      worldLayout->generatedRevision != worldLayout->revision) {
-    receipt.reasonCode = "editor_transform_world_layout_commit_stale";
-    return receipt;
-  }
-  if (!state.candidateWorldLayoutChanged) {
-    receipt.accepted = true;
-    receipt.reasonCode = "editor_transform_world_layout_no_change";
-    return receipt;
-  }
-  if (worldLayout->revision ==
-      std::numeric_limits<std::uint64_t>::max()) {
-    receipt.reasonCode =
-        "editor_transform_world_layout_revision_exhausted";
-    return receipt;
-  }
-
-  CreativeEditorWorldLayoutSourceHistoryEntry sourceOnlyUndo =
-      detail::captureWorldLayoutSourceHistoryEntry(*worldLayout);
-  sourceOnlyUndo.source = std::string(source);
-  CreativeEditorWorldLayoutSnapshot committed =
-      captureCreativeEditorWorldLayoutSnapshot(*worldLayout);
-  committed.source = state.candidateWorldLayout;
-  committed.nextStableOrdinal =
-      state.candidateWorldLayoutNextStableOrdinal;
-  ++committed.revision;
-  receipt.worldLayoutReceipt = applyCreativeEditorWorldLayoutPlanWithHistory(
-      *worldLayout, appState, state.candidateWorldLayoutPlan,
-      std::move(committed), source);
-  receipt.accepted = receipt.worldLayoutReceipt.accepted;
-  receipt.changed = receipt.accepted;
-  receipt.reasonCode = receipt.worldLayoutReceipt.reasonCode;
-  if (!receipt.accepted) {
-    worldLayout->statusMessage = receipt.reasonCode;
-    return receipt;
-  }
-
-  worldLayout->selection = {
-      CreativeEditorWorldLayoutSelectionKind::Building,
-      state.candidateWorldLayoutBuildingIndex};
-  worldLayout->activeLevelIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  repairCreativeEditorWorldLayoutActiveLevel(
-      *worldLayout, state.candidateWorldLayoutBuildingIndex);
-  if (!receipt.worldLayoutReceipt.changed) {
-    detail::appendWorldLayoutSourceHistoryEntry(
-        worldLayout->sourceHistory.undoEntries, std::move(sourceOnlyUndo),
-        worldLayout->sourceHistory.maxDepth);
-    worldLayout->sourceHistory.redoEntries.clear();
-  }
-  worldLayout->statusMessage =
-      state.mode == cr::CreativeSelectionPlacementMode::Copy
-          ? "building duplicated in 3D"
-          : "building transformed in 3D";
-  receipt.reasonCode =
-      state.mode == cr::CreativeSelectionPlacementMode::Copy
-          ? "editor_transform_world_layout_building_duplicated"
-          : "editor_transform_world_layout_building_applied";
-  return receipt;
-}
 
 }  // namespace
 
@@ -521,32 +315,12 @@ cr::CreativeVec3 creativeEditorTransformScaleFactor(
   return state.request.scaleFactor;
 }
 
-bool requestCreativeEditorSelectionTransformCommit(
-    CreativeEditorSelectionTransformState& state) noexcept {
-  if (!state.active || state.commitRequested) {
-    return false;
-  }
-  state.commitRequested = true;
-  return true;
-}
-
-bool cancelCreativeEditorSelectionTransformPreview(
-    CreativeEditorSelectionTransformState& state,
-    std::string_view source) {
-  if (!state.active) {
-    return false;
-  }
-  SDL_Log("iggy3d_creative: TRANSFORM preview cancelled source='%s'",
-          std::string(source).c_str());
-  state = {};
-  return true;
-}
 
 bool setCreativeEditorTransformConstraint(
     const cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
     cr::CreativeSelectionPlacementAxis constraint) {
-  if (!state.active || !transformTranslationAvailable(state) ||
+  if (!state.active || !detail::transformTranslationAvailable(state) ||
       static_cast<std::size_t>(constraint) >=
           static_cast<std::size_t>(
               cr::CreativeSelectionPlacementAxis::Count) ||
@@ -568,7 +342,7 @@ bool setCreativeEditorTransformTargetAnchor(
     const cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
     cr::CreativeVec3 targetAnchor) {
-  if (!state.active || !transformTranslationAvailable(state) ||
+  if (!state.active || !detail::transformTranslationAvailable(state) ||
       !cr::isFiniteCreativeVec3(targetAnchor)) {
     return false;
   }
@@ -755,174 +529,13 @@ bool resumeCreativeEditorTransformAim(
   return true;
 }
 
-CreativeEditorTransformAxisRaySample sampleCreativeEditorTransformAxisRay(
-    cr::CreativeVec3 rayOrigin,
-    cr::CreativeVec3 rayDirection,
-    cr::CreativeVec3 axisOrigin,
-    cr::CreativeVec3 axisDirection) noexcept {
-  CreativeEditorTransformAxisRaySample result;
-  if (!cr::isFiniteCreativeVec3(rayOrigin) ||
-      !cr::isFiniteCreativeVec3(axisOrigin)) {
-    return result;
-  }
-  cr::CreativeVec3 ray{};
-  cr::CreativeVec3 axis{};
-  if (!normalized(rayDirection, ray) || !normalized(axisDirection, axis)) {
-    return result;
-  }
-
-  const cr::CreativeVec3 fromAxis = detail::subtract(rayOrigin, axisOrigin);
-  const double rayAxisDot = dot(ray, axis);
-  const double rayFromAxisDot = dot(ray, fromAxis);
-  const double axisFromAxisDot = dot(axis, fromAxis);
-  const double denominator = 1.0 - rayAxisDot * rayAxisDot;
-  if (!std::isfinite(denominator) || denominator <= 1.0e-8) {
-    return result;
-  }
-  result.rayParameter =
-      (rayAxisDot * axisFromAxisDot - rayFromAxisDot) / denominator;
-  result.axisParameter =
-      (axisFromAxisDot - rayAxisDot * rayFromAxisDot) / denominator;
-  result.valid = std::isfinite(result.rayParameter) &&
-                 std::isfinite(result.axisParameter) &&
-                 result.rayParameter >= 0.0;
-  if (!result.valid) {
-    result = {};
-  }
-  return result;
-}
-
-bool beginCreativeEditorFreeTransformPointerGesture(
-    const cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    cr::CreativeVec3 initialAimAnchor) {
-  if (!state.active || !transformTranslationAvailable(state) ||
-      !cr::isFiniteCreativeVec3(initialAimAnchor)) {
-    return false;
-  }
-  if (state.constraint != cr::CreativeSelectionPlacementAxis::Free) {
-    static_cast<void>(setCreativeEditorTransformConstraint(
-        appState, state, cr::CreativeSelectionPlacementAxis::Free));
-  }
-  state.pointerGesture = {};
-  state.pointerGesture.kind = CreativeEditorTransformPointerGestureKind::Free;
-  state.pointerGesture.initialAimAnchor = initialAimAnchor;
-  return true;
-}
-
-bool beginCreativeEditorAxisTransformPointerGesture(
-    const cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    cr::CreativeSelectionPlacementAxis axis,
-    cr::CreativeVec3 axisOrigin,
-    cr::CreativeVec3 axisDirection,
-    cr::CreativeVec3 rayOrigin,
-    cr::CreativeVec3 rayDirection) {
-  if (!state.active || !transformTranslationAvailable(state) ||
-      axis == cr::CreativeSelectionPlacementAxis::Free ||
-      axis == cr::CreativeSelectionPlacementAxis::Count) {
-    return false;
-  }
-  cr::CreativeVec3 normalizedAxis{};
-  if (!normalized(axisDirection, normalizedAxis)) {
-    return false;
-  }
-  const CreativeEditorTransformAxisRaySample sample =
-      sampleCreativeEditorTransformAxisRay(
-          rayOrigin, rayDirection, axisOrigin, normalizedAxis);
-  if (!sample.valid) {
-    return false;
-  }
-  if (state.constraint != axis) {
-    static_cast<void>(setCreativeEditorTransformConstraint(appState, state,
-                                                           axis));
-  }
-  if (state.constraint != axis) {
-    return false;
-  }
-  state.pointerGesture = {};
-  state.pointerGesture.kind = CreativeEditorTransformPointerGestureKind::Axis;
-  state.pointerGesture.axis = axis;
-  state.pointerGesture.axisOrigin = axisOrigin;
-  state.pointerGesture.axisDirection = normalizedAxis;
-  state.pointerGesture.initialAxisParameter = sample.axisParameter;
-  return true;
-}
-
-bool updateCreativeEditorTransformPointerGesture(
-    const cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    bool targetPositionable,
-    cr::CreativeVec3 targetAnchor,
-    cr::CreativeVec3 rayOrigin,
-    cr::CreativeVec3 rayDirection) {
-  if (!state.active ||
-      state.pointerGesture.kind ==
-          CreativeEditorTransformPointerGestureKind::None) {
-    return false;
-  }
-
-  cr::CreativeVec3 resolvedTarget{};
-  if (state.pointerGesture.kind ==
-      CreativeEditorTransformPointerGestureKind::Free) {
-    if (!targetPositionable || !cr::isFiniteCreativeVec3(targetAnchor)) {
-      return false;
-    }
-    resolvedTarget = add(
-        state.request.sourceAnchor,
-        detail::subtract(targetAnchor, state.pointerGesture.initialAimAnchor));
-  } else {
-    const CreativeEditorTransformAxisRaySample sample =
-        sampleCreativeEditorTransformAxisRay(
-            rayOrigin, rayDirection, state.pointerGesture.axisOrigin,
-            state.pointerGesture.axisDirection);
-    if (!sample.valid) {
-      return false;
-    }
-    resolvedTarget = add(
-        state.request.sourceAnchor,
-        scale(state.pointerGesture.axisDirection,
-              sample.axisParameter -
-                  state.pointerGesture.initialAxisParameter));
-  }
-  if (!cr::isFiniteCreativeVec3(resolvedTarget)) {
-    return false;
-  }
-  static_cast<void>(
-      setCreativeEditorTransformTargetAnchor(appState, state, resolvedTarget));
-  state.pointerGesture.changed =
-      state.pointerGesture.changed ||
-      !cr::creativeVec3ExactlyEqual(state.request.targetAnchor,
-                                    state.request.sourceAnchor);
-  return true;
-}
-
-bool finishCreativeEditorTransformPointerGesture(
-    CreativeEditorSelectionTransformState& state,
-    std::string_view source) {
-  if (!state.active ||
-      state.pointerGesture.kind ==
-          CreativeEditorTransformPointerGestureKind::None) {
-    return false;
-  }
-  const bool changed =
-      state.pointerGesture.changed && state.targetPositionable &&
-      state.plan.accepted &&
-      !cr::creativeVec3ExactlyEqual(state.request.targetAnchor,
-                                    state.request.sourceAnchor);
-  state.pointerGesture = {};
-  if (!changed) {
-    return cancelCreativeEditorSelectionTransformPreview(state, source);
-  }
-  return requestCreativeEditorSelectionTransformCommit(state);
-}
 
 bool nudgeCreativeEditorSelectionTransform(
     const cr::CreativeAppState& appState,
     CreativeEditorSelectionTransformState& state,
     std::int32_t steps,
     bool fine) {
-  if (!state.active || !transformTranslationAvailable(state)) {
+  if (!state.active || !detail::transformTranslationAvailable(state)) {
     return false;
   }
   cr::CreativeSelectionPlacementNudgeRequest nudge;
@@ -986,7 +599,7 @@ bool adjustCreativeEditorTransformSetting(
   }
   switch (state.transformMode) {
     case CreativeEditorTransformMode::Move: {
-      if (!transformTranslationAvailable(state)) {
+      if (!detail::transformTranslationAvailable(state)) {
         return false;
       }
       const cr::CreativeSelectionPlacementAxis next =
@@ -1137,101 +750,6 @@ bool applyCreativeEditorTransformControl(
     }
   }
   return changed;
-}
-
-CreativeEditorTransformCommitReceipt
-processCreativeEditorSelectionTransformPreview(
-    cr::CreativeAppState& appState,
-    CreativeEditorSelectionTransformState& state,
-    bool targetPositionable,
-    cr::CreativeVec3 targetAnchor,
-    bool secondaryPressed,
-    std::string_view source,
-    double snapStepMeters,
-    CreativeEditorWorldLayoutState* worldLayout,
-    const CreativePlacementClearanceCache* clearanceCache) {
-  if (!state.active) {
-    return {};
-  }
-
-  const bool previousPositionable = state.targetPositionable;
-  const cr::CreativeVec3 previousTarget = state.request.targetAnchor;
-  if (state.anchorPolicy == CreativeEditorTransformAnchorPolicy::FixedSource) {
-    state.aimTargetPositionable = true;
-    state.aimTargetAnchor = state.request.sourceAnchor;
-  } else if (state.anchorPolicy ==
-             CreativeEditorTransformAnchorPolicy::FollowAim) {
-    state.aimTargetPositionable =
-        targetPositionable && cr::isFiniteCreativeVec3(targetAnchor);
-    if (state.aimTargetPositionable) {
-      state.aimTargetAnchor = targetAnchor;
-    }
-  }
-  state.snapStepMeters = snapStepMeters;
-  if (detail::planarSourceRoute(state)) {
-    const cr::CreativeGridSettings grid =
-        appState.facade.document().gridSettings();
-    if (std::isfinite(grid.cellSizeMeters) && grid.cellSizeMeters > 0.0) {
-      state.snapStepMeters = grid.cellSizeMeters;
-    }
-  }
-  detail::refreshResolvedTarget(appState, state);
-  detail::refreshTransformClearance(appState, state, clearanceCache);
-  const bool targetChanged =
-      previousPositionable != state.targetPositionable ||
-      (state.targetPositionable &&
-       !cr::creativeVec3ExactlyEqual(previousTarget,
-                                     state.request.targetAnchor));
-  if (targetChanged) {
-    state.lastCommit = {};
-  }
-  if (secondaryPressed) {
-    static_cast<void>(requestCreativeEditorSelectionTransformCommit(state));
-  }
-  if (!state.commitRequested) {
-    return {};
-  }
-  state.commitRequested = false;
-
-  CreativeEditorTransformCommitReceipt receipt;
-  receipt.requested = true;
-  receipt.mode = state.mode;
-  if (!state.targetPositionable || !state.plan.accepted) {
-    receipt.reasonCode = state.targetPositionable
-                             ? state.plan.reasonCode
-                             : "editor_transform_target_unavailable";
-    state.lastCommit = receipt;
-    return receipt;
-  }
-
-  if (detail::worldLayoutBuildingRoute(state)) {
-    receipt = commitWorldLayoutBuildingTransform(
-        appState, worldLayout, state, source);
-  } else if (detail::patternRecipeRoute(state)) {
-    receipt = commitPatternRecipeTransform(appState, state, source);
-  } else if (detail::terrainOperationRoute(state)) {
-    receipt = commitTerrainOperationTransform(appState, state, source);
-  } else if (state.mode == cr::CreativeSelectionPlacementMode::Copy) {
-    receipt.copyReceipt = pasteClipboardWithHistory(
-        appState, state.sourceClipboard, clipboardPasteRequest(state), source);
-    receipt.accepted = receipt.copyReceipt.accepted;
-    receipt.changed = receipt.copyReceipt.changed;
-    receipt.reasonCode = receipt.copyReceipt.reasonCode;
-  } else {
-    receipt.moveReceipt =
-        placeObjectsWithHistory(appState, state.sourceObjectIds, state.request,
-                                source);
-    receipt.accepted = receipt.moveReceipt.accepted;
-    receipt.changed = receipt.moveReceipt.changed;
-    receipt.reasonCode = receipt.moveReceipt.reasonCode;
-  }
-  state.lastCommit = receipt;
-  if (receipt.accepted && receipt.changed) {
-    state.active = false;
-    state.controlsOpen = false;
-    state.targetPositionable = false;
-  }
-  return receipt;
 }
 
 }  // namespace iggy3d_creative_app
