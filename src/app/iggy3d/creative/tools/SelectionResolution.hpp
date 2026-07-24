@@ -151,6 +151,15 @@ resolveCreativeSemanticSelectionSet(
     CreativeObjectId primaryObjectId = kInvalidObjectId,
     const CreativeWorldLayout* worldLayout = nullptr) noexcept;
 
+// A one-room building's deepest shared source is its room. Transform admission
+// can promote that source to Building only when the requested selection contains
+// every generated member of the same building.
+[[nodiscard]] CreativeWorldLayoutSourceRef
+resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeWorldLayout& worldLayout);
+
 // One closed policy for actions that begin from generated document output.
 // Validation remains with the selected owner; this function only decides which
 // owner is allowed to interpret the command.

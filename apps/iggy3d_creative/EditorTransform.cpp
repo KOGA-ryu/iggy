@@ -80,66 +80,6 @@ namespace {
       });
 }
 
-[[nodiscard]] bool resolveCompleteWorldLayoutBuildingSelection(
-    const cr::CreativeDocument& document,
-    std::span<const cr::CreativeObjectId> selectedObjectIds,
-    const cr::CreativeWorldLayout& worldLayout,
-    cr::CreativeWorldLayoutSourceRef& source) {
-  if (selectedObjectIds.empty()) {
-    return false;
-  }
-  const cr::CreativeObject* primary =
-      document.findObject(selectedObjectIds.front());
-  if (primary == nullptr) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutObjectProvenance provenance =
-      cr::resolveCreativeWorldLayoutObjectProvenance(worldLayout, *primary);
-  const cr::CreativeWorldLayoutSourceAncestry ancestry =
-      cr::buildCreativeWorldLayoutSourceAncestry(worldLayout, provenance);
-  const auto building = std::find_if(
-      ancestry.entries.begin(), ancestry.entries.begin() + ancestry.count,
-      [](cr::CreativeWorldLayoutSourceRef value) {
-        return value.table == cr::CreativeWorldLayoutTable::Building;
-      });
-  if (building == ancestry.entries.begin() + ancestry.count ||
-      building->index >= worldLayout.buildings.size()) {
-    return false;
-  }
-
-  std::unordered_set<cr::CreativeObjectId> selected;
-  selected.reserve(selectedObjectIds.size());
-  for (cr::CreativeObjectId objectId : selectedObjectIds) {
-    const cr::CreativeObject* object = document.findObject(objectId);
-    if (object == nullptr ||
-        !cr::creativeWorldLayoutObjectBelongsToSource(
-            worldLayout, *object, cr::CreativeWorldLayoutTable::Building,
-            building->index) ||
-        !selected.insert(objectId).second) {
-      return false;
-    }
-  }
-
-  std::size_t completeMemberCount = 0U;
-  for (const cr::CreativeObject& object : document.objects()) {
-    if (!cr::creativeWorldLayoutObjectBelongsToSource(
-            worldLayout, object, cr::CreativeWorldLayoutTable::Building,
-            building->index)) {
-      continue;
-    }
-    ++completeMemberCount;
-    if (!selected.contains(object.id)) {
-      return false;
-    }
-  }
-  if (completeMemberCount == 0U ||
-      completeMemberCount != selected.size()) {
-    return false;
-  }
-  source = *building;
-  return true;
-}
-
 [[nodiscard]] CreativeEditorTransformPreflight inspectTransformSource(
     const cr::CreativeAppState& appState,
     const cr::CreativeClipboard& clipboard,
@@ -172,6 +112,18 @@ namespace {
   if (mode == cr::CreativeSelectionPlacementMode::Move &&
       clipboard.sourceDocumentId == document.id() &&
       !clipboard.patternRecipes.empty()) {
+    const cr::CreativeSemanticObjectActionPolicy transformPolicy =
+        cr::resolveCreativeSemanticObjectAction(
+            cr::CreativeSemanticSelectionOwner::PatternRecipe,
+            cr::CreativeSemanticObjectAction::TransformSelection);
+    if (!transformPolicy.allowed ||
+        transformPolicy.route !=
+            cr::CreativeSemanticObjectActionRoute::PatternRecipe) {
+      result.blockedOwner =
+          cr::CreativeSemanticSelectionOwner::PatternRecipe;
+      result.reasonCode = std::string{transformPolicy.reasonCode};
+      return result;
+    }
     if (clipboard.sourceRevision != document.revision() ||
         clipboard.patternRecipes.size() != 1U) {
       result.blockedOwner =
@@ -284,16 +236,13 @@ namespace {
       result.reasonCode = semanticSet.reasonCode;
       return result;
     }
-    if (semanticSet.primaryOwner ==
-        cr::CreativeSemanticSelectionOwner::PatternRecipe) {
-      result.blockedOwner = semanticSet.primaryOwner;
-      result.failedObjectId = semanticSet.primaryObjectId;
-      result.reasonCode = "editor_transform_pattern_recipe_owned";
-      return result;
-    }
-    if (semanticSet.primaryOwner ==
-        cr::CreativeSemanticSelectionOwner::WorldLayoutSource) {
-      result.blockedOwner = semanticSet.primaryOwner;
+    const bool onlyWorldLayoutOwned =
+        semanticSet.worldLayoutOwnerCount > 0U &&
+        semanticSet.authoredOwnerCount == 0U &&
+        semanticSet.patternOwnerCount == 0U;
+    if (onlyWorldLayoutOwned) {
+      result.blockedOwner =
+          cr::CreativeSemanticSelectionOwner::WorldLayoutSource;
       result.failedObjectId = semanticSet.primaryObjectId;
       result.worldLayoutSource = semanticSet.commonWorldLayoutSource;
       if (worldLayout == nullptr ||
@@ -302,19 +251,26 @@ namespace {
             "editor_transform_world_layout_source_unsynchronized";
         return result;
       }
-      if (result.worldLayoutSource.table !=
-              cr::CreativeWorldLayoutTable::Building &&
-          !resolveCompleteWorldLayoutBuildingSelection(
-              document, objectIds, worldLayout->source,
-              result.worldLayoutSource)) {
-        result.reasonCode =
-            "editor_transform_world_layout_building_scope_required";
+      const cr::CreativeWorldLayoutSourceRef buildingSource =
+          cr::resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+              document, objectIds, worldLayout->source);
+      if (buildingSource.table ==
+          cr::CreativeWorldLayoutTable::Building) {
+        result.worldLayoutSource = buildingSource;
+      }
+      const cr::CreativeSemanticObjectActionPolicy transformPolicy =
+          cr::resolveCreativeSemanticObjectAction(
+              cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+              cr::CreativeSemanticObjectAction::TransformSelection,
+              result.worldLayoutSource.table);
+      if (!transformPolicy.allowed ||
+          transformPolicy.route !=
+              cr::CreativeSemanticObjectActionRoute::WorldLayoutSource) {
+        result.reasonCode = std::string{transformPolicy.reasonCode};
         return result;
       }
-      if (result.worldLayoutSource.table !=
-              cr::CreativeWorldLayoutTable::Building ||
-          result.worldLayoutSource.index >=
-              worldLayout->source.buildings.size()) {
+      if (result.worldLayoutSource.index >=
+          worldLayout->source.buildings.size()) {
         result.reasonCode =
             "editor_transform_world_layout_building_scope_required";
         return result;
@@ -331,28 +287,29 @@ namespace {
       return result;
     }
 
-    for (const cr::CreativeObject& object : clipboard.objects) {
-      const cr::CreativeSemanticSelectionResolution semantic =
-          cr::resolveCreativeSemanticSelection(
-              document, object.id,
-              worldLayout != nullptr ? &worldLayout->source : nullptr);
-      if (!semantic.accepted ||
-          semantic.primaryOwner ==
-              cr::CreativeSemanticSelectionOwner::AuthoredObject) {
-        continue;
-      }
-      if (mode == cr::CreativeSelectionPlacementMode::Copy &&
-          semantic.primaryOwner ==
-              cr::CreativeSemanticSelectionOwner::PatternRecipe) {
-        continue;
-      }
-      result.blockedOwner = semantic.primaryOwner;
-      result.failedObjectId = object.id;
-      result.reasonCode =
-          semantic.primaryOwner ==
-                  cr::CreativeSemanticSelectionOwner::PatternRecipe
-              ? "editor_transform_pattern_recipe_owned"
-              : "editor_transform_world_layout_building_scope_required";
+    const cr::CreativeSemanticObjectActionPolicy transformPolicy =
+        cr::resolveCreativeSemanticObjectAction(
+            semanticSet,
+            cr::CreativeSemanticObjectAction::TransformSelection);
+    if (!transformPolicy.allowed) {
+      result.blockedOwner = semanticSet.primaryOwner;
+      result.failedObjectId = semanticSet.primaryObjectId;
+      result.reasonCode = std::string{transformPolicy.reasonCode};
+      return result;
+    }
+    if (transformPolicy.route ==
+        cr::CreativeSemanticObjectActionRoute::PatternRecipe) {
+      result.blockedOwner =
+          cr::CreativeSemanticSelectionOwner::PatternRecipe;
+      result.failedObjectId = semanticSet.primaryObjectId;
+      result.reasonCode = "editor_transform_pattern_recipe_owned";
+      return result;
+    }
+    if (transformPolicy.route !=
+        cr::CreativeSemanticObjectActionRoute::Document) {
+      result.blockedOwner = semanticSet.primaryOwner;
+      result.failedObjectId = semanticSet.primaryObjectId;
+      result.reasonCode = std::string{transformPolicy.reasonCode};
       return result;
     }
   }

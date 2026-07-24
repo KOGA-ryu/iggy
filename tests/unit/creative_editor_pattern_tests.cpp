@@ -1,7 +1,8 @@
-#include "EditorPattern.hpp"
+#include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorInteractionInternal.hpp"
+#include "EditorPattern.hpp"
 #include "EditorPlacementClearance.hpp"
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
@@ -1356,6 +1357,54 @@ bool generatedBuildingTransformRoutesThroughWorldLayoutSource() {
     return false;
   }
 
+  cr::CreativeTransformCommandRequest directTransform;
+  directTransform.kind = cr::CreativeTransformCommandKind::Translate;
+  directTransform.translation = {1.0, 0.0, 0.0};
+  const std::uint64_t admissionRevision =
+      appState.facade.document().revision();
+  const std::uint64_t admissionUndoDepth =
+      cr::creativeUndoDepth(appState.history);
+  const app::CreativeEditorSemanticEditReceipt direct =
+      app::transformCreativeEditorSelectionWithUndo(
+          appState, appState.history, directTransform,
+          "test_world_layout_direct_transform", &editor.worldLayout);
+  if (!expect(!direct.accepted && !direct.changed &&
+                  direct.reasonCode ==
+                      "creative_editor_transform_world_layout_use_transform_tool",
+              "direct transform routes the building owner to its transform tool") ||
+      !expect(appState.facade.document().revision() == admissionRevision &&
+                  cr::creativeUndoDepth(appState.history) ==
+                      admissionUndoDepth,
+              "direct building admission does not mutate before the tool opens")) {
+    return false;
+  }
+
+  ++editor.worldLayout.revision;
+  const app::CreativeEditorSemanticEditReceipt staleDirect =
+      app::transformCreativeEditorSelectionWithUndo(
+          appState, appState.history, directTransform,
+          "test_world_layout_stale_direct_transform", &editor.worldLayout);
+  const bool stalePreview =
+      app::beginCreativeEditorSelectionTransformPreview(
+          appState, editor.transform,
+          "test_world_layout_stale_transform",
+          app::CreativeEditorTransformAnchorPolicy::FixedSource,
+          &editor.worldLayout);
+  if (!expect(!staleDirect.accepted &&
+                  staleDirect.reasonCode ==
+                      "creative_editor_transform_world_layout_unsynchronized" &&
+                  !stalePreview &&
+                  editor.transform.preflight.reasonCode ==
+                      "editor_transform_world_layout_source_unsynchronized",
+              "direct and interactive transforms both reject stale sources") ||
+      !expect(appState.facade.document().revision() == admissionRevision &&
+                  cr::creativeUndoDepth(appState.history) ==
+                      admissionUndoDepth,
+              "stale source admission cannot mutate or record history")) {
+    return false;
+  }
+  editor.worldLayout.generatedRevision = editor.worldLayout.revision;
+
   if (!expect(app::beginCreativeEditorSelectionTransformPreview(
                   appState, editor.transform,
                   "test_world_layout_building_transform",
@@ -1509,6 +1558,25 @@ bool generatedPatternOutputUsesSourceLevelTransform() {
   }
 
   app::CreativeEditorState editor;
+  cr::CreativeTransformCommandRequest directTransform;
+  directTransform.kind = cr::CreativeTransformCommandKind::Translate;
+  directTransform.translation = {1.0, 0.0, 0.0};
+  const std::uint64_t revisionBeforeAdmission =
+      appState.facade.document().revision();
+  const app::CreativeEditorSemanticEditReceipt direct =
+      app::transformCreativeEditorSelectionWithUndo(
+          appState, appState.history, directTransform,
+          "test_pattern_direct_transform");
+  if (!expect(!direct.accepted && !direct.changed &&
+                  direct.reasonCode ==
+                      "creative_editor_transform_pattern_requires_transform_tool",
+              "direct transform routes Pattern output to its transform tool") ||
+      !expect(appState.facade.document().revision() ==
+                      revisionBeforeAdmission &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "Pattern transform admission cannot mutate or record history")) {
+    return false;
+  }
   const bool began = app::beginCreativeEditorSelectionTransformPreview(
       appState, editor.transform, "test_generated_transform_preflight",
       app::CreativeEditorTransformAnchorPolicy::FixedSource);
@@ -2002,6 +2070,86 @@ bool largeTransformPreviewUsesOneAggregateBox() {
                 "aggregate transform preview covers every source object");
 }
 
+bool unsupportedGeneratedTransformUsesSemanticPolicy() {
+  cr::CreativeAppState appState;
+  if (!expect(installDocument(appState, "Unsupported Generated Transform",
+                              805U),
+              "unsupported generated transform document installed")) {
+    return false;
+  }
+
+  app::CreativeEditorState editor;
+  editor.worldLayout.source.stableKey = "unsupported_transform_layout";
+  cr::CreativeWorldLayoutObject source;
+  source.kind = cr::CreativeObjectKind::Crate;
+  source.stableKey = "generated_crate";
+  source.name = "Generated crate";
+  source.boundsCells = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  editor.worldLayout.source.objects.push_back(source);
+
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Crate;
+  create.name = "Generated crate";
+  create.tags = {
+      cr::creativeWorldLayoutTag(editor.worldLayout.source.stableKey),
+      cr::creativeWorldLayoutProvenanceTag(
+          editor.worldLayout.source, cr::CreativeWorldLayoutTable::Object,
+          0U)};
+  const cr::CreativeDocumentCreateReceipt generated =
+      appState.facade.createDocumentObject(create);
+  const std::array selected{generated.objectId};
+  if (!expect(generated.accepted &&
+                  appState.facade
+                      .selectTargets(selected, generated.objectId)
+                      .accepted,
+              "unsupported generated object selected")) {
+    return false;
+  }
+
+  const cr::CreativeSemanticSelectionSetResolution semanticSelection =
+      cr::resolveCreativeSemanticSelectionSet(
+          appState.facade.document(), selected, generated.objectId,
+          &editor.worldLayout.source);
+  const cr::CreativeSemanticObjectActionPolicy expectedPolicy =
+      cr::resolveCreativeSemanticObjectAction(
+          semanticSelection,
+          cr::CreativeSemanticObjectAction::TransformSelection);
+  cr::CreativeTransformCommandRequest directTransform;
+  directTransform.kind = cr::CreativeTransformCommandKind::Translate;
+  directTransform.translation = {1.0, 0.0, 0.0};
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+  const app::CreativeEditorSemanticEditReceipt direct =
+      app::transformCreativeEditorSelectionWithUndo(
+          appState, appState.history, directTransform,
+          "test_unsupported_generated_direct_transform",
+          &editor.worldLayout);
+  const bool preview = app::beginCreativeEditorSelectionTransformPreview(
+      appState, editor.transform,
+      "test_unsupported_generated_transform",
+      app::CreativeEditorTransformAnchorPolicy::FixedSource,
+      &editor.worldLayout);
+
+  return expect(semanticSelection.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::
+                            WorldLayoutSource &&
+                    !expectedPolicy.allowed,
+                "unsupported generated transform resolves a closed policy") &&
+         expect(!direct.accepted && !direct.changed &&
+                    direct.reasonCode == expectedPolicy.reasonCode,
+                "direct transform reports the shared semantic rejection") &&
+         expect(!preview && !editor.transform.active &&
+                    editor.transform.preflight.blockedOwner ==
+                        cr::CreativeSemanticSelectionOwner::
+                            WorldLayoutSource &&
+                    editor.transform.preflight.reasonCode ==
+                        expectedPolicy.reasonCode,
+                "interactive transform reports the shared semantic rejection") &&
+         expect(appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "rejected generated transforms cannot mutate or record history");
+}
+
 }  // namespace
 
 int main() {
@@ -2030,6 +2178,7 @@ int main() {
                   transformClearanceBlocksMoveAndZeroOffsetCopy() &&
                   precisionTransformConstrainsNudgesAndCommitsOnce() &&
                   lockedSelectionTransformFailsBeforePreview() &&
-                  largeTransformPreviewUsesOneAggregateBox();
+                  largeTransformPreviewUsesOneAggregateBox() &&
+                  unsupportedGeneratedTransformUsesSemanticPolicy();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

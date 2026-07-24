@@ -4,9 +4,69 @@
 #include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace iggy3d::creative {
 namespace {
+
+[[nodiscard]] CreativeWorldLayoutSourceRef
+resolveCompleteWorldLayoutBuildingSource(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeWorldLayout& worldLayout) {
+  CreativeWorldLayoutSourceRef source;
+  if (objectIds.empty()) {
+    return source;
+  }
+  const CreativeObject* primary = document.findObject(objectIds.front());
+  if (primary == nullptr) {
+    return source;
+  }
+  const CreativeWorldLayoutObjectProvenance provenance =
+      resolveCreativeWorldLayoutObjectProvenance(worldLayout, *primary);
+  const CreativeWorldLayoutSourceAncestry ancestry =
+      buildCreativeWorldLayoutSourceAncestry(worldLayout, provenance);
+  const auto building = std::find_if(
+      ancestry.entries.begin(), ancestry.entries.begin() + ancestry.count,
+      [](CreativeWorldLayoutSourceRef value) {
+        return value.table == CreativeWorldLayoutTable::Building;
+      });
+  if (building == ancestry.entries.begin() + ancestry.count ||
+      building->index >= worldLayout.buildings.size()) {
+    return source;
+  }
+
+  std::unordered_set<CreativeObjectId> selected;
+  selected.reserve(objectIds.size());
+  for (CreativeObjectId objectId : objectIds) {
+    const CreativeObject* object = document.findObject(objectId);
+    if (object == nullptr ||
+        !creativeWorldLayoutObjectBelongsToSource(
+            worldLayout, *object, CreativeWorldLayoutTable::Building,
+            building->index) ||
+        !selected.insert(objectId).second) {
+      return source;
+    }
+  }
+
+  std::size_t completeMemberCount = 0U;
+  for (const CreativeObject& object : document.objects()) {
+    if (!creativeWorldLayoutObjectBelongsToSource(
+            worldLayout, object, CreativeWorldLayoutTable::Building,
+            building->index)) {
+      continue;
+    }
+    ++completeMemberCount;
+    if (!selected.contains(object.id)) {
+      return source;
+    }
+  }
+  if (completeMemberCount == 0U ||
+      completeMemberCount != selected.size()) {
+    return source;
+  }
+  return *building;
+}
 
 [[nodiscard]] CreativeSemanticSelectionResolution resolveSelection(
     const CreativeDocument& document,
@@ -251,6 +311,15 @@ CreativeSemanticSelectionSetResolution resolveCreativeSemanticSelectionSet(
   }
   result.reasonCode = "creative_selection_set_ready";
   return result;
+}
+
+CreativeWorldLayoutSourceRef
+resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    const CreativeWorldLayout& worldLayout) {
+  return resolveCompleteWorldLayoutBuildingSource(
+      document, objectIds, worldLayout);
 }
 
 CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(

@@ -153,6 +153,20 @@ struct CreativeEditorResolvedObjectAction {
   result.selection = creative::resolveCreativeSemanticSelectionSet(
       appState.facade.document(), result.objectIds, primaryObjectId,
       worldLayout != nullptr ? &worldLayout->source : nullptr);
+  if (action == creative::CreativeSemanticObjectAction::TransformSelection &&
+      worldLayout != nullptr &&
+      result.selection.worldLayoutOwnerCount > 0U &&
+      result.selection.authoredOwnerCount == 0U &&
+      result.selection.patternOwnerCount == 0U) {
+    const creative::CreativeWorldLayoutSourceRef buildingSource =
+        creative::resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+            appState.facade.document(), result.objectIds,
+            worldLayout->source);
+    if (buildingSource.table ==
+        creative::CreativeWorldLayoutTable::Building) {
+      result.selection.commonWorldLayoutSource = buildingSource;
+    }
+  }
   result.policy =
       creative::resolveCreativeSemanticObjectAction(result.selection, action);
   return result;

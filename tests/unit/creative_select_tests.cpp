@@ -408,6 +408,14 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
   const cr::CreativeSemanticSelectionSetResolution buildingScope =
       cr::resolveCreativeSemanticSelectionSet(
           document, buildingSelection, roomObject, &layout);
+  const std::array completeBuildingSelection{
+      roomObject, openingObject, upperRoomObject};
+  const cr::CreativeWorldLayoutSourceRef incompleteBuildingSource =
+      cr::resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+          document, buildingSelection, layout);
+  const cr::CreativeWorldLayoutSourceRef completeBuildingSource =
+      cr::resolveCompleteCreativeWorldLayoutBuildingSelectionSource(
+          document, completeBuildingSelection, layout);
   const std::array mixedSelection{roomObject, authoredObject};
   const cr::CreativeSemanticSelectionSetResolution mixed =
       cr::resolveCreativeSemanticSelectionSet(
@@ -462,6 +470,12 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
                          mixed, cr::CreativeSemanticObjectAction::Delete)
                          .allowed,
                 "mixed nearest owners reject mutation atomically") &&
+         expect(incompleteBuildingSource.table ==
+                        cr::CreativeWorldLayoutTable::None &&
+                    completeBuildingSource.table ==
+                        cr::CreativeWorldLayoutTable::Building &&
+                    completeBuildingSource.index == 0U,
+                "complete building promotion requires every generated member") &&
          expect(!missing.accepted && missing.resolvedCount == 1U &&
                     missing.missingCount == 1U &&
                     missing.status ==
