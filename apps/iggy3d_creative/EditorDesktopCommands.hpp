@@ -233,18 +233,15 @@ struct CreativeDesktopCommandResult {
 }
 
 class PlaytestProcessControl;
-struct CreativePlaySession;
 
 struct CreativeDesktopCommandContext {
   iggy3d::creative::CreativeAppState& appState;
   CreativeEditorState& editor;
   std::filesystem::path saveRoot;
   std::string* activeSaveId = nullptr;  // Save As rebinds the active id here.
-  CreativePlaySession* playMode = nullptr;
   const iggy3d::StaticMeshAssetCatalog* staticMeshAssetCatalog = nullptr;
   // Narrow seam to the app-shell playtest child owner; null in headless
-  // dispatch tests. The Play command binds to the in-editor play mode; the
-  // child owner serves the PlaytestPause/PlaytestResume channel commands.
+  // dispatch tests. It owns Play replacement plus the pause/resume channel.
   PlaytestProcessControl* playtestControl = nullptr;
 };
 

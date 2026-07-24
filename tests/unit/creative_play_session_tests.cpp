@@ -760,30 +760,25 @@ bool desktopPlayLaunchesWithoutOwningSession() {
   cr::CreativeDocument document = playableDocument(false, 904U);
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   app::CreativeEditorState editor;
-  app::CreativePlaySession mode;
   iggy3d::StaticMeshAssetCatalog catalog;
   std::string saveId = "unused";
-  // Reconciled binding: Play drives the embedded session through the
-  // context's playMode owner; this test wires NO owner, so Play must refuse
-  // without starting anything or locking the editor.
+  // The Creative command context has no embedded-session owner. With no save
+  // root, Play must refuse before fallback spawning and leave editing live.
   const app::CreativeDesktopCommandContext context{
-      appState, editor, std::filesystem::path{}, &saveId, nullptr, &catalog};
+      appState, editor, std::filesystem::path{}, &saveId, &catalog};
 
   app::CreativeDesktopCommandFrame frame;
   frame.push(app::CreativeDesktopCommandId::Play);
   const app::CreativeDesktopCommandResult played =
       app::dispatchCreativeDesktopCommands(frame, context);
-  const bool sessionStayedInactive = !app::creativePlaySessionActive(mode);
   frame.clear();
   frame.push(app::CreativeDesktopCommandId::NewDocument);
   const app::CreativeDesktopCommandResult newDocument =
       app::dispatchCreativeDesktopCommands(frame, context);
 
-  return expect(sessionStayedInactive,
-                "unwired desktop Play never starts the embedded session") &&
-         expect(!played.accepted &&
-                    played.message == "play owner is unavailable",
-                "unwired Play is refused with a reason") &&
+  return expect(!played.accepted &&
+                    played.message.starts_with("playtest refused:"),
+                "Desktop Play refuses an invalid launch environment") &&
          expect(newDocument.accepted && newDocument.documentReplaced,
                 "editing stays live after Play (no lockout engages)");
 }

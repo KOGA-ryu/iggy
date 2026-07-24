@@ -62,7 +62,6 @@
 #include "EditorPersistence.hpp"
 #include "EditorPlayerSpawnPreview.hpp"
 #include "EditorPlaytestProcess.hpp"
-#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorPreviewFrame.hpp"
 #include "EditorTransform.hpp"
 #include "EditorTransformFrame.hpp"
@@ -360,7 +359,6 @@ int main(int argc, char** argv) {
       volumeScenePreviewCache;
   iggy3d_creative_app::CreativePlayerSpawnPreviewCache
       playerSpawnPreviewCache;
-  iggy3d_creative_app::CreativePlaySession playMode;
   // The one playtest child this editor may own (kill-reap-snapshot-spawn on
   // Play, reaped on editor exit, polled non-blocking every frame).
   iggy3d_creative_app::PlaytestProcessOwner playtestOwner;
@@ -533,9 +531,7 @@ int main(int argc, char** argv) {
       invalidateCreativeEditorSceneCache(sceneCache);
     }
     creative::CreativeAppState& activeAppState =
-        iggy3d_creative_app::creativePlaySessionActive(playMode)
-            ? appState
-            : activeCreativeEditorAppState(editor, appState);
+        activeCreativeEditorAppState(editor, appState);
     if (synchronizeCreativeEditorTerrainGeneration(
             editor.terrainGeneration, activeAppState.facade.document())) {
       invalidateCreativeEditorGeneratedTerrainPreview(
@@ -552,11 +548,10 @@ int main(int argc, char** argv) {
       iggy3d_creative_app::buildCreativeEditorDesktopMenuBar(
           editor.desktopUi, activeAppState,
           &activeAppState == &appState ? &editor.worldLayout : nullptr,
-          iggy3d_creative_app::creativePlaySessionActive(playMode),
           desktopCommands);
       iggy3d_creative_app::buildCreativeEditorDesktopPanels(
           editor.desktopUi, editor, activeAppState,
-          &bootstrapData.staticMeshAssetCatalog, &playMode,
+          &bootstrapData.staticMeshAssetCatalog,
           &playtestOwner.monitor(), assetLibraryFrame.remainingInput,
           desktopCommands);
       if (desktopCommands.count > 0U) {
@@ -567,7 +562,6 @@ int main(int argc, char** argv) {
                  editor,
                  saveRoot,
                  &saveId,
-                 &playMode,
                  &bootstrapData.staticMeshAssetCatalog,
                  &playtestOwner});
         if (!desktopResult.message.empty()) {

@@ -20,7 +20,6 @@
 #include "EditorPlacementFeedback.hpp"
 #include "EditorToolGlyphs.hpp"
 #include "EditorUiInput.hpp"
-#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
@@ -95,7 +94,6 @@ const char* controlDeviceName(cr::CreativeControlDevice device) noexcept {
 // emitting a semantic command; nothing here mutates the document.
 void appendDiagnosticsTab(const cr::CreativeDocument& document,
                           const cr::CreativeLogicDiagnosticReport& diagnostics,
-                          bool playModeActive,
                           CreativeDesktopCommandFrame& commands) {
   ImGui::Text("Logic sources: %llu  linked: %llu",
               static_cast<unsigned long long>(diagnostics.sourceCount),
@@ -122,7 +120,7 @@ void appendDiagnosticsTab(const cr::CreativeDocument& document,
       queueCreativeDesktopObjectNavigation(
           commands,
           source != nullptr ? issue.sourceObjectId : issue.targetObjectId,
-          playModeActive);
+          /*playModeActive=*/false);
     }
     ImGui::PopStyleColor();
     ImGui::PopID();
@@ -215,8 +213,7 @@ void appendHistoryPanel(const cr::CreativeAppState& appState,
 // A compact read-only viewport header. The tool buttons it replaced performed no
 // command, and a visible control that does nothing is a false affordance.
 void appendToolbarHeader(const cr::CreativeAppState& appState,
-                         const CreativeEditorState& editor,
-                         bool playModeActive) {
+                         const CreativeEditorState& editor) {
   const cr::CreativeDocument& document = appState.facade.document();
   const CreativeDesktopLiveSelection live =
       creativeDesktopLiveSelection(appState.facade.selectionState());
@@ -233,10 +230,6 @@ void appendToolbarHeader(const cr::CreativeAppState& appState,
   ImGui::TextDisabled("|");
   ImGui::SameLine();
   ImGui::Text("device %s", controlDeviceName(editor.activeControlDevice));
-  if (playModeActive) {
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4{0.20F, 1.0F, 0.35F, 1.0F}, "PLAY");
-  }
 }
 
 }  // namespace
@@ -245,7 +238,6 @@ void buildCreativeEditorDesktopMenuBar(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
     const CreativeEditorWorldLayoutState* worldLayout,
-    bool playModeActive,
     CreativeDesktopCommandFrame& commands) {
   const CreativeDesktopObjectActionContext& actionContext =
       refreshCreativeEditorDesktopObjectActionContext(
@@ -266,7 +258,7 @@ void buildCreativeEditorDesktopMenuBar(
        creativeEditorWorldLayoutSourceRedoAvailable(*worldLayout)) ||
       (sourceSynchronized && cr::creativeRedoAvailable(appState.history));
   const bool canRegenerateMap =
-      !playModeActive && worldLayout != nullptr && sourceSynchronized &&
+      worldLayout != nullptr && sourceSynchronized &&
       appState.history.maxDepth > 0U;
 
   if (ImGui::BeginMainMenuBar()) {
@@ -303,11 +295,11 @@ void buildCreativeEditorDesktopMenuBar(
       }
       ImGui::Separator();
       if (ImGui::MenuItem("Duplicate", "Ctrl+D", false,
-                          !playModeActive && canDuplicate)) {
+                          canDuplicate)) {
         commands.push(CreativeDesktopCommandId::DuplicateSelection);
       }
       if (ImGui::MenuItem("Delete", "Del", false,
-                          !playModeActive && canDelete)) {
+                          canDelete)) {
         commands.push(CreativeDesktopCommandId::DeleteSelection);
       }
       ImGui::EndMenu();
@@ -336,7 +328,7 @@ void buildCreativeEditorDesktopMenuBar(
       }
       ImGui::EndMenu();
     }
-    if (ImGui::MenuItem(playModeActive ? "Stop" : "Play")) {
+    if (ImGui::MenuItem("Play")) {
       commands.push(CreativeDesktopCommandId::Play);
     }
     ImGui::EndMainMenuBar();
@@ -463,7 +455,6 @@ void buildCreativeEditorDesktopPanels(
     CreativeEditorState& editor,
     const cr::CreativeAppState& appState,
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
-    const CreativePlaySession* playMode,
     const PlaytestMonitorState* playtestMonitor,
     const cr::CreativeInputRouteResult& routedInput,
     CreativeDesktopCommandFrame& commands) {
@@ -483,13 +474,11 @@ void buildCreativeEditorDesktopPanels(
   }
   const cr::CreativeLogicDiagnosticReport& logicDiagnostics =
       desktopUi.logicDiagnostics;
-  const bool playModeActive =
-      playMode != nullptr && creativePlaySessionActive(*playMode);
 
   const ImGuiWindowFlags toolbarFlags =
       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
   if (ImGui::Begin("Toolbar##desktop", nullptr, toolbarFlags)) {
-    appendToolbarHeader(appState, editor, playModeActive);
+    appendToolbarHeader(appState, editor);
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
@@ -506,8 +495,7 @@ void buildCreativeEditorDesktopPanels(
     ImGui::SameLine();
     constexpr float kViewButtonSize = 24.0F;
     ImGui::BeginDisabled(
-        playModeActive || cr::selectedTargetCount(
-                              appState.facade.selectionState()) == 0U);
+        cr::selectedTargetCount(appState.facade.selectionState()) == 0U);
     if (drawCreativeEditorToolGlyphButton(
             "##desktop_frame_selection_3d",
             CreativeEditorToolGlyph::FitSelection, kViewButtonSize, false,
@@ -516,7 +504,7 @@ void buildCreativeEditorDesktopPanels(
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(playModeActive || document.objects().empty());
+    ImGui::BeginDisabled(document.objects().empty());
     if (drawCreativeEditorToolGlyphButton(
             "##desktop_frame_all_3d", CreativeEditorToolGlyph::FitAll,
             kViewButtonSize, false, "Frame all visible objects in 3D")) {
@@ -556,8 +544,8 @@ void buildCreativeEditorDesktopPanels(
     if (desktopUi.showOutliner) {
       if (ImGui::Begin("Project", &desktopUi.showOutliner)) {
         buildCreativeEditorDesktopOutlinerPanel(
-            desktopUi, appState, &editor.worldLayout, playModeActive, input,
-            commands);
+            desktopUi, appState, &editor.worldLayout,
+            /*playModeActive=*/false, input, commands);
       }
       ImGui::End();
     }
@@ -578,7 +566,7 @@ void buildCreativeEditorDesktopPanels(
           if (ImGui::BeginTabItem("Terrain Generator", nullptr,
                                   terrainFlags)) {
             buildCreativeEditorDesktopTerrainGenerationPanel(
-                editor, appState, playModeActive, commands);
+                editor, appState, /*playModeActive=*/false, commands);
             ImGui::EndTabItem();
           }
           desktopUi.terrainGeneratorFocusRequested = false;
@@ -597,12 +585,11 @@ void buildCreativeEditorDesktopPanels(
           if (ImGui::BeginTabItem("Map Validation")) {
             buildCreativeEditorMapValidationPanel(
                 desktopUi.mapValidation, document, assetCatalog,
-                playModeActive, commands);
+                /*playModeActive=*/false, commands);
             ImGui::EndTabItem();
           }
           if (ImGui::BeginTabItem("Logic")) {
-            appendDiagnosticsTab(document, logicDiagnostics, playModeActive,
-                                 commands);
+            appendDiagnosticsTab(document, logicDiagnostics, commands);
             ImGui::EndTabItem();
           }
           if (ImGui::BeginTabItem("Pass Status")) {
@@ -630,7 +617,8 @@ void buildCreativeEditorDesktopPanels(
 
   buildCreativeEditorWorldLayoutPanel(
       desktopUi, editor, document, appState.facade.selectionState(),
-      appState.facade.measurementState(), playModeActive, input, commands);
+      appState.facade.measurementState(), /*playModeActive=*/false, input,
+      commands);
 }
 
 void buildCreativeEditorDesktopStatusBar(

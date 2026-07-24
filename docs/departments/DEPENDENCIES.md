@@ -10,7 +10,7 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Interaction and Controls | 102 | 49 |
 | Playtest and Simulation | Foundation and Build | 93 | 63 |
 | Interaction and Controls | Assets and Object Composition | 85 | 39 |
-| Editor Shell and Drafting UI | Interaction and Controls | 65 | 24 |
+| Editor Shell and Drafting UI | Interaction and Controls | 66 | 25 |
 | Interaction and Controls | Authoring Core | 63 | 44 |
 | Building and World Layout | Authoring Core | 59 | 49 |
 | Terrain and Site | Authoring Core | 53 | 37 |
@@ -41,9 +41,9 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Interaction and Controls | Rendering and Preview | 19 | 14 |
 | Assets and Object Composition | Building and World Layout | 18 | 8 |
 | Interaction and Controls | Foundation and Build | 18 | 12 |
-| Editor Shell and Drafting UI | Playtest and Simulation | 17 | 9 |
 | Interaction and Controls | Terrain and Site | 17 | 8 |
 | Rendering and Preview | Playtest and Simulation | 17 | 9 |
+| Editor Shell and Drafting UI | Playtest and Simulation | 15 | 8 |
 | Playtest and Simulation | Persistence and Validation | 15 | 10 |
 | Authoring Core | Building and World Layout | 14 | 7 |
 | Authoring Core | Interaction and Controls | 14 | 6 |
@@ -89,18 +89,18 @@ These files deserve manual ownership review before physical moves.
 
 | File | Owner | Outgoing Departments | Cross-Department Edges |
 | --- | --- | --- | ---: |
-| [apps/iggy3d_creative/main.cpp](../../apps/iggy3d_creative/main.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Persistence and Validation, Playtest and Simulation, Rendering and Preview | 32 |
+| [apps/iggy3d_creative/main.cpp](../../apps/iggy3d_creative/main.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Persistence and Validation, Playtest and Simulation, Rendering and Preview | 31 |
 | [apps/iggy3d_creative/EditorState.hpp](../../apps/iggy3d_creative/EditorState.hpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Playtest and Simulation, Rendering and Preview, Terrain and Site | 27 |
 | [apps/iggy3d_creative/EditorOverlayWireframes.cpp](../../apps/iggy3d_creative/EditorOverlayWireframes.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls | 21 |
 | [tests/unit/creative_editor_pattern_tests.cpp](../../tests/unit/creative_editor_pattern_tests.cpp) | Assets and Object Composition | Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 16 |
 | [apps/iggy3d_creative/EditorBootstrap.cpp](../../apps/iggy3d_creative/EditorBootstrap.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Rendering and Preview, Terrain and Site | 15 |
 | [src/runtime/save/SaveEnvelope.hpp](../../src/runtime/save/SaveEnvelope.hpp) | Persistence and Validation | Foundation and Build, Playtest and Simulation | 15 |
-| [tests/unit/creative_desktop_ui_command_tests.cpp](../../tests/unit/creative_desktop_ui_command_tests.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 15 |
-| [apps/iggy3d_creative/EditorDesktopPanels.cpp](../../apps/iggy3d_creative/EditorDesktopPanels.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 14 |
 | [apps/iggy3d_creative/EditorInteractionOverlay.cpp](../../apps/iggy3d_creative/EditorInteractionOverlay.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Terrain and Site | 14 |
 | [apps/iggy3d_playtest/main.cpp](../../apps/iggy3d_playtest/main.cpp) | Playtest and Simulation | Building and World Layout, Editor Shell and Drafting UI, Foundation and Build, Interaction and Controls, Persistence and Validation, Rendering and Preview | 14 |
 | [src/app/iggy3d/creative/Facade.hpp](../../src/app/iggy3d/creative/Facade.hpp) | Authoring Core | Assets and Object Composition, Interaction and Controls | 14 |
 | [src/app/iggy3d/creative/tools/Tools.hpp](../../src/app/iggy3d/creative/tools/Tools.hpp) | Interaction and Controls | Assets and Object Composition, Authoring Core, Terrain and Site | 14 |
+| [tests/unit/creative_desktop_ui_command_tests.cpp](../../tests/unit/creative_desktop_ui_command_tests.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 14 |
+| [apps/iggy3d_creative/EditorDesktopPanels.cpp](../../apps/iggy3d_creative/EditorDesktopPanels.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 13 |
 | [apps/iggy3d_creative/EditorFrame.hpp](../../apps/iggy3d_creative/EditorFrame.hpp) | Editor Shell and Drafting UI | Authoring Core, Foundation and Build, Interaction and Controls, Rendering and Preview | 13 |
 | [tests/unit/creative_creator_task_workflow_tests.cpp](../../tests/unit/creative_creator_task_workflow_tests.cpp) | Authoring Core | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Playtest and Simulation, Terrain and Site | 13 |
 | [tests/unit/creative_editor_placement_tests.cpp](../../tests/unit/creative_editor_placement_tests.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 13 |

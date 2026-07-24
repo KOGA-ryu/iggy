@@ -7,8 +7,6 @@
 #include <utility>
 #include <variant>
 
-#include "app/iggy3d/creative/play/PlaySession.hpp"
-
 namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;
@@ -118,15 +116,6 @@ void mergeCommandResult(CreativeDesktopCommandResult& aggregate,
       aggregate, CreativeDesktopCommandImpact::WorldLayoutChanged);
 }
 
-[[nodiscard]] bool commandAllowedDuringPlay(
-    CreativeDesktopCommandId id) noexcept {
-  return id == CreativeDesktopCommandId::None ||
-         id == CreativeDesktopCommandId::Play ||
-         id == CreativeDesktopCommandId::SelectObjects ||
-         id == CreativeDesktopCommandId::WorldLayoutFocusSource ||
-         id == CreativeDesktopCommandId::WorldLayoutFocusObjectSource;
-}
-
 void dispatchOne(const CreativeDesktopCommand& command,
                  const CreativeDesktopCommandContext& context,
                  CreativeDesktopCommandResult& result) {
@@ -140,13 +129,6 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.worldLayoutChanged = false;
   result.affectedObjectCount = 0U;
   result.message.clear();
-
-  if (context.playMode != nullptr &&
-      creativePlaySessionActive(*context.playMode) &&
-      !commandAllowedDuringPlay(command.id)) {
-    result.message = "stop play before editing";
-    return;
-  }
 
   if (dispatchCreativeDesktopDocumentCommand(command, context, result) ||
       dispatchCreativeDesktopObjectCommand(command, context, result) ||
