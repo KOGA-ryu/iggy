@@ -8,12 +8,12 @@
 #include <cmath>
 #include <span>
 #include <thread>
-#include <utility>
 
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
 #include "app/iggy3d/creative/input/ActionHints.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
@@ -291,44 +291,6 @@ constexpr std::array kControllerKeyMappings{
   return true;
 }
 
-[[nodiscard]] creative::CreativeWorldInputSample makeCreativeWorldInputSample(
-    const creative::CreativeInputFrame& inputFrame,
-    const creative::CreativeInputRouteResult& routedInput,
-    std::span<const creative::CreativeInputBinding> bindings,
-    bool enabled,
-    std::int32_t hotbarWheelSteps) noexcept {
-  creative::CreativeWorldInputSample sample;
-  if (!enabled) {
-    return sample;
-  }
-  const auto actionDown = [&](creative::CreativeInputActionId action) {
-    return creative::creativeInputActionDown(inputFrame, action, bindings,
-                                             &routedInput);
-  };
-  constexpr std::array mappings{
-      std::pair{creative::CreativeWorldActionId::Primary,
-                creative::CreativeInputActionId::PrimaryAction},
-      std::pair{creative::CreativeWorldActionId::Secondary,
-                creative::CreativeInputActionId::SecondaryAction},
-      std::pair{creative::CreativeWorldActionId::Accept,
-                creative::CreativeInputActionId::AcceptAction},
-      std::pair{creative::CreativeWorldActionId::Reject,
-                creative::CreativeInputActionId::RejectAction},
-      std::pair{creative::CreativeWorldActionId::Pick,
-                creative::CreativeInputActionId::PickAction},
-      std::pair{creative::CreativeWorldActionId::HotbarPrevious,
-                creative::CreativeInputActionId::HotbarPrevious},
-      std::pair{creative::CreativeWorldActionId::HotbarNext,
-                creative::CreativeInputActionId::HotbarNext},
-  };
-  for (const auto& [worldAction, inputAction] : mappings) {
-    creative::setCreativeWorldAction(sample, worldAction,
-                                     actionDown(inputAction));
-  }
-  sample.hotbarWheelSteps = hotbarWheelSteps;
-  return sample;
-}
-
 [[nodiscard]] iggy3d::ProductCreativeFlyInput makeCreativeEditorFlyInput(
     const creative::CreativeInputFrame& inputFrame,
     const creative::CreativeInputRouteResult& routedInput,
@@ -528,7 +490,7 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                                                        CreativeInputContext::
                                                            EditorViewport);
   const creative::CreativeWorldInputSample worldInput =
-      makeCreativeWorldInputSample(
+      creative::sampleCreativeWorldInput(
           inputFrame, result.routedInput, editor.controlProfile.bindingSpan(),
           !captureMode && result.windowFocused,
           viewportDollyRequested ? 0 : wheelSteps);

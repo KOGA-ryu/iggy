@@ -9,6 +9,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -284,23 +285,15 @@ void applyContinuousBrush(cr::CreativeAppState& appState,
   return state.lastMutation.accepted;
 }
 
-[[nodiscard]] bool actionPressed(
-    const cr::CreativeWorldActionFrame& actions,
-    cr::CreativeWorldActionId first,
-    cr::CreativeWorldActionId second) noexcept {
-  return cr::creativeWorldActionPressed(actions, first) ||
-         cr::creativeWorldActionPressed(actions, second);
-}
-
 void processConnectedPaint(cr::CreativeAppState& appState,
                            CreativeEditorState& editor,
                            const cr::CreativeWorldActionFrame& actions) {
-  const bool restore =
-      actionPressed(actions, cr::CreativeWorldActionId::Primary,
-                    cr::CreativeWorldActionId::Reject);
-  const bool paint =
-      actionPressed(actions, cr::CreativeWorldActionId::Secondary,
-                    cr::CreativeWorldActionId::Accept);
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      actions, cr::CreativeWorldIntentPolicy::Placement);
+  const bool restore = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
+  const bool paint = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Positive);
   if (!restore && !paint) {
     return;
   }
@@ -317,9 +310,10 @@ void processRegionPaint(cr::CreativeAppState& appState,
                         CreativeEditorState& editor,
                         const cr::CreativeWorldActionFrame& actions) {
   CreativeEditorTerrainPaintState& state = editor.terrainPaint;
-  const bool back =
-      actionPressed(actions, cr::CreativeWorldActionId::Primary,
-                    cr::CreativeWorldActionId::Reject);
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      actions, cr::CreativeWorldIntentPolicy::Placement);
+  const bool back = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
   if (back) {
     switch (state.regionPhase) {
       case CreativeEditorTerrainPaintRegionPhase::Empty:
@@ -334,8 +328,8 @@ void processRegionPaint(cr::CreativeAppState& appState,
     clearCreativeEditorPlacementFeedback(editor.interaction);
     return;
   }
-  if (!actionPressed(actions, cr::CreativeWorldActionId::Secondary,
-                     cr::CreativeWorldActionId::Accept)) {
+  if (!cr::creativeWorldIntentPressed(
+          intents, cr::CreativeWorldIntentId::Positive)) {
     return;
   }
   cr::CreativeTerrainCoord2 target{};

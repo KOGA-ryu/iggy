@@ -7,6 +7,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/UiInput.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -307,26 +308,22 @@ CreativeVolumeOperationKind creativeVolumeOperationForHeldItem(
 CreativeMaterialRepeatRequest makeCreativeWorldStrokeRepeatRequest(
     const CreativeWorldActionFrame& actions,
     std::uint64_t nowNanoseconds) noexcept {
+  const CreativeWorldIntentFrame intents = resolveCreativeWorldIntents(
+      actions, CreativeWorldIntentPolicy::Placement);
   CreativeMaterialRepeatRequest request;
   request.nowNanoseconds = nowNanoseconds;
   request.primaryPressed =
-      creativeWorldActionPressed(actions, CreativeWorldActionId::Primary) ||
-      creativeWorldActionPressed(actions, CreativeWorldActionId::Reject);
+      creativeWorldIntentPressed(intents, CreativeWorldIntentId::Negative);
   request.primaryDown =
-      creativeWorldActionDown(actions, CreativeWorldActionId::Primary) ||
-      creativeWorldActionDown(actions, CreativeWorldActionId::Reject);
+      creativeWorldIntentDown(intents, CreativeWorldIntentId::Negative);
   request.primaryReleased =
-      creativeWorldActionReleased(actions, CreativeWorldActionId::Primary) ||
-      creativeWorldActionReleased(actions, CreativeWorldActionId::Reject);
+      creativeWorldIntentReleased(intents, CreativeWorldIntentId::Negative);
   request.secondaryPressed =
-      creativeWorldActionPressed(actions, CreativeWorldActionId::Secondary) ||
-      creativeWorldActionPressed(actions, CreativeWorldActionId::Accept);
+      creativeWorldIntentPressed(intents, CreativeWorldIntentId::Positive);
   request.secondaryDown =
-      creativeWorldActionDown(actions, CreativeWorldActionId::Secondary) ||
-      creativeWorldActionDown(actions, CreativeWorldActionId::Accept);
+      creativeWorldIntentDown(intents, CreativeWorldIntentId::Positive);
   request.secondaryReleased =
-      creativeWorldActionReleased(actions, CreativeWorldActionId::Secondary) ||
-      creativeWorldActionReleased(actions, CreativeWorldActionId::Accept);
+      creativeWorldIntentReleased(intents, CreativeWorldIntentId::Positive);
   return request;
 }
 

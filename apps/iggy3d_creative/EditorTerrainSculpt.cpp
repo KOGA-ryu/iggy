@@ -5,6 +5,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -383,9 +384,10 @@ void processCreativeTerrainSculptStrokeFrame(
     return;
   }
 
-  const bool cancelPressed =
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Reject);
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      actions, cr::CreativeWorldIntentPolicy::Placement);
+  const bool cancelPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
   if (cancelPressed) {
     finalizeCreativeTerrainSculptStroke(
         appState, editor, "creative_terrain_sculpt_cancelled");

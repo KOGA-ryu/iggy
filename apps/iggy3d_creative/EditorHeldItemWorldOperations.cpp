@@ -25,6 +25,7 @@
 #include "EditorWorldLayout.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 #include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
@@ -812,10 +813,12 @@ void processMoveInteraction(
           targetY)) {
     return;
   }
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      request.actions, cr::CreativeWorldIntentPolicy::Manipulation);
   CreativeMovingPlatformPathEditState& pathEdit =
       editor.interaction.movingPlatformPathEdit;
-  const bool rejectPressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Reject);
+  const bool rejectPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
   if (rejectPressed) {
     if (clearCreativeMovingPlatformPathPointSelection(pathEdit)) {
       return;
@@ -823,12 +826,10 @@ void processMoveInteraction(
     static_cast<void>(cancelCreativeEditorHeldItem(request.appState, editor));
     return;
   }
-  const bool pressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionPressed(request.actions,
-                                     cr::CreativeWorldActionId::Accept);
-  const bool secondaryPressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Secondary);
+  const bool pressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Positive);
+  const bool secondaryPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Alternate);
 
   if (secondaryPressed && pathEdit.pointSelected) {
     static_cast<void>(clearCreativeMovingPlatformPathPointSelection(pathEdit));

@@ -87,6 +87,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/input/Catalog.cpp
     src/app/iggy3d/creative/input/ToolWheel.cpp
     src/app/iggy3d/creative/input/Interaction.cpp
+    src/app/iggy3d/creative/input/WorldActionIntent.cpp
     src/app/iggy3d/creative/input/HeldItemRegistry.cpp
     src/app/iggy3d/creative/history/History.cpp
     src/app/iggy3d/creative/tools/TerrainBrushKernel.cpp

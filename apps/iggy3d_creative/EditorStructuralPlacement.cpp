@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -229,9 +230,10 @@ bool processCreativeEditorStructuralSpanInput(
     state = {};
   }
 
-  const bool cancelPressed =
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Primary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Reject);
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      actions, cr::CreativeWorldIntentPolicy::Placement);
+  const bool cancelPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
   if (cancelPressed) {
     if (!state.active) {
       return false;
@@ -241,9 +243,8 @@ bool processCreativeEditorStructuralSpanInput(
     return true;
   }
 
-  const bool confirmPressed =
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Secondary) ||
-      cr::creativeWorldActionPressed(actions, cr::CreativeWorldActionId::Accept);
+  const bool confirmPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Positive);
   if (!state.active) {
     if (!confirmPressed) {
       return false;
@@ -415,8 +416,10 @@ bool processCreativeEditorStructuralSpanEditInput(
     return true;
   }
 
-  const bool rejectPressed = cr::creativeWorldActionPressed(
-      actions, cr::CreativeWorldActionId::Reject);
+  const cr::CreativeWorldIntentFrame intents = cr::resolveCreativeWorldIntents(
+      actions, cr::CreativeWorldIntentPolicy::Manipulation);
+  const bool rejectPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Negative);
   if (rejectPressed) {
     if (!cancelCreativeEditorStructuralSpanEdit(state)) {
       return false;
@@ -425,10 +428,8 @@ bool processCreativeEditorStructuralSpanEditInput(
     return true;
   }
 
-  const bool acceptPressed = cr::creativeWorldActionPressed(
-                                 actions, cr::CreativeWorldActionId::Primary) ||
-                             cr::creativeWorldActionPressed(
-                                 actions, cr::CreativeWorldActionId::Accept);
+  const bool acceptPressed = cr::creativeWorldIntentPressed(
+      intents, cr::CreativeWorldIntentId::Positive);
   if (!state.active) {
     if (!acceptPressed || !state.available) {
       return false;

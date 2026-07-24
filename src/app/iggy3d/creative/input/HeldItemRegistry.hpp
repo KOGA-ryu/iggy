@@ -193,11 +193,32 @@ struct CreativeHeldItemDefinition {
   bool primaryWinsSimultaneous = false;
 };
 
+inline constexpr std::size_t kCreativeHeldItemWorldOperationCapacity = 4U;
+
+struct CreativeHeldItemWorldOperationList {
+  std::array<CreativeHeldItemWorldOperation,
+             kCreativeHeldItemWorldOperationCapacity>
+      operations{};
+  std::uint8_t count = 0U;
+  bool capacityExceeded = false;
+
+  [[nodiscard]] std::span<const CreativeHeldItemWorldOperation> items()
+      const noexcept {
+    return {operations.data(), count};
+  }
+};
+
 static_assert(std::is_trivially_copyable_v<CreativeHeldItemDefinition>);
+static_assert(
+    std::is_trivially_copyable_v<CreativeHeldItemWorldOperationList>);
 
 [[nodiscard]] std::span<const CreativeHeldItemDefinition>
 creativeHeldItemDefinitions() noexcept;
 [[nodiscard]] const CreativeHeldItemDefinition& describeCreativeHeldItem(
     CreativeHeldItemKind kind) noexcept;
+[[nodiscard]] CreativeHeldItemWorldOperationList
+resolveCreativeHeldItemWorldOperations(
+    const CreativeHeldItemDefinition& definition,
+    const CreativeWorldActionFrame& actions) noexcept;
 
 }  // namespace iggy3d::creative

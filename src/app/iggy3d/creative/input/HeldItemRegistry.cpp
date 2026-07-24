@@ -20,6 +20,23 @@ using StatusMode = CreativeHeldItemStatusMode;
   return static_cast<std::size_t>(kind);
 }
 
+void appendUniqueOperation(CreativeHeldItemWorldOperationList& output,
+                           CreativeHeldItemWorldOperation operation) noexcept {
+  if (operation == CreativeHeldItemWorldOperation::None) {
+    return;
+  }
+  for (CreativeHeldItemWorldOperation existing : output.items()) {
+    if (existing == operation) {
+      return;
+    }
+  }
+  if (output.count >= output.operations.size()) {
+    output.capacityExceeded = true;
+    return;
+  }
+  output.operations[output.count++] = operation;
+}
+
 [[nodiscard]] consteval auto makeHeldItemDefinitions() {
   std::array<CreativeHeldItemDefinition, kCreativeHeldItemKindCount> rows{};
   for (std::size_t index = 0; index < rows.size(); ++index) {
@@ -348,6 +365,38 @@ const CreativeHeldItemDefinition& describeCreativeHeldItem(
   const std::size_t index = heldIndex(kind);
   return index < kHeldItemDefinitions.size() ? kHeldItemDefinitions[index]
                                              : kInvalidHeldItemDefinition;
+}
+
+CreativeHeldItemWorldOperationList resolveCreativeHeldItemWorldOperations(
+    const CreativeHeldItemDefinition& definition,
+    const CreativeWorldActionFrame& actions) noexcept {
+  CreativeHeldItemWorldOperationList output;
+  const bool rejectPressed =
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Reject);
+  const bool acceptPressed =
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Accept);
+  if (rejectPressed) {
+    appendUniqueOperation(output, definition.rejectOperation);
+  } else if (acceptPressed) {
+    appendUniqueOperation(output, definition.acceptOperation);
+  }
+
+  constexpr std::array sourceActions{
+      CreativeWorldActionId::Primary,
+      CreativeWorldActionId::Secondary,
+      CreativeWorldActionId::Pick,
+  };
+  const bool primaryPressed =
+      creativeWorldActionPressed(actions, CreativeWorldActionId::Primary);
+  for (std::size_t index = 0U; index < sourceActions.size(); ++index) {
+    if (definition.primaryWinsSimultaneous && index == 1U && primaryPressed) {
+      continue;
+    }
+    if (creativeWorldActionPressed(actions, sourceActions[index])) {
+      appendUniqueOperation(output, definition.worldOperations[index]);
+    }
+  }
+  return output;
 }
 
 }  // namespace iggy3d::creative

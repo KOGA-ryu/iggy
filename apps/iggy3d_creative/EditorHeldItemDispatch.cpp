@@ -1,8 +1,6 @@
 #include "EditorInteraction.hpp"
 #include "EditorInteractionInternal.hpp"
 
-#include <array>
-
 #include "EditorState.hpp"
 #include "EditorMeasurement.hpp"
 #include "EditorTerrain.hpp"
@@ -179,32 +177,10 @@ void processCreativeEditorHeldItemFrame(
 
   const cr::CreativeHeldItemDefinition& definition =
       cr::describeCreativeHeldItem(held.kind);
-  constexpr std::array actions{
-      cr::CreativeWorldActionId::Primary,
-      cr::CreativeWorldActionId::Secondary,
-      cr::CreativeWorldActionId::Pick,
-  };
-  const bool rejectPressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Reject);
-  const bool acceptPressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Accept);
-  if (rejectPressed) {
-    dispatchCreativeEditorHeldItemWorldOperation(
-        definition.rejectOperation, request, held);
-  } else if (acceptPressed) {
-    dispatchCreativeEditorHeldItemWorldOperation(
-        definition.acceptOperation, request, held);
-  }
-  const bool primaryPressed = cr::creativeWorldActionPressed(
-      request.actions, cr::CreativeWorldActionId::Primary);
-  for (std::size_t index = 0; index < actions.size(); ++index) {
-    if (definition.primaryWinsSimultaneous && index == 1U && primaryPressed) {
-      continue;
-    }
-    if (cr::creativeWorldActionPressed(request.actions, actions[index])) {
-      dispatchCreativeEditorHeldItemWorldOperation(
-          definition.worldOperations[index], request, held);
-    }
+  const cr::CreativeHeldItemWorldOperationList operations =
+      cr::resolveCreativeHeldItemWorldOperations(definition, request.actions);
+  for (cr::CreativeHeldItemWorldOperation operation : operations.items()) {
+    dispatchCreativeEditorHeldItemWorldOperation(operation, request, held);
   }
 }
 

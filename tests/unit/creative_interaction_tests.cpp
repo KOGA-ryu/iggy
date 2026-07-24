@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/camera/ViewportNavigation.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
@@ -494,6 +495,181 @@ bool worldActionsAreEdgeTriggered() {
                     !cr::creativeWorldActionDown(
                         released, cr::CreativeWorldActionId::Primary),
                 "primary release edge routed");
+}
+
+bool worldActionIntentsArePolicyOwnedAndDisjoint() {
+  constexpr std::array policies{
+      cr::CreativeWorldIntentPolicy::Placement,
+      cr::CreativeWorldIntentPolicy::Manipulation,
+  };
+  bool ok = true;
+  for (cr::CreativeWorldIntentPolicy policy : policies) {
+    for (std::size_t actionIndex = 0U;
+         actionIndex < cr::kCreativeWorldActionCount; ++actionIndex) {
+      cr::CreativeWorldActionFrame source;
+      source.pressed[actionIndex] = true;
+      const cr::CreativeWorldIntentFrame intents =
+          cr::resolveCreativeWorldIntents(source, policy);
+      const std::size_t matchCount =
+          static_cast<std::size_t>(std::count(intents.pressed.begin(),
+                                              intents.pressed.end(), true));
+      ok = expect(matchCount <= 1U,
+                  "one source action maps to at most one policy intent") &&
+           ok;
+    }
+  }
+  constexpr std::array expectedInputActions{
+      cr::CreativeInputActionId::PrimaryAction,
+      cr::CreativeInputActionId::SecondaryAction,
+      cr::CreativeInputActionId::AcceptAction,
+      cr::CreativeInputActionId::RejectAction,
+      cr::CreativeInputActionId::PickAction,
+      cr::CreativeInputActionId::HotbarPrevious,
+      cr::CreativeInputActionId::HotbarNext,
+  };
+  for (std::size_t index = 0U; index < expectedInputActions.size(); ++index) {
+    ok = expect(
+             cr::creativeWorldInputAction(
+                 static_cast<cr::CreativeWorldActionId>(index)) ==
+                 expectedInputActions[index],
+             "world action sampling uses the canonical input-action table") &&
+         ok;
+  }
+
+  cr::CreativeWorldActionFrame placementSource;
+  for (cr::CreativeWorldActionId action :
+       {cr::CreativeWorldActionId::Secondary,
+        cr::CreativeWorldActionId::Accept}) {
+    const std::size_t index = static_cast<std::size_t>(action);
+    placementSource.down[index] = true;
+    placementSource.pressed[index] = true;
+  }
+  for (cr::CreativeWorldActionId action :
+       {cr::CreativeWorldActionId::Primary,
+        cr::CreativeWorldActionId::Reject}) {
+    placementSource.released[static_cast<std::size_t>(action)] = true;
+  }
+  const cr::CreativeWorldIntentFrame placement =
+      cr::resolveCreativeWorldIntents(
+          placementSource, cr::CreativeWorldIntentPolicy::Placement);
+
+  cr::CreativeWorldActionFrame manipulationSource;
+  for (cr::CreativeWorldActionId action :
+       {cr::CreativeWorldActionId::Primary,
+        cr::CreativeWorldActionId::Accept}) {
+    manipulationSource.pressed[static_cast<std::size_t>(action)] = true;
+  }
+  manipulationSource.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Secondary)] = true;
+  manipulationSource.released[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Reject)] = true;
+  const cr::CreativeWorldIntentFrame manipulation =
+      cr::resolveCreativeWorldIntents(
+          manipulationSource, cr::CreativeWorldIntentPolicy::Manipulation);
+
+  return expect(
+             cr::creativeWorldIntentDown(
+                 placement, cr::CreativeWorldIntentId::Positive) &&
+                 cr::creativeWorldIntentPressed(
+                     placement, cr::CreativeWorldIntentId::Positive) &&
+                 cr::creativeWorldIntentReleased(
+                     placement, cr::CreativeWorldIntentId::Negative),
+             "placement coalesces mouse and gamepad edit aliases") &&
+         expect(cr::creativeWorldIntentPressed(
+                    manipulation, cr::CreativeWorldIntentId::Positive) &&
+                    cr::creativeWorldIntentPressed(
+                        manipulation, cr::CreativeWorldIntentId::Alternate) &&
+                    cr::creativeWorldIntentReleased(
+                        manipulation, cr::CreativeWorldIntentId::Negative),
+                "manipulation separates commit, cancel, and alternate input") &&
+         expect(cr::creativeWorldIntentInputAction(
+                    cr::CreativeWorldIntentPolicy::Placement,
+                    cr::CreativeWorldIntentId::Positive,
+                    cr::CreativeControlDevice::KeyboardMouse) ==
+                        cr::CreativeInputActionId::SecondaryAction &&
+                    cr::creativeWorldIntentInputAction(
+                        cr::CreativeWorldIntentPolicy::Placement,
+                        cr::CreativeWorldIntentId::Positive,
+                        cr::CreativeControlDevice::Gamepad) ==
+                        cr::CreativeInputActionId::AcceptAction &&
+                    cr::creativeWorldIntentInputAction(
+                        cr::CreativeWorldIntentPolicy::Manipulation,
+                        cr::CreativeWorldIntentId::Positive,
+                        cr::CreativeControlDevice::KeyboardMouse) ==
+                        cr::CreativeInputActionId::PrimaryAction &&
+                    cr::creativeWorldIntentInputAction(
+                        cr::CreativeWorldIntentPolicy::Manipulation,
+                        cr::CreativeWorldIntentId::Negative,
+                        cr::CreativeControlDevice::Gamepad) ==
+                        cr::CreativeInputActionId::RejectAction,
+                "hints and behavior resolve through the same policy rows") &&
+         expect(cr::describeCreativeWorldIntentPolicy(
+                    cr::CreativeWorldIntentPolicy::Count)
+                        .policy == cr::CreativeWorldIntentPolicy::Count &&
+                    cr::creativeWorldInputAction(
+                        cr::CreativeWorldActionId::Count) ==
+                        cr::CreativeInputActionId::Count &&
+                    !cr::creativeWorldIntentPressed(
+                        cr::resolveCreativeWorldIntents(
+                            placementSource,
+                            cr::CreativeWorldIntentPolicy::Count),
+                        cr::CreativeWorldIntentId::Positive),
+                "invalid policies resolve to inert intent frames") &&
+         ok;
+}
+
+bool heldItemOperationsDeduplicateCrossDeviceAliases() {
+  const cr::CreativeHeldItemDefinition& connectedFill =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ConnectedFill);
+  cr::CreativeWorldActionFrame eraseFrame;
+  eraseFrame.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Primary)] = true;
+  eraseFrame.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Reject)] = true;
+  const cr::CreativeHeldItemWorldOperationList erase =
+      cr::resolveCreativeHeldItemWorldOperations(connectedFill, eraseFrame);
+
+  cr::CreativeWorldActionFrame paintFrame;
+  paintFrame.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Secondary)] = true;
+  paintFrame.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Accept)] = true;
+  const cr::CreativeHeldItemWorldOperationList paint =
+      cr::resolveCreativeHeldItemWorldOperations(connectedFill, paintFrame);
+
+  const cr::CreativeHeldItemDefinition& select =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::ObjectSelect);
+  const cr::CreativeHeldItemWorldOperationList distinct =
+      cr::resolveCreativeHeldItemWorldOperations(select, eraseFrame);
+
+  const cr::CreativeHeldItemDefinition& volumeFill =
+      cr::describeCreativeHeldItem(cr::CreativeHeldItemKind::VolumeFill);
+  cr::CreativeWorldActionFrame simultaneous;
+  simultaneous.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Primary)] = true;
+  simultaneous.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Secondary)] = true;
+  const cr::CreativeHeldItemWorldOperationList primaryWins =
+      cr::resolveCreativeHeldItemWorldOperations(volumeFill, simultaneous);
+
+  return expect(erase.count == 1U && !erase.capacityExceeded &&
+                    erase.operations[0] ==
+                        cr::CreativeHeldItemWorldOperation::EraseConnectedFill,
+                "mouse and controller erase aliases emit one operation") &&
+         expect(paint.count == 1U && !paint.capacityExceeded &&
+                    paint.operations[0] ==
+                        cr::CreativeHeldItemWorldOperation::PaintConnectedFill,
+                "mouse and controller apply aliases emit one operation") &&
+         expect(distinct.count == 2U &&
+                    distinct.operations[0] ==
+                        cr::CreativeHeldItemWorldOperation::ClearSelection &&
+                    distinct.operations[1] ==
+                        cr::CreativeHeldItemWorldOperation::SelectObject,
+                "different simultaneous semantics retain deterministic order") &&
+         expect(primaryWins.count == 1U &&
+                    primaryWins.operations[0] ==
+                        cr::CreativeHeldItemWorldOperation::BeginShapeVolume,
+                "registry precedence still suppresses simultaneous secondary");
 }
 
 bool hotbarHasStableNineSlotGrammar() {
@@ -1656,8 +1832,10 @@ int main() {
   ok = cameraBoundsFramingFitsThePerspectiveAndFailsClosed() && ok;
   ok = viewportNavigationSharesOneFocusAndPhysicalScaleModel() && ok;
   ok = worldActionsAreEdgeTriggered() && ok;
+  ok = worldActionIntentsArePolicyOwnedAndDisjoint() && ok;
   ok = hotbarHasStableNineSlotGrammar() && ok;
   ok = heldItemRegistryOwnsEveryKind() && ok;
+  ok = heldItemOperationsDeduplicateCrossDeviceAliases() && ok;
   ok = heldVolumeItemsMapWithoutBranchesAtCallers() && ok;
   ok = gridTargetResolvesHitFaceAndPlacementCell() && ok;
   ok = placementGridOwnsBoundsOriginsAndOverlayPlanes() && ok;

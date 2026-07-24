@@ -7,6 +7,7 @@
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "EditorToolDescriptor.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 #include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
 
 namespace iggy3d_creative_app {
@@ -223,11 +224,25 @@ void appendViewportHints(HintSpecBuffer& buffer,
                          cr::CreativeControlDevice device) noexcept {
   const bool gamepad = device == cr::CreativeControlDevice::Gamepad;
   const cr::CreativeInputActionId positiveAction =
-      gamepad ? cr::CreativeInputActionId::AcceptAction
-              : cr::CreativeInputActionId::SecondaryAction;
+      cr::creativeWorldIntentInputAction(
+          cr::CreativeWorldIntentPolicy::Placement,
+          cr::CreativeWorldIntentId::Positive, device);
   const cr::CreativeInputActionId negativeAction =
-      gamepad ? cr::CreativeInputActionId::RejectAction
-              : cr::CreativeInputActionId::PrimaryAction;
+      cr::creativeWorldIntentInputAction(
+          cr::CreativeWorldIntentPolicy::Placement,
+          cr::CreativeWorldIntentId::Negative, device);
+  const cr::CreativeInputActionId manipulationPositiveAction =
+      cr::creativeWorldIntentInputAction(
+          cr::CreativeWorldIntentPolicy::Manipulation,
+          cr::CreativeWorldIntentId::Positive, device);
+  const cr::CreativeInputActionId manipulationNegativeAction =
+      cr::creativeWorldIntentInputAction(
+          cr::CreativeWorldIntentPolicy::Manipulation,
+          cr::CreativeWorldIntentId::Negative, device);
+  const cr::CreativeInputActionId manipulationAlternateAction =
+      cr::creativeWorldIntentInputAction(
+          cr::CreativeWorldIntentPolicy::Manipulation,
+          cr::CreativeWorldIntentId::Alternate, device);
   const CreativeEditorToolDescriptor& capability =
       describeCreativeEditorHeldItemTool(held.kind);
   const bool keyboardQuickEdit = capability.keyboardQuickEditHints;
@@ -351,26 +366,31 @@ void appendViewportHints(HintSpecBuffer& buffer,
       break;
     }
     case CreativeEditorActionHintProfile::ObjectSelect:
-      appendHint(buffer, gamepad ? positiveAction : negativeAction, "Select");
+      appendHint(buffer, manipulationPositiveAction, "Select");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Pick block");
       break;
     case CreativeEditorActionHintProfile::ObjectMove:
       if (editor.interaction.structuralSpanEdit.active) {
-        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+        appendHint(buffer, manipulationPositiveAction,
                    "Confirm endpoint");
-        appendHint(buffer, cr::CreativeInputActionId::RejectAction,
-                   "Cancel endpoint");
+        if (manipulationNegativeAction != cr::CreativeInputActionId::Count) {
+          appendHint(buffer, manipulationNegativeAction, "Cancel endpoint");
+        }
       } else if (editor.interaction.movingPlatformPathEdit.pointSelected) {
-        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+        appendHint(buffer, manipulationPositiveAction,
                    "Move point");
-        appendHint(buffer, gamepad ? negativeAction : positiveAction,
+        appendHint(buffer,
+                   gamepad ? manipulationNegativeAction
+                           : manipulationAlternateAction,
                    "Cancel point");
       } else {
-        appendHint(buffer, gamepad ? positiveAction : negativeAction,
+        appendHint(buffer, manipulationPositiveAction,
                    editor.interaction.structuralSpanEdit.available
                        ? "Move / endpoint"
                        : "Move");
-        appendHint(buffer, gamepad ? negativeAction : positiveAction,
+        appendHint(buffer,
+                   gamepad ? manipulationNegativeAction
+                           : manipulationAlternateAction,
                    gamepad ? "Cancel" : "Transform");
       }
       if (gamepad) {
@@ -383,9 +403,10 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, positiveAction, "Group / ungroup");
       break;
     case CreativeEditorActionHintProfile::LogicLink:
-      appendHint(buffer, gamepad ? positiveAction : negativeAction,
-                 "Select / link");
-      appendHint(buffer, gamepad ? negativeAction : positiveAction,
+      appendHint(buffer, manipulationPositiveAction, "Select / link");
+      appendHint(buffer,
+                 gamepad ? manipulationNegativeAction
+                         : manipulationAlternateAction,
                  "Clear source");
       break;
     case CreativeEditorActionHintProfile::BuildingRoom:
@@ -402,9 +423,11 @@ void appendViewportHints(HintSpecBuffer& buffer,
       appendHint(buffer, negativeAction, "Cancel measure");
       break;
     case CreativeEditorActionHintProfile::VolumeSelect:
-      appendHint(buffer, gamepad ? positiveAction : negativeAction,
+      appendHint(buffer, manipulationPositiveAction,
                  gamepad ? "Next corner" : "Corner 1");
-      appendHint(buffer, gamepad ? negativeAction : positiveAction,
+      appendHint(buffer,
+                 gamepad ? manipulationNegativeAction
+                         : manipulationAlternateAction,
                  gamepad ? "Cancel" : "Corner 2");
       appendHint(buffer, cr::CreativeInputActionId::PickAction, "Expand");
       break;

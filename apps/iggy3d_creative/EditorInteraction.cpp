@@ -17,6 +17,7 @@
 #include "EditorWorldLayoutVerticalConnectorHandles.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
+#include "app/iggy3d/creative/input/WorldActionIntent.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -431,6 +432,13 @@ void processCreativeEditorWorldInteractionFrame(
     return;
   }
 
+  const cr::CreativeWorldIntentFrame manipulationIntents =
+      cr::resolveCreativeWorldIntents(
+          request.actions, cr::CreativeWorldIntentPolicy::Manipulation);
+  const cr::CreativeWorldIntentFrame placementIntents =
+      cr::resolveCreativeWorldIntents(
+          request.actions, cr::CreativeWorldIntentPolicy::Placement);
+
   if (editor.worldLayout.verticalConnectorManipulation.active) {
     const CreativeEditorWorldLayoutVerticalConnectorTarget target =
         editor.worldLayout.verticalConnectorManipulation.target;
@@ -443,8 +451,8 @@ void processCreativeEditorWorldInteractionFrame(
         handle == nullptr ||
         editor.worldLayout.verticalConnectorManipulation.sourceRevision !=
             editor.worldLayout.revision ||
-        cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Reject);
+        cr::creativeWorldIntentPressed(
+            manipulationIntents, cr::CreativeWorldIntentId::Negative);
     if (cancel) {
       static_cast<void>(
           applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
@@ -468,11 +476,8 @@ void processCreativeEditorWorldInteractionFrame(
                   Update,
               point));
     }
-    const bool released =
-        cr::creativeWorldActionReleased(request.actions,
-                                        cr::CreativeWorldActionId::Primary) ||
-        cr::creativeWorldActionReleased(request.actions,
-                                        cr::CreativeWorldActionId::Accept);
+    const bool released = cr::creativeWorldIntentReleased(
+        manipulationIntents, cr::CreativeWorldIntentId::Positive);
     if (released) {
       static_cast<void>(
           applyCreativeEditorWorldLayoutVerticalConnectorManipulationToDocument(
@@ -499,8 +504,8 @@ void processCreativeEditorWorldInteractionFrame(
         handle == nullptr ||
         editor.worldLayout.roofManipulation.sourceRevision !=
             editor.worldLayout.revision ||
-        cr::creativeWorldActionPressed(request.actions,
-                                       cr::CreativeWorldActionId::Reject);
+        cr::creativeWorldIntentPressed(
+            manipulationIntents, cr::CreativeWorldIntentId::Negative);
     if (cancel) {
       static_cast<void>(
           applyCreativeEditorWorldLayoutRoofManipulationToDocument(
@@ -520,11 +525,8 @@ void processCreativeEditorWorldInteractionFrame(
               CreativeEditorWorldLayoutRoofManipulationPhase::Update,
               target, coordinateCells));
     }
-    const bool released =
-        cr::creativeWorldActionReleased(request.actions,
-                                        cr::CreativeWorldActionId::Primary) ||
-        cr::creativeWorldActionReleased(request.actions,
-                                        cr::CreativeWorldActionId::Accept);
+    const bool released = cr::creativeWorldIntentReleased(
+        manipulationIntents, cr::CreativeWorldIntentId::Positive);
     if (released) {
       static_cast<void>(
           applyCreativeEditorWorldLayoutRoofManipulationToDocument(
@@ -543,10 +545,8 @@ void processCreativeEditorWorldInteractionFrame(
       editor.worldLayout.selection.index <
           editor.worldLayout.source.verticalConnectors.size() &&
       editor.interaction.target.ray.valid &&
-      (cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Primary) ||
-       cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Accept));
+      cr::creativeWorldIntentPressed(
+          manipulationIntents, cr::CreativeWorldIntentId::Positive);
   if (connectorHandlePressed) {
     const std::size_t connectorIndex = editor.worldLayout.selection.index;
     const CreativeEditorWorldLayoutVerticalConnectorHandleFrame handles =
@@ -592,10 +592,8 @@ void processCreativeEditorWorldInteractionFrame(
       editor.worldLayout.selection.index <
           editor.worldLayout.source.levels.size() &&
       editor.interaction.target.ray.valid &&
-      (cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Primary) ||
-       cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Accept));
+      cr::creativeWorldIntentPressed(
+          manipulationIntents, cr::CreativeWorldIntentId::Positive);
   if (roofHandlePressed) {
     const std::size_t levelIndex = editor.worldLayout.selection.index;
     const CreativeEditorWorldLayoutRoofHandleFrame handles =
@@ -632,8 +630,8 @@ void processCreativeEditorWorldInteractionFrame(
   }
 
   if (editor.volume.handleGesture.active) {
-    const bool cancel = cr::creativeWorldActionPressed(
-        request.actions, cr::CreativeWorldActionId::Reject);
+    const bool cancel = cr::creativeWorldIntentPressed(
+        manipulationIntents, cr::CreativeWorldIntentId::Negative);
     if (cancel) {
       static_cast<void>(
           finishCreativeEditorVolumeHandleGesture(editor.volume, false));
@@ -645,12 +643,8 @@ void processCreativeEditorWorldInteractionFrame(
           cr::creativeVec3FromCore(editor.interaction.target.ray.origin),
           cr::creativeVec3FromCore(editor.interaction.target.ray.direction)));
     }
-    const bool released = cr::creativeWorldActionReleased(
-                              request.actions,
-                              cr::CreativeWorldActionId::Primary) ||
-                          cr::creativeWorldActionReleased(
-                              request.actions,
-                              cr::CreativeWorldActionId::Accept);
+    const bool released = cr::creativeWorldIntentReleased(
+        manipulationIntents, cr::CreativeWorldIntentId::Positive);
     if (released) {
       static_cast<void>(
           finishCreativeEditorVolumeHandleGesture(editor.volume, true));
@@ -662,10 +656,8 @@ void processCreativeEditorWorldInteractionFrame(
       aimedDefinition.interactionMode !=
           cr::CreativeHeldItemInteractionMode::TerrainRegion &&
       editor.interaction.target.ray.valid &&
-      (cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Primary) ||
-       cr::creativeWorldActionPressed(request.actions,
-                                      cr::CreativeWorldActionId::Accept));
+      cr::creativeWorldIntentPressed(
+          manipulationIntents, cr::CreativeWorldIntentId::Positive);
   if (volumeHandlePressed) {
     const CreativeEditorVolumeHandleFrame handles =
         buildCreativeEditorVolumeHandleFrame(editor.volume, request.camera,
@@ -688,8 +680,8 @@ void processCreativeEditorWorldInteractionFrame(
     }
   }
   if (creativeEditorGroupFocusActive(editor.groupFocus) &&
-      cr::creativeWorldActionPressed(
-          request.actions, cr::CreativeWorldActionId::Reject)) {
+      cr::creativeWorldIntentPressed(
+          manipulationIntents, cr::CreativeWorldIntentId::Negative)) {
     finalizeCreativeEditorContinuousGestures(
         request.appState, editor, "creative_group_focus_exit");
     static_cast<void>(exitCreativeEditorGroupFocus(
@@ -715,11 +707,8 @@ void processCreativeEditorWorldInteractionFrame(
           editor.interaction.target.grid.valid,
           editor.interaction.target.grid.placementAnchor, rayOrigin,
           rayDirection));
-      const bool released =
-          cr::creativeWorldActionReleased(
-              request.actions, cr::CreativeWorldActionId::Primary) ||
-          cr::creativeWorldActionReleased(
-              request.actions, cr::CreativeWorldActionId::Accept);
+      const bool released = cr::creativeWorldIntentReleased(
+          manipulationIntents, cr::CreativeWorldIntentId::Positive);
       if (released) {
         static_cast<void>(finishCreativeEditorTransformPointerGesture(
             editor.transform, "transform_pointer_release"));
@@ -730,10 +719,8 @@ void processCreativeEditorWorldInteractionFrame(
     }
     const bool secondaryPressed =
         !gestureActive &&
-        (cr::creativeWorldActionPressed(
-             request.actions, cr::CreativeWorldActionId::Secondary) ||
-         cr::creativeWorldActionPressed(
-             request.actions, cr::CreativeWorldActionId::Accept));
+        cr::creativeWorldIntentPressed(
+            placementIntents, cr::CreativeWorldIntentId::Positive);
     static_cast<void>(processCreativeEditorSelectionTransformPreview(
         request.appState, editor.transform,
         editor.interaction.target.grid.valid,
