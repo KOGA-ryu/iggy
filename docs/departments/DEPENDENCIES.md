@@ -9,17 +9,17 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Authoring Core | 113 | 78 |
 | Assets and Object Composition | Interaction and Controls | 102 | 49 |
 | Playtest and Simulation | Foundation and Build | 93 | 63 |
-| Interaction and Controls | Assets and Object Composition | 85 | 39 |
-| Interaction and Controls | Authoring Core | 68 | 47 |
-| Editor Shell and Drafting UI | Interaction and Controls | 66 | 25 |
+| Interaction and Controls | Assets and Object Composition | 86 | 40 |
+| Interaction and Controls | Authoring Core | 70 | 48 |
+| Editor Shell and Drafting UI | Interaction and Controls | 67 | 25 |
 | Building and World Layout | Authoring Core | 59 | 49 |
 | Terrain and Site | Authoring Core | 53 | 37 |
 | Rendering and Preview | Foundation and Build | 51 | 28 |
 | Building and World Layout | Editor Shell and Drafting UI | 50 | 33 |
 | Building and World Layout | Playtest and Simulation | 45 | 17 |
 | Editor Shell and Drafting UI | Building and World Layout | 38 | 18 |
+| Interaction and Controls | Editor Shell and Drafting UI | 38 | 28 |
 | Assets and Object Composition | Rendering and Preview | 37 | 30 |
-| Interaction and Controls | Editor Shell and Drafting UI | 35 | 27 |
 | Authoring Core | Assets and Object Composition | 34 | 22 |
 | Rendering and Preview | Assets and Object Composition | 34 | 15 |
 | Terrain and Site | Interaction and Controls | 33 | 17 |
@@ -28,17 +28,17 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Rendering and Preview | Authoring Core | 30 | 18 |
 | Building and World Layout | Terrain and Site | 28 | 18 |
 | Editor Shell and Drafting UI | Rendering and Preview | 28 | 13 |
+| Rendering and Preview | Interaction and Controls | 28 | 11 |
 | Assets and Object Composition | Editor Shell and Drafting UI | 27 | 24 |
 | Assets and Object Composition | Foundation and Build | 27 | 24 |
-| Rendering and Preview | Interaction and Controls | 27 | 11 |
+| Interaction and Controls | Building and World Layout | 27 | 17 |
 | Building and World Layout | Interaction and Controls | 26 | 22 |
 | Persistence and Validation | Playtest and Simulation | 23 | 8 |
-| Interaction and Controls | Building and World Layout | 22 | 16 |
 | Building and World Layout | Assets and Object Composition | 21 | 20 |
 | Playtest and Simulation | Rendering and Preview | 21 | 11 |
 | Terrain and Site | Editor Shell and Drafting UI | 21 | 18 |
 | Editor Shell and Drafting UI | Assets and Object Composition | 20 | 8 |
-| Interaction and Controls | Rendering and Preview | 19 | 14 |
+| Interaction and Controls | Rendering and Preview | 20 | 15 |
 | Assets and Object Composition | Building and World Layout | 18 | 8 |
 | Interaction and Controls | Foundation and Build | 18 | 12 |
 | Interaction and Controls | Terrain and Site | 17 | 8 |
@@ -106,12 +106,12 @@ These files deserve manual ownership review before physical moves.
 | [tests/unit/creative_editor_placement_tests.cpp](../../tests/unit/creative_editor_placement_tests.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 13 |
 | [apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp](../../apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp) | Interaction and Controls | Assets and Object Composition, Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Playtest and Simulation, Terrain and Site | 12 |
 | [tests/unit/creative_editor_terrain_tests.cpp](../../tests/unit/creative_editor_terrain_tests.cpp) | Terrain and Site | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Playtest and Simulation, Rendering and Preview | 12 |
+| [apps/iggy3d_creative/EditorCapture.hpp](../../apps/iggy3d_creative/EditorCapture.hpp) | Rendering and Preview | Authoring Core, Foundation and Build, Interaction and Controls, Persistence and Validation | 11 |
 | [apps/iggy3d_creative/EditorOverlayHud.cpp](../../apps/iggy3d_creative/EditorOverlayHud.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Editor Shell and Drafting UI, Interaction and Controls | 11 |
 | [src/app/iggy3d/creative/document/Document.hpp](../../src/app/iggy3d/creative/document/Document.hpp) | Authoring Core | Assets and Object Composition, Interaction and Controls, Playtest and Simulation, Terrain and Site | 11 |
 | [tests/unit/creative_authored_asset_tests.cpp](../../tests/unit/creative_authored_asset_tests.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Foundation and Build, Interaction and Controls, Rendering and Preview | 11 |
 | [tests/unit/creative_editor_logic_link_tests.cpp](../../tests/unit/creative_editor_logic_link_tests.cpp) | Playtest and Simulation | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 11 |
 | [apps/iggy3d_creative/EditorAssetScatter.cpp](../../apps/iggy3d_creative/EditorAssetScatter.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 10 |
-| [apps/iggy3d_creative/EditorCapture.hpp](../../apps/iggy3d_creative/EditorCapture.hpp) | Rendering and Preview | Authoring Core, Foundation and Build, Interaction and Controls, Persistence and Validation | 10 |
 | [apps/iggy3d_creative/EditorPattern.cpp](../../apps/iggy3d_creative/EditorPattern.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Foundation and Build, Interaction and Controls, Rendering and Preview | 10 |
 | [apps/iggy3d_creative/EditorPreviewFrame.hpp](../../apps/iggy3d_creative/EditorPreviewFrame.hpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Playtest and Simulation | 10 |
 | [apps/iggy3d_creative/EditorRoomPlacement.cpp](../../apps/iggy3d_creative/EditorRoomPlacement.cpp) | Assets and Object Composition | Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 10 |

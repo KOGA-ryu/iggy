@@ -136,7 +136,14 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
       std::string_view{
           "apps/iggy3d_creative/EditorObjectActionOutcome.cpp"},
       std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionExecutor.cpp"},
+      std::string_view{
           "apps/iggy3d_creative/EditorDesktopObjectCommands.cpp"},
+  };
+  static constexpr std::array kSceneObjectKernelOwners{
+      std::string_view{"apps/iggy3d_creative/EditorEdits.cpp"},
+      std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionExecutor.cpp"},
   };
   static constexpr std::array kOutcomePresentationOwner{
       std::string_view{
@@ -161,6 +168,14 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
           kAdmissionReasonOwners},
       SourceOwnershipRule{"formatCreativeEditorObjectActionOutcome(",
                           kOutcomeUseOwners},
+      SourceOwnershipRule{"deleteCreativeEditorSelectionWithUndo(",
+                          kSceneObjectKernelOwners},
+      SourceOwnershipRule{"duplicateCreativeEditorSelectionWithUndo(",
+                          kSceneObjectKernelOwners},
+      SourceOwnershipRule{"transformCreativeEditorSelectionWithUndo(",
+                          kSceneObjectKernelOwners},
+      SourceOwnershipRule{"setCreativeEditorObjectTransformWithUndo(",
+                          kSceneObjectKernelOwners},
       SourceOwnershipRule{"\"duplicated selection\"",
                           kOutcomePresentationOwner},
       SourceOwnershipRule{"\"nothing to duplicate\"",

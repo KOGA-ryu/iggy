@@ -540,6 +540,19 @@ set_tests_properties(creative_object_action_executor_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;action;executor;history;iggy3d")
 
+add_executable(creative_object_action_adapter_tests
+  tests/unit/creative_object_action_adapter_tests.cpp)
+target_link_libraries(creative_object_action_adapter_tests PRIVATE
+  iggy3d_creative_app)
+target_include_directories(creative_object_action_adapter_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+iggy3d_apply_warnings(creative_object_action_adapter_tests)
+add_test(NAME creative_object_action_adapter_tests
+  COMMAND "$<TARGET_FILE:creative_object_action_adapter_tests>")
+set_tests_properties(creative_object_action_adapter_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;action;adapter;parity;iggy3d")
+
 add_executable(creative_editor_action_hints_tests
   tests/unit/creative_editor_action_hints_tests.cpp)
 target_link_libraries(creative_editor_action_hints_tests PRIVATE

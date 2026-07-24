@@ -1328,6 +1328,7 @@ tests/unit/creative_map_validation_tests.cpp	persistence-validation
 tests/unit/creative_measure_tests.cpp	interaction-controls
 tests/unit/creative_measurement_annotation_tests.cpp	interaction-controls
 tests/unit/creative_npc_spawn_tests.cpp	playtest-simulation
+tests/unit/creative_object_action_adapter_tests.cpp	interaction-controls
 tests/unit/creative_object_action_boundary_tests.cpp	interaction-controls
 tests/unit/creative_object_action_executor_tests.cpp	interaction-controls
 tests/unit/creative_object_action_outcome_tests.cpp	interaction-controls

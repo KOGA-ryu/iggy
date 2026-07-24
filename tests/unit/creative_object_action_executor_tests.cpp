@@ -1,8 +1,11 @@
 #include "EditorObjectActionExecutor.hpp"
 
 #include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -46,6 +49,33 @@ cr::CreativeAppState makeAppState(std::string_view name,
   static_cast<void>(document.assignId(id));
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   return appState;
+}
+
+cr::CreativeObjectId addGeneratedWorldLayoutObject(
+    cr::CreativeAppState& appState,
+    app::CreativeEditorWorldLayoutState& worldLayout,
+    std::string_view layoutKey) {
+  app::resetCreativeEditorWorldLayout(worldLayout, std::string(layoutKey));
+  cr::CreativeWorldLayoutObject source;
+  source.kind = cr::CreativeObjectKind::Crate;
+  source.stableKey = "executor_crate";
+  source.name = "Executor Crate";
+  source.assetId = "crate";
+  source.boundsCells = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  worldLayout.source.objects.push_back(source);
+  worldLayout.generatedBaseline =
+      app::captureCreativeEditorWorldLayoutSnapshot(worldLayout);
+  worldLayout.sourceHistory.current.snapshot =
+      app::captureCreativeEditorWorldLayoutSnapshot(worldLayout);
+
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Compiled Executor Crate";
+  request.tags = {
+      cr::creativeWorldLayoutTag(worldLayout.source.stableKey),
+      cr::creativeWorldLayoutProvenanceTag(
+          worldLayout.source, cr::CreativeWorldLayoutTable::Object, 0U)};
+  return appState.facade.createDocumentObject(request).objectId;
 }
 
 bool duplicateAndDeleteShareOutcomeAndSelectionEffects() {
@@ -206,11 +236,136 @@ bool lockedSelectionAndInvalidAbsoluteTransformFailClosed() {
              "invalid absolute transform is rejected without history");
 }
 
+bool generatedSourceActionsReturnExplicitWorldLayoutEffects() {
+  cr::CreativeAppState duplicateState =
+      makeAppState("Executor Generated Duplicate", 7004U);
+  app::CreativeEditorWorldLayoutState duplicateLayout;
+  const cr::CreativeObjectId duplicateTarget =
+      addGeneratedWorldLayoutObject(duplicateState, duplicateLayout,
+                                    "executor_generated_duplicate");
+  selectOne(duplicateState.facade, duplicateTarget);
+  duplicateState.history = {};
+  const app::CreativeEditorObjectActionExecution duplicated =
+      app::executeCreativeEditorSceneObjectAction(
+          {duplicateState, &duplicateLayout},
+          {app::CreativeEditorDuplicateSelectionAction{},
+           "executor_generated_duplicate"});
+
+  cr::CreativeAppState deleteState =
+      makeAppState("Executor Generated Delete", 7005U);
+  app::CreativeEditorWorldLayoutState deleteLayout;
+  const cr::CreativeObjectId deleteTarget =
+      addGeneratedWorldLayoutObject(deleteState, deleteLayout,
+                                    "executor_generated_delete");
+  selectOne(deleteState.facade, deleteTarget);
+  deleteState.history = {};
+  const app::CreativeEditorObjectActionExecution deleted =
+      app::executeCreativeEditorSceneObjectAction(
+          {deleteState, &deleteLayout},
+          {app::CreativeEditorDeleteSelectionAction{},
+           "executor_generated_delete"});
+
+  return expect(
+             app::creativeEditorObjectActionOutcomeAccepted(
+                 duplicated.outcome) &&
+                 app::creativeEditorObjectActionOutcomeChanged(
+                     duplicated.outcome) &&
+                 duplicated.outcome.affectedObjectCount == 1U &&
+                 duplicated.status == "duplicated selection" &&
+                 app::creativeEditorObjectActionHasIntegrationImpact(
+                     duplicated,
+                     app::CreativeEditorObjectActionIntegrationImpact::
+                         WorldLayoutSourceChanged) &&
+                 app::creativeEditorObjectActionHasIntegrationImpact(
+                     duplicated,
+                     app::CreativeEditorObjectActionIntegrationImpact::
+                         WorldLayoutSourceDuplicated) &&
+                 !duplicated.selectionSynchronizationAttempted &&
+                 duplicateLayout.source.objects.size() == 2U &&
+                 duplicateState.facade.document().objectCount() == 1U &&
+                 cr::creativeUndoDepth(duplicateState.history) == 0U,
+             "generated duplicate reports source effects without document "
+             "history") &&
+         expect(
+             app::creativeEditorObjectActionOutcomeAccepted(deleted.outcome) &&
+                 app::creativeEditorObjectActionOutcomeChanged(
+                     deleted.outcome) &&
+                 deleted.outcome.affectedObjectCount == 1U &&
+                 deleted.status == "deleted selection" &&
+                 app::creativeEditorObjectActionHasIntegrationImpact(
+                     deleted,
+                     app::CreativeEditorObjectActionIntegrationImpact::
+                         WorldLayoutSourceChanged) &&
+                 app::creativeEditorObjectActionHasIntegrationImpact(
+                     deleted,
+                     app::CreativeEditorObjectActionIntegrationImpact::
+                         WorldLayoutSourceDeleted) &&
+                 deleted.selectionSynchronizationAttempted &&
+                 deleted.selectionSynchronizationAccepted &&
+                 deleteLayout.source.objects.empty() &&
+                 deleteState.facade.document().objectCount() == 1U &&
+                 cr::creativeUndoDepth(deleteState.history) == 0U,
+             "generated delete reports source and selection effects without "
+             "mutating compiled geometry");
+}
+
+bool patternOwnedDeleteRemovesRecipeClosureAtomically() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Executor Pattern Delete");
+  static_cast<void>(document.assignId(7006U));
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Pattern Source";
+  const cr::CreativeObjectId sourceId =
+      document.createObject(request).objectId;
+  request.name = "Pattern Output A";
+  const cr::CreativeObjectId outputA =
+      document.createObject(request).objectId;
+  request.name = "Pattern Output B";
+  const cr::CreativeObjectId outputB =
+      document.createObject(request).objectId;
+
+  cr::CreativePatternRecipeMutationRequest addRecipe;
+  addRecipe.kind = cr::CreativePatternRecipeMutationKind::Add;
+  addRecipe.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  addRecipe.recipe.sourceObjectIds = {sourceId};
+  addRecipe.recipe.generatedObjectIds = {outputA, outputB};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(addRecipe);
+
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  selectOne(appState.facade, outputA);
+  appState.history = {};
+  const app::CreativeEditorObjectActionExecution deleted =
+      app::executeCreativeEditorSceneObjectAction(
+          {appState},
+          {app::CreativeEditorDeleteSelectionAction{},
+           "executor_pattern_delete"});
+
+  return expect(recipe.accepted && recipe.changed,
+                "pattern executor fixture is valid") &&
+         expect(
+             app::creativeEditorObjectActionOutcomeAccepted(deleted.outcome) &&
+                 app::creativeEditorObjectActionOutcomeChanged(
+                     deleted.outcome) &&
+                 deleted.outcome.affectedObjectCount == 3U &&
+                 deleted.status == "deleted selection" &&
+                 appState.facade.document().objectCount() == 0U &&
+                 appState.facade.document()
+                     .patternRecipeStore()
+                     .recipes.empty() &&
+                 cr::creativeUndoDepth(appState.history) == 1U,
+             "pattern output delete removes the recipe closure in one undo");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = duplicateAndDeleteShareOutcomeAndSelectionEffects() &&
                   transformVariantsPreserveCountsHistoryAndUnchangedStatus() &&
-                  lockedSelectionAndInvalidAbsoluteTransformFailClosed();
+                  lockedSelectionAndInvalidAbsoluteTransformFailClosed() &&
+                  generatedSourceActionsReturnExplicitWorldLayoutEffects() &&
+                  patternOwnedDeleteRemovesRecipeClosureAtomically();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
