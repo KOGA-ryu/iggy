@@ -79,7 +79,8 @@ bool creativeEditorCommandIsObjectAction(
 void refreshCreativeEditorObjectActionContext(
     const cr::CreativeAppState& appState,
     const CreativeEditorAuthoredAssetLibrary& authoredAssets,
-    CreativeEditorToolOptionsState& state) noexcept {
+    CreativeEditorToolOptionsState& state,
+    const CreativeEditorWorldLayoutState* worldLayout) noexcept {
   state.contextDocumentId = appState.facade.document().id();
   state.contextDocumentRevision = appState.facade.document().revision();
   state.contextGroupId = cr::kInvalidObjectId;
@@ -91,6 +92,14 @@ void refreshCreativeEditorObjectActionContext(
   state.contextAttachmentParentId = cr::kInvalidObjectId;
   state.contextAttachmentSocket.clear();
   state.contextSelectionCount = 0U;
+  state.contextSemanticSelection = {};
+  state.contextWorldLayoutRevision =
+      worldLayout != nullptr ? worldLayout->revision : 0U;
+  state.contextWorldLayoutGeneratedRevision =
+      worldLayout != nullptr ? worldLayout->generatedRevision : 0U;
+  state.contextWorldLayoutSynchronized =
+      worldLayout != nullptr &&
+      worldLayout->generatedRevision == worldLayout->revision;
   state.contextPrimaryVisible = true;
   state.contextPrimaryLocked = false;
   state.contextAllUnlocked = true;
@@ -122,6 +131,15 @@ void refreshCreativeEditorObjectActionContext(
         selection.selectedTarget.value));
   }
   state.contextSelectionCount = selectedObjectIds.size();
+  const cr::CreativeObjectId semanticPrimary =
+      selection.selectedTarget.value == cr::kInvalidId
+          ? cr::kInvalidObjectId
+          : static_cast<cr::CreativeObjectId>(
+                selection.selectedTarget.value);
+  state.contextSemanticSelection =
+      cr::resolveCreativeSemanticSelectionSet(
+          appState.facade.document(), selectedObjectIds, semanticPrimary,
+          worldLayout != nullptr ? &worldLayout->source : nullptr);
 
   const cr::CreativeHierarchySelection hierarchy =
       cr::resolveCreativeObjectHierarchy(appState.facade.document(),
@@ -244,27 +262,65 @@ bool creativeEditorObjectActionEnabled(
   const bool hasRefreshableAuthoredInstance =
       hasAuthoredInstanceDefinition &&
       state.contextPrefabUpdateTransformSupported;
+  const auto selectionActionAvailable =
+      [&](cr::CreativeSemanticObjectAction action) {
+        const cr::CreativeSemanticObjectActionPolicy policy =
+            cr::resolveCreativeSemanticObjectAction(
+                state.contextSemanticSelection, action);
+        return policy.allowed &&
+               ((policy.route !=
+                     cr::CreativeSemanticObjectActionRoute::WorldLayoutSource &&
+                 policy.route !=
+                     cr::CreativeSemanticObjectActionRoute::RefineThenAdopt) ||
+                state.contextWorldLayoutSynchronized);
+      };
+  const auto structuralActionAvailable = [&]() {
+    const cr::CreativeSemanticObjectActionPolicy policy =
+        cr::resolveCreativeSemanticObjectAction(
+            state.contextSemanticSelection,
+            cr::CreativeSemanticObjectAction::StructuralMutation);
+    return policy.allowed &&
+           policy.route ==
+               cr::CreativeSemanticObjectActionRoute::Document;
+  };
   switch (command) {
     case CreativeEditorToolOptionsCommandId::TransformSelection:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
-             state.contextAllMovable;
+             state.contextAllMovable &&
+             selectionActionAvailable(
+                 cr::CreativeSemanticObjectAction::TransformSelection);
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
-             state.contextAllResettable;
+             state.contextAllResettable &&
+             cr::resolveCreativeSemanticObjectAction(
+                 state.contextSemanticSelection,
+                 cr::CreativeSemanticObjectAction::TransformSelection)
+                     .route ==
+                 cr::CreativeSemanticObjectActionRoute::Document;
     case CreativeEditorToolOptionsCommandId::DuplicateSelection:
-      return state.contextSelectionCount > 0U && state.contextAllUnlocked;
+      return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
+             selectionActionAvailable(
+                 cr::CreativeSemanticObjectAction::Duplicate);
     case CreativeEditorToolOptionsCommandId::DeleteSelection:
+      return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
+             !state.contextPrimaryLocked &&
+             selectionActionAvailable(
+                 cr::CreativeSemanticObjectAction::Delete);
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             !state.contextPrimaryLocked;
+             !state.contextPrimaryLocked &&
+             selectionActionAvailable(
+                 cr::CreativeSemanticObjectAction::SetVisible);
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
-      return state.contextPrimaryObjectId != cr::kInvalidObjectId;
+      return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
+             selectionActionAvailable(
+                 cr::CreativeSemanticObjectAction::SetLocked);
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
              state.contextAttachmentParentId != cr::kInvalidObjectId &&
              !state.contextAttachmentSocket.empty() &&
-             !state.contextPrimaryLocked;
+             !state.contextPrimaryLocked && structuralActionAvailable();
     case CreativeEditorToolOptionsCommandId::ReattachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
@@ -273,11 +329,13 @@ bool creativeEditorObjectActionEnabled(
              state.contextAttachmentAimTargetId != cr::kInvalidObjectId &&
              state.contextAttachmentAimTargetId !=
                  state.contextPrimaryObjectId &&
-             !state.contextPrimaryLocked;
+             !state.contextPrimaryLocked && structuralActionAvailable();
     case CreativeEditorToolOptionsCommandId::GroupSelection:
-      return state.contextSelectionCount > 1U && state.contextAllUnlocked;
+      return state.contextSelectionCount > 1U && state.contextAllUnlocked &&
+             structuralActionAvailable();
     case CreativeEditorToolOptionsCommandId::UngroupSelection:
-      return state.contextGroupId != cr::kInvalidObjectId;
+      return state.contextGroupId != cr::kInvalidObjectId &&
+             structuralActionAvailable();
     case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();
@@ -471,9 +529,9 @@ bool activateCreativeEditorObjectAction(
     case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
       cr::CreativeTransformCommandRequest reset;
       reset.kind = cr::CreativeTransformCommandKind::ResetRotationScale;
-      accepted = transformSelectedObjectsWithUndo(
+      accepted = transformCreativeEditorSelectionWithUndo(
                      appState, appState.history, reset,
-                     "object_actions_reset_transform")
+                     "object_actions_reset_transform", &editor.worldLayout)
                      .accepted;
       break;
     }
@@ -491,15 +549,16 @@ bool activateCreativeEditorObjectAction(
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
-      accepted = toggleSelectedObjectVisibilityWithUndo(
+      accepted = toggleCreativeEditorSelectionVisibilityWithUndo(
                      appState, appState.history,
-                     "object_actions_toggle_visibility")
+                     "object_actions_toggle_visibility",
+                     &editor.worldLayout)
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
-      accepted = toggleSelectedObjectLockedWithUndo(
+      accepted = toggleCreativeEditorSelectionLockedWithUndo(
                      appState, appState.history,
-                     "object_actions_toggle_locked")
+                     "object_actions_toggle_locked", &editor.worldLayout)
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::DetachAttachment:

@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 #include "EditorPlacement.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
@@ -34,6 +35,30 @@ enum class PathPointScalarProperty : std::uint8_t {
                                  cr::CreativeVec3 rhs) noexcept {
   return std::hypot(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z) <=
          kPathPointEpsilonMeters;
+}
+
+[[nodiscard]] cr::CreativeSemanticObjectActionPolicy
+pathStructuralMutationPolicy(const cr::CreativeAppState& appState,
+                             cr::CreativeObjectId objectId) noexcept {
+  return cr::resolveCreativeSemanticObjectAction(
+      cr::resolveCreativeSemanticSelection(appState.facade.document(),
+                                           objectId),
+      cr::CreativeSemanticObjectAction::StructuralMutation);
+}
+
+[[nodiscard]] cr::CreativeDocumentMutationReceipt
+rejectPathStructuralMutation(const cr::CreativeAppState& appState,
+                             const cr::CreativeObject& object,
+                             std::string_view reasonCode) {
+  cr::CreativeDocumentMutationReceipt receipt;
+  receipt.status = cr::CreativeDocumentMutationStatus::Rejected;
+  receipt.objectId = object.id;
+  receipt.objectKind = object.kind;
+  receipt.mutationKind = cr::CreativeMutationKind::SetPatrolRoute;
+  receipt.revisionBefore = appState.facade.document().revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  receipt.message = std::string(reasonCode);
+  return receipt;
 }
 
 [[nodiscard]] CreativeMovingPlatformPathEditReceipt
@@ -148,6 +173,14 @@ movingPlatformPathPointAtPlacementAnchor(
       object->kind != cr::CreativeObjectKind::MovingPlatform) {
     result.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
     result.reasonCode = "creative_platform_path_edit_invalid_selection";
+    return result;
+  }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      pathStructuralMutationPolicy(appState, objectId);
+  if (!policy.allowed ||
+      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+    result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
+    result.reasonCode = policy.reasonCode;
     return result;
   }
 
@@ -447,28 +480,42 @@ void syncCreativeMovingPlatformPathEditState(
     CreativeMovingPlatformPathEditState& state) noexcept {
   const cr::CreativeDocumentId documentId = appState.facade.document().id();
   const cr::CreativeObjectId objectId = selectedMovingPlatformId(appState);
+  const bool wasAvailable = state.available;
   const bool selectionChanged = state.documentId != documentId ||
                                 state.objectId != objectId;
   state.documentId = documentId;
   state.objectId = objectId;
-  state.available = objectId != cr::kInvalidObjectId;
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      objectId != cr::kInvalidObjectId
+          ? pathStructuralMutationPolicy(appState, objectId)
+          : cr::CreativeSemanticObjectActionPolicy{};
+  state.available =
+      objectId != cr::kInvalidObjectId && policy.allowed &&
+      policy.route == cr::CreativeSemanticObjectActionRoute::Document;
   const cr::CreativeObject* object =
-      state.available ? appState.facade.findObject(objectId) : nullptr;
+      objectId != cr::kInvalidObjectId
+          ? appState.facade.findObject(objectId)
+          : nullptr;
   state.pointCount = object != nullptr
                          ? static_cast<std::uint8_t>(std::min<std::size_t>(
                                object->pathPoints.size(),
                                std::numeric_limits<std::uint8_t>::max()))
                          : 0U;
-  if (selectionChanged || !state.available) {
+  if (selectionChanged || wasAvailable != state.available ||
+      !state.available) {
     state.pending = CreativeMovingPlatformPathEditCommand::None;
     state.selectedPointIndex = 0U;
     state.pointSelected = false;
-    state.status = state.available
-                       ? CreativeMovingPlatformPathEditStatus::Ready
-                       : CreativeMovingPlatformPathEditStatus::Idle;
-    state.reasonCode = state.available
-                           ? "creative_platform_path_edit_ready"
-                           : "creative_platform_path_edit_idle";
+    if (state.available) {
+      state.status = CreativeMovingPlatformPathEditStatus::Ready;
+      state.reasonCode = "creative_platform_path_edit_ready";
+    } else if (objectId != cr::kInvalidObjectId) {
+      state.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
+      state.reasonCode = policy.reasonCode;
+    } else {
+      state.status = CreativeMovingPlatformPathEditStatus::Idle;
+      state.reasonCode = "creative_platform_path_edit_idle";
+    }
   } else if (state.pointSelected &&
              state.selectedPointIndex >= state.pointCount) {
     if (state.pointCount == 0U) {
@@ -530,7 +577,11 @@ bool queueCreativeMovingPlatformPathEdit(
     CreativeMovingPlatformPathEditState& state,
     CreativeMovingPlatformPathEditCommand command) noexcept {
   syncCreativeMovingPlatformPathEditState(appState, state);
-  if (!state.available || !validPathEditCommand(command) ||
+  if (!state.available) {
+    state.pending = CreativeMovingPlatformPathEditCommand::None;
+    return false;
+  }
+  if (!validPathEditCommand(command) ||
       (commandUsesSelectedPoint(command) && !state.pointSelected)) {
     state.pending = CreativeMovingPlatformPathEditCommand::None;
     state.status = CreativeMovingPlatformPathEditStatus::InvalidSelection;
@@ -675,6 +726,14 @@ setMovingPlatformPathPointScalarWithUndo(
                             : "creative_platform_segment_speed_invalid_selection";
     return result;
   }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      pathStructuralMutationPolicy(appState, objectId);
+  if (!policy.allowed ||
+      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+    result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
+    result.reasonCode = policy.reasonCode;
+    return result;
+  }
   result.pointCountBefore = object->pathPoints.size();
   result.pointCountAfter = result.pointCountBefore;
   if (pointIndex >= object->pathPoints.size()) {
@@ -768,6 +827,18 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
             std::string(cr::toString(descriptor.shapeKind)).c_str());
     return {};
   }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      pathStructuralMutationPolicy(appState, objectId);
+  if (!policy.allowed ||
+      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+    SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
+            "reason='%s'",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectId),
+            std::string(policy.reasonCode).c_str());
+    return rejectPathStructuralMutation(appState, *beforeObject,
+                                        policy.reasonCode);
+  }
 
   const std::vector<cr::CreativePathPoint> beforePoints =
       beforeObject->pathPoints;
@@ -843,6 +914,18 @@ cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
             std::string(cr::toString(beforeObject->kind)).c_str(),
             std::string(cr::toString(descriptor.shapeKind)).c_str());
     return {};
+  }
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      pathStructuralMutationPolicy(appState, objectId);
+  if (!policy.allowed ||
+      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+    SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' "
+            "objectId=%llu reason='%s'",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectId),
+            std::string(policy.reasonCode).c_str());
+    return rejectPathStructuralMutation(appState, *beforeObject,
+                                        policy.reasonCode);
   }
   if (pointIndex >= beforeObject->pathPoints.size()) {
     SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' objectId=%llu "

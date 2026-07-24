@@ -24,6 +24,38 @@ enum class CreativeSemanticSelectionStatus : std::uint8_t {
   Ready,
 };
 
+enum class CreativeSemanticObjectAction : std::uint8_t {
+  Inspect,
+  Copy,
+  Duplicate,
+  Delete,
+  Cut,
+  Rename,
+  SetVisible,
+  SetLocked,
+  TransformSelection,
+  SetTransform,
+  StructuralMutation,
+  Count,
+};
+
+enum class CreativeSemanticObjectActionRoute : std::uint8_t {
+  Reject,
+  ReadOnly,
+  Document,
+  SemanticDocument,
+  PatternRecipe,
+  WorldLayoutSource,
+  RefineThenAdopt,
+};
+
+struct CreativeSemanticObjectActionPolicy {
+  bool allowed = false;
+  CreativeSemanticObjectActionRoute route =
+      CreativeSemanticObjectActionRoute::Reject;
+  std::string_view reasonCode = "creative_semantic_action_not_requested";
+};
+
 // One immutable interpretation of a raw document-object hit. Ownership is a
 // chain, not an either/or choice: a PatternRecipe output may retain underlying
 // World Layout provenance. primaryOwner names the nearest editable owner while
@@ -60,6 +92,9 @@ struct CreativeSemanticSelectionSetResolution {
   std::size_t selectedCount = 0U;
   std::size_t resolvedCount = 0U;
   std::size_t missingCount = 0U;
+  std::size_t authoredOwnerCount = 0U;
+  std::size_t patternOwnerCount = 0U;
+  std::size_t worldLayoutOwnerCount = 0U;
   CreativeObjectId primaryObjectId = kInvalidObjectId;
   CreativePatternRecipeId patternRecipeId = kInvalidCreativePatternRecipeId;
   CreativePatternRecipeKind patternRecipeKind =
@@ -102,5 +137,24 @@ resolveCreativeSemanticSelectionSet(
     std::span<const CreativeObjectId> objectIds,
     CreativeObjectId primaryObjectId = kInvalidObjectId,
     const CreativeWorldLayout* worldLayout = nullptr) noexcept;
+
+// One closed policy for actions that begin from generated document output.
+// Validation remains with the selected owner; this function only decides which
+// owner is allowed to interpret the command.
+[[nodiscard]] CreativeSemanticObjectActionPolicy
+resolveCreativeSemanticObjectAction(
+    CreativeSemanticSelectionOwner owner,
+    CreativeSemanticObjectAction action,
+    CreativeWorldLayoutTable worldLayoutTable =
+        CreativeWorldLayoutTable::None,
+    std::size_t worldLayoutContributorCount = 0U) noexcept;
+[[nodiscard]] CreativeSemanticObjectActionPolicy
+resolveCreativeSemanticObjectAction(
+    const CreativeSemanticSelectionResolution& selection,
+    CreativeSemanticObjectAction action) noexcept;
+[[nodiscard]] CreativeSemanticObjectActionPolicy
+resolveCreativeSemanticObjectAction(
+    const CreativeSemanticSelectionSetResolution& selection,
+    CreativeSemanticObjectAction action) noexcept;
 
 }  // namespace iggy3d::creative

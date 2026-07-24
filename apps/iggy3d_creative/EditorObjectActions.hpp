@@ -12,6 +12,7 @@ struct CreativeAuthoredAssetDefinition;
 namespace iggy3d_creative_app {
 
 struct CreativeEditorAuthoredAssetLibrary;
+struct CreativeEditorWorldLayoutState;
 
 // Equips a saved authored-asset definition into the active hotbar slot
 // (extracted from the SaveSelectionAsAsset object action so the desktop command
@@ -28,7 +29,8 @@ struct CreativeEditorAuthoredAssetLibrary;
 void refreshCreativeEditorObjectActionContext(
     const iggy3d::creative::CreativeAppState& appState,
     const CreativeEditorAuthoredAssetLibrary& authoredAssets,
-    CreativeEditorToolOptionsState& state) noexcept;
+    CreativeEditorToolOptionsState& state,
+    const CreativeEditorWorldLayoutState* worldLayout = nullptr) noexcept;
 
 [[nodiscard]] bool creativeEditorObjectActionEnabled(
     const CreativeEditorState& editor,

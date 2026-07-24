@@ -223,6 +223,38 @@ std::vector<cr::CreativeObjectId> documentObjectIds(
   return ids;
 }
 
+cr::CreativeObjectId addSynchronizedGeneratedWorldObject(
+    cr::CreativeAppState& appState,
+    app::CreativeEditorWorldLayoutState& worldLayout,
+    std::string_view layoutKey,
+    cr::CreativeObjectKind kind = cr::CreativeObjectKind::Crate) {
+  app::resetCreativeEditorWorldLayout(worldLayout, std::string(layoutKey));
+  cr::CreativeWorldLayoutObject source;
+  source.kind = kind;
+  source.stableKey = "object_crate";
+  source.name = "Source Crate";
+  source.assetId = "crate";
+  source.boundsCells = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  worldLayout.source.objects.push_back(source);
+  worldLayout.generatedBaseline =
+      app::captureCreativeEditorWorldLayoutSnapshot(worldLayout);
+  worldLayout.sourceHistory.current.snapshot =
+      app::captureCreativeEditorWorldLayoutSnapshot(worldLayout);
+
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = "Compiled Crate";
+  request.tags = {
+      cr::creativeWorldLayoutTag(worldLayout.source.stableKey),
+      cr::creativeWorldLayoutProvenanceTag(
+          worldLayout.source, cr::CreativeWorldLayoutTable::Object, 0U)};
+  if (kind == cr::CreativeObjectKind::MovingPlatform) {
+    request.pathPoints = {{{0.5, 0.5, 0.5}}, {{0.5, 2.5, 0.5}}};
+    request.hasPathOverride = true;
+  }
+  return appState.facade.createDocumentObject(request).objectId;
+}
+
 bool generatedBounds(
     const cr::CreativeDocument& document,
     const cr::CreativeWorldLayout& layout,
@@ -654,6 +686,360 @@ bool duplicateGeneratedWorldLayoutOutputEditsItsSource() {
                  cr::creativeUndoDepth(appState.history) ==
                      documentUndoBefore,
              "source duplicate leaves compiled geometry intact and undoes through source history");
+}
+
+bool generatedWorldObjectGenericEditsRespectSourceOwnership() {
+  bool renameRouted = false;
+  {
+    cr::CreativeAppState appState;
+    cr::CreativeDocument document =
+        cr::CreativeDocument::create("Generated Source Rename");
+    static_cast<void>(document.assignId(4103U));
+    static_cast<void>(appState.facade.installDocument(std::move(document)));
+    app::CreativeEditorState editor;
+    const cr::CreativeObjectId generatedId =
+        addSynchronizedGeneratedWorldObject(
+            appState, editor.worldLayout, "generated_source_rename");
+    appState.history = {};
+    const std::uint64_t documentRevisionBefore =
+        appState.facade.document().revision();
+    const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+    std::string saveId = "unused";
+    const app::CreativeDesktopCommandContext context{
+        appState, editor, std::filesystem::path{}, &saveId};
+
+    const app::CreativeDesktopCommandResult renamed = dispatchPayload(
+        app::CreativeDesktopCommandId::RenameObject, context,
+        app::CreativeDesktopRenamePayload{generatedId, "Renamed Source"});
+    const cr::CreativeObject* compiled =
+        appState.facade.findObject(generatedId);
+    renameRouted =
+        renamed.accepted && renamed.changed && renamed.worldLayoutChanged &&
+        editor.worldLayout.source.objects[0].name == "Renamed Source" &&
+        editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+        editor.worldLayout.generatedRevision == sourceRevisionBefore &&
+        compiled != nullptr && compiled->name == "Compiled Crate" &&
+        appState.facade.document().revision() == documentRevisionBefore &&
+        cr::creativeUndoDepth(appState.history) == 0U;
+  }
+
+  bool flagsRouted = false;
+  {
+    cr::CreativeAppState appState;
+    cr::CreativeDocument document =
+        cr::CreativeDocument::create("Generated Source Flags");
+    static_cast<void>(document.assignId(4104U));
+    static_cast<void>(appState.facade.installDocument(std::move(document)));
+    app::CreativeEditorState editor;
+    const cr::CreativeObjectId generatedId =
+        addSynchronizedGeneratedWorldObject(
+            appState, editor.worldLayout, "generated_source_flags");
+    appState.history = {};
+    const std::uint64_t documentRevisionBefore =
+        appState.facade.document().revision();
+    const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+    std::string saveId = "unused";
+    const app::CreativeDesktopCommandContext context{
+        appState, editor, std::filesystem::path{}, &saveId};
+
+    const app::CreativeDesktopCommandResult locked = dispatchPayload(
+        app::CreativeDesktopCommandId::SetObjectsLocked, context,
+        app::CreativeDesktopObjectFlagPayload{{generatedId}, true});
+    const app::CreativeDesktopCommandResult hidden = dispatchPayload(
+        app::CreativeDesktopCommandId::SetObjectsVisible, context,
+        app::CreativeDesktopObjectFlagPayload{{generatedId}, false});
+    const cr::CreativeObject* compiled =
+        appState.facade.findObject(generatedId);
+    flagsRouted =
+        !locked.accepted && !locked.changed && hidden.accepted &&
+        hidden.changed && hidden.worldLayoutChanged &&
+        !editor.worldLayout.source.objects[0].visible &&
+        editor.worldLayout.revision == sourceRevisionBefore + 1U &&
+        compiled != nullptr && compiled->visible && !compiled->locked &&
+        appState.facade.document().revision() == documentRevisionBefore &&
+        cr::creativeUndoDepth(appState.history) == 0U;
+  }
+
+  bool staleRejected = false;
+  {
+    cr::CreativeAppState appState;
+    cr::CreativeDocument document =
+        cr::CreativeDocument::create("Generated Source Stale");
+    static_cast<void>(document.assignId(4105U));
+    static_cast<void>(appState.facade.installDocument(std::move(document)));
+    app::CreativeEditorState editor;
+    const cr::CreativeObjectId generatedId =
+        addSynchronizedGeneratedWorldObject(
+            appState, editor.worldLayout, "generated_source_stale");
+    selectPrimary(appState.facade, generatedId);
+    appState.history = {};
+    ++editor.worldLayout.revision;
+    const std::uint64_t documentRevisionBefore =
+        appState.facade.document().revision();
+    const std::size_t objectCountBefore =
+        appState.facade.document().objectCount();
+    std::string saveId = "unused";
+    const app::CreativeDesktopCommandContext context{
+        appState, editor, std::filesystem::path{}, &saveId};
+
+    const app::CreativeDesktopCommandResult deleted =
+        dispatchOne(app::CreativeDesktopCommandId::DeleteSelection, context);
+    staleRejected =
+        !deleted.accepted && !deleted.changed &&
+        appState.facade.findObject(generatedId) != nullptr &&
+        appState.facade.document().revision() == documentRevisionBefore &&
+        appState.facade.document().objectCount() == objectCountBefore &&
+        cr::creativeUndoDepth(appState.history) == 0U;
+  }
+
+  return expect(renameRouted,
+                "generated rename edits source without touching output") &&
+         expect(flagsRouted,
+                "generated visibility edits source while lock rejects") &&
+         expect(staleRejected,
+                "stale generated output rejects source mutation atomically");
+}
+
+bool generatedOutputRejectsStructuralDesktopMutations() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Structural Mutations");
+  static_cast<void>(document.assignId(4112U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const cr::CreativeObjectId generatedId =
+      addSynchronizedGeneratedWorldObject(
+          appState, editor.worldLayout, "generated_structural_mutations",
+          cr::CreativeObjectKind::MovingPlatform);
+  const cr::CreativeObjectId authoredId =
+      createCrate(appState.facade, 4.0);
+  selectPrimary(appState.facade, generatedId);
+  appState.history = {};
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+
+  const std::array<app::CreativeDesktopCommandResult, 9U> rejected{
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetLogicLink, context,
+          app::CreativeDesktopLogicLinkPayload{
+              generatedId, authoredId,
+              cr::CreativeLogicLinkAction::Toggle}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::RemoveLogicLink, context,
+          app::CreativeDesktopLogicLinkPayload{authoredId, generatedId}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetGroupPivot, context,
+          app::CreativeDesktopGroupPivotPayload{generatedId, {1.0, 2.0, 3.0}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+          app::CreativeDesktopMovingPlatformPayload{generatedId, {}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
+          app::CreativeDesktopPlayerSpawnPayload{generatedId, {}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
+          app::CreativeDesktopNpcSpawnPayload{generatedId, {}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetLootPointSettings, context,
+          app::CreativeDesktopLootPointPayload{generatedId, {}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetExitPointSettings, context,
+          app::CreativeDesktopExitPointPayload{generatedId, {}}),
+      dispatchPayload(
+          app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
+          context,
+          app::CreativeDesktopMovingPlatformWaypointPayload{
+              generatedId, 0U, 1.0})};
+  const bool allRejected =
+      std::all_of(rejected.begin(), rejected.end(),
+                  [](const app::CreativeDesktopCommandResult& result) {
+                    return !result.accepted && !result.changed &&
+                           !result.sceneChanged &&
+                           result.affectedObjectCount == 0U &&
+                           result.message.find(
+                               "creative_semantic_action_world_layout_owned") !=
+                               std::string::npos;
+                  });
+
+  return expect(allRejected,
+                "generated outputs reject every structural desktop mutation") &&
+         expect(appState.facade.document().revision() ==
+                        documentRevisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "rejected structural mutations preserve document history") &&
+         expect(editor.worldLayout.revision == sourceRevisionBefore,
+                "rejected structural mutations preserve source history");
+}
+
+bool mixedOwnershipDeleteRejectsAtomically() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Mixed Ownership Delete");
+  static_cast<void>(document.assignId(4106U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  const cr::CreativeObjectId generatedId =
+      addSynchronizedGeneratedWorldObject(
+          appState, editor.worldLayout, "mixed_ownership_delete");
+  const cr::CreativeObjectId authoredId =
+      createCrate(appState.facade, 3.0);
+  appState.history = {};
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+  const std::uint64_t sourceRevisionBefore = editor.worldLayout.revision;
+  const std::size_t objectCountBefore =
+      appState.facade.document().objectCount();
+  const std::size_t sourceUndoBefore =
+      editor.worldLayout.sourceHistory.undoEntries.size();
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+
+  const app::CreativeDesktopCommandResult deleted = dispatchPayload(
+      app::CreativeDesktopCommandId::DeleteObjects, context,
+      app::CreativeDesktopDeletePayload{{generatedId, authoredId}});
+
+  return expect(!deleted.accepted && !deleted.changed,
+                "mixed ownership delete is rejected") &&
+         expect(appState.facade.findObject(generatedId) != nullptr &&
+                    appState.facade.findObject(authoredId) != nullptr &&
+                    appState.facade.document().objectCount() ==
+                        objectCountBefore &&
+                    appState.facade.document().revision() ==
+                        documentRevisionBefore,
+                "mixed ownership delete removes no document objects") &&
+         expect(editor.worldLayout.revision == sourceRevisionBefore &&
+                    editor.worldLayout.sourceHistory.undoEntries.size() ==
+                        sourceUndoBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "mixed ownership delete records no source or document history");
+}
+
+bool patternOutputRejectsRawObjectEdits() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Pattern Output Generic Edits");
+  static_cast<void>(document.assignId(4107U));
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Crate;
+  sourceRequest.name = "Pattern Source";
+  const cr::CreativeObjectId sourceId =
+      document.createObject(sourceRequest).objectId;
+  cr::CreativeDocumentCreateRequest generatedRequest;
+  generatedRequest.kind = cr::CreativeObjectKind::Crate;
+  generatedRequest.name = "Pattern Output";
+  const cr::CreativeObjectId generatedId =
+      document.createObject(generatedRequest).objectId;
+  cr::CreativePatternRecipeMutationRequest recipeRequest;
+  recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipeRequest.recipe.sourceObjectIds = {sourceId};
+  recipeRequest.recipe.generatedObjectIds = {generatedId};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(recipeRequest);
+
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  appState.history = {};
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+  const cr::CreativeTransform transformBefore =
+      appState.facade.findObject(generatedId)->transform;
+  cr::CreativeTransform requested = transformBefore;
+  requested.position.x += 4.0;
+
+  const app::CreativeDesktopCommandResult renamed = dispatchPayload(
+      app::CreativeDesktopCommandId::RenameObject, context,
+      app::CreativeDesktopRenamePayload{generatedId, "Raw Rename"});
+  const app::CreativeDesktopCommandResult hidden = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsVisible, context,
+      app::CreativeDesktopObjectFlagPayload{{generatedId}, false});
+  const app::CreativeDesktopCommandResult locked = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectsLocked, context,
+      app::CreativeDesktopObjectFlagPayload{{generatedId}, true});
+  const app::CreativeDesktopCommandResult transformed = dispatchPayload(
+      app::CreativeDesktopCommandId::SetObjectTransform, context,
+      app::CreativeDesktopTransformPayload{
+          generatedId, requested, true, false, false});
+  const cr::CreativeObject* output =
+      appState.facade.findObject(generatedId);
+
+  return expect(recipe.accepted && recipe.changed,
+                "pattern output ownership fixture is valid") &&
+         expect(!renamed.accepted && !hidden.accepted && !locked.accepted &&
+                    !transformed.accepted,
+                "pattern output rejects raw generic mutations") &&
+         expect(output != nullptr && output->name == "Pattern Output" &&
+                    output->visible && !output->locked &&
+                    cr::creativeVec3ExactlyEqual(
+                        output->transform.position,
+                        transformBefore.position),
+                "rejected pattern edits preserve object state") &&
+         expect(appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U &&
+                    appState.facade.document()
+                            .patternRecipeStore()
+                            .recipes.size() == 1U,
+                "rejected pattern edits preserve revision, history, and recipe");
+}
+
+bool explicitPatternDeleteUsesSemanticKernel() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Pattern Output Semantic Delete");
+  static_cast<void>(document.assignId(4108U));
+  cr::CreativeDocumentCreateRequest sourceRequest;
+  sourceRequest.kind = cr::CreativeObjectKind::Crate;
+  sourceRequest.name = "Pattern Source";
+  const cr::CreativeObjectId sourceId =
+      document.createObject(sourceRequest).objectId;
+  cr::CreativeDocumentCreateRequest outputRequest;
+  outputRequest.kind = cr::CreativeObjectKind::Crate;
+  outputRequest.name = "Pattern Output A";
+  const cr::CreativeObjectId outputA =
+      document.createObject(outputRequest).objectId;
+  outputRequest.name = "Pattern Output B";
+  const cr::CreativeObjectId outputB =
+      document.createObject(outputRequest).objectId;
+  cr::CreativePatternRecipeMutationRequest recipeRequest;
+  recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipeRequest.recipe.sourceObjectIds = {sourceId};
+  recipeRequest.recipe.generatedObjectIds = {outputA, outputB};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(recipeRequest);
+
+  cr::CreativeAppState appState;
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  appState.history = {};
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const app::CreativeDesktopCommandResult deleted = dispatchPayload(
+      app::CreativeDesktopCommandId::DeleteObjects, context,
+      app::CreativeDesktopDeletePayload{{outputA}});
+
+  return expect(recipe.accepted && recipe.changed,
+                "explicit pattern delete fixture is valid") &&
+         expect(deleted.accepted && deleted.changed,
+                "explicit pattern delete is accepted") &&
+         expect(appState.facade.findObject(sourceId) == nullptr &&
+                    appState.facade.findObject(outputA) == nullptr &&
+                    appState.facade.findObject(outputB) == nullptr &&
+                    appState.facade.document().objectCount() == 0U &&
+                    appState.facade.document()
+                        .patternRecipeStore()
+                        .recipes.empty(),
+                "semantic delete removes the editable recipe closure") &&
+         expect(cr::creativeUndoDepth(appState.history) == 1U,
+                "semantic pattern delete records one undo entry");
 }
 
 bool undoRedoMoveTheHistoryRings() {
@@ -3040,6 +3426,14 @@ bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
   const auto locked = dispatchPayload(
       app::CreativeDesktopCommandId::SetObjectsLocked, context,
       app::CreativeDesktopObjectFlagPayload{{directRoomObjectId}, true});
+  const cr::CreativeDocumentMutationReceipt fixtureHidden =
+      appState.facade.mutateObject(
+          directRoomObjectId, cr::CreativeMutationKind::SetVisible,
+          cr::makeVisibilityPayload(false));
+  const cr::CreativeDocumentMutationReceipt fixtureLocked =
+      appState.facade.mutateObject(
+          directRoomObjectId, cr::CreativeMutationKind::SetLocked,
+          cr::makeLockPayload(true));
   const auto inspected = dispatchPayload(
       app::CreativeDesktopCommandId::SelectObjects, context,
       app::CreativeDesktopSelectPayload{{directRoomObjectId},
@@ -3047,7 +3441,11 @@ bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
   const cr::CreativeObject* directRoomObject =
       appState.facade.findObject(directRoomObjectId);
   const bool hiddenLockedRemainsInspectable =
-      hidden.accepted && locked.accepted && inspected.accepted &&
+      !hidden.accepted && !locked.accepted &&
+      cr::documentMutationSucceeded(fixtureHidden.status) &&
+      fixtureHidden.changed &&
+      cr::documentMutationSucceeded(fixtureLocked.status) &&
+      fixtureLocked.changed && inspected.accepted &&
       directRoomObject != nullptr && !directRoomObject->visible &&
       directRoomObject->locked &&
       appState.facade.selectionState().selectedTarget.value ==
@@ -7985,6 +8383,11 @@ int main() {
   ok = deleteAndDuplicateHitTheKernels() && ok;
   ok = deleteGeneratedWorldLayoutOutputEditsItsSource() && ok;
   ok = duplicateGeneratedWorldLayoutOutputEditsItsSource() && ok;
+  ok = generatedWorldObjectGenericEditsRespectSourceOwnership() && ok;
+  ok = generatedOutputRejectsStructuralDesktopMutations() && ok;
+  ok = mixedOwnershipDeleteRejectsAtomically() && ok;
+  ok = patternOutputRejectsRawObjectEdits() && ok;
+  ok = explicitPatternDeleteUsesSemanticKernel() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;
   ok = saveAsRebindsTheActiveSlotAndPreservesHistory() && ok;

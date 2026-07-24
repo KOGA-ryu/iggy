@@ -8,6 +8,8 @@
 #include "EditorPathEditing.hpp"
 #include "EditorWorldLayout.hpp"
 
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
+
 #include <span>
 #include <string>
 
@@ -28,6 +30,25 @@ bool dispatchCreativeDesktopObjectCommand(
         editor.worldLayout, activeAppState.facade.document(),
         activeAppState.facade.selectionState());
   };
+  const auto semanticDocumentMutationAllowed =
+      [&](creative::CreativeObjectId objectId, std::string_view operation) {
+        const creative::CreativeSemanticSelectionResolution selection =
+            creative::resolveCreativeSemanticSelection(
+                activeAppState.facade.document(), objectId,
+                &editor.worldLayout.source);
+        const creative::CreativeSemanticObjectActionPolicy policy =
+            creative::resolveCreativeSemanticObjectAction(
+                selection,
+                creative::CreativeSemanticObjectAction::StructuralMutation);
+        if (policy.allowed &&
+            policy.route ==
+                creative::CreativeSemanticObjectActionRoute::Document) {
+          return true;
+        }
+        result.message = std::string(operation) + ": " +
+                         std::string(policy.reasonCode);
+        return false;
+      };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
       const bool previewWasActive =
@@ -192,6 +213,12 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "set logic link: payload mismatch";
         break;
       }
+      if (!semanticDocumentMutationAllowed(payload->sourceObjectId,
+                                           "set logic link") ||
+          !semanticDocumentMutationAllowed(payload->targetObjectId,
+                                           "set logic link")) {
+        break;
+      }
       const CreativeEditorLogicLinkReceipt receipt =
           setCreativeEditorLogicLink(
               activeAppState, editor.logicLinks, payload->sourceObjectId,
@@ -212,6 +239,12 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "remove logic link: payload mismatch";
         break;
       }
+      if (!semanticDocumentMutationAllowed(payload->sourceObjectId,
+                                           "remove logic link") ||
+          !semanticDocumentMutationAllowed(payload->targetObjectId,
+                                           "remove logic link")) {
+        break;
+      }
       const CreativeEditorLogicLinkReceipt receipt =
           removeCreativeEditorLogicLink(
               activeAppState, editor.logicLinks, payload->sourceObjectId,
@@ -230,16 +263,23 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "delete objects: payload mismatch";
         break;
       }
-      const CreativeStandaloneBatchEditReceipt receipt = deleteObjectsWithUndo(
-          activeAppState, activeAppState.history, payload->objectIds,
-          "desktop_delete_objects");
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorDeleteReceipt receipt =
+          deleteCreativeEditorObjectsWithUndo(
+              activeAppState, payload->objectIds, "desktop_delete_objects",
+              &activeAppState.history, &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
+      result.sceneChanged =
+          receipt.worldLayoutSourceDeleted && previewWasActive;
       if (receipt.accepted) {
         static_cast<void>(synchronizeSelection());
       }
       result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.changed ? "deleted objects" : "nothing deleted";
+      result.message =
+          receipt.changed ? "deleted objects" : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::RenameObject: {
@@ -253,16 +293,20 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "rename: invalid request";
         break;
       }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          renameObjectWithUndo(activeAppState, activeAppState.history,
-                               payload->objectId, payload->name,
-                               "desktop_rename");
-      const bool applied =
-          receipt.status == creative::CreativeDocumentMutationStatus::Applied;
-      result.accepted = applied;
-      result.changed = applied && receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
-      result.message = applied ? "renamed object" : "rename failed";
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorSemanticEditReceipt receipt =
+          renameCreativeEditorObjectWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->name, "desktop_rename", &editor.worldLayout);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.worldLayoutSourceChanged;
+      result.sceneChanged =
+          receipt.worldLayoutSourceChanged && previewWasActive;
+      result.affectedObjectCount = receipt.affectedObjectCount;
+      result.message =
+          receipt.accepted ? "renamed object" : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetObjectsVisible: {
@@ -271,15 +315,20 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "visibility: payload mismatch";
         break;
       }
-      const CreativeStandaloneBatchEditReceipt receipt =
-          setObjectsVisibleWithUndo(activeAppState, activeAppState.history,
-                                    payload->objectIds, payload->value,
-                                    "desktop_set_visible");
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorObjectsVisibleWithUndo(
+              activeAppState, activeAppState.history, payload->objectIds,
+              payload->value, "desktop_set_visible", &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.worldLayoutSourceChanged;
+      result.sceneChanged =
+          receipt.worldLayoutSourceChanged && previewWasActive;
       result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = receipt.changed ? "visibility updated"
-                                       : "visibility unchanged";
+                                       : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetObjectsLocked: {
@@ -288,14 +337,14 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "lock: payload mismatch";
         break;
       }
-      const CreativeStandaloneBatchEditReceipt receipt =
-          setObjectsLockedWithUndo(activeAppState, activeAppState.history,
-                                   payload->objectIds, payload->value,
-                                   "desktop_set_locked");
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorObjectsLockedWithUndo(
+              activeAppState, activeAppState.history, payload->objectIds,
+              payload->value, "desktop_set_locked", &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.changed ? "lock updated" : "lock unchanged";
+      result.message = receipt.changed ? "lock updated" : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetObjectTransform: {
@@ -311,24 +360,31 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "transform complete hierarchy through Transform Selection";
         break;
       }
-      const CreativeStandaloneBatchEditReceipt receipt =
-          setObjectTransformWithUndo(activeAppState, activeAppState.history,
-                                     payload->objectId, payload->transform,
-                                     payload->setPosition, payload->setRotation,
-                                     payload->setScale, "desktop_set_transform");
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorObjectTransformWithUndo(
+              activeAppState, activeAppState.history, payload->objectId,
+              payload->transform, payload->setPosition, payload->setRotation,
+              payload->setScale, "desktop_set_transform",
+              &editor.worldLayout);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = receipt.accepted
-                           ? (receipt.changed ? "transform set"
+                           ? (receipt.requiresAdoption
+                                  ? "transform set; adopt 3D edit"
+                                  : receipt.changed ? "transform set"
                                               : "transform unchanged")
-                           : receipt.message;
+                           : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetGroupPivot: {
       const auto* payload = payloadAs<CreativeDesktopGroupPivotPayload>(command);
       if (payload == nullptr) {
         result.message = "group pivot: payload mismatch";
+        break;
+      }
+      if (!semanticDocumentMutationAllowed(payload->groupObjectId,
+                                           "group pivot")) {
         break;
       }
       const creative::CreativeGroupPivotReceipt receipt =
@@ -346,6 +402,10 @@ bool dispatchCreativeDesktopObjectCommand(
           payloadAs<CreativeDesktopMovingPlatformPayload>(command);
       if (payload == nullptr) {
         result.message = "moving platform settings: payload mismatch";
+        break;
+      }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "moving platform settings")) {
         break;
       }
       const creative::CreativeDocumentMutationReceipt receipt =
@@ -369,6 +429,10 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "player spawn settings: payload mismatch";
         break;
       }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "player spawn settings")) {
+        break;
+      }
       const creative::CreativeDocumentMutationReceipt receipt =
           setPlayerSpawnSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
@@ -388,6 +452,10 @@ bool dispatchCreativeDesktopObjectCommand(
           payloadAs<CreativeDesktopNpcSpawnPayload>(command);
       if (payload == nullptr) {
         result.message = "npc spawn settings: payload mismatch";
+        break;
+      }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "npc spawn settings")) {
         break;
       }
       const creative::CreativeDocumentMutationReceipt receipt =
@@ -411,6 +479,10 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "loot point settings: payload mismatch";
         break;
       }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "loot point settings")) {
+        break;
+      }
       const creative::CreativeDocumentMutationReceipt receipt =
           setLootPointSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
@@ -431,6 +503,10 @@ bool dispatchCreativeDesktopObjectCommand(
           payloadAs<CreativeDesktopExitPointPayload>(command);
       if (payload == nullptr) {
         result.message = "exit point settings: payload mismatch";
+        break;
+      }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "exit point settings")) {
         break;
       }
       const creative::CreativeDocumentMutationReceipt receipt =
@@ -501,6 +577,10 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = result.accepted
                              ? "moving platform waypoint selected"
                              : "moving platform waypoint selection rejected";
+        break;
+      }
+      if (!semanticDocumentMutationAllowed(payload->objectId,
+                                           "moving platform waypoint")) {
         break;
       }
       const CreativeMovingPlatformPathEditReceipt receipt =

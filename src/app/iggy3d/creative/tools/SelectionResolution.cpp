@@ -1,11 +1,20 @@
 #include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
 
 #include <algorithm>
 
 namespace iggy3d::creative {
 namespace {
+
+[[nodiscard]] bool hasWorldLayoutOwnershipTag(
+    const CreativeObject& object) noexcept {
+  return std::any_of(object.tags.begin(), object.tags.end(),
+                     [](const std::string& tag) {
+                       return tag.starts_with("creative_world_layout:");
+                     });
+}
 
 [[nodiscard]] CreativeSemanticSelectionResolution resolveSelection(
     const CreativeDocument& document,
@@ -49,9 +58,10 @@ namespace {
             ? resolveCreativeWorldLayoutObjectProvenance(
                   *worldLayout, *object, *sourcePointCells)
             : resolveCreativeWorldLayoutObjectProvenance(*worldLayout, *object);
-    if (result.worldLayoutSource.owned) {
-      result.primaryOwner = CreativeSemanticSelectionOwner::WorldLayoutSource;
-    }
+  }
+  if (result.worldLayoutSource.owned ||
+      hasWorldLayoutOwnershipTag(*object)) {
+    result.primaryOwner = CreativeSemanticSelectionOwner::WorldLayoutSource;
   }
 
   const CreativePatternRecipe* pattern =
@@ -174,6 +184,24 @@ CreativeSemanticSelectionSetResolution resolveCreativeSemanticSelectionSet(
     result.patternRecipeKind = CreativePatternRecipeKind::Count;
   }
 
+  for (CreativeObjectId objectId : objectIds) {
+    const CreativeSemanticSelectionResolution selection =
+        resolveSelection(document, objectId, worldLayout, nullptr);
+    switch (selection.primaryOwner) {
+      case CreativeSemanticSelectionOwner::AuthoredObject:
+        ++result.authoredOwnerCount;
+        break;
+      case CreativeSemanticSelectionOwner::PatternRecipe:
+        ++result.patternOwnerCount;
+        break;
+      case CreativeSemanticSelectionOwner::WorldLayoutSource:
+        ++result.worldLayoutOwnerCount;
+        break;
+      case CreativeSemanticSelectionOwner::None:
+        break;
+    }
+  }
+
   if (worldLayout != nullptr) {
     const CreativeObject* primary =
         document.findObject(result.primaryObjectId);
@@ -205,16 +233,195 @@ CreativeSemanticSelectionSetResolution resolveCreativeSemanticSelectionSet(
 
   result.accepted = true;
   result.status = CreativeSemanticSelectionStatus::Ready;
-  if (result.patternRecipeId != kInvalidCreativePatternRecipeId) {
+  const bool onlyPatternOwned =
+      result.patternOwnerCount > 0U && result.authoredOwnerCount == 0U &&
+      result.worldLayoutOwnerCount == 0U;
+  const bool onlyWorldLayoutOwned =
+      result.worldLayoutOwnerCount > 0U && result.authoredOwnerCount == 0U &&
+      result.patternOwnerCount == 0U;
+  if (result.patternRecipeId != kInvalidCreativePatternRecipeId ||
+      onlyPatternOwned) {
     result.primaryOwner = CreativeSemanticSelectionOwner::PatternRecipe;
   } else if (result.commonWorldLayoutSource.table !=
-             CreativeWorldLayoutTable::None) {
+                 CreativeWorldLayoutTable::None ||
+             onlyWorldLayoutOwned) {
     result.primaryOwner = CreativeSemanticSelectionOwner::WorldLayoutSource;
   } else {
     result.primaryOwner = CreativeSemanticSelectionOwner::AuthoredObject;
   }
   result.reasonCode = "creative_selection_set_ready";
   return result;
+}
+
+CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(
+    CreativeSemanticSelectionOwner owner,
+    CreativeSemanticObjectAction action,
+    CreativeWorldLayoutTable worldLayoutTable,
+    std::size_t worldLayoutContributorCount) noexcept {
+  if (action >= CreativeSemanticObjectAction::Count) {
+    return {false, CreativeSemanticObjectActionRoute::Reject,
+            "creative_semantic_action_invalid"};
+  }
+  if (action == CreativeSemanticObjectAction::Inspect ||
+      action == CreativeSemanticObjectAction::Copy) {
+    return owner == CreativeSemanticSelectionOwner::None
+               ? CreativeSemanticObjectActionPolicy{
+                     false, CreativeSemanticObjectActionRoute::Reject,
+                     "creative_semantic_action_owner_missing"}
+               : CreativeSemanticObjectActionPolicy{
+                     true, CreativeSemanticObjectActionRoute::ReadOnly,
+                     "creative_semantic_action_read_only"};
+  }
+
+  switch (owner) {
+    case CreativeSemanticSelectionOwner::AuthoredObject:
+      return {true, CreativeSemanticObjectActionRoute::Document,
+              "creative_semantic_action_document"};
+    case CreativeSemanticSelectionOwner::PatternRecipe:
+      switch (action) {
+        case CreativeSemanticObjectAction::Duplicate:
+        case CreativeSemanticObjectAction::Delete:
+        case CreativeSemanticObjectAction::Cut:
+          return {true,
+                  CreativeSemanticObjectActionRoute::SemanticDocument,
+                  "creative_semantic_action_pattern_document"};
+        case CreativeSemanticObjectAction::TransformSelection:
+          return {true, CreativeSemanticObjectActionRoute::PatternRecipe,
+                  "creative_semantic_action_pattern_recipe"};
+        case CreativeSemanticObjectAction::Inspect:
+        case CreativeSemanticObjectAction::Copy:
+        case CreativeSemanticObjectAction::Rename:
+        case CreativeSemanticObjectAction::SetVisible:
+        case CreativeSemanticObjectAction::SetLocked:
+        case CreativeSemanticObjectAction::SetTransform:
+        case CreativeSemanticObjectAction::StructuralMutation:
+        case CreativeSemanticObjectAction::Count:
+          return {false, CreativeSemanticObjectActionRoute::Reject,
+                  "creative_semantic_action_pattern_owned"};
+      }
+      break;
+    case CreativeSemanticSelectionOwner::WorldLayoutSource:
+      switch (action) {
+        case CreativeSemanticObjectAction::Duplicate:
+          if (creativeWorldLayoutSourceDuplicatePolicy(worldLayoutTable) !=
+              CreativeWorldLayoutSourceDuplicatePolicy::Unsupported) {
+            return {true,
+                    CreativeSemanticObjectActionRoute::WorldLayoutSource,
+                    "creative_semantic_action_world_layout_source"};
+          }
+          break;
+        case CreativeSemanticObjectAction::Delete:
+          if (worldLayoutTable != CreativeWorldLayoutTable::None &&
+              worldLayoutTable !=
+                  CreativeWorldLayoutTable::TerrainPathPoint &&
+              worldLayoutTable != CreativeWorldLayoutTable::TopologyEdge) {
+            return {true,
+                    CreativeSemanticObjectActionRoute::WorldLayoutSource,
+                    "creative_semantic_action_world_layout_source"};
+          }
+          break;
+        case CreativeSemanticObjectAction::Rename:
+          switch (worldLayoutTable) {
+            case CreativeWorldLayoutTable::Building:
+            case CreativeWorldLayoutTable::Level:
+            case CreativeWorldLayoutTable::Room:
+            case CreativeWorldLayoutTable::VerticalConnector:
+            case CreativeWorldLayoutTable::Box:
+            case CreativeWorldLayoutTable::Wall:
+            case CreativeWorldLayoutTable::Opening:
+            case CreativeWorldLayoutTable::RoofAperture:
+            case CreativeWorldLayoutTable::Object:
+              return {true,
+                      CreativeSemanticObjectActionRoute::WorldLayoutSource,
+                      "creative_semantic_action_world_layout_source"};
+            case CreativeWorldLayoutTable::None:
+            case CreativeWorldLayoutTable::TerrainProfile:
+            case CreativeWorldLayoutTable::TerrainPath:
+            case CreativeWorldLayoutTable::TerrainPathPoint:
+            case CreativeWorldLayoutTable::TopologyEdge:
+              break;
+          }
+          break;
+        case CreativeSemanticObjectAction::SetVisible:
+          if (worldLayoutTable == CreativeWorldLayoutTable::Building ||
+              worldLayoutTable == CreativeWorldLayoutTable::Object) {
+            return {true,
+                    CreativeSemanticObjectActionRoute::WorldLayoutSource,
+                    "creative_semantic_action_world_layout_source"};
+          }
+          break;
+        case CreativeSemanticObjectAction::TransformSelection:
+          if (worldLayoutTable == CreativeWorldLayoutTable::Building) {
+            return {true,
+                    CreativeSemanticObjectActionRoute::WorldLayoutSource,
+                    "creative_semantic_action_world_layout_source"};
+          }
+          break;
+        case CreativeSemanticObjectAction::SetTransform:
+          if (worldLayoutContributorCount == 1U &&
+              (worldLayoutTable == CreativeWorldLayoutTable::Object ||
+               worldLayoutTable == CreativeWorldLayoutTable::Box)) {
+            return {true,
+                    CreativeSemanticObjectActionRoute::RefineThenAdopt,
+                    "creative_semantic_action_refine_then_adopt"};
+          }
+          break;
+        case CreativeSemanticObjectAction::Inspect:
+        case CreativeSemanticObjectAction::Copy:
+        case CreativeSemanticObjectAction::Cut:
+        case CreativeSemanticObjectAction::SetLocked:
+        case CreativeSemanticObjectAction::StructuralMutation:
+        case CreativeSemanticObjectAction::Count:
+          break;
+      }
+      return {false, CreativeSemanticObjectActionRoute::Reject,
+              "creative_semantic_action_world_layout_owned"};
+    case CreativeSemanticSelectionOwner::None:
+      return {false, CreativeSemanticObjectActionRoute::Reject,
+              "creative_semantic_action_owner_missing"};
+  }
+  return {false, CreativeSemanticObjectActionRoute::Reject,
+          "creative_semantic_action_unsupported"};
+}
+
+CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(
+    const CreativeSemanticSelectionResolution& selection,
+    CreativeSemanticObjectAction action) noexcept {
+  if (!selection.accepted) {
+    return {false, CreativeSemanticObjectActionRoute::Reject,
+            selection.reasonCode};
+  }
+  return resolveCreativeSemanticObjectAction(
+      selection.primaryOwner, action, selection.worldLayoutSource.table,
+      selection.worldLayoutSource.contributorCount);
+}
+
+CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(
+    const CreativeSemanticSelectionSetResolution& selection,
+    CreativeSemanticObjectAction action) noexcept {
+  if (!selection.accepted) {
+    return {false, CreativeSemanticObjectActionRoute::Reject,
+            selection.reasonCode};
+  }
+  const std::size_t ownerKindCount =
+      static_cast<std::size_t>(selection.authoredOwnerCount > 0U) +
+      static_cast<std::size_t>(selection.patternOwnerCount > 0U) +
+      static_cast<std::size_t>(selection.worldLayoutOwnerCount > 0U);
+  if (ownerKindCount != 1U) {
+    return {false, CreativeSemanticObjectActionRoute::Reject,
+            ownerKindCount == 0U
+                ? "creative_semantic_action_selection_empty"
+                : "creative_semantic_action_mixed_ownership"};
+  }
+  CreativeSemanticSelectionOwner owner =
+      CreativeSemanticSelectionOwner::WorldLayoutSource;
+  if (selection.authoredOwnerCount > 0U) {
+    owner = CreativeSemanticSelectionOwner::AuthoredObject;
+  } else if (selection.patternOwnerCount > 0U) {
+    owner = CreativeSemanticSelectionOwner::PatternRecipe;
+  }
+  return resolveCreativeSemanticObjectAction(
+      owner, action, selection.commonWorldLayoutSource.table);
 }
 
 }  // namespace iggy3d::creative

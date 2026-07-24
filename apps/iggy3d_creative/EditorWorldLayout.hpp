@@ -147,6 +147,8 @@ creativeEditorWorldLayoutSelectionTable(
     cr::CreativeWorldLayoutTable table) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutSourceCanDelete(
     cr::CreativeWorldLayoutTable table) noexcept;
+[[nodiscard]] bool creativeEditorWorldLayoutSourceCanSetVisible(
+    cr::CreativeWorldLayoutTable table) noexcept;
 [[nodiscard]] bool creativeEditorWorldLayoutSourceStableKeyMatches(
     const CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index,
@@ -159,6 +161,15 @@ renameCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,
     cr::CreativeWorldLayoutTable table, std::size_t index,
     std::string name);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutSourceVisible(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    bool visible);
+[[nodiscard]] CreativeEditorWorldLayoutEditReceipt
+rotateCreativeEditorWorldLayoutBuildingSource(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTransformOperation operation);
 [[nodiscard]] CreativeEditorWorldLayoutEditReceipt
 duplicateCreativeEditorWorldLayoutSource(
     CreativeEditorWorldLayoutState& state,

@@ -4,6 +4,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -456,38 +457,34 @@ cr::CreativeWorldLayoutTable creativeEditorWorldLayoutSelectionTable(
 
 bool creativeEditorWorldLayoutSourceCanRename(
     cr::CreativeWorldLayoutTable table) noexcept {
-  switch (table) {
-    case cr::CreativeWorldLayoutTable::Building:
-    case cr::CreativeWorldLayoutTable::Level:
-    case cr::CreativeWorldLayoutTable::Room:
-    case cr::CreativeWorldLayoutTable::VerticalConnector:
-    case cr::CreativeWorldLayoutTable::Box:
-    case cr::CreativeWorldLayoutTable::Wall:
-    case cr::CreativeWorldLayoutTable::Opening:
-    case cr::CreativeWorldLayoutTable::RoofAperture:
-    case cr::CreativeWorldLayoutTable::Object:
-      return true;
-    case cr::CreativeWorldLayoutTable::TopologyEdge:
-    case cr::CreativeWorldLayoutTable::None:
-    case cr::CreativeWorldLayoutTable::TerrainProfile:
-    case cr::CreativeWorldLayoutTable::TerrainPath:
-    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
-      return false;
-  }
-  return false;
+  return cr::resolveCreativeSemanticObjectAction(
+             cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+             cr::CreativeSemanticObjectAction::Rename, table, 1U)
+      .allowed;
 }
 
 bool creativeEditorWorldLayoutSourceCanDuplicate(
     cr::CreativeWorldLayoutTable table) noexcept {
-  return cr::creativeWorldLayoutSourceDuplicatePolicy(table) !=
-         cr::CreativeWorldLayoutSourceDuplicatePolicy::Unsupported;
+  return cr::resolveCreativeSemanticObjectAction(
+             cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+             cr::CreativeSemanticObjectAction::Duplicate, table, 1U)
+      .allowed;
 }
 
 bool creativeEditorWorldLayoutSourceCanDelete(
     cr::CreativeWorldLayoutTable table) noexcept {
-  return table != cr::CreativeWorldLayoutTable::None &&
-         table != cr::CreativeWorldLayoutTable::TerrainPathPoint &&
-         table != cr::CreativeWorldLayoutTable::TopologyEdge;
+  return cr::resolveCreativeSemanticObjectAction(
+             cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+             cr::CreativeSemanticObjectAction::Delete, table, 1U)
+      .allowed;
+}
+
+bool creativeEditorWorldLayoutSourceCanSetVisible(
+    cr::CreativeWorldLayoutTable table) noexcept {
+  return cr::resolveCreativeSemanticObjectAction(
+             cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+             cr::CreativeSemanticObjectAction::SetVisible, table, 1U)
+      .allowed;
 }
 
 bool creativeEditorWorldLayoutSourceStableKeyMatches(
@@ -515,6 +512,57 @@ CreativeEditorWorldLayoutEditReceipt renameCreativeEditorWorldLayoutSource(
   *current = std::move(name);
   detail::noteWorldLayoutSourceChange(state, "layout source renamed");
   return {true, true, "creative_editor_world_layout_source_renamed"};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+setCreativeEditorWorldLayoutSourceVisible(
+    CreativeEditorWorldLayoutState& state,
+    cr::CreativeWorldLayoutTable table, std::size_t index,
+    bool visible) {
+  bool* current = nullptr;
+  if (table == cr::CreativeWorldLayoutTable::Building &&
+      index < state.source.buildings.size()) {
+    current = &state.source.buildings[index].visible;
+  } else if (table == cr::CreativeWorldLayoutTable::Object &&
+             index < state.source.objects.size()) {
+    current = &state.source.objects[index].visible;
+  }
+  if (current == nullptr) {
+    state.statusMessage = "source visibility is not editable";
+    return {false, false,
+            "creative_editor_world_layout_source_visibility_unsupported"};
+  }
+  if (*current == visible) {
+    state.statusMessage = "source visibility unchanged";
+    return {true, false,
+            "creative_editor_world_layout_source_visibility_no_change"};
+  }
+  *current = visible;
+  detail::noteWorldLayoutSourceChange(
+      state, visible ? "layout source shown" : "layout source hidden");
+  return {true, true,
+          "creative_editor_world_layout_source_visibility_updated"};
+}
+
+CreativeEditorWorldLayoutEditReceipt
+rotateCreativeEditorWorldLayoutBuildingSource(
+    CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
+    cr::CreativeWorldLayoutBuildingTransformOperation operation) {
+  cr::CreativeWorldLayoutBuildingTransformResult transformed =
+      cr::transformCreativeWorldLayoutBuilding(
+          state.source, {buildingIndex, operation});
+  if (!transformed.accepted) {
+    state.statusMessage = std::string(transformed.reasonCode);
+    return {false, false, transformed.reasonCode};
+  }
+  state.source = std::move(transformed.transformed);
+  state.selection = {CreativeEditorWorldLayoutSelectionKind::Building,
+                     transformed.buildingIndex};
+  repairCreativeEditorWorldLayoutActiveLevel(state,
+                                             transformed.buildingIndex);
+  detail::noteWorldLayoutSourceChange(state, "building rotated");
+  return {true, true,
+          "creative_editor_world_layout_building_rotated"};
 }
 
 CreativeEditorWorldLayoutEditReceipt duplicateCreativeEditorWorldLayoutSource(

@@ -368,7 +368,8 @@ void applyCreativeEditorCommandInput(
         break;
       case creative::CreativeInputActionId::CutSelection:
         if (!terrainRegionHeld()) {
-          (void)cutSelectionToClipboardWithHistory(appState, "keyboard_cut");
+          (void)cutCreativeEditorSelectionToClipboardWithHistory(
+              appState, "keyboard_cut", &editor.worldLayout);
         }
         break;
       case creative::CreativeInputActionId::PasteClipboard:
@@ -407,10 +408,11 @@ void applyCreativeEditorCommandInput(
             event.action == creative::CreativeInputActionId::RotateYawNegative
                 ? -rotationStep
                 : rotationStep;
-        (void)transformSelectedObjectsWithUndo(
+        (void)transformCreativeEditorSelectionWithUndo(
             appState, appState.history, request,
             request.yawDegrees < 0.0 ? "keyboard_rotate_yaw_negative"
-                                     : "keyboard_rotate_yaw_positive");
+                                     : "keyboard_rotate_yaw_positive",
+            &editor.worldLayout);
         break;
       }
       case creative::CreativeInputActionId::ScaleDown:
@@ -421,9 +423,10 @@ void applyCreativeEditorCommandInput(
             event.action == creative::CreativeInputActionId::ScaleDown ? 0.9
                                                                         : 1.1;
         request.scaleFactor = {factor, factor, factor};
-        (void)transformSelectedObjectsWithUndo(
+        (void)transformCreativeEditorSelectionWithUndo(
             appState, appState.history, request,
-            factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up");
+            factor < 1.0 ? "keyboard_scale_down" : "keyboard_scale_up",
+            &editor.worldLayout);
         break;
       }
     }

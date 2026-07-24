@@ -8,6 +8,7 @@
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
 #include <algorithm>
 #include <array>
@@ -100,36 +101,8 @@ void armObjectActions(cr::CreativeAppState& appState,
   state.commands = app::creativeEditorToolOptionCommandsForEntry(
       state.targetEntry);
   state.selectedIndex = selectedIndex;
-  const cr::CreativeSelectionState& selection =
-      appState.facade.selectionState();
-  state.contextSelectionCount = cr::selectedTargetCount(selection);
-  state.contextAllUnlocked = true;
-  state.contextAllMovable = true;
-  state.contextAllResettable = true;
-  if (selection.selectedTarget.value == cr::kInvalidId) {
-    return;
-  }
-  const cr::CreativeObject* primary = appState.facade.findObject(
-      static_cast<cr::CreativeObjectId>(selection.selectedTarget.value));
-  if (primary == nullptr) {
-    return;
-  }
-  state.contextPrimaryObjectId = primary->id;
-  state.contextPrimaryObjectKind = primary->kind;
-  state.contextPrimaryVisible = primary->visible;
-  state.contextPrimaryLocked = primary->locked;
-  state.contextAllUnlocked = !primary->locked;
-  state.contextAllMovable = cr::descriptorAllowsMutation(
-      primary->kind, cr::CreativeMutationKind::Move);
-  state.contextAllResettable =
-      cr::descriptorAllowsMutation(primary->kind,
-                                   cr::CreativeMutationKind::Rotate) &&
-      cr::descriptorAllowsMutation(primary->kind,
-                                   cr::CreativeMutationKind::Scale);
-  if (state.contextSelectionCount == 1U &&
-      primary->kind == cr::CreativeObjectKind::Group) {
-    state.contextGroupId = primary->id;
-  }
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, state, &editor.worldLayout);
 }
 
 bool editorCommandGroupsUngroupsAndRecordsOneStepEach() {
@@ -643,6 +616,78 @@ bool objectActionsInspectCompleteGroupCapability() {
                 "Locked descendants disable atomic hierarchy actions");
 }
 
+bool generatedObjectActionsExposeOnlyOwnedCapabilities() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Object Actions");
+  static_cast<void>(document.assignId(313U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  app::CreativeEditorState editor;
+  editor.worldLayout.source.stableKey = "generated_object_actions";
+  cr::CreativeWorldLayoutObject source;
+  source.kind = cr::CreativeObjectKind::Crate;
+  source.stableKey = "source_crate";
+  source.name = "Source Crate";
+  source.boundsCells = {{0.0, 0.0, 0.0}, {1.0, 1.0, 1.0}};
+  editor.worldLayout.source.objects.push_back(source);
+
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Generated Crate";
+  request.tags = {
+      cr::creativeWorldLayoutTag(editor.worldLayout.source.stableKey),
+      cr::creativeWorldLayoutProvenanceTag(
+          editor.worldLayout.source, cr::CreativeWorldLayoutTable::Object,
+          0U)};
+  const cr::CreativeObjectId generatedId =
+      appState.facade.createDocumentObject(request).objectId;
+  select(appState.facade, generatedId, false);
+  editor.toolOptions.targetEntry = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions,
+      &editor.worldLayout);
+  const auto enabled =
+      [&](app::CreativeEditorToolOptionsCommandId command) {
+        return app::creativeEditorObjectActionEnabled(
+            editor, editor.toolOptions, command);
+      };
+  const bool synchronizedCapabilities =
+      editor.toolOptions.contextWorldLayoutSynchronized &&
+      editor.toolOptions.contextSemanticSelection.primaryOwner ==
+          cr::CreativeSemanticSelectionOwner::WorldLayoutSource &&
+      enabled(app::CreativeEditorToolOptionsCommandId::DuplicateSelection) &&
+      enabled(app::CreativeEditorToolOptionsCommandId::DeleteSelection) &&
+      enabled(
+          app::CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility) &&
+      !enabled(app::CreativeEditorToolOptionsCommandId::TransformSelection) &&
+      !enabled(
+          app::CreativeEditorToolOptionsCommandId::ResetSelectionTransform) &&
+      !enabled(
+          app::CreativeEditorToolOptionsCommandId::ToggleSelectionLocked);
+
+  ++editor.worldLayout.revision;
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions,
+      &editor.worldLayout);
+  const bool staleCapabilities =
+      !editor.toolOptions.contextWorldLayoutSynchronized &&
+      editor.toolOptions.contextWorldLayoutRevision ==
+          editor.worldLayout.revision &&
+      editor.toolOptions.contextWorldLayoutGeneratedRevision ==
+          editor.worldLayout.generatedRevision &&
+      !enabled(app::CreativeEditorToolOptionsCommandId::DuplicateSelection) &&
+      !enabled(app::CreativeEditorToolOptionsCommandId::DeleteSelection) &&
+      !enabled(
+          app::CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility);
+
+  return expect(synchronizedCapabilities,
+                "generated object actions expose source-owned commands only") &&
+         expect(staleCapabilities,
+                "stale source revision disables generated object commands");
+}
+
 bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -658,11 +703,15 @@ bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
   appState.history = {};
   app::CreativeEditorState editor;
   editor.toolOptions.open = true;
+  editor.toolOptions.targetEntry = {
+      cr::CreativeHeldItemKind::ObjectGroup,
+      cr::CreativeObjectKind::Unknown};
   editor.toolOptions.commands =
       app::creativeEditorToolOptionCommandsForEntry(
-          {cr::CreativeHeldItemKind::ObjectGroup,
-           cr::CreativeObjectKind::Unknown});
-  editor.toolOptions.contextGroupId = grouped.groupObjectId;
+          editor.toolOptions.targetEntry);
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions,
+      &editor.worldLayout);
   editor.toolOptions.selectedIndex = 0U;
   editor.toolOptions.draft = editor.toolSettings;
   const bool entered = app::activateCreativeEditorToolOptionsSelection(
@@ -670,7 +719,9 @@ bool groupToolOptionsEnterFocusAndUngroupWithHistory() {
   const bool exited =
       app::exitCreativeEditorGroupFocus(appState, editor.groupFocus).accepted;
   editor.toolOptions.open = true;
-  editor.toolOptions.contextGroupId = grouped.groupObjectId;
+  app::refreshCreativeEditorObjectActionContext(
+      appState, editor.authoredAssets, editor.toolOptions,
+      &editor.worldLayout);
   const auto ungroupCommand = std::find(
       editor.toolOptions.commands.ids.begin(),
       editor.toolOptions.commands.ids.begin() +
@@ -914,6 +965,7 @@ int main() {
                  groupToolOptionsExposeEditAndUngroupCommands() &&
                  transformToolOptionsExposeAndRouteSharedObjectActions() &&
                  objectActionsInspectCompleteGroupCapability() &&
+                 generatedObjectActionsExposeOnlyOwnedCapabilities() &&
                  groupToolOptionsEnterFocusAndUngroupWithHistory() &&
                  controllerTransformScalesAGroupAsOneUndoableHierarchy() &&
                  groupPivotEditsOnePersistentPivotWithoutMovingMembers() &&

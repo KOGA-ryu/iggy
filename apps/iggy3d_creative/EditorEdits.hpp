@@ -73,6 +73,13 @@ deleteCreativeEditorSelectionWithUndo(
     std::string_view source,
     StandaloneEditHistory* history = nullptr,
     CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorDeleteReceipt
+deleteCreativeEditorObjectsWithUndo(
+    cr::CreativeAppState& appState,
+    std::span<const cr::CreativeObjectId> objectIds,
+    std::string_view source,
+    StandaloneEditHistory* history = nullptr,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 [[nodiscard]] cr::CreativeTransformCommandReceipt
 transformSelectedObjectsWithUndo(
@@ -104,6 +111,70 @@ duplicateCreativeEditorSelectionWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     const cr::CreativeDuplicateCommandRequest& request,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+
+struct CreativeEditorSemanticEditReceipt {
+  bool accepted = false;
+  bool changed = false;
+  bool worldLayoutSourceChanged = false;
+  bool requiresAdoption = false;
+  std::uint64_t affectedObjectCount = 0U;
+  std::string reasonCode = "creative_editor_semantic_edit_not_requested";
+};
+
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+transformCreativeEditorSelectionWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    const cr::CreativeTransformCommandRequest& request,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+renameCreativeEditorObjectWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    std::string name,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorObjectsVisibleWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const cr::CreativeObjectId> objectIds,
+    bool visible,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorObjectsLockedWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const cr::CreativeObjectId> objectIds,
+    bool locked,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorObjectTransformWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    cr::CreativeObjectId objectId,
+    const cr::CreativeTransform& transform,
+    bool setPosition,
+    bool setRotation,
+    bool setScale,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+toggleCreativeEditorSelectionVisibilityWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+toggleCreativeEditorSelectionLockedWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneEditHistory& history,
     std::string_view source,
     CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
@@ -140,6 +211,11 @@ toggleSelectedObjectLockedWithUndo(
 [[nodiscard]] cr::CreativeClipboardCutReceipt cutSelectionToClipboardWithHistory(
     cr::CreativeAppState& appState,
     std::string_view source);
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+cutCreativeEditorSelectionToClipboardWithHistory(
+    cr::CreativeAppState& appState,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 [[nodiscard]] cr::CreativeClipboardPasteReceipt pasteClipboardWithHistory(
     cr::CreativeAppState& appState,

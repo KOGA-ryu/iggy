@@ -421,6 +421,9 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
   return expect(pattern.accepted && pattern.changed,
                 "semantic set fixture records one pattern recipe") &&
          expect(room.accepted && room.resolvedCount == 2U &&
+                    room.authoredOwnerCount == 0U &&
+                    room.patternOwnerCount == 2U &&
+                    room.worldLayoutOwnerCount == 0U &&
                     room.primaryObjectId == openingObject &&
                     room.primaryOwner ==
                         cr::CreativeSemanticSelectionOwner::PatternRecipe &&
@@ -431,6 +434,9 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
                     room.commonWorldLayoutSource.index == 0U,
                 "pattern selection retains its deepest shared room") &&
          expect(buildingScope.accepted &&
+                    buildingScope.authoredOwnerCount == 0U &&
+                    buildingScope.patternOwnerCount == 1U &&
+                    buildingScope.worldLayoutOwnerCount == 1U &&
                     buildingScope.primaryOwner ==
                         cr::CreativeSemanticSelectionOwner::WorldLayoutSource &&
                     buildingScope.commonWorldLayoutSource.table ==
@@ -438,6 +444,9 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
                     buildingScope.commonWorldLayoutSource.index == 0U,
                 "members on different floors converge at their building") &&
          expect(mixed.accepted &&
+                    mixed.authoredOwnerCount == 1U &&
+                    mixed.patternOwnerCount == 1U &&
+                    mixed.worldLayoutOwnerCount == 0U &&
                     mixed.primaryOwner ==
                         cr::CreativeSemanticSelectionOwner::AuthoredObject &&
                     mixed.commonWorldLayoutSource.table ==
@@ -445,11 +454,156 @@ bool semanticSetResolutionFindsTheDeepestSharedOwner() {
                     mixed.patternRecipeId ==
                         cr::kInvalidCreativePatternRecipeId,
                 "mixed authored and generated selection invents no owner") &&
+         expect(!cr::resolveCreativeSemanticObjectAction(
+                     buildingScope,
+                     cr::CreativeSemanticObjectAction::TransformSelection)
+                     .allowed &&
+                    !cr::resolveCreativeSemanticObjectAction(
+                         mixed, cr::CreativeSemanticObjectAction::Delete)
+                         .allowed,
+                "mixed nearest owners reject mutation atomically") &&
          expect(!missing.accepted && missing.resolvedCount == 1U &&
                     missing.missingCount == 1U &&
                     missing.status ==
                         cr::CreativeSemanticSelectionStatus::MissingObject,
                 "missing members fail the complete requested set closed");
+}
+
+bool semanticActionPolicyRoutesEveryOwnerClass() {
+  using Action = cr::CreativeSemanticObjectAction;
+  using Owner = cr::CreativeSemanticSelectionOwner;
+  using Route = cr::CreativeSemanticObjectActionRoute;
+  using Table = cr::CreativeWorldLayoutTable;
+
+  const auto policy = [](Owner owner, Action action,
+                         Table table = Table::None,
+                         std::size_t contributors = 0U) {
+    return cr::resolveCreativeSemanticObjectAction(
+        owner, action, table, contributors);
+  };
+  cr::CreativeSemanticSelectionSetResolution distinctPatterns;
+  distinctPatterns.accepted = true;
+  distinctPatterns.status = cr::CreativeSemanticSelectionStatus::Ready;
+  distinctPatterns.primaryOwner = Owner::AuthoredObject;
+  distinctPatterns.patternOwnerCount = 2U;
+  cr::CreativeSemanticSelectionSetResolution distinctWorldSources;
+  distinctWorldSources.accepted = true;
+  distinctWorldSources.status = cr::CreativeSemanticSelectionStatus::Ready;
+  distinctWorldSources.primaryOwner = Owner::AuthoredObject;
+  distinctWorldSources.worldLayoutOwnerCount = 2U;
+
+  return expect(policy(Owner::AuthoredObject, Action::Rename).allowed &&
+                    policy(Owner::AuthoredObject, Action::Rename).route ==
+                        Route::Document,
+                "authored edits route to the document") &&
+         expect(policy(Owner::PatternRecipe, Action::Delete).allowed &&
+                    policy(Owner::PatternRecipe, Action::Delete).route ==
+                        Route::SemanticDocument &&
+                    policy(Owner::PatternRecipe, Action::TransformSelection)
+                            .route == Route::PatternRecipe,
+                "pattern delete and transform route through recipe semantics") &&
+         expect(!policy(Owner::PatternRecipe, Action::Rename).allowed &&
+                    !policy(Owner::PatternRecipe, Action::SetVisible).allowed &&
+                    !policy(Owner::PatternRecipe, Action::SetLocked).allowed &&
+                    !policy(Owner::PatternRecipe, Action::SetTransform).allowed,
+                "pattern output rejects raw object edits") &&
+         expect(policy(Owner::WorldLayoutSource, Action::Duplicate,
+                       Table::Building)
+                            .route == Route::WorldLayoutSource &&
+                    policy(Owner::WorldLayoutSource, Action::Delete,
+                           Table::Building)
+                            .route == Route::WorldLayoutSource &&
+                    policy(Owner::WorldLayoutSource, Action::Rename,
+                           Table::Building)
+                            .route == Route::WorldLayoutSource &&
+                    policy(Owner::WorldLayoutSource, Action::SetVisible,
+                           Table::Building)
+                            .route == Route::WorldLayoutSource &&
+                    policy(Owner::WorldLayoutSource,
+                           Action::TransformSelection, Table::Building)
+                            .route == Route::WorldLayoutSource,
+                "building actions route to the World Layout source") &&
+         expect(!policy(Owner::WorldLayoutSource, Action::Cut,
+                        Table::Building)
+                     .allowed &&
+                    !policy(Owner::WorldLayoutSource, Action::SetLocked,
+                            Table::Building)
+                         .allowed &&
+                    !policy(Owner::WorldLayoutSource,
+                            Action::StructuralMutation, Table::Building)
+                         .allowed,
+                "World Layout output rejects source-less mutations") &&
+         expect(policy(Owner::WorldLayoutSource, Action::SetTransform,
+                       Table::Object, 1U)
+                            .route == Route::RefineThenAdopt &&
+                    policy(Owner::WorldLayoutSource, Action::SetTransform,
+                           Table::Box, 1U)
+                            .route == Route::RefineThenAdopt,
+                "one-contributor object and box permit explicit refinement") &&
+         expect(!policy(Owner::WorldLayoutSource, Action::SetTransform,
+                        Table::Object, 2U)
+                     .allowed &&
+                    !policy(Owner::WorldLayoutSource, Action::SetTransform,
+                            Table::Room, 1U)
+                         .allowed &&
+                    !policy(Owner::WorldLayoutSource,
+                            Action::TransformSelection, Table::Object)
+                         .allowed &&
+                    !policy(Owner::WorldLayoutSource, Action::SetVisible,
+                            Table::Box)
+                         .allowed,
+                "ambiguous and structural World Layout output stays protected") &&
+         expect(cr::resolveCreativeSemanticObjectAction(
+                        distinctPatterns, Action::Delete)
+                        .route == Route::SemanticDocument &&
+                    !cr::resolveCreativeSemanticObjectAction(
+                         distinctWorldSources, Action::Delete)
+                         .allowed,
+                "same-owner sets never fall back to authored mutation") &&
+         expect(!policy(Owner::None, Action::Inspect).allowed,
+                "missing owner rejects even inspection");
+}
+
+bool orphanedGeneratedOutputFailsClosed() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Orphaned Generated Output");
+  const cr::CreativeObjectId orphaned = addObject(
+      document, "Orphaned Wall",
+      {"creative_world_layout:retired_layout",
+       "creative_world_layout_source:building/retired"});
+  cr::CreativeWorldLayout currentLayout;
+  currentLayout.stableKey = "current_layout";
+  const cr::CreativeSemanticSelectionResolution single =
+      cr::resolveCreativeSemanticSelection(
+          document, orphaned, &currentLayout);
+  const std::array selection{orphaned};
+  const cr::CreativeSemanticSelectionSetResolution set =
+      cr::resolveCreativeSemanticSelectionSet(
+          document, selection, orphaned, &currentLayout);
+
+  return expect(single.accepted && !single.worldLayoutSource.owned &&
+                    single.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::WorldLayoutSource,
+                "orphaned output retains World Layout ownership") &&
+         expect(cr::resolveCreativeSemanticObjectAction(
+                    single, cr::CreativeSemanticObjectAction::Inspect)
+                    .allowed &&
+                    !cr::resolveCreativeSemanticObjectAction(
+                         single, cr::CreativeSemanticObjectAction::Delete)
+                         .allowed &&
+                    !cr::resolveCreativeSemanticObjectAction(
+                         single, cr::CreativeSemanticObjectAction::Rename)
+                         .allowed,
+                "orphaned output remains inspectable but immutable") &&
+         expect(set.accepted &&
+                    set.primaryOwner ==
+                        cr::CreativeSemanticSelectionOwner::WorldLayoutSource &&
+                    set.worldLayoutOwnerCount == 1U &&
+                    set.authoredOwnerCount == 0U &&
+                    !cr::resolveCreativeSemanticObjectAction(
+                         set, cr::CreativeSemanticObjectAction::Delete)
+                         .allowed,
+                "orphaned output sets never fall back to authored deletion");
 }
 
 }  // namespace
@@ -468,6 +622,8 @@ int main() {
                   semanticResolutionPreservesInspectionFacts() &&
                   semanticResolutionReportsInheritedInspectionFacts() &&
                   semanticResolutionPreservesNestedRecipeAncestry() &&
-                  semanticSetResolutionFindsTheDeepestSharedOwner();
+                  semanticSetResolutionFindsTheDeepestSharedOwner() &&
+                  semanticActionPolicyRoutesEveryOwnerClass() &&
+                  orphanedGeneratedOutputFailsClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -772,10 +772,14 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
       (state.contextDocumentId != request.appState.facade.document().id() ||
        state.contextDocumentRevision !=
            request.appState.facade.document().revision() ||
+       state.contextWorldLayoutRevision != request.editor.worldLayout.revision ||
+       state.contextWorldLayoutGeneratedRevision !=
+           request.editor.worldLayout.generatedRevision ||
        state.contextPrimaryObjectId != livePrimaryObjectId ||
        state.contextSelectionCount != liveSelectionCount)) {
     refreshCreativeEditorObjectActionContext(
-        request.appState, request.editor.authoredAssets, state);
+        request.appState, request.editor.authoredAssets, state,
+        &request.editor.worldLayout);
     refreshMovingPlatformWaypointContext(request.appState, request.editor,
                                          state);
     refreshPatternRecipeContext(request.appState, state, false);
@@ -794,7 +798,8 @@ CreativeEditorToolOptionsFrameResult processCreativeEditorToolOptionsFrame(
     state.selectedIndex = 0U;
     captureAttachmentAim(state, request.editor);
     refreshCreativeEditorObjectActionContext(
-        request.appState, request.editor.authoredAssets, state);
+        request.appState, request.editor.authoredAssets, state,
+        &request.editor.worldLayout);
     refreshMovingPlatformWaypointContext(request.appState, request.editor,
                                          state);
     refreshPatternRecipeContext(request.appState, state, true);

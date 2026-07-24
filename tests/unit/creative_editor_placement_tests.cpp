@@ -47,6 +47,22 @@ bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
+                    std::span<const cr::CreativePathPoint> rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < lhs.size(); ++index) {
+    if (!sameVec3(lhs[index].position, rhs[index].position) ||
+        lhs[index].dwellSeconds != rhs[index].dwellSeconds ||
+        lhs[index].outgoingSpeedMultiplier !=
+            rhs[index].outgoingSpeedMultiplier) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool sameCell(cr::CreativeGridCoord3 lhs, cr::CreativeGridCoord3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
@@ -6888,6 +6904,96 @@ bool movingPlatformWaypointDwellIsBoundedAndUndoable() {
                 "nonzero waypoint dwell renders an authored stop marker");
 }
 
+bool generatedMovingPlatformPathEditsFailClosed() {
+  cr::CreativeAppState appState;
+  installHistoryDocument(appState, 142U);
+  cr::CreativeDocumentCreateRequest request = buildBrushCreateRequest(
+      cr::CreativeObjectKind::MovingPlatform, {0.5F, 0.375F, 0.5F}, 1U);
+  request.tags = {"creative_world_layout:test_layout"};
+  const cr::CreativeDocumentCreateReceipt created =
+      appState.facade.createDocumentObject(request);
+  const std::array selectedIds{created.objectId};
+  const cr::CreativeSelectionReceipt selected =
+      appState.facade.selectTargets(selectedIds, created.objectId);
+  const cr::CreativeObject* before =
+      appState.facade.findObject(created.objectId);
+  if (!created.accepted || !selected.accepted || before == nullptr ||
+      before->pathPoints.size() < 2U) {
+    return expect(false, "generated moving platform path fixture is valid");
+  }
+  const std::vector<cr::CreativePathPoint> pathBefore = before->pathPoints;
+  const std::uint64_t revisionBefore = appState.facade.document().revision();
+  appState.history = {};
+
+  CreativeMovingPlatformPathEditState state;
+  syncCreativeMovingPlatformPathEditState(appState, state);
+  const bool queued = queueCreativeMovingPlatformPathEdit(
+      appState, state,
+      CreativeMovingPlatformPathEditCommand::AppendAtTarget);
+  const CreativeMovingPlatformPathEditStatus admissionStatus = state.status;
+  const std::string_view admissionReason = state.reasonCode;
+  state.pending = CreativeMovingPlatformPathEditCommand::AppendAtTarget;
+  const CreativeMovingPlatformPathEditReceipt appended =
+      consumeCreativeMovingPlatformPathEdit(
+          appState, state, true, {4.5, 2.0, 0.5},
+          "generated_route_append_test");
+  const CreativeMovingPlatformPathEditReceipt dwell =
+      setCreativeMovingPlatformWaypointDwellWithUndo(
+          appState, created.objectId, 0U, 1.25,
+          "generated_route_dwell_test");
+  const CreativeMovingPlatformPathEditReceipt speed =
+      setCreativeMovingPlatformSegmentSpeedWithUndo(
+          appState, created.objectId, 0U, 2.0,
+          "generated_route_speed_test");
+  const cr::CreativeDocumentMutationReceipt movedPath =
+      movePathObjectWithUndo(appState, appState.history, created.objectId,
+                             {1.0, 0.0, 0.0},
+                             "generated_route_move_test");
+  const cr::CreativeDocumentMutationReceipt movedPoint =
+      movePathPointWithUndo(appState, appState.history, created.objectId, 0U,
+                            {1.0, 0.0, 0.0},
+                            "generated_route_point_move_test");
+
+  const cr::CreativeObject* after =
+      appState.facade.findObject(created.objectId);
+  constexpr std::string_view kExpectedReason =
+      "creative_semantic_action_world_layout_owned";
+  return expect(!state.available && !queued &&
+                    admissionStatus ==
+                        CreativeMovingPlatformPathEditStatus::MutationRejected &&
+                    admissionReason == kExpectedReason,
+                "generated route controls are unavailable before activation") &&
+         expect(!appended.accepted && !appended.changed &&
+                    appended.status ==
+                        CreativeMovingPlatformPathEditStatus::MutationRejected &&
+                    appended.reasonCode == kExpectedReason,
+                "generated route append defense rejects forced activation") &&
+         expect(!dwell.accepted && !dwell.changed &&
+                    dwell.status ==
+                        CreativeMovingPlatformPathEditStatus::MutationRejected &&
+                    dwell.reasonCode == kExpectedReason &&
+                    !speed.accepted && !speed.changed &&
+                    speed.status ==
+                        CreativeMovingPlatformPathEditStatus::MutationRejected &&
+                    speed.reasonCode == kExpectedReason,
+                "generated route scalar edits are rejected by semantic "
+                "ownership") &&
+         expect(movedPath.status ==
+                        cr::CreativeDocumentMutationStatus::Rejected &&
+                    !movedPath.allowed && !movedPath.changed &&
+                    movedPath.message == kExpectedReason &&
+                    movedPoint.status ==
+                        cr::CreativeDocumentMutationStatus::Rejected &&
+                    !movedPoint.allowed && !movedPoint.changed &&
+                    movedPoint.message == kExpectedReason,
+                "generated route and handle moves return explicit rejection") &&
+         expect(after != nullptr &&
+                    samePathPoints(after->pathPoints, pathBefore) &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "generated path rejections preserve document and history");
+}
+
 bool movingPlatformSegmentSpeedIsBoundedAndUndoable() {
   const std::vector<cr::CreativePathPoint> metadataPath{
       {{0.0, 0.0, 0.0}, 0.5, 1.5},
@@ -7673,6 +7779,7 @@ int main() {
   ok = importedCollisionPreviewUsesExactOrientedParts() && ok;
   ok = doorwaySocketPreviewPlacementAndUndoStayInParity() && ok;
   ok = movingPlatformWaypointDwellIsBoundedAndUndoable() && ok;
+  ok = generatedMovingPlatformPathEditsFailClosed() && ok;
   ok = movingPlatformSegmentSpeedIsBoundedAndUndoable() && ok;
   ok = movingPlatformRouteQuickEditIsBoundedAndUndoable() && ok;
   ok = controllerFrameContextUsesSelectionThenFallsBackToScene() && ok;

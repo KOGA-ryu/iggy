@@ -10,6 +10,7 @@
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/input/Interaction.hpp"
 #include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "render/FrameInput.hpp"
 
@@ -103,6 +104,11 @@ struct CreativeEditorToolOptionsState {
   iggy3d::creative::CreativeVec3 contextAttachmentAimPoint{};
   bool contextAttachmentAimAvailable = false;
   std::size_t contextSelectionCount = 0U;
+  iggy3d::creative::CreativeSemanticSelectionSetResolution
+      contextSemanticSelection;
+  std::uint64_t contextWorldLayoutRevision = 0U;
+  std::uint64_t contextWorldLayoutGeneratedRevision = 0U;
+  bool contextWorldLayoutSynchronized = false;
   bool contextPrimaryVisible = true;
   bool contextPrimaryLocked = false;
   bool contextAllUnlocked = false;

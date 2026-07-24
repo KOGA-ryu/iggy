@@ -985,7 +985,8 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       semanticSelection.worldLayoutSource;
   const bool sourceSupportsAdoption =
       creativeDesktopGeneratedSourceSupportsAdoption(provenance);
-  const bool sourceOwnedOnly = provenance.owned && !sourceSupportsAdoption;
+  const bool sourceOwnedOnly =
+      provenance.owned && !sourceSupportsAdoption;
   const bool generatedSettingsSource = provenance.owned;
   if (!generatedSettingsSource &&
       (worldLayout.generatedBuildingDraft.active ||
@@ -1012,10 +1013,30 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       cr::resolveCreativeObjectHierarchyState(document, object.id);
   const bool effectivelyLocked =
       !hierarchyState.resolved || hierarchyState.effectivelyLocked;
-  const bool fieldsDisabled =
-      playModeActive || effectivelyLocked || sourceOwnedOnly;
+  const bool sourceSynchronized =
+      worldLayout.generatedRevision == worldLayout.revision;
+  const auto actionAvailable =
+      [&](cr::CreativeSemanticObjectAction action) {
+        const cr::CreativeSemanticObjectActionPolicy policy =
+            cr::resolveCreativeSemanticObjectAction(semanticSelection, action);
+        return policy.allowed &&
+               ((policy.route !=
+                     cr::CreativeSemanticObjectActionRoute::WorldLayoutSource &&
+                 policy.route !=
+                     cr::CreativeSemanticObjectActionRoute::RefineThenAdopt) ||
+                sourceSynchronized);
+      };
+  const bool rawFieldsDisabled =
+      playModeActive || effectivelyLocked ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::StructuralMutation);
+  const bool renameDisabled =
+      playModeActive || effectivelyLocked ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::Rename);
+  const bool transformDisabled =
+      playModeActive || effectivelyLocked ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::SetTransform);
 
-  ImGui::BeginDisabled(fieldsDisabled);
+  ImGui::BeginDisabled(renameDisabled);
   if (creativeDesktopInputTextStdString(
           "Name", &draft.name, ImGuiInputTextFlags_EnterReturnsTrue) &&
       !draft.name.empty()) {
@@ -1028,13 +1049,19 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
                       std::string(cr::toString(object.kind)).c_str(),
                       static_cast<unsigned long long>(object.id));
 
-  ImGui::BeginDisabled(playModeActive || sourceOwnedOnly);
+  ImGui::BeginDisabled(
+      playModeActive ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::SetVisible));
   bool visible = object.visible;
   if (ImGui::Checkbox("Visible", &visible)) {
     commands.push(CreativeDesktopCommandId::SetObjectsVisible,
                   CreativeDesktopObjectFlagPayload{{object.id}, visible});
   }
   ImGui::SameLine();
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(
+      playModeActive ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::SetLocked));
   bool locked = object.locked;
   if (ImGui::Checkbox("Locked", &locked)) {
     commands.push(CreativeDesktopCommandId::SetObjectsLocked,
@@ -1056,19 +1083,19 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   }
 
   if (object.kind == cr::CreativeObjectKind::Group) {
-    appendGroupPivotFields(draft, object.id, fieldsDisabled, commands);
+    appendGroupPivotFields(draft, object.id, rawFieldsDisabled, commands);
   } else if (cr::creativeObjectIsHierarchyContainer(object.kind)) {
     ImGui::SeparatorText("Transform");
     ImGui::TextDisabled("Use Transform Selection to move the complete instance");
   } else {
-    appendTransformFields(draft, object.id, fieldsDisabled, commands);
+    appendTransformFields(draft, object.id, transformDisabled, commands);
   }
-  appendPlayerSpawnFields(draft, object, fieldsDisabled, commands);
-  appendNpcSpawnFields(draft, document, object, fieldsDisabled, commands);
-  appendLootPointFields(draft, object, fieldsDisabled, commands);
-  appendExitPointFields(draft, document, object, fieldsDisabled, commands);
-  appendMovingPlatformFields(draft, object, preview, pathEdit, fieldsDisabled,
-                             commands);
+  appendPlayerSpawnFields(draft, object, rawFieldsDisabled, commands);
+  appendNpcSpawnFields(draft, document, object, rawFieldsDisabled, commands);
+  appendLootPointFields(draft, object, rawFieldsDisabled, commands);
+  appendExitPointFields(draft, document, object, rawFieldsDisabled, commands);
+  appendMovingPlatformFields(draft, object, preview, pathEdit,
+                             rawFieldsDisabled, commands);
 
   // Read-only metadata.
   if (!object.assetId.empty()) {
@@ -1087,8 +1114,6 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
 
   if (provenance.owned) {
     ImGui::SeparatorText("World Layout");
-    const bool sourceSynchronized =
-        worldLayout.generatedRevision == worldLayout.revision;
     ImGui::BeginDisabled(playModeActive || !sourceSynchronized ||
                          !sourceSupportsAdoption);
     if (ImGui::Button("Adopt 3D Edit")) {
@@ -1107,11 +1132,17 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
         playModeActive || !sourceSynchronized, commands);
   }
 
-  ImGui::BeginDisabled(playModeActive || sourceOwnedOnly);
+  ImGui::BeginDisabled(
+      playModeActive ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::Duplicate));
   if (ImGui::Button("Duplicate##single")) {
     commands.push(CreativeDesktopCommandId::DuplicateSelection);
   }
+  ImGui::EndDisabled();
   ImGui::SameLine();
+  ImGui::BeginDisabled(
+      playModeActive ||
+      !actionAvailable(cr::CreativeSemanticObjectAction::Delete));
   if (ImGui::Button("Delete##single")) {
     commands.push(CreativeDesktopCommandId::DeleteSelection);
   }
