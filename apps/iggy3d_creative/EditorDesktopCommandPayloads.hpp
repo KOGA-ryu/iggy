@@ -40,9 +40,9 @@ struct CreativeDesktopMeasurementAnnotationPayload {
   std::string name;
 };
 
-// SelectObjects: replace the persistent selection with these ids. primaryObjectId
-// picks the primary; kInvalidObjectId falls back to the last surviving id.
-// ClearSelection ignores its payload (an empty list selects nothing).
+// SelectObjects: replace the persistent selection with these ids. An empty list
+// clears selection. primaryObjectId picks the primary; kInvalidObjectId falls
+// back to the last surviving id.
 struct CreativeDesktopSelectPayload {
   std::vector<iggy3d::creative::CreativeObjectId> objectIds;
   iggy3d::creative::CreativeObjectId primaryObjectId =
@@ -59,11 +59,6 @@ struct CreativeDesktopLogicLinkPayload {
       iggy3d::creative::kInvalidObjectId;
   iggy3d::creative::CreativeLogicLinkAction action =
       iggy3d::creative::CreativeLogicLinkAction::Toggle;
-};
-
-// DeleteObjects: an explicit id list, or the current selection when empty.
-struct CreativeDesktopDeletePayload {
-  std::vector<iggy3d::creative::CreativeObjectId> objectIds;
 };
 
 // RenameObject: absolute rename of a single object.
@@ -595,7 +590,6 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopMeasurementAnnotationPayload,
     CreativeDesktopSelectPayload,
     CreativeDesktopLogicLinkPayload,
-    CreativeDesktopDeletePayload,
     CreativeDesktopRenamePayload,
     CreativeDesktopObjectFlagPayload,
     CreativeDesktopTransformPayload,

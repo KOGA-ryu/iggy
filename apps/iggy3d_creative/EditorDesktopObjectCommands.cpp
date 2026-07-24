@@ -158,20 +158,6 @@ bool dispatchCreativeDesktopObjectCommand(
       result.message = "visible scene framed in 3D";
       break;
     }
-    case CreativeDesktopCommandId::ClearSelection: {
-      const creative::CreativeSelectionReceipt receipt =
-          activeAppState.facade.selectTargets(
-              std::span<const creative::CreativeObjectId>{},
-              creative::kInvalidObjectId);
-      const CreativeEditorSelectionSynchronizationReceipt synchronized =
-          receipt.accepted ? synchronizeSelection()
-                           : CreativeEditorSelectionSynchronizationReceipt{};
-      result.accepted = receipt.accepted && synchronized.accepted;
-      result.changed = receipt.changed || synchronized.changed;
-      result.affectedObjectCount = receipt.selectedCountAfter;
-      result.message = "selection cleared";
-      break;
-    }
     case CreativeDesktopCommandId::SetLogicSource: {
       const auto* payload = payloadAs<CreativeDesktopLogicLinkPayload>(command);
       if (payload == nullptr) {
@@ -235,35 +221,6 @@ bool dispatchCreativeDesktopObjectCommand(
       result.message = receipt.accepted
                            ? "logic link removed"
                            : std::string(receipt.reasonCode);
-      break;
-    }
-    case CreativeDesktopCommandId::DeleteObjects: {
-      const auto* payload = payloadAs<CreativeDesktopDeletePayload>(command);
-      if (payload == nullptr) {
-        applyObjectAction(rejectCreativeEditorObjectAction(
-            creative::CreativeSemanticObjectAction::Delete,
-            CreativeEditorObjectActionTarget::Objects,
-            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
-            "creative_desktop_delete_objects_payload_mismatch"));
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorDeleteReceipt receipt =
-          deleteCreativeEditorObjectsWithUndo(
-              activeAppState, payload->objectIds, "desktop_delete_objects",
-              &activeAppState.history, &editor.worldLayout);
-      applyObjectAction(makeCreativeEditorObjectActionOutcome(
-          creative::CreativeSemanticObjectAction::Delete,
-          CreativeEditorObjectActionTarget::Objects, receipt.accepted,
-          receipt.changed, receipt.affectedObjectCount,
-          receipt.reasonCode));
-      result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
-      result.sceneChanged =
-          receipt.worldLayoutSourceDeleted && previewWasActive;
-      if (receipt.accepted) {
-        static_cast<void>(synchronizeSelection());
-      }
       break;
     }
     case CreativeDesktopCommandId::RenameObject: {

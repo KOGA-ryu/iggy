@@ -940,13 +940,11 @@ bool mixedOwnershipDeleteRejectsAtomically() {
       appState.facade.document().objectCount();
   const std::size_t sourceUndoBefore =
       editor.worldLayout.sourceHistory.undoEntries.size();
-  std::string saveId = "unused";
-  const app::CreativeDesktopCommandContext context{
-      appState, editor, std::filesystem::path{}, &saveId};
-
-  const app::CreativeDesktopCommandResult deleted = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteObjects, context,
-      app::CreativeDesktopDeletePayload{{generatedId, authoredId}});
+  const std::array objectIds{generatedId, authoredId};
+  const app::CreativeEditorDeleteReceipt deleted =
+      app::deleteCreativeEditorObjectsWithUndo(
+          appState, objectIds, "desktop_delete_objects", &appState.history,
+          &editor.worldLayout);
 
   return expect(!deleted.accepted && !deleted.changed,
                 "mixed ownership delete is rejected") &&
@@ -1079,13 +1077,10 @@ bool explicitPatternDeleteUsesSemanticKernel() {
   cr::CreativeAppState appState;
   static_cast<void>(appState.facade.installDocument(std::move(document)));
   appState.history = {};
-  app::CreativeEditorState editor;
-  std::string saveId = "unused";
-  const app::CreativeDesktopCommandContext context{
-      appState, editor, std::filesystem::path{}, &saveId};
-  const app::CreativeDesktopCommandResult deleted = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteObjects, context,
-      app::CreativeDesktopDeletePayload{{outputA}});
+  const std::array objectIds{outputA};
+  const app::CreativeEditorDeleteReceipt deleted =
+      app::deleteCreativeEditorObjectsWithUndo(
+          appState, objectIds, "desktop_delete_objects", &appState.history);
 
   return expect(recipe.accepted && recipe.changed,
                 "explicit pattern delete fixture is valid") &&
@@ -1770,8 +1765,8 @@ bool selectCommandsRoundTripAndRespectIdBoundary() {
           static_cast<cr::Id>(b);
 
   const app::CreativeDesktopCommandResult cleared =
-      dispatchPayload(app::CreativeDesktopCommandId::ClearSelection, context,
-                      std::monostate{});
+      dispatchPayload(app::CreativeDesktopCommandId::SelectObjects, context,
+                      app::CreativeDesktopSelectPayload{});
   const bool clearOk =
       cleared.accepted && cleared.affectedObjectCount == 0U &&
       appState.facade.selectionState().selectedTarget.value == cr::kInvalidId;
@@ -1794,7 +1789,7 @@ bool selectCommandsRoundTripAndRespectIdBoundary() {
   return expect(singleOk, "SelectObjects selects a single primary") &&
          expect(multiOk,
                 "SelectObjects replaces with a multi-selection + primary") &&
-         expect(clearOk, "ClearSelection empties the selection") &&
+         expect(clearOk, "empty SelectObjects clears the selection") &&
          expect(boundaryOk,
                 "SelectObjects drops missing and out-of-range object ids");
 }
@@ -1820,7 +1815,7 @@ bool focusObjectSelectsAndFramesThroughDispatcher() {
       app::CreativeDesktopSelectPayload{{target}, target});
   const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
       app::CreativeDesktopCommandId::FocusObject, context,
-      app::CreativeDesktopDeletePayload{{target}});
+      std::monostate{});
 
   return expect(focused.accepted && focused.changed &&
                     focused.affectedObjectCount == 1U &&
@@ -1976,7 +1971,7 @@ bool logicCommandsRouteThroughTypedHistoryKernel() {
                 "remove and source-clear finish through semantic commands");
 }
 
-bool deleteObjectsCommandRemovesGroupHierarchy() {
+bool deleteSelectionCommandRemovesGroupHierarchy() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document = cr::CreativeDocument::create("Cmd DeleteMulti");
   static_cast<void>(document.assignId(416U));
@@ -2000,14 +1995,13 @@ bool deleteObjectsCommandRemovesGroupHierarchy() {
   selectPrimary(appState.facade, grouped.groupObjectId);
   const std::uint64_t before = appState.facade.document().objectCount();
   const app::CreativeDesktopCommandResult del =
-      dispatchPayload(app::CreativeDesktopCommandId::DeleteObjects, context,
-                      app::CreativeDesktopDeletePayload{});
+      dispatchOne(app::CreativeDesktopCommandId::DeleteSelection, context);
 
   return expect(grouped.accepted && before >= 3U,
                 "group creates a root over both crates") &&
          expect(del.accepted && del.changed &&
                     appState.facade.document().objectCount() == 0U,
-                "DeleteObjects removes the whole group hierarchy") &&
+                "DeleteSelection removes the whole group hierarchy") &&
          expect(cr::creativeUndoDepth(appState.history) == 1U,
                 "multi-delete records exactly one undo step") &&
          expect(appState.facade.findObject(a) == nullptr &&
@@ -2016,7 +2010,7 @@ bool deleteObjectsCommandRemovesGroupHierarchy() {
                 "no group member survives the delete");
 }
 
-bool deleteObjectsRejectsWithoutPartialHierarchy() {
+bool explicitObjectDeleteRejectsWithoutPartialHierarchy() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Cmd Delete Atomic");
@@ -2029,14 +2023,12 @@ bool deleteObjectsRejectsWithoutPartialHierarchy() {
   appState.history = {};
 
   app::CreativeEditorState editor;
-  std::string saveId = "unused";
-  const app::CreativeDesktopCommandContext context{appState, editor,
-                                                    std::filesystem::path{},
-                                                    &saveId};
   const std::uint64_t revisionBefore = appState.facade.document().revision();
-  const app::CreativeDesktopCommandResult locked = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteObjects, context,
-      app::CreativeDesktopDeletePayload{{pair.parentId}});
+  const std::array lockedIds{pair.parentId};
+  const app::CreativeEditorDeleteReceipt locked =
+      app::deleteCreativeEditorObjectsWithUndo(
+          appState, lockedIds, "desktop_delete_objects", &appState.history,
+          &editor.worldLayout);
   const bool lockedRollback =
       !locked.accepted && !locked.changed &&
       appState.facade.findObject(pair.parentId) != nullptr &&
@@ -2050,9 +2042,11 @@ bool deleteObjectsRejectsWithoutPartialHierarchy() {
   appState.history = {};
   const std::uint64_t missingRevisionBefore =
       appState.facade.document().revision();
-  const app::CreativeDesktopCommandResult missing = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteObjects, context,
-      app::CreativeDesktopDeletePayload{{pair.parentId, 999999U}});
+  const std::array missingIds{pair.parentId, cr::CreativeObjectId{999999U}};
+  const app::CreativeEditorDeleteReceipt missing =
+      app::deleteCreativeEditorObjectsWithUndo(
+          appState, missingIds, "desktop_delete_objects", &appState.history,
+          &editor.worldLayout);
   const bool missingRollback =
       !missing.accepted && !missing.changed &&
       appState.facade.findObject(pair.parentId) != nullptr &&
@@ -2543,7 +2537,7 @@ bool playerSpawnSettingsUseTypedCommandAndOneUndoStep() {
       app::CreativeDesktopPlayerSpawnPayload{crateId, settings});
   const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
       app::CreativeDesktopCommandId::SetPlayerSpawnSettings, context,
-      app::CreativeDesktopDeletePayload{{spawnId}});
+      std::monostate{});
   const app::CreativeDesktopCommandResult undo =
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
   const cr::CreativeObject* afterUndo = appState.facade.findObject(spawnId);
@@ -2619,7 +2613,7 @@ bool npcSpawnSettingsUseTypedCommandAndOneUndoStep() {
       app::CreativeDesktopNpcSpawnPayload{crateId, settings});
   const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
       app::CreativeDesktopCommandId::SetNpcSpawnSettings, context,
-      app::CreativeDesktopDeletePayload{{npcId}});
+      std::monostate{});
   const app::CreativeDesktopCommandResult undo =
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
   const cr::CreativeObject* afterUndo = appState.facade.findObject(npcId);
@@ -2714,7 +2708,7 @@ bool objectiveSettingsUseTypedCommandsAndOneUndoStepEach() {
       app::CreativeDesktopExitPointPayload{crateId, exitSettings});
   const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
       app::CreativeDesktopCommandId::SetLootPointSettings, context,
-      app::CreativeDesktopDeletePayload{{lootId}});
+      std::monostate{});
 
   const app::CreativeDesktopCommandResult undoExit =
       dispatchOne(app::CreativeDesktopCommandId::Undo, context);
@@ -2901,214 +2895,201 @@ bool mismatchedPayloadsAreNoOpFailures() {
 
   const app::CreativeDesktopCommandResult badMapRegeneration = dispatchPayload(
       app::CreativeDesktopCommandId::RegenerateMapTemplate, context,
-      app::CreativeDesktopDeletePayload{{a}});
-  const app::CreativeDesktopCommandResult badDelete = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteObjects, context,
-      app::CreativeDesktopSelectPayload{{a}, a});
+      std::monostate{});
   const app::CreativeDesktopCommandResult badRename = dispatchPayload(
       app::CreativeDesktopCommandId::RenameObject, context, std::monostate{});
   const app::CreativeDesktopCommandResult badTransform = dispatchPayload(
       app::CreativeDesktopCommandId::SetObjectTransform, context,
-      app::CreativeDesktopDeletePayload{{a}});
+      std::monostate{});
   const app::CreativeDesktopCommandResult badLogic = dispatchPayload(
       app::CreativeDesktopCommandId::SetLogicLink, context,
       app::CreativeDesktopSelectPayload{{a}, a});
   const app::CreativeDesktopCommandResult badMovingPlatform = dispatchPayload(
       app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
-      app::CreativeDesktopDeletePayload{{a}});
+      std::monostate{});
   const app::CreativeDesktopCommandResult badMovingPlatformPreview =
       dispatchPayload(
           app::CreativeDesktopCommandId::SeekMovingPlatformPreview, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badMovingPlatformWaypoint =
       dispatchPayload(
           app::CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoom, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badRoofApertureManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedRoomPreview =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedRoomApply =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedLevelPreview =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutPreviewGeneratedLevelSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedLevelApply =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedLevelSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutLevelOperation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutLevelOperation, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingSelection =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuilding, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceFocus =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutFocusSource, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceScope =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutObjectSourceFocus =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutFocusObjectSource,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutObjectSourceAdoption =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceRename =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutRenameSource, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceDuplicate =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutDuplicateSource, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutSourceDelete =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutDeleteSource, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateBuilding,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingDuplicate =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingTransform =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutTransformBuilding, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedBuildingPreview =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutPreviewGeneratedBuildingOperation,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedBuildingApply =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedBuildingOperation,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateCapture =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateUpdate =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateDetach =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutDetachBuildingTemplateInstance,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateRefresh =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutRefreshBuildingTemplateInstances,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplateSelection =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutTemplatePlacement =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBoxSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetBoxSettings, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBoxManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult
       badGeneratedVerticalConnectorPreview = dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutPreviewGeneratedVerticalConnectorSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult
       badGeneratedVerticalConnectorApply = dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedVerticalConnectorSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult
       badWorldLayoutVerticalConnectorManipulation = dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutManipulateVerticalConnector,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutWallSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetWallSettings, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutWallManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateWall, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutOpeningSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetOpeningSettings, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutOpeningInsert =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetOpeningInsert, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutOpeningManipulation =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutManipulateOpening, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutLevelSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetLevelSettings, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutBuildingGrounding =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badGeneratedBuildingGrounding =
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedBuildingGrounding,
-          context, app::CreativeDesktopDeletePayload{{a}});
+          context, std::monostate{});
   const app::CreativeDesktopCommandResult badWorldLayoutObjectSettings =
       dispatchPayload(
           app::CreativeDesktopCommandId::WorldLayoutSetObjectSettings, context,
-          app::CreativeDesktopDeletePayload{{a}});
+          std::monostate{});
 
   return expect(!badMapRegeneration.accepted &&
                     badMapRegeneration.message ==
                         "map regeneration: payload mismatch",
                 "map regeneration rejects a mismatched payload") &&
-         expect(!badDelete.accepted &&
-                    badDelete.message == "delete objects: payload mismatch" &&
-                    badDelete.objectAction.status ==
-                        app::CreativeEditorObjectActionOutcomeStatus::
-                            PayloadMismatch &&
-                    badDelete.objectAction.action ==
-                        cr::CreativeSemanticObjectAction::Delete &&
-                    app::creativeEditorObjectActionOutcomeValid(
-                        badDelete.objectAction),
-                "DeleteObjects with the wrong payload is a no-op failure") &&
          expect(!badRename.accepted &&
                     badRename.message == "rename: payload mismatch" &&
                     badRename.objectAction.status ==
@@ -3697,7 +3678,7 @@ bool worldLayoutSourceScopeFramesThe3dCameraWithoutMutatingSource() {
           cr::CreativeWorldLayoutTable::Room, 0U, roomKey});
   const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D, context,
-      app::CreativeDesktopDeletePayload{{}});
+      std::monostate{});
   const bool rejectedRequestsPreservedCamera =
       editor.flyPos.x == cameraAfterFrame.x &&
       editor.flyPos.y == cameraAfterFrame.y &&
@@ -8580,8 +8561,8 @@ int main() {
   ok = focusObjectSelectsAndFramesThroughDispatcher() && ok;
   ok = frameSelectionAndSceneUseVisibleDocumentBounds() && ok;
   ok = logicCommandsRouteThroughTypedHistoryKernel() && ok;
-  ok = deleteObjectsCommandRemovesGroupHierarchy() && ok;
-  ok = deleteObjectsRejectsWithoutPartialHierarchy() && ok;
+  ok = deleteSelectionCommandRemovesGroupHierarchy() && ok;
+  ok = explicitObjectDeleteRejectsWithoutPartialHierarchy() && ok;
   ok = renameObjectCommandChangesNameWithHistory() && ok;
   ok = visibilityAndLockCommandsSetAbsoluteState() && ok;
   ok = visibilityAndLockBatchesRollBackOnFailure() && ok;

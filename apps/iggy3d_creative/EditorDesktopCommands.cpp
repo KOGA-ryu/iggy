@@ -123,7 +123,6 @@ void mergeCommandResult(CreativeDesktopCommandResult& aggregate,
   return id == CreativeDesktopCommandId::None ||
          id == CreativeDesktopCommandId::Play ||
          id == CreativeDesktopCommandId::SelectObjects ||
-         id == CreativeDesktopCommandId::ClearSelection ||
          id == CreativeDesktopCommandId::WorldLayoutFocusSource ||
          id == CreativeDesktopCommandId::WorldLayoutFocusObjectSource;
 }
