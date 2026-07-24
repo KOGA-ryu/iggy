@@ -539,6 +539,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorMapValidationPanel.cpp
   apps/iggy3d_creative/EditorDesktopPanels.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvas.cpp
+  apps/iggy3d_creative/EditorWorldLayoutCanvasPlanner.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasDraw.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasPreviewDraw.cpp
   apps/iggy3d_creative/EditorWorldLayoutCanvasTerrainDraw.cpp

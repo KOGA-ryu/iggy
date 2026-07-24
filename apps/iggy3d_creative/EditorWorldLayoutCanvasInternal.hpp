@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorWorldLayoutCanvasPlanner.hpp"
 #include "EditorWorldLayoutPanelInternal.hpp"
 #include "EditorWorldLayoutPlanView.hpp"
 
@@ -7,23 +8,19 @@
 
 namespace iggy3d_creative_app {
 
-struct CreativeEditorWorldLayoutCanvasTransform {
-  ImVec2 origin;
-  float pixelsPerCell = 28.0F;
-};
-
 inline ImVec2 creativeEditorWorldLayoutCanvasToScreen(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     double x, double z) noexcept {
-  return {transform.origin.x + static_cast<float>(x) * transform.pixelsPerCell,
-          transform.origin.y + static_cast<float>(z) * transform.pixelsPerCell};
+  const CreativeEditorWorldLayoutCanvasScreenPoint point =
+      planCreativeEditorWorldLayoutCanvasScreenPoint(transform, x, z);
+  return {point.x, point.y};
 }
 
 inline CreativeEditorWorldLayoutPoint creativeEditorWorldLayoutCanvasToWorld(
     const CreativeEditorWorldLayoutCanvasTransform& transform,
     ImVec2 screen) noexcept {
-  return {(screen.x - transform.origin.x) / transform.pixelsPerCell,
-          (screen.y - transform.origin.y) / transform.pixelsPerCell};
+  return planCreativeEditorWorldLayoutCanvasWorldPoint(
+      transform, {screen.x, screen.y});
 }
 
 struct CreativeEditorWorldLayoutCanvasPointerGeometry {

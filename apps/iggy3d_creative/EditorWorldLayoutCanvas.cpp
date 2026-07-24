@@ -15,12 +15,9 @@
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <limits>
 #include <span>
 #include <string>
 #include <utility>
@@ -87,13 +84,6 @@ ImGuiMouseCursor terrainRegionHandleCursor(
       break;
   }
   return ImGuiMouseCursor_Hand;
-}
-
-void queueGesture(CreativeDesktopCommandFrame& commands,
-                  CreativeEditorWorldLayoutGesturePhase phase,
-                  CreativeEditorWorldLayoutPoint point = {}) {
-  commands.enqueue(CreativeDesktopCommandId::WorldLayoutCanvasGesture,
-                CreativeDesktopWorldLayoutGesturePayload{phase, point});
 }
 
 void queueRoomManipulation(
@@ -197,27 +187,6 @@ void queueRoofManipulation(
           phase, target, coordinateCells});
 }
 
-double planRoofHandleCoordinate(
-    CreativeEditorWorldLayoutRoofHandleKind handle,
-    CreativeEditorWorldLayoutPoint point) noexcept {
-  switch (handle) {
-    case CreativeEditorWorldLayoutRoofHandleKind::NorthEave:
-      return -point.z;
-    case CreativeEditorWorldLayoutRoofHandleKind::EastEave:
-      return point.x;
-    case CreativeEditorWorldLayoutRoofHandleKind::SouthEave:
-      return point.z;
-    case CreativeEditorWorldLayoutRoofHandleKind::WestEave:
-      return -point.x;
-    case CreativeEditorWorldLayoutRoofHandleKind::RidgeHeight:
-      return point.z;
-    case CreativeEditorWorldLayoutRoofHandleKind::None:
-    case CreativeEditorWorldLayoutRoofHandleKind::Count:
-      break;
-  }
-  return 0.0;
-}
-
 ImGuiMouseCursor roofHandleCursor(
     CreativeEditorWorldLayoutRoofHandleKind handle) noexcept {
   switch (handle) {
@@ -233,28 +202,6 @@ ImGuiMouseCursor roofHandleCursor(
       break;
   }
   return ImGuiMouseCursor_Arrow;
-}
-
-void queuePlanSourceSelection(
-    CreativeDesktopCommandFrame& commands,
-    const CreativeEditorWorldLayoutState& state,
-    const CreativeEditorWorldLayoutPlanHit& hit) {
-  commands.enqueue(
-      CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
-      CreativeDesktopWorldLayoutSourcePayload{
-          hit.table, hit.sourceIndex,
-          std::string(creativeEditorWorldLayoutSourceStableKey(
-              state, hit.table, hit.sourceIndex)),
-          hit.sourceLevelIndex});
-}
-
-CreativeEditorSelectionComposition selectionComposition(
-    bool additive, bool toggle) noexcept {
-  if (toggle) {
-    return CreativeEditorSelectionComposition::Toggle;
-  }
-  return additive ? CreativeEditorSelectionComposition::Add
-                  : CreativeEditorSelectionComposition::Replace;
 }
 
 bool queuePlanObjectSelection(
@@ -311,97 +258,6 @@ void drawPlanRegionSelection(
   drawList.AddRect(regionMinimum, regionMaximum,
                    planRegionColor(role, 230U), 0.0F, 0, 1.5F);
   drawList.PopClipRect();
-}
-
-bool queuePlanSourceInteraction(
-    CreativeEditorWorldLayoutState& state,
-    CreativeDesktopCommandFrame& commands,
-    const CreativeEditorWorldLayoutPlanHit& hit,
-    CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  if (!hit.hit) {
-    return false;
-  }
-  if (hit.table == cr::CreativeWorldLayoutTable::Object) {
-    const CreativeEditorWorldLayoutEditReceipt begun =
-        beginCreativeEditorWorldLayoutObjectManipulation(
-            state, hit.sourceIndex, point);
-    if (!begun.accepted) {
-      return false;
-    }
-    // The manipulation owns the immediate 2D state. The queued semantic
-    // selection synchronizes its generated 3D members without restarting the
-    // already-active drag.
-    queuePlanSourceSelection(commands, state, hit);
-    return true;
-  }
-  queuePlanSourceSelection(commands, state, hit);
-  switch (hit.table) {
-    case cr::CreativeWorldLayoutTable::Room:
-      if (state.source.roomBoundaries.empty()) {
-        queueRoomManipulation(
-            commands, CreativeEditorWorldLayoutRoomManipulationPhase::Begin,
-            point, toleranceCells);
-      } else {
-        const CreativeEditorWorldLayoutRoomCornerTarget corner =
-            findCreativeEditorWorldLayoutRoomCornerTarget(
-                state, hit.sourceIndex, point, toleranceCells);
-        if (corner.topologyVertexIndex !=
-            cr::kInvalidCreativeWorldLayoutIndex) {
-          queueRoomCornerManipulation(
-              commands,
-              CreativeEditorWorldLayoutRoomCornerManipulationPhase::Begin,
-              point, toleranceCells);
-        } else {
-          queueRoomBoundaryManipulation(
-              commands,
-              CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin,
-              point, toleranceCells);
-        }
-      }
-      break;
-    case cr::CreativeWorldLayoutTable::TopologyEdge:
-      queueRoomBoundaryManipulation(
-          commands,
-          CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::VerticalConnector:
-      queueVerticalConnectorManipulation(
-          commands,
-          CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::Box:
-      queueBoxManipulation(
-          commands, CreativeEditorWorldLayoutBoxManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::Wall:
-      queueWallManipulation(
-          commands, CreativeEditorWorldLayoutWallManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::Opening:
-      queueOpeningManipulation(
-          commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::RoofAperture:
-      queueRoofApertureManipulation(
-          commands,
-          CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
-          point, toleranceCells);
-      break;
-    case cr::CreativeWorldLayoutTable::None:
-    case cr::CreativeWorldLayoutTable::Building:
-    case cr::CreativeWorldLayoutTable::Level:
-    case cr::CreativeWorldLayoutTable::Object:
-    case cr::CreativeWorldLayoutTable::TerrainProfile:
-    case cr::CreativeWorldLayoutTable::TerrainPath:
-    case cr::CreativeWorldLayoutTable::TerrainPathPoint:
-      break;
-  }
-  return true;
 }
 
 void queueBuildingTemplatePlacement(
@@ -508,25 +364,6 @@ ImGuiMouseCursor wallHandleCursor(
   const cr::CreativeWorldLayoutWall& wall = state.source.walls[target.wallIndex];
   return wall.start.z == wall.end.z ? ImGuiMouseCursor_ResizeEW
                                    : ImGuiMouseCursor_ResizeNS;
-}
-
-bool selectedBuildingContains(
-    const CreativeEditorWorldLayoutState& state,
-    CreativeEditorWorldLayoutPoint point, double toleranceCells) noexcept {
-  if (state.selection.kind !=
-      CreativeEditorWorldLayoutSelectionKind::Building) {
-    return false;
-  }
-  CreativeEditorWorldLayoutBuildingBounds bounds;
-  if (!readCreativeEditorWorldLayoutBuildingBounds(
-          state, state.selection.index, bounds) ||
-      !std::isfinite(point.x) || !std::isfinite(point.z)) {
-    return false;
-  }
-  return point.x >= bounds.minimum.x - toleranceCells &&
-         point.x <= bounds.maximum.x + toleranceCells &&
-         point.z >= bounds.minimum.z - toleranceCells &&
-         point.z <= bounds.maximum.z + toleranceCells;
 }
 
 bool dragTool(CreativeEditorWorldLayoutTool tool) noexcept {
@@ -804,12 +641,9 @@ void drawLayoutCanvas(CreativeEditorState& editor,
   const cr::CreativeWorldLayout& displaySource =
       creativeEditorWorldLayoutDisplaySource(state);
   const CreativeEditorWorldLayoutPlanHitStack hoveredPlanStack =
-      semanticHoverEnabled
-          ? hitCreativeEditorWorldLayoutPlanStack(
-                editor.worldLayoutPlanView, state, displaySource,
-                {semanticHoverPoint.x, semanticHoverPoint.z},
-                semanticHitTolerance)
-          : CreativeEditorWorldLayoutPlanHitStack{};
+      planCreativeEditorWorldLayoutCanvasHitStack(
+          editor.worldLayoutPlanView, state, displaySource,
+          semanticHoverPoint, semanticHitTolerance, semanticHoverEnabled);
   const CreativeEditorWorldLayoutPlanHit hoveredPlanHit =
       hoveredPlanStack.count > 0U ? hoveredPlanStack.items.front()
                                   : CreativeEditorWorldLayoutPlanHit{};
@@ -1016,87 +850,16 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     }
     static_cast<void>(queuePlanObjectSelection(
         state, document, selection, region.sources,
-        selectionComposition(gesture.additive, gesture.toggle), commands));
+        creativeEditorWorldLayoutCanvasSelectionComposition(
+            gesture.additive, gesture.toggle),
+        commands));
     return;
   }
 
-  const CreativeEditorWorldLayoutOpeningTarget hoveredOpeningTarget =
-      hovered && selectionToolActive &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Opening
-          ? findCreativeEditorWorldLayoutOpeningTarget(
-                state, hoveredPoint, handleTolerance)
-          : CreativeEditorWorldLayoutOpeningTarget{};
-  const CreativeEditorWorldLayoutWallTarget hoveredWallTarget =
-      hovered && selectionToolActive &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Wall
-          ? findCreativeEditorWorldLayoutWallTarget(state, hoveredPoint,
-                                                    handleTolerance)
-          : CreativeEditorWorldLayoutWallTarget{};
-  const CreativeEditorWorldLayoutVerticalConnectorTarget
-      hoveredVerticalConnectorTarget =
-          hovered && selectionToolActive &&
-                  hoveredPlanHit.table ==
-                      cr::CreativeWorldLayoutTable::VerticalConnector
-              ? findCreativeEditorWorldLayoutVerticalConnectorTarget(
-                    state, hoveredPoint, handleTolerance)
-              : CreativeEditorWorldLayoutVerticalConnectorTarget{};
-  const CreativeEditorWorldLayoutRoomTarget hoveredRoomTarget =
-      hovered && selectionToolActive &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
-          ? findCreativeEditorWorldLayoutRoomTarget(state, hoveredPoint,
-                                                    handleTolerance)
-          : CreativeEditorWorldLayoutRoomTarget{};
-  const CreativeEditorWorldLayoutRoomBoundaryTarget
-      hoveredRoomBoundaryTarget =
-          hovered && selectionToolActive &&
-                  hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
-              ? findCreativeEditorWorldLayoutRoomBoundaryTarget(
-                    state, hoveredPoint, handleTolerance)
-              : CreativeEditorWorldLayoutRoomBoundaryTarget{};
-  const CreativeEditorWorldLayoutRoomCornerTarget hoveredRoomCornerTarget =
-      hovered && selectionToolActive &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Room
-          ? findCreativeEditorWorldLayoutRoomCornerTarget(
-                state, hoveredPlanHit.sourceIndex, hoveredPoint,
-                handleTolerance)
-          : CreativeEditorWorldLayoutRoomCornerTarget{};
-  const CreativeEditorWorldLayoutBoxTarget hoveredBoxTarget =
-      hovered && selectionToolActive &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Box
-          ? findCreativeEditorWorldLayoutBoxTarget(state, hoveredPoint,
-                                                   handleTolerance)
-          : CreativeEditorWorldLayoutBoxTarget{};
-  const CreativeEditorWorldLayoutRoofApertureTarget
-      hoveredRoofApertureTarget =
-          hovered && selectionToolActive &&
-                  hoveredPlanHit.table ==
-                      cr::CreativeWorldLayoutTable::RoofAperture
-              ? findCreativeEditorWorldLayoutRoofApertureTarget(
-                    state, hoveredPoint, handleTolerance)
-              : CreativeEditorWorldLayoutRoofApertureTarget{};
-  const std::size_t roofLevelIndex =
-      state.roofManipulation.active
-          ? state.roofManipulation.target.levelIndex
-          : state.selection.kind ==
-                    CreativeEditorWorldLayoutSelectionKind::Level
-                ? state.selection.index
-                : cr::kInvalidCreativeWorldLayoutIndex;
-  const CreativeEditorWorldLayoutRoofHandleFrame roofHandleFrame =
-      buildCreativeEditorWorldLayoutRoofHandleFrame(state, grid,
-                                                     roofLevelIndex);
-  const CreativeEditorWorldLayoutRoofTarget hoveredRoofTarget =
-      hovered && selectionToolActive
-          ? findCreativeEditorWorldLayoutPlanRoofHandle(
-                roofHandleFrame, hoveredPoint, handleTolerance)
-          : CreativeEditorWorldLayoutRoofTarget{};
-  const std::size_t hoveredObjectIndex =
-      hoveredPlanHit.hit &&
-              hoveredPlanHit.table == cr::CreativeWorldLayoutTable::Object
-          ? hoveredPlanHit.sourceIndex
-          : cr::kInvalidCreativeWorldLayoutIndex;
-  const bool hoveredBuilding =
-      hovered && selectionToolActive &&
-      selectedBuildingContains(state, hoveredPoint, handleTolerance);
+  const CreativeEditorWorldLayoutCanvasTargetSelection hoveredTargets =
+      planCreativeEditorWorldLayoutCanvasTargets(
+          state, grid, hoveredPlanHit, hoveredPoint, handleTolerance,
+          hovered && selectionToolActive);
   if (state.objectManipulation.active) {
     ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
   } else if (state.buildingManipulation.active) {
@@ -1136,99 +899,101 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     ImGui::SetMouseCursor(
         rectHandleCursor(state.roofApertureManipulation.target.handle));
   } else if (hovered && selectionToolActive) {
-    if (hoveredOpeningTarget.handle !=
+    if (hoveredTargets.opening.handle !=
         CreativeEditorWorldLayoutOpeningHandle::None) {
       ImGui::SetMouseCursor(
-          openingHandleCursor(state, hoveredOpeningTarget));
-    } else if (hoveredWallTarget.handle !=
+          openingHandleCursor(state, hoveredTargets.opening));
+    } else if (hoveredTargets.wall.handle !=
                CreativeEditorWorldLayoutWallHandle::None) {
-      ImGui::SetMouseCursor(wallHandleCursor(state, hoveredWallTarget));
-    } else if (hoveredObjectIndex != cr::kInvalidCreativeWorldLayoutIndex) {
+      ImGui::SetMouseCursor(wallHandleCursor(state, hoveredTargets.wall));
+    } else if (hoveredTargets.objectIndex !=
+               cr::kInvalidCreativeWorldLayoutIndex) {
       ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-    } else if (hoveredBuilding) {
+    } else if (hoveredTargets.building) {
       ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-    } else if (hoveredVerticalConnectorTarget.directionHandle) {
+    } else if (hoveredTargets.verticalConnector.directionHandle) {
       ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-    } else if (hoveredVerticalConnectorTarget.handle !=
+    } else if (hoveredTargets.verticalConnector.handle !=
                CreativeEditorWorldLayoutRectHandle::None) {
       ImGui::SetMouseCursor(
-          rectHandleCursor(hoveredVerticalConnectorTarget.handle));
-    } else if (hoveredRoomTarget.handle !=
+          rectHandleCursor(hoveredTargets.verticalConnector.handle));
+    } else if (hoveredTargets.room.handle !=
                CreativeEditorWorldLayoutRoomHandle::None) {
-      ImGui::SetMouseCursor(rectHandleCursor(hoveredRoomTarget.handle));
-    } else if (hoveredRoomCornerTarget.topologyVertexIndex !=
+      ImGui::SetMouseCursor(rectHandleCursor(hoveredTargets.room.handle));
+    } else if (hoveredTargets.roomCorner.topologyVertexIndex !=
                cr::kInvalidCreativeWorldLayoutIndex) {
-      ImGui::SetMouseCursor(hoveredRoomCornerTarget.northWestSouthEast
+      ImGui::SetMouseCursor(hoveredTargets.roomCorner.northWestSouthEast
                                 ? ImGuiMouseCursor_ResizeNWSE
                                 : ImGuiMouseCursor_ResizeNESW);
-    } else if (hoveredRoomBoundaryTarget.topologyEdgeIndex !=
+    } else if (hoveredTargets.roomBoundary.topologyEdgeIndex !=
                cr::kInvalidCreativeWorldLayoutIndex) {
-      ImGui::SetMouseCursor(hoveredRoomBoundaryTarget.horizontal
+      ImGui::SetMouseCursor(hoveredTargets.roomBoundary.horizontal
                                 ? ImGuiMouseCursor_ResizeNS
                                 : ImGuiMouseCursor_ResizeEW);
-    } else if (hoveredBoxTarget.handle !=
+    } else if (hoveredTargets.box.handle !=
                CreativeEditorWorldLayoutBoxHandle::None) {
-      ImGui::SetMouseCursor(rectHandleCursor(hoveredBoxTarget.handle));
-    } else if (hoveredRoofTarget.handle !=
+      ImGui::SetMouseCursor(rectHandleCursor(hoveredTargets.box.handle));
+    } else if (hoveredTargets.roof.handle !=
                CreativeEditorWorldLayoutRoofHandleKind::None) {
-      ImGui::SetMouseCursor(roofHandleCursor(hoveredRoofTarget.handle));
-    } else if (hoveredRoofApertureTarget.handle !=
+      ImGui::SetMouseCursor(roofHandleCursor(hoveredTargets.roof.handle));
+    } else if (hoveredTargets.roofAperture.handle !=
                CreativeEditorWorldLayoutRoofApertureHandle::None) {
       ImGui::SetMouseCursor(
-          rectHandleCursor(hoveredRoofApertureTarget.handle));
+          rectHandleCursor(hoveredTargets.roofAperture.handle));
     } else if (hoveredPlanHit.hit) {
       ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
   }
 
-  if (hovered && input.pointer.primaryPressed) {
-    if (selectionToolActive) {
-      const bool additive = input.selectionAdditiveDown;
-      const bool toggle = input.selectionToggleDown;
-      if ((additive || toggle) && hoveredPlanHit.hit) {
-        const cr::CreativeWorldLayoutSourceRef source{
-            hoveredPlanHit.table, hoveredPlanHit.sourceIndex};
-        static_cast<void>(queuePlanObjectSelection(
-            state, document, selection,
-            std::span<const cr::CreativeWorldLayoutSourceRef>{&source, 1U},
-            selectionComposition(additive, toggle), commands));
-      } else if ((additive || toggle) && hoveredBuilding &&
-                 state.selection.kind ==
-                     CreativeEditorWorldLayoutSelectionKind::Building) {
-        const cr::CreativeWorldLayoutSourceRef source{
-            cr::CreativeWorldLayoutTable::Building, state.selection.index};
-        static_cast<void>(queuePlanObjectSelection(
-            state, document, selection,
-            std::span<const cr::CreativeWorldLayoutSourceRef>{&source, 1U},
-            selectionComposition(additive, toggle), commands));
-      } else if (hoveredRoofTarget.handle !=
-                 CreativeEditorWorldLayoutRoofHandleKind::None) {
-        queueRoofManipulation(
-            commands, CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
-            hoveredRoofTarget,
-            planRoofHandleCoordinate(hoveredRoofTarget.handle, hoveredPoint));
-      } else if (hoveredBuilding) {
-        queueBuildingManipulation(
-            commands,
-            CreativeEditorWorldLayoutBuildingManipulationPhase::Begin,
-            hoveredPoint, handleTolerance);
-      } else if (hoveredPlanHit.hit) {
-        const CreativeEditorWorldLayoutPlanHit cycledPlanHit =
-            cycleCreativeEditorWorldLayoutPlanHit(hoveredPlanStack,
-                                                  state.selection);
-        static_cast<void>(queuePlanSourceInteraction(
-            state, commands, cycledPlanHit, hoveredPoint, handleTolerance));
-      } else {
-        state.planRegionSelection = {
-            true, pointerPoint, pointerPoint, additive, toggle};
+  const CreativeEditorWorldLayoutCanvasPressPlan pressPlan =
+      planCreativeEditorWorldLayoutCanvasPress(
+          {hovered && input.pointer.primaryPressed,
+           selectionToolActive,
+           input.selectionAdditiveDown,
+           input.selectionToggleDown,
+           dragTool(state.tool),
+           pointerPoint,
+           hoveredPoint,
+           handleTolerance},
+          hoveredTargets, hoveredPlanStack, state.selection);
+  switch (pressPlan.kind) {
+    case CreativeEditorWorldLayoutCanvasPressKind::SelectSource:
+    case CreativeEditorWorldLayoutCanvasPressKind::SelectBuilding:
+      static_cast<void>(queuePlanObjectSelection(
+          state, document, selection,
+          std::span<const cr::CreativeWorldLayoutSourceRef>{
+              &pressPlan.source, 1U},
+          pressPlan.composition, commands));
+      break;
+    case CreativeEditorWorldLayoutCanvasPressKind::InteractSource: {
+      CreativeEditorWorldLayoutCanvasSourceInteractionPlan interaction =
+          planCreativeEditorWorldLayoutCanvasSourceInteraction(
+              state, pressPlan.hit, hoveredPoint, handleTolerance);
+      if (interaction.beginObjectManipulation) {
+        const CreativeEditorWorldLayoutEditReceipt begun =
+            beginCreativeEditorWorldLayoutObjectManipulation(
+                state, interaction.hit.sourceIndex, hoveredPoint);
+        if (!begun.accepted) {
+          break;
+        }
       }
-    } else if (dragTool(state.tool)) {
-      queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,
-                   hoveredPoint);
-    } else {
-      commands.enqueue(CreativeDesktopCommandId::WorldLayoutCanvasPoint,
-                    CreativeDesktopWorldLayoutPointPayload{hoveredPoint});
+      enqueueCreativeEditorWorldLayoutCanvasCommandPlan(
+          commands, std::move(interaction.commands));
+      break;
     }
+    case CreativeEditorWorldLayoutCanvasPressKind::BeginRegionSelection:
+      state.planRegionSelection = pressPlan.regionSelection;
+      break;
+    case CreativeEditorWorldLayoutCanvasPressKind::BeginRoof:
+    case CreativeEditorWorldLayoutCanvasPressKind::BeginBuilding:
+    case CreativeEditorWorldLayoutCanvasPressKind::BeginGesture:
+    case CreativeEditorWorldLayoutCanvasPressKind::ApplyPoint:
+      enqueueCreativeEditorWorldLayoutCanvasCommandPlan(
+          commands, pressPlan.commands);
+      break;
+    case CreativeEditorWorldLayoutCanvasPressKind::None:
+    case CreativeEditorWorldLayoutCanvasPressKind::Count:
+      break;
   }
 
   const bool cancelObjectManipulation =
@@ -1263,267 +1028,36 @@ void drawLayoutCanvas(CreativeEditorState& editor,
         state, pointerPoint));
   }
 
-  const bool cancelRoofManipulation =
-      state.roofManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelRoofManipulation) {
-    queueRoofManipulation(
-        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
-        state.roofManipulation.target, 0.0);
-  } else if (state.roofManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueRoofManipulation(
-        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
-        state.roofManipulation.target,
-        planRoofHandleCoordinate(state.roofManipulation.target.handle,
-                                 pointerPoint));
-  } else if (state.roofManipulation.active &&
-             input.pointer.primaryDown) {
-    queueRoofManipulation(
-        commands, CreativeEditorWorldLayoutRoofManipulationPhase::Update,
-        state.roofManipulation.target,
-        planRoofHandleCoordinate(state.roofManipulation.target.handle,
-                                 pointerPoint));
-  }
-
-  const bool cancelBuildingManipulation =
-      state.buildingManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelBuildingManipulation) {
-    queueBuildingManipulation(
-        commands,
-        CreativeEditorWorldLayoutBuildingManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.buildingManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueBuildingManipulation(
-        commands,
-        CreativeEditorWorldLayoutBuildingManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.buildingManipulation.active &&
-             input.pointer.primaryDown) {
-    queueBuildingManipulation(
-        commands,
-        CreativeEditorWorldLayoutBuildingManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelOpeningManipulation =
-      state.openingManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelOpeningManipulation) {
-    queueOpeningManipulation(
-        commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.openingManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueOpeningManipulation(
-        commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.openingManipulation.active &&
-             input.pointer.primaryDown) {
-    queueOpeningManipulation(
-        commands, CreativeEditorWorldLayoutOpeningManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelWallManipulation =
-      state.wallManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelWallManipulation) {
-    queueWallManipulation(
-        commands, CreativeEditorWorldLayoutWallManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.wallManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueWallManipulation(
-        commands, CreativeEditorWorldLayoutWallManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.wallManipulation.active &&
-             input.pointer.primaryDown) {
-    queueWallManipulation(
-        commands, CreativeEditorWorldLayoutWallManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelRoomManipulation =
-      state.roomManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelRoomManipulation) {
-    queueRoomManipulation(
-        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.roomManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueRoomManipulation(
-        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.roomManipulation.active &&
-             input.pointer.primaryDown) {
-    queueRoomManipulation(
-        commands, CreativeEditorWorldLayoutRoomManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelRoomBoundaryManipulation =
-      state.roomBoundaryManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelRoomBoundaryManipulation) {
-    queueRoomBoundaryManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.roomBoundaryManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueRoomBoundaryManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.roomBoundaryManipulation.active &&
-             input.pointer.primaryDown) {
-    queueRoomBoundaryManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomBoundaryManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelRoomCornerManipulation =
-      state.roomCornerManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelRoomCornerManipulation) {
-    queueRoomCornerManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.roomCornerManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueRoomCornerManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.roomCornerManipulation.active &&
-             input.pointer.primaryDown) {
-    queueRoomCornerManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoomCornerManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelVerticalConnectorManipulation =
-      state.verticalConnectorManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelVerticalConnectorManipulation) {
-    queueVerticalConnectorManipulation(
-        commands,
-        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.verticalConnectorManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueVerticalConnectorManipulation(
-        commands,
-        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.verticalConnectorManipulation.active &&
-             input.pointer.primaryDown) {
-    queueVerticalConnectorManipulation(
-        commands,
-        CreativeEditorWorldLayoutVerticalConnectorManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelBoxManipulation =
-      state.boxManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelBoxManipulation) {
-    queueBoxManipulation(
-        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.boxManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueBoxManipulation(
-        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.boxManipulation.active &&
-             input.pointer.primaryDown) {
-    queueBoxManipulation(
-        commands, CreativeEditorWorldLayoutBoxManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelRoofApertureManipulation =
-      state.roofApertureManipulation.active &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  if (cancelRoofApertureManipulation) {
-    queueRoofApertureManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
-        pointerPoint, handleTolerance);
-  } else if (state.roofApertureManipulation.active &&
-             input.pointer.primaryReleased) {
-    queueRoofApertureManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
-        pointerPoint, handleTolerance);
-  } else if (state.roofApertureManipulation.active &&
-             input.pointer.primaryDown) {
-    queueRoofApertureManipulation(
-        commands,
-        CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
-        pointerPoint, handleTolerance);
-  }
-
-  const bool cancelGesture =
-      !state.objectManipulation.active && !state.buildingManipulation.active &&
-      !state.openingManipulation.active && !state.wallManipulation.active &&
-      !state.verticalConnectorManipulation.active &&
-      !state.roomManipulation.active &&
-      !state.roomCornerManipulation.active &&
-      !state.roomBoundaryManipulation.active &&
-      !state.boxManipulation.active &&
-      !state.roofApertureManipulation.active &&
-      !state.roofManipulation.active &&
-      state.anchorActive &&
-      (input.pointer.focusLost ||
-       (hovered && input.pointer.secondaryPressed) ||
-       input.cancelPressed);
-  const bool finishTerrainPathDraft =
-      state.terrainPathDraft.active &&
-      (input.confirmPressed ||
-       (hovered && input.pointer.primaryDoubleClicked));
-  if (cancelGesture) {
-    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Cancel);
-  } else if (finishTerrainPathDraft) {
-    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit);
-  } else if (dragTool(state.tool) &&
-             input.pointer.primaryReleased &&
-             ImGui::IsItemDeactivated()) {
-    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Commit,
-                 hoveredPoint);
-  } else if (state.anchorActive && dragTool(state.tool) &&
-             input.pointer.primaryDown) {
-    queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Update,
-                 hoveredPoint);
-  }
+  enqueueCreativeEditorWorldLayoutCanvasCommandPlan(
+      commands,
+      planCreativeEditorWorldLayoutCanvasManipulations(
+          {state.objectManipulation.active,
+           state.roofManipulation.active,
+           state.roofManipulation.target,
+           state.buildingManipulation.active,
+           state.openingManipulation.active,
+           state.wallManipulation.active,
+           state.roomManipulation.active,
+           state.roomBoundaryManipulation.active,
+           state.roomCornerManipulation.active,
+           state.verticalConnectorManipulation.active,
+           state.boxManipulation.active,
+           state.roofApertureManipulation.active,
+           state.anchorActive,
+           state.terrainPathDraft.active,
+           dragTool(state.tool)},
+          {hovered,
+           input.pointer.focusLost,
+           input.pointer.secondaryPressed,
+           input.cancelPressed,
+           input.pointer.primaryReleased,
+           input.pointer.primaryDown,
+           ImGui::IsItemDeactivated(),
+           input.confirmPressed,
+           input.pointer.primaryDoubleClicked,
+           pointerPoint,
+           hoveredPoint,
+           handleTolerance}));
 }
 
 
