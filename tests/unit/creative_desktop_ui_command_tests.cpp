@@ -3043,11 +3043,6 @@ bool mismatchedPayloadsAreNoOpFailures() {
           app::CreativeDesktopCommandId::WorldLayoutManipulateBox, context,
           app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult
-      badWorldLayoutVerticalConnectorSettings = dispatchPayload(
-          app::CreativeDesktopCommandId::
-              WorldLayoutSetVerticalConnectorSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
-  const app::CreativeDesktopCommandResult
       badGeneratedVerticalConnectorPreview = dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutPreviewGeneratedVerticalConnectorSettings,
@@ -3094,14 +3089,6 @@ bool mismatchedPayloadsAreNoOpFailures() {
       dispatchPayload(
           app::CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedBuildingGrounding,
-          context, app::CreativeDesktopDeletePayload{{a}});
-  const app::CreativeDesktopCommandResult badWorldLayoutTerrainProfileSettings =
-      dispatchPayload(
-          app::CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings,
-          context, app::CreativeDesktopDeletePayload{{a}});
-  const app::CreativeDesktopCommandResult badWorldLayoutTerrainPathSettings =
-      dispatchPayload(
-          app::CreativeDesktopCommandId::WorldLayoutSetTerrainPathSettings,
           context, app::CreativeDesktopDeletePayload{{a}});
   const app::CreativeDesktopCommandResult badWorldLayoutObjectSettings =
       dispatchPayload(
@@ -3257,10 +3244,6 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badWorldLayoutBoxManipulation.message ==
                         "layout floor manipulation: payload mismatch",
                 "floor manipulation rejects a mismatched payload") &&
-         expect(!badWorldLayoutVerticalConnectorSettings.accepted &&
-                    badWorldLayoutVerticalConnectorSettings.message ==
-                        "layout vertical connector settings: payload mismatch",
-                "vertical connector settings reject a mismatched payload") &&
          expect(!badGeneratedVerticalConnectorPreview.accepted &&
                     badGeneratedVerticalConnectorPreview.message ==
                         "generated vertical connector preview: payload mismatch" &&
@@ -3303,14 +3286,6 @@ bool mismatchedPayloadsAreNoOpFailures() {
                     badGeneratedBuildingGrounding.message ==
                         "generated building grounding: payload mismatch",
                 "building grounding commands reject mismatched payloads") &&
-         expect(!badWorldLayoutTerrainProfileSettings.accepted &&
-                    badWorldLayoutTerrainProfileSettings.message ==
-                        "layout terrain profile settings: payload mismatch",
-                "terrain profile settings reject a mismatched payload") &&
-         expect(!badWorldLayoutTerrainPathSettings.accepted &&
-                    badWorldLayoutTerrainPathSettings.message ==
-                        "layout terrain path settings: payload mismatch",
-                "terrain path settings reject a mismatched payload") &&
          expect(!badWorldLayoutObjectSettings.accepted &&
                     badWorldLayoutObjectSettings.message ==
                         "layout object settings: payload mismatch",
@@ -4208,10 +4183,13 @@ bool worldLayoutVerticalConnectorCommandsRouteThroughDispatcher() {
   const std::uint64_t revisionBeforeSettings =
       editor.worldLayout.revision;
   const auto settingsApplied = dispatchPayload(
-      app::CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings,
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty,
       context,
-      app::CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload{
-          0U, settings});
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::VerticalConnector, 0U,
+          editor.worldLayout.source.verticalConnectors[0].stableKey,
+          settings});
   const bool settingsCommittedOnce =
       connector.accepted && preview.accepted && settingsRead &&
       settingsApplied.accepted && settingsApplied.changed &&
@@ -4623,9 +4601,11 @@ bool worldLayoutCommandsPreviewAndGenerateThroughDispatcher() {
   roomSettings.footprint = {{0, 0}, {8, 6}};
   roomSettings.wallThicknessCells = 0.5;
   const app::CreativeDesktopCommandResult resized = dispatchPayload(
-      app::CreativeDesktopCommandId::WorldLayoutSetRoomSettings, context,
-      app::CreativeDesktopWorldLayoutRoomSettingsPayload{
-          0U, roomSettings});
+      app::CreativeDesktopCommandId::WorldLayoutEditSourceProperty, context,
+      app::CreativeDesktopWorldLayoutPropertyEditPayload{
+          app::CreativeDesktopWorldLayoutPropertyEditPhase::Commit,
+          cr::CreativeWorldLayoutTable::Room, 0U,
+          editor.worldLayout.source.rooms[0].stableKey, roomSettings});
   const app::CreativeDesktopCommandResult selectTool = dispatchPayload(
       app::CreativeDesktopCommandId::WorldLayoutSetTool, context,
       app::CreativeDesktopWorldLayoutToolPayload{

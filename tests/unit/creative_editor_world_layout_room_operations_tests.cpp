@@ -526,46 +526,6 @@ bool roomMetadataAndEdgeSettingsAreSingleSourceEdits() {
                 "metadata and wall apply each own one source history entry");
 }
 
-bool desktopDispatcherAppliesExactWallDimensionsToTheDocument() {
-  cr::CreativeAppState live = appState();
-  app::CreativeEditorState editor;
-  app::resetCreativeEditorWorldLayout(editor.worldLayout,
-                                      "edge_settings_dispatch_test");
-  static_cast<void>(app::createCreativeEditorWorldLayoutBuildingShell(
-      editor.worldLayout, {{{0, 0}, {8, 4}}, 0.0, 3U, 0.25, 1U}));
-  static_cast<void>(app::confirmCreativeEditorWorldLayout(editor.worldLayout,
-                                                          live));
-  static_cast<void>(app::splitCreativeEditorWorldLayoutRoom(
-      editor.worldLayout, 0U, cr::CreativeWorldLayoutRoomSplitAxis::X, 4));
-  static_cast<void>(app::mergeCreativeEditorWorldLayoutRooms(
-      editor.worldLayout, 0U, 1U));
-  static_cast<void>(app::confirmCreativeEditorWorldLayout(editor.worldLayout,
-                                                          live));
-  const cr::CreativeWorldLayoutRoomGraph graph =
-      cr::buildCreativeWorldLayoutRoomGraph(editor.worldLayout.source);
-  const std::size_t northEdge = northEdgeIndex(graph, 0U);
-  const std::uint64_t historyBefore = cr::creativeUndoDepth(live.history);
-
-  app::CreativeDesktopCommandFrame frame;
-  frame.push(
-      app::CreativeDesktopCommandId::WorldLayoutSetRoomEdgeSettings,
-      app::CreativeDesktopWorldLayoutRoomEdgeSettingsPayload{
-          {northEdge, cr::CreativeWorldLayoutRoomEdgeAnchor::Start, 10U,
-           0.5}});
-  const app::CreativeDesktopCommandContext context{live, editor, {}};
-  const app::CreativeDesktopCommandResult result =
-      app::dispatchCreativeDesktopCommands(frame, context);
-
-  return expect(result.accepted && result.changed &&
-                    result.worldLayoutChanged && result.sceneChanged,
-                "desktop wall settings dispatch through synchronized live edit") &&
-         expect(editor.worldLayout.source.rooms[0].footprint.maximum.x == 10 &&
-                    editor.worldLayout.generatedRevision ==
-                        editor.worldLayout.revision &&
-                    cr::creativeUndoDepth(live.history) == historyBefore + 1U,
-                "wall settings refresh the document with one history entry");
-}
-
 bool desktopDispatcherSplitsAndMergesCanonicalWalls() {
   cr::CreativeAppState live = appState();
   app::CreativeEditorState editor;
@@ -796,7 +756,6 @@ int main() {
                   desktopDispatcherAppliesSplitAndBoundaryDragToTheDocument() &&
                   desktopDispatcherAppliesCornerDragToTheDocument() &&
                   roomMetadataAndEdgeSettingsAreSingleSourceEdits() &&
-                  desktopDispatcherAppliesExactWallDimensionsToTheDocument() &&
                   desktopDispatcherSplitsAndMergesCanonicalWalls() &&
                   desktopDispatcherPreviewsAndCommitsRoomMetadata() &&
                   desktopDispatcherPreviewsAndCommitsCanonicalWallSettings();

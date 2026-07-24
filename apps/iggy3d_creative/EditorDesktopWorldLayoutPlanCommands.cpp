@@ -73,25 +73,6 @@ bool dispatchCreativeDesktopWorldLayoutPlanCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
-    case CreativeDesktopCommandId::WorldLayoutSetRoomSettings: {
-      const auto* payload =
-          payloadAs<CreativeDesktopWorldLayoutRoomSettingsPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout room settings: payload mismatch";
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          setCreativeEditorWorldLayoutRoomSettings(
-              editor.worldLayout, payload->roomIndex, payload->settings);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
     case CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings: {
       const auto* payload =
           payloadAs<CreativeDesktopGeneratedRoomSettingsPayload>(command);
@@ -206,28 +187,6 @@ bool dispatchCreativeDesktopWorldLayoutPlanCommand(
                     payload->secondaryRoomIndex);
               },
               "desktop_world_layout_room_merge");
-      result.accepted = liveEdit.accepted;
-      result.changed = liveEdit.changed;
-      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
-      result.sceneChanged = liveEdit.sceneChanged;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutSetRoomEdgeSettings: {
-      const auto* payload =
-          payloadAs<CreativeDesktopWorldLayoutRoomEdgeSettingsPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout wall settings: payload mismatch";
-        break;
-      }
-      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
-          dispatchCreativeDesktopWorldLayoutImmediateEdit(
-              editor.worldLayout, activeAppState,
-              [&](CreativeEditorWorldLayoutState& target) {
-                return setCreativeEditorWorldLayoutRoomEdgeSettings(
-                    target, payload->request);
-              },
-              "desktop_world_layout_room_edge_settings");
       result.accepted = liveEdit.accepted;
       result.changed = liveEdit.changed;
       result.worldLayoutChanged = liveEdit.worldLayoutChanged;

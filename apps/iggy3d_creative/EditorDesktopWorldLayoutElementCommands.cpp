@@ -11,28 +11,6 @@ bool dispatchCreativeDesktopWorldLayoutElementCommand(
   creative::CreativeAppState& appState = context.appState;
   CreativeEditorState& editor = context.editor;
   switch (command.id) {
-    case CreativeDesktopCommandId::WorldLayoutSetVerticalConnectorSettings: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload>(
-          command);
-      if (payload == nullptr) {
-        result.message = "layout vertical connector settings: payload mismatch";
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          setCreativeEditorWorldLayoutVerticalConnectorSettings(
-              editor.worldLayout, payload->connectorIndex,
-              payload->settings,
-              appState.facade.document().gridSettings());
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
     case CreativeDesktopCommandId::
         WorldLayoutApplyGeneratedVerticalConnectorSettings: {
       const auto* payload = payloadAs<

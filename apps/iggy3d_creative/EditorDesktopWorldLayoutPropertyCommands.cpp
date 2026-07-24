@@ -183,57 +183,6 @@ bool dispatchCreativeDesktopWorldLayoutPropertyCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
-    case CreativeDesktopCommandId::WorldLayoutSetTerrainProfileSettings: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutTerrainProfileSettingsPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout terrain profile settings: payload mismatch";
-        break;
-      }
-      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
-              editor.worldLayout,
-              cr::CreativeWorldLayoutTable::TerrainProfile,
-              payload->profileIndex, payload->stableKey)) {
-        result.message = "layout terrain profile settings: stale target";
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          setCreativeEditorWorldLayoutTerrainProfileSettings(
-              editor.worldLayout, payload->profileIndex, payload->settings);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutSetTerrainPathSettings: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutTerrainPathSettingsPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout terrain path settings: payload mismatch";
-        break;
-      }
-      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
-              editor.worldLayout, cr::CreativeWorldLayoutTable::TerrainPath,
-              payload->pathIndex, payload->stableKey)) {
-        result.message = "layout terrain path settings: stale target";
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          setCreativeEditorWorldLayoutTerrainPathSettings(
-              editor.worldLayout, payload->pathIndex, payload->settings);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
     case CreativeDesktopCommandId::WorldLayoutSetObjectSettings: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutObjectSettingsPayload>(command);

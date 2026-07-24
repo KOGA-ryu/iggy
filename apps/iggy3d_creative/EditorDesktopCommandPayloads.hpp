@@ -262,20 +262,6 @@ struct CreativeDesktopGeneratedLevelSettingsPayload {
   CreativeEditorWorldLayoutLevelSettings settings;
 };
 
-struct CreativeDesktopWorldLayoutTerrainProfileSettingsPayload {
-  std::size_t profileIndex =
-      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-  std::string stableKey;
-  CreativeEditorWorldLayoutTerrainProfileSettings settings;
-};
-
-struct CreativeDesktopWorldLayoutTerrainPathSettingsPayload {
-  std::size_t pathIndex =
-      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-  std::string stableKey;
-  CreativeEditorWorldLayoutTerrainPathSettings settings;
-};
-
 struct CreativeDesktopWorldLayoutObjectSettingsPayload {
   std::size_t objectIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
@@ -371,11 +357,6 @@ struct CreativeDesktopWorldLayoutGesturePayload {
   CreativeEditorWorldLayoutPoint point;
 };
 
-struct CreativeDesktopWorldLayoutRoomSettingsPayload {
-  std::size_t roomIndex = iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-  CreativeEditorWorldLayoutRoomSettings settings;
-};
-
 struct CreativeDesktopGeneratedRoomSettingsPayload {
   iggy3d::creative::CreativeObjectId objectId =
       iggy3d::creative::kInvalidObjectId;
@@ -398,10 +379,6 @@ struct CreativeDesktopWorldLayoutRoomMergePayload {
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
   std::size_t secondaryRoomIndex =
       iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-};
-
-struct CreativeDesktopWorldLayoutRoomEdgeSettingsPayload {
-  iggy3d::creative::CreativeWorldLayoutRoomEdgeSettingsRequest request;
 };
 
 struct CreativeDesktopWorldLayoutWallSplitPayload {
@@ -436,12 +413,6 @@ struct CreativeDesktopWorldLayoutRoomCornerManipulationPayload {
       CreativeEditorWorldLayoutRoomCornerManipulationPhase::Begin;
   CreativeEditorWorldLayoutPoint point;
   double toleranceCells = 0.25;
-};
-
-struct CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload {
-  std::size_t connectorIndex =
-      iggy3d::creative::kInvalidCreativeWorldLayoutIndex;
-  CreativeEditorWorldLayoutVerticalConnectorSettings settings;
 };
 
 struct CreativeDesktopGeneratedVerticalConnectorSettingsPayload {
@@ -653,8 +624,6 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutRoofApertureManipulationPayload,
     CreativeDesktopWorldLayoutRoofManipulationPayload,
     CreativeDesktopGeneratedLevelSettingsPayload,
-    CreativeDesktopWorldLayoutTerrainProfileSettingsPayload,
-    CreativeDesktopWorldLayoutTerrainPathSettingsPayload,
     CreativeDesktopWorldLayoutObjectSettingsPayload,
     CreativeDesktopWorldLayoutBuildingManipulationPayload,
     CreativeDesktopWorldLayoutBuildingDuplicatePayload,
@@ -668,17 +637,14 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload,
     CreativeDesktopWorldLayoutPointPayload,
     CreativeDesktopWorldLayoutGesturePayload,
-    CreativeDesktopWorldLayoutRoomSettingsPayload,
     CreativeDesktopGeneratedRoomSettingsPayload,
     CreativeDesktopWorldLayoutRoomSplitPayload,
     CreativeDesktopWorldLayoutRoomMergePayload,
-    CreativeDesktopWorldLayoutRoomEdgeSettingsPayload,
     CreativeDesktopWorldLayoutWallSplitPayload,
     CreativeDesktopWorldLayoutWallMergePayload,
     CreativeDesktopWorldLayoutRoomManipulationPayload,
     CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload,
     CreativeDesktopWorldLayoutRoomCornerManipulationPayload,
-    CreativeDesktopWorldLayoutVerticalConnectorSettingsPayload,
     CreativeDesktopGeneratedVerticalConnectorSettingsPayload,
     CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload,
     CreativeDesktopWorldLayoutBoxSettingsPayload,
