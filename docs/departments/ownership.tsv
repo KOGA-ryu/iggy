@@ -1324,6 +1324,7 @@ tests/unit/creative_editor_terrain_stamp_library_tests.cpp	terrain-site
 tests/unit/creative_editor_terrain_tests.cpp	terrain-site
 tests/unit/creative_editor_tool_glyph_tests.cpp	editor-shell-ui
 tests/unit/creative_editor_toolbox_tests.cpp	editor-shell-ui
+tests/unit/creative_editor_world_layout_canvas_planner_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_level_operations_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_plan_view_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_room_operations_tests.cpp	building-layout
