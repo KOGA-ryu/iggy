@@ -71,7 +71,8 @@ describeCreativeWorldIntentPolicy(CreativeWorldIntentPolicy policy) noexcept;
 [[nodiscard]] CreativeInputActionId creativeWorldInputAction(
     CreativeWorldActionId action) noexcept;
 
-[[nodiscard]] CreativeWorldInputSample sampleCreativeWorldInput(
+[[nodiscard]] CreativeWorldActionFrame routeCreativeWorldActions(
+    CreativeWorldActionRouterState& state,
     const CreativeInputRouteResult& routedInput,
     bool enabled,
     std::int32_t hotbarWheelSteps) noexcept;

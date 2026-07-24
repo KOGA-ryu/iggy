@@ -472,26 +472,29 @@ bool worldActionsAreEdgeTriggered() {
   const cr::CreativeInputRouteResult firstRoute =
       cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame pressed =
-      cr::routeCreativeWorldActions(
-          state, cr::sampleCreativeWorldInput(firstRoute, true, -2));
+      cr::routeCreativeWorldActions(state, firstRoute, true, -2);
   const cr::CreativeInputRouteResult heldRoute =
       cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame held =
-      cr::routeCreativeWorldActions(
-          state, cr::sampleCreativeWorldInput(heldRoute, true, 0));
+      cr::routeCreativeWorldActions(state, heldRoute, true, 0);
   const cr::CreativeWorldActionFrame disabled =
-      cr::routeCreativeWorldActions(
-          state, cr::sampleCreativeWorldInput(heldRoute, false, 3));
+      cr::routeCreativeWorldActions(state, heldRoute, false, 3);
   const cr::CreativeWorldActionFrame disabledAgain =
-      cr::routeCreativeWorldActions(
-          state, cr::sampleCreativeWorldInput(heldRoute, false, 0));
+      cr::routeCreativeWorldActions(state, heldRoute, false, 0);
+  const cr::CreativeWorldActionFrame readmitted =
+      cr::routeCreativeWorldActions(state, heldRoute, true, 4);
   cr::setCreativeInputKey(inputFrame, cr::CreativeInputKey::MousePrimary,
                           false);
   const cr::CreativeInputRouteResult releasedRoute =
       cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
   const cr::CreativeWorldActionFrame released =
-      cr::routeCreativeWorldActions(
-          state, cr::sampleCreativeWorldInput(releasedRoute, true, 0));
+      cr::routeCreativeWorldActions(state, releasedRoute, true, 0);
+  cr::setCreativeInputKey(inputFrame, cr::CreativeInputKey::MousePrimary,
+                          true);
+  const cr::CreativeInputRouteResult freshRoute =
+      cr::routeCreativeInput(inputRouter, inputFrame, profile.bindingSpan());
+  const cr::CreativeWorldActionFrame fresh =
+      cr::routeCreativeWorldActions(state, freshRoute, true, 0);
 
   return expect(cr::creativeWorldActionDown(
                     pressed, cr::CreativeWorldActionId::Primary),
@@ -516,11 +519,26 @@ bool worldActionsAreEdgeTriggered() {
                         disabledAgain,
                         cr::CreativeWorldActionId::Primary),
                 "disabled sampling emits exactly one release and no wheel") &&
-         expect(!cr::creativeWorldActionReleased(
+         expect(cr::creativeWorldActionDown(
+                    readmitted, cr::CreativeWorldActionId::Primary) &&
+                    !cr::creativeWorldActionPressed(
+                        readmitted, cr::CreativeWorldActionId::Primary) &&
+                    !cr::creativeWorldActionReleased(
+                        readmitted, cr::CreativeWorldActionId::Primary) &&
+                    readmitted.hotbarWheelSteps == 4,
+                "readmission preserves held state without fabricating edges") &&
+         expect(!cr::creativeWorldActionDown(
                     released, cr::CreativeWorldActionId::Primary) &&
-                    !cr::creativeWorldActionDown(
+                    cr::creativeWorldActionReleased(
                         released, cr::CreativeWorldActionId::Primary),
-                "physical release after disabled sampling does not repeat");
+                "physical release after readmission emits one release") &&
+         expect(cr::creativeWorldActionDown(
+                    fresh, cr::CreativeWorldActionId::Primary) &&
+                    cr::creativeWorldActionPressed(
+                        fresh, cr::CreativeWorldActionId::Primary) &&
+                    !cr::creativeWorldActionReleased(
+                        fresh, cr::CreativeWorldActionId::Primary),
+                "fresh physical press after release is admitted");
 }
 
 bool worldActionIntentsArePolicyOwnedAndDisjoint() {
@@ -593,6 +611,17 @@ bool worldActionIntentsArePolicyOwnedAndDisjoint() {
       cr::resolveCreativeWorldIntents(
           manipulationSource, cr::CreativeWorldIntentPolicy::Manipulation);
 
+  cr::CreativeWorldActionFrame mixedDeviceHandoff;
+  mixedDeviceHandoff.down[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Accept)] = true;
+  mixedDeviceHandoff.pressed[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Accept)] = true;
+  mixedDeviceHandoff.released[static_cast<std::size_t>(
+      cr::CreativeWorldActionId::Secondary)] = true;
+  const cr::CreativeWorldIntentFrame handoff =
+      cr::resolveCreativeWorldIntents(
+          mixedDeviceHandoff, cr::CreativeWorldIntentPolicy::Placement);
+
   return expect(
              cr::creativeWorldIntentDown(
                  placement, cr::CreativeWorldIntentId::Positive) &&
@@ -608,6 +637,13 @@ bool worldActionIntentsArePolicyOwnedAndDisjoint() {
                     cr::creativeWorldIntentReleased(
                         manipulation, cr::CreativeWorldIntentId::Negative),
                 "manipulation separates commit, cancel, and alternate input") &&
+         expect(cr::creativeWorldIntentDown(
+                    handoff, cr::CreativeWorldIntentId::Positive) &&
+                    cr::creativeWorldIntentPressed(
+                        handoff, cr::CreativeWorldIntentId::Positive) &&
+                    !cr::creativeWorldIntentReleased(
+                        handoff, cr::CreativeWorldIntentId::Positive),
+                "mixed-device handoff cannot release an active intent") &&
          expect(cr::creativeWorldIntentInputAction(
                     cr::CreativeWorldIntentPolicy::Placement,
                     cr::CreativeWorldIntentId::Positive,

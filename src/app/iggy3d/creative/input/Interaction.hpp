@@ -27,11 +27,6 @@ enum class CreativeWorldActionId : std::uint8_t {
 inline constexpr std::size_t kCreativeWorldActionCount =
     static_cast<std::size_t>(CreativeWorldActionId::Count);
 
-struct CreativeWorldInputSample {
-  std::array<bool, kCreativeWorldActionCount> actionDown{};
-  std::int32_t hotbarWheelSteps = 0;
-};
-
 struct CreativeWorldActionRouterState {
   std::array<bool, kCreativeWorldActionCount> actionDown{};
 };
@@ -121,9 +116,6 @@ makeCreativeWorldStrokeRepeatRequest(
     CreativeMaterialRepeatState state,
     const CreativeMaterialRepeatRequest& request) noexcept;
 
-void setCreativeWorldAction(CreativeWorldInputSample& sample,
-                            CreativeWorldActionId action,
-                            bool down) noexcept;
 [[nodiscard]] bool creativeWorldActionDown(
     const CreativeWorldActionFrame& frame,
     CreativeWorldActionId action) noexcept;
@@ -133,9 +125,6 @@ void setCreativeWorldAction(CreativeWorldInputSample& sample,
 [[nodiscard]] bool creativeWorldActionReleased(
     const CreativeWorldActionFrame& frame,
     CreativeWorldActionId action) noexcept;
-[[nodiscard]] CreativeWorldActionFrame routeCreativeWorldActions(
-    CreativeWorldActionRouterState& state,
-    const CreativeWorldInputSample& sample) noexcept;
 
 enum class CreativeHeldItemKind : std::uint8_t {
   Material,

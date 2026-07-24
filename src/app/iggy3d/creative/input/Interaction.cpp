@@ -24,15 +24,6 @@ namespace {
 
 }  // namespace
 
-void setCreativeWorldAction(CreativeWorldInputSample& sample,
-                            CreativeWorldActionId action,
-                            bool down) noexcept {
-  const std::size_t index = actionIndex(action);
-  if (index < sample.actionDown.size()) {
-    sample.actionDown[index] = down;
-  }
-}
-
 bool creativeWorldActionDown(const CreativeWorldActionFrame& frame,
                              CreativeWorldActionId action) noexcept {
   const std::size_t index = actionIndex(action);
@@ -49,20 +40,6 @@ bool creativeWorldActionReleased(const CreativeWorldActionFrame& frame,
                                  CreativeWorldActionId action) noexcept {
   const std::size_t index = actionIndex(action);
   return index < frame.released.size() && frame.released[index];
-}
-
-CreativeWorldActionFrame routeCreativeWorldActions(
-    CreativeWorldActionRouterState& state,
-    const CreativeWorldInputSample& sample) noexcept {
-  CreativeWorldActionFrame frame;
-  frame.hotbarWheelSteps = sample.hotbarWheelSteps;
-  for (std::size_t index = 0; index < kCreativeWorldActionCount; ++index) {
-    frame.down[index] = sample.actionDown[index];
-    frame.pressed[index] = sample.actionDown[index] && !state.actionDown[index];
-    frame.released[index] = !sample.actionDown[index] && state.actionDown[index];
-  }
-  state.actionDown = sample.actionDown;
-  return frame;
 }
 
 std::string_view toString(CreativeWorldActionId action) noexcept {

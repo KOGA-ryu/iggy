@@ -119,6 +119,7 @@ CreativeWorldIntentFrame resolveCreativeWorldIntents(
     frame.pressed[index] =
         bindingMatches(actions, binding, creativeWorldActionPressed);
     frame.released[index] =
+        !frame.down[index] &&
         bindingMatches(actions, binding, creativeWorldActionReleased);
   }
   return frame;
@@ -174,24 +175,27 @@ CreativeInputActionId creativeWorldInputAction(
                                            : CreativeInputActionId::Count;
 }
 
-CreativeWorldInputSample sampleCreativeWorldInput(
+CreativeWorldActionFrame routeCreativeWorldActions(
+    CreativeWorldActionRouterState& state,
     const CreativeInputRouteResult& routedInput,
     bool enabled,
     std::int32_t hotbarWheelSteps) noexcept {
-  CreativeWorldInputSample sample;
-  if (!enabled) {
-    return sample;
-  }
+  CreativeWorldActionFrame frame;
+  frame.hotbarWheelSteps = enabled ? hotbarWheelSteps : 0;
   for (std::size_t index = 0U; index < kCreativeWorldActionCount; ++index) {
     const CreativeWorldActionId worldAction =
         static_cast<CreativeWorldActionId>(index);
-    setCreativeWorldAction(
-        sample, worldAction,
-        creativeInputActionDown(routedInput,
-                                creativeWorldInputAction(worldAction)));
+    const CreativeInputActionId inputAction =
+        creativeWorldInputAction(worldAction);
+    const bool down =
+        enabled && creativeInputActionDown(routedInput, inputAction);
+    frame.down[index] = down;
+    frame.pressed[index] =
+        enabled && creativeInputActionPressed(routedInput, inputAction);
+    frame.released[index] = !down && state.actionDown[index];
   }
-  sample.hotbarWheelSteps = hotbarWheelSteps;
-  return sample;
+  state.actionDown = frame.down;
+  return frame;
 }
 
 }  // namespace iggy3d::creative

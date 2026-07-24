@@ -485,12 +485,10 @@ CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
                                    inputContext == creative::
                                                        CreativeInputContext::
                                                            EditorViewport);
-  const creative::CreativeWorldInputSample worldInput =
-      creative::sampleCreativeWorldInput(
-          result.routedInput, !captureMode && result.windowFocused,
-          viewportDollyRequested ? 0 : wheelSteps);
   result.worldActions = creative::routeCreativeWorldActions(
-      editor.interaction.actionRouter, worldInput);
+      editor.interaction.actionRouter, result.routedInput,
+      !captureMode && result.windowFocused,
+      viewportDollyRequested ? 0 : wheelSteps);
   const CreativeEditorNavigationAdmission navigation =
       admitCreativeEditorNavigation(
           inputContext,
