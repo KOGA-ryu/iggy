@@ -129,6 +129,18 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
   static constexpr std::array kAdmissionReasonOwners{
       std::string_view{
           "src/app/iggy3d/creative/tools/SelectionResolution.cpp"},
+      std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionOutcome.cpp"},
+  };
+  static constexpr std::array kOutcomeUseOwners{
+      std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionOutcome.cpp"},
+      std::string_view{
+          "apps/iggy3d_creative/EditorDesktopObjectCommands.cpp"},
+  };
+  static constexpr std::array kOutcomePresentationOwner{
+      std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionOutcome.cpp"},
   };
   const std::array rules{
       SourceOwnershipRule{"resolveCreativeSemanticObjectAction(",
@@ -147,6 +159,25 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
       SourceOwnershipRule{
           "creative_editor_object_action_selection_locked",
           kAdmissionReasonOwners},
+      SourceOwnershipRule{"formatCreativeEditorObjectActionOutcome(",
+                          kOutcomeUseOwners},
+      SourceOwnershipRule{"\"duplicated selection\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"nothing to duplicate\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"deleted selection\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"deleted objects\"", kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"renamed object\"", kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"visibility updated\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"lock updated\"", kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"transform set\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"transform unchanged\"",
+                          kOutcomePresentationOwner},
+      SourceOwnershipRule{"\"transform set; adopt 3D edit\"",
+                          kOutcomePresentationOwner},
   };
   const std::vector<fs::path> sources = creativeProductionSources();
   bool clean = expect(!sources.empty(),

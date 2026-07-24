@@ -499,10 +499,27 @@ bool deleteAndDuplicateHitTheKernels() {
   const app::CreativeDesktopCommandResult del =
       dispatchOne(app::CreativeDesktopCommandId::DeleteSelection, context);
 
-  return expect(dup.accepted && dup.changed && grew,
+  return expect(
+             dup.accepted && dup.changed && grew &&
+                 dup.objectAction.action ==
+                     cr::CreativeSemanticObjectAction::Duplicate &&
+                 dup.objectAction.target ==
+                     app::CreativeEditorObjectActionTarget::Selection &&
+                 dup.objectAction.status ==
+                     app::CreativeEditorObjectActionOutcomeStatus::Applied &&
+                 app::creativeEditorObjectActionOutcomeValid(
+                     dup.objectAction),
                 "duplicate adds one object via the kernel") &&
          expect(del.accepted && del.changed &&
-                    appState.facade.document().objectCount() == before,
+                    appState.facade.document().objectCount() == before &&
+                    del.objectAction.action ==
+                        cr::CreativeSemanticObjectAction::Delete &&
+                    del.objectAction.target ==
+                        app::CreativeEditorObjectActionTarget::Selection &&
+                    del.objectAction.status ==
+                        app::CreativeEditorObjectActionOutcomeStatus::Applied &&
+                    app::creativeEditorObjectActionOutcomeValid(
+                        del.objectAction),
                 "delete removes the duplicated object via the kernel");
 }
 
@@ -1833,11 +1850,19 @@ bool renameObjectCommandChangesNameWithHistory() {
       app::CreativeDesktopCommandId::RenameObject, context,
       app::CreativeDesktopRenamePayload{a, ""});
 
-  return expect(renamed.accepted && renamed.changed && nameOk,
+  return expect(
+             renamed.accepted && renamed.changed && nameOk &&
+                 renamed.objectAction.status ==
+                     app::CreativeEditorObjectActionOutcomeStatus::Applied &&
+                 renamed.objectAction.action ==
+                     cr::CreativeSemanticObjectAction::Rename,
                 "RenameObject sets the object name") &&
          expect(cr::creativeUndoDepth(appState.history) == 1U,
                 "rename records exactly one undo step") &&
-         expect(!empty.accepted,
+         expect(!empty.accepted &&
+                    empty.objectAction.status ==
+                        app::CreativeEditorObjectActionOutcomeStatus::
+                            InvalidRequest,
                 "rename with an empty name is rejected");
 }
 
@@ -1873,8 +1898,20 @@ bool visibilityAndLockCommandsSetAbsoluteState() {
   const bool lockedOk =
       locked.accepted && locked.changed && la != nullptr && la->locked;
 
-  return expect(hiddenOk, "SetObjectsVisible hides both listed objects") &&
-         expect(lockedOk, "SetObjectsLocked locks the current selection") &&
+  return expect(
+             hiddenOk &&
+                 hidden.objectAction.status ==
+                     app::CreativeEditorObjectActionOutcomeStatus::Applied &&
+                 hidden.objectAction.action ==
+                     cr::CreativeSemanticObjectAction::SetVisible,
+             "SetObjectsVisible hides both listed objects") &&
+         expect(
+             lockedOk &&
+                 locked.objectAction.status ==
+                     app::CreativeEditorObjectActionOutcomeStatus::Applied &&
+                 locked.objectAction.action ==
+                     cr::CreativeSemanticObjectAction::SetLocked,
+             "SetObjectsLocked locks the current selection") &&
          expect(cr::creativeUndoDepth(appState.history) == 2U,
                 "visibility + lock each record one undo step");
 }
@@ -3037,13 +3074,26 @@ bool mismatchedPayloadsAreNoOpFailures() {
                         "map regeneration: payload mismatch",
                 "map regeneration rejects a mismatched payload") &&
          expect(!badDelete.accepted &&
-                    badDelete.message == "delete objects: payload mismatch",
+                    badDelete.message == "delete objects: payload mismatch" &&
+                    badDelete.objectAction.status ==
+                        app::CreativeEditorObjectActionOutcomeStatus::
+                            PayloadMismatch &&
+                    badDelete.objectAction.action ==
+                        cr::CreativeSemanticObjectAction::Delete &&
+                    app::creativeEditorObjectActionOutcomeValid(
+                        badDelete.objectAction),
                 "DeleteObjects with the wrong payload is a no-op failure") &&
          expect(!badRename.accepted &&
-                    badRename.message == "rename: payload mismatch",
+                    badRename.message == "rename: payload mismatch" &&
+                    badRename.objectAction.status ==
+                        app::CreativeEditorObjectActionOutcomeStatus::
+                            PayloadMismatch,
                 "RenameObject with no payload is a no-op failure") &&
          expect(!badTransform.accepted &&
-                    badTransform.message == "transform: payload mismatch",
+                    badTransform.message == "transform: payload mismatch" &&
+                    badTransform.objectAction.status ==
+                        app::CreativeEditorObjectActionOutcomeStatus::
+                            PayloadMismatch,
                 "SetObjectTransform with the wrong payload is a no-op failure") &&
          expect(!badLogic.accepted &&
                     badLogic.message == "set logic link: payload mismatch",
@@ -3480,8 +3530,15 @@ bool objectSelectionSynchronizesGeneratedSourcesAcrossViews() {
       editor.worldLayout.selection.index == 0U;
   const bool lockedGeneratedDeleteFailsBeforeMutation =
       !rejectedDelete.accepted && !rejectedDelete.changed &&
-      rejectedDelete.message ==
+      rejectedDelete.message == "selection is locked" &&
+      rejectedDelete.objectAction.action ==
+          cr::CreativeSemanticObjectAction::Delete &&
+      rejectedDelete.objectAction.status ==
+          app::CreativeEditorObjectActionOutcomeStatus::Rejected &&
+      rejectedDelete.objectAction.reasonCode ==
           "creative_editor_object_action_selection_locked" &&
+      app::creativeEditorObjectActionOutcomeValid(
+          rejectedDelete.objectAction) &&
       appState.facade.document().revision() ==
           documentRevisionBeforeRejectedDelete &&
       editor.worldLayout.revision ==

@@ -10,6 +10,7 @@
 
 #include <span>
 #include <string>
+#include <utility>
 
 namespace iggy3d_creative_app {
 
@@ -28,6 +29,18 @@ bool dispatchCreativeDesktopObjectCommand(
         editor.worldLayout, activeAppState.facade.document(),
         activeAppState.facade.selectionState());
   };
+  const auto applyObjectAction =
+      [&](CreativeEditorObjectActionOutcome outcome) {
+        result.objectAction = std::move(outcome);
+        result.accepted =
+            creativeEditorObjectActionOutcomeAccepted(result.objectAction);
+        result.changed =
+            creativeEditorObjectActionOutcomeChanged(result.objectAction);
+        result.affectedObjectCount =
+            result.objectAction.affectedObjectCount;
+        result.message =
+            formatCreativeEditorObjectActionOutcome(result.objectAction);
+      };
   switch (command.id) {
     case CreativeDesktopCommandId::DuplicateSelection: {
       const bool previewWasActive =
@@ -37,17 +50,17 @@ bool dispatchCreativeDesktopObjectCommand(
               activeAppState, activeAppState.history,
               creative::CreativeDuplicateCommandRequest{}, "desktop_duplicate",
               &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::Duplicate,
+          CreativeEditorObjectActionTarget::Selection, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       result.worldLayoutChanged = receipt.worldLayoutSourceDuplicated;
       result.sceneChanged =
           receipt.worldLayoutSourceDuplicated && previewWasActive;
-      result.affectedObjectCount = receipt.affectedObjectCount;
       if (receipt.accepted && !receipt.worldLayoutSourceDuplicated) {
         static_cast<void>(synchronizeSelection());
       }
-      result.message = receipt.changed ? "duplicated selection"
-                                       : "nothing to duplicate";
       break;
     }
     case CreativeDesktopCommandId::DeleteSelection: {
@@ -57,16 +70,16 @@ bool dispatchCreativeDesktopObjectCommand(
           deleteCreativeEditorSelectionWithUndo(
               activeAppState, "desktop_delete", &activeAppState.history,
               &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::Delete,
+          CreativeEditorObjectActionTarget::Selection, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
       result.sceneChanged = receipt.worldLayoutSourceDeleted && previewWasActive;
       if (receipt.accepted) {
         static_cast<void>(synchronizeSelection());
       }
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.changed ? "deleted selection"
-                                       : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SelectObjects: {
@@ -227,7 +240,11 @@ bool dispatchCreativeDesktopObjectCommand(
     case CreativeDesktopCommandId::DeleteObjects: {
       const auto* payload = payloadAs<CreativeDesktopDeletePayload>(command);
       if (payload == nullptr) {
-        result.message = "delete objects: payload mismatch";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::Delete,
+            CreativeEditorObjectActionTarget::Objects,
+            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
+            "creative_desktop_delete_objects_payload_mismatch"));
         break;
       }
       const bool previewWasActive =
@@ -236,28 +253,36 @@ bool dispatchCreativeDesktopObjectCommand(
           deleteCreativeEditorObjectsWithUndo(
               activeAppState, payload->objectIds, "desktop_delete_objects",
               &activeAppState.history, &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::Delete,
+          CreativeEditorObjectActionTarget::Objects, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       result.worldLayoutChanged = receipt.worldLayoutSourceDeleted;
       result.sceneChanged =
           receipt.worldLayoutSourceDeleted && previewWasActive;
       if (receipt.accepted) {
         static_cast<void>(synchronizeSelection());
       }
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message =
-          receipt.changed ? "deleted objects" : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::RenameObject: {
       const auto* payload = payloadAs<CreativeDesktopRenamePayload>(command);
       if (payload == nullptr) {
-        result.message = "rename: payload mismatch";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::Rename,
+            CreativeEditorObjectActionTarget::Object,
+            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
+            "creative_desktop_rename_payload_mismatch"));
         break;
       }
       if (payload->objectId == creative::kInvalidObjectId ||
           payload->name.empty()) {
-        result.message = "rename: invalid request";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::Rename,
+            CreativeEditorObjectActionTarget::Object,
+            CreativeEditorObjectActionOutcomeStatus::InvalidRequest,
+            "creative_desktop_rename_invalid_request"));
         break;
       }
       const bool previewWasActive =
@@ -266,20 +291,24 @@ bool dispatchCreativeDesktopObjectCommand(
           renameCreativeEditorObjectWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
               payload->name, "desktop_rename", &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::Rename,
+          CreativeEditorObjectActionTarget::Object, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       result.worldLayoutChanged = receipt.worldLayoutSourceChanged;
       result.sceneChanged =
           receipt.worldLayoutSourceChanged && previewWasActive;
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message =
-          receipt.accepted ? "renamed object" : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetObjectsVisible: {
       const auto* payload = payloadAs<CreativeDesktopObjectFlagPayload>(command);
       if (payload == nullptr) {
-        result.message = "visibility: payload mismatch";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::SetVisible,
+            CreativeEditorObjectActionTarget::Objects,
+            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
+            "creative_desktop_visibility_payload_mismatch"));
         break;
       }
       const bool previewWasActive =
@@ -288,43 +317,56 @@ bool dispatchCreativeDesktopObjectCommand(
           setCreativeEditorObjectsVisibleWithUndo(
               activeAppState, activeAppState.history, payload->objectIds,
               payload->value, "desktop_set_visible", &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::SetVisible,
+          CreativeEditorObjectActionTarget::Objects, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       result.worldLayoutChanged = receipt.worldLayoutSourceChanged;
       result.sceneChanged =
           receipt.worldLayoutSourceChanged && previewWasActive;
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.changed ? "visibility updated"
-                                       : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetObjectsLocked: {
       const auto* payload = payloadAs<CreativeDesktopObjectFlagPayload>(command);
       if (payload == nullptr) {
-        result.message = "lock: payload mismatch";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::SetLocked,
+            CreativeEditorObjectActionTarget::Objects,
+            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
+            "creative_desktop_lock_payload_mismatch"));
         break;
       }
       const CreativeEditorSemanticEditReceipt receipt =
           setCreativeEditorObjectsLockedWithUndo(
               activeAppState, activeAppState.history, payload->objectIds,
               payload->value, "desktop_set_locked", &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.changed ? "lock updated" : receipt.reasonCode;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::SetLocked,
+          CreativeEditorObjectActionTarget::Objects, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode));
       break;
     }
     case CreativeDesktopCommandId::SetObjectTransform: {
       const auto* payload = payloadAs<CreativeDesktopTransformPayload>(command);
       if (payload == nullptr) {
-        result.message = "transform: payload mismatch";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::SetTransform,
+            CreativeEditorObjectActionTarget::Object,
+            CreativeEditorObjectActionOutcomeStatus::PayloadMismatch,
+            "creative_desktop_transform_payload_mismatch"));
         break;
       }
       const creative::CreativeObject* object =
           activeAppState.facade.findObject(payload->objectId);
       if (object != nullptr &&
           creative::creativeObjectIsHierarchyContainer(object->kind)) {
-        result.message = "transform complete hierarchy through Transform Selection";
+        applyObjectAction(rejectCreativeEditorObjectAction(
+            creative::CreativeSemanticObjectAction::SetTransform,
+            CreativeEditorObjectActionTarget::Object,
+            CreativeEditorObjectActionOutcomeStatus::InvalidRequest,
+            "creative_editor_transform_container_requires_selection_transform"));
         break;
       }
       const CreativeEditorSemanticEditReceipt receipt =
@@ -333,15 +375,11 @@ bool dispatchCreativeDesktopObjectCommand(
               payload->transform, payload->setPosition, payload->setRotation,
               payload->setScale, "desktop_set_transform",
               &editor.worldLayout);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.affectedObjectCount = receipt.affectedObjectCount;
-      result.message = receipt.accepted
-                           ? (receipt.requiresAdoption
-                                  ? "transform set; adopt 3D edit"
-                                  : receipt.changed ? "transform set"
-                                              : "transform unchanged")
-                           : receipt.reasonCode;
+      applyObjectAction(makeCreativeEditorObjectActionOutcome(
+          creative::CreativeSemanticObjectAction::SetTransform,
+          CreativeEditorObjectActionTarget::Object, receipt.accepted,
+          receipt.changed, receipt.affectedObjectCount,
+          receipt.reasonCode, receipt.requiresAdoption));
       break;
     }
     case CreativeDesktopCommandId::SetGroupPivot: {

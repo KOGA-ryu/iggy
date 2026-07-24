@@ -7,6 +7,7 @@
 #include <string>
 
 #include "EditorDesktopCommandPayloads.hpp"
+#include "EditorObjectActionOutcome.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 
 namespace iggy3d {
@@ -200,6 +201,7 @@ struct CreativeDesktopCommandFrame {
 // and asserted by the headless command tests.
 struct CreativeDesktopCommandResult {
   CreativeDesktopCommandId lastCommand = CreativeDesktopCommandId::None;
+  CreativeEditorObjectActionOutcome objectAction;
   bool accepted = false;
   bool changed = false;
   bool documentReplaced = false;

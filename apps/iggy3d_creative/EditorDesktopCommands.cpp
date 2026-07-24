@@ -66,6 +66,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
   creative::CreativeAppState& appState = context.appState;
   CreativeEditorState& editor = context.editor;
   result.lastCommand = command.id;
+  result.objectAction = {};
   result.accepted = false;
   result.changed = false;
   result.documentReplaced = false;

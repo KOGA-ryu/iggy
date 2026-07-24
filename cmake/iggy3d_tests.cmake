@@ -501,6 +501,19 @@ iggy3d_add_unit_test(creative_object_action_boundary_tests
 set_tests_properties(creative_object_action_boundary_tests PROPERTIES
   LABELS "unit;app;creative;editor;action;admission;boundary;iggy3d")
 
+add_executable(creative_object_action_outcome_tests
+  tests/unit/creative_object_action_outcome_tests.cpp)
+target_link_libraries(creative_object_action_outcome_tests PRIVATE
+  iggy3d_creative_app)
+target_include_directories(creative_object_action_outcome_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+iggy3d_apply_warnings(creative_object_action_outcome_tests)
+add_test(NAME creative_object_action_outcome_tests
+  COMMAND "$<TARGET_FILE:creative_object_action_outcome_tests>")
+set_tests_properties(creative_object_action_outcome_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;action;outcome;presentation;iggy3d")
+
 add_executable(creative_editor_action_hints_tests
   tests/unit/creative_editor_action_hints_tests.cpp)
 target_link_libraries(creative_editor_action_hints_tests PRIVATE
