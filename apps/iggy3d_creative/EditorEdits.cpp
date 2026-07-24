@@ -213,11 +213,12 @@ applySemanticDocumentObjectMutationWithUndo(
     std::string_view source,
     CreativeEditorWorldLayoutState* worldLayout) {
   CreativeEditorSemanticEditReceipt outcome;
-  const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
-      appState, objectId, worldLayout,
-      creative::CreativeSemanticObjectAction::StructuralMutation);
-  if (!creative::creativeSemanticActionUsesDocumentMutation(action.policy)) {
-    outcome.reasonCode = std::string(action.policy.reasonCode);
+  const creative::CreativeStructuralMutationAdmission admission =
+      creative::resolveCreativeStructuralMutationAdmission(
+          appState.facade.document(), objectId,
+          worldLayout != nullptr ? &worldLayout->source : nullptr);
+  if (!admission.allowed) {
+    outcome.reasonCode = std::string(admission.reasonCode);
     return outcome;
   }
 
@@ -886,10 +887,11 @@ reattachCreativeEditorObjectWithUndo(
       document.revision() != plan.documentRevision) {
     receipt = applyCreativeEditorObjectReattachment(appState.facade, plan);
   } else {
-    const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
-        appState, plan.sourceObjectId, worldLayout,
-        creative::CreativeSemanticObjectAction::StructuralMutation);
-    if (!creative::creativeSemanticActionUsesDocumentMutation(action.policy)) {
+    const creative::CreativeStructuralMutationAdmission admission =
+        creative::resolveCreativeStructuralMutationAdmission(
+            document, plan.sourceObjectId,
+            worldLayout != nullptr ? &worldLayout->source : nullptr);
+    if (!admission.allowed) {
       receipt.status =
           CreativeEditorObjectReattachmentStatus::SourceOwned;
       receipt.sourceObjectId = plan.sourceObjectId;

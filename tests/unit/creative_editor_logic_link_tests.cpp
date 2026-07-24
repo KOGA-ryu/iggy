@@ -160,6 +160,15 @@ bool generatedLogicEndpointsRejectBeforeHistory() {
       app::removeCreativeEditorLogicLink(
           appState, state, authoredSource.objectId, worldTarget.objectId,
           "generated_logic_world_remove");
+  constexpr cr::CreativeObjectId kMissingObjectId = 9999U;
+  const app::CreativeEditorLogicLinkReceipt missingSourceSet =
+      app::setCreativeEditorLogicLink(
+          appState, state, kMissingObjectId, authoredTarget.objectId,
+          cr::CreativeLogicLinkAction::Toggle, "missing_logic_source_set");
+  const app::CreativeEditorLogicLinkReceipt missingTargetSet =
+      app::setCreativeEditorLogicLink(
+          appState, state, authoredSource.objectId, kMissingObjectId,
+          cr::CreativeLogicLinkAction::Toggle, "missing_logic_target_set");
 
   return expect(seed.accepted && patternSource.accepted &&
                     authoredSource.accepted && authoredTarget.accepted &&
@@ -183,6 +192,19 @@ bool generatedLogicEndpointsRejectBeforeHistory() {
                     worldRemove.reasonCode ==
                         "creative_semantic_action_world_layout_owned",
                 "World Layout logic target rejects set and remove") &&
+         expect(!missingSourceSet.accepted &&
+                    !missingSourceSet.changed &&
+                    missingSourceSet.status ==
+                        app::CreativeEditorLogicLinkStatus::InvalidSource &&
+                    missingSourceSet.reasonCode ==
+                        "creative_logic_link_source_missing" &&
+                    !missingTargetSet.accepted &&
+                    !missingTargetSet.changed &&
+                    missingTargetSet.status ==
+                        app::CreativeEditorLogicLinkStatus::InvalidTarget &&
+                    missingTargetSet.reasonCode ==
+                        "creative_logic_link_target_missing",
+                "missing endpoints retain domain validation receipts") &&
          expect(appState.facade.document().logicLinks().empty() &&
                     appState.facade.document().revision() == revisionBefore &&
                     cr::creativeUndoDepth(appState.history) == 0U,

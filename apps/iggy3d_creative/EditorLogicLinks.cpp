@@ -69,22 +69,6 @@ void applySelectedSource(cr::CreativeAppState& appState,
   return receipt;
 }
 
-[[nodiscard]] std::string_view structuralMutationRejectionReason(
-    const cr::CreativeDocument& document,
-    cr::CreativeObjectId objectId) noexcept {
-  const cr::CreativeSemanticSelectionResolution selection =
-      cr::resolveCreativeSemanticSelection(document, objectId);
-  if (!selection.accepted) {
-    return {};
-  }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      cr::resolveCreativeSemanticObjectAction(
-          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
-  return cr::creativeSemanticActionUsesDocumentMutation(policy)
-             ? std::string_view{}
-             : policy.reasonCode;
-}
-
 [[nodiscard]] CreativeEditorLogicLinkReceipt semanticMutationRejection(
     CreativeEditorLogicLinkState& state,
     cr::CreativeObjectId sourceObjectId,
@@ -204,17 +188,21 @@ CreativeEditorLogicLinkReceipt setCreativeEditorLogicLink(
     std::string_view source) {
   const cr::CreativeDocument& document = appState.facade.document();
   syncCreativeEditorLogicLinkState(state, document);
-  const std::string_view sourceRejection =
-      structuralMutationRejectionReason(document, sourceObjectId);
-  if (!sourceRejection.empty()) {
+  const cr::CreativeStructuralMutationAdmission sourceAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, sourceObjectId);
+  if (cr::creativeStructuralMutationOwnershipRejected(sourceAdmission)) {
     return semanticMutationRejection(
-        state, sourceObjectId, targetObjectId, action, true, sourceRejection);
+        state, sourceObjectId, targetObjectId, action, true,
+        sourceAdmission.reasonCode);
   }
-  const std::string_view targetRejection =
-      structuralMutationRejectionReason(document, targetObjectId);
-  if (!targetRejection.empty()) {
+  const cr::CreativeStructuralMutationAdmission targetAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, targetObjectId);
+  if (cr::creativeStructuralMutationOwnershipRejected(targetAdmission)) {
     return semanticMutationRejection(
-        state, sourceObjectId, targetObjectId, action, false, targetRejection);
+        state, sourceObjectId, targetObjectId, action, false,
+        targetAdmission.reasonCode);
   }
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);
@@ -239,17 +227,21 @@ CreativeEditorLogicLinkReceipt removeCreativeEditorLogicLink(
       document.findLogicLink(sourceObjectId, targetObjectId);
   const cr::CreativeLogicLinkAction action =
       existing != nullptr ? existing->action : state.action;
-  const std::string_view sourceRejection =
-      structuralMutationRejectionReason(document, sourceObjectId);
-  if (!sourceRejection.empty()) {
+  const cr::CreativeStructuralMutationAdmission sourceAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, sourceObjectId);
+  if (cr::creativeStructuralMutationOwnershipRejected(sourceAdmission)) {
     return semanticMutationRejection(
-        state, sourceObjectId, targetObjectId, action, true, sourceRejection);
+        state, sourceObjectId, targetObjectId, action, true,
+        sourceAdmission.reasonCode);
   }
-  const std::string_view targetRejection =
-      structuralMutationRejectionReason(document, targetObjectId);
-  if (!targetRejection.empty()) {
+  const cr::CreativeStructuralMutationAdmission targetAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, targetObjectId);
+  if (cr::creativeStructuralMutationOwnershipRejected(targetAdmission)) {
     return semanticMutationRejection(
-        state, sourceObjectId, targetObjectId, action, false, targetRejection);
+        state, sourceObjectId, targetObjectId, action, false,
+        targetAdmission.reasonCode);
   }
   StandaloneEditTransaction transaction =
       beginEditTransaction(appState.facade, source);

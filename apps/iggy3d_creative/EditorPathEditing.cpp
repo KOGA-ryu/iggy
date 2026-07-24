@@ -37,13 +37,12 @@ enum class PathPointScalarProperty : std::uint8_t {
          kPathPointEpsilonMeters;
 }
 
-[[nodiscard]] cr::CreativeSemanticObjectActionPolicy
-pathStructuralMutationPolicy(const cr::CreativeAppState& appState,
-                             cr::CreativeObjectId objectId) noexcept {
-  return cr::resolveCreativeSemanticObjectAction(
-      cr::resolveCreativeSemanticSelection(appState.facade.document(),
-                                           objectId),
-      cr::CreativeSemanticObjectAction::StructuralMutation);
+[[nodiscard]] cr::CreativeStructuralMutationAdmission
+pathStructuralMutationAdmission(
+    const cr::CreativeAppState& appState,
+    cr::CreativeObjectId objectId) noexcept {
+  return cr::resolveCreativeStructuralMutationAdmission(
+      appState.facade.document(), objectId);
 }
 
 [[nodiscard]] cr::CreativeDocumentMutationReceipt
@@ -175,12 +174,11 @@ movingPlatformPathPointAtPlacementAnchor(
     result.reasonCode = "creative_platform_path_edit_invalid_selection";
     return result;
   }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      pathStructuralMutationPolicy(appState, objectId);
-  if (!policy.allowed ||
-      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+  const cr::CreativeStructuralMutationAdmission admission =
+      pathStructuralMutationAdmission(appState, objectId);
+  if (!admission.allowed) {
     result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
-    result.reasonCode = policy.reasonCode;
+    result.reasonCode = admission.reasonCode;
     return result;
   }
 
@@ -485,13 +483,12 @@ void syncCreativeMovingPlatformPathEditState(
                                 state.objectId != objectId;
   state.documentId = documentId;
   state.objectId = objectId;
-  const cr::CreativeSemanticObjectActionPolicy policy =
+  const cr::CreativeStructuralMutationAdmission admission =
       objectId != cr::kInvalidObjectId
-          ? pathStructuralMutationPolicy(appState, objectId)
-          : cr::CreativeSemanticObjectActionPolicy{};
+          ? pathStructuralMutationAdmission(appState, objectId)
+          : cr::CreativeStructuralMutationAdmission{};
   state.available =
-      objectId != cr::kInvalidObjectId && policy.allowed &&
-      policy.route == cr::CreativeSemanticObjectActionRoute::Document;
+      objectId != cr::kInvalidObjectId && admission.allowed;
   const cr::CreativeObject* object =
       objectId != cr::kInvalidObjectId
           ? appState.facade.findObject(objectId)
@@ -511,7 +508,7 @@ void syncCreativeMovingPlatformPathEditState(
       state.reasonCode = "creative_platform_path_edit_ready";
     } else if (objectId != cr::kInvalidObjectId) {
       state.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
-      state.reasonCode = policy.reasonCode;
+      state.reasonCode = admission.reasonCode;
     } else {
       state.status = CreativeMovingPlatformPathEditStatus::Idle;
       state.reasonCode = "creative_platform_path_edit_idle";
@@ -726,12 +723,11 @@ setMovingPlatformPathPointScalarWithUndo(
                             : "creative_platform_segment_speed_invalid_selection";
     return result;
   }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      pathStructuralMutationPolicy(appState, objectId);
-  if (!policy.allowed ||
-      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+  const cr::CreativeStructuralMutationAdmission admission =
+      pathStructuralMutationAdmission(appState, objectId);
+  if (!admission.allowed) {
     result.status = CreativeMovingPlatformPathEditStatus::MutationRejected;
-    result.reasonCode = policy.reasonCode;
+    result.reasonCode = admission.reasonCode;
     return result;
   }
   result.pointCountBefore = object->pathPoints.size();
@@ -827,17 +823,16 @@ cr::CreativeDocumentMutationReceipt movePathObjectWithUndo(
             std::string(cr::toString(descriptor.shapeKind)).c_str());
     return {};
   }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      pathStructuralMutationPolicy(appState, objectId);
-  if (!policy.allowed ||
-      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+  const cr::CreativeStructuralMutationAdmission admission =
+      pathStructuralMutationAdmission(appState, objectId);
+  if (!admission.allowed) {
     SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
             "reason='%s'",
             std::string(source).c_str(),
             static_cast<unsigned long long>(objectId),
-            std::string(policy.reasonCode).c_str());
+            std::string(admission.reasonCode).c_str());
     return rejectPathStructuralMutation(appState, *beforeObject,
-                                        policy.reasonCode);
+                                        admission.reasonCode);
   }
 
   const std::vector<cr::CreativePathPoint> beforePoints =
@@ -915,17 +910,16 @@ cr::CreativeDocumentMutationReceipt movePathPointWithUndo(
             std::string(cr::toString(descriptor.shapeKind)).c_str());
     return {};
   }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      pathStructuralMutationPolicy(appState, objectId);
-  if (!policy.allowed ||
-      policy.route != cr::CreativeSemanticObjectActionRoute::Document) {
+  const cr::CreativeStructuralMutationAdmission admission =
+      pathStructuralMutationAdmission(appState, objectId);
+  if (!admission.allowed) {
     SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' "
             "objectId=%llu reason='%s'",
             std::string(source).c_str(),
             static_cast<unsigned long long>(objectId),
-            std::string(policy.reasonCode).c_str());
+            std::string(admission.reasonCode).c_str());
     return rejectPathStructuralMutation(appState, *beforeObject,
-                                        policy.reasonCode);
+                                        admission.reasonCode);
   }
   if (pointIndex >= beforeObject->pathPoints.size()) {
     SDL_Log("iggy3d_creative: PATH_HANDLE move skipped source='%s' objectId=%llu "

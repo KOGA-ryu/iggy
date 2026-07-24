@@ -25,12 +25,11 @@ namespace {
          kind == cr::CreativeObjectKind::Bridge;
 }
 
-[[nodiscard]] cr::CreativeSemanticObjectActionPolicy
-assetReplacementMutationPolicy(const cr::CreativeDocument& document,
-                               cr::CreativeObjectId objectId) noexcept {
-  return cr::resolveCreativeSemanticObjectAction(
-      cr::resolveCreativeSemanticSelection(document, objectId),
-      cr::CreativeSemanticObjectAction::StructuralMutation);
+[[nodiscard]] cr::CreativeStructuralMutationAdmission
+assetReplacementMutationAdmission(
+    const cr::CreativeDocument& document,
+    cr::CreativeObjectId objectId) noexcept {
+  return cr::resolveCreativeStructuralMutationAdmission(document, objectId);
 }
 
 void rejectPlan(CreativeAssetReplacementPlan& plan,
@@ -163,11 +162,11 @@ CreativeAssetReplacementPlan planCreativeAssetReplacement(
                  "creative_asset_replace_object_unsupported");
       return plan;
     }
-    const cr::CreativeSemanticObjectActionPolicy mutationPolicy =
-        assetReplacementMutationPolicy(document, objectId);
-    if (!cr::creativeSemanticActionUsesDocumentMutation(mutationPolicy)) {
+    const cr::CreativeStructuralMutationAdmission mutationAdmission =
+        assetReplacementMutationAdmission(document, objectId);
+    if (!mutationAdmission.allowed) {
       rejectPlan(plan, CreativeAssetReplacementStatus::SourceOwned,
-                 mutationPolicy.reasonCode);
+                 mutationAdmission.reasonCode);
       return plan;
     }
     if (cr::creativeObjectEffectivelyLocked(document, object->id)) {
@@ -303,11 +302,11 @@ CreativeAssetReplacementCommitReceipt commitCreativeEditorAssetReplacement(
     return receipt;
   }
   for (cr::CreativeObjectId objectId : state.plan.objectIds) {
-    const cr::CreativeSemanticObjectActionPolicy mutationPolicy =
-        assetReplacementMutationPolicy(live, objectId);
-    if (!cr::creativeSemanticActionUsesDocumentMutation(mutationPolicy)) {
+    const cr::CreativeStructuralMutationAdmission mutationAdmission =
+        assetReplacementMutationAdmission(live, objectId);
+    if (!mutationAdmission.allowed) {
       receipt.status = CreativeAssetReplacementStatus::SourceOwned;
-      receipt.reasonCode = mutationPolicy.reasonCode;
+      receipt.reasonCode = mutationAdmission.reasonCode;
       state.lastStatus = receipt.status;
       state.reasonCode = receipt.reasonCode;
       clearPreview(state);

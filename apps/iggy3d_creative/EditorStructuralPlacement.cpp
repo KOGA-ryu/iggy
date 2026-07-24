@@ -77,11 +77,9 @@ void rejectStructuralSpan(CreativeEditorState& editor,
 [[nodiscard]] bool structuralSpanMutationAllowed(
     const cr::CreativeDocument& document,
     cr::CreativeObjectId objectId) noexcept {
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      cr::resolveCreativeSemanticObjectAction(
-          cr::resolveCreativeSemanticSelection(document, objectId),
-          cr::CreativeSemanticObjectAction::StructuralMutation);
-  return cr::creativeSemanticActionUsesDocumentMutation(policy);
+  const cr::CreativeStructuralMutationAdmission admission =
+      cr::resolveCreativeStructuralMutationAdmission(document, objectId);
+  return admission.allowed;
 }
 
 [[nodiscard]] const cr::CreativeObject* selectedStructuralSpanObject(

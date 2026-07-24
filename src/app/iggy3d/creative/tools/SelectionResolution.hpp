@@ -56,6 +56,42 @@ struct CreativeSemanticObjectActionPolicy {
   std::string_view reasonCode = "creative_semantic_action_not_requested";
 };
 
+enum class CreativeStructuralMutationAdmissionStatus : std::uint8_t {
+  NotRequested,
+  InvalidSelection,
+  Ready,
+  OwnershipRejected,
+};
+
+// Owner-facing receipt for raw structural document edits. Invalid or missing
+// selections remain distinguishable from resolved semantic ownership
+// conflicts, allowing domain owners to preserve their established validation
+// receipts while still rejecting generated output before history begins.
+struct CreativeStructuralMutationAdmission {
+  bool requested = false;
+  bool selectionResolved = false;
+  bool allowed = false;
+  CreativeStructuralMutationAdmissionStatus status =
+      CreativeStructuralMutationAdmissionStatus::NotRequested;
+  CreativeSemanticSelectionStatus selectionStatus =
+      CreativeSemanticSelectionStatus::NotRequested;
+  CreativeSemanticObjectActionRoute route =
+      CreativeSemanticObjectActionRoute::Reject;
+  std::size_t requestedObjectCount = 0U;
+  std::size_t resolvedObjectCount = 0U;
+  CreativeObjectId primaryObjectId = kInvalidObjectId;
+  CreativeObjectId failedObjectId = kInvalidObjectId;
+  std::string_view reasonCode =
+      "creative_structural_mutation_not_requested";
+};
+
+[[nodiscard]] constexpr bool
+creativeStructuralMutationOwnershipRejected(
+    const CreativeStructuralMutationAdmission& admission) noexcept {
+  return admission.status ==
+         CreativeStructuralMutationAdmissionStatus::OwnershipRejected;
+}
+
 [[nodiscard]] constexpr bool creativeSemanticActionUsesDocumentMutation(
     const CreativeSemanticObjectActionPolicy& policy) noexcept {
   return policy.allowed &&
@@ -178,5 +214,20 @@ resolveCreativeSemanticObjectAction(
 resolveCreativeSemanticObjectAction(
     const CreativeSemanticSelectionSetResolution& selection,
     CreativeSemanticObjectAction action) noexcept;
+
+// Structural mutation owners admit only the exact raw Document route.
+// SemanticDocument is intentionally excluded because it requires a
+// recipe-aware owner rather than direct object mutation.
+[[nodiscard]] CreativeStructuralMutationAdmission
+resolveCreativeStructuralMutationAdmission(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    const CreativeWorldLayout* worldLayout = nullptr) noexcept;
+[[nodiscard]] CreativeStructuralMutationAdmission
+resolveCreativeStructuralMutationAdmission(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    CreativeObjectId primaryObjectId = kInvalidObjectId,
+    const CreativeWorldLayout* worldLayout = nullptr) noexcept;
 
 }  // namespace iggy3d::creative

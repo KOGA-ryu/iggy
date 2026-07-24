@@ -585,6 +585,158 @@ bool semanticActionPolicyRoutesEveryOwnerClass() {
                 "missing owner rejects even inspection");
 }
 
+bool structuralMutationAdmissionIsExplicitAndFailClosed() {
+  using AdmissionStatus =
+      cr::CreativeStructuralMutationAdmissionStatus;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Structural Mutation Admission");
+  const cr::CreativeObjectId authored =
+      addObject(document, "Authored Object");
+  const cr::CreativeObjectId patternSeed =
+      addObject(document, "Pattern Seed");
+  const cr::CreativeObjectId patternOutput =
+      addObject(document, "Pattern Output");
+  const cr::CreativeObjectId worldOutput = addObject(
+      document, "World Output",
+      {"creative_world_layout:structural_admission_fixture"});
+  cr::CreativePatternRecipeMutationRequest recipeRequest;
+  recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+  recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  recipeRequest.recipe.sourceObjectIds = {patternSeed};
+  recipeRequest.recipe.generatedObjectIds = {patternOutput};
+  const cr::CreativePatternRecipeMutationReceipt recipe =
+      document.applyPatternRecipeMutation(recipeRequest);
+  constexpr cr::CreativeObjectId missing = 9999U;
+
+  struct SingleCase {
+    cr::CreativeObjectId objectId = cr::kInvalidObjectId;
+    AdmissionStatus status = AdmissionStatus::NotRequested;
+    cr::CreativeSemanticSelectionStatus selectionStatus =
+        cr::CreativeSemanticSelectionStatus::NotRequested;
+    cr::CreativeSemanticObjectActionRoute route =
+        cr::CreativeSemanticObjectActionRoute::Reject;
+    bool selectionResolved = false;
+    bool allowed = false;
+    cr::CreativeObjectId failedObjectId = cr::kInvalidObjectId;
+    std::string_view reasonCode;
+  };
+  const std::array singleCases{
+      SingleCase{authored, AdmissionStatus::Ready,
+                 cr::CreativeSemanticSelectionStatus::Ready,
+                 cr::CreativeSemanticObjectActionRoute::Document, true, true,
+                 cr::kInvalidObjectId,
+                 "creative_semantic_action_document"},
+      SingleCase{patternOutput, AdmissionStatus::OwnershipRejected,
+                 cr::CreativeSemanticSelectionStatus::Ready,
+                 cr::CreativeSemanticObjectActionRoute::Reject, true, false,
+                 patternOutput,
+                 "creative_semantic_action_pattern_owned"},
+      SingleCase{worldOutput, AdmissionStatus::OwnershipRejected,
+                 cr::CreativeSemanticSelectionStatus::Ready,
+                 cr::CreativeSemanticObjectActionRoute::Reject, true, false,
+                 worldOutput,
+                 "creative_semantic_action_world_layout_owned"},
+      SingleCase{missing, AdmissionStatus::InvalidSelection,
+                 cr::CreativeSemanticSelectionStatus::MissingObject,
+                 cr::CreativeSemanticObjectActionRoute::Reject, false, false,
+                 missing, "creative_selection_object_missing"}};
+  bool ok = expect(recipe.accepted && recipe.changed,
+                   "structural admission fixture recipe is valid");
+  for (const SingleCase& testCase : singleCases) {
+    const cr::CreativeStructuralMutationAdmission admission =
+        cr::resolveCreativeStructuralMutationAdmission(
+            document, testCase.objectId);
+    ok = expect(admission.requested &&
+                    admission.requestedObjectCount == 1U &&
+                    admission.status == testCase.status &&
+                    admission.selectionStatus ==
+                        testCase.selectionStatus &&
+                    admission.route == testCase.route &&
+                    admission.selectionResolved ==
+                        testCase.selectionResolved &&
+                    admission.resolvedObjectCount ==
+                        (testCase.selectionResolved ? 1U : 0U) &&
+                    admission.primaryObjectId == testCase.objectId &&
+                    admission.allowed == testCase.allowed &&
+                    admission.failedObjectId ==
+                        testCase.failedObjectId &&
+                    admission.reasonCode == testCase.reasonCode &&
+                    cr::creativeStructuralMutationOwnershipRejected(
+                        admission) ==
+                        (testCase.status ==
+                         AdmissionStatus::OwnershipRejected),
+                "single-object structural admission matches its table row") &&
+         ok;
+  }
+
+  const std::array authoredSet{authored, patternSeed};
+  const cr::CreativeStructuralMutationAdmission authoredAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, authoredSet, patternSeed);
+  const std::array mixedSet{authored, patternOutput};
+  const cr::CreativeStructuralMutationAdmission mixedAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, mixedSet, authored);
+  const std::array missingSet{authored, missing};
+  const cr::CreativeStructuralMutationAdmission missingAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          document, missingSet, authored);
+  const std::array<cr::CreativeObjectId, 0U> emptySet{};
+  const cr::CreativeStructuralMutationAdmission emptyAdmission =
+      cr::resolveCreativeStructuralMutationAdmission(document, emptySet);
+
+  return expect(authoredAdmission.allowed &&
+                    authoredAdmission.selectionResolved &&
+                    authoredAdmission.status == AdmissionStatus::Ready &&
+                    authoredAdmission.selectionStatus ==
+                        cr::CreativeSemanticSelectionStatus::Ready &&
+                    authoredAdmission.route ==
+                        cr::CreativeSemanticObjectActionRoute::Document &&
+                    authoredAdmission.requestedObjectCount == 2U &&
+                    authoredAdmission.resolvedObjectCount == 2U &&
+                    authoredAdmission.primaryObjectId == patternSeed &&
+                    authoredAdmission.failedObjectId ==
+                        cr::kInvalidObjectId,
+                "authored set admits one raw document mutation") &&
+         expect(!mixedAdmission.allowed &&
+                    mixedAdmission.status ==
+                        AdmissionStatus::OwnershipRejected &&
+                    mixedAdmission.selectionStatus ==
+                        cr::CreativeSemanticSelectionStatus::Ready &&
+                    mixedAdmission.route ==
+                        cr::CreativeSemanticObjectActionRoute::Reject &&
+                    mixedAdmission.failedObjectId == patternOutput &&
+                    mixedAdmission.reasonCode ==
+                        "creative_semantic_action_mixed_ownership",
+                "mixed ownership identifies the first protected object") &&
+         expect(!missingAdmission.allowed &&
+                    !missingAdmission.selectionResolved &&
+                    missingAdmission.status ==
+                        AdmissionStatus::InvalidSelection &&
+                    missingAdmission.selectionStatus ==
+                        cr::CreativeSemanticSelectionStatus::MissingObject &&
+                    missingAdmission.route ==
+                        cr::CreativeSemanticObjectActionRoute::Reject &&
+                    missingAdmission.resolvedObjectCount == 1U &&
+                    missingAdmission.failedObjectId == missing &&
+                    missingAdmission.reasonCode ==
+                        "creative_selection_set_object_missing" &&
+                    !cr::creativeStructuralMutationOwnershipRejected(
+                        missingAdmission),
+                "missing set member remains a domain validation failure") &&
+         expect(!emptyAdmission.allowed &&
+                    !emptyAdmission.selectionResolved &&
+                    emptyAdmission.status ==
+                        AdmissionStatus::InvalidSelection &&
+                    emptyAdmission.requestedObjectCount == 0U &&
+                    emptyAdmission.failedObjectId ==
+                        cr::kInvalidObjectId &&
+                    emptyAdmission.reasonCode ==
+                        "creative_selection_set_empty",
+                "empty set is invalid rather than an ownership conflict") &&
+         ok;
+}
+
 bool orphanedGeneratedOutputFailsClosed() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Orphaned Generated Output");
@@ -645,6 +797,7 @@ int main() {
                   semanticResolutionPreservesNestedRecipeAncestry() &&
                   semanticSetResolutionFindsTheDeepestSharedOwner() &&
                   semanticActionPolicyRoutesEveryOwnerClass() &&
+                  structuralMutationAdmissionIsExplicitAndFailClosed() &&
                   orphanedGeneratedOutputFailsClosed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

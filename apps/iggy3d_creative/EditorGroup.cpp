@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,22 +39,6 @@ void selectOnly(cr::Facade& facade, cr::CreativeObjectId objectId) {
   return receipt;
 }
 
-[[nodiscard]] std::string_view structuralMutationRejectionReason(
-    const cr::CreativeDocument& document,
-    cr::CreativeObjectId objectId) noexcept {
-  const cr::CreativeSemanticSelectionResolution selection =
-      cr::resolveCreativeSemanticSelection(document, objectId);
-  if (!selection.accepted) {
-    return {};
-  }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      cr::resolveCreativeSemanticObjectAction(
-          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
-  return cr::creativeSemanticActionUsesDocumentMutation(policy)
-             ? std::string_view{}
-             : policy.reasonCode;
-}
-
 [[nodiscard]] std::vector<cr::CreativeObjectId> selectedObjectIds(
     const cr::CreativeSelectionState& selection) {
   std::vector<cr::CreativeObjectId> objectIds;
@@ -71,27 +56,6 @@ void selectOnly(cr::Facade& facade, cr::CreativeObjectId objectId) {
         selection.selectedTarget.value));
   }
   return objectIds;
-}
-
-[[nodiscard]] std::string_view selectionStructuralMutationRejectionReason(
-    const cr::CreativeDocument& document,
-    std::span<const cr::CreativeObjectId> objectIds,
-    cr::CreativeObjectId primaryObjectId) noexcept {
-  if (objectIds.empty()) {
-    return {};
-  }
-  const cr::CreativeSemanticSelectionSetResolution selection =
-      cr::resolveCreativeSemanticSelectionSet(document, objectIds,
-                                              primaryObjectId);
-  if (!selection.accepted) {
-    return {};
-  }
-  const cr::CreativeSemanticObjectActionPolicy policy =
-      cr::resolveCreativeSemanticObjectAction(
-          selection, cr::CreativeSemanticObjectAction::StructuralMutation);
-  return cr::creativeSemanticActionUsesDocumentMutation(policy)
-             ? std::string_view{}
-             : policy.reasonCode;
 }
 
 }  // namespace
@@ -319,13 +283,13 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
       }
     }
   }
-  const std::string_view semanticRejection =
-      selectionStructuralMutationRejectionReason(
+  const cr::CreativeStructuralMutationAdmission admission =
+      cr::resolveCreativeStructuralMutationAdmission(
           appState.facade.document(), semanticMutationIds,
           ungroupObjectId != cr::kInvalidObjectId
               ? ungroupObjectId
               : primary != nullptr ? primary->id : cr::kInvalidObjectId);
-  if (!semanticRejection.empty()) {
+  if (cr::creativeStructuralMutationOwnershipRejected(admission)) {
     cr::CreativeGroupCommandReceipt rejected;
     rejected.requested = true;
     rejected.kind = ungroupObjectId != cr::kInvalidObjectId
@@ -342,7 +306,7 @@ cr::CreativeGroupCommandReceipt applyCreativeEditorGroupCommandWithHistory(
     rejected.revisionBefore = appState.facade.document().revision();
     rejected.revisionAfter = rejected.revisionBefore;
     rejected.selectionObjectIds = selectedIds;
-    rejected.reasonCode = semanticRejection;
+    rejected.reasonCode = admission.reasonCode;
     return rejected;
   }
   std::optional<cr::CreativeAuthoringOperationRecord> prefabOperation;
@@ -405,17 +369,17 @@ cr::CreativeGroupPivotReceipt setCreativeEditorGroupPivotWithHistory(
     cr::CreativeObjectId groupObjectId,
     cr::CreativeVec3 pivot,
     std::string_view source) {
-  const std::string_view semanticRejection =
-      structuralMutationRejectionReason(appState.facade.document(),
-                                        groupObjectId);
-  if (!semanticRejection.empty()) {
+  const cr::CreativeStructuralMutationAdmission admission =
+      cr::resolveCreativeStructuralMutationAdmission(
+          appState.facade.document(), groupObjectId);
+  if (cr::creativeStructuralMutationOwnershipRejected(admission)) {
     cr::CreativeGroupPivotReceipt rejected;
     rejected.requested = true;
     rejected.status = cr::CreativeGroupPivotStatus::Rejected;
     rejected.groupObjectId = groupObjectId;
     rejected.revisionBefore = appState.facade.document().revision();
     rejected.revisionAfter = rejected.revisionBefore;
-    rejected.reasonCode = semanticRejection;
+    rejected.reasonCode = admission.reasonCode;
     return rejected;
   }
   cr::CreativeDocumentHistoryTransaction transaction =

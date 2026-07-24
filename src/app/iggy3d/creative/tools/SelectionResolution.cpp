@@ -493,4 +493,105 @@ CreativeSemanticObjectActionPolicy resolveCreativeSemanticObjectAction(
       owner, action, selection.commonWorldLayoutSource.table);
 }
 
+CreativeStructuralMutationAdmission
+resolveCreativeStructuralMutationAdmission(
+    const CreativeDocument& document,
+    CreativeObjectId objectId,
+    const CreativeWorldLayout* worldLayout) noexcept {
+  CreativeStructuralMutationAdmission admission;
+  admission.requested = true;
+  admission.requestedObjectCount = 1U;
+  admission.primaryObjectId = objectId;
+  const CreativeSemanticSelectionResolution selection =
+      resolveCreativeSemanticSelection(document, objectId, worldLayout);
+  admission.selectionStatus = selection.status;
+  if (!selection.accepted) {
+    admission.status =
+        CreativeStructuralMutationAdmissionStatus::InvalidSelection;
+    admission.failedObjectId = objectId;
+    admission.reasonCode = selection.reasonCode;
+    return admission;
+  }
+
+  admission.selectionResolved = true;
+  admission.resolvedObjectCount = 1U;
+  const CreativeSemanticObjectActionPolicy policy =
+      resolveCreativeSemanticObjectAction(
+          selection, CreativeSemanticObjectAction::StructuralMutation);
+  admission.route = policy.route;
+  admission.reasonCode = policy.reasonCode;
+  admission.allowed =
+      policy.allowed &&
+      policy.route == CreativeSemanticObjectActionRoute::Document;
+  admission.status =
+      admission.allowed
+          ? CreativeStructuralMutationAdmissionStatus::Ready
+          : CreativeStructuralMutationAdmissionStatus::OwnershipRejected;
+  admission.failedObjectId =
+      admission.allowed ? kInvalidObjectId : objectId;
+  return admission;
+}
+
+CreativeStructuralMutationAdmission
+resolveCreativeStructuralMutationAdmission(
+    const CreativeDocument& document,
+    std::span<const CreativeObjectId> objectIds,
+    CreativeObjectId primaryObjectId,
+    const CreativeWorldLayout* worldLayout) noexcept {
+  CreativeStructuralMutationAdmission admission;
+  admission.requested = true;
+  admission.requestedObjectCount = objectIds.size();
+  const CreativeSemanticSelectionSetResolution selection =
+      resolveCreativeSemanticSelectionSet(
+          document, objectIds, primaryObjectId, worldLayout);
+  admission.selectionStatus = selection.status;
+  admission.resolvedObjectCount = selection.resolvedCount;
+  admission.primaryObjectId = selection.primaryObjectId;
+  if (!selection.accepted || objectIds.empty()) {
+    admission.status =
+        CreativeStructuralMutationAdmissionStatus::InvalidSelection;
+    const auto missing = std::find_if(
+        objectIds.begin(), objectIds.end(),
+        [&](CreativeObjectId objectId) {
+          return document.findObject(objectId) == nullptr;
+        });
+    if (missing != objectIds.end()) {
+      admission.failedObjectId = *missing;
+    } else if (!objectIds.empty()) {
+      admission.failedObjectId = objectIds.front();
+    }
+    admission.reasonCode = selection.reasonCode;
+    return admission;
+  }
+
+  admission.selectionResolved = true;
+  const CreativeSemanticObjectActionPolicy policy =
+      resolveCreativeSemanticObjectAction(
+          selection, CreativeSemanticObjectAction::StructuralMutation);
+  admission.route = policy.route;
+  admission.reasonCode = policy.reasonCode;
+  admission.allowed =
+      policy.allowed &&
+      policy.route == CreativeSemanticObjectActionRoute::Document;
+  admission.status =
+      admission.allowed
+          ? CreativeStructuralMutationAdmissionStatus::Ready
+          : CreativeStructuralMutationAdmissionStatus::OwnershipRejected;
+  if (admission.allowed) {
+    return admission;
+  }
+
+  admission.failedObjectId = admission.primaryObjectId;
+  for (CreativeObjectId objectId : objectIds) {
+    const CreativeStructuralMutationAdmission objectAdmission =
+        resolveCreativeStructuralMutationAdmission(
+            document, objectId, worldLayout);
+    if (!objectAdmission.allowed) {
+      admission.failedObjectId = objectId;
+      break;
+    }
+  }
+  return admission;
+}
+
 }  // namespace iggy3d::creative
