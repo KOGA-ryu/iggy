@@ -13,6 +13,7 @@
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/creative/tools/ShapeBrush.hpp"
 #include "app/iggy3d/creative/tools/Volume.hpp"
 
@@ -118,13 +119,18 @@ void applySingleMaterialMutation(cr::CreativeAppState& appState,
         target.voxelHit ? target.voxelCell : cr::CreativeGridCoord3{};
     const cr::CreativeObjectId targetObjectId =
         target.voxelHit ? cr::kInvalidObjectId : target.objectId;
-    if (targetObjectId != cr::kInvalidObjectId &&
-        creativeEditorObjectRequiresSourceEdit(appState.facade.document(),
-                                               targetObjectId)) {
-      rejectMaterialStroke(
-          editor, target.objectKind,
-          CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
-      return;
+    if (targetObjectId != cr::kInvalidObjectId) {
+      const cr::CreativeSemanticObjectActionPolicy deletePolicy =
+          cr::resolveCreativeSemanticObjectAction(
+              cr::resolveCreativeSemanticSelection(
+                  appState.facade.document(), targetObjectId),
+              cr::CreativeSemanticObjectAction::Delete);
+      if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
+        rejectMaterialStroke(
+            editor, target.objectKind,
+            CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
+        return;
+      }
     }
     if (strokeVisited(stroke, kind, targetCell, targetObjectId)) {
       return;

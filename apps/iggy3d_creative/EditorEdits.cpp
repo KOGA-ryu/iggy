@@ -180,23 +180,6 @@ struct CreativeEditorResolvedObjectAction {
 
 }  // namespace
 
-bool creativeEditorObjectRequiresSourceEdit(
-    const creative::CreativeDocument& document,
-    creative::CreativeObjectId objectId) noexcept {
-  if (creative::findCreativePatternRecipeByGeneratedObject(
-          document.patternRecipeStore(), objectId) != nullptr) {
-    return false;
-  }
-  const creative::CreativeObject* object = document.findObject(objectId);
-  if (object == nullptr) {
-    return false;
-  }
-  return std::any_of(
-      object->tags.begin(), object->tags.end(), [](const std::string& tag) {
-        return tag.starts_with("creative_world_layout:");
-      });
-}
-
 void clearEditHistory(StandaloneEditHistory& history,
                       std::string_view source) {
   const std::uint64_t undoBefore = creative::creativeUndoDepth(history);

@@ -56,6 +56,14 @@ struct CreativeSemanticObjectActionPolicy {
   std::string_view reasonCode = "creative_semantic_action_not_requested";
 };
 
+[[nodiscard]] constexpr bool creativeSemanticActionUsesDocumentMutation(
+    const CreativeSemanticObjectActionPolicy& policy) noexcept {
+  return policy.allowed &&
+         (policy.route == CreativeSemanticObjectActionRoute::Document ||
+          policy.route ==
+              CreativeSemanticObjectActionRoute::SemanticDocument);
+}
+
 // One immutable interpretation of a raw document-object hit. Ownership is a
 // chain, not an either/or choice: a PatternRecipe output may retain underlying
 // World Layout provenance. primaryOwner names the nearest editable owner while
@@ -107,6 +115,11 @@ struct CreativeSemanticSelectionSetResolution {
     CreativeSemanticSelectionOwner owner) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeSemanticSelectionStatus status) noexcept;
+
+// Provenance ancestry is distinct from the nearest editable owner. Pattern
+// output can retain this tag while PatternRecipe remains its primary owner.
+[[nodiscard]] bool creativeObjectHasWorldLayoutProvenanceTag(
+    const CreativeObject& object) noexcept;
 
 // Hidden and locked objects still resolve: Outliner and Inspector must be able
 // to inspect, reveal, or unlock them. Pointer hit admission owns whether such an

@@ -22,6 +22,7 @@
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/spatial/SurfacePose.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -541,12 +542,18 @@ void applyScatterRemoval(cr::CreativeAppState& appState,
     }
     return;
   }
-  if (target.objectHit &&
-      creativeEditorObjectRequiresSourceEdit(appState.facade.document(),
-                                             target.objectId)) {
-    rejectScatter(editor, target.objectKind, {},
-                  CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
-    return;
+  if (target.objectHit) {
+    const cr::CreativeSemanticObjectActionPolicy deletePolicy =
+        cr::resolveCreativeSemanticObjectAction(
+            cr::resolveCreativeSemanticSelection(appState.facade.document(),
+                                                 target.objectId),
+            cr::CreativeSemanticObjectAction::Delete);
+    if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
+      rejectScatter(
+          editor, target.objectKind, {},
+          CreativeEditorPlacementRejectionReason::SemanticSourceOwned);
+      return;
+    }
   }
   if (!ensureScatterTransaction(appState, stroke,
                                 cr::CreativeWorldGestureKind::Remove)) {

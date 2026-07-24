@@ -494,11 +494,15 @@ bool semanticActionPolicyRoutesEveryOwnerClass() {
 
   return expect(policy(Owner::AuthoredObject, Action::Rename).allowed &&
                     policy(Owner::AuthoredObject, Action::Rename).route ==
-                        Route::Document,
+                        Route::Document &&
+                    cr::creativeSemanticActionUsesDocumentMutation(
+                        policy(Owner::AuthoredObject, Action::Delete)),
                 "authored edits route to the document") &&
          expect(policy(Owner::PatternRecipe, Action::Delete).allowed &&
                     policy(Owner::PatternRecipe, Action::Delete).route ==
                         Route::SemanticDocument &&
+                    cr::creativeSemanticActionUsesDocumentMutation(
+                        policy(Owner::PatternRecipe, Action::Delete)) &&
                     policy(Owner::PatternRecipe, Action::TransformSelection)
                             .route == Route::PatternRecipe,
                 "pattern delete and transform route through recipe semantics") &&
@@ -531,7 +535,10 @@ bool semanticActionPolicyRoutesEveryOwnerClass() {
                          .allowed &&
                     !policy(Owner::WorldLayoutSource,
                             Action::StructuralMutation, Table::Building)
-                         .allowed,
+                         .allowed &&
+                    !cr::creativeSemanticActionUsesDocumentMutation(
+                        policy(Owner::WorldLayoutSource, Action::Delete,
+                               Table::Building)),
                 "World Layout output rejects source-less mutations") &&
          expect(policy(Owner::WorldLayoutSource, Action::SetTransform,
                        Table::Object, 1U)

@@ -18,6 +18,7 @@
 #include "EditorState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/tools/AssetScatter.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace iggy3d_creative_app {
@@ -303,8 +304,12 @@ void applyRemoval(cr::CreativeAppState& appState,
     stroke.capacityReached = true;
     return;
   }
-  if (creativeEditorObjectRequiresSourceEdit(appState.facade.document(),
-                                             rootId)) {
+  const cr::CreativeSemanticObjectActionPolicy deletePolicy =
+      cr::resolveCreativeSemanticObjectAction(
+          cr::resolveCreativeSemanticSelection(appState.facade.document(),
+                                               rootId),
+          cr::CreativeSemanticObjectAction::Delete);
+  if (!cr::creativeSemanticActionUsesDocumentMutation(deletePolicy)) {
     setCreativeEditorPlacementRejectionFeedback(
         editor.interaction, editor.frameIndex,
         cr::CreativeObjectKind::PrefabInstance, {},

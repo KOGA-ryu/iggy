@@ -22,13 +22,6 @@ struct CreativeEditorWorldLayoutState;
 struct CreativeEditorObjectReattachmentPlan;
 struct CreativeEditorObjectReattachmentReceipt;
 
-// Direct World Layout output is edited through its 2D source. Pattern output is
-// excluded because its nearest editable owner is the pattern recipe, even when
-// copied objects retain underlying World Layout provenance tags.
-[[nodiscard]] bool creativeEditorObjectRequiresSourceEdit(
-    const cr::CreativeDocument& document,
-    cr::CreativeObjectId objectId) noexcept;
-
 void clearEditHistory(StandaloneEditHistory& history, std::string_view source);
 
 [[nodiscard]] StandaloneEditTransaction beginEditTransaction(

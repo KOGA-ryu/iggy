@@ -1911,6 +1911,47 @@ bool authoredEraseRemovesTheWholeSemanticInstance() {
                 "redo removes the complete authored instance hierarchy");
 }
 
+bool authoredEraseRejectsWorldLayoutOutput() {
+  const cr::CreativeAuthoredAssetCaptureResult captured =
+      makeTwoCrateDefinition();
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Instance");
+  static_cast<void>(document.assignId(748U));
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PrefabInstance;
+  request.name = "Generated Prefab";
+  request.tags = {"creative_world_layout:source_owned"};
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  app::CreativeEditorState editor = authoredEditor(captured.definition);
+  editor.frameIndex = 77U;
+  editor.interaction.target.valid = true;
+  editor.interaction.target.objectHit = true;
+  editor.interaction.target.objectId = created.objectId;
+  editor.interaction.target.objectKind =
+      cr::CreativeObjectKind::PrefabInstance;
+  const std::uint64_t revisionBefore =
+      appState.facade.document().revision();
+
+  cr::CreativeWorldActionFrame remove;
+  setPrimary(remove, true, true, false);
+  app::processCreativeAuthoredAssetFrame(appState, editor, remove, 0U);
+
+  return expect(captured.accepted && created.accepted && installed.accepted,
+                "generated authored erase fixture is valid") &&
+         expect(appState.facade.findObject(created.objectId) != nullptr &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "authored erase cannot destroy World Layout output") &&
+         expect(editor.interaction.placementFeedback.rejectionReason ==
+                    app::CreativeEditorPlacementRejectionReason::
+                        SemanticSourceOwned,
+                "authored erase reports the generated source owner");
+}
+
 bool editorPrefabDetachRecordsTheSourceItBakes() {
   const cr::CreativeAuthoredAssetCaptureResult captured =
       makeTwoCrateDefinition();
@@ -2125,6 +2166,7 @@ int main() {
                  isolatedAssetEditPreservesMapAndRequiresExplicitRefresh() &&
                  gestureDeduplicatesAndCommitsOneUndo() &&
                  authoredEraseRemovesTheWholeSemanticInstance() &&
+                 authoredEraseRejectsWorldLayoutOutput() &&
                  editorPrefabDetachRecordsTheSourceItBakes() &&
                  authoredPlacementPreservesClearanceRejection() &&
                  interruptionFinalizesChangedGesture() &&

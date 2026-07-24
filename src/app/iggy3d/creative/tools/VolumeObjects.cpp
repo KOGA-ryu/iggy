@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/Clipboard.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d::creative::volume_internal {
 namespace {
@@ -48,14 +48,6 @@ namespace {
     }
   }
   return objectIds;
-}
-
-[[nodiscard]] bool hasWorldLayoutOwnershipTag(
-    const CreativeObject& object) noexcept {
-  return std::any_of(
-      object.tags.begin(), object.tags.end(), [](const std::string& tag) {
-        return std::string_view{tag}.starts_with("creative_world_layout:");
-      });
 }
 
 [[nodiscard]] const CreativePatternRecipe* patternRecipeForObject(
@@ -308,7 +300,8 @@ CreativeVolumeOperationReceipt eraseVolumeObjects(
 
     const CreativePatternRecipe* recipe =
         patternRecipeForObject(document, objectId);
-    if (recipe != nullptr || hasWorldLayoutOwnershipTag(*object)) {
+    if (recipe != nullptr ||
+        creativeObjectHasWorldLayoutProvenanceTag(*object)) {
       ++receipt.excludedObjectCount;
       receipt.protectedObjectIds.push_back(objectId);
       if (recipe != nullptr) {
@@ -480,7 +473,7 @@ CreativeVolumeOperationReceipt cloneVolumeObjects(
       reject(receipt, CreativeVolumeOperationStatus::InvalidRequest,
              "creative_volume_clone_object_missing");
       return receipt;
-    } else if (hasWorldLayoutOwnershipTag(*object)) {
+    } else if (creativeObjectHasWorldLayoutProvenanceTag(*object)) {
       ++receipt.excludedObjectCount;
       receipt.protectedObjectIds.push_back(objectId);
     } else {
@@ -549,7 +542,7 @@ CreativeVolumeOperationReceipt cloneVolumeObjects(
       return receipt;
     }
     for (const CreativeObject& object : clipboard.objects) {
-      if (hasWorldLayoutOwnershipTag(object)) {
+      if (creativeObjectHasWorldLayoutProvenanceTag(object)) {
         receipt.failedObjectId = object.id;
         receipt.protectedObjectIds.push_back(object.id);
         receipt.protectedObjectCount = receipt.protectedObjectIds.size();

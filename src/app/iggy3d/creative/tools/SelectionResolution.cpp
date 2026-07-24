@@ -8,14 +8,6 @@
 namespace iggy3d::creative {
 namespace {
 
-[[nodiscard]] bool hasWorldLayoutOwnershipTag(
-    const CreativeObject& object) noexcept {
-  return std::any_of(object.tags.begin(), object.tags.end(),
-                     [](const std::string& tag) {
-                       return tag.starts_with("creative_world_layout:");
-                     });
-}
-
 [[nodiscard]] CreativeSemanticSelectionResolution resolveSelection(
     const CreativeDocument& document,
     CreativeObjectId objectId,
@@ -60,7 +52,7 @@ namespace {
             : resolveCreativeWorldLayoutObjectProvenance(*worldLayout, *object);
   }
   if (result.worldLayoutSource.owned ||
-      hasWorldLayoutOwnershipTag(*object)) {
+      creativeObjectHasWorldLayoutProvenanceTag(*object)) {
     result.primaryOwner = CreativeSemanticSelectionOwner::WorldLayoutSource;
   }
 
@@ -78,6 +70,14 @@ namespace {
 }
 
 }  // namespace
+
+bool creativeObjectHasWorldLayoutProvenanceTag(
+    const CreativeObject& object) noexcept {
+  return std::any_of(object.tags.begin(), object.tags.end(),
+                     [](const std::string& tag) {
+                       return tag.starts_with("creative_world_layout:");
+                     });
+}
 
 std::string_view toString(CreativeSemanticSelectionOwner owner) noexcept {
   switch (owner) {
