@@ -151,7 +151,6 @@ void dispatchOne(const CreativeDesktopCommand& command,
 
   if (dispatchCreativeDesktopDocumentCommand(command, context, result) ||
       dispatchCreativeDesktopObjectCommand(command, context, result) ||
-      dispatchCreativeDesktopAssetCommand(command, context, result) ||
       dispatchCreativeDesktopTerrainCommand(command, context, result) ||
       dispatchCreativeDesktopWorldLayoutSourceCommand(command, context,
                                                        result) ||

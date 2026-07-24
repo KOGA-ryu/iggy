@@ -1,7 +1,5 @@
 #include "EditorDesktopCommands.hpp"
 
-#include "EditorAssetLibrary.hpp"
-#include "EditorAuthoredAssets.hpp"
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorObjectActions.hpp"
@@ -22,7 +20,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -2883,208 +2880,6 @@ bool movingPlatformPreviewCommandsStayTransient() {
          expect(appState.facade.document().revision() == revisionBefore &&
                     cr::creativeUndoDepth(appState.history) == 0U,
                 "preview commands write no document or history state");
-}
-
-bool assetAndInstanceCommandsRouteAndRejectCleanly() {
-  // Verifies the asset/instance families route to the right kernels and honor
-  // payload typing. The success paths reuse existing kernels covered by
-  // creative_authored_asset_tests (K-6 equip is exercised there via the
-  // refactored SaveSelectionAsAsset action), so they are not re-fixtured here.
-  cr::CreativeAppState appState;
-  cr::CreativeDocument document = cr::CreativeDocument::create("Cmd Assets");
-  static_cast<void>(document.assignId(420U));
-  static_cast<void>(appState.facade.installDocument(std::move(document)));
-  const cr::CreativeObjectId a = createCrate(appState.facade, 0.0);
-
-  app::CreativeEditorState editor;  // empty authored-asset library.
-  std::string saveId = "unused";
-  const app::CreativeDesktopCommandContext context{appState, editor,
-                                                    std::filesystem::path{},
-                                                    &saveId};
-
-  const app::CreativeDesktopCommandResult equip = dispatchPayload(
-      app::CreativeDesktopCommandId::EquipAsset, context,
-      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
-                                         app::CreativeDesktopAssetEditPhase::None});
-  const app::CreativeDesktopCommandResult renameAsset = dispatchPayload(
-      app::CreativeDesktopCommandId::RenameAsset, context,
-      app::CreativeDesktopAssetOpPayload{"missing_asset", "New Label",
-                                         app::CreativeDesktopAssetEditPhase::None});
-  const app::CreativeDesktopCommandResult dupAsset = dispatchPayload(
-      app::CreativeDesktopCommandId::DuplicateAsset, context,
-      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
-                                         app::CreativeDesktopAssetEditPhase::None});
-  const app::CreativeDesktopCommandResult delAsset = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteAsset, context,
-      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
-                                         app::CreativeDesktopAssetEditPhase::None});
-  const app::CreativeDesktopCommandResult editNone = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{"missing_asset", "",
-                                         app::CreativeDesktopAssetEditPhase::None});
-  const app::CreativeDesktopCommandResult editCancel = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{
-          "missing_asset", "", app::CreativeDesktopAssetEditPhase::Cancel});
-  const app::CreativeDesktopCommandResult refresh = dispatchPayload(
-      app::CreativeDesktopCommandId::RefreshInstances, context,
-      app::CreativeDesktopInstanceRefreshPayload{
-          cr::kInvalidObjectId,
-          cr::CreativeAuthoredAssetRefreshMode::ForceAll});
-  const app::CreativeDesktopCommandResult update = dispatchPayload(
-      app::CreativeDesktopCommandId::UpdateAssetFromInstance, context,
-      app::CreativeDesktopInstanceRefreshPayload{
-          cr::kInvalidObjectId,
-          cr::CreativeAuthoredAssetRefreshMode::ForceAll});
-  const app::CreativeDesktopCommandResult mismatch = dispatchPayload(
-      app::CreativeDesktopCommandId::EquipAsset, context,
-      app::CreativeDesktopSelectPayload{{a}, a});
-
-  return expect(!equip.accepted && equip.message == "equip: unknown asset",
-                "EquipAsset routes to the library and rejects an unknown id") &&
-         expect(!renameAsset.accepted && !dupAsset.accepted && !delAsset.accepted,
-                "rename/duplicate/delete of an unknown asset reject cleanly") &&
-         expect(!editNone.accepted && !editCancel.accepted,
-                "edit-source with no phase / no session rejects") &&
-         expect(!refresh.accepted && !update.accepted,
-                "instance ops on an invalid root reject") &&
-         expect(!mismatch.accepted && mismatch.message == "equip: payload mismatch",
-                "an asset command fed the wrong payload is a no-op failure");
-}
-
-bool assetAndInstanceCommandsCompleteSuccessPaths() {
-  const auto nonce =
-      std::chrono::steady_clock::now().time_since_epoch().count();
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() /
-      ("iggy3d_desktop_asset_commands_" + std::to_string(nonce));
-
-  cr::CreativeAppState appState;
-  cr::CreativeDocument document =
-      cr::CreativeDocument::create("Cmd Asset Success");
-  static_cast<void>(document.assignId(425U));
-  static_cast<void>(appState.facade.installDocument(std::move(document)));
-  const cr::CreativeObjectId sourceId = createCrate(appState.facade, 0.0);
-  selectPrimary(appState.facade, sourceId);
-
-  app::CreativeEditorState editor;
-  const app::CreativeEditorAuthoredAssetLoadReceipt loaded =
-      app::loadCreativeEditorAuthoredAssetLibrary(editor.authoredAssets, root);
-  const app::CreativeEditorAuthoredAssetSaveReceipt saved =
-      app::saveCreativeEditorSelectionAsAuthoredAsset(
-          appState, editor.authoredAssets, "Desktop Asset");
-  std::string saveId = "unused";
-  const app::CreativeDesktopCommandContext context{appState, editor, root,
-                                                    &saveId};
-
-  const app::CreativeDesktopCommandResult equipped = dispatchPayload(
-      app::CreativeDesktopCommandId::EquipAsset, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::None});
-  const bool equipOk =
-      equipped.accepted &&
-      cr::creativeHotbarAssetId(cr::selectedCreativeHotbarEntry(
-          editor.interaction.hotbar)) == saved.assetId;
-  const app::CreativeDesktopCommandResult renamed = dispatchPayload(
-      app::CreativeDesktopCommandId::RenameAsset, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "Desktop Asset Renamed",
-          app::CreativeDesktopAssetEditPhase::None});
-  const cr::CreativeAuthoredAssetDefinition* renamedDefinition =
-      app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
-                                           saved.assetId);
-  const bool renameOk =
-      renamed.accepted && renamedDefinition != nullptr &&
-      renamedDefinition->label == "Desktop Asset Renamed";
-
-  const app::CreativeDesktopCommandResult duplicated = dispatchPayload(
-      app::CreativeDesktopCommandId::DuplicateAsset, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::None});
-  std::string duplicateId;
-  for (const cr::CreativeAuthoredAssetDefinition& definition :
-       editor.authoredAssets.definitions) {
-    if (definition.assetId != saved.assetId) {
-      duplicateId = definition.assetId;
-      break;
-    }
-  }
-  const app::CreativeDesktopCommandResult deletedDuplicate = dispatchPayload(
-      app::CreativeDesktopCommandId::DeleteAsset, context,
-      app::CreativeDesktopAssetOpPayload{
-          duplicateId, "", app::CreativeDesktopAssetEditPhase::None});
-  const bool duplicateDeleteOk =
-      duplicated.accepted && !duplicateId.empty() &&
-      deletedDuplicate.accepted &&
-      app::findCreativeEditorAuthoredAsset(editor.authoredAssets,
-                                           duplicateId) == nullptr;
-
-  const app::CreativeDesktopCommandResult editBegun = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::Begin});
-  const app::CreativeDesktopCommandResult editCancelled = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::Cancel});
-  const app::CreativeDesktopCommandResult editBegunAgain = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::Begin});
-  const app::CreativeDesktopCommandResult editSaved = dispatchPayload(
-      app::CreativeDesktopCommandId::EditAssetSource, context,
-      app::CreativeDesktopAssetOpPayload{
-          saved.assetId, "", app::CreativeDesktopAssetEditPhase::Save});
-  const bool editLifecycleOk =
-      editBegun.accepted && editCancelled.accepted &&
-      editBegunAgain.accepted && editSaved.accepted;
-
-  renamedDefinition = app::findCreativeEditorAuthoredAsset(
-      editor.authoredAssets, saved.assetId);
-  cr::CreativeAuthoredAssetPlacementRequest firstPlacement;
-  firstPlacement.definition = renamedDefinition;
-  firstPlacement.instanceTransform.position = {10.0, 0.0, 10.0};
-  const cr::CreativeAuthoredAssetInstanceReceipt first =
-      appState.facade.instantiateAuthoredAsset(firstPlacement);
-  renamedDefinition = app::findCreativeEditorAuthoredAsset(
-      editor.authoredAssets, saved.assetId);
-  cr::CreativeAuthoredAssetPlacementRequest secondPlacement;
-  secondPlacement.definition = renamedDefinition;
-  secondPlacement.instanceTransform.position = {20.0, 0.0, 20.0};
-  const cr::CreativeAuthoredAssetInstanceReceipt second =
-      appState.facade.instantiateAuthoredAsset(secondPlacement);
-  cr::CreativeDocumentCreateRequest detail;
-  detail.kind = cr::CreativeObjectKind::Crate;
-  detail.name = "Instance Detail";
-  detail.transform.position = {10.0, 1.0, 10.0};
-  detail.hasTransformOverride = true;
-  detail.parentId = first.instanceRootObjectId;
-  const cr::CreativeDocumentCreateReceipt detailCreated =
-      appState.facade.createDocumentObject(detail);
-  const app::CreativeDesktopCommandResult updated = dispatchPayload(
-      app::CreativeDesktopCommandId::UpdateAssetFromInstance, context,
-      app::CreativeDesktopInstanceRefreshPayload{
-          first.instanceRootObjectId,
-          cr::CreativeAuthoredAssetRefreshMode::ForceAll});
-  const app::CreativeDesktopCommandResult refreshed = dispatchPayload(
-      app::CreativeDesktopCommandId::RefreshInstances, context,
-      app::CreativeDesktopInstanceRefreshPayload{
-          second.instanceRootObjectId,
-          cr::CreativeAuthoredAssetRefreshMode::SelectedInstance});
-  const bool instanceOk =
-      first.accepted && second.accepted && detailCreated.accepted &&
-      updated.accepted && refreshed.accepted;
-
-  std::error_code ignored;
-  std::filesystem::remove_all(root, ignored);
-  return expect(loaded.accepted && saved.accepted && equipOk,
-                "EquipAsset succeeds for a durable authored asset") &&
-         expect(renameOk && duplicateDeleteOk,
-                "asset rename, duplicate, and unreferenced delete succeed") &&
-         expect(editLifecycleOk,
-                "asset edit begin, save, and cancel route through dispatcher") &&
-         expect(instanceOk,
-                "instance update and selected refresh succeed through payloads");
 }
 
 bool mismatchedPayloadsAreNoOpFailures() {
@@ -8819,8 +8614,6 @@ int main() {
   ok = objectiveSettingsUseTypedCommandsAndOneUndoStepEach() && ok;
   ok = movingPlatformWaypointCommandsSelectEditAndUndo() && ok;
   ok = movingPlatformPreviewCommandsStayTransient() && ok;
-  ok = assetAndInstanceCommandsRouteAndRejectCleanly() && ok;
-  ok = assetAndInstanceCommandsCompleteSuccessPaths() && ok;
   ok = mismatchedPayloadsAreNoOpFailures() && ok;
   ok = worldLayoutLevelCommandsRouteThroughDispatcher() && ok;
   ok = worldLayoutSourceScopeSelectionDoesNotMoveTheCanvas() && ok;

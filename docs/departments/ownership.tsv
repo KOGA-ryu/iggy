@@ -41,7 +41,6 @@ apps/iggy3d_creative/EditorControls.hpp	interaction-controls
 apps/iggy3d_creative/EditorControlsInternal.hpp	interaction-controls
 apps/iggy3d_creative/EditorControlsPersistence.cpp	persistence-validation
 apps/iggy3d_creative/EditorControlsUi.cpp	interaction-controls
-apps/iggy3d_creative/EditorDesktopAssetCommands.cpp	assets-objects
 apps/iggy3d_creative/EditorDesktopCommandCamera.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommandPayloads.hpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommands.cpp	editor-shell-ui

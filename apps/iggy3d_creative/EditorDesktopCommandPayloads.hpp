@@ -140,31 +140,6 @@ struct CreativeDesktopMovingPlatformWaypointPayload {
   double dwellSeconds = 0.0;
 };
 
-// EditAssetSource lifecycle phase (unused by the other asset ops).
-enum class CreativeDesktopAssetEditPhase : std::uint8_t {
-  None,
-  Begin,
-  Save,
-  Cancel,
-};
-
-// EquipAsset / EditAssetSource / RenameAsset / DuplicateAsset / DeleteAsset.
-// name is used only by RenameAsset; editPhase only by EditAssetSource.
-struct CreativeDesktopAssetOpPayload {
-  std::string assetId;
-  std::string name;
-  CreativeDesktopAssetEditPhase editPhase = CreativeDesktopAssetEditPhase::None;
-};
-
-// RefreshInstances (uses mode) / UpdateAssetFromInstance (ignores mode). Both
-// key off the in-document instance-root/group object id.
-struct CreativeDesktopInstanceRefreshPayload {
-  iggy3d::creative::CreativeObjectId instanceRootObjectId =
-      iggy3d::creative::kInvalidObjectId;
-  iggy3d::creative::CreativeAuthoredAssetRefreshMode mode =
-      iggy3d::creative::CreativeAuthoredAssetRefreshMode::ForceAll;
-};
-
 struct CreativeDesktopTerrainOperationPayload {
   iggy3d::creative::CreativeTerrainOperationId operationId =
       iggy3d::creative::kInvalidCreativeTerrainOperationId;
@@ -661,8 +636,6 @@ using CreativeDesktopCommandPayload = std::variant<
     CreativeDesktopExitPointPayload,
     CreativeDesktopMovingPlatformPreviewPayload,
     CreativeDesktopMovingPlatformWaypointPayload,
-    CreativeDesktopAssetOpPayload,
-    CreativeDesktopInstanceRefreshPayload,
     CreativeDesktopTerrainOperationPayload,
     CreativeDesktopTerrainStampPayload,
     CreativeDesktopWorldLayoutToolPayload,

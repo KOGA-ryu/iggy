@@ -54,11 +54,6 @@ bool dispatchCreativeDesktopObjectCommand(
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);
 
-bool dispatchCreativeDesktopAssetCommand(
-    const CreativeDesktopCommand& command,
-    const CreativeDesktopCommandContext& context,
-    CreativeDesktopCommandResult& result);
-
 bool dispatchCreativeDesktopTerrainCommand(
     const CreativeDesktopCommand& command,
     const CreativeDesktopCommandContext& context,
