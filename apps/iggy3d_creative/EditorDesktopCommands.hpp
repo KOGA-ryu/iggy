@@ -158,6 +158,204 @@ enum class CreativeDesktopCommandId : std::uint8_t {
   Count,
 };
 
+enum class CreativeDesktopCommandOwner : std::uint8_t {
+  None,
+  Document,
+  Object,
+  Terrain,
+  Play,
+  WorldLayoutSource,
+  WorldLayoutProperty,
+  WorldLayoutLevel,
+  WorldLayoutBuilding,
+  WorldLayoutPlan,
+  WorldLayoutElement,
+  WorldLayoutWallOpening,
+  WorldLayoutLifecycle,
+  Invalid,
+};
+
+[[nodiscard]] constexpr CreativeDesktopCommandOwner
+creativeDesktopCommandOwner(CreativeDesktopCommandId id) noexcept {
+  switch (id) {
+    case CreativeDesktopCommandId::None:
+      return CreativeDesktopCommandOwner::None;
+
+    case CreativeDesktopCommandId::NewDocument:
+    case CreativeDesktopCommandId::OpenDocument:
+    case CreativeDesktopCommandId::SaveDocument:
+    case CreativeDesktopCommandId::SaveDocumentAs:
+    case CreativeDesktopCommandId::RegenerateMapTemplate:
+    case CreativeDesktopCommandId::Undo:
+    case CreativeDesktopCommandId::Redo:
+    case CreativeDesktopCommandId::SaveMeasurementAnnotation:
+    case CreativeDesktopCommandId::RemoveMeasurementAnnotation:
+      return CreativeDesktopCommandOwner::Document;
+
+    case CreativeDesktopCommandId::DuplicateSelection:
+    case CreativeDesktopCommandId::DeleteSelection:
+    case CreativeDesktopCommandId::SelectObjects:
+    case CreativeDesktopCommandId::FocusObject:
+    case CreativeDesktopCommandId::FrameSelection3D:
+    case CreativeDesktopCommandId::FrameAll3D:
+    case CreativeDesktopCommandId::SetLogicSource:
+    case CreativeDesktopCommandId::ClearLogicSource:
+    case CreativeDesktopCommandId::SetLogicLink:
+    case CreativeDesktopCommandId::RemoveLogicLink:
+    case CreativeDesktopCommandId::RenameObject:
+    case CreativeDesktopCommandId::SetObjectsVisible:
+    case CreativeDesktopCommandId::SetObjectsLocked:
+    case CreativeDesktopCommandId::SetObjectTransform:
+    case CreativeDesktopCommandId::SetGroupPivot:
+    case CreativeDesktopCommandId::SetMovingPlatformSettings:
+    case CreativeDesktopCommandId::SetPlayerSpawnSettings:
+    case CreativeDesktopCommandId::SetNpcSpawnSettings:
+    case CreativeDesktopCommandId::SetLootPointSettings:
+    case CreativeDesktopCommandId::SetExitPointSettings:
+    case CreativeDesktopCommandId::SelectMovingPlatformWaypoint:
+    case CreativeDesktopCommandId::SetMovingPlatformWaypointDwell:
+    case CreativeDesktopCommandId::ToggleMovingPlatformPreview:
+    case CreativeDesktopCommandId::RestartMovingPlatformPreview:
+    case CreativeDesktopCommandId::SeekMovingPlatformPreview:
+      return CreativeDesktopCommandOwner::Object;
+
+    case CreativeDesktopCommandId::TerrainGenerationPreview:
+    case CreativeDesktopCommandId::TerrainGenerationRegenerate:
+    case CreativeDesktopCommandId::TerrainGenerationApply:
+    case CreativeDesktopCommandId::TerrainGenerationCancel:
+    case CreativeDesktopCommandId::TerrainStampSaveSelection:
+    case CreativeDesktopCommandId::TerrainStampSelect:
+    case CreativeDesktopCommandId::TerrainStampDelete:
+    case CreativeDesktopCommandId::TerrainStampRepairSource:
+    case CreativeDesktopCommandId::TerrainOperationNew:
+    case CreativeDesktopCommandId::TerrainOperationSelect:
+    case CreativeDesktopCommandId::TerrainOperationTransform:
+    case CreativeDesktopCommandId::TerrainOperationSetEnabled:
+    case CreativeDesktopCommandId::TerrainOperationMove:
+    case CreativeDesktopCommandId::TerrainOperationDuplicate:
+    case CreativeDesktopCommandId::TerrainOperationDelete:
+    case CreativeDesktopCommandId::TerrainOperationBakeAll:
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview:
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionApply:
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel:
+      return CreativeDesktopCommandOwner::Terrain;
+
+    case CreativeDesktopCommandId::Play:
+    case CreativeDesktopCommandId::PlaytestPause:
+    case CreativeDesktopCommandId::PlaytestResume:
+      return CreativeDesktopCommandOwner::Play;
+
+    case CreativeDesktopCommandId::WorldLayoutSetTool:
+    case CreativeDesktopCommandId::WorldLayoutSelectCatalogAsset:
+    case CreativeDesktopCommandId::WorldLayoutSelectBuilding:
+    case CreativeDesktopCommandId::WorldLayoutFocusSource:
+    case CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D:
+    case CreativeDesktopCommandId::WorldLayoutSelectSourceScope:
+    case CreativeDesktopCommandId::WorldLayoutFocusObjectSource:
+    case CreativeDesktopCommandId::WorldLayoutAdoptObjectSource:
+    case CreativeDesktopCommandId::WorldLayoutRenameSource:
+    case CreativeDesktopCommandId::WorldLayoutDuplicateSource:
+    case CreativeDesktopCommandId::WorldLayoutDeleteSource:
+    case CreativeDesktopCommandId::WorldLayoutClearSelection:
+    case CreativeDesktopCommandId::WorldLayoutRepairAsset:
+      return CreativeDesktopCommandOwner::WorldLayoutSource;
+
+    case CreativeDesktopCommandId::WorldLayoutSetObjectSettings:
+    case CreativeDesktopCommandId::WorldLayoutEditSourceProperty:
+      return CreativeDesktopCommandOwner::WorldLayoutProperty;
+
+    case CreativeDesktopCommandId::WorldLayoutLevelOperation:
+    case CreativeDesktopCommandId::WorldLayoutSetLevelSettings:
+    case CreativeDesktopCommandId::WorldLayoutSetLevelDatum:
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedLevelSettings:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedLevelSettings:
+      return CreativeDesktopCommandOwner::WorldLayoutLevel;
+
+    case CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout:
+    case CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout:
+    case CreativeDesktopCommandId::WorldLayoutCreateRoofAperture:
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture:
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoof:
+    case CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding:
+    case CreativeDesktopCommandId::WorldLayoutManipulateBuilding:
+    case CreativeDesktopCommandId::WorldLayoutDuplicateBuilding:
+    case CreativeDesktopCommandId::WorldLayoutTransformBuilding:
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedBuildingOperation:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation:
+    case CreativeDesktopCommandId::WorldLayoutPreviewBuildingArchitecture:
+    case CreativeDesktopCommandId::WorldLayoutApplyBuildingArchitecture:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingGrounding:
+    case CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate:
+    case CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate:
+    case CreativeDesktopCommandId::WorldLayoutDetachBuildingTemplateInstance:
+    case CreativeDesktopCommandId::WorldLayoutRefreshBuildingTemplateInstances:
+    case CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate:
+    case CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate:
+    case CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability:
+      return CreativeDesktopCommandOwner::WorldLayoutBuilding;
+
+    case CreativeDesktopCommandId::WorldLayoutCanvasPoint:
+    case CreativeDesktopCommandId::WorldLayoutCanvasGesture:
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedRoomSettings:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedRoomSettings:
+    case CreativeDesktopCommandId::WorldLayoutSplitRoom:
+    case CreativeDesktopCommandId::WorldLayoutMergeRooms:
+    case CreativeDesktopCommandId::WorldLayoutSplitWall:
+    case CreativeDesktopCommandId::WorldLayoutMergeWalls:
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoom:
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoomBoundary:
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoomCorner:
+      return CreativeDesktopCommandOwner::WorldLayoutPlan;
+
+    case CreativeDesktopCommandId::
+        WorldLayoutPreviewGeneratedVerticalConnectorSettings:
+    case CreativeDesktopCommandId::
+        WorldLayoutApplyGeneratedVerticalConnectorSettings:
+    case CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector:
+    case CreativeDesktopCommandId::WorldLayoutSetBoxSettings:
+    case CreativeDesktopCommandId::WorldLayoutManipulateBox:
+      return CreativeDesktopCommandOwner::WorldLayoutElement;
+
+    case CreativeDesktopCommandId::WorldLayoutSetWallSettings:
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedWallSettings:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedWallSettings:
+    case CreativeDesktopCommandId::WorldLayoutManipulateWall:
+    case CreativeDesktopCommandId::WorldLayoutSetOpeningSettings:
+    case CreativeDesktopCommandId::WorldLayoutPreviewGeneratedOpeningSettings:
+    case CreativeDesktopCommandId::WorldLayoutApplyGeneratedOpeningSettings:
+    case CreativeDesktopCommandId::WorldLayoutSetOpeningInsert:
+    case CreativeDesktopCommandId::WorldLayoutManipulateOpening:
+      return CreativeDesktopCommandOwner::WorldLayoutWallOpening;
+
+    case CreativeDesktopCommandId::WorldLayoutDeleteSelection:
+    case CreativeDesktopCommandId::WorldLayoutPreview:
+    case CreativeDesktopCommandId::WorldLayoutConfirm:
+    case CreativeDesktopCommandId::WorldLayoutCancelPreview:
+    case CreativeDesktopCommandId::WorldLayoutCancelGeneratedSettingsPreview:
+      return CreativeDesktopCommandOwner::WorldLayoutLifecycle;
+
+    case CreativeDesktopCommandId::Count:
+      return CreativeDesktopCommandOwner::Invalid;
+  }
+  return CreativeDesktopCommandOwner::Invalid;
+}
+
+[[nodiscard]] constexpr bool
+creativeDesktopCommandOwnershipIsExhaustive() noexcept {
+  for (std::size_t index = 0U;
+       index < static_cast<std::size_t>(CreativeDesktopCommandId::Count);
+       ++index) {
+    if (creativeDesktopCommandOwner(
+            static_cast<CreativeDesktopCommandId>(index)) ==
+        CreativeDesktopCommandOwner::Invalid) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static_assert(creativeDesktopCommandOwnershipIsExhaustive());
+
 struct CreativeDesktopCommand {
   CreativeDesktopCommandId id = CreativeDesktopCommandId::None;
   // Typed, discriminated payload (see EditorDesktopCommandPayloads.hpp).

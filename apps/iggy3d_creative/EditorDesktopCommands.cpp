@@ -3,6 +3,7 @@
 #include "EditorDesktopCommandsInternal.hpp"
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include <cassert>
 #include <cstddef>
 #include <utility>
 #include <variant>
@@ -130,34 +131,59 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.affectedObjectCount = 0U;
   result.message.clear();
 
-  if (dispatchCreativeDesktopDocumentCommand(command, context, result) ||
-      dispatchCreativeDesktopObjectCommand(command, context, result) ||
-      dispatchCreativeDesktopTerrainCommand(command, context, result) ||
-      dispatchCreativeDesktopWorldLayoutSourceCommand(command, context,
-                                                       result) ||
-      dispatchCreativeDesktopWorldLayoutPropertyCommand(command, context,
-                                                         result) ||
-      dispatchCreativeDesktopWorldLayoutLevelCommand(command, context,
-                                                      result) ||
-      dispatchCreativeDesktopWorldLayoutBuildingCommand(command, context,
-                                                         result) ||
-      dispatchCreativeDesktopWorldLayoutPlanCommand(command, context,
-                                                     result) ||
-      dispatchCreativeDesktopWorldLayoutElementCommand(command, context,
-                                                        result) ||
-      dispatchCreativeDesktopWorldLayoutWallOpeningCommand(command, context,
-                                                            result) ||
-      dispatchCreativeDesktopWorldLayoutLifecycleCommand(command, context,
-                                                          result) ||
-      dispatchCreativeDesktopPlayCommand(command, context, result)) {
-    return;
-  }
-
-  switch (command.id) {
-    case CreativeDesktopCommandId::None:
-    case CreativeDesktopCommandId::Count:
-    default:
+  bool handled = false;
+  switch (creativeDesktopCommandOwner(command.id)) {
+    case CreativeDesktopCommandOwner::None:
+    case CreativeDesktopCommandOwner::Invalid:
+      return;
+    case CreativeDesktopCommandOwner::Document:
+      handled =
+          dispatchCreativeDesktopDocumentCommand(command, context, result);
       break;
+    case CreativeDesktopCommandOwner::Object:
+      handled = dispatchCreativeDesktopObjectCommand(command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::Terrain:
+      handled = dispatchCreativeDesktopTerrainCommand(command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::Play:
+      handled = dispatchCreativeDesktopPlayCommand(command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutSource:
+      handled = dispatchCreativeDesktopWorldLayoutSourceCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutProperty:
+      handled = dispatchCreativeDesktopWorldLayoutPropertyCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutLevel:
+      handled = dispatchCreativeDesktopWorldLayoutLevelCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutBuilding:
+      handled = dispatchCreativeDesktopWorldLayoutBuildingCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutPlan:
+      handled = dispatchCreativeDesktopWorldLayoutPlanCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutElement:
+      handled = dispatchCreativeDesktopWorldLayoutElementCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutWallOpening:
+      handled = dispatchCreativeDesktopWorldLayoutWallOpeningCommand(
+          command, context, result);
+      break;
+    case CreativeDesktopCommandOwner::WorldLayoutLifecycle:
+      handled = dispatchCreativeDesktopWorldLayoutLifecycleCommand(
+          command, context, result);
+      break;
+  }
+  if (!handled) {
+    assert(false && "desktop command owner rejected its mapped command");
   }
 }
 

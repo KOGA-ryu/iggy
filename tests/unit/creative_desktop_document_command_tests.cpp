@@ -1398,6 +1398,43 @@ bool commandFramesInferDocumentImpactsFromActiveRevision() {
                 "active asset document revision creates a cumulative refresh impact");
 }
 
+bool desktopCommandOwnershipIsExhaustive() {
+  constexpr std::size_t ownerCount =
+      static_cast<std::size_t>(app::CreativeDesktopCommandOwner::Invalid);
+  std::array<std::size_t, ownerCount> actual{};
+  bool allLiveCommandsOwned = true;
+  for (std::size_t index = 0U;
+       index <
+       static_cast<std::size_t>(app::CreativeDesktopCommandId::Count);
+       ++index) {
+    const app::CreativeDesktopCommandOwner owner =
+        app::creativeDesktopCommandOwner(
+            static_cast<app::CreativeDesktopCommandId>(index));
+    if (owner == app::CreativeDesktopCommandOwner::Invalid) {
+      allLiveCommandsOwned = false;
+      continue;
+    }
+    ++actual[static_cast<std::size_t>(owner)];
+  }
+
+  constexpr std::array<std::size_t, ownerCount> expected{
+      1U, 9U, 25U, 19U, 3U, 13U, 2U,
+      5U, 21U, 11U, 5U, 9U, 5U,
+  };
+  return expect(app::creativeDesktopCommandOwnershipIsExhaustive() &&
+                    allLiveCommandsOwned,
+                "every live desktop command has one declared owner") &&
+         expect(actual == expected,
+                "desktop command owner populations match the live handlers") &&
+         expect(app::creativeDesktopCommandOwner(
+                    app::CreativeDesktopCommandId::Count) ==
+                    app::CreativeDesktopCommandOwner::Invalid &&
+                    app::creativeDesktopCommandOwner(
+                        static_cast<app::CreativeDesktopCommandId>(255U)) ==
+                        app::CreativeDesktopCommandOwner::Invalid,
+                "sentinel and out-of-range command ids have no owner");
+}
+
 // --- Step 3: Desktop Command Expansion -------------------------------------
 
 
@@ -1425,5 +1462,6 @@ bool runCreativeDesktopDocumentCommandTests() {
   ok = playCommandsPreserveProcessAndAuthoringContracts() && ok;
   ok = commandFramesAccumulatePreviewImpacts() && ok;
   ok = commandFramesInferDocumentImpactsFromActiveRevision() && ok;
+  ok = desktopCommandOwnershipIsExhaustive() && ok;
   return ok;
 }
