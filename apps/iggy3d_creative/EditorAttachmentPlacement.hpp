@@ -51,6 +51,7 @@ enum class CreativeEditorObjectReattachmentStatus : std::uint8_t {
   SnapRejected,
   ClearanceBlocked,
   Ready,
+  SourceOwned,
   MutationRejected,
   Applied,
 };

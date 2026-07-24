@@ -562,11 +562,11 @@ bool activateCreativeEditorObjectAction(
                      .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::DetachAttachment:
-      accepted = cr::documentMutationSucceeded(
-          detachObjectWithUndo(appState, appState.history,
-                               state.contextPrimaryObjectId,
-                               "object_actions_detach")
-              .status);
+      accepted = detachCreativeEditorObjectWithUndo(
+                     appState, appState.history,
+                     state.contextPrimaryObjectId,
+                     "object_actions_detach", &editor.worldLayout)
+                     .accepted;
       break;
     case CreativeEditorToolOptionsCommandId::ReattachAttachment: {
       if (assetCatalog == nullptr) {
@@ -591,8 +591,9 @@ bool activateCreativeEditorObjectAction(
         break;
       }
       const CreativeEditorObjectReattachmentReceipt receipt =
-          reattachObjectWithUndo(appState, appState.history, plan,
-                                 "object_actions_reattach");
+          reattachCreativeEditorObjectWithUndo(
+              appState, appState.history, plan, "object_actions_reattach",
+              &editor.worldLayout);
       accepted = receipt.accepted;
       editor.catalog.statusLabel =
           accepted ? "REATTACHED TO " + std::string(plan.snap.targetSocket)

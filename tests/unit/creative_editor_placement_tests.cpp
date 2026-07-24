@@ -4387,6 +4387,96 @@ bool structuralSpanEndpointEditPreviewsCommitsAndCancelsAtomically() {
          ok;
 }
 
+bool generatedStructuralSpansExposeNoEndpointEdit() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Structural Spans");
+  static_cast<void>(document.assignId(126U));
+  cr::CreativeDocumentCreateRequest patternSourceRequest;
+  patternSourceRequest.kind = cr::CreativeObjectKind::Crate;
+  const cr::CreativeDocumentCreateReceipt patternSource =
+      document.createObject(patternSourceRequest);
+  const cr::CreativeStructuralSpanPlan sourcePlan =
+      cr::planCreativeStructuralSpan(
+          {cr::CreativeObjectKind::Beam, {0.5, 0.0, 0.5},
+           {4.5, 0.0, 0.5}});
+  cr::CreativeDocumentCreateRequest create;
+  create.kind = cr::CreativeObjectKind::Beam;
+  create.name = "Pattern Beam";
+  create.transform = sourcePlan.transform;
+  create.hasTransformOverride = true;
+  create.bounds = sourcePlan.authoredBounds;
+  create.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt patternBeam =
+      document.createObject(create);
+  create.name = "World Beam";
+  create.transform.position.z += 2.0;
+  create.bounds.min.z += 2.0;
+  create.bounds.max.z += 2.0;
+  const cr::CreativeDocumentCreateReceipt worldBeam =
+      document.createObject(create);
+  cr::CreativePatternRecipeMutationRequest addPattern;
+  addPattern.kind = cr::CreativePatternRecipeMutationKind::Add;
+  addPattern.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  addPattern.recipe.sourceObjectIds = {patternSource.objectId};
+  addPattern.recipe.generatedObjectIds = {patternBeam.objectId};
+  const cr::CreativePatternRecipeMutationReceipt patternRecipe =
+      document.applyPatternRecipeMutation(addPattern);
+  document.findObject(worldBeam.objectId)
+      ->tags.push_back("creative_world_layout:structural_span_fixture");
+
+  cr::CreativeAppState appState;
+  const cr::CreativeFacadeDocumentInstallReceipt installed =
+      appState.facade.installDocument(std::move(document));
+  CreativeEditorState editor;
+  editor.interaction.hotbar.selectedSlot = 0U;
+  editor.interaction.hotbar.entries[0] = {
+      cr::CreativeHeldItemKind::ObjectMove,
+      cr::CreativeObjectKind::Unknown};
+  syncCreativeEditorHeldItem(appState, editor);
+
+  const auto generatedSpanRejected =
+      [&](cr::CreativeObjectId objectId,
+          std::string_view ownerLabel) {
+        const std::array selectedIds{objectId};
+        const cr::CreativeSelectionReceipt selected =
+            appState.facade.selectTargets(selectedIds, objectId);
+        syncCreativeEditorStructuralSpanEditState(
+            appState, editor.interaction.structuralSpanEdit);
+        PathPointHandleHit endpointHandle;
+        endpointHandle.objectId = objectId;
+        endpointHandle.pointIndex = 1U;
+        endpointHandle.aabb.minX = 396.0F;
+        endpointHandle.aabb.minY = 296.0F;
+        endpointHandle.aabb.maxX = 404.0F;
+        endpointHandle.aabb.maxY = 304.0F;
+        endpointHandle.aabb.valid = true;
+        const std::array endpointHandles{endpointHandle};
+        const std::uint64_t revisionBefore =
+            appState.facade.document().revision();
+        const bool consumed = processCreativeEditorStructuralSpanEditInput(
+            appState, editor,
+            actionFrame(cr::CreativeWorldActionId::Accept, true, true, false),
+            endpointHandles, 400.0F, 300.0F);
+        return expect(selected.accepted &&
+                          !editor.interaction.structuralSpanEdit.available &&
+                          !editor.interaction.structuralSpanEdit.active &&
+                          !consumed,
+                      std::string(ownerLabel) +
+                          " span exposes no endpoint edit") &&
+               expect(appState.facade.document().revision() == revisionBefore &&
+                          cr::creativeUndoDepth(appState.history) == 0U,
+                      std::string(ownerLabel) +
+                          " span creates no mutation or history");
+      };
+
+  return expect(patternSource.accepted && sourcePlan.accepted &&
+                    patternBeam.accepted && worldBeam.accepted &&
+                    patternRecipe.accepted && installed.accepted,
+                "generated structural span fixtures install") &&
+         generatedSpanRejected(patternBeam.objectId, "pattern-owned") &&
+         generatedSpanRejected(worldBeam.objectId, "world-owned");
+}
+
 bool materialBrushPaintsErasesPreviewsAndGroupsHistory() {
   cr::CreativeAppState appState;
   installHistoryDocument(appState, 110U);
@@ -7753,6 +7843,7 @@ int main() {
   ok = gamepadAcceptPlacesAndRejectRemoves() && ok;
   ok = structuralSpanPreviewPlacementCancelAndUndoStayInParity() && ok;
   ok = structuralSpanEndpointEditPreviewsCommitsAndCancelsAtomically() && ok;
+  ok = generatedStructuralSpansExposeNoEndpointEdit() && ok;
   ok = materialBrushPaintsErasesPreviewsAndGroupsHistory() && ok;
   ok = materialBrushShellPreviewMatchesMutationAndUndo() && ok;
   ok = materialBrushCylinderAxisDrivesPreviewAndMutation() && ok;

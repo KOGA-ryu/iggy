@@ -4,6 +4,7 @@
 #include "EditorState.hpp"
 #include "EditorToolOptions.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "content/assets/StaticMeshAsset.hpp"
 
 #include <algorithm>
@@ -136,6 +137,81 @@ cr::CreativeDocumentCreateReceipt createAttachmentObject(
   request.parentId = parentId;
   request.attachmentSocket = std::move(attachmentSocketName);
   return facade.createDocumentObject(request);
+}
+
+enum class GeneratedAttachmentOwner {
+  Pattern,
+  WorldLayout,
+};
+
+struct GeneratedAttachmentFixture {
+  cr::CreativeObjectId firstFrameId = cr::kInvalidObjectId;
+  cr::CreativeObjectId secondFrameId = cr::kInvalidObjectId;
+  cr::CreativeObjectId leafId = cr::kInvalidObjectId;
+  bool installed = false;
+};
+
+GeneratedAttachmentFixture installGeneratedAttachmentFixture(
+    cr::CreativeAppState& appState,
+    cr::CreativeDocumentId documentId,
+    GeneratedAttachmentOwner owner) {
+  GeneratedAttachmentFixture fixture;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Generated Attachment");
+  if (!document.assignId(documentId)) {
+    return fixture;
+  }
+
+  cr::CreativeDocumentCreateRequest frameRequest;
+  frameRequest.kind = cr::CreativeObjectKind::Prop;
+  frameRequest.name = "First Frame";
+  frameRequest.assetId = "door_frame";
+  frameRequest.hasTransformOverride = true;
+  fixture.firstFrameId = document.createObject(frameRequest).objectId;
+  frameRequest.name = "Second Frame";
+  frameRequest.transform.position = {4.0, 0.0, 0.0};
+  fixture.secondFrameId = document.createObject(frameRequest).objectId;
+
+  cr::CreativeDocumentCreateRequest leafRequest;
+  leafRequest.kind = cr::CreativeObjectKind::Door;
+  leafRequest.name = "Generated Door Leaf";
+  leafRequest.assetId = "door_leaf";
+  leafRequest.hasTransformOverride = true;
+  leafRequest.parentId = fixture.firstFrameId;
+  leafRequest.attachmentSocket = "door_frame";
+  if (owner == GeneratedAttachmentOwner::WorldLayout) {
+    leafRequest.tags = {"creative_world_layout:attachment_fixture"};
+  }
+  fixture.leafId = document.createObject(leafRequest).objectId;
+
+  if (fixture.firstFrameId == cr::kInvalidObjectId ||
+      fixture.secondFrameId == cr::kInvalidObjectId ||
+      fixture.leafId == cr::kInvalidObjectId) {
+    return fixture;
+  }
+  if (owner == GeneratedAttachmentOwner::Pattern) {
+    cr::CreativePatternRecipeMutationRequest recipeRequest;
+    recipeRequest.kind = cr::CreativePatternRecipeMutationKind::Add;
+    recipeRequest.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+    recipeRequest.recipe.sourceObjectIds = {fixture.firstFrameId};
+    recipeRequest.recipe.generatedObjectIds = {fixture.leafId};
+    const cr::CreativePatternRecipeMutationReceipt recipe =
+        document.applyPatternRecipeMutation(recipeRequest);
+    if (!recipe.accepted || !recipe.changed) {
+      return fixture;
+    }
+  }
+
+  fixture.installed =
+      appState.facade.installDocument(std::move(document)).accepted;
+  return fixture;
+}
+
+std::string_view generatedAttachmentReason(
+    GeneratedAttachmentOwner owner) {
+  return owner == GeneratedAttachmentOwner::Pattern
+             ? "creative_semantic_action_pattern_owned"
+             : "creative_semantic_action_world_layout_owned";
 }
 
 bool attachedChildrenFollowParentTransformsAsOneHistoryStep() {
@@ -346,8 +422,8 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
           appState.facade.document(), catalog, leaf.objectId,
           secondFrame.objectId, {4.0, 0.0, 0.0});
   const app::CreativeEditorObjectReattachmentReceipt applied =
-      app::reattachObjectWithUndo(appState, appState.history, plan,
-                                  "test_reattach");
+      app::reattachCreativeEditorObjectWithUndo(
+          appState, appState.history, plan, "test_reattach");
   const cr::CreativeObject* movedLeaf =
       appState.facade.findObject(leaf.objectId);
   const cr::CreativeObject* movedHandle =
@@ -398,6 +474,76 @@ bool reattachMovesHierarchyAndIsOneUndoableEdit() {
                     sameTransform(redoneHandle->transform,
                                   movedHandleTransform),
                 "reattach is one undoable and redoable hierarchy edit");
+}
+
+bool generatedAttachmentsRejectDetachWithoutHistory() {
+  bool ok = true;
+  std::uint64_t documentId = 324U;
+  for (GeneratedAttachmentOwner owner :
+       {GeneratedAttachmentOwner::Pattern,
+        GeneratedAttachmentOwner::WorldLayout}) {
+    cr::CreativeAppState appState;
+    const GeneratedAttachmentFixture fixture =
+        installGeneratedAttachmentFixture(appState, documentId++, owner);
+    appState.history = {};
+    const std::uint64_t revisionBefore =
+        appState.facade.document().revision();
+    const app::CreativeEditorSemanticEditReceipt detached =
+        app::detachCreativeEditorObjectWithUndo(
+            appState, appState.history, fixture.leafId,
+            "test_generated_detach");
+    const cr::CreativeObject* leaf =
+        appState.facade.findObject(fixture.leafId);
+    ok = expect(fixture.installed && !detached.accepted &&
+                    !detached.changed &&
+                    detached.reasonCode == generatedAttachmentReason(owner) &&
+                    leaf != nullptr &&
+                    leaf->parentId == fixture.firstFrameId &&
+                    leaf->attachmentSocket == "door_frame" &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "generated attachment detach preserves source-owned output") &&
+         ok;
+  }
+  return ok;
+}
+
+bool generatedAttachmentsRejectReattachWithoutHistory() {
+  const iggy3d::StaticMeshAssetCatalog catalog = attachmentCatalog();
+  bool ok = true;
+  std::uint64_t documentId = 326U;
+  for (GeneratedAttachmentOwner owner :
+       {GeneratedAttachmentOwner::Pattern,
+        GeneratedAttachmentOwner::WorldLayout}) {
+    cr::CreativeAppState appState;
+    const GeneratedAttachmentFixture fixture =
+        installGeneratedAttachmentFixture(appState, documentId++, owner);
+    appState.history = {};
+    const app::CreativeEditorObjectReattachmentPlan plan =
+        app::planCreativeEditorObjectReattachment(
+            appState.facade.document(), catalog, fixture.leafId,
+            fixture.secondFrameId, {4.0, 0.0, 0.0});
+    const std::uint64_t revisionBefore =
+        appState.facade.document().revision();
+    const app::CreativeEditorObjectReattachmentReceipt reattached =
+        app::reattachCreativeEditorObjectWithUndo(
+            appState, appState.history, plan, "test_generated_reattach");
+    const cr::CreativeObject* leaf =
+        appState.facade.findObject(fixture.leafId);
+    ok = expect(fixture.installed && plan.accepted &&
+                    !reattached.accepted && !reattached.changed &&
+                    reattached.status ==
+                        app::CreativeEditorObjectReattachmentStatus::
+                            SourceOwned &&
+                    leaf != nullptr &&
+                    leaf->parentId == fixture.firstFrameId &&
+                    leaf->attachmentSocket == "door_frame" &&
+                    appState.facade.document().revision() == revisionBefore &&
+                    cr::creativeUndoDepth(appState.history) == 0U,
+                "generated attachment reattach preserves source-owned output") &&
+         ok;
+  }
+  return ok;
 }
 
 bool branchRevisionPreventsFrozenReattachmentPlanReuse() {
@@ -741,6 +887,8 @@ int main() {
   return attachedChildrenFollowParentTransformsAsOneHistoryStep() &&
                  detachActionPreservesWorldPoseAndRestoresRelationship() &&
                  reattachMovesHierarchyAndIsOneUndoableEdit() &&
+                 generatedAttachmentsRejectDetachWithoutHistory() &&
+                 generatedAttachmentsRejectReattachWithoutHistory() &&
                  branchRevisionPreventsFrozenReattachmentPlanReuse() &&
                  reattachRejectsOccupiedAndPenetratingHosts() &&
                  reattachRejectsStaleAndInsideHierarchyWithoutMutation() &&

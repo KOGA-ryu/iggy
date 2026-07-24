@@ -919,7 +919,7 @@ bool mixedOwnershipDeleteRejectsAtomically() {
                 "mixed ownership delete records no source or document history");
 }
 
-bool patternOutputRejectsRawObjectEdits() {
+bool patternOutputRejectsGenericAndStructuralEdits() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Pattern Output Generic Edits");
   static_cast<void>(document.assignId(4107U));
@@ -929,8 +929,15 @@ bool patternOutputRejectsRawObjectEdits() {
   const cr::CreativeObjectId sourceId =
       document.createObject(sourceRequest).objectId;
   cr::CreativeDocumentCreateRequest generatedRequest;
-  generatedRequest.kind = cr::CreativeObjectKind::Crate;
+  generatedRequest.kind = cr::CreativeObjectKind::MovingPlatform;
   generatedRequest.name = "Pattern Output";
+  generatedRequest.transform.position = {1.0, 0.5, 2.0};
+  generatedRequest.hasTransformOverride = true;
+  generatedRequest.bounds = {{0.0, 0.25, 1.0}, {2.0, 0.75, 3.0}};
+  generatedRequest.hasBoundsOverride = true;
+  generatedRequest.pathPoints = {{{1.0, 0.5, 2.0}},
+                                 {{1.0, 3.5, 2.0}}};
+  generatedRequest.hasPathOverride = true;
   const cr::CreativeObjectId generatedId =
       document.createObject(generatedRequest).objectId;
   cr::CreativePatternRecipeMutationRequest recipeRequest;
@@ -968,19 +975,28 @@ bool patternOutputRejectsRawObjectEdits() {
       app::CreativeDesktopCommandId::SetObjectTransform, context,
       app::CreativeDesktopTransformPayload{
           generatedId, requested, true, false, false});
+  cr::CreativeMovingPlatformSettings settings;
+  settings.speedMetersPerSecond = 3.0;
+  const app::CreativeDesktopCommandResult settingsChanged = dispatchPayload(
+      app::CreativeDesktopCommandId::SetMovingPlatformSettings, context,
+      app::CreativeDesktopMovingPlatformPayload{generatedId, settings});
   const cr::CreativeObject* output =
       appState.facade.findObject(generatedId);
 
   return expect(recipe.accepted && recipe.changed,
                 "pattern output ownership fixture is valid") &&
          expect(!renamed.accepted && !hidden.accepted && !locked.accepted &&
-                    !transformed.accepted,
-                "pattern output rejects raw generic mutations") &&
+                    !transformed.accepted && !settingsChanged.accepted &&
+                    settingsChanged.message ==
+                        "creative_semantic_action_pattern_owned",
+                "pattern output rejects generic and structural mutations") &&
          expect(output != nullptr && output->name == "Pattern Output" &&
                     output->visible && !output->locked &&
                     cr::creativeVec3ExactlyEqual(
                         output->transform.position,
-                        transformBefore.position),
+                        transformBefore.position) &&
+                    output->movingPlatform ==
+                        cr::CreativeMovingPlatformSettings{},
                 "rejected pattern edits preserve object state") &&
          expect(appState.facade.document().revision() == revisionBefore &&
                     cr::creativeUndoDepth(appState.history) == 0U &&
@@ -8386,7 +8402,7 @@ int main() {
   ok = generatedWorldObjectGenericEditsRespectSourceOwnership() && ok;
   ok = generatedOutputRejectsStructuralDesktopMutations() && ok;
   ok = mixedOwnershipDeleteRejectsAtomically() && ok;
-  ok = patternOutputRejectsRawObjectEdits() && ok;
+  ok = patternOutputRejectsGenericAndStructuralEdits() && ok;
   ok = explicitPatternDeleteUsesSemanticKernel() && ok;
   ok = undoRedoMoveTheHistoryRings() && ok;
   ok = worldLayoutSourceUndoRedoRoutesThroughDispatcher() && ok;

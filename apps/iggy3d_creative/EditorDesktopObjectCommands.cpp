@@ -404,22 +404,18 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "moving platform settings: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "moving platform settings")) {
-        break;
-      }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          setMovingPlatformSettingsWithUndo(
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorMovingPlatformSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
-              payload->settings, "desktop_set_moving_platform_settings");
-      result.accepted =
-          creative::documentMutationSucceeded(receipt.status);
+              payload->settings, "desktop_set_moving_platform_settings",
+              &editor.worldLayout);
+      result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = result.accepted
                            ? (result.changed ? "platform settings updated"
                                              : "platform settings unchanged")
-                           : receipt.message;
+                           : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetPlayerSpawnSettings: {
@@ -429,22 +425,18 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "player spawn settings: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "player spawn settings")) {
-        break;
-      }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          setPlayerSpawnSettingsWithUndo(
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorPlayerSpawnSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
-              payload->settings, "desktop_set_player_spawn_settings");
-      result.accepted =
-          creative::documentMutationSucceeded(receipt.status);
+              payload->settings, "desktop_set_player_spawn_settings",
+              &editor.worldLayout);
+      result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = result.accepted
                            ? (result.changed ? "player spawn settings updated"
                                              : "player spawn settings unchanged")
-                           : receipt.message;
+                           : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetNpcSpawnSettings: {
@@ -454,22 +446,18 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "npc spawn settings: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "npc spawn settings")) {
-        break;
-      }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          setNpcSpawnSettingsWithUndo(
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorNpcSpawnSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
-              payload->settings, "desktop_set_npc_spawn_settings");
-      result.accepted =
-          creative::documentMutationSucceeded(receipt.status);
+              payload->settings, "desktop_set_npc_spawn_settings",
+              &editor.worldLayout);
+      result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message = result.accepted
                            ? (result.changed ? "npc spawn settings updated"
                                              : "npc spawn settings unchanged")
-                           : receipt.message;
+                           : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetLootPointSettings: {
@@ -479,23 +467,19 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "loot point settings: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "loot point settings")) {
-        break;
-      }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          setLootPointSettingsWithUndo(
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorLootPointSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
-              payload->settings, "desktop_set_loot_point_settings");
-      result.accepted =
-          creative::documentMutationSucceeded(receipt.status);
+              payload->settings, "desktop_set_loot_point_settings",
+              &editor.worldLayout);
+      result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message =
           result.accepted
               ? (result.changed ? "loot point settings updated"
                                 : "loot point settings unchanged")
-              : receipt.message;
+              : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::SetExitPointSettings: {
@@ -505,23 +489,19 @@ bool dispatchCreativeDesktopObjectCommand(
         result.message = "exit point settings: payload mismatch";
         break;
       }
-      if (!semanticDocumentMutationAllowed(payload->objectId,
-                                           "exit point settings")) {
-        break;
-      }
-      const creative::CreativeDocumentMutationReceipt receipt =
-          setExitPointSettingsWithUndo(
+      const CreativeEditorSemanticEditReceipt receipt =
+          setCreativeEditorExitPointSettingsWithUndo(
               activeAppState, activeAppState.history, payload->objectId,
-              payload->settings, "desktop_set_exit_point_settings");
-      result.accepted =
-          creative::documentMutationSucceeded(receipt.status);
+              payload->settings, "desktop_set_exit_point_settings",
+              &editor.worldLayout);
+      result.accepted = receipt.accepted;
       result.changed = receipt.changed;
-      result.affectedObjectCount = result.changed ? 1U : 0U;
+      result.affectedObjectCount = receipt.affectedObjectCount;
       result.message =
           result.accepted
               ? (result.changed ? "exit point settings updated"
                                 : "exit point settings unchanged")
-              : receipt.message;
+              : receipt.reasonCode;
       break;
     }
     case CreativeDesktopCommandId::ToggleMovingPlatformPreview:

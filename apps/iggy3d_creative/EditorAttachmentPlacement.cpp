@@ -184,6 +184,8 @@ std::string_view toString(
       return "creative_reattach_clearance_blocked";
     case CreativeEditorObjectReattachmentStatus::Ready:
       return "creative_reattach_ready";
+    case CreativeEditorObjectReattachmentStatus::SourceOwned:
+      return "creative_reattach_source_owned";
     case CreativeEditorObjectReattachmentStatus::MutationRejected:
       return "creative_reattach_mutation_rejected";
     case CreativeEditorObjectReattachmentStatus::Applied:

@@ -61,31 +61,6 @@ bool applyHistoryDirection(creative::CreativeAppState& appState,
   return receipt.accepted;
 }
 
-creative::CreativeFacadeMutationReceipt toggleSelectedObjectStateWithUndo(
-    creative::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    creative::CreativeMutationKind mutationKind,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeFacadeMutationReceipt receipt =
-      mutationKind == creative::CreativeMutationKind::SetLocked
-          ? appState.facade.toggleSelectedObjectLocked()
-          : appState.facade.toggleSelectedObjectVisibility();
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.accepted && receipt.changed, receipt.message));
-  SDL_Log("iggy3d_creative: OBJECT STATE source='%s' kind='%s' accepted=%d "
-          "changed=%d objectId=%llu revisionBefore=%llu revisionAfter=%llu",
-          std::string(source).c_str(),
-          std::string(creative::toString(receipt.mutationKind)).c_str(),
-          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
-          static_cast<unsigned long long>(receipt.objectId),
-          static_cast<unsigned long long>(receipt.revisionBefore),
-          static_cast<unsigned long long>(receipt.revisionAfter));
-  return receipt;
-}
-
 // Resolves the object ids a batch desktop edit should act on: the explicit span
 // when non-empty, otherwise the current selection (mirroring the facade's
 // selectedObjectIds fallback — the ordered list, or the primary alone).
@@ -127,6 +102,41 @@ struct CreativeEditorResolvedObjectAction {
   creative::CreativeSemanticSelectionResolution selection;
   creative::CreativeSemanticObjectActionPolicy policy;
 };
+
+[[nodiscard]] creative::CreativeDocumentMutationReceipt
+renameDocumentObjectWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    std::string name,
+    std::string_view source);
+
+[[nodiscard]] CreativeStandaloneBatchEditReceipt
+setDocumentObjectsVisibleWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    bool visible,
+    std::string_view source);
+
+[[nodiscard]] CreativeStandaloneBatchEditReceipt
+setDocumentObjectsLockedWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    std::span<const creative::CreativeObjectId> objectIds,
+    bool locked,
+    std::string_view source);
+
+[[nodiscard]] CreativeStandaloneBatchEditReceipt
+setDocumentObjectTransformWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    const creative::CreativeTransform& transform,
+    bool setPosition,
+    bool setRotation,
+    bool setScale,
+    std::string_view source);
 
 [[nodiscard]] CreativeEditorResolvedAction resolveEditorAction(
     const creative::CreativeAppState& appState,
@@ -190,6 +200,48 @@ struct CreativeEditorResolvedObjectAction {
     const CreativeEditorWorldLayoutState* worldLayout) noexcept {
   return worldLayout != nullptr &&
          worldLayout->generatedRevision == worldLayout->revision;
+}
+
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+applySemanticDocumentObjectMutationWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneEditHistory& history,
+    creative::CreativeObjectId objectId,
+    creative::CreativeMutationKind mutationKind,
+    creative::CreativeMutationPayload payload,
+    std::string_view operation,
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  CreativeEditorSemanticEditReceipt outcome;
+  const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
+      appState, objectId, worldLayout,
+      creative::CreativeSemanticObjectAction::StructuralMutation);
+  if (!creative::creativeSemanticActionUsesDocumentMutation(action.policy)) {
+    outcome.reasonCode = std::string(action.policy.reasonCode);
+    return outcome;
+  }
+
+  StandaloneEditTransaction transaction =
+      beginEditTransaction(appState.facade, source);
+  const creative::CreativeDocumentMutationReceipt receipt =
+      appState.facade.mutateObject(objectId, mutationKind, std::move(payload));
+  outcome.accepted = creative::documentMutationSucceeded(receipt.status);
+  outcome.changed = outcome.accepted && receipt.changed;
+  outcome.affectedObjectCount = outcome.changed ? 1U : 0U;
+  outcome.reasonCode = receipt.message;
+  static_cast<void>(completeEditTransaction(
+      history, std::move(transaction), appState.facade, outcome.changed,
+      outcome.reasonCode));
+  SDL_Log("iggy3d_creative: SEMANTIC OBJECT MUTATION operation='%s' "
+          "source='%s' objectId=%llu accepted=%d changed=%d "
+          "revisionBefore=%llu revisionAfter=%llu reasonCode='%s'",
+          std::string(operation).c_str(), std::string(source).c_str(),
+          static_cast<unsigned long long>(objectId),
+          outcome.accepted ? 1 : 0, outcome.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          outcome.reasonCode.c_str());
+  return outcome;
 }
 
 }  // namespace
@@ -629,8 +681,8 @@ CreativeEditorSemanticEditReceipt renameCreativeEditorObjectWithUndo(
     return outcome;
   }
   const creative::CreativeDocumentMutationReceipt renamed =
-      renameObjectWithUndo(appState, history, objectId, std::move(name),
-                           source);
+      renameDocumentObjectWithUndo(appState, history, objectId,
+                                   std::move(name), source);
   outcome.accepted =
       creative::documentMutationSucceeded(renamed.status);
   outcome.changed = outcome.accepted && renamed.changed;
@@ -674,8 +726,8 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectsVisibleWithUndo(
     return outcome;
   }
   const CreativeStandaloneBatchEditReceipt updated =
-      setObjectsVisibleWithUndo(appState, history, action.objectIds, visible,
-                                source);
+      setDocumentObjectsVisibleWithUndo(appState, history, action.objectIds,
+                                        visible, source);
   outcome.accepted = updated.accepted;
   outcome.changed = updated.changed;
   outcome.affectedObjectCount = updated.affectedObjectCount;
@@ -701,8 +753,8 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectsLockedWithUndo(
     return outcome;
   }
   const CreativeStandaloneBatchEditReceipt updated =
-      setObjectsLockedWithUndo(appState, history, action.objectIds, locked,
-                               source);
+      setDocumentObjectsLockedWithUndo(appState, history, action.objectIds,
+                                       locked, source);
   outcome.accepted = updated.accepted;
   outcome.changed = updated.changed;
   outcome.affectedObjectCount = updated.affectedObjectCount;
@@ -736,8 +788,9 @@ CreativeEditorSemanticEditReceipt setCreativeEditorObjectTransformWithUndo(
     return outcome;
   }
   const CreativeStandaloneBatchEditReceipt transformed =
-      setObjectTransformWithUndo(appState, history, objectId, transform,
-                                 setPosition, setRotation, setScale, source);
+      setDocumentObjectTransformWithUndo(
+          appState, history, objectId, transform, setPosition, setRotation,
+          setScale, source);
   outcome.accepted = transformed.accepted;
   outcome.changed = transformed.changed;
   outcome.requiresAdoption =
@@ -806,61 +859,52 @@ CreativeEditorSemanticEditReceipt toggleCreativeEditorSelectionLockedWithUndo(
       worldLayout);
 }
 
-creative::CreativeFacadeMutationReceipt
-toggleSelectedObjectVisibilityWithUndo(
-    creative::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::string_view source) {
-  return toggleSelectedObjectStateWithUndo(
-      appState, history, creative::CreativeMutationKind::SetVisible, source);
-}
-
-creative::CreativeFacadeMutationReceipt toggleSelectedObjectLockedWithUndo(
-    creative::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::string_view source) {
-  return toggleSelectedObjectStateWithUndo(
-      appState, history, creative::CreativeMutationKind::SetLocked, source);
-}
-
-creative::CreativeDocumentMutationReceipt detachObjectWithUndo(
+CreativeEditorSemanticEditReceipt detachCreativeEditorObjectWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(objectId,
-                                   creative::CreativeMutationKind::DetachFrom,
-                                   creative::CreativeMutationPayload{});
-  const bool accepted = creative::documentMutationSucceeded(receipt.status);
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      accepted && receipt.changed, receipt.message));
-  SDL_Log("iggy3d_creative: DETACH source='%s' objectId=%llu accepted=%d "
-          "changed=%d revisionBefore=%llu revisionAfter=%llu message='%s'",
-          std::string(source).c_str(),
-          static_cast<unsigned long long>(objectId), accepted ? 1 : 0,
-          receipt.changed ? 1 : 0,
-          static_cast<unsigned long long>(receipt.revisionBefore),
-          static_cast<unsigned long long>(receipt.revisionAfter),
-          receipt.message.c_str());
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::DetachFrom,
+      creative::CreativeMutationPayload{}, "DETACH", source, worldLayout);
 }
 
-CreativeEditorObjectReattachmentReceipt reattachObjectWithUndo(
+CreativeEditorObjectReattachmentReceipt
+reattachCreativeEditorObjectWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     const CreativeEditorObjectReattachmentPlan& plan,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  CreativeEditorObjectReattachmentReceipt receipt =
-      applyCreativeEditorObjectReattachment(appState.facade, plan);
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.accepted && receipt.changed, toString(receipt.status)));
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  const creative::CreativeDocument& document = appState.facade.document();
+  CreativeEditorObjectReattachmentReceipt receipt;
+  if (!plan.accepted ||
+      plan.status != CreativeEditorObjectReattachmentStatus::Ready ||
+      document.id() != plan.documentId ||
+      document.revision() != plan.documentRevision) {
+    receipt = applyCreativeEditorObjectReattachment(appState.facade, plan);
+  } else {
+    const CreativeEditorResolvedObjectAction action = resolveEditorObjectAction(
+        appState, plan.sourceObjectId, worldLayout,
+        creative::CreativeSemanticObjectAction::StructuralMutation);
+    if (!creative::creativeSemanticActionUsesDocumentMutation(action.policy)) {
+      receipt.status =
+          CreativeEditorObjectReattachmentStatus::SourceOwned;
+      receipt.sourceObjectId = plan.sourceObjectId;
+      receipt.targetObjectId = plan.targetObjectId;
+      receipt.revisionBefore = document.revision();
+      receipt.revisionAfter = document.revision();
+    } else {
+      StandaloneEditTransaction transaction =
+          beginEditTransaction(appState.facade, source);
+      receipt = applyCreativeEditorObjectReattachment(appState.facade, plan);
+      static_cast<void>(completeEditTransaction(
+          history, std::move(transaction), appState.facade,
+          receipt.accepted && receipt.changed, toString(receipt.status)));
+    }
+  }
   SDL_Log("iggy3d_creative: REATTACH source='%s' objectId=%llu targetId=%llu "
           "accepted=%d changed=%d revisionBefore=%llu revisionAfter=%llu "
           "status='%s'",
@@ -1019,7 +1063,9 @@ CreativeStandaloneBatchEditReceipt deleteObjectsWithUndo(
   return outcome;
 }
 
-creative::CreativeDocumentMutationReceipt renameObjectWithUndo(
+namespace {
+
+creative::CreativeDocumentMutationReceipt renameDocumentObjectWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
@@ -1043,8 +1089,6 @@ creative::CreativeDocumentMutationReceipt renameObjectWithUndo(
           std::string(source).c_str());
   return receipt;
 }
-
-namespace {
 
 CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
     creative::CreativeAppState& appState,
@@ -1090,9 +1134,7 @@ CreativeStandaloneBatchEditReceipt applyObjectsBoolStateWithUndo(
   return outcome;
 }
 
-}  // namespace
-
-CreativeStandaloneBatchEditReceipt setObjectsVisibleWithUndo(
+CreativeStandaloneBatchEditReceipt setDocumentObjectsVisibleWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     std::span<const creative::CreativeObjectId> objectIds,
@@ -1103,7 +1145,7 @@ CreativeStandaloneBatchEditReceipt setObjectsVisibleWithUndo(
                                        "VISIBLE", source);
 }
 
-CreativeStandaloneBatchEditReceipt setObjectsLockedWithUndo(
+CreativeStandaloneBatchEditReceipt setDocumentObjectsLockedWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     std::span<const creative::CreativeObjectId> objectIds,
@@ -1114,7 +1156,7 @@ CreativeStandaloneBatchEditReceipt setObjectsLockedWithUndo(
                                        "LOCKED", source);
 }
 
-CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
+CreativeStandaloneBatchEditReceipt setDocumentObjectTransformWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
@@ -1163,104 +1205,77 @@ CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
   return outcome;
 }
 
-creative::CreativeDocumentMutationReceipt setMovingPlatformSettingsWithUndo(
+}  // namespace
+
+CreativeEditorSemanticEditReceipt
+setCreativeEditorMovingPlatformSettingsWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
     creative::CreativeMovingPlatformSettings settings,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(
-          objectId, creative::CreativeMutationKind::SetMovingPlatformSettings,
-          creative::makeMovingPlatformSettingsPayload(settings));
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-          receipt.changed,
-      receipt.message));
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::SetMovingPlatformSettings,
+      creative::makeMovingPlatformSettingsPayload(settings),
+      "SET MOVING PLATFORM SETTINGS", source, worldLayout);
 }
 
-creative::CreativeDocumentMutationReceipt setPlayerSpawnSettingsWithUndo(
+CreativeEditorSemanticEditReceipt setCreativeEditorPlayerSpawnSettingsWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
     creative::CreativePlayerSpawnSettings settings,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(
-          objectId, creative::CreativeMutationKind::SetPlayerSpawnSettings,
-          creative::makePlayerSpawnSettingsPayload(std::move(settings)));
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-          receipt.changed,
-      receipt.message));
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::SetPlayerSpawnSettings,
+      creative::makePlayerSpawnSettingsPayload(std::move(settings)),
+      "SET PLAYER SPAWN SETTINGS", source, worldLayout);
 }
 
-creative::CreativeDocumentMutationReceipt setNpcSpawnSettingsWithUndo(
+CreativeEditorSemanticEditReceipt setCreativeEditorNpcSpawnSettingsWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
     creative::CreativeNpcSpawnSettings settings,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(
-          objectId, creative::CreativeMutationKind::SetNpcSpawnSettings,
-          creative::makeNpcSpawnSettingsPayload(std::move(settings)));
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-          receipt.changed,
-      receipt.message));
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::SetNpcSpawnSettings,
+      creative::makeNpcSpawnSettingsPayload(std::move(settings)),
+      "SET NPC SPAWN SETTINGS", source, worldLayout);
 }
 
-creative::CreativeDocumentMutationReceipt setLootPointSettingsWithUndo(
+CreativeEditorSemanticEditReceipt setCreativeEditorLootPointSettingsWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
     creative::CreativeLootPointSettings settings,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(
-          objectId, creative::CreativeMutationKind::SetLootPointSettings,
-          creative::makeLootPointSettingsPayload(std::move(settings)));
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-          receipt.changed,
-      receipt.message));
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::SetLootPointSettings,
+      creative::makeLootPointSettingsPayload(std::move(settings)),
+      "SET LOOT POINT SETTINGS", source, worldLayout);
 }
 
-creative::CreativeDocumentMutationReceipt setExitPointSettingsWithUndo(
+CreativeEditorSemanticEditReceipt setCreativeEditorExitPointSettingsWithUndo(
     creative::CreativeAppState& appState,
     StandaloneEditHistory& history,
     creative::CreativeObjectId objectId,
     creative::CreativeExitPointSettings settings,
-    std::string_view source) {
-  StandaloneEditTransaction transaction =
-      beginEditTransaction(appState.facade, source);
-  creative::CreativeDocumentMutationReceipt receipt =
-      appState.facade.mutateObject(
-          objectId, creative::CreativeMutationKind::SetExitPointSettings,
-          creative::makeExitPointSettingsPayload(std::move(settings)));
-  static_cast<void>(completeEditTransaction(
-      history, std::move(transaction), appState.facade,
-      receipt.status == creative::CreativeDocumentMutationStatus::Applied &&
-          receipt.changed,
-      receipt.message));
-  return receipt;
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout) {
+  return applySemanticDocumentObjectMutationWithUndo(
+      appState, history, objectId,
+      creative::CreativeMutationKind::SetExitPointSettings,
+      creative::makeExitPointSettingsPayload(std::move(settings)),
+      "SET EXIT POINT SETTINGS", source, worldLayout);
 }
 
 }  // namespace iggy3d_creative_app

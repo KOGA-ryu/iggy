@@ -13,6 +13,7 @@
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/input/WorldActionIntent.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
@@ -73,6 +74,16 @@ void rejectStructuralSpan(CreativeEditorState& editor,
          lhs.scale.z == rhs.scale.z;
 }
 
+[[nodiscard]] bool structuralSpanMutationAllowed(
+    const cr::CreativeDocument& document,
+    cr::CreativeObjectId objectId) noexcept {
+  const cr::CreativeSemanticObjectActionPolicy policy =
+      cr::resolveCreativeSemanticObjectAction(
+          cr::resolveCreativeSemanticSelection(document, objectId),
+          cr::CreativeSemanticObjectAction::StructuralMutation);
+  return cr::creativeSemanticActionUsesDocumentMutation(policy);
+}
+
 [[nodiscard]] const cr::CreativeObject* selectedStructuralSpanObject(
     const cr::CreativeAppState& appState) noexcept {
   const cr::CreativeSelectionState& selection =
@@ -89,6 +100,7 @@ void rejectStructuralSpan(CreativeEditorState& editor,
                                             object->id) ||
       cr::creativeObjectEffectivelyLocked(appState.facade.document(),
                                           object->id) ||
+      !structuralSpanMutationAllowed(appState.facade.document(), object->id) ||
       !object->assetId.empty() ||
       !cr::descriptorSupportsCreativeStructuralSpan(
           cr::describeObject(object->kind)) ||
@@ -381,6 +393,7 @@ void refreshCreativeEditorStructuralSpanEditPreview(
   if (document.id() != state.documentId ||
       document.revision() != state.sourceRevision || object == nullptr ||
       object->kind != state.objectKind ||
+      !structuralSpanMutationAllowed(document, state.objectId) ||
       !sameTransform(object->transform, state.sourceTransform) ||
       !cr::creativeBoundsExactlyEqual(object->bounds, state.sourceBounds)) {
     state = {};
@@ -468,6 +481,7 @@ bool processCreativeEditorStructuralSpanEditInput(
   if (document.id() != state.documentId ||
       document.revision() != state.sourceRevision || object == nullptr ||
       object->kind != state.objectKind ||
+      !structuralSpanMutationAllowed(document, state.objectId) ||
       !sameTransform(object->transform, state.sourceTransform) ||
       !cr::creativeBoundsExactlyEqual(object->bounds, state.sourceBounds)) {
     rejectStructuralSpan(editor, state.objectKind);

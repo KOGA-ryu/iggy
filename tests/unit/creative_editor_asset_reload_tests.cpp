@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/recipes/PatternRecipe.hpp"
 #include "app/iggy3d/creative/tools/Select.hpp"
 
 namespace {
@@ -700,6 +701,21 @@ bool replacementPlansFailClosedAndCancelCleanly() {
   missing.findObject(created.objectId)->assetId = "missing_asset";
   cr::CreativeDocument unsupported = document;
   unsupported.findObject(created.objectId)->kind = cr::CreativeObjectKind::Crate;
+  cr::CreativeDocument patternOwned = document;
+  cr::CreativeDocumentCreateRequest patternSourceRequest;
+  patternSourceRequest.kind = cr::CreativeObjectKind::Crate;
+  const cr::CreativeDocumentCreateReceipt patternSource =
+      patternOwned.createObject(patternSourceRequest);
+  cr::CreativePatternRecipeMutationRequest addPattern;
+  addPattern.kind = cr::CreativePatternRecipeMutationKind::Add;
+  addPattern.recipe.kind = cr::CreativePatternRecipeKind::LinearArray;
+  addPattern.recipe.sourceObjectIds = {patternSource.objectId};
+  addPattern.recipe.generatedObjectIds = {created.objectId};
+  const cr::CreativePatternRecipeMutationReceipt patternRecipe =
+      patternOwned.applyPatternRecipeMutation(addPattern);
+  cr::CreativeDocument worldOwned = document;
+  worldOwned.findObject(created.objectId)
+      ->tags.push_back("creative_world_layout:asset_replace_fixture");
   iggy3d::StaticMeshAssetCatalog invalidBoundsCatalog = catalog;
   invalidBoundsCatalog.entries[1].boundsMax.x =
       std::numeric_limits<float>::infinity();
@@ -723,6 +739,14 @@ bool replacementPlansFailClosedAndCancelCleanly() {
   const app::CreativeAssetReplacementPlan unsupportedPlan =
       app::planCreativeAssetReplacement(
           unsupported, selection, catalog, cr::CreativeObjectKind::Rock,
+          "asset_b");
+  const app::CreativeAssetReplacementPlan patternOwnedPlan =
+      app::planCreativeAssetReplacement(
+          patternOwned, selection, catalog, cr::CreativeObjectKind::Rock,
+          "asset_b");
+  const app::CreativeAssetReplacementPlan worldOwnedPlan =
+      app::planCreativeAssetReplacement(
+          worldOwned, selection, catalog, cr::CreativeObjectKind::Rock,
           "asset_b");
   const app::CreativeAssetReplacementPlan duplicatePlan =
       app::planCreativeAssetReplacement(
@@ -772,7 +796,55 @@ bool replacementPlansFailClosedAndCancelCleanly() {
                            app::CreativeAssetReplacementStatus::InvalidTarget &&
                        invalidTargetBounds.status ==
                            app::CreativeAssetReplacementStatus::InvalidTarget,
-                   "invalid selection capacity and target fail closed");
+                   "invalid selection capacity and target fail closed") &&
+            expect(patternSource.accepted && patternRecipe.accepted &&
+                       patternOwnedPlan.status ==
+                           app::CreativeAssetReplacementStatus::SourceOwned &&
+                       patternOwnedPlan.reasonCode ==
+                           "creative_semantic_action_pattern_owned" &&
+                       worldOwnedPlan.status ==
+                           app::CreativeAssetReplacementStatus::SourceOwned &&
+                       worldOwnedPlan.reasonCode ==
+                           "creative_semantic_action_world_layout_owned",
+                   "generated assets reject structural replacement");
+
+  cr::CreativeAppState patternAppState;
+  const cr::CreativeFacadeDocumentInstallReceipt patternInstalled =
+      patternAppState.facade.installDocument(std::move(patternOwned));
+  selectObject(patternAppState.facade, created.objectId, false);
+  app::CreativeEditorAssetReplacementState patternState;
+  const std::uint64_t patternRevision =
+      patternAppState.facade.document().revision();
+  const app::CreativeAssetReplacementBeginReceipt patternBegin =
+      app::beginCreativeEditorAssetReplacement(
+          patternAppState, catalog, cr::CreativeObjectKind::Rock, "asset_b",
+          patternState);
+  cr::CreativeAppState worldAppState;
+  const cr::CreativeFacadeDocumentInstallReceipt worldInstalled =
+      worldAppState.facade.installDocument(std::move(worldOwned));
+  selectObject(worldAppState.facade, created.objectId, false);
+  app::CreativeEditorAssetReplacementState worldState;
+  const std::uint64_t worldRevision =
+      worldAppState.facade.document().revision();
+  const app::CreativeAssetReplacementBeginReceipt worldBegin =
+      app::beginCreativeEditorAssetReplacement(
+          worldAppState, catalog, cr::CreativeObjectKind::Rock, "asset_b",
+          worldState);
+  ok = expect(patternInstalled.accepted && worldInstalled.accepted &&
+                  !patternBegin.accepted && !worldBegin.accepted &&
+                  patternBegin.status ==
+                      app::CreativeAssetReplacementStatus::SourceOwned &&
+                  worldBegin.status ==
+                      app::CreativeAssetReplacementStatus::SourceOwned &&
+                  !patternState.active && !worldState.active,
+              "generated replacements never open editable previews") &&
+       expect(patternAppState.facade.document().revision() == patternRevision &&
+                  worldAppState.facade.document().revision() == worldRevision &&
+                  cr::creativeUndoDepth(patternAppState.history) == 0U &&
+                  cr::creativeUndoDepth(worldAppState.history) == 0U,
+              "generated preview rejection leaves documents and history "
+              "unchanged") &&
+       ok;
 
   cr::CreativeAppState appState;
   static_cast<void>(appState.facade.installDocument(std::move(document)));
@@ -807,15 +879,52 @@ bool replacementPlansFailClosedAndCancelCleanly() {
   const app::CreativeEditorAssetReplacementFrameResult cancelled =
       app::processCreativeEditorAssetReplacementFrame(
           {appState, state, cancel});
-  return expect(restart.accepted && cancelled.blockWorldActions &&
-                    cancelled.finished && !state.active,
-                "cancel action closes active replacement preview") &&
-         expect(appState.facade.document().revision() == revisionBeforeCancel &&
-                    appState.facade.document()
-                            .findObject(created.objectId)
-                            ->assetId == "asset_a" &&
-                    cr::creativeUndoDepth(appState.history) == 0U,
-                "cancel leaves document and history unchanged") &&
+  ok = expect(restart.accepted && cancelled.blockWorldActions &&
+                  cancelled.finished && !state.active,
+              "cancel action closes active replacement preview") &&
+       expect(appState.facade.document().revision() == revisionBeforeCancel &&
+                  appState.facade.document()
+                          .findObject(created.objectId)
+                          ->assetId == "asset_a" &&
+                  cr::creativeUndoDepth(appState.history) == 0U,
+              "cancel leaves document and history unchanged") &&
+       ok;
+
+  cr::CreativeDocument commitRecheck = cr::CreativeDocument::create("Recheck");
+  static_cast<void>(commitRecheck.assignId(83U));
+  const cr::CreativeDocumentCreateReceipt recheckObject =
+      createRichAssetObject(commitRecheck, catalog.entries[0], {}, "Recheck",
+                            1U);
+  const std::array recheckSelection{recheckObject.objectId};
+  app::CreativeEditorAssetReplacementState recheckState;
+  recheckState.plan = app::planCreativeAssetReplacement(
+      commitRecheck, recheckSelection, catalog, cr::CreativeObjectKind::Rock,
+      "asset_b");
+  commitRecheck.findObject(recheckObject.objectId)
+      ->tags.push_back("creative_world_layout:commit_recheck");
+  cr::CreativeAppState recheckAppState;
+  const cr::CreativeFacadeDocumentInstallReceipt recheckInstalled =
+      recheckAppState.facade.installDocument(std::move(commitRecheck));
+  recheckState.active = recheckState.plan.accepted;
+  const std::uint64_t recheckRevision =
+      recheckAppState.facade.document().revision();
+  const app::CreativeAssetReplacementCommitReceipt sourceOwnedCommit =
+      app::commitCreativeEditorAssetReplacement(recheckAppState, recheckState);
+  const cr::CreativeObject* rechecked =
+      recheckAppState.facade.findObject(recheckObject.objectId);
+  return expect(recheckObject.accepted && recheckInstalled.accepted &&
+                    !sourceOwnedCommit.accepted &&
+                    sourceOwnedCommit.status ==
+                        app::CreativeAssetReplacementStatus::SourceOwned &&
+                    sourceOwnedCommit.reasonCode ==
+                        "creative_semantic_action_world_layout_owned" &&
+                    !recheckState.active,
+                "commit rechecks generated ownership before mutation") &&
+         expect(rechecked != nullptr && rechecked->assetId == "asset_a" &&
+                    recheckAppState.facade.document().revision() ==
+                        recheckRevision &&
+                    cr::creativeUndoDepth(recheckAppState.history) == 0U,
+                "source-owned commit creates no mutation or history") &&
          ok;
 }
 

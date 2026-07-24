@@ -171,31 +171,23 @@ toggleCreativeEditorSelectionLockedWithUndo(
     std::string_view source,
     CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] cr::CreativeFacadeMutationReceipt
-toggleSelectedObjectVisibilityWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::string_view source);
-
-[[nodiscard]] cr::CreativeFacadeMutationReceipt
-toggleSelectedObjectLockedWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::string_view source);
-
-// Clears an attachment relationship without changing the object's stored
-// world transform. The relationship change and its undo snapshot are one edit.
-[[nodiscard]] cr::CreativeDocumentMutationReceipt detachObjectWithUndo(
+// Clears an authored attachment relationship without changing the object's
+// stored world transform. Generated output rejects before history begins.
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+detachCreativeEditorObjectWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] CreativeEditorObjectReattachmentReceipt reattachObjectWithUndo(
+[[nodiscard]] CreativeEditorObjectReattachmentReceipt
+reattachCreativeEditorObjectWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     const CreativeEditorObjectReattachmentPlan& plan,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 [[nodiscard]] cr::CreativeClipboardCopyReceipt copySelectionToClipboard(
     cr::CreativeAppState& appState,
@@ -241,83 +233,49 @@ struct CreativeStandaloneBatchEditReceipt {
     std::span<const cr::CreativeObjectId> objectIds,
     std::string_view source);
 
-// K-3: history-wrapped absolute rename of a single object.
-[[nodiscard]] cr::CreativeDocumentMutationReceipt renameObjectWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    cr::CreativeObjectId objectId,
-    std::string name,
-    std::string_view source);
-
-// Absolute set-visible / set-locked over an explicit id list (or the current
-// selection when the span is empty), one transaction for the whole batch.
-// Distinct from the toggle*WithUndo helpers: honors the absolute bool the
-// desktop panels emit rather than flipping current state.
-[[nodiscard]] CreativeStandaloneBatchEditReceipt setObjectsVisibleWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::span<const cr::CreativeObjectId> objectIds,
-    bool visible,
-    std::string_view source);
-[[nodiscard]] CreativeStandaloneBatchEditReceipt setObjectsLockedWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    std::span<const cr::CreativeObjectId> objectIds,
-    bool locked,
-    std::string_view source);
-
-// K-7: absolute transform of a single object. The component flags select which
-// of position/rotation/scale to write. Hierarchy roots propagate translation,
-// three-axis rotation, and scale through descendants. Every accepted command
-// is one history transaction.
-[[nodiscard]] CreativeStandaloneBatchEditReceipt setObjectTransformWithUndo(
-    cr::CreativeAppState& appState,
-    StandaloneEditHistory& history,
-    cr::CreativeObjectId objectId,
-    const cr::CreativeTransform& transform,
-    bool setPosition,
-    bool setRotation,
-    bool setScale,
-    std::string_view source);
-
-[[nodiscard]] cr::CreativeDocumentMutationReceipt
-setMovingPlatformSettingsWithUndo(
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorMovingPlatformSettingsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeMovingPlatformSettings settings,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] cr::CreativeDocumentMutationReceipt
-setPlayerSpawnSettingsWithUndo(
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorPlayerSpawnSettingsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativePlayerSpawnSettings settings,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] cr::CreativeDocumentMutationReceipt
-setNpcSpawnSettingsWithUndo(
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorNpcSpawnSettingsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeNpcSpawnSettings settings,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] cr::CreativeDocumentMutationReceipt
-setLootPointSettingsWithUndo(
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorLootPointSettingsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeLootPointSettings settings,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
-[[nodiscard]] cr::CreativeDocumentMutationReceipt
-setExitPointSettingsWithUndo(
+[[nodiscard]] CreativeEditorSemanticEditReceipt
+setCreativeEditorExitPointSettingsWithUndo(
     cr::CreativeAppState& appState,
     StandaloneEditHistory& history,
     cr::CreativeObjectId objectId,
     cr::CreativeExitPointSettings settings,
-    std::string_view source);
+    std::string_view source,
+    CreativeEditorWorldLayoutState* worldLayout = nullptr);
 
 }  // namespace iggy3d_creative_app

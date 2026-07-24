@@ -29,6 +29,7 @@ enum class CreativeAssetReplacementStatus : std::uint8_t {
   UnsupportedObject,
   MissingSourceAsset,
   LockedObject,
+  SourceOwned,
   CustomBounds,
   NoChange,
   StaleDocument,

@@ -12,6 +12,7 @@
 #include "EditorEdits.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
+#include "app/iggy3d/creative/tools/SelectionResolution.hpp"
 #include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
@@ -22,6 +23,14 @@ namespace {
   return kind == cr::CreativeObjectKind::Prop ||
          kind == cr::CreativeObjectKind::Rock ||
          kind == cr::CreativeObjectKind::Bridge;
+}
+
+[[nodiscard]] cr::CreativeSemanticObjectActionPolicy
+assetReplacementMutationPolicy(const cr::CreativeDocument& document,
+                               cr::CreativeObjectId objectId) noexcept {
+  return cr::resolveCreativeSemanticObjectAction(
+      cr::resolveCreativeSemanticSelection(document, objectId),
+      cr::CreativeSemanticObjectAction::StructuralMutation);
 }
 
 void rejectPlan(CreativeAssetReplacementPlan& plan,
@@ -85,6 +94,7 @@ std::string_view toString(CreativeAssetReplacementStatus status) noexcept {
     case CreativeAssetReplacementStatus::MissingSourceAsset:
       return "MissingSourceAsset";
     case CreativeAssetReplacementStatus::LockedObject: return "LockedObject";
+    case CreativeAssetReplacementStatus::SourceOwned: return "SourceOwned";
     case CreativeAssetReplacementStatus::CustomBounds: return "CustomBounds";
     case CreativeAssetReplacementStatus::NoChange: return "NoChange";
     case CreativeAssetReplacementStatus::StaleDocument: return "StaleDocument";
@@ -151,6 +161,13 @@ CreativeAssetReplacementPlan planCreativeAssetReplacement(
     if (!replacementObjectKind(object->kind) || object->assetId.empty()) {
       rejectPlan(plan, CreativeAssetReplacementStatus::UnsupportedObject,
                  "creative_asset_replace_object_unsupported");
+      return plan;
+    }
+    const cr::CreativeSemanticObjectActionPolicy mutationPolicy =
+        assetReplacementMutationPolicy(document, objectId);
+    if (!cr::creativeSemanticActionUsesDocumentMutation(mutationPolicy)) {
+      rejectPlan(plan, CreativeAssetReplacementStatus::SourceOwned,
+                 mutationPolicy.reasonCode);
       return plan;
     }
     if (cr::creativeObjectEffectivelyLocked(document, object->id)) {
@@ -284,6 +301,18 @@ CreativeAssetReplacementCommitReceipt commitCreativeEditorAssetReplacement(
     state.reasonCode = receipt.reasonCode;
     clearPreview(state);
     return receipt;
+  }
+  for (cr::CreativeObjectId objectId : state.plan.objectIds) {
+    const cr::CreativeSemanticObjectActionPolicy mutationPolicy =
+        assetReplacementMutationPolicy(live, objectId);
+    if (!cr::creativeSemanticActionUsesDocumentMutation(mutationPolicy)) {
+      receipt.status = CreativeAssetReplacementStatus::SourceOwned;
+      receipt.reasonCode = mutationPolicy.reasonCode;
+      state.lastStatus = receipt.status;
+      state.reasonCode = receipt.reasonCode;
+      clearPreview(state);
+      return receipt;
+    }
   }
 
   StandaloneEditTransaction transaction =
