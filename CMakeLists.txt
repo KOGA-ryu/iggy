@@ -499,6 +499,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopAssetCommands.cpp
   apps/iggy3d_creative/EditorDesktopDocumentCommands.cpp
   apps/iggy3d_creative/EditorDesktopObjectCommands.cpp
+  apps/iggy3d_creative/EditorDesktopPlayCommands.cpp
   apps/iggy3d_creative/EditorDesktopTerrainCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutBuildingCommands.cpp
   apps/iggy3d_creative/EditorDesktopWorldLayoutCommandSupport.cpp

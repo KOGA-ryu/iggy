@@ -6,6 +6,7 @@
 #include "EditorFrame.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPersistence.hpp"
+#include "EditorPlaytestProcess.hpp"
 #include "EditorState.hpp"
 #include "EditorWorldLayout.hpp"
 #include "EditorWorldLayoutDiagnostics.hpp"
@@ -13,9 +14,11 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/history/History.hpp"
+#include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "app/iggy3d/creative/tools/Group.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
+#include "content/assets/StaticMeshAsset.hpp"
 
 #include <algorithm>
 #include <array>
@@ -58,6 +61,33 @@ bool vecNear(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
 bool near(double lhs, double rhs) {
   return std::fabs(lhs - rhs) <= 1.0e-9;
 }
+
+class FakePlaytestProcessControl final : public app::PlaytestProcessControl {
+ public:
+  [[nodiscard]] bool running() override { return running_; }
+  void stopRunning() override { running_ = false; }
+  [[nodiscard]] bool launch(const app::PlaytestLaunchPlan&,
+                            std::string&) override {
+    running_ = true;
+    return true;
+  }
+  void setSnapshotEntityNames(app::PlaytestEntityNameMap) override {}
+  bool sendPlaytestCommand(
+      std::string_view verb,
+      const std::vector<std::pair<std::string, std::string>>&,
+      std::string& reasonCode) override {
+    ++sendCount;
+    lastVerb = std::string(verb);
+    reasonCode = sendReason;
+    return sendSucceeds;
+  }
+
+  bool running_ = false;
+  bool sendSucceeds = true;
+  std::size_t sendCount = 0U;
+  std::string sendReason;
+  std::string lastVerb;
+};
 
 bool rectEquals(cr::CreativeWorldLayoutRect lhs,
                 cr::CreativeWorldLayoutRect rhs) {
@@ -1493,6 +1523,110 @@ bool playIsUnsupportedAndFrameIsBounded() {
          expect(frame.overflowed &&
                     frame.count == app::kCreativeDesktopCommandCapacity,
                 "the command frame is bounded and records overflow");
+}
+
+bool playCommandsPreserveSessionAndProcessContracts() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Desktop Play Commands");
+  static_cast<void>(document.assignId(415U));
+
+  cr::CreativeDocumentCreateRequest floor;
+  floor.kind = cr::CreativeObjectKind::Floor;
+  floor.name = "Play Floor";
+  floor.bounds = {{-8.0, 0.0, -8.0}, {8.0, 0.25, 8.0}};
+  floor.hasBoundsOverride = true;
+  const bool floorAccepted = document.createObject(floor).accepted;
+
+  cr::CreativeDocumentCreateRequest spawn;
+  spawn.kind = cr::CreativeObjectKind::SpawnPoint;
+  spawn.name = "Player Spawn";
+  spawn.transform.position = {0.0, 0.25, 0.0};
+  spawn.hasTransformOverride = true;
+  const bool spawnAccepted = document.createObject(spawn).accepted;
+  const bool installed =
+      appState.facade.installDocument(std::move(document)).accepted;
+
+  app::CreativeEditorState editor;
+  app::CreativePlaySession playMode;
+  iggy3d::StaticMeshAssetCatalog catalog;
+  FakePlaytestProcessControl process;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId, &playMode, &catalog,
+      &process};
+
+  const app::CreativeDesktopCommandContext noProcessContext{
+      appState, editor, std::filesystem::path{}, &saveId, &playMode, &catalog};
+  const app::CreativeDesktopCommandResult noProcess =
+      dispatchOne(app::CreativeDesktopCommandId::PlaytestPause,
+                  noProcessContext);
+
+  const app::CreativeDesktopCommandResult paused =
+      dispatchOne(app::CreativeDesktopCommandId::PlaytestPause, context);
+  const bool pauseSent =
+      paused.accepted && paused.message == "pause sent" &&
+      process.sendCount == 1U && process.lastVerb == "pause";
+
+  process.sendSucceeds = false;
+  process.sendReason = "stalled";
+  const app::CreativeDesktopCommandResult resumed =
+      dispatchOne(app::CreativeDesktopCommandId::PlaytestResume, context);
+  const bool resumeRejected =
+      !resumed.accepted &&
+      resumed.message == "playtest command rejected: stalled" &&
+      process.sendCount == 2U && process.lastVerb == "resume";
+
+  editor.terrainGeneration.previewActive = true;
+  const app::CreativeDesktopCommandResult previewBlocked =
+      dispatchOne(app::CreativeDesktopCommandId::Play, context);
+  const bool terrainPreviewRejected =
+      !previewBlocked.accepted && !previewBlocked.changed &&
+      previewBlocked.message ==
+          "apply or cancel the terrain preview before play" &&
+      !app::creativePlaySessionActive(playMode);
+
+  editor.terrainGeneration.previewActive = false;
+  const app::CreativeDesktopCommandResult started =
+      dispatchOne(app::CreativeDesktopCommandId::Play, context);
+  const bool playStarted =
+      started.accepted && started.changed &&
+      started.message == "play started" &&
+      app::creativePlaySessionActive(playMode);
+
+  const std::uint64_t revisionBeforeBlockedEdit =
+      appState.facade.document().revision();
+  const app::CreativeDesktopCommandResult editBlocked =
+      dispatchOne(app::CreativeDesktopCommandId::NewDocument, context);
+  const bool activePlayEditRejected =
+      !editBlocked.accepted && !editBlocked.changed &&
+      editBlocked.message == "stop play before editing" &&
+      appState.facade.document().revision() == revisionBeforeBlockedEdit &&
+      app::creativePlaySessionActive(playMode);
+
+  const app::CreativeDesktopCommandResult stopped =
+      dispatchOne(app::CreativeDesktopCommandId::Play, context);
+  const bool playStopped =
+      stopped.accepted && stopped.changed &&
+      stopped.message == "play stopped" &&
+      !app::creativePlaySessionActive(playMode);
+
+  return expect(floorAccepted && spawnAccepted && installed,
+                "play command fixture is valid") &&
+         expect(!noProcess.accepted &&
+                    noProcess.message ==
+                        "playtest command rejected: no child",
+                "playtest command rejects a missing process owner") &&
+         expect(pauseSent,
+                "pause command forwards the exact protocol verb") &&
+         expect(resumeRejected,
+                "resume command preserves process send failure") &&
+         expect(terrainPreviewRejected,
+                "terrain preview still blocks play start") &&
+         expect(playStarted, "Play starts the embedded session") &&
+         expect(activePlayEditRejected,
+                "root admission still rejects edits during play") &&
+         expect(playStopped, "Play stops the active embedded session");
 }
 
 bool commandFramesAccumulatePreviewImpacts() {
@@ -8663,6 +8797,7 @@ int main() {
   ok = semanticPersistenceCommandsShareDocumentDispatcher() && ok;
   ok = semanticAssetUndoKeepsRootWorldLayoutHistorySeparate() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
+  ok = playCommandsPreserveSessionAndProcessContracts() && ok;
   ok = commandFramesAccumulatePreviewImpacts() && ok;
   ok = commandFramesInferDocumentImpactsFromActiveRevision() && ok;
   // Step 3 — Desktop Command Expansion.

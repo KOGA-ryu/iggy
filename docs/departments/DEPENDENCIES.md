@@ -33,20 +33,20 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Rendering and Preview | Interaction and Controls | 27 | 10 |
 | Building and World Layout | Interaction and Controls | 26 | 22 |
 | Persistence and Validation | Playtest and Simulation | 23 | 8 |
-| Editor Shell and Drafting UI | Assets and Object Composition | 22 | 9 |
+| Editor Shell and Drafting UI | Assets and Object Composition | 22 | 8 |
 | Building and World Layout | Assets and Object Composition | 21 | 20 |
 | Playtest and Simulation | Rendering and Preview | 21 | 11 |
 | Terrain and Site | Editor Shell and Drafting UI | 21 | 18 |
 | Interaction and Controls | Rendering and Preview | 20 | 15 |
 | Assets and Object Composition | Building and World Layout | 18 | 8 |
 | Interaction and Controls | Foundation and Build | 18 | 12 |
+| Editor Shell and Drafting UI | Playtest and Simulation | 17 | 9 |
 | Interaction and Controls | Terrain and Site | 17 | 8 |
 | Rendering and Preview | Playtest and Simulation | 17 | 9 |
 | Interaction and Controls | Building and World Layout | 16 | 11 |
 | Playtest and Simulation | Persistence and Validation | 15 | 10 |
 | Authoring Core | Building and World Layout | 14 | 7 |
 | Authoring Core | Interaction and Controls | 14 | 6 |
-| Editor Shell and Drafting UI | Playtest and Simulation | 14 | 7 |
 | Playtest and Simulation | Assets and Object Composition | 14 | 14 |
 | Playtest and Simulation | Interaction and Controls | 13 | 9 |
 | Playtest and Simulation | Editor Shell and Drafting UI | 12 | 6 |
@@ -92,6 +92,7 @@ These files deserve manual ownership review before physical moves.
 | [apps/iggy3d_creative/main.cpp](../../apps/iggy3d_creative/main.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Persistence and Validation, Playtest and Simulation, Rendering and Preview | 31 |
 | [apps/iggy3d_creative/EditorState.hpp](../../apps/iggy3d_creative/EditorState.hpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Playtest and Simulation, Rendering and Preview, Terrain and Site | 27 |
 | [apps/iggy3d_creative/EditorOverlayWireframes.cpp](../../apps/iggy3d_creative/EditorOverlayWireframes.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls | 21 |
+| [tests/unit/creative_desktop_ui_command_tests.cpp](../../tests/unit/creative_desktop_ui_command_tests.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 17 |
 | [apps/iggy3d_creative/EditorBootstrap.cpp](../../apps/iggy3d_creative/EditorBootstrap.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Foundation and Build, Interaction and Controls, Rendering and Preview, Terrain and Site | 15 |
 | [src/runtime/save/SaveEnvelope.hpp](../../src/runtime/save/SaveEnvelope.hpp) | Persistence and Validation | Foundation and Build, Playtest and Simulation | 15 |
 | [apps/iggy3d_creative/EditorDesktopPanels.cpp](../../apps/iggy3d_creative/EditorDesktopPanels.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation, Playtest and Simulation | 14 |
@@ -99,7 +100,6 @@ These files deserve manual ownership review before physical moves.
 | [apps/iggy3d_playtest/main.cpp](../../apps/iggy3d_playtest/main.cpp) | Playtest and Simulation | Building and World Layout, Editor Shell and Drafting UI, Foundation and Build, Interaction and Controls, Persistence and Validation, Rendering and Preview | 14 |
 | [src/app/iggy3d/creative/Facade.hpp](../../src/app/iggy3d/creative/Facade.hpp) | Authoring Core | Assets and Object Composition, Interaction and Controls | 14 |
 | [src/app/iggy3d/creative/tools/Tools.hpp](../../src/app/iggy3d/creative/tools/Tools.hpp) | Interaction and Controls | Assets and Object Composition, Authoring Core, Terrain and Site | 14 |
-| [tests/unit/creative_desktop_ui_command_tests.cpp](../../tests/unit/creative_desktop_ui_command_tests.cpp) | Editor Shell and Drafting UI | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Persistence and Validation | 14 |
 | [tests/unit/creative_editor_pattern_tests.cpp](../../tests/unit/creative_editor_pattern_tests.cpp) | Assets and Object Composition | Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls | 14 |
 | [apps/iggy3d_creative/EditorFrame.hpp](../../apps/iggy3d_creative/EditorFrame.hpp) | Editor Shell and Drafting UI | Authoring Core, Foundation and Build, Interaction and Controls, Rendering and Preview | 13 |
 | [tests/unit/creative_creator_task_workflow_tests.cpp](../../tests/unit/creative_creator_task_workflow_tests.cpp) | Authoring Core | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Playtest and Simulation, Terrain and Site | 13 |

@@ -64,4 +64,9 @@ bool dispatchCreativeDesktopTerrainCommand(
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);
 
+bool dispatchCreativeDesktopPlayCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result);
+
 }  // namespace iggy3d_creative_app

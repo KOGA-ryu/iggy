@@ -58,6 +58,7 @@ apps/iggy3d_creative/EditorDesktopInspector.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopModel.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopModel.hpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopObjectCommands.cpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopPlayCommands.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopOutliner.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopPanels.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopPanels.hpp	editor-shell-ui
