@@ -18,8 +18,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Building and World Layout | Editor Shell and Drafting UI | 50 | 33 |
 | Building and World Layout | Playtest and Simulation | 45 | 17 |
 | Editor Shell and Drafting UI | Building and World Layout | 38 | 18 |
-| Interaction and Controls | Editor Shell and Drafting UI | 36 | 28 |
 | Assets and Object Composition | Rendering and Preview | 35 | 29 |
+| Interaction and Controls | Editor Shell and Drafting UI | 35 | 27 |
 | Authoring Core | Assets and Object Composition | 34 | 22 |
 | Rendering and Preview | Assets and Object Composition | 34 | 15 |
 | Terrain and Site | Interaction and Controls | 33 | 17 |

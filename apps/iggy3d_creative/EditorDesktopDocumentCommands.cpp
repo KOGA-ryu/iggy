@@ -59,6 +59,48 @@ bool installBuiltInMapTemplates(
   return true;
 }
 
+void applyMeasurementAnnotationCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result) {
+  const auto* payload =
+      payloadAs<CreativeDesktopMeasurementAnnotationPayload>(command);
+  if (payload == nullptr) {
+    result.message = "measurement annotation: payload mismatch";
+    return;
+  }
+
+  creative::CreativeAppState& appState = context.appState;
+  StandaloneEditTransaction transaction = beginEditTransaction(
+      appState.facade,
+      command.id == CreativeDesktopCommandId::SaveMeasurementAnnotation
+          ? "desktop_save_measurement_annotation"
+          : "desktop_remove_measurement_annotation");
+  if (command.id == CreativeDesktopCommandId::SaveMeasurementAnnotation) {
+    const creative::CreativeFacadeMeasurementAnnotationSaveReceipt receipt =
+        appState.facade.saveMeasurementAnnotation(payload->name);
+    result.accepted = receipt.accepted;
+    result.changed = receipt.changed;
+    result.message = std::string{receipt.reasonCode};
+  } else {
+    const creative::CreativeMeasurementAnnotationMutationReceipt receipt =
+        appState.facade.removeMeasurementAnnotation(payload->annotationId);
+    result.accepted = receipt.accepted;
+    result.changed = receipt.changed;
+    result.message = std::string{receipt.reasonCode};
+  }
+
+  const creative::CreativeHistoryRecordReceipt history =
+      completeEditTransaction(appState.history, std::move(transaction),
+                              appState.facade, result.changed, result.message);
+  if (result.changed && !history.recorded) {
+    result.message += "; history not recorded: ";
+    result.message += history.reasonCode;
+  }
+  result.sceneChanged = result.changed;
+  result.affectedObjectCount = result.changed ? 1U : 0U;
+}
+
 void regenerateMapTemplate(
     const CreativeDesktopMapTemplatePayload& payload,
     const CreativeDesktopCommandContext& context,
@@ -255,6 +297,10 @@ bool dispatchCreativeDesktopDocumentCommand(
       regenerateMapTemplate(*payload, context, result);
       break;
     }
+    case CreativeDesktopCommandId::SaveMeasurementAnnotation:
+    case CreativeDesktopCommandId::RemoveMeasurementAnnotation:
+      applyMeasurementAnnotationCommand(command, context, result);
+      break;
     case CreativeDesktopCommandId::Undo: {
       CreativeEditorWorldLayoutState* worldLayout =
           &activeAppState == &appState ? &editor.worldLayout : nullptr;
