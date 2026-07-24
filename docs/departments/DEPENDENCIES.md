@@ -10,7 +10,7 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Interaction and Controls | 103 | 51 |
 | Playtest and Simulation | Foundation and Build | 93 | 63 |
 | Interaction and Controls | Assets and Object Composition | 83 | 37 |
-| Editor Shell and Drafting UI | Interaction and Controls | 63 | 23 |
+| Editor Shell and Drafting UI | Interaction and Controls | 64 | 24 |
 | Building and World Layout | Authoring Core | 59 | 49 |
 | Interaction and Controls | Authoring Core | 56 | 41 |
 | Terrain and Site | Authoring Core | 53 | 37 |

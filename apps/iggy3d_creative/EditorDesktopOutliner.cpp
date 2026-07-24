@@ -147,27 +147,6 @@ void appendRowFlagControls(const CreativeDesktopOutlinerRow& row,
 
 }  // namespace
 
-CreativeDesktopLiveSelection creativeDesktopLiveSelection(
-    const cr::CreativeAppState& appState) {
-  CreativeDesktopLiveSelection selection;
-  const cr::CreativeSelectionState& state = appState.facade.selectionState();
-  if (state.selectedTarget.value != cr::kInvalidId) {
-    selection.primaryObjectId =
-        static_cast<cr::CreativeObjectId>(state.selectedTarget.value);
-  }
-  for (const cr::TargetRef& target : cr::selectedTargetList(state)) {
-    if (target.value != cr::kInvalidId) {
-      selection.objectIds.push_back(
-          static_cast<cr::CreativeObjectId>(target.value));
-    }
-  }
-  if (selection.objectIds.empty() &&
-      selection.primaryObjectId != cr::kInvalidObjectId) {
-    selection.objectIds.push_back(selection.primaryObjectId);
-  }
-  return selection;
-}
-
 void buildCreativeEditorDesktopOutlinerPanel(
     CreativeEditorDesktopUiState& desktopUi,
     const cr::CreativeAppState& appState,
@@ -208,7 +187,8 @@ void buildCreativeEditorDesktopOutlinerPanel(
   }
 
   // Selection is read from live document truth every frame, never cached.
-  const CreativeDesktopLiveSelection live = creativeDesktopLiveSelection(appState);
+  const CreativeDesktopLiveSelection live =
+      creativeDesktopLiveSelection(appState.facade.selectionState());
 
   std::vector<cr::CreativeObjectId> visibleIds;
   visibleIds.reserve(state.filteredRows.size());

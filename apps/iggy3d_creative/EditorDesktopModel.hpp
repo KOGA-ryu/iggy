@@ -10,6 +10,7 @@
 
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"
 
@@ -88,6 +89,16 @@ struct CreativeDesktopSelectionResolution {
   std::vector<cr::CreativeObjectId> objectIds;
   cr::CreativeObjectId primaryObjectId = cr::kInvalidObjectId;
 };
+
+// The persistent selection projected from the selection tool's target refs
+// into desktop object ids, before document-truth filtering.
+struct CreativeDesktopLiveSelection {
+  std::vector<cr::CreativeObjectId> objectIds;
+  cr::CreativeObjectId primaryObjectId = cr::kInvalidObjectId;
+};
+
+[[nodiscard]] CreativeDesktopLiveSelection creativeDesktopLiveSelection(
+    const cr::CreativeSelectionState& selectionState);
 
 // Deepest displayed depth. Deeper descendants stay as rows clamped to this
 // depth and carry DepthLimit recovery rather than disappearing.

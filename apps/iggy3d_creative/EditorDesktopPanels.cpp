@@ -218,7 +218,8 @@ void appendToolbarHeader(const cr::CreativeAppState& appState,
                          const CreativeEditorState& editor,
                          bool playModeActive) {
   const cr::CreativeDocument& document = appState.facade.document();
-  const CreativeDesktopLiveSelection live = creativeDesktopLiveSelection(appState);
+  const CreativeDesktopLiveSelection live =
+      creativeDesktopLiveSelection(appState.facade.selectionState());
   const CreativeDesktopSelectionResolution resolved =
       resolveCreativeDesktopSelection(document, live.objectIds,
                                       live.primaryObjectId);

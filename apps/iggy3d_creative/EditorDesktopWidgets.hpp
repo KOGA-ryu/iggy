@@ -26,17 +26,6 @@
 
 namespace iggy3d_creative_app {
 
-// The persistent selection as the facade currently reports it (ids + primary),
-// before it is resolved against document truth.
-struct CreativeDesktopLiveSelection {
-  std::vector<iggy3d::creative::CreativeObjectId> objectIds;
-  iggy3d::creative::CreativeObjectId primaryObjectId =
-      iggy3d::creative::kInvalidObjectId;
-};
-
-[[nodiscard]] CreativeDesktopLiveSelection creativeDesktopLiveSelection(
-    const iggy3d::creative::CreativeAppState& appState);
-
 // Project-panel body. Renders the searchable hierarchy and converts pure
 // selection plans into SelectObjects commands. Called inside the caller's
 // Begin/End for the `Project` dock window.

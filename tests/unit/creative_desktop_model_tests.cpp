@@ -463,6 +463,34 @@ bool staleSelectionIdsAreDiscarded() {
                 "valid ids keep their order and a valid primary is kept");
 }
 
+bool liveSelectionProjectsOrderedTargetsAndPrimary() {
+  cr::CreativeSelectionState selection;
+  selection.selectedTarget = {7U};
+  selection.selectedTargets = {{3U}, {cr::kInvalidId}, {7U}, {5U}};
+
+  const app::CreativeDesktopLiveSelection live =
+      app::creativeDesktopLiveSelection(selection);
+  return expect(live.primaryObjectId == 7U,
+                "live selection preserves a valid primary target") &&
+         expect(live.objectIds ==
+                    std::vector<cr::CreativeObjectId>{3U, 7U, 5U},
+                "live selection preserves order and filters invalid ids");
+}
+
+bool liveSelectionFallsBackToPrimaryOnly() {
+  cr::CreativeSelectionState selection;
+  selection.selectedTarget = {42U};
+  selection.selectedTargets = {{cr::kInvalidId}};
+
+  const app::CreativeDesktopLiveSelection live =
+      app::creativeDesktopLiveSelection(selection);
+  return expect(live.objectIds ==
+                    std::vector<cr::CreativeObjectId>{42U},
+                "a valid primary becomes the sole fallback selection") &&
+         expect(live.primaryObjectId == 42U,
+                "primary-only fallback preserves the primary");
+}
+
 // 14. Degree/radian conversion parity.
 bool degreeRadianParity() {
   const cr::CreativeVec3 radians{0.5, -1.25, 2.0};
@@ -889,6 +917,8 @@ int main() {
   ok = hierarchySelectionPlansParentChildrenAndSubtree() && ok;
   ok = selectionPlannersRejectOverCapacityAtomically() && ok;
   ok = staleSelectionIdsAreDiscarded() && ok;
+  ok = liveSelectionProjectsOrderedTargetsAndPrimary() && ok;
+  ok = liveSelectionFallsBackToPrimaryOnly() && ok;
   ok = degreeRadianParity() && ok;
   ok = draftRejectsNonFiniteAndNonPositiveScale() && ok;
   ok = generatedSourceScopesAreOrderedAndDoNotInventConnectorOwnership() && ok;

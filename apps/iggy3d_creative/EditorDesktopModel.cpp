@@ -493,6 +493,27 @@ CreativeDesktopSelectionResolution resolveCreativeDesktopSelection(
                                          primaryObjectId);
 }
 
+CreativeDesktopLiveSelection creativeDesktopLiveSelection(
+    const cr::CreativeSelectionState& selectionState) {
+  CreativeDesktopLiveSelection selection;
+  if (selectionState.selectedTarget.value != cr::kInvalidId) {
+    selection.primaryObjectId = static_cast<cr::CreativeObjectId>(
+        selectionState.selectedTarget.value);
+  }
+  for (const cr::TargetRef& target :
+       cr::selectedTargetList(selectionState)) {
+    if (target.value != cr::kInvalidId) {
+      selection.objectIds.push_back(
+          static_cast<cr::CreativeObjectId>(target.value));
+    }
+  }
+  if (selection.objectIds.empty() &&
+      selection.primaryObjectId != cr::kInvalidObjectId) {
+    selection.objectIds.push_back(selection.primaryObjectId);
+  }
+  return selection;
+}
+
 cr::CreativeVec3 creativeDesktopRadiansToDegrees(
     cr::CreativeVec3 radians) noexcept {
   return {radians.x * kDegreesPerRadian, radians.y * kDegreesPerRadian,

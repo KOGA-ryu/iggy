@@ -1203,7 +1203,8 @@ void buildCreativeEditorDesktopInspectorPanel(
 
   // Valid ids are resolved from document truth every frame; a cached id is
   // never trusted after a revision.
-  const CreativeDesktopLiveSelection live = creativeDesktopLiveSelection(appState);
+  const CreativeDesktopLiveSelection live =
+      creativeDesktopLiveSelection(appState.facade.selectionState());
   const CreativeDesktopSelectionResolution resolved =
       resolveCreativeDesktopSelection(document, live.objectIds,
                                       live.primaryObjectId);
