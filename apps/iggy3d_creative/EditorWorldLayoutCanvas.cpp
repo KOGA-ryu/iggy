@@ -88,7 +88,7 @@ ImGuiMouseCursor terrainRegionHandleCursor(
 void queueGesture(CreativeDesktopCommandFrame& commands,
                   CreativeEditorWorldLayoutGesturePhase phase,
                   CreativeEditorWorldLayoutPoint point = {}) {
-  commands.push(CreativeDesktopCommandId::WorldLayoutCanvasGesture,
+  commands.enqueue(CreativeDesktopCommandId::WorldLayoutCanvasGesture,
                 CreativeDesktopWorldLayoutGesturePayload{phase, point});
 }
 
@@ -96,7 +96,7 @@ void queueRoomManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutRoomManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoom,
       CreativeDesktopWorldLayoutRoomManipulationPayload{phase, point,
                                                         toleranceCells});
@@ -106,7 +106,7 @@ void queueRoomBoundaryManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutRoomBoundaryManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoomBoundary,
       CreativeDesktopWorldLayoutRoomBoundaryManipulationPayload{
           phase, point, toleranceCells});
@@ -116,7 +116,7 @@ void queueRoomCornerManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutRoomCornerManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoomCorner,
       CreativeDesktopWorldLayoutRoomCornerManipulationPayload{
           phase, point, toleranceCells});
@@ -126,7 +126,7 @@ void queueVerticalConnectorManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutVerticalConnectorManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
       CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
           phase, point, toleranceCells, {}});
@@ -136,7 +136,7 @@ void queueBuildingManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutBuildingManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateBuilding,
       CreativeDesktopWorldLayoutBuildingManipulationPayload{
           phase, point, toleranceCells});
@@ -146,7 +146,7 @@ void queueBoxManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutBoxManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateBox,
       CreativeDesktopWorldLayoutBoxManipulationPayload{phase, point,
                                                        toleranceCells});
@@ -156,7 +156,7 @@ void queueWallManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutWallManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateWall,
       CreativeDesktopWorldLayoutWallManipulationPayload{phase, point,
                                                         toleranceCells});
@@ -166,7 +166,7 @@ void queueOpeningManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutOpeningManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateOpening,
       CreativeDesktopWorldLayoutOpeningManipulationPayload{
           phase, point, toleranceCells});
@@ -176,7 +176,7 @@ void queueRoofApertureManipulation(
     CreativeDesktopCommandFrame& commands,
     CreativeEditorWorldLayoutRoofApertureManipulationPhase phase,
     CreativeEditorWorldLayoutPoint point, double toleranceCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture,
       CreativeDesktopWorldLayoutRoofApertureManipulationPayload{
           phase, point, toleranceCells});
@@ -187,7 +187,7 @@ void queueRoofManipulation(
     CreativeEditorWorldLayoutRoofManipulationPhase phase,
     CreativeEditorWorldLayoutRoofTarget target,
     double coordinateCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoof,
       CreativeDesktopWorldLayoutRoofManipulationPayload{
           phase, target, coordinateCells});
@@ -235,7 +235,7 @@ void queuePlanSourceSelection(
     CreativeDesktopCommandFrame& commands,
     const CreativeEditorWorldLayoutState& state,
     const CreativeEditorWorldLayoutPlanHit& hit) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
       CreativeDesktopWorldLayoutSourcePayload{
           hit.table, hit.sourceIndex,
@@ -269,7 +269,7 @@ bool queuePlanObjectSelection(
                               : "selection source is unavailable";
     return false;
   }
-  commands.push(CreativeDesktopCommandId::SelectObjects,
+  commands.enqueue(CreativeDesktopCommandId::SelectObjects,
                 CreativeDesktopSelectPayload{std::move(plan.objectIds),
                                              plan.primaryObjectId});
   return true;
@@ -406,7 +406,7 @@ void queueBuildingTemplatePlacement(
     CreativeEditorWorldLayoutPoint point = {},
     cr::CreativeWorldLayoutBuildingTransformOperation operation =
         cr::CreativeWorldLayoutBuildingTransformOperation::RotateRight90) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
       CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
           phase, point, operation});
@@ -423,7 +423,7 @@ void queueLayoutManipulationCancel(
     static_cast<void>(
         cancelCreativeEditorWorldLayoutObjectManipulation(state));
   } else if (state.buildingTransform.active) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
                       CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
                       state.buildingTransform.operation});
@@ -557,7 +557,7 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     queueLayoutManipulationCancel(state, commands);
     if (topography.region.editingEnabled) {
       topography.region.editingEnabled = false;
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
     state.viewMode = CreativeEditorWorldLayoutViewMode::Elevation;
@@ -586,7 +586,7 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     if (lowerPressed && lowerReady) {
       const cr::CreativeWorldLayoutLevel& target =
           state.source.levels[lower.targetLevelIndex];
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutLevelOperation,
           CreativeDesktopWorldLayoutLevelOperationPayload{
               CreativeEditorWorldLayoutLevelOperation::Select,
@@ -618,7 +618,7 @@ void drawWorldLayoutViewControls(CreativeEditorWorldLayoutState& state,
     if (higherPressed && higherReady) {
       const cr::CreativeWorldLayoutLevel& target =
           state.source.levels[higher.targetLevelIndex];
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutLevelOperation,
           CreativeDesktopWorldLayoutLevelOperationPayload{
               CreativeEditorWorldLayoutLevelOperation::Select,
@@ -865,12 +865,12 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       if (terrainRegion.manipulation.active) {
         if (cancelCreativeEditorWorldLayoutTerrainRegionManipulation(
                 terrainRegion)) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
         }
         return;
       }
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
       return;
     }
@@ -889,7 +889,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
               cr::CreativeTerrainAnalysisHitMode::HeightHandleOnly);
       if (selectCreativeEditorWorldLayoutTerrainAnalysisEdit(terrainRegion,
                                                               edit)) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
       }
       return;
@@ -903,7 +903,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       if (edit.accepted &&
           selectCreativeEditorWorldLayoutTerrainAnalysisEdit(terrainRegion,
                                                               edit)) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
         return;
       }
@@ -930,13 +930,13 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     if (terrainRegion.manipulation.active && input.pointer.primaryReleased) {
       if (finishCreativeEditorWorldLayoutTerrainRegionManipulation(
               terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
       }
     } else if (terrainRegion.selecting && input.pointer.primaryReleased) {
       if (finishCreativeEditorWorldLayoutTerrainRegion(
               terrainRegion, hoveredPoint.x, hoveredPoint.z)) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
       }
     }
@@ -993,7 +993,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
     if (dragPixelsX * dragPixelsX + dragPixelsZ * dragPixelsZ <
         kRegionDragThresholdPixels * kRegionDragThresholdPixels) {
       if (!gesture.additive && !gesture.toggle) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutClearSelection);
       }
       return;
@@ -1222,7 +1222,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       queueGesture(commands, CreativeEditorWorldLayoutGesturePhase::Begin,
                    hoveredPoint);
     } else {
-      commands.push(CreativeDesktopCommandId::WorldLayoutCanvasPoint,
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutCanvasPoint,
                     CreativeDesktopWorldLayoutPointPayload{hoveredPoint});
     }
   }
@@ -1246,7 +1246,7 @@ void drawLayoutCanvas(CreativeEditorState& editor,
       CreativeEditorWorldLayoutObjectSettings settings =
           std::move(state.objectManipulation.previewSettings);
       state.objectManipulation = {};
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetObjectSettings,
           CreativeDesktopWorldLayoutObjectSettingsPayload{
               objectIndex, std::move(stableKey), std::move(settings)});

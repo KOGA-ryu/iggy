@@ -138,7 +138,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   ImGui::BeginDisabled(!stampNameValid || !regionSelected ||
                        !stampCapacityAvailable);
   if (ImGui::Button("Save Selected Region")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::TerrainStampSaveSelection,
         CreativeDesktopTerrainStampPayload{
             {}, editor.terrainStamps.captureLabel,
@@ -173,7 +173,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
                         static_cast<unsigned long long>(entry.assetVersion));
     ImGui::BeginDisabled(!entry.compatible);
     if (ImGui::SmallButton("Place")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::TerrainStampSelect,
           CreativeDesktopTerrainStampPayload{
               entry.assetId, {}, cr::kInvalidCreativeTerrainOperationId,
@@ -182,7 +182,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
     ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::SmallButton("Delete")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::TerrainStampDelete,
           CreativeDesktopTerrainStampPayload{
               entry.assetId, {}, cr::kInvalidCreativeTerrainOperationId,
@@ -203,7 +203,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
 
   ImGui::SeparatorText("Operations");
   if (ImGui::Button("New Operation")) {
-    commands.push(CreativeDesktopCommandId::TerrainOperationNew);
+    commands.enqueue(CreativeDesktopCommandId::TerrainOperationNew);
   }
   ImGui::SameLine();
   ImGui::Text("%zu / %zu",
@@ -223,7 +223,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         ImGui::PushID(static_cast<int>(index));
         bool enabled = operation.enabled;
         if (ImGui::Checkbox("##enabled", &enabled)) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationSetEnabled,
               CreativeDesktopTerrainOperationPayload{operation.id, enabled,
                                                      index});
@@ -274,7 +274,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
                                   : state.editingOperationId == operation.id;
         ImGui::BeginDisabled(!selectable);
         if (ImGui::Selectable(label.c_str(), selected)) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationSelect,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled, index});
@@ -288,7 +288,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
                              editor.worldLayoutTopography.region.ownsPreview ||
                              !transformable);
         if (ImGui::SmallButton("Transform")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationTransform,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled, index});
@@ -303,7 +303,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         ImGui::SameLine();
         ImGui::BeginDisabled(index == 0U);
         if (ImGui::SmallButton("Up")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationMove,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled,
@@ -313,7 +313,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         ImGui::SameLine();
         ImGui::BeginDisabled(index + 1U >= operations.size());
         if (ImGui::SmallButton("Down")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationMove,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled,
@@ -322,14 +322,14 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
         ImGui::EndDisabled();
         ImGui::SameLine();
         if (ImGui::SmallButton("Duplicate")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationDuplicate,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled, index});
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("Delete")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::TerrainOperationDelete,
               CreativeDesktopTerrainOperationPayload{operation.id,
                                                      operation.enabled, index});
@@ -341,7 +341,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
               stampSourceStatus != cr::CreativeTerrainStampSourceStatus::Missing;
           if (ImGui::SmallButton(replace ? "Restore Baked Source"
                                          : "Repair Source")) {
-            commands.push(
+            commands.enqueue(
                 CreativeDesktopCommandId::TerrainStampRepairSource,
                 CreativeDesktopTerrainStampPayload{
                     operation.stamp.stamp.assetId, {}, operation.id,
@@ -356,7 +356,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   ImGui::BeginDisabled(
       document.terrainOperationStack().operations.empty());
   if (ImGui::Button("Bake Terrain Stack")) {
-    commands.push(CreativeDesktopCommandId::TerrainOperationBakeAll);
+    commands.enqueue(CreativeDesktopCommandId::TerrainOperationBakeAll);
   }
   if (ImGui::IsItemHovered()) {
     ImGui::SetTooltip(
@@ -590,7 +590,7 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   }
 
   if (recipeChanged && state.previewActive) {
-    commands.push(CreativeDesktopCommandId::TerrainGenerationPreview);
+    commands.enqueue(CreativeDesktopCommandId::TerrainGenerationPreview);
   }
   state.draftDirty = state.draftDirty || recipeChanged;
 
@@ -598,13 +598,13 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
   if (!state.previewActive) {
     ImGui::BeginDisabled(!recipeValid);
     if (ImGui::Button("Preview Terrain")) {
-      commands.push(CreativeDesktopCommandId::TerrainGenerationPreview);
+      commands.enqueue(CreativeDesktopCommandId::TerrainGenerationPreview);
     }
     ImGui::EndDisabled();
   } else {
     ImGui::BeginDisabled(!recipeValid);
     if (ImGui::Button("Regenerate")) {
-      commands.push(CreativeDesktopCommandId::TerrainGenerationRegenerate);
+      commands.enqueue(CreativeDesktopCommandId::TerrainGenerationRegenerate);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
@@ -616,12 +616,12 @@ void buildCreativeEditorDesktopTerrainGenerationPanel(
                     cr::kInvalidCreativeTerrainOperationId
                 ? "Add Operation"
                 : "Update Operation")) {
-      commands.push(CreativeDesktopCommandId::TerrainGenerationApply);
+      commands.enqueue(CreativeDesktopCommandId::TerrainGenerationApply);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::Button("Cancel")) {
-      commands.push(CreativeDesktopCommandId::TerrainGenerationCancel);
+      commands.enqueue(CreativeDesktopCommandId::TerrainGenerationCancel);
     }
   }
   ImGui::EndDisabled();

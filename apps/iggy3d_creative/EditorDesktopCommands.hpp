@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
+#include <type_traits>
 
 #include "EditorDesktopCommandPayloads.hpp"
 #include "EditorObjectActionOutcome.hpp"
@@ -365,19 +367,36 @@ struct CreativeDesktopCommand {
 
 inline constexpr std::size_t kCreativeDesktopCommandCapacity = 16U;
 
+enum class CreativeDesktopCommandEnqueueResult : std::uint8_t {
+  Enqueued,
+  CapacityExceeded,
+};
+
 // Bounded per-frame command queue. Emitting widgets append; the dispatcher
-// drains. Overflow is recorded, never a buffer overrun.
+// drains. A refused command is returned to the producer and retained as frame
+// metadata for the production dispatcher; it is never silently dropped.
 struct CreativeDesktopCommandFrame {
   std::array<CreativeDesktopCommand, kCreativeDesktopCommandCapacity> commands{};
   std::size_t count = 0U;
   bool overflowed = false;
+  std::size_t rejectedCommandCount = 0U;
+  CreativeDesktopCommandId firstRejectedCommand =
+      CreativeDesktopCommandId::None;
 
   // No-payload commands (monostate).
-  void push(CreativeDesktopCommandId id);
+  CreativeDesktopCommandEnqueueResult push(CreativeDesktopCommandId id);
   // SaveDocumentAs convenience: wraps the target save id into a SaveAs payload.
-  void push(CreativeDesktopCommandId id, std::string saveId);
+  CreativeDesktopCommandEnqueueResult push(CreativeDesktopCommandId id,
+                                           std::string saveId);
   // Typed-payload commands.
-  void push(CreativeDesktopCommandId id, CreativeDesktopCommandPayload payload);
+  CreativeDesktopCommandEnqueueResult push(
+      CreativeDesktopCommandId id, CreativeDesktopCommandPayload payload);
+  // Production adapter: consumes push() immediately and defers any recorded
+  // capacity failure to the single dispatch/status seam.
+  void enqueue(CreativeDesktopCommandId id);
+  void enqueue(CreativeDesktopCommandId id, std::string saveId);
+  void enqueue(CreativeDesktopCommandId id,
+               CreativeDesktopCommandPayload payload);
   void clear() noexcept;
 };
 
@@ -397,6 +416,30 @@ creativeDesktopCommandImpactFlag(
   return static_cast<CreativeDesktopCommandImpactFlags>(impact);
 }
 
+inline constexpr std::size_t kCreativeDesktopCommandReceiptMessageCapacity =
+    192U;
+
+// Allocation-free per-command evidence retained in dispatch order. The
+// aggregate result below remains the last-command compatibility surface.
+struct CreativeDesktopCommandDispatchReceipt {
+  CreativeDesktopCommandId command = CreativeDesktopCommandId::None;
+  CreativeDesktopCommandOwner owner = CreativeDesktopCommandOwner::None;
+  bool accepted = false;
+  bool changed = false;
+  CreativeDesktopCommandImpactFlags impacts = 0U;
+  std::uint64_t affectedObjectCount = 0U;
+  std::array<char, kCreativeDesktopCommandReceiptMessageCapacity> message{};
+  std::uint16_t messageLength = 0U;
+  bool messageTruncated = false;
+
+  [[nodiscard]] std::string_view messageView() const noexcept {
+    return {message.data(), messageLength};
+  }
+};
+
+static_assert(
+    std::is_trivially_copyable_v<CreativeDesktopCommandDispatchReceipt>);
+
 // Outcome of dispatching a frame — cached for the status/history bar (DD-11)
 // and asserted by the headless command tests. Command-specific fields describe
 // the last queued command; impacts and their compatibility booleans accumulate
@@ -412,6 +455,14 @@ struct CreativeDesktopCommandResult {
   bool worldLayoutChanged = false;
   std::uint64_t affectedObjectCount = 0U;  // objects a batch command touched.
   std::string message;
+  std::array<CreativeDesktopCommandDispatchReceipt,
+             kCreativeDesktopCommandCapacity>
+      commandReceipts{};
+  std::size_t commandReceiptCount = 0U;
+  bool overflowed = false;
+  std::size_t rejectedCommandCount = 0U;
+  CreativeDesktopCommandId firstRejectedCommand =
+      CreativeDesktopCommandId::None;
 };
 
 [[nodiscard]] constexpr bool creativeDesktopCommandHasImpact(

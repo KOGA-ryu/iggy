@@ -168,7 +168,7 @@ void drawWorldLayoutHierarchyRow(
 
   if (row.kind == CreativeEditorWorldLayoutHierarchyRowKind::Symbol &&
       ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutFocusSource,
                   CreativeDesktopWorldLayoutSourcePayload{
                       row.table, row.sourceIndex, row.stableKey});
   }
@@ -190,7 +190,7 @@ void drawWorldLayoutHierarchyRow(
     }
     if (creativeEditorWorldLayoutSourceCanDuplicate(row.table) &&
         ImGui::MenuItem("Duplicate")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutDuplicateSource,
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutDuplicateSource,
                     CreativeDesktopWorldLayoutSourcePayload{
                         row.table, row.sourceIndex, row.stableKey});
     }
@@ -243,7 +243,7 @@ void drawWorldLayoutHierarchyModals(
     const bool renameClicked = ImGui::Button("Rename");
     ImGui::EndDisabled();
     if (nameValid && (submitted || renameClicked)) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutRenameSource,
           CreativeDesktopWorldLayoutSourceRenamePayload{
               hierarchy.pendingTable, hierarchy.pendingIndex,
@@ -263,7 +263,7 @@ void drawWorldLayoutHierarchyModals(
     ImGui::Text("Delete %s?", hierarchy.pendingLabel.c_str());
     ImGui::TextDisabled("Hosted or owned layout symbols may also be removed.");
     if (ImGui::Button("Delete")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSource,
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutDeleteSource,
                     CreativeDesktopWorldLayoutSourcePayload{
                         hierarchy.pendingTable, hierarchy.pendingIndex,
                         hierarchy.pendingStableKey});

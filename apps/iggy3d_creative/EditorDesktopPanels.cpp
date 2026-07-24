@@ -180,13 +180,13 @@ void appendHistoryPanel(const cr::CreativeAppState& appState,
       appState.history, &worldLayout);
   ImGui::BeginDisabled(!model.canUndo);
   if (ImGui::Button("Undo")) {
-    commands.push(CreativeDesktopCommandId::Undo);
+    commands.enqueue(CreativeDesktopCommandId::Undo);
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::BeginDisabled(!model.canRedo);
   if (ImGui::Button("Redo")) {
-    commands.push(CreativeDesktopCommandId::Redo);
+    commands.enqueue(CreativeDesktopCommandId::Redo);
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
@@ -264,13 +264,13 @@ void buildCreativeEditorDesktopMenuBar(
   if (ImGui::BeginMainMenuBar()) {
     if (ImGui::BeginMenu("File")) {
       if (ImGui::MenuItem("New")) {
-        commands.push(CreativeDesktopCommandId::NewDocument);
+        commands.enqueue(CreativeDesktopCommandId::NewDocument);
       }
       if (ImGui::MenuItem("Open")) {
-        commands.push(CreativeDesktopCommandId::OpenDocument);
+        commands.enqueue(CreativeDesktopCommandId::OpenDocument);
       }
       if (ImGui::MenuItem("Save", "Ctrl+S")) {
-        commands.push(CreativeDesktopCommandId::SaveDocument);
+        commands.enqueue(CreativeDesktopCommandId::SaveDocument);
       }
       if (ImGui::MenuItem("Save As...")) {
         desktopUi.saveAsModalOpen = true;
@@ -288,19 +288,19 @@ void buildCreativeEditorDesktopMenuBar(
     }
     if (ImGui::BeginMenu("Edit")) {
       if (ImGui::MenuItem("Undo", "Ctrl+Z", false, canUndo)) {
-        commands.push(CreativeDesktopCommandId::Undo);
+        commands.enqueue(CreativeDesktopCommandId::Undo);
       }
       if (ImGui::MenuItem("Redo", "Ctrl+Y", false, canRedo)) {
-        commands.push(CreativeDesktopCommandId::Redo);
+        commands.enqueue(CreativeDesktopCommandId::Redo);
       }
       ImGui::Separator();
       if (ImGui::MenuItem("Duplicate", "Ctrl+D", false,
                           canDuplicate)) {
-        commands.push(CreativeDesktopCommandId::DuplicateSelection);
+        commands.enqueue(CreativeDesktopCommandId::DuplicateSelection);
       }
       if (ImGui::MenuItem("Delete", "Del", false,
                           canDelete)) {
-        commands.push(CreativeDesktopCommandId::DeleteSelection);
+        commands.enqueue(CreativeDesktopCommandId::DeleteSelection);
       }
       ImGui::EndMenu();
     }
@@ -320,7 +320,7 @@ void buildCreativeEditorDesktopMenuBar(
       if (ImGui::MenuItem("Terrain Generator")) {
         if (worldLayout != nullptr &&
             creativeEditorWorldLayoutPreviewActive(*worldLayout)) {
-          commands.push(CreativeDesktopCommandId::WorldLayoutCancelPreview);
+          commands.enqueue(CreativeDesktopCommandId::WorldLayoutCancelPreview);
         }
         desktopUi.showWorldLayout = false;
         desktopUi.showInspector = true;
@@ -329,7 +329,7 @@ void buildCreativeEditorDesktopMenuBar(
       ImGui::EndMenu();
     }
     if (ImGui::MenuItem("Play")) {
-      commands.push(CreativeDesktopCommandId::Play);
+      commands.enqueue(CreativeDesktopCommandId::Play);
     }
     ImGui::EndMainMenuBar();
   }
@@ -347,7 +347,7 @@ void buildCreativeEditorDesktopMenuBar(
     const bool nameOk = desktopUi.saveAsNameBuffer[0] != '\0';
     ImGui::BeginDisabled(!nameOk);
     if (ImGui::Button("Save")) {
-      commands.push(CreativeDesktopCommandId::SaveDocumentAs,
+      commands.enqueue(CreativeDesktopCommandId::SaveDocumentAs,
                     std::string(desktopUi.saveAsNameBuffer.data()));
       ImGui::CloseCurrentPopup();
     }
@@ -370,7 +370,7 @@ void buildCreativeEditorDesktopMenuBar(
     ImGui::TextDisabled(
         "The replacement is undoable and is not saved until you choose Save.");
     if (ImGui::Button("Regenerate")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::RegenerateMapTemplate,
           CreativeDesktopMapTemplatePayload{
               std::string(cr::kBuilderEstateMapTemplateId)});
@@ -394,11 +394,11 @@ void appendPlayMonitorTab(const PlaytestMonitorState* monitor,
   }
   if (monitor->childRunning) {
     if (ImGui::SmallButton("Pause##playtest")) {
-      commands.push(CreativeDesktopCommandId::PlaytestPause);
+      commands.enqueue(CreativeDesktopCommandId::PlaytestPause);
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Resume##playtest")) {
-      commands.push(CreativeDesktopCommandId::PlaytestResume);
+      commands.enqueue(CreativeDesktopCommandId::PlaytestResume);
     }
     ImGui::SameLine();
     if (monitor->stalled) {
@@ -486,7 +486,7 @@ void buildCreativeEditorDesktopPanels(
                                                 : "World Layout")) {
       if (!desktopUi.showWorldLayout &&
           editor.terrainGeneration.previewActive) {
-        commands.push(CreativeDesktopCommandId::TerrainGenerationCancel);
+        commands.enqueue(CreativeDesktopCommandId::TerrainGenerationCancel);
       }
       desktopUi.showWorldLayout = !desktopUi.showWorldLayout;
     }
@@ -500,7 +500,7 @@ void buildCreativeEditorDesktopPanels(
             "##desktop_frame_selection_3d",
             CreativeEditorToolGlyph::FitSelection, kViewButtonSize, false,
             "Frame visible selection in 3D")) {
-      commands.push(CreativeDesktopCommandId::FrameSelection3D);
+      commands.enqueue(CreativeDesktopCommandId::FrameSelection3D);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
@@ -508,13 +508,13 @@ void buildCreativeEditorDesktopPanels(
     if (drawCreativeEditorToolGlyphButton(
             "##desktop_frame_all_3d", CreativeEditorToolGlyph::FitAll,
             kViewButtonSize, false, "Frame all visible objects in 3D")) {
-      commands.push(CreativeDesktopCommandId::FrameAll3D);
+      commands.enqueue(CreativeDesktopCommandId::FrameAll3D);
     }
     ImGui::EndDisabled();
     if (creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
       ImGui::SameLine();
       if (ImGui::Button("Close Preview")) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutCancelPreview);
+        commands.enqueue(CreativeDesktopCommandId::WorldLayoutCancelPreview);
       }
     }
     if (desktopUi.showWorldLayout) {

@@ -80,7 +80,7 @@ void dispatchDocumentInputCommand(
       continue;
     }
     CreativeDesktopCommandFrame frame;
-    frame.push(row.command);
+    frame.enqueue(row.command);
     std::string activeSaveId = saveId;
     const CreativeDesktopCommandResult result =
         dispatchCreativeDesktopCommands(

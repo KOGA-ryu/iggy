@@ -62,7 +62,7 @@ void drawWorldLayoutDiagnosticActions(
   ImGui::PushID(static_cast<int>(issueIndex));
   ImGui::Indent();
   if (navigable && ImGui::SmallButton("Focus")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutFocusSource,
                   CreativeDesktopWorldLayoutSourcePayload{
                       issue.table, issue.index, issue.stableKey});
   }
@@ -73,7 +73,7 @@ void drawWorldLayoutDiagnosticActions(
     ImGui::BeginDisabled(repairDisabled || !issue.buildingRepairAvailable);
     if (ImGui::SmallButton(buildingRepairLabel(
             issue.buildingRepairOperation))) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability,
           CreativeDesktopWorldLayoutBuildingRepairPayload{
               issue.buildingUsabilityIssue, issue.stableKey});
@@ -121,7 +121,7 @@ void queueWorldLayoutAssetRepair(
     const CreativeEditorWorldLayoutDiagnostic& issue,
     CreativeDesktopWorldLayoutAssetRepairOperation operation,
     std::string replacementAssetId = {}) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutRepairAsset,
       CreativeDesktopWorldLayoutAssetRepairPayload{
           operation, issue.table, issue.index, issue.stableKey,
@@ -563,7 +563,7 @@ void drawRefinementConflictActions(
         ImGui::TableNextColumn();
         ImGui::BeginDisabled(!conflict->canDetachAndKeep3D);
         if (ImGui::Button("Keep 3D & remove source")) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::WorldLayoutDeleteSource,
               CreativeDesktopWorldLayoutSourcePayload{
                   conflict->desiredTable, conflict->desiredIndex,
@@ -613,7 +613,7 @@ void drawRefinementConflictActions(
   const bool allResolved = objectResolved && terrainResolved;
   ImGui::BeginDisabled(!allResolved);
   if (ImGui::Button("Apply Resolutions")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutConfirm,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutConfirm,
                   CreativeDesktopWorldLayoutConfirmPayload{
                       state.conflictReview.decisions,
                       state.conflictReview.terrainDecisions});
@@ -649,7 +649,7 @@ void buildCreativeEditorWorldLayoutPanel(
     cancelCreativeEditorWorldLayoutPanelManipulation(state, commands);
     if (topography.region.editingEnabled || topography.region.ownsPreview) {
       topography.region.editingEnabled = false;
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
     return;
@@ -668,12 +668,12 @@ void buildCreativeEditorWorldLayoutPanel(
     cancelCreativeEditorWorldLayoutPanelManipulation(state, commands);
     if (topography.region.editingEnabled || topography.region.ownsPreview) {
       topography.region.editingEnabled = false;
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
   }
   if (state.buildingTransform.active && input.cancelPressed) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                   CreativeDesktopWorldLayoutBuildingTransformPayload{
                       CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
                       state.buildingTransform.operation});
@@ -755,14 +755,14 @@ void buildCreativeEditorWorldLayoutPanel(
       ImGui::BeginDisabled(!diagnostics.ready);
       if (ImGui::Button(exactPreviewActive ? "Refresh 3D Preview"
                                            : "Preview 3D")) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutPreview);
+        commands.enqueue(CreativeDesktopCommandId::WorldLayoutPreview);
       }
       ImGui::EndDisabled();
       ImGui::SameLine();
       ImGui::BeginDisabled(!diagnostics.canGenerate);
       if (ImGui::Button(exactPreviewActive ? "Confirm Preview"
                                            : "Confirm & Generate")) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutConfirm);
+        commands.enqueue(CreativeDesktopCommandId::WorldLayoutConfirm);
       }
       ImGui::EndDisabled();
       ImGui::SameLine();
@@ -771,7 +771,7 @@ void buildCreativeEditorWorldLayoutPanel(
         if (buildingSelected) {
           ImGui::OpenPopup("Delete building group");
         } else {
-          commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+          commands.enqueue(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
         }
       }
       ImGui::EndDisabled();
@@ -786,7 +786,7 @@ void buildCreativeEditorWorldLayoutPanel(
                 : "selected building";
         ImGui::Text("Delete %s and all owned layout symbols?", buildingName);
         if (ImGui::Button("Delete building")) {
-          commands.push(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
+          commands.enqueue(CreativeDesktopCommandId::WorldLayoutDeleteSelection);
           ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
@@ -944,7 +944,7 @@ void buildCreativeEditorWorldLayoutPanel(
     cancelCreativeEditorWorldLayoutPanelManipulation(state, commands);
     if (topography.region.editingEnabled || topography.region.ownsPreview) {
       topography.region.editingEnabled = false;
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
   }

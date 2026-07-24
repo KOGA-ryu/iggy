@@ -50,7 +50,7 @@ void drawWorldLayoutTerrainTab(
       topography.visible = true;
       topography.elevationBandsVisible = true;
     } else {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
     }
   }
@@ -84,7 +84,7 @@ void drawWorldLayoutTerrainTab(
   }
 
   if (settingsChanged && region.regionValid && !region.selecting) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
   }
 
@@ -213,7 +213,7 @@ void drawWorldLayoutTerrainRegionInspector(
   // dispatcher; the panel never computes terrain truth itself.
   if (settingsChanged && region.regionValid && !region.selecting &&
       !region.manipulation.active) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview);
   }
 
   const CreativeEditorWorldLayoutTerrainRegionMetrics metrics =
@@ -263,14 +263,14 @@ void drawWorldLayoutTerrainRegionBuild(
   }
   ImGui::BeginDisabled(!region.ownsPreview);
   if (ImGui::Button("Apply Region")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutTerrainRegionApply);
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::BeginDisabled(!region.selecting && !region.regionValid &&
                        !region.ownsPreview);
   if (ImGui::Button("Cancel")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
   }
   ImGui::EndDisabled();
@@ -412,7 +412,7 @@ void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
     for (const CreativeEditorToolActionSpec& action : presentation.actions) {
       if (action.runOnOptionChange &&
           creativeEditorToolActionEnabled(action, topography)) {
-        commands.push(action.command);
+        commands.enqueue(action.command);
       }
     }
   }
@@ -439,7 +439,7 @@ void drawWorldLayoutToolOptionsStrip(CreativeEditorState& editor,
           !creativeEditorToolActionEnabled(action, topography));
       if (drawCreativeEditorWorldLayoutGlyphButton(
               "##action", action.glyph, tile, false, action.label)) {
-        commands.push(action.command);
+        commands.enqueue(action.command);
       }
       ImGui::EndDisabled();
       ImGui::PopID();

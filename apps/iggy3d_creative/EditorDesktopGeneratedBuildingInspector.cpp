@@ -47,7 +47,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
   if (!draft.active || draft.buildingIndex != buildingIndex ||
       draft.sourceRevision != worldLayout.revision) {
     if (draft.active && creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     draft = {};
@@ -76,7 +76,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
                                               "Grounded foundation"};
   if (ImGui::Combo("Placement##generated_building", &groundingMode,
                    kGroundingModes, 2)) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingGrounding,
         CreativeDesktopWorldLayoutBuildingGroundingPayload{
             objectId, buildingIndex, building.stableKey,
@@ -92,7 +92,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
         "Max relief##generated_building", ImGuiDataType_U16, &maximumRelief,
         &reliefStep));
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::
               WorldLayoutApplyGeneratedBuildingGrounding,
           CreativeDesktopWorldLayoutBuildingGroundingPayload{
@@ -115,7 +115,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
   if ((xEdited || zEdited) && draft.previewReady) {
     draft.previewReady = false;
     if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
   }
@@ -129,7 +129,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
     draft.deltaXCells = deltaX;
     draft.deltaZCells = deltaZ;
     draft.previewReady = true;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::
             WorldLayoutPreviewGeneratedBuildingOperation,
         CreativeDesktopGeneratedBuildingOperationPayload{
@@ -185,7 +185,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
   ImGui::BeginDisabled(disabled || !draft.previewReady ||
                        !creativeEditorWorldLayoutPreviewActive(worldLayout));
   if (ImGui::Button("Apply building operation")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutApplyGeneratedBuildingOperation,
         CreativeDesktopGeneratedBuildingOperationPayload{
             objectId, buildingIndex, building.stableKey, draft.operation,
@@ -197,7 +197,7 @@ void appendCreativeDesktopGeneratedBuildingSettings(
   if (ImGui::Button("Cancel##generated_building")) {
     draft.previewReady = false;
     if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
   }

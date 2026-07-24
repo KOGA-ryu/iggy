@@ -50,7 +50,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
   if (state.selection.kind !=
       CreativeEditorWorldLayoutSelectionKind::Building) {
     if (ImGui::Button("Select building")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSelectBuilding,
           CreativeDesktopWorldLayoutBuildingSelectionPayload{buildingIndex});
     }
@@ -141,7 +141,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
                        state.buildingTransform.active);
   if (ImGui::Combo("Placement##layout_building", &groundingMode,
                    kGroundingModes, 2)) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
         CreativeDesktopWorldLayoutBuildingGroundingPayload{
             cr::kInvalidObjectId, buildingIndex, building.stableKey,
@@ -157,7 +157,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
         "Max relief##layout_building", ImGuiDataType_U16, &maximumRelief,
         &one));
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding,
           CreativeDesktopWorldLayoutBuildingGroundingPayload{
               cr::kInvalidObjectId, buildingIndex, building.stableKey,
@@ -169,7 +169,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
 
   const auto previewTransform =
       [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutTransformBuilding,
             CreativeDesktopWorldLayoutBuildingTransformPayload{
                 CreativeEditorWorldLayoutBuildingTransformPhase::Preview,
@@ -201,14 +201,14 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
     ImGui::TextColored(ImVec4{0.20F, 0.78F, 0.38F, 1.0F}, "Preview: %s",
                        cr::toString(state.buildingTransform.operation).data());
     if (ImGui::Button("Apply transform")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                     CreativeDesktopWorldLayoutBuildingTransformPayload{
                         CreativeEditorWorldLayoutBuildingTransformPhase::Commit,
                         state.buildingTransform.operation});
     }
     ImGui::SameLine();
     if (ImGui::Button("Cancel transform")) {
-      commands.push(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutTransformBuilding,
                     CreativeDesktopWorldLayoutBuildingTransformPayload{
                         CreativeEditorWorldLayoutBuildingTransformPhase::Cancel,
                         state.buildingTransform.operation});
@@ -223,7 +223,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
   ImGui::BeginDisabled(!canDuplicate || state.buildingManipulation.active ||
                        state.buildingTransform.active);
   if (ImGui::Button("Duplicate building")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutDuplicateBuilding,
         CreativeDesktopWorldLayoutBuildingDuplicatePayload{
             buildingIndex, deltaXCells, deltaZCells});
@@ -233,7 +233,7 @@ void drawBuildingActions(CreativeEditorDesktopUiState& desktopUi,
   ImGui::BeginDisabled(state.buildingManipulation.active ||
                        state.buildingTransform.active);
   if (ImGui::Button("Edit contents")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutClearSelection);
   }
   ImGui::EndDisabled();
   ImGui::Separator();
@@ -254,7 +254,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
                        state.buildingTemplatePlacement.active ||
                        library.root.empty());
   if (ImGui::Button("Save selected building")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutCaptureBuildingTemplate,
         CreativeDesktopWorldLayoutBuildingTemplateCapturePayload{
             selectedBuilding, {}});
@@ -313,7 +313,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
       state.buildingTemplatePlacement.active;
   ImGui::BeginDisabled(!linkedSourceAvailable || templateActionsBlocked);
   if (ImGui::Button("Update template from selected")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutUpdateBuildingTemplate,
         CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
             selectedBuilding,
@@ -324,7 +324,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
   ImGui::SameLine();
   ImGui::BeginDisabled(!linkedInstanceAvailable || templateActionsBlocked);
   if (ImGui::Button("Detach instance")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutDetachBuildingTemplateInstance,
         CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
             selectedBuilding,
@@ -349,7 +349,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
               SelectedInstance;
       desktopUi.buildingTemplateRebuildModalOpen = true;
     } else {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::
               WorldLayoutRefreshBuildingTemplateInstances,
           CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
@@ -362,7 +362,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
   ImGui::SameLine();
   ImGui::BeginDisabled(!linkedSourceAvailable || templateActionsBlocked);
   if (ImGui::Button("Upgrade safe instances")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::
             WorldLayoutRefreshBuildingTemplateInstances,
         CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
@@ -394,7 +394,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
             : "Replace this building's local refinements with the current template?");
     ImGui::TextDisabled("The upgrade is one undoable 3D edit.");
     if (ImGui::Button(forceAll ? "Force upgrade all" : "Upgrade selected")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::
               WorldLayoutRefreshBuildingTemplateInstances,
           CreativeDesktopWorldLayoutBuildingTemplateSyncPayload{
@@ -433,7 +433,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
       ImGui::PushID(static_cast<int>(index));
       if (ImGui::Selectable(library.templates[index].label.c_str(),
                             isSelected)) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
             CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
                 index});
@@ -460,11 +460,11 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
         library.selectedIndex >= library.templates.size());
     if (ImGui::Button("Place template")) {
       if (state.tool != CreativeEditorWorldLayoutTool::Select) {
-        commands.push(CreativeDesktopCommandId::WorldLayoutSetTool,
+        commands.enqueue(CreativeDesktopCommandId::WorldLayoutSetTool,
                       CreativeDesktopWorldLayoutToolPayload{
                           CreativeEditorWorldLayoutTool::Select});
       }
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
           CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
               CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
@@ -477,7 +477,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
     const auto& analysis = state.buildingTemplatePlacement.analysis;
     const auto transform =
         [&](cr::CreativeWorldLayoutBuildingTransformOperation operation) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
               CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
                   CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::
@@ -531,7 +531,7 @@ void drawBuildingTemplateActions(CreativeEditorDesktopUiState& desktopUi,
       transform(cr::CreativeWorldLayoutBuildingTransformOperation::MirrorZ);
     }
     if (ImGui::Button("Cancel placement")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
           CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
               CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Cancel,

@@ -37,7 +37,7 @@ void appendCreativeDesktopGeneratedLevelSettings(
   if (draftChanged) {
     if (worldLayout.generatedLevelSettingsDraft.active &&
         creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     worldLayout.generatedLevelSettingsDraft =

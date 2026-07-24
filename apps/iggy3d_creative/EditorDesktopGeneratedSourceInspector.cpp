@@ -48,7 +48,7 @@ void appendGeneratedVerticalConnectorSettings(
   if (draftChanged) {
     if (worldLayout.verticalConnectorSettingsDraft.active &&
         creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     worldLayout.verticalConnectorSettingsDraft =
@@ -239,7 +239,7 @@ void appendGeneratedWallSettings(
   if (draftChanged) {
     if (worldLayout.wallSettingsDraft.active &&
         creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     worldLayout.wallSettingsDraft =
@@ -332,7 +332,7 @@ void appendGeneratedOpeningSettings(
   if (draftChanged) {
     if (worldLayout.openingSettingsDraft.active &&
         creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     worldLayout.openingSettingsDraft =
@@ -512,7 +512,7 @@ void appendCreativeDesktopGeneratedSourceSettings(
       ImGui::SetTooltip("%s source", cr::toString(entry.table).data());
     }
     if (selected && scopeIndex != activeScope) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
           CreativeDesktopWorldLayoutSourcePayload{
               entry.table, entry.index, std::string(entry.stableKey)});
@@ -535,7 +535,7 @@ void appendCreativeDesktopGeneratedSourceSettings(
 
   ImGui::BeginDisabled(disabled);
   if (ImGui::Button("Focus in 2D")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutFocusSource,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutFocusSource,
                   CreativeDesktopWorldLayoutSourcePayload{
                       scope.table, scope.index,
                       std::string(scope.stableKey)});
@@ -549,7 +549,7 @@ void appendCreativeDesktopGeneratedSourceSettings(
       summary == nullptr || !summary->valid || !summary->hasBounds;
   ImGui::BeginDisabled(disabled || frameUnavailable);
   if (ImGui::Button("Frame in 3D")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
                   CreativeDesktopWorldLayoutSourcePayload{
                       scope.table, scope.index,
                       std::string(scope.stableKey)});
@@ -624,7 +624,7 @@ void appendCreativeDesktopGeneratedSourceSettings(
     clearedDraft = true;
   }
   if (clearedDraft && creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-    commands.push(CreativeDesktopCommandId::
+    commands.enqueue(CreativeDesktopCommandId::
                       WorldLayoutCancelGeneratedSettingsPreview);
   }
 

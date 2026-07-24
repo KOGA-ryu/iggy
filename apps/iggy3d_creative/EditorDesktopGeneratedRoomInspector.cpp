@@ -51,7 +51,7 @@ void appendCreativeDesktopGeneratedRoomSettings(
   if (draftChanged) {
     if (worldLayout.roomSettingsDraft.active &&
         creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     worldLayout.roomSettingsDraft =

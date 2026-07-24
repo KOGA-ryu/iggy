@@ -118,7 +118,7 @@ void appendRowFlagControls(const CreativeDesktopOutlinerRow& row,
            admissions, cr::CreativeSemanticObjectAction::SetVisible)
            .allowed);
   if (ImGui::SmallButton(inheritedHidden ? "o*" : row.visible ? "o" : "-")) {
-    commands.push(CreativeDesktopCommandId::SetObjectsVisible,
+    commands.enqueue(CreativeDesktopCommandId::SetObjectsVisible,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.visible});
   }
@@ -133,7 +133,7 @@ void appendRowFlagControls(const CreativeDesktopOutlinerRow& row,
            admissions, cr::CreativeSemanticObjectAction::SetLocked)
            .allowed);
   if (ImGui::SmallButton(inheritedLocked ? "L*" : row.locked ? "L" : ".")) {
-    commands.push(CreativeDesktopCommandId::SetObjectsLocked,
+    commands.enqueue(CreativeDesktopCommandId::SetObjectsLocked,
                   CreativeDesktopObjectFlagPayload{{row.objectId},
                                                    !row.locked});
   }
@@ -246,7 +246,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
           creativeDesktopSelectionGestureFor(input.selectionAdditiveDown,
                                              input.selectionToggleDown));
       if (plan.accepted) {
-        commands.push(CreativeDesktopCommandId::SelectObjects,
+        commands.enqueue(CreativeDesktopCommandId::SelectObjects,
                       CreativeDesktopSelectPayload{plan.objectIds,
                                                    plan.primaryObjectId});
         state.selectionAnchor = plan.nextAnchorObjectId;
@@ -260,7 +260,7 @@ void buildCreativeEditorDesktopOutlinerPanel(
             planCreativeDesktopHierarchySelection(state.model, row.objectId,
                                                    scope);
         if (ImGui::MenuItem(label, nullptr, false, plan.accepted)) {
-          commands.push(CreativeDesktopCommandId::SelectObjects,
+          commands.enqueue(CreativeDesktopCommandId::SelectObjects,
                         CreativeDesktopSelectPayload{plan.objectIds,
                                                      plan.primaryObjectId});
           state.selectionAnchor = plan.nextAnchorObjectId;

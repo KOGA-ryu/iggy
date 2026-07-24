@@ -1144,17 +1144,47 @@ bool playRefusesInvalidDocumentAndFrameRemainsBounded() {
       dispatchOne(app::CreativeDesktopCommandId::Play, context);
 
   app::CreativeDesktopCommandFrame frame;
+  bool exactCapacityAccepted = true;
   for (std::size_t index = 0U;
-       index < app::kCreativeDesktopCommandCapacity + 4U; ++index) {
-    frame.push(app::CreativeDesktopCommandId::Undo);
+       index < app::kCreativeDesktopCommandCapacity; ++index) {
+    exactCapacityAccepted =
+        frame.push(app::CreativeDesktopCommandId::Undo) ==
+            app::CreativeDesktopCommandEnqueueResult::Enqueued &&
+        exactCapacityAccepted;
   }
+  const app::CreativeDesktopCommandEnqueueResult seventeenth =
+      frame.push(app::CreativeDesktopCommandId::Redo);
+  const app::CreativeDesktopCommandEnqueueResult eighteenth =
+      frame.push(app::CreativeDesktopCommandId::Play);
+  const app::CreativeDesktopCommandResult overflowResult =
+      app::dispatchCreativeDesktopCommands(frame, context);
 
   return expect(!play.accepted &&
                     play.message.starts_with("playtest refused:"),
                 "Play refuses an invalid document with a reason") &&
-         expect(frame.overflowed &&
+         expect(exactCapacityAccepted &&
+                    seventeenth ==
+                        app::CreativeDesktopCommandEnqueueResult::
+                            CapacityExceeded &&
+                    eighteenth ==
+                        app::CreativeDesktopCommandEnqueueResult::
+                            CapacityExceeded &&
+                    frame.overflowed &&
                     frame.count == app::kCreativeDesktopCommandCapacity,
-                "the command frame is bounded and records overflow");
+                "the command frame accepts sixteen and explicitly refuses seventeen") &&
+         expect(frame.rejectedCommandCount == 2U &&
+                    frame.firstRejectedCommand ==
+                        app::CreativeDesktopCommandId::Redo &&
+                    overflowResult.overflowed &&
+                    overflowResult.rejectedCommandCount == 2U &&
+                    overflowResult.firstRejectedCommand ==
+                        app::CreativeDesktopCommandId::Redo &&
+                    overflowResult.commandReceiptCount ==
+                        app::kCreativeDesktopCommandCapacity &&
+                    !overflowResult.accepted &&
+                    overflowResult.message ==
+                        "desktop command frame capacity exceeded",
+                "dispatch exposes refused commands as a frame failure");
 }
 
 bool playCommandsPreserveProcessAndAuthoringContracts() {
@@ -1398,6 +1428,74 @@ bool commandFramesInferDocumentImpactsFromActiveRevision() {
                 "active asset document revision creates a cumulative refresh impact");
 }
 
+bool commandFrameReceiptsPreserveOrderFailuresAndImpacts() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Ordered Receipts");
+  static_cast<void>(document.assignId(4144U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  selectPrimary(appState.facade, createCrate(appState.facade, 0.0));
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+
+  app::CreativeDesktopCommandFrame frame;
+  const app::CreativeDesktopCommandEnqueueResult first =
+      frame.push(app::CreativeDesktopCommandId::SaveDocumentAs,
+                 std::string{});
+  const app::CreativeDesktopCommandEnqueueResult second =
+      frame.push(app::CreativeDesktopCommandId::DeleteSelection);
+  const app::CreativeDesktopCommandEnqueueResult third =
+      frame.push(app::CreativeDesktopCommandId::None);
+  const app::CreativeDesktopCommandResult result =
+      app::dispatchCreativeDesktopCommands(frame, context);
+
+  const auto& failed = result.commandReceipts[0];
+  const auto& applied = result.commandReceipts[1];
+  const auto& noOp = result.commandReceipts[2];
+  return expect(first == app::CreativeDesktopCommandEnqueueResult::Enqueued &&
+                    second ==
+                        app::CreativeDesktopCommandEnqueueResult::Enqueued &&
+                    third ==
+                        app::CreativeDesktopCommandEnqueueResult::Enqueued,
+                "mixed command frame enqueues in deterministic order") &&
+         expect(result.commandReceiptCount == 3U && !result.overflowed &&
+                    result.rejectedCommandCount == 0U,
+                "mixed command frame retains one receipt per command") &&
+         expect(failed.command ==
+                        app::CreativeDesktopCommandId::SaveDocumentAs &&
+                    failed.owner ==
+                        app::CreativeDesktopCommandOwner::Document &&
+                    !failed.accepted && !failed.changed &&
+                    failed.messageView() == "save as: empty name" &&
+                    !failed.messageTruncated,
+                "an early failure and its reason survive later commands") &&
+         expect(applied.command ==
+                        app::CreativeDesktopCommandId::DeleteSelection &&
+                    applied.owner == app::CreativeDesktopCommandOwner::Object &&
+                    applied.accepted && applied.changed &&
+                    (applied.impacts &
+                     app::creativeDesktopCommandImpactFlag(
+                         app::CreativeDesktopCommandImpact::DocumentChanged)) !=
+                        0U,
+                "a later success retains its own impact receipt") &&
+         expect(noOp.command == app::CreativeDesktopCommandId::None &&
+                    noOp.owner == app::CreativeDesktopCommandOwner::None &&
+                    !noOp.accepted && !noOp.changed &&
+                    noOp.messageView().empty(),
+                "the final no-op keeps its ordered compatibility receipt") &&
+         expect(result.lastCommand == app::CreativeDesktopCommandId::None &&
+                    !result.accepted && !result.changed &&
+                    app::creativeDesktopCommandHasImpact(
+                        result,
+                        app::CreativeDesktopCommandImpact::DocumentChanged) &&
+                    app::creativeDesktopCommandRequiresSceneRefresh(result),
+                "last-command compatibility and cumulative impacts coexist");
+}
+
 bool desktopCommandOwnershipIsExhaustive() {
   constexpr std::size_t ownerCount =
       static_cast<std::size_t>(app::CreativeDesktopCommandOwner::Invalid);
@@ -1462,6 +1560,7 @@ bool runCreativeDesktopDocumentCommandTests() {
   ok = playCommandsPreserveProcessAndAuthoringContracts() && ok;
   ok = commandFramesAccumulatePreviewImpacts() && ok;
   ok = commandFramesInferDocumentImpactsFromActiveRevision() && ok;
+  ok = commandFrameReceiptsPreserveOrderFailuresAndImpacts() && ok;
   ok = desktopCommandOwnershipIsExhaustive() && ok;
   return ok;
 }

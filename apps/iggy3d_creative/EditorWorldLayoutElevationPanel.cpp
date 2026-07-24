@@ -631,7 +631,7 @@ void queueElevationSourceSelection(
   if (table == cr::CreativeWorldLayoutTable::None) {
     return;
   }
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
       CreativeDesktopWorldLayoutSourcePayload{
           table, sourceIndex,
@@ -647,7 +647,7 @@ void queueElevationRoofSelection(
   if (levelIndex >= state.source.levels.size()) {
     return;
   }
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutSelectSourceScope,
       CreativeDesktopWorldLayoutSourcePayload{
           cr::CreativeWorldLayoutTable::Level, levelIndex,
@@ -661,7 +661,7 @@ void queueElevationRoofManipulation(
     CreativeEditorWorldLayoutRoofManipulationPhase phase,
     std::size_t levelIndex,
     double verticalCells) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateRoof,
       CreativeDesktopWorldLayoutRoofManipulationPayload{
           phase,
@@ -743,7 +743,7 @@ void queueElevationConnectorManipulation(
   }
   const cr::CreativeWorldLayoutRect footprint =
       state.source.verticalConnectors[target.connectorIndex].footprint;
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutManipulateVerticalConnector,
       CreativeDesktopWorldLayoutVerticalConnectorManipulationPayload{
           phase,
@@ -766,7 +766,7 @@ bool queueElevationEdit(
       if (edit.handle.levelIndex >= state.source.levels.size()) {
         return false;
       }
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetLevelDatum,
           CreativeDesktopWorldLayoutLevelDatumPayload{
               edit.handle.levelIndex,
@@ -786,7 +786,7 @@ bool queueElevationEdit(
       return false;
     }
     settings.wallHeightCells = edit.wallHeightCells;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSetLevelSettings,
         CreativeDesktopWorldLayoutLevelSettingsPayload{
             edit.handle.levelIndex,
@@ -802,7 +802,7 @@ bool queueElevationEdit(
       return false;
     }
     settings.anchorLayer = edit.floorTopLayer;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSetBoxSettings,
         CreativeDesktopWorldLayoutBoxSettingsPayload{edit.handle.sourceIndex,
                                                      settings});
@@ -816,7 +816,7 @@ bool queueElevationEdit(
       return false;
     }
     settings.heightCells = edit.wallHeightCells;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSetWallSettings,
         CreativeDesktopWorldLayoutWallSettingsPayload{edit.handle.sourceIndex,
                                                       settings});
@@ -831,7 +831,7 @@ bool queueElevationEdit(
     }
     settings.sillHeightCells = edit.openingSillCells;
     settings.heightCells = edit.openingHeightCells;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSetOpeningSettings,
         CreativeDesktopWorldLayoutOpeningSettingsPayload{
             edit.handle.sourceIndex, settings});
@@ -1199,7 +1199,7 @@ void drawElevationCanvas(CreativeEditorState& editor,
       queueElevationSourceSelection(state, item->sourceKind, item->sourceIndex,
                                     item->levelIndex, commands);
     } else {
-      commands.push(CreativeDesktopCommandId::WorldLayoutClearSelection);
+      commands.enqueue(CreativeDesktopCommandId::WorldLayoutClearSelection);
     }
   }
 

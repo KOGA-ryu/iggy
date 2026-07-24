@@ -118,7 +118,7 @@ void appendMeasurementInspector(
       const std::string name =
           std::string{cr::toString(readout.mode)} + " " +
           std::to_string(annotations.nextAnnotationId);
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::SaveMeasurementAnnotation,
           CreativeDesktopMeasurementAnnotationPayload{
               cr::kInvalidCreativeMeasurementAnnotationId, name});
@@ -144,7 +144,7 @@ void appendMeasurementInspector(
     if (!playModeActive) {
       ImGui::SameLine();
       if (ImGui::SmallButton("Remove")) {
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::RemoveMeasurementAnnotation,
             CreativeDesktopMeasurementAnnotationPayload{annotation.id, {}});
       }
@@ -157,7 +157,7 @@ void appendMeasurementInspector(
 
 void queueLogicSource(CreativeDesktopCommandFrame& commands,
                       cr::CreativeObjectId sourceObjectId) {
-  commands.push(CreativeDesktopCommandId::SetLogicSource,
+  commands.enqueue(CreativeDesktopCommandId::SetLogicSource,
                 CreativeDesktopLogicLinkPayload{sourceObjectId});
 }
 
@@ -165,7 +165,7 @@ void queueSetLogicLink(CreativeDesktopCommandFrame& commands,
                        cr::CreativeObjectId sourceObjectId,
                        cr::CreativeObjectId targetObjectId,
                        cr::CreativeLogicLinkAction action) {
-  commands.push(CreativeDesktopCommandId::SetLogicLink,
+  commands.enqueue(CreativeDesktopCommandId::SetLogicLink,
                 CreativeDesktopLogicLinkPayload{sourceObjectId, targetObjectId,
                                                 action});
 }
@@ -173,7 +173,7 @@ void queueSetLogicLink(CreativeDesktopCommandFrame& commands,
 void queueRemoveLogicLink(CreativeDesktopCommandFrame& commands,
                           cr::CreativeObjectId sourceObjectId,
                           cr::CreativeObjectId targetObjectId) {
-  commands.push(CreativeDesktopCommandId::RemoveLogicLink,
+  commands.enqueue(CreativeDesktopCommandId::RemoveLogicLink,
                 CreativeDesktopLogicLinkPayload{sourceObjectId,
                                                 targetObjectId});
 }
@@ -296,7 +296,7 @@ void appendLogicSection(CreativeEditorDesktopUiState& desktopUi,
       if (!playModeActive) {
         ImGui::SameLine();
         if (ImGui::SmallButton("X##logic_source")) {
-          commands.push(CreativeDesktopCommandId::ClearLogicSource);
+          commands.enqueue(CreativeDesktopCommandId::ClearLogicSource);
         }
         appendHoverTooltip("Clear active logic source");
       }
@@ -381,12 +381,12 @@ void appendMultiInspector(const cr::CreativeDocument& document,
     ImGui::BeginDisabled(
         !actionAvailable(cr::CreativeSemanticObjectAction::SetVisible));
     if (ImGui::SmallButton("Show##multi")) {
-      commands.push(CreativeDesktopCommandId::SetObjectsVisible,
+      commands.enqueue(CreativeDesktopCommandId::SetObjectsVisible,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, true});
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Hide##multi")) {
-      commands.push(CreativeDesktopCommandId::SetObjectsVisible,
+      commands.enqueue(CreativeDesktopCommandId::SetObjectsVisible,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, false});
     }
     ImGui::EndDisabled();
@@ -398,12 +398,12 @@ void appendMultiInspector(const cr::CreativeDocument& document,
     ImGui::BeginDisabled(
         !actionAvailable(cr::CreativeSemanticObjectAction::SetLocked));
     if (ImGui::SmallButton("Lock##multi")) {
-      commands.push(CreativeDesktopCommandId::SetObjectsLocked,
+      commands.enqueue(CreativeDesktopCommandId::SetObjectsLocked,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, true});
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Unlock##multi")) {
-      commands.push(CreativeDesktopCommandId::SetObjectsLocked,
+      commands.enqueue(CreativeDesktopCommandId::SetObjectsLocked,
                     CreativeDesktopObjectFlagPayload{resolved.objectIds, false});
     }
     ImGui::EndDisabled();
@@ -411,14 +411,14 @@ void appendMultiInspector(const cr::CreativeDocument& document,
     ImGui::BeginDisabled(
         !actionAvailable(cr::CreativeSemanticObjectAction::Duplicate));
     if (ImGui::Button("Duplicate##multi")) {
-      commands.push(CreativeDesktopCommandId::DuplicateSelection);
+      commands.enqueue(CreativeDesktopCommandId::DuplicateSelection);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
     ImGui::BeginDisabled(
         !actionAvailable(cr::CreativeSemanticObjectAction::Delete));
     if (ImGui::Button("Delete##multi")) {
-      commands.push(CreativeDesktopCommandId::DeleteSelection);
+      commands.enqueue(CreativeDesktopCommandId::DeleteSelection);
     }
     ImGui::EndDisabled();
   }
@@ -472,7 +472,7 @@ void appendPlayerSpawnFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SetPlayerSpawnSettings,
         CreativeDesktopPlayerSpawnPayload{object.id, draft.playerSpawn});
   };
@@ -537,7 +537,7 @@ void appendNpcSpawnFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SetNpcSpawnSettings,
         CreativeDesktopNpcSpawnPayload{object.id, draft.npcSpawn});
   };
@@ -649,7 +649,7 @@ void appendLootPointFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SetLootPointSettings,
         CreativeDesktopLootPointPayload{object.id, draft.lootPoint});
   };
@@ -700,7 +700,7 @@ void appendExitPointFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SetExitPointSettings,
         CreativeDesktopExitPointPayload{object.id, draft.exitPoint});
   };
@@ -775,7 +775,7 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SetMovingPlatformSettings,
         CreativeDesktopMovingPlatformPayload{object.id,
                                              draft.movingPlatform});
@@ -845,7 +845,7 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
         draft.movingPlatformWaypointIndex = index;
         draft.movingPlatformWaypointDwellSeconds =
             object.pathPoints[index].dwellSeconds;
-        commands.push(
+        commands.enqueue(
             CreativeDesktopCommandId::SelectMovingPlatformWaypoint,
             CreativeDesktopMovingPlatformWaypointPayload{object.id, index,
                                                          0.0});
@@ -864,7 +864,7 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
       draft.validation = "Wait must be between 0 and 60 seconds";
     } else {
       draft.validation.clear();
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::SetMovingPlatformWaypointDwell,
           CreativeDesktopMovingPlatformWaypointPayload{
               object.id, draft.movingPlatformWaypointIndex, dwell});
@@ -881,14 +881,14 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
       fieldsDisabled || !preview.available || preview.objectId != object.id;
   ImGui::BeginDisabled(previewDisabled);
   if (ImGui::Button(preview.playing ? "Pause" : "Play")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::ToggleMovingPlatformPreview,
         CreativeDesktopMovingPlatformPreviewPayload{object.id,
                                                     preview.normalizedProgress});
   }
   ImGui::SameLine();
   if (ImGui::Button("Restart")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::RestartMovingPlatformPreview,
         CreativeDesktopMovingPlatformPreviewPayload{object.id, 0.0});
   }
@@ -896,7 +896,7 @@ void appendMovingPlatformFields(CreativeDesktopInspectorDraft& draft,
       static_cast<float>(preview.normalizedProgress * 100.0);
   if (ImGui::SliderFloat("Progress", &progressPercent, 0.0F, 100.0F,
                          "%.0f%%")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::SeekMovingPlatformPreview,
         CreativeDesktopMovingPlatformPreviewPayload{
             object.id, static_cast<double>(progressPercent) / 100.0});
@@ -922,7 +922,7 @@ void appendTransformFields(CreativeDesktopInspectorDraft& draft,
       return;
     }
     draft.validation.clear();
-    commands.push(CreativeDesktopCommandId::SetObjectTransform,
+    commands.enqueue(CreativeDesktopCommandId::SetObjectTransform,
                   CreativeDesktopTransformPayload{objectId,
                                                   validated.transform,
                                                   setPosition, setRotation,
@@ -969,7 +969,7 @@ void appendGroupPivotFields(CreativeDesktopInspectorDraft& draft,
                                  draft.position[2]};
     if (cr::isFiniteCreativeVec3(pivot)) {
       draft.validation.clear();
-      commands.push(CreativeDesktopCommandId::SetGroupPivot,
+      commands.enqueue(CreativeDesktopCommandId::SetGroupPivot,
                     CreativeDesktopGroupPivotPayload{groupObjectId, pivot});
     } else {
       draft.validation = "group pivot must be finite";
@@ -1032,7 +1032,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     worldLayout.wallSettingsDraft = {};
     worldLayout.openingSettingsDraft = {};
     if (creativeEditorWorldLayoutPreviewActive(worldLayout)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
   }
@@ -1057,7 +1057,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
   if (creativeDesktopInputTextStdString(
           "Name", &draft.name, ImGuiInputTextFlags_EnterReturnsTrue) &&
       !draft.name.empty()) {
-    commands.push(CreativeDesktopCommandId::RenameObject,
+    commands.enqueue(CreativeDesktopCommandId::RenameObject,
                   CreativeDesktopRenamePayload{object.id, draft.name});
   }
   draft.editing = draft.editing || ImGui::IsItemActive();
@@ -1071,7 +1071,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       !actionAvailable(cr::CreativeSemanticObjectAction::SetVisible));
   bool visible = object.visible;
   if (ImGui::Checkbox("Visible", &visible)) {
-    commands.push(CreativeDesktopCommandId::SetObjectsVisible,
+    commands.enqueue(CreativeDesktopCommandId::SetObjectsVisible,
                   CreativeDesktopObjectFlagPayload{{object.id}, visible});
   }
   ImGui::SameLine();
@@ -1081,7 +1081,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       !actionAvailable(cr::CreativeSemanticObjectAction::SetLocked));
   bool locked = object.locked;
   if (ImGui::Checkbox("Locked", &locked)) {
-    commands.push(CreativeDesktopCommandId::SetObjectsLocked,
+    commands.enqueue(CreativeDesktopCommandId::SetObjectsLocked,
                   CreativeDesktopObjectFlagPayload{{object.id}, locked});
   }
   ImGui::EndDisabled();
@@ -1133,7 +1133,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
     ImGui::SeparatorText("World Layout");
     ImGui::BeginDisabled(playModeActive || !sourceAdoptionAvailable);
     if (ImGui::Button("Adopt 3D Edit")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutAdoptObjectSource,
           CreativeDesktopWorldLayoutObjectSourcePayload{object.id});
     }
@@ -1152,7 +1152,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       playModeActive ||
       !actionAvailable(cr::CreativeSemanticObjectAction::Duplicate));
   if (ImGui::Button("Duplicate##single")) {
-    commands.push(CreativeDesktopCommandId::DuplicateSelection);
+    commands.enqueue(CreativeDesktopCommandId::DuplicateSelection);
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
@@ -1160,7 +1160,7 @@ void appendSingleInspector(CreativeEditorDesktopUiState& desktopUi,
       playModeActive ||
       !actionAvailable(cr::CreativeSemanticObjectAction::Delete));
   if (ImGui::Button("Delete##single")) {
-    commands.push(CreativeDesktopCommandId::DeleteSelection);
+    commands.enqueue(CreativeDesktopCommandId::DeleteSelection);
   }
   ImGui::EndDisabled();
 
@@ -1179,7 +1179,7 @@ void queueCreativeDesktopObjectNavigation(CreativeDesktopCommandFrame& commands,
     return;
   }
   // Play navigates by selection only; editing focus moves the camera.
-  commands.push(playModeActive ? CreativeDesktopCommandId::SelectObjects
+  commands.enqueue(playModeActive ? CreativeDesktopCommandId::SelectObjects
                                : CreativeDesktopCommandId::FocusObject,
                 CreativeDesktopSelectPayload{{objectId}, objectId});
 }

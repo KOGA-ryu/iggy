@@ -158,7 +158,7 @@ void drawSelectedRoomTopology(CreativeEditorWorldLayoutState& state,
                               state.roomBoundaryManipulation.active;
   ImGui::BeginDisabled(roomEditActive);
   if (ImGui::Button("Split room")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutSplitRoom,
         CreativeDesktopWorldLayoutRoomSplitPayload{
             roomIndex, draft.splitAxis, draft.splitCoordinate});
@@ -193,7 +193,7 @@ void drawSelectedRoomTopology(CreativeEditorWorldLayoutState& state,
     ImGui::EndCombo();
   }
   if (ImGui::Button("Merge rooms")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutMergeRooms,
         CreativeDesktopWorldLayoutRoomMergePayload{
             roomIndex, draft.mergeRoomIndex});
@@ -286,7 +286,7 @@ void drawSelectedRoomSettings(CreativeEditorWorldLayoutState& state,
                         level.ceilingThicknessLayers,
                         level.roofThicknessLayers);
     if (ImGui::Button("Edit level settings")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutLevelOperation,
           CreativeDesktopWorldLayoutLevelOperationPayload{
               CreativeEditorWorldLayoutLevelOperation::Select,
@@ -594,7 +594,7 @@ void drawTopologyEdgeSettings(
                           draft.splitOffsetCells < currentLength;
   ImGui::BeginDisabled(!splitValid || dirty || manipulationActive);
   if (ImGui::Button("Split wall")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutSplitWall,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutSplitWall,
                   CreativeDesktopWorldLayoutWallSplitPayload{
                       selectedEdge, draft.splitOffsetCells});
   }
@@ -623,7 +623,7 @@ void drawTopologyEdgeSettings(
     ImGui::EndCombo();
   }
   if (ImGui::Button("Merge walls")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutMergeWalls,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutMergeWalls,
                   CreativeDesktopWorldLayoutWallMergePayload{
                       selectedEdge, draft.mergeTopologyEdgeIndex});
   }
@@ -740,7 +740,7 @@ void drawSelectedOpeningSettings(
   if (!opening.insertAssetId.empty()) {
     ImGui::BeginDisabled(dirty || state.openingManipulation.active);
     if (ImGui::Button("Use procedural insert")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
           CreativeDesktopWorldLayoutOpeningInsertPayload{
               openingIndex,

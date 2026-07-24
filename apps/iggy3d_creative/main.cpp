@@ -554,7 +554,7 @@ int main(int argc, char** argv) {
           &bootstrapData.staticMeshAssetCatalog,
           &playtestOwner.monitor(), assetLibraryFrame.remainingInput,
           desktopCommands);
-      if (desktopCommands.count > 0U) {
+      if (desktopCommands.count > 0U || desktopCommands.overflowed) {
         const iggy3d_creative_app::CreativeDesktopCommandResult desktopResult =
             iggy3d_creative_app::dispatchCreativeDesktopCommands(
                 desktopCommands,

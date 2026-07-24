@@ -40,7 +40,7 @@ bool inputText(const char* label, std::string& value) {
 
 void queueTool(CreativeDesktopCommandFrame& commands,
                CreativeEditorWorldLayoutTool tool) {
-  commands.push(CreativeDesktopCommandId::WorldLayoutSetTool,
+  commands.enqueue(CreativeDesktopCommandId::WorldLayoutSetTool,
                 CreativeDesktopWorldLayoutToolPayload{tool});
 }
 
@@ -49,7 +49,7 @@ void queueLevelOperation(
     CreativeEditorWorldLayoutLevelOperation operation,
     std::size_t buildingIndex = cr::kInvalidCreativeWorldLayoutIndex,
     std::size_t levelIndex = cr::kInvalidCreativeWorldLayoutIndex) {
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutLevelOperation,
       CreativeDesktopWorldLayoutLevelOperationPayload{operation,
                                                       buildingIndex,
@@ -139,11 +139,11 @@ void drawWorldLayoutPalette(CreativeEditorWorldLayoutState& state,
       if (state.tool != CreativeEditorWorldLayoutTool::Select) {
         queueTool(commands, CreativeEditorWorldLayoutTool::Select);
       }
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSelectBuildingTemplate,
           CreativeDesktopWorldLayoutBuildingTemplateSelectionPayload{
               templateIndex});
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutPlaceBuildingTemplate,
           CreativeDesktopWorldLayoutBuildingTemplatePlacementPayload{
               CreativeEditorWorldLayoutBuildingTemplatePlacementPhase::Begin,
@@ -238,7 +238,7 @@ void drawWorldLayoutAssetPlacementControls(
     }
     ImGui::BeginDisabled(!compatible);
     if (ImGui::Button("Fit asset to opening")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
           CreativeDesktopWorldLayoutOpeningInsertPayload{
               state.selection.index,
@@ -248,7 +248,7 @@ void drawWorldLayoutAssetPlacementControls(
               placement.scale});
     }
     if (ImGui::Button("Resize opening to asset")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutSetOpeningInsert,
           CreativeDesktopWorldLayoutOpeningInsertPayload{
               state.selection.index,
@@ -309,7 +309,7 @@ void drawWorldLayoutToolboxStrip(CreativeEditorState& editor,
       case CreativeEditorWorldLayoutToolActivation::TerrainRegionSession:
         if (topography.region.editingEnabled) {
           topography.region.editingEnabled = false;
-          commands.push(CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
+          commands.enqueue(CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel);
         } else {
           topography.region.editingEnabled = true;
           topography.visible = true;
@@ -411,7 +411,7 @@ void drawWorldLayoutAssetPalette(
             state.catalogPlacement.assetId == assetId;
         ImGui::PushID(assetId.data(), assetId.data() + assetId.size());
         if (ImGui::Selectable(entry.label.c_str(), selected)) {
-          commands.push(
+          commands.enqueue(
               CreativeDesktopCommandId::WorldLayoutSelectCatalogAsset,
               CreativeDesktopWorldLayoutCatalogAssetPayload{
                   std::string(assetId)});
@@ -904,7 +904,7 @@ void drawWorldLayoutBuildingBlockoutSection(
     drawWorldLayoutBlockoutSettingsDrawer(edit.settings, grid);
     ImGui::BeginDisabled(previewActive);
     if (ImGui::Button("Apply blockout")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutUpdateBuildingBlockout,
           CreativeDesktopWorldLayoutBuildingBlockoutUpdatePayload{
               edit.buildingIndex, edit.settings});
@@ -919,7 +919,7 @@ void drawWorldLayoutBuildingBlockoutSection(
                                           grid);
     ImGui::BeginDisabled(previewActive);
     if (ImGui::Button("Stage blockout")) {
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
           CreativeDesktopWorldLayoutBuildingBlockoutPayload{
               desktopUi.worldLayoutBlockoutDraft});

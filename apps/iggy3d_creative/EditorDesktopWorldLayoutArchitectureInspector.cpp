@@ -71,7 +71,7 @@ void drawCreativeEditorWorldLayoutArchitectureInspector(
   if (!draft.active || draft.buildingIndex != buildingIndex ||
       draft.sourceRevision != state.revision) {
     if (draft.active && creativeEditorWorldLayoutPreviewActive(state)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
     initializeDraft(draft, state, dimensions, buildingIndex);
@@ -150,7 +150,7 @@ void drawCreativeEditorWorldLayoutArchitectureInspector(
   if (edited && draft.previewReady) {
     draft.previewReady = false;
     if (creativeEditorWorldLayoutPreviewActive(state)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
   }
@@ -164,7 +164,7 @@ void drawCreativeEditorWorldLayoutArchitectureInspector(
   ImGui::BeginDisabled(locked || !valid);
   if (ImGui::Button("Preview profile##layout_architecture")) {
     draft.previewReady = true;
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutPreviewBuildingArchitecture,
         CreativeDesktopWorldLayoutBuildingArchitecturePayload{
             buildingIndex, building.stableKey, draft.profile});
@@ -175,7 +175,7 @@ void drawCreativeEditorWorldLayoutArchitectureInspector(
       locked || !draft.previewReady ||
       !creativeEditorWorldLayoutPreviewActive(state));
   if (ImGui::Button("Apply##layout_architecture")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutApplyBuildingArchitecture,
         CreativeDesktopWorldLayoutBuildingArchitecturePayload{
             buildingIndex, building.stableKey, draft.profile});
@@ -186,7 +186,7 @@ void drawCreativeEditorWorldLayoutArchitectureInspector(
   if (ImGui::Button("Cancel##layout_architecture")) {
     draft.previewReady = false;
     if (creativeEditorWorldLayoutPreviewActive(state)) {
-      commands.push(CreativeDesktopCommandId::
+      commands.enqueue(CreativeDesktopCommandId::
                         WorldLayoutCancelGeneratedSettingsPreview);
     }
   }

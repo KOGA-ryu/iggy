@@ -115,13 +115,13 @@ void queueCreativeDesktopGeneratedPropertyEdit(
     CreativeDesktopCommandFrame& commands) {
   switch (intent) {
     case CreativeDesktopPropertyEditIntent::Preview:
-      commands.push(previewCommand, std::move(payload));
+      commands.enqueue(previewCommand, std::move(payload));
       return;
     case CreativeDesktopPropertyEditIntent::Commit:
-      commands.push(commitCommand, std::move(payload));
+      commands.enqueue(commitCommand, std::move(payload));
       return;
     case CreativeDesktopPropertyEditIntent::Cancel:
-      commands.push(
+      commands.enqueue(
           CreativeDesktopCommandId::WorldLayoutCancelGeneratedSettingsPreview);
       return;
     case CreativeDesktopPropertyEditIntent::None:
@@ -154,7 +154,7 @@ void queueCreativeDesktopWorldLayoutPropertyEdit(
   }
   constexpr iggy3d::creative::CreativeWorldLayoutTable table =
       creativeDesktopWorldLayoutPropertyTable<Settings>();
-  commands.push(
+  commands.enqueue(
       CreativeDesktopCommandId::WorldLayoutEditSourceProperty,
       CreativeDesktopWorldLayoutPropertyEditPayload{
           phase, table, index, std::string(stableKey), settings});

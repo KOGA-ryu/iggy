@@ -3,8 +3,10 @@
 #include "EditorDesktopCommandsInternal.hpp"
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <string_view>
 #include <utility>
 #include <variant>
 
@@ -12,36 +14,70 @@ namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;
 
-void CreativeDesktopCommandFrame::push(CreativeDesktopCommandId id) {
-  if (count >= kCreativeDesktopCommandCapacity) {
-    overflowed = true;
-    return;
-  }
-  commands[count].id = id;
-  commands[count].payload = std::monostate{};
-  ++count;
+CreativeDesktopCommandEnqueueResult CreativeDesktopCommandFrame::push(
+    CreativeDesktopCommandId id) {
+  return push(id, CreativeDesktopCommandPayload{std::monostate{}});
 }
 
-void CreativeDesktopCommandFrame::push(CreativeDesktopCommandId id,
-                                       std::string saveId) {
-  push(id, CreativeDesktopCommandPayload{
-               CreativeDesktopSaveAsPayload{std::move(saveId)}});
+CreativeDesktopCommandEnqueueResult CreativeDesktopCommandFrame::push(
+    CreativeDesktopCommandId id, std::string saveId) {
+  return push(id, CreativeDesktopCommandPayload{
+                      CreativeDesktopSaveAsPayload{std::move(saveId)}});
 }
 
-void CreativeDesktopCommandFrame::push(CreativeDesktopCommandId id,
-                                       CreativeDesktopCommandPayload payload) {
+CreativeDesktopCommandEnqueueResult CreativeDesktopCommandFrame::push(
+    CreativeDesktopCommandId id, CreativeDesktopCommandPayload payload) {
   if (count >= kCreativeDesktopCommandCapacity) {
     overflowed = true;
-    return;
+    if (rejectedCommandCount == 0U) {
+      firstRejectedCommand = id;
+    }
+    ++rejectedCommandCount;
+    return CreativeDesktopCommandEnqueueResult::CapacityExceeded;
   }
   commands[count].id = id;
   commands[count].payload = std::move(payload);
   ++count;
+  return CreativeDesktopCommandEnqueueResult::Enqueued;
 }
 
 void CreativeDesktopCommandFrame::clear() noexcept {
   count = 0U;
   overflowed = false;
+  rejectedCommandCount = 0U;
+  firstRejectedCommand = CreativeDesktopCommandId::None;
+}
+
+namespace {
+
+void observeCreativeDesktopEnqueue(
+    const CreativeDesktopCommandFrame& frame,
+    CreativeDesktopCommandEnqueueResult enqueueResult) {
+  switch (enqueueResult) {
+    case CreativeDesktopCommandEnqueueResult::Enqueued:
+      return;
+    case CreativeDesktopCommandEnqueueResult::CapacityExceeded:
+      if (!frame.overflowed || frame.rejectedCommandCount == 0U) {
+        assert(false && "desktop command refusal was not recorded");
+      }
+      return;
+  }
+}
+
+}  // namespace
+
+void CreativeDesktopCommandFrame::enqueue(CreativeDesktopCommandId id) {
+  observeCreativeDesktopEnqueue(*this, push(id));
+}
+
+void CreativeDesktopCommandFrame::enqueue(CreativeDesktopCommandId id,
+                                          std::string saveId) {
+  observeCreativeDesktopEnqueue(*this, push(id, std::move(saveId)));
+}
+
+void CreativeDesktopCommandFrame::enqueue(
+    CreativeDesktopCommandId id, CreativeDesktopCommandPayload payload) {
+  observeCreativeDesktopEnqueue(*this, push(id, std::move(payload)));
 }
 
 namespace {
@@ -103,12 +139,40 @@ void resolveCommandImpacts(
   }
 }
 
+void appendCommandReceipt(
+    CreativeDesktopCommandResult& aggregate,
+    const CreativeDesktopCommandResult& commandResult) noexcept {
+  if (aggregate.commandReceiptCount >= kCreativeDesktopCommandCapacity) {
+    assert(false && "desktop command receipt capacity exceeded");
+    return;
+  }
+  CreativeDesktopCommandDispatchReceipt& receipt =
+      aggregate.commandReceipts[aggregate.commandReceiptCount++];
+  receipt.command = commandResult.lastCommand;
+  receipt.owner = creativeDesktopCommandOwner(commandResult.lastCommand);
+  receipt.accepted = commandResult.accepted;
+  receipt.changed = commandResult.changed;
+  receipt.impacts = commandResult.impacts;
+  receipt.affectedObjectCount = commandResult.affectedObjectCount;
+  const std::size_t copiedSize =
+      std::min(commandResult.message.size(),
+               kCreativeDesktopCommandReceiptMessageCapacity);
+  std::copy_n(commandResult.message.data(), copiedSize, receipt.message.data());
+  receipt.messageLength = static_cast<std::uint16_t>(copiedSize);
+  receipt.messageTruncated = copiedSize < commandResult.message.size();
+}
+
 void mergeCommandResult(CreativeDesktopCommandResult& aggregate,
                         CreativeDesktopCommandResult commandResult) {
   const CreativeDesktopCommandImpactFlags cumulativeImpacts =
       aggregate.impacts | commandResult.impacts;
-  aggregate = std::move(commandResult);
+  aggregate.lastCommand = commandResult.lastCommand;
+  aggregate.objectAction = std::move(commandResult.objectAction);
+  aggregate.accepted = commandResult.accepted;
+  aggregate.changed = commandResult.changed;
   aggregate.impacts = cumulativeImpacts;
+  aggregate.affectedObjectCount = commandResult.affectedObjectCount;
+  aggregate.message = std::move(commandResult.message);
   aggregate.documentReplaced = creativeDesktopCommandHasImpact(
       aggregate, CreativeDesktopCommandImpact::DocumentReplaced);
   aggregate.sceneChanged = creativeDesktopCommandHasImpact(
@@ -204,7 +268,15 @@ CreativeDesktopCommandResult dispatchCreativeDesktopCommands(
     const CreativeDesktopDocumentSnapshot after =
         creativeDesktopDocumentSnapshot(context);
     resolveCommandImpacts(commandResult, before, after);
+    appendCommandReceipt(result, commandResult);
     mergeCommandResult(result, std::move(commandResult));
+  }
+  result.overflowed = frame.overflowed;
+  result.rejectedCommandCount = frame.rejectedCommandCount;
+  result.firstRejectedCommand = frame.firstRejectedCommand;
+  if (result.overflowed) {
+    result.accepted = false;
+    result.message = "desktop command frame capacity exceeded";
   }
   return result;
 }

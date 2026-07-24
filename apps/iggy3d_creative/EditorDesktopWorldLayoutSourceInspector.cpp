@@ -325,7 +325,7 @@ void drawTerrainImpactSummary(
   }
   ImGui::BeginDisabled(pending || !hasWorldBounds);
   if (ImGui::Button("Frame in 3D##terrain_impact")) {
-    commands.push(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
+    commands.enqueue(CreativeDesktopCommandId::WorldLayoutFrameSourceScope3D,
                   CreativeDesktopWorldLayoutSourcePayload{
                       table, index, std::string(stableKey)});
   }
@@ -452,7 +452,7 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
   ImGui::BeginDisabled(!topmost || apertureUnsupported ||
                        apertureCapacityReached);
   if (ImGui::Button("Add skylight##layout_level")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutCreateRoofAperture,
         CreativeDesktopWorldLayoutRoofApertureCreatePayload{
             levelIndex,
@@ -460,7 +460,7 @@ void drawLevelInspector(CreativeEditorWorldLayoutState& state,
   }
   ImGui::SameLine();
   if (ImGui::Button("Add chimney clearance##layout_level")) {
-    commands.push(
+    commands.enqueue(
         CreativeDesktopCommandId::WorldLayoutCreateRoofAperture,
         CreativeDesktopWorldLayoutRoofApertureCreatePayload{
             levelIndex,
