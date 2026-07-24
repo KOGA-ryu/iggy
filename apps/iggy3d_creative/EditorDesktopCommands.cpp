@@ -161,6 +161,8 @@ void dispatchOne(const CreativeDesktopCommand& command,
                                                       result) ||
       dispatchCreativeDesktopWorldLayoutBuildingCommand(command, context,
                                                          result) ||
+      dispatchCreativeDesktopWorldLayoutPlanCommand(command, context,
+                                                     result) ||
       dispatchCreativeDesktopWorldLayoutStructureCommand(command, context,
                                                           result) ||
       dispatchCreativeDesktopWorldLayoutLifecycleCommand(command, context,
