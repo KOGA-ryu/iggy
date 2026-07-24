@@ -132,36 +132,7 @@ bool equipCreativeEditorAuthoredAssetToHotbar(
 
 bool creativeEditorCommandIsObjectAction(
     CreativeEditorToolOptionsCommandId command) noexcept {
-  switch (command) {
-    case CreativeEditorToolOptionsCommandId::TransformSelection:
-    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
-    case CreativeEditorToolOptionsCommandId::DeleteSelection:
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
-    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
-    case CreativeEditorToolOptionsCommandId::DetachAttachment:
-    case CreativeEditorToolOptionsCommandId::GroupSelection:
-    case CreativeEditorToolOptionsCommandId::UngroupSelection:
-    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
-    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
-    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
-    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
-      return true;
-    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::EditGroupContents:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
-    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
-    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
-    case CreativeEditorToolOptionsCommandId::Count:
-      return false;
-  }
-  return false;
+  return creativeEditorObjectActionDescriptor(command) != nullptr;
 }
 
 void refreshCreativeEditorObjectActionContext(
@@ -317,6 +288,11 @@ bool creativeEditorObjectActionEnabled(
     const CreativeEditorState& editor,
     const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) noexcept {
+  const CreativeEditorObjectActionDescriptor* descriptor =
+      creativeEditorObjectActionDescriptor(command);
+  if (descriptor == nullptr) {
+    return false;
+  }
   const bool hasAuthoredInstanceDefinition =
       state.contextGroupId != cr::kInvalidObjectId &&
       state.contextContainerKind == cr::CreativeObjectKind::PrefabInstance &&
@@ -330,41 +306,40 @@ bool creativeEditorObjectActionEnabled(
         return creativeEditorObjectActionCapability(
             state.contextActionAdmissions, action);
       };
-  switch (command) {
-    case CreativeEditorToolOptionsCommandId::TransformSelection: {
+  switch (descriptor->activation) {
+    case CreativeEditorObjectActionActivationKind::BeginTransformSession: {
       const CreativeEditorObjectActionCapability transform =
-          capability(cr::CreativeSemanticObjectAction::TransformSelection);
+          capability(descriptor->semanticAction);
       return state.contextSelectionCount > 0U &&
              state.contextAllMovable && transform.allowed;
     }
-    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
+    case CreativeEditorObjectActionActivationKind::ApplyResetTransform: {
       const CreativeEditorObjectActionCapability transform =
-          capability(cr::CreativeSemanticObjectAction::TransformSelection);
+          capability(descriptor->semanticAction);
       return state.contextSelectionCount > 0U &&
              state.contextAllResettable && transform.allowed &&
              transform.route ==
                  cr::CreativeSemanticObjectActionRoute::Document;
     }
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorObjectActionActivationKind::DuplicateSelection:
       return state.contextSelectionCount > 0U &&
-             capability(cr::CreativeSemanticObjectAction::Duplicate).allowed;
-    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::DeleteSelection:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::Delete).allowed;
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionVisibility:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::SetVisible).allowed;
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionLocked:
       return state.contextPrimaryObjectId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::SetLocked).allowed;
-    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::DetachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
              state.contextAttachmentParentId != cr::kInvalidObjectId &&
              !state.contextAttachmentSocket.empty() &&
-             capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .allowed;
-    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::ReattachAttachment:
       return state.contextSelectionCount == 1U &&
              state.contextPrimaryObjectId != cr::kInvalidObjectId &&
              !state.contextPrimaryAssetId.empty() &&
@@ -372,140 +347,87 @@ bool creativeEditorObjectActionEnabled(
              state.contextAttachmentAimTargetId != cr::kInvalidObjectId &&
              state.contextAttachmentAimTargetId !=
                  state.contextPrimaryObjectId &&
-             capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .allowed;
-    case CreativeEditorToolOptionsCommandId::GroupSelection:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::GroupSelection:
       return state.contextSelectionCount > 1U &&
-             capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .allowed;
-    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::UngroupSelection:
       return state.contextGroupId != cr::kInvalidObjectId &&
-             capability(cr::CreativeSemanticObjectAction::StructuralMutation)
-                 .allowed;
-    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+             capability(descriptor->semanticAction).allowed;
+    case CreativeEditorObjectActionActivationKind::SaveSelectionAsAsset:
       return state.contextSelectionCount > 0U && state.contextAllUnlocked &&
              !editor.authoredAssets.root.empty();
-    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorObjectActionActivationKind::UpdateSavedAsset:
       return hasRefreshableAuthoredInstance;
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorObjectActionActivationKind::RefreshSavedAssetInstance:
       return hasRefreshableAuthoredInstance &&
              state.contextPrefabSyncInspected &&
              state.contextPrefabSyncState !=
                  cr::CreativeAuthoredAssetSyncState::Current;
-    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorObjectActionActivationKind::
+        RefreshSafeSavedAssetInstances:
       return hasAuthoredInstanceDefinition &&
              state.contextPrefabSourceChangedInstanceCount > 0U;
-    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+    case CreativeEditorObjectActionActivationKind::
+        ForceRefreshSavedAssetInstances:
       return hasAuthoredInstanceDefinition &&
              state.contextPrefabMatchedInstanceCount > 0U;
-    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::EditGroupContents:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
-    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
-    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
-    case CreativeEditorToolOptionsCommandId::Count:
+    case CreativeEditorObjectActionActivationKind::Count:
       return false;
   }
   return false;
 }
 
-std::string_view creativeEditorObjectActionLabel(
-    CreativeEditorToolOptionsCommandId command) noexcept {
-  switch (command) {
-    case CreativeEditorToolOptionsCommandId::TransformSelection:
-      return "TRANSFORM";
-    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
-      return "RESET TRANSFORM";
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
-      return "DUPLICATE";
-    case CreativeEditorToolOptionsCommandId::DeleteSelection:
-      return "DELETE";
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
-      return "VISIBILITY";
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
-      return "LOCK";
-    case CreativeEditorToolOptionsCommandId::DetachAttachment:
-      return "DETACH";
-    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
-      return "REATTACH";
-    case CreativeEditorToolOptionsCommandId::GroupSelection:
-      return "GROUP";
-    case CreativeEditorToolOptionsCommandId::UngroupSelection:
-      return "UNGROUP";
-    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
-      return "SAVE AS ASSET";
-    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
-      return "UPDATE SAVED ASSET";
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
-      return "REFRESH THIS INSTANCE";
-    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
-      return "REFRESH SAFE INSTANCES";
-    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
-      return "FORCE REFRESH ALL";
-    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::EditGroupContents:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
-    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
-    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
-    case CreativeEditorToolOptionsCommandId::Count:
-      return "INVALID ACTION";
-  }
-  return "INVALID ACTION";
-}
-
 std::string creativeEditorObjectActionValueLabel(
     const CreativeEditorToolOptionsState& state,
     CreativeEditorToolOptionsCommandId command) {
-  switch (command) {
-    case CreativeEditorToolOptionsCommandId::TransformSelection:
+  const CreativeEditorObjectActionDescriptor* descriptor =
+      creativeEditorObjectActionDescriptor(command);
+  if (descriptor == nullptr) {
+    return "INVALID";
+  }
+  switch (descriptor->activation) {
+    case CreativeEditorObjectActionActivationKind::BeginTransformSession:
       return "MOVE ROTATE SCALE MIRROR";
-    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform:
+    case CreativeEditorObjectActionActivationKind::ApplyResetTransform:
       return "ROTATION + SCALE";
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection:
+    case CreativeEditorObjectActionActivationKind::DuplicateSelection:
       return state.contextSelectionCount == 0U
                  ? "SELECT OBJECT"
                  : std::to_string(state.contextSelectionCount) + " OBJECTS";
-    case CreativeEditorToolOptionsCommandId::DeleteSelection:
+    case CreativeEditorObjectActionActivationKind::DeleteSelection:
       return state.contextPrimaryObjectId == cr::kInvalidObjectId
                  ? "SELECT OBJECT"
                  : "PRIMARY OBJECT";
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionVisibility:
       return state.contextPrimaryObjectId == cr::kInvalidObjectId
                  ? "SELECT OBJECT"
                  : state.contextPrimaryVisible ? "HIDE" : "SHOW";
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionLocked:
       return state.contextPrimaryObjectId == cr::kInvalidObjectId
                  ? "SELECT OBJECT"
                  : state.contextPrimaryLocked ? "UNLOCK" : "LOCK";
-    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+    case CreativeEditorObjectActionActivationKind::DetachAttachment:
       return state.contextAttachmentSocket.empty()
                  ? "NOT ATTACHED"
                  : "FROM " + state.contextAttachmentSocket;
-    case CreativeEditorToolOptionsCommandId::ReattachAttachment:
+    case CreativeEditorObjectActionActivationKind::ReattachAttachment:
       return state.contextAttachmentAimAvailable
                  ? "TO OBJECT #" +
                        std::to_string(state.contextAttachmentAimTargetId)
                  : "AIM AT SOCKET HOST";
-    case CreativeEditorToolOptionsCommandId::GroupSelection:
+    case CreativeEditorObjectActionActivationKind::GroupSelection:
       return state.contextSelectionCount > 1U
                  ? std::to_string(state.contextSelectionCount) + " OBJECTS"
                  : "SELECT MULTIPLE";
-    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorObjectActionActivationKind::UngroupSelection:
       return state.contextGroupId != cr::kInvalidObjectId
                  ? state.contextContainerKind ==
                            cr::CreativeObjectKind::PrefabInstance
                        ? "UNPACK INSTANCE"
                        : "REMOVE CONTAINER"
                  : "SELECT GROUP";
-    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset:
+    case CreativeEditorObjectActionActivationKind::SaveSelectionAsAsset:
       if (state.contextSelectionCount == 0U) {
         return "SELECT OBJECTS";
       }
@@ -513,7 +435,7 @@ std::string creativeEditorObjectActionValueLabel(
         return "1 ROOT";
       }
       return std::to_string(state.contextSelectionCount) + " ROOTS";
-    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset:
+    case CreativeEditorObjectActionActivationKind::UpdateSavedAsset:
       if (state.contextContainerKind !=
           cr::CreativeObjectKind::PrefabInstance) {
         return "SELECT ASSET INSTANCE";
@@ -522,32 +444,25 @@ std::string creativeEditorObjectActionValueLabel(
         return "RESET INSTANCE SCALE + TILT";
       }
       return state.contextContainerAssetId;
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+    case CreativeEditorObjectActionActivationKind::RefreshSavedAssetInstance:
       if (!state.contextPrefabSyncInspected) {
         return "SELECT ASSET INSTANCE";
       }
       return std::string(cr::toString(state.contextPrefabSyncState));
-    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
+    case CreativeEditorObjectActionActivationKind::
+        RefreshSafeSavedAssetInstances:
       return state.contextPrefabSourceChangedInstanceCount == 0U
                  ? "NO SAFE UPDATES"
                  : std::to_string(
                        state.contextPrefabSourceChangedInstanceCount) +
                        " SOURCE CHANGED";
-    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances:
+    case CreativeEditorObjectActionActivationKind::
+        ForceRefreshSavedAssetInstances:
       return state.contextPrefabMatchedInstanceCount == 0U
                  ? "NO INSTANCES"
                  : std::to_string(state.contextPrefabMatchedInstanceCount) +
                        " INSTANCES";
-    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::EditGroupContents:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
-    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
-    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
-    case CreativeEditorToolOptionsCommandId::Count:
+    case CreativeEditorObjectActionActivationKind::Count:
       return "INVALID";
   }
   return "INVALID";
@@ -560,19 +475,22 @@ bool activateCreativeEditorObjectAction(
     const iggy3d::StaticMeshAssetCatalog* assetCatalog,
     const CreativePlacementClearanceCache* placementClearanceCache) {
   CreativeEditorToolOptionsState& state = editor.toolOptions;
-  if (!creativeEditorObjectActionEnabled(editor, state, command)) {
+  const CreativeEditorObjectActionDescriptor* descriptor =
+      creativeEditorObjectActionDescriptor(command);
+  if (descriptor == nullptr ||
+      !creativeEditorObjectActionEnabled(editor, state, command)) {
     return false;
   }
 
   bool accepted = false;
-  switch (command) {
-    case CreativeEditorToolOptionsCommandId::TransformSelection:
+  switch (descriptor->activation) {
+    case CreativeEditorObjectActionActivationKind::BeginTransformSession:
       accepted = beginCreativeEditorSelectionTransformPreview(
           appState, editor.transform, "object_actions_transform",
           CreativeEditorTransformAnchorPolicy::FixedSource,
           &editor.worldLayout);
       break;
-    case CreativeEditorToolOptionsCommandId::ResetSelectionTransform: {
+    case CreativeEditorObjectActionActivationKind::ApplyResetTransform: {
       cr::CreativeTransformCommandRequest reset;
       reset.kind = cr::CreativeTransformCommandKind::ResetRotationScale;
       const CreativeEditorObjectActionExecution execution =
@@ -584,7 +502,7 @@ bool activateCreativeEditorObjectAction(
           creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
     }
-    case CreativeEditorToolOptionsCommandId::DuplicateSelection: {
+    case CreativeEditorObjectActionActivationKind::DuplicateSelection: {
       const CreativeEditorObjectActionExecution execution =
           executeCreativeEditorSceneObjectAction(
               {appState, &editor.worldLayout},
@@ -594,7 +512,7 @@ bool activateCreativeEditorObjectAction(
           creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
     }
-    case CreativeEditorToolOptionsCommandId::DeleteSelection: {
+    case CreativeEditorObjectActionActivationKind::DeleteSelection: {
       const CreativeEditorObjectActionExecution execution =
           executeCreativeEditorSceneObjectAction(
               {appState, &editor.worldLayout},
@@ -604,27 +522,27 @@ bool activateCreativeEditorObjectAction(
           creativeEditorObjectActionOutcomeAccepted(execution.outcome);
       break;
     }
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionVisibility:
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionVisibility:
       accepted = toggleCreativeEditorSelectionVisibilityWithUndo(
                      appState, appState.history,
                      "object_actions_toggle_visibility",
                      &editor.worldLayout)
                      .accepted;
       break;
-    case CreativeEditorToolOptionsCommandId::ToggleSelectionLocked:
+    case CreativeEditorObjectActionActivationKind::ToggleSelectionLocked:
       accepted = toggleCreativeEditorSelectionLockedWithUndo(
                      appState, appState.history,
                      "object_actions_toggle_locked", &editor.worldLayout)
                      .accepted;
       break;
-    case CreativeEditorToolOptionsCommandId::DetachAttachment:
+    case CreativeEditorObjectActionActivationKind::DetachAttachment:
       accepted = detachCreativeEditorObjectWithUndo(
                      appState, appState.history,
                      state.contextPrimaryObjectId,
                      "object_actions_detach", &editor.worldLayout)
                      .accepted;
       break;
-    case CreativeEditorToolOptionsCommandId::ReattachAttachment: {
+    case CreativeEditorObjectActionActivationKind::ReattachAttachment: {
       if (assetCatalog == nullptr) {
         editor.catalog.statusLabel = "REATTACH: ASSET CATALOG UNAVAILABLE";
         break;
@@ -656,16 +574,18 @@ bool activateCreativeEditorObjectAction(
                    : "REATTACH: " + std::string(toString(receipt.status));
       break;
     }
-    case CreativeEditorToolOptionsCommandId::GroupSelection:
-    case CreativeEditorToolOptionsCommandId::UngroupSelection:
+    case CreativeEditorObjectActionActivationKind::GroupSelection:
+    case CreativeEditorObjectActionActivationKind::UngroupSelection:
       accepted = applyCreativeEditorGroupCommandWithHistory(
                      appState,
-                     command == CreativeEditorToolOptionsCommandId::GroupSelection
+                     descriptor->activation ==
+                             CreativeEditorObjectActionActivationKind::
+                                 GroupSelection
                          ? "object_actions_group"
                          : "object_actions_ungroup")
                      .accepted;
       break;
-    case CreativeEditorToolOptionsCommandId::SaveSelectionAsAsset: {
+    case CreativeEditorObjectActionActivationKind::SaveSelectionAsAsset: {
       const CreativeEditorAuthoredAssetSaveReceipt receipt =
           saveCreativeEditorSelectionAsAuthoredAsset(
               appState, editor.authoredAssets);
@@ -693,7 +613,7 @@ bool activateCreativeEditorObjectAction(
       }
       break;
     }
-    case CreativeEditorToolOptionsCommandId::UpdateSavedAsset: {
+    case CreativeEditorObjectActionActivationKind::UpdateSavedAsset: {
       const CreativeEditorAuthoredAssetUpdateReceipt update =
           updateCreativeEditorAuthoredAssetFromInstance(
               appState, editor.authoredAssets, state.contextGroupId);
@@ -714,20 +634,23 @@ bool activateCreativeEditorObjectAction(
       }
       break;
     }
-    case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
-    case CreativeEditorToolOptionsCommandId::RefreshSafeSavedAssetInstances:
-    case CreativeEditorToolOptionsCommandId::ForceRefreshSavedAssetInstances: {
+    case CreativeEditorObjectActionActivationKind::RefreshSavedAssetInstance:
+    case CreativeEditorObjectActionActivationKind::
+        RefreshSafeSavedAssetInstances:
+    case CreativeEditorObjectActionActivationKind::
+        ForceRefreshSavedAssetInstances: {
       cr::CreativeAuthoredAssetRefreshMode mode =
           cr::CreativeAuthoredAssetRefreshMode::ForceAll;
-      switch (command) {
-        case CreativeEditorToolOptionsCommandId::RefreshSavedAssetInstance:
+      switch (descriptor->activation) {
+        case CreativeEditorObjectActionActivationKind::
+            RefreshSavedAssetInstance:
           mode = cr::CreativeAuthoredAssetRefreshMode::SelectedInstance;
           break;
-        case CreativeEditorToolOptionsCommandId::
+        case CreativeEditorObjectActionActivationKind::
             RefreshSafeSavedAssetInstances:
           mode = cr::CreativeAuthoredAssetRefreshMode::SafeInstances;
           break;
-        case CreativeEditorToolOptionsCommandId::
+        case CreativeEditorObjectActionActivationKind::
             ForceRefreshSavedAssetInstances:
           break;
         default:
@@ -760,16 +683,7 @@ bool activateCreativeEditorObjectAction(
       }
       break;
     }
-    case CreativeEditorToolOptionsCommandId::SetMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::ClearMaterialBrushSymmetryPivot:
-    case CreativeEditorToolOptionsCommandId::EditGroupContents:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformWaypointDwell:
-    case CreativeEditorToolOptionsCommandId::SetMovingPlatformSegmentSpeed:
-    case CreativeEditorToolOptionsCommandId::ToggleMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RestartMovingPlatformPreview:
-    case CreativeEditorToolOptionsCommandId::RegeneratePatternRecipe:
-    case CreativeEditorToolOptionsCommandId::DetachPatternRecipe:
-    case CreativeEditorToolOptionsCommandId::Count:
+    case CreativeEditorObjectActionActivationKind::Count:
       break;
   }
   if (accepted) {

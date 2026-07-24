@@ -505,6 +505,108 @@ bool groupToolOptionsExposeEditAndUngroupCommands() {
       "Group options present edit, save, update, safe refresh, and force refresh before ungroup");
 }
 
+bool objectActionDescriptorsAreExhaustiveAndUnique() {
+  using Command = app::CreativeEditorToolOptionsCommandId;
+  using SemanticAction = cr::CreativeSemanticObjectAction;
+  using Activation = app::CreativeEditorObjectActionActivationKind;
+  struct ExpectedDescriptor {
+    Command command;
+    SemanticAction semanticAction;
+    Activation activation;
+    std::string_view label;
+  };
+  constexpr std::array expected{
+      ExpectedDescriptor{Command::TransformSelection,
+                         SemanticAction::TransformSelection,
+                         Activation::BeginTransformSession, "TRANSFORM"},
+      ExpectedDescriptor{Command::ResetSelectionTransform,
+                         SemanticAction::TransformSelection,
+                         Activation::ApplyResetTransform, "RESET TRANSFORM"},
+      ExpectedDescriptor{Command::DuplicateSelection,
+                         SemanticAction::Duplicate,
+                         Activation::DuplicateSelection, "DUPLICATE"},
+      ExpectedDescriptor{Command::DeleteSelection, SemanticAction::Delete,
+                         Activation::DeleteSelection, "DELETE"},
+      ExpectedDescriptor{Command::ToggleSelectionVisibility,
+                         SemanticAction::SetVisible,
+                         Activation::ToggleSelectionVisibility, "VISIBILITY"},
+      ExpectedDescriptor{Command::ToggleSelectionLocked,
+                         SemanticAction::SetLocked,
+                         Activation::ToggleSelectionLocked, "LOCK"},
+      ExpectedDescriptor{Command::ReattachAttachment,
+                         SemanticAction::StructuralMutation,
+                         Activation::ReattachAttachment, "REATTACH"},
+      ExpectedDescriptor{Command::DetachAttachment,
+                         SemanticAction::StructuralMutation,
+                         Activation::DetachAttachment, "DETACH"},
+      ExpectedDescriptor{Command::GroupSelection,
+                         SemanticAction::StructuralMutation,
+                         Activation::GroupSelection, "GROUP"},
+      ExpectedDescriptor{Command::UngroupSelection,
+                         SemanticAction::StructuralMutation,
+                         Activation::UngroupSelection, "UNGROUP"},
+      ExpectedDescriptor{Command::SaveSelectionAsAsset, SemanticAction::Count,
+                         Activation::SaveSelectionAsAsset, "SAVE AS ASSET"},
+      ExpectedDescriptor{Command::UpdateSavedAsset, SemanticAction::Count,
+                         Activation::UpdateSavedAsset, "UPDATE SAVED ASSET"},
+      ExpectedDescriptor{Command::RefreshSavedAssetInstance,
+                         SemanticAction::Count,
+                         Activation::RefreshSavedAssetInstance,
+                         "REFRESH THIS INSTANCE"},
+      ExpectedDescriptor{Command::RefreshSafeSavedAssetInstances,
+                         SemanticAction::Count,
+                         Activation::RefreshSafeSavedAssetInstances,
+                         "REFRESH SAFE INSTANCES"},
+      ExpectedDescriptor{Command::ForceRefreshSavedAssetInstances,
+                         SemanticAction::Count,
+                         Activation::ForceRefreshSavedAssetInstances,
+                         "FORCE REFRESH ALL"},
+  };
+  bool ok = expect(
+      app::creativeEditorObjectActionDescriptorsValid() &&
+          app::kCreativeEditorObjectActionDescriptors.size() ==
+              expected.size(),
+      "object action descriptors cover the complete contiguous command range");
+  for (std::size_t index = 0U; index < expected.size(); ++index) {
+    const ExpectedDescriptor& want = expected[index];
+    const app::CreativeEditorObjectActionDescriptor& actual =
+        app::kCreativeEditorObjectActionDescriptors[index];
+    const app::CreativeEditorObjectActionDescriptor* found =
+        app::creativeEditorObjectActionDescriptor(want.command);
+    ok = expect(found == &actual && actual.command == want.command &&
+                    actual.semanticAction == want.semanticAction &&
+                    actual.activation == want.activation &&
+                    actual.label == want.label &&
+                    app::creativeEditorCommandIsObjectAction(want.command),
+                "object action descriptor preserves command metadata") &&
+         ok;
+    if (want.semanticAction != SemanticAction::Count) {
+      ok = expect(
+               cr::creativeSemanticObjectActionDescriptor(
+                   want.semanticAction) != nullptr,
+               "object action descriptor reuses core semantic metadata") &&
+           ok;
+    }
+    for (std::size_t earlier = 0U; earlier < index; ++earlier) {
+      ok = expect(
+               actual.command !=
+                   app::kCreativeEditorObjectActionDescriptors[earlier].command,
+               "object action descriptors contain no duplicate command") &&
+           ok;
+    }
+  }
+  return expect(
+             app::creativeEditorObjectActionDescriptor(
+                 Command::EditGroupContents) == nullptr &&
+                 app::creativeEditorObjectActionDescriptor(Command::Count) ==
+                     nullptr &&
+                 !app::creativeEditorCommandIsObjectAction(
+                     Command::EditGroupContents) &&
+                 !app::creativeEditorCommandIsObjectAction(Command::Count),
+             "non-object and sentinel commands remain outside the table") &&
+         ok;
+}
+
 bool transformToolOptionsExposeAndRouteSharedObjectActions() {
   const app::CreativeEditorToolOptionsCommandList commands =
       app::creativeEditorToolOptionCommandsForEntry(
@@ -1313,6 +1415,7 @@ int main() {
                  focusResolvesNestedGroupsAtTheCurrentEditingLevel() &&
                  focusedPlacementParentsAuthoredObjectsOnly() &&
                  groupToolOptionsExposeEditAndUngroupCommands() &&
+                 objectActionDescriptorsAreExhaustiveAndUnique() &&
                  transformToolOptionsExposeAndRouteSharedObjectActions() &&
                  objectActionsInspectCompleteGroupCapability() &&
                  objectActionCapabilitiesPinOwnerLockAndFreshnessMatrix() &&
