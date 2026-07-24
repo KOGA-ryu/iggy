@@ -92,14 +92,14 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
   static constexpr std::array kRawPolicyOwners{
       std::string_view{
           "src/app/iggy3d/creative/tools/SelectionResolution.cpp"},
-      std::string_view{"apps/iggy3d_creative/EditorTransform.cpp"},
+      std::string_view{"apps/iggy3d_creative/EditorTransformSource.cpp"},
       std::string_view{
           "apps/iggy3d_creative/EditorWorldLayoutSource.cpp"},
   };
   static constexpr std::array kPolicyTypeOwners{
       std::string_view{
           "src/app/iggy3d/creative/tools/SelectionResolution.cpp"},
-      std::string_view{"apps/iggy3d_creative/EditorTransform.cpp"},
+      std::string_view{"apps/iggy3d_creative/EditorTransformSource.cpp"},
   };
   static constexpr std::array kFactsOwners{
       std::string_view{

@@ -402,6 +402,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorObjectActionOutcome.cpp
   apps/iggy3d_creative/EditorCommandInput.cpp
   apps/iggy3d_creative/EditorTransform.cpp
+  apps/iggy3d_creative/EditorTransformSource.cpp
+  apps/iggy3d_creative/EditorTransformPlan.cpp
   apps/iggy3d_creative/EditorTransformFrame.cpp
   apps/iggy3d_creative/EditorTransformOverlay.cpp
   apps/iggy3d_creative/EditorCapture.cpp

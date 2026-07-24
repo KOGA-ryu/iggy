@@ -8,7 +8,7 @@ This is the operational dashboard for the Creative-only repository. Maturity des
 | ---: | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | P0 | [Authoring Core](authoring-core/DEPARTMENT.md) | [Complete](authoring-core/AUDIT.md) | 73 | 55 | 17 | 0 | 0 | 0 | 1 | 1 |
 | 2 | P0 | [Persistence and Validation](persistence-validation/DEPARTMENT.md) | [Complete](persistence-validation/AUDIT.md) | 47 | 41 | 6 | 0 | 6 | 1 | 0 | 0 |
-| 3 | P0 | [Interaction and Controls](interaction-controls/DEPARTMENT.md) | [Not Started](interaction-controls/AUDIT.md) | 122 | 99 | 22 | 7 | 2 | 1 | 0 | 0 |
+| 3 | P0 | [Interaction and Controls](interaction-controls/DEPARTMENT.md) | [Not Started](interaction-controls/AUDIT.md) | 125 | 102 | 22 | 7 | 2 | 1 | 0 | 0 |
 | 4 | P1 | [Building and World Layout](building-layout/DEPARTMENT.md) | [Not Started](building-layout/AUDIT.md) | 208 | 165 | 43 | 10 | 2 | 1 | 0 | 0 |
 | 5 | P1 | [Assets and Object Composition](assets-objects/DEPARTMENT.md) | [Not Started](assets-objects/AUDIT.md) | 448 | 125 | 25 | 7 | 3 | 1 | 0 | 0 |
 | 6 | P1 | [Rendering and Preview](rendering-preview/DEPARTMENT.md) | [Not Started](rendering-preview/AUDIT.md) | 146 | 107 | 33 | 6 | 2 | 1 | 0 | 0 |
