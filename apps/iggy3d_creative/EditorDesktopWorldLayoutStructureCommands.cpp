@@ -790,58 +790,6 @@ bool dispatchCreativeDesktopWorldLayoutStructureCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
-    case CreativeDesktopCommandId::WorldLayoutRepairAsset: {
-      const auto* payload =
-          payloadAs<CreativeDesktopWorldLayoutAssetRepairPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout asset repair: payload mismatch";
-        break;
-      }
-      const bool previewWasActive =
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
-      const CreativeEditorWorldLayoutEditReceipt receipt =
-          repairWorldLayoutAsset(
-              editor.worldLayout, editor.catalog.model,
-              context.appState.facade.document().gridSettings().cellSizeMeters,
-              *payload);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.worldLayoutChanged = receipt.changed;
-      result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability: {
-      const auto* payload =
-          payloadAs<CreativeDesktopWorldLayoutBuildingRepairPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout building repair: payload mismatch";
-        break;
-      }
-      if (!payload->stableKey.empty() &&
-          !creativeEditorWorldLayoutSourceStableKeyMatches(
-              editor.worldLayout, payload->issue.table,
-              payload->issue.index, payload->stableKey)) {
-        result.message = "layout building repair: stale target";
-        break;
-      }
-      const creative::CreativeGridSettings grid =
-          activeAppState.facade.document().gridSettings();
-      const CreativeDesktopWorldLayoutLiveEditResult repair =
-          dispatchCreativeDesktopWorldLayoutImmediateEdit(
-              editor.worldLayout, activeAppState,
-              [&](CreativeEditorWorldLayoutState& target) {
-                return applyCreativeEditorWorldLayoutBuildingRepair(
-                    target, grid, payload->issue);
-              },
-              "desktop_world_layout_building_repair");
-      result.accepted = repair.accepted;
-      result.changed = repair.changed;
-      result.worldLayoutChanged = repair.worldLayoutChanged;
-      result.sceneChanged = repair.sceneChanged;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
     case CreativeDesktopCommandId::WorldLayoutManipulateOpening: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutOpeningManipulationPayload>(

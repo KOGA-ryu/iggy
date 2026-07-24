@@ -1,5 +1,7 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include "EditorWorldLayoutRoofs.hpp"
+
 #include <span>
 #include <string_view>
 #include <utility>
@@ -37,6 +39,8 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
     CreativeDesktopCommandResult& result) {
   creative::CreativeAppState& appState = context.appState;
   CreativeEditorState& editor = context.editor;
+  creative::CreativeAppState& activeAppState =
+      activeCreativeEditorAppState(editor, appState);
   switch (command.id) {
     case CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout: {
       const auto* payload =
@@ -360,6 +364,146 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
       result.sceneChanged = previewWasActive || receipt.apply.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutBuildingGroundingPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout building grounding: payload mismatch";
+        break;
+      }
+      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, cr::CreativeWorldLayoutTable::Building,
+              payload->buildingIndex, payload->stableKey)) {
+        result.message = "layout building grounding: stale target";
+        break;
+      }
+      const bool previewWasActive =
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
+      const CreativeEditorWorldLayoutEditReceipt receipt =
+          setCreativeEditorWorldLayoutBuildingGroundingSettings(
+              editor.worldLayout, payload->buildingIndex, payload->settings);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.worldLayoutChanged = receipt.changed;
+      result.sceneChanged = previewWasActive && receipt.changed;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutCreateRoofAperture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofApertureCreatePayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof aperture: payload mismatch";
+        break;
+      }
+      const auto createAperture = [&](CreativeEditorWorldLayoutState& target) {
+        return createCreativeEditorWorldLayoutRoofAperture(
+            target, payload->levelIndex, payload->kind);
+      };
+      const CreativeDesktopWorldLayoutLiveEditResult created =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, appState, createAperture,
+              "desktop_world_layout_roof_aperture_create");
+      result.accepted = created.accepted;
+      result.changed = created.changed;
+      result.worldLayoutChanged = created.worldLayoutChanged;
+      result.sceneChanged = created.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofApertureManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof aperture manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoofApertureManipulationPhase
+                      phase) {
+                return applyCreativeEditorWorldLayoutRoofApertureManipulation(
+                    target, phase, payload->point, payload->toleranceCells,
+                    appState.facade.document().gridSettings());
+              },
+              "desktop_world_layout_roof_aperture_drag",
+              "roof aperture drag preview ready in 3D",
+              "roof aperture updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutManipulateRoof: {
+      const auto* payload = payloadAs<
+          CreativeDesktopWorldLayoutRoofManipulationPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout roof manipulation: payload mismatch";
+        break;
+      }
+      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
+          dispatchCreativeDesktopWorldLayoutLiveEdit(
+              editor.worldLayout, appState, payload->phase,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Update,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
+              CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
+              [&](CreativeEditorWorldLayoutState& target,
+                  CreativeEditorWorldLayoutRoofManipulationPhase phase) {
+                return applyCreativeEditorWorldLayoutRoofManipulation(
+                    target, phase, payload->target,
+                    payload->coordinateCells,
+                    appState.facade.document().gridSettings());
+              },
+              "desktop_world_layout_roof_drag",
+              "roof drag preview ready in 3D",
+              "roof updated in 3D");
+      result.accepted = liveEdit.accepted;
+      result.changed = liveEdit.changed;
+      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
+      result.sceneChanged = liveEdit.sceneChanged;
+      result.message = editor.worldLayout.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutRepairBuildingUsability: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutBuildingRepairPayload>(command);
+      if (payload == nullptr) {
+        result.message = "layout building repair: payload mismatch";
+        break;
+      }
+      if (!payload->stableKey.empty() &&
+          !creativeEditorWorldLayoutSourceStableKeyMatches(
+              editor.worldLayout, payload->issue.table,
+              payload->issue.index, payload->stableKey)) {
+        result.message = "layout building repair: stale target";
+        break;
+      }
+      const creative::CreativeGridSettings grid =
+          activeAppState.facade.document().gridSettings();
+      const CreativeDesktopWorldLayoutLiveEditResult repair =
+          dispatchCreativeDesktopWorldLayoutImmediateEdit(
+              editor.worldLayout, activeAppState,
+              [&](CreativeEditorWorldLayoutState& target) {
+                return applyCreativeEditorWorldLayoutBuildingRepair(
+                    target, grid, payload->issue);
+              },
+              "desktop_world_layout_building_repair");
+      result.accepted = repair.accepted;
+      result.changed = repair.changed;
+      result.worldLayoutChanged = repair.worldLayoutChanged;
+      result.sceneChanged = repair.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

@@ -1,8 +1,6 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
-#include "EditorTerrainGeneration.hpp"
-#include "EditorWorldLayoutRoofs.hpp"
 
 #include <span>
 #include <string>
@@ -21,42 +19,6 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
   creative::CreativeAppState& activeAppState =
       activeCreativeEditorAppState(editor, appState);
   switch (command.id) {
-    case CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview: {
-      if (editor.assetEdit.active ||
-          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
-        result.message = "terrain region unavailable in this workspace";
-        break;
-      }
-      const CreativeEditorTerrainGenerationPreviewReceipt receipt =
-          previewCreativeEditorWorldLayoutTerrainRegion(
-              editor.worldLayoutTopography.region, editor.terrainGeneration,
-              activeAppState.facade.document());
-      result.accepted = receipt.accepted;
-      result.changed = receipt.accepted;
-      result.affectedObjectCount =
-          editor.terrainGeneration.operationPreview.receipt.replay
-              .modifiedCellCount;
-      result.message = editor.worldLayoutTopography.region.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutTerrainRegionApply: {
-      const CreativeEditorTerrainGenerationApplyReceipt receipt =
-          applyCreativeEditorWorldLayoutTerrainRegion(
-              editor.worldLayoutTopography.region, editor.terrainGeneration,
-              activeAppState);
-      result.accepted = receipt.accepted;
-      result.changed = receipt.changed;
-      result.sceneChanged = receipt.changed;
-      result.affectedObjectCount = receipt.operation.replay.outputCellCount;
-      result.message = editor.worldLayoutTopography.region.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel:
-      result.changed = cancelCreativeEditorWorldLayoutTerrainRegion(
-          editor.worldLayoutTopography.region, editor.terrainGeneration);
-      result.accepted = true;
-      result.message = editor.worldLayoutTopography.region.statusMessage;
-      break;
     case CreativeDesktopCommandId::WorldLayoutSetTool: {
       const auto* payload =
           payloadAs<CreativeDesktopWorldLayoutToolPayload>(command);
@@ -405,112 +367,24 @@ bool dispatchCreativeDesktopWorldLayoutSourceCommand(
       result.message = editor.worldLayout.statusMessage;
       break;
     }
-    case CreativeDesktopCommandId::WorldLayoutSetBuildingGrounding: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutBuildingGroundingPayload>(command);
+    case CreativeDesktopCommandId::WorldLayoutRepairAsset: {
+      const auto* payload =
+          payloadAs<CreativeDesktopWorldLayoutAssetRepairPayload>(command);
       if (payload == nullptr) {
-        result.message = "layout building grounding: payload mismatch";
-        break;
-      }
-      if (!creativeEditorWorldLayoutSourceStableKeyMatches(
-              editor.worldLayout, cr::CreativeWorldLayoutTable::Building,
-              payload->buildingIndex, payload->stableKey)) {
-        result.message = "layout building grounding: stale target";
+        result.message = "layout asset repair: payload mismatch";
         break;
       }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutEditReceipt receipt =
-          setCreativeEditorWorldLayoutBuildingGroundingSettings(
-              editor.worldLayout, payload->buildingIndex, payload->settings);
+          repairWorldLayoutAsset(
+              editor.worldLayout, editor.catalog.model,
+              context.appState.facade.document().gridSettings().cellSizeMeters,
+              *payload);
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
       result.sceneChanged = previewWasActive && receipt.changed;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutCreateRoofAperture: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutRoofApertureCreatePayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout roof aperture: payload mismatch";
-        break;
-      }
-      const auto createAperture = [&](CreativeEditorWorldLayoutState& target) {
-        return createCreativeEditorWorldLayoutRoofAperture(
-            target, payload->levelIndex, payload->kind);
-      };
-      const CreativeDesktopWorldLayoutLiveEditResult created =
-          dispatchCreativeDesktopWorldLayoutImmediateEdit(
-              editor.worldLayout, appState, createAperture,
-              "desktop_world_layout_roof_aperture_create");
-      result.accepted = created.accepted;
-      result.changed = created.changed;
-      result.worldLayoutChanged = created.worldLayoutChanged;
-      result.sceneChanged = created.sceneChanged;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutManipulateRoofAperture: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutRoofApertureManipulationPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout roof aperture manipulation: payload mismatch";
-        break;
-      }
-      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
-          dispatchCreativeDesktopWorldLayoutLiveEdit(
-              editor.worldLayout, appState, payload->phase,
-              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Begin,
-              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Update,
-              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Commit,
-              CreativeEditorWorldLayoutRoofApertureManipulationPhase::Cancel,
-              [&](CreativeEditorWorldLayoutState& target,
-                  CreativeEditorWorldLayoutRoofApertureManipulationPhase
-                      phase) {
-                return applyCreativeEditorWorldLayoutRoofApertureManipulation(
-                    target, phase, payload->point, payload->toleranceCells,
-                    appState.facade.document().gridSettings());
-              },
-              "desktop_world_layout_roof_aperture_drag",
-              "roof aperture drag preview ready in 3D",
-              "roof aperture updated in 3D");
-      result.accepted = liveEdit.accepted;
-      result.changed = liveEdit.changed;
-      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
-      result.sceneChanged = liveEdit.sceneChanged;
-      result.message = editor.worldLayout.statusMessage;
-      break;
-    }
-    case CreativeDesktopCommandId::WorldLayoutManipulateRoof: {
-      const auto* payload = payloadAs<
-          CreativeDesktopWorldLayoutRoofManipulationPayload>(command);
-      if (payload == nullptr) {
-        result.message = "layout roof manipulation: payload mismatch";
-        break;
-      }
-      const CreativeDesktopWorldLayoutLiveEditResult liveEdit =
-          dispatchCreativeDesktopWorldLayoutLiveEdit(
-              editor.worldLayout, appState, payload->phase,
-              CreativeEditorWorldLayoutRoofManipulationPhase::Begin,
-              CreativeEditorWorldLayoutRoofManipulationPhase::Update,
-              CreativeEditorWorldLayoutRoofManipulationPhase::Commit,
-              CreativeEditorWorldLayoutRoofManipulationPhase::Cancel,
-              [&](CreativeEditorWorldLayoutState& target,
-                  CreativeEditorWorldLayoutRoofManipulationPhase phase) {
-                return applyCreativeEditorWorldLayoutRoofManipulation(
-                    target, phase, payload->target,
-                    payload->coordinateCells,
-                    appState.facade.document().gridSettings());
-              },
-              "desktop_world_layout_roof_drag",
-              "roof drag preview ready in 3D",
-              "roof updated in 3D");
-      result.accepted = liveEdit.accepted;
-      result.changed = liveEdit.changed;
-      result.worldLayoutChanged = liveEdit.worldLayoutChanged;
-      result.sceneChanged = liveEdit.sceneChanged;
       result.message = editor.worldLayout.statusMessage;
       break;
     }

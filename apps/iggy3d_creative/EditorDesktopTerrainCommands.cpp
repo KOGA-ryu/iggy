@@ -22,6 +22,42 @@ bool dispatchCreativeDesktopTerrainCommand(
   creative::CreativeAppState& activeAppState =
       activeCreativeEditorAppState(editor, appState);
   switch (command.id) {
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionPreview: {
+      if (editor.assetEdit.active ||
+          creativeEditorWorldLayoutPreviewActive(editor.worldLayout)) {
+        result.message = "terrain region unavailable in this workspace";
+        break;
+      }
+      const CreativeEditorTerrainGenerationPreviewReceipt receipt =
+          previewCreativeEditorWorldLayoutTerrainRegion(
+              editor.worldLayoutTopography.region, editor.terrainGeneration,
+              activeAppState.facade.document());
+      result.accepted = receipt.accepted;
+      result.changed = receipt.accepted;
+      result.affectedObjectCount =
+          editor.terrainGeneration.operationPreview.receipt.replay
+              .modifiedCellCount;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionApply: {
+      const CreativeEditorTerrainGenerationApplyReceipt receipt =
+          applyCreativeEditorWorldLayoutTerrainRegion(
+              editor.worldLayoutTopography.region, editor.terrainGeneration,
+              activeAppState);
+      result.accepted = receipt.accepted;
+      result.changed = receipt.changed;
+      result.sceneChanged = receipt.changed;
+      result.affectedObjectCount = receipt.operation.replay.outputCellCount;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
+    }
+    case CreativeDesktopCommandId::WorldLayoutTerrainRegionCancel:
+      result.changed = cancelCreativeEditorWorldLayoutTerrainRegion(
+          editor.worldLayoutTopography.region, editor.terrainGeneration);
+      result.accepted = true;
+      result.message = editor.worldLayoutTopography.region.statusMessage;
+      break;
     case CreativeDesktopCommandId::TerrainGenerationPreview:
     case CreativeDesktopCommandId::TerrainGenerationRegenerate: {
       if (editor.assetEdit.active ||

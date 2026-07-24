@@ -26,8 +26,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Editor Shell and Drafting UI | Authoring Core | 32 | 20 |
 | Playtest and Simulation | Authoring Core | 31 | 25 |
 | Rendering and Preview | Authoring Core | 30 | 18 |
-| Building and World Layout | Terrain and Site | 29 | 19 |
 | Assets and Object Composition | Editor Shell and Drafting UI | 28 | 25 |
+| Building and World Layout | Terrain and Site | 28 | 18 |
 | Editor Shell and Drafting UI | Rendering and Preview | 28 | 13 |
 | Assets and Object Composition | Foundation and Build | 27 | 24 |
 | Rendering and Preview | Interaction and Controls | 27 | 10 |
