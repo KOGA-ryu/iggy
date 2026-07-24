@@ -12,8 +12,9 @@ The reduced suite originally restored several implementation-only test islands.
 The unused `PlayerMotor` and pair-collection `PhysicsBroadphase` islands were
 removed once the active movement path was verified as
 `MovementSystem -> PlayerPhysicsMovePlanner -> PhysicsKinematicMotor`.
-The renderer abstraction files remain while their test and backend ownership is
-audited separately.
+The unused `RendererApi -> RenderBackend -> NullRenderer` test stack was also
+removed after both products were verified to construct `VulkanBackend`
+directly.
 
 ## What stayed quarantined
 

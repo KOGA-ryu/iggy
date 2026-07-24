@@ -103,7 +103,6 @@ int main() {
   }
 
   iggy3d::vulkan::InstanceDeviceSurfaceCreateInfo bootstrapInfo;
-  bootstrapInfo.config.renderer = iggy3d::RendererMode::Vulkan;
   bootstrapInfo.config.allowSoftwareVulkan = true;
   bootstrapInfo.featureRequest.allowSoftwareDevice = true;
   bootstrapInfo.surfaceProvider.requiredInstanceExtensions = extensions.names;

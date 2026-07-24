@@ -21,7 +21,6 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/iggy3d/creative/world/MapTemplate.hpp"
 #include "app/platform/SdlVulkanSurface.hpp"
-#include "render/RendererApi.hpp"
 #include "render/vulkan/FrameCapture.hpp"
 
 #include "EditorAssets.hpp"
@@ -256,8 +255,6 @@ iggy3d::RendererConfig makeCreativeVulkanRendererConfig() {
       iggy3d::resolvePackageRuntimeLookup(lookupConfig);
 
   iggy3d::RendererConfig config;
-  config.renderer = iggy3d::RendererMode::Vulkan;
-  config.rendererRequirement = iggy3d::RendererRequirement::Optional;
   config.allowSoftwareVulkan = true;
   config.staticMeshAssetRoot =
       std::filesystem::path{IGGY3D_CREATIVE_ASSET_ROOT_VALUE};

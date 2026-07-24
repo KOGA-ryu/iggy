@@ -1272,9 +1272,6 @@ iggy3d_add_unit_test(save_creative_document_section_tests
 set_tests_properties(save_creative_document_section_tests PROPERTIES
   LABELS "unit;runtime;save;creative;iggy3d")
 
-iggy3d_add_unit_test(render_boundary_tests tests/unit/render_boundary_tests.cpp)
-set_tests_properties(render_boundary_tests PROPERTIES LABELS "unit;render;boundary;iggy3d")
-
 iggy3d_add_unit_test(render_config_tests tests/unit/render_config_tests.cpp)
 set_tests_properties(render_config_tests PROPERTIES LABELS "unit;render;config;iggy3d")
 

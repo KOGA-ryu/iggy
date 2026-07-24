@@ -1,7 +1,10 @@
 #include "render/RendererConfig.hpp"
+#include "render/vulkan/VulkanBackend.hpp"
 
+#include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <utility>
 
 namespace {
 
@@ -12,61 +15,27 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-bool defaultConfigResolvesDeterministically() {
-  const iggy3d::RendererConfigResult result = iggy3d::resolveRendererConfig({});
-  return expect(result.outcome == iggy3d::RenderOutcome::Ok, "default outcome") &&
-         expect(result.reason.code == "renderer_config_ok", "default reason") &&
-         expect(result.config.renderer == iggy3d::RendererMode::Null, "default null") &&
-         expect(result.config.maxFramesInFlight == 2U, "default frames") &&
-         expect(iggy3d::hasReceiptField(result.receipt, "renderer_mode", "null"),
-                "default receipt");
+bool defaultsDescribeAValidVulkanConfiguration() {
+  const iggy3d::RendererConfig config;
+  return expect(iggy3d::isValidRendererConfig(config),
+                "default renderer config valid") &&
+         expect(config.validation == iggy3d::ValidationMode::Off,
+                "validation defaults off") &&
+         expect(config.syncValidation == iggy3d::ValidationMode::Off,
+                "sync validation defaults off") &&
+         expect(config.presentMode == iggy3d::PresentModeRequest::Auto,
+                "present mode defaults automatic") &&
+         expect(config.maxFramesInFlight == 2U,
+                "frame slot count defaults to two");
 }
 
-bool backendAndRequirementConflictsAreDiagnosed() {
-  iggy3d::RendererConfig vulkan;
-  vulkan.renderer = iggy3d::RendererMode::Vulkan;
-  const iggy3d::RendererConfigResult vulkanResult = iggy3d::resolveRendererConfig(vulkan);
-
-  iggy3d::RendererConfig requiredNull;
-  requiredNull.renderer = iggy3d::RendererMode::Null;
-  requiredNull.rendererRequirement = iggy3d::RendererRequirement::Required;
-  const iggy3d::RendererConfigResult requiredNullResult =
-      iggy3d::resolveRendererConfig(requiredNull);
-
-  iggy3d::RendererConfig validation;
-  validation.renderer = iggy3d::RendererMode::Null;
-  validation.validation = iggy3d::ValidationMode::Required;
-  const iggy3d::RendererConfigResult validationResult =
-      iggy3d::resolveRendererConfig(validation);
-
-  // The Vulkan-request outcome depends on whether the backend was compiled in:
-  // a Vulkan-enabled build resolves to Ok (config resolution is compile-time,
-  // not a device probe); a Vulkan-less build reports the backend unavailable.
-#if defined(IGGY3D_ENABLE_VULKAN) && IGGY3D_ENABLE_VULKAN
-  const bool vulkanOutcomeOk =
-      expect(vulkanResult.outcome == iggy3d::RenderOutcome::Ok, "vulkan outcome") &&
-      expect(vulkanResult.reason.code == "renderer_config_ok", "vulkan available");
-#else
-  const bool vulkanOutcomeOk =
-      expect(vulkanResult.outcome == iggy3d::RenderOutcome::Unsupported, "vulkan outcome") &&
-      expect(vulkanResult.reason.code == "renderer_config_backend_unavailable",
-             "vulkan unavailable");
-#endif
-
-  return vulkanOutcomeOk &&
-         expect(requiredNullResult.reason.code == "renderer_config_conflict",
-                "required null conflict") &&
-         expect(validationResult.reason.code == "renderer_config_validation_without_vulkan",
-                "validation without backend");
-}
-
-bool framesInFlightAreBounded() {
+bool frameSlotsMatchTheLiveBackendBound() {
   bool ok = true;
   for (const std::uint32_t count : {1U, 2U, 3U}) {
     iggy3d::RendererConfig config;
     config.maxFramesInFlight = count;
-    ok = expect(iggy3d::resolveRendererConfig(config).outcome == iggy3d::RenderOutcome::Ok,
-                "valid frame count") &&
+    ok = expect(iggy3d::isValidRendererConfig(config),
+                "supported frame slot count accepted") &&
          ok;
   }
 
@@ -75,41 +44,63 @@ bool framesInFlightAreBounded() {
   iggy3d::RendererConfig tooLarge;
   tooLarge.maxFramesInFlight = 4U;
   return ok &&
-         expect(iggy3d::resolveRendererConfig(zero).reason.code ==
-                    "renderer_config_frames_in_flight_invalid",
-                "zero rejected") &&
-         expect(iggy3d::resolveRendererConfig(tooLarge).reason.code ==
-                    "renderer_config_frames_in_flight_invalid",
-                "large rejected");
+         expect(!iggy3d::isValidRendererConfig(zero),
+                "zero frame slots rejected") &&
+         expect(!iggy3d::isValidRendererConfig(tooLarge),
+                "more than three frame slots rejected");
 }
 
-bool namesAndPathsStayBackendNeutral() {
+bool liveVulkanOptionsRemainIndependent() {
   iggy3d::RendererConfig config;
+  config.validation = iggy3d::ValidationMode::Required;
+  config.syncValidation = iggy3d::ValidationMode::Optional;
+  config.presentMode = iggy3d::PresentModeRequest::Mailbox;
+  config.shaderRoot = "build/shaders";
+  config.staticMeshAssetRoot = "assets/creative";
   config.diagnosticsDir = "build/artifacts/render_diagnostics";
-  const iggy3d::RendererConfigResult result = iggy3d::resolveRendererConfig(config);
-  return expect(iggy3d::rendererModeName(iggy3d::RendererMode::Auto) == "auto", "auto name") &&
-         expect(iggy3d::presentModeRequestName(iggy3d::PresentModeRequest::Fifo) == "fifo",
-                "fifo name") &&
-         expect(iggy3d::presentModeRequestName(iggy3d::PresentModeRequest::Mailbox) ==
-                    "mailbox",
-                "mailbox name") &&
-         expect(iggy3d::presentModeRequestName(iggy3d::PresentModeRequest::Immediate) ==
-                    "immediate",
-                "immediate name") &&
-         expect(result.outcome == iggy3d::RenderOutcome::Ok, "empty shader root valid") &&
-         expect(result.config.shaderRoot.empty(), "shader root empty") &&
-         expect(iggy3d::hasReceiptField(result.receipt, "diagnostics_dir",
-                                        "build/artifacts/render_diagnostics"),
-                "diagnostics dir recorded only");
+  config.strictVulkan = true;
+  config.allowSoftwareVulkan = true;
+
+  return expect(iggy3d::isValidRendererConfig(config),
+                "non-slot Vulkan options do not invalidate config") &&
+         expect(config.validation == iggy3d::ValidationMode::Required,
+                "validation requirement retained") &&
+         expect(config.syncValidation == iggy3d::ValidationMode::Optional,
+                "sync validation requirement retained") &&
+         expect(config.presentMode == iggy3d::PresentModeRequest::Mailbox,
+                "present mode retained") &&
+         expect(config.shaderRoot == "build/shaders",
+                "shader root retained") &&
+         expect(config.staticMeshAssetRoot == "assets/creative",
+                "asset root retained") &&
+         expect(config.diagnosticsDir ==
+                    "build/artifacts/render_diagnostics",
+                "diagnostics root retained") &&
+         expect(config.strictVulkan && config.allowSoftwareVulkan,
+                "Vulkan policy flags retained");
+}
+
+bool invalidFrameSlotsStopBeforeVulkanBootstrap() {
+  iggy3d::VulkanBackendCreateInfo createInfo;
+  createInfo.config.maxFramesInFlight = 0U;
+  const iggy3d::VulkanBackend backend{std::move(createInfo)};
+
+  return expect(
+             backend.lifecycleState() ==
+                 iggy3d::RendererLifecycleState::NotInitialized,
+             "invalid config leaves Vulkan backend uninitialized") &&
+         expect(iggy3d::hasReceiptField(
+                    backend.diagnostics(), "reason_code",
+                    "renderer_config_frames_in_flight_invalid"),
+                "invalid config reports the production rejection reason");
 }
 
 }  // namespace
 
 int main() {
-  bool ok = true;
-  ok = defaultConfigResolvesDeterministically() && ok;
-  ok = backendAndRequirementConflictsAreDiagnosed() && ok;
-  ok = framesInFlightAreBounded() && ok;
-  ok = namesAndPathsStayBackendNeutral() && ok;
-  return ok ? 0 : 1;
+  const bool ok = defaultsDescribeAValidVulkanConfiguration() &&
+                  frameSlotsMatchTheLiveBackendBound() &&
+                  liveVulkanOptionsRemainIndependent() &&
+                  invalidFrameSlotsStopBeforeVulkanBootstrap();
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

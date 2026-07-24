@@ -102,7 +102,6 @@ int main() {
   }
 
   iggy3d::VulkanBackendCreateInfo backendInfo;
-  backendInfo.config.renderer = iggy3d::RendererMode::Vulkan;
   backendInfo.config.allowSoftwareVulkan = true;
   backendInfo.surfaceProvider.requiredInstanceExtensions = extensions.names;
   backendInfo.surfaceProvider.createSurface =

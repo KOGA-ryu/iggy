@@ -1,8 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
-#include "render/RenderBackend.hpp"
+#include "render/FrameInput.hpp"
+#include "render/RenderDiagnostics.hpp"
+#include "render/RendererConfig.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "render/vulkan/CommandRecording.hpp"
 #include "render/vulkan/DearImGuiVulkanBridge.hpp"
@@ -18,6 +21,19 @@
 union SDL_Event;
 
 namespace iggy3d {
+
+enum class RendererLifecycleState : std::uint8_t {
+  NotInitialized,
+  Ready,
+  DeviceLost,
+  Shutdown,
+};
+
+struct RenderSubmitResult {
+  RenderOutcome outcome = RenderOutcome::RendererNotReady;
+  RenderReason reason{"renderer_not_ready", "renderer not ready"};
+  RenderReceipt receipt;
+};
 
 struct VulkanBackendCreateInfo {
   RendererConfig config;
@@ -43,22 +59,21 @@ struct VulkanStaticMeshAssetReloadResult {
   }
 };
 
-class VulkanBackend final : public RenderBackend {
+class VulkanBackend final {
 public:
   explicit VulkanBackend(VulkanBackendCreateInfo createInfo);
-  ~VulkanBackend() override;
+  ~VulkanBackend();
 
   VulkanBackend(const VulkanBackend&) = delete;
   VulkanBackend& operator=(const VulkanBackend&) = delete;
 
-  RendererBackendKind backendKind() const override;
-  RendererLifecycleState lifecycleState() const override;
-  RenderSubmitResult submitFrame(const FrameInput& frame) override;
-  RenderSubmitResult resize(RenderViewport viewport) override;
-  RenderReceipt diagnostics() const override;
-  RenderOutcome waitIdle() override;
+  RendererLifecycleState lifecycleState() const;
+  RenderSubmitResult submitFrame(const FrameInput& frame);
+  RenderSubmitResult resize(RenderViewport viewport);
+  RenderReceipt diagnostics() const;
+  RenderOutcome waitIdle();
   [[nodiscard]] VulkanStaticMeshAssetReloadResult reloadStaticMeshAssets();
-  void shutdown() override;
+  void shutdown();
   bool frameCaptureReady() const;
   vulkan::NormalizedCapture readLastFrameCapture() const;
   // Desktop UI shell surface (no-ops when the shell is disabled/unbuilt).

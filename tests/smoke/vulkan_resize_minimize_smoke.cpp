@@ -97,7 +97,6 @@ int main() {
   }
   const iggy3d::SdlDrawableExtent extent = window.drawableExtent();
   iggy3d::VulkanBackendCreateInfo backendInfo;
-  backendInfo.config.renderer = iggy3d::RendererMode::Vulkan;
   backendInfo.config.allowSoftwareVulkan = true;
   backendInfo.drawableWidth = extent.width;
   backendInfo.drawableHeight = extent.height;

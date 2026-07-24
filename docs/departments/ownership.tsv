@@ -1019,19 +1019,13 @@ src/projection/scene/SceneProjection.cpp	rendering-preview
 src/projection/scene/SceneProjection.hpp	rendering-preview
 src/render/FrameInput.cpp	rendering-preview
 src/render/FrameInput.hpp	rendering-preview
-src/render/RenderBackend.hpp	rendering-preview
 src/render/RenderDiagnostics.cpp	rendering-preview
 src/render/RenderDiagnostics.hpp	rendering-preview
-src/render/RendererApi.cpp	rendering-preview
-src/render/RendererApi.hpp	rendering-preview
-src/render/RendererConfig.cpp	rendering-preview
 src/render/RendererConfig.hpp	rendering-preview
 src/render/debug/DebugHudText.cpp	rendering-preview
 src/render/debug/DebugHudText.hpp	rendering-preview
 src/render/mesh/BeanMesh.cpp	rendering-preview
 src/render/mesh/BeanMesh.hpp	rendering-preview
-src/render/null/NullRenderer.cpp	rendering-preview
-src/render/null/NullRenderer.hpp	rendering-preview
 src/render/vulkan/BufferImageResources.cpp	rendering-preview
 src/render/vulkan/BufferImageResources.hpp	rendering-preview
 src/render/vulkan/CommandRecording.cpp	rendering-preview
@@ -1432,7 +1426,6 @@ tests/unit/reachability_tests.cpp	playtest-simulation
 tests/unit/reasoning_graph_readout.cpp	playtest-simulation
 tests/unit/reasoning_graph_tests.cpp	playtest-simulation
 tests/unit/reasoning_route_tests.cpp	playtest-simulation
-tests/unit/render_boundary_tests.cpp	rendering-preview
 tests/unit/render_camera_frame_tests.cpp	rendering-preview
 tests/unit/render_command_recording_tests.cpp	rendering-preview
 tests/unit/render_config_tests.cpp	rendering-preview

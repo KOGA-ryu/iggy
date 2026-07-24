@@ -253,9 +253,6 @@ target_sources(iggy3d
     src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
-    src/render/RendererApi.cpp
-    src/render/RendererConfig.cpp
-    src/render/null/NullRenderer.cpp
     src/runtime/world/WorldState.cpp
     src/runtime/clock/Clock.cpp
     src/runtime/camera/CameraModePolicy.cpp

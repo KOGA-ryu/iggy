@@ -52,6 +52,12 @@ VulkanBackend::VulkanBackend(VulkanBackendCreateInfo createInfo)
     : config_(std::move(createInfo.config)),
       externalUiNativeWindow_(createInfo.nativeWindow),
       externalUiEnabled_(createInfo.enableExternalUi) {
+  if (!isValidRendererConfig(config_)) {
+    diagnostics_ =
+        makeReceipt("fail", "renderer_config_frames_in_flight_invalid");
+    return;
+  }
+
   vulkan::InstanceDeviceSurfaceCreateInfo bootstrapInfo;
   bootstrapInfo.config = config_;
   bootstrapInfo.surfaceProvider = std::move(createInfo.surfaceProvider);
@@ -67,10 +73,6 @@ VulkanBackend::VulkanBackend(VulkanBackendCreateInfo createInfo)
 
 VulkanBackend::~VulkanBackend() {
   shutdown();
-}
-
-RendererBackendKind VulkanBackend::backendKind() const {
-  return RendererBackendKind::Vulkan;
 }
 
 RendererLifecycleState VulkanBackend::lifecycleState() const {
