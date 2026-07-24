@@ -119,6 +119,8 @@ apps/iggy3d_creative/EditorMovingPlatformPreview.cpp	rendering-preview
 apps/iggy3d_creative/EditorMovingPlatformPreview.hpp	rendering-preview
 apps/iggy3d_creative/EditorObjectActionOutcome.cpp	interaction-controls
 apps/iggy3d_creative/EditorObjectActionOutcome.hpp	interaction-controls
+apps/iggy3d_creative/EditorObjectActionExecutor.cpp	interaction-controls
+apps/iggy3d_creative/EditorObjectActionExecutor.hpp	interaction-controls
 apps/iggy3d_creative/EditorObjectActions.cpp	interaction-controls
 apps/iggy3d_creative/EditorObjectActions.hpp	interaction-controls
 apps/iggy3d_creative/EditorOverlayHud.cpp	rendering-preview
@@ -1327,6 +1329,7 @@ tests/unit/creative_measure_tests.cpp	interaction-controls
 tests/unit/creative_measurement_annotation_tests.cpp	interaction-controls
 tests/unit/creative_npc_spawn_tests.cpp	playtest-simulation
 tests/unit/creative_object_action_boundary_tests.cpp	interaction-controls
+tests/unit/creative_object_action_executor_tests.cpp	interaction-controls
 tests/unit/creative_object_action_outcome_tests.cpp	interaction-controls
 tests/unit/creative_object_descriptor_tests.cpp	assets-objects
 tests/unit/creative_pattern_tests.cpp	assets-objects

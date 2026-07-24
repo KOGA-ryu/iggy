@@ -400,6 +400,7 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorToolOptionsPanel.cpp
   apps/iggy3d_creative/EditorObjectActions.cpp
   apps/iggy3d_creative/EditorObjectActionOutcome.cpp
+  apps/iggy3d_creative/EditorObjectActionExecutor.cpp
   apps/iggy3d_creative/EditorCommandInput.cpp
   apps/iggy3d_creative/EditorTransformSettings.cpp
   apps/iggy3d_creative/EditorTransformGeometry.cpp

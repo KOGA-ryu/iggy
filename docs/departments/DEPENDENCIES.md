@@ -10,8 +10,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Interaction and Controls | 102 | 49 |
 | Playtest and Simulation | Foundation and Build | 93 | 63 |
 | Interaction and Controls | Assets and Object Composition | 85 | 39 |
+| Interaction and Controls | Authoring Core | 68 | 47 |
 | Editor Shell and Drafting UI | Interaction and Controls | 66 | 25 |
-| Interaction and Controls | Authoring Core | 63 | 44 |
 | Building and World Layout | Authoring Core | 59 | 49 |
 | Terrain and Site | Authoring Core | 53 | 37 |
 | Rendering and Preview | Foundation and Build | 51 | 28 |
@@ -33,11 +33,11 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Rendering and Preview | Interaction and Controls | 27 | 11 |
 | Building and World Layout | Interaction and Controls | 26 | 22 |
 | Persistence and Validation | Playtest and Simulation | 23 | 8 |
+| Interaction and Controls | Building and World Layout | 22 | 16 |
 | Building and World Layout | Assets and Object Composition | 21 | 20 |
 | Playtest and Simulation | Rendering and Preview | 21 | 11 |
 | Terrain and Site | Editor Shell and Drafting UI | 21 | 18 |
 | Editor Shell and Drafting UI | Assets and Object Composition | 20 | 8 |
-| Interaction and Controls | Building and World Layout | 20 | 14 |
 | Interaction and Controls | Rendering and Preview | 19 | 14 |
 | Assets and Object Composition | Building and World Layout | 18 | 8 |
 | Interaction and Controls | Foundation and Build | 18 | 12 |
