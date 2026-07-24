@@ -619,7 +619,6 @@ src/app/iggy3d/creative/assets/AuthoredAssetInternal.hpp	assets-objects
 src/app/iggy3d/creative/assets/AuthoredAssetPlacement.cpp	assets-objects
 src/app/iggy3d/creative/assets/AuthoredAssetRefresh.cpp	assets-objects
 src/app/iggy3d/creative/assets/AuthoredAssetSync.cpp	assets-objects
-src/app/iggy3d/creative/bridge/UiCommandCatalog.hpp	editor-shell-ui
 src/app/iggy3d/creative/camera/Fly.cpp	interaction-controls
 src/app/iggy3d/creative/camera/Fly.hpp	interaction-controls
 src/app/iggy3d/creative/camera/ViewportNavigation.cpp	interaction-controls
