@@ -217,7 +217,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldLayoutCodec.cpp
     src/app/iggy3d/creative/world/WorldLayoutCodecDecode.cpp
     src/app/iggy3d/creative/world/WorldLayoutCodecEncode.cpp
-    src/app/iggy3d/creative/ui/UiTheme.cpp
     src/app/iggy3d/creative/ui/UiWidgets.cpp
     src/app/iggy3d/creative/Facade.cpp
     src/app/iggy3d/creative/FacadeMeasurementAnnotations.cpp

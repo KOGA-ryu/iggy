@@ -261,8 +261,7 @@ The data, generation, cache, and future smooth-surface seams are specified in
   most 192 widget records and 256 visuals with fixed text storage. It provides
   panel, label, button, list-row, stepper, toggle, tab, and text-field emitters;
   pointer/focus routing; scroll visibility; and deterministic menu repeat. The
-  `creative/ui/UiTheme.*` palette and overlay renderer remain the sole draw
-  path.
+  `creative/ui/UiWidgets.*` owns the palette and widget emission path.
 - The action ribbon above the hotbar is derived from semantic actions and the
   live remappable control profile. It shows at most six high-priority controls
   for the held tool and current context, uses compact PS5 labels (`X`, `Circle`,

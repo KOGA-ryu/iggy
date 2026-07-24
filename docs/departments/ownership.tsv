@@ -858,8 +858,6 @@ src/app/iggy3d/creative/tools/VolumeInternal.hpp	assets-objects
 src/app/iggy3d/creative/tools/VolumeObjects.cpp	assets-objects
 src/app/iggy3d/creative/tools/VolumeSelection.cpp	assets-objects
 src/app/iggy3d/creative/tools/VolumeTypes.hpp	assets-objects
-src/app/iggy3d/creative/ui/UiTheme.cpp	editor-shell-ui
-src/app/iggy3d/creative/ui/UiTheme.hpp	editor-shell-ui
 src/app/iggy3d/creative/ui/UiWidgets.cpp	editor-shell-ui
 src/app/iggy3d/creative/ui/UiWidgets.hpp	editor-shell-ui
 src/app/iggy3d/creative/validation/MapValidation.cpp	persistence-validation
