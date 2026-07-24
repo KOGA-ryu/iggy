@@ -197,19 +197,54 @@ struct CreativeDesktopCommandFrame {
   void clear() noexcept;
 };
 
+enum class CreativeDesktopCommandImpact : std::uint8_t {
+  None = 0U,
+  DocumentChanged = 1U << 0U,
+  DocumentReplaced = 1U << 1U,
+  SceneChanged = 1U << 2U,
+  WorldLayoutChanged = 1U << 3U,
+};
+
+using CreativeDesktopCommandImpactFlags = std::uint8_t;
+
+[[nodiscard]] constexpr CreativeDesktopCommandImpactFlags
+creativeDesktopCommandImpactFlag(
+    CreativeDesktopCommandImpact impact) noexcept {
+  return static_cast<CreativeDesktopCommandImpactFlags>(impact);
+}
+
 // Outcome of dispatching a frame — cached for the status/history bar (DD-11)
-// and asserted by the headless command tests.
+// and asserted by the headless command tests. Command-specific fields describe
+// the last queued command; impacts and their compatibility booleans accumulate
+// across every command in the frame.
 struct CreativeDesktopCommandResult {
   CreativeDesktopCommandId lastCommand = CreativeDesktopCommandId::None;
   CreativeEditorObjectActionOutcome objectAction;
   bool accepted = false;
   bool changed = false;
+  CreativeDesktopCommandImpactFlags impacts = 0U;
   bool documentReplaced = false;
   bool sceneChanged = false;
   bool worldLayoutChanged = false;
   std::uint64_t affectedObjectCount = 0U;  // objects a batch command touched.
   std::string message;
 };
+
+[[nodiscard]] constexpr bool creativeDesktopCommandHasImpact(
+    const CreativeDesktopCommandResult& result,
+    CreativeDesktopCommandImpact impact) noexcept {
+  return (result.impacts & creativeDesktopCommandImpactFlag(impact)) != 0U;
+}
+
+[[nodiscard]] constexpr bool creativeDesktopCommandRequiresSceneRefresh(
+    const CreativeDesktopCommandResult& result) noexcept {
+  return creativeDesktopCommandHasImpact(
+             result, CreativeDesktopCommandImpact::DocumentChanged) ||
+         creativeDesktopCommandHasImpact(
+             result, CreativeDesktopCommandImpact::DocumentReplaced) ||
+         creativeDesktopCommandHasImpact(
+             result, CreativeDesktopCommandImpact::SceneChanged);
+}
 
 class PlaytestProcessControl;
 struct CreativePlaySession;

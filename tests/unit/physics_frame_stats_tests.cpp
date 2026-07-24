@@ -2,10 +2,8 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <limits>
 #include <string_view>
 
-#include "runtime/physics/PhysicsBroadphase.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
@@ -16,11 +14,6 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
-}
-
-bool near(float lhs, float rhs, float epsilon = 0.0001F) {
-  const float delta = lhs - rhs;
-  return delta >= -epsilon && delta <= epsilon;
 }
 
 bool emptyStatsAreReady() {
@@ -46,41 +39,6 @@ bool emptyStatsAreReady() {
          expect(stats.sourcePacketCount == 0U, "empty source count") &&
          expect(stats.failedPacketCount == 0U, "empty failed count") &&
          expect(stats.contactCount == 0U, "empty contact count");
-}
-
-bool broadphaseCountersAccumulate() {
-  iggy3d::PhysicsBroadphaseResult packet;
-  packet.ok = true;
-  packet.reasonCode = "physics_broadphase_pairs_collected";
-  packet.colliderCount = 7U;
-  packet.occupiedCellCount = 3U;
-  packet.cellEntryCount = 11U;
-  packet.maxBucketSize = 4U;
-  packet.candidatePairCount = 9U;
-  packet.testedPairCount = 5U;
-  packet.duplicatePairRejectedCount = 2U;
-  packet.overlappingPairCount = 3U;
-
-  iggy3d::PhysicsFrameStats stats = iggy3d::buildPhysicsFrameStats();
-  iggy3d::accumulatePhysicsBroadphaseStats(stats, packet);
-
-  return expect(stats.sourcePacketCount == 1U, "broadphase source count") &&
-         expect(stats.failedPacketCount == 0U, "broadphase failed count") &&
-         expect(stats.broadphaseColliderCount == 7U, "broadphase colliders") &&
-         expect(stats.broadphaseOccupiedCellCount == 3U,
-                "broadphase cells") &&
-         expect(stats.broadphaseCellEntryCount == 11U,
-                "broadphase entries") &&
-         expect(stats.broadphaseMaxBucketSize == 4U,
-                "broadphase max bucket") &&
-         expect(stats.broadphaseCandidatePairCount == 9U,
-                "broadphase candidates") &&
-         expect(stats.broadphaseTestedPairCount == 5U,
-                "broadphase tested") &&
-         expect(stats.broadphaseDuplicatePairRejectedCount == 2U,
-                "broadphase duplicates") &&
-         expect(stats.broadphaseOverlappingPairCount == 3U,
-                "broadphase overlaps");
 }
 
 bool motorAndPlayerPlannerCountersAccumulate() {
@@ -123,37 +81,10 @@ bool motorAndPlayerPlannerCountersAccumulate() {
          expect(stats.playerIterationCount == 3U, "player iterations");
 }
 
-bool broadphaseFailurePropagatesDeterministically() {
-  iggy3d::PhysicsBroadphaseResult failedBroadphase;
-  failedBroadphase.ok = false;
-  failedBroadphase.reasonCode = "physics_broadphase_invalid_grid_config";
-  failedBroadphase.colliderCount = 7U;
-  iggy3d::PhysicsFrameStats failedStats = iggy3d::buildPhysicsFrameStats();
-  iggy3d::accumulatePhysicsBroadphaseStats(failedStats, failedBroadphase);
-
-  return expect(!failedStats.ok, "failed packet marks stats failed") &&
-         expect(failedStats.status ==
-                    iggy3d::PhysicsFrameStatsStatus::PacketFailed,
-                "failed packet status") &&
-         expect(failedStats.reasonCode == "physics_frame_stats_packet_failed",
-                "failed packet reason") &&
-         expect(failedStats.upstreamReasonCode ==
-                    "physics_broadphase_invalid_grid_config",
-                "failed packet upstream reason") &&
-         expect(failedStats.sourcePacketCount == 1U,
-                "failed source count") &&
-         expect(failedStats.failedPacketCount == 1U,
-                "failed packet count") &&
-         expect(failedStats.broadphaseColliderCount == 7U,
-                "failed safe counter copied");
-}
-
 }  // namespace
 
 int main() {
   const bool ok = emptyStatsAreReady() &&
-                  broadphaseCountersAccumulate() &&
-                  motorAndPlayerPlannerCountersAccumulate() &&
-                  broadphaseFailurePropagatesDeterministically();
+                  motorAndPlayerPlannerCountersAccumulate();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

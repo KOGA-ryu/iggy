@@ -118,7 +118,7 @@ Condensed from the eight lane studies. Each entry: the idea, the key types with 
   - **`BroadPhaseLayer`** (`uint8`, coarse) — each maps to exactly **one physical tree**. Typical set = `{MOVING, NON_MOVING}`. `ObjectVsBroadPhaseLayerFilter` prunes **entire trees** before any walk — this is why the static tree never rebuilds and a moving-only query skips it whole.
   - **`ObjectLayer`** (`uint16`, fine, per body) — per-object rejection at the leaf. Two ship-ready encodings: a **triangular bit-table** (1 bit per unordered pair) or a **Bullet-style group/mask** (`collide iff (g1&m2)&&(g2&m1)`).
 - **Group / self-collision filter** (`CollisionGroup` + `GroupFilterTable`) — the narrowest broadphase filter, ANDed after the layer filter. A ragdoll disables adjacent-bone self-collision via same-group + sub-group bit-table, while world bodies use `cInvalidGroup` (always collide).
-- **`BroadPhaseBruteForce`** exists as a reference implementation of the same interface — the minimal starting point before committing to the tree. *(This is essentially where our `PhysicsBroadphase` is today.)*
+- **`BroadPhaseBruteForce`** exists as a reference implementation of the same interface — the minimal starting point before committing to the tree. The active iggy3d runtime currently performs query-driven collider scans and has no dynamic-body pair-generation stage; `AabbGridIndex` is used only by Creative picking and placement clearance.
 
 ### D · Shapes, narrowphase & geometry — `Physics/Collision/Shape/` + `Geometry/`
 
@@ -191,7 +191,7 @@ Grounding the study against `src/runtime/physics/` (~2,850 LOC). We already run 
 | Body handle | `PhysicsBodyId` (`PhysicsTypes.hpp:10`) | `BodyID` (index+generation) | **Add generation counter** (idea #1) — cheap, unlocks safe reuse |
 | Body store | motion kinds + weight class enums | `BodyManager` array + free-list | Fine for now; adopt free-list when bodies churn |
 | Shapes | **AABB only** (`PhysicsShapeStore`, `halfExtentsMeters`) | `BoxShape` + full convex hierarchy | **Biggest growth seam** → adopt support-fn convex core (idea #4) when you need capsules/slopes |
-| Broadphase | `PhysicsBroadphase` pair-finder (brute-ish) | `BroadPhaseBruteForce` → `QuadTree` | On the `BruteForce` rung; add two-level layers (idea #3) *before* the tree |
+| Broadphase | No runtime pair-generation stage; Creative uses `AabbGridIndex` for picking/clearance | `BroadPhaseBruteForce` → `QuadTree` | Add layers/indexing only when dynamic body pair generation becomes real |
 | Queries | raycast + AABB overlap (`PhysicsCollisionQueries`, `normalFromColliderToRay`) | `NarrowPhaseQuery::CastRay` | **This is our LOS surface — already live.** Rides the convex core once shapes grow |
 | Character | `PhysicsKinematicMotor` (`desiredDisplacement → hits`) | `CharacterVirtual::MoveShape` | **Nascent collide-and-slide.** Harden toward idea #7: slide-solve, steep-slope 2nd constraint, WalkStairs |
 | Creative→physics | `PhysicsSpatialSurfaceColliderBake` | (external — game builds bodies) | Our own seam; keep it |
@@ -216,7 +216,7 @@ Two tracks. **Track K** hardens what we have (kinematic/query) — this is the p
 5. **K5 · Convex shapes via support functions** — introduce `Support(dir)` + GJK for capsule/sphere/box, with the convex-radius trick. Unlocks a capsule character + swept queries without AABB's limitations. *(idea #4)*
 6. **K6 · Active-edge handling** — once we collide against meshes, add internal-edge removal so the character doesn't snag on floor seams. *(idea #5)*
 7. **K7 · CharacterVirtual-grade motor** — grow `PhysicsKinematicMotor` into the full collide-and-slide loop: plane constraints, crease-sliding, the steep-slope second constraint, `WalkStairs` up/forward/down, `StickToFloor`. *(idea #7)*
-8. **K8 · Broadphase tree** — only when brute-force pair-finding shows up in `PhysicsFrameStats`, replace it with a 4-ary AABB BVH (SoA nodes, widen-only updates).
+8. **K8 · Broadphase tree** — only after runtime pair generation exists and profiling shows it matters, replace brute-force pairing with a 4-ary AABB BVH (SoA nodes, widen-only updates).
 
 **Track D — dynamics (optional, only for simulated props/ragdolls)**
 9. **D1 · `AxisConstraintPart` atom** + a flat contact solver (no islands): warm-start once, ~8 velocity iters, 2 position iters. *(idea #8)*

@@ -32,8 +32,8 @@ blender --background --python render_previews.py   # previews -> ~/stealth_block
 | Guard attack range | 1.5 m | `src/runtime/ai/NpcBehaviorProfile.hpp:21` |
 | Guard chase stop distance | 1.25 m | `src/runtime/ai/NpcBehaviorProfile.hpp:20` |
 | Snap increments | 0.25 / 0.5 / 1 / 2 m | `src/app/iggy3d/creative/tools/Tools.hpp:91-96`, values in `ToolSettingLabels.cpp:36-44` |
-| Grid cell / place pitch | 1.0 m | `src/app/iggy3d/map_maker/Grid.hpp:20`, `apps/iggy3d_creative/EditorBootstrap.cpp:144` |
-| Crouch height | **not in code** — only `bool crouched` (`src/runtime/player/PlayerMotor.hpp:73`); sneak eye 0.9 m (`clamber` motor untouched by crouch v1) is the working proxy | — |
+| Grid cell / place pitch | 1.0 m | `src/app/iggy3d/creative/spatial/PlacementGrid.hpp:91`, `apps/iggy3d_creative/EditorBootstrap.cpp:234` |
+| Crouch height | **not exposed to the active movement path**; sneak eye 0.9 m is the working perception proxy | `src/runtime/ai/NpcBehaviorProfile.hpp:27`, stance TODO in `src/runtime/session/SessionAi.cpp` |
 | Clamber band | (0.35, 1.80] m — bottom exclusive (`clamberBandBottomMeters`), top inclusive (`clamberBandTopMeters`); reach ≤ 0.55 m (`clamberMaxReachMeters`), 8-tick phase, 30 dB engage noise | `src/runtime/movement/MovementParams.hpp` clamber block |
 
 **Clamber is now code truth:** the clamber motor (flow feat v1) reads the

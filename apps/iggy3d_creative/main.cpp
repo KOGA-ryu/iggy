@@ -572,7 +572,7 @@ int main(int argc, char** argv) {
         if (!desktopResult.message.empty()) {
           editor.desktopUi.statusMessage = desktopResult.message;
         }
-        if (desktopResult.documentReplaced || desktopResult.sceneChanged) {
+        if (creativeDesktopCommandRequiresSceneRefresh(desktopResult)) {
           invalidateCreativeEditorSceneCache(sceneCache);
           floorObjectId = firstFloorObjectId(appState.facade.document());
         }

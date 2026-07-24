@@ -1495,6 +1495,116 @@ bool playIsUnsupportedAndFrameIsBounded() {
                 "the command frame is bounded and records overflow");
 }
 
+bool commandFramesAccumulatePreviewImpacts() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Cumulative Preview Impact");
+  static_cast<void>(document.assignId(4141U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  const auto shell = app::createCreativeEditorWorldLayoutBuildingShell(
+      editor.worldLayout, {{{0, 0}, {6, 4}}, 0.0, 3U, 0.25, 1U});
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const std::uint64_t documentRevisionBefore =
+      appState.facade.document().revision();
+
+  app::CreativeDesktopCommandFrame frame;
+  frame.push(app::CreativeDesktopCommandId::WorldLayoutPreview);
+  frame.push(app::CreativeDesktopCommandId::None);
+  const app::CreativeDesktopCommandResult result =
+      app::dispatchCreativeDesktopCommands(frame, context);
+
+  return expect(shell.accepted && shell.changed,
+                "cumulative preview fixture creates a building shell") &&
+         expect(result.lastCommand == app::CreativeDesktopCommandId::None &&
+                    !result.accepted && !result.changed,
+                "command-specific outcome describes the last queued command") &&
+         expect(
+             result.sceneChanged && !result.documentReplaced &&
+                 !result.worldLayoutChanged &&
+                 app::creativeDesktopCommandHasImpact(
+                     result, app::CreativeDesktopCommandImpact::SceneChanged) &&
+                 !app::creativeDesktopCommandHasImpact(
+                     result,
+                     app::CreativeDesktopCommandImpact::DocumentChanged) &&
+                 app::creativeDesktopCommandRequiresSceneRefresh(result) &&
+                 app::creativeEditorWorldLayoutPreviewActive(
+                     editor.worldLayout) &&
+                 appState.facade.document().revision() ==
+                     documentRevisionBefore,
+             "preview-only scene impact survives a later no-op command");
+}
+
+bool commandFramesInferDocumentImpactsFromActiveRevision() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Cmd Cumulative Document Impact");
+  static_cast<void>(document.assignId(4142U));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+  selectPrimary(appState.facade, createCrate(appState.facade, 0.0));
+  appState.history = {};
+
+  app::CreativeEditorState editor;
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  const std::uint64_t rootRevisionBefore =
+      appState.facade.document().revision();
+
+  app::CreativeDesktopCommandFrame rootFrame;
+  rootFrame.push(app::CreativeDesktopCommandId::DeleteSelection);
+  rootFrame.push(app::CreativeDesktopCommandId::None);
+  const app::CreativeDesktopCommandResult rootResult =
+      app::dispatchCreativeDesktopCommands(rootFrame, context);
+  const bool rootImpact =
+      appState.facade.document().objectCount() == 0U &&
+      appState.facade.document().revision() > rootRevisionBefore &&
+      app::creativeDesktopCommandHasImpact(
+          rootResult, app::CreativeDesktopCommandImpact::DocumentChanged) &&
+      !rootResult.documentReplaced && !rootResult.sceneChanged &&
+      !rootResult.worldLayoutChanged &&
+      app::creativeDesktopCommandRequiresSceneRefresh(rootResult);
+
+  cr::CreativeDocument assetDocument =
+      cr::CreativeDocument::create("Cmd Active Asset Impact");
+  static_cast<void>(assetDocument.assignId(4143U));
+  static_cast<void>(
+      editor.assetEdit.workspace.facade.installDocument(
+          std::move(assetDocument)));
+  selectPrimary(editor.assetEdit.workspace.facade,
+                createCrate(editor.assetEdit.workspace.facade, 0.0));
+  editor.assetEdit.workspace.history = {};
+  editor.assetEdit.active = true;
+  const std::uint64_t rootRevisionBeforeAssetEdit =
+      appState.facade.document().revision();
+  const std::uint64_t assetRevisionBefore =
+      editor.assetEdit.workspace.facade.document().revision();
+
+  app::CreativeDesktopCommandFrame assetFrame;
+  assetFrame.push(app::CreativeDesktopCommandId::DeleteSelection);
+  assetFrame.push(app::CreativeDesktopCommandId::None);
+  const app::CreativeDesktopCommandResult assetResult =
+      app::dispatchCreativeDesktopCommands(assetFrame, context);
+  const bool assetImpact =
+      editor.assetEdit.workspace.facade.document().objectCount() == 0U &&
+      editor.assetEdit.workspace.facade.document().revision() >
+          assetRevisionBefore &&
+      appState.facade.document().revision() == rootRevisionBeforeAssetEdit &&
+      app::creativeDesktopCommandHasImpact(
+          assetResult, app::CreativeDesktopCommandImpact::DocumentChanged) &&
+      !assetResult.documentReplaced && !assetResult.sceneChanged &&
+      !assetResult.worldLayoutChanged &&
+      app::creativeDesktopCommandRequiresSceneRefresh(assetResult);
+
+  return expect(rootImpact,
+                "root document revision creates a cumulative refresh impact") &&
+         expect(assetImpact,
+                "active asset document revision creates a cumulative refresh impact");
+}
+
 // --- Step 3: Desktop Command Expansion -------------------------------------
 
 bool selectCommandsRoundTripAndRespectIdBoundary() {
@@ -8553,6 +8663,8 @@ int main() {
   ok = semanticPersistenceCommandsShareDocumentDispatcher() && ok;
   ok = semanticAssetUndoKeepsRootWorldLayoutHistorySeparate() && ok;
   ok = playIsUnsupportedAndFrameIsBounded() && ok;
+  ok = commandFramesAccumulatePreviewImpacts() && ok;
+  ok = commandFramesInferDocumentImpactsFromActiveRevision() && ok;
   // Step 3 — Desktop Command Expansion.
   ok = selectCommandsRoundTripAndRespectIdBoundary() && ok;
   ok = focusObjectSelectsAndFramesThroughDispatcher() && ok;

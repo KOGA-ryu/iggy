@@ -8,10 +8,12 @@ smokes = 114 registered tests (the platform smoke registers twice), run via
 
 ## What came back with them
 
-Five implementation files were restored because surviving headers (and tests)
-needed them: `runtime/player/PlayerMotor.cpp`, `runtime/physics/
-PhysicsBroadphase.cpp`, `render/RendererApi.cpp`, `render/RendererConfig.cpp`,
-`render/null/NullRenderer.{cpp,hpp}`.
+The reduced suite originally restored several implementation-only test islands.
+The unused `PlayerMotor` and pair-collection `PhysicsBroadphase` islands were
+removed once the active movement path was verified as
+`MovementSystem -> PlayerPhysicsMovePlanner -> PhysicsKinematicMotor`.
+The renderer abstraction files remain while their test and backend ownership is
+audited separately.
 
 ## What stayed quarantined
 

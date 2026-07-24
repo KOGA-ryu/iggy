@@ -56,11 +56,6 @@ iggy3d_add_unit_test(product_creative_wireframe_debug_line_tests
 set_tests_properties(product_creative_wireframe_debug_line_tests PROPERTIES
   LABELS "unit;app;product;creative;wireframe;debug_line;iggy3d")
 
-iggy3d_add_unit_test(product_map_maker_grid_tests
-  tests/unit/product_map_maker_grid_tests.cpp)
-set_tests_properties(product_map_maker_grid_tests PROPERTIES
-  LABELS "unit;app;product;map_maker;grid;iggy3d")
-
 iggy3d_add_unit_test(creative_core_tests
   tests/unit/creative_core_tests.cpp)
 set_tests_properties(creative_core_tests PROPERTIES
@@ -1197,9 +1192,6 @@ set_tests_properties(movement_policy_tests PROPERTIES LABELS "unit;runtime;movem
 iggy3d_add_unit_test(movement_kinematics_tests tests/unit/movement_kinematics_tests.cpp)
 set_tests_properties(movement_kinematics_tests PROPERTIES LABELS "unit;runtime;movement;math;iggy3d")
 
-iggy3d_add_unit_test(player_motor_tests tests/unit/player_motor_tests.cpp)
-set_tests_properties(player_motor_tests PROPERTIES LABELS "unit;runtime;player;movement;iggy3d")
-
 iggy3d_add_unit_test(player_physics_move_planner_tests
   tests/unit/player_physics_move_planner_tests.cpp)
 set_tests_properties(player_physics_move_planner_tests PROPERTIES
@@ -1268,11 +1260,6 @@ iggy3d_add_unit_test(physics_aabb_collider_tests
   tests/unit/physics_aabb_collider_tests.cpp)
 set_tests_properties(physics_aabb_collider_tests PROPERTIES
   LABELS "unit;runtime;physics;aabb;collider;iggy3d")
-
-iggy3d_add_unit_test(physics_broadphase_tests
-  tests/unit/physics_broadphase_tests.cpp)
-set_tests_properties(physics_broadphase_tests PROPERTIES
-  LABELS "unit;runtime;physics;broadphase;aabb;iggy3d")
 
 iggy3d_add_unit_test(session_tick_tests tests/unit/session_tick_tests.cpp)
 set_tests_properties(session_tick_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")

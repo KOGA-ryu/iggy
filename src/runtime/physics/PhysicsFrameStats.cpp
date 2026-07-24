@@ -4,7 +4,6 @@
 #include <array>
 #include <cmath>
 
-#include "runtime/physics/PhysicsBroadphase.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
@@ -72,21 +71,6 @@ std::string_view physicsFrameStatsStatusName(PhysicsFrameStatsStatus status) {
 
 PhysicsFrameStats buildPhysicsFrameStats() {
   return {};
-}
-
-void accumulatePhysicsBroadphaseStats(PhysicsFrameStats& stats,
-                                      const PhysicsBroadphaseResult& result) {
-  stats.broadphaseColliderCount += result.colliderCount;
-  stats.broadphaseOccupiedCellCount += result.occupiedCellCount;
-  stats.broadphaseCellEntryCount += result.cellEntryCount;
-  stats.broadphaseMaxBucketSize =
-      std::max(stats.broadphaseMaxBucketSize, result.maxBucketSize);
-  stats.broadphaseCandidatePairCount += result.candidatePairCount;
-  stats.broadphaseTestedPairCount += result.testedPairCount;
-  stats.broadphaseDuplicatePairRejectedCount +=
-      result.duplicatePairRejectedCount;
-  stats.broadphaseOverlappingPairCount += result.overlappingPairCount;
-  recordPacketOutcome(stats, result.ok, result.reasonCode, false);
 }
 
 void accumulatePhysicsKinematicMotorStats(

@@ -1,5 +1,6 @@
 #include "EditorDesktopCommands.hpp"
 
+#include "EditorAssetLibrary.hpp"
 #include "EditorDesktopCommandsInternal.hpp"
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
@@ -50,6 +51,77 @@ void CreativeDesktopCommandFrame::clear() noexcept {
 
 namespace {
 
+struct CreativeDesktopDocumentKey {
+  creative::CreativeDocumentId id = creative::kInvalidDocumentId;
+  std::uint64_t revision = 0U;
+
+  [[nodiscard]] friend bool operator==(
+      const CreativeDesktopDocumentKey&,
+      const CreativeDesktopDocumentKey&) noexcept = default;
+};
+
+struct CreativeDesktopDocumentSnapshot {
+  CreativeDesktopDocumentKey root;
+  CreativeDesktopDocumentKey active;
+  bool assetEditActive = false;
+};
+
+[[nodiscard]] CreativeDesktopDocumentKey creativeDesktopDocumentKey(
+    const creative::CreativeDocument& document) noexcept {
+  return {document.id(), document.revision()};
+}
+
+[[nodiscard]] CreativeDesktopDocumentSnapshot creativeDesktopDocumentSnapshot(
+    const CreativeDesktopCommandContext& context) noexcept {
+  const creative::CreativeAppState& activeAppState =
+      activeCreativeEditorAppState(context.editor, context.appState);
+  return {
+      creativeDesktopDocumentKey(context.appState.facade.document()),
+      creativeDesktopDocumentKey(activeAppState.facade.document()),
+      context.editor.assetEdit.active,
+  };
+}
+
+void addCommandImpact(CreativeDesktopCommandResult& result,
+                      CreativeDesktopCommandImpact impact) noexcept {
+  result.impacts |= creativeDesktopCommandImpactFlag(impact);
+}
+
+void resolveCommandImpacts(
+    CreativeDesktopCommandResult& result,
+    const CreativeDesktopDocumentSnapshot& before,
+    const CreativeDesktopDocumentSnapshot& after) noexcept {
+  const bool documentChanged =
+      before.root != after.root || before.active != after.active ||
+      before.assetEditActive != after.assetEditActive;
+  if (documentChanged) {
+    addCommandImpact(result, CreativeDesktopCommandImpact::DocumentChanged);
+  }
+  if (result.documentReplaced || before.root.id != after.root.id) {
+    addCommandImpact(result, CreativeDesktopCommandImpact::DocumentReplaced);
+  }
+  if (result.sceneChanged) {
+    addCommandImpact(result, CreativeDesktopCommandImpact::SceneChanged);
+  }
+  if (result.worldLayoutChanged) {
+    addCommandImpact(result, CreativeDesktopCommandImpact::WorldLayoutChanged);
+  }
+}
+
+void mergeCommandResult(CreativeDesktopCommandResult& aggregate,
+                        CreativeDesktopCommandResult commandResult) {
+  const CreativeDesktopCommandImpactFlags cumulativeImpacts =
+      aggregate.impacts | commandResult.impacts;
+  aggregate = std::move(commandResult);
+  aggregate.impacts = cumulativeImpacts;
+  aggregate.documentReplaced = creativeDesktopCommandHasImpact(
+      aggregate, CreativeDesktopCommandImpact::DocumentReplaced);
+  aggregate.sceneChanged = creativeDesktopCommandHasImpact(
+      aggregate, CreativeDesktopCommandImpact::SceneChanged);
+  aggregate.worldLayoutChanged = creativeDesktopCommandHasImpact(
+      aggregate, CreativeDesktopCommandImpact::WorldLayoutChanged);
+}
+
 [[nodiscard]] bool commandAllowedDuringPlay(
     CreativeDesktopCommandId id) noexcept {
   return id == CreativeDesktopCommandId::None ||
@@ -69,6 +141,7 @@ void dispatchOne(const CreativeDesktopCommand& command,
   result.objectAction = {};
   result.accepted = false;
   result.changed = false;
+  result.impacts = 0U;
   result.documentReplaced = false;
   result.sceneChanged = false;
   result.worldLayoutChanged = false;
@@ -167,7 +240,14 @@ CreativeDesktopCommandResult dispatchCreativeDesktopCommands(
       frame.count < kCreativeDesktopCommandCapacity ? frame.count
                                                     : kCreativeDesktopCommandCapacity;
   for (std::size_t index = 0U; index < count; ++index) {
-    dispatchOne(frame.commands[index], context, result);
+    const CreativeDesktopDocumentSnapshot before =
+        creativeDesktopDocumentSnapshot(context);
+    CreativeDesktopCommandResult commandResult;
+    dispatchOne(frame.commands[index], context, commandResult);
+    const CreativeDesktopDocumentSnapshot after =
+        creativeDesktopDocumentSnapshot(context);
+    resolveCommandImpacts(commandResult, before, after);
+    mergeCommandResult(result, std::move(commandResult));
   }
   return result;
 }

@@ -8,7 +8,6 @@
 #include "core/math/Aabb3.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
-#include "runtime/debug/RuntimeDebugSnapshot.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/replay/StateHash.hpp"
@@ -32,7 +31,6 @@ enum class DebugProjectionKind : std::uint8_t {
   NpcBehavior,
   PhysicsAabb,
   PhysicsContactNormal,
-  PhysicsBroadphasePair,
 };
 
 struct DebugProjectionConfig {
@@ -45,10 +43,8 @@ struct DebugProjectionConfig {
 struct PhysicsDebugGeometryProjectionConfig {
   bool includeAabbs = true;
   bool includeContacts = true;
-  bool includeBroadphasePairs = true;
   std::size_t maxAabbs = 128U;
   std::size_t maxContacts = 128U;
-  std::size_t maxPairs = 128U;
 };
 
 struct PlayerPhysicsMovePlannerDebugProjectionRequest {
@@ -88,8 +84,6 @@ struct DebugProjectionResult {
 
 DebugProjectionResult buildDebugProjection(const SessionState& state,
                                            const DebugProjectionConfig& config = {});
-void appendRuntimeDebugSnapshot(DebugProjectionResult& result,
-                                const RuntimeDebugSnapshot& snapshot);
 void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
                                     const NpcBehaviorDebugSnapshot& snapshot);
 void appendPhysicsDebugSnapshot(DebugProjectionResult& result,

@@ -6,7 +6,6 @@
 
 namespace iggy3d {
 
-struct PhysicsBroadphaseResult;
 struct PhysicsKinematicMotorResult;
 struct PlayerPhysicsMovePlannerResult;
 
@@ -24,18 +23,8 @@ struct PhysicsFrameStats {
   std::size_t sourcePacketCount = 0U;
   std::size_t failedPacketCount = 0U;
 
-  std::size_t broadphaseColliderCount = 0U;
-  std::size_t broadphaseOccupiedCellCount = 0U;
-  std::size_t broadphaseCellEntryCount = 0U;
-  std::size_t broadphaseMaxBucketSize = 0U;
-  std::size_t broadphaseCandidatePairCount = 0U;
-  std::size_t broadphaseTestedPairCount = 0U;
-  std::size_t broadphaseDuplicatePairRejectedCount = 0U;
-  std::size_t broadphaseOverlappingPairCount = 0U;
-
   std::size_t bindingCount = 0U;
   std::size_t colliderCount = 0U;
-  std::size_t broadphasePairCount = 0U;
   std::size_t contactCount = 0U;
   std::size_t sensorContactCount = 0U;
   std::size_t solvePlanCount = 0U;
@@ -68,8 +57,6 @@ struct PhysicsFrameStats {
 std::string_view physicsFrameStatsStatusName(PhysicsFrameStatsStatus status);
 
 PhysicsFrameStats buildPhysicsFrameStats();
-void accumulatePhysicsBroadphaseStats(PhysicsFrameStats& stats,
-                                      const PhysicsBroadphaseResult& result);
 void accumulatePhysicsKinematicMotorStats(
     PhysicsFrameStats& stats,
     const PhysicsKinematicMotorResult& result);

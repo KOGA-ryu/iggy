@@ -114,6 +114,8 @@ apps/iggy3d_creative/EditorMeasurement.cpp	interaction-controls
 apps/iggy3d_creative/EditorMeasurement.hpp	interaction-controls
 apps/iggy3d_creative/EditorMovingPlatformPreview.cpp	rendering-preview
 apps/iggy3d_creative/EditorMovingPlatformPreview.hpp	rendering-preview
+apps/iggy3d_creative/EditorObjectActionOutcome.cpp	interaction-controls
+apps/iggy3d_creative/EditorObjectActionOutcome.hpp	interaction-controls
 apps/iggy3d_creative/EditorObjectActions.cpp	interaction-controls
 apps/iggy3d_creative/EditorObjectActions.hpp	interaction-controls
 apps/iggy3d_creative/EditorOverlayHud.cpp	rendering-preview
@@ -193,6 +195,7 @@ apps/iggy3d_creative/EditorTransform.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransform.hpp	interaction-controls
 apps/iggy3d_creative/EditorTransformFrame.cpp	interaction-controls
 apps/iggy3d_creative/EditorTransformOverlay.cpp	rendering-preview
+apps/iggy3d_creative/EditorUiInput.hpp	interaction-controls
 apps/iggy3d_creative/EditorVolume.cpp	assets-objects
 apps/iggy3d_creative/EditorVolume.hpp	assets-objects
 apps/iggy3d_creative/EditorVolumeWireframes.cpp	assets-objects
@@ -530,12 +533,17 @@ cmake/iggy3d_shaders.cmake	foundation-build
 cmake/iggy3d_tests.cmake	foundation-build
 cmake/iggy3d_vulkan_deps.cmake	foundation-build
 cmake/iggy3d_warnings.cmake	foundation-build
+docs/creative_assets/anatomy_program.md	assets-objects
+docs/creative_assets/asset_factory_battle_plan.md	assets-objects
 docs/creative_assets/bg3_informed_asset_master_backlog.md	assets-objects
 docs/creative_assets/blender_asset_pipeline.md	assets-objects
+docs/creative_assets/bones_workflow_architecture.md	assets-objects
 docs/creative_assets/cave_interior_kit.md	assets-objects
+docs/creative_assets/detailing_program.md	assets-objects
 docs/creative_assets/homestead_interior_kit.md	assets-objects
 docs/creative_assets/homestead_modular_kit.md	assets-objects
 docs/creative_assets/homestead_yard_kit.md	assets-objects
+docs/creative_assets/reference_requests.md	assets-objects
 docs/creative_assets/references/building_closure_v1/01_anchor_homestead.png	assets-objects
 docs/creative_assets/references/building_closure_v1/02_roof_closure_kit.png	assets-objects
 docs/creative_assets/references/building_closure_v1/03_door_gate_kit.png	assets-objects
@@ -674,6 +682,8 @@ src/app/iggy3d/creative/input/Interaction.hpp	interaction-controls
 src/app/iggy3d/creative/input/ToolWheel.cpp	interaction-controls
 src/app/iggy3d/creative/input/UiInput.cpp	interaction-controls
 src/app/iggy3d/creative/input/UiInput.hpp	interaction-controls
+src/app/iggy3d/creative/input/WorldActionIntent.cpp	interaction-controls
+src/app/iggy3d/creative/input/WorldActionIntent.hpp	interaction-controls
 src/app/iggy3d/creative/mutation/Mutation.cpp	authoring-core
 src/app/iggy3d/creative/mutation/Mutation.hpp	authoring-core
 src/app/iggy3d/creative/mutation/MutationAllowed.cpp	authoring-core
@@ -926,6 +936,8 @@ src/app/iggy3d/creative/world/WorldLayoutRoomTopology.cpp	building-layout
 src/app/iggy3d/creative/world/WorldLayoutRoomTopology.hpp	building-layout
 src/app/iggy3d/creative/world/WorldLayoutRooms.cpp	building-layout
 src/app/iggy3d/creative/world/WorldLayoutRooms.hpp	building-layout
+src/app/iggy3d/creative/world/WorldLayoutSourceDuplication.cpp	building-layout
+src/app/iggy3d/creative/world/WorldLayoutSourceDuplication.hpp	building-layout
 src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.cpp	terrain-site
 src/app/iggy3d/creative/world/WorldLayoutTerrainImpact.hpp	terrain-site
 src/app/iggy3d/creative/world/WorldLayoutTerrainReconciliation.cpp	terrain-site
@@ -937,8 +949,6 @@ src/app/iggy3d/creative/world/WorldLayoutWallOperations.cpp	building-layout
 src/app/iggy3d/creative/world/WorldLayoutWallOperations.hpp	building-layout
 src/app/iggy3d/creative/world/WorldService.cpp	authoring-core
 src/app/iggy3d/creative/world/WorldService.hpp	authoring-core
-src/app/iggy3d/map_maker/Grid.cpp	building-layout
-src/app/iggy3d/map_maker/Grid.hpp	building-layout
 src/app/iggy3d/save/Catalog.cpp	persistence-validation
 src/app/iggy3d/save/Catalog.hpp	persistence-validation
 src/app/iggy3d/save/CatalogProjector.cpp	persistence-validation
@@ -948,7 +958,6 @@ src/app/iggy3d/save/SaveBridge.hpp	persistence-validation
 src/app/iggy3d/save/SaveBridgeCreative.cpp	persistence-validation
 src/app/iggy3d/save/SaveBridgeInternal.hpp	persistence-validation
 src/app/iggy3d/save/SaveBridgeMutation.cpp	persistence-validation
-src/app/iggy3d/save/SaveBridgeSession.cpp	persistence-validation
 src/app/iggy3d/save/SaveBridgeSupport.cpp	persistence-validation
 src/app/platform/ExecutablePath.cpp	foundation-build
 src/app/platform/ExecutablePath.hpp	foundation-build
@@ -1129,7 +1138,6 @@ src/runtime/combat/CombatSystem.hpp	playtest-simulation
 src/runtime/command/Command.hpp	playtest-simulation
 src/runtime/command/CommandAdmission.cpp	playtest-simulation
 src/runtime/command/CommandAdmission.hpp	playtest-simulation
-src/runtime/debug/RuntimeDebugSnapshot.hpp	playtest-simulation
 src/runtime/diagnostics/RuntimeEvent.hpp	persistence-validation
 src/runtime/diagnostics/RuntimeMetrics.hpp	persistence-validation
 src/runtime/interaction/InteractionDefinition.hpp	playtest-simulation
@@ -1156,8 +1164,6 @@ src/runtime/objective/ObjectiveSystem.cpp	playtest-simulation
 src/runtime/objective/ObjectiveSystem.hpp	playtest-simulation
 src/runtime/physics/PhysicsAabbCollider.cpp	playtest-simulation
 src/runtime/physics/PhysicsAabbCollider.hpp	playtest-simulation
-src/runtime/physics/PhysicsBroadphase.cpp	playtest-simulation
-src/runtime/physics/PhysicsBroadphase.hpp	playtest-simulation
 src/runtime/physics/PhysicsCollisionQueries.cpp	playtest-simulation
 src/runtime/physics/PhysicsCollisionQueries.hpp	playtest-simulation
 src/runtime/physics/PhysicsFrameStats.cpp	playtest-simulation
@@ -1170,8 +1176,6 @@ src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp	playtest-simulation
 src/runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp	playtest-simulation
 src/runtime/physics/PhysicsTypes.cpp	playtest-simulation
 src/runtime/physics/PhysicsTypes.hpp	playtest-simulation
-src/runtime/player/PlayerMotor.cpp	playtest-simulation
-src/runtime/player/PlayerMotor.hpp	playtest-simulation
 src/runtime/player/PlayerPhysicsMovePlanner.cpp	playtest-simulation
 src/runtime/player/PlayerPhysicsMovePlanner.hpp	playtest-simulation
 src/runtime/player/PlayerRoster.cpp	playtest-simulation
@@ -1258,6 +1262,8 @@ tests/unit/creative_core_tests.cpp	authoring-core
 tests/unit/creative_creator_task_workflow_tests.cpp	authoring-core
 tests/unit/creative_desktop_model_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_ui_command_tests.cpp	editor-shell-ui
+tests/unit/creative_edit_transaction_boundary_tests.cpp	interaction-controls
+tests/unit/creative_edit_transaction_tests.cpp	interaction-controls
 tests/unit/creative_document_create_tests.cpp	authoring-core
 tests/unit/creative_document_dirty_tests.cpp	authoring-core
 tests/unit/creative_document_identity_tests.cpp	authoring-core
@@ -1310,6 +1316,8 @@ tests/unit/creative_map_validation_tests.cpp	persistence-validation
 tests/unit/creative_measure_tests.cpp	interaction-controls
 tests/unit/creative_measurement_annotation_tests.cpp	interaction-controls
 tests/unit/creative_npc_spawn_tests.cpp	playtest-simulation
+tests/unit/creative_object_action_boundary_tests.cpp	interaction-controls
+tests/unit/creative_object_action_outcome_tests.cpp	interaction-controls
 tests/unit/creative_object_descriptor_tests.cpp	assets-objects
 tests/unit/creative_pattern_tests.cpp	assets-objects
 tests/unit/creative_placement_compatibility_tests.cpp	assets-objects
@@ -1351,6 +1359,7 @@ tests/unit/creative_terrain_region_recipe_tests.cpp	terrain-site
 tests/unit/creative_terrain_stamp_library_tests.cpp	terrain-site
 tests/unit/creative_terrain_stamp_tests.cpp	terrain-site
 tests/unit/creative_tools_tests.cpp	interaction-controls
+tests/unit/creative_ui_input_boundary_tests.cpp	interaction-controls
 tests/unit/creative_ui_input_tests.cpp	interaction-controls
 tests/unit/creative_ui_widgets_tests.cpp	editor-shell-ui
 tests/unit/creative_viewport_layout_tests.cpp	editor-shell-ui
@@ -1408,19 +1417,16 @@ tests/unit/objective_system_tests.cpp	playtest-simulation
 tests/unit/oriented_box_tests.cpp	foundation-build
 tests/unit/package_runtime_lookup_tests.cpp	persistence-validation
 tests/unit/physics_aabb_collider_tests.cpp	playtest-simulation
-tests/unit/physics_broadphase_tests.cpp	terrain-site
 tests/unit/physics_collision_queries_tests.cpp	playtest-simulation
 tests/unit/physics_frame_stats_tests.cpp	playtest-simulation
 tests/unit/physics_kinematic_motor_tests.cpp	playtest-simulation
 tests/unit/physics_shape_store_tests.cpp	playtest-simulation
 tests/unit/physics_spatial_surface_collider_bake_tests.cpp	playtest-simulation
-tests/unit/player_motor_tests.cpp	playtest-simulation
 tests/unit/player_physics_move_planner_tests.cpp	playtest-simulation
 tests/unit/playtest_event_protocol_tests.cpp	playtest-simulation
 tests/unit/playtest_lifecycle_tests.cpp	playtest-simulation
 tests/unit/playtest_process_owner_tests.cpp	playtest-simulation
 tests/unit/product_creative_wireframe_debug_line_tests.cpp	rendering-preview
-tests/unit/product_map_maker_grid_tests.cpp	building-layout
 tests/unit/product_save_catalog_tests.cpp	assets-objects
 tests/unit/reachability_tests.cpp	playtest-simulation
 tests/unit/reasoning_graph_readout.cpp	playtest-simulation

@@ -226,7 +226,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/FacadeMoveDrag.cpp
     src/app/iggy3d/creative/camera/Fly.cpp
     src/app/iggy3d/creative/camera/ViewportNavigation.cpp
-    src/app/iggy3d/map_maker/Grid.cpp
     src/app/iggy3d/creative/render/WireframeDebugLines.cpp
     src/app/iggy3d/creative/render/CreativeOverlayFrame.cpp
     src/app/iggy3d/creative/render/CreativeScreenProjection.cpp
@@ -242,7 +241,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/iggy3d/save/SaveBridgeSupport.cpp
-    src/app/iggy3d/save/SaveBridgeSession.cpp
     src/app/iggy3d/save/SaveBridgeCreative.cpp
     src/app/iggy3d/save/SaveBridgeMutation.cpp
     src/app/frontend/SaveSlotModel.cpp
@@ -255,8 +253,6 @@ target_sources(iggy3d
     src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
-    src/runtime/player/PlayerMotor.cpp
-    src/runtime/physics/PhysicsBroadphase.cpp
     src/render/RendererApi.cpp
     src/render/RendererConfig.cpp
     src/render/null/NullRenderer.cpp
