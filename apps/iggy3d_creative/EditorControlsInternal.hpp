@@ -20,6 +20,10 @@ inline constexpr iggy3d::creative::CreativeUiWidgetId
 inline constexpr iggy3d::creative::CreativeUiWidgetId
     kControlsResetWheelWidgetId = 1004U;
 
+[[nodiscard]] iggy3d::creative::CreativeUiRepeatCommand
+resolveCreativeEditorControlsRepeatCommand(
+    const iggy3d::creative::CreativeInputRouteResult& routedInput) noexcept;
+
 struct ControlsLayout {
   std::int32_t panelX = 0;
   std::int32_t panelY = 0;

@@ -1,4 +1,5 @@
 #include "EditorControls.hpp"
+#include "EditorControlsInternal.hpp"
 #include "EditorCatalog.hpp"
 #include "EditorCatalogLayout.hpp"
 #include "EditorState.hpp"
@@ -430,6 +431,79 @@ bool controlsOverlayUsesTheStandardWidgetFrame() {
                 "standard scrim covers the drawable with bounded opacity");
 }
 
+bool controlsRepeatUsesRoutedDownStateAndConsumption() {
+  const cr::CreativeControlProfile profile =
+      cr::makeDefaultCreativeControlProfile();
+  cr::CreativeInputFrame frame;
+  frame.context = cr::CreativeInputContext::Controls;
+  cr::setCreativeInputKey(frame, cr::CreativeInputKey::ArrowDown, true);
+  cr::CreativeInputRouterState router;
+  const cr::CreativeInputRouteResult first =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+  const cr::CreativeInputRouteResult held =
+      cr::routeCreativeInput(router, frame, profile.bindingSpan());
+
+  constexpr std::array<cr::CreativeInputBinding, 2> competingBindings{
+      cr::CreativeInputBinding{
+          cr::CreativeInputActionId::ControlsActivate,
+          cr::CreativeInputKey::ArrowDown,
+          cr::CreativeInputContext::Controls,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          300U,
+          cr::CreativeInputConsumePolicy::ConsumeTrigger},
+      cr::CreativeInputBinding{
+          cr::CreativeInputActionId::ControlsNext,
+          cr::CreativeInputKey::ArrowDown,
+          cr::CreativeInputContext::Controls,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          cr::kCreativeInputModifierNone,
+          200U,
+          cr::CreativeInputConsumePolicy::ConsumeTrigger},
+  };
+  cr::CreativeInputRouterState competingRouter;
+  const cr::CreativeInputRouteResult consumed =
+      cr::routeCreativeInput(competingRouter, frame, competingBindings);
+
+  return expect(
+             cr::creativeInputRouteContains(
+                 first, cr::CreativeInputActionId::ControlsNext) &&
+                 cr::creativeInputActionPressed(
+                     first, cr::CreativeInputActionId::ControlsNext) &&
+                 cr::creativeInputActionDown(
+                     first, cr::CreativeInputActionId::ControlsNext) &&
+                 cr::creativeInputKeyConsumed(
+                     first, cr::CreativeInputKey::ArrowDown) &&
+                 app::resolveCreativeEditorControlsRepeatCommand(first) ==
+                     cr::CreativeUiRepeatCommand::Next,
+             "first routed Controls press resolves the repeat command") &&
+         expect(
+             !cr::creativeInputRouteContains(
+                 held, cr::CreativeInputActionId::ControlsNext) &&
+                 !cr::creativeInputActionPressed(
+                     held, cr::CreativeInputActionId::ControlsNext) &&
+                 cr::creativeInputActionDown(
+                     held, cr::CreativeInputActionId::ControlsNext) &&
+                 app::resolveCreativeEditorControlsRepeatCommand(held) ==
+                     cr::CreativeUiRepeatCommand::Next,
+             "held routed Controls state resolves without another event") &&
+         expect(
+             cr::creativeInputRouteContains(
+                 consumed, cr::CreativeInputActionId::ControlsActivate) &&
+                 cr::creativeInputActionDown(
+                     consumed,
+                     cr::CreativeInputActionId::ControlsActivate) &&
+                 cr::creativeInputKeyConsumed(
+                     consumed, cr::CreativeInputKey::ArrowDown) &&
+                 !cr::creativeInputActionDown(
+                     consumed, cr::CreativeInputActionId::ControlsNext) &&
+                 app::resolveCreativeEditorControlsRepeatCommand(consumed) ==
+                     cr::CreativeUiRepeatCommand::None,
+             "higher-priority consumption suppresses Controls repeat");
+}
+
 bool catalogOverlayFitsAndEmitsEveryCategoryTab() {
   constexpr std::array palette{cr::CreativeObjectKind::Wall,
                                cr::CreativeObjectKind::Crate};
@@ -592,6 +666,7 @@ int main() {
   ok = legacySquarePickMigratesWithoutDiscardingProfileTuning() && ok;
   ok = toolWheelPreferenceRoundTripIsAtomic() && ok;
   ok = controlsOverlayUsesTheStandardWidgetFrame() && ok;
+  ok = controlsRepeatUsesRoutedDownStateAndConsumption() && ok;
   ok = catalogOverlayFitsAndEmitsEveryCategoryTab() && ok;
   ok = assetCatalogOverlayRendersCachedThumbnailAndVariantControls() && ok;
   ok = deviceTabsPartitionBindingsAndResetOnlyViewState() && ok;

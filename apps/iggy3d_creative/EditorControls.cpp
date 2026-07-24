@@ -8,28 +8,42 @@
 #include "app/iggy3d/creative/input/UiInput.hpp"
 #include "app/platform/SdlWindow.hpp"
 
-#include <algorithm>
 #include <array>
 #include <string>
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
+
+cr::CreativeUiRepeatCommand resolveCreativeEditorControlsRepeatCommand(
+    const cr::CreativeInputRouteResult& routedInput) noexcept {
+  struct RepeatBinding {
+    cr::CreativeInputActionId action;
+    cr::CreativeUiRepeatCommand command;
+  };
+  constexpr std::array bindings{
+      RepeatBinding{cr::CreativeInputActionId::ControlsPrevious,
+                    cr::CreativeUiRepeatCommand::Previous},
+      RepeatBinding{cr::CreativeInputActionId::ControlsNext,
+                    cr::CreativeUiRepeatCommand::Next},
+      RepeatBinding{cr::CreativeInputActionId::ControlsDecrease,
+                    cr::CreativeUiRepeatCommand::Decrease},
+      RepeatBinding{cr::CreativeInputActionId::ControlsIncrease,
+                    cr::CreativeUiRepeatCommand::Increase},
+  };
+  for (const RepeatBinding& binding : bindings) {
+    if (cr::creativeInputActionDown(routedInput, binding.action)) {
+      return binding.command;
+    }
+  }
+  return cr::CreativeUiRepeatCommand::None;
+}
+
 namespace {
 
 constexpr cr::CreativeWheelProfile kControlsWheelProfile{
     cr::CreativeWheelPolarity::Reversed,
     cr::CreativeWheelStepMode::Unit,
     1.0e-4F};
-
-[[nodiscard]] bool actionPresent(
-    const cr::CreativeInputRouteResult& routedInput,
-    cr::CreativeInputActionId action) noexcept {
-  return std::any_of(
-      routedInput.actionEvents().begin(), routedInput.actionEvents().end(),
-      [action](const cr::CreativeInputActionEvent& event) {
-        return event.action == action;
-      });
-}
 
 [[nodiscard]] bool keyMatchesDevice(cr::CreativeInputKey key,
                                     cr::CreativeControlDevice device) noexcept {
@@ -212,32 +226,6 @@ void resetToolWheel(CreativeEditorState& editor,
   }
 }
 
-[[nodiscard]] cr::CreativeUiRepeatCommand heldRepeatCommand(
-    const CreativeEditorControlsFrameRequest& request) noexcept {
-  struct RepeatBinding {
-    cr::CreativeInputActionId action;
-    cr::CreativeUiRepeatCommand command;
-  };
-  constexpr std::array bindings{
-      RepeatBinding{cr::CreativeInputActionId::ControlsPrevious,
-                    cr::CreativeUiRepeatCommand::Previous},
-      RepeatBinding{cr::CreativeInputActionId::ControlsNext,
-                    cr::CreativeUiRepeatCommand::Next},
-      RepeatBinding{cr::CreativeInputActionId::ControlsDecrease,
-                    cr::CreativeUiRepeatCommand::Decrease},
-      RepeatBinding{cr::CreativeInputActionId::ControlsIncrease,
-                    cr::CreativeUiRepeatCommand::Increase},
-  };
-  for (const RepeatBinding& binding : bindings) {
-    if (cr::creativeInputActionDown(
-            request.inputFrame, binding.action,
-            request.editor.controlProfile.bindingSpan())) {
-      return binding.command;
-    }
-  }
-  return cr::CreativeUiRepeatCommand::None;
-}
-
 void applyWidgetEvent(CreativeEditorState& editor,
                       const cr::CreativeUiWidgetEvent& event,
                       CreativeEditorControlsFrameResult& result,
@@ -310,7 +298,7 @@ void processWidgetInput(const CreativeEditorControlsFrameRequest& request,
 
   const cr::CreativeUiRepeatResult repeat = cr::stepCreativeUiRepeat(
       {state.repeatState,
-       heldRepeatCommand(request),
+       resolveCreativeEditorControlsRepeatCommand(request.routedInput),
        request.monotonicTimeNanoseconds,
        request.editor.controlProfile.menuRepeatDelayMilliseconds,
        request.editor.controlProfile.menuRepeatIntervalMilliseconds});
@@ -337,7 +325,7 @@ void processWidgetInput(const CreativeEditorControlsFrameRequest& request,
         break;
     }
   }
-  input.activate = actionPresent(
+  input.activate = cr::creativeInputRouteContains(
       request.routedInput, cr::CreativeInputActionId::ControlsActivate);
 
   const iggy3d::SdlWindowEventState& events = request.window.eventState();
@@ -385,8 +373,8 @@ CreativeEditorControlsFrameResult processCreativeEditorControlsFrame(
   CreativeEditorControlsState& state = request.editor.controls;
   const bool wasOpen = state.open;
   if (!state.open &&
-      actionPresent(request.routedInput,
-                    cr::CreativeInputActionId::ToggleControls)) {
+      cr::creativeInputRouteContains(
+          request.routedInput, cr::CreativeInputActionId::ToggleControls)) {
     state.open = true;
     state.statusLabel.clear();
     state.repeatState = {};
@@ -398,13 +386,14 @@ CreativeEditorControlsFrameResult processCreativeEditorControlsFrame(
       state.repeatState = {};
       processCapture(request, result);
     } else {
-      if (actionPresent(request.routedInput,
-                        cr::CreativeInputActionId::ControlsClose)) {
+      if (cr::creativeInputRouteContains(
+              request.routedInput,
+              cr::CreativeInputActionId::ControlsClose)) {
         state.open = false;
         state.repeatState = {};
       }
       if (state.open) {
-        if (actionPresent(
+        if (cr::creativeInputRouteContains(
                 request.routedInput,
                 cr::CreativeInputActionId::ControlsResetDefaults)) {
           resetDefaults(request.editor, result, request.settingsPath);
