@@ -42,7 +42,7 @@ struct SaveFileWriteResult {
 struct SaveFileReadResult {
   bool ok = false;
   std::string reason = "not_requested";
-  std::string encodedText;
+  SaveEnvelope envelope;
   SaveFileRecord record;
   SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
 };

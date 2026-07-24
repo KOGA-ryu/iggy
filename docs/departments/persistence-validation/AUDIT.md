@@ -37,7 +37,7 @@ branching and the actual app call sites.
 | PER-A1-013 | World Layout codec and envelope transport | Canonical Owner | Source bytes are versioned, bounded, migrated from version 1, stored in the same durable envelope, rejected on corruption/future versions, and guarded against unsynchronized save | Keep | P0 |
 | PER-A1-014 | Map diagnostic model and descriptor table | Canonical Owner | Every code has stable severity/code/object/fact data plus one tested area/title/remediation descriptor; the panel can focus valid object ids and reports truncation explicitly | Keep | P0 |
 | PER-A1-015 | Creative document field coverage | Canonical Owner | Section build/restore covers all currently active `CreativeDocument` durable stores and resets loaded revision/dirty state; focused tests cover current and legacy object, terrain, recipe, annotation, and source records | Keep | P0 |
-| PER-A1-016 | `readSaveFile` decode ownership | Duplicate Implementation | `readSaveFile` decodes for validation, then each SaveBridge load/identity path decodes the same bytes again because the read result does not expose the decoded envelope | Consolidate | P2 |
+| PER-A1-016 | `readSaveFile` decode ownership | Canonical Owner | `readSaveFile` owns one decode, builds its record from that envelope, and returns the same envelope to catalog, identity, Creative load, and list consumers | Keep | P2 |
 | PER-A1-017 | Controls persistence ownership | Ownership Undecided | `EditorControlsPersistence.cpp` is assigned here but owns input profile and playtest-window preferences; its behavioral owner is Interaction and Controls | Move | P2 |
 | PER-A1-018 | Validation panel ownership | Ownership Undecided | The validation kernel and descriptor model are durable diagnostic contracts; `EditorMapValidationPanel.*` is an ImGui renderer and belongs to Editor Shell and Drafting UI | Move | P2 |
 | PER-A1-019 | Package/import validation claim | Legacy Reachable | No package validator exists in the current Creative-only checkout. Static-mesh reference/collision/metadata checks are map validation; importer/catalog validation belongs to Assets and Object Composition | Move | P1 |
@@ -114,3 +114,14 @@ PER-001 implementation evidence recorded on 2026-07-23.
   undo/redo preservation, undo-away/redo-back cleanliness, alternate-branch
   revision alias rejection, desktop/keyboard parity, and all prior
   save/load/source/diagnostic tests.
+
+PER-A1-016 implementation evidence recorded on 2026-07-24.
+
+- `SaveFileReadResult` exposes the successful `SaveEnvelope`; encoded file bytes
+  remain local to `readSaveFile`, which decodes once and builds the record before
+  moving that same envelope into the result.
+- Catalog projection, existing-save identity, and Creative load consume the
+  returned envelope. `listSaveFiles` continues to consume the record from the
+  same read result.
+- The focused 4/4 save gate passes, including direct envelope field coverage and
+  the existing malformed-input decode reason and codec status.

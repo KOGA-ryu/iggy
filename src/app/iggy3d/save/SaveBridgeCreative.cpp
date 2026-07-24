@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "app/iggy3d/save/SaveBridgeInternal.hpp"
-#include "runtime/save/SaveCodec.hpp"
 
 namespace iggy3d {
 namespace {
@@ -183,25 +182,17 @@ ProductCreativeSaveLoadResult loadCreativeDocumentSave(
 
   result.fileRead = true;
   result.record = read.record;
-  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
-  result.codecStatus = decoded.status;
-  if (decoded.status != SaveCodecStatus::Ok) {
-    result.status = "creative_save_decode_failed";
-    result.reasonCode = "creative_save_decode_failed";
-    return result;
-  }
-
   result.decoded = true;
-  mirrorCreativeMetadata(result, decoded.envelope);
+  mirrorCreativeMetadata(result, read.envelope);
   result.creativeWorldLayoutPresent =
-      decoded.envelope.creativeWorldLayout.present;
+      read.envelope.creativeWorldLayout.present;
   result.creativeWorldLayoutVersion =
-      decoded.envelope.creativeWorldLayout.version;
+      read.envelope.creativeWorldLayout.version;
   result.creativeWorldLayoutEncoded =
-      decoded.envelope.creativeWorldLayout.encodedText;
+      read.envelope.creativeWorldLayout.encodedText;
 
   const ProductCreativeDocumentSectionRestoreResult restored =
-      restoreCreativeDocumentFromSaveSection(decoded.envelope.creativeDocument);
+      restoreCreativeDocumentFromSaveSection(read.envelope.creativeDocument);
   mirrorCreativeSectionReceipt(result, restored.receipt);
   if (!restored.receipt.accepted) {
     const std::string reason{restored.receipt.reasonCode};

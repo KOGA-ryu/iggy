@@ -1,6 +1,5 @@
 #include "app/iggy3d/save/SaveBridgeInternal.hpp"
 
-#include "runtime/save/SaveCodec.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 
 namespace iggy3d::save_bridge_internal {
@@ -20,17 +19,14 @@ ExistingSaveIdentity readExistingSaveIdentity(const std::filesystem::path& root,
   if (!read.ok) {
     return existing;
   }
-  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
-  if (decoded.status != SaveCodecStatus::Ok) {
-    return existing;
-  }
+  const SaveEnvelope& envelope = read.envelope;
   existing.found = true;
-  existing.worldId = decoded.envelope.metadata.worldId;
-  existing.worldTitle = decoded.envelope.metadata.worldTitle;
-  existing.saveTitle = decoded.envelope.metadata.saveTitle;
-  existing.saveType = decoded.envelope.metadata.saveType;
-  existing.createdAtUtc = decoded.envelope.metadata.createdAtUtc;
-  existing.savedAtUtc = decoded.envelope.metadata.savedAtUtc;
+  existing.worldId = envelope.metadata.worldId;
+  existing.worldTitle = envelope.metadata.worldTitle;
+  existing.saveTitle = envelope.metadata.saveTitle;
+  existing.saveType = envelope.metadata.saveType;
+  existing.createdAtUtc = envelope.metadata.createdAtUtc;
+  existing.savedAtUtc = envelope.metadata.savedAtUtc;
   return existing;
 }
 

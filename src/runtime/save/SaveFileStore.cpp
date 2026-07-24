@@ -6,6 +6,7 @@
 #include <iterator>
 #include <sstream>
 #include <string_view>
+#include <utility>
 
 #if defined(_WIN32)
 #include <io.h>
@@ -769,12 +770,12 @@ SaveFileDurableWriteResult writeSaveEnvelopeFileDurably(
 
 SaveFileReadResult readSaveFile(const std::filesystem::path& path) {
   SaveFileReadResult result;
-  result.encodedText = readWholeFile(path);
-  if (result.encodedText.empty()) {
+  const std::string encodedText = readWholeFile(path);
+  if (encodedText.empty()) {
     result.reason = "save_file_read_failed";
     return result;
   }
-  const SaveDecodeResult decoded = decodeSaveEnvelope(result.encodedText);
+  SaveDecodeResult decoded = decodeSaveEnvelope(encodedText);
   result.codecStatus = decoded.status;
   if (decoded.status != SaveCodecStatus::Ok) {
     result.reason = "save_file_decode_failed";
@@ -783,6 +784,7 @@ SaveFileReadResult readSaveFile(const std::filesystem::path& path) {
   result.ok = true;
   result.reason = "save_file_read";
   result.record = recordFromEnvelope(path, decoded.envelope);
+  result.envelope = std::move(decoded.envelope);
   return result;
 }
 

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "app/iggy3d/save/CatalogProjector.hpp"
-#include "runtime/save/SaveCodec.hpp"
 
 namespace iggy3d {
 namespace {
@@ -113,44 +112,34 @@ ProductSaveCatalogEntry catalogEntryForSavePath(
     return entry;
   }
 
-  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
+  const SaveEnvelope& envelope = read.envelope;
+  entry.packageId = envelope.metadata.packageId;
+  entry.scenarioId = envelope.metadata.scenarioId;
+  entry.currentTick = envelope.session.currentTick;
+  entry.savedStateHashHex = envelope.metadata.savedStateHashHex;
+  entry.worldId = envelope.metadata.worldId;
+  entry.worldTitle = envelope.metadata.worldTitle;
+  entry.saveTitle = envelope.metadata.saveTitle;
+  entry.saveType = envelope.metadata.saveType;
+  entry.createdAtUtc = envelope.metadata.createdAtUtc;
   // branch-gate: BG-1218
-  if (decoded.status != SaveCodecStatus::Ok) {
-    entry.corrupt = true;
-    entry.compatible = false;
-    entry.loadable = false;
-    entry.recoverable = false;
-    entry.disabledReason = "save_file_decode_failed";
-    return entry;
-  }
-
-  entry.packageId = decoded.envelope.metadata.packageId;
-  entry.scenarioId = decoded.envelope.metadata.scenarioId;
-  entry.currentTick = decoded.envelope.session.currentTick;
-  entry.savedStateHashHex = decoded.envelope.metadata.savedStateHashHex;
-  entry.worldId = decoded.envelope.metadata.worldId;
-  entry.worldTitle = decoded.envelope.metadata.worldTitle;
-  entry.saveTitle = decoded.envelope.metadata.saveTitle;
-  entry.saveType = decoded.envelope.metadata.saveType;
-  entry.createdAtUtc = decoded.envelope.metadata.createdAtUtc;
-  // branch-gate: BG-1218
-  if (!decoded.envelope.metadata.savedAtUtc.empty()) {
-    entry.savedAtUtc = decoded.envelope.metadata.savedAtUtc;
+  if (!envelope.metadata.savedAtUtc.empty()) {
+    entry.savedAtUtc = envelope.metadata.savedAtUtc;
   }
   entry.authoredFloorCount =
-      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.floors.size());
+      static_cast<std::uint64_t>(envelope.authoredRoom.floors.size());
   entry.authoredWallCount =
-      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.walls.size());
+      static_cast<std::uint64_t>(envelope.authoredRoom.walls.size());
   entry.authoredObjectCount =
-      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.objects.size());
+      static_cast<std::uint64_t>(envelope.authoredRoom.objects.size());
   entry.authoredMarkerCount =
-      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.markers.size());
-  entry.contentKind = decoded.envelope.creativeDocument.present
+      static_cast<std::uint64_t>(envelope.authoredRoom.markers.size());
+  entry.contentKind = envelope.creativeDocument.present
                           ? ProductSaveContentKind::CreativeDocument
                           : ProductSaveContentKind::ProductSession;
-  if (decoded.envelope.creativeDocument.present) {
+  if (envelope.creativeDocument.present) {
     const SaveCreativeDocumentSection& creative =
-        decoded.envelope.creativeDocument;
+        envelope.creativeDocument;
     entry.creativeDocumentPresent = true;
     entry.creativeDocumentId = creative.documentId;
     entry.creativeObjectCount =

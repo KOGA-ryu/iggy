@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string_view>
 #include <utility>
@@ -531,6 +532,83 @@ bool openProductSessionSaveRejectsMissingCreativeSection() {
                 "product section receipt status");
 }
 
+bool readSaveFileReturnsEnvelopeAndPreservesMalformedDecodeFailure() {
+  const std::filesystem::path root = testRoot();
+  cr::CreativeWorldLayout worldLayout;
+  worldLayout.stableKey = "decoded_envelope_layout";
+  iggy3d::CreativeWorldCreateRequest request =
+      createRequest(root, "Decoded Envelope");
+  request.worldLayout = &worldLayout;
+  const iggy3d::CreativeWorldCreateResult created =
+      iggy3d::createCreativeWorld(request);
+  const iggy3d::SaveFileReadResult read =
+      iggy3d::readSaveFile(created.path);
+
+  const std::filesystem::path malformedPath =
+      root / "malformed.iggy3d.save";
+  std::ofstream malformedOutput(malformedPath);
+  malformedOutput << "malformed save\n";
+  malformedOutput.close();
+  const iggy3d::SaveFileReadResult malformed =
+      iggy3d::readSaveFile(malformedPath);
+
+  return expect(created.accepted, "read envelope setup created") &&
+         expect(read.ok, "read envelope accepted") &&
+         expect(read.reason == "save_file_read", "read envelope reason") &&
+         expect(read.codecStatus == iggy3d::SaveCodecStatus::Ok,
+                "read envelope codec status") &&
+         expect(read.envelope.metadata.saveId == created.saveId,
+                "read envelope save id") &&
+         expect(read.envelope.metadata.packageId == "iggy3d.creative",
+                "read envelope package id") &&
+         expect(read.envelope.metadata.scenarioId == "creative.document",
+                "read envelope scenario id") &&
+         expect(read.envelope.metadata.worldId == created.worldId,
+                "read envelope world id") &&
+         expect(read.envelope.metadata.worldTitle == "Decoded Envelope",
+                "read envelope world title") &&
+         expect(read.envelope.metadata.saveTitle == "Decoded Envelope",
+                "read envelope save title") &&
+         expect(read.envelope.metadata.saveType == "creative",
+                "read envelope save type") &&
+         expect(read.envelope.metadata.createdAtUtc ==
+                    "2026-07-03T10:00:00Z",
+                "read envelope created time") &&
+         expect(read.envelope.metadata.savedAtUtc ==
+                    "2026-07-03T10:00:00Z",
+                "read envelope saved time") &&
+         expect(read.envelope.session.currentTick == read.record.currentTick,
+                "read envelope session tick") &&
+         expect(read.envelope.metadata.savedStateHashHex ==
+                    read.record.savedStateHashHex,
+                "read envelope state hash") &&
+         expect(read.envelope.creativeDocument.present,
+                "read envelope creative document present") &&
+         expect(read.envelope.creativeDocument.documentId ==
+                    created.documentId,
+                "read envelope creative document id") &&
+         expect(read.envelope.creativeDocument.name == "Decoded Envelope",
+                "read envelope creative document name") &&
+         expect(read.envelope.creativeWorldLayout.present,
+                "read envelope world layout present") &&
+         expect(read.envelope.creativeWorldLayout.version ==
+                    cr::kCreativeWorldLayoutCodecVersion,
+                "read envelope world layout version") &&
+         expect(!read.envelope.creativeWorldLayout.encodedText.empty(),
+                "read envelope world layout bytes") &&
+         expect(read.record.path == created.path, "read envelope record path") &&
+         expect(read.record.packageId == read.envelope.metadata.packageId,
+                "read envelope record package") &&
+         expect(read.record.scenarioId == read.envelope.metadata.scenarioId,
+                "read envelope record scenario") &&
+         expect(!malformed.ok, "malformed read rejected") &&
+         expect(malformed.reason == "save_file_decode_failed",
+                "malformed read reason") &&
+         expect(malformed.codecStatus ==
+                    iggy3d::SaveCodecStatus::UnsupportedVersion,
+                "malformed read codec status");
+}
+
 }  // namespace
 
 int main() {
@@ -546,6 +624,7 @@ int main() {
       invalidAttemptTokenFailsAfterDocumentCreationWithoutCommittedSave() &&
       documentIdMintUsesActiveAndDeletedCreativeSaves() &&
       openMissingAndInvalidSaveIdsRejectBeforeLoad() &&
-      openProductSessionSaveRejectsMissingCreativeSection();
+      openProductSessionSaveRejectsMissingCreativeSection() &&
+      readSaveFileReturnsEnvelopeAndPreservesMalformedDecodeFailure();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
