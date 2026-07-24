@@ -1,7 +1,8 @@
 #include "EditorEdits.hpp"
 
 #include "EditorAttachmentPlacement.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 
 #include <SDL3/SDL_log.h>

@@ -7,7 +7,7 @@
 
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"

@@ -1,5 +1,6 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorDesktopWidgets.hpp"
+#include "EditorWorldLayoutPlan.hpp"
 
 #include <algorithm>
 #include <cstdint>

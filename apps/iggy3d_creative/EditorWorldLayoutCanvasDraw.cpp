@@ -2,7 +2,11 @@
 
 #include "EditorDesktopModel.hpp"
 #include "EditorMeasurement.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 #include "EditorWorldLayoutInternal.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
 #include "EditorWorldLayoutPlanDraw.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
 #include "EditorWorldLayoutTopography.hpp"

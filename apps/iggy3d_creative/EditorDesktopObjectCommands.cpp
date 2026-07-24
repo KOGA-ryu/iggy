@@ -7,7 +7,8 @@
 #include "EditorObjectActionExecutor.hpp"
 #include "EditorObjectActions.hpp"
 #include "EditorPathEditing.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 
 #include <span>
 #include <string>

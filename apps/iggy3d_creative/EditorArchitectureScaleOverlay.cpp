@@ -1,7 +1,7 @@
 #include "EditorOverlayWireframesInternal.hpp"
 
 #include "EditorState.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 
 #include <algorithm>

@@ -27,7 +27,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorTerrainStampLibrary.hpp"
 #include "EditorToolDescriptor.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 
 namespace iggy3d_creative_app {
 

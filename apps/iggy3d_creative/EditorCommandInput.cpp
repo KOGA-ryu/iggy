@@ -21,7 +21,7 @@
 #include "EditorToolOptions.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 
 namespace iggy3d_creative_app {
 

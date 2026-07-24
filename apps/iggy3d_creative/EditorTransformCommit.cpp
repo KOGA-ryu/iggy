@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "EditorEdits.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"

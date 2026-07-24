@@ -1,5 +1,8 @@
 #include "EditorDesktopWidgets.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
 
 #include "EditorDesktopModel.hpp"
 #include "EditorDesktopWorldLayoutInspector.hpp"

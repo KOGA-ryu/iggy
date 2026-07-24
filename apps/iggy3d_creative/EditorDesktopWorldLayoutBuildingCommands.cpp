@@ -1,6 +1,8 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include "EditorWorldLayoutBuildings.hpp"
 #include "EditorWorldLayoutRoofs.hpp"
+#include "EditorWorldLayoutSources.hpp"
 
 #include <span>
 #include <string_view>

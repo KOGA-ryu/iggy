@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutHistory.hpp"
 
 #include "EditorEdits.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 
 #include <optional>

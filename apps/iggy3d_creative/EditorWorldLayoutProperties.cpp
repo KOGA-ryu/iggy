@@ -1,4 +1,5 @@
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 
 #include "EditorWorldLayoutInternal.hpp"
 

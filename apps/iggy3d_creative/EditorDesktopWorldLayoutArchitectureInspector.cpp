@@ -1,6 +1,7 @@
 #include "EditorDesktopWorldLayoutArchitectureInspector.hpp"
 
 #include "EditorDesktopUi.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 

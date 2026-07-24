@@ -66,7 +66,8 @@
 #include "EditorTransform.hpp"
 #include "EditorTransformFrame.hpp"
 #include "EditorVolume.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 
 namespace {
 

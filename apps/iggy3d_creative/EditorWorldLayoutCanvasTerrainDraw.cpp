@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "EditorDraftingStyle.hpp"
 #include "EditorPlayerSpawnPreview.hpp"
 #include "EditorWorldLayoutTopography.hpp"

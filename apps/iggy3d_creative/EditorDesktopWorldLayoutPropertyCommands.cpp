@@ -1,5 +1,10 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutSources.hpp"
+
 #include <type_traits>
 #include <variant>
 

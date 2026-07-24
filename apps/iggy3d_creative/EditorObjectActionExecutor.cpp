@@ -4,7 +4,8 @@
 #include <utility>
 
 #include "EditorEdits.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 

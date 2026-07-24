@@ -7,6 +7,8 @@
 #include "EditorMeasurement.hpp"
 #include "EditorWorldLayoutElevationPanel.hpp"
 #include "EditorWorldLayoutHierarchyPanel.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"

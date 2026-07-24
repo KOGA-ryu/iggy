@@ -28,7 +28,7 @@
 #include "EditorGamepad.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorState.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 #include "app/iggy3d/creative/input/InputRouter.hpp"
 #include "app/iggy3d/creative/play/PlaySession.hpp"
 #include "app/iggy3d/creative/play/PlaytestEventProtocol.hpp"

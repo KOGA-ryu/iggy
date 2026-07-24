@@ -1,4 +1,7 @@
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
 
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutInternal.hpp"

@@ -3,6 +3,8 @@
 #include "EditorDesktopUi.hpp"
 #include "EditorDesktopWidgets.hpp"
 #include "EditorDesktopWorldLayoutArchitectureInspector.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutDimensions.hpp"
 

@@ -2,7 +2,7 @@
 
 #include "EditorDesktopCommands.hpp"
 #include "EditorDesktopUi.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutSources.hpp"
 
 #include <cstddef>
 #include <cstdio>

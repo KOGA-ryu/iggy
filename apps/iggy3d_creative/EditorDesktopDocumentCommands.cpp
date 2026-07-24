@@ -3,7 +3,8 @@
 #include "EditorEdits.hpp"
 #include "EditorFrame.hpp"
 #include "EditorPersistence.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 
 #include "app/iggy3d/creative/history/History.hpp"

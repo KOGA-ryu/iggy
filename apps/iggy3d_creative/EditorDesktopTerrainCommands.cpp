@@ -4,7 +4,7 @@
 #include "EditorTerrainGeneration.hpp"
 #include "EditorTerrainStampLibrary.hpp"
 #include "EditorTransform.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 
 #include <string>
 #include <string_view>

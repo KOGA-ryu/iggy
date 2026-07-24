@@ -12,7 +12,7 @@
 #include "EditorDesktopModel.hpp"
 #include "EditorMeasurement.hpp"
 #include "EditorObjectActions.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/play/NpcSpawn.hpp"

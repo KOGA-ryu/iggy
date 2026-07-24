@@ -1,7 +1,8 @@
 #include "EditorWorldLayoutCanvasInternal.hpp"
 
 #include "EditorToolDescriptor.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutSources.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
 
 #include <algorithm>
 #include <array>

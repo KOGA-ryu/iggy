@@ -1,5 +1,7 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include "EditorWorldLayoutPlan.hpp"
+
 namespace iggy3d_creative_app {
 
 namespace creative = iggy3d::creative;

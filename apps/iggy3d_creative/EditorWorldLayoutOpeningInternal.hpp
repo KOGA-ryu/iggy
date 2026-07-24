@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutContracts.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutOpenings.hpp"
 

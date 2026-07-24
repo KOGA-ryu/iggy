@@ -20,7 +20,7 @@
 #include "EditorPlacementFeedback.hpp"
 #include "EditorToolGlyphs.hpp"
 #include "EditorUiInput.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "EditorWorldLayoutPanel.hpp"
 #include "app/iggy3d/creative/history/History.hpp"

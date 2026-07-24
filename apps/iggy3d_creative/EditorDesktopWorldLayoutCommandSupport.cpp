@@ -1,6 +1,9 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
 #include "EditorDesktopModel.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutSources.hpp"
 
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutProvenance.hpp"

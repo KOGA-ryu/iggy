@@ -17,7 +17,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorGamepad.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 namespace iggy3d_creative_app {
 

@@ -2,7 +2,7 @@
 
 #include "EditorTerrainGeneration.hpp"
 #include "EditorTerrainStampLibrary.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 #include "app/iggy3d/creative/tools/RecipeTransform.hpp"
 
 #include <algorithm>

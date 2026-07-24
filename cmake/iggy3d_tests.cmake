@@ -496,6 +496,11 @@ iggy3d_add_unit_test(creative_object_action_boundary_tests
 set_tests_properties(creative_object_action_boundary_tests PROPERTIES
   LABELS "unit;app;creative;editor;action;admission;boundary;iggy3d")
 
+iggy3d_add_unit_test(creative_world_layout_contract_boundary_tests
+  tests/unit/creative_world_layout_contract_boundary_tests.cpp)
+set_tests_properties(creative_world_layout_contract_boundary_tests PROPERTIES
+  LABELS "unit;app;creative;editor;world-layout;contract;boundary;iggy3d")
+
 iggy3d_add_unit_test(creative_edit_transaction_boundary_tests
   tests/unit/creative_edit_transaction_boundary_tests.cpp)
 set_tests_properties(creative_edit_transaction_boundary_tests PROPERTIES

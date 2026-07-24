@@ -1,6 +1,7 @@
 #include "EditorWorldLayoutPlanView.hpp"
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "EditorWorldLayoutTopography.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"

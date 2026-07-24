@@ -1,7 +1,8 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
 #include "EditorDesktopWidgets.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutOpenings.hpp"
 #include "EditorWorldLayoutInternal.hpp"
 
 #include <algorithm>

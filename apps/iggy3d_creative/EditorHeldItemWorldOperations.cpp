@@ -22,7 +22,7 @@
 #include "EditorTerrain.hpp"
 #include "EditorTransform.hpp"
 #include "EditorVolume.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutSources.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
 #include "app/iggy3d/creative/input/WorldActionIntent.hpp"

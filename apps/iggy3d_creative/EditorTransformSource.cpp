@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"
 #include "app/iggy3d/creative/document/Hierarchy.hpp"

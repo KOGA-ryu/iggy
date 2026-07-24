@@ -3,7 +3,9 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorDesktopWidgets.hpp"
 #include "EditorToolDescriptor.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutSources.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 
 #include "EditorDesktopModel.hpp"
 

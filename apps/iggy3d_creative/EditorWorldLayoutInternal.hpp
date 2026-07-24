@@ -7,7 +7,7 @@
 #include <string_view>
 #include <utility>
 
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutContracts.hpp"
 
 namespace iggy3d_creative_app::detail {
 

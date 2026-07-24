@@ -1,5 +1,7 @@
 #include "EditorDesktopWorldLayoutInspector.hpp"
 #include "EditorDesktopWidgets.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
 
 #include <algorithm>
 #include <array>

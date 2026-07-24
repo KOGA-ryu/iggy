@@ -1,5 +1,8 @@
 #include "EditorWorldLayoutRoofs.hpp"
 
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>

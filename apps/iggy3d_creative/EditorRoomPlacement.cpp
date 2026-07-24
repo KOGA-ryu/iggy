@@ -12,7 +12,7 @@
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorState.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 #include "EditorWorldLayoutHistory.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Geometry.hpp"

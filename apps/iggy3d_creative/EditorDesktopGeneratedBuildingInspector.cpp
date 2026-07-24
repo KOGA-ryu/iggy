@@ -1,5 +1,6 @@
 #include "EditorDesktopWidgets.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutBuildings.hpp"
 
 #include <cstdint>
 #include <string>

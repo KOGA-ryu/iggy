@@ -1,5 +1,9 @@
 #include "EditorDesktopWorldLayoutCommandsInternal.hpp"
 
+#include "EditorWorldLayoutBuildings.hpp"
+#include "EditorWorldLayoutPlan.hpp"
+#include "EditorWorldLayoutSources.hpp"
+
 #include "EditorDesktopModel.hpp"
 
 #include <span>

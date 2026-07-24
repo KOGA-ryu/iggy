@@ -1,7 +1,7 @@
 #include "EditorWorldLayoutPanelInternal.hpp"
 
 #include "EditorToolDescriptor.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutState.hpp"
 
 #include <algorithm>
 #include <array>

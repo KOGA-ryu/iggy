@@ -5,6 +5,8 @@
 #include <utility>
 
 #include "EditorTransform.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
+#include "EditorWorldLayoutPlan.hpp"
 
 #include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutVerticalConnectors.hpp"

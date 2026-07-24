@@ -1,7 +1,7 @@
 #pragma once
 
 #include "EditorDesktopCommandsInternal.hpp"
-#include "EditorWorldLayout.hpp"
+#include "EditorWorldLayoutLifecycle.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayout.hpp"
 
