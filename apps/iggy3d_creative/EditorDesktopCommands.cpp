@@ -163,8 +163,10 @@ void dispatchOne(const CreativeDesktopCommand& command,
                                                          result) ||
       dispatchCreativeDesktopWorldLayoutPlanCommand(command, context,
                                                      result) ||
-      dispatchCreativeDesktopWorldLayoutStructureCommand(command, context,
-                                                          result) ||
+      dispatchCreativeDesktopWorldLayoutElementCommand(command, context,
+                                                        result) ||
+      dispatchCreativeDesktopWorldLayoutWallOpeningCommand(command, context,
+                                                            result) ||
       dispatchCreativeDesktopWorldLayoutLifecycleCommand(command, context,
                                                           result) ||
       dispatchCreativeDesktopPlayCommand(command, context, result)) {

@@ -285,7 +285,12 @@ bool dispatchCreativeDesktopWorldLayoutPlanCommand(
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);
 
-bool dispatchCreativeDesktopWorldLayoutStructureCommand(
+bool dispatchCreativeDesktopWorldLayoutElementCommand(
+    const CreativeDesktopCommand& command,
+    const CreativeDesktopCommandContext& context,
+    CreativeDesktopCommandResult& result);
+
+bool dispatchCreativeDesktopWorldLayoutWallOpeningCommand(
     const CreativeDesktopCommand& command,
     const CreativeDesktopCommandContext& context,
     CreativeDesktopCommandResult& result);

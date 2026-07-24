@@ -82,7 +82,8 @@ apps/iggy3d_creative/EditorDesktopWorldLayoutPlanCommands.cpp	building-layout
 apps/iggy3d_creative/EditorDesktopWorldLayoutPropertyCommands.cpp	building-layout
 apps/iggy3d_creative/EditorDesktopWorldLayoutSourceCommands.cpp	building-layout
 apps/iggy3d_creative/EditorDesktopWorldLayoutSourceInspector.cpp	building-layout
-apps/iggy3d_creative/EditorDesktopWorldLayoutStructureCommands.cpp	building-layout
+apps/iggy3d_creative/EditorDesktopWorldLayoutElementCommands.cpp	building-layout
+apps/iggy3d_creative/EditorDesktopWorldLayoutWallOpeningCommands.cpp	building-layout
 apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp	building-layout
 apps/iggy3d_creative/EditorDraftingStyle.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDraftingStyle.hpp	editor-shell-ui
