@@ -8,6 +8,11 @@ apps/iggy3d_creative/EditorActionHints.cpp	interaction-controls
 apps/iggy3d_creative/EditorActionHints.hpp	interaction-controls
 apps/iggy3d_creative/EditorArchitectureScaleOverlay.cpp	rendering-preview
 apps/iggy3d_creative/EditorAssetLibrary.cpp	assets-objects
+apps/iggy3d_creative/EditorAppFramePhases.hpp	interaction-controls
+apps/iggy3d_creative/EditorAppInputPhase.cpp	interaction-controls
+apps/iggy3d_creative/EditorAppPreviewPhase.cpp	interaction-controls
+apps/iggy3d_creative/EditorAppRenderPhase.cpp	interaction-controls
+apps/iggy3d_creative/EditorAppToolPhase.cpp	interaction-controls
 apps/iggy3d_creative/EditorAssetLibrary.hpp	assets-objects
 apps/iggy3d_creative/EditorAssetLibraryFrame.cpp	assets-objects
 apps/iggy3d_creative/EditorAssetLibraryOverlay.cpp	assets-objects
@@ -1328,6 +1333,7 @@ tests/unit/creative_desktop_world_layout_structure_command_tests.cpp	editor-shel
 tests/unit/creative_desktop_world_layout_tool_command_tests.cpp	editor-shell-ui
 tests/unit/creative_edit_transaction_boundary_tests.cpp	interaction-controls
 tests/unit/creative_editor_edits_ownership_tests.cpp	interaction-controls
+tests/unit/creative_editor_app_frame_phase_tests.cpp	interaction-controls
 tests/unit/creative_edit_transaction_tests.cpp	interaction-controls
 tests/unit/creative_document_create_tests.cpp	authoring-core
 tests/unit/creative_document_dirty_tests.cpp	authoring-core

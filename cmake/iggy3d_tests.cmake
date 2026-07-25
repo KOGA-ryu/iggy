@@ -522,6 +522,11 @@ iggy3d_add_unit_test(creative_editor_edits_ownership_tests
 set_tests_properties(creative_editor_edits_ownership_tests PROPERTIES
   LABELS "unit;app;creative;editor;ownership;boundary;iggy3d")
 
+iggy3d_add_unit_test(creative_editor_app_frame_phase_tests
+  tests/unit/creative_editor_app_frame_phase_tests.cpp)
+set_tests_properties(creative_editor_app_frame_phase_tests PROPERTIES
+  LABELS "unit;app;creative;editor;frame;ordering;boundary;iggy3d")
+
 add_executable(creative_edit_transaction_tests
   tests/unit/creative_edit_transaction_tests.cpp)
 target_link_libraries(creative_edit_transaction_tests PRIVATE
