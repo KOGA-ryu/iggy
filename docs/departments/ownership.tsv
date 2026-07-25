@@ -237,9 +237,13 @@ apps/iggy3d_creative/EditorWorldLayoutDiagnostics.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutDraftingControls.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutDraftingModel.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutElevation.hpp	building-layout
+apps/iggy3d_creative/EditorWorldLayoutElevationDraw.cpp	building-layout
+apps/iggy3d_creative/EditorWorldLayoutElevationDrawInternal.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutElevationEditing.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutElevationPanel.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutElevationPanel.hpp	building-layout
+apps/iggy3d_creative/EditorWorldLayoutElevationPlanner.cpp	building-layout
+apps/iggy3d_creative/EditorWorldLayoutElevationPlanner.hpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutElevationProjection.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutGeneratedSettings.cpp	building-layout
 apps/iggy3d_creative/EditorWorldLayoutGroups.cpp	building-layout
@@ -1326,6 +1330,7 @@ tests/unit/creative_editor_terrain_tests.cpp	terrain-site
 tests/unit/creative_editor_tool_glyph_tests.cpp	editor-shell-ui
 tests/unit/creative_editor_toolbox_tests.cpp	editor-shell-ui
 tests/unit/creative_editor_world_layout_canvas_planner_tests.cpp	building-layout
+tests/unit/creative_editor_world_layout_elevation_planner_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_level_operations_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_plan_view_tests.cpp	building-layout
 tests/unit/creative_editor_world_layout_room_operations_tests.cpp	building-layout
