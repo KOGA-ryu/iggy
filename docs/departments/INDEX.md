@@ -11,7 +11,7 @@ This is the operational dashboard for the Creative-only repository. Maturity des
 | 3 | P0 | [Interaction and Controls](interaction-controls/DEPARTMENT.md) | [Not Started](interaction-controls/AUDIT.md) | 131 | 106 | 24 | 7 | 2 | 1 | 0 | 0 |
 | 4 | P1 | [Building and World Layout](building-layout/DEPARTMENT.md) | [Not Started](building-layout/AUDIT.md) | 234 | 187 | 47 | 10 | 2 | 1 | 0 | 0 |
 | 5 | P1 | [Assets and Object Composition](assets-objects/DEPARTMENT.md) | [Not Started](assets-objects/AUDIT.md) | 447 | 124 | 25 | 7 | 3 | 1 | 0 | 0 |
-| 6 | P1 | [Rendering and Preview](rendering-preview/DEPARTMENT.md) | [Not Started](rendering-preview/AUDIT.md) | 146 | 107 | 33 | 6 | 2 | 1 | 0 | 0 |
+| 6 | P1 | [Rendering and Preview](rendering-preview/DEPARTMENT.md) | [Not Started](rendering-preview/AUDIT.md) | 152 | 112 | 34 | 6 | 2 | 1 | 0 | 0 |
 | 7 | P1 | [Terrain and Site](terrain-site/DEPARTMENT.md) | [Not Started](terrain-site/AUDIT.md) | 107 | 83 | 22 | 10 | 1 | 1 | 0 | 0 |
 | 8 | P2 | [Editor Shell and Drafting UI](editor-shell-ui/DEPARTMENT.md) | [Not Started](editor-shell-ui/AUDIT.md) | 56 | 33 | 16 | 5 | 3 | 1 | 0 | 0 |
 | 9 | P2 | [Playtest and Simulation](playtest-simulation/DEPARTMENT.md) | [Not Started](playtest-simulation/AUDIT.md) | 209 | 147 | 53 | 6 | 2 | 0 | 0 | 0 |

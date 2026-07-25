@@ -495,6 +495,10 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorArchitectureScaleOverlay.cpp
   apps/iggy3d_creative/EditorOverlayHud.cpp
+  apps/iggy3d_creative/EditorOverlayDocumentAssembler.cpp
+  apps/iggy3d_creative/EditorOverlayPlacementAssembler.cpp
+  apps/iggy3d_creative/EditorOverlayRelationshipsAssembler.cpp
+  apps/iggy3d_creative/EditorOverlayWorldAssembler.cpp
   apps/iggy3d_creative/EditorOverlayWireframes.cpp
   apps/iggy3d_creative/EditorBrushWireframes.cpp
   apps/iggy3d_creative/EditorVolumeWireframes.cpp

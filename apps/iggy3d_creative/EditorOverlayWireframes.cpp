@@ -1,46 +1,24 @@
 #include "EditorPreviewFrame.hpp"
 #include "EditorPreviewFrameInternal.hpp"
+#include "EditorOverlayAssemblersInternal.hpp"
 #include "EditorOverlayWireframesInternal.hpp"
 
 #include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstdint>
 #include <vector>
 
-#include "EditorFrame.hpp"
 #include "EditorAssetReplacement.hpp"
 #include "EditorAssetScatter.hpp"
-#include "EditorDesktopModel.hpp"
-#include "EditorGizmo.hpp"
-#include "EditorGroup.hpp"
-#include "EditorInteraction.hpp"
-#include "app/iggy3d/creative/overlay/LogicLinkOverlay.hpp"
-#include "EditorPathEditing.hpp"
+#include "EditorFrame.hpp"
 #include "EditorPlacementFeedback.hpp"
 #include "EditorPlacementGridOverlay.hpp"
-#include "EditorPreviewProxies.hpp"
 #include "EditorRoomPlacement.hpp"
 #include "EditorState.hpp"
 #include "EditorStructuralPlacement.hpp"
-#include "EditorWorldLayoutSources.hpp"
-#include "EditorWorldLayoutRoofs.hpp"
-#include "EditorWorldLayoutVerticalConnectorHandles.hpp"
-#include "app/iggy3d/creative/Geometry.hpp"
-#include "app/iggy3d/creative/document/DocumentWireframe.hpp"
-#include "app/iggy3d/creative/document/Hierarchy.hpp"
 #include "app/iggy3d/creative/input/HeldItemRegistry.hpp"
-#include "app/iggy3d/creative/render/CreativeOverlayFrame.hpp"
-#include "app/iggy3d/creative/render/CreativeScreenProjection.hpp"
-#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/tools/AttachmentSnap.hpp"
-#include "app/iggy3d/creative/tools/Measure.hpp"
-#include "projection/debug/DebugProjection.hpp"
-#include "render/debug/DebugHudText.hpp"
 
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
-namespace creative = iggy3d::creative;
 using namespace iggy3d;
 namespace {
 
@@ -120,829 +98,6 @@ void resetCreativeEditorOverlayFrame(CreativeEditorOverlayFrame& output) {
   output.placementVisualization = {};
 }
 
-[[nodiscard]] RenderLineColor logicLinkOverlayColor(
-    CreativeLogicLinkOverlayRole role) noexcept {
-  const CreativeLogicLinkOverlayColor color =
-      creativeLogicLinkOverlayColor(role);
-  return {color.r, color.g, color.b, color.a};
-}
-
-void appendCreativeEditorLogicLinkLabel(
-    const CreativeEditorOverlayFrameRequest& request,
-    const CreativeLogicLinkOverlayPlan& plan,
-    RenderLineColor color,
-    CreativeEditorOverlayFrame& output) {
-  constexpr std::size_t kLabelQuadCapacity = 256U;
-  const RenderContentViewport content = effectiveContentViewport(request.frame);
-  if (content.width == 0U || content.height == 0U) {
-    return;
-  }
-  const cr::CreativeScreenPoint projected =
-      cr::projectCreativeWorldPointToScreen(
-          request.frame.camera.clipFromWorld, plan.labelWorldPosition,
-          content.width, content.height);
-  if (!projected.valid || !projected.insideViewport) {
-    return;
-  }
-  const std::int32_t x =
-      content.x + static_cast<std::int32_t>(projected.x) + 6;
-  const std::int32_t y =
-      content.y + static_cast<std::int32_t>(projected.y) - 6;
-  std::array<DebugHudGlyphQuad, kLabelQuadCapacity> quads{};
-  const DebugHudFixedLayoutResult layout = layoutDebugHudTextAtInto(
-      creativeLogicLinkOverlayLabel(plan.role), x, y, request.drawableWidth,
-      request.drawableHeight, quads);
-  if (layout.capacityExceeded) {
-    return;
-  }
-  for (std::size_t index = 0U; index < layout.quadCount; ++index) {
-    DebugHudGlyphQuad& quad = quads[index];
-    quad.r = color.r;
-    quad.g = color.g;
-    quad.b = color.b;
-    quad.a = color.a;
-  }
-  output.logicLinkLabelGlyphCount += layout.glyphCount;
-  output.glyphs.insert(output.glyphs.end(), quads.begin(),
-                       quads.begin() + layout.quadCount);
-}
-
-void appendCreativeEditorLogicLinks(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  const CreativeEditorState& editor = request.editor;
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  const bool modalOpen = editor.catalog.model.open ||
-                         editor.catalog.toolWheel.open ||
-                         editor.toolOptions.open ||
-                         editor.assetReplacement.active ||
-                         editor.transform.active;
-  if (request.captureMode || modalOpen) {
-    return;
-  }
-  const cr::CreativeDocument& document = request.appState.facade.document();
-  const bool connectToolHeld =
-      cr::describeCreativeHeldItem(held.kind).interactionMode ==
-      cr::CreativeHeldItemInteractionMode::LogicLink;
-  cr::CreativeObjectId selectedSourceId = cr::kInvalidObjectId;
-  if (request.selection.selected != nullptr &&
-      cr::creativeObjectCanSourceLogicLink(
-          request.selection.selected->kind)) {
-    selectedSourceId = request.selection.selected->id;
-  }
-  if (selectedSourceId == cr::kInvalidObjectId) {
-    selectedSourceId = editor.logicLinks.sourceObjectId;
-  }
-  if (!connectToolHeld && selectedSourceId == cr::kInvalidObjectId) {
-    return;
-  }
-  const cr::CreativeLogicDiagnosticReport diagnostics =
-      cr::buildCreativeLogicDiagnostics(document.logicLinks(),
-                                        document.objects());
-  std::vector<RenderCreativeWireframeDebugLine>& lines =
-      output.combinedWireLines;
-  const float thickness = std::max(0.045F, request.gizmoThickness);
-  for (const cr::CreativeLogicLink& link : document.logicLinks()) {
-    if (!connectToolHeld && link.sourceObjectId != selectedSourceId) {
-      continue;
-    }
-    const cr::CreativeObject* source = document.findObject(link.sourceObjectId);
-    const cr::CreativeObject* target = document.findObject(link.targetObjectId);
-    const bool sourceVisible =
-        source != nullptr &&
-        cr::creativeObjectEffectivelyVisible(document, source->id);
-    const bool targetVisible =
-        target != nullptr &&
-        cr::creativeObjectEffectivelyVisible(document, target->id);
-    if (!sourceVisible) {
-      continue;
-    }
-    if (target != nullptr && !targetVisible) {
-      continue;
-    }
-    const bool valid =
-        cr::creativeObjectCanSourceLogicLink(source->kind) &&
-        targetVisible &&
-        cr::creativeObjectCanTargetLogicLink(target->kind) &&
-        cr::creativeLogicLinkActionSupported(target->kind, link.action);
-    const VisualBounds sourceBounds = visualBoundsForObject(*source);
-    CreativeLogicLinkOverlayRequest overlayRequest;
-    overlayRequest.source = {sourceBounds.min, sourceBounds.max, true};
-    overlayRequest.action = link.action;
-    overlayRequest.linkValid = valid;
-    const bool targetIsHovered =
-        connectToolHeld && editor.interaction.target.objectHit &&
-        target != nullptr && editor.interaction.target.objectId == target->id;
-    if (target != nullptr) {
-      const VisualBounds targetBounds = visualBoundsForObject(*target);
-      overlayRequest.target = {targetBounds.min, targetBounds.max, true};
-    } else {
-      overlayRequest.target.available = false;
-    }
-    const CreativeLogicLinkOverlayPlan plan =
-        planCreativeLogicLinkOverlay(overlayRequest);
-    if (!plan.accepted) {
-      continue;
-    }
-    const RenderLineColor color = logicLinkOverlayColor(plan.role);
-    for (std::size_t segmentIndex = 0U;
-         segmentIndex < plan.segmentCount; ++segmentIndex) {
-      RenderCreativeWireframeDebugLine line;
-      line.start = plan.segments[segmentIndex].start;
-      line.end = plan.segments[segmentIndex].end;
-      line.color = color;
-      line.objectId = source->id;
-      line.style = static_cast<std::uint32_t>(plan.role);
-      line.segmentKind = segmentIndex == 0U ? 0U : 1U;
-      line.thickness = segmentIndex == 0U ? thickness : thickness * 0.82F;
-      lines.push_back(line);
-    }
-    output.logicLinkEdgeCount += plan.segmentCount;
-    ++output.logicLinkShaftCount;
-    output.logicLinkArrowEdgeCount += plan.segmentCount - 1U;
-    if (plan.role == CreativeLogicLinkOverlayRole::Invalid) {
-      ++output.invalidLogicLinkCount;
-    }
-
-    if (link.sourceObjectId != selectedSourceId) {
-      continue;
-    }
-    appendCreativeEditorLogicLinkLabel(request, plan, color, output);
-    if (target != nullptr && !targetIsHovered) {
-      const VisualBounds targetBounds = visualBoundsForObject(*target);
-      const std::size_t before = lines.size();
-      appendStandaloneWireframeBoxEdges(
-          lines, targetBounds.min, targetBounds.max, color, thickness * 0.88F);
-      for (std::size_t index = before; index < lines.size(); ++index) {
-        lines[index].objectId = target->id;
-        lines[index].style = static_cast<std::uint32_t>(plan.role);
-      }
-      const std::size_t added = lines.size() - before;
-      output.logicLinkEndpointEdgeCount += added;
-      output.logicLinkEdgeCount += added;
-    }
-  }
-
-  const cr::CreativeObject* selectedSource =
-      document.findObject(selectedSourceId);
-  if (selectedSource != nullptr &&
-      cr::creativeObjectEffectivelyVisible(document, selectedSource->id)) {
-    bool sourceInvalid = false;
-    for (std::size_t index = 0U; index < diagnostics.issueCount; ++index) {
-      sourceInvalid =
-          sourceInvalid ||
-          diagnostics.issues[index].sourceObjectId == selectedSource->id ||
-          diagnostics.issues[index].relatedSourceObjectId ==
-              selectedSource->id;
-    }
-    const VisualBounds bounds = visualBoundsForObject(*selectedSource);
-    const std::size_t before = lines.size();
-    appendStandaloneWireframeBoxEdges(
-        lines, bounds.min, bounds.max,
-        sourceInvalid ? RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F}
-                      : RenderLineColor{0.20F, 0.82F, 1.0F, 1.0F},
-        thickness);
-    for (std::size_t index = before; index < lines.size(); ++index) {
-      lines[index].objectId = selectedSource->id;
-    }
-    const std::size_t added = lines.size() - before;
-    output.logicLinkEndpointEdgeCount += added;
-    output.logicLinkEdgeCount += added;
-  }
-
-  if (!connectToolHeld || !editor.interaction.target.objectHit) {
-    return;
-  }
-  const cr::CreativeObject* hovered =
-      document.findObject(editor.interaction.target.objectId);
-  if (hovered == nullptr ||
-      !cr::creativeObjectEffectivelyVisible(document, hovered->id)) {
-    return;
-  }
-  if (hovered->id == editor.logicLinks.sourceObjectId) {
-    return;
-  }
-  const bool valid =
-      cr::creativeObjectCanSourceLogicLink(hovered->kind) ||
-      (editor.logicLinks.sourceObjectId != cr::kInvalidObjectId &&
-       cr::creativeObjectCanTargetLogicLink(hovered->kind) &&
-       cr::creativeLogicLinkActionSupported(hovered->kind,
-                                            editor.logicLinks.action));
-  const VisualBounds hoveredBounds = visualBoundsForObject(*hovered);
-  const std::size_t before = lines.size();
-  appendStandaloneWireframeBoxEdges(
-      lines, hoveredBounds.min, hoveredBounds.max,
-      valid ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
-            : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F},
-      thickness);
-  for (std::size_t index = before; index < lines.size(); ++index) {
-    lines[index].objectId = hovered->id;
-  }
-  const std::size_t added = lines.size() - before;
-  output.logicLinkEndpointEdgeCount += added;
-  output.logicLinkEdgeCount += added;
-}
-
-[[nodiscard]] RenderLineColor attachmentSocketMarkerColor(
-    cr::CreativeAttachmentSocketMarkerState state) noexcept {
-  switch (state) {
-    case cr::CreativeAttachmentSocketMarkerState::Incompatible:
-    case cr::CreativeAttachmentSocketMarkerState::OutOfRange:
-      return {0.55F, 0.62F, 0.68F, 1.0F};
-    case cr::CreativeAttachmentSocketMarkerState::Available:
-      return {0.20F, 1.0F, 0.35F, 1.0F};
-    case cr::CreativeAttachmentSocketMarkerState::Occupied:
-      return {1.0F, 0.20F, 0.20F, 1.0F};
-  }
-  return {0.55F, 0.62F, 0.68F, 1.0F};
-}
-
-void appendCreativeEditorAttachmentSocketMarkers(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  const CreativeEditorState& editor = request.editor;
-  const bool modalOpen = editor.catalog.model.open ||
-                         editor.catalog.toolWheel.open ||
-                         editor.toolOptions.open ||
-                         editor.assetReplacement.active ||
-                         editor.transform.active;
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (request.captureMode || modalOpen || request.assetCatalog == nullptr ||
-      !editor.interaction.target.objectHit ||
-      !editor.interaction.target.grid.valid) {
-    return;
-  }
-
-  std::string_view sourceAssetId;
-  cr::CreativeObjectId ignoredOccupantObjectId = cr::kInvalidObjectId;
-  cr::CreativeAttachmentSnapSelectionMode selectionMode =
-      cr::CreativeAttachmentSnapSelectionMode::BestMatch;
-  switch (held.kind) {
-    case cr::CreativeHeldItemKind::Material:
-      sourceAssetId = cr::creativeHotbarAssetId(held);
-      if (creativeEditorUsesAssetScatter(held, editor.toolSettings)) {
-        return;
-      }
-      selectionMode =
-          editor.toolSettings.assetAttachmentMode ==
-                  cr::CreativeAssetAttachmentMode::AimSocket
-              ? cr::CreativeAttachmentSnapSelectionMode::AimedSocket
-              : cr::CreativeAttachmentSnapSelectionMode::BestMatch;
-      break;
-    case cr::CreativeHeldItemKind::ObjectMove:
-      if (request.selection.selectionCount != 1U ||
-          request.selection.selected == nullptr ||
-          request.selection.selected->id ==
-              editor.interaction.target.objectId) {
-        return;
-      }
-      sourceAssetId = request.selection.selected->assetId;
-      ignoredOccupantObjectId = request.selection.selected->id;
-      selectionMode = cr::CreativeAttachmentSnapSelectionMode::AimedSocket;
-      break;
-    default:
-      return;
-  }
-  if (sourceAssetId.empty()) {
-    return;
-  }
-
-  cr::CreativeAttachmentSocketMarkerRequest markerRequest;
-  markerRequest.document = &request.appState.facade.document();
-  markerRequest.assetCatalog = request.assetCatalog;
-  markerRequest.sourceAssetId = sourceAssetId;
-  markerRequest.targetObjectId = editor.interaction.target.objectId;
-  markerRequest.aimPoint = editor.interaction.target.grid.hitPoint;
-  markerRequest.ignoredOccupantObjectId = ignoredOccupantObjectId;
-  markerRequest.selectionMode = selectionMode;
-  const cr::CreativeAttachmentSocketMarkerFrame markers =
-      cr::buildCreativeAttachmentSocketMarkers(markerRequest);
-  if (!markers.accepted) {
-    return;
-  }
-
-  constexpr float kForwardMeters = 0.24F;
-  constexpr float kBackMeters = 0.04F;
-  constexpr float kArrowBackMeters = 0.07F;
-  constexpr float kArrowHalfWidthMeters = 0.05F;
-  constexpr float kUpMeters = 0.17F;
-  constexpr float kSideHalfExtentMeters = 0.08F;
-  constexpr float kSelectionRadiusMeters = 0.13F;
-  const float thickness = std::max(0.035F, request.gizmoThickness);
-  for (std::size_t index = 0U; index < markers.markerCount; ++index) {
-    const cr::CreativeAttachmentSocketMarker& marker = markers.markers[index];
-    const cr::CreativeCoreVec3Conversion position =
-        cr::creativeVec3ToCoreChecked(marker.worldPosition);
-    const cr::CreativeCoreVec3Conversion forward =
-        cr::creativeVec3ToCoreChecked(marker.worldForward);
-    const cr::CreativeCoreVec3Conversion up =
-        cr::creativeVec3ToCoreChecked(marker.worldUp);
-    if (!position.converted || !forward.converted || !up.converted) {
-      continue;
-    }
-    const RenderLineColor color = attachmentSocketMarkerColor(marker.state);
-    const Vec3 side = cross(forward.value, up.value);
-    const float markerThickness = marker.selected ? thickness * 1.5F : thickness;
-    const auto appendLine = [&](Vec3 start, Vec3 end) {
-      RenderCreativeWireframeDebugLine line;
-      line.start = start;
-      line.end = end;
-      line.color = color;
-      line.objectId = marker.targetObjectId;
-      line.thickness = markerThickness;
-      output.combinedWireLines.push_back(line);
-      ++output.attachmentSocketMarkerEdgeCount;
-    };
-
-    const Vec3 forwardTip = position.value + forward.value * kForwardMeters;
-    appendLine(position.value - forward.value * kBackMeters, forwardTip);
-    appendLine(forwardTip,
-               forwardTip - forward.value * kArrowBackMeters +
-                   side * kArrowHalfWidthMeters);
-    appendLine(forwardTip,
-               forwardTip - forward.value * kArrowBackMeters -
-                   side * kArrowHalfWidthMeters);
-    appendLine(position.value, position.value + up.value * kUpMeters);
-    appendLine(position.value - side * kSideHalfExtentMeters,
-               position.value + side * kSideHalfExtentMeters);
-
-    if (marker.selected) {
-      const Vec3 sidePoint = side * kSelectionRadiusMeters;
-      const Vec3 upPoint = up.value * kSelectionRadiusMeters;
-      appendLine(position.value + sidePoint, position.value + upPoint);
-      appendLine(position.value + upPoint, position.value - sidePoint);
-      appendLine(position.value - sidePoint, position.value - upPoint);
-      appendLine(position.value - upPoint, position.value + sidePoint);
-    }
-  }
-}
-
-void appendCreativeEditorAssetCollisionPreview(
-    const CreativeEditorOverlayFrameRequest& request,
-    const CreativeEditorPlacementVisualizationReceipt* visualization,
-    CreativeEditorOverlayFrame& output) {
-  if (visualization == nullptr || !visualization->targetAvailable ||
-      !visualization->attemptedTransformAvailable ||
-      request.assetCatalog == nullptr) {
-    return;
-  }
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(request.editor.interaction.hotbar);
-  const std::string_view assetId = cr::creativeHotbarAssetId(held);
-  const StaticMeshAssetCatalogEntry* asset = request.assetCatalog->find(assetId);
-  if (asset == nullptr ||
-      asset->authoringMetadata.collisionMode == StaticMeshCollisionMode::None) {
-    return;
-  }
-
-  constexpr std::array<std::array<std::uint8_t, 2U>, 12U> kEdges{{
-      {{0U, 1U}}, {{1U, 2U}}, {{2U, 3U}}, {{3U, 0U}},
-      {{4U, 5U}}, {{5U, 6U}}, {{6U, 7U}}, {{7U, 4U}},
-      {{0U, 4U}}, {{1U, 5U}}, {{2U, 6U}}, {{3U, 7U}},
-  }};
-  const auto appendPart = [&](Vec3 minimum, Vec3 maximum) {
-    const cr::CreativeBounds localBounds{
-        {minimum.x, minimum.y, minimum.z},
-        {maximum.x, maximum.y, maximum.z}};
-    const cr::CreativeTransformedBounds transformed =
-        cr::resolveCreativeTransformedBounds(
-            localBounds, visualization->attemptedTransform);
-    if (!transformed.valid) {
-      return;
-    }
-    std::array<Vec3, 8U> corners{};
-    for (std::size_t index = 0U; index < corners.size(); ++index) {
-      const cr::CreativeCoreVec3Conversion converted =
-          cr::creativeVec3ToCoreChecked(transformed.corners[index]);
-      if (!converted.converted) {
-        return;
-      }
-      corners[index] = converted.value;
-    }
-    for (const auto& edge : kEdges) {
-      RenderCreativeWireframeDebugLine line;
-      line.start = corners[edge[0]];
-      line.end = corners[edge[1]];
-      line.color = {1.0F, 0.62F, 0.12F, 0.92F};
-      line.thickness = std::max(0.025F, request.gizmoThickness * 0.65F);
-      output.combinedWireLines.push_back(line);
-      ++output.assetCollisionPreviewEdgeCount;
-    }
-  };
-
-  if (asset->authoringMetadata.collisionMode ==
-      StaticMeshCollisionMode::CompoundBounds) {
-    for (const StaticMeshCollisionPart& part : asset->collisionParts) {
-      appendPart(part.boundsMin, part.boundsMax);
-    }
-    return;
-  }
-  if (asset->authoringMetadata.collisionMode == StaticMeshCollisionMode::Bounds) {
-    appendPart(asset->boundsMin, asset->boundsMax);
-  }
-}
-
-void appendCreativeEditorPlacementFeedbackWireframe(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  CreativeEditorState& editor = request.editor;
-  std::vector<RenderCreativeWireframeDebugLine>& lines =
-      output.combinedWireLines;
-  const CreativeEditorPlacementFeedback& feedback =
-      editor.interaction.placementFeedback;
-  if (feedback.status != CreativeEditorPlacementFeedbackStatus::Placed ||
-      !creativeEditorPlacementFeedbackVisible(feedback, editor.frameIndex)) {
-    return;
-  }
-  const creative::CreativeObject* placedObject =
-      request.appState.facade.findObject(feedback.objectId);
-  if (placedObject != nullptr) {
-    const VisualBounds placedBounds = visualBoundsForObject(*placedObject);
-    const std::size_t before = lines.size();
-    appendStandaloneWireframeBoxEdges(
-        lines, placedBounds.min, placedBounds.max,
-        RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
-        std::max(0.075F, request.gizmoThickness * 1.4F));
-    for (std::size_t index = before; index < lines.size(); ++index) {
-      lines[index].objectId = placedObject->id;
-    }
-    output.placementFeedbackEdgeCount = lines.size() - before;
-    return;
-  }
-  if (!feedback.voxelPlaced) {
-    return;
-  }
-  Vec3 center{};
-  Vec3 size{};
-  if (!creativePreviewBoundsTransform(feedback.voxelBounds, 1.0F,
-                                      center, size)) {
-    return;
-  }
-  const Vec3 minimum =
-      cr::creativeVec3ToCoreChecked(feedback.voxelBounds.min).value;
-  const Vec3 maximum =
-      cr::creativeVec3ToCoreChecked(feedback.voxelBounds.max).value;
-  const std::size_t before = lines.size();
-  appendStandaloneWireframeBoxEdges(
-      lines, minimum, maximum,
-      RenderLineColor{0.25F, 1.0F, 0.35F, 1.0F},
-      std::max(0.075F, request.gizmoThickness * 1.4F));
-  output.placementFeedbackEdgeCount = lines.size() - before;
-}
-
-void appendCreativeEditorMovingPlatformPathPreview(
-    const CreativeEditorOverlayFrameRequest& request,
-    const creative::CreativeObject* selected,
-    CreativeEditorOverlayFrame& output) {
-  const CreativeEditorState& editor = request.editor;
-  const bool modalOpen = editor.catalog.model.open ||
-                         editor.catalog.toolWheel.open ||
-                         editor.toolOptions.open ||
-                         editor.assetReplacement.active ||
-                         editor.transform.active;
-  const cr::CreativeHotbarEntry& held =
-      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
-  if (request.captureMode || modalOpen ||
-      request.inputContext != cr::CreativeInputContext::EditorViewport ||
-      cr::describeCreativeHeldItem(held.kind).interactionMode !=
-          cr::CreativeHeldItemInteractionMode::ObjectMove ||
-      !editor.interaction.movingPlatformPathEdit.available ||
-      selected == nullptr ||
-      selected->id != editor.interaction.movingPlatformPathEdit.objectId) {
-    return;
-  }
-
-  bool visible = false;
-  bool allowed = false;
-  bool segmentVisible = false;
-  cr::CreativeObjectId objectId = cr::kInvalidObjectId;
-  cr::CreativeVec3 fromPoint{};
-  cr::CreativeVec3 targetPoint{};
-  const CreativeMovingPlatformPathEditState& pathEdit =
-      editor.interaction.movingPlatformPathEdit;
-  if (pathEdit.pointSelected) {
-    const CreativeMovingPlatformPathPointTargetPlan preview =
-        planCreativeMovingPlatformPathPointTarget(
-            selected, pathEdit.selectedPointIndex,
-            editor.interaction.target.grid.valid,
-            editor.interaction.target.grid.placementAnchor,
-            editor.toolSettings.moveConstraint);
-    visible = preview.visible;
-    allowed = preview.moveAllowed;
-    segmentVisible = preview.segmentVisible;
-    objectId = preview.objectId;
-    fromPoint = preview.fromPoint;
-    targetPoint = preview.targetPoint;
-  } else {
-    const CreativeMovingPlatformPathTargetPlan preview =
-        planCreativeMovingPlatformPathTarget(
-            selected, editor.interaction.target.grid.valid,
-            editor.interaction.target.grid.placementAnchor);
-    visible = preview.visible;
-    allowed = preview.appendAllowed;
-    segmentVisible = preview.segmentVisible;
-    objectId = preview.objectId;
-    fromPoint = preview.fromPoint;
-    targetPoint = preview.targetPoint;
-  }
-  if (!visible) {
-    return;
-  }
-  const RenderLineColor color =
-      allowed ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
-              : RenderLineColor{1.0F, 0.20F, 0.20F, 1.0F};
-  const float thickness = std::max(0.05F, request.gizmoThickness);
-  std::vector<RenderCreativeWireframeDebugLine>& lines =
-      output.combinedWireLines;
-  const std::size_t before = lines.size();
-  if (segmentVisible) {
-    const cr::CreativeCoreVec3Conversion from =
-        cr::creativeVec3ToCoreChecked(fromPoint);
-    const cr::CreativeCoreVec3Conversion to =
-        cr::creativeVec3ToCoreChecked(targetPoint);
-    if (from.converted && to.converted) {
-      RenderCreativeWireframeDebugLine segment;
-      segment.start = from.value;
-      segment.end = to.value;
-      segment.color = color;
-      segment.objectId = objectId;
-      segment.thickness = thickness;
-      lines.push_back(segment);
-    }
-  }
-  const VisualBounds marker = pathPointHandleBounds(targetPoint);
-  appendStandaloneWireframeBoxEdges(lines, marker.min, marker.max, color,
-                                    thickness * 0.8F);
-  for (std::size_t index = before; index < lines.size(); ++index) {
-    lines[index].objectId = objectId;
-  }
-  output.movingPlatformPathPreviewEdgeCount = lines.size() - before;
-}
-
-void appendCreativeEditorMeasurementGeometry(
-    const cr::CreativeMeasurementGeometry& geometry,
-    RenderLineColor lineColor, RenderLineColor pointColor,
-    CreativeEditorOverlayFrame& output) {
-  if (!geometry.visible) {
-    return;
-  }
-
-  constexpr float kPointMarkerHalfExtent = 0.075F;
-  for (std::size_t index = 0U; index < geometry.segmentCount; ++index) {
-    const cr::CreativeCoreVec3Conversion start =
-        cr::creativeVec3ToCoreChecked(
-            {geometry.segments[index].start.x,
-             geometry.segments[index].start.y,
-             geometry.segments[index].start.z});
-    const cr::CreativeCoreVec3Conversion end =
-        cr::creativeVec3ToCoreChecked(
-            {geometry.segments[index].end.x,
-             geometry.segments[index].end.y,
-             geometry.segments[index].end.z});
-    if (!start.converted || !end.converted) {
-      continue;
-    }
-    output.combinedWireLines.push_back(
-        {start.value, end.value, lineColor, 0U, 0U, 0U, 0U,
-         0.035F});
-  }
-  for (std::size_t index = 0U; index < geometry.pointCount; ++index) {
-    const cr::CreativeCoreVec3Conversion point =
-        cr::creativeVec3ToCoreChecked(
-            {geometry.points[index].x, geometry.points[index].y,
-             geometry.points[index].z});
-    if (!point.converted) {
-      continue;
-    }
-    constexpr std::array axes{
-        Vec3{kPointMarkerHalfExtent, 0.0F, 0.0F},
-        Vec3{0.0F, kPointMarkerHalfExtent, 0.0F},
-        Vec3{0.0F, 0.0F, kPointMarkerHalfExtent},
-    };
-    for (const Vec3 axis : axes) {
-      output.combinedWireLines.push_back(
-          {point.value - axis, point.value + axis, pointColor,
-           0U, 0U, 0U, 0U, 0.045F});
-    }
-  }
-}
-
-void appendCreativeEditorWorldLayoutRoofHandles(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  const CreativeEditorState& editor = request.editor;
-  const cr::CreativeHeldItemDefinition& held =
-      cr::describeCreativeHeldItem(
-          cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind);
-  if (request.captureMode ||
-      request.inputContext != cr::CreativeInputContext::EditorViewport ||
-      !held.hierarchySelectionTool ||
-      editor.worldLayout.tool != CreativeEditorWorldLayoutTool::Select) {
-    return;
-  }
-  const std::size_t levelIndex =
-      editor.worldLayout.roofManipulation.active
-          ? editor.worldLayout.roofManipulation.target.levelIndex
-          : editor.worldLayout.selection.kind ==
-                    CreativeEditorWorldLayoutSelectionKind::Level
-                ? editor.worldLayout.selection.index
-                : cr::kInvalidCreativeWorldLayoutIndex;
-  if (levelIndex == cr::kInvalidCreativeWorldLayoutIndex) {
-    return;
-  }
-  const cr::CreativeGridSettings grid =
-      request.appState.facade.document().gridSettings();
-  const CreativeEditorWorldLayoutRoofHandleFrame frame =
-      buildCreativeEditorWorldLayoutRoofHandleFrame(
-          editor.worldLayout, grid, levelIndex);
-  if (!frame.accepted) {
-    return;
-  }
-
-  const bool active = editor.worldLayout.roofManipulation.active;
-  const RenderLineColor tint =
-      active && !editor.worldLayout.roofManipulation.previewValid
-          ? RenderLineColor{1.0F, 0.18F, 0.16F, 1.0F}
-          : active ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
-                   : RenderLineColor{1.0F, 0.82F, 0.18F, 1.0F};
-  const float thickness = std::max(0.045F, request.gizmoThickness);
-  std::vector<RenderCreativeWireframeDebugLine>& lines =
-      output.combinedWireLines;
-  const std::size_t before = lines.size();
-  for (std::size_t index = 0U;
-       index < frame.roof.geometry.edgeCount; ++index) {
-    const cr::CreativeStructuralRoofEdgePlan& edge =
-        frame.roof.geometry.edges[index];
-    const cr::CreativeCoreVec3Conversion start =
-        cr::creativeVec3ToCoreChecked(edge.startMeters);
-    const cr::CreativeCoreVec3Conversion end =
-        cr::creativeVec3ToCoreChecked(edge.endMeters);
-    if (start.converted && end.converted) {
-      lines.push_back({start.value, end.value, tint, 0U, 0U, 0U, 0U,
-                       thickness * 0.72F});
-    }
-  }
-
-  const float shaftHalfLength = static_cast<float>(std::clamp(
-      grid.cellSizeMeters * 0.24, 0.12, 0.40));
-  const float crossHalfLength = shaftHalfLength * 0.52F;
-  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
-    const CreativeEditorWorldLayoutRoofHandle& handle = frame.handles[index];
-    if (!handle.valid) {
-      continue;
-    }
-    const Vec3 position = handle.worldPosition;
-    const Vec3 axis = handle.worldAxis;
-    const Vec3 firstCross =
-        std::fabs(axis.y) > 0.5F ? Vec3{1.0F, 0.0F, 0.0F}
-                                : Vec3{0.0F, 1.0F, 0.0F};
-    const Vec3 secondCross =
-        std::fabs(axis.y) > 0.5F
-            ? Vec3{0.0F, 0.0F, 1.0F}
-            : Vec3{-axis.z, 0.0F, axis.x};
-    lines.push_back({position - axis * shaftHalfLength,
-                     position + axis * shaftHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-    lines.push_back({position - firstCross * crossHalfLength,
-                     position + firstCross * crossHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-    lines.push_back({position - secondCross * crossHalfLength,
-                     position + secondCross * crossHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-  }
-  output.worldLayoutRoofHandleEdgeCount = lines.size() - before;
-}
-
-void appendCreativeEditorWorldLayoutVerticalConnectorHandles(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  const CreativeEditorState& editor = request.editor;
-  const cr::CreativeHeldItemDefinition& held =
-      cr::describeCreativeHeldItem(
-          cr::selectedCreativeHotbarEntry(editor.interaction.hotbar).kind);
-  if (request.captureMode ||
-      request.inputContext != cr::CreativeInputContext::EditorViewport ||
-      !held.hierarchySelectionTool ||
-      editor.worldLayout.tool != CreativeEditorWorldLayoutTool::Select) {
-    return;
-  }
-  const std::size_t connectorIndex =
-      editor.worldLayout.verticalConnectorManipulation.active
-          ? editor.worldLayout.verticalConnectorManipulation.target
-                .connectorIndex
-          : editor.worldLayout.selection.kind ==
-                    CreativeEditorWorldLayoutSelectionKind::VerticalConnector
-                ? editor.worldLayout.selection.index
-                : cr::kInvalidCreativeWorldLayoutIndex;
-  const cr::CreativeGridSettings grid =
-      request.appState.facade.document().gridSettings();
-  const CreativeEditorWorldLayoutVerticalConnectorHandleFrame frame =
-      buildCreativeEditorWorldLayoutVerticalConnectorHandleFrame(
-          editor.worldLayout, grid, connectorIndex);
-  if (!frame.accepted ||
-      connectorIndex >=
-          editor.worldLayout.source.verticalConnectors.size()) {
-    return;
-  }
-
-  const bool active =
-      editor.worldLayout.verticalConnectorManipulation.active;
-  const RenderLineColor tint =
-      active &&
-              !editor.worldLayout.verticalConnectorManipulation.previewValid
-          ? RenderLineColor{1.0F, 0.18F, 0.16F, 1.0F}
-          : active ? RenderLineColor{0.20F, 1.0F, 0.35F, 1.0F}
-                   : RenderLineColor{1.0F, 0.82F, 0.18F, 1.0F};
-  const float thickness = std::max(0.045F, request.gizmoThickness);
-  std::vector<RenderCreativeWireframeDebugLine>& lines =
-      output.combinedWireLines;
-  const std::size_t before = lines.size();
-
-  cr::CreativeWorldLayoutRect footprint =
-      editor.worldLayout.source.verticalConnectors[connectorIndex].footprint;
-  if (active &&
-      editor.worldLayout.verticalConnectorManipulation.previewValid) {
-    footprint =
-        editor.worldLayout.verticalConnectorManipulation.previewFootprint;
-  }
-  const cr::CreativeCoreVec3Conversion minimum =
-      cr::creativeVec3ToCoreChecked(
-          {grid.origin.x + footprint.minimum.x * grid.cellSizeMeters,
-           frame.connector.authoredBounds.min.y,
-           grid.origin.z + footprint.minimum.z * grid.cellSizeMeters});
-  const cr::CreativeCoreVec3Conversion maximum =
-      cr::creativeVec3ToCoreChecked(
-          {grid.origin.x + footprint.maximum.x * grid.cellSizeMeters,
-           frame.connector.authoredBounds.max.y,
-           grid.origin.z + footprint.maximum.z * grid.cellSizeMeters});
-  if (minimum.converted && maximum.converted) {
-    appendStandaloneWireframeBoxEdges(lines, minimum.value, maximum.value,
-                                      tint, thickness * 0.72F);
-  }
-
-  const float shaftHalfLength = static_cast<float>(std::clamp(
-      grid.cellSizeMeters * 0.24, 0.12, 0.40));
-  const float crossHalfLength = shaftHalfLength * 0.52F;
-  for (std::size_t index = 0U; index < frame.handleCount; ++index) {
-    const CreativeEditorWorldLayoutVerticalConnectorHandle& handle =
-        frame.handles[index];
-    if (!handle.valid) {
-      continue;
-    }
-    const Vec3 position = handle.worldPosition;
-    const Vec3 axis = handle.planeSample
-                          ? Vec3{0.0F, 1.0F, 0.0F}
-                          : handle.worldAxis;
-    const Vec3 firstCross =
-        std::fabs(axis.y) > 0.5F ? Vec3{1.0F, 0.0F, 0.0F}
-                                : Vec3{0.0F, 1.0F, 0.0F};
-    const Vec3 secondCross =
-        std::fabs(axis.y) > 0.5F
-            ? Vec3{0.0F, 0.0F, 1.0F}
-            : Vec3{-axis.z, 0.0F, axis.x};
-    lines.push_back({position - axis * shaftHalfLength,
-                     position + axis * shaftHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-    lines.push_back({position - firstCross * crossHalfLength,
-                     position + firstCross * crossHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-    lines.push_back({position - secondCross * crossHalfLength,
-                     position + secondCross * crossHalfLength, tint,
-                     0U, 0U, 0U, 0U, thickness});
-  }
-  output.worldLayoutVerticalConnectorHandleEdgeCount =
-      lines.size() - before;
-}
-
-void appendCreativeEditorMeasurementWireframe(
-    const CreativeEditorOverlayFrameRequest& request,
-    CreativeEditorOverlayFrame& output) {
-  if (request.captureMode) {
-    return;
-  }
-
-  constexpr RenderLineColor kSavedLineColor{0.20F, 0.70F, 0.82F, 0.90F};
-  constexpr RenderLineColor kSavedPointColor{0.30F, 0.78F, 0.40F, 0.90F};
-  constexpr RenderLineColor kTransientLineColor{0.18F, 0.90F, 1.0F, 1.0F};
-  constexpr RenderLineColor kTransientPointColor{0.32F, 1.0F, 0.42F, 1.0F};
-  const std::size_t before = output.combinedWireLines.size();
-  const cr::CreativeMeasurementAnnotationStore& annotations =
-      request.appState.facade.document().measurementAnnotationStore();
-  for (const cr::CreativeMeasurementAnnotation& annotation :
-       annotations.annotations) {
-    appendCreativeEditorMeasurementGeometry(
-        cr::buildCreativeMeasurementGeometry(annotation), kSavedLineColor,
-        kSavedPointColor, output);
-  }
-  appendCreativeEditorMeasurementGeometry(
-      cr::buildCreativeMeasurementGeometry(
-          request.appState.facade.measurementState()),
-      kTransientLineColor, kTransientPointColor, output);
-  output.measurementEdgeCount = output.combinedWireLines.size() - before;
-}
-
 }  // namespace
 
 CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
@@ -952,407 +107,143 @@ CreativeEditorWorldOverlayFacts buildCreativeEditorWorldWireframes(
         placementVisualization) {
   cr::CreativeAppState& appState = request.appState;
   CreativeEditorState& editor = request.editor;
-  const cr::CreativeSpatialProjectionRequest& wireProjReq =
-      request.wireProjectionRequest;
-  const float gizmoThickness = request.gizmoThickness;
-
-  const creative::Id selectedId = request.selection.selectedId;
-  const creative::CreativeObject* selected = request.selection.selected;
-  const bool hasSelection =
-      request.selection.hasSelection && !editor.volume.active;
-  const auto objectSelected = [&](creative::CreativeObjectId objectId) {
-    return std::find(request.selection.selectedObjectIds.begin(),
-                     request.selection.selectedObjectIds.end(),
-                     objectId) != request.selection.selectedObjectIds.end();
-  };
-  const std::array<GizmoAxisShaft, 3>& gizmoShafts =
-      request.gizmoFrame.shafts;
-  const bool selectedIsPathForHandles =
-      request.gizmoFrame.selectedIsPathForHandles;
+  const cr::CreativeDocument& document = appState.facade.document();
+  const cr::CreativeHotbarEntry& held =
+      cr::selectedCreativeHotbarEntry(editor.interaction.hotbar);
+  const bool modalOpen = editor.catalog.model.open ||
+                         editor.catalog.toolWheel.open ||
+                         editor.toolOptions.open ||
+                         editor.assetReplacement.active ||
+                         editor.transform.active;
+  const CreativeEditorOverlaySelectionSnapshot selection{
+      request.selection.selectedId,
+      request.selection.selected,
+      request.selection.selectedObjectIds,
+      request.selection.selectionCount,
+      request.selection.hasSelection};
 
   resetCreativeEditorOverlayFrame(output);
   if (placementVisualization != nullptr) {
     output.placementVisualization = *placementVisualization;
   }
 
-  const cr::CreativeDocument& document = appState.facade.document();
-  CreativeDesktopGeneratedSourceScopeModel generatedScopes;
-  CreativeDesktopGeneratedSourceScopeSummary generatedScopeSummary;
-  cr::CreativeWorldLayoutTable generatedScopeTable =
-      cr::CreativeWorldLayoutTable::None;
-  std::size_t generatedScopeIndex = cr::kInvalidCreativeWorldLayoutIndex;
-  std::size_t generatedActiveScopeIndex = 0U;
-  RenderLineColor generatedScopeColor{1.0F, 0.82F, 0.22F, 1.0F};
-  bool generatedScopeBroad = false;
-  if (hasSelection && selected != nullptr &&
-      editor.worldLayout.generatedRevision == editor.worldLayout.revision) {
-    const cr::CreativeWorldLayoutObjectProvenance provenance =
-        cr::resolveCreativeWorldLayoutObjectProvenance(
-            editor.worldLayout.source, *selected);
-    generatedScopes = buildCreativeDesktopGeneratedSourceScopeModel(
-        editor.worldLayout.source, provenance);
-    if (generatedScopes.count > 0U) {
-      generatedActiveScopeIndex =
-          resolveCreativeDesktopGeneratedSourceActiveScope(
-              generatedScopes,
-              creativeEditorWorldLayoutSelectionTable(
-                  editor.worldLayout.selection.kind),
-              editor.worldLayout.selection.index);
-      const CreativeDesktopGeneratedSourceScopeEntry& scope =
-          generatedScopes.entries[generatedActiveScopeIndex];
-      generatedScopeTable = scope.table;
-      generatedScopeIndex = scope.index;
-      static_cast<void>(refreshCreativeDesktopGeneratedSourceScopeCache(
-          editor.generatedSourceScopeCache, document,
-          editor.worldLayout.source, editor.worldLayout.sourceEpoch,
-          editor.worldLayout.revision, editor.worldLayout.generatedRevision,
-          generatedScopeTable, generatedScopeIndex));
-      generatedScopeSummary = editor.generatedSourceScopeCache.summary;
-      if (generatedScopeSummary.valid) {
-        const CreativeDesktopGeneratedSourceScopeTint tint =
-            creativeDesktopGeneratedSourceScopeTint(generatedScopeTable);
-        generatedScopeColor = {tint.r, tint.g, tint.b, tint.a};
-        output.generatedScopeActive = true;
-        output.generatedScopeObjectCount = generatedScopeSummary.objectCount;
-        output.generatedScopeVisibleObjectCount =
-            generatedScopeSummary.visibleObjectCount;
-        generatedScopeBroad =
-            generatedActiveScopeIndex != generatedScopes.directEntryIndex ||
-            generatedScopeTable == cr::CreativeWorldLayoutTable::Building ||
-            generatedScopeTable == cr::CreativeWorldLayoutTable::Level ||
-            generatedScopeTable == cr::CreativeWorldLayoutTable::Room;
-      }
-    }
-  }
-  const auto generatedScopeContains = [&](cr::CreativeObjectId objectId) {
-    return output.generatedScopeActive &&
-           creativeDesktopGeneratedSourceScopeCacheContains(
-               editor.generatedSourceScopeCache, objectId);
-  };
+  const CreativeEditorOverlayDocumentAssemblyRequest documentRequest{
+      document,
+      request.wireProjectionRequest,
+      editor.worldLayout,
+      editor.generatedSourceScopeCache,
+      editor.groupFocus,
+      editor.interaction.movingPlatformPathEdit,
+      request.gizmoFrame,
+      selection,
+      request.gizmoThickness,
+      editor.volume.active};
+  const CreativeEditorOverlayDocumentPlan documentPlan =
+      prepareCreativeEditorOverlayDocument(documentRequest, output);
 
-  // ---- BOUNDS BOX (wireframe) --------------------------------------------
-  const creative::CreativeDocumentWireframeSegmentBuildResult segs =
-      creative::buildCreativeDocumentWireframeSegments(
-          document, wireProjReq);
-  ProductCreativeWireframeDebugLineBuildResult lines =
-      buildProductCreativeWireframeDebugLines(segs.segmentList);
-  // The renderer turns each line into a world-space tube of `thickness` METRES
-  // (creativeDebugLineBox: size = |edge| x thickness x thickness), so keep it
-  // thin (a few cm) or a 1 m box fills into a solid blob. Selected edges go
-  // bright yellow + a touch fatter for emphasis (the kernel colors by style,
-  // not by selection).
-  for (ProductCreativeWireframeDebugLine& line : lines.lineList.lines) {
-    // Recolor the SELECTED object's edges — matched by id, whatever the kind.
-    const bool sel = hasSelection && objectSelected(line.objectId);
-    const bool inGeneratedScope = generatedScopeContains(line.objectId);
-    line.thickness = inGeneratedScope ? 0.055F : sel ? 0.06F : 0.03F;
-    if (inGeneratedScope) {
-      line.color = {generatedScopeColor.r, generatedScopeColor.g,
-                    generatedScopeColor.b, generatedScopeColor.a};
-    } else if (sel) {
-      line.color = {1.0F, 1.0F, 0.0F, 1.0F};
-    }
-  }
-  CreativeWireframeDebugRenderFrame dbg =
-      buildCreativeWireframeDebugRenderFrame(&lines.lineList);
-
-  // ---- GIZMO WIREFRAME ----------------------------------------------------
-  // Build ONE combined line vector: the document wireframe lines that draw the
-  // yellow selection box (dbg.lines, already converted to render lines) PLUS
-  // the 3 axis-aligned gizmo shafts. Point frame.creativeWireframeDebug at THIS
-  // vector so the renderer draws both. The vector must outlive submitFrame(),
-  // so it lives here in the frame-loop body. When nothing is selected we skip
-  // the gizmo and the selection box is empty, so this is just dbg.lines.
   std::vector<RenderCreativeWireframeDebugLine>& combinedWireLines =
       output.combinedWireLines;
   combinedWireLines.reserve(
-      dbg.lines.size() +
+      documentPlan.wireframe.lines.size() +
       document.logicLinks().size() * 15U + 84U +
       37U +
       kMaxStaticMeshAttachmentSocketCount * 3U +
       editor.interaction.assetScatter.preview.candidateCount * 12U +
-      creative::kCreativePlacementGridMaximumLineCount +
-      creative::kCreativePlacementGridMaximumDotCount +
-      creative::kCreativePlacementAnchorCandidateCapacity * 3U + 4U);
-  std::size_t& documentWireLineCount = output.documentWireLineCount;
-  std::size_t& pointMarkerEdgeCount = output.pointMarkerEdgeCount;
-  std::size_t& lineMarkerEdgeCount = output.lineMarkerEdgeCount;
-  std::size_t& pathPointHandleEdgeCount = output.pathPointHandleEdgeCount;
-  for (const RenderCreativeWireframeDebugLine& line : dbg.lines) {
-    const creative::CreativeObject* object =
-        line.objectId != creative::kInvalidObjectId
-            ? document.findObject(line.objectId)
-            : nullptr;
-    if (object != nullptr &&
-        creative::describeObject(object->kind).shapeKind ==
-            creative::CreativeObjectShapeKind::Line) {
-      continue;
-    }
-    combinedWireLines.push_back(line);
-    if (generatedScopeContains(line.objectId)) {
-      ++output.generatedScopeEdgeCount;
-    }
-  }
-  documentWireLineCount = combinedWireLines.size();
-  if (output.generatedScopeActive && generatedScopeSummary.hasBounds) {
-    const creative::CreativeCoreVec3Conversion minimum =
-        creative::creativeVec3ToCoreChecked(
-            generatedScopeSummary.worldBounds.min);
-    const creative::CreativeCoreVec3Conversion maximum =
-        creative::creativeVec3ToCoreChecked(
-            generatedScopeSummary.worldBounds.max);
-    if (minimum.converted && maximum.converted) {
-      const std::size_t before = combinedWireLines.size();
-      appendStandaloneWireframeBoxEdges(
-          combinedWireLines, minimum.value, maximum.value,
-          generatedScopeColor, 0.07F);
-      output.generatedScopeEdgeCount += combinedWireLines.size() - before;
-    }
-  }
+      cr::kCreativePlacementGridMaximumLineCount +
+      cr::kCreativePlacementGridMaximumDotCount +
+      cr::kCreativePlacementAnchorCandidateCapacity * 3U + 4U);
+
+  appendCreativeEditorOverlayDocumentBase(
+      documentRequest, documentPlan, output);
   appendCreativeEditorArchitectureScaleGuide(request, output);
   appendCreativeEditorPlacementGridOverlay(request, output);
-  appendCreativeEditorWorldLayoutRoofHandles(request, output);
-  appendCreativeEditorWorldLayoutVerticalConnectorHandles(request, output);
-  appendCreativeEditorAssetCollisionPreview(request, placementVisualization,
-                                            output);
-  const creative::CreativeObjectId focusedGroupId =
-      activeCreativeEditorGroupFocusId(editor.groupFocus);
-  if (focusedGroupId != creative::kInvalidObjectId) {
-    bool haveFocusedBounds = false;
-    VisualBounds focusedBounds{};
-    for (const creative::CreativeObject& object :
-         appState.facade.document().objects()) {
-      if (!creative::creativeObjectEffectivelyVisible(
-              appState.facade.document(), object.id) ||
-          object.kind == creative::CreativeObjectKind::Group ||
-          !creativeEditorObjectInsideActiveGroup(
-              appState.facade.document(), editor.groupFocus, object.id)) {
-        continue;
-      }
-      const VisualBounds objectBounds = visualBoundsForObject(object);
-      if (!haveFocusedBounds) {
-        focusedBounds = objectBounds;
-        haveFocusedBounds = true;
-        continue;
-      }
-      focusedBounds.min.x = std::min(focusedBounds.min.x, objectBounds.min.x);
-      focusedBounds.min.y = std::min(focusedBounds.min.y, objectBounds.min.y);
-      focusedBounds.min.z = std::min(focusedBounds.min.z, objectBounds.min.z);
-      focusedBounds.max.x = std::max(focusedBounds.max.x, objectBounds.max.x);
-      focusedBounds.max.y = std::max(focusedBounds.max.y, objectBounds.max.y);
-      focusedBounds.max.z = std::max(focusedBounds.max.z, objectBounds.max.z);
-    }
-    if (haveFocusedBounds) {
-      const std::size_t before = combinedWireLines.size();
-      appendStandaloneWireframeBoxEdges(
-          combinedWireLines, focusedBounds.min, focusedBounds.max,
-          RenderLineColor{0.18F, 0.90F, 1.0F, 1.0F}, 0.045F);
-      for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
-        combinedWireLines[i].objectId = focusedGroupId;
-      }
-    }
-  }
-  for (const creative::CreativeObject& obj :
-       appState.facade.document().objects()) {
-    const creative::CreativeObjectDescriptor& descriptor =
-        creative::describeObject(obj.kind);
-    if (!creative::creativeObjectEffectivelyVisible(
-            appState.facade.document(), obj.id)) {
-      continue;
-    }
-    const bool sel = hasSelection && objectSelected(obj.id);
-    const bool inGeneratedScope = generatedScopeContains(obj.id);
-    if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
-        descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
-      continue;
-    }
-    const VisualBounds markerBounds = visualBoundsForObject(obj);
-    const std::size_t before = combinedWireLines.size();
-    appendStandaloneWireframeBoxEdges(
-        combinedWireLines, markerBounds.min, markerBounds.max,
-        inGeneratedScope
-            ? generatedScopeColor
-            : sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
-            : descriptor.shapeKind == creative::CreativeObjectShapeKind::Line
-                  ? RenderLineColor{0.86F, 0.68F, 0.28F, 1.0F}
-                  : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
-        inGeneratedScope ? 0.055F : sel ? 0.06F : 0.035F);
-    for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
-      combinedWireLines[i].objectId = obj.id;
-    }
-    if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
-      lineMarkerEdgeCount += combinedWireLines.size() - before;
-    } else {
-      pointMarkerEdgeCount += combinedWireLines.size() - before;
-    }
-    if (inGeneratedScope) {
-      output.generatedScopeEdgeCount += combinedWireLines.size() - before;
-    }
-  }
-  if (selectedIsPathForHandles) {
-    const auto appendSegmentSpeedMarker =
-        [&](Vec3 from, Vec3 to, double speedMultiplier) {
-          if (std::fabs(speedMultiplier - 1.0) <= 1.0e-9) {
-            return;
-          }
-          RenderCreativeWireframeDebugLine speedMarker;
-          speedMarker.start = (from + to) * 0.5F;
-          speedMarker.end =
-              speedMarker.start +
-              Vec3{0.0F,
-                   0.20F +
-                       0.10F * static_cast<float>(
-                                   std::fabs(speedMultiplier - 1.0)),
-                   0.0F};
-          speedMarker.color = {0.92F, 0.32F, 1.0F, 1.0F};
-          speedMarker.objectId =
-              static_cast<creative::CreativeObjectId>(selectedId);
-          speedMarker.thickness = 0.06F;
-          combinedWireLines.push_back(speedMarker);
-          ++pathPointHandleEdgeCount;
-        };
-    for (std::size_t index = 1U; index < selected->pathPoints.size(); ++index) {
-      const creative::CreativeCoreVec3Conversion from =
-          creative::creativeVec3ToCoreChecked(
-              selected->pathPoints[index - 1U].position);
-      const creative::CreativeCoreVec3Conversion to =
-          creative::creativeVec3ToCoreChecked(
-              selected->pathPoints[index].position);
-      if (!from.converted || !to.converted) {
-        continue;
-      }
-      RenderCreativeWireframeDebugLine routeLine;
-      routeLine.start = from.value;
-      routeLine.end = to.value;
-      routeLine.color = {0.20F, 0.88F, 1.0F, 1.0F};
-      routeLine.objectId =
-          static_cast<creative::CreativeObjectId>(selectedId);
-      routeLine.thickness = 0.045F;
-      combinedWireLines.push_back(routeLine);
-      ++pathPointHandleEdgeCount;
-      if (selected->kind == creative::CreativeObjectKind::MovingPlatform) {
-        appendSegmentSpeedMarker(
-            from.value, to.value,
-            selected->pathPoints[index - 1U].outgoingSpeedMultiplier);
-      }
-    }
-    if (selected->kind == creative::CreativeObjectKind::MovingPlatform &&
-        selected->movingPlatform.traversalMode ==
-            creative::CreativeMovingPlatformTraversalMode::Loop &&
-        selected->pathPoints.size() > 1U) {
-      const creative::CreativeCoreVec3Conversion from =
-          creative::creativeVec3ToCoreChecked(
-              selected->pathPoints.back().position);
-      const creative::CreativeCoreVec3Conversion to =
-          creative::creativeVec3ToCoreChecked(
-              selected->pathPoints.front().position);
-      if (from.converted && to.converted &&
-          lengthSquared(to.value - from.value) > 1.0e-10F) {
-        RenderCreativeWireframeDebugLine closureLine;
-        closureLine.start = from.value;
-        closureLine.end = to.value;
-        closureLine.color = {0.20F, 0.88F, 1.0F, 1.0F};
-        closureLine.objectId =
-            static_cast<creative::CreativeObjectId>(selectedId);
-        closureLine.thickness = 0.045F;
-        combinedWireLines.push_back(closureLine);
-        ++pathPointHandleEdgeCount;
-        appendSegmentSpeedMarker(
-            from.value, to.value,
-            selected->pathPoints.back().outgoingSpeedMultiplier);
-      }
-    }
-    for (std::size_t index = 0U; index < selected->pathPoints.size(); ++index) {
-      const creative::CreativePathPoint& point = selected->pathPoints[index];
-      const bool pointSelected =
-          editor.interaction.movingPlatformPathEdit.pointSelected &&
-          editor.interaction.movingPlatformPathEdit.objectId == selected->id &&
-          editor.interaction.movingPlatformPathEdit.selectedPointIndex == index;
-      const VisualBounds handleBounds = pathPointHandleBounds(point.position);
-      const std::size_t before = combinedWireLines.size();
-      appendStandaloneWireframeBoxEdges(
-          combinedWireLines,
-          handleBounds.min,
-          handleBounds.max,
-          pointSelected ? RenderLineColor{1.0F, 0.92F, 0.20F, 1.0F}
-                        : RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
-          pointSelected ? 0.06F : 0.035F);
-      for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
-        combinedWireLines[i].objectId =
-            static_cast<creative::CreativeObjectId>(selectedId);
-      }
-      pathPointHandleEdgeCount += combinedWireLines.size() - before;
-      if (point.dwellSeconds > 0.0) {
-        const creative::CreativeCoreVec3Conversion markerBase =
-            creative::creativeVec3ToCoreChecked(point.position);
-        if (markerBase.converted) {
-          RenderCreativeWireframeDebugLine dwellMarker;
-          dwellMarker.start = markerBase.value;
-          dwellMarker.end = markerBase.value + Vec3{0.0F, 0.4F, 0.0F};
-          dwellMarker.color = {1.0F, 0.62F, 0.12F, 1.0F};
-          dwellMarker.objectId =
-              static_cast<creative::CreativeObjectId>(selectedId);
-          dwellMarker.thickness = 0.06F;
-          combinedWireLines.push_back(dwellMarker);
-          ++pathPointHandleEdgeCount;
-        }
-      }
-    }
-  }
-  if (hasSelection && !generatedScopeBroad) {
-    for (const GizmoAxisShaft& shaft : gizmoShafts) {
-      RenderCreativeWireframeDebugLine gizmoLine;
-      gizmoLine.start = request.gizmoFrame.center;
-      gizmoLine.end = shaft.tip;
-      gizmoLine.color = shaft.color;
-      gizmoLine.objectId =
-          static_cast<creative::CreativeObjectId>(selectedId);
-      gizmoLine.thickness = gizmoThickness;
-      combinedWireLines.push_back(gizmoLine);
-    }
-  }
-  appendCreativeEditorMeasurementWireframe(request, output);
-  appendCreativeEditorMovingPlatformPathPreview(request, selected, output);
+
+  const CreativeEditorOverlayWorldAssemblyRequest worldRequest{
+      document,
+      appState.facade.measurementState(),
+      editor.worldLayout,
+      editor.interaction.movingPlatformPathEdit,
+      editor.interaction.target,
+      editor.toolSettings,
+      held,
+      selection.selected,
+      request.inputContext,
+      request.gizmoThickness,
+      request.captureMode,
+      modalOpen};
+  appendCreativeEditorOverlayWorldLayoutRoofHandles(worldRequest, output);
+  appendCreativeEditorOverlayWorldLayoutVerticalConnectorHandles(
+      worldRequest, output);
+
+  const CreativeEditorOverlayPlacementAssemblyRequest placementRequest{
+      document,
+      held,
+      editor.interaction.placementFeedback,
+      placementVisualization,
+      request.assetCatalog,
+      editor.frameIndex,
+      request.gizmoThickness};
+  appendCreativeEditorOverlayAssetCollision(placementRequest, output);
+
+  appendCreativeEditorOverlayDocumentInteraction(
+      documentRequest, documentPlan, output);
+  appendCreativeEditorOverlayMeasurement(worldRequest, output);
+  appendCreativeEditorOverlayMovingPlatformPath(worldRequest, output);
+
   const bool structuralEditVisible =
       !request.captureMode &&
-      request.inputContext == creative::CreativeInputContext::EditorViewport &&
-      !editor.catalog.model.open && !editor.catalog.toolWheel.open &&
-      !editor.toolOptions.open && !editor.assetReplacement.active &&
-      !editor.transform.active;
+      request.inputContext == cr::CreativeInputContext::EditorViewport &&
+      !modalOpen;
   if (structuralEditVisible) {
     output.structuralSpanEditEdgeCount =
         appendCreativeEditorStructuralSpanEditWireframe(
             appState, editor.interaction.structuralSpanEdit,
-            std::max(0.035F, gizmoThickness), combinedWireLines);
+            std::max(0.035F, request.gizmoThickness),
+            combinedWireLines);
     output.roomPlacementEdgeCount =
         appendCreativeEditorRoomPlacementWireframe(
-            appState, editor, std::max(0.035F, gizmoThickness),
+            appState, editor,
+            std::max(0.035F, request.gizmoThickness),
             combinedWireLines);
   }
-  appendCreativeEditorAttachmentSocketMarkers(request, output);
-  appendCreativeEditorPlacementFeedbackWireframe(request, output);
+
+  const CreativeEditorOverlayRelationshipsAssemblyRequest
+      relationshipsRequest{
+          document,
+          selection,
+          editor.interaction.target,
+          editor.logicLinks,
+          held,
+          editor.toolSettings,
+          request.frame,
+          request.assetCatalog,
+          request.drawableWidth,
+          request.drawableHeight,
+          request.gizmoThickness,
+          request.captureMode,
+          modalOpen};
+  appendCreativeEditorOverlayAttachmentSockets(
+      relationshipsRequest, output);
+  appendCreativeEditorOverlayPlacementFeedback(
+      placementRequest, output);
   appendCreativeEditorPlacementClearanceWireframes(request, output);
-  appendCreativeEditorLogicLinks(request, output);
+  appendCreativeEditorOverlayLogicLinks(relationshipsRequest, output);
+
   output.assetReplacementEdgeCount =
       appendCreativeEditorAssetReplacementWireframes(
-          editor.assetReplacement, std::max(0.06F, gizmoThickness * 1.2F),
+          editor.assetReplacement,
+          std::max(0.06F, request.gizmoThickness * 1.2F),
           combinedWireLines);
   output.assetScatterEdgeCount =
       appendCreativeEditorAssetScatterWireframes(
-          editor, std::max(0.05F, gizmoThickness), combinedWireLines);
-  // ---- MATERIAL BRUSH PREVIEW --------------------------------------------
+          editor, std::max(0.05F, request.gizmoThickness),
+          combinedWireLines);
   appendCreativeEditorMaterialBrushWireframe(request, output);
-
-  // ---- CONNECTED FILL PREVIEW -------------------------------------------
   appendCreativeEditorConnectedFillWireframe(request, output);
-
-  // ---- SURFACE EXTRUDE PREVIEW ------------------------------------------
   appendCreativeEditorSurfaceExtrudeWireframe(request, output);
-
-  // ---- VOLUME PREVIEW ----------------------------------------------------
   const CreativeEditorVolumePreviewFacts volumeFacts =
       appendCreativeEditorVolumeAndToolWireframes(request, output);
-  return {volumeFacts, hasSelection};
+  return {volumeFacts, documentPlan.hasSelection};
 }
 
 }  // namespace iggy3d_creative_app
