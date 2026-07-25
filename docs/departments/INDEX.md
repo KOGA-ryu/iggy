@@ -13,7 +13,7 @@ This is the operational dashboard for the Creative-only repository. Maturity des
 | 5 | P1 | [Assets and Object Composition](assets-objects/DEPARTMENT.md) | [Not Started](assets-objects/AUDIT.md) | 447 | 124 | 25 | 7 | 3 | 1 | 0 | 0 |
 | 6 | P1 | [Rendering and Preview](rendering-preview/DEPARTMENT.md) | [Not Started](rendering-preview/AUDIT.md) | 152 | 112 | 34 | 6 | 2 | 1 | 0 | 0 |
 | 7 | P1 | [Terrain and Site](terrain-site/DEPARTMENT.md) | [Not Started](terrain-site/AUDIT.md) | 107 | 83 | 22 | 10 | 1 | 1 | 0 | 0 |
-| 8 | P2 | [Editor Shell and Drafting UI](editor-shell-ui/DEPARTMENT.md) | [Not Started](editor-shell-ui/AUDIT.md) | 56 | 33 | 16 | 5 | 3 | 1 | 0 | 0 |
+| 8 | P2 | [Editor Shell and Drafting UI](editor-shell-ui/DEPARTMENT.md) | [Not Started](editor-shell-ui/AUDIT.md) | 62 | 39 | 16 | 5 | 3 | 1 | 0 | 0 |
 | 9 | P2 | [Playtest and Simulation](playtest-simulation/DEPARTMENT.md) | [Not Started](playtest-simulation/AUDIT.md) | 209 | 147 | 53 | 6 | 2 | 0 | 0 | 0 |
 | 10 | P3 | [Foundation and Build](foundation-build/DEPARTMENT.md) | [Not Started](foundation-build/AUDIT.md) | 77 | 54 | 6 | 3 | 4 | 1 | 0 | 0 |
 

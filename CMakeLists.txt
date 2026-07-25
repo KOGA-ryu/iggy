@@ -525,7 +525,12 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorDesktopHistoryModel.cpp
   apps/iggy3d_creative/EditorDesktopModel.cpp
   apps/iggy3d_creative/EditorDesktopOutliner.cpp
+  apps/iggy3d_creative/EditorDesktopInspectorActors.cpp
   apps/iggy3d_creative/EditorDesktopInspector.cpp
+  apps/iggy3d_creative/EditorDesktopInspectorObject.cpp
+  apps/iggy3d_creative/EditorDesktopInspectorRelationships.cpp
+  apps/iggy3d_creative/EditorDesktopInspectorSelection.cpp
+  apps/iggy3d_creative/EditorDesktopInspectorShared.cpp
   apps/iggy3d_creative/EditorDesktopTransformInspector.cpp
   apps/iggy3d_creative/EditorDesktopVolumeInspector.cpp
   apps/iggy3d_creative/EditorDesktopTerrainGeneration.cpp
