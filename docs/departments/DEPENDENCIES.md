@@ -9,8 +9,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Authoring Core | 113 | 78 |
 | Assets and Object Composition | Interaction and Controls | 102 | 49 |
 | Playtest and Simulation | Foundation and Build | 93 | 63 |
-| Interaction and Controls | Assets and Object Composition | 86 | 40 |
-| Interaction and Controls | Authoring Core | 70 | 48 |
+| Interaction and Controls | Assets and Object Composition | 87 | 43 |
+| Interaction and Controls | Authoring Core | 73 | 51 |
 | Editor Shell and Drafting UI | Interaction and Controls | 69 | 29 |
 | Building and World Layout | Authoring Core | 58 | 48 |
 | Building and World Layout | Editor Shell and Drafting UI | 54 | 37 |
@@ -18,7 +18,7 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Rendering and Preview | Foundation and Build | 51 | 28 |
 | Building and World Layout | Playtest and Simulation | 45 | 17 |
 | Editor Shell and Drafting UI | Building and World Layout | 44 | 21 |
-| Interaction and Controls | Editor Shell and Drafting UI | 38 | 28 |
+| Interaction and Controls | Editor Shell and Drafting UI | 41 | 31 |
 | Rendering and Preview | Assets and Object Composition | 38 | 17 |
 | Assets and Object Composition | Rendering and Preview | 37 | 30 |
 | Editor Shell and Drafting UI | Authoring Core | 35 | 24 |
@@ -103,7 +103,6 @@ These files deserve manual ownership review before physical moves.
 | [apps/iggy3d_creative/EditorFrame.hpp](../../apps/iggy3d_creative/EditorFrame.hpp) | Editor Shell and Drafting UI | Authoring Core, Foundation and Build, Interaction and Controls, Rendering and Preview | 13 |
 | [tests/unit/creative_creator_task_workflow_tests.cpp](../../tests/unit/creative_creator_task_workflow_tests.cpp) | Authoring Core | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Playtest and Simulation, Terrain and Site | 13 |
 | [tests/unit/creative_editor_placement_tests.cpp](../../tests/unit/creative_editor_placement_tests.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 13 |
-| [apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp](../../apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp) | Interaction and Controls | Assets and Object Composition, Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Playtest and Simulation, Terrain and Site | 12 |
 | [tests/unit/creative_editor_terrain_tests.cpp](../../tests/unit/creative_editor_terrain_tests.cpp) | Terrain and Site | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Playtest and Simulation, Rendering and Preview | 12 |
 | [apps/iggy3d_creative/EditorCapture.hpp](../../apps/iggy3d_creative/EditorCapture.hpp) | Rendering and Preview | Authoring Core, Foundation and Build, Interaction and Controls, Persistence and Validation | 11 |
 | [apps/iggy3d_creative/EditorOverlayHud.cpp](../../apps/iggy3d_creative/EditorOverlayHud.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Editor Shell and Drafting UI, Interaction and Controls | 11 |
@@ -119,3 +118,4 @@ These files deserve manual ownership review before physical moves.
 | [apps/iggy3d_creative/EditorStructuralPlacement.cpp](../../apps/iggy3d_creative/EditorStructuralPlacement.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 10 |
 | [apps/iggy3d_creative/EditorCapture.cpp](../../apps/iggy3d_creative/EditorCapture.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Persistence and Validation | 9 |
 | [apps/iggy3d_creative/EditorCommandInput.cpp](../../apps/iggy3d_creative/EditorCommandInput.cpp) | Interaction and Controls | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Persistence and Validation, Terrain and Site | 9 |
+| [apps/iggy3d_creative/EditorDesktopObjectCommands.cpp](../../apps/iggy3d_creative/EditorDesktopObjectCommands.cpp) | Editor Shell and Drafting UI | Building and World Layout, Interaction and Controls, Playtest and Simulation, Rendering and Preview | 9 |

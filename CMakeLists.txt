@@ -418,6 +418,10 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorHeldItemCommands.cpp
   apps/iggy3d_creative/EditorHeldItemDispatch.cpp
   apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp
+  apps/iggy3d_creative/EditorHeldItemSelectionOperations.cpp
+  apps/iggy3d_creative/EditorHeldItemVolumeOperations.cpp
+  apps/iggy3d_creative/EditorHeldItemTerrainOperations.cpp
+  apps/iggy3d_creative/EditorHeldItemRelationshipOperations.cpp
   apps/iggy3d_creative/EditorInteraction.cpp
   apps/iggy3d_creative/EditorInteractionOverlay.cpp
   apps/iggy3d_creative/EditorWorldTargeting.cpp

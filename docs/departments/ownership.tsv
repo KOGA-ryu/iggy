@@ -119,7 +119,12 @@ apps/iggy3d_creative/EditorGroup.cpp	interaction-controls
 apps/iggy3d_creative/EditorGroup.hpp	interaction-controls
 apps/iggy3d_creative/EditorHeldItemCommands.cpp	interaction-controls
 apps/iggy3d_creative/EditorHeldItemDispatch.cpp	interaction-controls
+apps/iggy3d_creative/EditorHeldItemRelationshipOperations.cpp	interaction-controls
+apps/iggy3d_creative/EditorHeldItemSelectionOperations.cpp	interaction-controls
+apps/iggy3d_creative/EditorHeldItemTerrainOperations.cpp	interaction-controls
+apps/iggy3d_creative/EditorHeldItemVolumeOperations.cpp	interaction-controls
 apps/iggy3d_creative/EditorHeldItemWorldOperations.cpp	interaction-controls
+apps/iggy3d_creative/EditorHeldItemWorldOperationsInternal.hpp	interaction-controls
 apps/iggy3d_creative/EditorInteraction.cpp	interaction-controls
 apps/iggy3d_creative/EditorInteraction.hpp	interaction-controls
 apps/iggy3d_creative/EditorInteractionInternal.hpp	interaction-controls
@@ -1367,6 +1372,7 @@ tests/unit/creative_facade_tests.cpp	authoring-core
 tests/unit/creative_geometry_tests.cpp	authoring-core
 tests/unit/creative_ghost_tests.cpp	assets-objects
 tests/unit/creative_group_tests.cpp	interaction-controls
+tests/unit/creative_held_item_operation_ownership_tests.cpp	interaction-controls
 tests/unit/creative_interaction_tests.cpp	interaction-controls
 tests/unit/creative_logic_link_tests.cpp	playtest-simulation
 tests/unit/creative_map_template_tests.cpp	authoring-core
