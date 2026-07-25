@@ -13,8 +13,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Interaction and Controls | Authoring Core | 70 | 48 |
 | Editor Shell and Drafting UI | Interaction and Controls | 67 | 25 |
 | Building and World Layout | Authoring Core | 58 | 48 |
+| Building and World Layout | Editor Shell and Drafting UI | 54 | 37 |
 | Terrain and Site | Authoring Core | 53 | 37 |
-| Building and World Layout | Editor Shell and Drafting UI | 52 | 35 |
 | Rendering and Preview | Foundation and Build | 51 | 28 |
 | Building and World Layout | Playtest and Simulation | 45 | 17 |
 | Editor Shell and Drafting UI | Building and World Layout | 41 | 18 |
@@ -26,13 +26,13 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Editor Shell and Drafting UI | Authoring Core | 32 | 20 |
 | Playtest and Simulation | Authoring Core | 31 | 25 |
 | Rendering and Preview | Authoring Core | 30 | 18 |
+| Building and World Layout | Interaction and Controls | 29 | 25 |
 | Interaction and Controls | Building and World Layout | 29 | 17 |
 | Editor Shell and Drafting UI | Rendering and Preview | 28 | 13 |
 | Rendering and Preview | Interaction and Controls | 28 | 11 |
 | Assets and Object Composition | Editor Shell and Drafting UI | 27 | 24 |
 | Assets and Object Composition | Foundation and Build | 27 | 24 |
 | Building and World Layout | Terrain and Site | 27 | 17 |
-| Building and World Layout | Interaction and Controls | 26 | 22 |
 | Persistence and Validation | Playtest and Simulation | 23 | 8 |
 | Building and World Layout | Assets and Object Composition | 21 | 20 |
 | Playtest and Simulation | Rendering and Preview | 21 | 11 |

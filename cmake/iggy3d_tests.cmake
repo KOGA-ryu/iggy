@@ -980,6 +980,18 @@ set_tests_properties(
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;world;layout;elevation;planner;iggy3d")
 
+add_executable(creative_editor_world_layout_review_model_tests
+  tests/unit/creative_editor_world_layout_review_model_tests.cpp)
+target_link_libraries(creative_editor_world_layout_review_model_tests
+  PRIVATE iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_world_layout_review_model_tests)
+add_test(NAME creative_editor_world_layout_review_model_tests
+  COMMAND "$<TARGET_FILE:creative_editor_world_layout_review_model_tests>")
+set_tests_properties(
+  creative_editor_world_layout_review_model_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;world;layout;review;model;iggy3d")
+
 add_executable(creative_editor_toolbox_tests
   tests/unit/creative_editor_toolbox_tests.cpp)
 target_link_libraries(creative_editor_toolbox_tests PRIVATE

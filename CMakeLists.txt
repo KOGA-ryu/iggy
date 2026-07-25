@@ -551,6 +551,8 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorWorldLayoutDraftingModel.cpp
   apps/iggy3d_creative/EditorWorldLayoutPropertiesPanel.cpp
   apps/iggy3d_creative/EditorWorldLayoutToolPalette.cpp
+  apps/iggy3d_creative/EditorWorldLayoutReviewModel.cpp
+  apps/iggy3d_creative/EditorWorldLayoutReviewPanel.cpp
   apps/iggy3d_creative/EditorWorldLayoutPanel.cpp)
 
 add_library(iggy3d_creative_app STATIC ${IGGY3D_CREATIVE_APP_SOURCES})
