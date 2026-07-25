@@ -1628,6 +1628,7 @@ add_executable(playtest_process_owner_tests
   tests/unit/playtest_process_owner_tests.cpp)
 target_link_libraries(playtest_process_owner_tests PRIVATE
   iggy3d_creative_app)
+add_dependencies(playtest_process_owner_tests i3dp)
 iggy3d_apply_warnings(playtest_process_owner_tests)
 add_test(NAME playtest_process_owner_tests
   COMMAND "$<TARGET_FILE:playtest_process_owner_tests>"
