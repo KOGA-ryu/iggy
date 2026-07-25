@@ -704,6 +704,17 @@ set_tests_properties(creative_desktop_ui_command_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;editor;desktop;command;iggy3d")
 
+add_executable(creative_editor_inspector_ownership_tests
+  tests/unit/creative_editor_inspector_ownership_tests.cpp)
+target_link_libraries(creative_editor_inspector_ownership_tests PRIVATE
+  iggy3d_creative_app)
+iggy3d_apply_warnings(creative_editor_inspector_ownership_tests)
+add_test(NAME creative_editor_inspector_ownership_tests
+  COMMAND "$<TARGET_FILE:creative_editor_inspector_ownership_tests>")
+set_tests_properties(creative_editor_inspector_ownership_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;editor;inspector;architecture;iggy3d")
+
 function(iggy3d_add_creative_desktop_command_test target source runner)
   add_executable(${target}
     tests/unit/creative_desktop_command_test_main.cpp

@@ -1328,6 +1328,7 @@ tests/unit/creative_editor_building_blockout_tests.cpp	building-layout
 tests/unit/creative_editor_controls_tests.cpp	interaction-controls
 tests/unit/creative_editor_drafting_style_tests.cpp	editor-shell-ui
 tests/unit/creative_editor_group_tests.cpp	interaction-controls
+tests/unit/creative_editor_inspector_ownership_tests.cpp	editor-shell-ui
 tests/unit/creative_editor_logic_link_tests.cpp	playtest-simulation
 tests/unit/creative_editor_map_validation_diagnostics_tests.cpp	persistence-validation
 tests/unit/creative_editor_measurement_tests.cpp	interaction-controls
