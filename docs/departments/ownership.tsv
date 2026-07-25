@@ -43,6 +43,13 @@ apps/iggy3d_creative/EditorControlsPersistence.cpp	persistence-validation
 apps/iggy3d_creative/EditorControlsUi.cpp	interaction-controls
 apps/iggy3d_creative/EditorDesktopCommandCamera.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommandPayloads.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadCommon.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadObject.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadTerrain.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadWorldLayoutBuilding.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadWorldLayoutPlan.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadWorldLayoutReview.hpp	editor-shell-ui
+apps/iggy3d_creative/EditorDesktopCommandPayloadWorldLayoutSource.hpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommands.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommands.hpp	editor-shell-ui
 apps/iggy3d_creative/EditorDesktopCommandsInternal.hpp	editor-shell-ui
@@ -1303,6 +1310,7 @@ tests/unit/creative_desktop_command_test_runners.hpp	editor-shell-ui
 tests/unit/creative_desktop_command_test_support.hpp	editor-shell-ui
 tests/unit/creative_desktop_document_command_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_model_tests.cpp	editor-shell-ui
+tests/unit/creative_desktop_payload_contract_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_object_command_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_world_layout_generated_command_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_world_layout_structure_command_tests.cpp	editor-shell-ui
