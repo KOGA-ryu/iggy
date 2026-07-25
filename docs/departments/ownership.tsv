@@ -104,7 +104,13 @@ apps/iggy3d_creative/EditorDesktopWorldLayoutWallOpeningCommands.cpp	building-la
 apps/iggy3d_creative/EditorDesktopWorldLayoutVerticalConnectorInspector.cpp	building-layout
 apps/iggy3d_creative/EditorDraftingStyle.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorDraftingStyle.hpp	editor-shell-ui
-apps/iggy3d_creative/EditorEdits.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditActorSettings.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditClipboardAttachment.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditHistory.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditObjectActions.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditObjectProperties.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditsInternal.cpp	interaction-controls
+apps/iggy3d_creative/EditorEditsInternal.hpp	interaction-controls
 apps/iggy3d_creative/EditorEdits.hpp	interaction-controls
 apps/iggy3d_creative/EditorFrame.cpp	editor-shell-ui
 apps/iggy3d_creative/EditorFrame.hpp	editor-shell-ui
@@ -1321,6 +1327,7 @@ tests/unit/creative_desktop_world_layout_generated_command_tests.cpp	editor-shel
 tests/unit/creative_desktop_world_layout_structure_command_tests.cpp	editor-shell-ui
 tests/unit/creative_desktop_world_layout_tool_command_tests.cpp	editor-shell-ui
 tests/unit/creative_edit_transaction_boundary_tests.cpp	interaction-controls
+tests/unit/creative_editor_edits_ownership_tests.cpp	interaction-controls
 tests/unit/creative_edit_transaction_tests.cpp	interaction-controls
 tests/unit/creative_document_create_tests.cpp	authoring-core
 tests/unit/creative_document_dirty_tests.cpp	authoring-core

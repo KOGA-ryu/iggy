@@ -42,7 +42,7 @@ std::vector<fs::path> creativeEditorProductionFiles() {
 
 bool coreTransactionsStayBehindEditorEdits() {
   constexpr std::string_view kOwner =
-      "apps/iggy3d_creative/EditorEdits.cpp";
+      "apps/iggy3d_creative/EditorEditHistory.cpp";
   constexpr std::array kCoreTokens{
       std::string_view{"beginCreativeHistoryTransaction("},
       std::string_view{"setCreativeHistoryTransactionOperation("},
@@ -73,7 +73,7 @@ bool coreTransactionsStayBehindEditorEdits() {
 
   for (std::size_t index = 0; index < kCoreTokens.size(); ++index) {
     if (!ownerContains[index]) {
-      std::cerr << "FAIL: EditorEdits no longer owns core history token "
+        std::cerr << "FAIL: EditorEditHistory no longer owns core history token "
                 << kCoreTokens[index]
                 << "; remove or update the stale boundary rule\n";
       clean = false;

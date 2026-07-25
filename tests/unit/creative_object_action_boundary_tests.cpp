@@ -105,14 +105,14 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
       std::string_view{
           "src/app/iggy3d/creative/tools/SelectionResolution.cpp"},
       std::string_view{"apps/iggy3d_creative/EditorObjectActions.cpp"},
-      std::string_view{"apps/iggy3d_creative/EditorEdits.cpp"},
+      std::string_view{"apps/iggy3d_creative/EditorEditsInternal.cpp"},
       std::string_view{
           "apps/iggy3d_creative/EditorDesktopOutliner.cpp"},
   };
   static constexpr std::array kAdmissionOwners{
       std::string_view{
           "src/app/iggy3d/creative/tools/SelectionResolution.cpp"},
-      std::string_view{"apps/iggy3d_creative/EditorEdits.cpp"},
+      std::string_view{"apps/iggy3d_creative/EditorEditsInternal.cpp"},
       std::string_view{"apps/iggy3d_creative/EditorAssetScatter.cpp"},
       std::string_view{
           "apps/iggy3d_creative/EditorAuthoredAssets.cpp"},
@@ -141,7 +141,14 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
           "apps/iggy3d_creative/EditorDesktopObjectCommands.cpp"},
   };
   static constexpr std::array kSceneObjectKernelOwners{
-      std::string_view{"apps/iggy3d_creative/EditorEdits.cpp"},
+      std::string_view{
+          "apps/iggy3d_creative/EditorEditObjectActions.cpp"},
+      std::string_view{
+          "apps/iggy3d_creative/EditorObjectActionExecutor.cpp"},
+  };
+  static constexpr std::array kTransformKernelOwners{
+      std::string_view{
+          "apps/iggy3d_creative/EditorEditObjectProperties.cpp"},
       std::string_view{
           "apps/iggy3d_creative/EditorObjectActionExecutor.cpp"},
   };
@@ -175,7 +182,7 @@ bool semanticObjectActionCallsStayInsideNamedBoundaries() {
       SourceOwnershipRule{"transformCreativeEditorSelectionWithUndo(",
                           kSceneObjectKernelOwners},
       SourceOwnershipRule{"setCreativeEditorObjectTransformWithUndo(",
-                          kSceneObjectKernelOwners},
+                          kTransformKernelOwners},
       SourceOwnershipRule{"\"duplicated selection\"",
                           kOutcomePresentationOwner},
       SourceOwnershipRule{"\"nothing to duplicate\"",

@@ -485,7 +485,12 @@ set(IGGY3D_CREATIVE_APP_SOURCES
   apps/iggy3d_creative/EditorPlacementMutation.cpp
   apps/iggy3d_creative/EditorPlacementPreview.cpp
   apps/iggy3d_creative/EditorPlacementGridOverlay.cpp
-  apps/iggy3d_creative/EditorEdits.cpp
+  apps/iggy3d_creative/EditorEditActorSettings.cpp
+  apps/iggy3d_creative/EditorEditClipboardAttachment.cpp
+  apps/iggy3d_creative/EditorEditHistory.cpp
+  apps/iggy3d_creative/EditorEditObjectActions.cpp
+  apps/iggy3d_creative/EditorEditObjectProperties.cpp
+  apps/iggy3d_creative/EditorEditsInternal.cpp
   apps/iggy3d_creative/EditorVolume.cpp
   apps/iggy3d_creative/EditorFrustumCull.cpp
   apps/iggy3d_creative/EditorPathEditing.cpp
