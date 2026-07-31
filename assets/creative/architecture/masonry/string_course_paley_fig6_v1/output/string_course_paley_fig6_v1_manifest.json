@@ -1,0 +1,22 @@
+{
+ "asset": "SINC_StringCourse_PaleyFig6",
+ "blender_version": "5.1.1",
+ "consumed_donor": {
+  "badge": "reference-verified pilot (see geometry_proof README)",
+  "profile_id": "paley_pl1_fig6_v1",
+  "spec_path": "assets/creative/geometry_proof/profiles/paley_pl1_fig6_v1.json",
+  "spec_sha256": "b60ce194973c6648cd4410456cd32b77d057aa4ef1f18ddaf87fd66498d1d000"
+ },
+ "length_m": 2.0,
+ "renders": {
+  "three_quarter": "/Users/kogaryu/iggy3d/assets/creative/architecture/masonry/string_course_paley_fig6_v1/output/renders/three_quarter.png"
+ },
+ "scale_m_per_unit": 0.0254,
+ "section_extents_units": {
+  "depth": 9.2802,
+  "width": 10.9099
+ },
+ "section_vertices": 130,
+ "single_source": "profile_compiler.compile_profile - no geometry authored here",
+ "status": "SINC_STRING_COURSE_BUILT"
+}
