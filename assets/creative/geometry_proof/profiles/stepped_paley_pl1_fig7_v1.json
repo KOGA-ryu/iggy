@@ -1,0 +1,60 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "stepped_paley_pl1_fig7_v1",
+  "reference": {
+    "source": "Paley, Manual of Gothic Mouldings 1845, Plate I fig 7: three receding orders 1.4 x 1.4 (PROPORTIONAL ONLY, fig 7 carries no dimension line). The quarter-round hollows in each re-entrant angle are DELIBERATELY OMITTED here - this is the straight-only stress variant, an authored translation, not a faithful fig 7.",
+    "source_frame": "none - relative construction (fig 7 is unscalable)"
+  },
+  "units": "relative",
+  "datum": "order_width",
+  "tolerance": { "distance": 0.02, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X along the outer wall-line",
+    "profile_y": "+Z up (orders recede downward as drawn)",
+    "extrude_axis": "+Y",
+    "scale_m_per_unit": 0.05
+  },
+  "stations": {
+    "origin":     { "at": [0.0, 0.0],   "evidence": "ESTIMATED", "join": "HARD" },
+    "tread1_end": { "at": [1.4, 0.0],   "evidence": "ESTIMATED", "join": "HARD" },
+    "riser1_end": { "at": [1.4, -1.4],  "evidence": "ESTIMATED", "join": "HARD" },
+    "tread2_end": { "at": [2.8, -1.4],  "evidence": "ESTIMATED", "join": "HARD" },
+    "riser2_end": { "at": [2.8, -2.8],  "evidence": "ESTIMATED", "join": "HARD" },
+    "tread3_end": { "at": [4.2, -2.8],  "evidence": "ESTIMATED", "join": "HARD" },
+    "riser3_end": { "at": [4.2, -4.2],  "evidence": "ESTIMATED", "join": "HARD" },
+    "base_right": { "at": [4.2, -5.4],  "evidence": "AUTHORED", "join": "HARD" },
+    "base_left":  { "at": [0.0, -5.4],  "evidence": "AUTHORED", "join": "HARD" }
+  },
+  "segments": [
+    { "name": "tread1", "kind": "LINE", "from": "origin", "to": "tread1_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "riser1", "kind": "LINE", "from": "tread1_end", "to": "riser1_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "tread2", "kind": "LINE", "from": "riser1_end", "to": "tread2_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "riser2", "kind": "LINE", "from": "tread2_end", "to": "riser2_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "tread3", "kind": "LINE", "from": "riser2_end", "to": "tread3_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "riser3", "kind": "LINE", "from": "tread3_end", "to": "riser3_end",
+      "role": "MOULDED", "evidence": "ESTIMATED" },
+    { "name": "jamb_face", "kind": "LINE", "from": "riser3_end", "to": "base_right",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "bed", "kind": "LINE", "from": "base_right", "to": "base_left",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "back", "kind": "LINE", "from": "base_left", "to": "origin",
+      "role": "BOUNDING", "evidence": "AUTHORED" }
+  ],
+  "solid_side": "RIGHT",
+  "parameters": {
+    "order_width": { "value": 1.4, "claim": { "kind": "length_of", "segment": "tread1" } },
+    "order_drop":  { "value": -90.0, "claim": { "kind": "angle_of", "segment": "riser1" } },
+    "reveal_width": { "value": 4.2, "claim": { "kind": "extent", "axis": "width" } }
+  },
+  "proof": { "extrusion_depth": 1.4 },
+  "notes": [
+    "Phase 5.3 stress profile: straight-only, zero arcs, every join HARD, and the outline traverses CLOCKWISE with solid_side RIGHT. Exercises the no-curvature path through the proof scene (no centres, no radius guides, no direction arrows). Historically the first RIGHT/clockwise profile; receding_orders_paley_pl1_fig7_v1 now shares that winding.",
+    "Paley: 'so many successive planes or retiring arches, each placed behind and beneath the next before it' - with a hollow struck in every re-entrant angle. The faithful fig 7 WITH its hollows now exists as receding_orders_paley_pl1_fig7_v1; this profile remains the deliberate straight-only variant."
+  ]
+}

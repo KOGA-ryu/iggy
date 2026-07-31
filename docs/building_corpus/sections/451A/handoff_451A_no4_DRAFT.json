@@ -1,0 +1,79 @@
+{
+  "format": "SINC_GeometryProof_Handoff/1",
+  "id": "ellis_451a_no4",
+  "source": {
+    "citation": "Ellis 1902, leaf n153 (printed 136), Plate 451A No.4: section at meeting stiles of pair of casements, with oak slip",
+    "notes": [
+      "DRAFT STUB - run `python3 assets/creative/geometry_proof/profile_intake.py` on this file and the validation errors ARE the remaining worklist.",
+      "Scalar schedule transcribed from measurements_451A_no4_v1.csv; landmark assembly (2D points from the scanline bands) is the open research-side step.",
+      "Two profiles expected from this handoff: casement meeting stile (rectilinear) and oak slip (curved head - trace the head for arc fitting, 5+ samples)."
+    ]
+  },
+  "calibration": {
+    "px_per_unit": 70.401,
+    "units": "in",
+    "rms_residual_px": 1.66,
+    "method": "least-squares over 13 scale-bar ticks of the plate's printed 12-inch bar",
+    "crosscheck": "first-inch eighths independently give 70.0 px/in"
+  },
+  "frames": {
+    "plate": { "parent": null,
+               "note": "plate451A_upright.jpg - source raster rotated 90 CW, y-down" },
+    "scalebar": { "parent": "plate", "offset_px": [1290, 680], "scale": 1.0,
+                  "note": "crop 120x1100" },
+    "strip345": { "parent": "plate", "offset_px": [1330, 500], "scale": 1.0,
+                  "note": "crop 350x1650 covering details 3+4+5" },
+    "no4_grid": { "parent": "plate", "offset_px": [520, 30], "scale": 2.0,
+                  "note": "VERIFY offset against the recipe 'crop 520,30 + grid 35 + x2' - if the crop was taken from strip345 rather than the plate, re-parent accordingly. Scanline numbers in the CSV notes live in THIS frame" }
+  },
+  "profile_frame": {
+    "origin_landmark": "TODO_choose_origin",
+    "axes": "plate-default",
+    "note": "suggest origin at the outer face line / left meeting stile corner; +x across the joint, +y up out of the weather side - decide and record"
+  },
+  "landmarks": [],
+  "arc_traces": [],
+  "extents": [
+    { "measure_id": "M01", "quantity": "outer face line to outer glass surface", "value": 0.611,
+      "status": "MEASURED", "method": "row-line detection in open bay",
+      "note": "glass plane setback from casement face; nearest workshop size 5/8" },
+    { "measure_id": "M02", "quantity": "glass drawn thickness", "value": 0.178,
+      "status": "MEASURED", "method": "row-line detection (lines 184.5 to 197)",
+      "note": "drawing convention - real crown/sheet glass of the period is thinner; 3/16" },
+    { "measure_id": "M03", "quantity": "stile depth outer face to inner face", "value": 1.911,
+      "status": "MEASURED", "method": "row-line detection (141.5 to 276)",
+      "note": "the classic finished 2-in casement stock; 1 15/16" },
+    { "measure_id": "M04", "quantity": "inner line pair spacing", "value": 0.121,
+      "status": "INTERPRETATION-OPEN", "method": "row-line detection (267 to 275.5)",
+      "note": "bead sight line vs frame inner face not yet resolved - settle against Ellis weathering chapter (printed 124, VERIFIED)" },
+    { "measure_id": "M05", "quantity": "rebate shoulder line below inner glass line", "value": 0.398,
+      "status": "INTERPRETATION-OPEN", "method": "row-line detection (197 to 225)",
+      "note": "likely glazing-rebate shoulder / putty line; confirm against Ellis text; 13/32" },
+    { "measure_id": "M06", "quantity": "left meeting stile width face to glass band", "value": 2.251,
+      "status": "MEASURED", "method": "median outermost-ink over rows 150-178",
+      "note": "measured above joint bevels; 2 1/4" },
+    { "measure_id": "M07", "quantity": "right meeting stile width face to glass band", "value": 2.166,
+      "status": "MEASURED", "method": "median outermost-ink over rows 150-178",
+      "note": "asymmetry vs M06 is REAL at this level (bevelled lap); nominal stock likely equal; 2 3/16" },
+    { "measure_id": "M08", "quantity": "oak slip head width", "value": 1.506,
+      "status": "MEASURED", "method": "median outermost-ink over rows 112-138",
+      "note": "the weather moulding covering the joint outside; 1 1/2" },
+    { "measure_id": "M09", "quantity": "oak slip head height", "value": 0.369,
+      "status": "MEASURED", "method": "column median rows 95-150", "note": "3/8" },
+    { "measure_id": "M10", "quantity": "oak slip projection above face line", "value": 0.291,
+      "status": "MEASURED", "method": "head top 121 vs face 141.5", "note": "9/32" },
+    { "measure_id": "M11", "quantity": "oak slip total depth head top to tongue tip", "value": 1.932,
+      "status": "MEASURED", "method": "column median",
+      "note": "runs nearly the full stile depth; tongue tip stops 10-19 px short of inner face; 1 15/16" },
+    { "measure_id": "M12", "quantity": "slip tongue width at mid band", "value": 0.852,
+      "status": "MEASURED-CAUTION", "method": "median outermost-ink rows 205-228",
+      "note": "window may include stile-cheek contact ink - verify during profile authoring; 7/8" }
+  ],
+  "datum_measure_id": "M03",
+  "open_questions": [
+    "M04: which inner line is the bead sight line and which the frame inner face",
+    "M05: confirm the rebate-shoulder reading against Ellis's weathering text",
+    "M12: tongue width may include stile-cheek contact ink (the blob-merge trap)",
+    "no4_grid frame parentage: confirm the crop recipe's parent image before assembling landmarks"
+  ]
+}

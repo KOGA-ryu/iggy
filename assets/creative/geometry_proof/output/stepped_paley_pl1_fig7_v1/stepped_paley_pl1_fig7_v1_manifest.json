@@ -1,0 +1,92 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 5.4,
+  "width": 4.2
+ },
+ "flip": null,
+ "normalized_stations": {
+  "base_left": [
+   0.0,
+   -3.8571428571428577
+  ],
+  "base_right": [
+   3.0000000000000004,
+   -3.8571428571428577
+  ],
+  "origin": [
+   0.0,
+   0.0
+  ],
+  "riser1_end": [
+   1.0,
+   -1.0
+  ],
+  "riser2_end": [
+   2.0,
+   -2.0
+  ],
+  "riser3_end": [
+   3.0000000000000004,
+   -3.0000000000000004
+  ],
+  "tread1_end": [
+   1.0,
+   0.0
+  ],
+  "tread2_end": [
+   2.0,
+   -1.0
+  ],
+  "tread3_end": [
+   3.0000000000000004,
+   -2.0
+  ]
+ },
+ "objects": [
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_base_left",
+  "SINC_Label_base_right",
+  "SINC_Label_origin",
+  "SINC_Label_riser1_end",
+  "SINC_Label_riser2_end",
+  "SINC_Label_riser3_end",
+  "SINC_Label_tread1_end",
+  "SINC_Label_tread2_end",
+  "SINC_Label_tread3_end",
+  "SINC_Master_stepped_paley_pl1_fig7_v1",
+  "SINC_Station_base_left",
+  "SINC_Station_base_right",
+  "SINC_Station_origin",
+  "SINC_Station_riser1_end",
+  "SINC_Station_riser2_end",
+  "SINC_Station_riser3_end",
+  "SINC_Station_tread1_end",
+  "SINC_Station_tread2_end",
+  "SINC_Station_tread3_end",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 9,
+ "profile_id": "stepped_paley_pl1_fig7_v1",
+ "reference_note": "no reference image declared",
+ "reference_placed": false,
+ "renders": {
+  "front": "output/stepped_paley_pl1_fig7_v1/renders/front.png",
+  "opposite": "output/stepped_paley_pl1_fig7_v1/renders/opposite.png",
+  "three_quarter": "output/stepped_paley_pl1_fig7_v1/renders/three_quarter.png",
+  "wire": "output/stepped_paley_pl1_fig7_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "59c7c678024a37e5238d50e614fc43e42408ff809b511e937ded54a025733be2",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [
+  "stations.riser3_end: declared HARD but tangents are continuous (0.00 deg) - confirm this corner is real"
+ ],
+ "winding": "CLOCKWISE"
+}

@@ -1,0 +1,93 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 3.2,
+  "width": 5.0
+ },
+ "flip": null,
+ "normalized_stations": {
+  "bed_end": [
+   1.0,
+   0.0
+  ],
+  "crown_top": [
+   0.79,
+   0.64
+  ],
+  "inflection": [
+   0.8800000000000001,
+   0.36784
+  ],
+  "ogee_close": [
+   0.79,
+   0.52372
+  ],
+  "ogee_spring": [
+   1.0,
+   0.16
+  ],
+  "origin": [
+   0.0,
+   0.0
+  ],
+  "top_left": [
+   0.0,
+   0.64
+  ]
+ },
+ "objects": [
+  "SINC_ArcCentre_cyma_concave_0",
+  "SINC_ArcCentre_cyma_concave_1",
+  "SINC_ArcCentre_cyma_convex_0",
+  "SINC_ArcCentre_cyma_convex_1",
+  "SINC_ArcDir_cyma_concave",
+  "SINC_ArcDir_cyma_convex",
+  "SINC_ArcInfo_cyma_concave",
+  "SINC_ArcInfo_cyma_convex",
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_bed_end",
+  "SINC_Label_crown_top",
+  "SINC_Label_inflection",
+  "SINC_Label_ogee_close",
+  "SINC_Label_ogee_spring",
+  "SINC_Label_origin",
+  "SINC_Label_top_left",
+  "SINC_Master_ogee_brandon_pl9_v1",
+  "SINC_Radius_cyma_concave_inflection",
+  "SINC_Radius_cyma_concave_ogee_close",
+  "SINC_Radius_cyma_convex_inflection",
+  "SINC_Radius_cyma_convex_ogee_spring",
+  "SINC_Station_bed_end",
+  "SINC_Station_crown_top",
+  "SINC_Station_inflection",
+  "SINC_Station_ogee_close",
+  "SINC_Station_ogee_spring",
+  "SINC_Station_origin",
+  "SINC_Station_top_left",
+  "SINC_Tangent_inflection",
+  "SINC_Tangent_ogee_close",
+  "SINC_Tangent_ogee_spring",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 37,
+ "profile_id": "ogee_brandon_pl9_v1",
+ "reference_note": "no reference image declared",
+ "reference_placed": false,
+ "renders": {
+  "front": "output/ogee_brandon_pl9_v1/renders/front.png",
+  "opposite": "output/ogee_brandon_pl9_v1/renders/opposite.png",
+  "three_quarter": "output/ogee_brandon_pl9_v1/renders/three_quarter.png",
+  "wire": "output/ogee_brandon_pl9_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "e390a992deaf9096ceaffa8c5577f4c52a402b35d06eca41ddf42e9ebe311b3d",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [],
+ "winding": "COUNTERCLOCKWISE"
+}

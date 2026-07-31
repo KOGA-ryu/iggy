@@ -1,0 +1,54 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "mm_rail_scale_check_v1",
+  "reference": {
+    "source": "Authored scale-capability check: a 40 x 18 mm rail section with one 45-degree chamfer and one r=4 mm round. Exists so the millimetre-unit capability has a RETAINED artifact, not just a fixed review finding.",
+    "source_frame": "none - authored"
+  },
+  "units": "mm",
+  "datum": "rail_width",
+  "tolerance": { "distance": 0.2, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X across the rail",
+    "profile_y": "+Z up",
+    "extrude_axis": "+Y",
+    "scale_m_per_unit": 0.001
+  },
+  "stations": {
+    "origin":        { "at": [0.0, 0.0],  "evidence": "AUTHORED", "join": "HARD" },
+    "bed_end":       { "at": [40.0, 0.0], "evidence": "AUTHORED", "join": "HARD" },
+    "chamfer_start": { "at": [40.0, 12.0], "evidence": "AUTHORED", "join": "HARD" },
+    "chamfer_end":   { "at": [34.0, 18.0], "evidence": "AUTHORED", "join": "HARD" },
+    "round_start":   { "at": [4.0, 18.0], "evidence": "AUTHORED", "join": "SMOOTH" },
+    "round_end":     { "at": [0.0, 14.0], "evidence": "AUTHORED", "join": "SMOOTH" }
+  },
+  "segments": [
+    { "name": "bed", "kind": "LINE", "from": "origin", "to": "bed_end",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "right_face", "kind": "LINE", "from": "bed_end", "to": "chamfer_start",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "chamfer", "kind": "LINE", "from": "chamfer_start", "to": "chamfer_end",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "top", "kind": "LINE", "from": "chamfer_end", "to": "round_start",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "round", "kind": "ARC", "from": "round_start", "to": "round_end",
+      "centre": [4.0, 14.0], "direction": "COUNTERCLOCKWISE",
+      "role": "MOULDED", "evidence": "AUTHORED",
+      "note": "r = 4 mm corner round, tangent-continuous into both neighbours" },
+    { "name": "left_face", "kind": "LINE", "from": "round_end", "to": "origin",
+      "role": "BOUNDING", "evidence": "AUTHORED" }
+  ],
+  "solid_side": "LEFT",
+  "parameters": {
+    "rail_width":  { "value": 40.0, "claim": { "kind": "extent", "axis": "width" } },
+    "rail_height": { "value": 18.0, "claim": { "kind": "extent", "axis": "depth" } },
+    "round_radius": { "value": 4.0, "claim": { "kind": "radius_of", "segment": "round" } },
+    "chamfer_run": { "value": 8.485, "claim": { "kind": "length_of", "segment": "chamfer" } },
+    "chamfer_angle": { "value": 135.0, "claim": { "kind": "angle_of", "segment": "chamfer" } }
+  },
+  "proof": { "extrusion_depth": 25.0 },
+  "notes": [
+    "Vocabulary/scale proof, NOT a donor: retained evidence that millimetre units with scale_m_per_unit 0.001 build and render (the adversarial review found and fixed blank renders at this scale; this artifact keeps that capability demonstrated rather than merely repaired)."
+  ]
+}

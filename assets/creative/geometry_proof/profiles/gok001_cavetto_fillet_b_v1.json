@@ -1,0 +1,66 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "gok001_cavetto_fillet_b_v1",
+  "reference": {
+    "source": "GOK-001 SINC_PROFILE_CavettoFillet_B component ledger v1.0 (Codex sinc repo: docs/asset-library/GOK001_PROFILE_CAVETTO_FILLET_B_COMPONENT_LEDGER.md) - Nyear Plate XIV cavetto, stations E00-E04, R=1.000 normalized, Lo=0.600R, Li=0.220R",
+    "source_frame": "ledger (U,V) frame, y-up, adopted directly as the profile frame. The Nyear source crop is an OBLIQUE drawing - per RECTIFICATION_ELIGIBILITY.md criterion 3 it cannot be overlaid on an orthographic section, so comparison stays side-by-side against the annotated implementation card, and no reference plane is placed.",
+    "notes": "Source crop: Codex sinc outputs/reference-images/gok001-furniture-moulding-profile-expansion-v1/owned-crops/nyear_plate_xiv_cavetto.png; annotated card: nyear_plate_xiv_cavetto_annotated.svg."
+  },
+  "units": "relative",
+  "datum": "cavetto_radius",
+  "tolerance": { "distance": 0.005, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X = ledger +U (into the cove, toward the inner land)",
+    "profile_y": "+Z = ledger +V (up the outer land)",
+    "extrude_axis": "+Y (the ledger's +W straight proof sweep)",
+    "scale_m_per_unit": 0.05
+  },
+  "stations": {
+    "E00": { "at": [0.0, 1.6], "evidence": "ESTIMATED", "join": "HARD",
+             "note": "outer-land top, closure start; V = R + Lo with Lo = 0.600R REFERENCE_INFERRED working ratio (ledger repair pass 1 restored the unequal lands)" },
+    "E01": { "at": [0.0, 1.0], "evidence": "DERIVED", "join": "HARD",
+             "note": "hard outer-land/arc shoulder; the arc's tangent here is EXACTLY horizontal because the centre shares E01's U - proven by the centre-radius validation, not by handle placement" },
+    "E02": { "at": [1.0, 0.0], "evidence": "DERIVED", "join": "HARD",
+             "note": "hard arc/inner-land shoulder; arc tangent exactly vertical (centre shares E02's V)" },
+    "E03": { "at": [1.22, 0.0], "evidence": "ESTIMATED", "join": "HARD",
+             "note": "inner-land end; Li = 0.220R REFERENCE_INFERRED working ratio" },
+    "E04": { "at": [1.22, 1.6], "evidence": "AUTHORED", "join": "HARD",
+             "note": "solid closure corner, PROJECT_DECISION - closure must not cross the open cove space and does not" }
+  },
+  "segments": [
+    { "name": "outer_land", "kind": "LINE", "from": "E00", "to": "E01",
+      "role": "MOULDED", "evidence": "ESTIMATED",
+      "note": "CFB-A01: outer vertical fillet land" },
+    { "name": "cavetto", "kind": "ARC", "from": "E01", "to": "E02",
+      "centre": [0.0, 0.0], "direction": "CLOCKWISE",
+      "role": "MOULDED", "evidence": "DERIVED",
+      "note": "CFB-A02: the inverted quarter circle, VISIBLE + period definition. The ledger's v3 builder realizes it as a kappa cubic (C1=(K*R,R), C2=(R,K*R)); here it is the true circle with centre and direction DECLARED - the arc-bowed-the-wrong-way defect that cost the ledger three repair passes is unrepresentable in this form" },
+    { "name": "inner_land", "kind": "LINE", "from": "E02", "to": "E03",
+      "role": "MOULDED", "evidence": "ESTIMATED",
+      "note": "CFB-A03: inner horizontal fillet land" },
+    { "name": "closure_right", "kind": "LINE", "from": "E03", "to": "E04",
+      "role": "BOUNDING", "evidence": "AUTHORED",
+      "note": "CFB-A04 solid closure" },
+    { "name": "closure_top", "kind": "LINE", "from": "E04", "to": "E00",
+      "role": "BOUNDING", "evidence": "AUTHORED" }
+  ],
+  "solid_side": "LEFT",
+  "parameters": {
+    "cavetto_radius": { "value": 1.0, "claim": { "kind": "radius_of", "segment": "cavetto" },
+                        "note": "R = 1.000, the normalization datum" },
+    "outer_land_length": { "value": 0.6, "claim": { "kind": "length_of", "segment": "outer_land" },
+                           "note": "Lo, REFERENCE_INFERRED" },
+    "inner_land_length": { "value": 0.22, "claim": { "kind": "length_of", "segment": "inner_land" },
+                           "note": "Li, REFERENCE_INFERRED" },
+    "section_width": { "value": 1.22, "claim": { "kind": "extent", "axis": "width" } },
+    "section_height": { "value": 1.6, "claim": { "kind": "extent", "axis": "depth" } }
+  },
+  "proof": { "extrusion_depth": 1.2 },
+  "notes": [
+    "STATUS: independent cross-check of the approved GOK001-CFB geometry through the SINC_GeometryProof_Profile system - it does NOT discharge GOK001-CFB-P04, whose no-advance rule requires the ledger's own v3 builder (work/build_gok001_profile_cavetto_fillet_b_v1.py) to run directly, reopen, and pass its six disproof views.",
+    "Fully normalized (units relative, R = 1.000): demonstrates the relative-proportion boundary the ledger mandates, with zero code changes to the proof system.",
+    "Solid side is LEFT of the COUNTERCLOCKWISE traversal (E00 down the outer land, around the cove, up the closure) even though the cavetto member itself is a CLOCKWISE arc - outline winding and member direction are independent facts, and the compiler rejected the first draft of this spec for declaring them inconsistently. The open cove space at the origin quadrant is void, per CFB-A04's constraint.",
+    "Evidence mapping from the ledger vocabulary: REFERENCE_INFERRED -> ESTIMATED, VISIBLE/period definition -> DERIVED, PROJECT_DECISION -> AUTHORED; original labels preserved in per-item notes."
+  ]
+}

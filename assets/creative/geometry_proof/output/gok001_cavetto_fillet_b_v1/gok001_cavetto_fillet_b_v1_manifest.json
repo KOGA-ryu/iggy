@@ -1,0 +1,72 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 1.6,
+  "width": 1.22
+ },
+ "flip": null,
+ "normalized_stations": {
+  "E00": [
+   0.0,
+   1.6
+  ],
+  "E01": [
+   0.0,
+   1.0
+  ],
+  "E02": [
+   1.0,
+   0.0
+  ],
+  "E03": [
+   1.22,
+   0.0
+  ],
+  "E04": [
+   1.22,
+   1.6
+  ]
+ },
+ "objects": [
+  "SINC_ArcCentre_cavetto_0",
+  "SINC_ArcCentre_cavetto_1",
+  "SINC_ArcDir_cavetto",
+  "SINC_ArcInfo_cavetto",
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_E00",
+  "SINC_Label_E01",
+  "SINC_Label_E02",
+  "SINC_Label_E03",
+  "SINC_Label_E04",
+  "SINC_Master_gok001_cavetto_fillet_b_v1",
+  "SINC_Radius_cavetto_E01",
+  "SINC_Radius_cavetto_E02",
+  "SINC_Station_E00",
+  "SINC_Station_E01",
+  "SINC_Station_E02",
+  "SINC_Station_E03",
+  "SINC_Station_E04",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 28,
+ "profile_id": "gok001_cavetto_fillet_b_v1",
+ "reference_note": "no reference image declared",
+ "reference_placed": false,
+ "renders": {
+  "front": "output/gok001_cavetto_fillet_b_v1/renders/front.png",
+  "opposite": "output/gok001_cavetto_fillet_b_v1/renders/opposite.png",
+  "three_quarter": "output/gok001_cavetto_fillet_b_v1/renders/three_quarter.png",
+  "wire": "output/gok001_cavetto_fillet_b_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "4c77d1902ee1ec2c8f52b21f5de558d62264e90b794017d870f342220e77fbf7",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [],
+ "winding": "COUNTERCLOCKWISE"
+}

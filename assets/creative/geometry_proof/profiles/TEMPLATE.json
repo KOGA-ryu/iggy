@@ -1,0 +1,59 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "REPLACE_lowercase_id_v1",
+  "reference": {
+    "source": "REQUIRED: book, plate, figure - or the vocabulary source for an authored exercise",
+    "image": "OPTIONAL: repo-relative path to the reference/overlay image",
+    "scale_px_per_unit": 22.09,
+    "source_frame": "describe the pixel frame and the anchor station",
+    "crop_px_at_origin": [0, 0],
+    "crop_px_per_unit": 90.0,
+    "notes": "crop placement may start ESTIMATED; refine against the first front render"
+  },
+  "units": "in | mm | cm | m | relative",
+  "datum": "REQUIRED: names a parameter below; normalized stations = at / datum",
+  "tolerance": { "distance": 0.1, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X = describe what this axis means physically",
+    "profile_y": "+Z = up; the profile frame is ALWAYS y-up as the front camera sees it",
+    "extrude_axis": "+Y",
+    "scale_m_per_unit": 0.0254
+  },
+  "stations": {
+    "every_station": {
+      "at": [0.0, 0.0],
+      "source_px": [0, 0],
+      "evidence": "PRINTED | MEASURED | FITTED | DERIVED | ESTIMATED | AUTHORED",
+      "join": "HARD preserves the corner; SMOOTH is a tangent-continuity CLAIM the compiler verifies",
+      "note": "source_px is optional; when present it must register against the declared scale"
+    }
+  },
+  "segments": [
+    {
+      "name": "unique_name",
+      "kind": "LINE | ARC | BEZIER",
+      "from": "station",
+      "to": "station",
+      "centre": [0.0, 0.0],
+      "direction": "ARC only: CLOCKWISE | COUNTERCLOCKWISE, in the y-up frame as the front camera sees it. Radius is DERIVED from the centre - never authored.",
+      "role": "MOULDED (the carved edge production consumes) | BOUNDING (saw planes and stock closure)",
+      "evidence": "same classes as stations"
+    }
+  ],
+  "solid_side": "LEFT | RIGHT of travel; the compiler rejects it if the winding disagrees",
+  "parameters": {
+    "some_dimension": {
+      "value": 1.0,
+      "claim": { "kind": "free | radius_of | length_of | angle_of | distance | extent" },
+      "note": "claims are verified against the built geometry - printed dims become falsifiable"
+    }
+  },
+  "proof": { "extrusion_depth": 2.0 },
+  "notes": [
+    "RULES: segments form ONE closed loop chained by station names (a section is a closed outline, not an open chain).",
+    "The moulded face stays distinguishable via role; the stock's bounding planes close the loop.",
+    "Author station coordinates FROM measured pixels where they exist; record every inconsistency you resolve as a note.",
+    "This template is instructional and deliberately does not compile - copy it, replace every field, delete these instructions."
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": "SINC_GeometryProof_Handoff/1",
+  "id": "paley_pl1_fig6_intake_demo",
+  "source": {
+    "citation": "Paley, Manual of Gothic Mouldings 1845, Plate I fig 6 (leaf n88) - INTAKE DEMO: the pilot's measured record re-expressed as a handoff to prove the research->harness bridge round-trips",
+    "image": "docs/blender/paley_pl1_fig6_overlay.png",
+    "notes": ["This example is also consumed by tests/unit/geometry_proof_intake_tests.py - single source, dual use."]
+  },
+  "calibration": {
+    "px_per_unit": 22.09,
+    "units": "in",
+    "rms_residual_px": 1.1045,
+    "method": "printed '11 in' dimension line, arrowhead tips plate x1003..1246 = 243 px; residual expressed from the recorded 0.1 in measurement tolerance",
+    "crosscheck": "stock box 241 px = 10.91 in vs 11 in printed - 0.8% error"
+  },
+  "frames": {
+    "plate": { "parent": null, "note": "the 1930x2951 scan, y-down" }
+  },
+  "profile_frame": {
+    "origin_landmark": "wall_start",
+    "axes": "plate-default",
+    "note": "Paley frame: wall-line horizontal (+x), soffit vertical (+y up)"
+  },
+  "landmarks": [
+    { "name": "wall_start", "frame": "plate", "px": [1004, 772],
+      "evidence": "MEASURED", "method": "wall-line left end", "note": "origin" },
+    { "name": "wall_end", "frame": "plate", "px": [1104, 768],
+      "evidence": "MEASURED", "method": "wall-line meets arris chamfer" },
+    { "name": "hollow_end", "frame": "plate", "px": [1175, 649],
+      "evidence": "MEASURED", "method": "measured chamfer start",
+      "note": "the pilot spec later nudged this 0.021 in onto the constructed hollow circle" },
+    { "name": "chamfer_top", "frame": "plate", "px": [1242, 591],
+      "evidence": "MEASURED", "method": "moulding top reach on the stock right edge" }
+  ],
+  "arc_traces": [
+    { "name": "bowtell", "frame": "plate", "evidence": "FITTED",
+      "note": "nine samples regenerated from the recorded least-squares fit (centre plate (1190.5,721.5), r 50.6 px) - demonstrates the trace->fit lane; the original 43-sample trace lives in the fig 6 record",
+      "points": [
+        [1142.952, 704.194], [1157.975, 682.738], [1181.713, 671.669],
+        [1207.806, 673.952], [1229.262, 688.975], [1240.331, 712.713],
+        [1238.048, 738.806], [1223.025, 760.262], [1199.287, 771.331]
+      ]
+    }
+  ],
+  "extents": [
+    { "measure_id": "SW1", "quantity": "stock width", "value": 10.91,
+      "status": "MEASURED", "method": "stock box measured against the printed 11 in",
+      "note": "printed dimension is 11; 10.91 measured" },
+    { "measure_id": "WL1", "quantity": "wall line length", "value": 4.53,
+      "status": "MEASURED", "between": ["wall_start", "wall_end"] },
+    { "measure_id": "UC1", "quantity": "upper chamfer length", "value": 4.01,
+      "status": "MEASURED", "between": ["hollow_end", "chamfer_top"] }
+  ],
+  "datum_measure_id": "SW1",
+  "open_questions": [
+    "upper-face routing at plate y~722 (cycles 26-27) is not asserted by the pilot either"
+  ]
+}

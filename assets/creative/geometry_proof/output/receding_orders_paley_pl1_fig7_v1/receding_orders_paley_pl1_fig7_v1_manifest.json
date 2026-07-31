@@ -1,0 +1,131 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 5.9,
+  "width": 5.05
+ },
+ "flip": null,
+ "normalized_stations": {
+  "arris1": [
+   1.0,
+   0.0
+  ],
+  "arris2": [
+   2.0,
+   -1.0
+  ],
+  "arris3": [
+   3.0000000000000004,
+   -2.0
+  ],
+  "base_left": [
+   0.0,
+   -4.214285714285714
+  ],
+  "base_right": [
+   3.607142857142857,
+   -4.214285714285714
+  ],
+  "cove1_in": [
+   1.0,
+   -0.3928571428571429
+  ],
+  "cove1_out": [
+   1.6071428571428572,
+   -1.0
+  ],
+  "cove2_in": [
+   2.0,
+   -1.392857142857143
+  ],
+  "cove2_out": [
+   2.607142857142857,
+   -2.0
+  ],
+  "cove3_in": [
+   3.0000000000000004,
+   -2.3928571428571432
+  ],
+  "cove3_out": [
+   3.607142857142857,
+   -3.0000000000000004
+  ],
+  "origin": [
+   0.0,
+   0.0
+  ]
+ },
+ "objects": [
+  "SINC_ArcCentre_cove1_0",
+  "SINC_ArcCentre_cove1_1",
+  "SINC_ArcCentre_cove2_0",
+  "SINC_ArcCentre_cove2_1",
+  "SINC_ArcCentre_cove3_0",
+  "SINC_ArcCentre_cove3_1",
+  "SINC_ArcDir_cove1",
+  "SINC_ArcDir_cove2",
+  "SINC_ArcDir_cove3",
+  "SINC_ArcInfo_cove1",
+  "SINC_ArcInfo_cove2",
+  "SINC_ArcInfo_cove3",
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_arris1",
+  "SINC_Label_arris2",
+  "SINC_Label_arris3",
+  "SINC_Label_base_left",
+  "SINC_Label_base_right",
+  "SINC_Label_cove1_in",
+  "SINC_Label_cove1_out",
+  "SINC_Label_cove2_in",
+  "SINC_Label_cove2_out",
+  "SINC_Label_cove3_in",
+  "SINC_Label_cove3_out",
+  "SINC_Label_origin",
+  "SINC_Master_receding_orders_paley_pl1_fig7_v1",
+  "SINC_Radius_cove1_cove1_in",
+  "SINC_Radius_cove1_cove1_out",
+  "SINC_Radius_cove2_cove2_in",
+  "SINC_Radius_cove2_cove2_out",
+  "SINC_Radius_cove3_cove3_in",
+  "SINC_Radius_cove3_cove3_out",
+  "SINC_Station_arris1",
+  "SINC_Station_arris2",
+  "SINC_Station_arris3",
+  "SINC_Station_base_left",
+  "SINC_Station_base_right",
+  "SINC_Station_cove1_in",
+  "SINC_Station_cove1_out",
+  "SINC_Station_cove2_in",
+  "SINC_Station_cove2_out",
+  "SINC_Station_cove3_in",
+  "SINC_Station_cove3_out",
+  "SINC_Station_origin",
+  "SINC_Tangent_cove1_in",
+  "SINC_Tangent_cove1_out",
+  "SINC_Tangent_cove2_in",
+  "SINC_Tangent_cove2_out",
+  "SINC_Tangent_cove3_in",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 81,
+ "profile_id": "receding_orders_paley_pl1_fig7_v1",
+ "reference_note": "no reference image declared",
+ "reference_placed": false,
+ "renders": {
+  "front": "output/receding_orders_paley_pl1_fig7_v1/renders/front.png",
+  "opposite": "output/receding_orders_paley_pl1_fig7_v1/renders/opposite.png",
+  "three_quarter": "output/receding_orders_paley_pl1_fig7_v1/renders/three_quarter.png",
+  "wire": "output/receding_orders_paley_pl1_fig7_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "61be34f201df17a2436233e8ad6e994cbc634ce9fe69a384e3d2286820efd9ab",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [],
+ "winding": "CLOCKWISE"
+}

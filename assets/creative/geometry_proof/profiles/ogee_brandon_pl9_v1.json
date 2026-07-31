@@ -1,0 +1,61 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "ogee_brandon_pl9_v1",
+  "reference": {
+    "source": "Brandon, Open Timber Roofs 1849, Plate IX tie-beam ogee member (radius_out = radius_in = 1.6, sweep 0.22, PROPORTIONAL ONLY) - adapted: 60 deg sweeps and deliberately unequal radii 1.2/0.9 to stress the multiple-radii vocabulary",
+    "source_frame": "none - relative construction from the recorded member"
+  },
+  "units": "relative",
+  "datum": "stock_width",
+  "tolerance": { "distance": 0.02, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X along the bed",
+    "profile_y": "+Z up",
+    "extrude_axis": "+Y",
+    "scale_m_per_unit": 0.05
+  },
+  "stations": {
+    "origin":      { "at": [0.0, 0.0], "evidence": "AUTHORED", "join": "HARD" },
+    "bed_end":     { "at": [5.0, 0.0], "evidence": "AUTHORED", "join": "HARD" },
+    "ogee_spring": { "at": [5.0, 0.8], "evidence": "AUTHORED", "join": "SMOOTH",
+                     "note": "lower fillet runs tangentially into the convex belly" },
+    "inflection":  { "at": [4.4, 1.8392], "evidence": "AUTHORED", "join": "SMOOTH",
+                     "note": "THE ogee inflection: convex hands over to concave; the two circles are externally tangent here and curvature flips sign" },
+    "ogee_close":  { "at": [3.95, 2.6186], "evidence": "AUTHORED", "join": "SMOOTH" },
+    "crown_top":   { "at": [3.95, 3.2], "evidence": "AUTHORED", "join": "HARD" },
+    "top_left":    { "at": [0.0, 3.2], "evidence": "AUTHORED", "join": "HARD" }
+  },
+  "segments": [
+    { "name": "bed", "kind": "LINE", "from": "origin", "to": "bed_end",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "lower_fillet", "kind": "LINE", "from": "bed_end", "to": "ogee_spring",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "cyma_convex", "kind": "ARC", "from": "ogee_spring", "to": "inflection",
+      "centre": [3.8, 0.8], "direction": "COUNTERCLOCKWISE",
+      "role": "MOULDED", "evidence": "AUTHORED",
+      "note": "the belly: r 1.2, 60 deg" },
+    { "name": "cyma_concave", "kind": "ARC", "from": "inflection", "to": "ogee_close",
+      "centre": [4.85, 2.6186], "direction": "CLOCKWISE",
+      "role": "MOULDED", "evidence": "AUTHORED",
+      "note": "the throat: r 0.9, 60 deg, OPPOSITE direction to the belly - one profile carries both arc directions" },
+    { "name": "upper_fillet", "kind": "LINE", "from": "ogee_close", "to": "crown_top",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "top_bed", "kind": "LINE", "from": "crown_top", "to": "top_left",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "back", "kind": "LINE", "from": "top_left", "to": "origin",
+      "role": "BOUNDING", "evidence": "AUTHORED" }
+  ],
+  "solid_side": "LEFT",
+  "parameters": {
+    "stock_width": { "value": 5.0, "claim": { "kind": "extent", "axis": "width" } },
+    "stock_depth": { "value": 3.2, "claim": { "kind": "extent", "axis": "depth" } },
+    "belly_radius": { "value": 1.2, "claim": { "kind": "radius_of", "segment": "cyma_convex" } },
+    "throat_radius": { "value": 0.9, "claim": { "kind": "radius_of", "segment": "cyma_concave" } }
+  },
+  "proof": { "extrusion_depth": 1.0 },
+  "notes": [
+    "Phase 5.2 stress profile: compound curve. Two arcs, two DIFFERENT radii, two DIFFERENT directions (CCW belly, CW throat), meeting at a validated tangent-continuous inflection. If the format hid direction in signs, this is the profile that would break.",
+    "Circle tangency: |C1-C2| = 2.1 = 1.2 + 0.9 exactly; the inflection lies on the centre line."
+  ]
+}

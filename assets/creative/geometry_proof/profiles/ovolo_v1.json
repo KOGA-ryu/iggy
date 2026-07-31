@@ -1,0 +1,50 @@
+{
+  "format": "SINC_GeometryProof_Profile/1",
+  "id": "ovolo_v1",
+  "reference": {
+    "source": "Paley member vocabulary: roll (convex circular arc) - the ovolo is the cavetto's opposite curvature. Authored vocabulary exercise, no plate.",
+    "source_frame": "none - relative construction"
+  },
+  "units": "relative",
+  "datum": "stock_width",
+  "tolerance": { "distance": 0.02, "angle_deg": 2.0 },
+  "construction_plane": {
+    "plane": "XZ",
+    "profile_x": "+X along the bed",
+    "profile_y": "+Z up",
+    "extrude_axis": "+Y",
+    "scale_m_per_unit": 0.05
+  },
+  "stations": {
+    "origin":       { "at": [0.0, 0.0], "evidence": "AUTHORED", "join": "HARD" },
+    "bed_end":      { "at": [4.0, 0.0], "evidence": "AUTHORED", "join": "HARD" },
+    "ovolo_spring": { "at": [4.0, 1.0], "evidence": "AUTHORED", "join": "SMOOTH",
+                      "note": "fillet runs tangentially into the convex quarter round" },
+    "ovolo_close":  { "at": [3.0, 2.0], "evidence": "AUTHORED", "join": "SMOOTH" },
+    "top_left":     { "at": [0.0, 2.0], "evidence": "AUTHORED", "join": "HARD" }
+  },
+  "segments": [
+    { "name": "bed", "kind": "LINE", "from": "origin", "to": "bed_end",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "right_fillet", "kind": "LINE", "from": "bed_end", "to": "ovolo_spring",
+      "role": "MOULDED", "evidence": "AUTHORED" },
+    { "name": "ovolo", "kind": "ARC", "from": "ovolo_spring", "to": "ovolo_close",
+      "centre": [3.0, 1.0], "direction": "COUNTERCLOCKWISE",
+      "role": "MOULDED", "evidence": "AUTHORED",
+      "note": "convex quarter round bulging outward - the opposite of the cavetto's hollow" },
+    { "name": "top_bed", "kind": "LINE", "from": "ovolo_close", "to": "top_left",
+      "role": "BOUNDING", "evidence": "AUTHORED" },
+    { "name": "back", "kind": "LINE", "from": "top_left", "to": "origin",
+      "role": "BOUNDING", "evidence": "AUTHORED" }
+  ],
+  "solid_side": "LEFT",
+  "parameters": {
+    "stock_width": { "value": 4.0, "claim": { "kind": "extent", "axis": "width" } },
+    "stock_depth": { "value": 2.0, "claim": { "kind": "extent", "axis": "depth" } },
+    "ovolo_radius": { "value": 1.0, "claim": { "kind": "radius_of", "segment": "ovolo" } }
+  },
+  "proof": { "extrusion_depth": 0.8 },
+  "notes": [
+    "Phase 5.1 stress profile: inverted (convex) curvature relative to the cavetto pilot, plus two genuine SMOOTH joins - the pilot has none, so this is the first profile whose tangent-continuity claims the compiler must actually verify."
+  ]
+}

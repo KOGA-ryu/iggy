@@ -1,0 +1,150 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 14.0,
+  "width": 20.0
+ },
+ "flip": null,
+ "normalized_stations": {
+  "chamfer_end_l": [
+   0.24201999999999999,
+   0.021965000000000002
+  ],
+  "chamfer_end_r": [
+   0.75798,
+   0.021965000000000002
+  ],
+  "inflect_l": [
+   0.078585,
+   0.17182999999999998
+  ],
+  "inflect_r": [
+   0.921415,
+   0.17182999999999998
+  ],
+  "ogee_end_l": [
+   0.157165,
+   0.10682
+  ],
+  "ogee_end_r": [
+   0.842835,
+   0.10682
+  ],
+  "soffit_l": [
+   0.29505,
+   0.0
+  ],
+  "soffit_r": [
+   0.70495,
+   0.0
+  ],
+  "spring_l": [
+   0.0,
+   0.23684
+  ],
+  "spring_r": [
+   1.0,
+   0.23684
+  ],
+  "top_left": [
+   0.0,
+   0.7
+  ],
+  "top_right": [
+   1.0,
+   0.7
+  ]
+ },
+ "objects": [
+  "SINC_ArcCentre_casement_l_0",
+  "SINC_ArcCentre_casement_l_1",
+  "SINC_ArcCentre_casement_r_0",
+  "SINC_ArcCentre_casement_r_1",
+  "SINC_ArcCentre_ogee_hollow_l_0",
+  "SINC_ArcCentre_ogee_hollow_l_1",
+  "SINC_ArcCentre_ogee_hollow_r_0",
+  "SINC_ArcCentre_ogee_hollow_r_1",
+  "SINC_ArcCentre_ogee_roll_l_0",
+  "SINC_ArcCentre_ogee_roll_l_1",
+  "SINC_ArcCentre_ogee_roll_r_0",
+  "SINC_ArcCentre_ogee_roll_r_1",
+  "SINC_ArcDir_casement_l",
+  "SINC_ArcDir_casement_r",
+  "SINC_ArcDir_ogee_hollow_l",
+  "SINC_ArcDir_ogee_hollow_r",
+  "SINC_ArcDir_ogee_roll_l",
+  "SINC_ArcDir_ogee_roll_r",
+  "SINC_ArcInfo_casement_l",
+  "SINC_ArcInfo_casement_r",
+  "SINC_ArcInfo_ogee_hollow_l",
+  "SINC_ArcInfo_ogee_hollow_r",
+  "SINC_ArcInfo_ogee_roll_l",
+  "SINC_ArcInfo_ogee_roll_r",
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_chamfer_end_l",
+  "SINC_Label_chamfer_end_r",
+  "SINC_Label_inflect_l",
+  "SINC_Label_inflect_r",
+  "SINC_Label_ogee_end_l",
+  "SINC_Label_ogee_end_r",
+  "SINC_Label_soffit_l",
+  "SINC_Label_soffit_r",
+  "SINC_Label_spring_l",
+  "SINC_Label_spring_r",
+  "SINC_Label_top_left",
+  "SINC_Label_top_right",
+  "SINC_Master_brandon_pl9_tiebeam_v1",
+  "SINC_Radius_casement_l_chamfer_end_l",
+  "SINC_Radius_casement_l_soffit_l",
+  "SINC_Radius_casement_r_chamfer_end_r",
+  "SINC_Radius_casement_r_soffit_r",
+  "SINC_Radius_ogee_hollow_l_inflect_l",
+  "SINC_Radius_ogee_hollow_l_ogee_end_l",
+  "SINC_Radius_ogee_hollow_r_inflect_r",
+  "SINC_Radius_ogee_hollow_r_ogee_end_r",
+  "SINC_Radius_ogee_roll_l_inflect_l",
+  "SINC_Radius_ogee_roll_l_spring_l",
+  "SINC_Radius_ogee_roll_r_inflect_r",
+  "SINC_Radius_ogee_roll_r_spring_r",
+  "SINC_Station_chamfer_end_l",
+  "SINC_Station_chamfer_end_r",
+  "SINC_Station_inflect_l",
+  "SINC_Station_inflect_r",
+  "SINC_Station_ogee_end_l",
+  "SINC_Station_ogee_end_r",
+  "SINC_Station_soffit_l",
+  "SINC_Station_soffit_r",
+  "SINC_Station_spring_l",
+  "SINC_Station_spring_r",
+  "SINC_Station_top_left",
+  "SINC_Station_top_right",
+  "SINC_Tangent_chamfer_end_l",
+  "SINC_Tangent_chamfer_end_r",
+  "SINC_Tangent_inflect_l",
+  "SINC_Tangent_inflect_r",
+  "SINC_Tangent_soffit_l",
+  "SINC_Tangent_soffit_r",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 118,
+ "profile_id": "brandon_pl9_tiebeam_v1",
+ "reference_note": "no reference image declared",
+ "reference_placed": false,
+ "renders": {
+  "front": "output/brandon_pl9_tiebeam_v1/renders/front.png",
+  "opposite": "output/brandon_pl9_tiebeam_v1/renders/opposite.png",
+  "three_quarter": "output/brandon_pl9_tiebeam_v1/renders/three_quarter.png",
+  "wire": "output/brandon_pl9_tiebeam_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "4517746e5b1e4ded8740ba97ed714daaa569171d3f8baf03f1716dfc10a05a54",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [],
+ "winding": "COUNTERCLOCKWISE"
+}

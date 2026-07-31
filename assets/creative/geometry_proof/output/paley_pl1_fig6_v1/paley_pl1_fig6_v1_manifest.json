@@ -1,0 +1,107 @@
+{
+ "blender_version": "5.1.1",
+ "extents": {
+  "depth": 9.2802,
+  "width": 10.9099
+ },
+ "flip": null,
+ "normalized_stations": {
+  "arris": [
+   0.5689184234647112,
+   0.16340054995417047
+  ],
+  "bead_exit": [
+   0.7371494042163153,
+   0.416608615948671
+  ],
+  "chamfer_top": [
+   0.9875435380384968,
+   0.7510357470210816
+  ],
+  "hollow_end": [
+   0.7109990834097158,
+   0.5116315307057745
+  ],
+  "stock_bottom_left": [
+   -0.012447296058661779,
+   0.0
+  ],
+  "stock_top_left": [
+   -0.012447296058661779,
+   0.8506141154903758
+  ],
+  "stock_top_right": [
+   0.9875435380384968,
+   0.8506141154903758
+  ],
+  "wall_end": [
+   0.41493125572868933,
+   0.016599450045829515
+  ],
+  "wall_start": [
+   0.0,
+   0.0
+  ]
+ },
+ "objects": [
+  "SINC_ArcCentre_bead_hollow_0",
+  "SINC_ArcCentre_bead_hollow_1",
+  "SINC_ArcCentre_bowtell_0",
+  "SINC_ArcCentre_bowtell_1",
+  "SINC_ArcDir_bead_hollow",
+  "SINC_ArcDir_bowtell",
+  "SINC_ArcInfo_bead_hollow",
+  "SINC_ArcInfo_bowtell",
+  "SINC_Cam_Front",
+  "SINC_Cam_Opposite",
+  "SINC_Cam_ThreeQuarter",
+  "SINC_Cam_Wire",
+  "SINC_LabelSolid",
+  "SINC_LabelVoid",
+  "SINC_Label_arris",
+  "SINC_Label_bead_exit",
+  "SINC_Label_chamfer_top",
+  "SINC_Label_hollow_end",
+  "SINC_Label_stock_bottom_left",
+  "SINC_Label_stock_top_left",
+  "SINC_Label_stock_top_right",
+  "SINC_Label_wall_end",
+  "SINC_Label_wall_start",
+  "SINC_Master_paley_pl1_fig6_v1",
+  "SINC_Radius_bead_hollow_bead_exit",
+  "SINC_Radius_bead_hollow_hollow_end",
+  "SINC_Radius_bowtell_arris",
+  "SINC_Radius_bowtell_bead_exit",
+  "SINC_ReferencePlane",
+  "SINC_SourcePx_chamfer_top",
+  "SINC_SourcePx_hollow_end",
+  "SINC_SourcePx_wall_end",
+  "SINC_SourcePx_wall_start",
+  "SINC_Station_arris",
+  "SINC_Station_bead_exit",
+  "SINC_Station_chamfer_top",
+  "SINC_Station_hollow_end",
+  "SINC_Station_stock_bottom_left",
+  "SINC_Station_stock_top_left",
+  "SINC_Station_stock_top_right",
+  "SINC_Station_wall_end",
+  "SINC_Station_wall_start",
+  "SINC_WireProxy"
+ ],
+ "outline_vertices": 130,
+ "profile_id": "paley_pl1_fig6_v1",
+ "reference_note": "placed",
+ "reference_placed": true,
+ "renders": {
+  "front": "output/paley_pl1_fig6_v1/renders/front.png",
+  "opposite": "output/paley_pl1_fig6_v1/renders/opposite.png",
+  "three_quarter": "output/paley_pl1_fig6_v1/renders/three_quarter.png",
+  "wire": "output/paley_pl1_fig6_v1/renders/wire.png"
+ },
+ "samples_per_quarter": 24,
+ "single_source": "profile_compiler.compile_profile",
+ "spec_sha256": "b60ce194973c6648cd4410456cd32b77d057aa4ef1f18ddaf87fd66498d1d000",
+ "status": "SINC_GEOMETRY_PROOF_BUILT",
+ "warnings": [],
+ "winding": "COUNTERCLOCKWISE"
+}
