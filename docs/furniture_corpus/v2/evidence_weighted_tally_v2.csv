@@ -1,0 +1,42 @@
+recipe_family,parent,raw_members,inferred_only_members,weighted_evidence,reuse_class
+moulding.profile_library,moulding run,11,0,9.5,shared_profile
+ornament.instanced_relief_master,repeated ornament master,9,0,8.0,assembly_grammar
+inlay.linear_stringing_path,inlay path,7,0,7.0,parameterized_recipe
+foot.turned_separate,foot,8,1,6.0,parameterized_recipe
+cornice.stacked_fillet_moulding,crest/cornice,6,0,6.0,shared_profile
+panel.floating_board_in_groove,floating panel,6,0,5.5,parameterized_recipe
+frame.stile_rail_muntin_grid,panel frame,6,0,4.5,assembly_grammar
+frame.applied_moulded_surround,panel frame,4,0,4.0,parameterized_recipe
+crest.shaped_sawn_board,crest/cornice,5,0,4.0,shared_profile
+ornament.marquetry_motif_set,repeated ornament master,4,0,4.0,parameterized_recipe
+foot.integral_stile_termination,foot,4,0,3.5,assembly_grammar
+post.case_corner_structural,post,4,0,3.0,parameterized_recipe
+post.panel_muntin,post,3,0,3.0,parameterized_recipe
+rail.drawer_divider,rail,4,0,3.0,parameterized_recipe
+rail.swept_show_wood_arm,rail,4,0,3.0,shared_profile
+stile.separate_rear_leg,rear leg/stile,4,0,3.0,parameterized_recipe
+brace.shaped_show_bracket,brace,3,0,3.0,shared_profile
+frame.assembled_from_members,panel frame,3,0,3.0,assembly_grammar
+panel.upholstered_field,floating panel,3,0,3.0,parameterized_recipe
+moulding.repeating_cell_run,moulding run,4,0,3.0,parameterized_recipe
+inlay.node_and_cell_punctuation,inlay path,3,0,3.0,parameterized_recipe
+rail.frame_and_panel,rail,3,0,2.5,parameterized_recipe
+stile.continuous_leg_and_stile,rear leg/stile,5,1,2.5,assembly_grammar
+post.bed_stacked_block,post,2,0,2.0,assembly_grammar
+post.arm_support,post,3,0,2.0,assembly_grammar
+rail.seat_frame,rail,3,1,2.0,parameterized_recipe
+rail.bed_side,rail,2,0,2.0,parameterized_recipe
+stile.plain_back_board,rear leg/stile,2,0,2.0,parameterized_recipe
+brace.lid_cleat,brace,2,0,2.0,parameterized_recipe
+brace.corner_glue_block,brace,3,4,1.5,parameterized_recipe
+foot.carved_figural,foot,2,0,1.0,bespoke
+foot.block,foot,1,0,1.0,parameterized_recipe
+post.board_standard,post,1,0,1.0,parameterized_recipe
+rail.gallery_cap,rail,1,0,1.0,parameterized_recipe
+rail.moving_fly,rail,1,0,1.0,bespoke
+brace.metal_stay,brace,1,1,1.0,bespoke
+ornament.figural_bespoke,repeated ornament master,3,0,1.0,bespoke
+inlay.absent_recorded,inlay path,1,0,1.0,bespoke
+foot.spun_metal_base,foot,1,0,0.0,bespoke
+post.turned_support,post,2,0,0.0,parameterized_recipe
+crest.metal_capital,crest/cornice,1,0,0.0,bespoke

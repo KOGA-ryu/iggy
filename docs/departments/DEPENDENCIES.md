@@ -9,8 +9,8 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Authoring Core | 113 | 78 |
 | Interaction and Controls | Assets and Object Composition | 107 | 52 |
 | Assets and Object Composition | Interaction and Controls | 102 | 49 |
+| Playtest and Simulation | Foundation and Build | 96 | 64 |
 | Interaction and Controls | Authoring Core | 95 | 58 |
-| Playtest and Simulation | Foundation and Build | 93 | 63 |
 | Editor Shell and Drafting UI | Interaction and Controls | 70 | 29 |
 | Building and World Layout | Authoring Core | 58 | 48 |
 | Building and World Layout | Editor Shell and Drafting UI | 54 | 37 |
@@ -33,10 +33,10 @@ Counts are resolved direct repository `#include` edges. They are an observabilit
 | Assets and Object Composition | Editor Shell and Drafting UI | 27 | 24 |
 | Assets and Object Composition | Foundation and Build | 27 | 24 |
 | Building and World Layout | Terrain and Site | 27 | 17 |
+| Playtest and Simulation | Rendering and Preview | 27 | 12 |
 | Interaction and Controls | Rendering and Preview | 26 | 19 |
 | Persistence and Validation | Playtest and Simulation | 23 | 8 |
 | Building and World Layout | Assets and Object Composition | 21 | 20 |
-| Playtest and Simulation | Rendering and Preview | 21 | 11 |
 | Terrain and Site | Editor Shell and Drafting UI | 21 | 18 |
 | Editor Shell and Drafting UI | Assets and Object Composition | 19 | 7 |
 | Interaction and Controls | Foundation and Build | 19 | 13 |
@@ -117,5 +117,5 @@ These files deserve manual ownership review before physical moves.
 | [apps/iggy3d_creative/EditorPreviewFrame.hpp](../../apps/iggy3d_creative/EditorPreviewFrame.hpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Building and World Layout, Interaction and Controls, Playtest and Simulation | 10 |
 | [apps/iggy3d_creative/EditorRoomPlacement.cpp](../../apps/iggy3d_creative/EditorRoomPlacement.cpp) | Assets and Object Composition | Authoring Core, Building and World Layout, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 10 |
 | [apps/iggy3d_creative/EditorStructuralPlacement.cpp](../../apps/iggy3d_creative/EditorStructuralPlacement.cpp) | Assets and Object Composition | Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Rendering and Preview | 10 |
+| [apps/first_move/main.cpp](../../apps/first_move/main.cpp) | Playtest and Simulation | Foundation and Build, Rendering and Preview | 9 |
 | [apps/iggy3d_creative/EditorAppToolPhase.cpp](../../apps/iggy3d_creative/EditorAppToolPhase.cpp) | Interaction and Controls | Assets and Object Composition, Building and World Layout, Editor Shell and Drafting UI, Rendering and Preview | 9 |
-| [apps/iggy3d_creative/EditorCapture.cpp](../../apps/iggy3d_creative/EditorCapture.cpp) | Rendering and Preview | Assets and Object Composition, Authoring Core, Editor Shell and Drafting UI, Interaction and Controls, Persistence and Validation | 9 |

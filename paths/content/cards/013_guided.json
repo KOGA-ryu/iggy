@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "question_id": "rb_math_013_closest_point_line_guided",
+  "content_version": 1,
+  "source": {
+    "page_id": "013",
+    "snapshot": "source_snapshots/math/013_closest_point_on_a_line.md",
+    "sha256": "a341f24ee344a9974a6424990befba34aa56bb9cf50fec6df303df04cebac873",
+    "book": "meckes_meckes_linear_algebra",
+    "chapter": "ch_04",
+    "exercise": "4.3.9"
+  },
+  "adaptation": "guided_derivation",
+  "title": "The closest point on a line",
+  "description": "Read the parameters, assemble the derivation, and explain why it works.",
+  "source_question_verbatim": "> Show that the point on the line y = mx which is closest to the point (a, b) is  $\\left(\\frac{a+mb}{m^2+1}, m\\frac{a+mb}{m^2+1}\\right)$ .\n\nSource: `meckes_meckes_linear_algebra` ch_04, exercise 4.3.9.",
+  "display_problem": [
+    "For fixed real m, a, and b, consider the line y = m*x and the point p = (a,b).",
+    "Show that the unique closest point in Euclidean distance is",
+    "((a+m*b)/(1+m^2), m*(a+m*b)/(1+m^2)).",
+    "The target answer is supplied. Your task is to build and justify its derivation."
+  ],
+  "symbols": [
+    {
+      "symbol": "m",
+      "spoken": "m",
+      "role": "parameter",
+      "meaning": "Fixed real slope within this instance."
+    },
+    {
+      "symbol": "a, b",
+      "spoken": "a and b",
+      "role": "parameter",
+      "meaning": "Fixed coordinates of the supplied point within this instance."
+    },
+    {
+      "symbol": "t",
+      "spoken": "t",
+      "role": "unknown",
+      "meaning": "The line position introduced to locate the closest point."
+    },
+    {
+      "symbol": "s",
+      "spoken": "s",
+      "role": "comparison_variable",
+      "meaning": "Any real line position used when comparing the proposed closest point with every other point."
+    },
+    {
+      "symbol": "v",
+      "spoken": "v",
+      "role": "defined_object",
+      "meaning": "The line's direction vector (1,m)."
+    }
+  ],
+  "steps": [
+    {
+      "id": "identify_deliverable",
+      "kind": "vocabulary",
+      "layer": "Read the instruction",
+      "prompt": "The problem says 'Show that' and prints the target point. What work is it asking for?",
+      "workspace": [
+        "Target point: ((a+m*b)/(1+m^2), m*(a+m*b)/(1+m^2))"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Only copy the displayed coordinates",
+          "misconception": "Copying the target supplies no justification."
+        },
+        {
+          "id": "o2",
+          "text": "Find one numerical example and treat it as proof for all real parameters",
+          "misconception": "One example cannot establish a claim for every real parameter."
+        },
+        {
+          "id": "o3",
+          "text": "Guess values for m, a, and b that make the formula short",
+          "misconception": "The conclusion must hold for the fixed but arbitrary real parameters."
+        },
+        {
+          "id": "o4",
+          "text": "Derive why that point is on the line and is the unique closest point",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The answer is supplied; the reasoning is the deliverable. These guided choices rehearse that derivation, rather than assess a proof written independently."
+    },
+    {
+      "id": "identify_parameters",
+      "kind": "role",
+      "layer": "Name the given quantities",
+      "prompt": "Inside one instance, what roles do m, a, and b have?",
+      "workspace": [
+        "Line: y = m*x",
+        "Given point: p = (a,b)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Three unknowns to solve for",
+          "misconception": "The slope and given point are fixed while we choose a point on the line."
+        },
+        {
+          "id": "o2",
+          "text": "Parameters: fixed here, allowed to differ between instances",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "Indices counting the equation's terms",
+          "misconception": "They specify the slope and coordinates, not positions in a list."
+        },
+        {
+          "id": "o4",
+          "text": "Numbers that must all be positive",
+          "misconception": "The problem permits any real m, a, and b."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "m fixes the line and (a,b) fixes the given point. They may change in another instance, but they stay fixed while we find the closest point in this one."
+    },
+    {
+      "id": "introduce_unknown",
+      "kind": "role",
+      "layer": "Introduce what can move",
+      "prompt": "We write a point on the line as (t,m*t). Which quantity do we choose to locate the closest point?",
+      "workspace": [
+        "Moving point: (t,m*t)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "t, the position along the fixed line",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "m, to rotate the given line",
+          "misconception": "Changing m would change the problem's given line."
+        },
+        {
+          "id": "o3",
+          "text": "a, to move the given point horizontally",
+          "misconception": "The given point is fixed."
+        },
+        {
+          "id": "o4",
+          "text": "b, to move the given point vertically",
+          "misconception": "The given point is fixed."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "t is the introduced unknown. Once t is chosen, the point (t,m*t) is determined, while m, a, and b remain fixed."
+    },
+    {
+      "id": "parameterize_line",
+      "kind": "setup",
+      "layer": "Represent every candidate",
+      "prompt": "Which expression describes every point of y=m*x, for every real m and t?",
+      "workspace": [
+        "Let t be the first coordinate."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "(m,t)",
+          "misconception": "This fixes the first coordinate at m and does not enforce y=m*x."
+        },
+        {
+          "id": "o2",
+          "text": "(t,m+t)",
+          "misconception": "The second coordinate must be m times t, not m plus t."
+        },
+        {
+          "id": "o3",
+          "text": "(t,m*t) = t*(1,m)",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "(m*t,t)",
+          "misconception": "Swapping the coordinates does not satisfy y=m*x for general m and t."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Choosing x=t forces y=m*t. Thus v=(1,m) is a direction vector and the line is the span of v."
+    },
+    {
+      "id": "projection_conditions",
+      "kind": "condition",
+      "layer": "Check the method's conditions",
+      "prompt": "Which conditions make ordinary orthogonal projection onto this span fit the problem as stated?",
+      "workspace": [
+        "U = span{(1,m)}",
+        "Closest means Euclidean distance."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "We may use any distance measure with the ordinary dot product",
+          "misconception": "The norm defining distance must match the inner product used for projection."
+        },
+        {
+          "id": "o2",
+          "text": "The candidate set must be a curved path",
+          "misconception": "The supplied set is a line through the origin, a linear subspace."
+        },
+        {
+          "id": "o3",
+          "text": "The slope must equal 1",
+          "misconception": "The argument works for every real slope m."
+        },
+        {
+          "id": "o4",
+          "text": "The set is a line through the origin, and distance comes from the ordinary dot product",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "A span is a subspace, and the ordinary dot product induces Euclidean distance. These are the structures used by this projection argument. An offset line needs translation first."
+    },
+    {
+      "id": "nonzero_direction",
+      "kind": "condition",
+      "layer": "Make division legal",
+      "prompt": "Why is v=(1,m) nonzero for every allowed m?",
+      "workspace": [
+        "v = (1,m)",
+        "m is any real number."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "The problem assumes m is nonzero",
+          "misconception": "m=0 is allowed and gives a horizontal line."
+        },
+        {
+          "id": "o2",
+          "text": "Its first coordinate is always 1",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "Every two-coordinate vector is nonzero",
+          "misconception": "The vector (0,0) is a counterexample."
+        },
+        {
+          "id": "o4",
+          "text": "The point (a,b) is never the origin",
+          "misconception": "The origin is allowed, and the direction does not depend on (a,b)."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The fixed first coordinate 1 prevents v from vanishing. Therefore v dot v = 1+m^2 is strictly positive."
+    },
+    {
+      "id": "choose_projection",
+      "kind": "method",
+      "layer": "Choose the projection formula",
+      "prompt": "For a nonzero direction v and ordinary dot product, which formula projects p onto span{v}?",
+      "workspace": [
+        "p = (a,b)",
+        "v = (1,m)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "q = ((p dot v)/(v dot v))*v",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "q = (p dot v)*v, with no denominator",
+          "misconception": "That unnormalized formula assumes v has unit length, which is not given."
+        },
+        {
+          "id": "o3",
+          "text": "q = ((v dot v)/(p dot v))*v",
+          "misconception": "The ratio is inverted and can divide by zero for valid inputs."
+        },
+        {
+          "id": "o4",
+          "text": "q = p - ((p dot v)/(v dot v))*v",
+          "misconception": "This is the perpendicular residual, not the component in the line."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Writing q=t*v and requiring (p-t*v) dot v=0 gives t=(p dot v)/(v dot v). The denominator accounts for the length of a direction that need not be normalized."
+    },
+    {
+      "id": "compute_numerator",
+      "kind": "mechanics",
+      "layer": "Compute the numerator",
+      "prompt": "What is (a,b) dot (1,m)?",
+      "workspace": [
+        "p dot v = a*1 + b*m"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "a*m + b",
+          "misconception": "The matching coordinate products are a*1 and b*m."
+        },
+        {
+          "id": "o2",
+          "text": "a + b",
+          "misconception": "The second coordinate of v is m, not always 1."
+        },
+        {
+          "id": "o3",
+          "text": "a*m*b",
+          "misconception": "The dot product adds coordinate products; it does not multiply all coordinates."
+        },
+        {
+          "id": "o4",
+          "text": "a + m*b",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The ordinary dot product is coordinatewise multiplication followed by addition: a*1+b*m=a+m*b."
+    },
+    {
+      "id": "compute_denominator",
+      "kind": "mechanics",
+      "layer": "Compute the denominator",
+      "prompt": "What is (1,m) dot (1,m)?",
+      "workspace": [
+        "v dot v = 1*1 + m*m"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "(1+m)^2",
+          "misconception": "Squaring the sum introduces an extra 2m term."
+        },
+        {
+          "id": "o2",
+          "text": "1+m",
+          "misconception": "The second coordinate is multiplied by itself."
+        },
+        {
+          "id": "o3",
+          "text": "1+m^2",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "m^2",
+          "misconception": "The first-coordinate contribution 1*1 was omitted."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The squared length is 1+m^2, which is at least 1 for real m. The projection ratio is therefore defined for every allowed slope."
+    },
+    {
+      "id": "assemble_point",
+      "kind": "result",
+      "layer": "Turn the line position into a point",
+      "prompt": "With t=(a+m*b)/(1+m^2), how do we obtain the two coordinates of q=t*(1,m)?",
+      "workspace": [
+        "t = (a+m*b)/(1+m^2)",
+        "q = t*(1,m)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "q = (t,m+t)",
+          "misconception": "Scalar multiplication multiplies each coordinate; it does not add m."
+        },
+        {
+          "id": "o2",
+          "text": "q = (t,m*t)",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "q = (m*t,t)",
+          "misconception": "The first coordinate of v is 1 and the second is m."
+        },
+        {
+          "id": "o4",
+          "text": "q = (t,m/t)",
+          "misconception": "The second coordinate is multiplied by t, not divided by it; t may be zero."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Scalar multiplication gives (t,m*t), the displayed target point. It lies on the line because its second coordinate is m times its first. We still need to justify closest and unique."
+    },
+    {
+      "id": "perpendicular_residual",
+      "kind": "verification",
+      "layer": "Check the residual's direction",
+      "prompt": "Which identity checks that the residual p-q is perpendicular to v?",
+      "workspace": [
+        "q = t*(1,m)",
+        "t = (a+m*b)/(1+m^2)",
+        "p-q = (a-t, b-m*t)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "(p-q) dot v = a+m*b-t*(1+m^2) = 0",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "(p-q) dot v = a+m*b+t*(1+m^2) = 0 for all inputs",
+          "misconception": "Subtracting q creates a minus sign; the plus expression is not generally zero."
+        },
+        {
+          "id": "o3",
+          "text": "p-q = (0,0) for every supplied point",
+          "misconception": "The residual vanishes only when the given point already lies on the line."
+        },
+        {
+          "id": "o4",
+          "text": "v = (0,0)",
+          "misconception": "The direction is nonzero, and perpendicularity does not require it to vanish."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Expanding the dot product gives (a-t)+m*(b-m*t)=a+m*b-t*(1+m^2). Our chosen t makes it zero exactly."
+    },
+    {
+      "id": "distance_decomposition",
+      "kind": "justification",
+      "layer": "Compare with every other point",
+      "prompt": "Let s be any real number. Which squared-distance identity follows from (p-t*v) dot v = 0?",
+      "workspace": [
+        "p-s*v = (p-t*v) + (t-s)*v",
+        "The two terms on the right are perpendicular."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "||p-s*v||^2 = ||p-t*v||^2 - (s-t)^2*(1+m^2)",
+          "misconception": "The squared perpendicular component adds a nonnegative term; it is not subtracted."
+        },
+        {
+          "id": "o2",
+          "text": "||p-s*v|| = ||p-t*v|| + |s-t|*||v|| for every s",
+          "misconception": "Perpendicular components add in squared lengths; ordinary lengths do not generally add."
+        },
+        {
+          "id": "o3",
+          "text": "||p-s*v||^2 = ||p-t*v||^2 for every s",
+          "misconception": "Moving away from t adds a positive squared component."
+        },
+        {
+          "id": "o4",
+          "text": "||p-s*v||^2 = ||p-t*v||^2 + (s-t)^2*(1+m^2)",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Expand the squared norm. The cross term is zero by perpendicularity. The remaining added term is (s-t)^2*(v dot v)=(s-t)^2*(1+m^2), so no candidate can be closer."
+    },
+    {
+      "id": "unique_minimum",
+      "kind": "justification",
+      "layer": "Explain the word unique",
+      "prompt": "Why does the distance identity allow only one closest point?",
+      "workspace": [
+        "Distance gap = (s-t)^2*(1+m^2)",
+        "1+m^2 > 0 for every real m."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Every s gives a zero distance gap",
+          "misconception": "The square is positive when s differs from t."
+        },
+        {
+          "id": "o2",
+          "text": "The gap is zero exactly when s=t",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "Uniqueness requires m to be positive",
+          "misconception": "1+m^2 is positive for negative slopes and zero slope too."
+        },
+        {
+          "id": "o4",
+          "text": "A sampled numerical minimum proves there are no other real candidates",
+          "misconception": "Finite samples do not cover all real s; the identity does."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The positive factor 1+m^2 cannot make the gap vanish. The square vanishes exactly when s=t. Distinct s values give distinct points because v is nonzero."
+    },
+    {
+      "id": "numerical_check_extent",
+      "kind": "verification",
+      "layer": "Separate a check from a proof",
+      "prompt": "A program checks twelve numerical cases and finds no disagreement. What does that establish by itself?",
+      "workspace": [
+        "Checked examples agree with the formula.",
+        "The exercise concerns every real m, a, and b."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "The theorem is proved for every real parameter",
+          "misconception": "Finite checks cannot cover all real parameter choices."
+        },
+        {
+          "id": "o2",
+          "text": "The general derivation is no longer needed",
+          "misconception": "The general claim still requires its argument."
+        },
+        {
+          "id": "o3",
+          "text": "Those cases survived the checks; the general claim rests on the derivation",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "The formula works only for the twelve checked cases",
+          "misconception": "The test alone does not restrict the formula; the derivation establishes the broader claim."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Computation can expose a mistake at an instance. The perpendicular-residual argument and nonnegative distance gap establish closest and unique for every permitted real parameter."
+    }
+  ],
+  "solution": [
+    {
+      "work": "v=(1,m), p=(a,b), q=t*v",
+      "reason": "Represent every point on the given line with one unknown t."
+    },
+    {
+      "work": "(p-t*v) dot v = a+m*b-t*(1+m^2)=0",
+      "reason": "Choose t so the residual is perpendicular to the line."
+    },
+    {
+      "work": "t=(a+m*b)/(1+m^2)",
+      "reason": "The denominator is positive for every real m."
+    },
+    {
+      "work": "q=(t,m*t)",
+      "reason": "Scalar multiplication gives the supplied target coordinates."
+    },
+    {
+      "work": "||p-s*v||^2 = ||p-t*v||^2 + (s-t)^2*(1+m^2)",
+      "reason": "For every real s, perpendicularity removes the cross term."
+    },
+    {
+      "work": "The added term is nonnegative and vanishes exactly at s=t.",
+      "reason": "q is the unique closest point in Euclidean distance."
+    }
+  ],
+  "verification_scope": {
+    "establishes": [
+      "The authored derivation proves closest and unique for all real m,a,b in the stated Euclidean problem.",
+      "Exact rational examples check the formula and distance-gap identity for the listed instances."
+    ],
+    "limitations": [
+      "Multiple-choice derivation practice does not establish independent proof-writing ability.",
+      "Finite numerical checks alone are not a proof over all real parameters.",
+      "Vertical lines and non-Euclidean distances are outside the stated slope-model exercise."
+    ],
+    "recipe": "Three rational slopes, four points per slope including the origin and an on-line point; exact projection residual, calculus coefficient, and distance-gap checks."
+  }
+}

@@ -1,0 +1,9 @@
+preset guided_progress
+start_new_run 401
+guided_open
+guided_select 2
+guided_check
+guided_next
+back_title
+preset guided_calm
+resume_mode guided

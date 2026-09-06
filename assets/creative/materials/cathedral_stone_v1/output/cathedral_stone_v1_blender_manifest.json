@@ -1,0 +1,481 @@
+{
+  "constraints": {
+    "unmeasured_arris_radius_authored": false,
+    "unmeasured_tool_depth_authored": false,
+    "unreal_runtime_parity_verified": false,
+    "uses_authored_graphic_plane_values": true,
+    "uses_distance_faded_body_and_tooling_detail": true,
+    "uses_live_ink_and_highlight_lanes": true,
+    "uses_object_space_metre_coordinates": true,
+    "uses_twenty_shade_block_families": true
+  },
+  "materials": {
+    "mortar_geometry_proof": "IGGY_MAT_MeasuredAshlarMortar",
+    "runtime_surface": "IGGY_MAT_CathedralStone_v006",
+    "runtime_surface_group": "IGGY_SH_CathedralStone_v006",
+    "runtime_surface_status": "assigned only after the neutral geometry proof was rendered; uses independent four-metre macro and 64 mm/91 mm body-detail coordinates with a measured comparable-calcarenite relief proxy, plus per-block 256 mm finite-impact tooling linework",
+    "stone_geometry_proof": [
+      "IGGY_MAT_MeasuredAshlarNeutral_01",
+      "IGGY_MAT_MeasuredAshlarNeutral_02",
+      "IGGY_MAT_MeasuredAshlarNeutral_03",
+      "IGGY_MAT_MeasuredAshlarNeutral_04",
+      "IGGY_MAT_MeasuredAshlarNeutral_05"
+    ]
+  },
+  "output_blend": {
+    "bytes": 3366802,
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1.blend",
+    "sha256": "ccabf65114c391cdb565a3eea07c496dcd682e8249ccf73c65110a404dbba0df"
+  },
+  "renders": {
+    "layered_surface": {
+      "body_detail": {
+        "bytes": 2024040,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_body_detail.png",
+        "sha256": "c3c27b0a2d8611308993101e77f64d9642fe9e5395a7df7278fab8ee56d945a1"
+      },
+      "body_masks": {
+        "bytes": 2637960,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_body_masks.png",
+        "sha256": "626bcaa99bf1f7e0b76788a4266f01d21606c3b91c402980d91e3f3f7048b0e3"
+      },
+      "close": {
+        "bytes": 1116473,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_close.png",
+        "sha256": "667ee8befb4df2849a7b6b0147f81bf7bdd9501d84d93bc1295d05c288436ab5"
+      },
+      "distance": {
+        "bytes": 846593,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_distance.png",
+        "sha256": "f31f1ec24b9beb6497d8b0566834b47a0a47d7842612d5ed29dde90082659843"
+      },
+      "grazing": {
+        "bytes": 1022989,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_grazing.png",
+        "sha256": "3875bab13cde987efdb372dfb6ce29507361519b832e5c4a03bc53674bec2e8a"
+      },
+      "hero": {
+        "bytes": 973494,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_hero.png",
+        "sha256": "d692a549a0943cb807971843aea96c92f58d097217d13bba15fb9d547a557d48"
+      },
+      "tooling_masks": {
+        "bytes": 1108992,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_surface_tooling_masks.png",
+        "sha256": "148edb64910d2088de4faccd5c8ab4f8593bcadcd775e008da62570288f06981"
+      }
+    },
+    "neutral_geometry": {
+      "close": {
+        "bytes": 858641,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_measured_close.png",
+        "sha256": "4a628ef039db1863db65c1c3be5abc79f07c5296c4b99025816c6eb8e8ac2aa3"
+      },
+      "depth": {
+        "bytes": 1004919,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_depths.png",
+        "sha256": "9d3ac3f4bfa57a1f9149f639a4558aec557f0a40a004ceab1f8cda2832677742"
+      },
+      "distance": {
+        "bytes": 810575,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_distance.png",
+        "sha256": "be6b7457cbd7d44fd959bbc2e7a7b50fa8a389045f0ffc45b41ba52c58cb1c69"
+      },
+      "grazing": {
+        "bytes": 1152337,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_grazing.png",
+        "sha256": "0370b7d0849652a57507cf1ebf9d12b15fa943c161e17ec1ea8a2b4f690800f4"
+      },
+      "hero": {
+        "bytes": 900102,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/output/cathedral_stone_v1_hero.png",
+        "sha256": "63030ac02975d47c680282cd126f3b38230ce4589e0b9b30a0a00e599fad820c"
+      }
+    }
+  },
+  "schema": "iggy3d.material.cathedral_stone_v1.blender.v6",
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "dimension_measurement_authority": {
+      "bond_source_id": "S19_hes_repointing_ashlar",
+      "construction_scope": "single facing wythe; wall core is not inferred",
+      "dimension_measurement_id": "cordoba_early_gothic_ashlar",
+      "joint_measurement_id": "ashlar_joint_3mm_conservation_guide",
+      "tool_finish_measurement_id": "medieval_fine_oblique_layage",
+      "tooling_measurement_id": "medieval_caen_stone_tooling",
+      "translation_note": "The exact course sequence is an authored arrangement constrained by the surveyed Cordoba dimension envelope. It is not represented as a stone-for-stone survey of one elevation."
+    },
+    "facade_capture_attribution": "Benjamin Smith / Wikimedia Commons",
+    "facade_capture_license": "CC BY-SA 4.0",
+    "licensed_facade_color_capture": true,
+    "photogrammetry_runtime_texture": false,
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "unmeasured_arris_radius_authored": false,
+    "unmeasured_tool_depth_authored": false,
+    "unmeasured_wall_core_inferred": false
+  },
+  "texture_manifest": {
+    "block_count": 40,
+    "bond": {
+      "minimum_joint_separation_m": 0.3,
+      "minimum_joint_separation_status": "acceptance threshold derived from the measured block lengths, not a surveyed historic dimension",
+      "source_rule": "Upper-course block bodies cover the perpendicular joints below; no adjacent course repeats a vertical joint.",
+      "type": "broken_bond"
+    },
+    "constraints": {
+      "ink_highlight_are_separate_packed_lanes": true,
+      "stone_body_detail_requires_runtime_distance_fade": true,
+      "tooling_detail_requires_runtime_distance_fade": true,
+      "unmeasured_arris_radius_authored": false,
+      "unmeasured_tool_depth_authored": false,
+      "unreal_runtime_parity_verified": false,
+      "uses_authored_graphic_plane_values": true,
+      "uses_twenty_shade_block_families": true
+    },
+    "course_count": 10,
+    "default_overlays": {
+      "damp": 0.0,
+      "fracture": 0.0,
+      "lichen": 0.0,
+      "soot": 0.0,
+      "traversal_tint": 0.0
+    },
+    "edge_profiles": [
+      "square_true"
+    ],
+    "excluded_from_intact_core": [
+      "chips",
+      "fractures",
+      "edge_loss",
+      "lichen",
+      "damp",
+      "soot",
+      "carved_ornament"
+    ],
+    "height_range_m": [
+      0.0,
+      0.0
+    ],
+    "material_id": "cathedral_stone_v1",
+    "measurement_authority": {
+      "bond_source_id": "S19_hes_repointing_ashlar",
+      "construction_scope": "single facing wythe; wall core is not inferred",
+      "dimension_measurement_id": "cordoba_early_gothic_ashlar",
+      "joint_measurement_id": "ashlar_joint_3mm_conservation_guide",
+      "tool_finish_measurement_id": "medieval_fine_oblique_layage",
+      "tooling_measurement_id": "medieval_caen_stone_tooling",
+      "translation_note": "The exact course sequence is an authored arrangement constrained by the surveyed Cordoba dimension envelope. It is not represented as a stone-for-stone survey of one elevation."
+    },
+    "metrics": {
+      "basecolor_seam": 0.02122768759727478,
+      "fossil_identity_mean": 0.3500875234603882,
+      "height_seam": 0.0,
+      "highlight_coverage": 0.005915750264859253,
+      "ink_coverage": 0.038749653017570516,
+      "mortar_fraction": 0.007111549377441406,
+      "normal_xy_max_abs": 0.0,
+      "roughness_range": [
+        0.7079050540924072,
+        0.8069261312484741
+      ],
+      "silicate_identity_mean": 0.1806761920452118,
+      "stone_body_ao_range": [
+        1.0,
+        1.0
+      ],
+      "stone_body_height_range_m": [
+        0.0,
+        0.001129999989643693
+      ],
+      "stone_body_normal_xy_max_abs": 0.9465808868408203,
+      "stone_body_relief": {
+        "height_seam_m": 9.475750630372204e-06,
+        "meters_per_pixel": 6.25e-05,
+        "roughness_cutoff_m": 0.0008,
+        "sa_m": 0.00010035524955800956,
+        "sku": 3.495155192891571,
+        "sp_m": 0.0003871994558721781,
+        "sq_m": 0.0001265788180263647,
+        "ssk": -0.48031268181654163,
+        "sv_m": 0.0007428005337715149,
+        "sz_m": 0.001129999989643693
+      },
+      "tooling_detail_coverage_over_0_08": [
+        0.06999683380126953,
+        0.1233835220336914,
+        0.21595382690429688
+      ],
+      "visible_pore_identity_mean": 0.035007379949092865
+    },
+    "outputs": {
+      "basecolor": "cathedral_stone_v1_basecolor.png",
+      "brush_direction": "cathedral_stone_v1_brush_direction.png",
+      "height": "cathedral_stone_v1_height.png",
+      "identity_masks": "cathedral_stone_v1_identity_masks.png",
+      "normal": "cathedral_stone_v1_normal.png",
+      "orm": "cathedral_stone_v1_orm.png",
+      "proof_body": "proofs/cathedral_stone_v1_body.png",
+      "proof_color": "proofs/cathedral_stone_v1_color.png",
+      "proof_construction": "proofs/cathedral_stone_v1_construction.png",
+      "proof_planes": "proofs/cathedral_stone_v1_planes.png",
+      "proof_tiling": "proofs/cathedral_stone_v1_tiling.png",
+      "proof_tooling": "proofs/cathedral_stone_v1_tooling.png",
+      "stone_body_height": "cathedral_stone_v1_stone_body_height.png",
+      "stone_body_masks": "cathedral_stone_v1_stone_body_masks.png",
+      "stone_body_normal": "cathedral_stone_v1_stone_body_normal.png",
+      "stylization": "cathedral_stone_v1_stylization.png",
+      "tooling_detail": "cathedral_stone_v1_tooling_detail.png"
+    },
+    "pattern_variation": 0,
+    "pbr_contract": {
+      "base_color_contains_baked_lighting": false,
+      "metallic": 0.0,
+      "normal_and_height": "64 mm stone-body relief uses the Sabucina metrology proxy; construction, tooling, arris, mortar, and damage depth remain neutral. Tooling marks affect only authored color and roughness.",
+      "roughness_status": "authored calibration under neutral and grazing light",
+      "shading_model": "opaque default-lit dielectric",
+      "specular": 0.5,
+      "stone_body_ao": 1.0
+    },
+    "raster_block_occurrence_count": 49,
+    "reference_capture": {
+      "asset_id": "Santa_Marina_Aguas_Santas_2024_facade",
+      "attribution": "Benjamin Smith / Wikimedia Commons",
+      "license": "CC BY-SA 4.0",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/references/santa_marina_biocalcarenite_capture.json",
+      "raw_pixels_used_as_runtime_texture": false,
+      "sha256": "4592a129520c04d457cb0fbe8bb99b0cf067e601784c5f3ec00e2aeb9e17967e",
+      "source_image_sha256": "a45542eb2e2bbd6634636177ce966a9b54201866fe90fdfd1c3456cc9ab12c07"
+    },
+    "resolution": 1024,
+    "schema": "iggy3d.material.cathedral_stone_v1.v6",
+    "seed": 823451,
+    "shade_family_size": 20,
+    "source_policy": {
+      "ai_generated_reference_capture": false,
+      "facade_capture_attribution": "Benjamin Smith / Wikimedia Commons",
+      "facade_capture_license": "CC BY-SA 4.0",
+      "licensed_facade_color_capture": true,
+      "measured_relief_proxy": true,
+      "photogrammetry_runtime_texture": false,
+      "raw_reference_pixels_used_as_runtime_texture": false,
+      "relief_proxy_is_exact_lithology": false,
+      "relief_proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy"
+    },
+    "sources": {
+      "cathedral_ashlar_courses_v1.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/patterns/cathedral_ashlar_courses_v1.json",
+        "sha256": "4be776bfbda06e446ac4cd08dba99f2b788c2163e71063a61fa357873c22ac79"
+      },
+      "cathedral_stone_v1.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/profiles/cathedral_stone_v1.json",
+        "sha256": "348b0cea258a01840ebcb9ef39068e4a2f76cd9caa3ccd98f8be07816b4e033c"
+      },
+      "reference_measurements_v1.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/reference_measurements_v1.json",
+        "sha256": "0d3f439402bee954a500183f951c88b14699a9c8645722f2cfae0d958c92f930"
+      },
+      "santa_marina_biocalcarenite_capture.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_v1/references/santa_marina_biocalcarenite_capture.json",
+        "sha256": "4592a129520c04d457cb0fbe8bb99b0cf067e601784c5f3ec00e2aeb9e17967e"
+      }
+    },
+    "stone_body": {
+      "decorrelation_sample_span_m": 0.091,
+      "detail_span_m": 0.064,
+      "excluded_relief_lanes": [
+        "block plane",
+        "tool mark",
+        "arris",
+        "mortar",
+        "damage",
+        "weathering"
+      ],
+      "height_amplitude_m": 0.001129999989643693,
+      "height_range_m": [
+        0.0,
+        0.001129999989643693
+      ],
+      "measurement_id": "santa_marina_naranjo_biocalcarenite_body",
+      "meters_per_texel": 6.25e-05,
+      "optical_roughness_status": "unknown; numeric PBR roughness remains an authored light-calibration parameter",
+      "packed_channels": {
+        "B": "visible pore identity contributing sparse proxy-bounded valleys",
+        "G": "silicate grain identity",
+        "R": "fragmented calcareous fossil identity"
+      },
+      "relief_metrics": {
+        "height_seam_m": 9.475750630372204e-06,
+        "meters_per_pixel": 6.25e-05,
+        "roughness_cutoff_m": 0.0008,
+        "sa_m": 0.00010035524955800956,
+        "sku": 3.495155192891571,
+        "sp_m": 0.0003871994558721781,
+        "sq_m": 0.0001265788180263647,
+        "ssk": -0.48031268181654163,
+        "sv_m": 0.0007428005337715149,
+        "sz_m": 0.001129999989643693
+      },
+      "relief_proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy",
+      "relief_proxy_scope": "comparable yellow coarse calcarenite; not a Santa Marina, Naranjo, or medieval dressed-face scan",
+      "roughness_cutoff_m": 0.0008,
+      "sampling_rule": "Sample independently from the four-metre construction field using per-block phase, quarter-turn rotation, and mirror variation; blend 64 mm and incommensurate 91 mm samples to suppress lockstep repetition."
+    },
+    "tile_size_m": 4.0,
+    "tooling_families": [
+      "diagonal_drove"
+    ],
+    "tooling_finish": {
+      "depth_status": "unknown; color and roughness linework only",
+      "finish_measurement_id": "medieval_fine_oblique_layage",
+      "intra_pass_spacing_range_m": [
+        0.001,
+        0.004
+      ],
+      "meters_per_texel": 0.00025,
+      "metrics": {
+        "actual_density_per_m2": [
+          717.1630859375,
+          1373.291015625,
+          2426.1474609375
+        ],
+        "coverage_over_0_08": [
+          0.06999683380126953,
+          0.1233835220336914,
+          0.21595382690429688
+        ],
+        "fan_angle_range_deg": [
+          -4.657740027991422,
+          4.1868429804139895
+        ],
+        "finish_measurement_id": "medieval_fine_oblique_layage",
+        "height_depth_authored": false,
+        "intra_pass_spacing_range_m": [
+          0.0010061082364025147,
+          0.003986755047825553
+        ],
+        "stroke_counts": [
+          47,
+          90,
+          159
+        ],
+        "stroke_length_range_m": [
+          0.06010966942974048,
+          0.09390915393260466
+        ],
+        "stroke_width_range_m": [
+          0.0010005946347785425,
+          0.001995621180598142
+        ],
+        "target_density_per_m2": [
+          720.0,
+          1369.0,
+          2420.0
+        ],
+        "variant_count": 3
+      },
+      "organization": "finite oblique parallel passes with slight fan variation; one density channel, explicit angle, and explicit phase per block",
+      "packed_channels": {
+        "B": "2420 visible impacts per square metre",
+        "G": "1369 visible impacts per square metre",
+        "R": "720 visible impacts per square metre"
+      },
+      "physical_span_m": 0.256,
+      "spacing_measurement_id": "medieval_caen_stone_tooling",
+      "stroke_length_range_m": [
+        0.06,
+        0.094
+      ],
+      "stroke_width_range_m": [
+        0.001,
+        0.002
+      ],
+      "transfer_limit": "This is an 11th-12th-century southern-Lorraine comparative finish study, not a Cordoba face survey. It may constrain finite mark length, width, density, overlap logic, and working organization, but it does not authorize groove depth or identify one exact mason."
+    }
+  },
+  "validation": {
+    "construction_representation": "individual six-face stone volumes",
+    "course_count": 10,
+    "damage_overlays_default_off": true,
+    "excluded_from_intact_core": [
+      "chips",
+      "fractures",
+      "edge_loss",
+      "lichen",
+      "damp",
+      "soot",
+      "carved_ornament"
+    ],
+    "finite_tooling_linework_authored": true,
+    "geometry_attributes": [
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_stone_block_id",
+      "iggy_stone_tooling_id",
+      "iggy_fracture_interior",
+      "iggy_carved_trim",
+      "iggy_lichen_mask",
+      "iggy_damp_mask",
+      "iggy_traversal_id",
+      "iggy_stone_face_length_m",
+      "iggy_stone_face_height_m",
+      "iggy_stone_depth_m",
+      "iggy_tool_angle_deg",
+      "iggy_tool_spacing_m",
+      "iggy_tool_density_variant"
+    ],
+    "joint_profile": "flush",
+    "measurement_metrics": {
+      "bed_joint_m": 0.003,
+      "bevel_radius_status": "unknown; no bevel modifier authored",
+      "construction_scope": "single facing wythe; wall core is not inferred",
+      "depth_range_m": [
+        0.17,
+        0.3
+      ],
+      "face_height_range_m": [
+        0.37999999999999945,
+        0.41000000000000014
+      ],
+      "face_length_range_m": [
+        0.8,
+        1.12
+      ],
+      "mortar_body_count": 68,
+      "mortar_recess_m": 0.0,
+      "perpend_joint_m": 0.003,
+      "physical_block_count": 69
+    },
+    "mortar_body_count": 68,
+    "physical_block_count": 69,
+    "runtime_material": {
+      "camera_distance_count": 1,
+      "construction_macro_span_m": 4.0,
+      "coordinate_space": "object_position_xz_metres",
+      "detail_full_distance_m": 0.3,
+      "detail_zero_distance_m": 3.5,
+      "generic_noise_count": 0,
+      "material_body_decorrelation_span_m": 0.091,
+      "material_body_detail_span_m": 0.064,
+      "measured_stone_body_relief_authored": true,
+      "metallic": 0.0,
+      "mirror_variation": true,
+      "per_block_phase": true,
+      "quarter_turn_variation": true,
+      "relief_proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy",
+      "required_node_count": 33,
+      "schema": "iggy3d.material.cathedral_stone_v1.v6",
+      "stone_body_height_packed": true,
+      "stone_body_masks_packed": true,
+      "stone_body_relief_amplitude_m": 0.00113,
+      "stylization_lanes_live": true,
+      "tooling_depth_authored": false,
+      "tooling_detail_packed": true,
+      "tooling_detail_span_m": 0.256,
+      "unmeasured_relief_authored": false
+    },
+    "source_design_count": 40,
+    "tooling_detail_span_m": 0.256,
+    "unmeasured_arris_radius_authored": false,
+    "unmeasured_tool_depth_authored": false
+  }
+}

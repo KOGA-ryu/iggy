@@ -1,0 +1,544 @@
+{
+  "schema": "iggy-forged-fasteners-build/1.0",
+  "status": "MEASURED_FORGED_FASTENERS_BUILT",
+  "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_fasteners_v1.json",
+  "source_fixture": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1.blend",
+    "sha256": "c7619ca1580faeb6449fecfcd0bc7915080a35086c0bc057d0192e38a2511d31"
+  },
+  "material_library": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "sha256": "2da63754149c35d580bfbd6759e3e8b1f3f92998f297e3a1f6d59296bdce7d07",
+    "material": "IGGY_MAT_ReferenceForgedIron_v001"
+  },
+  "canonical_owner": {
+    "node_group": "IGGY_GN_ForgedFasteners_v001",
+    "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_fasteners_v1.json",
+    "obsolete_group_removed": "SINC_GN_ForgedFasteners_v003"
+  },
+  "door_callers": {
+    "brace_nails": {
+      "node": "SINC::brace_fasteners",
+      "label": "Six Inset Rose-Head Brace Nails",
+      "values": {
+        "Shank Radius": 0.012,
+        "Shank Length": 0.186,
+        "Head Radius": 0.0375,
+        "Head Height": 0.017,
+        "Rose Head": true,
+        "Head Irregularity": 0.0,
+        "Tip Length": 0.024,
+        "Radial Segments": 16,
+        "Seed": 733,
+        "Punched Seat": false,
+        "Realize": true
+      },
+      "source_point_origin": "legacy_shank_center",
+      "point_adapter": {
+        "node": "IGGY::brace_fastener_bearing_plane_adapter",
+        "legacy_shank_length_m": 0.20999999344348907,
+        "world_offset_m": [
+          0.0,
+          0.10499999672174454,
+          -4.589695734580346e-09
+        ]
+      },
+      "points_linked": true,
+      "material_linked": true
+    },
+    "hinge_rivets": {
+      "node": "SINC::hinge_fasteners",
+      "label": "Exact Strap Fasteners",
+      "values": {
+        "Shank Radius": 0.014,
+        "Shank Length": 0.071,
+        "Head Radius": 0.032,
+        "Head Height": 0.015,
+        "Rose Head": false,
+        "Head Irregularity": 0.0,
+        "Tip Length": 0.024,
+        "Radial Segments": 16,
+        "Seed": 823,
+        "Punched Seat": true,
+        "Realize": true
+      },
+      "source_point_origin": "bearing_plane",
+      "point_adapter": null,
+      "points_linked": true,
+      "material_linked": true
+    },
+    "pull_plate_rivets": {
+      "node": "SINC::pull_plate_fasteners",
+      "label": "Ring Backplate Fasteners",
+      "values": {
+        "Shank Radius": 0.012,
+        "Shank Length": 0.066,
+        "Head Radius": 0.029,
+        "Head Height": 0.014,
+        "Rose Head": false,
+        "Head Irregularity": 0.0,
+        "Tip Length": 0.019,
+        "Radial Segments": 16,
+        "Seed": 919,
+        "Punched Seat": true,
+        "Realize": true
+      },
+      "source_point_origin": "bearing_plane",
+      "point_adapter": null,
+      "points_linked": true,
+      "material_linked": true
+    }
+  },
+  "door_realization": {
+    "vertices": 20878,
+    "polygons": 20201,
+    "attributes": [
+      ".corner_edge",
+      ".corner_vert",
+      ".edge_verts",
+      ".select_edge",
+      ".select_poly",
+      ".select_vert",
+      "UVMap",
+      "custom_normal",
+      "material_index",
+      "position",
+      "sharp_edge",
+      "sharp_face",
+      "sinc_fastener_style",
+      "sinc_fastener_surface_role",
+      "sinc_iron_edge_mask",
+      "sinc_length_ratio",
+      "sinc_seed",
+      "sinc_wood_damage_mask",
+      "sinc_wood_edge_mask",
+      "sinc_wood_end_mask"
+    ],
+    "materials": [
+      "IGGY_MAT_ReferenceForgedIron_v001",
+      null,
+      "IGGY_MAT_ReferenceStructuralOakDoor_v001"
+    ]
+  },
+  "coordinate_build": {
+    "material_index": 0,
+    "component_count": 65,
+    "components": [
+      {
+        "vertices": 212,
+        "length_m": 0.09094773203969451,
+        "cross_stock_m": 0.09094825977291818
+      },
+      {
+        "vertices": 212,
+        "length_m": 0.09094777820861341,
+        "cross_stock_m": 0.09094805490875432
+      },
+      {
+        "vertices": 212,
+        "length_m": 0.0909482312660132,
+        "cross_stock_m": 0.09094864433199225
+      },
+      {
+        "vertices": 212,
+        "length_m": 0.08412558206351702,
+        "cross_stock_m": 0.0832970484226512
+      },
+      {
+        "vertices": 212,
+        "length_m": 0.08412437666435203,
+        "cross_stock_m": 0.08329593496755694
+      },
+      {
+        "vertices": 212,
+        "length_m": 0.08412453430233638,
+        "cross_stock_m": 0.08329681049125864
+      },
+      {
+        "vertices": 784,
+        "length_m": 0.5619999170303349,
+        "cross_stock_m": 0.5160000324249264
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.03933583748887157,
+        "cross_stock_m": 0.03933584647089322
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.02396481678137263,
+        "cross_stock_m": 0.02396463816294877
+      },
+      {
+        "vertices": 206,
+        "length_m": 0.059127391162466694,
+        "cross_stock_m": 0.05228709947937883
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.03928575398029931,
+        "cross_stock_m": 0.03928578369741019
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.023964816781373154,
+        "cross_stock_m": 0.02396463816294929
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.05688755674097305,
+        "cross_stock_m": 0.056904291702881596
+      },
+      {
+        "vertices": 450,
+        "length_m": 0.42005472540327593,
+        "cross_stock_m": 0.16046298150813657
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04589002715729357,
+        "cross_stock_m": 0.04588979371521579
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991414070129395,
+        "cross_stock_m": 0.027991294860839844
+      },
+      {
+        "vertices": 206,
+        "length_m": 0.06524355329731801,
+        "cross_stock_m": 0.05769618776240781
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04596476651425202,
+        "cross_stock_m": 0.045964730428819954
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.02799129486083985,
+        "cross_stock_m": 0.027991294860839844
+      },
+      {
+        "vertices": 206,
+        "length_m": 0.06524350088252846,
+        "cross_stock_m": 0.05769618792816536
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04582776703624636,
+        "cross_stock_m": 0.04582768292340764
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991294860839844,
+        "cross_stock_m": 0.027991294860839844
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.06277336700087391,
+        "cross_stock_m": 0.0627908561616145
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.045949011259720327,
+        "cross_stock_m": 0.04594893940029037
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991175651550293,
+        "cross_stock_m": 0.027991294860839844
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.06277331146162499,
+        "cross_stock_m": 0.06279080076659524
+      },
+      {
+        "vertices": 834,
+        "length_m": 1.85760671739023,
+        "cross_stock_m": 0.2087861805996304
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04596469497357857,
+        "cross_stock_m": 0.04596469497357857
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991414070129395,
+        "cross_stock_m": 0.02799117565155021
+      },
+      {
+        "vertices": 206,
+        "length_m": 0.06524355375643182,
+        "cross_stock_m": 0.057696009289569104
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.045950349462045285,
+        "cross_stock_m": 0.04595037925499362
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991306036710607,
+        "cross_stock_m": 0.02799117565155007
+      },
+      {
+        "vertices": 206,
+        "length_m": 0.06524350150321984,
+        "cross_stock_m": 0.05769600921303538
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04563384467906124,
+        "cross_stock_m": 0.04563377725299739
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.02799117565155021,
+        "cross_stock_m": 0.02799123525619507
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.0627732421856967,
+        "cross_stock_m": 0.0627906991459739
+      },
+      {
+        "vertices": 144,
+        "length_m": 0.04559830997334753,
+        "cross_stock_m": 0.04559838799627963
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.027991175651550203,
+        "cross_stock_m": 0.02799135446548462
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.06277318509555804,
+        "cross_stock_m": 0.06279064218259647
+      },
+      {
+        "vertices": 834,
+        "length_m": 1.8576067158212803,
+        "cross_stock_m": 0.20878624059339293
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.0239810071474769,
+        "cross_stock_m": 0.021149589889418098
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958252,
+        "cross_stock_m": 0.01697063446044922
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.023981026437188486,
+        "cross_stock_m": 0.02114788434437688
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958266,
+        "cross_stock_m": 0.016970634460450693
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.023981024247750057,
+        "cross_stock_m": 0.016990963914260564
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958255,
+        "cross_stock_m": 0.017881136272620016
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.02398102424307303,
+        "cross_stock_m": 0.023495486759467193
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958266,
+        "cross_stock_m": 0.01705575183477634
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.02398097515106201,
+        "cross_stock_m": 0.016964197158813477
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958252,
+        "cross_stock_m": 0.01697063446044922
+      },
+      {
+        "vertices": 37,
+        "length_m": 0.023981031951980612,
+        "cross_stock_m": 0.019148049660041314
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.18599998950958252,
+        "cross_stock_m": 0.01697063446044922
+      },
+      {
+        "vertices": 1440,
+        "length_m": 0.16597492772843614,
+        "cross_stock_m": 0.16597487930612412
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.06599999551533242,
+        "cross_stock_m": 0.023966841739392834
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.06599999692929662,
+        "cross_stock_m": 0.023858842033795444
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07100000102548559,
+        "cross_stock_m": 0.027990714029169084
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.0710000022458254,
+        "cross_stock_m": 0.02776201948998257
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07099999981261879,
+        "cross_stock_m": 0.027990363187406362
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07100000102525139,
+        "cross_stock_m": 0.027994198445871324
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.0710000016785094,
+        "cross_stock_m": 0.027617254037909565
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07100000135137054,
+        "cross_stock_m": 0.027995098055319807
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07099999989001549,
+        "cross_stock_m": 0.027678364779662692
+      },
+      {
+        "vertices": 168,
+        "length_m": 0.07099999926625757,
+        "cross_stock_m": 0.027977462415410017
+      },
+      {
+        "vertices": 4,
+        "length_m": 0.018283919064912613,
+        "cross_stock_m": 6.814396485439159e-06
+      },
+      {
+        "vertices": 4,
+        "length_m": 0.050003473755451,
+        "cross_stock_m": 7.410112449751722e-06
+      }
+    ],
+    "attributes": [
+      "sinc_iron_u_m",
+      "sinc_iron_v_m"
+    ]
+  },
+  "validation": {
+    "node_count": 130,
+    "generic_deformation_node_count": 0,
+    "master_objects": [
+      "IGGY_FastenerMaster_DomedRivet",
+      "IGGY_FastenerMaster_FacetedSquarePeen",
+      "IGGY_FastenerMaster_FlattenedPeen",
+      "IGGY_FastenerMaster_Rosehead"
+    ],
+    "store_named_attributes": [
+      "sinc_fastener_style",
+      "sinc_fastener_surface_role",
+      "sinc_iron_edge_mask",
+      "sinc_seed"
+    ],
+    "measured_proof_dimensions_m": [
+      0.07400000095367432,
+      0.07500000298023224,
+      0.15600000321865082
+    ],
+    "door_attributes": [
+      ".corner_edge",
+      ".corner_vert",
+      ".edge_verts",
+      ".select_edge",
+      ".select_poly",
+      ".select_vert",
+      "UVMap",
+      "custom_normal",
+      "material_index",
+      "position",
+      "sharp_edge",
+      "sharp_face",
+      "sinc_fastener_style",
+      "sinc_fastener_surface_role",
+      "sinc_iron_edge_mask",
+      "sinc_iron_u_m",
+      "sinc_iron_v_m",
+      "sinc_length_ratio",
+      "sinc_seed",
+      "sinc_wood_damage_mask",
+      "sinc_wood_edge_mask",
+      "sinc_wood_end_mask"
+    ],
+    "door_materials": [
+      "IGGY_MAT_ReferenceForgedIron_v001",
+      "IGGY_MAT_ReferenceStructuralOakDoor_v001"
+    ],
+    "approved_wood_unchanged": true
+  },
+  "constraints": {
+    "uses_authored_meshes": true,
+    "uses_noise_displacement": false,
+    "uses_ai_generated_imagery": false,
+    "uses_damage": false,
+    "uses_corrosion": false,
+    "measured_nail_envelope_exact": true,
+    "approved_wood_changed": false
+  },
+  "renders": {
+    "door_reverse": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_fasteners_v1_door_reverse.png",
+      "bytes": 694979,
+      "sha256": "4f488b60c090de3d0c061f544f255d9bd50dafe8b8874406215e3a15ab55eef3"
+    },
+    "door_front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_fasteners_v1_door_front.png",
+      "bytes": 649173,
+      "sha256": "33e7cfb0ee7fc8c32192ff464da6fd7aa440f9b6dda1d772c26bc2c6254c18bf"
+    },
+    "seated_heads": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_fasteners_v1_seated_heads.png",
+      "bytes": 855191,
+      "sha256": "65a6f3dfee783b4720b330d8548c8f2350d8b8d84390e146690085ac5663acde"
+    },
+    "full_anatomy": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_fasteners_v1_full_anatomy.png",
+      "bytes": 444613,
+      "sha256": "ec35daca067ad95bad27c162bf09f2a7ade92b0aead308730d0d7487c6ae1f92"
+    }
+  },
+  "saved_blend": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_fasteners_v1.blend",
+    "bytes": 9038087,
+    "sha256": "096a0581a5b5fea61ee2534fd054d2369f4260aaf72a01c72389f75f5f574034"
+  }
+}

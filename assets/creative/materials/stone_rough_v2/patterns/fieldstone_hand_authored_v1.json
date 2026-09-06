@@ -1,0 +1,63 @@
+{
+  "schema": "iggy3d.pattern.site_layout.v1",
+  "name": "fieldstone_hand_authored_v1",
+  "description": "An authored fieldstone rhythm with large anchors, medium connective stones, and small gap-filling stones.",
+  "variation_seed": 90217,
+  "layout": {
+    "vertical_metric": 1.12,
+    "power_weight_scale": 0.012,
+    "boundary_warp": 0.026
+  },
+  "roles": {
+    "anchor": {
+      "influence": 1.28,
+      "position_jitter": 0.010,
+      "influence_jitter": 0.045
+    },
+    "medium": {
+      "influence": 1.0,
+      "position_jitter": 0.017,
+      "influence_jitter": 0.070
+    },
+    "infill": {
+      "influence": 0.76,
+      "position_jitter": 0.023,
+      "influence_jitter": 0.085
+    }
+  },
+  "sites": [
+    {"id": "anchor_01", "role": "anchor", "u": 0.065, "v": 0.095, "influence_scale": 1.08},
+    {"id": "anchor_02", "role": "anchor", "u": 0.423, "v": 0.075, "influence_scale": 0.96},
+    {"id": "anchor_03", "role": "anchor", "u": 0.790, "v": 0.155, "influence_scale": 1.05},
+    {"id": "anchor_04", "role": "anchor", "u": 0.226, "v": 0.375, "influence_scale": 0.92},
+    {"id": "anchor_05", "role": "anchor", "u": 0.622, "v": 0.427, "influence_scale": 1.10},
+    {"id": "anchor_06", "role": "anchor", "u": 0.075, "v": 0.705, "influence_scale": 1.02},
+    {"id": "anchor_07", "role": "anchor", "u": 0.445, "v": 0.748, "influence_scale": 0.94},
+    {"id": "anchor_08", "role": "anchor", "u": 0.845, "v": 0.792, "influence_scale": 1.12},
+
+    {"id": "medium_01", "role": "medium", "u": 0.245, "v": 0.105, "influence_scale": 0.96},
+    {"id": "medium_02", "role": "medium", "u": 0.605, "v": 0.085, "influence_scale": 1.06},
+    {"id": "medium_03", "role": "medium", "u": 0.945, "v": 0.210, "influence_scale": 0.91},
+    {"id": "medium_04", "role": "medium", "u": 0.480, "v": 0.255, "influence_scale": 1.03},
+    {"id": "medium_05", "role": "medium", "u": 0.085, "v": 0.305, "influence_scale": 0.92},
+    {"id": "medium_06", "role": "medium", "u": 0.822, "v": 0.385, "influence_scale": 1.08},
+    {"id": "medium_07", "role": "medium", "u": 0.420, "v": 0.480, "influence_scale": 0.95},
+    {"id": "medium_08", "role": "medium", "u": 0.965, "v": 0.535, "influence_scale": 1.04},
+    {"id": "medium_09", "role": "medium", "u": 0.247, "v": 0.615, "influence_scale": 1.10},
+    {"id": "medium_10", "role": "medium", "u": 0.680, "v": 0.650, "influence_scale": 0.90},
+    {"id": "medium_11", "role": "medium", "u": 0.145, "v": 0.875, "influence_scale": 1.07},
+    {"id": "medium_12", "role": "medium", "u": 0.610, "v": 0.900, "influence_scale": 0.94},
+    {"id": "medium_13", "role": "medium", "u": 0.940, "v": 0.940, "influence_scale": 1.02},
+
+    {"id": "infill_01", "role": "infill", "u": 0.145, "v": 0.205, "influence_scale": 0.98},
+    {"id": "infill_02", "role": "infill", "u": 0.660, "v": 0.240, "influence_scale": 1.08},
+    {"id": "infill_03", "role": "infill", "u": 0.345, "v": 0.290, "influence_scale": 0.92},
+    {"id": "infill_04", "role": "infill", "u": 0.950, "v": 0.365, "influence_scale": 1.04},
+    {"id": "infill_05", "role": "infill", "u": 0.080, "v": 0.500, "influence_scale": 0.90},
+    {"id": "infill_06", "role": "infill", "u": 0.760, "v": 0.535, "influence_scale": 1.10},
+    {"id": "infill_07", "role": "infill", "u": 0.345, "v": 0.665, "influence_scale": 1.02},
+    {"id": "infill_08", "role": "infill", "u": 0.905, "v": 0.650, "influence_scale": 0.94},
+    {"id": "infill_09", "role": "infill", "u": 0.280, "v": 0.900, "influence_scale": 1.06},
+    {"id": "infill_10", "role": "infill", "u": 0.755, "v": 0.930, "influence_scale": 0.96}
+  ]
+}

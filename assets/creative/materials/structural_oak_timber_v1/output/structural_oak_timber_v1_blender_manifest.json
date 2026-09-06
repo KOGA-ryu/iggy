@@ -1,0 +1,51 @@
+{
+  "schema": "iggy3d.material.structural_oak_timber.blender.v1",
+  "profile_id": "structural_oak_timber_v1",
+  "source_beam": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/rough_hewn_timber_beam_v1.blend",
+  "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/structural_oak_timber_v1_beam.blend",
+  "master_object": "IGGY_WA001_RoughHewnTimberBeam_Master",
+  "material": "IGGY_MAT_StructuralOakTimberV1",
+  "knot_material": "IGGY_MAT_StructuralOakKnotV1",
+  "packed_images": [
+    "structural_oak_timber_v1_side_basecolor.png",
+    "structural_oak_timber_v1_side_normal.png",
+    "structural_oak_timber_v1_end_basecolor.png",
+    "structural_oak_timber_v1_end_normal.png"
+  ],
+  "coordinate_mapping": {
+    "side": "IGGY_TimberUV metre values + sinc_timber_face_id rows",
+    "end": "independent left/right columns selected by sinc_timber_face_id",
+    "boolean_policy": "original face attributes remain authoritative; Boolean bearing faces inherit end/adjacent identity and never use a triangle mask"
+  },
+  "surface_response": {
+    "uniform_roughness": 0.76,
+    "authored_roughness_map": false,
+    "damage": false
+  },
+  "proofs": {
+    "hero": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/renders/structural_oak_timber_v1_beam_hero.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1166924
+    },
+    "reverse": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/renders/structural_oak_timber_v1_beam_reverse.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1200882
+    },
+    "end_growth": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/renders/structural_oak_timber_v1_beam_end_growth.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1163402
+    },
+    "grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/renders/structural_oak_timber_v1_beam_grazing.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1074815
+    }
+  }
+}

@@ -1,0 +1,41 @@
+mode_guided
+guided_open_question rb_math_002_quadratic_three_points_guided
+guided_select 2
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 4
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 2
+guided_check
+guided_next
+guided_select 4
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 2
+guided_check
+guided_next
+guided_select 4
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next

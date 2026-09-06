@@ -1,5 +1,10 @@
 # SINC_GeometryProof_Profile
 
+Cross-repository architecture and implementation order are owned by
+`/Users/kogaryu/Documents/Codex/2026-07-25/sinc/docs/asset-library/SINC_ASSET_AUTOMATION_ROADMAP.md`.
+This package owns the profile geometry family and must not become a competing
+whole-pipeline roadmap.
+
 One reliable geometry-proof system for 2D profiles and sections. A profile is
 authored as an explicit, validated specification; the proof scene and the
 production geometry both derive from the same compiled result, so a proof
@@ -74,12 +79,15 @@ Blender, 4 tests - including binding the artifact to the committed spec's
 sha256 and binding the saved master curve to freshly recompiled geometry, so
 neither a stale artifact nor a divergent rebuild can stay green).
 
-Research intake: measurement threads deliver a `SINC_GeometryProof_Handoff/1`
+Research intake: measurement threads deliver a `SINC_GeometryProof_Handoff/2`
 JSON (calibration, crop frames, named landmarks, extents, arc traces);
 `profile_intake.py` emits a draft spec with stations placed, claims filled,
-and tolerance derived from the calibration residual - see `INTAKE.md`. First
+and tolerance derived from control-point uncertainty - see `INTAKE.md`. First
 live consumer: Ellis Plate 451A No.4
 (`docs/building_corpus/sections/451A/handoff_451A_no4_DRAFT.json`).
+Legacy `/1` records remain readable. `/2` carries the source projection model
+and any authored model assumption structurally instead of burying them in
+notes.
 
 ## Reproduction
 

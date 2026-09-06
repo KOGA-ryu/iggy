@@ -1,0 +1,109 @@
+{
+  "schema": "iggy-structural-oak-profile/2.0",
+  "profile_id": "structural_oak_door_v1",
+  "display_name": "Met 55.61.170 reference-derived giant-house door wood",
+  "intent": "Layered colour fields and restrained longitudinal fibre linework derived from the real door used to author the model.",
+  "reference_authority": {
+    "institution": "The Metropolitan Museum of Art",
+    "object_number": "55.61.170",
+    "object_url": "https://www.metmuseum.org/art/collection/search/468492",
+    "primary_view": "reverse",
+    "derivation_rule": "Use measured wood colours and broad field relationships; do not copy photographed damage, lighting, hardware, or weathering detail."
+  },
+  "coordinate_contract": {
+    "uv_attribute": "UVMap",
+    "longitudinal_attribute": "sinc_length_ratio",
+    "variant_attribute": "sinc_seed",
+    "end_grain_attribute": "sinc_wood_end_mask",
+    "grain_rule": "Every timber follows its own construction axis.",
+    "repeat_rule": "No square texture tile and no shared fibre continuation between separate timbers."
+  },
+  "surface_response": {
+    "model": "uniform_diffuse",
+    "texture_inputs": [
+      "reference_derived_colour_atlas",
+      "authored_fibre_ink_atlas"
+    ],
+    "specular": false,
+    "authored_roughness": false
+  },
+  "excluded_lanes": [
+    "roughness",
+    "normal",
+    "height",
+    "bump",
+    "damage",
+    "edge_wear",
+    "scratches",
+    "dings",
+    "scuffs",
+    "cracks",
+    "chips",
+    "stains",
+    "weathering",
+    "photographic_damage",
+    "periodic_grain",
+    "random_noise"
+  ],
+  "palette": {
+    "observed_reference_twenty": [
+      "#49342f",
+      "#907b60",
+      "#945826",
+      "#7b5d43",
+      "#9a7b5c",
+      "#4e4138",
+      "#5c4b43",
+      "#6c5648",
+      "#a5815d",
+      "#8d6f49",
+      "#86684e",
+      "#87735b",
+      "#ba875a",
+      "#b89871",
+      "#ab8f6a",
+      "#68442a",
+      "#874a1e",
+      "#af9d8f",
+      "#65391e",
+      "#a28259"
+    ],
+    "ink": "#49342f",
+    "linework_proof_field": "#b89871"
+  },
+  "layers": [
+    {
+      "id": "observed_reference_field",
+      "scale": "board",
+      "purpose": "Continuous base field reconstructed from all twenty sampled colours and their measured positions on the Met reverse."
+    },
+    {
+      "id": "authored_macro_colour_fields",
+      "scale": "board",
+      "purpose": "Broad charcoal, grey-taupe, pale-tan, ochre, and muted-red passages traced from the reference hierarchy.",
+      "maximum_opacity": 0.45
+    },
+    {
+      "id": "quiet_value_passages",
+      "scale": "board",
+      "purpose": "Large low-contrast areas that prevent the material from becoming evenly busy."
+    },
+    {
+      "id": "restrained_fibre_colour",
+      "scale": "fibre",
+      "purpose": "A few explicitly authored longitudinal colour boundaries; no wave or ring generator.",
+      "maximum_rendered_width_uv": 0.01296
+    },
+    {
+      "id": "selective_fibre_ink",
+      "scale": "graphic",
+      "purpose": "Sparse broken dark fibre accents, separated from cracks and damage.",
+      "strength": 0.82
+    }
+  ],
+  "proofs": [
+    "colour",
+    "linework",
+    "combined"
+  ]
+}

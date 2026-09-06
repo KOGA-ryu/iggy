@@ -1,0 +1,188 @@
+{
+  "schema": "iggy3d.forged_iron_actual_hinge_acceptance_board.v1",
+  "status": "USER_NOT_ACCEPTED_PROOF_ONLY",
+  "candidate": {
+    "id": "forged_iron_v1",
+    "material": "IGGY_MAT_ReferenceForgedIron_v003",
+    "public_group": "IGGY_SH_ReferenceForgedIron_v003",
+    "source_blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "source_blend_sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_blend_sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_unchanged": true,
+    "source_manifest": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_manifest.json",
+    "source_manifest_sha256": "da5bf0c4a96998280b960d47a049ad79b3086316c4f6543a56248621b7534184"
+  },
+  "consumer": {
+    "name": "approved eight-part openwork strap hinge",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ],
+    "assembly_bounds_m": {
+      "minimum": [
+        -0.8999999761581421,
+        -0.057999998331069946,
+        -0.20499999821186066
+      ],
+      "maximum": [
+        3.1600000858306885,
+        0.057999998331069946,
+        0.20499999821186066
+      ],
+      "span": [
+        4.059999942779541,
+        0.11599999666213989,
+        0.4099999964237213
+      ]
+    }
+  },
+  "render_contract": {
+    "engine": "BLENDER_EEVEE",
+    "tile_resolution": [
+      900,
+      360
+    ],
+    "board_resolution": [
+      3600,
+      1080
+    ],
+    "proof_modes": {
+      "combined": 0.0,
+      "base_colour": 1.0,
+      "roughness": 2.0,
+      "normal": 5.0,
+      "worked_response": 7.0
+    },
+    "same_geometry_for_all_panels": true,
+    "same_material_for_all_combined_panels": true,
+    "no_saved_blend": true,
+    "uses_ai_generated_imagery": false
+  },
+  "panels": [
+    {
+      "id": "front",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/front.png",
+      "bytes": 155699,
+      "sha256": "78d05d3b138d443020adfc3b3bc7e357cb884bc1dc0846d642a985d801ea5d38"
+    },
+    {
+      "id": "three_quarter",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/three_quarter.png",
+      "bytes": 152944,
+      "sha256": "471150891b4b9f7afc66af02b99a9ca22860f832b603b41b4fbf1ea87a33abfb"
+    },
+    {
+      "id": "grazing",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/grazing.png",
+      "bytes": 153399,
+      "sha256": "4672afe125293ecea77f569657ddf033d395653baafe8e317b50e4f88e54be7c"
+    },
+    {
+      "id": "gameplay",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/gameplay.png",
+      "bytes": 120291,
+      "sha256": "ab2fe5ca6c3ff3a3b40c14295b149728b82e82aab058ff25f581065929627f02"
+    },
+    {
+      "id": "close_neutral",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/close_neutral.png",
+      "bytes": 241438,
+      "sha256": "4a6abc197fabe67a337ee8ba7fa52229f60ccacb35491ca4bd445bd9af22172a"
+    },
+    {
+      "id": "close_light_left",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/close_light_left.png",
+      "bytes": 258588,
+      "sha256": "0f04541eed12138cbeb5c98f6a7bd5fde264275f0b90e1378b3e5c5c2ca8ab3b"
+    },
+    {
+      "id": "close_light_right",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/close_light_right.png",
+      "bytes": 253295,
+      "sha256": "d4610c52e5470a2ccf1d86f2220504ed3ef5a8c2a9ff322358d0e3b800d78349"
+    },
+    {
+      "id": "pivot_close",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/pivot_close.png",
+      "bytes": 344267,
+      "sha256": "36eca18b74a970127751fb79ecd7f7ebd0e7e10a570f007517c814645e581150"
+    },
+    {
+      "id": "base_colour",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/base_colour.png",
+      "bytes": 139223,
+      "sha256": "4c70808940ab4f78d44439d4b9a888ec9e70b7bb03f706a2fc004a54a524baf8"
+    },
+    {
+      "id": "roughness",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/roughness.png",
+      "bytes": 115937,
+      "sha256": "0107dd9a40215e2bc2e574716a71ce205e2eb429d185a6957b6b4d4f14a825bd"
+    },
+    {
+      "id": "normal",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/normal.png",
+      "bytes": 138929,
+      "sha256": "8071bf9cd18ebf906badf4869063cf9d5600cda0f40cf475b03893b68ae9507f"
+    },
+    {
+      "id": "worked_response",
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/worked_response.png",
+      "bytes": 150765,
+      "sha256": "c3995d348cd69d3517efb8b16dc911c83e4739dc8a02f11ccb7c152104f653ea"
+    }
+  ],
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/actual_hinge_acceptance_board_v1/forged_iron_v1_actual_hinge_acceptance_board.png",
+    "resolution": [
+      3600,
+      1080
+    ],
+    "bytes": 2785090,
+    "sha256": "8c0dfddf028223b1422cd956dd0b9c295c78d0b434bb97b0696f621e3be2fc16"
+  },
+  "locked_absences": [
+    "rust",
+    "damage",
+    "contact_polish",
+    "soot",
+    "dirt",
+    "blood",
+    "cat_face_motifs",
+    "diamond_stamps"
+  ],
+  "review_contract": {
+    "reject_if": [
+      "worked-response masks read as stamps, lozenges, bars, faces, or symbols",
+      "broad colour reads as a detached cloud overlay instead of coherent oxide",
+      "roughness merely copies colour or height",
+      "moving light reveals equal-frequency noise or repeated rows",
+      "surface reads as gray plastic, painted stone, or brushed aluminium",
+      "detail disappears before the close-to-gameplay handoff"
+    ],
+    "manual_acceptance_required": true,
+    "unreal_parity_verified": false
+  },
+  "visual_decision": {
+    "result": "repair_requested",
+    "strongest_surviving_result": "quiet dark macro value and construction readability survive on the complete hinge through gameplay distance",
+    "failed_causal_owners": [
+      "soft closed-cloud base-colour morphology",
+      "large rounded striped worked-response stamps",
+      "near-flat roughness hierarchy",
+      "weak broad-to-medium normal handoff",
+      "smooth coated-plastic pivot response"
+    ],
+    "next_gate": "reduced A-D connected-oxide and open-luster comparison on the same hinge; no canonical integration before selection"
+  },
+  "generator": {
+    "script": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/render_actual_hinge_acceptance_board_v1.py",
+    "sha256": "f128dc30503588a891c48f2fc06154933a08297f2ab935b295d93fbb57921715"
+  }
+}

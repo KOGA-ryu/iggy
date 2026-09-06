@@ -1,0 +1,108 @@
+{
+  "schema": "iggy3d.material.structural_oak_joinery.atlas.v2",
+  "profile_id": "structural_oak_joinery_v1",
+  "pattern_id": "structural_oak_joinery_cut_atlas_v2",
+  "tile_resolution": 768,
+  "atlas_resolution": [
+    3072,
+    1536
+  ],
+  "continuity": {
+    "ring_count": 832,
+    "joinery_ring_table_digest": "844b44cd0f1d57f005cb65eb88b54fa3aedb78e7b4b28918298a15c64533456c",
+    "timber_ring_table_digest": "844b44cd0f1d57f005cb65eb88b54fa3aedb78e7b4b28918298a15c64533456c",
+    "rule": "All physical cut tiles evaluate the structural timber pith controls and ring table."
+  },
+  "surface_response": {
+    "uniform_roughness": 0.76,
+    "roughness_map": false,
+    "damage": false,
+    "height_decode_m": [
+      -0.00012,
+      0.00012
+    ]
+  },
+  "tiles": [
+    {
+      "index": 0,
+      "id": "mortise_cross_wall",
+      "projection": "YZ",
+      "surface_classes": [
+        3
+      ]
+    },
+    {
+      "index": 1,
+      "id": "mortise_long_wall",
+      "projection": "XZ",
+      "surface_classes": [
+        3,
+        5
+      ]
+    },
+    {
+      "index": 2,
+      "id": "mortise_and_housing_bearing",
+      "projection": "XY",
+      "surface_classes": [
+        4,
+        6
+      ]
+    },
+    {
+      "index": 3,
+      "id": "drawbore_cylinder",
+      "projection": "Y_THETA",
+      "surface_classes": [
+        7
+      ]
+    },
+    {
+      "index": 4,
+      "id": "tenon_shoulder",
+      "projection": "YZ",
+      "surface_classes": [
+        2,
+        9
+      ]
+    },
+    {
+      "index": 5,
+      "id": "tenon_cheek_y",
+      "projection": "XZ",
+      "surface_classes": [
+        8
+      ]
+    },
+    {
+      "index": 6,
+      "id": "tenon_cheek_z",
+      "projection": "XY",
+      "surface_classes": [
+        8
+      ]
+    },
+    {
+      "index": 7,
+      "id": "tenon_drawbore_cylinder",
+      "projection": "TENON_THETA",
+      "surface_classes": [
+        7
+      ]
+    }
+  ],
+  "source_sha256": {
+    "profile": "1c4c92813fefbd6556e397fd9d05c9d76b7c4b367bcb104e25063937e2d06259",
+    "pattern": "333200b8035a015a92ccfcca013b240d62bd55cb8e8d495c1568a1aa00dc6535",
+    "timber_profile": "85b9e2cdff8f8d41ea75c878c264033fd41c34b9af7050c9ebc40cd5cc21dcb4",
+    "timber_pattern": "ebe32561ec085e2c209550446502a4a43f914d9e6f95b430e60050ce3ad8938d"
+  },
+  "files": [
+    "structural_oak_joinery_v1_cut_atlas_book.png",
+    "structural_oak_joinery_v1_cut_basecolor.png",
+    "structural_oak_joinery_v1_cut_height.png",
+    "structural_oak_joinery_v1_cut_identity.png",
+    "structural_oak_joinery_v1_cut_normal.png",
+    "structural_oak_joinery_v1_cut_semantic.png"
+  ]
+}

@@ -889,9 +889,9 @@ bool blockoutDraftAndPatternChoicesArePinned() {
           cr::CreativeWorldLayoutVerticalConnectorKind::Stair &&
       draft.storeys.preferredDirection ==
           cr::CreativeWorldLayoutVerticalDirection::PositiveZ;
-  const bool architectureKeepsDefaults =
+  const bool architectureStartsResidential =
       draft.architecturalProfileKind ==
-          cr::CreativeWorldLayoutArchitecturalProfileKind::Custom &&
+          cr::CreativeWorldLayoutArchitecturalProfileKind::Residential &&
       draft.ceilingThicknessLayers == 1U &&
       draft.exteriorWallMaterial ==
           cr::CreativeStructuralMaterial::Blockout &&
@@ -929,8 +929,9 @@ bool blockoutDraftAndPatternChoicesArePinned() {
                 "the blockout draft starts as a single room") &&
          expect(shellKeepsDefaults,
                 "non-footprint shell values keep the room-settings defaults") &&
-         expect(architectureKeepsDefaults,
-                "blockout architecture starts custom with blockout walls") &&
+         expect(architectureStartsResidential,
+                "new blockout drafts declare the residential profile while "
+                "keeping blockout materials") &&
          expect(storeysKeepDefaults,
                 "storey settings keep the backend defaults: one storey, "
                 "stairs on, stair kind, positive-Z preference") &&
@@ -970,6 +971,16 @@ bool blockoutArchitecturalProfilesResolveAgainstTheDocumentGrid() {
       settings.shell.roofThicknessLayers == 1U &&
       settings.architecturalProfileKind ==
           cr::CreativeWorldLayoutArchitecturalProfileKind::Grand;
+  iggy3d_creative_app::CreativeEditorWorldLayoutBuildingBlockoutSettings
+      custom;
+  custom.floorToFloorCells = 9U;
+  custom.shell.floorThicknessLayers = 2U;
+  custom.ceilingThicknessLayers = 3U;
+  custom.shell.roofThicknessLayers = 4U;
+  const bool customPreserved = iggy3d_creative_app::
+      applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+          custom, halfMeterGrid,
+          cr::CreativeWorldLayoutArchitecturalProfileKind::Custom);
   const auto unchanged = settings;
   cr::CreativeGridSettings unrepresentableGrid;
   unrepresentableGrid.cellSizeMeters = 0.7;
@@ -981,6 +992,14 @@ bool blockoutArchitecturalProfilesResolveAgainstTheDocumentGrid() {
                 "residential profile resolves to exact half-meter cells") &&
          expect(grandRight,
                 "grand profile resolves to exact half-meter cells") &&
+         expect(customPreserved && custom.floorToFloorCells == 9U &&
+                    custom.shell.floorThicknessLayers == 2U &&
+                    custom.ceilingThicknessLayers == 3U &&
+                    custom.shell.roofThicknessLayers == 4U &&
+                    custom.architecturalProfileKind ==
+                        cr::CreativeWorldLayoutArchitecturalProfileKind::Custom,
+                "saved custom dimensions pass through profile resolution "
+                "unchanged") &&
          expect(rejected && settings.floorToFloorCells ==
                                 unchanged.floorToFloorCells &&
                     settings.architecturalProfileKind ==

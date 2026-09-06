@@ -1,0 +1,1411 @@
+{
+  "schema": "iggy3d.forged_iron_v004_1_component_response_audit.v1",
+  "status": "DIAGNOSTIC_AUDIT_NO_MATERIAL_CHANGE",
+  "source": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/forged_iron_connected_oxide_candidate_v004_1.blend",
+    "sha256_before": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+    "sha256_after": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81"
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/audit_v004_1_component_response.py",
+    "sha256": "84e7515da4af15ab4fa6a3547d12438ed1016c43102f663c4ca3a4744a07c9c2"
+  },
+  "research": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/COMPONENT_RESPONSE_AUDIT.md",
+    "sha256": "0031c0961a427725b8c6c8c9d0ed8370a81fecb893c3b1a6cb922b68c08624db",
+    "sources": [
+      {
+        "title": "Forge Work",
+        "author": "William L. Ilgen",
+        "year": 1912,
+        "url": "https://www.gutenberg.org/files/53854/53854-h/53854-h.htm",
+        "authority": "public-domain forging-instruction manual",
+        "observation": "Upright blows draw flat stock and make smooth surfaces; round stock is progressively worked square, octagonal, and round, then finished with light blows and continuous rotation or swages.",
+        "eligible_transfer": "Mostly smoothed overlapping flat-stock response and restrained axial or progressive-facet pintle response; no periodic rings.",
+        "prohibited_inference": "No universal mark size, spacing, residual depth, or visible facet count."
+      },
+      {
+        "title": "Practical Forging and Art Smithing",
+        "author": "Thomas F. Googerty",
+        "year": 1915,
+        "url": "https://www.bamsite.org/books/cu31924003588534.pdf",
+        "authority": "public-domain master-craftsman wrought-metal manual",
+        "observation": "The eye is made first and trued with an eye-pin; a weld lap belongs on the back. Heavy joints are marked and split while flat, then the eye is formed and alternating projections are cut and fitted.",
+        "eligible_transfer": "Knuckles inherit parent-leaf rest-stock coordinates; rear seam and bearing faces are optional later semantic owners.",
+        "prohibited_inference": "Does not prove every hinge is welded or authorize a universal seam mark."
+      },
+      {
+        "title": "Basic Blacksmithing: A Training Manual",
+        "author": "J. B. Stokes / Food and Agriculture Organization",
+        "year": 1992,
+        "url": "https://www.fao.org/4/ah637e/ah637e00.htm",
+        "authority": "written UN training manual",
+        "observation": "A flat strap end is chamfered, bent into an eye, fitted to a drift, and flattened in a bottom swage; the mating hinge pin uses separate round stock and bottom swages.",
+        "eligible_transfer": "Deform a parent strap field through the roll; reserve drift/swage compression as an eye-local overlay; give the pin separate ownership.",
+        "prohibited_inference": "Human-scale job dimensions do not directly specify giant texture sizes."
+      },
+      {
+        "title": "Hinges, Pintles and Gudgeons",
+        "author": "Field's Blacksmith Shop at The Farmers' Museum",
+        "year": 2009,
+        "url": "https://ruralblacksmith.blogspot.com/2009/09/fields-blacksmith-shop-is-making.html",
+        "authority": "practicing historical-reproduction museum shop",
+        "observation": "One bar supplies the rolled hinge eye and drawn strap; a sizing pin trues the gudgeon, while the pintle is forged separately.",
+        "eligible_transfer": "Shared strap/eye lineage and separate pintle lineage.",
+        "prohibited_inference": "One shop example does not establish universal finish or wear."
+      },
+      {
+        "title": "Recreating and Installing a Seventeenth-Century Door",
+        "author": "Cloverfields Preservation Foundation",
+        "year": 2021,
+        "url": "https://www.cloverfieldspreservationfoundation.org/newsletters/cellar-door-hardware",
+        "authority": "multidisciplinary historical reconstruction",
+        "observation": "The strap is wrapped around the eye and forge welded on the rear, leaving at most a slight feathered seam; pintles are separately forged.",
+        "eligible_transfer": "Optional sparse rear seam identity after geometry/reference confirmation.",
+        "prohibited_inference": "Does not prove the current fantasy hinge's exact weld state or seam path."
+      }
+    ]
+  },
+  "stock_lineages": {
+    "moving_leaf_stock": {
+      "members": [
+        "SM_GH018_MovingLeaf_Openwork",
+        "MovingKnuckle_01",
+        "MovingKnuckle_03",
+        "MovingKnuckle_05"
+      ],
+      "construction_owner": "one_parent_flat_strap_deformed_through_rolled_eye",
+      "current_field_frames": [
+        "object_xz_host",
+        "component_tangent_host",
+        "component_tangent_host",
+        "component_tangent_host"
+      ],
+      "current_materials": [
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_MovingLeaf_Openwork",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_01",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_03",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_05"
+      ],
+      "current_state": "broken_by_per_object_normalization_and_component_name_seed"
+    },
+    "fixed_leaf_stock": {
+      "members": [
+        "SM_GH018_FixedLeaf",
+        "FixedKnuckle_02",
+        "FixedKnuckle_04"
+      ],
+      "construction_owner": "one_parent_flat_strap_deformed_through_rolled_eye",
+      "current_field_frames": [
+        "object_xz_host",
+        "component_tangent_host",
+        "component_tangent_host"
+      ],
+      "current_materials": [
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_FixedLeaf",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_02",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_04"
+      ],
+      "current_state": "broken_by_per_object_normalization_and_component_name_seed"
+    },
+    "pintle_stock": {
+      "members": [
+        "SM_GH018_Pintle"
+      ],
+      "construction_owner": "separate_round_pin_stock",
+      "current_field_frames": [
+        "component_tangent_host"
+      ],
+      "current_materials": [
+        "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_Pintle"
+      ],
+      "current_state": "separate_as_required_but_reuses_leaf_broad_rail_recipe"
+    }
+  },
+  "components": {
+    "SM_GH018_FixedLeaf": {
+      "construction_class": "forged_flat_strap",
+      "stock_lineage": "fixed_leaf_stock",
+      "parent_leaf": "SM_GH018_FixedLeaf",
+      "frame": {
+        "mode": "longitudinal_leaf",
+        "field_coordinate_mode": "object_xz_host",
+        "minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "maximum_m": [
+          -0.04800000041723251,
+          0.20499999821186066
+        ],
+        "span_m": [
+          0.8519999980926514,
+          0.4099999964237213
+        ],
+        "tangent_minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "tangent_maximum_m": [
+          0.8895581960678101,
+          0.20499999821186066
+        ],
+        "tangent_span_m": [
+          1.7895581722259521,
+          0.4099999964237213
+        ],
+        "loop_count": 1220
+      },
+      "field_resolution": [
+        213,
+        103
+      ],
+      "pitch_m": {
+        "local_u": 0.004018867915531374,
+        "local_v": 0.004019607808075699
+      },
+      "height_m": {
+        "minimum": -0.0023679251316934824,
+        "p05": -0.0014025991433300078,
+        "median": 3.2614807423669845e-05,
+        "p95": 0.001734623813536018,
+        "maximum": 0.002973585156723857,
+        "mean": 4.634168808836649e-05,
+        "standard_deviation": 0.0009207437482102765,
+        "peak_to_peak": 0.005341510288417339
+      },
+      "integrated_height_m": {
+        "minimum": -0.004143869038671255,
+        "p05": -0.0024545484920963645,
+        "median": 5.707591481041163e-05,
+        "p95": 0.003035591682419181,
+        "maximum": 0.005203774198889732,
+        "mean": 8.109795424613536e-05,
+        "standard_deviation": 0.0016113015599025435,
+        "peak_to_peak": 0.009347643237560987
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.007919582538306713,
+        "p05": 0.44215279817581177,
+        "median": 1.469724178314209,
+        "p95": 2.8377328634262082,
+        "maximum": 3.1403863430023193,
+        "mean": 1.545055514484752,
+        "standard_deviation": 0.703180498741225,
+        "peak_to_peak": 3.1324667604640126,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.9828615707188112,
+          "0.50": 0.9375997082820547,
+          "1.00": 0.7804366652992388,
+          "2.00": 0.2955467432426273
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 2.3363971045713865,
+          "dominant_wavelength_m": 0.4280094330040914,
+          "power_centroid_frequency_cycles_per_m": 2.3070889107537322,
+          "power_centroid_wavelength_m": 0.4334466675032898
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 2.415344562863092,
+          "dominant_wavelength_m": 0.414019604231797,
+          "power_centroid_frequency_cycles_per_m": 3.1041794390378343,
+          "power_centroid_wavelength_m": 0.32214632550686506
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.005999999947664215,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_FixedLeaf",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "SM_GH018_MovingLeaf_Openwork": {
+      "construction_class": "forged_flat_strap",
+      "stock_lineage": "moving_leaf_stock",
+      "parent_leaf": "SM_GH018_MovingLeaf_Openwork",
+      "frame": {
+        "mode": "longitudinal_leaf",
+        "field_coordinate_mode": "object_xz_host",
+        "minimum_m": [
+          0.04800000041723251,
+          -0.20499999821186066
+        ],
+        "maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "span_m": [
+          3.111999988555908,
+          0.4099999964237213
+        ],
+        "tangent_minimum_m": [
+          -3.0933139324188232,
+          -0.20499999821186066
+        ],
+        "tangent_maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "tangent_span_m": [
+          6.253314018249512,
+          0.4099999964237213
+        ],
+        "loop_count": 49038
+      },
+      "field_resolution": [
+        768,
+        103
+      ],
+      "pitch_m": {
+        "local_u": 0.004057366347530519,
+        "local_v": 0.004019607808075699
+      },
+      "height_m": {
+        "minimum": -0.002393597038462758,
+        "p05": -0.001405692216940224,
+        "median": 2.9649206226167735e-05,
+        "p95": 0.0017356230935547494,
+        "maximum": 0.002996125491335988,
+        "mean": 4.568455637240897e-05,
+        "standard_deviation": 0.0009222262259708852,
+        "peak_to_peak": 0.005389722529798746
+      },
+      "integrated_height_m": {
+        "minimum": -0.004188794642686844,
+        "p05": -0.002459961350541562,
+        "median": 5.1886112487409264e-05,
+        "p95": 0.0030373404501005995,
+        "maximum": 0.005243219435214996,
+        "mean": 7.994797400940258e-05,
+        "standard_deviation": 0.0016138958954730843,
+        "peak_to_peak": 0.00943201407790184
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.0033592975232750177,
+        "p05": 0.22274731546640397,
+        "median": 0.9578262865543365,
+        "p95": 1.8416694223880767,
+        "maximum": 2.09759783744812,
+        "mean": 0.9745632777020397,
+        "standard_deviation": 0.5506799899591347,
+        "peak_to_peak": 2.094238539924845,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.937841322815534,
+          "0.50": 0.716575647249191,
+          "1.00": 0.47515928398058255,
+          "2.00": 0.013716120550161812
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 0.6418367097296181,
+          "dominant_wavelength_m": 1.5580286774517194,
+          "power_centroid_frequency_cycles_per_m": 0.6315399714843563,
+          "power_centroid_wavelength_m": 1.5834310497396138
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 2.415344562863092,
+          "dominant_wavelength_m": 0.414019604231797,
+          "power_centroid_frequency_cycles_per_m": 3.1041794370193645,
+          "power_centroid_wavelength_m": 0.32214632571633833
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.005999999947664215,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_MovingLeaf_Openwork",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "SM_GH018_Pintle": {
+      "construction_class": "separate_forged_round_pin",
+      "stock_lineage": "pintle_stock",
+      "parent_leaf": null,
+      "frame": {
+        "mode": "axial_pin",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ],
+        "tangent_minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "tangent_maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "tangent_span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ],
+        "loop_count": 432
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.003228346428533239,
+        "local_v": 0.002593060571049887
+      },
+      "height_m": {
+        "minimum": -0.0009303797269240022,
+        "p05": -0.0005591624561930075,
+        "median": 1.3926740848546615e-05,
+        "p95": 0.0006926898437086492,
+        "maximum": 0.0011695328867062926,
+        "mean": 1.9571700810590243e-05,
+        "standard_deviation": 0.0003671477350059973,
+        "peak_to_peak": 0.002099912613630295
+      },
+      "integrated_height_m": {
+        "minimum": -0.0016281645512208343,
+        "p05": -0.0009785342903342099,
+        "median": 2.4371795916522387e-05,
+        "p95": 0.0012122072395868598,
+        "maximum": 0.0020466826390475035,
+        "mean": 3.425047631861779e-05,
+        "standard_deviation": 0.0006425085366891787,
+        "peak_to_peak": 0.0036748471902683377
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.007117839064449072,
+        "p05": 0.3953021064400673,
+        "median": 1.3349557518959045,
+        "p95": 2.4886154055595395,
+        "maximum": 2.683109760284424,
+        "mean": 1.3803460795024307,
+        "standard_deviation": 0.6225027262328107,
+        "peak_to_peak": 2.6759919212199748,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.979248046875,
+          "0.50": 0.9244384765625,
+          "1.00": 0.6552734375,
+          "2.00": 0.1827392578125
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 4.839939066607246,
+          "dominant_wavelength_m": 0.20661417142612729,
+          "power_centroid_frequency_cycles_per_m": 4.80112059742201,
+          "power_centroid_wavelength_m": 0.20828470764449367
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 6.025698039777644,
+          "dominant_wavelength_m": 0.16595587654719277,
+          "power_centroid_frequency_cycles_per_m": 7.737865464414426,
+          "power_centroid_wavelength_m": 0.12923460670114872
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.0023906753557484325,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_Pintle",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "MovingKnuckle_01": {
+      "construction_class": "rolled_eye_from_parent_leaf",
+      "stock_lineage": "moving_leaf_stock",
+      "parent_leaf": "SM_GH018_MovingLeaf_Openwork",
+      "frame": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.0021758764747559557,
+        "local_v": 0.001841269788287935
+      },
+      "height_m": {
+        "minimum": -0.000660640187561512,
+        "p05": -0.000397047825390473,
+        "median": 9.88910051091807e-06,
+        "p95": 0.0004918623279081657,
+        "maximum": 0.000830457080155611,
+        "mean": 1.3897392948262219e-05,
+        "standard_deviation": 0.0002607027539419859,
+        "peak_to_peak": 0.001491097267717123
+      },
+      "integrated_height_m": {
+        "minimum": -0.001156120328232646,
+        "p05": -0.0006948337162612006,
+        "median": 1.7305926121480297e-05,
+        "p95": 0.0008607590658357366,
+        "maximum": 0.0014532998902723193,
+        "mean": 2.4320437902443674e-05,
+        "standard_deviation": 0.00045622981921999875,
+        "peak_to_peak": 0.0026094202185049653
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.0071646347641944885,
+        "p05": 0.40746057480573655,
+        "median": 1.3695768117904663,
+        "p95": 2.5555284738540642,
+        "maximum": 2.749358892440796,
+        "mean": 1.419528184666433,
+        "standard_deviation": 0.6396268560085325,
+        "peak_to_peak": 2.7421942576766014,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.98046875,
+          "0.50": 0.9288330078125,
+          "1.00": 0.6898193359375,
+          "2.00": 0.2337646484375
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 7.181014263115504,
+          "dominant_wavelength_m": 0.13925609438438116,
+          "power_centroid_frequency_cycles_per_m": 7.123419371353542,
+          "power_centroid_wavelength_m": 0.14038201990766508
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 8.485991623491834,
+          "dominant_wavelength_m": 0.11784126645042785,
+          "power_centroid_frequency_cycles_per_m": 10.897237380934909,
+          "power_centroid_wavelength_m": 0.09176637757286396
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.001697560926763023,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_01",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "FixedKnuckle_02": {
+      "construction_class": "rolled_eye_from_parent_leaf",
+      "stock_lineage": "fixed_leaf_stock",
+      "parent_leaf": "SM_GH018_FixedLeaf",
+      "frame": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.001967374499388567,
+        "local_v": 0.001841269788287935
+      },
+      "height_m": {
+        "minimum": -0.000660640187561512,
+        "p05": -0.000397047825390473,
+        "median": 9.889097782433964e-06,
+        "p95": 0.0004918623279081657,
+        "maximum": 0.000830457080155611,
+        "mean": 1.389739454928557e-05,
+        "standard_deviation": 0.00026070275144181255,
+        "peak_to_peak": 0.001491097267717123
+      },
+      "integrated_height_m": {
+        "minimum": -0.001156120328232646,
+        "p05": -0.0006948337162612006,
+        "median": 1.730592157400679e-05,
+        "p95": 0.0008607590658357366,
+        "maximum": 0.0014532998902723193,
+        "mean": 2.4320440591528306e-05,
+        "standard_deviation": 0.00045622981487499934,
+        "peak_to_peak": 0.0026094202185049653
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.007268577814102173,
+        "p05": 0.4327703803777695,
+        "median": 1.439804196357727,
+        "p95": 2.7032868027687074,
+        "maximum": 2.9562108516693115,
+        "mean": 1.5029136224935655,
+        "standard_deviation": 0.6791670898366767,
+        "peak_to_peak": 2.9489422738552094,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.9820556640625,
+          "0.50": 0.935302734375,
+          "1.00": 0.757080078125,
+          "2.00": 0.2757568359375
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 7.942056789317965,
+          "dominant_wavelength_m": 0.1259119679608683,
+          "power_centroid_frequency_cycles_per_m": 7.878357979145195,
+          "power_centroid_wavelength_m": 0.1269300027552823
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 8.485991623491834,
+          "dominant_wavelength_m": 0.11784126645042785,
+          "power_centroid_frequency_cycles_per_m": 10.897237383981777,
+          "power_centroid_wavelength_m": 0.09176637754720608
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.001697560926763023,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_02",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "MovingKnuckle_03": {
+      "construction_class": "rolled_eye_from_parent_leaf",
+      "stock_lineage": "moving_leaf_stock",
+      "parent_leaf": "SM_GH018_MovingLeaf_Openwork",
+      "frame": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.0021758764747559557,
+        "local_v": 0.001841269788287935
+      },
+      "height_m": {
+        "minimum": -0.000660640187561512,
+        "p05": -0.000397047825390473,
+        "median": 9.88910051091807e-06,
+        "p95": 0.0004918623279081657,
+        "maximum": 0.000830457080155611,
+        "mean": 1.3897392948262219e-05,
+        "standard_deviation": 0.0002607027539419859,
+        "peak_to_peak": 0.001491097267717123
+      },
+      "integrated_height_m": {
+        "minimum": -0.001156120328232646,
+        "p05": -0.0006948337162612006,
+        "median": 1.7305926121480297e-05,
+        "p95": 0.0008607590658357366,
+        "maximum": 0.0014532998902723193,
+        "mean": 2.4320437902443674e-05,
+        "standard_deviation": 0.00045622981921999875,
+        "peak_to_peak": 0.0026094202185049653
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.0071646347641944885,
+        "p05": 0.40746057480573655,
+        "median": 1.3695768117904663,
+        "p95": 2.5555284738540642,
+        "maximum": 2.749358892440796,
+        "mean": 1.419528184666433,
+        "standard_deviation": 0.6396268560085325,
+        "peak_to_peak": 2.7421942576766014,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.98046875,
+          "0.50": 0.9288330078125,
+          "1.00": 0.6898193359375,
+          "2.00": 0.2337646484375
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 7.181014263115504,
+          "dominant_wavelength_m": 0.13925609438438116,
+          "power_centroid_frequency_cycles_per_m": 7.123419371353542,
+          "power_centroid_wavelength_m": 0.14038201990766508
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 8.485991623491834,
+          "dominant_wavelength_m": 0.11784126645042785,
+          "power_centroid_frequency_cycles_per_m": 10.897237380934909,
+          "power_centroid_wavelength_m": 0.09176637757286396
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.001697560926763023,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_03",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "FixedKnuckle_04": {
+      "construction_class": "rolled_eye_from_parent_leaf",
+      "stock_lineage": "fixed_leaf_stock",
+      "parent_leaf": "SM_GH018_FixedLeaf",
+      "frame": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.001967374499388567,
+        "local_v": 0.001841269788287935
+      },
+      "height_m": {
+        "minimum": -0.000660640187561512,
+        "p05": -0.000397047825390473,
+        "median": 9.889097782433964e-06,
+        "p95": 0.0004918623279081657,
+        "maximum": 0.000830457080155611,
+        "mean": 1.389739454928557e-05,
+        "standard_deviation": 0.00026070275144181255,
+        "peak_to_peak": 0.001491097267717123
+      },
+      "integrated_height_m": {
+        "minimum": -0.001156120328232646,
+        "p05": -0.0006948337162612006,
+        "median": 1.730592157400679e-05,
+        "p95": 0.0008607590658357366,
+        "maximum": 0.0014532998902723193,
+        "mean": 2.4320440591528306e-05,
+        "standard_deviation": 0.00045622981487499934,
+        "peak_to_peak": 0.0026094202185049653
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.007268577814102173,
+        "p05": 0.4327703803777695,
+        "median": 1.439804196357727,
+        "p95": 2.7032868027687074,
+        "maximum": 2.9562108516693115,
+        "mean": 1.5029136224935655,
+        "standard_deviation": 0.6791670898366767,
+        "peak_to_peak": 2.9489422738552094,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.9820556640625,
+          "0.50": 0.935302734375,
+          "1.00": 0.757080078125,
+          "2.00": 0.2757568359375
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 7.942056789317965,
+          "dominant_wavelength_m": 0.1259119679608683,
+          "power_centroid_frequency_cycles_per_m": 7.878357979145195,
+          "power_centroid_wavelength_m": 0.1269300027552823
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 8.485991623491834,
+          "dominant_wavelength_m": 0.11784126645042785,
+          "power_centroid_frequency_cycles_per_m": 10.897237383981777,
+          "power_centroid_wavelength_m": 0.09176637754720608
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.001697560926763023,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_04",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    },
+    "MovingKnuckle_05": {
+      "construction_class": "rolled_eye_from_parent_leaf",
+      "stock_lineage": "moving_leaf_stock",
+      "parent_leaf": "SM_GH018_MovingLeaf_Openwork",
+      "frame": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "pitch_m": {
+        "local_u": 0.0021758764747559557,
+        "local_v": 0.001841269788287935
+      },
+      "height_m": {
+        "minimum": -0.000660640187561512,
+        "p05": -0.000397047825390473,
+        "median": 9.88910051091807e-06,
+        "p95": 0.0004918623279081657,
+        "maximum": 0.000830457080155611,
+        "mean": 1.3897392948262219e-05,
+        "standard_deviation": 0.0002607027539419859,
+        "peak_to_peak": 0.001491097267717123
+      },
+      "integrated_height_m": {
+        "minimum": -0.001156120328232646,
+        "p05": -0.0006948337162612006,
+        "median": 1.7305926121480297e-05,
+        "p95": 0.0008607590658357366,
+        "maximum": 0.0014532998902723193,
+        "mean": 2.4320437902443674e-05,
+        "standard_deviation": 0.00045622981921999875,
+        "peak_to_peak": 0.0026094202185049653
+      },
+      "normal_angle_degrees": {
+        "minimum": 0.0071646347641944885,
+        "p05": 0.40746057480573655,
+        "median": 1.3695768117904663,
+        "p95": 2.5555284738540642,
+        "maximum": 2.749358892440796,
+        "mean": 1.419528184666433,
+        "standard_deviation": 0.6396268560085325,
+        "peak_to_peak": 2.7421942576766014,
+        "texel_fraction_above_degrees": {
+          "0.25": 0.98046875,
+          "0.50": 0.9288330078125,
+          "1.00": 0.6898193359375,
+          "2.00": 0.2337646484375
+        }
+      },
+      "feature_wavelength_m": {
+        "local_u": {
+          "dominant_frequency_cycles_per_m": 7.181014263115504,
+          "dominant_wavelength_m": 0.13925609438438116,
+          "power_centroid_frequency_cycles_per_m": 7.123419371353542,
+          "power_centroid_wavelength_m": 0.14038201990766508
+        },
+        "local_v": {
+          "dominant_frequency_cycles_per_m": 8.485991623491834,
+          "dominant_wavelength_m": 0.11784126645042785,
+          "power_centroid_frequency_cycles_per_m": 10.897237380934909,
+          "power_centroid_wavelength_m": 0.09176637757286396
+        }
+      },
+      "current_recipe": {
+        "amplitude_envelope_m": 0.001697560926763023,
+        "amplitude_rule": "0.006 m times min(1, second_field_span_m / 0.410 m)",
+        "rail_count": 3,
+        "knot_counts": [
+          6,
+          5,
+          5
+        ],
+        "total_knot_count": 16,
+        "normal_multiplier": 1.75,
+        "component_name_seeded_optical_fields": [
+          "connected_medium_34mm",
+          "connected_medium_13mm",
+          "aggregate_grain_8mm"
+        ]
+      },
+      "source_material": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_05",
+        "images": {
+          "Continuous_Oxide_Optical_Colour": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideBase",
+            "packed": true
+          },
+          "Independent_Oxide_Roughness": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideRoughness",
+            "packed": true
+          },
+          "Broad_Forging_Normal_Only": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_BroadForgingNormal",
+            "packed": true
+          },
+          "Explicit_Zero_Worked_Luster_Control": {
+            "image": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_LusterControl",
+            "packed": true
+          }
+        },
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    }
+  },
+  "correlation_matrix": {
+    "component_order": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ],
+    "audit_grid": [
+      128,
+      64
+    ],
+    "values": [
+      [
+        1.0,
+        0.9999971154391519,
+        0.9999968312335743,
+        0.9999968312278954,
+        0.9999968312288281,
+        0.9999968312278954,
+        0.9999968312288281,
+        0.9999968312278954
+      ],
+      [
+        0.9999971154391518,
+        1.0,
+        0.9999999793152544,
+        0.9999999793157923,
+        0.999999979314604,
+        0.9999999793157923,
+        0.999999979314604,
+        0.9999999793157923
+      ],
+      [
+        0.9999968312335745,
+        0.9999999793152544,
+        1.0,
+        0.9999999999999922,
+        0.9999999999999936,
+        0.9999999999999922,
+        0.9999999999999936,
+        0.9999999999999922
+      ],
+      [
+        0.9999968312278954,
+        0.9999999793157923,
+        0.9999999999999922,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998
+      ],
+      [
+        0.9999968312288281,
+        0.999999979314604,
+        0.9999999999999936,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938
+      ],
+      [
+        0.9999968312278954,
+        0.9999999793157923,
+        0.9999999999999922,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998
+      ],
+      [
+        0.9999968312288281,
+        0.999999979314604,
+        0.9999999999999936,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938
+      ],
+      [
+        0.9999968312278954,
+        0.9999999793157923,
+        0.9999999999999922,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998,
+        0.9999999999999938,
+        0.9999999999999998
+      ]
+    ],
+    "off_diagonal_minimum": 0.9999968312278954,
+    "off_diagonal_median": 0.9999999999999922,
+    "off_diagonal_maximum": 0.9999999999999998,
+    "interpretation": "Near-unity correlation after per-component resampling demonstrates that one normalized broad-rail gesture restarts on unlike host parts."
+  },
+  "diagnostic_tiles": {
+    "stock_lineage": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_component_response_audit_v1/stock_lineage.png",
+      "bytes": 128684,
+      "sha256": "16d6329139111f0364938297561e573757485cd681b6ec2ce201dbbd88056d34"
+    },
+    "current_field_frame": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_component_response_audit_v1/current_field_frame.png",
+      "bytes": 133637,
+      "sha256": "b1b849fc82f86d2d65d67847287eaba18600b0f09b6b8711beac068dc3e9ff2c"
+    },
+    "existing_broad_height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_component_response_audit_v1/existing_broad_height.png",
+      "bytes": 98376,
+      "sha256": "580b23c27b3ee3498c727c8ff9f3bc4ad257a3eec4298ae8f1a48da8c2c80856"
+    },
+    "integrated_normal_angle": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_component_response_audit_v1/integrated_normal_angle.png",
+      "bytes": 158852,
+      "sha256": "f8ae623696fef59e387cdf84fadbd4e21bd6b660815d226df70cf3d392d76bce"
+    }
+  },
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_component_response_audit_v1/forged_iron_v004_1_component_response_audit_board.png",
+    "resolution": [
+      1920,
+      640
+    ],
+    "bytes": 436460,
+    "sha256": "44b2df71d097b6043c6dd688976a219d89f4262ba8e49cf101961c082940439b",
+    "panel_order": [
+      "stock_lineage",
+      "current_field_frame",
+      "existing_broad_height",
+      "integrated_normal_angle"
+    ],
+    "panel_legend": {
+      "1": {
+        "id": "stock_lineage",
+        "label": "STOCK LINEAGE"
+      },
+      "2": {
+        "id": "current_field_frame",
+        "label": "PER-OBJECT U / V RESTART"
+      },
+      "3": {
+        "id": "existing_broad_height",
+        "label": "GLOBAL-SCALE BROAD HEIGHT"
+      },
+      "4": {
+        "id": "integrated_normal_angle",
+        "label": "NORMAL ANGLE \u2014 0 TO 2 DEG"
+      }
+    },
+    "assembly": "ffmpeg 2x2 tile stack plus deterministic numbered RGBA overlay"
+  },
+  "findings": {
+    "normalized_recipe_restarts": true,
+    "correlation_evidence": {
+      "off_diagonal_minimum": 0.9999968312278954,
+      "off_diagonal_median": 0.9999999999999922,
+      "off_diagonal_maximum": 0.9999999999999998
+    },
+    "leaf_knuckle_seed_continuity_broken": true,
+    "reason": "Every object normalizes its own frame and receives the same three-rail, sixteen-knot broad-height recipe. Optical medium/grain seeds additionally include component_name, so each rolled eye loses parent-leaf phase.",
+    "locally_plausible_but_incomplete_frames": {
+      "rolled_eye": "circumferential_barrel follows the local roll but does not carry an unrolled parent-stock coordinate or stock-lineage identity",
+      "pintle": "axial_pin is a plausible local frame but currently receives the same whole-host forging-rail grammar as the leaves"
+    }
+  },
+  "decision": {
+    "result": "reject_shape_only_global_normal_owner",
+    "accepted_for_next_gate": [
+      "v004_1_colour_and_full_coverage_oxide_response",
+      "moving_leaf_stock_lineage",
+      "fixed_leaf_stock_lineage",
+      "separate_pintle_stock_lineage",
+      "circumferential_local_eye_frame_as_secondary_coordinate_only",
+      "axial_local_pintle_frame"
+    ],
+    "rejected": [
+      "one_normalized_three_rail_recipe_for_all_host_shapes",
+      "per_object_leaf_to_knuckle_field_reset",
+      "component_name_seed_for_shared_parent_stock",
+      "global_amplitude_increase_as_pivot_repair"
+    ],
+    "next_gate": "Author no integrated material yet. Build a reduced diagnostic with one parent-rest-stock leaf field carried through rolled knuckles and one separately evidenced axial pintle response; compare each isolated and cumulative against unchanged v004.1."
+  },
+  "source_unchanged": true,
+  "material_candidate_created": false,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "manual_acceptance_established": false,
+  "unreal_parity_verified": false
+}

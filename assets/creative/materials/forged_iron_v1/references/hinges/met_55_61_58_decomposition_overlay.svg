@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1080"
+     height="1080"
+     viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .title { font: 700 24px -apple-system, BlinkMacSystemFont, sans-serif; fill: #f7f3e8; }
+      .heading { font: 700 16px -apple-system, BlinkMacSystemFont, sans-serif; fill: #f7f3e8; }
+      .body { font: 13px -apple-system, BlinkMacSystemFont, sans-serif; fill: #d8d4c8; }
+      .small { font: 11px -apple-system, BlinkMacSystemFont, sans-serif; fill: #bcb7aa; }
+      .imageLabel { font: 700 11px -apple-system, BlinkMacSystemFont, sans-serif; fill: #101419; }
+      .cyan { stroke: #57d3dd; fill: none; }
+      .green { stroke: #8bd878; fill: none; }
+      .amber { stroke: #f6bd60; fill: none; }
+      .red { stroke: #ef6f6c; fill: none; }
+      .violet { stroke: #b59cff; fill: none; }
+      .line { stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .thin { stroke-width: 1.25; vector-effect: non-scaling-stroke; }
+      .dash { stroke-dasharray: 6 5; }
+    </style>
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="8" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#57d3dd"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f6bd60"/>
+    </marker>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171c22"/>
+      <stop offset="1" stop-color="#0e1115"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1080" height="1080" fill="#0b0d10"/>
+  <image x="0" y="0" width="412" height="1080"
+         xlink:href="met_55_61_58_additional_original.jpg"
+         preserveAspectRatio="xMidYMid meet"/>
+  <g transform="translate(412 0) scale(0.847715736 1) translate(-412 0)">
+    <rect x="412" y="0" width="788" height="1080" fill="url(#panel)"/>
+    <line x1="412" y1="0" x2="412" y2="1080" stroke="#4c535c" stroke-width="2"/>
+  </g>
+
+  <!-- Complete-object anatomy on the right-hand museum hinge. -->
+  <rect x="244" y="45" width="111" height="195" rx="5"
+        fill="#57d3dd" fill-opacity="0.13" class="cyan line"/>
+  <rect x="241" y="235" width="119" height="68" rx="5"
+        fill="#f6bd60" fill-opacity="0.18" class="amber line"/>
+  <rect x="240" y="300" width="121" height="126" rx="5"
+        fill="#b59cff" fill-opacity="0.15" class="violet line"/>
+  <rect x="244" y="420" width="113" height="466" rx="5"
+        fill="#8bd878" fill-opacity="0.10" class="green line"/>
+  <rect x="241" y="880" width="120" height="122" rx="5"
+        fill="#ef6f6c" fill-opacity="0.13" class="red line"/>
+  <path d="M 246 997 L 357 997 L 348 1050 L 255 1050 Z"
+        fill="#f6bd60" fill-opacity="0.14" class="amber line"/>
+
+  <g>
+    <rect x="250" y="53" width="85" height="20" rx="4" fill="#57d3dd"/>
+    <text x="258" y="67" class="imageLabel">FIXED LEAF</text>
+    <rect x="248" y="246" width="101" height="20" rx="4" fill="#f6bd60"/>
+    <text x="256" y="260" class="imageLabel">5+ KNUCKLES</text>
+    <rect x="249" y="309" width="96" height="20" rx="4" fill="#b59cff"/>
+    <text x="257" y="323" class="imageLabel">PIVOT PAD</text>
+    <rect x="249" y="888" width="88" height="20" rx="4" fill="#ef6f6c"/>
+    <text x="257" y="902" class="imageLabel">TAIL PAD</text>
+    <rect x="250" y="1015" width="99" height="20" rx="4" fill="#f6bd60"/>
+    <text x="258" y="1029" class="imageLabel">PIERCED TAIL</text>
+  </g>
+
+  <!-- Five measured pattern bays. -->
+  <g class="green thin">
+    <rect x="248" y="424" width="105" height="92"/>
+    <rect x="248" y="516" width="105" height="92"/>
+    <rect x="248" y="608" width="105" height="92"/>
+    <rect x="248" y="700" width="105" height="92"/>
+    <rect x="248" y="792" width="105" height="92"/>
+  </g>
+  <g class="imageLabel">
+    <circle cx="344" cy="435" r="10" fill="#8bd878"/><text x="341" y="439">1</text>
+    <circle cx="344" cy="527" r="10" fill="#8bd878"/><text x="341" y="531">2</text>
+    <circle cx="344" cy="619" r="10" fill="#8bd878"/><text x="341" y="623">3</text>
+    <circle cx="344" cy="711" r="10" fill="#8bd878"/><text x="341" y="715">4</text>
+    <circle cx="344" cy="803" r="10" fill="#8bd878"/><text x="341" y="807">5</text>
+  </g>
+
+  <!-- Dossier title and decisive reading. -->
+  <g transform="translate(412 0) scale(0.847715736 1) translate(-412 0)">
+  <text x="446" y="42" class="title">55.61.58 — construction before polygons</text>
+  <text x="446" y="68" class="body">The 40.6 cm catalogue length belongs to this complete two-leaf object.</text>
+  <text x="446" y="89" class="body">The long leaf is a connected five-cell openwork plate, not two sine ribbons.</text>
+  <line x1="446" y1="109" x2="1165" y2="109" stroke="#3a414a"/>
+
+  <!-- Q0 authored quarter. -->
+  <text x="446" y="143" class="heading">A. Author one quarter curve</text>
+  <text x="446" y="164" class="small">Q0 controls the tip departure, shoulder acceleration, belly, and tangent.</text>
+  <rect x="446" y="180" width="330" height="236" rx="8"
+        fill="#11161b" stroke="#343c45"/>
+  <line x1="480" y1="371" x2="742" y2="371" class="cyan thin dash"/>
+  <line x1="480" y1="371" x2="480" y2="205" class="cyan thin dash"/>
+  <path d="M 480 371
+           C 517 371, 570 245, 611 205"
+        class="green line"/>
+  <polyline points="480,371 517,371 570,245 611,205"
+            class="amber thin dash"/>
+  <g fill="#f6bd60">
+    <circle cx="480" cy="371" r="5"/>
+    <circle cx="517" cy="371" r="4"/>
+    <circle cx="570" cy="245" r="4"/>
+    <circle cx="611" cy="205" r="5"/>
+  </g>
+  <text x="489" y="390" class="small">tip P0</text>
+  <text x="619" y="210" class="small">belly P3</text>
+  <text x="631" y="403" class="small">mirror U</text>
+  <text x="487" y="218" class="small">mirror V</text>
+  <path d="M 504 225 L 504 344" class="cyan thin"
+        marker-start="url(#arrowCyan)" marker-end="url(#arrowCyan)"/>
+  <path d="M 520 392 L 703 392" class="cyan thin"
+        marker-start="url(#arrowCyan)" marker-end="url(#arrowCyan)"/>
+
+  <!-- Derived family icons. -->
+  <text x="808" y="143" class="heading">B. Derive five role-specific shapes</text>
+  <text x="808" y="164" class="small">Mirror, scale, shear, rotate, clip. No new random curve.</text>
+  <rect x="808" y="180" width="357" height="236" rx="8"
+        fill="#11161b" stroke="#343c45"/>
+
+  <g transform="translate(850 206)">
+    <path d="M 0 55 C 0 24, 28 8, 49 0 C 70 8, 98 24, 98 55
+             C 98 86, 70 102, 49 110 C 28 102, 0 86, 0 55 Z"
+          class="green line"/>
+    <text x="5" y="132" class="small">S1 lancet</text>
+  </g>
+  <g transform="translate(1000 203) rotate(18 49 55)">
+    <path d="M 0 55 C 3 20, 32 4, 49 0 C 68 13, 94 30, 98 55
+             C 91 87, 69 102, 49 110 C 29 98, 7 80, 0 55 Z"
+          class="violet line"/>
+  </g>
+  <text x="1008" y="338" class="small">S2 flank leaf</text>
+
+  <g transform="translate(850 346) scale(.72)">
+    <path d="M 0 34 C 8 7, 31 1, 49 0 C 72 7, 91 19, 98 34
+             C 88 56, 69 66, 49 69 C 28 63, 8 50, 0 34 Z"
+          class="amber line"/>
+  </g>
+  <text x="850" y="409" class="small">S3 petal</text>
+
+  <path d="M 988 370 C 1006 343, 1042 343, 1060 370
+           C 1044 390, 1004 390, 988 370 Z"
+        class="cyan line"/>
+  <text x="987" y="409" class="small">S4 rail lune</text>
+
+  <path d="M 1102 341 L 1134 370 L 1102 399 L 1070 370 Z"
+        class="red line"/>
+  <circle cx="1102" cy="370" r="7" class="red thin"/>
+  <text x="1073" y="409" class="small">S5 terminal</text>
+
+  <!-- Cell negative-space grammar. -->
+  <text x="446" y="457" class="heading">C. Validate the empty spaces, not only the iron</text>
+  <rect x="446" y="475" width="719" height="217" rx="8"
+        fill="#11161b" stroke="#343c45"/>
+  <g transform="translate(475 492)">
+    <rect x="0" y="0" width="286" height="180" rx="4"
+          fill="#242a31" stroke="#6f7781" stroke-width="4"/>
+    <!-- Approximate one-cell apertures. -->
+    <path d="M 126 18 C 111 48, 112 68, 143 90
+             C 174 68, 175 48, 160 18
+             C 151 6, 135 6, 126 18 Z"
+          fill="#f3efe3" stroke="#8bd878" stroke-width="2"/>
+    <path d="M 43 40 C 66 18, 96 18, 116 38
+             C 92 60, 77 83, 60 112
+             C 41 94, 33 63, 43 40 Z"
+          fill="#f3efe3" stroke="#b59cff" stroke-width="2"/>
+    <path d="M 243 40 C 220 18, 190 18, 170 38
+             C 194 60, 209 83, 226 112
+             C 245 94, 253 63, 243 40 Z"
+          fill="#f3efe3" stroke="#b59cff" stroke-width="2"/>
+    <path d="M 77 125 C 94 108, 112 109, 126 133
+             C 110 150, 91 163, 72 170 C 58 154, 61 137, 77 125 Z"
+          fill="#f3efe3" stroke="#f6bd60" stroke-width="2"/>
+    <path d="M 209 125 C 192 108, 174 109, 160 133
+             C 176 150, 195 163, 214 170 C 228 154, 225 137, 209 125 Z"
+          fill="#f3efe3" stroke="#f6bd60" stroke-width="2"/>
+    <path d="M 7 121 C 28 105, 42 109, 52 131
+             C 38 153, 22 161, 7 156 Z"
+          fill="#f3efe3" stroke="#57d3dd" stroke-width="2"/>
+    <path d="M 279 121 C 258 105, 244 109, 234 131
+             C 248 153, 264 161, 279 156 Z"
+          fill="#f3efe3" stroke="#57d3dd" stroke-width="2"/>
+  </g>
+  <g transform="translate(795 500)">
+    <circle cx="6" cy="12" r="5" fill="#8bd878"/><text x="19" y="16" class="body">1 central lancet per cell</text>
+    <circle cx="6" cy="42" r="5" fill="#b59cff"/><text x="19" y="46" class="body">2 flank leaves per cell</text>
+    <circle cx="6" cy="72" r="5" fill="#f6bd60"/><text x="19" y="76" class="body">4 diagonal petals per junction</text>
+    <circle cx="6" cy="102" r="5" fill="#57d3dd"/><text x="19" y="106" class="body">2 rail lunes per junction</text>
+    <text x="0" y="145" class="small">The black web must remain connected.</text>
+    <text x="0" y="165" class="small">No aperture may close after beveling.</text>
+  </g>
+
+  <!-- Section drawing. -->
+  <text x="446" y="735" class="heading">D. Draw the leaf with section changes under plain light</text>
+  <rect x="446" y="753" width="719" height="184" rx="8"
+        fill="#11161b" stroke="#343c45"/>
+  <g transform="translate(474 778)">
+    <path d="M 0 115 L 48 115 L 75 72 L 184 72 L 211 115 L 260 115
+             L 260 143 L 0 143 Z"
+          fill="#555e68" stroke="#d8d4c8" stroke-width="2"/>
+    <line x1="48" y1="115" x2="75" y2="72" class="amber line"/>
+    <line x1="75" y1="72" x2="184" y2="72" class="green line"/>
+    <line x1="184" y1="72" x2="211" y2="115" class="amber line"/>
+    <line x1="48" y1="115" x2="211" y2="115" class="cyan thin dash"/>
+    <text x="88" y="61" class="small">flat face / crown</text>
+    <text x="12" y="106" class="small">aperture wall</text>
+    <text x="82" y="106" class="small">bevel shoulder → aperture lip</text>
+    <path d="M 48 58 L 75 58" class="amber thin"
+          marker-start="url(#arrowAmber)" marker-end="url(#arrowAmber)"/>
+    <text x="51" y="49" class="small">bevel width</text>
+    <path d="M 224 115 L 224 72" class="amber thin"
+          marker-start="url(#arrowAmber)" marker-end="url(#arrowAmber)"/>
+    <text x="233" y="96" class="small">rise</text>
+  </g>
+  <g transform="translate(780 781)">
+    <text x="0" y="0" class="small">station</text>
+    <text x="103" y="0" class="small">width</text>
+    <text x="158" y="0" class="small">bevel</text>
+    <text x="215" y="0" class="small">rise</text>
+    <text x="267" y="0" class="small">flat</text>
+    <g class="body">
+      <text x="0" y="25">root</text><text x="103" y="25">1.30</text><text x="158" y="25">.16</text><text x="215" y="25">.08</text><text x="267" y="25">.68</text>
+      <text x="0" y="48">throat</text><text x="103" y="48">.88</text><text x="158" y="48">.22</text><text x="215" y="48">.10</text><text x="267" y="48">.56</text>
+      <text x="0" y="71">shoulder</text><text x="103" y="71">1.02</text><text x="158" y="71">.26</text><text x="215" y="71">.13</text><text x="267" y="71">.48</text>
+      <text x="0" y="94">belly</text><text x="103" y="94">.84</text><text x="158" y="94">.30</text><text x="215" y="94">.17</text><text x="267" y="94">.40</text>
+      <text x="0" y="117">return</text><text x="103" y="117">.94</text><text x="158" y="117">.25</text><text x="215" y="117">.13</text><text x="267" y="117">.50</text>
+      <text x="0" y="140">tip</text><text x="103" y="140">1.24</text><text x="158" y="140">.18</text><text x="215" y="140">.08</text><text x="267" y="140">.64</text>
+    </g>
+  </g>
+
+  <!-- Hard invalidations. -->
+  <text x="446" y="979" class="heading">Hard invalidations from the existing GH-018 baseline</text>
+  <g class="body">
+    <text x="446" y="1003" fill="#ef6f6c">× full catalogue length assigned to moving leaf</text>
+    <text x="446" y="1025" fill="#ef6f6c">× two constant-width sine ribbons and false woven depth</text>
+    <text x="446" y="1047" fill="#ef6f6c">× one rolled eye, generic end pads, reversed tail/pivot reading</text>
+    <text x="817" y="1003" fill="#8bd878">✓ true holes and separate fasteners</text>
+    <text x="817" y="1025" fill="#8bd878">✓ named datums and applied runtime meshes</text>
+    <text x="817" y="1047" fill="#8bd878">✓ multi-view clay proof discipline</text>
+  </g>
+  </g>
+</svg>

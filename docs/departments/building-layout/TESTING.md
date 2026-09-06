@@ -1,6 +1,27 @@
 # Building and World Layout Testing
 
-## Automated Gate
+## Capability Gate
+
+Use this for CLR-001 and routine storey-height work:
+
+```bash
+cmake --build build --target \
+  creative_building_authoring_workflow_tests \
+  creative_editor_toolbox_tests \
+  creative_desktop_world_layout_tool_command_tests
+ctest --test-dir build \
+  -R '^(creative_building_authoring_workflow_tests|creative_editor_toolbox_tests|creative_desktop_world_layout_tool_command_tests)$' \
+  --output-on-failure
+```
+
+The workflow regression exercises a non-unit grid and asserts final generated
+floor and ceiling world bounds. The toolbox pins profile and Custom semantics;
+the command suite protects both Create and Update adapters.
+
+## Department Milestone Gate
+
+Run the broader building gate only after an accepted capability changes shared
+building compilation, persistence, or runtime geometry:
 
 ```bash
 cmake --build build --target \

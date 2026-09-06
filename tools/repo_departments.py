@@ -35,6 +35,7 @@ REGISTRY_PATH = DOC_ROOT / "registry.tsv"
 OWNERSHIP_PATH = DOC_ROOT / "ownership.tsv"
 
 GOVERNANCE_PATHS = (
+    "AGENTS.md",
     "docs/departments/",
     "tools/repo_departments.py",
 )

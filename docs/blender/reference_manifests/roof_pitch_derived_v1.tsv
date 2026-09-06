@@ -1,0 +1,7 @@
+building	leaf	breadth_ft	height_to_tiebeam_ft	rise_tiebeam_to_ridge_ft	total_height_ft	half_span_ft	pitch_deg	rafter_len_ft	rise_over_run	evidence	safety	span_assumption
+Kensworth manor house — hall	n164	30	11	11	22	15.0	36.25	18.60	0.733	DERIVED	UNAISLED	tie-beam at wall-head; unaisled 3-room house
+Kensworth manor house — "house" (domus)	n164	17	10	7	17	8.5	39.47	11.01	0.824	DERIVED	UNAISLED	tie-beam at wall-head; unaisled
+Kensworth manor house — bower (thalamus)	n164	16	9	9	18	8.0	48.37	12.04	1.125	DERIVED	UNAISLED	tie-beam at wall-head; unaisled
+Walton manor house — great barn	n166	53	21.5	12	33.5	26.5	24.36	29.09	0.453	DERIVED	UNSAFE	REFUTED by the Section of Barn at Bolsterstone (n109), inspected at full resolution in cycle 49: that barn is a CRUCK TRUSS WITH OUTSHUTS, so breadth is NOT the roof span and no single pitch describes the section. Walton's aisling is unstated; if arcaded, the true main span is well under 53 ft and this 24.4 deg is too shallow. DO NOT USE as a measurement.
+Gunthwaite Hall barn	n166	43	15	15	30	21.5	34.90	26.22	0.698	DERIVED	SAFE	Addy states the roof is 'in a single span extending across the whole breadth', so the 43 ft span is the author's own, not an assumption.
+Peak (Peveril) Castle keep — upper room	n192	19	17	10	27	9.5	46.47	13.79	1.053	DERIVED	UNAISLED	'17 feet to the square, and 27 feet to the ridge'; square = wall-head. Rectangular keep, roof concealed behind the parapet.

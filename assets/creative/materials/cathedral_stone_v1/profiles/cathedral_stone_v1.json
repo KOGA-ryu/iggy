@@ -1,0 +1,160 @@
+{
+  "schema": "iggy3d.material.cathedral_stone_v1.profile.v6",
+  "profile_id": "cathedral_stone_v1",
+  "display_name": "Measured Cordoba early-Gothic facing ashlar core",
+  "intent": "A source-bounded intact facing wythe built from complete stone volumes, Santa Marina/Naranjo material identity, proxy-bounded calcarenite body relief, and finite measured-envelope medieval face dressing before damage, ornament, wall-core inference, or unmeasured tooling depth.",
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "photogrammetry_runtime_texture": false,
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "reference_method": "Cordoba surveyed block dimensions, Historic Environment Scotland broken-bond guidance, Historic England fine flush-joint guidance, measured Caen-stone tool spacing, Moulis archaeological and experimental fine-layage dimensions and density, Santa Marina/Naranjo petrography, relative sunlit color-family measurements from the licensed Santa Marina facade photograph, and an explicitly labeled Sabucina calcarenite surface-metrology proxy for stone-body relief only"
+  },
+  "measurement_authority": {
+    "dimension_measurement_id": "cordoba_early_gothic_ashlar",
+    "joint_measurement_id": "ashlar_joint_3mm_conservation_guide",
+    "tooling_measurement_id": "medieval_caen_stone_tooling",
+    "tool_finish_measurement_id": "medieval_fine_oblique_layage",
+    "relief_proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy",
+    "bond_source_id": "S19_hes_repointing_ashlar",
+    "construction_scope": "single facing wythe; wall core is not inferred"
+  },
+  "physical_scale_m": {
+    "tile_span": 4.0,
+    "course_face_height_observed_range": [0.32, 0.43],
+    "block_face_length_observed_range": [0.78, 1.13],
+    "block_depth_observed_range": [0.17, 0.3],
+    "bed_joint_working_value": 0.003,
+    "perpend_joint_working_value": 0.003,
+    "mortar_recess": 0.0,
+    "face_relief_status": "stone-body relief uses a measured comparable-calcarenite proxy; whole-face plane deformation remains zero",
+    "arris_radius_status": "unknown; no bevel authored",
+    "tool_mark_spacing_observed_range": [0.001, 0.004],
+    "tool_mark_length_observed_range": [0.06, 0.094],
+    "tool_mark_width_observed_range": [0.001, 0.002],
+    "tool_mark_visible_density_per_m2": [720, 2420],
+    "tool_mark_depth_status": "unknown; no geometric or normal depth authored"
+  },
+  "coordinate_contract": {
+    "space": "object_position_xz_metres",
+    "tile_span_m": 4.0,
+    "phase_attribute": "iggy_material_phase",
+    "variant_attribute": "iggy_material_variant",
+    "block_id_attribute": "iggy_stone_block_id",
+    "tooling_id_attribute": "iggy_stone_tooling_id",
+    "tool_angle_attribute": "iggy_tool_angle_deg",
+    "tool_spacing_attribute": "iggy_tool_spacing_m",
+    "tool_density_variant_attribute": "iggy_tool_density_variant",
+    "fracture_interior_attribute": "iggy_fracture_interior",
+    "carved_trim_attribute": "iggy_carved_trim",
+    "lichen_attribute": "iggy_lichen_mask",
+    "damp_attribute": "iggy_damp_mask",
+    "traversal_attribute": "iggy_traversal_id",
+    "topology_rule": "New Boolean or fracture faces must receive an explicit fracture-interior value; do not infer cut-face identity from interpolated triangle data."
+  },
+  "surface_scale_contract": {
+    "construction_macro_span_m": 4.0,
+    "material_body_detail_span_m": 0.064,
+    "material_body_decorrelation_span_m": 0.091,
+    "material_body_detail_m_per_texel_at_1024": 0.0000625,
+    "material_body_channels": "fossil_fragment silicate_grain visible_pore_identity",
+    "tooling_detail_span_m": 0.256,
+    "tooling_detail_m_per_texel_at_1024": 0.00025,
+    "tooling_detail_channels": "sparse average dense visible-impact variants",
+    "tooling_anti_repetition_rule": "Select one of three density channels per block, rotate by the explicit face angle, and offset by the explicit phase. Marks are finite 60-94 mm impacts rather than infinite procedural stripes.",
+    "anti_repetition_rule": "Use per-block phase, quarter-turn rotation, and mirror variation, then blend 64 mm and incommensurate 91 mm samples of the same body masks; never align one identical detail tile across the complete wall.",
+    "reason": "The four-metre construction field cannot resolve the paper's 1 mm thin-section evidence. Architecture and material-body structure therefore use separate sampling scales."
+  },
+  "surface_relief_contract": {
+    "proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy",
+    "proxy_scope": "stone-body relief distribution only; comparable yellow coarse calcarenite rather than Santa Marina/Naranjo",
+    "body_detail_span_m": 0.064,
+    "decorrelation_span_m": 0.091,
+    "roughness_cutoff_m": 0.0008,
+    "target_unfiltered_sa_m": 0.0001,
+    "target_unfiltered_sq_m": 0.00013,
+    "target_unfiltered_ssk": -0.39,
+    "target_unfiltered_sku": 3.16,
+    "target_unfiltered_sz_m": 0.00113,
+    "target_roughness_sq_m": 0.00011,
+    "target_waviness_sq_m": 0.00005055,
+    "height_encoding": "16-bit normalized height with explicit metre range in the material manifest",
+    "normal_generation": "periodic central differences at the declared 64 mm physical span",
+    "author_block_plane_depth": false,
+    "author_tool_mark_depth": false,
+    "author_arris_depth": false,
+    "author_mortar_depth": false,
+    "author_damage_depth": false,
+    "anti_repetition_rule": "Use the same per-block phase, quarter-turn, mirror, and 64 mm/91 mm blend as the mineral identity masks; relief may not become a wall-aligned square tile."
+  },
+  "visual_hierarchy_contract": {
+    "macro_read": "The four-metre construction field and twenty-step stone families establish block-to-block warm, pale, and cool grouping.",
+    "medium_read": "Authored piecewise graphic planes change value inside each individual stone without claiming unmeasured geometric depth.",
+    "linework_read": "Packed selective structural-ink and arris-highlight lanes are live optical color layers, not baked light or universal outlines.",
+    "micro_read": "Measured-proxy body relief, fossil color, pore color, and finite tooling are fully visible only within 0.30 m and fade smoothly to zero by 3.5 m.",
+    "quiet_surface_rule": "At normal gameplay distance, microdetail cannot compete with block silhouette, bond, joint rhythm, or medium graphic planes.",
+    "damage_rule": "Fracture, erosion, edge loss, lichen, damp, soot, and repair remain disabled in this intact core."
+  },
+  "intact_pbr_contract": {
+    "shading_model": "opaque default-lit dielectric",
+    "metallic": 0.0,
+    "specular": 0.5,
+    "base_color_rule": "intrinsic stone color only; no photographed sunlight, shadow, cavity, or ambient occlusion",
+    "roughness_status": "authored calibration under neutral and grazing light; no published optical roughness measurement",
+    "normal_and_height": "stone-body relief uses the measured Sabucina calcarenite proxy; block planes, tool marks, arrises, mortar, and damage remain neutral until separately measured",
+    "ambient_occlusion_rule": "no stone-body AO; only physically recessed geometry may contribute",
+    "stylization_rule": "selective ink and arris-highlight lanes are live downstream optical color layers; they group values without changing measured body relief, metallic, AO, or material provenance"
+  },
+  "core_layers": [
+    "survey_bounded_full_block_volume",
+    "broken_bond_course_layout",
+    "three_millimetre_flush_joint_body",
+    "measured_tool_spacing_identity_without_invented_depth",
+    "finite_measured_envelope_tooling_linework",
+    "micritic_carbonate_matrix",
+    "sandy_silicate_grains",
+    "fragmented_calcareous_fossils",
+    "visible_pore_identity_driving_sparse_proxy_bounded_valleys",
+    "proxy_bounded_calcarenite_body_relief",
+    "sparse_iron_oxyhydroxide_color",
+    "authored_graphic_plane_value_grouping",
+    "live_selective_ink_and_arris_highlight",
+    "distance_controlled_microdetail",
+    "separate_engine_stylization_lanes"
+  ],
+  "output_contract": {
+    "basecolor": {"color_space": "sRGB", "channels": "RGB"},
+    "normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "orm": {"color_space": "Non-Color", "channels": "AO Roughness Metallic"},
+    "height": {"color_space": "Non-Color", "channels": "height", "bit_depth": 16},
+    "identity_masks": {"color_space": "Non-Color", "channels": "mortar tooling block-edge"},
+    "stone_body_masks": {"color_space": "Non-Color", "channels": "fossil-fragment silicate-grain visible-pore-identity", "physical_span_m": 0.064},
+    "stone_body_height": {"color_space": "Non-Color", "channels": "height", "bit_depth": 16, "physical_span_m": 0.064, "range_m": 0.00113},
+    "stone_body_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ", "physical_span_m": 0.064},
+    "tooling_detail": {"color_space": "Non-Color", "channels": "sparse average dense finite-impact masks", "physical_span_m": 0.256},
+    "stylization": {"color_space": "Non-Color", "channels": "ink highlight detail-priority"},
+    "brush_direction": {"color_space": "Non-Color", "channels": "signed-X signed-Y unused"}
+  },
+  "default_overlays": {
+    "fracture": 0.0,
+    "lichen": 0.0,
+    "damp": 0.0,
+    "soot": 0.0,
+    "traversal_tint": 0.0,
+    "reason": "The first acceptance pass must prove architectural stone without damage or narrative grime."
+  },
+  "unreal_reconstruction": {
+    "material_functions": [
+      "MF_IGGY_WorldScaleXZ",
+      "MF_IGGY_CathedralAshlarSurface",
+      "MF_IGGY_StoneTooling",
+      "MF_IGGY_ArchitecturalStoneStylization"
+    ],
+    "required_vertex_channels": {
+      "R": "fracture interior",
+      "G": "carved trim",
+      "B": "traversal readability",
+      "A": "material variant"
+    },
+    "rule": "Base material remains neutral and tiling. Reconstruct the per-block phase, quarter-turn, mirror, and 64 mm/91 mm body-mask and body-height blends exactly, using the manifest metre range for bump amplitude. Reproduce the 0.30 m full-detail and 3.5 m zero-detail hierarchy before parity is claimed. Fracture interiors, carved trims, traversal language, lichen, and damp are explicit geometry or overlay lanes rather than universal texture noise."
+  }
+}

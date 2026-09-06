@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "question_id": "rb_math_002_quadratic_three_points_guided",
+  "content_version": 1,
+  "source": {
+    "page_id": "002",
+    "snapshot": "source_snapshots/math/002_quadratic_through_three_points.md",
+    "sha256": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea",
+    "book": "meckes_meckes_linear_algebra",
+    "chapter": "ch_01",
+    "exercise": "1.1.7"
+  },
+  "adaptation": "guided_multiple_choice",
+  "title": "Three points, one formula",
+  "description": "Read the symbols, build the equations, solve, and check.",
+  "source_question_verbatim": "> Suppose that  $f(x) = ax^2 + bx + c$  is a quadratic polynomial whose graph passes through the points (-1, 1), (0, 0), and (1, 2).\n>   - (a) Find a linear system satisfied by a, b, and c.\n>   - (b) Solve the linear system to determine what the function f is.\n\nSource: `meckes_meckes_linear_algebra` ch_01, exercise 1.1.7.",
+  "display_problem": [
+    "f(x) = a*x^2 + b*x + c",
+    "The graph passes through (-1, 1), (0, 0), and (1, 2).",
+    "Build the equations for a, b, and c. Then find f."
+  ],
+  "symbols": [
+    {
+      "symbol": "a, b, c",
+      "spoken": "a, b, and c",
+      "role": "unknown",
+      "meaning": "The three coefficients to determine."
+    },
+    {
+      "symbol": "x",
+      "spoken": "x",
+      "role": "function_input",
+      "meaning": "Supplied as -1, 0, and 1 in the observations."
+    },
+    {
+      "symbol": "(-1, 1)",
+      "spoken": "the point minus one, one",
+      "role": "supplied_value",
+      "meaning": "The observation f(-1) = 1."
+    }
+  ],
+  "steps": [
+    {
+      "id": "identify_unknowns",
+      "kind": "role",
+      "layer": "Find the unknowns",
+      "prompt": "Which quantities must we determine in this problem?",
+      "workspace": [
+        "f(x) = a*x^2 + b*x + c",
+        "Given points: (-1, 1), (0, 0), (1, 2)"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "x only",
+          "misconception": "x is supplied at each observation; the coefficients are not."
+        },
+        {
+          "id": "o2",
+          "text": "a, b, and c",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "The three supplied input values -1, 0, and 1",
+          "misconception": "These values are givens, not quantities to solve for."
+        },
+        {
+          "id": "o4",
+          "text": "No quantities; all coefficients are already given",
+          "misconception": "The problem supplies observations but not the coefficients."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "a, b, and c are the unknown coefficients. Each observation supplies an input and its output, which will give an equation for those coefficients."
+    },
+    {
+      "id": "identify_input",
+      "kind": "role",
+      "layer": "Name a symbol's role",
+      "prompt": "What role does x play when we use the three supplied points?",
+      "workspace": [
+        "f(x) = a*x^2 + b*x + c"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "An unknown coefficient to solve for",
+          "misconception": "The coefficients are a, b, and c."
+        },
+        {
+          "id": "o2",
+          "text": "The output height at every point",
+          "misconception": "f(x), not x, is the output height."
+        },
+        {
+          "id": "o3",
+          "text": "The function input, supplied as -1, 0, and 1",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "The number of equations in the system",
+          "misconception": "x names the function input, not the count of equations."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "A letter's role comes from this problem, not its name. Here x is a supplied function input. The unknowns are a, b, and c."
+    },
+    {
+      "id": "linear_in_coefficients",
+      "kind": "structure",
+      "layer": "Name the structure",
+      "prompt": "After each supplied x is substituted, why are the equations linear in a, b, and c?",
+      "workspace": [
+        "f(x) = a*x^2 + b*x + c",
+        "Each observation supplies a value of x."
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Squaring x means that a is also squared",
+          "misconception": "a*x^2 multiplies a by the known value x^2; it does not square a."
+        },
+        {
+          "id": "o2",
+          "text": "Every problem with three observations is linear",
+          "misconception": "The way the unknowns enter the formula determines linearity."
+        },
+        {
+          "id": "o3",
+          "text": "x is always the unknown in an equation",
+          "misconception": "Symbol roles depend on what the problem supplies and asks for."
+        },
+        {
+          "id": "o4",
+          "text": "Each unknown coefficient appears only to the first power, multiplied by a known number",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The function is quadratic in its input x. The system is linear in its unknowns a, b, and c, because the supplied x-values turn x^2, x, and 1 into known multipliers."
+    },
+    {
+      "id": "implicit_coefficient",
+      "kind": "vocabulary",
+      "layer": "Read an unwritten coefficient",
+      "prompt": "What number multiplies c in a*x^2 + b*x + c?",
+      "workspace": [
+        "a*x^2 + b*x + c"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "1: the term c means 1*c",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "0: no number is written next to c",
+          "misconception": "A zero multiplier would remove c entirely."
+        },
+        {
+          "id": "o3",
+          "text": "x",
+          "misconception": "The formula has c, not c*x."
+        },
+        {
+          "id": "o4",
+          "text": "x^2",
+          "misconception": "The x^2 multiplier belongs to a."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The implicit coefficient of c is 1. In unknown order (a,b,c), the equation from an input x has coefficient row [x^2, x, 1]."
+    },
+    {
+      "id": "substitute_zero",
+      "kind": "setup",
+      "layer": "Use the easiest observation",
+      "prompt": "What does the observation f(0) = 0 tell us?",
+      "workspace": [
+        "a*0^2 + b*0 + c = 0"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "a = 0",
+          "misconception": "The multiplier of a vanishes; that does not set a itself to zero."
+        },
+        {
+          "id": "o2",
+          "text": "b = 0",
+          "misconception": "The multiplier of b vanishes; that does not set b itself to zero."
+        },
+        {
+          "id": "o3",
+          "text": "c = 0",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "a + b + c = 0",
+          "misconception": "That left side would result from x=1, not x=0."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "At x=0, both a*x^2 and b*x are zero. The equation becomes c=0."
+    },
+    {
+      "id": "substitute_minus_one",
+      "kind": "setup",
+      "layer": "Build the next equation",
+      "prompt": "Directly substitute the point (-1,1) into the formula. Which equation results?",
+      "workspace": [
+        "a*(-1)^2 + b*(-1) + c = 1"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "a + b + c = 1",
+          "misconception": "b*(-1) is -b, not +b."
+        },
+        {
+          "id": "o2",
+          "text": "a - b + c = 1",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "-a - b + c = 1",
+          "misconception": "(-1)^2 is +1, so the first term is +a."
+        },
+        {
+          "id": "o4",
+          "text": "a - b + c = -1",
+          "misconception": "The output coordinate is 1; -1 is the input."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The point says f(-1)=1. Squaring -1 gives +1 and multiplying b by -1 gives -b, so a-b+c=1."
+    },
+    {
+      "id": "substitute_one",
+      "kind": "setup",
+      "layer": "Complete the system",
+      "prompt": "Which equation comes from the point (1,2)?",
+      "workspace": [
+        "a*1^2 + b*1 + c = 2"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "a + b + c = 1",
+          "misconception": "1 is the input; the supplied output is 2."
+        },
+        {
+          "id": "o2",
+          "text": "a - b + c = 2",
+          "misconception": "Multiplication by +1 leaves +b."
+        },
+        {
+          "id": "o3",
+          "text": "-a + b + c = 2",
+          "misconception": "1 squared is +1, so the first term is +a."
+        },
+        {
+          "id": "o4",
+          "text": "a + b + c = 2",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Substitution at x=1 gives a+b+c=2. Together with a-b+c=1 and c=0, this is the requested system."
+    },
+    {
+      "id": "license_elimination",
+      "kind": "justification",
+      "layer": "Explain the move",
+      "prompt": "Why can we add these two equations and cancel b?",
+      "workspace": [
+        "c = 0",
+        "a - b = 1",
+        "a + b = 2"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Adding equal quantities to equal quantities preserves equality, and -b + b = 0",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "The opposite input values force b = 0",
+          "misconception": "The observed heights are different, and b will not be zero."
+        },
+        {
+          "id": "o3",
+          "text": "A quadratic term is zero for every input",
+          "misconception": "x^2 is not zero at x=-1 or x=1."
+        },
+        {
+          "id": "o4",
+          "text": "We may add the right sides while leaving the left sides unchanged",
+          "misconception": "The operation must add both left sides and both right sides."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The sum is (a-b)+(a+b)=1+2. Opposite b terms cancel, leaving 2a=3. This is elimination justified by equality."
+    },
+    {
+      "id": "solve_a",
+      "kind": "mechanics",
+      "layer": "Solve for a",
+      "prompt": "What is a after dividing both sides of 2a = 3 by 2?",
+      "workspace": [
+        "2a = 3"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "a = 3",
+          "misconception": "This does not divide the right side by 2."
+        },
+        {
+          "id": "o2",
+          "text": "a = 1/2",
+          "misconception": "3 divided by 2 is 3/2, not 1/2."
+        },
+        {
+          "id": "o3",
+          "text": "a = 3/2",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "a = 2",
+          "misconception": "Substitution would give 4=3."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Dividing both sides by 2 gives a=3/2. The fraction is exact."
+    },
+    {
+      "id": "solve_b",
+      "kind": "mechanics",
+      "layer": "Substitute back",
+      "prompt": "Substitute a = 3/2 in a + b = 2. What is b?",
+      "workspace": [
+        "3/2 + b = 2"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "b = 3/2",
+          "misconception": "3/2+3/2 is 3, not 2."
+        },
+        {
+          "id": "o2",
+          "text": "b = 1/2",
+          "misconception": null
+        },
+        {
+          "id": "o3",
+          "text": "b = -1/2",
+          "misconception": "3/2-1/2 is 1, not 2."
+        },
+        {
+          "id": "o4",
+          "text": "b = 2",
+          "misconception": "The existing 3/2 term still contributes to the left side."
+        }
+      ],
+      "correct_option_id": "o2",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "b=2-3/2=4/2-3/2=1/2. We already found c=0."
+    },
+    {
+      "id": "state_function",
+      "kind": "result",
+      "layer": "Put the answer together",
+      "prompt": "Which function uses the recovered coefficients?",
+      "workspace": [
+        "a = 3/2",
+        "b = 1/2",
+        "c = 0",
+        "f(x) = a*x^2 + b*x + c"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "f(x) = (3/2)*x^2 + (1/2)*x + 1",
+          "misconception": "The constant coefficient is 0, not 1."
+        },
+        {
+          "id": "o2",
+          "text": "f(x) = (1/2)*x^2 + (3/2)*x",
+          "misconception": "The coefficients of x^2 and x have been exchanged."
+        },
+        {
+          "id": "o3",
+          "text": "f(x) = 3*x^2 + x",
+          "misconception": "Both nonzero coefficients were doubled."
+        },
+        {
+          "id": "o4",
+          "text": "f(x) = (3/2)*x^2 + (1/2)*x",
+          "misconception": null
+        }
+      ],
+      "correct_option_id": "o4",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Insert a=3/2, b=1/2, and c=0 into the supplied model. The constant term vanishes."
+    },
+    {
+      "id": "check_extent",
+      "kind": "verification",
+      "layer": "Say what the check establishes",
+      "prompt": "What does evaluating the recovered function at -1, 0, and 1 directly check?",
+      "workspace": [
+        "f(-1) = 1",
+        "f(0) = 0",
+        "f(1) = 2"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "The recovered function passes through all three supplied points",
+          "misconception": null
+        },
+        {
+          "id": "o2",
+          "text": "No other function of any kind can pass through those points",
+          "misconception": "Functions outside the supplied polynomial model can share those observations."
+        },
+        {
+          "id": "o3",
+          "text": "Every numerical solver is stable on every matrix",
+          "misconception": "These checks concern this function and these observations only."
+        },
+        {
+          "id": "o4",
+          "text": "The coefficient c still has to be determined",
+          "misconception": "c=0 was already determined by f(0)=0."
+        }
+      ],
+      "correct_option_id": "o1",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Substitution verifies the three required outputs. Uniqueness within the specified model needs a separate argument about the system."
+    },
+    {
+      "id": "uniqueness_condition",
+      "kind": "condition",
+      "layer": "Explain why this model has one answer",
+      "prompt": "For unknown order (a,b,c), the coefficient matrix has determinant -2. What does that imply?",
+      "workspace": [
+        "Coefficient rows: [1, -1, 1], [0, 0, 1], [1, 1, 1]",
+        "determinant = -2"
+      ],
+      "options": [
+        {
+          "id": "o1",
+          "text": "Any number of unknown coefficients would be determined by these three points",
+          "misconception": "The conclusion concerns this square three-unknown system, not larger models."
+        },
+        {
+          "id": "o2",
+          "text": "The system has no solution because the determinant is negative",
+          "misconception": "Invertibility depends on being nonzero, not on being positive."
+        },
+        {
+          "id": "o3",
+          "text": "The matrix is invertible, so this model's coefficient vector is unique",
+          "misconception": null
+        },
+        {
+          "id": "o4",
+          "text": "The determinant must be zero for the three points to fit",
+          "misconception": "A zero determinant would remove the unique-solution guarantee."
+        }
+      ],
+      "correct_option_id": "o3",
+      "recovery_text": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "A square matrix with a nonzero determinant is invertible. Thus the given right-hand side determines exactly one (a,b,c). This statement is about the specified model."
+    }
+  ],
+  "solution": [
+    {
+      "work": "a - b + c = 1; c = 0; a + b + c = 2",
+      "reason": "Substitute the three supplied observations."
+    },
+    {
+      "work": "a - b = 1; a + b = 2",
+      "reason": "Use c=0."
+    },
+    {
+      "work": "2a = 3; a = 3/2",
+      "reason": "Add the equations and divide by 2."
+    },
+    {
+      "work": "b = 2 - 3/2 = 1/2",
+      "reason": "Substitute back."
+    },
+    {
+      "work": "f(x) = (3/2)*x^2 + (1/2)*x",
+      "reason": "Insert the recovered coefficients."
+    },
+    {
+      "work": "f(-1)=1; f(0)=0; f(1)=2",
+      "reason": "Check every supplied observation."
+    },
+    {
+      "work": "determinant = -2, nonzero",
+      "reason": "This model's coefficient vector is unique."
+    }
+  ],
+  "verification_scope": {
+    "establishes": [
+      "The exact coefficient answer solves the three supplied equations.",
+      "The supplied square system is invertible."
+    ],
+    "limitations": [
+      "No claim about unrelated functions, other cards, or engine execution."
+    ],
+    "recipe": "Exact rational Gaussian elimination; determinant; substitution at every supplied input."
+  }
+}

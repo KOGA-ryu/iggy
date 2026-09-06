@@ -1,0 +1,27 @@
+preset guided_progress
+start_new_run 501
+guided_open
+guided_select 2
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 2
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_next
+guided_select 2
+guided_check
+guided_next
+guided_select 4
+guided_check
+guided_next
+back_title
+open_stats
+compare_score guided 1 hunt_classic

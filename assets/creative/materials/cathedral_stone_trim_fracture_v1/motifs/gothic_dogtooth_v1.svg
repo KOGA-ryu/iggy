@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">
+  <title>Hand-authored Gothic dogtooth carving source</title>
+  <path data-role="body" d="M 0.50 0.025 L 0.955 0.49 L 0.50 0.975 L 0.045 0.49 Z"/>
+  <path data-role="facet_high" d="M 0.50 0.025 L 0.955 0.49 L 0.50 0.50 Z"/>
+  <path data-role="facet_mid" d="M 0.045 0.49 L 0.50 0.025 L 0.50 0.50 Z"/>
+  <path data-role="facet_low" d="M 0.045 0.49 L 0.50 0.50 L 0.50 0.975 Z"/>
+  <path data-role="recess" d="M 0.00 0.00 L 0.50 0.025 L 0.045 0.49 L 0.50 0.975 L 0.00 1.00 Z"/>
+  <path data-role="recess" d="M 1.00 0.00 L 0.50 0.025 L 0.955 0.49 L 0.50 0.975 L 1.00 1.00 Z"/>
+  <path data-role="warm_wash" d="M 0.50 0.055 L 0.90 0.48 L 0.51 0.47 Z"/>
+  <path data-role="cool_wash" d="M 0.09 0.50 L 0.48 0.08 L 0.48 0.48 Z"/>
+  <path data-role="ridge" d="M 0.50 0.055 L 0.50 0.945"/>
+  <path data-role="ridge" d="M 0.08 0.49 L 0.92 0.49"/>
+  <path data-role="paint_highlight" d="M 0.52 0.11 C 0.66 0.22 0.78 0.34 0.87 0.46"/>
+  <path data-role="paint_highlight" d="M 0.14 0.48 C 0.25 0.38 0.35 0.27 0.47 0.13"/>
+  <path data-role="paint_shadow" d="M 0.11 0.53 C 0.23 0.65 0.34 0.78 0.47 0.91"/>
+  <path data-role="paint_shadow" d="M 0.53 0.91 C 0.66 0.77 0.77 0.64 0.89 0.53"/>
+</svg>

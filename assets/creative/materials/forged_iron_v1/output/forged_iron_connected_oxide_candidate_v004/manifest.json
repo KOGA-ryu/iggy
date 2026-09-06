@@ -1,0 +1,470 @@
+{
+  "schema": "iggy3d.forged_iron_connected_oxide_candidate.v004",
+  "status": "NONCANONICAL_CYCLES_PROOF_CANDIDATE",
+  "candidate": {
+    "id": "forged_iron_connected_oxide_candidate_v004",
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/forged_iron_connected_oxide_candidate_v004.blend",
+    "blend_sha256": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481",
+    "selected_recipe": "B_connected_oxide_no_luster",
+    "shared_group": "IGGY_SH_ConnectedOxideForgedIron_v004",
+    "material_prefix": "IGGY_MAT_ConnectedOxideForgedIron_v004"
+  },
+  "source": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10"
+  },
+  "scripts": {
+    "build": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_connected_oxide_candidate_v004.py",
+      "sha256": "3621f412234577626851e3c5f5c84bd0fef93cf75f4894b1468eedd9a43737f5"
+    },
+    "selection": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/compare_connected_oxide_luster_v1.py",
+      "sha256": "952c3ae7b6a723ae5093ba696af86682fcb9a26c16703ebb8de3fc11252c9a72"
+    }
+  },
+  "consumer": {
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ]
+  },
+  "shared_group_contract": {
+    "principled": 2,
+    "mix_shader": 1,
+    "normal_map": 1,
+    "value": 1
+  },
+  "components": {
+    "SM_GH018_FixedLeaf": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_FixedLeaf",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_FixedLeaf_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_FixedLeaf_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_FixedLeaf_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_FixedLeaf_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        213,
+        103
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6653972864151001,
+        0.7639142274856567
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.0023679251316934824,
+        0.002973585156723857
+      ]
+    },
+    "SM_GH018_MovingLeaf_Openwork": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_MovingLeaf_Openwork",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_MovingLeaf_Openwork_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_MovingLeaf_Openwork_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_MovingLeaf_Openwork_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_MovingLeaf_Openwork_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        768,
+        103
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6686270833015442,
+        0.7649999856948853
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.002393597038462758,
+        0.002996125491335988
+      ]
+    },
+    "SM_GH018_Pintle": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_Pintle",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_Pintle_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_Pintle_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_Pintle_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_SM_GH018_Pintle_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6709989905357361,
+        0.7644344568252563
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.0009303797269240022,
+        0.0011695328867062926
+      ]
+    },
+    "MovingKnuckle_01": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_01",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_01_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_01_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_01_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_01_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6792886257171631,
+        0.7497860193252563
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.000660640187561512,
+        0.000830457080155611
+      ]
+    },
+    "FixedKnuckle_02": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_02",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_02_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_02_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_02_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_02_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6811619400978088,
+        0.7529550194740295
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.000660640187561512,
+        0.000830457080155611
+      ]
+    },
+    "MovingKnuckle_03": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_03",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_03_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_03_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_03_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_03_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6737476587295532,
+        0.7484387755393982
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.000660640187561512,
+        0.000830457080155611
+      ]
+    },
+    "FixedKnuckle_04": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_04",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_04_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_04_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_04_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_FixedKnuckle_04_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6822383999824524,
+        0.753046989440918
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.000660640187561512,
+        0.000830457080155611
+      ]
+    },
+    "MovingKnuckle_05": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_05",
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_05_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_05_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_05_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_MovingKnuckle_05_LusterControl"
+      },
+      "all_images_packed": true,
+      "material_node_counts": {
+        "image_texture": 4,
+        "tangent": 1,
+        "group": 1,
+        "output": 1
+      },
+      "field_resolution": [
+        128,
+        64
+      ],
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6731827259063721,
+        0.7516726851463318
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "broad_forging_height_range_m": [
+        -0.000660640187561512,
+        0.000830457080155611
+      ]
+    }
+  },
+  "reopen_contract": {
+    "opened_path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/forged_iron_connected_oxide_candidate_v004.blend",
+    "shared_group": "IGGY_SH_ConnectedOxideForgedIron_v004",
+    "shared_group_users": 8,
+    "targets": {
+      "SM_GH018_FixedLeaf": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_FixedLeaf",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_MovingLeaf_Openwork",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "SM_GH018_Pintle": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_Pintle",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_01": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_01",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "FixedKnuckle_02": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_02",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_03": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_03",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "FixedKnuckle_04": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_04",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_05": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_05",
+        "shared_group_instances": 1,
+        "image_texture_count": 4,
+        "all_images_packed": true,
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ]
+      }
+    }
+  },
+  "canonical_source_unchanged": true,
+  "locked_absences": [
+    "rust",
+    "condition",
+    "contact_polish",
+    "soot",
+    "dirt",
+    "blood",
+    "cat_face_motifs",
+    "diamond_stamps"
+  ],
+  "uses_ai_generated_imagery": false,
+  "manual_acceptance_established": false,
+  "unreal_parity_verified": false,
+  "promotion_boundary": "Candidate may advance only to the paired Cycles actual-hinge proof. It may not replace v003 or register as a donor."
+}

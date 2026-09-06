@@ -1,0 +1,223 @@
+[
+ {
+  "id": "paley_pl1_fig6",
+  "source": "Paley, Manual of Gothic Mouldings 1845, Plate I fig 6 (leaf n88)",
+  "period": "unassigned (Plate I is the general/introductory plate)",
+  "status": "VERIFIED \u2014 figure read at full resolution, cropped and magnified",
+  "stock": {
+   "width": 10.91,
+   "height": 9.28,
+   "width_status": "PRINTED on the plate as '11 in'",
+   "height_status": "DERIVED from the measured scale - NOT printed. Box y[567,772] = 205 px = 9.28 in. The MOULDING only reaches y=591, so 1.09 in of stock is left uncut above the chamfer.",
+   "correction": "cycle 22 recorded this stock as 11 x 6 in. The '6' was the FIGURE NUMBER, which Paley sets INSIDE the stock rectangle (plate x~1123 y~677). Read as a dimension in error."
+  },
+  "members": [
+   {
+    "type": "chamfer",
+    "angle": 2.3,
+    "absolute": true,
+    "length": 4.53,
+    "note": "WALL-LINE run (cycle 28: this horizontal is the wall-plane, not the soffit), plate (1004,772)->(1104,768). Measured 2.3 deg, not exactly level - 4 px over 100. At the noise floor of an 1845 engraving on a 1930 px scan, but the measured value is more defensible than assuming zero."
+   },
+   {
+    "type": "chamfer",
+    "angle": 44.2,
+    "absolute": true,
+    "length": 2.27,
+    "note": "MEASURED plate (1104,768)->(1140,733): straight to 1.8 px over 36 px, 44.2 deg, 50.2 px = 2.27 in. CORRECTION: cycles 23-24 recorded this member as a HOLLOW (r 1.63, sweep 94.6 deg). It is a CHAMFER. That misidentification, not bad parameters, is what broke the chain at the arris."
+   },
+   {
+    "type": "roll",
+    "radius": 2.29,
+    "centre": [
+     8.44,
+     2.29
+    ],
+    "a_start": -167.2,
+    "a_end": 100.0,
+    "note": "principal bowtell, LEAST-SQUARES FITTED to the traced contour: centre plate (1190.5,721.5), r 50.6 px, residual mean 0.37 px / max 1.01 px over 43 samples. The fit independently reproduces THREE drawn features: bottom y=772.1 = the soffit baseline; right x=1241.1 = the stock edge; left x=1139.9 = the arris cusp. Cycle 24's eyeballed (1198,727) r=45 was 6 px and 0.25 in out."
+   },
+   {
+    "type": "hollow",
+    "radius": 0.54,
+    "sweep": 0.464,
+    "derivation": "DERIVED from the bead's fitted exit and the measured chamfer start at plate (1175,649)."
+   },
+   {
+    "type": "chamfer",
+    "angle": 40.9,
+    "absolute": true,
+    "length": 4.01,
+    "note": "MEASURED plate (1175,649)->(1242,591): 4.01 in at 40.9 deg. Paley's 'generally (not invariably)' 45 deg confirmed twice on one figure: 44.2 and 40.9."
+   }
+  ],
+  "units": "inches",
+  "fitted": "overlay-checked; one open question",
+  "fitting_note": "PROPORTIONAL ONLY - NOT DIMENSIONALLY FITTED. The member radii and lengths were read by eye from the plate and are plausible in proportion, but they have NOT been fitted to the printed dimension figures: building this profile gives an extent that does not match its own stock rectangle. Use for shape and member ORDER, not for size. Fitting requires the per-figure pixel measurement queued as the next item; the tooling (png.py decoder + a measured scale) exists.",
+  "built_extent_relative": {
+   "width": 4.63,
+   "depth": 9.1
+  },
+  "scale_px_per_in": 22.09,
+  "scale_basis": "printed '11 in' dimension line, arrowhead tips plate x1003..1246 = 243 px on the 1930x2951 scan",
+  "scale_crosscheck": "stock box measured x[1001,1242] = 241 px = 10.91 in against 11 in printed - 0.8% error. This is the check that FAILED in cycle 22 and passes now.",
+  "measurement_tolerance_in": 0.1,
+  "residual": "Arris break closed from 0.56 in to 0.056 in (1.2 px) by correcting the member IDENTITY (a 44.2 deg chamfer, not a hollow) and least-squares fitting the bowtell to its traced contour. Extent 11.01 x 8.24 against measured 10.82 x 8.19.",
+  "baseline_note": "Figs 5 and 6 SHARE ONE SOFFIT BASELINE at plate y=772 - the engraver drew a single continuous line across both. That, not a shared figure, is why connected-component isolation returned x[667,1246]. The two dimension lines abut at x~1004-1010, which fixes the figure boundary.",
+  "visual_check": "Cycle 25 overlay (docs/blender/paley_pl1_fig6_overlay.png). The reconstruction now tracks the engraved boundary closely along the soffit, the 44.2 deg chamfer, the arris cusp, the whole bowtell (lower-left, bottom, right flank landing on the stock edge) and the upper hollow and chamfer. OPEN: a hatched diagonal band lies up-left of the reconstruction, running from about plate (995,737) up to (1185,642). Either it is fig 5's mass encroaching past its own dimension line (which stops at x=1010), or it is a fig-6 member not yet accounted for. Not guessed at - queued.",
+  "open_question_resolved": "CYCLE 26. The hatched diagonal band up-left of the reconstruction is NOT fig 5 encroaching: fig 5's mass ends at plate x=999-1003 across y615-675, matching its own stock edge at x=1007. The band is FIG 6'S OWN UPPER FACE, which the reconstruction never traced - near-horizontal at plate y~722 (2.9 deg over x1004-1100), 46 px = 2.08 in above the soffit, then stepping up to y~690 by x=1170.",
+  "structural_note": "A MOULDING SECTION IS A CLOSED OUTLINE, NOT AN OPEN PROFILE CHAIN. Fig 6's stone is bounded on BOTH sides - soffit below at y=772, upper face above at y~722 - and the reconstruction traces only the lower boundary. The `stock` field was the right instinct (a section is stone REMOVED from a block) but the member chain describes an open curve. Either the members must close the loop, or the format needs an explicit distinction between the MOULDED FACE and the bounding planes of the block.",
+  "upper_face": {
+   "plate_y_at_x1004": 724,
+   "plate_y_at_x1100": 719,
+   "plate_y_at_x1170": 690,
+   "angle_deg": 2.9,
+   "straightness_dev_px": 4.5,
+   "slab_thickness_in_at_x1050": 2.08,
+   "status": "MEASURED but NOT yet in the member chain"
+  },
+  "cycle27": {
+   "boundary_traced": "1168-point Moore trace of fig 6's hatched mass (contour.py, local-mean threshold 172).",
+   "bead_confirmed": "The bowtell is a real member, not a line drawn inside solid stone. Sampling 8 px inside vs 8 px outside its fitted circle at 12 angles: VOID outside at 60/120/150/210/270 deg (upper-left, left, bottom); abutting stone elsewhere, where it meets neighbouring members. Interior reads a consistent 145-149; true void reads 174-177.",
+   "silhouette_is_not_the_profile": "The traced mass silhouette CANNOT be used as the profile. It merges (a) separate members wherever they touch, (b) the stock box's DRAWN top edge at y=567, which is a box line and not stone, and (c) fig 5, via the soffit baseline they share. Line-tracing (cycles 24-25) gives the profile; the mass is only good for deciding which side of a line is void.",
+   "two_faces": "Fig 6 has TWO engraved faces, both measured, and the profile records only one. UPPER: a continuous line from plate (1000,723) rising right through (1117,710), (1160,702), (1185,637), (1213,597) to the stock's top-right corner (1242,591) - this is the same line cycle 26 measured as the 'upper face at y~722', and it runs into the 40.9 deg chamfer. LOWER: the chain already modelled - soffit, 44.2 deg chamfer, arris cusp, bowtell.",
+   "format_decision": "Members should NOT close the loop. The moulded face is an open chain; the block's bounding planes close it, and `stock` already holds the block. The real gap is that fig 6 carries TWO faces and the profile holds one. Which is the moulded face and which the bed is NOT yet established, and is not asserted."
+  },
+  "cycle28_frame_correction": {
+   "source": "Paley's own text, leaf 8 of the letterpress (IA manualofgothicmo00pale_0), quoted verbatim in the docstring of moulding_profile.py",
+   "axes_were_swapped": "Paley: the wall-line is drawn 'parallel with the bottom of the page, and the soffit parallel to the side'. So in fig 6 the HORIZONTALS (y=772 and the upper line) lie in the WALL-plane, and the VERTICAL right edge at x=1241 is the SOFFIT. Cycles 22-27 called the bottom horizontal 'the soffit'. It is the wall-line.",
+   "chain_order_was_backwards": "Paley: 'a pencil were to be carried along the wall-line FIRST, and afterwards in and out of each cavity and round each projection.' The format documented soffit-first and justified it as 'the order a mason works and the order Paley lists'. He lists the opposite.",
+   "hatching_meaning": "'shaded on the part which represents the level surface of the flat side of the stone' - the hatched region is the SAWN FACE, i.e. the cut section itself. Its boundary, minus the wall-line and soffit segments where the saw passed, is the moulded edge.",
+   "two_faces_dissolved": "The cycle-27 question - which of the two faces is the moulded one - was MALFORMED. Since the hatched region is the sawn section, both traced stretches are parts of ONE continuous moulded edge running around it. They were never rival candidates.",
+   "scale_caveat": "Paley suggests reducing a traced outline to 'a scale of an inch to a foot'. That is advice to the READER copying mouldings, NOT a statement about his plates - and the measurements refute it as one: fig 5 is 23.75 px/in and fig 6 is 22.09 px/in on the same sheet.",
+   "next_confirmation": "fig. 10, Plate 2 (leaf 92) labels a = chamfer-plane, n = soffit-plane, c = wall-plane."
+  },
+  "frame": {
+   "wall_line": "HORIZONTAL, plate y=772 - parallel with the bottom of the page",
+   "soffit": "VERTICAL, plate x=1241 - parallel with the side; the bowtell's fitted right extreme lands on it",
+   "traversal": "WALL-LINE FIRST, then in and out of each cavity and round each projection (Paley's own order)",
+   "note": "Confirmed by eye on Plate 2 fig 10 (cycle 29): A labels the diagonal = chamfer-plane, B labels the vertical = soffit-plane. The engraved labels are rotated capitals; the OCR's 'a/n/c' are misreads of A/B/C."
+  },
+  "skew_calibration": {
+   "method": "Use the figure's OWN known-horizontal (wall-line) and known-vertical (soffit) straight boundary runs as an internal angular reference. Longest-straight-run detection on the traced contour finds them without any guessed window.",
+   "plate_I": "skew +0.1 deg mean (runs at 179.5, 2.2, 0.8, 179.1, 90.0, 89.0, 90.0) - effectively unskewed, noise floor ~+/-1 deg",
+   "plate_II": "skew -1.5 deg mean (runs at 178.4, 179.2 horizontal; 87.8 vertical)",
+   "consequence": "Plate I's 44.2 and 40.9 deg chamfers stand UNCORRECTED. Plate II's readings need +1.5 deg."
+  },
+  "chamfer_plane_quantified": {
+   "paley_own_labelled_example_pl2_fig10": "45.0, 43.4, 41.2, 46.2 raw -> 46.5, 44.9, 42.7, 47.7 skew-corrected; mean 45.5 +/- 2 = a true 45",
+   "real_moulding_pl1_fig6": "44.2 and 40.9 deg, unskewed, against a +/-1 deg noise floor - 40.9 is 4 deg off 45 and real",
+   "reading": "Paley's 'generally (not invariably) done at an angle of forty-five degrees' is now quantified. His DIDACTIC figure is a clean 45. The mouldings he RECORDED FROM BUILDINGS depart from it by up to ~4 deg. So a generator should not hard-code 45, nor treat the deviation as drafting noise: sample around 45 with a few degrees of real scatter.",
+   "frame_confirmed_a_third_way": "On BOTH plates the longest straight runs are horizontal and vertical: Plate I fig 6's two longest are 127 px at 179.5 deg (the wall-line) and 80 px at 90.0 deg (the soffit at x=1249); Plate II fig 10's are 109 px at 178.4 deg and 51 px at 87.8 deg. Paley's frame recovered from pixels alone, with no reading involved."
+  }
+ },
+ {
+  "id": "paley_pl1_fig7",
+  "source": "Paley, Manual of Gothic Mouldings 1845, Plate I fig 7 (leaf n88)",
+  "period": "unassigned",
+  "status": "VERIFIED \u2014 figure read at full resolution alongside fig 6",
+  "stock": null,
+  "members": [
+   {
+    "type": "step",
+    "out": 1.4,
+    "down": 1.4,
+    "note": "receding order"
+   },
+   {
+    "type": "hollow",
+    "radius": 0.85,
+    "sweep": 0.25,
+    "note": "quarter-round hollow in the angle of the order"
+   },
+   {
+    "type": "step",
+    "out": 1.4,
+    "down": 1.4
+   },
+   {
+    "type": "hollow",
+    "radius": 0.85,
+    "sweep": 0.25
+   },
+   {
+    "type": "step",
+    "out": 1.4,
+    "down": 1.4
+   },
+   {
+    "type": "hollow",
+    "radius": 0.85,
+    "sweep": 0.25
+   }
+  ],
+  "note": "The receding-orders profile: Paley's 'so many successive planes or retiring arches, each placed behind and beneath the next before it, reckoning from the outer wall-line', with a hollow struck in every re-entrant angle.",
+  "units": "relative",
+  "fitted": false,
+  "fitting_note": "PROPORTIONAL ONLY. Needs its OWN dimension line: cycle 23 established that figures on this plate are drawn at DIFFERENT scales (fig 6 = 22.09 px/in, fig 5 = 23.75 px/in, 7.5% apart), so fig 6's scale may NOT be borrowed.",
+  "built_extent_relative": {
+   "width": 5.05,
+   "depth": 5.9
+  },
+  "component": "plate bbox x[1230,1484] y[595,889] on the 1930x2951 scan; 18407 px; 1166-point boundary",
+  "scale": "UNSCALABLE - fig 7 carries NO dimension line. See scale_search.",
+  "scale_search": "The only dark-fraction spike anywhere near fig 7 is y=771, and inspection at 5x shows it is the figure's STOCK-BOX bottom edge: dashed, but with no arrowheads and no label. Since cycle 23 established that scale on this plate is PER-FIGURE (fig 5 = 23.75 px/in, fig 6 = 22.09), fig 6's scale may not be borrowed. Fig 7 therefore yields SHAPE but not SIZE.",
+  "straight_run_signature": "Longest runs: 103 px at 89.4 deg, 87 px at 1.3, 51 px at 3.4, 43 px at 91.3, 43 px at 88.7, 37 px at 0.0, 36 px at 88.4, 34 px at 5.0. ALL wall-plane or soffit-plane. Exactly ONE candidate in the chamfer band (38.7 deg) and it is most likely an arc chord.",
+  "vocabulary_contrast": "This is the finding. Fig 6's principal member sits on a CHAMFER; fig 7 has NO chamfer-plane member at all. Its mouldings are developed by sinking hollows in the wall- and soffit-planes only - a direct illustration of Paley's 'by sinking hollows in any one of these surfaces, a group of mouldings would be developed'. Two adjacent figures on one sheet, two different generative strategies.",
+  "skew_note": "Fig 7's near-horizontal runs spread 0.0-5.0 deg and its near-verticals 88.4-95.4 - about +/-5 deg, against fig 6's +/-1 deg on the SAME plate. So that spread is real member variation, not page skew. REFINEMENT: skew is a property of the PLATE - measure it on the figure with the TIGHTEST run distribution and apply it plate-wide. Plate I = +0.1 deg, from fig 6."
+ },
+ {
+  "id": "brandon_pl9_tiebeam",
+  "source": "Brandon, Open Timber Roofs 1849, Plate IX (leaf n79), 'Section of Tie-beam, 2in Scale'",
+  "period": "St Martin's Leicester chancel; roof reconstructed to the old model",
+  "status": "VERIFIED \u2014 plate read at full resolution in cycle 2",
+  "stock": {
+   "width": 20.0,
+   "height": 14.0,
+   "units": "in",
+   "note": "the scantling from the description page: tie-beam 1 ft 8 in by 1 ft 2 in",
+   "status": "printed on the plate - a real dimension, unlike the members"
+  },
+  "members": [
+   {
+    "type": "fillet",
+    "length": 3.0,
+    "angle": -90,
+    "note": "square upper face of the beam"
+   },
+   {
+    "type": "ogee",
+    "radius_out": 1.6,
+    "radius_in": 1.6,
+    "sweep": 0.22,
+    "note": "moulded arris"
+   },
+   {
+    "type": "fillet",
+    "length": 2.4,
+    "angle": -45,
+    "turn": true
+   },
+   {
+    "type": "hollow",
+    "radius": 1.5,
+    "sweep": 0.25,
+    "note": "casement hollow"
+   },
+   {
+    "type": "fillet",
+    "length": 3.0,
+    "angle": 0,
+    "note": "soffit of the beam"
+   }
+  ],
+  "note": "A TIMBER section, not stone, included deliberately to test that the same primitive set serves both. It does.",
+  "units": "relative",
+  "fitted": false,
+  "fitting_note": "PROPORTIONAL ONLY. Different book, no scale measured. See paley_pl1_fig6 for the recipe.",
+  "built_extent_relative": {
+   "width": 3.14,
+   "depth": 3.6
+  }
+ }
+]

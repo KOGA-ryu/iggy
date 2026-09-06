@@ -1,0 +1,948 @@
+{
+  "photographic_color": {
+    "all_sunlit_stone": {
+      "metrics": {
+        "chroma_median": 0.27843138575553894,
+        "luminance_percentiles": {
+          "p05": 156.3994140625,
+          "p25": 165.40859985351562,
+          "p50": 169.7025909423828,
+          "p75": 174.42459106445312,
+          "p95": 183.285400390625
+        },
+        "mean_rgb": [
+          198,
+          166,
+          126
+        ],
+        "median_rgb": [
+          198,
+          166,
+          126
+        ],
+        "sample_count": 27648
+      },
+      "palette_20_hex": [
+        "#be9564",
+        "#c0996a",
+        "#c29c6f",
+        "#c19d72",
+        "#c19f76",
+        "#c2a179",
+        "#c4a177",
+        "#c7a274",
+        "#c8a478",
+        "#c7a57c",
+        "#c5a681",
+        "#c6a782",
+        "#c9a982",
+        "#c8aa86",
+        "#c8ab89",
+        "#caad89",
+        "#ccaf8b",
+        "#ccb18e",
+        "#ceb392",
+        "#d0b696"
+      ],
+      "palette_20_rgb": [
+        [
+          190,
+          149,
+          100
+        ],
+        [
+          192,
+          153,
+          106
+        ],
+        [
+          194,
+          156,
+          111
+        ],
+        [
+          193,
+          157,
+          114
+        ],
+        [
+          193,
+          159,
+          118
+        ],
+        [
+          194,
+          161,
+          121
+        ],
+        [
+          196,
+          161,
+          119
+        ],
+        [
+          199,
+          162,
+          116
+        ],
+        [
+          200,
+          164,
+          120
+        ],
+        [
+          199,
+          165,
+          124
+        ],
+        [
+          197,
+          166,
+          129
+        ],
+        [
+          198,
+          167,
+          130
+        ],
+        [
+          201,
+          169,
+          130
+        ],
+        [
+          200,
+          170,
+          134
+        ],
+        [
+          200,
+          171,
+          137
+        ],
+        [
+          202,
+          173,
+          137
+        ],
+        [
+          204,
+          175,
+          139
+        ],
+        [
+          204,
+          177,
+          142
+        ],
+        [
+          206,
+          179,
+          146
+        ],
+        [
+          208,
+          182,
+          150
+        ]
+      ]
+    },
+    "families": {
+      "cool_buff": {
+        "metrics": {
+          "chroma_median": 0.24313725531101227,
+          "luminance_percentiles": {
+            "p05": 167.56619262695312,
+            "p25": 172.85101318359375,
+            "p50": 177.13978576660156,
+            "p75": 182.00059509277344,
+            "p95": 187.65159606933594
+          },
+          "mean_rgb": [
+            201,
+            174,
+            141
+          ],
+          "median_rgb": [
+            201,
+            174,
+            140
+          ],
+          "sample_count": 6847
+        },
+        "palette_20_hex": [
+          "#bfa280",
+          "#c1a483",
+          "#c2a685",
+          "#c4a786",
+          "#c5a987",
+          "#c6ab88",
+          "#c7ac89",
+          "#c9ad8a",
+          "#c8ad8d",
+          "#c9ad8e",
+          "#cbae8e",
+          "#ccaf8e",
+          "#cdb28f",
+          "#ceb291",
+          "#ceb293",
+          "#cfb594",
+          "#d0b695",
+          "#d0b697",
+          "#d1b799",
+          "#d2b99c"
+        ],
+        "palette_20_rgb": [
+          [
+            191,
+            162,
+            128
+          ],
+          [
+            193,
+            164,
+            131
+          ],
+          [
+            194,
+            166,
+            133
+          ],
+          [
+            196,
+            167,
+            134
+          ],
+          [
+            197,
+            169,
+            135
+          ],
+          [
+            198,
+            171,
+            136
+          ],
+          [
+            199,
+            172,
+            137
+          ],
+          [
+            201,
+            173,
+            138
+          ],
+          [
+            200,
+            173,
+            141
+          ],
+          [
+            201,
+            173,
+            142
+          ],
+          [
+            203,
+            174,
+            142
+          ],
+          [
+            204,
+            175,
+            142
+          ],
+          [
+            205,
+            178,
+            143
+          ],
+          [
+            206,
+            178,
+            145
+          ],
+          [
+            206,
+            178,
+            147
+          ],
+          [
+            207,
+            181,
+            148
+          ],
+          [
+            208,
+            182,
+            149
+          ],
+          [
+            208,
+            182,
+            151
+          ],
+          [
+            209,
+            183,
+            153
+          ],
+          [
+            210,
+            185,
+            156
+          ]
+        ]
+      },
+      "mid_buff": {
+        "metrics": {
+          "chroma_median": 0.27843138575553894,
+          "luminance_percentiles": {
+            "p05": 166.7707977294922,
+            "p25": 168.1278076171875,
+            "p50": 169.7065887451172,
+            "p75": 171.13699340820312,
+            "p95": 172.77020263671875
+          },
+          "mean_rgb": [
+            198,
+            166,
+            127
+          ],
+          "median_rgb": [
+            198,
+            166,
+            127
+          ],
+          "sample_count": 6991
+        },
+        "palette_20_hex": [
+          "#c3a37a",
+          "#c3a37c",
+          "#c3a37d",
+          "#c4a37a",
+          "#c5a37a",
+          "#c6a47c",
+          "#c5a47d",
+          "#c3a57e",
+          "#c4a57f",
+          "#c6a580",
+          "#c7a680",
+          "#c8a67f",
+          "#c7a77d",
+          "#c6a87f",
+          "#c5a881",
+          "#c7a880",
+          "#c8a881",
+          "#c8a882",
+          "#c8a883",
+          "#c8a884"
+        ],
+        "palette_20_rgb": [
+          [
+            195,
+            163,
+            122
+          ],
+          [
+            195,
+            163,
+            124
+          ],
+          [
+            195,
+            163,
+            125
+          ],
+          [
+            196,
+            163,
+            122
+          ],
+          [
+            197,
+            163,
+            122
+          ],
+          [
+            198,
+            164,
+            124
+          ],
+          [
+            197,
+            164,
+            125
+          ],
+          [
+            195,
+            165,
+            126
+          ],
+          [
+            196,
+            165,
+            127
+          ],
+          [
+            198,
+            165,
+            128
+          ],
+          [
+            199,
+            166,
+            128
+          ],
+          [
+            200,
+            166,
+            127
+          ],
+          [
+            199,
+            167,
+            125
+          ],
+          [
+            198,
+            168,
+            127
+          ],
+          [
+            197,
+            168,
+            129
+          ],
+          [
+            199,
+            168,
+            128
+          ],
+          [
+            200,
+            168,
+            129
+          ],
+          [
+            200,
+            168,
+            130
+          ],
+          [
+            200,
+            168,
+            131
+          ],
+          [
+            200,
+            168,
+            132
+          ]
+        ]
+      },
+      "pale_cream": {
+        "metrics": {
+          "chroma_median": 0.24705882370471954,
+          "luminance_percentiles": {
+            "p05": 174.98739624023438,
+            "p25": 176.5701904296875,
+            "p50": 179.06480407714844,
+            "p75": 182.71058654785156,
+            "p95": 188.00059509277344
+          },
+          "mean_rgb": [
+            205,
+            177,
+            141
+          ],
+          "median_rgb": [
+            204,
+            176,
+            140
+          ],
+          "sample_count": 6636
+        },
+        "palette_20_hex": [
+          "#c9ac86",
+          "#cbac85",
+          "#ccac85",
+          "#caad88",
+          "#cbad88",
+          "#cfae84",
+          "#cdae89",
+          "#c9af8f",
+          "#ccb08c",
+          "#ceb08c",
+          "#ceb08e",
+          "#ceb191",
+          "#cdb394",
+          "#cfb492",
+          "#d0b490",
+          "#d1b593",
+          "#d1b695",
+          "#d0b797",
+          "#d1b89a",
+          "#d2b99d"
+        ],
+        "palette_20_rgb": [
+          [
+            201,
+            172,
+            134
+          ],
+          [
+            203,
+            172,
+            133
+          ],
+          [
+            204,
+            172,
+            133
+          ],
+          [
+            202,
+            173,
+            136
+          ],
+          [
+            203,
+            173,
+            136
+          ],
+          [
+            207,
+            174,
+            132
+          ],
+          [
+            205,
+            174,
+            137
+          ],
+          [
+            201,
+            175,
+            143
+          ],
+          [
+            204,
+            176,
+            140
+          ],
+          [
+            206,
+            176,
+            140
+          ],
+          [
+            206,
+            176,
+            142
+          ],
+          [
+            206,
+            177,
+            145
+          ],
+          [
+            205,
+            179,
+            148
+          ],
+          [
+            207,
+            180,
+            146
+          ],
+          [
+            208,
+            180,
+            144
+          ],
+          [
+            209,
+            181,
+            147
+          ],
+          [
+            209,
+            182,
+            149
+          ],
+          [
+            208,
+            183,
+            151
+          ],
+          [
+            209,
+            184,
+            154
+          ],
+          [
+            210,
+            185,
+            157
+          ]
+        ]
+      },
+      "warm_ochre": {
+        "metrics": {
+          "chroma_median": 0.32549020648002625,
+          "luminance_percentiles": {
+            "p05": 151.31886291503906,
+            "p25": 158.66445922851562,
+            "p50": 163.7615966796875,
+            "p75": 167.55020141601562,
+            "p95": 172.6894073486328
+          },
+          "mean_rgb": [
+            196,
+            158,
+            112
+          ],
+          "median_rgb": [
+            197,
+            159,
+            113
+          ],
+          "sample_count": 6700
+        },
+        "palette_20_hex": [
+          "#ba8e5a",
+          "#bc915d",
+          "#be9360",
+          "#be9462",
+          "#be9565",
+          "#bd9667",
+          "#c09868",
+          "#c39a68",
+          "#c29a6c",
+          "#c29b6e",
+          "#c49e6e",
+          "#c59f70",
+          "#c4a073",
+          "#c6a174",
+          "#c7a174",
+          "#c8a475",
+          "#c9a576",
+          "#cba677",
+          "#cda97a",
+          "#cfac7e"
+        ],
+        "palette_20_rgb": [
+          [
+            186,
+            142,
+            90
+          ],
+          [
+            188,
+            145,
+            93
+          ],
+          [
+            190,
+            147,
+            96
+          ],
+          [
+            190,
+            148,
+            98
+          ],
+          [
+            190,
+            149,
+            101
+          ],
+          [
+            189,
+            150,
+            103
+          ],
+          [
+            192,
+            152,
+            104
+          ],
+          [
+            195,
+            154,
+            104
+          ],
+          [
+            194,
+            154,
+            108
+          ],
+          [
+            194,
+            155,
+            110
+          ],
+          [
+            196,
+            158,
+            110
+          ],
+          [
+            197,
+            159,
+            112
+          ],
+          [
+            196,
+            160,
+            115
+          ],
+          [
+            198,
+            161,
+            116
+          ],
+          [
+            199,
+            161,
+            116
+          ],
+          [
+            200,
+            164,
+            117
+          ],
+          [
+            201,
+            165,
+            118
+          ],
+          [
+            203,
+            166,
+            119
+          ],
+          [
+            205,
+            169,
+            122
+          ],
+          [
+            207,
+            172,
+            126
+          ]
+        ]
+      }
+    },
+    "family_rules": {
+      "cool_buff": "lowest 24 percent red-minus-blue warmth",
+      "mid_buff": "middle 40 percent luminance and warmth intersection",
+      "pale_cream": "highest 24 percent luminance",
+      "warm_ochre": "highest 24 percent red-minus-blue warmth"
+    },
+    "measurement_limit": "relative sunlit color families only; not absolute albedo, roughness, height, or normal",
+    "normalization_rule": "Each 48px stone-interior sample is scaled to the median sample luminance with a clamp of 0.88-1.12; hue and local within-stone variation are retained.",
+    "sample_exclusions": [
+      "mortar",
+      "sky",
+      "cast shadow",
+      "mouldings",
+      "obvious cracks",
+      "repairs",
+      "eroded cavities"
+    ],
+    "sample_rectangles": [
+      {
+        "normalization_scale": 1.0267263677120382,
+        "raw_median_luminance": 165.6934051513672,
+        "rectangle_px": [
+          2626,
+          636,
+          2674,
+          684
+        ]
+      },
+      {
+        "normalization_scale": 1.0049882533095398,
+        "raw_median_luminance": 169.2773895263672,
+        "rectangle_px": [
+          2986,
+          686,
+          3034,
+          734
+        ]
+      },
+      {
+        "normalization_scale": 1.0067128780601797,
+        "raw_median_luminance": 168.98739624023438,
+        "rectangle_px": [
+          2366,
+          776,
+          2414,
+          824
+        ]
+      },
+      {
+        "normalization_scale": 0.9863001598377348,
+        "raw_median_luminance": 172.48480224609375,
+        "rectangle_px": [
+          2966,
+          826,
+          3014,
+          874
+        ]
+      },
+      {
+        "normalization_scale": 0.9577074518565044,
+        "raw_median_luminance": 177.6343994140625,
+        "rectangle_px": [
+          2516,
+          966,
+          2564,
+          1014
+        ]
+      },
+      {
+        "normalization_scale": 0.9773991757800778,
+        "raw_median_luminance": 174.0555877685547,
+        "rectangle_px": [
+          2716,
+          986,
+          2764,
+          1034
+        ]
+      },
+      {
+        "normalization_scale": 1.001641521791277,
+        "raw_median_luminance": 169.84298706054688,
+        "rectangle_px": [
+          3156,
+          1026,
+          3204,
+          1074
+        ]
+      },
+      {
+        "normalization_scale": 1.0131772272475217,
+        "raw_median_luminance": 167.90921020507812,
+        "rectangle_px": [
+          2466,
+          1146,
+          2514,
+          1194
+        ]
+      },
+      {
+        "normalization_scale": 1.0003892859812273,
+        "raw_median_luminance": 170.0555877685547,
+        "rectangle_px": [
+          2676,
+          1166,
+          2724,
+          1214
+        ]
+      },
+      {
+        "normalization_scale": 0.9880002353668254,
+        "raw_median_luminance": 172.18800354003906,
+        "rectangle_px": [
+          2916,
+          1196,
+          2964,
+          1244
+        ]
+      },
+      {
+        "normalization_scale": 0.9854453895956334,
+        "raw_median_luminance": 172.63441467285156,
+        "rectangle_px": [
+          3176,
+          1206,
+          3224,
+          1254
+        ]
+      },
+      {
+        "normalization_scale": 0.9996110168701315,
+        "raw_median_luminance": 170.18798828125,
+        "rectangle_px": [
+          3276,
+          1406,
+          3324,
+          1454
+        ]
+      }
+    ]
+  },
+  "production_translation": {
+    "lithology_layer_order": [
+      "micritic carbonate matrix",
+      "sandy silicate grains",
+      "fragmented calcareous fossils",
+      "visible pore identity without invented depth",
+      "sparse iron oxyhydroxide color"
+    ],
+    "photo_palette_role": "Relative warm/cool family and value-order evidence only. Lighting is removed from the authored Base Color hierarchy.",
+    "raw_pixels_used_as_runtime_texture": false,
+    "runtime_maps_are_deterministic": true,
+    "source_pixels_retained_in_repository": false
+  },
+  "schema": "iggy3d.material_reference_capture.cathedral_stone.v2",
+  "source": {
+    "asset_id": "Santa_Marina_Aguas_Santas_2024_facade",
+    "attribution": "Benjamin Smith / Wikimedia Commons",
+    "captured_date": "2024-04-18",
+    "display_name": "Cordoba - Santa Marina de Aguas Santas",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/f/f4/C%C3%B3rdoba_-_Santa_Marina_de_Aguas_Santas.jpg",
+    "image_sha256": "a45542eb2e2bbd6634636177ce966a9b54201866fe90fdfd1c3456cc9ab12c07",
+    "license": "CC BY-SA 4.0",
+    "page": "https://commons.wikimedia.org/wiki/File:C%C3%B3rdoba_-_Santa_Marina_de_Aguas_Santas.jpg",
+    "photographic_limit": "Unpolarized, manually white-balanced sunlit photograph; not a calibrated reflectance capture.",
+    "resolution": [
+      5688,
+      4493
+    ]
+  },
+  "stone_body": {
+    "active_lithotypes": [
+      "clastic sandy yellowish biocalcarenite",
+      "sandy fine-grained biomicrite"
+    ],
+    "explicit_variant_only_lithotypes": [
+      "conglomeratic biocalcarenite",
+      "biosparite"
+    ],
+    "fossil_component_fraction": [
+      0.3,
+      0.4
+    ],
+    "fossil_components": [
+      "foraminifera",
+      "algae",
+      "bryozoans",
+      "bivalves",
+      "echinoid bristles and plates"
+    ],
+    "iron_oxyhydroxide_role": "Sparse visible colorant responsible for the more saturated yellow Naranjo material; not a universal orange wash.",
+    "likely_quarry": "Naranjo",
+    "lithology": "Tortonian biocalcarenite and biomicrite with carbonated micritic cement",
+    "lithology_source": "https://materconstrucc.revistas.csic.es/index.php/materconstrucc/article/download/123/162",
+    "measurement_id": "santa_marina_naranjo_biocalcarenite_body",
+    "nondegraded_naranjo_mineral_fractions": {
+      "calcite": 0.8,
+      "clay": 0.02,
+      "feldspar": 0.03,
+      "quartz": 0.15
+    },
+    "optical_roughness_status": "unknown; numeric PBR roughness remains an authored light-calibration parameter",
+    "porosity_fraction": 0.13,
+    "relief_depth_status": "unknown; no normal or height is inferred",
+    "surface_figure_scale_bars_m": {
+      "macrophotographs": 0.05,
+      "thin_sections": 0.001
+    }
+  }
+}

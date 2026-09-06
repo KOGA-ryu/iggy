@@ -1,0 +1,581 @@
+{
+  "canonical_source_unchanged": true,
+  "components": {
+    "FixedKnuckle_02": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0016975608887150884,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 1160,
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "mode": "circumferential_barrel",
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_FixedKnuckle_02_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_FixedKnuckle_02_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_FixedKnuckle_02_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_FixedKnuckle_02_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306364745833e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "FixedKnuckle_04": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0016975608887150884,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 1160,
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "mode": "circumferential_barrel",
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_FixedKnuckle_04_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_FixedKnuckle_04_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_FixedKnuckle_04_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_FixedKnuckle_04_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306364745833e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "MovingKnuckle_01": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0016975608887150884,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 1160,
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "mode": "circumferential_barrel",
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_MovingKnuckle_01_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_MovingKnuckle_01_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_MovingKnuckle_01_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_MovingKnuckle_01_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306000947952e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "MovingKnuckle_03": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0016975608887150884,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 1160,
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "mode": "circumferential_barrel",
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_MovingKnuckle_03_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_MovingKnuckle_03_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_MovingKnuckle_03_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_MovingKnuckle_03_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306000947952e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "MovingKnuckle_05": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0016975608887150884,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 1160,
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "mode": "circumferential_barrel",
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_MovingKnuckle_05_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_MovingKnuckle_05_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_MovingKnuckle_05_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_MovingKnuckle_05_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306000947952e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "SM_GH018_FixedLeaf": {
+      "field_resolution": [
+        213,
+        103
+      ],
+      "forging_amplitude_m": 0.006000000052154064,
+      "frame": {
+        "field_coordinate_mode": "object_xz_host",
+        "loop_count": 1220,
+        "maximum_m": [
+          -0.04800000041723251,
+          0.20499999821186066
+        ],
+        "minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "mode": "longitudinal_leaf",
+        "span_m": [
+          0.8519999980926514,
+          0.4099999964237213
+        ],
+        "tangent_maximum_m": [
+          0.8895581960678101,
+          0.20499999821186066
+        ],
+        "tangent_minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "tangent_span_m": [
+          1.7895581722259521,
+          0.4099999964237213
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_SM_GH018_FixedLeaf_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_SM_GH018_FixedLeaf_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_SM_GH018_FixedLeaf_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_SM_GH018_FixedLeaf_v001",
+      "oxide_thickness_maximum_m": 7.086051482474431e-05,
+      "oxide_thickness_minimum_m": 3.3021085982909426e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "SM_GH018_MovingLeaf_Openwork": {
+      "field_resolution": [
+        768,
+        103
+      ],
+      "forging_amplitude_m": 0.006000000052154064,
+      "frame": {
+        "field_coordinate_mode": "object_xz_host",
+        "loop_count": 49038,
+        "maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "minimum_m": [
+          0.04800000041723251,
+          -0.20499999821186066
+        ],
+        "mode": "longitudinal_leaf",
+        "span_m": [
+          3.111999988555908,
+          0.4099999964237213
+        ],
+        "tangent_maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "tangent_minimum_m": [
+          -3.0933139324188232,
+          -0.20499999821186066
+        ],
+        "tangent_span_m": [
+          6.253314018249512,
+          0.4099999964237213
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_SM_GH018_MovingLeaf_Openwork_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_SM_GH018_MovingLeaf_Openwork_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_SM_GH018_MovingLeaf_Openwork_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_SM_GH018_MovingLeaf_Openwork_v001",
+      "oxide_thickness_maximum_m": 7.096870831446722e-05,
+      "oxide_thickness_minimum_m": 3.302868572063744e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    },
+    "SM_GH018_Pintle": {
+      "field_resolution": [
+        128,
+        64
+      ],
+      "forging_amplitude_m": 0.0023906752467155457,
+      "frame": {
+        "field_coordinate_mode": "component_tangent_host",
+        "loop_count": 432,
+        "maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "mode": "axial_pin",
+        "span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ],
+        "tangent_maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "tangent_minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "tangent_span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ]
+      },
+      "images": {
+        "forging_normal": "IGGY_IMG_SM_GH018_Pintle_OpenRailForgingNormal_v001",
+        "oxide_base": "IGGY_IMG_SM_GH018_Pintle_ContinuousOxideBase_v001",
+        "oxide_roughness": "IGGY_IMG_SM_GH018_Pintle_ContinuousOxideRoughness_v001"
+      },
+      "material": "IGGY_MAT_CumulativeIntactIron_SM_GH018_Pintle_v001",
+      "oxide_thickness_maximum_m": 7.022509817034006e-05,
+      "oxide_thickness_minimum_m": 3.341306364745833e-05,
+      "topology": {
+        "anisotropy_socket": "Anisotropic",
+        "exposure": 0.0,
+        "node_counts": {
+          "image_texture": 3,
+          "mix_shader": 1,
+          "normal_map": 1,
+          "principled": 2,
+          "tangent": 1
+        }
+      }
+    }
+  },
+  "constants": {
+    "anisotropy": 0.18,
+    "conductor_f0_linear": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "conductor_roughness": 0.38,
+    "giant_leaf_forging_amplitude_m": 0.006,
+    "oxide_thickness_envelope_m": [
+      2e-05,
+      9e-05
+    ]
+  },
+  "consumer": {
+    "assembly_span_m": [
+      4.060000061988831,
+      0.116,
+      0.4099999964237213
+    ],
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ]
+  },
+  "exposed_conductor": {
+    "maximum": 0.0,
+    "minimum": 0.0,
+    "owner": "Explicit_Exposed_Conductor_Only_Owner"
+  },
+  "limitations": [
+    "This is a cumulative actual-hinge candidate, not canonical v004.",
+    "Broad forging amplitude is calibrated to the giant leaf and scaled down by stock width for smaller components.",
+    "No condition or narrative history layer is present.",
+    "Blender Cycles proof does not establish Unreal parity."
+  ],
+  "node_topology": {
+    "material_identity_owner_count": 1,
+    "mix_shader_count_per_material": 1,
+    "principled_count_per_material": 2
+  },
+  "oxide": {
+    "coverage_maximum": 1.0,
+    "coverage_minimum": 1.0,
+    "metalness_maximum": 0.0,
+    "surface_height_abs_maximum_m": 0.0
+  },
+  "renders": {
+    "exposure": {
+      "bytes": 192173,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_exposure.png",
+      "sha256": "de0d65b8be1d4a8ab8f8780ab9cf64ae2a0a5c37bda75266089a802554167e70"
+    },
+    "forging_normal": {
+      "bytes": 280459,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_forging_normal.png",
+      "sha256": "83f833488ebb34add710147df97fc32c43d4cbdfd5c2c5f5f17e70c7142eec1b"
+    },
+    "gameplay": {
+      "bytes": 252418,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_gameplay.png",
+      "sha256": "23415d080f896601da47c1eaf04a1ee9ff663850d42d5fedab47f6750d9454f4"
+    },
+    "grazing": {
+      "bytes": 286367,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_grazing.png",
+      "sha256": "2237bebfb490c5f3c4386d852b8ab42ac5bc4ab1fda2c7aede1b5759b0d72ea9"
+    },
+    "moving_a": {
+      "bytes": 279703,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_moving_a.png",
+      "sha256": "2575c260f59db46afa22f9f00d763a2022518446758ac29fd95b51a3fef36c1b"
+    },
+    "moving_b": {
+      "bytes": 291583,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_moving_b.png",
+      "sha256": "a940e6fb22b173ca684cb6bd538adfbad549f6885722d91d553a4f8e46fb70c1"
+    },
+    "neutral_front": {
+      "bytes": 276821,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_neutral_front.png",
+      "sha256": "56b8d35af6906ed82eaed899520d5f0572626d72795379c74607591ba4b1a668"
+    },
+    "oxide_colour": {
+      "bytes": 263652,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_oxide_colour.png",
+      "sha256": "2de431fe78bee3bb08d399757e58b95e7a7920f968e2aaa1a8d5ca28449407d5"
+    },
+    "roughness": {
+      "bytes": 272034,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_roughness.png",
+      "sha256": "daec205e5a8e2efaf0cddf50eb5e139d134822767bfb480ff2eb5d975eb0e4b6"
+    },
+    "three_quarter": {
+      "bytes": 272437,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_three_quarter.png",
+      "sha256": "932f48140aa8606e47197533e2f06b823e9ee68d6c041030a44ff2d288f3281f"
+    }
+  },
+  "saved_blend": {
+    "authored_images_packed": true,
+    "bytes": 13826071,
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/cumulative_intact_hinge_preview_v1/cumulative_intact_hinge_preview_v1.blend",
+    "sha256": "9b3e78ff36a1bb4689d3be9fa4ef102a159eb4ec293816f9e28e5bbb8e3331b0"
+  },
+  "schema": "iggy3d.cumulative-intact-forged-iron-proof.v1",
+  "selected_donors": [
+    "clean_conductor_rgb_f0",
+    "component_owned_tangent",
+    "open_rail_broad_forging_planes",
+    "continuous_thermal_oxide",
+    "dual_complete_bsdf_mixer"
+  ],
+  "sources": {
+    "canonical_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+      "sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+      "sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10"
+    },
+    "geometry_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_geometry_v1.blend",
+      "sha256_after": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+      "sha256_before": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69"
+    }
+  },
+  "status": "CUMULATIVE_INTACT_CANDIDATE_NOT_CANONICAL",
+  "unreal_parity_verified": false,
+  "uses_ai_generated_imagery": false,
+  "uses_damage": false
+}

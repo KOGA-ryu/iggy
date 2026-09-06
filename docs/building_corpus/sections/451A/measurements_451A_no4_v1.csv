@@ -1,0 +1,14 @@
+measure_id,quantity,px,inches,nearest_workshop_size,method,status,note
+M00,scale calibration,70.401 px/in,1.000,,least-squares over 13 scale-bar ticks; RMS residual 1.66 px = 0.024 in; first-inch eighths give 70.0 independently,MEASURED,plate carries its own printed 12-inch scale bar
+M01,outer face line to outer glass surface,43.0,0.611,5/8,row-line detection in open bay,MEASURED,glass plane setback from casement face
+M02,glass drawn thickness,12.5,0.178,3/16,row-line detection (lines 184.5 to 197),MEASURED,drawn glass; real crown/sheet glass of the period is thinner - drawing convention
+M03,stile depth (outer face to inner face),134.5,1.911,1 15/16,row-line detection (141.5 to 276),MEASURED,the classic finished 2-in casement stock
+M04,inner line pair spacing,8.5,0.121,1/8,row-line detection (267 to 275.5),INTERPRETATION-OPEN,two inner lines - bead sight line vs frame inner face not yet resolved
+M05,rebate shoulder line below inner glass line,28.0,0.398,13/32,row-line detection (197 to 225),INTERPRETATION-OPEN,likely the glazing-rebate shoulder / putty line; confirm against Ellis text
+M06,left meeting stile width (face-to-glass band),158.5,2.251,2 1/4,median outermost-ink over rows 150-178,MEASURED,measured above joint bevels
+M07,right meeting stile width (face-to-glass band),152.5,2.166,2 3/16,median outermost-ink over rows 150-178,MEASURED,asymmetry vs M06 is REAL at this level - the meeting joint is a bevelled lap; nominal stock likely equal
+M08,oak slip head width,106.0,1.506,1 1/2,median outermost-ink over rows 112-138,MEASURED,the weather moulding covering the joint outside
+M09,oak slip head height,26.0,0.369,3/8,column median rows 95-150,MEASURED,
+M10,oak slip projection above face line,20.5,0.291,9/32,head top 121 vs face 141.5,MEASURED,
+M11,oak slip total depth (head top to tongue tip),136.0,1.932,1 15/16,column median,MEASURED,runs nearly the full stile depth; tongue tip stops 10-19 px short of inner face
+M12,slip tongue width at mid-band,60.0,0.852,7/8,median outermost-ink rows 205-228,MEASURED-CAUTION,window may include stile-cheek contact ink; verify during profile authoring

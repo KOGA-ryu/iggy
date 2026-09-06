@@ -1,0 +1,48 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+curtain_rampart	merlon, XIIIc formula	merlon height	2.00	m	author-rule	Créneau	Les merlons ont 2 mètres de haut sur 1 m , 70 au moins, et 3 m , 30 au plus de largeur sur 0,45 c. d’épaisseur
+curtain_rampart	merlon, XIIIc formula	merlon width, minimum	1.70	m	author-rule	Créneau	sur 1 m , 70 au moins ... de largeur
+curtain_rampart	merlon, XIIIc formula	merlon width, maximum	3.30	m	author-rule	Créneau	et 3 m , 30 au plus de largeur
+curtain_rampart	merlon, XIIIc formula	merlon thickness	0.45	m	author-rule	Créneau	sur 0,45 c. d’épaisseur
+curtain_rampart	crenel, XIIIc formula	crenel sill height above the wall-walk	1.00	m	author-rule	Créneau	l’appui des créneaux est à 1 mètre du sol du chemin de ronde
+curtain_rampart	crenel, XIIIc formula	crenel width	0.70	m	author-rule	Créneau	et leur largeur est de 0,70 c.   [RECOVERED cycle 36 - same sentence as the sill height, dropped on the first pass]
+curtain_rampart	crenel, general rule	merlon height	2.00	m	author-rule	Créneau	les merlons ont toujours à peu près deux mètres de hauteur, pour pouvoir garantir complètement les défenseurs
+curtain_rampart	crenel, general rule	crenel sill height above the wall-walk	1.00	m	author-rule	Créneau	les appuis des créneaux sont à un mètre du sol du chemin de ronde
+curtain_rampart	crenel, general rule	crenel width range	0.70 to 1.00	m	author-rule	Créneau	et leur largeur varie d’un mètre, à soixante-dix centimètres
+curtain_rampart	crenellation, sizing principle	crenellation dimensions are set by the human body	n/a	rule	author-rule	Créneau	Les dimensions des crénelages étant données par la taille de l’homme, ces dimensions varient peu
+curtain_rampart	Gallo-Roman parapet	parapet thickness	0.50	m	measured	Créneau	percés habituellement dans des parapets d’une épaisseur assez forte, 0,50 c. environ
+curtain_rampart	archère in a XIIIc merlon	clear opening	0.07 to 0.08	m	measured	Créneau	en a sont les archères, qui n’ont pas plus de 0,07 c. à 0,08 c. d’ouverture
+curtain_rampart	archère in a XIIIc merlon	internal splay (ébrasement)	0.40 to 0.45	m	measured	Créneau	lesquelles ont 0,40 c. à 0,45 c. d’ébrasement
+curtain_rampart	crenel under a roof (tour couverte, XIIIc)	wall thickness at the crenellation	0.90	m	measured	Créneau	Les murs ayant 0,90 c. d’épaisseur, les créneaux ont une allège A
+curtain_rampart	Béziers transept crenellation (XIIc)	wall-walk floor to above cornice B	1.18	m	measured	Créneau	Du sol du chemin de ronde, au-dessus de la corniche B , il n’y a qu’un mètre dix-huit centimètres de hauteur
+curtain_rampart	merlon, measured range	merlon thickness	0.38 to 0.58	m	measured	Chemin de ronde	ayant une épaisseur qui variait de 0,38 c. à 0,58 c. (14 à 21 pouces)
+curtain_rampart	machicolation drop-hole	drop-hole square, range	0.33 to 0.40	m	measured	Mâchicoulis	ils forment un carré qui varie de 0,33 c. (1 pied) à 0,40 c. (15 pouces)
+curtain_rampart	machicolation logette	slab thickness (three slabs form the jambs and face)	0.20	m	measured	Mâchicoulis	sont construites au moyen de trois dalles de 0,20 c. d’épaisseur ; le chaperon est fait de deux pierres
+curtain_rampart	hoarding (hourd), XIIIc single-row	putlog hole, square	0.30	m	measured	Hourd	on se contenta d’un seul rang de larges trous carrés (0,30 c. × 0,30 c. environ) percés au niveau des chemins de ronde
+curtain_rampart	hoarding (hourd)	oak bascule beam, squared section	0.30	m	measured	Hourd	une pièce de bois de chêne de 0,30 c. d’équarrissage   [CORRECTED cycle 36: the source says 'pièce', not 'solive']
+curtain_rampart	hoarding (hourd)	bascule beam cantilever length	3.00	m	author-rule	Hourd	fût-elle de trois mètres en bascule, peut porter un poids énorme
+curtain_rampart	hoarding (hourd)	projection beyond the merlons, maximum	1.95	m	measured	Hourd	les hourds avaient rarement plus de 1 m ,95 c. de saillie (une toise)
+curtain_rampart	hoarding (hourd)	second rank of moises, spacing from the first	1.80	m	measured	Hourd	Un second rang de moises, posé en L , à 1 m ,80 du premier rang
+town_gate	Carcassonne, Porte Narbonnaise	hoarding putlog hole, square	0.30	m	documented-reconstruction	Hourd	des trous de hourds de 0,30 c. de côté, régulièrement espacés   [CARCASSONNE = VIOLLET'S OWN RESTORATION SITE]
+town_gate	Carcassonne, Porte Narbonnaise	main bascule joist spacing	5 pieds (approx. 1.63 m)	ft	documented-reconstruction	Hourd	de cinq pieds en cinq pieds passaient par les trous de hourds les fortes solives C
+curtain_rampart	Carcassonne towers/curtains c.1100	merlon height	1.60 to 1.80	m	documented-reconstruction	Hourd	Les merlons ... du château de Carcassonne (1100 environ) sont hauts (1 m ,60 à 1 m ,80)   [VIOLLET'S OWN RESTORATION SITE]
+keep_donjon	Coucy donjon hoarding	stone corbel projection	1.07	m	measured	Hourd	quarante-huit consoles de pierre de 1 m ,07 de saillie sur 0,30 c. d’épaisseur
+keep_donjon	Coucy donjon hoarding	stone corbel thickness	0.30	m	measured	Hourd	sur 0,30 c. d’épaisseur
+keep_donjon	Coucy donjon hoarding	corbels round the cylinder	48	count	measured	Hourd	quarante-huit consoles de pierre
+keep_donjon	Coucy donjon hoarding	masonry courses per corbel	2	count	measured	Hourd	En B , on voit l’une des consoles formées de deux assises chacune
+keep_donjon	Coucy donjon	hoarding level above the ditch bottom	46	m	measured	Hourd	à une hauteur de 46 mètres au-dessus du fond du fossé
+tower	round flanking tower, Carcassonne inner enceinte	tower external diameter above the talus	6.00	m	documented-reconstruction	Meurtrière	cette tour ayant 6 m ,00 de diamètre et ses murs 1 m , 20   [VIOLLET'S OWN RESTORATION SITE]
+tower	round flanking tower, Carcassonne inner enceinte	tower wall thickness	1.20	m	documented-reconstruction	Meurtrière	et ses murs 1 m , 20
+tower	arrow-loop setting-out rule	ground arc CD struck OUTSIDE the tower circumference	2.20	m	author-rule	Meurtrière	à 2 m ,20 environ de la circonférence AB , on a tracé l’arc de cercle CD   [CORRECTED cycle 36: OUTSIDE, not inside - arc CD is the ground line the loops must cover: 'tous les points de l’arc de cercle CD sont vus'. On a 6.00 m tower that is radius 3.00 + 2.20 = 5.20 m, NOT 0.80 m.]
+tower	arrow-loop setting-out rule	ground arc divided into N equal parts	16	count	author-rule	Meurtrière	divisant cet arc de cercle en 16 parties égales, oe , ef , fg , gh
+tower	arrow-loop setting-out rule	points p offset from the curtain face	0.30	m	author-rule	Meurtrière	prenant sur le parement de la tour les points p à 0 m ,30 du parement de la courtine
+tower	arrow-loop setting-out rule	tower outer circumference divided into N equal parts	8	count	author-rule	Meurtrière	on a divisé la circonférence externe de cette tour en 8 parties égales
+tower	arrow-loop setting-out rule	tower storeys carrying loops, plus a crenellated stage	3 + 1	count	author-rule	Meurtrière	Voici ( 3 ) le tracé d’une tour à trois étages, plus l’étage crénelé
+tower	arrow-loop setting-out rule	loops enfilading each curtain flank	3	count	author-rule	Meurtrière	les courtines enfilées par trois meurtrières sur chaque flanc, deux au-dessus l’une de l’autre à rez-de-chaussée et au troisième étage, et la troisième un peu en avant
+tower	arrow loop	wall thickness reduced by the interior niche	0.70	m	measured	Meurtrière	Le mur, réduit à une épaisseur de 0 m ,70 par la construction de la niche
+tower	arrow loop	slit clear opening	0.06	m	measured	Meurtrière	la partie inférieure de la rainure, qui n’a que 0 m , 06 d’ouverture
+tower	arrow loop	setting-out points for the lower splay, spacing	0.03	m	author-rule	Meurtrière	prenant les points a b à une distance de 0 m , 03
+tower	arrow loop	field of fire	35	deg	author-rule	Meurtrière	suivant un angle de 35º
+tower	plunging fire (design driver)	arrow apogee, ordinary archer	40 to 50	m	author-rule	Meurtrière	Un archer médiocrement exercé envoie facilement une flèche à quarante ou cinquante mètres de hauteur obliquement
+tower	plunging fire (design driver)	plank thickness pierced by a falling arrow	0.03	m	author-rule	Meurtrière	elle perce une planche de trois centimètres d’épaisseur   [REAL centimetres here, unlike the '0,30 c.' form which means 0.30 m]
+defensive_misc	Coucy bastion souterrain	barrel-vaulted gallery width	1.20	m	measured	Meurtrière	une galerie voûtée en berceau plein-cintre de 1 m ,20 de largeur
+defensive_misc	Coucy bastion souterrain	gallery sits above the ditch bottom	1.00	m	measured	Meurtrière	possède à sa base, à 1 m ,00 environ au-dessus du fond du fossé   [CORRECTED cycle 36: this locates the GALLERY, not the vault springing]

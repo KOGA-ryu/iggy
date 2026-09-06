@@ -1,0 +1,578 @@
+{
+  "schema": "iggy-openwork-strap-hinge-decomposition/1.0",
+  "profile_id": "openwork_strap_hinge_55_61_58_decomposition_v1",
+  "display_name": "Met 55.61.58 Openwork Strap Hinge Pre-Geometry Dossier",
+  "state": "neutral_clay_geometry_proof_authorized",
+  "intent": "Replace the generic sine-ribbon reading of the accepted GH-018 baseline with a reference-controlled construction grammar, prove the saved geometry under neutral clay, and keep material work blocked until the form is visually judged.",
+  "reference_authority": {
+    "catalogued_object": {
+      "institution": "The Metropolitan Museum of Art",
+      "object_id": 475521,
+      "object_number": "55.61.58",
+      "object_url": "https://www.metmuseum.org/art/collection/search/475521",
+      "date": "15th–16th century",
+      "culture": "European",
+      "medium": "Iron",
+      "catalogued_overall_m": {
+        "length": 0.406,
+        "width": 0.041
+      },
+      "catalogued_scope": "complete_hinged_object",
+      "is_public_domain": true
+    },
+    "images": {
+      "installed_primary": {
+        "file": "references/hinges/met_55_61_58_primary_original.jpg",
+        "source_url": "https://images.metmuseum.org/CRDImages/cl/original/cdi55-61-58.jpg",
+        "pixel_width": 1800,
+        "pixel_height": 755,
+        "sha256": "ddd912be8ce8dec276e34b3e97adba94e5d50d2a652dc102d1ae0f61002f1324",
+        "use": [
+          "front face relief",
+          "rail continuity",
+          "boss and terminal silhouette",
+          "installed value separation"
+        ]
+      },
+      "paired_additional": {
+        "file": "references/hinges/met_55_61_58_additional_original.jpg",
+        "source_url": "https://images.metmuseum.org/CRDImages/cl/original/sf160470.jpg",
+        "pixel_width": 412,
+        "pixel_height": 1080,
+        "sha256": "1f52b1a41555e2be282b64ef08ba19eb46937bf3b9f1d13a791640b7ccf9ac5b",
+        "contains_objects": [
+          "55.61.57",
+          "55.61.58"
+        ],
+        "use": [
+          "complete hinge anatomy",
+          "moving-leaf proportion",
+          "five-cell pattern count",
+          "negative-space topology",
+          "segmented knuckle arrangement",
+          "tail terminal"
+        ]
+      }
+    },
+    "evidence_policy": {
+      "museum_catalogued": [
+        "overall length",
+        "overall width",
+        "date",
+        "culture",
+        "medium",
+        "object identity"
+      ],
+      "image_derived_approximate": [
+        "moving leaf fraction",
+        "fixed leaf fraction",
+        "decorative field fraction",
+        "cell pitch",
+        "web width",
+        "pad and terminal proportions"
+      ],
+      "not_observable_and_not_claimed": [
+        "stock thickness",
+        "rear face relief",
+        "pintle clearance",
+        "exact bevel angle",
+        "exact bevel height",
+        "exact manufacturing sequence",
+        "hidden welds or scarf joints"
+      ]
+    }
+  },
+  "scale_contract": {
+    "source_unit": "metre",
+    "giant_house_scale": 10.0,
+    "catalogued_complete_hinge_giant_m": {
+      "length": 4.06,
+      "width": 0.41
+    },
+    "paired_photo_measurement": {
+      "status": "image_derived_approximate",
+      "reason_for_range": "The additional photograph is not an orthographic survey and contains blur, perspective, and two sibling objects.",
+      "moving_leaf_real_m": {
+        "minimum": 0.3,
+        "maximum": 0.33
+      },
+      "moving_leaf_giant_m": {
+        "minimum": 3.0,
+        "maximum": 3.3
+      },
+      "decorative_field_real_m": {
+        "minimum": 0.175,
+        "maximum": 0.195
+      },
+      "decorative_field_giant_m": {
+        "minimum": 1.75,
+        "maximum": 1.95
+      },
+      "full_cell_count": 5,
+      "cell_pitch_real_m": {
+        "minimum": 0.035,
+        "maximum": 0.039
+      },
+      "cell_pitch_giant_m": {
+        "minimum": 0.35,
+        "maximum": 0.39
+      }
+    },
+    "hard_rule": "The catalogued 0.406 m length belongs to the complete hinged object and must never again be assigned to the moving leaf alone."
+  },
+  "construction_read": {
+    "primary_hypothesis": {
+      "value": "one connected openwork strap or plate whose apertures leave a continuous structural web",
+      "confidence": "high",
+      "evidence": [
+        "The paired photograph shows every motif connected to the side rails and adjacent cell junctions in one plane.",
+        "The central and flank leaf shapes are readable as negative apertures bounded by remaining iron.",
+        "The sibling hinge in the same photograph repeats the same connected topology with local deformation."
+      ]
+    },
+    "rejected_hypotheses": [
+      {
+        "value": "two independent sinusoidal ribbons woven over and under one another",
+        "reason": "The paired photograph shows a five-bay pierced grammar with a central spine, flank apertures, and junction apertures rather than ten alternating lens openings."
+      },
+      {
+        "value": "round rod scrollwork",
+        "reason": "The broad lit faces and edge lines read as flat wrought stock with face beveling."
+      },
+      {
+        "value": "one full-width rolled eye",
+        "reason": "The complete-object photograph shows alternating short knuckle barrels across the hinge width."
+      },
+      {
+        "value": "the pointed tail terminal is the hinge eye",
+        "reason": "The additional image locates the segmented pivot at the opposite end and shows the pierced pointed terminal beyond the tail pad."
+      }
+    ],
+    "manufacturing_method_status": "unresolved",
+    "manufacturing_method_rule": "The geometry may reproduce the visible connected openwork but must not claim whether it was slit, punched, chiseled, fire-welded, or assembled until a technical source or side examination establishes that method."
+  },
+  "anatomy": {
+    "fixed_leaf": {
+      "count": 1,
+      "read": "short plain tapered plate with two attachment holes",
+      "state_for_next_build": "separate_component"
+    },
+    "pivot": {
+      "read": "alternating short knuckle barrels around a separate pintle",
+      "minimum_visible_knuckle_segments": 5,
+      "state_for_next_build": "separate_knuckle_schedule_and_separate_pintle"
+    },
+    "pintle": {
+      "read": "separate straight pin occupying the common bore without merging into either leaf",
+      "giant_radius_m": 0.026,
+      "giant_length_m": 0.41,
+      "radial_clearance_to_knuckle_m": 0.004,
+      "dimension_status": "authored_provisional_within_observed_bore",
+      "rule": "Keep the pin within the catalogued cross-stock envelope; do not invent a decorative cap until a side view proves one."
+    },
+    "moving_leaf": {
+      "read": "long framed openwork leaf",
+      "side_rails": 2,
+      "full_pattern_cells": 5,
+      "hinge_side_transition": "three-fastener pad into first half-cell",
+      "tail_side_transition": "last half-cell into reinforced pad",
+      "terminal": "pierced pointed diamond between two rail extensions"
+    },
+    "fasteners": {
+      "rule": "Fastener heads are separate reusable components. Holes and local bearing seats belong to the leaf.",
+      "do_not_bake": [
+        "cast shadows",
+        "wood seen through openings",
+        "black discs standing in for holes"
+      ]
+    }
+  },
+  "pattern_coordinate_system": {
+    "longitudinal_axis": "local_positive_x_from_hinge_toward_tail",
+    "cross_axis": "local_y_from_lower_rail_to_upper_rail",
+    "depth_axis": "local_positive_z_out_from_door",
+    "cell_space": {
+      "pitch": 1.0,
+      "half_inner_width": 1.0,
+      "origin": "cell junction on longitudinal centerline"
+    },
+    "symmetry": {
+      "nominal": "bilateral across the longitudinal centerline and repeated by cell translation",
+      "reference_truth": "the two museum siblings and individual cells contain bounded asymmetry",
+      "implementation_rule": "Build the exact nominal grammar first. Introduce only named, bounded control-point offsets after the nominal clay proof passes."
+    }
+  },
+  "quarter_shape_library": {
+    "canonical_quarter": {
+      "shape_id": "Q0_leaf_quarter",
+      "authored_fraction": "one_quarter",
+      "curve_type": "cubic_bezier",
+      "coordinate_meaning": "u runs from pointed tip to longitudinal belly; v runs from symmetry axis to the aperture edge",
+      "control_points": [
+        [0.0, 0.0],
+        [0.14, 0.0],
+        [0.34, 0.76],
+        [0.5, 1.0]
+      ],
+      "completion_transforms": [
+        "mirror_u_about_0.5",
+        "mirror_v_about_0.0"
+      ],
+      "authorship_rule": "The point departure, shoulder acceleration, belly position, and tangent at the belly are editable authored decisions. They are not reconstructed from a sine wave."
+    },
+    "derived_shapes": {
+      "S1_central_lancet_aperture": {
+        "source": "Q0_leaf_quarter",
+        "operation": "complete_with_both_mirrors",
+        "scale_in_cell_space": [0.48, 0.23],
+        "rotation_degrees": 0.0,
+        "shear": 0.0,
+        "instances_per_full_cell": 1,
+        "role": "central narrow pointed aperture"
+      },
+      "S2_flank_leaf_aperture": {
+        "source": "Q0_leaf_quarter",
+        "operation": "complete_then_mirror_across_cell_centerline",
+        "scale_in_cell_space": [0.42, 0.3],
+        "rotation_degrees": 18.0,
+        "shear": 0.08,
+        "instances_per_full_cell": 2,
+        "role": "paired curved apertures inside the outer leaf cage"
+      },
+      "S3_junction_petal_aperture": {
+        "source": "Q0_leaf_quarter",
+        "operation": "complete_then_rotate_and_mirror",
+        "scale_in_cell_space": [0.34, 0.25],
+        "rotation_degrees": 32.0,
+        "shear": 0.12,
+        "instances_per_inter_cell_junction": 4,
+        "role": "four diagonal apertures separating adjacent cell tips"
+      },
+      "S4_rail_lune_aperture": {
+        "source": "Q0_leaf_quarter",
+        "operation": "complete_then_clip_against_inner_rail_boundary",
+        "scale_in_cell_space": [0.3, 0.21],
+        "rotation_degrees": 7.0,
+        "shear": 0.15,
+        "instances_per_inter_cell_junction": 2,
+        "role": "small side openings that maintain a quiet gap to each structural rail"
+      },
+      "S5_terminal_diamond": {
+        "source": "Q0_leaf_quarter",
+        "operation": "mirror_u_and_v_then_sharpen_longitudinal_tips",
+        "scale_in_cell_space": [0.38, 0.34],
+        "rotation_degrees": 0.0,
+        "shear": 0.0,
+        "instances_per_leaf": 1,
+        "role": "pointed tail terminal with a separate true circular bore"
+      }
+    },
+    "unique_authored_curve_count": 1,
+    "derived_shape_count": 5,
+    "hard_rule": "Every repeated aperture must resolve to the canonical quarter curve plus named transforms. No per-cell freehand replacement and no generic random curve generator are allowed."
+  },
+  "cell_grammar": {
+    "full_cell": {
+      "count": 5,
+      "negative_space_inventory": {
+        "central_lancet": 1,
+        "flank_leaves": 2
+      },
+      "positive_web_inventory": [
+        "outer leaf cage",
+        "central axial bridge",
+        "upper node",
+        "lower node"
+      ],
+      "silhouette_read": "a pointed botanical leaf or eye with three subordinate apertures, not one empty sinusoidal lens"
+    },
+    "inter_cell_junction": {
+      "count": 4,
+      "negative_space_inventory": {
+        "diagonal_petals": 4,
+        "rail_lunes": 2
+      },
+      "positive_web_inventory": [
+        "X-shaped branch junction",
+        "short center bridge",
+        "two rail ties"
+      ],
+      "construction_rule": "The junction must be materially wider than the adjacent branch throats and may not collapse into a mathematical line crossing."
+    },
+    "end_transitions": {
+      "hinge_side": "upper half-cell branches emerge from the reinforced pivot pad without a detached ribbon end",
+      "tail_side": "lower half-cell branches enter the reinforced tail pad before the pierced terminal",
+      "repetition_rule": "Neither end is produced by cropping a middle cell. Each owns an authored transition."
+    }
+  },
+  "section_grammar": {
+    "dimension_status": "reference_bounded_authored_until_side_measurement_exists",
+    "base_stock": {
+      "real_thickness_m": {
+        "minimum": 0.004,
+        "maximum": 0.006
+      },
+      "giant_thickness_m": {
+        "minimum": 0.04,
+        "maximum": 0.06
+      },
+      "status": "authored_range_not_museum_catalogued"
+    },
+    "pattern_web": {
+      "real_nominal_width_m": {
+        "minimum": 0.003,
+        "maximum": 0.005
+      },
+      "giant_nominal_width_m": {
+        "minimum": 0.03,
+        "maximum": 0.05
+      },
+      "status": "image_derived_approximate",
+      "stations": [
+        {
+          "name": "root_node",
+          "s": 0.0,
+          "width_over_nominal": 1.3,
+          "bevel_width_over_local_width": 0.16,
+          "bevel_rise_over_stock_thickness": 0.08,
+          "crown_rise_over_stock_thickness": 0.02,
+          "flat_land_fraction": 0.68
+        },
+        {
+          "name": "throat",
+          "s": 0.15,
+          "width_over_nominal": 0.88,
+          "bevel_width_over_local_width": 0.22,
+          "bevel_rise_over_stock_thickness": 0.1,
+          "crown_rise_over_stock_thickness": 0.03,
+          "flat_land_fraction": 0.56
+        },
+        {
+          "name": "shoulder",
+          "s": 0.32,
+          "width_over_nominal": 1.02,
+          "bevel_width_over_local_width": 0.26,
+          "bevel_rise_over_stock_thickness": 0.13,
+          "crown_rise_over_stock_thickness": 0.04,
+          "flat_land_fraction": 0.48
+        },
+        {
+          "name": "belly",
+          "s": 0.52,
+          "width_over_nominal": 0.84,
+          "bevel_width_over_local_width": 0.3,
+          "bevel_rise_over_stock_thickness": 0.17,
+          "crown_rise_over_stock_thickness": 0.05,
+          "flat_land_fraction": 0.4
+        },
+        {
+          "name": "return",
+          "s": 0.74,
+          "width_over_nominal": 0.94,
+          "bevel_width_over_local_width": 0.25,
+          "bevel_rise_over_stock_thickness": 0.13,
+          "crown_rise_over_stock_thickness": 0.04,
+          "flat_land_fraction": 0.5
+        },
+        {
+          "name": "tip_node",
+          "s": 1.0,
+          "width_over_nominal": 1.24,
+          "bevel_width_over_local_width": 0.18,
+          "bevel_rise_over_stock_thickness": 0.08,
+          "crown_rise_over_stock_thickness": 0.02,
+          "flat_land_fraction": 0.64
+        }
+      ],
+      "line_work_rule": "The bevel shoulder and aperture lip are explicit continuous crease loops. Their spacing narrows through the belly and opens at load-bearing nodes, so the leaf is drawn by geometry under plain light."
+    },
+    "side_rail": {
+      "flat_land_fraction": {
+        "minimum": 0.58,
+        "maximum": 0.7
+      },
+      "bevel_width_over_rail_width": {
+        "minimum": 0.12,
+        "maximum": 0.18
+      },
+      "bevel_rise_over_stock_thickness": {
+        "minimum": 0.06,
+        "maximum": 0.1
+      },
+      "rule": "Rails remain quieter, broader, and flatter than the leaf web. They do not receive the leaf crown profile."
+    },
+    "junction_node": {
+      "minimum_width_over_adjacent_throat": 1.28,
+      "maximum_face_rise_over_stock_thickness": 0.1,
+      "rule": "A junction may widen and flatten, but it must not look like two bars physically passing through each other."
+    },
+    "depth_unknowns": {
+      "rear_face": "keep planar in the first clay proof",
+      "front_face": "use only the bounded relief ratios above",
+      "woven_crossings": "disabled",
+      "reason": "No side or raking-light measurement proves alternating over-under depth."
+    }
+  },
+  "baseline_audit": {
+    "asset": "GH-018-Strap-Hinge-Leaf-A",
+    "blend_sha256": "31ffacd59af185664f7c527f20453f2ba3d1e563f1d8d19e5ce1baa89e9d7de3",
+    "blender_version_read": "5.1.1",
+    "runtime_collection": "GH018_LEAF_A_RUNTIME",
+    "runtime_object_count": 8,
+    "runtime_vertices": 3024,
+    "runtime_polygons": 3120,
+    "runtime_union_extent_m": {
+      "x": 4.20222,
+      "y": 0.283323,
+      "z": 0.41
+    },
+    "source_parameters": {
+      "moving_leaf_length_m": 4.06,
+      "height_m": 0.41,
+      "thickness_m": 0.036,
+      "ribbon_cycles": 5,
+      "ribbon_half_width_m": 0.021,
+      "rail_half_width_m": 0.026,
+      "crossing_depth_m": 0.01,
+      "ribbon_bevel_m": 0.0038,
+      "rail_bevel_m": 0.0045
+    },
+    "hard_invalidations": [
+      {
+        "id": "B01_scale_scope",
+        "finding": "The full 0.406 m catalogue length was scaled to 4.06 m and assigned to the moving leaf alone.",
+        "required_correction": "Scale the complete two-leaf assembly to the catalogued envelope, then derive the moving leaf as an image-bounded fraction."
+      },
+      {
+        "id": "B02_pattern_topology",
+        "finding": "Two sine paths generate approximately ten simple lens openings.",
+        "required_correction": "Construct five full botanical cells with central, flank, junction, and rail apertures."
+      },
+      {
+        "id": "B03_false_weave",
+        "finding": "A cosine depth lane alternates the ribbons over and under.",
+        "required_correction": "Use one connected coplanar web with bounded face relief; keep woven crossings disabled."
+      },
+      {
+        "id": "B04_constant_section",
+        "finding": "Each ribbon has one width, one thickness, and one bevel for its complete path.",
+        "required_correction": "Evaluate width, bevel land, bevel rise, crown, and flat-land fraction at named root, throat, shoulder, belly, return, and tip stations."
+      },
+      {
+        "id": "B05_wrong_pivot",
+        "finding": "One full rolled eye substitutes for the alternating knuckle schedule visible in the complete-object photograph.",
+        "required_correction": "Author short alternating knuckle barrels and a separate pintle interface across the hinge width."
+      },
+      {
+        "id": "B06_wrong_terminal",
+        "finding": "The tail and eye anatomy were inferred from the installed crop without consulting the complete-object image.",
+        "required_correction": "Keep the pointed pierced diamond at the tail and locate the segmented pivot at the opposite end."
+      },
+      {
+        "id": "B07_generic_end_pads",
+        "finding": "Two generic three-hole rectangular pads replace two distinct end transitions.",
+        "required_correction": "Author pivot-pad, tail-pad, first half-cell, last half-cell, rail termination, and terminal as separate semantic zones."
+      }
+    ],
+    "retainable_contracts": [
+      "separate reusable fasteners",
+      "true through holes",
+      "flat-stock rather than round-rod shading",
+      "named interface datums",
+      "no live construction modifiers in the final runtime output",
+      "front, reverse, three-quarter, pivot macro, and mounted proof views"
+    ]
+  },
+  "implementation_contract": {
+    "geometry_build_authorized": true,
+    "proof_render_authorized": true,
+    "next_script_gate": "The saved geometry reopened and passed topology, scale, hole, ownership, and semantic-lane inspection. The user then authorized the five-view neutral-clay geometry proof; forged-iron material remains blocked until those views are judged.",
+    "proof_render_contract": {
+      "authorization": "User said gogo after the five-view neutral-clay proof scope was stated.",
+      "authorized_date": "2026-07-29",
+      "source_blend": "output/openwork_strap_hinge_geometry_v1.blend",
+      "material": "neutral_clay_only",
+      "geometry_mutation_authorized": false,
+      "forged_iron_material_authorized": false,
+      "surface_detail_authorized": false,
+      "views": [
+        "reference_front",
+        "oblique_depth",
+        "cell_macro",
+        "pivot_macro",
+        "rear_construction"
+      ],
+      "view_intent": {
+        "reference_front": "Orthographic front view at the catalogued complete-object envelope for silhouette, rail continuity, five-cell rhythm, and negative-space comparison.",
+        "oblique_depth": "Three-quarter front view for stock thickness, crown, bevel shoulder, aperture lip, and terminal depth.",
+        "cell_macro": "Orthographic front crop centred on the middle cell for central lancet, flank leaves, junction petals, rail lunes, web thickness, and continuous crease loops.",
+        "pivot_macro": "Three-quarter pivot crop for all five knuckles, open seams, alternating ownership, bearing gap, and physical root overlap.",
+        "rear_construction": "Orthographic reverse view for planar rear stock, genuine through-holes, aperture walls, and absence of front-relief fakery."
+      },
+      "presentation_rules": [
+        "Use only the frozen runtime meshes from the geometry blend.",
+        "Do not apply transforms, modifiers, remeshing, subdivision, displacement, smoothing geometry, or corrective edits in the proof script.",
+        "Use one constant neutral clay on every runtime mesh.",
+        "Use a quiet neutral backdrop and three broad area lights.",
+        "Record exact camera, light, resolution, source, output, and geometry-hash evidence in a manifest.",
+        "Do not attach the forged-iron shader, damage, roughness breakup, rust, texture images, or procedural surface nodes."
+      ]
+    },
+    "planned_pipeline": [
+      "Create the canonical Q0 cubic Bezier quarter in normalized cell space.",
+      "Generate the five named closed aperture profiles only through declared mirror, scale, shear, rotation, clip, and translation transforms.",
+      "Lay out five full cells, four inter-cell junctions, and two authored end transitions inside the measured moving-leaf envelope.",
+      "Solve the moving leaf as one connected 2D plate boundary with true aperture loops.",
+      "Create separate outer bevel-shoulder and inner aperture-lip loops so bevel width is geometry, not a global modifier guess.",
+      "Assign front-face elevation from the named section stations while keeping the first rear face planar.",
+      "Extrude true thickness, create aperture walls, and preserve explicit crease loops for the leaf line work.",
+      "Build alternating knuckle segments and the fixed leaf as separate components around one pivot datum.",
+      "Apply all construction transforms and validate the saved runtime meshes with no live modifiers.",
+      "Produce clay proofs before attaching forged-iron material."
+    ],
+    "prohibited_shortcuts": [
+      "sine or wave textures used as geometry",
+      "one uniform curve bevel",
+      "global random point jitter",
+      "noise displacement",
+      "damage",
+      "rust",
+      "roughness used to hide weak form",
+      "AI-generated reference imagery",
+      "rendering before script review"
+    ],
+    "required_semantic_attributes": [
+      "sinc_hinge_zone",
+      "sinc_cell_index",
+      "sinc_shape_id",
+      "sinc_web_station",
+      "sinc_bevel_land",
+      "sinc_aperture_wall",
+      "sinc_front_face",
+      "sinc_rear_face",
+      "sinc_interface_id"
+    ]
+  },
+  "acceptance_gates": {
+    "reference_overlay": [
+      "five full cells align to the paired-image pattern field",
+      "central, flank, junction, and rail negative spaces remain individually legible",
+      "pivot and tail are on the correct ends",
+      "complete assembly, not only the moving leaf, fits the catalogued 4.06 m giant envelope"
+    ],
+    "clay_geometry": [
+      "leaf read survives neutral front light without material contrast",
+      "bevel shoulder and aperture lip create continuous sharp line work",
+      "root, throat, shoulder, belly, return, and tip have visibly different but restrained sections",
+      "no mathematical line crossing or accidental fused intersection remains",
+      "rear face, aperture walls, and segmented knuckles are visible in dedicated proofs"
+    ],
+    "runtime": [
+      "manifold closed meshes",
+      "true holes",
+      "no live construction modifiers",
+      "stable local metre coordinates",
+      "separate moving leaf, fixed leaf, pintle, and fastener ownership"
+    ]
+  }
+}

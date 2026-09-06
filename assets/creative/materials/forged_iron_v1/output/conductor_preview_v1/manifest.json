@@ -1,0 +1,53 @@
+{
+  "schema": "iggy3d.conductor-preview-proof.v1",
+  "status": "accepted-shared-diagnostic",
+  "consumer": {
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "geometry": "approved openwork hinge assembly"
+  },
+  "comparison_contract": {
+    "shared_linear_rgb_value": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "shared_roughness": 0.38,
+    "left_interpretation": "dielectric diffuse base colour",
+    "right_interpretation": "clean conductor normal-incidence reflectance F0",
+    "views": [
+      "front",
+      "grazing"
+    ],
+    "lights": "existing hinge target rig with all three light colours neutralized to white",
+    "saved_blend_modified": false
+  },
+  "accepted_observation": "At grazing view the conductor creates coherent dark broad-face reflection with bright bevel and aperture lands; the dielectric remains chalky and evenly lit.",
+  "limitations": [
+    "This proves clean substrate response only.",
+    "It does not include forge scale, blackening, oil, anisotropy, worked direction, damage, corrosion, or Unreal parity.",
+    "It is intentionally too clean and bright to be accepted as the intact historical hinge material."
+  ],
+  "outputs": {
+    "comparison_board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/comparison_board.png",
+      "sha256": "799a8323fe5ac24ff7ef1ce4af295921684395827fff3c83ffaea80b61e7b260"
+    },
+    "dielectric_front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/dielectric_front.png",
+      "sha256": "5fc385902a30849a2e598f6569d01498a20c63ac95a4d62fab33dbfbded69fd8"
+    },
+    "dielectric_grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/dielectric_grazing.png",
+      "sha256": "05ae2a7c3b6385ae37ca7c02504008db3c08954c294d1c268664f8b53d7457a9"
+    },
+    "conductor_front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/conductor_front.png",
+      "sha256": "e996eea468a41b871c80b4b6db2b75a61da0099d57d504e13e5690536f1f030f"
+    },
+    "conductor_grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/conductor_grazing.png",
+      "sha256": "18735b3f45912e399551bcf1357c89c019025965116a64b25e4dae5b28e31a81"
+    }
+  }
+}

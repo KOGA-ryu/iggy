@@ -1,0 +1,195 @@
+building	place	element	value	unit	source	confidence
+Penshurst Place great hall	Penshurst, Kent	internal length	64	ft	dollman_v2 leaf 46 text	text
+Penshurst Place great hall	Penshurst, Kent	internal width	38 ft 9 in	ft in	dollman_v2 leaf 46 text	text
+Penshurst Place great hall	Penshurst, Kent	floor to ridge of roof	48	ft	dollman_v2 leaf 46 text	text
+Penshurst Place great hall	Penshurst, Kent	internal length, inner face of service-range wall to inner face of far end wall, including the screens passage	64 ft 0 in	ft in	dollman_v2 leaf 52 plate	printed
+Penshurst Place great hall	Penshurst, Kent	internal width on the plan, at the dais line	38 ft 8 in	ft in	dollman_v2 leaf 52 plate	printed
+Penshurst Place great hall	Penshurst, Kent	internal width on the transverse section	38 ft 9 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall	Penshurst, Kent	ridge down to top of figure-corbel capital, i.e. springing of the arched principal / wall-plate level	32 ft 0 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall roof	Penshurst, Kent	purlin at A, larger profile, across	1 ft 7 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall roof	Penshurst, Kent	purlin at A, larger profile, deep	1 ft 8 1/2 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall roof	Penshurst, Kent	purlin at A, smaller profile, deep	1 ft 2 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall roof	Penshurst, Kent	purlin at A, smaller profile, across	1 ft 2 1/2 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall roof	Penshurst, Kent	Section at C.D. profile, across	1 ft 4 in	ft in	dollman_v2 leaf 56 plate	printed
+Penshurst Place great hall	Penshurst, Kent	2-light N and S wall window, overall width at base	5 ft 9 in	ft in	dollman_v2 leaf 60 plate	printed
+Penshurst Place porch	Penshurst, Kent	member on the inner door section (rib or door thickness, not resolved to a single member)	6 3/4 in	in	dollman_v2 leaf 64 plate	printed
+Penshurst Place, window over porch, N front	Penshurst, Kent	overall height of opening	8 ft 8 1/2 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window over porch, N front	Penshurst, Kent	height of lights below the tracery	5 ft 3 1/2 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window over porch, N front	Penshurst, Kent	splayed opening width on the inside	4 ft 10 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window over porch, N front	Penshurst, Kent	opening width in the plane of the window	4 ft 0 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window over porch, N front	Penshurst, Kent	each of two light widths	1 ft 6 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, room over porch	Penshurst, Kent	reveal depth, i.e. wall thickness at this window	2 ft 6 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window in room on 1st floor at E end of great hall	Penshurst, Kent	overall height of opening	7 ft 9 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window in room on 1st floor at E end of great hall	Penshurst, Kent	height of lights	5 ft 6 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window in room on 1st floor at E end of great hall	Penshurst, Kent	splayed opening width on the inside	7 ft 5 3/4 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window in room on 1st floor at E end of great hall	Penshurst, Kent	opening width in the plane of the window	5 ft 2 3/4 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, window in room on 1st floor at E end of great hall	Penshurst, Kent	each of two light widths	2 ft 0 1/2 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place, room on 1st floor at E end of great hall	Penshurst, Kent	reveal depth, i.e. wall thickness at this window	3 ft 1 in	ft in	dollman_v2 leaf 68 plate	printed
+Penshurst Place	Penshurst, Kent	mullion width, across	5 7/8 in	in	dollman_v2 leaf 68 plate	printed
+Penshurst Place	Penshurst, Kent	label mould, across	3 1/2 in	in	dollman_v2 leaf 68 plate	printed
+Penshurst Place great hall gable window	Penshurst, Kent	clear width of one light, between the faces of mullions B and C	2 ft 5 7/8 in	ft in	dollman_v2 leaf 72 plate	printed
+Penshurst Place great hall gable window	Penshurst, Kent	overall width of the window, struck symmetrically about the marked Centre Line	12 ft 3 in	ft in	dollman_v2 leaf 72 plate	printed
+Penshurst Place great hall gable window	Penshurst, Kent	height of the jamb below the head	10 ft 0 in	ft in	dollman_v2 leaf 72 plate	printed
+Penshurst Place chimney stack No.1	Penshurst, Kent	height of capital stage	2 ft 1 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stack No.1	Penshurst, Kent	height of octagonal shaft	5 ft 6 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stack No.1	Penshurst, Kent	height of base stage	3 ft 5 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stack No.2	Penshurst, Kent	height of capital stage	2 ft 0 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stack No.2	Penshurst, Kent	height of octagonal shaft	5 ft 6 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stack No.2	Penshurst, Kent	height of base stage	3 ft 5 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stacks	Penshurst, Kent	octagonal shaft, across the flats	1 ft 11 in	ft in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stacks	Penshurst, Kent	clear gap between paired shafts at base level	4 in	in	dollman_v2 leaf 76 plate	printed
+Penshurst Place chimney stacks	Penshurst, Kent	clear gap between paired shafts at capital level	7 in	in	dollman_v2 leaf 76 plate	printed
+Penshurst Place hall screen	Penshurst, Kent	plinth at C.D., height to floor of the screens passage	1 ft 4 3/8 in	ft in	dollman_v2 leaf 80 plate	printed
+Penshurst Place hall screen	Penshurst, Kent	transom at E.F., across	9 3/4 in	in	dollman_v2 leaf 80 plate	printed
+Penshurst Place oak panels	Penshurst, Kent	linenfold panel, upper left, width by height	9 3/4 in by 1 ft 3 3/8 in	in / ft in	dollman_v2 leaf 84 plate	printed
+Penshurst Place oak panels	Penshurst, Kent	linenfold panel, upper right, width by height	9 3/8 in by 1 ft 3 3/8 in	in / ft in	dollman_v2 leaf 84 plate	printed
+Penshurst Place oak panels	Penshurst, Kent	linenfold panel, lower left, width by height	8 3/4 in by 1 ft 3 3/4 in	in / ft in	dollman_v2 leaf 84 plate	printed
+Penshurst Place oak panels	Penshurst, Kent	linenfold panel, lower centre, width by height	8 3/4 in by 1 ft 4 3/8 in	in / ft in	dollman_v2 leaf 84 plate	printed
+Penshurst Place oak panels	Penshurst, Kent	linenfold panel, lower right, width by height	8 3/8 in by 1 ft 4 3/8 in	in / ft in	dollman_v2 leaf 84 plate	printed
+Penshurst Place hall table	Penshurst, Kent	length	21 ft 9 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place hall table	Penshurst, Kent	height to the drawn Floor Line	2 ft 10 3/4 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place hall table	Penshurst, Kent	width across the end	3 ft 3 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place hall bench	Penshurst, Kent	length	14 ft 7 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place hall bench	Penshurst, Kent	seat height	1 ft 11 1/2 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place hall bench	Penshurst, Kent	top width at the end	10 1/2 in	in	dollman_v2 leaf 88 plate	printed
+Penshurst Place great hall hearth	Penshurst, Kent	octagonal stone hearth, across the flats	7 ft 7 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place iron fire dog	Penshurst, Kent	overall height of the standard, floor to top of the moulded cap	3 ft 8 1/2 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place iron fire dog	Penshurst, Kent	horizontal dimension struck at floor level from the foot of the standard (broken line, right terminus not drawn)	3 ft 11 3/4 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place iron fire dog	Penshurst, Kent	horizontal dimension struck at the level of the top of the standard (broken line, right terminus not drawn)	5 ft 2 in	ft in	dollman_v2 leaf 88 plate	printed
+Penshurst Place iron fire dog	Penshurst, Kent	width of the baluster foot at the base	1 ft 3 in	ft in	dollman_v2 leaf 88 plate	printed
+Browne's Hospital / The Bede House	Stamford, Lincolnshire	audit room	36 ft by 21 ft	ft	dollman_v2 leaf 29 text	text
+Browne's Hospital / The Bede House	Stamford, Lincolnshire	upper (audit room) storey height, elevation band between string course and parapet	12 ft 10 3/4 in	ft in	dollman_v2 leaf 34 plate	printed
+Browne's Hospital / The Bede House	Stamford, Lincolnshire	lower (dormitory) storey height, in the longitudinal section	10 ft 6 in	ft in	dollman_v2 leaf 34 plate	printed
+Browne's Hospital / The Bede House	Stamford, Lincolnshire	unassigned figure on the elevation/section (terminations not resolved)	38 ft 9 in	ft in	dollman_v2 leaf 34 plate	printed
+Browne's Hospital / The Bede House	Stamford, Lincolnshire	unassigned figure on the elevation/section (terminations not resolved)	15 ft 8 3/4 in	ft in	dollman_v2 leaf 34 plate	printed
+Bede House audit room table	Stamford, Lincolnshire	length	15 ft 8 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room table	Stamford, Lincolnshire	height	2 ft 7 3/4 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room bench	Stamford, Lincolnshire	length	14 ft 2 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room bench	Stamford, Lincolnshire	seat height	1 ft 8 1/2 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room settle	Stamford, Lincolnshire	width	4 ft 6 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room settle	Stamford, Lincolnshire	overall height	4 ft 0 3/4 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room settle	Stamford, Lincolnshire	seat height above floor	1 ft 6 in	ft in	dollman_v2 leaf 374 plate	printed
+Bede House audit room settle	Stamford, Lincolnshire	seat depth	1 ft 5 in	ft in	dollman_v2 leaf 374 plate	printed
+Abbot's Hospital dining hall table	Guildford, Surrey	length	10 ft 11 in	ft in	dollman_v2 leaf 374 plate	printed
+Abbot's Hospital dining hall table	Guildford, Surrey	height	2 ft 10 in	ft in	dollman_v2 leaf 374 plate	printed
+Abbot's Hospital hall bench	Guildford, Surrey	length	8 ft 10 in	ft in	dollman_v2 leaf 374 plate	printed
+Abbot's Hospital hall bench	Guildford, Surrey	seat height	1 ft 8 1/2 in	ft in	dollman_v2 leaf 374 plate	printed
+Abbot's Hospital	Guildford, Surrey	quadrangle	66 ft by 63 ft	ft	dollman_v2 leaf 367 text	text
+Bishop of Lincoln's manor house hall (later Jesus Hospital)	Lyddington, Rutland	hall, length by width by height	47 ft 1 in by 20 ft 3 in by 13 ft 9 in high	ft in	dollman_v1 leaf 15 text	text
+Hospital of St Cross	Winchester, Hampshire	refectory	32 ft 0 1/2 in by 26 ft 3 3/4 in	ft in	dollman_v1 leaf 100 plate	printed
+The Guesten Hall	Worcester	internal length	65 ft 8 in	ft in	dollman_v1 leaf 123 text	text
+The Guesten Hall	Worcester	internal width	34 ft 11 in	ft in	dollman_v1 leaf 123 text	text
+The Guesten Hall	Worcester	floor to top of wall-plate	36 ft 8 in	ft in	dollman_v1 leaf 123 text	text
+The Guesten Hall	Worcester	window mullion, across the face	10 1/2 in	in	dollman_v1 leaf 160 plate	printed
+The Guesten Hall	Worcester	window mullion, depth	6 3/4 in	in	dollman_v1 leaf 160 plate	printed
+Refectory of Great Malvern Priory	Great Malvern, Worcestershire	external length by width	75 ft 8 1/2 in by 31 ft 6 in	ft in	dollman_v1 leaf 121 text	text
+Great Malvern Priory church	Great Malvern, Worcestershire	length by width	171 ft by 63 ft	ft	dollman_v1 leaf 121 text	text
+Great Malvern Priory church	Great Malvern, Worcestershire	height of tower	124 ft	ft	dollman_v1 leaf 121 text	text
+Parish church of St Thomas (demolished)	Great Malvern, Worcestershire	length by width	90 ft by 36 ft	ft	dollman_v1 leaf 121 text	text
+Mayfield Palace hall	Mayfield, Sussex	length by width	69 ft 1 in by 39 ft 3 in	ft in	dollman_v1 leaf 128 text	text
+Half timbered house	Mayfield, Sussex	overall length of the front wall	65 ft 5 in	ft in	dollman_v1 leaf 184 plate	printed
+Half timbered house	Mayfield, Sussex	projection of the two gabled wings from the central portion	2 ft 3 in	ft in	dollman_v1 leaf 128 text	text
+Half timbered house	Mayfield, Sussex	projection of the gable wall-face from the wall below	18 in	in	dollman_v1 leaf 128 text	text
+Half timbered house	Mayfield, Sussex	height above ground at which the porch is open at the sides	3 ft	ft	dollman_v1 leaf 128 text	text
+Half timbered house	Mayfield, Sussex	barge board of Gable A, across the carved board	1 ft 8 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	barge board of Gable A, second figure	1 ft 9 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	barge board projection from the wall face, Plan at C.D	1 ft 3 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	barge board member thickness	2 in	in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	barge board moulded lip	1 in	in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	barge board Section	1 ft 4 3/4 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	octagonal porch post	2 ft 8 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	octagonal porch post, second figure	1 ft 0 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	octagonal member on the Head of Porch	1 ft 5 1/2 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	jamb of Window F on Plate 1	9 in	in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	cill and bracket H, figures	1 ft 1 in, 7 in, 5 3/8 in, 4 3/8 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house	Mayfield, Sussex	turned balusters	2 ft 4 3/4 in	ft in	dollman_v1 leaf 188 plate	printed
+Half timbered house at Dinham	Ludlow, Shropshire	overall width of the front	27 ft 4 in	ft in	dollman_v2 leaf 92 plate	printed
+Half timbered house at Dinham	Ludlow, Shropshire	ground line to wall plate, i.e. full height of the three storeys of wall	20 ft 0 in	ft in	dollman_v2 leaf 92 plate	printed
+Half timbered house at Dinham	Ludlow, Shropshire	wall plate to ridge, i.e. gable rise	8 ft 3 in	ft in	dollman_v2 leaf 92 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	ground-storey height at one end of the elevation	10 ft 8 in	ft in	dollman_v2 leaf 96 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	ground-storey height at the other end (the street falls)	11 ft 1 in	ft in	dollman_v2 leaf 96 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	detail at E.F., across the arch springing	3 ft 8 3/4 in	ft in	dollman_v2 leaf 96 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	detail on Opening C / Doorway D	2 ft 2 1/2 in	ft in	dollman_v2 leaf 96 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	doorway detail	1 ft 5 3/8 in	ft in	dollman_v2 leaf 96 plate	printed
+Half timbered house, Butcher Row	Shrewsbury, Shropshire	small member	5 3/8 in	in	dollman_v2 leaf 96 plate	printed
+Old House	Lavenham, Suffolk	height of the timber ground storey, plinth line to point A at the bressummer	9 ft 9 in	ft in	dollman_v2 leaf 280 plate	printed
+Old House	Lavenham, Suffolk	overall width of the north front block, on the Plan	26 ft 3 in	ft in	dollman_v2 leaf 280 plate	printed
+Old House	Lavenham, Suffolk	figure on the Plan	6 ft 3 in	ft in	dollman_v2 leaf 280 plate	printed
+Old House	Lavenham, Suffolk	figure at the top right of the sheet	10 in	in	dollman_v2 leaf 280 plate	printed
+Old House	Lavenham, Suffolk	corner post at A, detail	6 3/4 in	in	dollman_v2 leaf 280 plate	printed
+Old House	Lavenham, Suffolk	head of buttress at D, detail	2 3/4 in	in	dollman_v2 leaf 280 plate	printed
+Old House porch	Lavenham, Suffolk	porch figure (leader assignment to be re-checked)	8 ft 10 in	ft in	dollman_v2 leaf 284 plate	printed
+Old House porch	Lavenham, Suffolk	porch figure (leader assignment to be re-checked)	4 ft 10 in	ft in	dollman_v2 leaf 284 plate	printed
+Old House porch	Lavenham, Suffolk	porch figure (leader assignment to be re-checked)	1 ft 10 in	ft in	dollman_v2 leaf 284 plate	printed
+Old House porch	Lavenham, Suffolk	post plan width, Plan on the line D.D	1 ft 5 in	ft in	dollman_v2 leaf 284 plate	printed
+Old House porch	Lavenham, Suffolk	post plan width, Plan on the line E.E	1 ft 5 in	ft in	dollman_v2 leaf 284 plate	printed
+Old House porch	Lavenham, Suffolk	section dimension at A.A	10 in	in	dollman_v2 leaf 284 plate	printed
+Old House oriel, west front	Lavenham, Suffolk	overall HEIGHT of the oriel (vertical dimension, up-arrow at the cornice, down-arrow at the hatched base)	9 ft 10 in	ft in	dollman_v2 leaf 288 plate	printed
+Old House oriel, west front	Lavenham, Suffolk	projection of the oriel, on the Plan	1 ft 5 in	ft in	dollman_v2 leaf 288 plate	printed
+Old House oriel, west front	Lavenham, Suffolk	Mouldings at A, the cornice member	1 ft 4 in	ft in	dollman_v2 leaf 288 plate	printed
+Old House oriel, west front	Lavenham, Suffolk	mullion width, on the plan section	8 3/8 in	in	dollman_v2 leaf 288 plate	printed
+Old House oriel, west front	Lavenham, Suffolk	Mouldings at C, the sill member	1 ft 1 3/4 in	ft in	dollman_v2 leaf 288 plate	printed
+The Palace	Linlithgow, Scotland	whole pile, north-south	175 ft	ft	dollman_v1 leaf 209 text	text
+The Palace	Linlithgow, Scotland	whole pile, east-west	166 ft	ft	dollman_v1 leaf 209 text	text
+The Palace	Linlithgow, Scotland	east-west length of the pile, running dimension along the ground line of the south elevation	166 ft 2 in	ft in	dollman_v1 leaf 214 plate	printed
+The Palace	Linlithgow, Scotland	ground line to the parapet of the south-west tower (the only figured height for Linlithgow in the work)	66 ft 0 in	ft in	dollman_v1 leaf 214 plate	printed
+The Palace chapel	Linlithgow, Scotland	length by width, occupying the whole height of the building	50 ft by 26 ft	ft	dollman_v1 leaf 210 text	text
+The Palace, Parliament Hall	Linlithgow, Scotland	length by width	98 ft by 30 ft	ft	dollman_v1 leaf 210 text	text
+The Hospital, master's suite over the west range	Ewelme, Oxfordshire	Audit Room	19 ft 3 in by 13 ft 9 in	ft in	dollman_v2 leaf 100 plate	printed
+The Hospital, master's suite over the west range	Ewelme, Oxfordshire	Sitting Room	20 ft 2 in by 13 ft 9 in	ft in	dollman_v2 leaf 100 plate	printed
+The Hospital, master's suite over the west range	Ewelme, Oxfordshire	Bed Room	19 ft 2 in by 13 ft 11 in	ft in	dollman_v2 leaf 100 plate	printed
+The Hospital, brethren's dwelling	Ewelme, Oxfordshire	upper (bed) room, upper floor to the lettered Ceiling Line	8 ft 7 3/4 in	ft in	dollman_v2 leaf 104 plate	printed
+The Hospital, brethren's dwelling	Ewelme, Oxfordshire	ground (sitting) room, greater of two adjacent figures	8 ft 4 3/4 in	ft in	dollman_v2 leaf 104 plate	printed
+The Hospital, brethren's dwelling	Ewelme, Oxfordshire	ground (sitting) room, lesser of two adjacent figures	7 ft 8 1/2 in	ft in	dollman_v2 leaf 104 plate	printed
+The Hospital, passage west of the quadrangle	Ewelme, Oxfordshire	vertical figure at the four-centred doorway	12 ft 6 in	ft in	dollman_v2 leaf 104 plate	printed
+The Hospital, passage west of the quadrangle	Ewelme, Oxfordshire	second vertical figure at the four-centred doorway	13 ft 8 1/2 in	ft in	dollman_v2 leaf 104 plate	printed
+The Hospital, west range	Ewelme, Oxfordshire	Ceiling Line of the upper room down to the lower ground level at the foot of the external stair, i.e. the fall of the site	17 ft 0 in	ft in	dollman_v2 leaf 104 plate	printed
+The Grammar School	Ewelme, Oxfordshire	ground storey (boys' school), greater of two adjacent figures	10 ft 2 3/4 in	ft in	dollman_v2 leaf 108 plate	printed
+The Grammar School	Ewelme, Oxfordshire	ground storey (boys' school), lesser of two adjacent figures	9 ft 7 1/2 in	ft in	dollman_v2 leaf 108 plate	printed
+The Grammar School	Ewelme, Oxfordshire	upper storey (girls' school), upper floor to the wall plate	10 ft 3 in	ft in	dollman_v2 leaf 108 plate	printed
+The Grammar School	Ewelme, Oxfordshire	upper storey (girls' school), upper floor to the apex of the four-centred arched truss	17 ft 5 in	ft in	dollman_v2 leaf 108 plate	printed
+Holcombe Court hall	Holcombe Rogus, Devon	length by width, two storeys in height	44 ft 6 in by 23 ft	ft in	dollman_v2 leaf 146 text	text
+Colston's House dining hall	Small Street, Bristol	length by width, roof in six bays	48 ft 6 in by 18 ft 5 in	ft in	dollman_v2 leaf 291 text	text
+Colston's House, largest first-floor room	Small Street, Bristol	length by width	38 ft 6 in by 19 ft 10 in	ft in	dollman_v2 leaf 291 text	text
+Spicer's Hall	Bristol	hall, length by width, roof in ten bays	32 ft 3 in by 21 ft	ft in	dollman_v2 leaf 247 text	text
+Chapel of St Baldwin	Bristol	length by width	about 30 ft by 20 ft	ft	dollman_v2 leaf 247 text	text
+Canynge's House hall	Redcliff Street, Bristol	length by width	22 ft 4 in by 22 ft 6 in	ft in	dollman_v2 leaf 272 text	text
+Canynge's House	Redcliff Street, Bristol	river front, north-south by east-west, from surviving accounts	60 ft by 48 ft	ft	dollman_v2 leaf 272 text	text
+Blundell's School	Tiverton, Devon	larger schoolroom	55 ft by 24 ft	ft	dollman_v2 leaf 197 text	text
+Blundell's School	Tiverton, Devon	smaller schoolroom	48 ft by 24 ft	ft	dollman_v2 leaf 197 text	text
+Blundell's School	Tiverton, Devon	both schoolrooms, floor to the apex of the roof	36 ft	ft	dollman_v2 leaf 197 text	text
+Blundell's School	Tiverton, Devon	inter-scholium passage width	7 ft	ft	dollman_v2 leaf 197 text	text
+Blundell's School	Tiverton, Devon	dining hall	35 ft by 24 ft	ft	dollman_v2 leaf 197 text	text
+Battle Abbey refectory	Battle, Sussex	length by width	106 ft by 35 ft	ft	dollman_v1 leaf 261 text	text
+Stirling Castle, the Parliament House	Stirling, Scotland	length by width	125 ft by 36 ft	ft	dollman_v1 leaf 359 text	text
+Bede House	Higham Ferrers, Northamptonshire	internal length by width	65 ft 8 in by 23 ft 10 1/2 in	ft in	dollman_v2 leaf 164 text	text
+Ford's Hospital	Coventry	open central court	39 ft 2 in by 11 ft 11 in	ft in	dollman_v1 leaf 283 text	text
+Chapel in the Episcopal Palace	Wells, Somerset	length by width by height, in three bays	52 ft 5 in by 21 ft 3 in by 37 ft high	ft in	dollman_v2 leaf 331 text	text
+Refectory (vanished 1842)	Ely, Cambridgeshire	length	230 ft	ft	dollman_v2 leaf 17 text	text
+Borthwick Castle	Borthwick, Midlothian	plan, and height	about 74 ft by 68 ft, nearly 100 ft high	ft	dollman_v1 leaf 322 text	text
+Borthwick Castle great hall	Borthwick, Midlothian	length	about 40 ft	ft	dollman_v1 leaf 322 text	text
+Roslin / Castle Campbell	Scotland	east-west by broad, walls 9 ft thick in parts	200 ft by 90 ft, walls 9 ft	ft	dollman_v2 leaf 229 text	text
+The Commandery hall	Worcester	plan, length by width	47 ft 10 in by 25 ft 9 in	ft in	dollman_v1 leaf 172 plate	printed
+The Commandery	Worcester	carved seat ends in hall, plan dimension each	1 ft 6 in	ft in	dollman_v1 leaf 172 plate	printed
+Town house, Assize of London, 1 Richard I (1189)	London	party wall thickness	3 ft	ft	dollman_v2 leaf 13 text	text
+Town house, Assize of London, 1 Richard I (1189)	London	masonry wall height before the timber gable	16 ft	ft	dollman_v2 leaf 13 text	text
+Ancient iron work, Shoppee collection	various parts of the kingdom	scutcheon diameter	5 in	in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	hinge, across the two leaves	3 1/2 in	in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	bolt plate, overall length	3 3/4 in	in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	latch, overall length	8 3/4 in	in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	latch, overall height of the vertical back plate	7 in	in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	sliding sconce, overall height	1 ft 7 in	ft in	dollman_v1 leaf 164 plate	printed
+Ancient iron work, Shoppee collection	various parts of the kingdom	sliding sconce, width of the back-plate channel	1 3/8 in	in	dollman_v1 leaf 164 plate	printed
+Closing ring, Chant Marle Farm	near Cattistock, Dorset	height by width	6 7/8 in by 4 5/8 in	in	dollman_v2 leaf 370 plate	printed
+Closing ring, The Commandery	Worcester	across the ring	4 in	in	dollman_v2 leaf 370 plate	printed
+Escutcheon on the gateway of the Bishop's Palace	Wells, Somerset	height	5 3/4 in	in	dollman_v2 leaf 370 plate	printed
+Knocker (original in E. Browning's collection)	Stamford, Lincolnshire	length	7 3/8 in	in	dollman_v2 leaf 370 plate	printed
+Window latch	Lambeth Palace, Surrey	length	5 5/8 in	in	dollman_v2 leaf 370 plate	printed
+Old oak panelling (foreign), Plate 1 panel A	from an old house in Lincolnshire	sunk field, width by height	7 3/4 in by 1 ft 0 in	in / ft in	dollman_v2 leaf 254 plate	printed
+Old oak panelling (foreign), Plate 1 panel B	from an old house in Lincolnshire	width by height	5 7/8 in by 1 ft 2 1/2 in	in / ft in	dollman_v2 leaf 254 plate	printed
+Old oak panelling (foreign), Plate 2 upright panel 1	E. Browning's collection, Stamford	width	7 5/16 in	in	dollman_v2 leaf 258 plate	printed
+Old oak panelling (foreign), Plate 2 upright panel 2	E. Browning's collection, Stamford	width	7 3/16 in	in	dollman_v2 leaf 258 plate	printed
+Old oak panelling (foreign), Plate 2 frieze	E. Browning's collection, Stamford	length	1 ft 2 5/8 in	ft in	dollman_v2 leaf 258 plate	printed
+Old oak panelling (foreign), Plate 2 frieze	E. Browning's collection, Stamford	height	4 3/8 in	in	dollman_v2 leaf 258 plate	printed
+Old oak panelling (foreign), Plate 3 No. 1	from an old house in Lincolnshire	height by width	1 ft 7 1/2 in by 7 1/2 in	ft in	dollman_v2 leaf 262 plate	printed
+Old oak panelling (foreign), Plate 3 No. 2	from an old house in Lincolnshire	height	9 5/8 in	in	dollman_v2 leaf 262 plate	printed

@@ -6,6 +6,7 @@
 namespace iggy3d::vulkan {
 
 using command_recording_internal::recordExternalUi;
+using command_recording_internal::recordCaptureAndPresent;
 using command_recording_internal::recordHudGlyphQuads;
 using command_recording_internal::recordOverlayRects;
 using command_recording_internal::reasonFor;
@@ -103,20 +104,9 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
   const bool externalUiRecorded = recordExternalUi(
       info.externalUiHook, info.commandBuffer, info.swapchainImage,
       info.swapchainImageView, info.extent, info.frameSlot);
-
-  VkImageMemoryBarrier toPresent{};
-  toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  toPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-  toPresent.dstAccessMask = 0;
-  toPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-  toPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  toPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  toPresent.image = info.swapchainImage;
-  toPresent.subresourceRange = toColor.subresourceRange;
-  vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
-                       &toPresent);
+  const bool captureRecorded = recordCaptureAndPresent(
+      info.commandBuffer, info.swapchainImage, info.extent,
+      info.captureEnabled, info.captureBuffer, info.captureBufferSize);
 
   vkResult = vkEndCommandBuffer(info.commandBuffer);
   if (vkResult != VK_SUCCESS) {
@@ -144,6 +134,7 @@ CommandRecordResult CommandRecording::recordEmptyFrame(const EmptyFrameRecordInf
                      static_cast<std::uint64_t>(info.uiOverlayRectCount));
   appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
                      static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
+  appendReceiptField(result.receipt, "capture_copy_recorded", captureRecorded);
   appendReceiptField(result.receipt, "external_ui_recorded", externalUiRecorded);
   return result;
 }

@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-09-06T06:42:18.218084+00:00",
+  "source_root": "/Users/kogaryu/devil/99-red-booleans/problems",
+  "user_report": {
+    "reported_complete_through": "048",
+    "reported_compute_verified_through": "040",
+    "temporary_page_ids_at_message": [
+      "049",
+      "050"
+    ],
+    "scope": "Reported history, not reconstructed from the learner status fields"
+  },
+  "snapshots": [
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/math/002_quadratic_through_three_points.md",
+      "snapshot": "source_snapshots/math/002_quadratic_through_three_points.md",
+      "sha256": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea",
+      "bytes": 5736
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/math/013_closest_point_on_a_line.md",
+      "snapshot": "source_snapshots/math/013_closest_point_on_a_line.md",
+      "sha256": "a341f24ee344a9974a6424990befba34aa56bb9cf50fec6df303df04cebac873",
+      "bytes": 16111
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/README.md",
+      "snapshot": "source_snapshots/README.md",
+      "sha256": "fcb4efb2af5bb0e00e924d96bdfd929005c231e0dfe84995c88717b07f3824d9",
+      "bytes": 8446
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/TEMPLATE-math.md",
+      "snapshot": "source_snapshots/TEMPLATE-math.md",
+      "sha256": "1be671e860e75537cadd39c641ca772b00cd83460c9d64fd971a4ebfa649f70f",
+      "bytes": 4474
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/NOTATION.md",
+      "snapshot": "source_snapshots/NOTATION.md",
+      "sha256": "ae0fe4e447bbdf034918daca45d7037a92ddb5d8f856b66106663b5c156d1351",
+      "bytes": 8057
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/ORDER.md",
+      "snapshot": "source_snapshots/ORDER.md",
+      "sha256": "2e10eb9867fd78db4c3cae5d3eec1c1ebfcb4e7375ed31465bd5a5f9823cd81e",
+      "bytes": 2986
+    },
+    {
+      "source_path": "/Users/kogaryu/devil/99-red-booleans/problems/EXTRACT.md",
+      "snapshot": "source_snapshots/EXTRACT.md",
+      "sha256": "ed96c6294e34075aece0dfac6cc5cca59a784efe7a8c39ee915370c12031a96f",
+      "bytes": 4879
+    }
+  ],
+  "selected_pages": [
+    {
+      "page_id": "002",
+      "local_setup": "not started",
+      "local_solve": "not attempted",
+      "local_exit_zero_receipt_present": false,
+      "referenced_program_exists": false,
+      "verification_history": "user reported computed and verified; local pipeline receipt not present in inspected page"
+    },
+    {
+      "page_id": "013",
+      "local_setup": "not started",
+      "local_solve": "not attempted",
+      "local_exit_zero_receipt_present": false,
+      "referenced_program_exists": false,
+      "verification_history": "user reported computed and verified; local pipeline receipt not present in inspected page"
+    }
+  ]
+}

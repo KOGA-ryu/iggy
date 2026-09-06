@@ -1,0 +1,202 @@
+{
+  "schema": "iggy-rope-plant-fibre-profile/1.0",
+  "profile_id": "rope_plant_fibre_v1",
+  "display_name": "Three-strand regular-lay plant-fibre rope",
+  "intent": "A scale-aware, curve-stable rope surface with separately authored rope lay, counter-twisted yarn groups, fibre ribbons, colour fields, linework, and material response.",
+  "reference_authority": {
+    "construction": {
+      "authors": "A. H. Stang and L. R. Strickenberg",
+      "institution": "United States Bureau of Standards",
+      "title": "Results of Some Tests of Manila Rope",
+      "year": 1921,
+      "url": "https://nvlpubs.nist.gov/nistpubs/nbstechnologic/nbstechnologicpaperT198.pdf",
+      "use": "Three-strand regular-lay construction, opposite rope and strand twist, measured turns per foot, and approximate yarn-count scaling."
+    },
+    "measurement_method": {
+      "institution": "International Organization for Standardization",
+      "standard": "ISO 2307",
+      "url": "https://cdn.standards.iteh.ai/samples/7136/0bd806bf6d0c422c852a1e0dd9461c91/ISO-2307-1972.pdf",
+      "use": "Lay length is the axial length of one complete turn of the same strand and is measured under reference tension."
+    },
+    "material_breakdown": {
+      "artist": "Ishan Verma",
+      "title": "Woven Rope",
+      "url": "https://gamesartist.co.uk/woven-rope/",
+      "use": "Separate generators for the large rope pattern, threadwork, and loose strands; separately layered normals, colour, roughness, and ambient occlusion."
+    },
+    "fiber_pattern": {
+      "institution": "Adobe",
+      "title": "Substance 3D Designer Fibers 1",
+      "url": "https://experienceleague.adobe.com/en/docs/substance-3d-designer/using/substance-graphs/nodes-reference-for-substance-graphs/node-library/texture-generators/patterns/fibers-1",
+      "use": "Fibre patterns belong in height/detail lanes for rope and cloth rather than being indiscriminate colour noise."
+    }
+  },
+  "coordinate_contract": {
+    "space": "curve_local",
+    "unit": "metre",
+    "longitudinal_attribute": "sinc_rope_u_m",
+    "circumference_attribute": "sinc_rope_v_turn",
+    "diameter_attribute": "sinc_rope_diameter_m",
+    "variant_attribute": "sinc_seed",
+    "compression_attribute": "sinc_rope_compression_mask",
+    "wetness_attribute": "sinc_rope_wetness_mask",
+    "fray_attribute": "sinc_rope_fray_mask",
+    "rule": "U advances in metres along the evaluated curve before deformation; V makes one normalized turn around the circumference. Object length changes may not stretch the lay or yarn pitch."
+  },
+  "geometry_source": {
+    "schema": "iggy3d.geometry.rope_plant_fibre_v1.v1",
+    "generator": "build_rope_plant_fibre_v1.py",
+    "representation": "curve_native_geometry_nodes",
+    "strand_count": 3,
+    "yarns_per_strand": 7,
+    "rope_lay_direction": "right_hand",
+    "yarn_lay_direction": "left_hand",
+    "packing": {
+      "model": "three_equal_tangent_strands_with_one_plus_six_yarn_packing",
+      "strand_radius_diameter_fraction": 0.2320508075688773,
+      "strand_center_diameter_fraction": 0.2679491924311227,
+      "strand_hull_radius_diameter_fraction": 0.215,
+      "yarn_radius_strand_radius_fraction": 0.23,
+      "outer_yarn_center_strand_radius_fraction": 0.72,
+      "derived_outer_diameter_multiplier": 0.9767952017304612
+    },
+    "yarn_counterturn_ratio_min": 1.05,
+    "yarn_counterturn_ratio_default": 1.14,
+    "yarn_counterturn_ratio_max": 1.24,
+    "sampling": {
+      "mode": "physical_length",
+      "samples_per_lay_minimum": 28,
+      "samples_across_diameter_minimum": 8,
+      "rule": "The evaluated curve is resampled by metre length. Index is never used as the longitudinal twist coordinate."
+    },
+    "coordinate_attributes": [
+      "sinc_rope_u_m",
+      "sinc_rope_v_turn",
+      "sinc_rope_diameter_m",
+      "sinc_rope_strand_id",
+      "sinc_rope_yarn_id",
+      "rope_uv"
+    ],
+    "material_contract": {
+      "base_color": "broad persistent rope and yarn passages with more than twenty related plant-fibre shades",
+      "normal": "fine longitudinal fibre ridges only; strand and yarn relief are geometry",
+      "roughness": "independent absorbency and crown variation",
+      "sheen": "restrained fibre grazing response",
+      "baked_ao_in_base_color": false
+    },
+    "lod_contract": {
+      "hero": "twenty-one yarn curves plus sparse optional flyaway geometry",
+      "standard": "three-lobed rope mesh with yarn detail baked from the hero source",
+      "distant": "single tube with tangent normal, roughness, colour, and identity maps"
+    }
+  },
+  "presets": [
+    {
+      "id": "fine_lashing",
+      "diameter_m": 0.012,
+      "lay_length_m": 0.034,
+      "use": "fine ties and furniture lashings"
+    },
+    {
+      "id": "utility_line",
+      "diameter_m": 0.032,
+      "lay_length_m": 0.09,
+      "use": "trap lines, pulley rope, and construction bindings"
+    },
+    {
+      "id": "heavy_hawser",
+      "diameter_m": 0.07,
+      "lay_length_m": 0.196,
+      "use": "rope bridges, hoists, and giant-house rigging"
+    }
+  ],
+  "surface_response": {
+    "model": "principled_dielectric_layered_fibre",
+    "metallic": 0.0,
+    "ior": 1.47,
+    "roughness_range": [
+      0.66,
+      0.86
+    ],
+    "anisotropy": 0.18,
+    "height_layers_diameter_fraction": {
+      "rope_lobes": 0.022,
+      "yarn_groups": 0.012,
+      "fibre_ribbons": 0.0016
+    },
+    "rule": "Large rope lobes, yarn groups, and fibre ribbons retain independent height and normal contributions. Fine flyaway silhouettes remain an optional geometry lane."
+  },
+  "palette": {
+    "dry_warm_srgb": [
+      "#3d2c1f",
+      "#4d3825",
+      "#5e452c",
+      "#705335",
+      "#80613e",
+      "#91714b",
+      "#a28158",
+      "#b08f65",
+      "#bda177",
+      "#c7ad86",
+      "#d0b994",
+      "#d8c3a2",
+      "#8b6a45",
+      "#765737",
+      "#ab8659",
+      "#c19a6b",
+      "#66503a",
+      "#9b7d5b",
+      "#b8a07f",
+      "#d4c4aa"
+    ],
+    "weathered_grey_srgb": [
+      "#3d3932",
+      "#4b463d",
+      "#5b5549",
+      "#6b6456",
+      "#7b7363",
+      "#8b8270",
+      "#9a917f",
+      "#aaa18e"
+    ],
+    "ink_srgb": "#35271e"
+  },
+  "layers": [
+    {
+      "id": "three_strand_rope_lay",
+      "purpose": "Three broad interlocked lobes over one measured axial lay, with restrained periodic phase drift."
+    },
+    {
+      "id": "counter_twisted_yarn_groups",
+      "purpose": "Visible yarn groups travel opposite the rope lay and vary in width and prominence instead of forming a perfect stripe fill."
+    },
+    {
+      "id": "fibre_ribbons",
+      "purpose": "Band-limited fine fibres follow yarn direction and disappear through authored quiet passages."
+    },
+    {
+      "id": "twenty_tone_colour_field",
+      "purpose": "Warm, neutral, and pale plant-fibre tones are mixed at strand, yarn, and fibre scales without baking a light direction."
+    },
+    {
+      "id": "selective_graphic_linework",
+      "purpose": "Broken strand-separator ink reinforces the cel-shaded read but is gated away from large quiet spans."
+    },
+    {
+      "id": "independent_roughness",
+      "purpose": "Broad absorbency, yarn crown, and fibre response combine without copying the height map."
+    }
+  ],
+  "excluded_lanes": [
+    "ai_generated_imagery",
+    "photographic_noise",
+    "uniform_fuzz",
+    "uniform_fray",
+    "random_damage",
+    "dirt",
+    "wetness",
+    "blood",
+    "baked_directional_light",
+    "indiscriminate_geometry_displacement"
+  ]
+}

@@ -1,0 +1,375 @@
+{
+  "schema": "iggy3d.world_asset.rough_hewn_timber_beam.v1",
+  "asset_id": "world_asset_001_rough_hewn_timber_beam",
+  "display_name": "World Asset 001 - Rough-Hewn Timber Beam",
+  "seed": 70191,
+  "source_policy": {
+    "ai_generated_imagery": false,
+    "photographic_projection": false,
+    "plain_clay_acceptance_first": true,
+    "single_asset_scope": true,
+    "damage_default": "restrained_intrinsic_only"
+  },
+  "dimensions_m": {
+    "length": 4.2,
+    "start_width": 0.3,
+    "start_height": 0.34,
+    "end_width": 0.288,
+    "end_height": 0.329
+  },
+  "primary_form": {
+    "longitudinal_sections": 145,
+    "samples_per_hewn_face": 17,
+    "maximum_vertical_bow_m": 0.012,
+    "maximum_lateral_crook_m": 0.007,
+    "total_twist_degrees": 1.15,
+    "cross_section_lean_m": {
+      "top": 0.004,
+      "front": -0.003,
+      "bottom": 0.002,
+      "back": 0.003
+    },
+    "chamfer_width_m": {
+      "minimum": 0.006,
+      "nominal": 0.011,
+      "maximum": 0.019
+    }
+  },
+  "joinery_reserved_zones": [
+    {
+      "id": "left_end_joinery",
+      "x_min_m": -1.98,
+      "x_max_m": -1.62,
+      "permitted_uses": [
+        "tenon",
+        "housed_joint",
+        "iron_strap",
+        "rope_wrap"
+      ]
+    },
+    {
+      "id": "central_bearing",
+      "x_min_m": -0.31,
+      "x_max_m": 0.31,
+      "permitted_uses": [
+        "mortise",
+        "peg",
+        "compression_bearing",
+        "iron_strap"
+      ]
+    },
+    {
+      "id": "right_end_joinery",
+      "x_min_m": 1.61,
+      "x_max_m": 1.98,
+      "permitted_uses": [
+        "tenon",
+        "housed_joint",
+        "iron_strap",
+        "rope_wrap"
+      ]
+    }
+  ],
+  "hewing": {
+    "geometry_rule": "broad_target_planes_only",
+    "local_event_usage": "later_striation_and_tool_signature_lane",
+    "protected_zone_depth_multiplier": 0.24,
+    "baseline_plane_drift_m": 0.003,
+    "baseline_depth_scale": 1.12,
+    "local_event_normal_depth_scale": 0.72,
+    "plane_pass_cross_skew_m": {
+      "front": 0.13,
+      "back": -0.115,
+      "top": 0.085,
+      "bottom": -0.095
+    },
+    "plane_fit_strength": 0.94,
+    "plane_fit_maximum_correction_m": 0.0032,
+    "plane_passes": {
+      "front": [
+        [-2.1, 0.0011, -0.0004],
+        [-1.77, 0.0022, 0.0002],
+        [-1.46, 0.0015, 0.0006],
+        [-1.08, 0.0027, -0.0003],
+        [-0.79, 0.0019, -0.0007],
+        [-0.42, 0.0025, 0.0001],
+        [-0.09, 0.0014, 0.0005],
+        [0.24, 0.0023, -0.0002],
+        [0.61, 0.0017, -0.0006],
+        [0.92, 0.0028, 0.0003],
+        [1.29, 0.0016, 0.0007],
+        [1.63, 0.0024, -0.0001],
+        [2.1, 0.0012, -0.0004]
+      ],
+      "back": [
+        [-2.1, 0.0018, 0.0003],
+        [-1.71, 0.0012, -0.0005],
+        [-1.39, 0.0026, 0.0001],
+        [-1.02, 0.0017, 0.0006],
+        [-0.68, 0.0023, -0.0002],
+        [-0.35, 0.0013, -0.0007],
+        [0.02, 0.0027, 0.0002],
+        [0.33, 0.0018, 0.0005],
+        [0.73, 0.0024, -0.0003],
+        [1.08, 0.0014, -0.0006],
+        [1.42, 0.0025, 0.0004],
+        [1.76, 0.0017, 0.0001],
+        [2.1, 0.0021, -0.0004]
+      ],
+      "top": [
+        [-2.1, 0.0008, -0.0002],
+        [-1.74, 0.0015, 0.0004],
+        [-1.37, 0.001, -0.0005],
+        [-1.03, 0.0019, 0.0001],
+        [-0.64, 0.0012, 0.0005],
+        [-0.29, 0.0017, -0.0003],
+        [0.08, 0.0009, -0.0004],
+        [0.45, 0.0018, 0.0002],
+        [0.8, 0.0011, 0.0006],
+        [1.16, 0.0016, -0.0002],
+        [1.51, 0.001, -0.0005],
+        [1.82, 0.0017, 0.0003],
+        [2.1, 0.0009, 0.0001]
+      ],
+      "bottom": [
+        [-2.1, 0.0017, 0.0005],
+        [-1.79, 0.0028, -0.0002],
+        [-1.43, 0.0014, -0.0006],
+        [-1.11, 0.0025, 0.0003],
+        [-0.75, 0.0018, 0.0007],
+        [-0.4, 0.0029, -0.0001],
+        [-0.06, 0.0015, -0.0005],
+        [0.31, 0.0026, 0.0002],
+        [0.67, 0.0019, 0.0006],
+        [1.01, 0.0027, -0.0003],
+        [1.36, 0.0016, -0.0007],
+        [1.72, 0.0024, 0.0004],
+        [2.1, 0.0013, 0.0001]
+      ]
+    },
+    "faces": {
+      "front": {
+        "tool": "broad_axe",
+        "stroke_direction": "diagonal_down_with_abrupt_stop",
+        "marks": [
+          [-1.93, 0.19, -0.34, 0.44, 0.0058, 43.0],
+          [-1.66, 0.24, 0.28, 0.51, 0.0042, 38.0],
+          [-1.38, 0.16, -0.12, 0.36, 0.0067, 47.0],
+          [-1.11, 0.28, 0.43, 0.46, 0.0037, 35.0],
+          [-0.82, 0.2, -0.48, 0.4, 0.0074, 44.0],
+          [-0.57, 0.15, 0.08, 0.32, 0.0049, 31.0],
+          [-0.38, 0.21, 0.52, 0.38, 0.0034, 46.0],
+          [-0.12, 0.25, -0.26, 0.52, 0.0028, 39.0],
+          [0.19, 0.17, 0.36, 0.34, 0.0056, 49.0],
+          [0.42, 0.29, -0.41, 0.47, 0.0031, 33.0],
+          [0.75, 0.2, 0.13, 0.38, 0.0078, 42.0],
+          [1.01, 0.14, -0.55, 0.31, 0.0045, 29.0],
+          [1.22, 0.25, 0.44, 0.45, 0.0051, 46.0],
+          [1.53, 0.18, -0.1, 0.36, 0.0062, 37.0],
+          [1.79, 0.24, 0.31, 0.5, 0.0036, 45.0]
+        ]
+      },
+      "back": {
+        "tool": "broad_axe",
+        "stroke_direction": "opposed_diagonal_down_with_abrupt_stop",
+        "marks": [
+          [-1.96, 0.17, 0.38, 0.41, 0.0045, -39.0],
+          [-1.72, 0.26, -0.22, 0.5, 0.0064, -47.0],
+          [-1.41, 0.19, 0.51, 0.36, 0.0032, -33.0],
+          [-1.16, 0.22, -0.47, 0.45, 0.0071, -42.0],
+          [-0.87, 0.15, 0.04, 0.3, 0.0048, -29.0],
+          [-0.67, 0.27, 0.33, 0.48, 0.0035, -45.0],
+          [-0.34, 0.18, -0.4, 0.37, 0.0057, -37.0],
+          [-0.08, 0.25, 0.17, 0.53, 0.0026, -43.0],
+          [0.23, 0.16, -0.55, 0.33, 0.0069, -31.0],
+          [0.46, 0.3, 0.42, 0.49, 0.0039, -48.0],
+          [0.81, 0.18, -0.09, 0.35, 0.0076, -40.0],
+          [1.04, 0.15, 0.56, 0.3, 0.0041, -27.0],
+          [1.25, 0.24, -0.36, 0.46, 0.0053, -44.0],
+          [1.56, 0.19, 0.14, 0.38, 0.006, -35.0],
+          [1.82, 0.22, -0.43, 0.51, 0.0033, -46.0]
+        ]
+      },
+      "top": {
+        "tool": "broad_axe_then_light_adze_refinement",
+        "stroke_direction": "mostly_longitudinal_shallow_planes",
+        "marks": [
+          [-1.88, 0.31, -0.42, 0.5, 0.0032, 14.0],
+          [-1.51, 0.23, 0.22, 0.39, 0.0048, -11.0],
+          [-1.22, 0.34, 0.5, 0.54, 0.0025, 19.0],
+          [-0.81, 0.26, -0.16, 0.43, 0.0054, 8.0],
+          [-0.48, 0.19, -0.55, 0.34, 0.0038, -16.0],
+          [-0.21, 0.32, 0.31, 0.47, 0.0023, 12.0],
+          [0.17, 0.24, -0.37, 0.4, 0.0046, -8.0],
+          [0.49, 0.36, 0.46, 0.55, 0.0028, 18.0],
+          [0.92, 0.21, -0.08, 0.36, 0.0051, 5.0],
+          [1.19, 0.29, -0.49, 0.44, 0.0034, -14.0],
+          [1.55, 0.22, 0.19, 0.38, 0.0043, 11.0],
+          [1.84, 0.28, 0.51, 0.49, 0.0026, -7.0]
+        ]
+      },
+      "bottom": {
+        "tool": "scoring_axe_and_broad_axe",
+        "stroke_direction": "stronger_scoring_stops",
+        "marks": [
+          [-1.94, 0.18, 0.43, 0.37, 0.0062, 34.0],
+          [-1.7, 0.24, -0.31, 0.46, 0.0041, 48.0],
+          [-1.4, 0.16, 0.08, 0.31, 0.0079, 29.0],
+          [-1.17, 0.3, -0.52, 0.5, 0.0033, 45.0],
+          [-0.82, 0.21, 0.36, 0.39, 0.0068, 38.0],
+          [-0.55, 0.14, -0.13, 0.29, 0.0052, 51.0],
+          [-0.34, 0.27, 0.5, 0.44, 0.003, 36.0],
+          [-0.02, 0.2, -0.45, 0.35, 0.0072, 43.0],
+          [0.25, 0.25, 0.16, 0.48, 0.0044, 31.0],
+          [0.56, 0.17, 0.53, 0.32, 0.0065, 49.0],
+          [0.79, 0.31, -0.28, 0.51, 0.0035, 40.0],
+          [1.15, 0.19, 0.05, 0.36, 0.0077, 27.0],
+          [1.41, 0.23, -0.5, 0.42, 0.004, 46.0],
+          [1.71, 0.16, 0.34, 0.3, 0.006, 35.0],
+          [1.93, 0.2, -0.08, 0.39, 0.0031, 50.0]
+        ]
+      }
+    }
+  },
+  "anatomy": {
+    "knots": [
+      {
+        "id": "front_live_knot",
+        "face": "front",
+        "x_m": -0.72,
+        "cross_m": 0.041,
+        "major_radius_m": 0.052,
+        "minor_radius_m": 0.036,
+        "recess_m": 0.0035,
+        "grain_influence_radius_m": 0.23
+      },
+      {
+        "id": "top_pin_knot",
+        "face": "top",
+        "x_m": 1.06,
+        "cross_m": -0.058,
+        "major_radius_m": 0.034,
+        "minor_radius_m": 0.025,
+        "recess_m": 0.0025,
+        "grain_influence_radius_m": 0.14
+      }
+    ],
+    "end_checks": [
+      {
+        "id": "left_check_a",
+        "end": "left",
+        "angle_degrees": 17.0,
+        "radial_start_m": 0.018,
+        "radial_end_m": 0.19,
+        "mouth_width_m": 0.0065,
+        "depth_m": 0.24
+      },
+      {
+        "id": "left_check_b",
+        "end": "left",
+        "angle_degrees": 138.0,
+        "radial_start_m": 0.034,
+        "radial_end_m": 0.17,
+        "mouth_width_m": 0.004,
+        "depth_m": 0.16
+      },
+      {
+        "id": "left_check_c",
+        "end": "left",
+        "angle_degrees": 262.0,
+        "radial_start_m": 0.028,
+        "radial_end_m": 0.15,
+        "mouth_width_m": 0.003,
+        "depth_m": 0.11
+      },
+      {
+        "id": "right_check_a",
+        "end": "right",
+        "angle_degrees": 72.0,
+        "radial_start_m": 0.021,
+        "radial_end_m": 0.18,
+        "mouth_width_m": 0.005,
+        "depth_m": 0.2
+      },
+      {
+        "id": "right_check_b",
+        "end": "right",
+        "angle_degrees": 211.0,
+        "radial_start_m": 0.038,
+        "radial_end_m": 0.145,
+        "mouth_width_m": 0.0035,
+        "depth_m": 0.13
+      }
+    ],
+    "edge_chips": [
+      {
+        "id": "left_front_top_chip",
+        "x_m": -1.77,
+        "corner": "front_top",
+        "length_m": 0.061,
+        "width_m": 0.033,
+        "depth_m": 0.021
+      },
+      {
+        "id": "right_back_bottom_chip",
+        "x_m": 1.46,
+        "corner": "back_bottom",
+        "length_m": 0.044,
+        "width_m": 0.026,
+        "depth_m": 0.017
+      }
+    ]
+  },
+  "modifier_contract": [
+    "intrinsic_check_booleans",
+    "knot_socket_booleans",
+    "restrained_edge_loss_booleans",
+    "selective_micro_bevel",
+    "weighted_normals"
+  ],
+  "review_contract": {
+    "render_width": 1400,
+    "render_height": 760,
+    "required_proofs": [
+      "front",
+      "back",
+      "top",
+      "bottom",
+      "end_left",
+      "end_right",
+      "perspective_a",
+      "perspective_b",
+      "wireframe",
+      "clay_silhouette",
+      "toolmark_grazing",
+      "end_checks_closeup"
+    ]
+  },
+  "reference_authority": [
+    {
+      "title": "How They Hewed It",
+      "url": "https://www.oldewoodltd.com/blog/how-they-hewed-it",
+      "used_for": "common 8x8 and 10x10 finished sections; scoring every one or two feet; broad-axe joggling sequence"
+    },
+    {
+      "title": "The Broad Axe vs. the Adze",
+      "url": "https://handmadehouses.com/the-broad-axe-vs-the-adze/",
+      "used_for": "broad-axe stopping marks commonly near 45 degrees; rejection of random faux-adze scoop coverage"
+    },
+    {
+      "title": "USDA Wood Handbook, FPL-GTR-190",
+      "url": "https://www.fpl.fs.usda.gov/documnts/fplgtr/fplgtr190/fpl_gtr190.pdf",
+      "used_for": "knot-driven grain distortion and distinction between checks and splits"
+    },
+    {
+      "title": "USDA Timber Bridges Manual",
+      "url": "https://www.fpl.fs.usda.gov/documnts/misc/em7700_8--entire-publication.pdf",
+      "used_for": "bow, twist, crook, cup and drying checks across annual rings"
+    },
+    {
+      "title": "Blender Bevel Modifier Manual",
+      "url": "https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/bevel.html",
+      "used_for": "non-destructive selective bevel, hardened normals and face-strength workflow"
+    }
+  ]
+}

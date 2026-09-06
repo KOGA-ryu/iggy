@@ -1,0 +1,396 @@
+{
+  "schema": "iggy3d.pattern.rope_bundle_tracks.v2",
+  "pattern_id": "rope_bundle_tracks_champion_v2",
+  "coordinate_rule": "Offsets and widths are fractions of one primary strand sector. Track curves use the along-strand coordinate, not world axes.",
+  "counter_twist_turns_per_tile": {
+    "fine_lashing": -3.72,
+    "utility_line": -4.08,
+    "heavy_hawser": -4.46
+  },
+  "strand_profiles": [
+    {
+      "strand": 0,
+      "crown_width_multiplier": 1.06,
+      "crown_flattening": 0.18,
+      "left_contact_width": 0.072,
+      "right_contact_width": 0.048,
+      "packing_bulge_phase": 0.13,
+      "packing_bulge_strength": 0.045,
+      "colour_palette_index": 7,
+      "bundle_offset_bias": -0.012
+    },
+    {
+      "strand": 1,
+      "crown_width_multiplier": 0.94,
+      "crown_flattening": 0.27,
+      "left_contact_width": 0.052,
+      "right_contact_width": 0.081,
+      "packing_bulge_phase": 0.47,
+      "packing_bulge_strength": 0.062,
+      "colour_palette_index": 9,
+      "bundle_offset_bias": 0.018
+    },
+    {
+      "strand": 2,
+      "crown_width_multiplier": 1.01,
+      "crown_flattening": 0.12,
+      "left_contact_width": 0.086,
+      "right_contact_width": 0.061,
+      "packing_bulge_phase": 0.79,
+      "packing_bulge_strength": 0.038,
+      "colour_palette_index": 6,
+      "bundle_offset_bias": -0.004
+    }
+  ],
+  "track_templates": [
+    {
+      "id": "outer_left_guard",
+      "minimum_preset": "fine_lashing",
+      "offset": -0.425,
+      "width": 0.085,
+      "width_class": "broad",
+      "subridge_count": 3,
+      "height": 0.72,
+      "twist_rate_multiplier": 0.94,
+      "curve_amplitude": 0.018,
+      "curve_frequency": 2,
+      "curve_phase": 0.08,
+      "palette_index": 5,
+      "roughness_bias": 0.022,
+      "events": [
+        {
+          "kind": "burial",
+          "start": 0.58,
+          "length": 0.17,
+          "strength": 0.54
+        }
+      ]
+    },
+    {
+      "id": "left_split_child",
+      "minimum_preset": "heavy_hawser",
+      "offset": -0.355,
+      "width": 0.037,
+      "width_class": "fine",
+      "subridge_count": 1,
+      "height": 0.41,
+      "twist_rate_multiplier": 1.07,
+      "curve_amplitude": 0.026,
+      "curve_frequency": 3,
+      "curve_phase": 0.31,
+      "palette_index": 15,
+      "roughness_bias": -0.018,
+      "events": [
+        {
+          "kind": "split",
+          "start": 0.16,
+          "length": 0.24,
+          "strength": 0.61,
+          "offset_delta": -0.046
+        }
+      ]
+    },
+    {
+      "id": "left_middle",
+      "minimum_preset": "fine_lashing",
+      "offset": -0.284,
+      "width": 0.061,
+      "width_class": "medium",
+      "subridge_count": 2,
+      "height": 0.58,
+      "twist_rate_multiplier": 0.98,
+      "curve_amplitude": 0.014,
+      "curve_frequency": 1,
+      "curve_phase": 0.52,
+      "palette_index": 8,
+      "roughness_bias": 0.008,
+      "events": [
+        {
+          "kind": "merge",
+          "target": "left_core",
+          "start": 0.69,
+          "length": 0.22,
+          "strength": 0.72
+        }
+      ]
+    },
+    {
+      "id": "left_core",
+      "minimum_preset": "utility_line",
+      "offset": -0.184,
+      "width": 0.048,
+      "width_class": "medium",
+      "subridge_count": 2,
+      "height": 0.66,
+      "twist_rate_multiplier": 1.035,
+      "curve_amplitude": 0.022,
+      "curve_frequency": 2,
+      "curve_phase": 0.77,
+      "palette_index": 10,
+      "roughness_bias": -0.011,
+      "events": []
+    },
+    {
+      "id": "centre_broad",
+      "minimum_preset": "fine_lashing",
+      "offset": -0.052,
+      "width": 0.102,
+      "width_class": "broad",
+      "subridge_count": 3,
+      "height": 0.84,
+      "twist_rate_multiplier": 0.915,
+      "curve_amplitude": 0.011,
+      "curve_frequency": 2,
+      "curve_phase": 0.19,
+      "palette_index": 11,
+      "roughness_bias": -0.024,
+      "events": [
+        {
+          "kind": "flatten",
+          "start": 0.31,
+          "length": 0.2,
+          "strength": 0.48
+        }
+      ]
+    },
+    {
+      "id": "centre_pale_ribbon",
+      "minimum_preset": "heavy_hawser",
+      "offset": 0.028,
+      "width": 0.024,
+      "width_class": "fine",
+      "subridge_count": 1,
+      "height": 0.33,
+      "twist_rate_multiplier": 1.085,
+      "curve_amplitude": 0.033,
+      "curve_frequency": 3,
+      "curve_phase": 0.63,
+      "palette_index": 18,
+      "roughness_bias": -0.041,
+      "events": [
+        {
+          "kind": "burial",
+          "start": 0.76,
+          "length": 0.14,
+          "strength": 0.68
+        }
+      ]
+    },
+    {
+      "id": "right_core",
+      "minimum_preset": "utility_line",
+      "offset": 0.108,
+      "width": 0.055,
+      "width_class": "medium",
+      "subridge_count": 2,
+      "height": 0.63,
+      "twist_rate_multiplier": 0.965,
+      "curve_amplitude": 0.018,
+      "curve_frequency": 1,
+      "curve_phase": 0.41,
+      "palette_index": 6,
+      "roughness_bias": 0.014,
+      "events": [
+        {
+          "kind": "split",
+          "start": 0.47,
+          "length": 0.18,
+          "strength": 0.43,
+          "offset_delta": 0.038
+        }
+      ]
+    },
+    {
+      "id": "right_middle",
+      "minimum_preset": "fine_lashing",
+      "offset": 0.215,
+      "width": 0.073,
+      "width_class": "wide",
+      "subridge_count": 3,
+      "height": 0.75,
+      "twist_rate_multiplier": 1.02,
+      "curve_amplitude": 0.016,
+      "curve_frequency": 2,
+      "curve_phase": 0.91,
+      "palette_index": 13,
+      "roughness_bias": 0.019,
+      "events": [
+        {
+          "kind": "merge",
+          "target": "outer_right_guard",
+          "start": 0.08,
+          "length": 0.19,
+          "strength": 0.57
+        }
+      ]
+    },
+    {
+      "id": "right_narrow",
+      "minimum_preset": "utility_line",
+      "offset": 0.307,
+      "width": 0.031,
+      "width_class": "narrow",
+      "subridge_count": 1,
+      "height": 0.39,
+      "twist_rate_multiplier": 1.095,
+      "curve_amplitude": 0.029,
+      "curve_frequency": 3,
+      "curve_phase": 0.27,
+      "palette_index": 3,
+      "roughness_bias": 0.036,
+      "events": [
+        {
+          "kind": "burial",
+          "start": 0.21,
+          "length": 0.28,
+          "strength": 0.73
+        }
+      ]
+    },
+    {
+      "id": "outer_right_guard",
+      "minimum_preset": "fine_lashing",
+      "offset": 0.393,
+      "width": 0.064,
+      "width_class": "medium",
+      "subridge_count": 2,
+      "height": 0.56,
+      "twist_rate_multiplier": 0.945,
+      "curve_amplitude": 0.021,
+      "curve_frequency": 2,
+      "curve_phase": 0.68,
+      "palette_index": 7,
+      "roughness_bias": 0.027,
+      "events": []
+    },
+    {
+      "id": "outer_right_sliver",
+      "minimum_preset": "heavy_hawser",
+      "offset": 0.456,
+      "width": 0.019,
+      "width_class": "fine",
+      "subridge_count": 1,
+      "height": 0.29,
+      "twist_rate_multiplier": 1.055,
+      "curve_amplitude": 0.024,
+      "curve_frequency": 4,
+      "curve_phase": 0.04,
+      "palette_index": 17,
+      "roughness_bias": -0.033,
+      "events": [
+        {
+          "kind": "fade",
+          "start": 0.39,
+          "length": 0.32,
+          "strength": 0.81
+        }
+      ]
+    }
+  ],
+  "per_strand_track_adjustments": [
+    {
+      "strand": 0,
+      "offset_wave": 0.011,
+      "width_multipliers": [
+        1.08,
+        0.91,
+        1.02,
+        0.94,
+        1.13,
+        0.86,
+        1.04,
+        0.97,
+        1.12,
+        0.9,
+        1.06
+      ],
+      "height_multipliers": [
+        0.96,
+        1.08,
+        0.91,
+        1.03,
+        1.07,
+        0.88,
+        1.11,
+        0.94,
+        1.06,
+        0.9,
+        1.04
+      ]
+    },
+    {
+      "strand": 1,
+      "offset_wave": -0.016,
+      "width_multipliers": [
+        0.93,
+        1.12,
+        0.88,
+        1.09,
+        0.97,
+        1.14,
+        0.92,
+        1.05,
+        0.86,
+        1.11,
+        0.95
+      ],
+      "height_multipliers": [
+        1.09,
+        0.87,
+        1.05,
+        0.92,
+        1.12,
+        0.96,
+        1.03,
+        0.9,
+        1.08,
+        0.94,
+        1.1
+      ]
+    },
+    {
+      "strand": 2,
+      "offset_wave": 0.007,
+      "width_multipliers": [
+        1.02,
+        0.89,
+        1.15,
+        0.96,
+        0.9,
+        1.08,
+        0.93,
+        1.12,
+        0.98,
+        1.04,
+        0.87
+      ],
+      "height_multipliers": [
+        0.92,
+        1.13,
+        0.89,
+        1.1,
+        0.97,
+        1.05,
+        0.9,
+        1.14,
+        0.95,
+        1.07,
+        0.91
+      ]
+    }
+  ],
+  "variation_bounds": {
+    "offset_jitter": 0.012,
+    "width_multiplier": [
+      0.94,
+      1.06
+    ],
+    "height_multiplier": [
+      0.93,
+      1.07
+    ],
+    "curve_phase_jitter": 0.06,
+    "event_start_jitter": 0.025,
+    "maximum_track_drop_count": 1
+  }
+}

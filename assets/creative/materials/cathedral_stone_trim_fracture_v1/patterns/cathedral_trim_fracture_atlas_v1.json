@@ -1,0 +1,80 @@
+{
+  "schema": "iggy3d.pattern.chevron_voussoir_portal.v2",
+  "pattern_id": "old_sarum_item_55_chevron_order_v2",
+  "seed": 41723,
+  "source_measurement": {
+    "source_id": "S01_old_sarum_catalogue_item_55",
+    "catalogue_item": 55,
+    "height_m": 0.2,
+    "inner_chord_m": 0.14,
+    "outer_chord_m": 0.18,
+    "depth_m": 0.27
+  },
+  "authored_completion": {
+    "count": 16,
+    "pitch_angle_deg": 11.25,
+    "joint_gap_centerline_m": 0.003,
+    "body_angle_deg": 11.042294066,
+    "inner_radius_m": 0.7275514105,
+    "outer_radius_m": 0.9275514105,
+    "derived_outer_chord_m": 0.1784852529,
+    "clear_diameter_m": 1.455102821,
+    "outer_diameter_m": 1.855102821,
+    "derivation": "body_angle=pitch-joint_gap_centerline/(inner_radius+height/2); inner_radius=inner_chord/(2*sin(body_angle/2)); solved iteratively"
+  },
+  "moulding": {
+    "classification": "centripetal lateral face chevron",
+    "chevrons_per_voussoir": 1,
+    "profile": "quiet-roll-hollow-roll-quiet",
+    "radial_zone_widths_m": [0.025, 0.05, 0.05, 0.05, 0.025],
+    "roll_crest_m": 0.012,
+    "hollow_depression_m": 0.006,
+    "band_half_width_m": 0.025,
+    "roll_center_offsets_m": [-0.05, 0.05],
+    "hollow_center_offset_m": 0.0,
+    "chevron_line": "v_m = 0.048 + 0.104 * abs(u)",
+    "front_segments": {
+      "tangential": 32,
+      "radial": 24
+    },
+    "bevel_m": 0.0
+  },
+  "material_variation": {
+    "variants": 4,
+    "uv_transforms": [
+      {"quarter_turn": 0, "mirror_u": false, "mirror_v": false},
+      {"quarter_turn": 1, "mirror_u": true, "mirror_v": false},
+      {"quarter_turn": 2, "mirror_u": false, "mirror_v": true},
+      {"quarter_turn": 3, "mirror_u": true, "mirror_v": true}
+    ],
+    "phase_rule": "seeded per-voussoir offsets are stored in metres and applied before texture scaling",
+    "no_square_tile_rule": "IGGY_StoneUV_A and IGGY_StoneUV_B use different transforms and phases; 64 mm and 91 mm samples are incommensurate."
+  },
+  "render_contract": {
+    "resolution": [900, 900],
+    "engine": "BLENDER_EEVEE_NEXT",
+    "transparent_background": false,
+    "views": [
+      "neutral_clay_front",
+      "neutral_clay_grazing",
+      "live_material_front",
+      "live_material_grazing",
+      "measured_close",
+      "distance_read",
+      "identity_proof",
+      "wireframe_proof"
+    ],
+    "reopen_required": true
+  },
+  "exclusions": [
+    "jamb reconstruction",
+    "fracture",
+    "edge damage",
+    "wear",
+    "weathering",
+    "soot",
+    "damp",
+    "lichen",
+    "Unreal parity"
+  ]
+}

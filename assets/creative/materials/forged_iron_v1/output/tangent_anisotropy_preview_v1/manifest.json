@@ -1,0 +1,78 @@
+{
+  "schema": "iggy3d.tangent-anisotropy-preview-proof.v1",
+  "status": "accepted-shared-donor",
+  "consumer": {
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "geometry": "approved openwork hinge assembly",
+    "saved_blend_modified": false
+  },
+  "tool": {
+    "owner": "/Users/kogaryu/iggy3d/assets/creative/materials/pattern_lab_common.py",
+    "function": "component_tangent_uv",
+    "output": "metre-scaled per-corner UV with U as the material tangent",
+    "modes": {
+      "longitudinal_leaf": [
+        "SM_GH018_FixedLeaf",
+        "SM_GH018_MovingLeaf_Openwork"
+      ],
+      "circumferential_barrel": [
+        "MovingKnuckle_01",
+        "FixedKnuckle_02",
+        "MovingKnuckle_03",
+        "FixedKnuckle_04",
+        "MovingKnuckle_05"
+      ],
+      "axial_pin": [
+        "SM_GH018_Pintle"
+      ]
+    }
+  },
+  "selection_contract": {
+    "renderer": "Cycles",
+    "samples": 32,
+    "linear_rgb_f0": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "roughness": 0.38,
+    "comparison_values": [
+      0.0,
+      0.18,
+      0.35,
+      0.6
+    ],
+    "selected_default": 0.18,
+    "selected_reason": "Coherent directional response in the moving-strip close proof while remaining quiet at whole-hinge distance.",
+    "rejections": {
+      "0.00": "Control only; it contains no directional manufacturing response.",
+      "0.35": "Begins to read as an intentionally machined finish.",
+      "0.60": "The elongated reflection band dominates and overworks the forged surface."
+    }
+  },
+  "engine_findings": {
+    "eevee": "Rejected as proof for this setup because all four candidates were pixel-identical with zero mean and maximum difference.",
+    "cycles": "Accepted only as Blender-side analytic evidence.",
+    "unreal_parity_verified": false
+  },
+  "limitations": [
+    "The selected tangent is not integrated into the canonical forged-iron blend.",
+    "The substrate and oxide branches must be separated before material integration.",
+    "Broad forging planes, oxide, corrosion, damage, polish, and Unreal parity remain outside this capability."
+  ],
+  "outputs": {
+    "whole_hinge_board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/tangent_anisotropy_preview_v1/comparison_board.png",
+      "sha256": "57431d842a5157bb546cd0cf9ea743b0212ecdbb5409cbed8c9f9afed2ec0e0b"
+    },
+    "moving_strip_close_board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/tangent_anisotropy_preview_v1/close_moving_strip_board.png",
+      "sha256": "3480371f2ec6e06c6c39ee054172b0f7f49f2ca03e5c50f899c6c9e9086ac586"
+    },
+    "tangent_direction": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/tangent_anisotropy_preview_v1/tangent_direction_front.png",
+      "sha256": "4ba6ea2769d8bd1bb0506546067ce8f455da0f672d3fbf04a61789f05bdc3fea"
+    }
+  }
+}

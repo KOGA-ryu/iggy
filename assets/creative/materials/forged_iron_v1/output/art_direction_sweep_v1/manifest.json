@@ -1,0 +1,118 @@
+{
+  "candidates": {
+    "A_broad_only_control": {
+      "authored_patch_count": 0,
+      "label": "A BROAD ONLY CONTROL",
+      "proofs": {
+        "front": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/A_broad_only_control/front.png",
+        "gameplay": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/A_broad_only_control/gameplay.png",
+        "grazing": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/A_broad_only_control/grazing.png",
+        "mask_repeat": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/A_broad_only_control/mask_repeat.png"
+      },
+      "settings": {
+        "anisotropy": 0.12,
+        "aperture_color": 0.0,
+        "aperture_roughness": 0.0,
+        "bevel_color": 0.0,
+        "bevel_roughness": 0.0,
+        "contrast": 0.55,
+        "darkness": 0.7,
+        "roughness_centre": 0.75,
+        "roughness_contrast": 0.55,
+        "saturation": 0.72,
+        "worked_luster": 0.025
+      }
+    },
+    "B_sparse_asymmetric": {
+      "authored_patch_count": 6,
+      "label": "B SPARSE ASYMMETRIC",
+      "proofs": {
+        "front": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/B_sparse_asymmetric/front.png",
+        "gameplay": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/B_sparse_asymmetric/gameplay.png",
+        "grazing": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/B_sparse_asymmetric/grazing.png",
+        "mask_repeat": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/B_sparse_asymmetric/mask_repeat.png"
+      },
+      "settings": {
+        "anisotropy": 0.2,
+        "aperture_color": 0.13,
+        "aperture_roughness": 0.025,
+        "bevel_color": 0.08,
+        "bevel_roughness": 0.02,
+        "contrast": 0.68,
+        "darkness": 0.71,
+        "roughness_centre": 0.74,
+        "roughness_contrast": 0.7,
+        "saturation": 0.82,
+        "worked_luster": 0.05
+      }
+    },
+    "C_broken_overlaps": {
+      "authored_patch_count": 8,
+      "label": "C BROKEN OVERLAPS",
+      "proofs": {
+        "front": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/C_broken_overlaps/front.png",
+        "gameplay": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/C_broken_overlaps/gameplay.png",
+        "grazing": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/C_broken_overlaps/grazing.png",
+        "mask_repeat": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/C_broken_overlaps/mask_repeat.png"
+      },
+      "settings": {
+        "anisotropy": 0.18,
+        "aperture_color": 0.18,
+        "aperture_roughness": 0.04,
+        "bevel_color": 0.09,
+        "bevel_roughness": 0.025,
+        "contrast": 0.82,
+        "darkness": 0.74,
+        "roughness_centre": 0.73,
+        "roughness_contrast": 0.82,
+        "saturation": 0.88,
+        "worked_luster": 0.045
+      }
+    },
+    "D_quiet_graphic_recommended": {
+      "authored_patch_count": 6,
+      "label": "D QUIET GRAPHIC RECOMMENDED",
+      "proofs": {
+        "front": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/D_quiet_graphic_recommended/front.png",
+        "gameplay": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/D_quiet_graphic_recommended/gameplay.png",
+        "grazing": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/D_quiet_graphic_recommended/grazing.png",
+        "mask_repeat": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/art_direction_sweep_v1/D_quiet_graphic_recommended/mask_repeat.png"
+      },
+      "settings": {
+        "anisotropy": 0.25,
+        "aperture_color": 0.2,
+        "aperture_roughness": 0.045,
+        "bevel_color": 0.12,
+        "bevel_roughness": 0.035,
+        "contrast": 0.68,
+        "darkness": 0.7,
+        "roughness_centre": 0.75,
+        "roughness_contrast": 0.68,
+        "saturation": 0.86,
+        "worked_luster": 0.07
+      }
+    }
+  },
+  "canonical_blend_mutated": false,
+  "columns": [
+    "front",
+    "grazing",
+    "gameplay",
+    "mask_repeat_3x3"
+  ],
+  "resolution": [
+    700,
+    280
+  ],
+  "schema": "iggy3d.forged_iron.art_direction_sweep.v1",
+  "target_objects": [
+    "SM_GH018_FixedLeaf",
+    "SM_GH018_MovingLeaf_Openwork",
+    "SM_GH018_Pintle",
+    "MovingKnuckle_01",
+    "FixedKnuckle_02",
+    "MovingKnuckle_03",
+    "FixedKnuckle_04",
+    "MovingKnuckle_05"
+  ]
+}

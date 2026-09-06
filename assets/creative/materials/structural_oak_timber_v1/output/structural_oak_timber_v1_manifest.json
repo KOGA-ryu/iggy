@@ -1,0 +1,84 @@
+{
+  "schema": "iggy3d.material.structural_oak_timber.output.v1",
+  "profile_id": "structural_oak_timber_v1",
+  "pattern_id": "structural_oak_growth_champion_v1",
+  "dimensions_px": {
+    "side": [
+      3072,
+      1536
+    ],
+    "side_face": [
+      3072,
+      384
+    ],
+    "end": [
+      4096,
+      2048
+    ],
+    "end_face": [
+      2048,
+      2048
+    ]
+  },
+  "physical_extent_m": {
+    "side_face": [
+      4.2,
+      0.4
+    ],
+    "end_face": [
+      0.4,
+      0.4
+    ]
+  },
+  "continuity": {
+    "ring_count": 832,
+    "side_ring_table_digest": "844b44cd0f1d57f005cb65eb88b54fa3aedb78e7b4b28918298a15c64533456c",
+    "end_ring_table_digest": "844b44cd0f1d57f005cb65eb88b54fa3aedb78e7b4b28918298a15c64533456c",
+    "pith_control_count": 9,
+    "rule": "Every side and end face sampled the same pith controls and ring table."
+  },
+  "surface_response": {
+    "uniform_roughness": 0.76,
+    "roughness_map": false,
+    "damage": false,
+    "side_height_decode_m": [
+      -0.00024,
+      0.00024
+    ],
+    "end_height_decode_m": [
+      -0.00018,
+      0.00018
+    ]
+  },
+  "authored_counts": {
+    "champion_ring_widths": 64,
+    "grain_tracks": 27,
+    "track_events": 9,
+    "wide_rays": 15,
+    "side_ray_flecks": 5,
+    "tool_linework_events": 17
+  },
+  "source_sha256": {
+    "profile": "85b9e2cdff8f8d41ea75c878c264033fd41c34b9af7050c9ebc40cd5cc21dcb4",
+    "pattern": "ebe32561ec085e2c209550446502a4a43f914d9e6f95b430e60050ce3ad8938d",
+    "accepted_door_palette": "2831aa24e97c8054aa5461597269158d1538415314dc2d6f307e7b183cafb6fc",
+    "beam_anatomy": "91f286a3db83edb0366b45daaa216b499cb96bb54b993ed16cdd6145ad523ff6"
+  },
+  "files": [
+    "renders",
+    "structural_oak_timber_v1_beam.blend",
+    "structural_oak_timber_v1_beam.blend1",
+    "structural_oak_timber_v1_blender_manifest.json",
+    "structural_oak_timber_v1_end_basecolor.png",
+    "structural_oak_timber_v1_end_height.png",
+    "structural_oak_timber_v1_end_identity.png",
+    "structural_oak_timber_v1_end_normal.png",
+    "structural_oak_timber_v1_manifest.json",
+    "structural_oak_timber_v1_material_book.png",
+    "structural_oak_timber_v1_side_basecolor.png",
+    "structural_oak_timber_v1_side_height.png",
+    "structural_oak_timber_v1_side_identity.png",
+    "structural_oak_timber_v1_side_normal.png",
+    "structural_oak_timber_v1_side_response.png"
+  ]
+}

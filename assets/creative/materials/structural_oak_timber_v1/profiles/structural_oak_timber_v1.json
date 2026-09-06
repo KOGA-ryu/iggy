@@ -1,0 +1,178 @@
+{
+  "schema": "iggy3d.material.structural_oak_timber.v1",
+  "profile_id": "structural_oak_timber_v1",
+  "display_name": "Growth-volume structural white oak",
+  "intent": "A reusable structural-oak material whose longitudinal faces and transverse ends are slices of one authored growth volume. It extends the accepted Met-door palette and the measured end-grain anatomy without photographic projection, random noise, damage, or AI-generated imagery.",
+  "reference_authority": {
+    "colour_continuity": {
+      "institution": "The Metropolitan Museum of Art",
+      "object_number": "55.61.170",
+      "url": "https://www.metmuseum.org/art/collection/search/468492",
+      "profile_path": "../structural_oak_door_v1/profiles/structural_oak_door_v1.json",
+      "rule": "Reuse the exact twenty observed wood colours and their broad warm, cool, dark, pale, ochre, and muted-red hierarchy."
+    },
+    "white_oak_measurements": {
+      "species": "Quercus alba L.",
+      "paper": "Seasonal Cambial Activity and Formation of Secondary Phloem and Xylem in White Oaks",
+      "url": "https://www.mdpi.com/1999-4907/14/5/920",
+      "rules": [
+        "The wood is ring porous.",
+        "Vigorous annual rings can reach two millimetres or more.",
+        "Suppressed annual rings can be as short as one hundred twenty micrometres and contain only earlywood.",
+        "Earlywood vessel diameter is 154 plus or minus 28 micrometres.",
+        "Latewood vessel diameter is 15 plus or minus 3 micrometres.",
+        "Latewood vessels occur singly or in radial multiples of two to four with dendritic arrangement."
+      ]
+    },
+    "white_oak_identity": {
+      "publisher": "USDA Forest Products Laboratory, Center for Wood Anatomy Research",
+      "url": "https://www.fpl.fs.usda.gov/documnts/usda/amwood/247oak.pdf",
+      "rules": [
+        "Large earlywood pores begin the annual ring.",
+        "Rays cross growth bands radially.",
+        "White-oak heartwood vessels commonly contain tyloses."
+      ]
+    },
+    "ray_structure": {
+      "paper": "Wood Anatomy of Modern and Fossil Fagales in Relation to Phylogenetic Hypotheses",
+      "url": "https://www.journals.uchicago.edu/doi/10.1086/717328",
+      "rule": "Quercus alba has rays of two distinct sizes: uniseriate rays and very wide multiseriate or aggregate rays."
+    }
+  },
+  "source_dependencies": {
+    "door_profile": "../structural_oak_door_v1/profiles/structural_oak_door_v1.json",
+    "beam_profile": "../../architecture/structural/rough_hewn_timber_beam_v1/profiles/rough_hewn_timber_beam_v1.json"
+  },
+  "coordinate_contract": {
+    "space": "timber-local growth volume",
+    "longitudinal_axis": "X",
+    "cross_section_axes": [
+      "Y",
+      "Z"
+    ],
+    "unit": "metre",
+    "longitudinal_attribute": "sinc_timber_u_m",
+    "face_attribute": "sinc_timber_face_id",
+    "end_distance_attribute": "sinc_end_distance_m",
+    "uv_attribute": "IGGY_TimberUV",
+    "rule": "Side faces and end faces must evaluate the same pith path and ring-radius table. No end-grain atlas may invent rings that do not continue into the longitudinal faces."
+  },
+  "beam_fixture_m": {
+    "length": 4.2,
+    "width": 0.3,
+    "height": 0.34,
+    "atlas_cross_span": 0.4
+  },
+  "physical_anatomy_m": {
+    "observed_growth_ring_minimum": 0.00012,
+    "observed_growth_ring_vigorous": 0.002,
+    "authored_ring_width_range": [
+      0.00029,
+      0.00206
+    ],
+    "earlywood_vessel_mean": 0.000154,
+    "earlywood_vessel_standard_deviation": 0.000028,
+    "latewood_vessel_mean": 0.000015,
+    "latewood_vessel_standard_deviation": 0.000003,
+    "rendered_wide_ray_width_range": [
+      0.00022,
+      0.0012
+    ],
+    "rendered_narrow_ray_width_range": [
+      0.00005,
+      0.00014
+    ],
+    "maximum_side_relief": 0.00024,
+    "maximum_end_relief": 0.00018,
+    "tool_striation_width_range": [
+      0.00045,
+      0.0011
+    ]
+  },
+  "representation": {
+    "side_atlas": {
+      "width": 3072,
+      "height": 1536,
+      "face_rows": [
+        "front",
+        "back",
+        "top",
+        "bottom"
+      ],
+      "physical_tile_m": [
+        4.2,
+        0.4
+      ]
+    },
+    "end_atlas": {
+      "width": 4096,
+      "height": 2048,
+      "face_columns": [
+        "left_end",
+        "right_end"
+      ],
+      "physical_tile_m": [
+        0.4,
+        0.4
+      ]
+    },
+    "band_limit_rule": "A feature smaller than 0.85 texel receives an area-preserving filtered response and is never enlarged beyond 1.35 texels merely to remain visible."
+  },
+  "surface_response": {
+    "model": "principled_dielectric",
+    "metallic": 0.0,
+    "ior": 1.5,
+    "uniform_roughness": 0.76,
+    "authored_roughness_map": false,
+    "normal_strength": 0.62,
+    "damage": false
+  },
+  "layers": [
+    {
+      "id": "shared_growth_volume",
+      "purpose": "Off-centre pith, pith drift, explicit annual-ring widths, and one continuous radial coordinate sampled by every face."
+    },
+    {
+      "id": "broad_reference_colour",
+      "purpose": "Persistent Met-door warm, cool, dark, pale, ochre, and muted-red fields."
+    },
+    {
+      "id": "selected_grain_tracks",
+      "purpose": "Finite authored ring-boundary accents with burial, fade, and flatten events; no global stripe comb."
+    },
+    {
+      "id": "knot_deflection_fields",
+      "purpose": "Local coordinate deflection around the two branch intersections already owned by beam geometry."
+    },
+    {
+      "id": "ring_porous_end_anatomy",
+      "purpose": "Earlywood pore rows, latewood density, and two ray sizes sharing the same ring radii as the side faces."
+    },
+    {
+      "id": "tool_signature_linework",
+      "purpose": "Sparse normal and colour striations derived from measured broad-axe events without cutting new cavities."
+    },
+    {
+      "id": "quiet_fields",
+      "purpose": "Large deliberately low-contrast areas between selected anatomical accents."
+    }
+  ],
+  "excluded_lanes": [
+    "ai_generated_imagery",
+    "photographic_projection",
+    "random_noise",
+    "square_tiling",
+    "uniform_grain_comb",
+    "one_colour_per_face",
+    "roughness_map",
+    "damage",
+    "checks_from_material",
+    "chips_from_material",
+    "dings",
+    "scuffs",
+    "scratches",
+    "stains",
+    "soot",
+    "wetness"
+  ]
+}

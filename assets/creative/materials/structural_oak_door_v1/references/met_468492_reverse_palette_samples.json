@@ -1,0 +1,291 @@
+{
+  "eyedropper_samples": {
+    "source_image": "/Users/kogaryu/Documents/Codex/2026-07-25/sinc/outputs/reference-images/giant-house-door-hero-plank-rp2/met_468492_reverse.jpg",
+    "image_size": [
+      751,
+      1200
+    ],
+    "samples": [
+      {
+        "x": 132,
+        "y": 244,
+        "rgba": [
+          73,
+          52,
+          47,
+          255
+        ],
+        "hex": "#49342f",
+        "alpha": 255,
+        "luminance": 58,
+        "label": "left_upper_dark"
+      },
+      {
+        "x": 192,
+        "y": 318,
+        "rgba": [
+          144,
+          123,
+          96,
+          255
+        ],
+        "hex": "#907b60",
+        "alpha": 255,
+        "luminance": 126,
+        "label": "left_upper_mid"
+      },
+      {
+        "x": 232,
+        "y": 455,
+        "rgba": [
+          148,
+          88,
+          38,
+          255
+        ],
+        "hex": "#945826",
+        "alpha": 255,
+        "luminance": 100,
+        "label": "left_centre_warm"
+      },
+      {
+        "x": 154,
+        "y": 770,
+        "rgba": [
+          123,
+          93,
+          67,
+          255
+        ],
+        "hex": "#7b5d43",
+        "alpha": 255,
+        "luminance": 99,
+        "label": "left_lower_pale"
+      },
+      {
+        "x": 235,
+        "y": 935,
+        "rgba": [
+          154,
+          123,
+          92,
+          255
+        ],
+        "hex": "#9a7b5c",
+        "alpha": 255,
+        "luminance": 129,
+        "label": "left_lower_gray"
+      },
+      {
+        "x": 357,
+        "y": 242,
+        "rgba": [
+          78,
+          65,
+          56,
+          255
+        ],
+        "hex": "#4e4138",
+        "alpha": 255,
+        "luminance": 68,
+        "label": "centre_upper_charcoal"
+      },
+      {
+        "x": 438,
+        "y": 334,
+        "rgba": [
+          92,
+          75,
+          67,
+          255
+        ],
+        "hex": "#5c4b43",
+        "alpha": 255,
+        "luminance": 79,
+        "label": "centre_upper_brown"
+      },
+      {
+        "x": 365,
+        "y": 470,
+        "rgba": [
+          108,
+          86,
+          72,
+          255
+        ],
+        "hex": "#6c5648",
+        "alpha": 255,
+        "luminance": 91,
+        "label": "centre_mid_taupe"
+      },
+      {
+        "x": 425,
+        "y": 815,
+        "rgba": [
+          165,
+          129,
+          93,
+          255
+        ],
+        "hex": "#a5815d",
+        "alpha": 255,
+        "luminance": 136,
+        "label": "centre_lower_umber"
+      },
+      {
+        "x": 350,
+        "y": 1000,
+        "rgba": [
+          141,
+          111,
+          73,
+          255
+        ],
+        "hex": "#8d6f49",
+        "alpha": 255,
+        "luminance": 116,
+        "label": "centre_lower_pale"
+      },
+      {
+        "x": 538,
+        "y": 225,
+        "rgba": [
+          134,
+          104,
+          78,
+          255
+        ],
+        "hex": "#86684e",
+        "alpha": 255,
+        "luminance": 110,
+        "label": "right_upper_gray"
+      },
+      {
+        "x": 615,
+        "y": 305,
+        "rgba": [
+          135,
+          115,
+          91,
+          255
+        ],
+        "hex": "#87735b",
+        "alpha": 255,
+        "luminance": 118,
+        "label": "right_upper_pale"
+      },
+      {
+        "x": 590,
+        "y": 492,
+        "rgba": [
+          186,
+          135,
+          90,
+          255
+        ],
+        "hex": "#ba875a",
+        "alpha": 255,
+        "luminance": 145,
+        "label": "right_middle_warm"
+      },
+      {
+        "x": 552,
+        "y": 748,
+        "rgba": [
+          184,
+          152,
+          113,
+          255
+        ],
+        "hex": "#b89871",
+        "alpha": 255,
+        "luminance": 157,
+        "label": "right_lower_taupe"
+      },
+      {
+        "x": 641,
+        "y": 963,
+        "rgba": [
+          171,
+          143,
+          106,
+          255
+        ],
+        "hex": "#ab8f6a",
+        "alpha": 255,
+        "luminance": 147,
+        "label": "right_lower_ochre"
+      },
+      {
+        "x": 184,
+        "y": 147,
+        "rgba": [
+          104,
+          68,
+          42,
+          255
+        ],
+        "hex": "#68442a",
+        "alpha": 255,
+        "luminance": 76,
+        "label": "ledge_dark"
+      },
+      {
+        "x": 341,
+        "y": 638,
+        "rgba": [
+          135,
+          74,
+          30,
+          255
+        ],
+        "hex": "#874a1e",
+        "alpha": 255,
+        "luminance": 87,
+        "label": "ledge_warm"
+      },
+      {
+        "x": 689,
+        "y": 430,
+        "rgba": [
+          175,
+          157,
+          143,
+          255
+        ],
+        "hex": "#af9d8f",
+        "alpha": 255,
+        "luminance": 161,
+        "label": "edge_red"
+      },
+      {
+        "x": 684,
+        "y": 884,
+        "rgba": [
+          101,
+          57,
+          30,
+          255
+        ],
+        "hex": "#65391e",
+        "alpha": 255,
+        "luminance": 67,
+        "label": "edge_ochre"
+      },
+      {
+        "x": 475,
+        "y": 1005,
+        "rgba": [
+          162,
+          130,
+          89,
+          255
+        ],
+        "hex": "#a28259",
+        "alpha": 255,
+        "luminance": 135,
+        "label": "quiet_mid"
+      }
+    ]
+  }
+}

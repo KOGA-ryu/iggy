@@ -2,8 +2,8 @@
 
 ## Purpose
 
-Own the separate executable and conversion boundary that turns authored Creative
-content into a running gameplay world.
+Own runtime gameplay applications and the separate executable and conversion
+boundary that turns authored Creative content into a running gameplay world.
 
 ## Owns
 
@@ -13,6 +13,8 @@ content into a running gameplay world.
   interaction, inventory, objectives, projectiles, and targeting.
 - Runtime reasoning and pathing derived from authored maps.
 - Gameplay-specific fixtures and deterministic simulation proof.
+- First Move's native Hunt game, reviewed challenge pack, row assessments,
+  scoring, and gameplay-specific input/presentation adapters.
 
 ## Does Not Own
 
@@ -33,6 +35,11 @@ protocol.
 - `apps/iggy3d_playtest/`
 - `src/app/iggy3d/creative/play/`
 - `src/runtime/` except persistence-specific subdirectories
+- `src/runtime/first_move/HuntSession.*` is the sole owner of First Move's
+  mathematical classifications, row transitions, score, and initial attempts.
+- `apps/first_move/` adapts native input and presents that state through the
+  existing SDL/Vulkan/ImGui infrastructure. It does not load or mutate the
+  Creative document and does not claim a durable study-history integration.
 - Playtest and gameplay fixtures
 
 See [FILES.md](FILES.md) for the complete generated assignment.

@@ -1,0 +1,171 @@
+{
+  "authored_completion": {
+    "body_angle_deg": 11.042294066,
+    "clear_diameter_m": 1.455102821,
+    "count": 16,
+    "derivation": "body_angle=pitch-joint_gap_centerline/(inner_radius+height/2); inner_radius=inner_chord/(2*sin(body_angle/2)); solved iteratively",
+    "derived_outer_chord_m": 0.1784852529,
+    "inner_radius_m": 0.7275514105,
+    "joint_gap_centerline_m": 0.003,
+    "outer_diameter_m": 1.855102821,
+    "outer_radius_m": 0.9275514105,
+    "pitch_angle_deg": 11.25
+  },
+  "files": {
+    "basecolor": {
+      "bytes": 187460,
+      "filename": "cathedral_stone_trim_fracture_v1_basecolor.png",
+      "sha256": "e485ea09062718612962fb2cf47e5ad63ff9ef089801cb0200dcf5dc95d58a4b"
+    },
+    "body_height": {
+      "bytes": 2038031,
+      "filename": "cathedral_stone_trim_fracture_v1_body_height.png",
+      "sha256": "18c66c973c27fce36765d9fae66df05df2a980e7a615c6c48c6a2a90b9381427"
+    },
+    "body_masks": {
+      "bytes": 471410,
+      "filename": "cathedral_stone_trim_fracture_v1_body_masks.png",
+      "sha256": "5d4f11f8ac49064e50999422ff32924ddf36eab670cc9fecdbf8aeae48cb6db6"
+    },
+    "body_normal": {
+      "bytes": 2824944,
+      "filename": "cathedral_stone_trim_fracture_v1_body_normal.png",
+      "sha256": "e93a8b6d7e839ecd20ab8d9e7fccf781d7ae73f10dc75b7f3e3fb7c454fc8e29"
+    },
+    "orm": {
+      "bytes": 46227,
+      "filename": "cathedral_stone_trim_fracture_v1_orm.png",
+      "sha256": "941a9b27781d77db7ee74106cf2fa679ea1e40d63f407cc54f8a63607b64312b"
+    }
+  },
+  "inherited_body_contract": {
+    "ashlar_construction_pattern_inherited": false,
+    "body_relief_range_m": 0.00113,
+    "raw_reference_pixels_used": false,
+    "relief_proxy_measurement_id": "sabucina_calcarenite_surface_topography_proxy",
+    "source_manifest_schema": "iggy3d.material.cathedral_stone_v1.v6",
+    "source_package": "cathedral_stone_v1"
+  },
+  "moulding": {
+    "band_half_width_m": 0.025,
+    "bevel_m": 0.0,
+    "chevron_line": "v_m = 0.048 + 0.104 * abs(u)",
+    "chevrons_per_voussoir": 1,
+    "classification": "centripetal lateral face chevron",
+    "front_segments": {
+      "radial": 24,
+      "tangential": 32
+    },
+    "hollow_center_offset_m": 0.0,
+    "hollow_depression_m": 0.006,
+    "profile": "quiet-roll-hollow-roll-quiet",
+    "radial_zone_widths_m": [
+      0.025,
+      0.05,
+      0.05,
+      0.05,
+      0.025
+    ],
+    "roll_center_offsets_m": [
+      -0.05,
+      0.05
+    ],
+    "roll_crest_m": 0.012
+  },
+  "pattern_id": "old_sarum_item_55_chevron_order_v2",
+  "pattern_schema": "iggy3d.pattern.chevron_voussoir_portal.v2",
+  "profile_id": "cathedral_stone_trim_fracture_v1",
+  "profile_schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.profile.v2",
+  "schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.manifest.v2",
+  "seed": 41723,
+  "source_measurement": {
+    "catalogue_item": 55,
+    "depth_m": 0.27,
+    "height_m": 0.2,
+    "inner_chord_m": 0.14,
+    "outer_chord_m": 0.18,
+    "source_id": "S01_old_sarum_catalogue_item_55"
+  },
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "authored_completion_rule": "Radius, count, joint width, and roll-hollow-roll section are labeled authored translations because S01 does not publish them.",
+    "chevron_typology_source": "S03_crsbi_chevron_guide",
+    "comparative_tooling_source": "S02_gloucester_cathedral_archaeology",
+    "material_body_source": "cathedral_stone_v1 accepted measured-proxy body lanes",
+    "measured_voussoir_source": "S01_old_sarum_catalogue_item_55",
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "reference_pixels_retained_in_repository": false
+  },
+  "texture_inventory": {
+    "basecolor": {
+      "bit_depth": 8,
+      "channels": "RGB intrinsic broad twenty-shade calcarenite colour",
+      "color_space": "sRGB",
+      "filename": "cathedral_stone_trim_fracture_v1_basecolor.png",
+      "metres_per_texel": 0.0005,
+      "physical_span_m": 0.512,
+      "resolution": [
+        1024,
+        1024
+      ]
+    },
+    "body_height": {
+      "bit_depth": 16,
+      "channels": "normalized height with 0.00113 m declared range",
+      "color_space": "Non-Color",
+      "filename": "cathedral_stone_trim_fracture_v1_body_height.png",
+      "metres_per_texel": 6.25e-05,
+      "physical_span_m": 0.064,
+      "resolution": [
+        1024,
+        1024
+      ]
+    },
+    "body_masks": {
+      "bit_depth": 8,
+      "channels": "R fossil fragment, G silicate grain, B visible pore identity",
+      "color_space": "Non-Color",
+      "filename": "cathedral_stone_trim_fracture_v1_body_masks.png",
+      "metres_per_texel": 6.25e-05,
+      "physical_span_m": 0.064,
+      "resolution": [
+        1024,
+        1024
+      ]
+    },
+    "body_normal": {
+      "bit_depth": 8,
+      "channels": "OpenGL XYZ",
+      "color_space": "Non-Color",
+      "filename": "cathedral_stone_trim_fracture_v1_body_normal.png",
+      "metres_per_texel": 6.25e-05,
+      "physical_span_m": 0.064,
+      "resolution": [
+        1024,
+        1024
+      ]
+    },
+    "orm": {
+      "bit_depth": 8,
+      "channels": "R ambient-occlusion=1, G roughness, B metallic=0",
+      "color_space": "Non-Color",
+      "filename": "cathedral_stone_trim_fracture_v1_orm.png",
+      "metres_per_texel": 0.0005,
+      "physical_span_m": 0.512,
+      "resolution": [
+        1024,
+        1024
+      ]
+    }
+  },
+  "validation": {
+    "accepted_body_maps_copied_byte_exact": true,
+    "broad_color_not_one_block_one_color": true,
+    "damage_authored": false,
+    "fracture_authored": false,
+    "orm_ao_constant_one": true,
+    "orm_metallic_constant_zero": true,
+    "texture_lane_count": 5,
+    "twenty_shade_palette": true
+  }
+}

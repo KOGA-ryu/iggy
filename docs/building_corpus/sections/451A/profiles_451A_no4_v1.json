@@ -1,0 +1,385 @@
+{
+ "source": "Ellis 1902, plate 451A (leaf n153, printed 136), detail No.4",
+ "calibration_px_per_inch": 70.401,
+ "calibration_rms_in": 0.024,
+ "origin": "outer face line x bay edge of left meeting stile; +x toward meeting, +y inward",
+ "parts": {
+  "casement_stile_left": {
+   "closed": true,
+   "vertices": [
+    {
+     "xy": [
+      0.0,
+      0.0
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      -0.2273,
+      0.6108
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      0.142,
+      0.6108
+     ],
+     "status": "provisional"
+    },
+    {
+     "xy": [
+      0.142,
+      0.7883
+     ],
+     "status": "provisional"
+    },
+    {
+     "xy": [
+      -0.2557,
+      0.7883
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      -0.2557,
+      1.1861
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      -0.0923,
+      1.2287
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      -0.0639,
+      1.74
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      0.071,
+      1.9105
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      1.5341,
+      1.9105
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      1.8466,
+      1.7116
+     ],
+     "status": "provisional"
+    },
+    {
+     "xy": [
+      2.0454,
+      1.8253
+     ],
+     "status": "provisional"
+    },
+    {
+     "xy": [
+      1.804,
+      1.7116
+     ],
+     "status": "provisional-visual"
+    },
+    {
+     "xy": [
+      2.088,
+      0.1207
+     ],
+     "status": "provisional-visual"
+    },
+    {
+     "xy": [
+      2.088,
+      0.0
+     ],
+     "status": "provisional-visual"
+    }
+   ],
+   "notes": "bay side + faces measured; glass rebate ROOT depth provisional; meeting side is a DIAGONAL bevelled lap read visually off the overlay (provisional-visual) - the joint gap line cannot be isolated numerically from hatch gaps; slip seating notch in the face OPEN"
+  },
+  "oak_slip_head": {
+   "closed": true,
+   "vertices": [
+    {
+     "xy": [
+      1.3636,
+      0.0
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      1.3636,
+      -0.1136
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      1.5341,
+      -0.1136
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      1.5341,
+      -0.2202
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.5767,
+      -0.2912
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.6193,
+      -0.3196
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.6619,
+      -0.348
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.7045,
+      -0.348
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.7471,
+      -0.348
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.7897,
+      -0.3338
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.8324,
+      -0.3054
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.875,
+      -0.277
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.9176,
+      -0.2486
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      1.9602,
+      -0.2344
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.0028,
+      -0.2202
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.0454,
+      -0.206
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.088,
+      -0.1918
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.1307,
+      -0.1918
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.1733,
+      -0.1918
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.2159,
+      -0.1918
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.2585,
+      -0.206
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.3011,
+      -0.2202
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.3437,
+      -0.2486
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.3863,
+      -0.2628
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.4289,
+      -0.2912
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.4716,
+      -0.3338
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.5142,
+      -0.3622
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.5568,
+      -0.3622
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.5994,
+      -0.3764
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.642,
+      -0.3622
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.6846,
+      -0.348
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.7272,
+      -0.3196
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.7698,
+      -0.2344
+     ],
+     "status": "measured-empirical"
+    },
+    {
+     "xy": [
+      2.8125,
+      -0.1136
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      2.9687,
+      -0.1136
+     ],
+     "status": "measured"
+    },
+    {
+     "xy": [
+      2.9971,
+      0.0
+     ],
+     "status": "measured"
+    }
+   ],
+   "notes": "exposed weather moulding above the face line only; double-lobed crown as empirical polyline (arc fit deferred); tongue/feather below face NOT included (joint interior open)"
+  }
+ },
+ "assembly_datums_in": {
+  "outer_face_y": 0.0,
+  "glass_outer_y": 0.6108,
+  "glass_inner_y": 0.7883,
+  "rebate_cheek_line_y": 1.1861,
+  "inner_face_y": 1.9105,
+  "stile_depth": 1.9105
+ }
+}

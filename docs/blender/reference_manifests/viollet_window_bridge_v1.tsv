@@ -1,0 +1,36 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+window	glazing subdivision rule (XIIIc)	maximum clear glass between mullions	1.00	m	author-rule	Fenêtre	il ne fallait pas laisser plus d’un mètre environ de vide entre les meneaux, à moins d’être entraîné à placer des montants en fer
+window	glazing subdivision rule (XIIIc)	glazing bay interval driving mullion count	3 pieds (0.97 m)	m	author-rule	Fenêtre	autant de montants verticaux de pierre qu’il y avait d’intervalles de trois pieds de large à garnir de vitraux
+window	mullion progression (PARAMETRIC)	2 m window -> 1 mullion	2.00	m	author-rule	Fenêtre	Soit une fenêtre de deux mètres de large à vitrer, l’architecte pose un meneau (21)
+window	mullion progression (PARAMETRIC)	4 m window -> 1 principal + 2 secondary	4.00	m	author-rule	Fenêtre	Soit de quatre mètres, il pose un meneau principal et deux meneaux secondaires (22)
+window	mullion progression (PARAMETRIC)	8 m window -> 1 principal + 2 secondary + 4 tertiary	8.00	m	author-rule	Fenêtre	Soit de huit mètres, il pose un meneau principal, deux meneaux secondaires et quatre tertiaires (23)
+window	Reims cathedral windows	light width, narrow case	1.20	m	measured	Fenêtre	ces vides ont, soit 1 m ,20 c. de largeur, soit 2 m ,30 c.
+window	Reims cathedral windows	light width, wide case	2.30	m	measured	Fenêtre	soit 2 m ,30 c.
+window	secondary-mullion subdivision	resulting glazed space width	1.00	m	measured	Fenêtre	divisées en deux par des meneaux secondaires C ... de sorte que les espaces à vitrer n’ont que 1 m ,00 de largeur
+window	Carcassonne château window	total width between embrasure jambs	1.20	m	documented-reconstruction	Fenêtre	Sa largeur totale entre les pieds-droits de l’ébrasement est de 1 m ,20   [CARCASSONNE = VIOLLET'S OWN RESTORATION SITE]
+window	Carcassonne château window	embrasure depth = HALF the width (stated rule)	0.60	m	documented-reconstruction	Fenêtre	et la profondeur de cet ébrasement est de 0,60 c., moitié de la largeur
+window	Fenioux pierced stone window	slab thickness	0.055	m	measured	Fenêtre	C’est une dalle de 0,055 m d’épaisseur sur une largeur de 0,27 c.
+window	Fenioux pierced stone window	slab width	0.27	m	measured	Fenêtre	sur une largeur de 0,27 c.
+window	casement operability limit	sash height beyond which a casement is unwieldy	3.00 to 4.00	m	author-rule	Fenêtre	il est assez incommode d’ouvrir un châssis de trois ou quatre mètres de hauteur, difficile souvent à manœuvrer
+window	Saint-Urbain de Troyes	solid dado below the glazed lantern	3.00 to 4.00	m	measured	Fenêtre	reposant sur un soubassement plein, de trois à quatre mètres seulement de hauteur
+bridge	Pont Saint-Bénezet, Avignon (1178-88)	overall length	900	m	measured	Pont	sa longueur est de 900 mètres, et la largeur de son tablier de 4 mètres 90 centimètres, compris l’épaisseur des parapets
+bridge	Pont Saint-Bénezet, Avignon	deck width including parapets	4.90	m	measured	Pont	la largeur de son tablier de 4 mètres 90 centimètres, compris l’épaisseur des parapets
+bridge	Pont Saint-Bénezet, Avignon	pier length end to end	30	m	measured	Pont	les piles ont 30 mètres d’une extrémité à l’autre, et se terminent en amont comme en aval par un éperon très-aigu
+bridge	Pont Saint-Bénezet, Avignon	arch span range	20 to 25	m	measured	Pont	Les arches avaient de 20 à 25 mètres d’ouverture, et étaient au nombre de dix-huit
+bridge	Pont Saint-Bénezet, Avignon	number of arches	18	count	measured	Pont	et étaient au nombre de dix-huit
+bridge	Pont Saint-Bénezet, Avignon	chapel floor below the deck	4.50	m	measured	Pont	Le sol de cette chapelle est placé à 4 m ,50 au-dessous du tablier du pont
+bridge	Pont Saint-Bénezet, Avignon	deck PINCH-POINT width past the chapel	2.00	m	measured	Pont	il n’était laissé au tablier en E qu’une largeur de 2 mètres, compris l’épaisseur du bahut
+bridge	Pont Saint-Bénezet, Avignon	voussoir course height (four rows)	0.70	m	measured	Pont	Ces arches sont construites au moyen de quatre rangées de claveaux de 70 centimètres de hauteur juxtaposés
+bridge	Pont Saint-Esprit (1265, 30 yrs building)	deck width	5.00	m	measured	Pont	La largeur de son tablier est de 5 mètres, et sa longueur de 1 000 mètres environ ; le nombre de ses arches est de vingt-deux
+bridge	Pont Saint-Esprit	number of arches	22	count	measured	Pont	le nombre de ses arches est de vingt-deux
+bridge	Albi bridge (brick, finished c.1335)	overall length between abutments	250.50	m	measured	Pont	sa longueur est de 250 m ,50 entre les deux culées
+bridge	Albi bridge	deck height above mean water	18	m	measured	Pont	Son tablier est parfaitement horizontal et s’élève de 18 mètres au-dessus des eaux moyennes du Tarn
+bridge	Albi bridge	arch span, mean of seven	22	m	measured	Pont	Il se compose de sept arches en tiers-point de 22 mètres d’ouverture en moyenne
+bridge	Albi bridge	pier thickness (six piers)	8.55	m	measured	Pont	et de six piles dont l’épaisseur est de 8 m ,55, munies d’avant-becs en amont comme en aval
+bridge	Albi bridge brick	brick thickness x length x width	0.05 x 0.40 x 0.28	m	measured	Pont	portent 5 centimètres d’épaisseur sur 40 centimètres de longueur et 28 centimètres de largeur
+bridge	timber pile bridge (medieval)	pile row spacing, axis to axis	12.00	m	author-rule	Pont	des piles de trois rangs de pieux espacés de 12 m ,00 d’axe en axe
+bridge	timber pile bridge (medieval)	pile head height above water	2.00	m	author-rule	Pont	la tête de ces pieux, ne s’élevant pas à plus de 2 m ,00 au-dessus du niveau de l’eau
+bridge	Villard de Honnecourt timber bridge	timber length available	20 pieds (6.50 m)	m	author-rule	Pont	Villard de Honnecourt donne le croquis d’un pont fait avec des bois de vingt pieds
+bridge	Villard de Honnecourt timber bridge	deck span achievable from 20-ft timbers	50 pieds (16.24 m)	m	author-rule	Pont	en ne prenant ... que des bois de 20 pieds, on peut avoir facilement un tablier de 50 pieds de long, parfaitement rigide
+bridge	Pont Notre-Dame, Paris (1414)	houses carried on the bridge	60	count	measured	Pont	en largeur 18 pas : de deux costez et sur lequel estoient basties 60 maisons esgales en structure
+bridge	Pont Notre-Dame, Paris (1414)	deck width	18 pas	pas	measured	Pont	ayant en longueur 70 pas 4 pieds, et en largeur 18 pas

@@ -1,0 +1,198 @@
+{
+  "schema": "iggy3d.material.structural_oak_joinery.v2",
+  "profile_id": "structural_oak_joinery_v1",
+  "display_name": "Boolean-safe structural oak joinery and clean cut faces",
+  "intent": "The canonical clean joinery extension for structural_oak_timber_v1. It preserves the shared white-oak growth volume across mortises, housings, tenons, shoulders, and peg bores while assigning every generated face an explicit corner-domain semantic class. It adds no damage, repair, grime, or roughness texture.",
+  "source_dependencies": {
+    "timber_profile": "../structural_oak_timber_v1/profiles/structural_oak_timber_v1.json",
+    "timber_pattern": "../structural_oak_timber_v1/patterns/structural_oak_growth_champion_v1.json",
+    "timber_generator": "../structural_oak_timber_v1/generate_structural_oak_timber_v1.py",
+    "timber_blend": "../structural_oak_timber_v1/output/structural_oak_timber_v1_beam.blend"
+  },
+  "reference_authority": {
+    "blender_boolean": {
+      "publisher": "Blender Foundation",
+      "url": "https://docs.blender.org/manual/en/dev/modeling/modifiers/generate/booleans.html",
+      "rules": [
+        "Only manifold operands are guaranteed to produce proper Boolean results.",
+        "The Exact solver is the robust choice for coplanar or overlapping input.",
+        "Transfer material mode carries source materials onto generated faces and adds slots when needed."
+      ]
+    },
+    "timber_joint": {
+      "publisher": "Timber Framers Guild forum and Timber Frame HQ",
+      "urls": [
+        "https://forums.tfguild.net/ubbthreads.php?Number=33583&ubb=showflat",
+        "https://timberframehq.com/fully-house-mortise-and-tenon-joint/"
+      ],
+      "rules": [
+        "A common square-rule tenon thickness is one quarter of the timber thickness.",
+        "A common peg diameter is one half of the tenon thickness.",
+        "A fully housed mortise-and-tenon adds a shallow bearing housing around the deeper mortise.",
+        "Typical housing depth is three quarters to one and one half inches, subject to engineering."
+      ]
+    },
+    "drawbore": {
+      "publisher": "Timber Framers Guild forum",
+      "url": "https://forums.tfguild.net/ubbthreads.php?Number=90&ubb=showflat",
+      "rules": [
+        "The tenon hole is offset toward the shoulder so driving the peg draws the joint home.",
+        "Reported traditional draw is normally no less than one sixteenth inch and no more than one eighth inch.",
+        "Traditional pegs are commonly riven, roughly octagonal, and tapered at the entering point."
+      ]
+    },
+    "white_oak_anatomy": {
+      "paper": "Seasonal Cambial Activity and Formation of Secondary Phloem and Xylem in White Oaks",
+      "url": "https://www.mdpi.com/1999-4907/14/5/920",
+      "rule": "Reuse the measured ring-porous anatomy, 64-ring champion, 832-ring compiled table, pith path, rays, and vessel scales owned by structural_oak_timber_v1."
+    }
+  },
+  "joint_fixture_m": {
+    "receiving_timber": {
+      "length": 4.2,
+      "width": 0.3,
+      "height": 0.34
+    },
+    "joint_center_x": 0.15,
+    "housing": {
+      "length_x": 0.26,
+      "width_y": 0.24,
+      "depth_z": 0.0254
+    },
+    "mortise": {
+      "length_x": 0.2,
+      "width_y": 0.075,
+      "depth_z": 0.155,
+      "bottom_extra_clearance": 0.004
+    },
+    "entering_timber": {
+      "length": 1.2,
+      "width": 0.24,
+      "height": 0.24
+    },
+    "tenon": {
+      "length": 0.16,
+      "width": 0.071,
+      "height": 0.196,
+      "side_clearance": 0.002,
+      "end_clearance": 0.004
+    },
+    "peg": {
+      "diameter": 0.038,
+      "bore_diameter": 0.04,
+      "length": 0.38,
+      "sides": 8,
+      "taper_length": 0.055,
+      "tip_diameter": 0.009,
+      "mortise_hole_depth_from_reference_face": 0.076,
+      "drawbore_offset": 0.0024
+    }
+  },
+  "semantic_surface_classes": [
+    {
+      "id": 0,
+      "name": "original_outer",
+      "meaning": "Uncut longitudinal timber surface; structural_oak_timber_v1 remains authoritative."
+    },
+    {
+      "id": 1,
+      "name": "original_end",
+      "meaning": "Original transverse timber end."
+    },
+    {
+      "id": 2,
+      "name": "fresh_crosscut",
+      "meaning": "New transverse shoulder or tenon end."
+    },
+    {
+      "id": 3,
+      "name": "mortise_wall",
+      "meaning": "Deep vertical wall created by the blind mortise."
+    },
+    {
+      "id": 4,
+      "name": "mortise_floor",
+      "meaning": "Deep bearing floor at the bottom of the mortise."
+    },
+    {
+      "id": 5,
+      "name": "housing_wall",
+      "meaning": "Shallow perimeter wall of the fully housed seat."
+    },
+    {
+      "id": 6,
+      "name": "housing_bearing",
+      "meaning": "Shallow load-bearing seat surrounding the mortise."
+    },
+    {
+      "id": 7,
+      "name": "peg_bore",
+      "meaning": "Cylindrical wall of the drawbore through the mortise cheeks."
+    },
+    {
+      "id": 8,
+      "name": "tenon_cheek",
+      "meaning": "Long-grain reduced face of the tenon."
+    },
+    {
+      "id": 9,
+      "name": "tenon_shoulder",
+      "meaning": "Transverse shoulder that bears against the housing."
+    },
+    {
+      "id": 10,
+      "name": "peg_side",
+      "meaning": "Long-grain riven octagonal peg surface."
+    },
+    {
+      "id": 11,
+      "name": "peg_end",
+      "meaning": "Transverse peg end and tapered entering point."
+    }
+  ],
+  "coordinate_contract": {
+    "surface_class_attribute": "sinc_wood_surface_class",
+    "cut_uv_attribute": "sinc_joinery_uv",
+    "cut_coordinate_domain": "CORNER",
+    "surface_class_domain": "CORNER",
+    "material_boundary": "Boolean cutter material transfer identifies new faces; the marker is converted immediately into an explicit surface class and atlas UV before the next Boolean.",
+    "continuity_rule": "Each atlas tile evaluates the same pith controls and ring table as structural_oak_timber_v1 at the physical X/Y/Z coordinates of the cut. No cut face invents a replacement grain frequency.",
+    "interpolation_rule": "Every polygon corner receives the same integer surface class. No point-domain or triangle-interpolated mask decides cut identity.",
+    "resize_rule": "Joint dimensions and atlas parameterization are expressed in metres. Resizing a stock member requires recompiling the joint specification, not scaling pore or ring anatomy."
+  },
+  "representation": {
+    "atlas_columns": 4,
+    "atlas_rows": 2,
+    "tile_resolution": 768,
+    "atlas_resolution": [
+      3072,
+      1536
+    ],
+    "tile_padding_px": 6,
+    "normal_strength": 0.58,
+    "uniform_roughness": 0.76,
+    "authored_roughness_map": false,
+    "damage": false
+  },
+  "excluded_lanes": [
+    "ai_generated_imagery",
+    "photographic_projection",
+    "random_noise",
+    "roughness_map",
+    "damage",
+    "checks",
+    "splits",
+    "chips",
+    "dings",
+    "scuffs",
+    "scratches",
+    "repairs",
+    "stains",
+    "soot",
+    "wetness",
+    "floating_decals",
+    "triangle_interpolated_cut_masks",
+    "decorative_6_to_16_mm_growth_rings",
+    "stylized_1_to_4_mm_pores"
+  ]
+}

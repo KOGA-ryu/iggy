@@ -1,0 +1,7 @@
+{
+  "schema": "iggy3d.material_reference_capture.outputs.v1",
+  "capture": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/attempt_01_capture/attempt_01_material_capture.json",
+  "regions_proof": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/attempt_01_capture/attempt_01_capture_regions.png",
+  "crops_proof": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/attempt_01_capture/attempt_01_capture_crops.png",
+  "palettes_proof": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/attempt_01_capture/attempt_01_capture_palettes.png"
+}

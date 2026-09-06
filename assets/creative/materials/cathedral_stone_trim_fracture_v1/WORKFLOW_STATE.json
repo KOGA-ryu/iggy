@@ -1,0 +1,147 @@
+{
+  "current_revision": 2,
+  "package": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1",
+  "revisions": [
+    {
+      "build_entry": {
+        "coded_demands_sha256": "79184ff28b1252088164c1c2b4325ce3301a9baaf027d075235be74ad9bd9863",
+        "opened_at": "2026-07-30T01:14:47.837927+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 191448,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/CODED_DEMANDS.md",
+        "sha256": "79184ff28b1252088164c1c2b4325ce3301a9baaf027d075235be74ad9bd9863"
+      },
+      "coded_demands_sha256": "79184ff28b1252088164c1c2b4325ce3301a9baaf027d075235be74ad9bd9863",
+      "demand_ids": [
+        "DEM-TEX-001",
+        "DEM-GEO-002"
+      ],
+      "frozen_at": "2026-07-30T01:14:44.026420+00:00",
+      "red_gate_evidence": [
+        "Calibration baseline: the prior prompt chain could enter production without a recorded blueprint freeze.",
+        "Policy tests reproduce stale-target, placeholder-code, output-drift, dormant-route, layer-provenance, performance, and false-acceptance failures."
+      ],
+      "revision": 1,
+      "revision_note": "Post-build calibration freeze establishing the enforceable baseline for the next material revision.",
+      "target_baselines": [
+        {
+          "bytes": 26732,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/profiles/cathedral_stone_trim_fracture_v1.json",
+          "sha256": "66f6b5f05fb3cfb6be9da82f9bcb92ec62902defec8ef744e9abac094fa13e5b"
+        },
+        {
+          "bytes": 2514,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/patterns/cathedral_trim_fracture_atlas_v1.json",
+          "sha256": "d706af3328b1fd1060c351813665f0f6304fa1fe68755e049610bdb96debe297"
+        },
+        {
+          "bytes": 11283,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/generate_cathedral_stone_trim_fracture_v1.py",
+          "sha256": "b47862a86e77e81bbbbc19c9da18bec58dd55e80abbe534184158111750ae6f6"
+        },
+        {
+          "bytes": 65215,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/build_cathedral_stone_trim_fracture_v1.py",
+          "sha256": "0f4a1f48116c05ddce519b128e91fcdd404dc4fe75e9a454d67ff60998c02825"
+        },
+        {
+          "bytes": 14355,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_generator_tests.py",
+          "sha256": "b04547c6d0b423c346c026fb5ea11fdd9c8e86ad953116290367c29246255d47"
+        },
+        {
+          "bytes": 15645,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_blend_tests.py",
+          "sha256": "872f02534f2b027df79b0d4b2ac827f56bb6db72441bd9cad6223cca13eb4946"
+        }
+      ],
+      "tier": "hero-master",
+      "workstream": {
+        "bytes": 33960,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/WORKSTREAM.md",
+        "sha256": "0aedd5d8cd5c4a696c2ca4f551670e3e7bbc1ecf87e51bc5b11fc5ed1f088ecb"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "7c9c52e8c4a0355f210daa372a251af947592f059f98dd48ccca699d19c565a2",
+        "opened_at": "2026-07-30T01:17:41.562810+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 191570,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/CODED_DEMANDS.md",
+        "sha256": "7c9c52e8c4a0355f210daa372a251af947592f059f98dd48ccca699d19c565a2"
+      },
+      "coded_demands_sha256": "7c9c52e8c4a0355f210daa372a251af947592f059f98dd48ccca699d19c565a2",
+      "demand_ids": [
+        "DEM-TEX-001",
+        "DEM-GEO-002"
+      ],
+      "frozen_at": "2026-07-30T01:17:34.742229+00:00",
+      "red_gate_evidence": [
+        "Revision 1 verification exposed stale generated prose that still reported nine generator tests after the suite reached eleven."
+      ],
+      "revision": 2,
+      "revision_note": "Synchronize coded execution records and nine-layer completion check before final audit.",
+      "target_baselines": [
+        {
+          "bytes": 26732,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/profiles/cathedral_stone_trim_fracture_v1.json",
+          "sha256": "66f6b5f05fb3cfb6be9da82f9bcb92ec62902defec8ef744e9abac094fa13e5b"
+        },
+        {
+          "bytes": 2514,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/patterns/cathedral_trim_fracture_atlas_v1.json",
+          "sha256": "d706af3328b1fd1060c351813665f0f6304fa1fe68755e049610bdb96debe297"
+        },
+        {
+          "bytes": 11283,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/generate_cathedral_stone_trim_fracture_v1.py",
+          "sha256": "b47862a86e77e81bbbbc19c9da18bec58dd55e80abbe534184158111750ae6f6"
+        },
+        {
+          "bytes": 65215,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/build_cathedral_stone_trim_fracture_v1.py",
+          "sha256": "0f4a1f48116c05ddce519b128e91fcdd404dc4fe75e9a454d67ff60998c02825"
+        },
+        {
+          "bytes": 14355,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_generator_tests.py",
+          "sha256": "b04547c6d0b423c346c026fb5ea11fdd9c8e86ad953116290367c29246255d47"
+        },
+        {
+          "bytes": 15645,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_blend_tests.py",
+          "sha256": "872f02534f2b027df79b0d4b2ac827f56bb6db72441bd9cad6223cca13eb4946"
+        }
+      ],
+      "tier": "hero-master",
+      "workstream": {
+        "bytes": 36318,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/WORKSTREAM.md",
+        "sha256": "0a0dff938cdcdf8ccff655ef570e4047b18b9dd784dfd2b0da3203420ee7b5d2"
+      }
+    }
+  ],
+  "schema": "iggy3d.material_workflow_state.v1",
+  "updated_at": "2026-07-30T01:17:41.562916+00:00"
+}

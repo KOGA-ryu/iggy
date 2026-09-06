@@ -1,0 +1,100 @@
+{
+  "schema": "iggy3d.pattern.rope_plant_fibre.v1",
+  "pattern_id": "three_strand_regular_lay_v1",
+  "variation_count": 4,
+  "variation_seed": 19437,
+  "strand_count": 3,
+  "lay_direction": "right_hand",
+  "yarn_direction": "left_hand",
+  "presets": [
+    {
+      "id": "fine_lashing",
+      "diameter_m": 0.012,
+      "lay_length_m": 0.034,
+      "represented_yarn_groups_per_strand": 7
+    },
+    {
+      "id": "utility_line",
+      "diameter_m": 0.032,
+      "lay_length_m": 0.09,
+      "represented_yarn_groups_per_strand": 9
+    },
+    {
+      "id": "heavy_hawser",
+      "diameter_m": 0.07,
+      "lay_length_m": 0.196,
+      "represented_yarn_groups_per_strand": 11
+    }
+  ],
+  "variation_bounds": {
+    "lay_phase_turns": [
+      0.0,
+      0.083,
+      0.197,
+      0.311
+    ],
+    "macro_warp_turns_max": 0.052,
+    "yarn_warp_turns_max": 0.18,
+    "strand_width_multiplier": [
+      0.93,
+      1.07
+    ],
+    "fibre_visibility": [
+      0.42,
+      0.72
+    ],
+    "quiet_fraction": [
+      0.28,
+      0.44
+    ]
+  },
+  "authored_colour_passages": [
+    {
+      "start_u": 0.02,
+      "length_u": 0.16,
+      "palette_index": 9,
+      "strength": 0.12
+    },
+    {
+      "start_u": 0.23,
+      "length_u": 0.11,
+      "palette_index": 4,
+      "strength": 0.09
+    },
+    {
+      "start_u": 0.39,
+      "length_u": 0.21,
+      "palette_index": 13,
+      "strength": 0.08
+    },
+    {
+      "start_u": 0.66,
+      "length_u": 0.13,
+      "palette_index": 11,
+      "strength": 0.11
+    },
+    {
+      "start_u": 0.82,
+      "length_u": 0.1,
+      "palette_index": 16,
+      "strength": 0.09
+    }
+  ],
+  "linework_windows": [
+    {
+      "start_u": 0.04,
+      "length_u": 0.2,
+      "strength": 0.78
+    },
+    {
+      "start_u": 0.36,
+      "length_u": 0.17,
+      "strength": 0.52
+    },
+    {
+      "start_u": 0.68,
+      "length_u": 0.24,
+      "strength": 0.7
+    }
+  ]
+}

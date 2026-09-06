@@ -1,0 +1,95 @@
+{
+  "schema": "iggy3d.sword-steel-profile.v1",
+  "material_id": "sword_steel_v1",
+  "capability": "pristine_bright_ground_sword_steel",
+  "consumer": {
+    "contract": "WPN-001",
+    "actual_production_mesh_present": false,
+    "fixture": "SM_WPN001_BladeSteelFixture",
+    "blade_length_m": 0.889,
+    "base_width_m": 0.0318,
+    "base_thickness_m": 0.006,
+    "measurement_authority": {
+      "length_and_width": "met_1978.145a_b_proxy",
+      "thickness_and_section": "authored_diagnostic_translation"
+    }
+  },
+  "geometry": {
+    "distal_taper": 0.55,
+    "profile_taper": 0.70,
+    "tip_length_m": 0.16,
+    "edge_land_m": 0.0004,
+    "bevel_shoulder_fraction": 0.72,
+    "edge_band_fraction": 0.92,
+    "fuller_width_m": 0.012,
+    "fuller_depth_fraction": 0.12,
+    "length_segments": 72,
+    "region_attribute": "sinc_sword_region",
+    "blade_uv": "IGGY_BladeUV"
+  },
+  "donors": {
+    "conductor_manifest": "../forged_iron_v1/output/conductor_preview_v1/manifest.json",
+    "tangent_manifest": "../forged_iron_v1/output/tangent_anisotropy_preview_v1/manifest.json",
+    "expected_f0_linear": [0.56, 0.57, 0.58],
+    "body_roughness": 0.38,
+    "body_anisotropy": 0.18
+  },
+  "finish": {
+    "macro_polish": {
+      "map_resolution": [512, 128],
+      "map_span_m": [0.889, 0.0318],
+      "map_bit_depth": 16,
+      "control_grid_shape": [5, 8],
+      "u_knots": [0.0, 0.12, 0.27, 0.44, 0.61, 0.78, 0.9, 1.0],
+      "v_knots": [0.0, 0.22, 0.5, 0.78, 1.0],
+      "control_values": [
+        [0.43, 0.50, 0.37, 0.58, 0.47, 0.65, 0.52, 0.46],
+        [0.55, 0.60, 0.45, 0.64, 0.51, 0.70, 0.56, 0.49],
+        [0.48, 0.53, 0.41, 0.59, 0.46, 0.62, 0.50, 0.44],
+        [0.40, 0.47, 0.35, 0.54, 0.42, 0.58, 0.46, 0.40],
+        [0.46, 0.51, 0.39, 0.56, 0.45, 0.61, 0.49, 0.43]
+      ],
+      "roughness_amplitude": 0.028
+    },
+    "medium_grind": {
+      "map_resolution": [1024, 256],
+      "map_span_m": [0.889, 0.0318],
+      "map_bit_depth": 16,
+      "track_count": 47,
+      "roughness_amplitude": 0.018,
+      "bump_distance_m": 0.000004,
+      "bump_strength": 0.22
+    },
+    "micro_response": {
+      "owner": "principled_anisotropy",
+      "coordinate": "IGGY_BladeUV tangent",
+      "texture_map": null
+    },
+    "regions": {
+      "body": {"roughness": 0.38, "anisotropy": 0.18, "macro_strength": 0.80, "grind_strength": 1.00},
+      "fuller": {"roughness": 0.34, "anisotropy": 0.20, "macro_strength": 0.95, "grind_strength": 0.82},
+      "bevel": {"roughness": 0.24, "anisotropy": 0.35, "macro_strength": 0.52, "grind_strength": 0.46},
+      "edge": {"roughness": 0.16, "anisotropy": 0.42, "macro_strength": 0.18, "grind_strength": 0.12}
+    }
+  },
+  "workflow_contract": {
+    "surface_method_contract": {
+      "effect_stack": [
+        "clean_conductor_identity",
+        "geometry_region_finish",
+        "macro_polish_roughness",
+        "finite_medium_grind_response",
+        "anisotropic_microresponse"
+      ],
+      "composition": {
+        "colour": "constant conductor reflectance",
+        "metalness": "constant one",
+        "roughness": "one-hot region sum plus separately region-weighted signed macro and medium modulation",
+        "normal": "region-weighted medium grind through micrometre-distance bump",
+        "anisotropy": "one-hot region sum with blade tangent; owns the sub-texel scratch population"
+      },
+      "damage_placement_state": "absent",
+      "engine_parity": "unverified"
+    }
+  }
+}

@@ -1,0 +1,719 @@
+{
+  "schema_version": 1,
+  "question_id": "linear_one_unknown_3a_plus_5_eq_20_v1",
+  "option_index_base": 0,
+  "action_index_base": 0,
+  "step_index_base": 0,
+  "answer_option_indices": [
+    1,
+    2,
+    1,
+    2,
+    0,
+    1,
+    3
+  ],
+  "initial_state": "fresh LayeredQuestionSession per case; no UI or Vulkan required",
+  "cases": [
+    {
+      "id": "first_try_complete",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 3
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Complete",
+        "current_step_index": 6,
+        "completed": true,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 7,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 0,
+          "assisted": false
+        }
+      }
+    },
+    {
+      "id": "wrong_retry_correct",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "TryAgain"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 3
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Complete",
+        "current_step_index": 6,
+        "completed": true,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 6,
+          "corrected_after_retry": 1,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 1,
+          "assisted": false
+        },
+        "first_step_attempts": [
+          {
+            "option_index": 0,
+            "correct": false
+          },
+          {
+            "option_index": 1,
+            "correct": true
+          }
+        ],
+        "first_step_first_correct": false,
+        "first_step_resolved_by_player": true,
+        "first_step_answer_shown": false
+      }
+    },
+    {
+      "id": "wrong_reveal_complete",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "ShowAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 3
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Complete",
+        "current_step_index": 6,
+        "completed": true,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 6,
+          "corrected_after_retry": 0,
+          "shown_answers": 1,
+          "incorrect_checked_attempts": 1,
+          "assisted": true
+        },
+        "first_step_attempts": [
+          {
+            "option_index": 0,
+            "correct": false
+          }
+        ],
+        "first_step_first_correct": false,
+        "first_step_selected_option": 1,
+        "first_step_resolved_by_player": false,
+        "first_step_answer_shown": true
+      }
+    },
+    {
+      "id": "recovery_resume",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "BackToGrid"
+        },
+        {
+          "command": "OpenQuestion"
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Answering",
+        "current_step_index": 0,
+        "completed": false,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 0,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 1,
+          "assisted": false
+        },
+        "first_step_awaiting_recovery_choice": true,
+        "first_step_selected_option": 0,
+        "first_step_attempts": [
+          {
+            "option_index": 0,
+            "correct": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "completed_card_reopen",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 3
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "BackToGrid"
+        },
+        {
+          "command": "OpenQuestion"
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Complete",
+        "current_step_index": 6,
+        "completed": true,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 7,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 0,
+          "assisted": false
+        }
+      }
+    },
+    {
+      "id": "restart_cannot_duplicate_archive",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 2
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 3
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "RestartQuestion"
+        },
+        {
+          "command": "RestartQuestion"
+        }
+      ],
+      "expected_rejected_action_indices": [
+        23
+      ],
+      "expected": {
+        "phase": "Answering",
+        "current_step_index": 0,
+        "completed": false,
+        "run_number": 2,
+        "prior_exposure": true,
+        "archived_run_count": 1,
+        "summary": {
+          "correct_on_first_try": 0,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 0,
+          "assisted": false
+        },
+        "archived_first_run_summary": {
+          "correct_on_first_try": 7,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 0,
+          "assisted": false
+        },
+        "first_step_attempts": []
+      }
+    },
+    {
+      "id": "selection_is_not_attempt",
+      "actions": [
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        }
+      ],
+      "expected_rejected_action_indices": [],
+      "expected": {
+        "phase": "Answering",
+        "current_step_index": 0,
+        "completed": false,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 0,
+          "corrected_after_retry": 0,
+          "shown_answers": 0,
+          "incorrect_checked_attempts": 0,
+          "assisted": false
+        },
+        "first_step_selected_option": 1,
+        "first_step_attempts": [],
+        "first_step_first_correct": null
+      }
+    },
+    {
+      "id": "unavailable_commands_are_pure_rejections",
+      "actions": [
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "RestartQuestion"
+        },
+        {
+          "command": "ShowAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "OpenQuestion"
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 4
+        },
+        {
+          "command": "TryAgain"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 0
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "SelectOption",
+          "option_index": 1
+        },
+        {
+          "command": "ShowAnswer"
+        },
+        {
+          "command": "ShowAnswer"
+        },
+        {
+          "command": "CheckAnswer"
+        },
+        {
+          "command": "Continue"
+        },
+        {
+          "command": "Continue"
+        }
+      ],
+      "expected_rejected_action_indices": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        10,
+        11,
+        13,
+        14,
+        16
+      ],
+      "expected": {
+        "phase": "Answering",
+        "current_step_index": 1,
+        "completed": false,
+        "run_number": 1,
+        "prior_exposure": false,
+        "archived_run_count": 0,
+        "summary": {
+          "correct_on_first_try": 0,
+          "corrected_after_retry": 0,
+          "shown_answers": 1,
+          "incorrect_checked_attempts": 1,
+          "assisted": true
+        },
+        "first_step_attempts": [
+          {
+            "option_index": 0,
+            "correct": false
+          }
+        ],
+        "first_step_answer_shown": true,
+        "first_step_resolved_by_player": false
+      }
+    }
+  ]
+}

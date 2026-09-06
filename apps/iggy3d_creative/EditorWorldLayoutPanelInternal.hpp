@@ -28,12 +28,6 @@ struct CreativeEditorWorldLayoutBlockoutPatternChoice {
 [[nodiscard]] std::span<const CreativeEditorWorldLayoutBlockoutPatternChoice>
 creativeEditorWorldLayoutBlockoutPatternChoices() noexcept;
 
-[[nodiscard]] bool
-applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
-    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
-    cr::CreativeGridSettings grid,
-    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept;
-
 // Whether the selected-building blockout Edit draft still reflects the
 // source: active, pointing at a live building, read at the current revision.
 // Pure so the drawer's sync line is headless-testable.

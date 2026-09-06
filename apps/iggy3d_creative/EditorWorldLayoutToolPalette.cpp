@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -618,38 +617,6 @@ constexpr std::array<CreativeEditorWorldLayoutBlockoutPatternChoice, 4U>
         {"2 x 2", cr::CreativeWorldLayoutBuildingBlockoutPattern::Grid2x2},
     }};
 
-bool blockoutProfileCellHeight(
-    cr::CreativeWorldLayoutArchitecturalProfileKind kind,
-    cr::CreativeGridSettings grid, std::uint16_t& output) noexcept {
-  if (kind >= cr::CreativeWorldLayoutArchitecturalProfileKind::Count ||
-      kind == cr::CreativeWorldLayoutArchitecturalProfileKind::Custom ||
-      !std::isfinite(grid.cellSizeMeters) || grid.cellSizeMeters <= 0.0) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutArchitecturalProfile profile =
-      cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
-  return cr::resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
-      grid, profile, output);
-}
-
-bool applyBlockoutArchitecturalProfile(
-    CreativeEditorWorldLayoutBuildingBlockoutSettings& draft,
-    cr::CreativeGridSettings grid,
-    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
-  std::uint16_t floorToFloorCells = 0U;
-  if (!blockoutProfileCellHeight(kind, grid, floorToFloorCells)) {
-    return false;
-  }
-  const cr::CreativeWorldLayoutArchitecturalProfile profile =
-      cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
-  draft.architecturalProfileKind = kind;
-  draft.floorToFloorCells = floorToFloorCells;
-  draft.shell.floorThicknessLayers = profile.floorThicknessLayers;
-  draft.ceilingThicknessLayers = profile.ceilingThicknessLayers;
-  draft.shell.roofThicknessLayers = profile.roofThicknessLayers;
-  return true;
-}
-
 bool drawBlockoutMaterialCombo(const char* label,
                                cr::CreativeStructuralMaterial& material) {
   bool changed = false;
@@ -681,6 +648,12 @@ bool drawBlockoutMaterialCombo(const char* label,
 void drawWorldLayoutBlockoutSettingsDrawer(
     CreativeEditorWorldLayoutBuildingBlockoutSettings& draft,
     cr::CreativeGridSettings grid) {
+  if (draft.architecturalProfileKind !=
+      cr::CreativeWorldLayoutArchitecturalProfileKind::Custom) {
+    static_cast<void>(
+        applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+            draft, grid, draft.architecturalProfileKind));
+  }
 
   int minimumX = static_cast<int>(draft.shell.footprint.minimum.x);
   int minimumZ = static_cast<int>(draft.shell.footprint.minimum.z);
@@ -724,10 +697,11 @@ void drawWorldLayoutBlockoutSettingsDrawer(
          {cr::CreativeWorldLayoutArchitecturalProfileKind::Residential,
           cr::CreativeWorldLayoutArchitecturalProfileKind::Grand,
           cr::CreativeWorldLayoutArchitecturalProfileKind::Custom}) {
-      std::uint16_t ignored = 0U;
+      CreativeEditorWorldLayoutBuildingBlockoutSettings candidate = draft;
       const bool available =
           kind == cr::CreativeWorldLayoutArchitecturalProfileKind::Custom ||
-          blockoutProfileCellHeight(kind, grid, ignored);
+          applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+              candidate, grid, kind);
       const bool selected = draft.architecturalProfileKind == kind;
       ImGui::BeginDisabled(!available);
       if (ImGui::Selectable(cr::toString(kind).data(), selected)) {
@@ -736,7 +710,8 @@ void drawWorldLayoutBlockoutSettingsDrawer(
           draft.architecturalProfileKind = kind;
         } else {
           static_cast<void>(
-              applyBlockoutArchitecturalProfile(draft, grid, kind));
+              applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+                  draft, grid, kind));
         }
       }
       ImGui::EndDisabled();
@@ -945,13 +920,6 @@ void drawWorldLayoutBuildingBlockoutSection(
 }
 
 }  // namespace
-
-bool applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
-    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
-    cr::CreativeGridSettings grid,
-    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
-  return applyBlockoutArchitecturalProfile(settings, grid, kind);
-}
 
 bool creativeEditorWorldLayoutBlockoutEditInSync(
     const CreativeEditorDesktopBlockoutEditDraft& draft,

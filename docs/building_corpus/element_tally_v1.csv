@@ -1,0 +1,26 @@
+canonical_element,mapping_layer,n_rows,n_candidates_weighted,weighted_evidence,status,example_elements
+height,vocab,29,15,13.0,"PROVISIONAL - coverage instrument, not a production queue","height, floor to tie-beams; height, tie-beams to ridge-tree"
+internal_length,vocab,20,14,12.5,"PROVISIONAL - coverage instrument, not a production queue",internal length; length
+internal_width,census-overlay-pattern;vocab,19,13,12.0,"PROVISIONAL - coverage instrument, not a production queue",internal breadth; internal width
+width,census-overlay-pattern;vocab,11,9,8.5,"PROVISIONAL - coverage instrument, not a production queue",first-floor entrance doorway width; doorway width at head (inclining jambs)
+opening_width,census-overlay-pattern;vocab,15,7,7.0,"PROVISIONAL - coverage instrument, not a production queue",door width; main (shippon) door width
+internal_height,vocab,12,6,5.5,"PROVISIONAL - coverage instrument, not a production queue","height, floor to ridge-tree; height"
+opening_height,vocab,9,5,5.0,"PROVISIONAL - coverage instrument, not a production queue",main (shippon) door height; window opening height
+wall_thickness,vocab,6,5,4.5,"PROVISIONAL - coverage instrument, not a production queue",mud wall thickness; external wall thickness
+bay_spacing,vocab,5,4,3.5,"PROVISIONAL - coverage instrument, not a production queue","structural bay length; tie-beam length, pillar to pillar (aisle-post spacing across)"
+length,vocab,8,3,2.5,"PROVISIONAL - coverage instrument, not a production queue",external side wall length (1 of 2); external side wall length (2 of 2)
+diameter,vocab,5,3,2.5,"PROVISIONAL - coverage instrument, not a production queue",donjon external diameter; tower external diameter
+external_length,vocab,2,2,2.0,"PROVISIONAL - coverage instrument, not a production queue",external length
+plan_dimension,census-proposed,4,2,2.0,"PROVISIONAL - coverage instrument, not a production queue",internal plan dimension A (order as printed); internal plan dimension B (order as printed)
+sill_height_above_floor,vocab,2,2,2.0,"PROVISIONAL - coverage instrument, not a production queue",ambry sill height above floor; entrance doorway sill height above external ground
+member_section,census-overlay-pattern,3,2,1.5,"PROVISIONAL - coverage instrument, not a production queue","arcade pillar section, larger face; arcade pillar section, smaller face"
+projection,vocab,2,2,1.5,"PROVISIONAL - coverage instrument, not a production queue",eaves projection; first-floor overhang
+putlog_hole,vocab,2,2,1.5,"PROVISIONAL - coverage instrument, not a production queue","door-frame socket (square section); hoarding putlog hole, square"
+hearth_screen,census-proposed,2,1,1.0,"PROVISIONAL - coverage instrument, not a production queue","""speer"" (hearth screen) length; ""speer"" (hearth screen) height"
+external_width,census-overlay-pattern,1,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",external breadth
+depth,vocab,1,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",aperture depth (through wall)
+level_difference,census-overlay-pattern;vocab,2,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",projectile drop from the donjon's upper defences; plateau escarpment above the valley
+gap,census-overlay-pattern,1,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",ditch separating château from bailey
+external_height,vocab,1,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",lower basin height above the ground
+thickness,vocab,3,1,1.0,"PROVISIONAL - coverage instrument, not a production queue",bahut thickness; joint thickness range
+count,census-overlay-pattern,1,1,0.5,"PROVISIONAL - coverage instrument, not a production queue",nest-hole (boulin) capacity

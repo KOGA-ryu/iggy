@@ -252,6 +252,8 @@ target_sources(iggy3d
     src/content/assets/StaticMeshMaterialImport.cpp
     src/runtime/player/PlayerRoster.cpp
     src/runtime/player/PlayerPhysicsMovePlanner.cpp
+    src/runtime/first_move/HuntSession.cpp
+    src/runtime/first_move/LayeredQuestionSession.cpp
     src/runtime/world/WorldState.cpp
     src/runtime/clock/Clock.cpp
     src/runtime/camera/CameraModePolicy.cpp
@@ -596,6 +598,19 @@ iggy3d_apply_warnings(i3dc)
 add_executable(i3dp apps/iggy3d_playtest/main.cpp)
 target_link_libraries(i3dp PRIVATE iggy3d_creative_app)
 iggy3d_apply_warnings(i3dp)
+
+add_library(first_move_ui STATIC
+  apps/first_move/FirstMoveUi.cpp
+  apps/first_move/LayeredQuestionUi.cpp)
+target_link_libraries(first_move_ui PUBLIC iggy3d)
+target_link_libraries(first_move_ui PRIVATE iggy3d_imgui)
+target_include_directories(first_move_ui PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/first_move")
+iggy3d_apply_warnings(first_move_ui)
+
+add_executable(first_move apps/first_move/main.cpp)
+target_link_libraries(first_move PRIVATE first_move_ui)
+iggy3d_apply_warnings(first_move)
 
 # Preserve the descriptive build target while keeping the executable convenient.
 add_custom_target(iggy3d_creative DEPENDS i3dc)

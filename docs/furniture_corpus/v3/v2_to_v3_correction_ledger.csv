@@ -1,0 +1,157 @@
+correction_type,v2_value,v3_value,extra,reason
+TRUNCATED_ID,foot.turned_separate,FC-11-10_125_1,FC-11-10_125_133,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,foot.carved_figural,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,foot.spun_metal_base,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,post.turned_support,FC-11-10_125_1,FC-11-10_125_133,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,post.turned_support,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,post.arm_support,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,rail.seat_frame,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,rail.swept_show_wood_arm,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,stile.continuous_leg_and_stile,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,stile.separate_rear_leg,FC-11-10_125_1,FC-11-10_125_133,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,brace.corner_glue_block,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,brace.metal_stay,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,crest.shaped_sawn_board,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,crest.metal_capital,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,moulding.profile_library,FC-11-10_125_1,FC-11-10_125_133,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,moulding.repeating_cell_run,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,ornament.instanced_relief_master,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,ornament.figural_bespoke,FC-03-30_120_5,FC-03-30_120_59,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+TRUNCATED_ID,ornament.figural_bespoke,FC-12-2002_298,FC-12-2002_298_1,1 membership(s) in this family cited an ID absent from the BOM; any BOM join dropped them silently
+FAMILY_RETIRED_OR_SPLIT,brace.lid_cleat,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,brace.metal_stay,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,brace.shaped_show_bracket,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,cornice.stacked_fillet_moulding,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,crest.metal_capital,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,foot.block,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,foot.carved_figural,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,foot.integral_stile_termination,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,foot.turned_separate,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,frame.assembled_from_members,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,inlay.absent_recorded,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,inlay.node_and_cell_punctuation,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,moulding.profile_library,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,ornament.figural_bespoke,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,ornament.instanced_relief_master,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,panel.floating_board_in_groove,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,post.arm_support,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,post.board_standard,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,post.case_corner_structural,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,post.panel_muntin,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,post.turned_support,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,rail.bed_side,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,rail.frame_and_panel,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,rail.moving_fly,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,rail.seat_frame,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,rail.swept_show_wood_arm,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_RETIRED_OR_SPLIT,stile.plain_back_board,,,"not carried into v3 under this name - split, renamed, or demoted to a non-asset; see refined_taxonomy_v3.csv and non_asset_constraints_v3.csv"
+FAMILY_NEW_IN_V3,,arm.arcaded_assembly,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,arm.flat_swept_board,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,arm.round_reeded_rod,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,armpost.on_seat_rail_short,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,armpost.rear_tied_to_back_frame,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.anthemion_cartouche,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.claw_and_ball_foot,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.female_mask,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.inlaid_arcade,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.inlaid_urn,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.leonine_corner_mask,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.lion_grotesque_head,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.paw_foot,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bespoke.winged_sun_disk,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,board.plain_back,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,brace.seat_internal_grid,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,bracket.shaped_sawn_console,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,capital.metal_assembly,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,cleat.lid_batten,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,collar.cut_in_solid_stone,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,cornice.stacked_profile_run,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,crest.bent_moulded_rail,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,crest.laminated_curved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,crest.rolled_carved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,enclosure.rail_and_bracket,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,flyrail.moving_assembly,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,foot.disc_pad_separable,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,foot.turned_integral_with_leg,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,foot.turned_interface_unresolved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,foot.turned_separate_dowelled,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,foot.turned_with_castor_socket,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.abalone_plaque,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.closed_line_outline_master,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.engraved_filled_line,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.inset_swappable_cell,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.keyhole_cartouche,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.mop_disc_master,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.node_punctuation,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.painted_line_path,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.repeated_cell_run,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,inlay.star_scatter_master,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,locator.case_base_block,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,moulding.profile_toolkit,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,muntin.panel_grooved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,muntin.upholstery_tacking,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ornament.applied_screwed_garland,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ornament.carved_in_solid_face,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ornament.painted_repeating_row,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ornament.placement_system,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ornament.radial_petal_array,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,panel.floating_wood_in_groove,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,partition.interior_vertical,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,pier.midspan_support,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,pilaster.applied_face_strip,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,plate.pegged_repair,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,post.back_intermediate,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,post.bed_square_fluted,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,post.carcase_unresolved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,post.case_corner_structural_joined,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,post.turned_pivot_gate,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.back_frame,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.back_secondary,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.chest_lock_and_lower,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.curved_sawn,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.frieze,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.gallery_spindle_mortised,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.gate_swinging,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.inlaid_band,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.multi_purpose_unresolved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.panel_frame_stock,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.plinth,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.seat_mitred_box,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.seat_pinned,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.seat_tenoned,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.shared_stock_multi_role,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.straight_visibility_switched,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.table_frame,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,rail.upholstery_tacking,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.acanthus_collar,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.anthemion_capital,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.applied_wreath_ring,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.beaded_teardrop_lappet,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.bolection_field,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.carved_palmette,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.carved_rosette_patera,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.carved_roundel,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.dentil_block,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.drilled_dot,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.floral_block,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.flower_chain_run,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.glass_cabochon,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.heart_lappet,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.husk_laurel_swag,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.knee_acanthus_rocaille,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.mop_disc_in_bezel,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.pendant_palmette,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.pierced_rosette_ring,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.rosette_die_panel,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,relief.spiral_volute,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,ring.revolved_collar,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,seatframe.closed_frame_assembly,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,stay.metal_quadrant_visible,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,stile.case_corner_board,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,stile.continuity_unresolved,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,stile.continuous_curved_arm_back,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,support.shelf_stick,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,termination.leg_toe_prismatic,,created by a construction-compatibility split or by row-level reassignment
+FAMILY_NEW_IN_V3,,trestle.splayed_board_standard,,created by a construction-compatibility split or by row-level reassignment
+GRANULARITY,candidate-level membership,BOM-row-level membership,,v2 made 153 candidate-level assignments; v3 makes 209 subrow-level assignments
+DONOR_PREMISE,only rough_hewn_timber_beam_v1 is geometry,inspected inventory of 15 entries,v2 read directory layout instead of inspecting; geometry builds exist inside the material assets

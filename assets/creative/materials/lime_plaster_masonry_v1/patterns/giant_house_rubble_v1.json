@@ -1,0 +1,172 @@
+{
+  "schema": "iggy3d.pattern.giant_house_rubble.v1",
+  "name": "giant_house_rubble_v1",
+  "description": "Hand-laid seven-course giant rubble wall. Course heights, joints, stone roles, and color families are authored; variation may move phase and pigment but may not invent a new bond.",
+  "tile_size_m": 4.0,
+  "mortar": {
+    "bed_joint_m": 0.050,
+    "perpend_joint_m": 0.038,
+    "recess_m": 0.010,
+    "profile": "flush_brushed_open_grain",
+    "aggregate_strength": 0.28,
+    "brush_strength": 0.42
+  },
+  "champions": [
+    {
+      "name": "quiet_bedded_slab",
+      "role": "quiet",
+      "bevel_m": 0.045,
+      "crown_m": 0.013,
+      "outline": [[0.04, 0.08], [0.36, 0.02], [0.78, 0.04], [0.97, 0.13], [0.99, 0.48], [0.95, 0.86], [0.82, 0.97], [0.42, 0.99], [0.10, 0.93], [0.01, 0.76], [0.02, 0.34]],
+      "facet_strength": 0.22,
+      "mineral_strength": 0.16,
+      "line_priority": 0.28,
+      "roughness": 0.69
+    },
+    {
+      "name": "broad_limestone_plane",
+      "role": "load_bearing",
+      "bevel_m": 0.052,
+      "crown_m": 0.021,
+      "outline": [[0.08, 0.02], [0.58, 0.00], [0.91, 0.08], [1.00, 0.26], [0.97, 0.67], [0.86, 0.96], [0.55, 1.00], [0.17, 0.91], [0.00, 0.70], [0.03, 0.29]],
+      "facet_strength": 0.54,
+      "mineral_strength": 0.25,
+      "line_priority": 0.46,
+      "roughness": 0.72
+    },
+    {
+      "name": "laminated_bedding_face",
+      "role": "bedded",
+      "bevel_m": 0.036,
+      "crown_m": 0.017,
+      "outline": [[0.03, 0.14], [0.28, 0.03], [0.76, 0.00], [0.96, 0.10], [1.00, 0.42], [0.94, 0.82], [0.72, 0.96], [0.26, 1.00], [0.05, 0.87], [0.00, 0.54]],
+      "facet_strength": 0.38,
+      "mineral_strength": 0.48,
+      "line_priority": 0.61,
+      "roughness": 0.74
+    },
+    {
+      "name": "fractured_cool_face",
+      "role": "fractured",
+      "bevel_m": 0.029,
+      "crown_m": 0.024,
+      "outline": [[0.02, 0.22], [0.19, 0.05], [0.48, 0.00], [0.66, 0.13], [0.91, 0.06], [1.00, 0.37], [0.88, 0.58], [0.96, 0.87], [0.62, 1.00], [0.34, 0.89], [0.08, 0.96], [0.00, 0.62]],
+      "facet_strength": 0.76,
+      "mineral_strength": 0.31,
+      "line_priority": 0.74,
+      "roughness": 0.77
+    },
+    {
+      "name": "projecting_traversal_ledge",
+      "role": "traversal",
+      "bevel_m": 0.060,
+      "crown_m": 0.032,
+      "outline": [[0.00, 0.10], [0.43, 0.00], [0.89, 0.05], [1.00, 0.20], [0.97, 0.55], [0.86, 0.86], [0.65, 1.00], [0.17, 0.94], [0.04, 0.74]],
+      "facet_strength": 0.63,
+      "mineral_strength": 0.22,
+      "line_priority": 0.82,
+      "roughness": 0.70
+    }
+  ],
+  "courses": [
+    {
+      "bottom_m": 0.00,
+      "top_m": 0.58,
+      "lower_tilt_m": -0.010,
+      "upper_tilt_m": 0.016,
+      "joints_m": [0.00, 0.72, 1.82, 2.45, 3.30, 4.00],
+      "stones": [
+        ["broad_limestone_plane", "warm_limestone", 0.06, -0.012],
+        ["quiet_bedded_slab", "cool_limestone", -0.03, 0.008],
+        ["laminated_bedding_face", "grey_green", 0.12, -0.006],
+        ["projecting_traversal_ledge", "warm_limestone", -0.08, 0.014],
+        ["fractured_cool_face", "umber_vein", 0.04, -0.009]
+      ]
+    },
+    {
+      "bottom_m": 0.58,
+      "top_m": 1.18,
+      "lower_tilt_m": 0.016,
+      "upper_tilt_m": -0.012,
+      "joints_m": [0.00, 0.52, 1.45, 2.33, 3.14, 4.00],
+      "stones": [
+        ["fractured_cool_face", "grey_green", -0.10, 0.009],
+        ["broad_limestone_plane", "pale_chalk", 0.02, -0.014],
+        ["quiet_bedded_slab", "warm_limestone", 0.08, 0.006],
+        ["laminated_bedding_face", "umber_vein", -0.04, -0.010],
+        ["projecting_traversal_ledge", "cool_limestone", 0.11, 0.012]
+      ]
+    },
+    {
+      "bottom_m": 1.18,
+      "top_m": 1.76,
+      "lower_tilt_m": -0.012,
+      "upper_tilt_m": 0.010,
+      "joints_m": [0.00, 0.94, 1.63, 2.58, 3.21, 4.00],
+      "stones": [
+        ["quiet_bedded_slab", "cool_limestone", 0.03, -0.008],
+        ["projecting_traversal_ledge", "warm_limestone", -0.09, 0.015],
+        ["broad_limestone_plane", "grey_green", 0.07, -0.004],
+        ["fractured_cool_face", "pale_chalk", -0.02, 0.011],
+        ["laminated_bedding_face", "umber_vein", 0.10, -0.013]
+      ]
+    },
+    {
+      "bottom_m": 1.76,
+      "top_m": 2.35,
+      "lower_tilt_m": 0.010,
+      "upper_tilt_m": -0.018,
+      "joints_m": [0.00, 0.58, 1.38, 2.48, 3.34, 4.00],
+      "stones": [
+        ["laminated_bedding_face", "warm_limestone", -0.07, 0.008],
+        ["fractured_cool_face", "grey_green", 0.12, -0.011],
+        ["broad_limestone_plane", "cool_limestone", -0.01, 0.014],
+        ["quiet_bedded_slab", "pale_chalk", 0.05, -0.006],
+        ["projecting_traversal_ledge", "umber_vein", -0.11, 0.010]
+      ]
+    },
+    {
+      "bottom_m": 2.35,
+      "top_m": 3.05,
+      "lower_tilt_m": -0.018,
+      "upper_tilt_m": 0.012,
+      "joints_m": [0.00, 0.82, 1.96, 2.64, 3.50, 4.00],
+      "stones": [
+        ["projecting_traversal_ledge", "grey_green", 0.09, -0.012],
+        ["broad_limestone_plane", "warm_limestone", -0.04, 0.016],
+        ["fractured_cool_face", "umber_vein", 0.13, -0.008],
+        ["laminated_bedding_face", "cool_limestone", -0.06, 0.009],
+        ["quiet_bedded_slab", "pale_chalk", 0.02, -0.014]
+      ]
+    },
+    {
+      "bottom_m": 3.05,
+      "top_m": 3.50,
+      "lower_tilt_m": 0.012,
+      "upper_tilt_m": -0.008,
+      "joints_m": [0.00, 0.48, 1.22, 2.12, 2.76, 3.62, 4.00],
+      "stones": [
+        ["quiet_bedded_slab", "pale_chalk", -0.08, 0.006],
+        ["laminated_bedding_face", "umber_vein", 0.06, -0.010],
+        ["projecting_traversal_ledge", "warm_limestone", -0.03, 0.013],
+        ["fractured_cool_face", "cool_limestone", 0.11, -0.007],
+        ["broad_limestone_plane", "grey_green", -0.10, 0.009],
+        ["quiet_bedded_slab", "warm_limestone", 0.04, -0.005]
+      ]
+    },
+    {
+      "bottom_m": 3.50,
+      "top_m": 4.00,
+      "lower_tilt_m": -0.008,
+      "upper_tilt_m": 0.000,
+      "joints_m": [0.00, 0.88, 1.58, 2.55, 3.20, 4.00],
+      "stones": [
+        ["fractured_cool_face", "umber_vein", 0.05, -0.011],
+        ["quiet_bedded_slab", "cool_limestone", -0.09, 0.008],
+        ["broad_limestone_plane", "pale_chalk", 0.10, -0.006],
+        ["projecting_traversal_ledge", "grey_green", -0.05, 0.012],
+        ["laminated_bedding_face", "warm_limestone", 0.02, -0.009]
+      ]
+    }
+  ]
+}

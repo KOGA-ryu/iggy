@@ -1,0 +1,732 @@
+{
+  "schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.profile.v2",
+  "profile_id": "cathedral_stone_trim_fracture_v1",
+  "display_name": "Measured Old Sarum chevron-voussoir portal order",
+  "intent": "One intact source-bounded row of individual roll-hollow-roll chevron voussoirs, carrying the accepted cathedral calcarenite body anatomy without ashlar mortar, fracture, wear, weathering, or invented arris rounding.",
+  "seed": 41723,
+  "workflow_contract": {
+    "tier": "hero-master",
+    "delivery_state": "production-candidate",
+    "storage_only_attributes": [
+      "iggy_fracture_interior"
+    ],
+    "claim_roots": [
+      {
+        "document": "profile",
+        "pointer": "/construction_contract"
+      },
+      {
+        "document": "profile",
+        "pointer": "/moulding_contract"
+      },
+      {
+        "document": "profile",
+        "pointer": "/surface_contract"
+      }
+    ],
+    "measurement_claims": [
+      {
+        "id": "catalogue_height",
+        "document": "profile",
+        "pointer": "/construction_contract/catalogue_height_m",
+        "value": 0.2,
+        "status": "measured",
+        "source_id": "S01_old_sarum_catalogue_item_55"
+      },
+      {
+        "id": "catalogue_inner_chord",
+        "document": "profile",
+        "pointer": "/construction_contract/catalogue_inner_chord_m",
+        "value": 0.14,
+        "status": "measured",
+        "source_id": "S01_old_sarum_catalogue_item_55"
+      },
+      {
+        "id": "catalogue_outer_chord",
+        "document": "profile",
+        "pointer": "/construction_contract/catalogue_outer_chord_m",
+        "value": 0.18,
+        "status": "measured",
+        "source_id": "S01_old_sarum_catalogue_item_55"
+      },
+      {
+        "id": "catalogue_depth",
+        "document": "profile",
+        "pointer": "/construction_contract/catalogue_depth_m",
+        "value": 0.27,
+        "status": "measured",
+        "source_id": "S01_old_sarum_catalogue_item_55"
+      },
+      {
+        "id": "catalogue_width_tolerance",
+        "document": "profile",
+        "pointer": "/construction_contract/catalogue_width_tolerance_m",
+        "value": 0.005,
+        "status": "authored",
+        "reason": "Explicit acceptance tolerance for comparing the derived outer chord to the rounded catalogue dimension."
+      },
+      {
+        "id": "authored_arch_count",
+        "document": "profile",
+        "pointer": "/construction_contract/count",
+        "value": 16,
+        "status": "authored",
+        "reason": "A complete semicircle needs an explicit reusable count; S01 does not publish the original order."
+      },
+      {
+        "id": "authored_pitch",
+        "document": "profile",
+        "pointer": "/construction_contract/pitch_angle_deg",
+        "value": 11.25,
+        "status": "authored",
+        "reason": "Derived from sixteen equal pitches over 180 degrees."
+      },
+      {
+        "id": "inherited_joint",
+        "document": "profile",
+        "pointer": "/construction_contract/joint_gap_centerline_m",
+        "value": 0.003,
+        "status": "inherited",
+        "source_id": "cathedral_stone_v1_accepted_3mm_joint_contract"
+      },
+      {
+        "id": "derived_body_angle",
+        "document": "profile",
+        "pointer": "/construction_contract/body_angle_deg",
+        "value": 11.042294066,
+        "status": "authored",
+        "reason": "Solved from the authored pitch, inherited centreline joint, and measured inner chord."
+      },
+      {
+        "id": "derived_radii",
+        "document": "profile",
+        "pointer": "/construction_contract/inner_radius_m",
+        "value": 0.7275514105,
+        "status": "authored",
+        "reason": "Closure solution; S01 does not publish an arch radius."
+      },
+      {
+        "id": "derived_outer_radius",
+        "document": "profile",
+        "pointer": "/construction_contract/outer_radius_m",
+        "value": 0.9275514105,
+        "status": "authored",
+        "reason": "Inner radius plus measured 0.200 m radial height."
+      },
+      {
+        "id": "derived_outer_chord",
+        "document": "profile",
+        "pointer": "/construction_contract/derived_outer_chord_m",
+        "value": 0.1784852529,
+        "status": "authored",
+        "reason": "Closure result checked against the measured 0.180 m rounded catalogue value."
+      },
+      {
+        "id": "derived_clear_diameter",
+        "document": "profile",
+        "pointer": "/construction_contract/clear_diameter_m",
+        "value": 1.455102821,
+        "status": "authored",
+        "reason": "Twice the authored closure radius."
+      },
+      {
+        "id": "derived_outer_diameter",
+        "document": "profile",
+        "pointer": "/construction_contract/outer_diameter_m",
+        "value": 1.855102821,
+        "status": "authored",
+        "reason": "Twice the authored outer radius."
+      },
+      {
+        "id": "authored_moulding_zones",
+        "document": "profile",
+        "pointer": "/moulding_contract/radial_zone_widths_m",
+        "value": [0.025, 0.05, 0.05, 0.05, 0.025],
+        "status": "authored",
+        "reason": "Replaceable roll-hollow-roll section because S01 publishes the sequence but no section drawing."
+      },
+      {
+        "id": "authored_roll_crest",
+        "document": "profile",
+        "pointer": "/moulding_contract/roll_crest_m",
+        "value": 0.012,
+        "status": "authored",
+        "reason": "Replaceable readable relief; not a surveyed Old Sarum value."
+      },
+      {
+        "id": "authored_hollow_depth",
+        "document": "profile",
+        "pointer": "/moulding_contract/hollow_depression_m",
+        "value": 0.006,
+        "status": "authored",
+        "reason": "Replaceable readable hollow; not a surveyed Old Sarum value."
+      },
+      {
+        "id": "authored_chevron_path",
+        "document": "profile",
+        "pointer": "/moulding_contract/chevron_apex_v",
+        "value": 0.24,
+        "status": "authored",
+        "reason": "Places the centripetal apex while allowing the paired rolls to enter through the intrados."
+      },
+      {
+        "id": "authored_chevron_shoulder",
+        "document": "profile",
+        "pointer": "/moulding_contract/chevron_shoulder_v",
+        "value": 0.76,
+        "status": "authored",
+        "reason": "Completes one lateral chevron across the measured stone face."
+      },
+      {
+        "id": "authored_band_width",
+        "document": "profile",
+        "pointer": "/moulding_contract/band_half_width_m",
+        "value": 0.025,
+        "status": "authored",
+        "reason": "Matches the authored 50 mm roll and hollow zones."
+      },
+      {
+        "id": "authored_roll_offsets",
+        "document": "profile",
+        "pointer": "/moulding_contract/roll_center_offsets_m",
+        "value": [-0.05, 0.05],
+        "status": "authored",
+        "reason": "Centers the paired rolls around the hollow."
+      },
+      {
+        "id": "authored_hollow_offset",
+        "document": "profile",
+        "pointer": "/moulding_contract/hollow_center_offset_m",
+        "value": 0.0,
+        "status": "authored",
+        "reason": "Defines the hollow as the signed chevron centreline."
+      },
+      {
+        "id": "authored_broad_colour_span",
+        "document": "profile",
+        "pointer": "/surface_contract/broad_color_span_m",
+        "value": 0.512,
+        "status": "authored",
+        "reason": "Broad color decorrelation scale chosen to cover several stones without importing ashlar mortar."
+      },
+      {
+        "id": "authored_shade_count",
+        "document": "profile",
+        "pointer": "/surface_contract/broad_color_shade_count",
+        "value": 20,
+        "status": "authored",
+        "reason": "Explicit within-element palette resolution required by the material intent."
+      },
+      {
+        "id": "inherited_body_spans",
+        "document": "profile",
+        "pointer": "/surface_contract/primary_body_span_m",
+        "value": 0.064,
+        "status": "inherited",
+        "source_id": "cathedral_stone_v1_accepted_body_span"
+      },
+      {
+        "id": "inherited_secondary_span",
+        "document": "profile",
+        "pointer": "/surface_contract/secondary_body_span_m",
+        "value": 0.091,
+        "status": "inherited",
+        "source_id": "cathedral_stone_v1_accepted_decorrelation_span"
+      },
+      {
+        "id": "authored_normal_share",
+        "document": "profile",
+        "pointer": "/surface_contract/primary_body_normal_strength_share",
+        "value": 0.66,
+        "status": "authored",
+        "reason": "Splits the inherited proxy relief between primary normal and secondary bump without doubling amplitude."
+      },
+      {
+        "id": "authored_height_share",
+        "document": "profile",
+        "pointer": "/surface_contract/secondary_body_height_strength_share",
+        "value": 0.34,
+        "status": "authored",
+        "reason": "Complements the 0.66 primary share and decorrelates the secondary height."
+      },
+      {
+        "id": "proxy_relief_range",
+        "document": "profile",
+        "pointer": "/surface_contract/body_relief_range_m",
+        "value": 0.00113,
+        "status": "proxy",
+        "source_id": "sabucina_calcarenite_surface_topography_proxy"
+      },
+      {
+        "id": "inherited_detail_distances",
+        "document": "profile",
+        "pointer": "/surface_contract/detail_full_distance_m",
+        "value": 0.3,
+        "status": "inherited",
+        "source_id": "cathedral_stone_v1_accepted_distance_hierarchy"
+      },
+      {
+        "id": "inherited_detail_zero",
+        "document": "profile",
+        "pointer": "/surface_contract/detail_zero_distance_m",
+        "value": 3.5,
+        "status": "inherited",
+        "source_id": "cathedral_stone_v1_accepted_distance_hierarchy"
+      },
+      {
+        "id": "dielectric_metallic",
+        "document": "profile",
+        "pointer": "/surface_contract/metallic",
+        "value": 0.0,
+        "status": "authored",
+        "reason": "Opaque limestone is modeled as a nonmetal dielectric."
+      },
+      {
+        "id": "opaque_surface",
+        "document": "profile",
+        "pointer": "/surface_contract/opacity",
+        "value": 1.0,
+        "status": "authored",
+        "reason": "Intact architectural limestone is opaque."
+      }
+    ],
+    "layer_provenance": [
+      {
+        "id": "construction",
+        "physical_meaning": "Sixteen separate closed wedge-shaped voussoirs form the semicircular order with real centerline joints.",
+        "sources": [
+          "S01_old_sarum_catalogue_item_55",
+          "patterns/cathedral_trim_fracture_atlas_v1.json"
+        ],
+        "outputs": [
+          "voussoir mesh volumes",
+          "iggy_voussoir_id",
+          "IGGY_StoneUV_A",
+          "IGGY_StoneUV_B"
+        ],
+        "consumers": [
+          "Blender product collection",
+          "IGGY_SH_ChevronVoussoir_v002"
+        ],
+        "proof_ids": [
+          "neutral_clay_front",
+          "wireframe_proof"
+        ],
+        "rest_rule": "No surface texture is allowed to draw joints or repair a weak arch silhouette.",
+        "claim_ids": [
+          "catalogue_height",
+          "catalogue_inner_chord",
+          "catalogue_outer_chord",
+          "catalogue_depth",
+          "authored_arch_count",
+          "inherited_joint",
+          "derived_radii",
+          "derived_outer_radius"
+        ]
+      },
+      {
+        "id": "macro",
+        "physical_meaning": "Broad quiet calcarenite value fields and bounded warm-cool changes prevent one flat colour per stone.",
+        "sources": [
+          "trim-specific deterministic broad colour compiler",
+          "surface_contract broad colour palette"
+        ],
+        "outputs": [
+          "cathedral_stone_trim_fracture_v1_basecolor.png",
+          "per-stone warm-cool variant"
+        ],
+        "consumers": [
+          "IGGY_TrimBaseColor",
+          "IGGY_Attribute_iggy_material_variant"
+        ],
+        "proof_ids": [
+          "live_material_front",
+          "distance_read"
+        ],
+        "rest_rule": "Broad fields retain quiet spans and may not contain mortar, photographed lighting, or universal cloud noise.",
+        "claim_ids": [
+          "authored_broad_colour_span",
+          "authored_shade_count"
+        ]
+      },
+      {
+        "id": "medium",
+        "physical_meaning": "One phase-locked lateral chevron with roll-hollow-roll moulding is sampled into the front geometry of each stone.",
+        "sources": [
+          "S03_crsbi_chevron_guide",
+          "authored signed chevron field"
+        ],
+        "outputs": [
+          "front relief geometry",
+          "iggy_chevron_roll",
+          "iggy_chevron_hollow",
+          "iggy_chevron_quiet"
+        ],
+        "consumers": [
+          "voussoir front mesh",
+          "live moulding colour and roughness"
+        ],
+        "proof_ids": [
+          "moulding_proof",
+          "measured_close"
+        ],
+        "rest_rule": "The two 25 mm quiet zones remain free of roll and hollow displacement.",
+        "claim_ids": [
+          "authored_moulding_zones",
+          "authored_roll_crest",
+          "authored_hollow_depth",
+          "authored_chevron_path",
+          "authored_chevron_shoulder",
+          "authored_band_width"
+        ]
+      },
+      {
+        "id": "edge_event",
+        "physical_meaning": "Real joints, selected hollow ink, and selected crest highlights articulate construction without outlining every edge.",
+        "sources": [
+          "voussoir boundaries",
+          "signed chevron derivatives"
+        ],
+        "outputs": [
+          "physical joint gaps",
+          "iggy_chevron_ink",
+          "iggy_chevron_highlight"
+        ],
+        "consumers": [
+          "arch silhouette and occlusion",
+          "selective graphic linework"
+        ],
+        "proof_ids": [
+          "live_material_grazing",
+          "identity_proof"
+        ],
+        "rest_rule": "Quiet faces and non-selected crests receive no universal ink or highlight.",
+        "claim_ids": [
+          "inherited_joint",
+          "authored_roll_offsets",
+          "authored_hollow_offset"
+        ]
+      },
+      {
+        "id": "micro",
+        "physical_meaning": "Measured-proxy fossil, silicate, pore, normal, and height identities supply close calcarenite response.",
+        "sources": [
+          "cathedral_stone_v1 accepted body masks",
+          "cathedral_stone_v1 accepted body normal",
+          "cathedral_stone_v1 accepted body height"
+        ],
+        "outputs": [
+          "cathedral_stone_trim_fracture_v1_body_masks.png",
+          "cathedral_stone_trim_fracture_v1_body_normal.png",
+          "cathedral_stone_trim_fracture_v1_body_height.png"
+        ],
+        "consumers": [
+          "IGGY_BodyMasks64",
+          "IGGY_BodyMasks91",
+          "IGGY_BodyNormal64",
+          "IGGY_BodyHeight91"
+        ],
+        "proof_ids": [
+          "measured_close"
+        ],
+        "rest_rule": "Microdetail fades from full at 0.30 m to absent at 3.50 m and cannot replace the moulding.",
+        "claim_ids": [
+          "inherited_body_spans",
+          "inherited_secondary_span",
+          "inherited_detail_distances",
+          "inherited_detail_zero"
+        ]
+      },
+      {
+        "id": "cumulative_color",
+        "physical_meaning": "Broad colour, per-stone variation, body identities, moulding values, and selective linework accumulate in a fixed causal order.",
+        "sources": [
+          "basecolor lane",
+          "body mask lane",
+          "moulding attributes",
+          "stone variant attribute"
+        ],
+        "outputs": [
+          "final unlit intrinsic stone base colour"
+        ],
+        "consumers": [
+          "Principled BSDF Base Color"
+        ],
+        "proof_ids": [
+          "live_material_front",
+          "identity_proof"
+        ],
+        "rest_rule": "Intrinsic colour excludes AO, scene shadow, damage, damp, lichen, soot, and generic grime.",
+        "claim_ids": [
+          "authored_broad_colour_span",
+          "authored_shade_count"
+        ]
+      },
+      {
+        "id": "height_normal",
+        "physical_meaning": "Primary 64 mm tangent normal and decorrelated 91 mm height contribute measured-proxy body relief beneath real moulding geometry.",
+        "sources": [
+          "body normal lane",
+          "body height lane"
+        ],
+        "outputs": [
+          "combined Principled BSDF normal input"
+        ],
+        "consumers": [
+          "IGGY_BodyNormal64Node",
+          "IGGY_DecorrelatedBodyHeight91mm"
+        ],
+        "proof_ids": [
+          "measured_close",
+          "live_material_grazing"
+        ],
+        "rest_rule": "The 1.13 mm proxy range affects shading only and makes no silhouette or deep-fracture claim.",
+        "claim_ids": [
+          "authored_normal_share",
+          "authored_height_share",
+          "proxy_relief_range"
+        ]
+      },
+      {
+        "id": "response",
+        "physical_meaning": "Broad porous calcarenite roughness is modified by body and moulding cause while AO remains one and metalness remains zero.",
+        "sources": [
+          "cathedral_stone_trim_fracture_v1_orm.png",
+          "body masks",
+          "roll and hollow attributes"
+        ],
+        "outputs": [
+          "final roughness",
+          "AO equals one",
+          "metalness equals zero",
+          "opacity equals one"
+        ],
+        "consumers": [
+          "Principled BSDF Roughness",
+          "Principled BSDF Metallic",
+          "Principled BSDF Alpha"
+        ],
+        "proof_ids": [
+          "live_material_grazing"
+        ],
+        "rest_rule": "Roughness is not inverted height, and no fake cavity AO is baked into colour.",
+        "claim_ids": [
+          "dielectric_metallic",
+          "opaque_surface"
+        ]
+      },
+      {
+        "id": "stylization",
+        "physical_meaning": "Structure-selected ink and highlights preserve the chevron value rhythm after body microdetail fades.",
+        "sources": [
+          "iggy_chevron_ink",
+          "iggy_chevron_highlight",
+          "camera distance"
+        ],
+        "outputs": [
+          "selective ink colour",
+          "selective crest highlight"
+        ],
+        "consumers": [
+          "final base-colour composition"
+        ],
+        "proof_ids": [
+          "distance_read",
+          "moulding_proof"
+        ],
+        "rest_rule": "Linework is absent from unselected faces and does not encode scene lighting.",
+        "claim_ids": []
+      }
+    ],
+    "performance_budget": {
+      "max_total_texture_bytes": 6500000,
+      "max_product_objects": 16,
+      "max_total_vertices": 30000,
+      "max_total_polygons": 30000,
+      "max_shader_nodes": 85,
+      "max_shader_links": 110,
+      "max_unique_images": 5,
+      "max_proof_count": 9
+    },
+    "acceptance": {
+      "actual_target_required_for_acceptance": true,
+      "actual_target_identifier": "pending-selection: production cathedral portal consumer",
+      "isolated_fixture_can_reach": "production-candidate",
+      "user_review_required_for_acceptance": true
+    },
+    "fast_build": {
+      "canonical_output_requires_proof_set": "all",
+      "temporary_modes": ["none", "changed"],
+      "changed_mode_requires_explicit_proof_ids": true
+    }
+  },
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "reference_pixels_retained_in_repository": false,
+    "measured_voussoir_source": "S01_old_sarum_catalogue_item_55",
+    "chevron_typology_source": "S03_crsbi_chevron_guide",
+    "comparative_tooling_source": "S02_gloucester_cathedral_archaeology",
+    "material_body_source": "cathedral_stone_v1 accepted measured-proxy body lanes",
+    "authored_completion_rule": "Radius, count, joint width, and roll-hollow-roll section are labeled authored translations because S01 does not publish them."
+  },
+  "construction_contract": {
+    "catalogue_height_m": 0.2,
+    "catalogue_inner_chord_m": 0.14,
+    "catalogue_outer_chord_m": 0.18,
+    "catalogue_depth_m": 0.27,
+    "catalogue_width_tolerance_m": 0.005,
+    "count": 16,
+    "pitch_angle_deg": 11.25,
+    "joint_gap_centerline_m": 0.003,
+    "body_angle_deg": 11.042294066,
+    "inner_radius_m": 0.7275514105,
+    "outer_radius_m": 0.9275514105,
+    "derived_outer_chord_m": 0.1784852529,
+    "clear_diameter_m": 1.455102821,
+    "outer_diameter_m": 1.855102821,
+    "geometry_rule": "Sixteen separate closed wedge meshes; no connected annular ribbon, Boolean segmentation, global bevel, or inferred jamb reconstruction.",
+    "joint_rule": "The three-millimetre working gap is measured at the stone centreline radius, is empty space between adjacent stone bodies, and remains visible under neutral clay. The resulting intrados gap is approximately 2.64 mm.",
+    "arris_rule": "Unknown in the measured source; no bevel is authored."
+  },
+  "moulding_contract": {
+    "classification": "one centripetal lateral face chevron per voussoir",
+    "profile_sequence": "quiet-roll-hollow-roll-quiet",
+    "radial_zone_widths_m": [0.025, 0.05, 0.05, 0.05, 0.025],
+    "roll_crest_m": 0.012,
+    "hollow_depression_m": 0.006,
+    "chevron_apex_v": 0.24,
+    "chevron_shoulder_v": 0.76,
+    "band_half_width_m": 0.025,
+    "roll_center_offsets_m": [-0.05, 0.05],
+    "hollow_center_offset_m": 0.0,
+    "scope_note": "The exact profile dimensions are replaceable authored translation, not a claim about the missing Old Sarum section drawing."
+  },
+  "coordinate_contract": {
+    "origin": "arch centre at X=0, springing line Z=0, wall plane Y=0",
+    "stone_parameter_u": "tangential position normalized -1 to 1 across one voussoir",
+    "stone_parameter_v": "radial position normalized 0 at intrados and 1 at extrados",
+    "stone_parameter_w": "front-to-back depth in metres",
+    "uv_a": "IGGY_StoneUV_A stores transformed local tangential and radial metres",
+    "uv_b": "IGGY_StoneUV_B stores an independently transformed local tangential and radial metre frame",
+    "scale_rule": "UV values are authored from measured local coordinates and may not be rebuilt from a post-transform bounding box.",
+    "transform_rule": "Object scale must remain (1,1,1); non-uniform scale is a validation failure."
+  },
+  "identity_contract": {
+    "point_attributes": [
+      "iggy_voussoir_id",
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_chevron_roll",
+      "iggy_chevron_hollow",
+      "iggy_chevron_quiet",
+      "iggy_chevron_ink",
+      "iggy_chevron_highlight"
+    ],
+    "face_attributes": [
+      "iggy_carved_trim",
+      "iggy_chevron_front",
+      "iggy_fracture_interior"
+    ],
+    "fracture_default": 0,
+    "damage_default": 0,
+    "semantic_rule": "Front-face pattern masks are authored from the same signed chevron field that displaces the mesh. Side and rear vertices carry zero pattern masks. New or cut faces may never inherit fracture identity by triangle interpolation."
+  },
+  "surface_contract": {
+    "broad_color_span_m": 0.512,
+    "broad_color_shade_count": 20,
+    "primary_body_span_m": 0.064,
+    "secondary_body_span_m": 0.091,
+    "primary_body_normal_strength_share": 0.66,
+    "secondary_body_height_strength_share": 0.34,
+    "body_relief_range_m": 0.00113,
+    "detail_full_distance_m": 0.3,
+    "detail_zero_distance_m": 3.5,
+    "base_color_rule": "Twenty related warm, mid, pale, and cool calcarenite shades form broad blended fields inside every stone. No ashlar course, mortar, photographed light, generic cloud noise, or one-colour block is permitted.",
+    "normal_rule": "OpenGL body normal is consumed through a Normal Map node; a decorrelated 91 mm height sample adds only 34 percent of the proxy-bounded range through a Bump node.",
+    "roughness_rule": "Broad calibrated ORM roughness is modified only by live pore, silicate, roll, and hollow evidence.",
+    "ao_rule": "Texture AO remains one. Only real geometry may produce contact occlusion.",
+    "metallic": 0.0,
+    "opacity": 1.0,
+    "damage_rule": "Fracture, chips, checks, soot, damp, lichen, wear, and repair are absent from this capability."
+  },
+  "texture_inventory": {
+    "basecolor": {
+      "filename": "cathedral_stone_trim_fracture_v1_basecolor.png",
+      "resolution": [1024, 1024],
+      "physical_span_m": 0.512,
+      "metres_per_texel": 0.0005,
+      "bit_depth": 8,
+      "color_space": "sRGB",
+      "channels": "RGB intrinsic broad twenty-shade calcarenite colour"
+    },
+    "orm": {
+      "filename": "cathedral_stone_trim_fracture_v1_orm.png",
+      "resolution": [1024, 1024],
+      "physical_span_m": 0.512,
+      "metres_per_texel": 0.0005,
+      "bit_depth": 8,
+      "color_space": "Non-Color",
+      "channels": "R ambient-occlusion=1, G roughness, B metallic=0"
+    },
+    "body_masks": {
+      "filename": "cathedral_stone_trim_fracture_v1_body_masks.png",
+      "resolution": [1024, 1024],
+      "physical_span_m": 0.064,
+      "metres_per_texel": 0.0000625,
+      "bit_depth": 8,
+      "color_space": "Non-Color",
+      "channels": "R fossil fragment, G silicate grain, B visible pore identity"
+    },
+    "body_normal": {
+      "filename": "cathedral_stone_trim_fracture_v1_body_normal.png",
+      "resolution": [1024, 1024],
+      "physical_span_m": 0.064,
+      "metres_per_texel": 0.0000625,
+      "bit_depth": 8,
+      "color_space": "Non-Color",
+      "channels": "OpenGL XYZ"
+    },
+    "body_height": {
+      "filename": "cathedral_stone_trim_fracture_v1_body_height.png",
+      "resolution": [1024, 1024],
+      "physical_span_m": 0.064,
+      "metres_per_texel": 0.0000625,
+      "bit_depth": 16,
+      "color_space": "Non-Color",
+      "channels": "normalized height with 0.00113 m declared range"
+    }
+  },
+  "shader_contract": {
+    "node_group": "IGGY_SH_ChevronVoussoir_v002",
+    "material": "IGGY_MAT_ChevronVoussoir_v002",
+    "shading_model": "opaque Principled dielectric",
+    "normal_map_space": "TANGENT",
+    "live_color_order": [
+      "broad basecolor",
+      "per-stone warm/cool variant",
+      "distance-faded fossil, silicate, and pore colour",
+      "roll warmth",
+      "hollow coolness",
+      "selective chevron ink",
+      "selective crest highlight"
+    ],
+    "proof_outputs": [
+      "Combined Color",
+      "Combined Roughness",
+      "Combined Normal",
+      "Moulding Proof",
+      "Identity Proof",
+      "Detail Distance Fade"
+    ],
+    "forbidden": [
+      "noise nodes used as universal detail",
+      "dormant image nodes",
+      "dormant semantic attributes",
+      "normal RGB connected directly to Principled Normal",
+      "height inversion",
+      "baked lighting in basecolor",
+      "one flat decorative ribbon"
+    ]
+  }
+}

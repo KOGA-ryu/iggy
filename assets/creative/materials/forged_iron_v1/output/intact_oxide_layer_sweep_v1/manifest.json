@@ -1,0 +1,832 @@
+{
+  "candidates": {
+    "A_smooth_control": {
+      "component_topology": {
+        "FixedKnuckle_02": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "FixedKnuckle_04": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_01": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_03": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_05": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_FixedLeaf": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_Pintle": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.0,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        }
+      },
+      "coverage_maximum": 1.0,
+      "coverage_minimum": 1.0,
+      "exposure_maximum": 0.0,
+      "label": "A  SMOOTH CONTROL",
+      "metalness_maximum": 0.0,
+      "quiet_fraction": 0.0,
+      "recipe": {
+        "candidate_id": "A_smooth_control",
+        "compression_colour_delta_srgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "compression_modes": [],
+        "compression_roughness_amplitude": 0.0,
+        "grain_modes": [],
+        "grain_roughness_amplitude": 0.0,
+        "label": "A  SMOOTH CONTROL",
+        "morphology_colour_delta_srgb": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "morphology_modes": [],
+        "morphology_roughness_amplitude": 0.0,
+        "oxide_anisotropy": 0.0,
+        "rest_modes": [],
+        "roughness_base": 0.7075,
+        "roughness_maximum": 0.76,
+        "roughness_minimum": 0.655,
+        "surface_relief_amplitude_m": 0.0,
+        "thermal_roughness_amplitude": 0.105,
+        "thick_srgb": [
+          0.158,
+          0.174,
+          0.202
+        ],
+        "thickness_maximum_m": 9e-05,
+        "thickness_minimum_m": 2e-05,
+        "thin_srgb": [
+          0.09,
+          0.1,
+          0.116
+        ]
+      },
+      "renders": {
+        "front": {
+          "bytes": 67201,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/A_smooth_control/front.png",
+          "sha256": "cd0a498a6de3822bdc743b9a0a7f943414b84040a73118d29f88e44ae0d3e4b8"
+        },
+        "gameplay": {
+          "bytes": 61250,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/A_smooth_control/gameplay.png",
+          "sha256": "e1945c0ff0c7541711fb8582fb3241fbffa05a6cb79ec1b552d4077c957af790"
+        },
+        "grazing": {
+          "bytes": 72928,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/A_smooth_control/grazing.png",
+          "sha256": "d09b3cf5ae9bcdd33a75fa804128c32683d62c24d45523305654338cb337f59e"
+        },
+        "layer_response": {
+          "bytes": 70517,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/A_smooth_control/layer_response.png",
+          "sha256": "5792202f769b35515351d51377020ffdc921a4aaf52712ba824683c833eb9da5"
+        }
+      },
+      "resources_released_after_render": true,
+      "roughness_range": [
+        0.664547860622406,
+        0.7409365177154541
+      ]
+    },
+    "B_quiet_compact_scale": {
+      "component_topology": {
+        "FixedKnuckle_02": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "FixedKnuckle_04": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_01": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_03": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_05": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_FixedLeaf": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_Pintle": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.08,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        }
+      },
+      "coverage_maximum": 1.0,
+      "coverage_minimum": 1.0,
+      "exposure_maximum": 0.0,
+      "label": "B  QUIET COMPACT SCALE",
+      "metalness_maximum": 0.0,
+      "quiet_fraction": 0.6767735277472618,
+      "recipe": {
+        "candidate_id": "B_quiet_compact_scale",
+        "compression_colour_delta_srgb": [
+          -0.003,
+          0.001,
+          0.005
+        ],
+        "compression_modes": [
+          [
+            0.31,
+            84.0,
+            1.0,
+            0.2
+          ],
+          [
+            0.173,
+            78.0,
+            0.46,
+            1.7
+          ]
+        ],
+        "compression_roughness_amplitude": 0.012,
+        "grain_modes": [
+          [
+            0.031,
+            12.0,
+            1.0,
+            0.45
+          ],
+          [
+            0.019,
+            57.0,
+            0.55,
+            2.55
+          ],
+          [
+            0.012,
+            -38.0,
+            0.27,
+            5.1
+          ]
+        ],
+        "grain_roughness_amplitude": 0.012,
+        "label": "B  QUIET COMPACT SCALE",
+        "morphology_colour_delta_srgb": [
+          0.006,
+          0.003,
+          -0.002
+        ],
+        "morphology_modes": [
+          [
+            0.34,
+            17.0,
+            1.0,
+            0.35
+          ],
+          [
+            0.19,
+            -31.0,
+            0.52,
+            2.1
+          ],
+          [
+            0.112,
+            64.0,
+            0.28,
+            4.4
+          ]
+        ],
+        "morphology_roughness_amplitude": 0.018,
+        "oxide_anisotropy": 0.08,
+        "rest_modes": [
+          [
+            0.92,
+            21.0,
+            1.0,
+            0.6
+          ],
+          [
+            0.53,
+            -42.0,
+            0.38,
+            3.2
+          ]
+        ],
+        "roughness_base": 0.635,
+        "roughness_maximum": 0.705,
+        "roughness_minimum": 0.575,
+        "surface_relief_amplitude_m": 2e-05,
+        "thermal_roughness_amplitude": 0.038,
+        "thick_srgb": [
+          0.116,
+          0.124,
+          0.14
+        ],
+        "thickness_maximum_m": 3.5e-05,
+        "thickness_minimum_m": 8e-06,
+        "thin_srgb": [
+          0.067,
+          0.074,
+          0.086
+        ]
+      },
+      "renders": {
+        "front": {
+          "bytes": 68608,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/B_quiet_compact_scale/front.png",
+          "sha256": "d4b3a4151353ecc4e50ad05776123f6f94465dba484afd143e3e50c9c902c3c4"
+        },
+        "gameplay": {
+          "bytes": 61999,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/B_quiet_compact_scale/gameplay.png",
+          "sha256": "3f5a8cf8f4c91d48acb3cdb9dd7a9a58bc401af21aa385f462105ca953167407"
+        },
+        "grazing": {
+          "bytes": 72906,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/B_quiet_compact_scale/grazing.png",
+          "sha256": "7331d9a8f7510356e863b8d149d23e1f4dc16af1149e9f7a0d292a408b0d1fb9"
+        },
+        "layer_response": {
+          "bytes": 95101,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/B_quiet_compact_scale/layer_response.png",
+          "sha256": "af72705e535aa60d1270b5ddc303fbe75f27672e33e7b3b93d3dd6ab3501114e"
+        }
+      },
+      "resources_released_after_render": true,
+      "roughness_range": [
+        0.594228982925415,
+        0.6692004203796387
+      ]
+    },
+    "C_heavy_forged_scale": {
+      "component_topology": {
+        "FixedKnuckle_02": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "FixedKnuckle_04": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_01": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_03": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_05": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_FixedLeaf": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_Pintle": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.1,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        }
+      },
+      "coverage_maximum": 1.0,
+      "coverage_minimum": 1.0,
+      "exposure_maximum": 0.0,
+      "label": "C  HEAVY FORGED SCALE",
+      "metalness_maximum": 0.0,
+      "quiet_fraction": 0.6903625287126736,
+      "recipe": {
+        "candidate_id": "C_heavy_forged_scale",
+        "compression_colour_delta_srgb": [
+          -0.004,
+          0.002,
+          0.007
+        ],
+        "compression_modes": [
+          [
+            0.37,
+            80.0,
+            1.0,
+            0.45
+          ],
+          [
+            0.205,
+            72.0,
+            0.58,
+            2.2
+          ],
+          [
+            0.124,
+            87.0,
+            0.25,
+            4.8
+          ]
+        ],
+        "compression_roughness_amplitude": 0.02,
+        "grain_modes": [
+          [
+            0.038,
+            8.0,
+            1.0,
+            0.7
+          ],
+          [
+            0.023,
+            49.0,
+            0.62,
+            2.75
+          ],
+          [
+            0.014,
+            -44.0,
+            0.34,
+            5.25
+          ]
+        ],
+        "grain_roughness_amplitude": 0.02,
+        "label": "C  HEAVY FORGED SCALE",
+        "morphology_colour_delta_srgb": [
+          0.014,
+          0.006,
+          -0.003
+        ],
+        "morphology_modes": [
+          [
+            0.46,
+            11.0,
+            1.0,
+            0.15
+          ],
+          [
+            0.26,
+            -26.0,
+            0.68,
+            1.85
+          ],
+          [
+            0.133,
+            52.0,
+            0.38,
+            4.15
+          ]
+        ],
+        "morphology_roughness_amplitude": 0.032,
+        "oxide_anisotropy": 0.1,
+        "rest_modes": [
+          [
+            1.1,
+            14.0,
+            1.0,
+            0.2
+          ],
+          [
+            0.61,
+            -37.0,
+            0.42,
+            2.9
+          ]
+        ],
+        "roughness_base": 0.685,
+        "roughness_maximum": 0.785,
+        "roughness_minimum": 0.59,
+        "surface_relief_amplitude_m": 5.5e-05,
+        "thermal_roughness_amplitude": 0.06,
+        "thick_srgb": [
+          0.137,
+          0.145,
+          0.162
+        ],
+        "thickness_maximum_m": 9e-05,
+        "thickness_minimum_m": 2e-05,
+        "thin_srgb": [
+          0.06,
+          0.065,
+          0.074
+        ]
+      },
+      "renders": {
+        "front": {
+          "bytes": 68658,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/C_heavy_forged_scale/front.png",
+          "sha256": "045b850967c8446bbbcc788f7fa9a29a8f1bd4f92173f5a16ba3250899ca8cc3"
+        },
+        "gameplay": {
+          "bytes": 61992,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/C_heavy_forged_scale/gameplay.png",
+          "sha256": "be3306494023c1c66eb912f781971ba64e1a5191e6e4cf2ad94c457a30e90699"
+        },
+        "grazing": {
+          "bytes": 72829,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/C_heavy_forged_scale/grazing.png",
+          "sha256": "1714afa307823270db1a0facdcec594a8a1579b7668aad122d8debb72e4ecc5f"
+        },
+        "layer_response": {
+          "bytes": 95781,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/C_heavy_forged_scale/layer_response.png",
+          "sha256": "7cac65ab148ef796d32143c55642d5fa9e0e61446f22888f81a8f64d38331910"
+        }
+      },
+      "resources_released_after_render": true,
+      "roughness_range": [
+        0.6267573237419128,
+        0.7388138175010681
+      ]
+    },
+    "D_compressed_directional_scale": {
+      "component_topology": {
+        "FixedKnuckle_02": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "FixedKnuckle_04": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_01": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_03": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "MovingKnuckle_05": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_FixedLeaf": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        },
+        "SM_GH018_Pintle": {
+          "exposure": 0.0,
+          "image_texture_count": 4,
+          "mix_shader_count": 1,
+          "oxide_anisotropy": 0.28,
+          "oxide_anisotropy_socket": "Anisotropic",
+          "principled_count": 2
+        }
+      },
+      "coverage_maximum": 1.0,
+      "coverage_minimum": 1.0,
+      "exposure_maximum": 0.0,
+      "label": "D  COMPRESSED DIRECTIONAL",
+      "metalness_maximum": 0.0,
+      "quiet_fraction": 0.6699890142814341,
+      "recipe": {
+        "candidate_id": "D_compressed_directional_scale",
+        "compression_colour_delta_srgb": [
+          -0.006,
+          0.002,
+          0.009
+        ],
+        "compression_modes": [
+          [
+            0.255,
+            88.0,
+            1.0,
+            0.35
+          ],
+          [
+            0.142,
+            82.0,
+            0.72,
+            1.95
+          ],
+          [
+            0.081,
+            86.0,
+            0.38,
+            4.6
+          ]
+        ],
+        "compression_roughness_amplitude": 0.06,
+        "grain_modes": [
+          [
+            0.029,
+            79.0,
+            1.0,
+            0.5
+          ],
+          [
+            0.018,
+            87.0,
+            0.56,
+            2.65
+          ],
+          [
+            0.011,
+            74.0,
+            0.28,
+            5.3
+          ]
+        ],
+        "grain_roughness_amplitude": 0.012,
+        "label": "D  COMPRESSED DIRECTIONAL",
+        "morphology_colour_delta_srgb": [
+          0.005,
+          0.003,
+          -0.001
+        ],
+        "morphology_modes": [
+          [
+            0.39,
+            8.0,
+            1.0,
+            0.25
+          ],
+          [
+            0.215,
+            -18.0,
+            0.46,
+            2.4
+          ],
+          [
+            0.128,
+            39.0,
+            0.22,
+            5.0
+          ]
+        ],
+        "morphology_roughness_amplitude": 0.015,
+        "oxide_anisotropy": 0.28,
+        "rest_modes": [
+          [
+            0.98,
+            18.0,
+            1.0,
+            0.45
+          ],
+          [
+            0.57,
+            -33.0,
+            0.36,
+            3.4
+          ]
+        ],
+        "roughness_base": 0.61,
+        "roughness_maximum": 0.71,
+        "roughness_minimum": 0.515,
+        "surface_relief_amplitude_m": 2.8e-05,
+        "thermal_roughness_amplitude": 0.034,
+        "thick_srgb": [
+          0.12,
+          0.13,
+          0.148
+        ],
+        "thickness_maximum_m": 4.5e-05,
+        "thickness_minimum_m": 1e-05,
+        "thin_srgb": [
+          0.069,
+          0.077,
+          0.091
+        ]
+      },
+      "renders": {
+        "front": {
+          "bytes": 68824,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/D_compressed_directional_scale/front.png",
+          "sha256": "54477ad660c1949e8f15befa65d5f7b2fc2eed30fdfc34c8ee4d56f84f9798d6"
+        },
+        "gameplay": {
+          "bytes": 62150,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/D_compressed_directional_scale/gameplay.png",
+          "sha256": "fb14d01e33d757f4705ac173b79f862eca78c468694a57e16d405bf9a8541429"
+        },
+        "grazing": {
+          "bytes": 73254,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/D_compressed_directional_scale/grazing.png",
+          "sha256": "db5526f056d03d5107bf018ab0bc3fd101fd37965a78a9e9c6362de54bd2d2cf"
+        },
+        "layer_response": {
+          "bytes": 88559,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/D_compressed_directional_scale/layer_response.png",
+          "sha256": "a90a2d03625ef4e597b67962df525a18ee683e73db87a4e81bcd9b44381d3a63"
+        }
+      },
+      "resources_released_after_render": true,
+      "roughness_range": [
+        0.528279185295105,
+        0.6802563071250916
+      ]
+    }
+  },
+  "canonical_source_unchanged": true,
+  "comparison_board": {
+    "bytes": 693517,
+    "column_order": [
+      "front",
+      "grazing",
+      "gameplay",
+      "layer_response"
+    ],
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/intact_oxide_layer_sweep_v1/comparison_board.png",
+    "row_order": [
+      "A_smooth_control",
+      "B_quiet_compact_scale",
+      "C_heavy_forged_scale",
+      "D_compressed_directional_scale"
+    ],
+    "sha256": "132e0c2957f1aedcdca8e90c07a87e88b4fa7ce560e0b01523cbde349bbd3183"
+  },
+  "comparison_resolution": [
+    560,
+    180
+  ],
+  "consumer": {
+    "assembly_span_m": [
+      4.060000061988831,
+      0.116,
+      0.4099999964237213
+    ],
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ]
+  },
+  "limitations": [
+    "This board selects a surface-layer strategy; it is not a canonical material build.",
+    "Eevee reduced-resolution proofs compare art direction but do not prove final Cycles or Unreal response.",
+    "The 20 to 90 micrometre heavy-scale envelope is an authored giant-forge translation.",
+    "Sub-texel grain is represented as aggregate roughness response, not literal resolved grains."
+  ],
+  "render_engine": "BLENDER_EEVEE",
+  "schema": "iggy3d.intact-oxide-layer-sweep.v1",
+  "sources": {
+    "canonical_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+      "sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+      "sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10"
+    },
+    "geometry_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_geometry_v1.blend",
+      "sha256_after": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+      "sha256_before": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69"
+    }
+  },
+  "status": "EXPLORATORY_COMPARISON_NOT_CANONICAL",
+  "unreal_parity_verified": false,
+  "uses_ai_generated_imagery": false,
+  "uses_damage": false
+}

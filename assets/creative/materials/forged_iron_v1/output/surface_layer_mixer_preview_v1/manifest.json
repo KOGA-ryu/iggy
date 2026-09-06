@@ -1,0 +1,68 @@
+{
+  "champion": "B_DUAL_BSDF",
+  "champion_reason": "It preserves complete oxide and conductor lobes and gives material identity to one explicit exposure mask at shader-output level.",
+  "component": "explicit_oxide_conductor_surface_layer_mixer",
+  "consumer": {
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "length_m": 3.112000085413456,
+    "moving_leaf": "SM_GH018_MovingLeaf_Openwork",
+    "width_m": 0.4099999964237213
+  },
+  "file_sha256": {
+    "a_parameter_blend_intact_front.png": "bf0b607c3ef9a945749baa60b2392413be02915bb9b5bf5deb4db269fb72bcac",
+    "a_parameter_blend_split_grazing.png": "e3b008ed9b696e9fcabac0d2e0e3bc706a5657f2bd62f4803a2ab177bfd72403",
+    "a_parameter_blend_split_neutral_close.png": "9d59b98bf76de288013a1550f5209a2b432f570f58610c287f92b0fbef76bdce",
+    "b_dual_bsdf_intact_front.png": "07fc8f22c715394114e29bfcdadfe4a7b975bea6a41c2a8e8039c6d4b43d7136",
+    "b_dual_bsdf_split_grazing.png": "7a832963f97e03f46ed321a68f246bdfb448a91494e8d3d350a6ab98b3df518d",
+    "b_dual_bsdf_split_neutral_close.png": "3116743b94266343169111cd2124ce69df0ddf7803c140c472d966ee8bb683b2",
+    "c_conductor_leak_intact_front.png": "7ae256fd8d6a527f1b878f5ddc9be30761541a507f89d53afe9170ee595ea2d7",
+    "c_conductor_leak_split_grazing.png": "20a07aa667a72b04d294421d77944bf4063b18cd52fa6fe3be31a763276ce3cf",
+    "c_conductor_leak_split_neutral_close.png": "1cb21a279b4e9e8ef3663f6d11f887937b19064635f249cdacad4b059a8f9b13",
+    "comparison_board.png": "d112824bab70f8c9686d6a36f51e72ce42b47d4b80f9383d7d5f5152f661d722",
+    "d_clearcoat_proxy_intact_front.png": "dddb5ba78ed39f636e374fab700346af1ee20a30627406bfa68431c79e7ec6ff",
+    "d_clearcoat_proxy_split_grazing.png": "38b809589218ec64b9252620aa7850d84657f7efca8818a6999880f80672d4fe",
+    "d_clearcoat_proxy_split_neutral_close.png": "8b00f4d22674e9f6f42b9a515901e43feaf0d5d92b1f2b8301081c3a63df43a2",
+    "diagnostic_split_exposure_mask.png": "caa8e8eec6e6c08f99cb42a8c4fa1d028399b5ac50b7a82cc96da98440984e02",
+    "intact_exposure_mask.png": "de6bae8f53c9a7b7b12ba45602eba3cedda5df099642e6260d243cf376181343",
+    "lane_board.png": "f33458b87d01c0005046984f52159c4f573c69f1e7c93383249858efb153f8ca"
+  },
+  "lane_contract": {
+    "compiled_metalness": "exposed conductor mask for data adapters only; render uses two BSDFs",
+    "conductor_weight": "exposed conductor mask",
+    "diagnostic_split": "proof-only smooth ramp from U 0.36 to 0.64; not authored wear",
+    "exposed_conductor_mask": "sole material identity input; zero intact oxide, one conductor",
+    "intact_invariance": "zero exposure makes output independent of hidden conductor response",
+    "oxide_weight": "one minus exposed conductor mask"
+  },
+  "limitations": [
+    "The split exposure mask is a diagnostic witness, not asset wear.",
+    "No contact, abrasion, damage, rust, pitting, or scale fracture is placed.",
+    "The canonical forged-iron generator, profile, and blend are unchanged.",
+    "This Blender proof does not establish Unreal shader parity."
+  ],
+  "proof": {
+    "comparison_board": "comparison_board.png",
+    "lane_board": "lane_board.png",
+    "source_blend_sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_blend_sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_blend_unchanged": true
+  },
+  "selected_blender_topology": {
+    "composition": "Mix Shader factor = explicit exposure mask",
+    "conductor": "independent metallic Principled, iron F0 base, component tangent",
+    "forbidden": [
+      "one Principled with interpolated metallic parameters",
+      "uniform conductor leak beneath intact opaque oxide",
+      "transparent clear coat as a proxy for opaque forge scale",
+      "hammer or broad-plane masks creating exposure"
+    ],
+    "oxide": "independent dielectric Principled, metallic 0"
+  },
+  "status": "selected_component_candidate_not_integrated",
+  "strategies": {
+    "A_PARAMETER_BLEND": "rejected: creates one interpolated half-metal material in the boundary instead of composing complete lobes",
+    "B_DUAL_BSDF": "selected: exact oxide and conductor endpoints with one explicit coverage mask at shader-output level",
+    "C_CONDUCTOR_LEAK": "rejected: minimum conductor contribution survives beneath intact opaque oxide",
+    "D_CLEARCOAT_PROXY": "rejected: transparent clear coat cannot represent opaque approximately 50 micrometre forge scale"
+  }
+}

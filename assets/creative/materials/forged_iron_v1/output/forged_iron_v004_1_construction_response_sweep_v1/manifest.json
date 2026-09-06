@@ -1,0 +1,2370 @@
+{
+  "schema": "iggy3d.forged_iron_v004_1_construction_response_sweep.v1",
+  "status": "EXPLORATORY_CONSTRUCTION_RESPONSE_NOT_CANONICAL",
+  "source": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/forged_iron_connected_oxide_candidate_v004_1.blend",
+    "sha256_before": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+    "sha256_after": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81"
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/compare_v004_1_construction_response_v1.py",
+    "sha256": "16fe31773cefbdb84efa2d600d5558abc1f830e199df76947411e0e68bb39816"
+  },
+  "measurement_and_translation_boundary": {
+    "human_hammer_envelope_m": [
+      0.041275,
+      0.03175
+    ],
+    "fabrication_scale": 10.0,
+    "giant_hammer_envelope_m": [
+      0.41275,
+      0.3175
+    ],
+    "hammer_envelope_role": "bounded spatial-correlation proxy only; not a literal print or surviving depth",
+    "strap_review_height_p2p_m": 0.003,
+    "pintle_review_height_p2p_m": 0.001,
+    "height_role": "authored reduced-resolution review translation; not a measurement or displacement claim"
+  },
+  "stock_lineages": {
+    "moving_leaf_stock": [
+      "SM_GH018_MovingLeaf_Openwork",
+      "MovingKnuckle_01",
+      "MovingKnuckle_03",
+      "MovingKnuckle_05"
+    ],
+    "fixed_leaf_stock": [
+      "SM_GH018_FixedLeaf",
+      "FixedKnuckle_02",
+      "FixedKnuckle_04"
+    ],
+    "pintle_stock": [
+      "SM_GH018_Pintle"
+    ]
+  },
+  "lineage_plans": {
+    "moving_leaf_stock": {
+      "lineage": "moving_leaf_stock",
+      "leaf": "SM_GH018_MovingLeaf_Openwork",
+      "direction_from_leaf_root": -1.0,
+      "root_u_m": 0.04800000041723251,
+      "domain_u_m": [
+        -0.22833631187677383,
+        3.1600000858306885
+      ],
+      "domain_v_m": [
+        -0.20499999821186066,
+        0.20499999821186066
+      ],
+      "maximum_unrolled_knuckle_span_m": 0.27633631229400635,
+      "pass_spacing_reference_m": 0.22701250000000003,
+      "raw_mean": -0.0061203595250844955,
+      "height_scale_m": 0.010511932714095892,
+      "reference_raw_percentiles": {
+        "p01": -0.14444283798336982,
+        "p99": 0.14094711661338805
+      },
+      "passes": [
+        {
+          "index": 0,
+          "family": "protected_rest_plane",
+          "center_u_m": -0.12739409447826372,
+          "center_v_m": 0.07110347544326134,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 1,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 0.09780439804135144,
+          "center_v_m": -0.035388647564376485,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.31,
+          "slope_v": 0.22,
+          "offset": -0.08
+        },
+        {
+          "index": 2,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 0.25523616260681736,
+          "center_v_m": 0.13691922699611625,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.18,
+          "slope_v": 0.34,
+          "offset": 0.06
+        },
+        {
+          "index": 3,
+          "family": "protected_rest_plane",
+          "center_u_m": 0.48043465512643246,
+          "center_v_m": 0.030427103988478393,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 4,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 0.6378664196918985,
+          "center_v_m": -0.07606501901915941,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.29,
+          "slope_v": 0.09,
+          "offset": -0.1
+        },
+        {
+          "index": 5,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 0.8630649122115137,
+          "center_v_m": 0.09624285554133333,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.13,
+          "slope_v": 0.3,
+          "offset": 0.08
+        },
+        {
+          "index": 6,
+          "family": "protected_rest_plane",
+          "center_u_m": 1.0882634047311288,
+          "center_v_m": -0.01024926746630439,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 7,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 1.2456951692965947,
+          "center_v_m": -0.1167413904739422,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.31,
+          "slope_v": 0.22,
+          "offset": -0.08
+        },
+        {
+          "index": 8,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 1.47089366181621,
+          "center_v_m": 0.055566484086550516,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.18,
+          "slope_v": 0.34,
+          "offset": 0.06
+        },
+        {
+          "index": 9,
+          "family": "protected_rest_plane",
+          "center_u_m": 1.696092154335825,
+          "center_v_m": -0.05092563892108731,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 10,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 1.853523918901291,
+          "center_v_m": 0.12138223563940542,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.29,
+          "slope_v": 0.09,
+          "offset": -0.1
+        },
+        {
+          "index": 11,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 2.078722411420906,
+          "center_v_m": 0.014890112631767594,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.13,
+          "slope_v": 0.3,
+          "offset": 0.08
+        },
+        {
+          "index": 12,
+          "family": "protected_rest_plane",
+          "center_u_m": 2.2361541759863726,
+          "center_v_m": -0.09160201037587025,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 13,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 2.461352668505987,
+          "center_v_m": 0.0807058641846225,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.31,
+          "slope_v": 0.22,
+          "offset": -0.08
+        },
+        {
+          "index": 14,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 2.6865511610256023,
+          "center_v_m": -0.025786258823015357,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.18,
+          "slope_v": 0.34,
+          "offset": 0.06
+        },
+        {
+          "index": 15,
+          "family": "protected_rest_plane",
+          "center_u_m": 2.8439829255910682,
+          "center_v_m": -0.13227838183065316,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 16,
+          "family": "overlapping_planished_plane",
+          "center_u_m": 3.0691814181106833,
+          "center_v_m": 0.04002949272983952,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.29,
+          "slope_v": 0.09,
+          "offset": -0.1
+        }
+      ]
+    },
+    "fixed_leaf_stock": {
+      "lineage": "fixed_leaf_stock",
+      "leaf": "SM_GH018_FixedLeaf",
+      "direction_from_leaf_root": 1.0,
+      "root_u_m": -0.04800000041723251,
+      "domain_u_m": [
+        -0.8999999761581421,
+        0.2018565610051155
+      ],
+      "domain_v_m": [
+        -0.20499999821186066,
+        0.20499999821186066
+      ],
+      "maximum_unrolled_knuckle_span_m": 0.24985656142234802,
+      "pass_spacing_reference_m": 0.22701250000000003,
+      "raw_mean": 0.015908941626548767,
+      "height_scale_m": 0.011427054794644563,
+      "reference_raw_percentiles": {
+        "p01": -0.10910647958517075,
+        "p99": 0.1534283602237701
+      },
+      "passes": [
+        {
+          "index": 0,
+          "family": "protected_rest_plane",
+          "center_u_m": -0.8480036111239162,
+          "center_v_m": -0.07331492329703027,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 1,
+          "family": "overlapping_planished_plane",
+          "center_u_m": -0.6701531924149029,
+          "center_v_m": 0.09899295126346241,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.18,
+          "slope_v": 0.34,
+          "offset": 0.06
+        },
+        {
+          "index": 2,
+          "family": "overlapping_planished_plane",
+          "center_u_m": -0.4923027737058897,
+          "center_v_m": -0.007499171744175442,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.24,
+          "slope_v": -0.27,
+          "offset": -0.04
+        },
+        {
+          "index": 3,
+          "family": "protected_rest_plane",
+          "center_u_m": -0.3679711010876633,
+          "center_v_m": -0.11399129475181326,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        },
+        {
+          "index": 4,
+          "family": "overlapping_planished_plane",
+          "center_u_m": -0.19012068237864999,
+          "center_v_m": 0.058316579808679436,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": -0.13,
+          "slope_v": 0.3,
+          "offset": 0.08
+        },
+        {
+          "index": 5,
+          "family": "overlapping_planished_plane",
+          "center_u_m": -0.012270263669636905,
+          "center_v_m": -0.04817554319895839,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.38,
+          "slope_v": -0.16,
+          "offset": 0.11
+        },
+        {
+          "index": 6,
+          "family": "protected_rest_plane",
+          "center_u_m": 0.11206140894858962,
+          "center_v_m": 0.12413233136153434,
+          "radius_u_m": 0.29718,
+          "radius_v_m": 0.22224999999999998,
+          "slope_u": 0.0,
+          "slope_v": 0.0,
+          "offset": 0.0
+        }
+      ]
+    }
+  },
+  "construction_continuity": {
+    "moving_leaf_stock": {
+      "leaf": "SM_GH018_MovingLeaf_Openwork",
+      "maximum_height_error_m": 0.0,
+      "maximum_symmetric_20_micrometre_step_m": 2.207234501838684e-07,
+      "knuckles": {
+        "MovingKnuckle_01": {
+          "boundary_height_error_m": 0.0,
+          "symmetric_20_micrometre_step_m": 1.5471596270799637e-07,
+          "axial_interval_m": [
+            -0.20499999821186066,
+            -0.12939999997615814
+          ]
+        },
+        "MovingKnuckle_03": {
+          "boundary_height_error_m": 0.0,
+          "symmetric_20_micrometre_step_m": 2.207234501838684e-07,
+          "axial_interval_m": [
+            -0.03779999911785126,
+            0.03779999911785126
+          ]
+        },
+        "MovingKnuckle_05": {
+          "boundary_height_error_m": 0.0,
+          "symmetric_20_micrometre_step_m": 8.421920938417315e-09,
+          "axial_interval_m": [
+            0.12939999997615814,
+            0.20499999821186066
+          ]
+        }
+      }
+    },
+    "fixed_leaf_stock": {
+      "leaf": "SM_GH018_FixedLeaf",
+      "maximum_height_error_m": 0.0,
+      "maximum_symmetric_20_micrometre_step_m": 3.6391429603099823e-07,
+      "knuckles": {
+        "FixedKnuckle_02": {
+          "boundary_height_error_m": 0.0,
+          "symmetric_20_micrometre_step_m": 3.6391429603099823e-07,
+          "axial_interval_m": [
+            -0.12139999866485596,
+            -0.04580000042915344
+          ]
+        },
+        "FixedKnuckle_04": {
+          "boundary_height_error_m": 0.0,
+          "symmetric_20_micrometre_step_m": 1.0163006436414435e-07,
+          "axial_interval_m": [
+            0.04580000042915344,
+            0.12139999866485596
+          ]
+        }
+      }
+    },
+    "pintle_stock": {
+      "circumferential_height_error_m": 0.0,
+      "circumference_mean_by_axial_station_standard_deviation_m": 2.3293621325137792e-06,
+      "ring_rejection_metric": "circumference-mean height must remain negligible; height is never a function of axial U alone"
+    }
+  },
+  "candidates": [
+    {
+      "candidate_id": "A_v004_1_control",
+      "changed_members": [],
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              213,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.004143869038671255,
+            "p01": -0.0031226089410483836,
+            "p05": -0.0024545484920963645,
+            "median": 5.707591481041163e-05,
+            "p95": 0.003035591682419181,
+            "p99": 0.003953018318861722,
+            "maximum": 0.005203774198889732,
+            "mean": 8.109795424613536e-05,
+            "standard_deviation": 0.0016113015599025435,
+            "peak_to_peak": 0.009347643237560987
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007919582538306713,
+            "p01": 0.18942469120025635,
+            "p05": 0.44215279817581177,
+            "median": 1.469724178314209,
+            "p95": 2.8377328634262082,
+            "p99": 3.007822675704956,
+            "maximum": 3.1403863430023193,
+            "mean": 1.545055514484752,
+            "standard_deviation": 0.703180498741225,
+            "peak_to_peak": 3.1324667604640126,
+            "fractions_above_degrees": {
+              "0.25": 0.9828615707188112,
+              "0.5": 0.9375997082820547,
+              "1.0": 0.7804366652992388,
+              "2.0": 0.2955467432426273
+            }
+          },
+          "height_float_sha256": "0f6ad52fc01c65f103f464940e9fe0b8aa944c3e286c06190444b77f07764e6c",
+          "normal_float_sha256": "4b5135948d3c9d3f2b620361f4558e6de4f3372b2790e2aee54e0a3f9fb849c3",
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57"
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              768,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.004188794642686844,
+            "p01": -0.003127690895926207,
+            "p05": -0.002459961350541562,
+            "median": 5.1886112487409264e-05,
+            "p95": 0.0030373404501005995,
+            "p99": 0.003948850426822901,
+            "maximum": 0.005243219435214996,
+            "mean": 7.994797400940258e-05,
+            "standard_deviation": 0.0016138958954730843,
+            "peak_to_peak": 0.00943201407790184
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0033592975232750177,
+            "p01": 0.09873260229825974,
+            "p05": 0.22274731546640397,
+            "median": 0.9578262865543365,
+            "p95": 1.8416694223880767,
+            "p99": 2.0174650359153747,
+            "maximum": 2.09759783744812,
+            "mean": 0.9745632777020397,
+            "standard_deviation": 0.5506799899591347,
+            "peak_to_peak": 2.094238539924845,
+            "fractions_above_degrees": {
+              "0.25": 0.937841322815534,
+              "0.5": 0.716575647249191,
+              "1.0": 0.47515928398058255,
+              "2.0": 0.013716120550161812
+            }
+          },
+          "height_float_sha256": "c81b947f540a35c847c947b9bf4ed0370d85f26f0c236f6392da9d223174e9f9",
+          "normal_float_sha256": "58b3b0bb6c7a4e68632161381876b5818aa58f6010176e889c21957d5c9208b1",
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07"
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0016281645512208343,
+            "p01": -0.0012500422727316617,
+            "p05": -0.0009785342903342099,
+            "median": 2.4371795916522387e-05,
+            "p95": 0.0012122072395868598,
+            "p99": 0.0015738867956679315,
+            "maximum": 0.0020466826390475035,
+            "mean": 3.425047631861779e-05,
+            "standard_deviation": 0.0006425085366891787,
+            "peak_to_peak": 0.0036748471902683377
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007117839064449072,
+            "p01": 0.1691855525970459,
+            "p05": 0.3953021064400673,
+            "median": 1.3349557518959045,
+            "p95": 2.4886154055595395,
+            "p99": 2.614623079299927,
+            "maximum": 2.683109760284424,
+            "mean": 1.3803460795024307,
+            "standard_deviation": 0.6225027262328107,
+            "peak_to_peak": 2.6759919212199748,
+            "fractions_above_degrees": {
+              "0.25": 0.979248046875,
+              "0.5": 0.9244384765625,
+              "1.0": 0.6552734375,
+              "2.0": 0.1827392578125
+            }
+          },
+          "height_float_sha256": "53042d7a26943a6aa90211e0a56679c2238694be5f4dc1be909d08a55ee8e3c2",
+          "normal_float_sha256": "dfef58e3408368f42154f719436a116986009ddca61ccb1f9ae5f617a80860e9",
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.000887624656315893,
+            "p05": -0.0006948337162612006,
+            "median": 1.730592157400679e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320440591528306e-05,
+            "standard_deviation": 0.00045622981487499934,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007268577814102173,
+            "p01": 0.18340061008930206,
+            "p05": 0.4327703803777695,
+            "median": 1.439804196357727,
+            "p95": 2.7032868027687074,
+            "p99": 2.924083824157715,
+            "maximum": 2.9562108516693115,
+            "mean": 1.5029136224935655,
+            "standard_deviation": 0.6791670898366767,
+            "peak_to_peak": 2.9489422738552094,
+            "fractions_above_degrees": {
+              "0.25": 0.9820556640625,
+              "0.5": 0.935302734375,
+              "1.0": 0.757080078125,
+              "2.0": 0.2757568359375
+            }
+          },
+          "height_float_sha256": "23da05192d963fcb5013598f8879f6dc5e3c8c42c311f803f89480a1bf8e721e",
+          "normal_float_sha256": "1da4b8080c827b7951b86332845f6ebfc399fca7819ab920029f3252640dd6f3",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.000887624656315893,
+            "p05": -0.0006948337162612006,
+            "median": 1.730592157400679e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320440591528306e-05,
+            "standard_deviation": 0.00045622981487499934,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007268577814102173,
+            "p01": 0.18340061008930206,
+            "p05": 0.4327703803777695,
+            "median": 1.439804196357727,
+            "p95": 2.7032868027687074,
+            "p99": 2.924083824157715,
+            "maximum": 2.9562108516693115,
+            "mean": 1.5029136224935655,
+            "standard_deviation": 0.6791670898366767,
+            "peak_to_peak": 2.9489422738552094,
+            "fractions_above_degrees": {
+              "0.25": 0.9820556640625,
+              "0.5": 0.935302734375,
+              "1.0": 0.757080078125,
+              "2.0": 0.2757568359375
+            }
+          },
+          "height_float_sha256": "23da05192d963fcb5013598f8879f6dc5e3c8c42c311f803f89480a1bf8e721e",
+          "normal_float_sha256": "1da4b8080c827b7951b86332845f6ebfc399fca7819ab920029f3252640dd6f3",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        }
+      },
+      "renders": {
+        "isolated_height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/isolated_height.png",
+          "bytes": 61376,
+          "sha256": "2c235e1e4760da21fd91844ff8f519f2e3158f3b1ab58f4757c30abd23741903"
+        },
+        "isolated_normal_angle": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/isolated_normal_angle.png",
+          "bytes": 82608,
+          "sha256": "64a592cc09ee2bd62f7d2dce6289a52f3bc31c1a8d33cdde8eadff1e0b5c4033"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/close_neutral.png",
+          "bytes": 107437,
+          "sha256": "f1d7a60c081ab9da66e31697722750637c71a5ee5b3065ac7605ee12dd684368"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/grazing.png",
+          "bytes": 70962,
+          "sha256": "4b8bd101b29b39208dd3af15b52c8f214705a34d25ce489087619ae2079bfb73"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/pivot_close.png",
+          "bytes": 124692,
+          "sha256": "92498b84feba5ac0974b8b921a5f42510a8b83ed9beeb69133bd860c8ab473b1"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/A_v004_1_control/gameplay.png",
+          "bytes": 56478,
+          "sha256": "dc59e6c80ca59042358439909c3c1c0ff0318e56612af7585ee58f64054b269e"
+        }
+      },
+      "shared_group_signature_unchanged": true
+    },
+    {
+      "candidate_id": "B_parent_rest_stock",
+      "changed_members": [
+        "SM_GH018_FixedLeaf",
+        "SM_GH018_MovingLeaf_Openwork",
+        "MovingKnuckle_01",
+        "FixedKnuckle_02",
+        "MovingKnuckle_03",
+        "FixedKnuckle_04",
+        "MovingKnuckle_05"
+      ],
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "leaf_object_xz_is_parent_rest_stock",
+            "rest_u_range_m": [
+              -0.8999999761581421,
+              -0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "compiled_image_resolution": [
+              213,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001613567234016955,
+            "p01": -0.0013129745097830892,
+            "p05": -0.0007352048822212964,
+            "median": -0.00018153252312913537,
+            "p95": 0.0009700429101940244,
+            "p99": 0.001440919849555939,
+            "maximum": 0.0016198953380808234,
+            "mean": -7.856452164188377e-05,
+            "standard_deviation": 0.00047862658847249,
+            "peak_to_peak": 0.0032334625720977783
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.3608918786048889,
+            "p95": 1.233117592334747,
+            "p99": 1.6046505975723249,
+            "maximum": 1.8050004243850708,
+            "mean": 0.4762790844586215,
+            "standard_deviation": 0.4417109814702582,
+            "peak_to_peak": 1.8050004243850708,
+            "fractions_above_degrees": {
+              "0.25": 0.5819773006973882,
+              "0.5": 0.4148776152057979,
+              "1.0": 0.16992570308582888,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "9bb22d7a3b2d0e1743e16ad4c3244fd5f06520e100e773a18efc5a3c159b652c",
+          "normal_float_sha256": "45bd1cc6c19a05eaa50c4e873ed8bc76983e9eba1a1b885dbbdd0313602be0b4",
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57"
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "leaf_object_xz_is_parent_rest_stock",
+            "rest_u_range_m": [
+              0.04800000041723251,
+              3.1600000858306885
+            ],
+            "rest_v_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "compiled_image_resolution": [
+              768,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0017354205483570695,
+            "p01": -0.001529650988522917,
+            "p05": -0.0010760412435047329,
+            "median": 6.3827774283709e-05,
+            "p95": 0.0009322220517788062,
+            "p99": 0.0014967444783542307,
+            "maximum": 0.0017230176599696279,
+            "mean": -7.672935845585322e-06,
+            "standard_deviation": 0.0005208792107129429,
+            "peak_to_peak": 0.0034584382083266973
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.26565511524677277,
+            "p95": 1.178343880176544,
+            "p99": 1.469780104160309,
+            "maximum": 1.688209891319275,
+            "mean": 0.4126600127271902,
+            "standard_deviation": 0.40898599948277886,
+            "peak_to_peak": 1.688209891319275,
+            "fractions_above_degrees": {
+              "0.25": 0.5111878033980582,
+              "0.5": 0.37596076051779936,
+              "1.0": 0.09138602346278317,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6983c0aaf9ba7051048aeb2b2f9a8ed925e9c564da87e774b93218d212bef9ba",
+          "normal_float_sha256": "6eb1035da1fa37b0067d9677ef68b8aafe82d240e9f058352fcbc2e08c2f4f42",
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07"
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0016281645512208343,
+            "p01": -0.0012500422727316617,
+            "p05": -0.0009785342903342099,
+            "median": 2.4371795916522387e-05,
+            "p95": 0.0012122072395868598,
+            "p99": 0.0015738867956679315,
+            "maximum": 0.0020466826390475035,
+            "mean": 3.425047631861779e-05,
+            "standard_deviation": 0.0006425085366891787,
+            "peak_to_peak": 0.0036748471902683377
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007117839064449072,
+            "p01": 0.1691855525970459,
+            "p05": 0.3953021064400673,
+            "median": 1.3349557518959045,
+            "p95": 2.4886154055595395,
+            "p99": 2.614623079299927,
+            "maximum": 2.683109760284424,
+            "mean": 1.3803460795024307,
+            "standard_deviation": 0.6225027262328107,
+            "peak_to_peak": 2.6759919212199748,
+            "fractions_above_degrees": {
+              "0.25": 0.979248046875,
+              "0.5": 0.9244384765625,
+              "1.0": 0.6552734375,
+              "2.0": 0.1827392578125
+            }
+          },
+          "height_float_sha256": "53042d7a26943a6aa90211e0a56679c2238694be5f4dc1be909d08a55ee8e3c2",
+          "normal_float_sha256": "dfef58e3408368f42154f719436a116986009ddca61ccb1f9ae5f617a80860e9",
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.22519999742507935,
+              -0.10920000076293945
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0005510175251401961,
+            "p01": -0.0002867553642136045,
+            "p05": -5.099720474390779e-05,
+            "median": 6.433680391637608e-05,
+            "p95": 6.440521938202436e-05,
+            "p99": 6.567019372596406e-05,
+            "maximum": 6.813390791648999e-05,
+            "mean": 4.674546342121801e-05,
+            "standard_deviation": 6.193925335443673e-05,
+            "peak_to_peak": 0.0006191514330566861
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 2.6904001060756855e-05,
+            "p95": 0.3563665285706519,
+            "p99": 0.7540899109840393,
+            "maximum": 0.9508026242256165,
+            "mean": 0.049604676536373224,
+            "standard_deviation": 0.14127846055154283,
+            "peak_to_peak": 0.9508026242256165,
+            "fractions_above_degrees": {
+              "0.25": 0.0704345703125,
+              "0.5": 0.0313720703125,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "734651c76cfc088aa09272ea5c125aa289a88176295ddea28e7bd4c91a8c04d8",
+          "normal_float_sha256": "d8605f2b52808721b9e878716a4cb19e0fde6948101d24bbf65fea7670f4966d",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.04800000041723251,
+              0.2018565610051155
+            ],
+            "rest_v_range_m": [
+              -0.14159999787807465,
+              -0.025600001215934753
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.00018145421927329153,
+            "p01": -0.0001789122678746935,
+            "p05": -0.00016417271326645276,
+            "median": 0.0008881247777026147,
+            "p95": 0.0020286996965296566,
+            "p99": 0.0021582657773979008,
+            "maximum": 0.002191378502175212,
+            "mean": 0.0008675687056444777,
+            "standard_deviation": 0.0007369186092811752,
+            "peak_to_peak": 0.0023728327214485034
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.003210661467164755,
+            "p01": 0.02025425774976611,
+            "p05": 0.08609887622296811,
+            "median": 1.0250512957572937,
+            "p95": 1.987017571926117,
+            "p99": 2.1130738639831543,
+            "maximum": 2.1480746269226074,
+            "mean": 1.0480018114514849,
+            "standard_deviation": 0.5698106815902366,
+            "peak_to_peak": 2.1448639654554427,
+            "fractions_above_degrees": {
+              "0.25": 0.87158203125,
+              "0.5": 0.795166015625,
+              "1.0": 0.549072265625,
+              "2.0": 0.045166015625
+            }
+          },
+          "height_float_sha256": "ed4dc5c34c1b219be2316e92b2a56c28386d57374c302366182e3939ae1ec748",
+          "normal_float_sha256": "436b2687c41211fe594deb58f11c7a4eb2edbc1d4464c929b4aae4e2f731942c",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.057999998331069946,
+              0.057999998331069946
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0004631110350601375,
+            "p01": -0.0002071190129208844,
+            "p05": 6.433680391637608e-05,
+            "median": 0.00011892653856193647,
+            "p95": 0.00043718115630326794,
+            "p99": 0.0004670840906328522,
+            "maximum": 0.00047454083687625825,
+            "mean": 0.00017512832437247688,
+            "standard_deviation": 0.0001460614905672615,
+            "peak_to_peak": 0.0009376518719363958
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.15604844689369202,
+            "p95": 0.7644078969955443,
+            "p99": 0.8700036257505417,
+            "maximum": 0.8813993334770203,
+            "mean": 0.196196836307574,
+            "standard_deviation": 0.21715123467707728,
+            "peak_to_peak": 0.8813993334770203,
+            "fractions_above_degrees": {
+              "0.25": 0.305419921875,
+              "0.5": 0.0966796875,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "b77f5e883b2263451eb85e988b78c24082312f5da5480b1093b0d4bda4ac26f3",
+          "normal_float_sha256": "e8dec16420b866f317438acce100ede8e6da991912fbf2f1785f71192a35de0d",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.04800000041723251,
+              0.2018565610051155
+            ],
+            "rest_v_range_m": [
+              0.025600001215934753,
+              0.14159999787807465
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.00020394501916598529,
+            "p01": -0.00018179234757553786,
+            "p05": -0.0001817906813812442,
+            "median": -0.0001174018943856936,
+            "p95": 0.00036360407975735134,
+            "p99": 0.0005755173781653867,
+            "maximum": 0.0006891964585520327,
+            "mean": -5.14073533809771e-05,
+            "standard_deviation": 0.000175295275150014,
+            "peak_to_peak": 0.000893141477718018
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.00015623137151123958,
+            "median": 0.15838812291622162,
+            "p95": 0.9407903969287872,
+            "p99": 1.126770421266556,
+            "maximum": 1.2096164226531982,
+            "mean": 0.27992133120059703,
+            "standard_deviation": 0.30150083470458316,
+            "peak_to_peak": 1.2096164226531982,
+            "fractions_above_degrees": {
+              "0.25": 0.3785400390625,
+              "0.5": 0.2171630859375,
+              "1.0": 0.035400390625,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6aa6dcfb396bdf988c1cb59879ef00b7cb3ccca01c6a268d412f5f2e33e63850",
+          "normal_float_sha256": "52eb6f8f967cfa71cded62d3ca69af75ea8d9f8a20fef94dcb84d217ee888636",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              0.10920000076293945,
+              0.22519999742507935
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": 5.907208833377808e-05,
+            "p01": 6.165011887787841e-05,
+            "p05": 6.390331582224462e-05,
+            "median": 6.433680391637608e-05,
+            "p95": 7.307938831218052e-05,
+            "p99": 9.244833352568097e-05,
+            "maximum": 0.00010601890971884131,
+            "mean": 6.549501720742867e-05,
+            "standard_deviation": 4.88723484195574e-06,
+            "peak_to_peak": 4.694682138506323e-05
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.0,
+            "p95": 0.05655171517282724,
+            "p99": 0.1170014958828688,
+            "maximum": 0.1477944254875183,
+            "mean": 0.007358445045845138,
+            "standard_deviation": 0.02217339940528263,
+            "peak_to_peak": 0.1477944254875183,
+            "fractions_above_degrees": {
+              "0.25": 0.0,
+              "0.5": 0.0,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6014ffeecc012606cab83ad84b5ccd6592dcaa50989d1b9ea63aa4b8d99d0311",
+          "normal_float_sha256": "6320af3f1d54f8f060cd4fe95cd1d8371dea5405be51888720308e7c204d2d17",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        }
+      },
+      "renders": {
+        "isolated_height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/isolated_height.png",
+          "bytes": 60454,
+          "sha256": "9f204809602ec9f7b7219b596f640d62fe365c1e667c091db15414507aaef641"
+        },
+        "isolated_normal_angle": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/isolated_normal_angle.png",
+          "bytes": 86952,
+          "sha256": "8e48be8e72927111a464ffe8bc71b9cc2e5c9ca23385ac0bb1065fbddd13336e"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/close_neutral.png",
+          "bytes": 107463,
+          "sha256": "5a02baa39b58e93383f4dd4f7d5bb2d7586996f0f91591ff7812ea5d45029c53"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/grazing.png",
+          "bytes": 70777,
+          "sha256": "34bdf651bc9236306cb6353f141a701747f0e28cfc7591fb2d27945f0affcf2e"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/pivot_close.png",
+          "bytes": 124560,
+          "sha256": "302a0730f1b4854604cd51ac02a41ec9453460171fd9580579569fc3aa3ced04"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/B_parent_rest_stock/gameplay.png",
+          "bytes": 56281,
+          "sha256": "97329dd7b248c3357032939f69e1c3d41845fbff390d491eef0665fc3c569397"
+        }
+      },
+      "shared_group_signature_unchanged": true
+    },
+    {
+      "candidate_id": "C_separate_axial_pintle",
+      "changed_members": [
+        "SM_GH018_Pintle"
+      ],
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              213,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.004143869038671255,
+            "p01": -0.0031226089410483836,
+            "p05": -0.0024545484920963645,
+            "median": 5.707591481041163e-05,
+            "p95": 0.003035591682419181,
+            "p99": 0.003953018318861722,
+            "maximum": 0.005203774198889732,
+            "mean": 8.109795424613536e-05,
+            "standard_deviation": 0.0016113015599025435,
+            "peak_to_peak": 0.009347643237560987
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007919582538306713,
+            "p01": 0.18942469120025635,
+            "p05": 0.44215279817581177,
+            "median": 1.469724178314209,
+            "p95": 2.8377328634262082,
+            "p99": 3.007822675704956,
+            "maximum": 3.1403863430023193,
+            "mean": 1.545055514484752,
+            "standard_deviation": 0.703180498741225,
+            "peak_to_peak": 3.1324667604640126,
+            "fractions_above_degrees": {
+              "0.25": 0.9828615707188112,
+              "0.5": 0.9375997082820547,
+              "1.0": 0.7804366652992388,
+              "2.0": 0.2955467432426273
+            }
+          },
+          "height_float_sha256": "0f6ad52fc01c65f103f464940e9fe0b8aa944c3e286c06190444b77f07764e6c",
+          "normal_float_sha256": "4b5135948d3c9d3f2b620361f4558e6de4f3372b2790e2aee54e0a3f9fb849c3",
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57"
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              768,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.004188794642686844,
+            "p01": -0.003127690895926207,
+            "p05": -0.002459961350541562,
+            "median": 5.1886112487409264e-05,
+            "p95": 0.0030373404501005995,
+            "p99": 0.003948850426822901,
+            "maximum": 0.005243219435214996,
+            "mean": 7.994797400940258e-05,
+            "standard_deviation": 0.0016138958954730843,
+            "peak_to_peak": 0.00943201407790184
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0033592975232750177,
+            "p01": 0.09873260229825974,
+            "p05": 0.22274731546640397,
+            "median": 0.9578262865543365,
+            "p95": 1.8416694223880767,
+            "p99": 2.0174650359153747,
+            "maximum": 2.09759783744812,
+            "mean": 0.9745632777020397,
+            "standard_deviation": 0.5506799899591347,
+            "peak_to_peak": 2.094238539924845,
+            "fractions_above_degrees": {
+              "0.25": 0.937841322815534,
+              "0.5": 0.716575647249191,
+              "1.0": 0.47515928398058255,
+              "2.0": 0.013716120550161812
+            }
+          },
+          "height_float_sha256": "c81b947f540a35c847c947b9bf4ed0370d85f26f0c236f6392da9d223174e9f9",
+          "normal_float_sha256": "58b3b0bb6c7a4e68632161381876b5818aa58f6010176e889c21957d5c9208b1",
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07"
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "normal_owner": "pintle_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "axial_u_and_circumferential_v_from_existing_axial_pin_frame",
+            "axial_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "circumferential_range_m": [
+              -0.07941248267889023,
+              0.08395033329725266
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0004925460671074688,
+            "p01": -0.00048082707246067003,
+            "p05": -0.00042341860971646384,
+            "median": -5.032516810388188e-06,
+            "p95": 0.00043510117102414365,
+            "p99": 0.0005191729287616909,
+            "maximum": 0.0005323488730937243,
+            "mean": -3.56063919668137e-14,
+            "standard_deviation": 0.00027246412041619095,
+            "peak_to_peak": 0.001024894940201193
+          },
+          "normal_angle_degrees": {
+            "minimum": 8.622690984338988e-06,
+            "p01": 0.005123368930071592,
+            "p05": 0.21927371695637704,
+            "median": 3.6245930194854736,
+            "p95": 6.734982705116272,
+            "p99": 7.187152652740479,
+            "maximum": 7.523257255554199,
+            "mean": 3.5053595124723076,
+            "standard_deviation": 2.1581601352117965,
+            "peak_to_peak": 7.523248632863215,
+            "fractions_above_degrees": {
+              "0.25": 0.9437255859375,
+              "0.5": 0.9013671875,
+              "1.0": 0.8173828125,
+              "2.0": 0.6873779296875
+            }
+          },
+          "height_float_sha256": "f23e007ca3c4d151d50ef35c7737b0f170a2ab23cd71c997cb6967b027361131",
+          "normal_float_sha256": "66913b5da71634603eb62d76755f17724036b1b2f113815a93a400574d904ef0",
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.000887624656315893,
+            "p05": -0.0006948337162612006,
+            "median": 1.730592157400679e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320440591528306e-05,
+            "standard_deviation": 0.00045622981487499934,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007268577814102173,
+            "p01": 0.18340061008930206,
+            "p05": 0.4327703803777695,
+            "median": 1.439804196357727,
+            "p95": 2.7032868027687074,
+            "p99": 2.924083824157715,
+            "maximum": 2.9562108516693115,
+            "mean": 1.5029136224935655,
+            "standard_deviation": 0.6791670898366767,
+            "peak_to_peak": 2.9489422738552094,
+            "fractions_above_degrees": {
+              "0.25": 0.9820556640625,
+              "0.5": 0.935302734375,
+              "1.0": 0.757080078125,
+              "2.0": 0.2757568359375
+            }
+          },
+          "height_float_sha256": "23da05192d963fcb5013598f8879f6dc5e3c8c42c311f803f89480a1bf8e721e",
+          "normal_float_sha256": "1da4b8080c827b7951b86332845f6ebfc399fca7819ab920029f3252640dd6f3",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.000887624656315893,
+            "p05": -0.0006948337162612006,
+            "median": 1.730592157400679e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320440591528306e-05,
+            "standard_deviation": 0.00045622981487499934,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.007268577814102173,
+            "p01": 0.18340061008930206,
+            "p05": 0.4327703803777695,
+            "median": 1.439804196357727,
+            "p95": 2.7032868027687074,
+            "p99": 2.924083824157715,
+            "maximum": 2.9562108516693115,
+            "mean": 1.5029136224935655,
+            "standard_deviation": 0.6791670898366767,
+            "peak_to_peak": 2.9489422738552094,
+            "fractions_above_degrees": {
+              "0.25": 0.9820556640625,
+              "0.5": 0.935302734375,
+              "1.0": 0.757080078125,
+              "2.0": 0.2757568359375
+            }
+          },
+          "height_float_sha256": "23da05192d963fcb5013598f8879f6dc5e3c8c42c311f803f89480a1bf8e721e",
+          "normal_float_sha256": "1da4b8080c827b7951b86332845f6ebfc399fca7819ab920029f3252640dd6f3",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "v004_1_shape_only_control",
+          "changed_relative_to_control": false,
+          "coordinate_contract": {
+            "mapping": "unchanged_v004_1_per_object_control",
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001156120328232646,
+            "p01": -0.0008876247622538358,
+            "p05": -0.0006948337162612006,
+            "median": 1.7305926121480297e-05,
+            "p95": 0.0008607590658357366,
+            "p99": 0.0011175790044944734,
+            "maximum": 0.0014532998902723193,
+            "mean": 2.4320437902443674e-05,
+            "standard_deviation": 0.00045622981921999875,
+            "peak_to_peak": 0.0026094202185049653
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0071646347641944885,
+            "p01": 0.17312924578785896,
+            "p05": 0.40746057480573655,
+            "median": 1.3695768117904663,
+            "p95": 2.5555284738540642,
+            "p99": 2.7127656078338624,
+            "maximum": 2.749358892440796,
+            "mean": 1.419528184666433,
+            "standard_deviation": 0.6396268560085325,
+            "peak_to_peak": 2.7421942576766014,
+            "fractions_above_degrees": {
+              "0.25": 0.98046875,
+              "0.5": 0.9288330078125,
+              "1.0": 0.6898193359375,
+              "2.0": 0.2337646484375
+            }
+          },
+          "height_float_sha256": "ba3af196771c9d901a0302276d85775b51f3eebccfe934d94d184595c5c26fb2",
+          "normal_float_sha256": "4ec8fe436781ecd5a4ffbfb63d2c1f9a3e3324cd8bc319872f81616e12a342b1",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        }
+      },
+      "renders": {
+        "isolated_height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/isolated_height.png",
+          "bytes": 61355,
+          "sha256": "d1b16cbb5425e33900829d4d7e80a00d55b1184f25c6cbb2febed66a1a89eff4"
+        },
+        "isolated_normal_angle": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/isolated_normal_angle.png",
+          "bytes": 82514,
+          "sha256": "6bd3435fe61917b149bd95a0c75f1031995501a7de4d4ef90f30bdf6158c3b07"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/close_neutral.png",
+          "bytes": 107518,
+          "sha256": "0266f68884429a317159797df353854292707cc81d8d10269c3779044502c4ab"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/grazing.png",
+          "bytes": 70994,
+          "sha256": "dba99bf5115600fb9b4a353274c0c4d48794073234aee0051ab94a1b1a5b6242"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/pivot_close.png",
+          "bytes": 124609,
+          "sha256": "d3d53412c7d4c104466c1845f9f0b70af599ff025cfd006879248b505a02e018"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/C_separate_axial_pintle/gameplay.png",
+          "bytes": 56474,
+          "sha256": "d09228a444d6f6daa52dc8fd6b07e66b4bc3cb4031351a2921009cf23682544b"
+        }
+      },
+      "shared_group_signature_unchanged": true
+    },
+    {
+      "candidate_id": "D_combined_construction",
+      "changed_members": [
+        "SM_GH018_FixedLeaf",
+        "SM_GH018_MovingLeaf_Openwork",
+        "SM_GH018_Pintle",
+        "MovingKnuckle_01",
+        "FixedKnuckle_02",
+        "MovingKnuckle_03",
+        "FixedKnuckle_04",
+        "MovingKnuckle_05"
+      ],
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "leaf_object_xz_is_parent_rest_stock",
+            "rest_u_range_m": [
+              -0.8999999761581421,
+              -0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "compiled_image_resolution": [
+              213,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.001613567234016955,
+            "p01": -0.0013129745097830892,
+            "p05": -0.0007352048822212964,
+            "median": -0.00018153252312913537,
+            "p95": 0.0009700429101940244,
+            "p99": 0.001440919849555939,
+            "maximum": 0.0016198953380808234,
+            "mean": -7.856452164188377e-05,
+            "standard_deviation": 0.00047862658847249,
+            "peak_to_peak": 0.0032334625720977783
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.3608918786048889,
+            "p95": 1.233117592334747,
+            "p99": 1.6046505975723249,
+            "maximum": 1.8050004243850708,
+            "mean": 0.4762790844586215,
+            "standard_deviation": 0.4417109814702582,
+            "peak_to_peak": 1.8050004243850708,
+            "fractions_above_degrees": {
+              "0.25": 0.5819773006973882,
+              "0.5": 0.4148776152057979,
+              "1.0": 0.16992570308582888,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "9bb22d7a3b2d0e1743e16ad4c3244fd5f06520e100e773a18efc5a3c159b652c",
+          "normal_float_sha256": "45bd1cc6c19a05eaa50c4e873ed8bc76983e9eba1a1b885dbbdd0313602be0b4",
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57"
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "leaf_object_xz_is_parent_rest_stock",
+            "rest_u_range_m": [
+              0.04800000041723251,
+              3.1600000858306885
+            ],
+            "rest_v_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "compiled_image_resolution": [
+              768,
+              103
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0017354205483570695,
+            "p01": -0.001529650988522917,
+            "p05": -0.0010760412435047329,
+            "median": 6.3827774283709e-05,
+            "p95": 0.0009322220517788062,
+            "p99": 0.0014967444783542307,
+            "maximum": 0.0017230176599696279,
+            "mean": -7.672935845585322e-06,
+            "standard_deviation": 0.0005208792107129429,
+            "peak_to_peak": 0.0034584382083266973
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.26565511524677277,
+            "p95": 1.178343880176544,
+            "p99": 1.469780104160309,
+            "maximum": 1.688209891319275,
+            "mean": 0.4126600127271902,
+            "standard_deviation": 0.40898599948277886,
+            "peak_to_peak": 1.688209891319275,
+            "fractions_above_degrees": {
+              "0.25": 0.5111878033980582,
+              "0.5": 0.37596076051779936,
+              "1.0": 0.09138602346278317,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6983c0aaf9ba7051048aeb2b2f9a8ed925e9c564da87e774b93218d212bef9ba",
+          "normal_float_sha256": "6eb1035da1fa37b0067d9677ef68b8aafe82d240e9f058352fcbc2e08c2f4f42",
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07"
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "normal_owner": "pintle_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "axial_u_and_circumferential_v_from_existing_axial_pin_frame",
+            "axial_range_m": [
+              -0.20499999821186066,
+              0.20499999821186066
+            ],
+            "circumferential_range_m": [
+              -0.07941248267889023,
+              0.08395033329725266
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0004925460671074688,
+            "p01": -0.00048082707246067003,
+            "p05": -0.00042341860971646384,
+            "median": -5.032516810388188e-06,
+            "p95": 0.00043510117102414365,
+            "p99": 0.0005191729287616909,
+            "maximum": 0.0005323488730937243,
+            "mean": -3.56063919668137e-14,
+            "standard_deviation": 0.00027246412041619095,
+            "peak_to_peak": 0.001024894940201193
+          },
+          "normal_angle_degrees": {
+            "minimum": 8.622690984338988e-06,
+            "p01": 0.005123368930071592,
+            "p05": 0.21927371695637704,
+            "median": 3.6245930194854736,
+            "p95": 6.734982705116272,
+            "p99": 7.187152652740479,
+            "maximum": 7.523257255554199,
+            "mean": 3.5053595124723076,
+            "standard_deviation": 2.1581601352117965,
+            "peak_to_peak": 7.523248632863215,
+            "fractions_above_degrees": {
+              "0.25": 0.9437255859375,
+              "0.5": 0.9013671875,
+              "1.0": 0.8173828125,
+              "2.0": 0.6873779296875
+            }
+          },
+          "height_float_sha256": "f23e007ca3c4d151d50ef35c7737b0f170a2ab23cd71c997cb6967b027361131",
+          "normal_float_sha256": "66913b5da71634603eb62d76755f17724036b1b2f113815a93a400574d904ef0",
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.22519999742507935,
+              -0.10920000076293945
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0005510175251401961,
+            "p01": -0.0002867553642136045,
+            "p05": -5.099720474390779e-05,
+            "median": 6.433680391637608e-05,
+            "p95": 6.440521938202436e-05,
+            "p99": 6.567019372596406e-05,
+            "maximum": 6.813390791648999e-05,
+            "mean": 4.674546342121801e-05,
+            "standard_deviation": 6.193925335443673e-05,
+            "peak_to_peak": 0.0006191514330566861
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 2.6904001060756855e-05,
+            "p95": 0.3563665285706519,
+            "p99": 0.7540899109840393,
+            "maximum": 0.9508026242256165,
+            "mean": 0.049604676536373224,
+            "standard_deviation": 0.14127846055154283,
+            "peak_to_peak": 0.9508026242256165,
+            "fractions_above_degrees": {
+              "0.25": 0.0704345703125,
+              "0.5": 0.0313720703125,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "734651c76cfc088aa09272ea5c125aa289a88176295ddea28e7bd4c91a8c04d8",
+          "normal_float_sha256": "d8605f2b52808721b9e878716a4cb19e0fde6948101d24bbf65fea7670f4966d",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.04800000041723251,
+              0.2018565610051155
+            ],
+            "rest_v_range_m": [
+              -0.14159999787807465,
+              -0.025600001215934753
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.00018145421927329153,
+            "p01": -0.0001789122678746935,
+            "p05": -0.00016417271326645276,
+            "median": 0.0008881247777026147,
+            "p95": 0.0020286996965296566,
+            "p99": 0.0021582657773979008,
+            "maximum": 0.002191378502175212,
+            "mean": 0.0008675687056444777,
+            "standard_deviation": 0.0007369186092811752,
+            "peak_to_peak": 0.0023728327214485034
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.003210661467164755,
+            "p01": 0.02025425774976611,
+            "p05": 0.08609887622296811,
+            "median": 1.0250512957572937,
+            "p95": 1.987017571926117,
+            "p99": 2.1130738639831543,
+            "maximum": 2.1480746269226074,
+            "mean": 1.0480018114514849,
+            "standard_deviation": 0.5698106815902366,
+            "peak_to_peak": 2.1448639654554427,
+            "fractions_above_degrees": {
+              "0.25": 0.87158203125,
+              "0.5": 0.795166015625,
+              "1.0": 0.549072265625,
+              "2.0": 0.045166015625
+            }
+          },
+          "height_float_sha256": "ed4dc5c34c1b219be2316e92b2a56c28386d57374c302366182e3939ae1ec748",
+          "normal_float_sha256": "436b2687c41211fe594deb58f11c7a4eb2edbc1d4464c929b4aae4e2f731942c",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              -0.057999998331069946,
+              0.057999998331069946
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.0004631110350601375,
+            "p01": -0.0002071190129208844,
+            "p05": 6.433680391637608e-05,
+            "median": 0.00011892653856193647,
+            "p95": 0.00043718115630326794,
+            "p99": 0.0004670840906328522,
+            "maximum": 0.00047454083687625825,
+            "mean": 0.00017512832437247688,
+            "standard_deviation": 0.0001460614905672615,
+            "peak_to_peak": 0.0009376518719363958
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.15604844689369202,
+            "p95": 0.7644078969955443,
+            "p99": 0.8700036257505417,
+            "maximum": 0.8813993334770203,
+            "mean": 0.196196836307574,
+            "standard_deviation": 0.21715123467707728,
+            "peak_to_peak": 0.8813993334770203,
+            "fractions_above_degrees": {
+              "0.25": 0.305419921875,
+              "0.5": 0.0966796875,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "b77f5e883b2263451eb85e988b78c24082312f5da5480b1093b0d4bda4ac26f3",
+          "normal_float_sha256": "e8dec16420b866f317438acce100ede8e6da991912fbf2f1785f71192a35de0d",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "normal_owner": "fixed_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.04800000041723251,
+              0.2018565610051155
+            ],
+            "rest_v_range_m": [
+              0.025600001215934753,
+              0.14159999787807465
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": -0.00020394501916598529,
+            "p01": -0.00018179234757553786,
+            "p05": -0.0001817906813812442,
+            "median": -0.0001174018943856936,
+            "p95": 0.00036360407975735134,
+            "p99": 0.0005755173781653867,
+            "maximum": 0.0006891964585520327,
+            "mean": -5.14073533809771e-05,
+            "standard_deviation": 0.000175295275150014,
+            "peak_to_peak": 0.000893141477718018
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.00015623137151123958,
+            "median": 0.15838812291622162,
+            "p95": 0.9407903969287872,
+            "p99": 1.126770421266556,
+            "maximum": 1.2096164226531982,
+            "mean": 0.27992133120059703,
+            "standard_deviation": 0.30150083470458316,
+            "peak_to_peak": 1.2096164226531982,
+            "fractions_above_degrees": {
+              "0.25": 0.3785400390625,
+              "0.5": 0.2171630859375,
+              "1.0": 0.035400390625,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6aa6dcfb396bdf988c1cb59879ef00b7cb3ccca01c6a268d412f5f2e33e63850",
+          "normal_float_sha256": "52eb6f8f967cfa71cded62d3ca69af75ea8d9f8a20fef94dcb84d217ee888636",
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "normal_owner": "moving_leaf_stock",
+          "changed_relative_to_control": true,
+          "coordinate_contract": {
+            "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+            "rest_u_range_m": [
+              -0.22833629697561264,
+              0.04800000041723251
+            ],
+            "rest_v_range_m": [
+              0.10920000076293945,
+              0.22519999742507935
+            ],
+            "compiled_image_resolution": [
+              128,
+              64
+            ]
+          },
+          "height_m": {
+            "minimum": 5.907208833377808e-05,
+            "p01": 6.165011887787841e-05,
+            "p05": 6.390331582224462e-05,
+            "median": 6.433680391637608e-05,
+            "p95": 7.307938831218052e-05,
+            "p99": 9.244833352568097e-05,
+            "maximum": 0.00010601890971884131,
+            "mean": 6.549501720742867e-05,
+            "standard_deviation": 4.88723484195574e-06,
+            "peak_to_peak": 4.694682138506323e-05
+          },
+          "normal_angle_degrees": {
+            "minimum": 0.0,
+            "p01": 0.0,
+            "p05": 0.0,
+            "median": 0.0,
+            "p95": 0.05655171517282724,
+            "p99": 0.1170014958828688,
+            "maximum": 0.1477944254875183,
+            "mean": 0.007358445045845138,
+            "standard_deviation": 0.02217339940528263,
+            "peak_to_peak": 0.1477944254875183,
+            "fractions_above_degrees": {
+              "0.25": 0.0,
+              "0.5": 0.0,
+              "1.0": 0.0,
+              "2.0": 0.0
+            }
+          },
+          "height_float_sha256": "6014ffeecc012606cab83ad84b5ccd6592dcaa50989d1b9ea63aa4b8d99d0311",
+          "normal_float_sha256": "6320af3f1d54f8f060cd4fe95cd1d8371dea5405be51888720308e7c204d2d17",
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e"
+        }
+      },
+      "renders": {
+        "isolated_height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/isolated_height.png",
+          "bytes": 60444,
+          "sha256": "e5b8a335f44ef5c456febdccb4207d95427ba14d995889ddba3a014271be80ed"
+        },
+        "isolated_normal_angle": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/isolated_normal_angle.png",
+          "bytes": 86877,
+          "sha256": "d466185a439d8fd5a2c5ff40b34cb952a047ce08e02a204183e3a366c2f3741c"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/close_neutral.png",
+          "bytes": 107501,
+          "sha256": "e813fcd844c6a56bceecc601c8f25c597455d3e9bdf0a58ae08d41199bca6846"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/grazing.png",
+          "bytes": 70866,
+          "sha256": "4de2b6f471994773023da7690271f38bd7fed3ee29b1ca91d1d5f87324bd83bc"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/pivot_close.png",
+          "bytes": 124759,
+          "sha256": "d143549e1547ca1470ccea89678f7f19a0b38159a9932a48f70b59d82925d031"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/D_combined_construction/gameplay.png",
+          "bytes": 56264,
+          "sha256": "1148e29dcb1df89f275e0f6f56a3cc0a1dfee79b4f5a89041e7213c99f0994cd"
+        }
+      },
+      "shared_group_signature_unchanged": true
+    }
+  ],
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_construction_response_sweep_v1/forged_iron_v004_1_construction_response_board.png",
+    "resolution": [
+      3840,
+      880
+    ],
+    "bytes": 1795217,
+    "sha256": "07e10f794f2ec7faaa0ad98ce6b03e620a60215a5450781126f00c95fa129e83",
+    "row_legend": {
+      "A": "A_v004_1_control",
+      "B": "B_parent_rest_stock",
+      "C": "C_separate_axial_pintle",
+      "D": "D_combined_construction"
+    },
+    "column_legend": {
+      "1": {
+        "id": "isolated_height",
+        "label": "INTEGRATED HEIGHT  +/- 6 MM"
+      },
+      "2": {
+        "id": "isolated_normal_angle",
+        "label": "NORMAL ANGLE  0 TO 2 DEG"
+      },
+      "3": {
+        "id": "close_neutral",
+        "label": "CLOSE NEUTRAL"
+      },
+      "4": {
+        "id": "grazing",
+        "label": "GRAZING"
+      },
+      "5": {
+        "id": "pivot_close",
+        "label": "PIVOT CLOSE"
+      },
+      "6": {
+        "id": "gameplay",
+        "label": "GAMEPLAY DISTANCE"
+      }
+    },
+    "assembly": "ffmpeg 6x4 stack plus deterministic A1-D6 bitmap badges"
+  },
+  "visual_review": {
+    "decision": "reject_all_visible_fields_accept_coordinate_ownership_only",
+    "ranking": [
+      "B_parent_rest_stock",
+      "A_v004_1_control",
+      "C_separate_axial_pintle",
+      "D_combined_construction"
+    ],
+    "recommended_strategy": "retain_parent_rest_stock_and_separate_pintle_coordinates_but_select_no_normal_field",
+    "advancement_scope": "coordinate_ownership_contract_only; no height, normal, material, shader, or donor promotion",
+    "defect_ledger": [
+      "A remains rejected because one normalized three-rail field restarts on every host and organizes energy into whole-object lobes.",
+      "B and D preserve parent-stock continuity but the isolated angle proof closes the compact C2 supports into repeated amoeba-like lobes. The hammer-envelope proxy has become a visible pattern even though the algorithm never drew a literal dent.",
+      "B distributes response implausibly across the rolled eyes: MovingKnuckle_05 falls to about 0.047 mm peak-to-peak while FixedKnuckle_02 reaches about 2.373 mm. Correct phase ownership alone does not make this response believable.",
+      "C and D squeeze an eight-fold residual around the small pintle circumference. One millimetre peak-to-peak produces a 3.625 degree median, 6.735 degree p95, and 7.523 degree maximum normal angle: too strong and too close to explicit octagonal striping.",
+      "Despite C's excessive pin slopes, its full-frame difference from A remains extremely small: PSNR is 70.10 dB close, 80.43 dB grazing, 63.76 dB pivot, and 82.21 dB gameplay. More normal amplitude would intensify the isolated failure rather than repair the material read.",
+      "B and D produce larger but still subordinate lit differences while retaining a prohibited procedural signature in the isolated owner. A layer is not accepted because rough oxide and lighting hide its defect.",
+      "All rest-stock boundary height comparisons, the pintle circumference seam, frozen colour/roughness/luster hashes, the shared group topology, and the v004.1 source hash remain valid.",
+      "The next investigation should test whether construction identity belongs primarily in broad roughness and direction-dependent reflection or in restrained geometry faceting, with construction normals reduced or absent. It should not generate another hammer-shaped normal vocabulary."
+    ],
+    "physical_panel_psnr_db_against_A": {
+      "B_parent_rest_stock": {
+        "close_neutral": 45.765476,
+        "grazing": 49.878627,
+        "pivot_close": 44.406557,
+        "gameplay": 52.84216
+      },
+      "C_separate_axial_pintle": {
+        "close_neutral": 70.095366,
+        "grazing": 80.426049,
+        "pivot_close": 63.756586,
+        "gameplay": 82.213203
+      },
+      "D_combined_construction": {
+        "close_neutral": 45.759302,
+        "grazing": 49.874662,
+        "pivot_close": 44.370524,
+        "gameplay": 52.840609
+      }
+    },
+    "manual_acceptance_established": false
+  },
+  "source_unchanged": true,
+  "material_candidate_created": false,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "manual_acceptance_established": false,
+  "unreal_parity_verified": false,
+  "locked_absences": [
+    "rust",
+    "condition",
+    "damage",
+    "scratches",
+    "dents",
+    "contact_polish",
+    "soot",
+    "blood",
+    "dirt",
+    "worked_luster",
+    "oxide_height",
+    "exposed_conductor",
+    "shader_topology_change"
+  ],
+  "promotion_boundary": "The board may select one normal-owner strategy only. It creates no saved material, donor, acceptance, or engine-parity claim.",
+  "review_document": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CONSTRUCTION_RESPONSE_SWEEP_REVIEW.md",
+    "sha256": "8b550c9e55773e8463a48dc5c084f40ef4ffc5333c1aafc8633831fed5d9ef42"
+  }
+}

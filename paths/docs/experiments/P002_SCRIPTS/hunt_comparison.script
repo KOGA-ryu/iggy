@@ -1,0 +1,39 @@
+preset hunt_classic
+start_new_run 101
+select 1 1
+toggle
+select 1 3
+toggle
+commit
+select 2 2
+toggle
+select 2 3
+toggle
+select 2 4
+toggle
+commit
+select 3 3
+toggle
+commit
+clear
+select 4 1
+toggle
+select 4 4
+toggle
+commit
+select 5 1
+toggle
+select 5 2
+toggle
+select 5 4
+toggle
+commit
+select 6 2
+toggle
+select 6 4
+toggle
+commit
+clear
+back_title
+open_stats
+compare_score hunt 1 hunt_even

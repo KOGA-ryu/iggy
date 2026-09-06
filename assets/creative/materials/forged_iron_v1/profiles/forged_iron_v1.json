@@ -1,0 +1,352 @@
+{
+  "schema": "iggy-forged-iron-profile/3.0",
+  "profile_id": "forged_iron_v1",
+  "display_name": "Reference-audited forged iron face family",
+  "intent": "A reusable intact forged-iron face system for straps and plates. This capability proves measured stock scale, finite tool-scale plane changes, quiet forge skin, and a physically separated metal/oxide response before weathering or damage.",
+  "reference_authority": {
+    "primary_object": {
+      "institution": "The Metropolitan Museum of Art",
+      "object_number": "55.61.170",
+      "object_url": "https://www.metmuseum.org/art/collection/search/468492",
+      "view": "front",
+      "use": "Construction hierarchy and iron-face hue relationships after explicit metal, wood, oxidation, and shadow classification."
+    },
+    "secondary_object": {
+      "institution": "The Metropolitan Museum of Art",
+      "object_number": "25.120.291",
+      "object_url": "https://www.metmuseum.org/art/collection/search/472341",
+      "use": "Secondary hierarchy reference for broad medieval iron strapwork against oak."
+    },
+    "measured_stock": {
+      "met_55_61_63": {
+        "institution": "The Metropolitan Museum of Art",
+        "object_number": "55.61.63",
+        "object_url": "https://www.metmuseum.org/art/collection/search/475522",
+        "date": "15th-16th century",
+        "medium": "iron",
+        "dimensions_m": {
+          "length": 0.349,
+          "width": 0.038
+        },
+        "use": "Narrow reference strap width and length."
+      },
+      "met_55_61_58": {
+        "institution": "The Metropolitan Museum of Art",
+        "object_number": "55.61.58",
+        "object_url": "https://www.metmuseum.org/art/collection/search/475521",
+        "date": "15th-16th century",
+        "medium": "iron",
+        "dimensions_m": {
+          "length": 0.406,
+          "width": 0.041
+        },
+        "use": "Measured acceptance-specimen width and length."
+      }
+    },
+    "measured_forging_tool": {
+      "institution": "The Colonial Williamsburg Foundation",
+      "object_number": "2020-20,16",
+      "object_url": "https://emuseum.history.org/objects/107709/forging-hammer",
+      "date": "1750-1850",
+      "main_face_m": [
+        0.041275,
+        0.03175
+      ],
+      "cross_peen_face_m": [
+        0.0365125,
+        0.0127
+      ],
+      "use": "Later-period measured tool envelopes provide a maximum footprint for the two authored mark classes. They do not claim that every medieval blow printed the whole face."
+    },
+    "surface_roughness_proxy": {
+      "authors": "B. Gerin, E. Pessard, F. Morel, C. Verdu",
+      "title": "Characterising the impact of surface integrity on the fatigue behaviour of a shot-peened connecting rod",
+      "url": "https://shotpeener.com/library/pdf/2014047.pdf",
+      "material": "hot-forged C70 connecting rod",
+      "measured_ra_m": 0.0000064,
+      "standard_deviation_m": 0.000002,
+      "cutoff_m": 0.0025,
+      "use": "Modern measured micro-roughness proxy only. The paper explicitly shows that equal Ra values can hide different topographies, so finite forge-plane masks remain a separate authored layer."
+    },
+    "pbr": {
+      "institution": "Epic Games",
+      "url": "https://dev.epicgames.com/documentation/unreal-engine/physically-based-materials-in-unreal-engine?lang=en-US",
+      "rule": "Measured iron base colour is linear 0.560, 0.570, 0.580. Metallic is binary for pure surfaces: 1 for exposed iron and 0 for the dielectric forge skin or oxide."
+    },
+    "conservation": {
+      "institution": "Canadian Conservation Institute",
+      "url": "https://www.canada.ca/en/conservation-institute/services/conservation-preservation-publications/canadian-conservation-institute-notes/care-iron.html",
+      "rule": "Stable iron may range from silver-grey through compact blue-black and red-brown; bright orange powder, blisters, flaking, and pits indicate active corrosion and are excluded from this core material."
+    }
+  },
+  "coordinate_contract": {
+    "space": "component_local",
+    "unit": "metre",
+    "longitudinal_attribute": "sinc_iron_u_m",
+    "cross_stock_attribute": "sinc_iron_v_m",
+    "variant_attribute": "sinc_seed",
+    "edge_attribute": "sinc_iron_edge_mask",
+    "fabrication_scale_attribute": "sinc_iron_fabrication_scale",
+    "fabrication_scale_presets": {
+      "human_fixture": 1.0,
+      "giant_house_hardware": 10.0
+    },
+    "uv_required": true,
+    "tangent_uv": "IGGY_IronUV",
+    "scale_rule": "Geometry authors emit longitudinal and cross-stock coordinates in metres before assembly. Macro fabrication coordinates divide those metre lanes by sinc_iron_fabrication_scale. Scale and micro use the 1.218 by 0.164 m raw-metre field; worked response uses an independent 2.436 by 0.492 m raw-metre field. sinc_seed selects a deterministic atlas row without stretching stock."
+  },
+  "pattern": {
+    "recipe": "../patterns/forged_iron_face_champion_v1.json",
+    "physical_tile_m": {
+      "length": 1.218,
+      "width": 0.164
+    },
+    "worked_physical_tile_m": {
+      "length": 2.436,
+      "width": 0.492
+    },
+    "variation_count": 4,
+    "atlas_layout": {
+      "columns": 1,
+      "rows": 4
+    },
+    "placement_rule": "A hand-authored champion layout defines clustered planishing and cross-peen events with quiet intervals. Scripted variants perturb position, rotation, and strength inside measured tool envelopes; they do not replace the layout with noise."
+  },
+  "surface_response": {
+    "model": "intact_compact_scale_with_default_off_contact_exposed_iron",
+    "forge_skin_metallic": 0.0,
+    "exposed_iron_metallic": 1.0,
+    "default_metalness": 0.0,
+    "bare_iron_base_colour_linear": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "metallic_rule": "The retained blue-black forge scale is a continuous dielectric skin. Hammering never implies exposed conductive iron. The conductor branch is reachable only from a separately authored contact-polish mask, whose default amount is zero.",
+    "roughness_range": [
+      0.34,
+      0.82
+    ],
+    "anisotropy": 0.04,
+    "worked_anisotropy_max": 0.18,
+    "surface_roughness_proxy": {
+      "ra_m": 0.0000064,
+      "standard_deviation_m": 0.000002,
+      "cutoff_m": 0.0025,
+      "status": "measured_modern_hot_forged_proxy_not_medieval_metrology"
+    },
+    "height_encoding": {
+      "minimum_m": -0.00018,
+      "maximum_m": 0.00018,
+      "neutral": 0.5,
+      "rule": "Measured-proxy micro-topography is added to finite sub-millimetre hammer-plane and scale-lip relief. It never displaces the silhouette."
+    },
+    "layer_height_encoding": {
+      "macro_hammer": {
+        "minimum_m": -0.000085,
+        "maximum_m": 0.000085,
+        "neutral": 0.5
+      },
+      "scale_lip": {
+        "minimum_m": 0.0,
+        "maximum_m": 0.00002,
+        "neutral": 0.0
+      },
+      "micro_surface": {
+        "minimum_m": -0.000032,
+        "maximum_m": 0.000032,
+        "neutral": 0.5
+      }
+    },
+    "distance_response_m": {
+      "micro_full_until": 0.65,
+      "micro_zero_after": 4.5,
+      "rule": "Only the micro normal fades with camera distance. Macro hammer and scale-lip normals remain stable."
+    },
+    "normal_strengths": {
+      "macro_hammer": 1.0,
+      "scale_lip": 0.78,
+      "micro_surface": 0.52,
+      "worked_surface": 0.62,
+      "rule": "Macro hammer, compact-scale lip, micro topography, and finite worked-face normals remain independently adjustable before whiteout blending."
+    },
+    "maximum_bump_strength": 0.85
+  },
+  "palette": {
+    "observed_reference_twenty": [
+      "#503429",
+      "#664c3f",
+      "#896c5e",
+      "#6e5348",
+      "#6b4f43",
+      "#705858",
+      "#6c554f",
+      "#6f5c5e",
+      "#7f5e59",
+      "#845646",
+      "#765b52",
+      "#654030",
+      "#92766b",
+      "#6b544c",
+      "#6f5642",
+      "#7c5244",
+      "#543b36",
+      "#856348",
+      "#886a5f",
+      "#a2896b"
+    ],
+    "forge_skin_srgb": [
+      "#252a31",
+      "#292e36",
+      "#2d333c",
+      "#313741",
+      "#353b46",
+      "#39404a",
+      "#3d434d",
+      "#41464f",
+      "#454950",
+      "#494b51",
+      "#4b494f",
+      "#4d474b",
+      "#50494b",
+      "#534b4a",
+      "#554d4a",
+      "#574f4b"
+    ],
+    "exposed_iron_reflectance_srgb": [
+      "#aeb4bc",
+      "#b3b9c1",
+      "#b8bec6",
+      "#bdc3ca",
+      "#c1c6cc",
+      "#c5c9ce",
+      "#c8cbd0",
+      "#c3c4c8",
+      "#bdbec3",
+      "#b7b9bf",
+      "#b4b5bb",
+      "#b0b2b8"
+    ],
+    "brown_oxide_srgb": [
+      "#2b211f",
+      "#342421",
+      "#3d2923",
+      "#472e26",
+      "#503429",
+      "#593a2d"
+    ],
+    "normalization_rule": "Only the eleven audited iron-face samples preserve warm/cool hue relationships. Their photograph luminance is discarded. The six shadow or material-ambiguous samples are excluded, and the three red-brown samples belong only to the default-off oxidation overlay."
+  },
+  "layers": [
+    {
+      "id": "quiet_compact_forge_scale",
+      "purpose": "A continuous dielectric blue-black scale skin with broad cool and warm passages and long visual rests between authored events.",
+      "minimum_quiet_fraction": 0.35,
+      "metallic": 0.0
+    },
+    {
+      "id": "compact_scale_plate_tone",
+      "purpose": "Finite overlapping blue-black plate-tone changes within the continuous high-temperature scale skin; not exposed spots, rust, pitting, or generic grunge.",
+      "metallic": 0.0,
+      "roughness_range": [
+        0.66,
+        0.82
+      ],
+      "maximum_tone_influence": 0.28
+    },
+    {
+      "id": "finite_planishing_faces",
+      "purpose": "Rounded rectangular plane changes bounded by the measured 41.275 by 31.75 millimetre hammer face. They change plane and reflection but do not change metal identity.",
+      "colour_influence": 0.0,
+      "roughness_influence": 0.07
+    },
+    {
+      "id": "finite_cross_peen_faces",
+      "purpose": "Elongated directional plane changes bounded by the measured 36.5125 by 12.7 millimetre cross-peen face. They change plane and reflection but do not change metal identity.",
+      "colour_influence": 0.0,
+      "roughness_influence": 0.05
+    },
+    {
+      "id": "micro_surface",
+      "purpose": "Band-limited micro-topography normalized to the measured modern as-forged Ra proxy after the finite mark field is assembled.",
+      "ra_m": 0.0000064
+    },
+    {
+      "id": "worked_surface",
+      "purpose": "Finite component-local comparative brush passes alter normal, roughness, anisotropy, and anisotropic rotation while preserving protected quiet regions.",
+      "wire_diameter_proxy_m": [
+        0.0003,
+        0.00035
+      ],
+      "visible_bundle_spacing_m": [
+        0.0024,
+        0.0048
+      ],
+      "physical_tile_m": {
+        "length": 2.436,
+        "width": 0.492
+      },
+      "placement_rule": "Twelve irregularly spaced passes occupy a worked field twice the base tile length and three times its width. The larger independent coordinate prevents tidy cross-stock rows on giant plate while preserving millimetre bundle spacing.",
+      "height_claim_m": 0.0,
+      "normal_strength": 0.62,
+      "roughness_reduction_max": 0.05,
+      "anisotropy_max": 0.18
+    },
+    {
+      "id": "brown_oxidation_overlay",
+      "purpose": "Reference-audited red-brown oxidation reserved for a later placement pass.",
+      "amount": 0.0,
+      "metallic": 0.0,
+      "roughness": 0.78
+    },
+    {
+      "id": "contact_polish_overlay",
+      "purpose": "Exposed iron reserved for geometry-authored contact edges and use logic.",
+      "amount": 0.0,
+      "metallic": 1.0,
+      "roughness": 0.48
+    }
+  ],
+  "proof_geometry": {
+    "measured_reference_strap": {
+      "source_object_number": "55.61.58",
+      "length_m": 0.406,
+      "width_m": 0.041,
+      "display_thickness_m": 0.006,
+      "thickness_status": "unmeasured_proof_only_not_source_dimension"
+    },
+    "square_nail": {
+      "head_width_m": 0.026,
+      "head_depth_m": 0.024,
+      "head_height_m": 0.007,
+      "visible_shank_width_m": 0.008
+    },
+    "domed_rivet": {
+      "head_diameter_m": 0.018,
+      "head_height_m": 0.006,
+      "shank_diameter_m": 0.007
+    }
+  },
+  "excluded_lanes": [
+    "active_orange_corrosion",
+    "uniform_rust",
+    "random_pitting",
+    "deep_pits",
+    "cracks",
+    "chips",
+    "blood",
+    "dirt",
+    "soot",
+    "scratches",
+    "damage"
+  ],
+  "proofs": [
+    "door_combined",
+    "specimen_combined",
+    "specimen_base_colour",
+    "specimen_roughness",
+    "specimen_metalness",
+    "specimen_masks",
+    "pattern_atlas"
+  ]
+}

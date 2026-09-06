@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "status": "synthetic specifications; no user learning data or engine execution",
+  "hunt": [
+    {
+      "name": "six_together",
+      "initial_correct_mask": 63,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 63
+        }
+      ],
+      "classic_points": 720,
+      "even_points": 600,
+      "banked_rows": 6
+    },
+    {
+      "name": "two_threes",
+      "initial_correct_mask": 63,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 7
+        },
+        {
+          "sequence": 2,
+          "cleared_row_mask": 56
+        }
+      ],
+      "classic_points": 840,
+      "even_points": 600,
+      "banked_rows": 6
+    },
+    {
+      "name": "six_singles",
+      "initial_correct_mask": 63,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 1
+        },
+        {
+          "sequence": 2,
+          "cleared_row_mask": 2
+        },
+        {
+          "sequence": 3,
+          "cleared_row_mask": 4
+        },
+        {
+          "sequence": 4,
+          "cleared_row_mask": 8
+        },
+        {
+          "sequence": 5,
+          "cleared_row_mask": 16
+        },
+        {
+          "sequence": 6,
+          "cleared_row_mask": 32
+        }
+      ],
+      "classic_points": 600,
+      "even_points": 600,
+      "banked_rows": 6
+    },
+    {
+      "name": "five_correct_one_released",
+      "initial_correct_mask": 31,
+      "released_mask": 32,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 31
+        }
+      ],
+      "classic_points": 620,
+      "even_points": 500,
+      "banked_rows": 5,
+      "finished_pack": true
+    },
+    {
+      "name": "duplicate_row_invalid",
+      "initial_correct_mask": 63,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 1
+        },
+        {
+          "sequence": 2,
+          "cleared_row_mask": 1
+        }
+      ],
+      "expected_error": "row_banked_twice"
+    },
+    {
+      "name": "incorrect_row_in_bank_invalid",
+      "initial_correct_mask": 31,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 63
+        }
+      ],
+      "expected_error": "bank_contains_incorrect_row"
+    }
+  ],
+  "guided": [
+    {
+      "name": "one_each_resolution_type",
+      "step_count": 7,
+      "first_try_correct": 1,
+      "corrected_after_retry": 1,
+      "shown_answers": 1,
+      "incorrect_checks": 3,
+      "question_completed": false,
+      "resolved_layers": 3,
+      "progress_points_at_one_per_layer": 3,
+      "progress_points_at_two_per_layer": 6,
+      "three_layer_goal_reached": true,
+      "finish_question_goal_reached": false,
+      "scoring_disabled_points": null
+    },
+    {
+      "name": "all_resolved_before_final_continue",
+      "step_count": 7,
+      "first_try_correct": 7,
+      "corrected_after_retry": 0,
+      "shown_answers": 0,
+      "question_completed": false,
+      "resolved_layers": 7,
+      "progress_points_at_one_per_layer": 7,
+      "finish_question_goal_reached": false
+    },
+    {
+      "name": "completed_after_final_continue",
+      "step_count": 7,
+      "first_try_correct": 7,
+      "corrected_after_retry": 0,
+      "shown_answers": 0,
+      "question_completed": true,
+      "resolved_layers": 7,
+      "progress_points_at_one_per_layer": 7,
+      "finish_question_goal_reached": true
+    },
+    {
+      "name": "no_checks",
+      "step_count": 7,
+      "first_try_correct": 0,
+      "corrected_after_retry": 0,
+      "shown_answers": 0,
+      "checked_layers": 0,
+      "first_try_rate": null,
+      "rate_label": "No checked answers yet",
+      "progress_points_at_one_per_layer": 0,
+      "scoring_disabled_points": null
+    }
+  ]
+}

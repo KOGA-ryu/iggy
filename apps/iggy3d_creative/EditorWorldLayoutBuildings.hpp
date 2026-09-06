@@ -17,6 +17,11 @@ createCreativeEditorWorldLayoutBuildingShell(
 createCreativeEditorWorldLayoutBuildingBlockout(
     CreativeEditorWorldLayoutState& state,
     CreativeEditorWorldLayoutBuildingBlockoutSettings settings);
+[[nodiscard]] bool
+applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
+    cr::CreativeGridSettings grid,
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept;
 [[nodiscard]] bool readCreativeEditorWorldLayoutBuildingBlockoutSettings(
     const CreativeEditorWorldLayoutState& state, std::size_t buildingIndex,
     CreativeEditorWorldLayoutBuildingBlockoutSettings& output) noexcept;

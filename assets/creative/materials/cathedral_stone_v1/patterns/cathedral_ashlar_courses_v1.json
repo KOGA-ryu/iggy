@@ -1,0 +1,168 @@
+{
+  "schema": "iggy3d.pattern.measured_cathedral_ashlar.v2",
+  "name": "cordoba_early_gothic_facing_ashlar_v2",
+  "description": "A source-bounded four-metre facing wythe. Every block has a complete measured-envelope volume; the wall core, damage, ornament, and unknown tool-mark depth are deliberately not invented.",
+  "measurement_authority": {
+    "dimension_measurement_id": "cordoba_early_gothic_ashlar",
+    "joint_measurement_id": "ashlar_joint_3mm_conservation_guide",
+    "tooling_measurement_id": "medieval_caen_stone_tooling",
+    "tool_finish_measurement_id": "medieval_fine_oblique_layage",
+    "bond_source_id": "S19_hes_repointing_ashlar",
+    "construction_scope": "single facing wythe; wall core is not inferred",
+    "translation_note": "The exact course sequence is an authored arrangement constrained by the surveyed Cordoba dimension envelope. It is not represented as a stone-for-stone survey of one elevation."
+  },
+  "module_m": {
+    "width": 4.0,
+    "height": 4.0
+  },
+  "mortar": {
+    "bed_joint_m": 0.003,
+    "perpend_joint_m": 0.003,
+    "recess_m": 0.0,
+    "profile": "flush",
+    "width_status": "published three-millimetre ashlar-joint working value from S20; it is numeric technical guidance, not a measurement of the selected Cordoba churches"
+  },
+  "bond": {
+    "type": "broken_bond",
+    "source_rule": "Upper-course block bodies cover the perpendicular joints below; no adjacent course repeats a vertical joint.",
+    "minimum_joint_separation_m": 0.3,
+    "minimum_joint_separation_status": "acceptance threshold derived from the measured block lengths, not a surveyed historic dimension"
+  },
+  "surface_tooling": {
+    "family": "fine_oblique_straight_hammer_layage",
+    "spacing_range_m": [0.001, 0.004],
+    "straight_hammer_edge_length_range_m": [0.06, 0.094],
+    "fine_impact_width_range_m": [0.001, 0.002],
+    "visible_impact_density_per_m2": {
+      "observed_range": [720, 2420],
+      "observed_mean": 1369,
+      "fresh_experiment": 4444
+    },
+    "selected_density_variants_per_m2": [720, 1369, 2420],
+    "detail_span_m": 0.256,
+    "organization": "oblique parallel passes with slight fan variation",
+    "depth_status": "unknown; no geometric or normal depth is authored",
+    "direction_status": "diagonal is source-backed; exact face angle and plus-or-minus six-degree fan variation are authored",
+    "coverage_rule": "Marks are finite impacts with imperfect ends and overlapping passes, never uninterrupted stripes across a block."
+  },
+  "families": [
+    "warm_limestone"
+  ],
+  "tooling": [
+    "diagonal_drove"
+  ],
+  "edge_profiles": [
+    "square_true"
+  ],
+  "excluded_from_intact_core": [
+    "chips",
+    "fractures",
+    "edge_loss",
+    "lichen",
+    "damp",
+    "soot",
+    "carved_ornament"
+  ],
+  "courses": [
+    {
+      "face_height_m": 0.4,
+      "bond_offset_m": 0.0,
+      "blocks": [
+        {"face_length_m": 0.9, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 11, "tool_spacing_m": 0.002, "tool_angle_deg": 39.0},
+        {"face_length_m": 1.08, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 17, "tool_spacing_m": 0.003, "tool_angle_deg": 47.0},
+        {"face_length_m": 0.96, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 23, "tool_spacing_m": 0.004, "tool_angle_deg": 42.0},
+        {"face_length_m": 1.048, "depth_m": 0.18, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 31, "tool_spacing_m": 0.003, "tool_angle_deg": 51.0}
+      ]
+    },
+    {
+      "face_height_m": 0.4,
+      "bond_offset_m": 1.516,
+      "blocks": [
+        {"face_length_m": 1.02, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 43, "tool_spacing_m": 0.004, "tool_angle_deg": -44.0},
+        {"face_length_m": 0.82, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 47, "tool_spacing_m": 0.003, "tool_angle_deg": -38.0},
+        {"face_length_m": 1.1, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 53, "tool_spacing_m": 0.002, "tool_angle_deg": -49.0},
+        {"face_length_m": 1.048, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 59, "tool_spacing_m": 0.004, "tool_angle_deg": -41.0}
+      ]
+    },
+    {
+      "face_height_m": 0.41,
+      "bond_offset_m": 2.952,
+      "blocks": [
+        {"face_length_m": 0.88, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 61, "tool_spacing_m": 0.003, "tool_angle_deg": 36.0},
+        {"face_length_m": 1.12, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 67, "tool_spacing_m": 0.004, "tool_angle_deg": 52.0},
+        {"face_length_m": 0.98, "depth_m": 0.17, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 71, "tool_spacing_m": 0.002, "tool_angle_deg": 45.0},
+        {"face_length_m": 1.008, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 73, "tool_spacing_m": 0.003, "tool_angle_deg": 40.0}
+      ]
+    },
+    {
+      "face_height_m": 0.38,
+      "bond_offset_m": 1.426,
+      "blocks": [
+        {"face_length_m": 1.06, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 79, "tool_spacing_m": 0.004, "tool_angle_deg": -50.0},
+        {"face_length_m": 0.9, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 83, "tool_spacing_m": 0.003, "tool_angle_deg": -42.0},
+        {"face_length_m": 0.92, "depth_m": 0.24, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 89, "tool_spacing_m": 0.002, "tool_angle_deg": -37.0},
+        {"face_length_m": 1.108, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 97, "tool_spacing_m": 0.004, "tool_angle_deg": -46.0}
+      ]
+    },
+    {
+      "face_height_m": 0.4,
+      "bond_offset_m": 2.992,
+      "blocks": [
+        {"face_length_m": 0.8, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 101, "tool_spacing_m": 0.003, "tool_angle_deg": 43.0},
+        {"face_length_m": 1.1, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 103, "tool_spacing_m": 0.004, "tool_angle_deg": 49.0},
+        {"face_length_m": 1.05, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 107, "tool_spacing_m": 0.002, "tool_angle_deg": 38.0},
+        {"face_length_m": 1.038, "depth_m": 0.27, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 109, "tool_spacing_m": 0.003, "tool_angle_deg": 54.0}
+      ]
+    },
+    {
+      "face_height_m": 0.41,
+      "bond_offset_m": 0.412,
+      "blocks": [
+        {"face_length_m": 1.12, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 113, "tool_spacing_m": 0.004, "tool_angle_deg": -39.0},
+        {"face_length_m": 0.86, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 127, "tool_spacing_m": 0.003, "tool_angle_deg": -48.0},
+        {"face_length_m": 0.99, "depth_m": 0.3, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 131, "tool_spacing_m": 0.002, "tool_angle_deg": -43.0},
+        {"face_length_m": 1.018, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 137, "tool_spacing_m": 0.004, "tool_angle_deg": -52.0}
+      ]
+    },
+    {
+      "face_height_m": 0.39,
+      "bond_offset_m": 1.034,
+      "blocks": [
+        {"face_length_m": 0.94, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 139, "tool_spacing_m": 0.003, "tool_angle_deg": 46.0},
+        {"face_length_m": 0.84, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 149, "tool_spacing_m": 0.004, "tool_angle_deg": 40.0},
+        {"face_length_m": 1.12, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 151, "tool_spacing_m": 0.002, "tool_angle_deg": 53.0},
+        {"face_length_m": 1.088, "depth_m": 0.22, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 157, "tool_spacing_m": 0.003, "tool_angle_deg": 37.0}
+      ]
+    },
+    {
+      "face_height_m": 0.4,
+      "bond_offset_m": 3.478,
+      "blocks": [
+        {"face_length_m": 1.08, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 163, "tool_spacing_m": 0.004, "tool_angle_deg": -45.0},
+        {"face_length_m": 1.0, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 167, "tool_spacing_m": 0.003, "tool_angle_deg": -51.0},
+        {"face_length_m": 0.82, "depth_m": 0.18, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 173, "tool_spacing_m": 0.002, "tool_angle_deg": -40.0},
+        {"face_length_m": 1.088, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 179, "tool_spacing_m": 0.004, "tool_angle_deg": -47.0}
+      ]
+    },
+    {
+      "face_height_m": 0.4,
+      "bond_offset_m": 1.114,
+      "blocks": [
+        {"face_length_m": 0.86, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 181, "tool_spacing_m": 0.003, "tool_angle_deg": 41.0},
+        {"face_length_m": 1.04, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 191, "tool_spacing_m": 0.004, "tool_angle_deg": 50.0},
+        {"face_length_m": 1.1, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 193, "tool_spacing_m": 0.002, "tool_angle_deg": 36.0},
+        {"face_length_m": 0.988, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 197, "tool_spacing_m": 0.003, "tool_angle_deg": 48.0}
+      ]
+    },
+    {
+      "face_height_m": 0.38,
+      "bond_offset_m": 1.546,
+      "blocks": [
+        {"face_length_m": 1.0, "depth_m": 0.21, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 199, "tool_spacing_m": 0.004, "tool_angle_deg": -53.0},
+        {"face_length_m": 0.92, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 211, "tool_spacing_m": 0.003, "tool_angle_deg": -39.0},
+        {"face_length_m": 1.08, "depth_m": 0.19, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 223, "tool_spacing_m": 0.002, "tool_angle_deg": -46.0},
+        {"face_length_m": 0.988, "depth_m": 0.2, "family": "warm_limestone", "tooling": "diagonal_drove", "edge_profile": "square_true", "face_seed": 227, "tool_spacing_m": 0.004, "tool_angle_deg": -42.0}
+      ]
+    }
+  ]
+}

@@ -4,6 +4,9 @@ path	department_id
 .claude/worktrees/wf_dd1316eb-363-1	foundation-build
 .gitignore	foundation-build
 CMakeLists.txt	foundation-build
+apps/first_move/FirstMoveUi.cpp	playtest-simulation
+apps/first_move/FirstMoveUi.hpp	playtest-simulation
+apps/first_move/main.cpp	playtest-simulation
 apps/iggy3d_creative/EditorActionHints.cpp	interaction-controls
 apps/iggy3d_creative/EditorActionHints.hpp	interaction-controls
 apps/iggy3d_creative/EditorArchitectureScaleOverlay.cpp	rendering-preview
@@ -1200,6 +1203,8 @@ src/runtime/command/CommandAdmission.cpp	playtest-simulation
 src/runtime/command/CommandAdmission.hpp	playtest-simulation
 src/runtime/diagnostics/RuntimeEvent.hpp	persistence-validation
 src/runtime/diagnostics/RuntimeMetrics.hpp	persistence-validation
+src/runtime/first_move/HuntSession.cpp	playtest-simulation
+src/runtime/first_move/HuntSession.hpp	playtest-simulation
 src/runtime/interaction/InteractionDefinition.hpp	playtest-simulation
 src/runtime/interaction/InteractionSystem.cpp	playtest-simulation
 src/runtime/interaction/InteractionSystem.hpp	playtest-simulation
@@ -1473,6 +1478,8 @@ tests/unit/creative_world_service_tests.cpp	authoring-core
 tests/unit/debug_hud_text_tests.cpp	rendering-preview
 tests/unit/entity_hit_query_tests.cpp	playtest-simulation
 tests/unit/facade_slice_tests.cpp	authoring-core
+tests/unit/first_move_hunt_tests.cpp	playtest-simulation
+tests/unit/first_move_input_tests.cpp	playtest-simulation
 tests/unit/framing_bay_tests.cpp	assets-objects
 tests/unit/frustum_tests.cpp	rendering-preview
 tests/unit/greedy_mesh_tests.cpp	rendering-preview

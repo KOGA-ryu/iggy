@@ -1,0 +1,355 @@
+{
+  "schema": "iggy3d.forged_iron_v004_optical_calibration.v1",
+  "status": "EXPLORATORY_CALIBRATION_NOT_CANONICAL",
+  "render_engine": "CYCLES",
+  "cycles_samples": 32,
+  "tile_resolution": [
+    640,
+    220
+  ],
+  "source": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/forged_iron_connected_oxide_candidate_v004.blend",
+    "sha256_before": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481",
+    "sha256_after": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481"
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/compare_v004_optical_response_calibration.py",
+    "sha256": "0f3c76ba0a1191f1ff48e9df23ece5c34bea8a0a555c7583735a26fb27d127ad"
+  },
+  "profile": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+    "sha256": "2cac8d74a532b55c3397c413a1df005faf78b7228482377a28d3dc4ecc0a707e"
+  },
+  "candidates": {
+    "A_current_v004_control": {
+      "label": "A  CURRENT v004 CONTROL",
+      "recipe": {
+        "candidate_id": "A_current_v004_control",
+        "label": "A  CURRENT v004 CONTROL",
+        "thin_hex": null,
+        "thick_hex": null,
+        "roughness_base": 0.715,
+        "thermal_amplitude": 0.04,
+        "medium_amplitude": 0.032,
+        "grain_amplitude": 0.01,
+        "roughness_minimum": 0.665,
+        "roughness_maximum": 0.765,
+        "broad_normal_multiplier": 1.0
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/close_neutral.png",
+          "bytes": 104435,
+          "sha256": "6267b99e1bdeea4926e258657bb9390762d394b5eea7518d8f0ad210e9425a1d"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/grazing.png",
+          "bytes": 70194,
+          "sha256": "0e140ae7ddcb899fedfe037addf7d42fa1b3f574554661f510c54e8b2b61913b"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/pivot_close.png",
+          "bytes": 124166,
+          "sha256": "839578b4c90d62e74af97780f6af37af709c7d8c8a3a1784192c149946f6f8e8"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/gameplay.png",
+          "bytes": 55614,
+          "sha256": "10133759193b0cb62f675bbbd94115aca0604264c19a18c86771c782541b0370"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/base_colour.png",
+          "bytes": 52613,
+          "sha256": "25a56f1058cf0577326889b313b5b049cd2c9636876018780ee3a710ed3e8b03"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/independent_roughness.png",
+          "bytes": 60520,
+          "sha256": "950b5db3d4bbf7583de847e4a95a7678f8adc3f3a535e36b723c65182f65b4dd"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/A_current_v004_control/normal.png",
+          "bytes": 62134,
+          "sha256": "2fd5e44e2f0ff95ba119599cebeccb1ae2415999f789cfddcf9902e980450de2"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6653972864151001,
+        0.7649999856948853
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "resources_released_after_render": true
+    },
+    "B_audited_dark_half": {
+      "label": "B  AUDITED DARK HALF",
+      "recipe": {
+        "candidate_id": "B_audited_dark_half",
+        "label": "B  AUDITED DARK HALF",
+        "thin_hex": "#252a31",
+        "thick_hex": "#41464f",
+        "roughness_base": 0.715,
+        "thermal_amplitude": 0.04,
+        "medium_amplitude": 0.04,
+        "grain_amplitude": 0.01,
+        "roughness_minimum": 0.64,
+        "roughness_maximum": 0.8,
+        "broad_normal_multiplier": 1.35
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/close_neutral.png",
+          "bytes": 106748,
+          "sha256": "e5c10b268fd8a34f069678cdb3b2c782465bc6b0eab4a63042eba12dd6c73806"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/grazing.png",
+          "bytes": 71126,
+          "sha256": "7eaa45c617f3134abe652aabdb4ccc8bf30556bb6202b182b4b9db1a5734b64a"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/pivot_close.png",
+          "bytes": 124528,
+          "sha256": "f83c55e45ad5fcdc556618c16a957586e7fcd0cb0382985f18392acbf10a0adb"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/gameplay.png",
+          "bytes": 56338,
+          "sha256": "0f5ea396fe7770ca76071d0096bdebbd2018a6748e71a0ce7f4630bbd5f74722"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/base_colour.png",
+          "bytes": 59724,
+          "sha256": "e92694343ecb773595c87d94ec7116aa09d25c45337201f4a58925b9b7cea906"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/independent_roughness.png",
+          "bytes": 60819,
+          "sha256": "6ea0bd917eae05800a103290b3f54d878523a447e227b07d1807da129c756cac"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/B_audited_dark_half/normal.png",
+          "bytes": 62340,
+          "sha256": "c652d2d222808cdc96f88dad2c70a5d63a3a324fa77fa22a7fb1792d18a49c7e"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6589348912239075,
+        0.7744585275650024
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "resources_released_after_render": true
+    },
+    "C_audited_compressed_cool": {
+      "label": "C  AUDITED COMPRESSED COOL",
+      "recipe": {
+        "candidate_id": "C_audited_compressed_cool",
+        "label": "C  AUDITED COMPRESSED COOL",
+        "thin_hex": "#252a31",
+        "thick_hex": "#353b46",
+        "roughness_base": 0.68,
+        "thermal_amplitude": 0.035,
+        "medium_amplitude": 0.055,
+        "grain_amplitude": 0.012,
+        "roughness_minimum": 0.6,
+        "roughness_maximum": 0.76,
+        "broad_normal_multiplier": 1.75
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/close_neutral.png",
+          "bytes": 107433,
+          "sha256": "52c5daae75df211f48db3bc4a0de62edf3c2b934f48187eef94e0e070f94447d"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/grazing.png",
+          "bytes": 70958,
+          "sha256": "8f77b760f305f8039feb45f8b87f3c168b7960ad8ca90ab4af31dea723d71a39"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/pivot_close.png",
+          "bytes": 124688,
+          "sha256": "5d5a1799b8a3ecce21166a955151c836e21678cde0fc478da7f14489232119e8"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/gameplay.png",
+          "bytes": 56474,
+          "sha256": "4cca3b12cd6aa8f806f0b5531c1da7c3c205b26e62c0195b9f5526bfc56af557"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/base_colour.png",
+          "bytes": 57842,
+          "sha256": "343efb203a56eafe6308f7181ddc28a41fe5a430788098ccb566814e74c32eb9"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/independent_roughness.png",
+          "bytes": 61501,
+          "sha256": "d07ad15dc03a5c96312fbe538d2704d09cc90af6b8862e60e4312fc49a3f8bc7"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/C_audited_compressed_cool/normal.png",
+          "bytes": 62382,
+          "sha256": "65c1e206cabd8b91119f57b157e83387ce2afb5eee7a582cf1cbe8fdf27efc69"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6123578548431396,
+        0.7505144476890564
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "resources_released_after_render": true
+    },
+    "D_audited_cool_to_warm": {
+      "label": "D  AUDITED COOL TO WARM",
+      "recipe": {
+        "candidate_id": "D_audited_cool_to_warm",
+        "label": "D  AUDITED COOL TO WARM",
+        "thin_hex": "#292e36",
+        "thick_hex": "#574f4b",
+        "roughness_base": 0.735,
+        "thermal_amplitude": 0.05,
+        "medium_amplitude": 0.045,
+        "grain_amplitude": 0.01,
+        "roughness_minimum": 0.66,
+        "roughness_maximum": 0.82,
+        "broad_normal_multiplier": 1.5
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/close_neutral.png",
+          "bytes": 107193,
+          "sha256": "be6ea0533ea9889929349c536cff1971b9535e3510be6a6a6c70c2d28eabc4e4"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/grazing.png",
+          "bytes": 71370,
+          "sha256": "cdc111a002168e50b6e6cf4f28c942ea585c552f940ef8d59229828c64e214ca"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/pivot_close.png",
+          "bytes": 125030,
+          "sha256": "6d82f46726a75588c206510746f411d3872da4165dd82cc434917672763014e9"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/gameplay.png",
+          "bytes": 56545,
+          "sha256": "febcedf9fc90a9d11c5b14b40b79edfbf0cc6997b9644d25fe4424b38af748d7"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/base_colour.png",
+          "bytes": 60515,
+          "sha256": "211dab62ff1bcf334b710251206f75fd73496625617ecd86eedc8c6d634214bb"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/independent_roughness.png",
+          "bytes": 60959,
+          "sha256": "178e433ea283ab6fc4456a630d11d2f3ea176525cb7e809bd69792b41f17423e"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/D_audited_cool_to_warm/normal.png",
+          "bytes": 62423,
+          "sha256": "2f90db93777db0250861cd555092a93f07a207cb1c30bcb998d47ceb965931bb"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6708261966705322,
+        0.8033713102340698
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "resources_released_after_render": true
+    }
+  },
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_optical_calibration_v1/forged_iron_v004_optical_calibration_board.png",
+    "resolution": [
+      4480,
+      880
+    ],
+    "bytes": 2725950,
+    "sha256": "e2df10a1a5317d598f0a87f7e3e6c509fbd209a49feeb9b73eb5bd4b549448e3",
+    "row_order": [
+      "A_current_v004_control",
+      "B_audited_dark_half",
+      "C_audited_compressed_cool",
+      "D_audited_cool_to_warm"
+    ],
+    "column_order": [
+      "close_neutral",
+      "grazing",
+      "pivot_close",
+      "gameplay",
+      "base_colour",
+      "independent_roughness",
+      "normal"
+    ]
+  },
+  "visual_review": {
+    "decision": "select_C",
+    "ranking": [
+      "C_audited_compressed_cool",
+      "B_audited_dark_half",
+      "D_audited_cool_to_warm",
+      "A_current_v004_control"
+    ],
+    "recommended_candidate": "C_audited_compressed_cool",
+    "advancement_scope": "calibration_recipe_only_not_material_acceptance",
+    "defect_ledger": [
+      "A remains too close to black in the base-colour proof and leaves the lit material excessively dependent on the lamps.",
+      "B restores the audited cool forge-skin range and remains quiet, but its roughness and normal handoff are less decisive than C.",
+      "C preserves a compressed audited cool range while supplying the strongest bounded independent roughness and broad-normal response without spots, stripes, symbols, or warm condition cues.",
+      "D introduces a localized warm passage around the hinge and moving leaf that reads closer to an oxidation hotspot or broad cloud than the requested clean intact core.",
+      "All physical rows remain restrained at gameplay distance; none introduces a pattern that reads before geometry and the broad dark material group.",
+      "C still leaves the pivot smoother than the target; selection does not establish finished component-scale forging response.",
+      "The first C render was invalidated and rerun because Cycles persistent data retained temporary material-image bindings between rows; the corrected harness disables persistent data and uses unique candidate material names."
+    ],
+    "manual_acceptance_established": false
+  },
+  "source_unchanged": true,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "unreal_parity_verified": false,
+  "limitations": [
+    "This board calibrates three existing response envelopes only.",
+    "A selected row remains a recipe and does not modify the saved v004 candidate.",
+    "Cycles selection does not establish user acceptance or Unreal parity."
+  ]
+}

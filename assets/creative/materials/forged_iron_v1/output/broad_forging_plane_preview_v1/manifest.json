@@ -1,0 +1,89 @@
+{
+  "schema": "iggy3d.broad-forging-plane-preview-proof.v1",
+  "status": "accepted-shared-donor",
+  "consumer": {
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "object": "SM_GH018_MovingLeaf_Openwork",
+    "dimensions_m": {
+      "length": 3.112,
+      "width": 0.41
+    },
+    "saved_blend_modified": false
+  },
+  "rejected_previous_owner": {
+    "primitive": "closed superellipse hammer-head footprints with alternating signed heights",
+    "reason": "The primitive can form stamped diamonds, faces, spots, and repeated silhouettes even when softened."
+  },
+  "tool": {
+    "owner": "/Users/kogaryu/iggy3d/assets/creative/materials/pattern_lab_common.py",
+    "field_function": "broad_forging_plane_field",
+    "normal_function": "height_to_normal_nonperiodic",
+    "field_resolution": [
+      760,
+      100
+    ],
+    "rail_count": 3,
+    "knots_per_rail": [
+      6,
+      5,
+      5
+    ],
+    "composition": "piecewise-linear longitudinal rail slopes blended between irregular cross-stock rails",
+    "closed_motif_events": 0,
+    "opposite_edge_wrap": false
+  },
+  "selection_contract": {
+    "renderer": "Cycles",
+    "whole_hinge_samples": 32,
+    "close_moving_strip_samples": 64,
+    "linear_rgb_f0": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "roughness": 0.38,
+    "anisotropy": 0.18,
+    "candidate_amplitudes_m": [
+      0.0,
+      0.002,
+      0.006,
+      0.018
+    ],
+    "selected_giant_leaf_amplitude_m": 0.006,
+    "selected_reason": "It creates a few broad moving-light orientation regions while remaining quiet in the whole-hinge proof.",
+    "rejections": {
+      "0.000": "Perfect flat control.",
+      "0.002": "Too close to flat for a dependable read.",
+      "0.018": "Rail transitions become visible bands and the plate reads warped."
+    }
+  },
+  "claim_boundary": {
+    "selected_value_status": "authored giant-host translation",
+    "universal_forged_iron_measurement": false,
+    "normal_lane_only": true,
+    "geometry_owns_silhouette_and_real_deformation": true,
+    "canonical_generator_modified": false,
+    "canonical_blend_modified": false,
+    "unreal_parity_verified": false
+  },
+  "limitations": [
+    "The current canonical closed-superellipse macro route has not been replaced.",
+    "The field is calibrated only for the approved giant moving leaf.",
+    "Oxide coverage, material mixing, corrosion, damage, polish, and Unreal parity remain outside this capability."
+  ],
+  "outputs": {
+    "whole_hinge_board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/broad_forging_plane_preview_v1/comparison_board.png",
+      "sha256": "458cabdf304cf0e3be7d44593aaff9a8f68179ff801cdc1d11543e2fc7e2711b"
+    },
+    "moving_strip_close_board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/broad_forging_plane_preview_v1/close_moving_strip_board.png",
+      "sha256": "eae9de32a1c4d1758f74e49bc50a59b0d9d1d9708e421ff2a97010e927c3fbba"
+    },
+    "selected_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/broad_forging_plane_preview_v1/candidate_c_normal.png",
+      "sha256": "b3e1eb1585b83d6f3e014cac6e2be0d7e982e65176d1ceafe762caec337cba0f"
+    }
+  }
+}

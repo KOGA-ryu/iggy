@@ -27,6 +27,19 @@ grounding/reconciliation, Assets and Object Composition for catalog identities,
 and Rendering and Preview for presentation. UI must not independently recreate
 building geometry.
 
+## Exclusive Decisions
+
+- Physical floor-to-floor height and its conversion between architectural
+  meters and document grid cells.
+- Finished-floor datums, slab anchor planes, clear height, facade height, and
+  vertical-connector rise.
+- Which authored building source produces each generated structural object.
+
+Editor controls may collect profile or Custom values, but they must request
+these decisions from Building and World Layout. Building recipes, rendering,
+collision, persistence, and playtest may consume resolved geometry; they must
+not independently infer storey elevation or reinterpret its units.
+
 ## Primary Owners
 
 - `src/app/iggy3d/creative/world/WorldLayout*`

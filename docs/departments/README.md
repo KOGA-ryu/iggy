@@ -40,33 +40,38 @@ Delivery:
 Automated green is not accepted if the result still needs visual or interactive
 judgment.
 
-## Audit And Implementation Loop
+## Capability Cleanup Loop
 
-Department work uses two distinct roles:
+Department work is direct and capability-sized:
 
-1. **Sol audits and architects.** Sol traces live ownership and data flow,
-   classifies deficiencies from current evidence, defines the target file
-   layout and contracts, names proving tests, and writes bounded implementation
-   orders. A raw count or large file is not itself a deficiency.
-2. **Luna implements.** Luna receives an order only after the target state,
-   allowed files, invariants, migration map, tests, and stop conditions are
-   explicit. Luna should not make architecture or scope decisions while
-   editing.
-3. **Sol reviews the completed batch.** Review covers the aggregate diff,
-   contract closure, targeted headless gates, and department evidence. A batch
-   is either accepted or returned with a focused repair order.
-4. **The dashboard advances.** Accepted work updates `AUDIT.md`, `TODO.md`,
-   `TESTING.md`, generated maps, and the bounded checkpoint commit before the
-   next dependency wave begins.
+1. Start from a visible failure, stale live route, or proven unreachable
+   surface. Do not reopen a broad repository audit for every workstream.
+2. Trace one semantic value from its user entry through the department that
+   owns its meaning to the final document, render, collision, persistence, or
+   runtime result.
+3. Name the canonical owner and every competing decision. If there is no
+   concrete conflict, deletion, or dependency reduction, stop without
+   rearranging files.
+4. Route live consumers through the canonical owner and delete displaced code,
+   declarations, tests, and files. Prefer subtraction and merging.
+5. Run the smallest current headless gate that proves the ownership boundary
+   and final observable behavior.
+6. Review the aggregate diff and evidence once. Do not duplicate a passing
+   implementation gate unless evidence is inconsistent or the boundary is high
+   risk.
+7. Update the owning department records and generated maps at the accepted
+   capability checkpoint, not after every internal commit.
 
-The repository receives a shallow inventory first, then deep audits and
-implementation in dependency order. Do not wait for a deep audit of every
-department before repairing the highest dependency wave; lower-wave findings
-must be revalidated after upstream contracts change.
+`CLEANUP.md` carries the accepted baseline, active candidate, evidence, and
+workstream limits so new tasks can resume without large handoff prompts.
 
-User-facing progress is reported at four milestones rather than per command:
-audit complete, implementation plan ready, implementation complete, and review
-accepted or repair requested.
+Production LOC should normally decrease, and production file count should not
+increase. A raw count or large file is not itself a deficiency, and moving code
+without removing ambiguity or dependency is not accepted cleanup.
+
+User-facing progress is reported at three milestones: conflict identified,
+implementation ready for verification, and checkpoint accepted or repair
+requested.
 
 ## Finding Standard
 
@@ -103,7 +108,7 @@ When adding, deleting, or moving a governed file, update `ownership.tsv` in the
 same change. When changing ownership, public wiring, or a proving test, update
 the owning department documents in the same change.
 
-The governance files under `docs/departments/` and
+The root `AGENTS.md`, governance files under `docs/departments/`, and
 `tools/repo_departments.py` are implicitly owned by Foundation and Build. They
 are excluded from `ownership.tsv` to avoid a self-referential generated map.
 

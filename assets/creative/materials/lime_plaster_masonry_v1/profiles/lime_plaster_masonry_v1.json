@@ -1,0 +1,86 @@
+{
+  "schema": "iggy3d.material.lime_plaster_masonry_v1.profile.v2",
+  "profile_id": "lime_plaster_masonry_v1",
+  "display_name": "Layered lime plaster over giant-house rubble masonry",
+  "intent": "A reusable, metre-authored giant-house wall system with quiet hand-worked lime fields, large readable masonry, and a construction-aware plaster-loss transition.",
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "ai_generated_runtime_texture": false,
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "third_party_pixels_stored": false,
+    "legacy_ai_experiments_are_build_inputs": false,
+    "reference_method": "written conservation evidence establishes layer construction and measurements; manually authored shade anchors and champion polygons establish the production art direction"
+  },
+  "physical_scale_m": {
+    "tile_span": 4.0,
+    "plaster_repeat": 4.0,
+    "stone_width_range": [0.38, 1.14],
+    "stone_height_range": [0.45, 0.70],
+    "transition_patch_range": [0.5, 3.0],
+    "finish_coat_depth": 0.003175,
+    "brown_coat_depth": 0.009525,
+    "scratch_coat_depth": 0.009525,
+    "complete_three_coat_depth": 0.022225,
+    "masonry_recess": 0.010
+  },
+  "coordinate_contract": {
+    "space": "object_position_xz_metres",
+    "tile_span_m": 4.0,
+    "phase_attribute": "iggy_material_phase",
+    "variant_attribute": "iggy_material_variant",
+    "plaster_coverage_attribute": "iggy_plaster_coverage",
+    "layer_state_attribute": "iggy_plaster_layer_state",
+    "transition_edge_attribute": "iggy_transition_edge",
+    "traversal_id_attribute": "iggy_traversal_id",
+    "damp_attribute": "iggy_damp_mask",
+    "soot_attribute": "iggy_soot_mask",
+    "categorical_attribute_domain": "FACE",
+    "continuous_attribute_domain": "POINT",
+    "topology_rule": "Regenerate categorical face state and continuous transition attributes after topology-changing operations; never infer a categorical layer from interpolated triangle IDs."
+  },
+  "layer_states": [
+    {"name": "masonry", "id": 0, "range": [0.00, 0.18], "surface_depth_m": 0.000000},
+    {"name": "flush_lime_mortar", "id": 1, "range": [0.18, 0.30], "surface_depth_m": 0.000000},
+    {"name": "scratched_coarse_coat", "id": 2, "range": [0.30, 0.52], "surface_depth_m": 0.009525},
+    {"name": "brown_float_coat", "id": 3, "range": [0.52, 0.76], "surface_depth_m": 0.019050},
+    {"name": "lime_finish", "id": 4, "range": [0.76, 1.00], "surface_depth_m": 0.022225}
+  ],
+  "output_contract": {
+    "plaster_basecolor": {"color_space": "sRGB", "channels": "RGB"},
+    "plaster_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "plaster_form_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "plaster_detail_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "plaster_orm": {"color_space": "Non-Color", "channels": "AO Roughness Metallic"},
+    "plaster_height": {"color_space": "Non-Color", "channels": "height", "bit_depth": 16},
+    "masonry_basecolor": {"color_space": "sRGB", "channels": "RGB"},
+    "masonry_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "masonry_form_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "masonry_detail_normal": {"color_space": "Non-Color", "channels": "OpenGL XYZ"},
+    "masonry_orm": {"color_space": "Non-Color", "channels": "AO Roughness Metallic"},
+    "masonry_height": {"color_space": "Non-Color", "channels": "height", "bit_depth": 16},
+    "masonry_masks": {"color_space": "Non-Color", "channels": "mortar ink traversal"},
+    "stylization": {"color_space": "Non-Color", "channels": "plaster-line stone-line detail-priority"},
+    "brush_direction": {"color_space": "Non-Color", "channels": "signed-X signed-Y unused"}
+  },
+  "default_overlays": {
+    "damp": 0.0,
+    "soot": 0.0,
+    "edge_accumulation": 0.0,
+    "reason": "Narrative grime remains optional and must be placed by scene logic."
+  },
+  "unreal_reconstruction": {
+    "material_functions": [
+      "MF_IGGY_WorldScaleXZ",
+      "MF_IGGY_LimePlasterSurface",
+      "MF_IGGY_GiantMasonrySurface",
+      "MF_IGGY_PlasterConstructionBlend"
+    ],
+    "required_vertex_channels": {
+      "R": "plaster layer state",
+      "G": "transition edge emphasis",
+      "B": "traversal readability",
+      "A": "material variant"
+    },
+    "rule": "Use AbsoluteWorldPosition minus ObjectPosition for XZ metres, add per-instance phase, and blend material states from vertex channels or explicit geometry masks. Do not bake scene lighting or a universal damage mask."
+  }
+}

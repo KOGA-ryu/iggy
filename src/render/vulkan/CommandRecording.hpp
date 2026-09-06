@@ -46,6 +46,9 @@ struct EmptyFrameRecordInfo {
   float clearG = 0.055F;
   float clearB = 0.080F;
   float clearA = 1.0F;
+  bool captureEnabled = false;
+  VkBuffer captureBuffer{};
+  VkDeviceSize captureBufferSize = 0;
   const OverlayRect* uiOverlayRects = nullptr;
   std::size_t uiOverlayRectCount = 0;
   const DebugHudGlyphQuad* uiTextGlyphQuads = nullptr;

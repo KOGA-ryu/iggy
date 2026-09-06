@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-09-06T06:43:16.400005+00:00",
+  "source_repo": "/Users/kogaryu/iggy3d",
+  "source_head": "b45811b1d5f008a9daac16efbbbc73abb5d654ce",
+  "note": "Source working tree includes uncommitted/untracked First Move work. Individual byte hashes identify the actual seed; HEAD alone does not. Destination game/host files may change during the migration.",
+  "entries": [
+    {
+      "source": "/Users/kogaryu/iggy3d/src/runtime/first_move/HuntSession.hpp",
+      "destination": "src/runtime/first_move/HuntSession.hpp",
+      "source_sha256": "e79280a76f8cc5c2bc682a5e2f325655df4a745a6afbd8a5178c525387e0c6ca",
+      "bytes": 3473,
+      "purpose": "portable learning/gameplay model seed"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/runtime/first_move/HuntSession.cpp",
+      "destination": "src/runtime/first_move/HuntSession.cpp",
+      "source_sha256": "9919e19b3997a0909333223449b222f6ad2d1c67b0f9c5e2539a7e2bbb29f001",
+      "bytes": 12959,
+      "purpose": "portable learning/gameplay model seed"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/runtime/first_move/LayeredQuestionSession.hpp",
+      "destination": "src/runtime/first_move/LayeredQuestionSession.hpp",
+      "source_sha256": "0f8eaacc2fad9a7906faac9d27582294d968a191157146b68109c6863b9aac05",
+      "bytes": 3777,
+      "purpose": "portable learning/gameplay model seed"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/runtime/first_move/LayeredQuestionSession.cpp",
+      "destination": "src/runtime/first_move/LayeredQuestionSession.cpp",
+      "source_sha256": "b75f709ce9f948362e00652947e4fe3d24e6cd31b7449e461a712d040d7f3ef9",
+      "bytes": 10140,
+      "purpose": "portable learning/gameplay model seed"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/apps/first_move/FirstMoveUi.hpp",
+      "destination": "src/ui/FirstMoveUi.hpp",
+      "source_sha256": "e76f0aff5257edfe8d99f0f82160083cbafb730ece4f87d7da6897d6a1cc3ba7",
+      "bytes": 3333,
+      "purpose": "native game UI seed to adapt locally"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/apps/first_move/FirstMoveUi.cpp",
+      "destination": "src/ui/FirstMoveUi.cpp",
+      "source_sha256": "d3aa77463ce7bc7007b3fc390c59ee97ec02185209488f44a0199f78cb4c1b4f",
+      "bytes": 42309,
+      "purpose": "native game UI seed to adapt locally"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/apps/first_move/LayeredQuestionUi.hpp",
+      "destination": "src/ui/LayeredQuestionUi.hpp",
+      "source_sha256": "220fe5af48986bded311306abc071c1d3c8947e717278a807936610d1b6eb0e8",
+      "bytes": 420,
+      "purpose": "native game UI seed to adapt locally"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/apps/first_move/LayeredQuestionUi.cpp",
+      "destination": "src/ui/LayeredQuestionUi.cpp",
+      "source_sha256": "dc78b182f0635e98d41947ffdf9eaa57f4fdeefe813113d334259ef7236de6af",
+      "bytes": 13197,
+      "purpose": "native game UI seed to adapt locally"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/apps/first_move/main.cpp",
+      "destination": "app/main.cpp",
+      "source_sha256": "3ac365cbc69fa21c6356bfa644e4e2de9af77e558a4e79bf0240162245c454e4",
+      "bytes": 38220,
+      "purpose": "script/report/CLI seed; replace engine-dependent host locally"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/tests/unit/first_move_hunt_tests.cpp",
+      "destination": "tests/first_move_hunt_tests.cpp",
+      "source_sha256": "f1aee2b8e3a1b49aa7204e2dc9feab4ac5f65a03e6f15416e8b5275a6e252540",
+      "bytes": 11346,
+      "purpose": "portable baseline tests"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/tests/unit/first_move_layered_question_tests.cpp",
+      "destination": "tests/first_move_layered_question_tests.cpp",
+      "source_sha256": "3e96973b0d6d9f542639ca8c66b0babfc64536dd6142973d1ecfb0507ab97c00",
+      "bytes": 9331,
+      "purpose": "portable baseline tests"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/tests/unit/first_move_input_tests.cpp",
+      "destination": "tests/first_move_input_tests.cpp",
+      "source_sha256": "926595e24818b905a18d6ecc81fcf1d5e4b4521cf9b59ff3cfde4ce8d9a1fd70",
+      "bytes": 20323,
+      "purpose": "portable baseline tests"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/RenderDiagnostics.hpp",
+      "destination": "vendor/iggy3d/src/render/RenderDiagnostics.hpp",
+      "source_sha256": "bada0756d7966153a653614593df75df1d0670cc5c5520c913eb88c004520ea3",
+      "bytes": 1378,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/RenderDiagnostics.cpp",
+      "destination": "vendor/iggy3d/src/render/RenderDiagnostics.cpp",
+      "source_sha256": "8ddabab37ff9aa780d12accae7e98c146290424531231cab4edb6d31cd2440d7",
+      "bytes": 3539,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/vulkan/VulkanTypes.hpp",
+      "destination": "vendor/iggy3d/src/render/vulkan/VulkanTypes.hpp",
+      "source_sha256": "acfb4bd9e4344d29eb28dbd1d1d313e6dcee709b438f5b8f245139fd43b6898e",
+      "bytes": 2446,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/vulkan/VulkanMemoryAllocator.hpp",
+      "destination": "vendor/iggy3d/src/render/vulkan/VulkanMemoryAllocator.hpp",
+      "source_sha256": "b0250c1265cfdacd5365caf40cb9299b5129335fc929c51581690618ba950c63",
+      "bytes": 3264,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/vulkan/VulkanMemoryAllocator.cpp",
+      "destination": "vendor/iggy3d/src/render/vulkan/VulkanMemoryAllocator.cpp",
+      "source_sha256": "485547f598df11f5c772e837ec411fbfdcc3f61f79dba30564d7e5edd32c4ccc",
+      "bytes": 11480,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/vulkan/FrameCapture.hpp",
+      "destination": "vendor/iggy3d/src/render/vulkan/FrameCapture.hpp",
+      "source_sha256": "272b44e78faa248d40e40d246243ca0edea6a452673789d69537b127ff9bea07",
+      "bytes": 2582,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/src/render/vulkan/FrameCapture.cpp",
+      "destination": "vendor/iggy3d/src/render/vulkan/FrameCapture.cpp",
+      "source_sha256": "e0b61f2fc74b253ec50ce07a53fc36a06561a8131d741249076040684203949d",
+      "bytes": 17870,
+      "purpose": "bounded allocator/capture/receipt helper; no parent build dependency"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/LICENSE.txt",
+      "destination": "third_party/imgui/LICENSE.txt",
+      "source_sha256": "173506a2d6f7fb67990d257fb2507f188690eca39060c39469ae7bef43aae2a3",
+      "bytes": 1083,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/README.md",
+      "destination": "third_party/imgui/README.md",
+      "source_sha256": "ac83d4b1d223dd276d98fa884583d57d6d0d827b01e84f123e58d8f25d0ccffb",
+      "bytes": 2260,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/backends/imgui_impl_sdl3.cpp",
+      "destination": "third_party/imgui/backends/imgui_impl_sdl3.cpp",
+      "source_sha256": "cc4c25e1fd31a6e50af0cdc41be636c084cbe115a9ee97e1f85d4839ef54b0f9",
+      "bytes": 67051,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/backends/imgui_impl_sdl3.h",
+      "destination": "third_party/imgui/backends/imgui_impl_sdl3.h",
+      "source_sha256": "a7716305e9312d32d7ffb7806555d3ba518c6df6dbf26077d5f6a6e022c6efe5",
+      "bytes": 4403,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/backends/imgui_impl_vulkan.cpp",
+      "destination": "third_party/imgui/backends/imgui_impl_vulkan.cpp",
+      "source_sha256": "ff4a9b986f3e5cddaa6b5b1c288d02fa2fddc4b8d98942c07195d71e4878145a",
+      "bytes": 129776,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/backends/imgui_impl_vulkan.h",
+      "destination": "third_party/imgui/backends/imgui_impl_vulkan.h",
+      "source_sha256": "4a22edbd5589a7e6db7ba4df452ce7264cbff1f1467568ea848a75fd8738d3b4",
+      "bytes": 18229,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imconfig.h",
+      "destination": "third_party/imgui/imconfig.h",
+      "source_sha256": "1353bfa59da16eec481723fd4e5d910356f0406b79e3c4142e0c9867bafffab5",
+      "bytes": 12173,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui.cpp",
+      "destination": "third_party/imgui/imgui.cpp",
+      "source_sha256": "49cca8475198925b69b128985148f29eb37db689a49c7c6f0dba6d2fac5415bd",
+      "bytes": 1280910,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui.h",
+      "destination": "third_party/imgui/imgui.h",
+      "source_sha256": "da6d77803fc8963ca6a6826d6d6d08e3be74fdd7f527841b90858e3e545bb478",
+      "bytes": 461160,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui_draw.cpp",
+      "destination": "third_party/imgui/imgui_draw.cpp",
+      "source_sha256": "6814299d0618749a6fc73b0259a42bd6c2eabf5b55c0bfef293bfdcda68155af",
+      "bytes": 380895,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui_internal.h",
+      "destination": "third_party/imgui/imgui_internal.h",
+      "source_sha256": "f72ec91731b9114a6cee203f575582b9859825a4f66836cf32cc7e70488c7aa6",
+      "bytes": 329805,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui_tables.cpp",
+      "destination": "third_party/imgui/imgui_tables.cpp",
+      "source_sha256": "33b5146f5eb362605a166e532b336d1955579743eab719d96241a163a21222eb",
+      "bytes": 257058,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imgui_widgets.cpp",
+      "destination": "third_party/imgui/imgui_widgets.cpp",
+      "source_sha256": "7b46ca08ca95e046aa57a88d2838933843851348a42f3a738d57ebdaa2f5c682",
+      "bytes": 559206,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imstb_rectpack.h",
+      "destination": "third_party/imgui/imstb_rectpack.h",
+      "source_sha256": "889b396795202d1457560a797a7242e96f6f132d4b88ca2d69be58bf05e1771f",
+      "bytes": 20346,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imstb_textedit.h",
+      "destination": "third_party/imgui/imstb_textedit.h",
+      "source_sha256": "a985f5fa0ed97353d493b497961e9eef52082edcd045cf6954b69990ec9d0741",
+      "bytes": 60111,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/iggy3d/third_party/imgui/imstb_truetype.h",
+      "destination": "third_party/imgui/imstb_truetype.h",
+      "source_sha256": "c51a0f7e7ea760f2366bd3752635ec58e21fccfec4a832501639990ba6ce0528",
+      "bytes": 199503,
+      "purpose": "pinned Dear ImGui source and SDL3/Vulkan backends"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/cards/002_guided.json",
+      "destination": "content/cards/002_guided.json",
+      "source_sha256": "609315864f4badae17cb85a3a3670b067768fcfc2e520763d172dd8385e2ad81",
+      "bytes": 18411,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/cards/013_guided.json",
+      "destination": "content/cards/013_guided.json",
+      "source_sha256": "2b9b020d1c202703d9666ff53fd26d399716209320d9cc26df0dde5c01f1e10d",
+      "bytes": 21956,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/reference_cases/002_all_correct.planned.script",
+      "destination": "content/reference_cases/002_all_correct.planned.script",
+      "source_sha256": "62d81bc74893821e0a3164c5ba0d2ba23527edbdc187985c99eb183986712fbd",
+      "bytes": 608,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/reference_cases/013_all_correct.planned.script",
+      "destination": "content/reference_cases/013_all_correct.planned.script",
+      "source_sha256": "0dcc376db9606f529153c37686395e8f664905e28fb5c27cba51fd1b4afe8da9",
+      "bytes": 645,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/reference_cases/FM002_REFERENCE_CASES.json",
+      "destination": "content/reference_cases/FM002_REFERENCE_CASES.json",
+      "source_sha256": "b346ce07bf221c86da0a15d8c99aef8da47afd9f7b292d48a8ba8e7ec7203e58",
+      "bytes": 15379,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/EXTRACT.md",
+      "destination": "content/source_snapshots/EXTRACT.md",
+      "source_sha256": "ed96c6294e34075aece0dfac6cc5cca59a784efe7a8c39ee915370c12031a96f",
+      "bytes": 4879,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/NOTATION.md",
+      "destination": "content/source_snapshots/NOTATION.md",
+      "source_sha256": "ae0fe4e447bbdf034918daca45d7037a92ddb5d8f856b66106663b5c156d1351",
+      "bytes": 8057,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/ORDER.md",
+      "destination": "content/source_snapshots/ORDER.md",
+      "source_sha256": "2e10eb9867fd78db4c3cae5d3eec1c1ebfcb4e7375ed31465bd5a5f9823cd81e",
+      "bytes": 2986,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/README.md",
+      "destination": "content/source_snapshots/README.md",
+      "source_sha256": "fcb4efb2af5bb0e00e924d96bdfd929005c231e0dfe84995c88717b07f3824d9",
+      "bytes": 8446,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/TEMPLATE-math.md",
+      "destination": "content/source_snapshots/TEMPLATE-math.md",
+      "source_sha256": "1be671e860e75537cadd39c641ca772b00cd83460c9d64fd971a4ebfa649f70f",
+      "bytes": 4474,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/math/002_quadratic_through_three_points.md",
+      "destination": "content/source_snapshots/math/002_quadratic_through_three_points.md",
+      "source_sha256": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea",
+      "bytes": 5736,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_snapshots/math/013_closest_point_on_a_line.md",
+      "destination": "content/source_snapshots/math/013_closest_point_on_a_line.md",
+      "source_sha256": "a341f24ee344a9974a6424990befba34aa56bb9cf50fec6df303df04cebac873",
+      "bytes": 16111,
+      "purpose": "reviewed content and reproducible source provenance"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/SOURCE_CARD_ARCHITECTURE.md",
+      "destination": "content/SOURCE_CARD_ARCHITECTURE.md",
+      "source_sha256": "0118f869ce7bc3cc27c71737185b7dccb5184adf27258886244f100c6c4094a8",
+      "bytes": 18009,
+      "purpose": "content authoring contract and artifact checks"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/source_manifest.json",
+      "destination": "content/source_manifest.json",
+      "source_sha256": "560a5ebf108331eb1ba9e8b31e09a28eaea0c9badb5260b6e8d4fbd08c9c5054",
+      "bytes": 2959,
+      "purpose": "content authoring contract and artifact checks"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/planning_validation.json",
+      "destination": "content/planning_validation.json",
+      "source_sha256": "c9241d41e2583f86add7ec1a2064d0894ef1d2413cde0794f61dd0d2c688ba12",
+      "bytes": 3749,
+      "purpose": "content authoring contract and artifact checks"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/verify_planning_artifacts.py",
+      "destination": "content/verify_planning_artifacts.py",
+      "source_sha256": "6b7001cfe0d308aac5a93e9fa62621cfc2845ca16192234217862ab8e4916a77",
+      "bytes": 9961,
+      "purpose": "content authoring contract and artifact checks"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/FM002_ARCHITECTURE.md",
+      "destination": "docs/first-move/FM002_ARCHITECTURE.md",
+      "source_sha256": "1ad7489789659896580011647b03e2de15966e30fe27f37817c500f78c1715a6",
+      "bytes": 14436,
+      "purpose": "carried learning/input/layout contract; Paths launch rules supersede old launch rules"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/FM002_R1_BUILDER_BRIEF.md",
+      "destination": "docs/first-move/FM002_R1_BUILDER_BRIEF.md",
+      "source_sha256": "049d6a14b18decdfb3e150ee4cbdd90b505ee2c177b1493bbb53c9415165e90a",
+      "bytes": 4930,
+      "purpose": "repair findings to apply only in Paths"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a074ae-914f-7b23-bbc4-abaf7d14d533/first-move/reference_cases/FM002_REFERENCE_CASES.json",
+      "destination": "docs/first-move/reference_cases/FM002_REFERENCE_CASES.json",
+      "source_sha256": "b346ce07bf221c86da0a15d8c99aef8da47afd9f7b292d48a8ba8e7ec7203e58",
+      "bytes": 15379,
+      "purpose": "paired model contract examples"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a07419-a37a-7da3-b1f4-af5f016cf33c/math-study/game-design/FIRST_MOVE_GAME_DESIGN.md",
+      "destination": "docs/original-design/FIRST_MOVE_GAME_DESIGN.md",
+      "source_sha256": "0dc5acf95a589dd9923f9b81335fc644c0b57e30f6c5ba05f71b62d2f4704707",
+      "bytes": 15187,
+      "purpose": "historical design reference, not active migration instructions"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a07419-a37a-7da3-b1f4-af5f016cf33c/math-study/game-design/CONSTRUCTION.md",
+      "destination": "docs/original-design/CONSTRUCTION.md",
+      "source_sha256": "6f133e2ebf41f279301e74c9fab8d051a4683ca9bdedf26b43bae2a08184346e",
+      "bytes": 6225,
+      "purpose": "historical design reference, not active migration instructions"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a07419-a37a-7da3-b1f4-af5f016cf33c/math-study/game-design/INFLUENCES.md",
+      "destination": "docs/original-design/INFLUENCES.md",
+      "source_sha256": "2da16722b326da20784836656e37015561049c331f657358f84cbf4c63d17462",
+      "bytes": 7627,
+      "purpose": "historical design reference, not active migration instructions"
+    },
+    {
+      "source": "/Users/kogaryu/.codex/visualizations/2026/09/06/01a07419-a37a-7da3-b1f4-af5f016cf33c/math-study/game-design/FIRST_MOVE.html",
+      "destination": "docs/original-design/FIRST_MOVE.html",
+      "source_sha256": "0546de4d8d849e56ffe214801c9d76810bbf151ed1b5475a5721941a6e59d1fa",
+      "bytes": 39133,
+      "purpose": "historical design reference, not active migration instructions"
+    }
+  ]
+}

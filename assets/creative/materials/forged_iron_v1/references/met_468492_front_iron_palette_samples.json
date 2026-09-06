@@ -1,0 +1,382 @@
+{
+  "eyedropper_samples": {
+    "source_image": "https://images.metmuseum.org/CRDImages/cl/original/LC_55_61_170_s1%20.jpg",
+    "image_size": [
+      751,
+      1200
+    ],
+    "audit": {
+      "audited_against_original_image_size": [
+        2504,
+        4000
+      ],
+      "base_hue_sample_count": 11,
+      "oxidation_overlay_sample_count": 3,
+      "excluded_sample_count": 6,
+      "photograph_values_are_pbr_base_colour": false,
+      "rule": "A sample may preserve hue relationship only when its coordinate is visibly inside an iron face. Brown oxidation is overlay evidence. Cast shadow, edge shadow, thin scroll ambiguity, and wood ambiguity are excluded. No photographed RGB value is copied into PBR base colour because the image contains illumination and reflection."
+    },
+    "samples": [
+      {
+        "x": 220,
+        "y": 85,
+        "rgba": [
+          80,
+          52,
+          41,
+          255
+        ],
+        "hex": "#503429",
+        "alpha": 255,
+        "luminance": 59,
+        "label": "upper_scale_dark",
+        "surface_class": "shadowed_iron",
+        "material_role": "excluded",
+        "confidence": "high",
+        "audit_reason": "The coordinate sits beside the upper collar where the vertical iron throws a dark edge shadow across the strap."
+      },
+      {
+        "x": 380,
+        "y": 95,
+        "rgba": [
+          102,
+          76,
+          63,
+          255
+        ],
+        "hex": "#664c3f",
+        "alpha": 255,
+        "luminance": 82,
+        "label": "upper_scale_violet",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is inside the broad upper strap face and clear of the scroll openings and collar shadow."
+      },
+      {
+        "x": 460,
+        "y": 85,
+        "rgba": [
+          137,
+          108,
+          94,
+          255
+        ],
+        "hex": "#896c5e",
+        "alpha": 255,
+        "luminance": 115,
+        "label": "upper_scale_warm",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is centered on the upper strap face between fasteners."
+      },
+      {
+        "x": 300,
+        "y": 105,
+        "rgba": [
+          110,
+          83,
+          72,
+          255
+        ],
+        "hex": "#6e5348",
+        "alpha": 255,
+        "luminance": 90,
+        "label": "upper_strap_mid",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is centered on the broad strap face away from its outline."
+      },
+      {
+        "x": 332,
+        "y": 93,
+        "rgba": [
+          107,
+          79,
+          67,
+          255
+        ],
+        "hex": "#6b4f43",
+        "alpha": 255,
+        "luminance": 86,
+        "label": "upper_rivet_shadow",
+        "surface_class": "shadowed_iron",
+        "material_role": "excluded",
+        "confidence": "high",
+        "audit_reason": "The coordinate is immediately beside raised hardware and includes its cast and contact shadow."
+      },
+      {
+        "x": 150,
+        "y": 155,
+        "rgba": [
+          112,
+          88,
+          88,
+          255
+        ],
+        "hex": "#705858",
+        "alpha": 255,
+        "luminance": 95,
+        "label": "second_strap_cool",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is inside the lock-plate face, not its key opening, fastener, or perimeter shadow."
+      },
+      {
+        "x": 380,
+        "y": 165,
+        "rgba": [
+          108,
+          85,
+          79,
+          255
+        ],
+        "hex": "#6c554f",
+        "alpha": 255,
+        "luminance": 91,
+        "label": "second_strap_brown",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is centered on the second long strap face."
+      },
+      {
+        "x": 100,
+        "y": 175,
+        "rgba": [
+          111,
+          92,
+          94,
+          255
+        ],
+        "hex": "#6f5c5e",
+        "alpha": 255,
+        "luminance": 98,
+        "label": "lock_plate_cool",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is a quiet lock-plate face sample clear of holes and fasteners."
+      },
+      {
+        "x": 150,
+        "y": 235,
+        "rgba": [
+          127,
+          94,
+          89,
+          255
+        ],
+        "hex": "#7f5e59",
+        "alpha": 255,
+        "luminance": 103,
+        "label": "wide_strap_left",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is visibly inside the wide strap face and away from the wood boundary."
+      },
+      {
+        "x": 380,
+        "y": 235,
+        "rgba": [
+          132,
+          86,
+          70,
+          255
+        ],
+        "hex": "#845646",
+        "alpha": 255,
+        "luminance": 98,
+        "label": "wide_strap_mid",
+        "surface_class": "oxidized_iron",
+        "material_role": "oxidation_overlay_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate falls within the concentrated red-brown field on the wide strap."
+      },
+      {
+        "x": 620,
+        "y": 245,
+        "rgba": [
+          118,
+          91,
+          82,
+          255
+        ],
+        "hex": "#765b52",
+        "alpha": 255,
+        "luminance": 98,
+        "label": "wide_strap_right",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is a quiet wide-strap face sample to the right of the red-brown field."
+      },
+      {
+        "x": 338,
+        "y": 221,
+        "rgba": [
+          101,
+          64,
+          48,
+          255
+        ],
+        "hex": "#654030",
+        "alpha": 255,
+        "luminance": 73,
+        "label": "wide_strap_oxide",
+        "surface_class": "oxidized_iron",
+        "material_role": "oxidation_overlay_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is explicitly within the strongest red-brown oxide patch."
+      },
+      {
+        "x": 150,
+        "y": 365,
+        "rgba": [
+          146,
+          118,
+          107,
+          255
+        ],
+        "hex": "#92766b",
+        "alpha": 255,
+        "luminance": 125,
+        "label": "mid_hinge_dark",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is centered on the middle hinge strap face."
+      },
+      {
+        "x": 460,
+        "y": 355,
+        "rgba": [
+          107,
+          84,
+          76,
+          255
+        ],
+        "hex": "#6b544c",
+        "alpha": 255,
+        "luminance": 90,
+        "label": "mid_hinge_taupe",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is centered on a second quiet middle strap face."
+      },
+      {
+        "x": 560,
+        "y": 310,
+        "rgba": [
+          111,
+          86,
+          66,
+          255
+        ],
+        "hex": "#6f5642",
+        "alpha": 255,
+        "luminance": 91,
+        "label": "scroll_shadow",
+        "surface_class": "scroll_shadow_ambiguous",
+        "material_role": "excluded",
+        "confidence": "high",
+        "audit_reason": "The coordinate lies on the narrow scroll-and-shadow boundary where the wood, iron edge, and cast shadow cannot be separated by RGB."
+      },
+      {
+        "x": 61,
+        "y": 720,
+        "rgba": [
+          124,
+          82,
+          68,
+          255
+        ],
+        "hex": "#7c5244",
+        "alpha": 255,
+        "luminance": 93,
+        "label": "edge_hinge_red",
+        "surface_class": "oxidized_iron",
+        "material_role": "oxidation_overlay_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is inside the left hinge leaf but belongs to the visibly red-brown aged surface."
+      },
+      {
+        "x": 380,
+        "y": 845,
+        "rgba": [
+          84,
+          59,
+          54,
+          255
+        ],
+        "hex": "#543b36",
+        "alpha": 255,
+        "luminance": 66,
+        "label": "lower_hinge_dark",
+        "surface_class": "iron_face",
+        "material_role": "base_hue_only",
+        "confidence": "high",
+        "audit_reason": "The coordinate is inside the broad lower strap face between fasteners."
+      },
+      {
+        "x": 540,
+        "y": 835,
+        "rgba": [
+          133,
+          99,
+          72,
+          255
+        ],
+        "hex": "#856348",
+        "alpha": 255,
+        "luminance": 106,
+        "label": "lower_hinge_warm",
+        "surface_class": "scroll_shadow_ambiguous",
+        "material_role": "excluded",
+        "confidence": "medium",
+        "audit_reason": "The coordinate touches a thin decorative branch whose lit metal and cast shadow are narrower than a reliable sampling patch."
+      },
+      {
+        "x": 220,
+        "y": 1045,
+        "rgba": [
+          136,
+          106,
+          95,
+          255
+        ],
+        "hex": "#886a5f",
+        "alpha": 255,
+        "luminance": 114,
+        "label": "bottom_strap_dark",
+        "surface_class": "scroll_shadow_ambiguous",
+        "material_role": "excluded",
+        "confidence": "medium",
+        "audit_reason": "The coordinate lies on a thin lower scroll where iron, wood, and the cast shadow occupy the same local patch."
+      },
+      {
+        "x": 460,
+        "y": 1055,
+        "rgba": [
+          162,
+          137,
+          107,
+          255
+        ],
+        "hex": "#a2896b",
+        "alpha": 255,
+        "luminance": 141,
+        "label": "bottom_strap_mid",
+        "surface_class": "material_ambiguous",
+        "material_role": "excluded",
+        "confidence": "medium",
+        "audit_reason": "The coordinate touches a narrow vertical element at the wood boundary and is not a reliable broad-face material sample."
+      }
+    ]
+  }
+}

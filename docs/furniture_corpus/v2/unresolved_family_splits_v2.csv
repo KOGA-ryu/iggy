@@ -1,0 +1,12 @@
+recipe_family,parent,members,inferred_only,why_unresolved,blockers
+foot.carved_figural,foot,2,0,bespoke but multi-member: re-examine whether a shared generator exists,1972.47 notes the disc pad IS separable and reusable alone - a possible sub-part rescue
+foot.block,foot,1,0,SINGLE-MEMBER: the split may be an artefact of one object,single-member family - the split may be an artefact of one object
+foot.spun_metal_base,foot,1,0,SINGLE-MEMBER: the split may be an artefact of one object,individual ring boundaries not countable in published views
+post.board_standard,post,1,0,SINGLE-MEMBER: the split may be an artefact of one object,single-member family
+rail.gallery_cap,rail,1,0,SINGLE-MEMBER: the split may be an artefact of one object,single-object family (three rails on one bed)
+rail.moving_fly,rail,1,0,SINGLE-MEMBER: the split may be an artefact of one object,knuckle geometry not resolvable; alt7 shows it extended but not the joint
+brace.corner_glue_block,brace,3,4,CRITICAL evidence blocker; INFERRED members outnumber evidenced ones,CRITICAL - 4 of 7 members are INFERRED FROM TYPE and carry ZERO construction authority. Only 3 members are actually evidenced. No underside view exists on any inferred member.
+brace.metal_stay,brace,1,1,SINGLE-MEMBER: the split may be an artefact of one object; INFERRED members outnumber evidenced ones,FC-12-2002_298's internal rod is ASSERTED NOT SEEN and carries zero weight
+crest.metal_capital,crest/cornice,1,0,SINGLE-MEMBER: the split may be an artefact of one object,single-member family
+ornament.figural_bespoke,repeated ornament master,3,0,bespoke but multi-member: re-examine whether a shared generator exists,hand-modelling required; no parametric route
+inlay.absent_recorded,inlay path,1,0,SINGLE-MEMBER: the split may be an artefact of one object,none

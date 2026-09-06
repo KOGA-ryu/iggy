@@ -1,0 +1,160 @@
+{
+  "schema": "iggy3d.pattern.structural_oak_joinery_cut_atlas.v2",
+  "pattern_id": "structural_oak_joinery_cut_atlas_v2",
+  "atlas_columns": 4,
+  "atlas_rows": 2,
+  "tiles": [
+    {
+      "index": 0,
+      "id": "mortise_cross_wall",
+      "surface_classes": [3],
+      "projection": "YZ",
+      "source": "receiving_timber",
+      "plane_m": 0.05,
+      "axis_u_range_m": [-0.2, 0.2],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.08
+    },
+    {
+      "index": 1,
+      "id": "mortise_long_wall",
+      "surface_classes": [3, 5],
+      "projection": "XZ",
+      "source": "receiving_timber",
+      "plane_m": 0.0375,
+      "axis_u_range_m": [-0.05, 0.35],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.09
+    },
+    {
+      "index": 2,
+      "id": "mortise_and_housing_bearing",
+      "surface_classes": [4, 6],
+      "projection": "XY",
+      "source": "receiving_timber",
+      "plane_m": 0.015,
+      "axis_u_range_m": [-0.05, 0.35],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.11
+    },
+    {
+      "index": 3,
+      "id": "drawbore_cylinder",
+      "surface_classes": [7],
+      "projection": "Y_THETA",
+      "source": "receiving_timber",
+      "axis_u_range_m": [-0.2, 0.2],
+      "theta_range_rad": [-3.141592653589793, 3.141592653589793],
+      "fresh_cut_tint": 0.1
+    },
+    {
+      "index": 4,
+      "id": "tenon_shoulder",
+      "surface_classes": [2, 9],
+      "projection": "YZ",
+      "source": "entering_timber",
+      "plane_m": 1.04,
+      "axis_u_range_m": [-0.2, 0.2],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.12
+    },
+    {
+      "index": 5,
+      "id": "tenon_cheek_y",
+      "surface_classes": [8],
+      "projection": "XZ",
+      "source": "entering_timber",
+      "plane_m": 0.0355,
+      "axis_u_range_m": [0.84, 1.24],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.1
+    },
+    {
+      "index": 6,
+      "id": "tenon_cheek_z",
+      "surface_classes": [8],
+      "projection": "XY",
+      "source": "entering_timber",
+      "plane_m": 0.098,
+      "axis_u_range_m": [0.84, 1.24],
+      "axis_v_range_m": [-0.2, 0.2],
+      "fresh_cut_tint": 0.1
+    },
+    {
+      "index": 7,
+      "id": "tenon_drawbore_cylinder",
+      "surface_classes": [7],
+      "projection": "TENON_THETA",
+      "source": "entering_timber",
+      "axis_u_range_m": [-0.2, 0.2],
+      "theta_range_rad": [-3.141592653589793, 3.141592653589793],
+      "fresh_cut_tint": 0.1
+    }
+  ],
+  "semantic_tile_routes": {
+    "2": 4,
+    "3_x": 0,
+    "3_y": 1,
+    "4": 2,
+    "5": 1,
+    "6": 2,
+    "7": 3,
+    "8_y": 5,
+    "8_z": 6,
+    "9": 4,
+    "10": 5,
+    "11": 4
+  },
+  "fresh_cut_palette_indices": [11, 13, 14, 17, 19, 9],
+  "cut_colour_passages": [
+    {
+      "tile": 0,
+      "centre_uv": [0.33, 0.58],
+      "radius_uv": [0.31, 0.54],
+      "palette_index": 13,
+      "strength": 0.17
+    },
+    {
+      "tile": 1,
+      "centre_uv": [0.67, 0.36],
+      "radius_uv": [0.42, 0.29],
+      "palette_index": 11,
+      "strength": 0.14
+    },
+    {
+      "tile": 2,
+      "centre_uv": [0.44, 0.51],
+      "radius_uv": [0.52, 0.37],
+      "palette_index": 19,
+      "strength": 0.12
+    },
+    {
+      "tile": 3,
+      "centre_uv": [0.73, 0.48],
+      "radius_uv": [0.34, 0.62],
+      "palette_index": 9,
+      "strength": 0.15
+    },
+    {
+      "tile": 4,
+      "centre_uv": [0.29, 0.62],
+      "radius_uv": [0.36, 0.42],
+      "palette_index": 14,
+      "strength": 0.18
+    },
+    {
+      "tile": 5,
+      "centre_uv": [0.61, 0.43],
+      "radius_uv": [0.47, 0.34],
+      "palette_index": 13,
+      "strength": 0.13
+    },
+    {
+      "tile": 6,
+      "centre_uv": [0.38, 0.55],
+      "radius_uv": [0.43, 0.41],
+      "palette_index": 11,
+      "strength": 0.14
+    }
+  ]
+}

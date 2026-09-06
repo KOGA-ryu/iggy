@@ -1,0 +1,129 @@
+{
+  "schema": "iggy3d.material.rope_plant_fibre_blender_build.v1",
+  "profile_id": "rope_plant_fibre_v1",
+  "blend": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1.blend",
+    "sha256": "78fc956dee0f813fd26abef4a559fa303a8d9e737dec6e7e4cb12bf448e99c08",
+    "blender_version": "5.1.1"
+  },
+  "source": {
+    "builder": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/build_rope_plant_fibre_v1.py",
+      "sha256": "2a8f64c39190ed5060d3ee6d20a5196407545c0efc29fa607ca7ea71e5218c10"
+    },
+    "profile": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/profiles/rope_plant_fibre_v1.json",
+      "sha256": "2c57c82dfc45475c1262db34ea23219764600ee86518b617116d0f2a2856504b"
+    },
+    "pattern": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/patterns/three_strand_regular_lay_v1.json",
+      "sha256": "8c1e276fcca328401e396d4df2180c11d75db84ee53f1a6f7a186e696a55e073"
+    }
+  },
+  "hierarchy": {
+    "strand_count": 3,
+    "yarns_per_strand": 7,
+    "total_yarns": 21,
+    "rope_lay_direction": "right_hand",
+    "yarn_lay_direction": "left_hand"
+  },
+  "packing": {
+    "model": "three_equal_tangent_strands_with_one_plus_six_yarn_packing",
+    "strand_radius_diameter_fraction": 0.2320508075688773,
+    "strand_center_diameter_fraction": 0.2679491924311227,
+    "strand_hull_radius_diameter_fraction": 0.215,
+    "yarn_radius_strand_radius_fraction": 0.23,
+    "outer_yarn_center_strand_radius_fraction": 0.72,
+    "derived_outer_diameter_multiplier": 0.9767952017304612
+  },
+  "coordinate_contract": {
+    "space": "curve_local",
+    "unit": "metre",
+    "twist_driver": "Spline Parameter Length",
+    "attributes": [
+      "sinc_rope_u_m",
+      "sinc_rope_v_turn",
+      "sinc_rope_diameter_m",
+      "sinc_rope_strand_id",
+      "sinc_rope_yarn_id",
+      "rope_uv"
+    ]
+  },
+  "node_group": {
+    "name": "IGGY_GN_RopePlantFibre_v001",
+    "node_count": 105,
+    "shared_by": [
+      "IGGY_Rope_FineLashing",
+      "IGGY_Rope_HeavyHawser",
+      "IGGY_Rope_UtilityHero",
+      "IGGY_Rope_UtilityStraight"
+    ]
+  },
+  "material": {
+    "name": "IGGY_MAT_RopePlantFibre_v001",
+    "schema": "iggy3d.material.rope_plant_fibre_v1.v1",
+    "palette_tone_count": 20,
+    "baked_ao_in_base_colour": false
+  },
+  "presets": {
+    "fine_lashing": {
+      "object": "IGGY_Rope_FineLashing",
+      "diameter_m": 0.012,
+      "lay_length_m": 0.034,
+      "sample_length_m": 0.001
+    },
+    "utility_line": {
+      "object": "IGGY_Rope_UtilityHero",
+      "diameter_m": 0.032,
+      "lay_length_m": 0.09,
+      "sample_length_m": 0.0026470588235294116
+    },
+    "heavy_hawser": {
+      "object": "IGGY_Rope_HeavyHawser",
+      "diameter_m": 0.07,
+      "lay_length_m": 0.196,
+      "sample_length_m": 0.005764705882352942
+    }
+  },
+  "flyaways": {
+    "object": "IGGY_Rope_Flyaways_UtilityHero",
+    "count": 34,
+    "optional_geometry": true,
+    "damage": false
+  },
+  "renders": {
+    "hero_oblique": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_hero_oblique.png",
+      "sha256": "8c9d9c3ac03676dea476897083d4744b113b5fc8a47ded0f1cb47a1cb8375358",
+      "width": 1400,
+      "height": 840
+    },
+    "construction_side": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_construction_side.png",
+      "sha256": "eba261981c437ca12ad48792aad483c7254997cf3625f5c042327858dfebb35d",
+      "width": 1400,
+      "height": 840
+    },
+    "grazing_response": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_grazing_response.png",
+      "sha256": "a4eeb51274422de531f74002d71eb172d34360f8640a0d5c1262fbc90622f16e",
+      "width": 1400,
+      "height": 840
+    },
+    "scale_family": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_scale_family.png",
+      "sha256": "f03afed7c81be7eb01fd8e37440f17ce6537809976392d4cba8f913fdce4b121",
+      "width": 1400,
+      "height": 840
+    }
+  },
+  "constraints": {
+    "uses_ai_generated_imagery": false,
+    "uses_index_as_twist_coordinate": false,
+    "uses_baked_directional_light": false,
+    "uses_baked_ao_in_base_colour": false,
+    "damage_default": false,
+    "dirt_default": false,
+    "wetness_default": false
+  }
+}

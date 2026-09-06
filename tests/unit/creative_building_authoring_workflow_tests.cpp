@@ -79,6 +79,90 @@ bool containsCollisionRole(
                    role) != physics.sourceRoles.end();
 }
 
+bool hasObjectTopPlane(const cr::CreativeDocument& document,
+                       cr::CreativeObjectKind kind, double top) {
+  return std::any_of(
+      document.objects().begin(), document.objects().end(),
+      [kind, top](const cr::CreativeObject& object) {
+        const cr::CreativeTransformedBounds bounds =
+            cr::resolveCreativeObjectBounds(object);
+        return object.kind == kind && bounds.valid &&
+               near(bounds.worldBounds.max.y, top);
+      });
+}
+
+bool residentialStoreysResolveAgainstTheDocumentGrid() {
+  cr::CreativeAppState appState;
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Half Meter Residential Blockout");
+  static_cast<void>(document.assignId(9900U));
+  cr::CreativeGridSettings grid = document.gridSettings();
+  grid.cellSizeMeters = 0.5;
+  static_cast<void>(document.setGridSettings(grid));
+  static_cast<void>(appState.facade.installDocument(std::move(document)));
+
+  app::CreativeEditorState editor;
+  app::resetCreativeEditorWorldLayout(editor.worldLayout,
+                                      "half_meter_residential_blockout");
+  std::string saveId = "unused";
+  const app::CreativeDesktopCommandContext context{
+      appState, editor, std::filesystem::path{}, &saveId};
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings blockout =
+      app::makeCreativeEditorWorldLayoutBlockoutDraft();
+  blockout.storeys.count = 3U;
+  blockout.facade.includeEntrance = false;
+  blockout.facade.includeExteriorWindows = false;
+
+  const app::CreativeDesktopCommandResult staged = dispatchPayload(
+      app::CreativeDesktopCommandId::WorldLayoutCreateBuildingBlockout,
+      context,
+      app::CreativeDesktopWorldLayoutBuildingBlockoutPayload{blockout});
+  app::CreativeEditorWorldLayoutBuildingBlockoutSettings resolved;
+  const bool resolvedReadable =
+      app::readCreativeEditorWorldLayoutBuildingBlockoutSettings(
+          editor.worldLayout, 0U, resolved);
+  const cr::CreativeWorldLayoutLevelDimensions ground =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 0U);
+  const cr::CreativeWorldLayoutLevelDimensions middle =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 1U);
+  const cr::CreativeWorldLayoutLevelDimensions top =
+      cr::measureCreativeWorldLayoutLevelDimensions(
+          appState.facade.document().gridSettings(),
+          editor.worldLayout.source, 2U);
+  const app::CreativeDesktopCommandResult generated = dispatchOne(
+      app::CreativeDesktopCommandId::WorldLayoutConfirm, context);
+
+  return expect(
+      staged.accepted && resolvedReadable &&
+          resolved.architecturalProfileKind ==
+              cr::CreativeWorldLayoutArchitecturalProfileKind::Residential &&
+          resolved.floorToFloorCells == 6U &&
+          ground.accepted && middle.accepted && top.accepted &&
+          near(ground.floorTopMeters, 0.0) &&
+          near(middle.floorTopMeters, 3.0) &&
+          near(top.floorTopMeters, 6.0) &&
+          near(ground.upperSurfaceTopMeters, middle.floorBottomMeters) &&
+          near(middle.upperSurfaceTopMeters, top.floorBottomMeters) &&
+          generated.accepted &&
+          hasObjectTopPlane(appState.facade.document(),
+                            cr::CreativeObjectKind::Floor, 0.0) &&
+          hasObjectTopPlane(appState.facade.document(),
+                            cr::CreativeObjectKind::Floor, 3.0) &&
+          hasObjectTopPlane(appState.facade.document(),
+                            cr::CreativeObjectKind::Floor, 6.0) &&
+          hasObjectTopPlane(appState.facade.document(),
+                            cr::CreativeObjectKind::Ceiling,
+                            ground.upperSurfaceTopMeters) &&
+          hasObjectTopPlane(appState.facade.document(),
+                            cr::CreativeObjectKind::Ceiling,
+                            middle.upperSurfaceTopMeters),
+      "residential three-storey geometry resolves against a half-meter grid");
+}
+
 bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
   cr::CreativeAppState appState;
   cr::CreativeDocument document =
@@ -449,7 +533,8 @@ bool twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow() {
 }  // namespace
 
 int main() {
-  if (!twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow()) {
+  if (!residentialStoreysResolveAgainstTheDocumentGrid() ||
+      !twoStoreyBuildingSurvivesTheCompleteAuthoringWorkflow()) {
     return 1;
   }
   std::cout << "creative building authoring workflow tests passed\n";

@@ -10,12 +10,12 @@ honest boundary.
 research thread                          harness (this package)
 --------------                           ----------------------
 measure plates, calibrate scale,
-name landmarks, trace curves     ──►     handoff JSON  (SINC_GeometryProof_Handoff/1)
+name landmarks, trace curves     ──►     handoff JSON  (SINC_GeometryProof_Handoff/2)
                                               │
                                               ▼
                                          profile_intake.py
                                            frame resolution, arc fits,
-                                           tolerance from calibration residual
+                                           tolerance from control-point uncertainty
                                               │
                                               ├──► DRAFT spec (hand-author segments...)
                                               │
@@ -44,13 +44,20 @@ landmarks, never dropped. Final acceptance stays with the visual gate.
 
 ## What the research thread delivers (the handoff)
 
-See `handoffs/EXAMPLE_paley_pl1_fig6_handoff.json` for a complete worked
-example (it is also consumed by the intake tests, so it cannot rot). Fields:
+See `handoffs/EXAMPLE_paley_pl1_fig6_handoff.json` for the retained `/1`
+worked example (it is also consumed by the intake tests, so it cannot rot).
+The intake remains backward-compatible with `/1`; new workbench exports use
+`SINC_GeometryProof_Handoff/2`. Fields:
 
-- **calibration** — px per unit from the plate's own scale bar or dimension
-  line, with the fit residual. The residual becomes the spec's
-  `tolerance.distance` (2 × RMS), so measurement quality directly sets how
-  strict the geometry validation is.
+- **calibration** — px per unit, `control_point_uncertainty_px`, and the
+  `source_projection_model`. The uncertainty becomes the spec's
+  `tolerance.distance` (2 × uncertainty), so measurement quality directly
+  sets how strict the geometry validation is. If the projection depends on
+  an authored reading such as `fronto_parallel_subject`, `/2` carries that
+  `model_assumption` as structured data with its evidence class. The legacy
+  `/1` field `rms_residual_px` remains readable but is never emitted by new
+  workbench exports because it misnamed authored point uncertainty as a fit
+  residual.
 - **frames** — every working crop/magnification declared as a frame with
   `offset_px` + `scale` relative to its parent; exactly one root. Landmarks
   can then be recorded in whatever crop they were measured in, and intake

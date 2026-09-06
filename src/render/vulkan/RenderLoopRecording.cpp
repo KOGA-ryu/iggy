@@ -244,6 +244,13 @@ RenderLoopCommandRecord recordRenderLoopFrameCommands(
     }
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
+    recordInfo.captureEnabled =
+        readySwapchain.transferSourceSupported &&
+        createInfo.frameCapture != nullptr && createInfo.frameCapture->ready();
+    if (recordInfo.captureEnabled) {
+      recordInfo.captureBuffer = createInfo.frameCapture->buffer();
+      recordInfo.captureBufferSize = createInfo.frameCapture->bufferSizeBytes();
+    }
     recordInfo.externalUiHook = createInfo.externalUiHook;
     recordResult = createInfo.commandRecording->recordEmptyFrame(recordInfo);
   }

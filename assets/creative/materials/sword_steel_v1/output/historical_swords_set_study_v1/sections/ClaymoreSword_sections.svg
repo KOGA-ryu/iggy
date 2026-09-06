@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="560">
+<rect width="100%" height="100%" fill="#17191d"/>
+<text x="24" y="58" fill="#aeb5bd" font-family="Arial" font-size="12">model intersections; thickness drawn x2; metre values retained</text>
+<line x1="24" y1="140.0" x2="456" y2="140.0" stroke="#2b2f35" stroke-width="1"/>
+<text x="24" y="100.0" fill="#d5a55b" font-family="Arial" font-size="15" font-weight="bold">12%</text>
+<text x="24" y="120.0" fill="#aeb5bd" font-family="Arial" font-size="11">W 54.2 mm / T 5.0 mm / 20 pts</text>
+<path d="M 208.00 114.57 L 227.89 120.52 L 306.86 121.46 L 302.40 126.50 L 324.12 122.08 L 345.60 126.50 L 341.38 121.46 L 420.11 120.52 L 440.00 114.57 L 440.00 105.00 L 440.00 95.43 L 420.11 89.48 L 341.38 88.54 L 345.60 83.50 L 324.12 87.92 L 302.40 83.50 L 306.86 88.54 L 227.89 89.48 L 208.00 95.43 L 208.00 105.00 Z" fill="#303740" stroke="#f0f2f4" stroke-width="2" stroke-linejoin="round"/>
+<line x1="204.0" y1="105.0" x2="444.0" y2="105.0" stroke="#626b75" stroke-width="0.7"/>
+<line x1="24" y1="228.0" x2="456" y2="228.0" stroke="#2b2f35" stroke-width="1"/>
+<text x="24" y="188.0" fill="#d5a55b" font-family="Arial" font-size="15" font-weight="bold">25%</text>
+<text x="24" y="208.0" fill="#aeb5bd" font-family="Arial" font-size="11">W 50.9 mm / T 5.0 mm / 8 pts</text>
+<path d="M 229.09 209.85 L 324.01 215.64 L 418.91 209.85 L 440.00 193.00 L 418.91 176.15 L 324.01 170.36 L 229.09 176.15 L 208.00 193.00 Z" fill="#303740" stroke="#f0f2f4" stroke-width="2" stroke-linejoin="round"/>
+<line x1="204.0" y1="193.0" x2="444.0" y2="193.0" stroke="#626b75" stroke-width="0.7"/>
+<line x1="24" y1="316.0" x2="456" y2="316.0" stroke="#2b2f35" stroke-width="1"/>
+<text x="24" y="276.0" fill="#d5a55b" font-family="Arial" font-size="15" font-weight="bold">50%</text>
+<text x="24" y="296.0" fill="#aeb5bd" font-family="Arial" font-size="11">W 44.5 mm / T 4.5 mm / 8 pts</text>
+<path d="M 231.84 301.14 L 324.01 304.53 L 416.16 301.14 L 440.00 281.00 L 416.16 260.86 L 324.01 257.47 L 231.84 260.86 L 208.00 281.00 Z" fill="#303740" stroke="#f0f2f4" stroke-width="2" stroke-linejoin="round"/>
+<line x1="204.0" y1="281.0" x2="444.0" y2="281.0" stroke="#626b75" stroke-width="0.7"/>
+<line x1="24" y1="404.0" x2="456" y2="404.0" stroke="#2b2f35" stroke-width="1"/>
+<text x="24" y="364.0" fill="#d5a55b" font-family="Arial" font-size="15" font-weight="bold">75%</text>
+<text x="24" y="384.0" fill="#aeb5bd" font-family="Arial" font-size="11">W 38.1 mm / T 4.1 mm / 8 pts</text>
+<path d="M 235.52 393.53 L 324.00 393.71 L 412.48 393.53 L 440.00 369.00 L 412.48 344.47 L 324.00 344.29 L 235.52 344.47 L 208.00 369.00 Z" fill="#303740" stroke="#f0f2f4" stroke-width="2" stroke-linejoin="round"/>
+<line x1="204.0" y1="369.0" x2="444.0" y2="369.0" stroke="#626b75" stroke-width="0.7"/>
+<line x1="24" y1="492.0" x2="456" y2="492.0" stroke="#2b2f35" stroke-width="1"/>
+<text x="24" y="452.0" fill="#d5a55b" font-family="Arial" font-size="15" font-weight="bold">88%</text>
+<text x="24" y="472.0" fill="#aeb5bd" font-family="Arial" font-size="11">W 34.7 mm / T 4.1 mm / 8 pts</text>
+<path d="M 237.98 484.46 L 324.00 482.50 L 410.02 484.46 L 440.00 457.00 L 410.02 429.54 L 324.00 431.50 L 237.98 429.54 L 208.00 457.00 Z" fill="#303740" stroke="#f0f2f4" stroke-width="2" stroke-linejoin="round"/>
+<line x1="204.0" y1="457.0" x2="444.0" y2="457.0" stroke="#626b75" stroke-width="0.7"/>
+</svg>

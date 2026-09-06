@@ -1,0 +1,13 @@
+preset guided_three_layers
+start_new_run 301
+guided_open
+guided_select 2
+guided_check
+guided_next
+guided_select 3
+guided_check
+guided_next
+guided_select 2
+guided_check
+back_title
+open_stats

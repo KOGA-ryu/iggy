@@ -1,0 +1,288 @@
+{
+  "schema": "iggy-reference-derived-wood-fields/1.0",
+  "reference": {
+    "authority": "The Metropolitan Museum of Art",
+    "object_number": "55.61.170",
+    "object_url": "https://www.metmuseum.org/art/collection/search/468492",
+    "reverse_image_url": "https://collectionapi.metmuseum.org/api/collection/v1/iiif/468492/1642536/main-image",
+    "local_reverse_path": "/Users/kogaryu/Documents/Codex/2026-07-25/sinc/outputs/reference-images/giant-house-door-hero-plank-rp2/met_468492_reverse.jpg",
+    "reverse_image_role": "Primary colour-field and fibre-direction authority.",
+    "palette_samples": "../references/met_468492_reverse_palette_samples.json",
+    "visual_hierarchy": [
+      "Broad irregular charcoal-brown, grey-taupe, pale-tan, ochre, and muted-red fields.",
+      "Large quiet passages between colour changes.",
+      "Longitudinal fibre direction subordinate to the colour fields.",
+      "No decorative cathedral grain, periodic waves, random noise, damage, or weathering."
+    ]
+  },
+  "coordinate_convention": {
+    "x": "longitudinal, bottom to top on a standing plank",
+    "y": "transverse, left to right across a timber face"
+  },
+  "reference_field": {
+    "longitudinal_radius": 0.23,
+    "transverse_radius": 0.18,
+    "all_twenty_samples_influence_every_variant": true
+  },
+  "reference_glazes": {
+    "sample_count": 20,
+    "minimum_width": 0.008,
+    "maximum_width": 0.026,
+    "opacity": 0.32,
+    "purpose": "Each measured door colour is also laid as a narrow, softly blended longitudinal glaze so a timber contains many related shades instead of one averaged brown."
+  },
+  "photo_field": {
+    "purpose": "Median-reduced real-door crops preserve broad spatial colour relationships while rejecting cracks, holes, hardware, and micro-detail.",
+    "longitudinal_cells": 16,
+    "transverse_cells": 48,
+    "blend_strength": 0.56,
+    "crops": {
+      "lower_left": {"box": [100, 680, 286, 1015], "long_axis": "vertical"},
+      "lower_centre": {"box": [315, 680, 486, 1015], "long_axis": "vertical"},
+      "lower_right": {"box": [510, 680, 650, 1015], "long_axis": "vertical"},
+      "upper_left": {"box": [108, 205, 286, 574], "long_axis": "vertical"},
+      "upper_centre": {"box": [310, 205, 486, 574], "long_axis": "vertical"},
+      "upper_right": {"box": [510, 205, 653, 574], "long_axis": "vertical"},
+      "upper_ledge": {"box": [82, 118, 691, 204], "long_axis": "horizontal"},
+      "lower_ledge": {"box": [76, 1041, 686, 1136], "long_axis": "horizontal"}
+    }
+  },
+  "fibre_render": {
+    "authored_width_scale": 2.4,
+    "photo_ink_strength": 0.30,
+    "ink_gain": 2.4,
+    "purpose": "Keep sparse reference-derived boundaries legible at door framing without turning them into cracks or relief."
+  },
+  "tile_columns": 4,
+  "tile_rows": 3,
+  "variants": [
+    {
+      "id": "reverse_left_charcoal",
+      "source_region": "reverse left upper and centre planks",
+      "photo_crop": "lower_left",
+      "photo_flip": {"length": false, "width": false},
+      "reference_transform": {"length_phase": 0.00, "length_scale": 1.00, "width_shift": -0.16, "width_scale": 1.34, "mirror_width": false},
+      "anchor_emphasis": {"left_upper_dark": 1.70, "centre_upper_charcoal": 1.35, "left_upper_mid": 1.20, "quiet_mid": 0.72},
+      "colour_fields": [
+        {"sample": "centre_upper_charcoal", "x0": 0.02, "x1": 0.73, "centres": [0.22, 0.26, 0.31, 0.29, 0.35], "widths": [0.43, 0.39, 0.35, 0.32, 0.28], "opacity": 0.42},
+        {"sample": "left_centre_warm", "x0": 0.31, "x1": 0.96, "centres": [0.79, 0.72, 0.68, 0.74, 0.70], "widths": [0.27, 0.31, 0.24, 0.22, 0.18], "opacity": 0.22},
+        {"sample": "left_lower_gray", "x0": 0.61, "x1": 1.00, "centres": [0.47, 0.43, 0.49, 0.54, 0.51], "widths": [0.46, 0.41, 0.37, 0.33, 0.29], "opacity": 0.25}
+      ],
+      "fibres": [
+        {"sample": "left_upper_dark", "x0": 0.06, "x1": 0.43, "centres": [0.18, 0.20, 0.23, 0.21, 0.25], "width": 0.0032, "opacity": 0.42, "ink": 0.40},
+        {"sample": "centre_upper_brown", "x0": 0.26, "x1": 0.91, "centres": [0.56, 0.54, 0.51, 0.53, 0.49], "width": 0.0023, "opacity": 0.31, "ink": 0.26},
+        {"sample": "left_upper_mid", "x0": 0.51, "x1": 0.83, "centres": [0.82, 0.79, 0.76, 0.78, 0.74], "width": 0.0046, "opacity": 0.29, "ink": 0.00},
+        {"sample": "ledge_dark", "x0": 0.72, "x1": 0.97, "centres": [0.36, 0.34, 0.37, 0.33, 0.31], "width": 0.0020, "opacity": 0.38, "ink": 0.30}
+      ]
+    },
+    {
+      "id": "reverse_left_pale",
+      "source_region": "reverse left lower plank",
+      "photo_crop": "lower_left",
+      "photo_flip": {"length": false, "width": true},
+      "reference_transform": {"length_phase": 0.29, "length_scale": 0.86, "width_shift": -0.18, "width_scale": 1.22, "mirror_width": true},
+      "anchor_emphasis": {"left_lower_pale": 1.55, "left_lower_gray": 1.45, "right_lower_taupe": 1.12, "ledge_warm": 0.70},
+      "colour_fields": [
+        {"sample": "left_lower_pale", "x0": 0.00, "x1": 0.86, "centres": [0.33, 0.38, 0.42, 0.39, 0.46], "widths": [0.54, 0.48, 0.43, 0.39, 0.32], "opacity": 0.39},
+        {"sample": "centre_mid_taupe", "x0": 0.12, "x1": 0.74, "centres": [0.83, 0.78, 0.72, 0.75, 0.69], "widths": [0.24, 0.28, 0.31, 0.27, 0.22], "opacity": 0.25},
+        {"sample": "left_upper_dark", "x0": 0.67, "x1": 1.00, "centres": [0.12, 0.15, 0.19, 0.17, 0.21], "widths": [0.22, 0.25, 0.21, 0.18, 0.15], "opacity": 0.22}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.03, "x1": 0.49, "centres": [0.29, 0.31, 0.28, 0.33, 0.30], "width": 0.0025, "opacity": 0.34, "ink": 0.24},
+        {"sample": "left_upper_mid", "x0": 0.17, "x1": 0.71, "centres": [0.61, 0.58, 0.62, 0.59, 0.64], "width": 0.0050, "opacity": 0.27, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.46, "x1": 0.92, "centres": [0.82, 0.80, 0.77, 0.74, 0.76], "width": 0.0020, "opacity": 0.36, "ink": 0.28},
+        {"sample": "right_lower_taupe", "x0": 0.73, "x1": 0.98, "centres": [0.43, 0.46, 0.44, 0.48, 0.45], "width": 0.0041, "opacity": 0.25, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_centre_cool",
+      "source_region": "reverse centre upper plank",
+      "photo_crop": "lower_centre",
+      "photo_flip": {"length": true, "width": false},
+      "reference_transform": {"length_phase": 0.05, "length_scale": 1.12, "width_shift": 0.00, "width_scale": 1.28, "mirror_width": false},
+      "anchor_emphasis": {"centre_upper_charcoal": 1.65, "centre_upper_brown": 1.38, "centre_mid_taupe": 1.28, "right_middle_warm": 0.76},
+      "colour_fields": [
+        {"sample": "centre_upper_charcoal", "x0": 0.00, "x1": 0.63, "centres": [0.66, 0.61, 0.57, 0.54, 0.58], "widths": [0.45, 0.42, 0.36, 0.31, 0.28], "opacity": 0.40},
+        {"sample": "right_upper_gray", "x0": 0.19, "x1": 0.91, "centres": [0.20, 0.24, 0.28, 0.32, 0.29], "widths": [0.32, 0.35, 0.31, 0.27, 0.23], "opacity": 0.27},
+        {"sample": "centre_lower_umber", "x0": 0.57, "x1": 1.00, "centres": [0.76, 0.72, 0.68, 0.73, 0.78], "widths": [0.31, 0.34, 0.28, 0.24, 0.20], "opacity": 0.23}
+      ],
+      "fibres": [
+        {"sample": "left_upper_dark", "x0": 0.08, "x1": 0.34, "centres": [0.15, 0.18, 0.16, 0.20, 0.19], "width": 0.0024, "opacity": 0.39, "ink": 0.32},
+        {"sample": "centre_upper_brown", "x0": 0.22, "x1": 0.78, "centres": [0.44, 0.41, 0.45, 0.43, 0.47], "width": 0.0031, "opacity": 0.34, "ink": 0.24},
+        {"sample": "right_upper_pale", "x0": 0.42, "x1": 0.95, "centres": [0.72, 0.75, 0.71, 0.77, 0.74], "width": 0.0048, "opacity": 0.25, "ink": 0.00},
+        {"sample": "centre_upper_charcoal", "x0": 0.69, "x1": 0.96, "centres": [0.88, 0.85, 0.83, 0.86, 0.82], "width": 0.0018, "opacity": 0.43, "ink": 0.36}
+      ]
+    },
+    {
+      "id": "reverse_centre_umber",
+      "source_region": "reverse centre lower plank",
+      "photo_crop": "lower_centre",
+      "photo_flip": {"length": false, "width": false},
+      "reference_transform": {"length_phase": 0.46, "length_scale": 0.91, "width_shift": 0.02, "width_scale": 1.10, "mirror_width": true},
+      "anchor_emphasis": {"centre_lower_umber": 1.55, "centre_lower_pale": 1.40, "quiet_mid": 1.35, "edge_red": 0.68},
+      "colour_fields": [
+        {"sample": "quiet_mid", "x0": 0.00, "x1": 0.92, "centres": [0.48, 0.45, 0.50, 0.54, 0.51], "widths": [0.58, 0.53, 0.49, 0.44, 0.38], "opacity": 0.37},
+        {"sample": "centre_lower_umber", "x0": 0.26, "x1": 1.00, "centres": [0.78, 0.73, 0.69, 0.65, 0.70], "widths": [0.26, 0.31, 0.35, 0.30, 0.24], "opacity": 0.27},
+        {"sample": "centre_mid_taupe", "x0": 0.04, "x1": 0.59, "centres": [0.14, 0.18, 0.22, 0.19, 0.25], "widths": [0.25, 0.29, 0.26, 0.22, 0.18], "opacity": 0.24}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.04, "x1": 0.39, "centres": [0.23, 0.20, 0.24, 0.22, 0.26], "width": 0.0022, "opacity": 0.36, "ink": 0.27},
+        {"sample": "left_upper_mid", "x0": 0.14, "x1": 0.67, "centres": [0.52, 0.55, 0.51, 0.57, 0.54], "width": 0.0042, "opacity": 0.27, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.48, "x1": 0.86, "centres": [0.70, 0.68, 0.72, 0.69, 0.75], "width": 0.0027, "opacity": 0.38, "ink": 0.31},
+        {"sample": "right_lower_taupe", "x0": 0.72, "x1": 0.97, "centres": [0.36, 0.39, 0.35, 0.41, 0.38], "width": 0.0052, "opacity": 0.23, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_right_grey",
+      "source_region": "reverse right upper plank",
+      "photo_crop": "lower_right",
+      "photo_flip": {"length": false, "width": true},
+      "reference_transform": {"length_phase": 0.08, "length_scale": 1.03, "width_shift": 0.17, "width_scale": 1.32, "mirror_width": true},
+      "anchor_emphasis": {"right_upper_gray": 1.55, "right_upper_pale": 1.50, "edge_red": 0.92, "left_centre_warm": 0.72},
+      "colour_fields": [
+        {"sample": "right_upper_gray", "x0": 0.00, "x1": 0.77, "centres": [0.34, 0.38, 0.43, 0.40, 0.46], "widths": [0.49, 0.45, 0.41, 0.36, 0.31], "opacity": 0.41},
+        {"sample": "right_upper_pale", "x0": 0.17, "x1": 1.00, "centres": [0.76, 0.72, 0.68, 0.73, 0.77], "widths": [0.31, 0.34, 0.30, 0.26, 0.21], "opacity": 0.29},
+        {"sample": "edge_ochre", "x0": 0.56, "x1": 0.94, "centres": [0.12, 0.16, 0.20, 0.18, 0.23], "widths": [0.19, 0.23, 0.20, 0.17, 0.14], "opacity": 0.18}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.07, "x1": 0.53, "centres": [0.27, 0.30, 0.28, 0.33, 0.31], "width": 0.0025, "opacity": 0.35, "ink": 0.25},
+        {"sample": "right_lower_taupe", "x0": 0.21, "x1": 0.64, "centres": [0.58, 0.55, 0.59, 0.56, 0.61], "width": 0.0047, "opacity": 0.25, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.44, "x1": 0.89, "centres": [0.82, 0.79, 0.76, 0.80, 0.77], "width": 0.0021, "opacity": 0.37, "ink": 0.29},
+        {"sample": "right_upper_pale", "x0": 0.74, "x1": 0.97, "centres": [0.43, 0.46, 0.42, 0.47, 0.45], "width": 0.0054, "opacity": 0.22, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_right_ochre",
+      "source_region": "reverse right lower plank and stile",
+      "photo_crop": "lower_right",
+      "photo_flip": {"length": true, "width": false},
+      "reference_transform": {"length_phase": 0.51, "length_scale": 0.84, "width_shift": 0.20, "width_scale": 1.18, "mirror_width": false},
+      "anchor_emphasis": {"right_lower_taupe": 1.50, "right_lower_ochre": 1.58, "edge_ochre": 1.20, "centre_upper_charcoal": 0.64},
+      "colour_fields": [
+        {"sample": "right_lower_taupe", "x0": 0.00, "x1": 0.86, "centres": [0.62, 0.58, 0.54, 0.60, 0.57], "widths": [0.55, 0.50, 0.45, 0.41, 0.35], "opacity": 0.38},
+        {"sample": "right_lower_ochre", "x0": 0.19, "x1": 0.97, "centres": [0.24, 0.29, 0.34, 0.31, 0.38], "widths": [0.30, 0.34, 0.31, 0.27, 0.22], "opacity": 0.28},
+        {"sample": "edge_red", "x0": 0.62, "x1": 1.00, "centres": [0.87, 0.84, 0.80, 0.83, 0.79], "widths": [0.18, 0.21, 0.19, 0.16, 0.13], "opacity": 0.16}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.05, "x1": 0.48, "centres": [0.18, 0.21, 0.19, 0.24, 0.22], "width": 0.0024, "opacity": 0.35, "ink": 0.26},
+        {"sample": "right_upper_pale", "x0": 0.24, "x1": 0.73, "centres": [0.47, 0.50, 0.46, 0.52, 0.49], "width": 0.0051, "opacity": 0.24, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.49, "x1": 0.93, "centres": [0.74, 0.71, 0.76, 0.73, 0.78], "width": 0.0022, "opacity": 0.38, "ink": 0.30},
+        {"sample": "centre_lower_umber", "x0": 0.76, "x1": 0.98, "centres": [0.34, 0.37, 0.33, 0.39, 0.36], "width": 0.0034, "opacity": 0.30, "ink": 0.20}
+      ]
+    },
+    {
+      "id": "reverse_ledge_dark",
+      "source_region": "reverse upper ledge",
+      "photo_crop": "upper_ledge",
+      "photo_flip": {"length": false, "width": false},
+      "reference_transform": {"length_phase": 0.16, "length_scale": 1.18, "width_shift": -0.08, "width_scale": 0.92, "mirror_width": false},
+      "anchor_emphasis": {"ledge_dark": 1.85, "ledge_warm": 1.38, "left_upper_dark": 1.22, "right_lower_taupe": 0.62},
+      "colour_fields": [
+        {"sample": "ledge_dark", "x0": 0.00, "x1": 1.00, "centres": [0.46, 0.49, 0.45, 0.51, 0.48], "widths": [0.64, 0.60, 0.56, 0.51, 0.46], "opacity": 0.45},
+        {"sample": "ledge_warm", "x0": 0.13, "x1": 0.74, "centres": [0.19, 0.23, 0.27, 0.25, 0.30], "widths": [0.27, 0.31, 0.28, 0.24, 0.20], "opacity": 0.29},
+        {"sample": "centre_upper_charcoal", "x0": 0.59, "x1": 0.98, "centres": [0.81, 0.77, 0.73, 0.76, 0.71], "widths": [0.25, 0.29, 0.26, 0.22, 0.18], "opacity": 0.25}
+      ],
+      "fibres": [
+        {"sample": "left_upper_dark", "x0": 0.03, "x1": 0.61, "centres": [0.22, 0.20, 0.24, 0.21, 0.26], "width": 0.0028, "opacity": 0.40, "ink": 0.34},
+        {"sample": "ledge_warm", "x0": 0.18, "x1": 0.83, "centres": [0.51, 0.54, 0.50, 0.56, 0.53], "width": 0.0046, "opacity": 0.29, "ink": 0.00},
+        {"sample": "centre_upper_charcoal", "x0": 0.42, "x1": 0.94, "centres": [0.77, 0.74, 0.79, 0.75, 0.81], "width": 0.0020, "opacity": 0.43, "ink": 0.36},
+        {"sample": "left_upper_mid", "x0": 0.72, "x1": 0.97, "centres": [0.37, 0.40, 0.36, 0.42, 0.39], "width": 0.0054, "opacity": 0.23, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_ledge_pale",
+      "source_region": "reverse lower ledge",
+      "photo_crop": "lower_ledge",
+      "photo_flip": {"length": true, "width": true},
+      "reference_transform": {"length_phase": 0.61, "length_scale": 0.78, "width_shift": 0.05, "width_scale": 0.88, "mirror_width": true},
+      "anchor_emphasis": {"right_lower_taupe": 1.44, "left_lower_gray": 1.36, "quiet_mid": 1.31, "ledge_dark": 0.82},
+      "colour_fields": [
+        {"sample": "right_lower_taupe", "x0": 0.00, "x1": 0.91, "centres": [0.52, 0.48, 0.54, 0.50, 0.57], "widths": [0.61, 0.56, 0.52, 0.47, 0.42], "opacity": 0.39},
+        {"sample": "left_lower_gray", "x0": 0.08, "x1": 0.68, "centres": [0.18, 0.22, 0.26, 0.23, 0.29], "widths": [0.28, 0.32, 0.29, 0.25, 0.21], "opacity": 0.27},
+        {"sample": "centre_lower_umber", "x0": 0.53, "x1": 1.00, "centres": [0.83, 0.79, 0.75, 0.80, 0.77], "widths": [0.23, 0.27, 0.24, 0.20, 0.17], "opacity": 0.23}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.06, "x1": 0.52, "centres": [0.25, 0.28, 0.24, 0.30, 0.27], "width": 0.0024, "opacity": 0.36, "ink": 0.25},
+        {"sample": "right_upper_pale", "x0": 0.20, "x1": 0.77, "centres": [0.55, 0.52, 0.58, 0.54, 0.60], "width": 0.0052, "opacity": 0.24, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.47, "x1": 0.91, "centres": [0.78, 0.75, 0.80, 0.76, 0.82], "width": 0.0020, "opacity": 0.37, "ink": 0.29},
+        {"sample": "left_upper_mid", "x0": 0.75, "x1": 0.98, "centres": [0.39, 0.42, 0.38, 0.44, 0.41], "width": 0.0047, "opacity": 0.23, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_quiet_taupe",
+      "source_region": "reverse broad quiet centre field",
+      "photo_crop": "lower_centre",
+      "photo_flip": {"length": true, "width": true},
+      "reference_transform": {"length_phase": 0.34, "length_scale": 1.06, "width_shift": 0.01, "width_scale": 0.96, "mirror_width": false},
+      "anchor_emphasis": {"quiet_mid": 1.66, "centre_mid_taupe": 1.42, "centre_lower_pale": 1.29, "edge_red": 0.60},
+      "colour_fields": [
+        {"sample": "quiet_mid", "x0": 0.00, "x1": 1.00, "centres": [0.45, 0.49, 0.46, 0.52, 0.50], "widths": [0.66, 0.62, 0.58, 0.53, 0.48], "opacity": 0.43},
+        {"sample": "centre_mid_taupe", "x0": 0.12, "x1": 0.79, "centres": [0.16, 0.20, 0.24, 0.21, 0.27], "widths": [0.25, 0.29, 0.26, 0.22, 0.18], "opacity": 0.23},
+        {"sample": "centre_lower_pale", "x0": 0.46, "x1": 0.96, "centres": [0.81, 0.77, 0.73, 0.78, 0.75], "widths": [0.28, 0.31, 0.27, 0.23, 0.19], "opacity": 0.25}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.10, "x1": 0.45, "centres": [0.21, 0.24, 0.22, 0.26, 0.25], "width": 0.0022, "opacity": 0.33, "ink": 0.21},
+        {"sample": "right_upper_pale", "x0": 0.27, "x1": 0.71, "centres": [0.49, 0.52, 0.48, 0.54, 0.51], "width": 0.0050, "opacity": 0.22, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.54, "x1": 0.87, "centres": [0.72, 0.69, 0.74, 0.71, 0.76], "width": 0.0019, "opacity": 0.35, "ink": 0.25},
+        {"sample": "centre_lower_umber", "x0": 0.79, "x1": 0.98, "centres": [0.34, 0.37, 0.35, 0.40, 0.38], "width": 0.0038, "opacity": 0.27, "ink": 0.14}
+      ]
+    },
+    {
+      "id": "reverse_warm_passage",
+      "source_region": "reverse warm ledge and plank passages",
+      "photo_crop": "upper_ledge",
+      "photo_flip": {"length": true, "width": false},
+      "reference_transform": {"length_phase": 0.23, "length_scale": 0.95, "width_shift": -0.03, "width_scale": 1.16, "mirror_width": true},
+      "anchor_emphasis": {"left_centre_warm": 1.52, "ledge_warm": 1.48, "right_middle_warm": 1.31, "centre_upper_charcoal": 0.66},
+      "colour_fields": [
+        {"sample": "left_centre_warm", "x0": 0.04, "x1": 0.82, "centres": [0.31, 0.35, 0.40, 0.37, 0.44], "widths": [0.42, 0.39, 0.35, 0.31, 0.27], "opacity": 0.34},
+        {"sample": "ledge_warm", "x0": 0.29, "x1": 0.97, "centres": [0.75, 0.70, 0.66, 0.72, 0.69], "widths": [0.29, 0.33, 0.29, 0.25, 0.20], "opacity": 0.26},
+        {"sample": "left_upper_dark", "x0": 0.00, "x1": 0.53, "centres": [0.09, 0.13, 0.17, 0.15, 0.20], "widths": [0.18, 0.22, 0.20, 0.17, 0.14], "opacity": 0.22}
+      ],
+      "fibres": [
+        {"sample": "centre_upper_brown", "x0": 0.03, "x1": 0.48, "centres": [0.24, 0.27, 0.25, 0.30, 0.28], "width": 0.0026, "opacity": 0.36, "ink": 0.26},
+        {"sample": "right_middle_warm", "x0": 0.20, "x1": 0.73, "centres": [0.53, 0.56, 0.52, 0.58, 0.55], "width": 0.0048, "opacity": 0.27, "ink": 0.00},
+        {"sample": "left_upper_dark", "x0": 0.50, "x1": 0.92, "centres": [0.79, 0.76, 0.81, 0.77, 0.83], "width": 0.0021, "opacity": 0.39, "ink": 0.31},
+        {"sample": "left_upper_mid", "x0": 0.74, "x1": 0.98, "centres": [0.41, 0.44, 0.40, 0.46, 0.43], "width": 0.0042, "opacity": 0.24, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_muted_red",
+      "source_region": "reverse right edge and repair-colour family without copying damage",
+      "photo_crop": "lower_right",
+      "photo_flip": {"length": false, "width": true},
+      "reference_transform": {"length_phase": 0.56, "length_scale": 0.89, "width_shift": 0.14, "width_scale": 1.26, "mirror_width": false},
+      "anchor_emphasis": {"edge_red": 1.58, "edge_ochre": 1.44, "right_lower_ochre": 1.28, "left_upper_dark": 0.78},
+      "colour_fields": [
+        {"sample": "edge_red", "x0": 0.08, "x1": 0.89, "centres": [0.71, 0.66, 0.61, 0.67, 0.64], "widths": [0.36, 0.40, 0.36, 0.32, 0.27], "opacity": 0.29},
+        {"sample": "edge_ochre", "x0": 0.31, "x1": 1.00, "centres": [0.26, 0.31, 0.36, 0.33, 0.40], "widths": [0.29, 0.33, 0.30, 0.26, 0.21], "opacity": 0.27},
+        {"sample": "centre_mid_taupe", "x0": 0.00, "x1": 0.62, "centres": [0.48, 0.45, 0.50, 0.53, 0.49], "widths": [0.48, 0.44, 0.40, 0.36, 0.31], "opacity": 0.25}
+      ],
+      "fibres": [
+        {"sample": "left_upper_dark", "x0": 0.06, "x1": 0.42, "centres": [0.19, 0.22, 0.20, 0.25, 0.23], "width": 0.0023, "opacity": 0.38, "ink": 0.30},
+        {"sample": "edge_red", "x0": 0.24, "x1": 0.76, "centres": [0.49, 0.52, 0.48, 0.54, 0.51], "width": 0.0046, "opacity": 0.25, "ink": 0.00},
+        {"sample": "centre_upper_brown", "x0": 0.47, "x1": 0.90, "centres": [0.77, 0.74, 0.79, 0.75, 0.81], "width": 0.0020, "opacity": 0.36, "ink": 0.27},
+        {"sample": "right_lower_taupe", "x0": 0.74, "x1": 0.97, "centres": [0.36, 0.39, 0.35, 0.41, 0.38], "width": 0.0050, "opacity": 0.22, "ink": 0.00}
+      ]
+    },
+    {
+      "id": "reverse_cool_warm_split",
+      "source_region": "reverse cool upper to warm lower relationship",
+      "photo_crop": "lower_left",
+      "photo_flip": {"length": true, "width": false},
+      "reference_transform": {"length_phase": 0.12, "length_scale": 1.16, "width_shift": 0.08, "width_scale": 1.12, "mirror_width": false},
+      "anchor_emphasis": {"centre_upper_charcoal": 1.47, "right_upper_gray": 1.31, "centre_lower_umber": 1.34, "right_lower_ochre": 1.20},
+      "colour_fields": [
+        {"sample": "centre_upper_charcoal", "x0": 0.00, "x1": 0.54, "centres": [0.42, 0.46, 0.43, 0.49, 0.46], "widths": [0.59, 0.55, 0.51, 0.46, 0.41], "opacity": 0.38},
+        {"sample": "centre_lower_umber", "x0": 0.43, "x1": 1.00, "centres": [0.57, 0.53, 0.59, 0.56, 0.62], "widths": [0.52, 0.48, 0.44, 0.40, 0.35], "opacity": 0.34},
+        {"sample": "right_lower_ochre", "x0": 0.66, "x1": 0.96, "centres": [0.16, 0.20, 0.24, 0.22, 0.27], "widths": [0.21, 0.25, 0.22, 0.18, 0.15], "opacity": 0.18}
+      ],
+      "fibres": [
+        {"sample": "left_upper_dark", "x0": 0.05, "x1": 0.44, "centres": [0.20, 0.23, 0.21, 0.26, 0.24], "width": 0.0025, "opacity": 0.39, "ink": 0.31},
+        {"sample": "right_upper_pale", "x0": 0.19, "x1": 0.70, "centres": [0.48, 0.51, 0.47, 0.53, 0.50], "width": 0.0048, "opacity": 0.24, "ink": 0.00},
+        {"sample": "centre_upper_brown", "x0": 0.48, "x1": 0.91, "centres": [0.75, 0.72, 0.77, 0.73, 0.79], "width": 0.0021, "opacity": 0.36, "ink": 0.27},
+        {"sample": "centre_lower_pale", "x0": 0.76, "x1": 0.98, "centres": [0.35, 0.38, 0.34, 0.40, 0.37], "width": 0.0052, "opacity": 0.22, "ink": 0.00}
+      ]
+    }
+  ]
+}

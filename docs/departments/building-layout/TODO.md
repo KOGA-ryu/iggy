@@ -7,7 +7,7 @@ workflow has not yet received one end-to-end product acceptance.
 | --- | --- | --- | --- | --- | --- |
 | BLD-001 | Building blockout and template generation | Integrated | Manual Test Needed | Blockout planner, UI command, and workflow tests exist | Run the building baseline and record visible defects |
 | BLD-002 | Room layout and floor-plan editing | Prototype | Needs Audit | Room operations and topology kernels exist | Define complete room create, resize, split, merge, and delete behavior |
-| BLD-003 | Storeys and level ownership | Integrated | Needs Audit | Level operations and storey settings exist | Verify real scale, equal floor spacing, active-level editing, and exterior shell height |
+| BLD-003 | Storeys and level ownership | Integrated | Automated Green | New drafts use the Residential profile, command dispatch resolves it against the active grid, saved Custom values remain unchanged, and the 0.5 m three-storey regression passes | Review CLR-001, then run BLD-MAN-001 when a visible acceptance pass is desired |
 | BLD-004 | Floors and ceilings | Prototype | Needs Audit | Slab generation exists | Consolidate top plane, thickness, collision, and render ownership |
 | BLD-005 | Exterior walls and partitions | Stable Recipe | Needs Audit | Wall recipe and wall operations exist | Separate continuous exterior shell from storey-height interior partitions |
 | BLD-006 | Generic openings and wall repair | Stable Recipe | Needs Audit | Opening and repair kernels exist | Prove arbitrary valid placement and deterministic host-wall reconstruction |

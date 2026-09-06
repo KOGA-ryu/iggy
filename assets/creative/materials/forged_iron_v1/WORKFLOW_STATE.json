@@ -1,0 +1,410 @@
+{
+  "current_revision": 6,
+  "package": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1",
+  "revisions": [
+    {
+      "build_entry": {
+        "coded_demands_sha256": "5d8fad07fb9f63b5471a27eba43c3b645898eaf4f41963100f6b90eafddb404f",
+        "opened_at": "2026-07-30T01:52:45.496072+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 9324,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "5d8fad07fb9f63b5471a27eba43c3b645898eaf4f41963100f6b90eafddb404f"
+      },
+      "coded_demands_sha256": "5d8fad07fb9f63b5471a27eba43c3b645898eaf4f41963100f6b90eafddb404f",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003"
+      ],
+      "frozen_at": "2026-07-30T01:52:45.458020+00:00",
+      "red_gate_evidence": [
+        "Existing default metalness contains hammer-derived conductive islands and visible bright square marks.",
+        "Existing saved proof does not assign or render the approved openwork hinge.",
+        "Existing shader has one coordinate for macro and micro response and no fabrication-scale attribute."
+      ],
+      "revision": 1,
+      "revision_note": "Freeze intact forged-iron physical correction, worked-surface lane, fabrication-scale split, and actual-hinge proof.",
+      "target_baselines": [
+        {
+          "bytes": 11085,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+          "sha256": "3c50584ae4a359c573f6df1c7af5ade6de61469c3bbde14d5a64df17bda78475"
+        },
+        {
+          "bytes": 9989,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+          "sha256": "5c2f28faf88a7ded5ca42a6447ba0ad76509ae0357e726507ac4060f39e577f9"
+        },
+        {
+          "bytes": 30529,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/generate_forged_iron_patterns_v1.py",
+          "sha256": "68c8b0963c26556d0a5038e2794a967ab4707be635dfb05ba1338c3f365fbb5f"
+        },
+        {
+          "bytes": 85648,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_forged_iron_v1.py",
+          "sha256": "12139cb4aa2465370deb8ef01e09b481fc27df665cf765f17b2cf89b1d69989e"
+        },
+        {
+          "bytes": 11174,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_profile_tests.py",
+          "sha256": "568c1a4d0baa62b72b81792aa7deffd5550f5481bfc5a7c109fc28cd53d6560d"
+        },
+        {
+          "bytes": 10422,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_generator_tests.py",
+          "sha256": "b2c192bf3d1af298d5cc33fb9208cdd0ee382a929a61443e4425af290f6f7320"
+        },
+        {
+          "bytes": 10416,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_blend_tests.py",
+          "sha256": "ebce8e4622d0fa0ac171827cef1ab502b545548d9dea5fe3c11ebd2173c12a7d"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 7382,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "553c40e28e0ec697ae77cdced5f151d97313b7f51f07200624bff08659f1b177"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "9def784f1d40d41434aa01e619f7eb4cfbae3e212b4054446f6bb94bef4dc064",
+        "opened_at": "2026-07-30T02:06:35.838964+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 9509,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "9def784f1d40d41434aa01e619f7eb4cfbae3e212b4054446f6bb94bef4dc064"
+      },
+      "coded_demands_sha256": "9def784f1d40d41434aa01e619f7eb4cfbae3e212b4054446f6bb94bef4dc064",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003"
+      ],
+      "frozen_at": "2026-07-30T02:06:35.801517+00:00",
+      "red_gate_evidence": [
+        "Revision 1 target proof exposed over-lit white iron and an incorrect coupling of giant fabrication scale to world-scale oxide colour and scale lips."
+      ],
+      "revision": 2,
+      "revision_note": "Separate giant tool scale from world-metre scale colour, oxide, micro, and worked response; calibrate neutral target proof.",
+      "target_baselines": [
+        {
+          "bytes": 12047,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+          "sha256": "066444bbed66aab031676f0e84ea07908fdc251c6bef646290575c9d7e4c655e"
+        },
+        {
+          "bytes": 11971,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+          "sha256": "b1de358a676881b096d904f7cd1f8997fb2050b2405a61403fee3d06762b9159"
+        },
+        {
+          "bytes": 37073,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/generate_forged_iron_patterns_v1.py",
+          "sha256": "45b51c983959d01c15eef845c10c587262543244d2f0a5ba506b6cde25f996dd"
+        },
+        {
+          "bytes": 105284,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_forged_iron_v1.py",
+          "sha256": "4ffa31ab91e78409e69785e105f582b120208002b0b74954c26f87f7b0b1aba5"
+        },
+        {
+          "bytes": 12086,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_profile_tests.py",
+          "sha256": "4e9f42c8f8d30ad1309b7200444a00929cd8a405a9266ed280a6a22e126141b4"
+        },
+        {
+          "bytes": 11728,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_generator_tests.py",
+          "sha256": "c47a4205bc705ebe1d98ee9c89f16f55c5457f017f2c984fca07d16330992888"
+        },
+        {
+          "bytes": 12890,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_blend_tests.py",
+          "sha256": "c457882913ea96fa4cd85f29711c6898da827a4eb5538011dbd28643b92e2e56"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 7382,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "553c40e28e0ec697ae77cdced5f151d97313b7f51f07200624bff08659f1b177"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "1698dbe8bbfc12ab43eeb7ef845c3a6b936a20a72a4b6372df295c151280477d",
+        "opened_at": "2026-07-30T02:16:57.746164+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 10114,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "1698dbe8bbfc12ab43eeb7ef845c3a6b936a20a72a4b6372df295c151280477d"
+      },
+      "coded_demands_sha256": "1698dbe8bbfc12ab43eeb7ef845c3a6b936a20a72a4b6372df295c151280477d",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003"
+      ],
+      "frozen_at": "2026-07-30T02:16:57.709959+00:00",
+      "red_gate_evidence": [
+        "Revision 2 proof framed only part of the approved 4.06 m hinge assembly, so the pointed leaf and fixed leaf could not both be judged."
+      ],
+      "revision": 3,
+      "revision_note": "Freeze complete-assembly world-bounds framing, final calibrated target light, and the intact forged-iron candidate repair record.",
+      "target_baselines": [
+        {
+          "bytes": 12047,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+          "sha256": "066444bbed66aab031676f0e84ea07908fdc251c6bef646290575c9d7e4c655e"
+        },
+        {
+          "bytes": 11971,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+          "sha256": "b1de358a676881b096d904f7cd1f8997fb2050b2405a61403fee3d06762b9159"
+        },
+        {
+          "bytes": 37073,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/generate_forged_iron_patterns_v1.py",
+          "sha256": "45b51c983959d01c15eef845c10c587262543244d2f0a5ba506b6cde25f996dd"
+        },
+        {
+          "bytes": 106270,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_forged_iron_v1.py",
+          "sha256": "0a8c2a6faf823a6b65f258ad3a512a24c5414f1825319ecf16bdd2405eb53f15"
+        },
+        {
+          "bytes": 12242,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_profile_tests.py",
+          "sha256": "ea8b7e42a2e9cf86f032e6aadc2f2b1b3a948573ea9827db613b0e364c9e8e78"
+        },
+        {
+          "bytes": 11728,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_generator_tests.py",
+          "sha256": "c47a4205bc705ebe1d98ee9c89f16f55c5457f017f2c984fca07d16330992888"
+        },
+        {
+          "bytes": 13072,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_blend_tests.py",
+          "sha256": "b2e0c30b2044956a479d14e074e3d0d866ce0813cd79691dc68c12ad7bdd120b"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 8379,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "21e6990b212143b4f2c245e92f4ad69859e9e315841685910312c66c21bd5061"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "13cf6259bd35b8d2e9ccbd06cca750e088f20e2cdeeeff8f331640ba8d24453c",
+        "opened_at": "2026-07-30T02:25:55.969856+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 10619,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "13cf6259bd35b8d2e9ccbd06cca750e088f20e2cdeeeff8f331640ba8d24453c"
+      },
+      "coded_demands_sha256": "13cf6259bd35b8d2e9ccbd06cca750e088f20e2cdeeeff8f331640ba8d24453c",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003"
+      ],
+      "frozen_at": "2026-07-30T02:25:55.933292+00:00",
+      "red_gate_evidence": [
+        "Revision 3 high-resolution worked-response proof exposed tidy repeated cross-stock rows caused by sharing the smaller scale tile."
+      ],
+      "revision": 4,
+      "revision_note": "Give worked finish a larger independent raw-metre coordinate and twelve irregular authored passes while retaining bounded bundle spacing.",
+      "target_baselines": [
+        {
+          "bytes": 12474,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+          "sha256": "e0cca1c1bd0e0dc5a3df62eb5468f6503099302f726a12fdff2b795d99219cd0"
+        },
+        {
+          "bytes": 12821,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+          "sha256": "973d779537bf60145042c891cffc1374da4f6a7b47030a7d080c823d7c604d12"
+        },
+        {
+          "bytes": 38185,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/generate_forged_iron_patterns_v1.py",
+          "sha256": "0b24a17423a0042d1acc19c31ad1592038ab766634f946c6b9f77b24c1dc9abc"
+        },
+        {
+          "bytes": 106727,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_forged_iron_v1.py",
+          "sha256": "f90a1863e2bbc0456b407c0236b5771198f4f6ea657a0142d0e10aa261e98ee4"
+        },
+        {
+          "bytes": 12388,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_profile_tests.py",
+          "sha256": "4d5fa801dcbb81ccc5da738f15fac76cd4aec51133b0ad80415deecbb17e07cc"
+        },
+        {
+          "bytes": 11851,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_generator_tests.py",
+          "sha256": "b794bdb1666c1be8aab3b24fca945f855e11e7cebb9fa06101bada4bd183ccb9"
+        },
+        {
+          "bytes": 13665,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_blend_tests.py",
+          "sha256": "bcbbf71aaca3a89284ecc5c2021fe310c305354f4bf1b5f9639b774e01430054"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 8735,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "a1da6a68743589a623c849ca38a08906235384d346e59434973d2f3368e19d26"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "6a3b12246e5169b7991f047cff2eeb4b19f1e85f9054f6574d1e4714bdf95008",
+        "opened_at": "2026-07-31T13:52:18.291598+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 19425,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "6a3b12246e5169b7991f047cff2eeb4b19f1e85f9054f6574d1e4714bdf95008"
+      },
+      "coded_demands_sha256": "6a3b12246e5169b7991f047cff2eeb4b19f1e85f9054f6574d1e4714bdf95008",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003",
+        "DEM-CUMULATIVE-004"
+      ],
+      "frozen_at": "2026-07-31T13:52:18.252118+00:00",
+      "red_gate_evidence": [
+        "Focused cumulative-assembly blueprint tests fail because no builder owns all five accepted donors.",
+        "The live hinge still uses generic X/Z tangent UVs and legacy hammer-derived exposure ownership."
+      ],
+      "revision": 5,
+      "revision_note": "Freeze actual-hinge cumulative intact-material proof using accepted conductor, component tangent, broad forging planes, continuous thermal oxide, and zero-exposure dual-BSDF mixer.",
+      "target_baselines": [
+        {
+          "bytes": null,
+          "exists": false,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_cumulative_intact_hinge_preview_v1.py",
+          "sha256": null
+        },
+        {
+          "bytes": 1625,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_cumulative_assembly_tests.py",
+          "sha256": "2880d08d8c4603866112d9fc08a6fcb1dfe48753824f4108a864ffb8ff313743"
+        }
+      ],
+      "tier": "hero-master",
+      "workstream": {
+        "bytes": 8807,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "3b92718f61162935b7a43449f6c31b48ba1431470ebede0db2362637b16a9be6"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "2912e5773d8f70949adeaa40b4b6997c29abaaeb259b429635e73b27c6cc3178",
+        "opened_at": "2026-07-31T13:57:52.599582+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 20764,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/CODED_DEMANDS.md",
+        "sha256": "2912e5773d8f70949adeaa40b4b6997c29abaaeb259b429635e73b27c6cc3178"
+      },
+      "coded_demands_sha256": "2912e5773d8f70949adeaa40b4b6997c29abaaeb259b429635e73b27c6cc3178",
+      "demand_ids": [
+        "DEM-MAP-001",
+        "DEM-SHADER-002",
+        "DEM-TARGET-003",
+        "DEM-CUMULATIVE-004"
+      ],
+      "frozen_at": "2026-07-31T13:57:52.567555+00:00",
+      "red_gate_evidence": [
+        "Smoke proof cropped the pointed moving-leaf tail and fixed leaf because orthographic span was incorrectly divided by image aspect.",
+        "Smoke manifest measured a false 6.253 m moving-leaf field because boundary tangent projections were reused as the optical host frame instead of the actual 3.112 m X/Z stock."
+      ],
+      "revision": 6,
+      "revision_note": "Separate tangent and optical host frames and freeze complete 4.06 m assembly framing after smoke-proof rejection.",
+      "target_baselines": [
+        {
+          "bytes": 32508,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_cumulative_intact_hinge_preview_v1.py",
+          "sha256": "3904a8b197c6b6c1391ef3f8234d9569c43ebadb7bfed9f27c11ca8dcccebda6"
+        },
+        {
+          "bytes": 1716,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/forged_iron_v1_cumulative_assembly_tests.py",
+          "sha256": "4c12bf16fd079bb71b737885426b09d4979ed2348673b7fcca8310dbafbac6da"
+        }
+      ],
+      "tier": "hero-master",
+      "workstream": {
+        "bytes": 8807,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/WORKSTREAM.md",
+        "sha256": "3b92718f61162935b7a43449f6c31b48ba1431470ebede0db2362637b16a9be6"
+      }
+    }
+  ],
+  "schema": "iggy3d.material_workflow_state.v1",
+  "updated_at": "2026-07-31T13:57:52.599689+00:00"
+}

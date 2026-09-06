@@ -128,6 +128,84 @@ bool recordExternalUi(const ExternalUiRecordHook& hook,
   return hook.record(hook.user, target);
 }
 
+bool recordCaptureAndPresent(VkCommandBuffer commandBuffer,
+                             VkImage swapchainImage,
+                             VkExtent2D extent,
+                             bool captureEnabled,
+                             VkBuffer captureBuffer,
+                             VkDeviceSize captureBufferSize) {
+  VkImageSubresourceRange colorRange{};
+  colorRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  colorRange.baseMipLevel = 0U;
+  colorRange.levelCount = 1U;
+  colorRange.baseArrayLayer = 0U;
+  colorRange.layerCount = 1U;
+  const VkDeviceSize requiredBytes =
+      static_cast<VkDeviceSize>(extent.width) * extent.height * 4ULL;
+  const bool recordCapture = captureEnabled && captureBuffer != VK_NULL_HANDLE &&
+                             captureBufferSize >= requiredBytes;
+  if (recordCapture) {
+    VkImageMemoryBarrier colorToTransfer{};
+    colorToTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    colorToTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    colorToTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    colorToTransfer.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorToTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    colorToTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    colorToTransfer.image = swapchainImage;
+    colorToTransfer.subresourceRange = colorRange;
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &colorToTransfer);
+
+    VkBufferImageCopy copyRegion{};
+    copyRegion.bufferOffset = 0U;
+    copyRegion.bufferRowLength = 0U;
+    copyRegion.bufferImageHeight = 0U;
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel = 0U;
+    copyRegion.imageSubresource.baseArrayLayer = 0U;
+    copyRegion.imageSubresource.layerCount = 1U;
+    copyRegion.imageExtent = {extent.width, extent.height, 1U};
+    vkCmdCopyImageToBuffer(commandBuffer, swapchainImage,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, captureBuffer,
+                           1U, &copyRegion);
+
+    VkImageMemoryBarrier transferToPresent{};
+    transferToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    transferToPresent.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    transferToPresent.dstAccessMask = 0;
+    transferToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    transferToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    transferToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferToPresent.image = swapchainImage;
+    transferToPresent.subresourceRange = colorRange;
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr,
+                         0, nullptr, 1, &transferToPresent);
+    return true;
+  }
+
+  VkImageMemoryBarrier colorToPresent{};
+  colorToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+  colorToPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+  colorToPresent.dstAccessMask = 0;
+  colorToPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  colorToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  colorToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  colorToPresent.image = swapchainImage;
+  colorToPresent.subresourceRange = colorRange;
+  vkCmdPipelineBarrier(commandBuffer,
+                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0,
+                       nullptr, 1, &colorToPresent);
+  return false;
+}
+
 }  // namespace command_recording_internal
 
 using command_recording_internal::recordExternalUi;

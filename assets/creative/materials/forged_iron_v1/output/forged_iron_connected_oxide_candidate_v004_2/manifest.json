@@ -1,0 +1,784 @@
+{
+  "schema": "iggy3d.forged_iron_connected_oxide_candidate.v004_2",
+  "status": "NONCANONICAL_ACTUAL_ASSET_PROOF_CANDIDATE",
+  "candidate": {
+    "id": "forged_iron_connected_oxide_candidate_v004_2",
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/forged_iron_connected_oxide_candidate_v004_2.blend",
+    "blend_sha256": "d568dad25ab7400a5e51a3ec81eaf7db01665dab4bc35dff299eff09056e7864",
+    "shared_group": "IGGY_SH_ConnectedOxideForgedIron_v004_2",
+    "material_prefix": "IGGY_MAT_ConnectedOxideForgedIron_v004_2"
+  },
+  "source_v004_1": {
+    "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/forged_iron_connected_oxide_candidate_v004_1.blend",
+    "blend_sha256_before": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+    "blend_sha256_after": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+    "manifest": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/manifest.json",
+    "manifest_sha256": "770a65899119c8fa925c82553889331e02fce8f078417d8768c5bd39d9dddaf1",
+    "shared_group": "IGGY_SH_ConnectedOxideForgedIron_v004",
+    "material_prefix": "IGGY_MAT_ConnectedOxideForgedIron_v004_1"
+  },
+  "source_v004_1_unchanged": true,
+  "build_script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/build_connected_oxide_candidate_v004_2.py",
+    "sha256": "7482c82b362ad2cad88ca6a9370ea6ff2463d6105e9b5bc79662e266a6ae8cb2"
+  },
+  "consumer": {
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ],
+    "tangent_uv": "IGGY_IronTangentUV_v001"
+  },
+  "source_group_contract": {
+    "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+    "node_count": 9,
+    "link_count": 20,
+    "interface_socket_count": 11,
+    "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+  },
+  "shared_group_contract": {
+    "name": "IGGY_SH_ConnectedOxideForgedIron_v004_2",
+    "node_count": 9,
+    "link_count": 20,
+    "interface_socket_count": 11,
+    "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+  },
+  "group_default_differences": [
+    {
+      "socket": "Worked_Luster_Disabled:1:Value",
+      "source": 0.0,
+      "candidate": 1.0
+    }
+  ],
+  "direction_response": {
+    "amount": 0.28,
+    "rotation": 0.5,
+    "rest": 1.0,
+    "source_multiplier": 0.0,
+    "candidate_multiplier": 1.0,
+    "visible_texture_pattern": false
+  },
+  "components": {
+    "SM_GH018_FixedLeaf": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_FixedLeaf",
+      "mesh_sha256": "4819b2d222b126fa6cf9efdcb23915ef4ccf0e544f4842c5c39e5ec57630bbf5",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_FixedLeaf_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+        "oxide_roughness": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+        "combined_normal": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+        "oxide_roughness": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+        "combined_normal": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "SM_GH018_MovingLeaf_Openwork": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_MovingLeaf_Openwork",
+      "mesh_sha256": "6100671cb4c77453d5a0df4d256edc57a57160de64accacb27222dbcce7f0d67",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_MovingLeaf_Openwork_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+        "oxide_roughness": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+        "combined_normal": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+        "oxide_roughness": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+        "combined_normal": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "SM_GH018_Pintle": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_Pintle",
+      "mesh_sha256": "3594905c46c43ae06cac284c1ca49061896f4caeeb34d0855ad4a1eb9471a722",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_Pintle_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+        "oxide_roughness": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+        "combined_normal": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+        "oxide_roughness": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+        "combined_normal": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "MovingKnuckle_01": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_01",
+      "mesh_sha256": "f527a16bd7df356c79ade3cff07fcdc68edff9b0a4e6f11ccef0e201551a43f0",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_01_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "FixedKnuckle_02": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_02",
+      "mesh_sha256": "f8e0f98cca09e6a988e6a7321a76245fe8f8f56305b4d8ddbe83118b8caf5c7e",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_FixedKnuckle_02_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+        "oxide_roughness": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+        "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+        "oxide_roughness": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+        "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "MovingKnuckle_03": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_03",
+      "mesh_sha256": "32b28d4e03198fece5b3b96e9e2710f55e57f8888e2a7afb87b1859d34f074dd",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_03_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "FixedKnuckle_04": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_04",
+      "mesh_sha256": "090fbc53f8d439897cff37e413b6e3eda51d8ae5b71f47ecb4e1882a3e9f3acf",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_FixedKnuckle_04_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+        "oxide_roughness": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+        "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+        "oxide_roughness": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+        "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6"
+      },
+      "frozen_lane_hashes_match_source": true
+    },
+    "MovingKnuckle_05": {
+      "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_05",
+      "mesh_sha256": "ca102cbef6c44690dab507dd657f69fec1d9f2e94314e56efec9adbf65cfb87d",
+      "uv_layers": [
+        "IGGY_IronFieldUV_v001",
+        "IGGY_IronTangentUV_v001",
+        "IGGY_IronUV"
+      ],
+      "images": {
+        "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideBase",
+        "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideRoughness",
+        "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_BroadForgingNormal",
+        "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_05_LusterControl"
+      },
+      "image_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+        "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+      },
+      "all_images_packed": true,
+      "luster_control_resolution": [
+        4,
+        4
+      ],
+      "luster_amount_range": [
+        0.28,
+        0.28
+      ],
+      "luster_rotation_range": [
+        0.5,
+        0.5
+      ],
+      "luster_rest_range": [
+        1.0,
+        1.0
+      ],
+      "source_frozen_lane_pixel_sha256": {
+        "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+        "oxide_roughness": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+        "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce"
+      },
+      "frozen_lane_hashes_match_source": true
+    }
+  },
+  "in_process_reopen": {
+    "opened_path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/forged_iron_connected_oxide_candidate_v004_2.blend",
+    "source_group": {
+      "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+      "node_count": 9,
+      "link_count": 20,
+      "interface_socket_count": 11,
+      "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+    },
+    "candidate_group": {
+      "name": "IGGY_SH_ConnectedOxideForgedIron_v004_2",
+      "node_count": 9,
+      "link_count": 20,
+      "interface_socket_count": 11,
+      "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+    },
+    "unique_material_count": 8,
+    "candidate_group_users": 8,
+    "components": {
+      "SM_GH018_FixedLeaf": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_FixedLeaf",
+        "mesh_sha256": "4819b2d222b126fa6cf9efdcb23915ef4ccf0e544f4842c5c39e5ec57630bbf5",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_FixedLeaf_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_FixedLeaf_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "oxide_roughness": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "combined_normal": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_MovingLeaf_Openwork",
+        "mesh_sha256": "6100671cb4c77453d5a0df4d256edc57a57160de64accacb27222dbcce7f0d67",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_MovingLeaf_Openwork_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_MovingLeaf_Openwork_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "oxide_roughness": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "combined_normal": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "SM_GH018_Pintle": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_Pintle",
+        "mesh_sha256": "3594905c46c43ae06cac284c1ca49061896f4caeeb34d0855ad4a1eb9471a722",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_SM_GH018_Pintle_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_SM_GH018_Pintle_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "oxide_roughness": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "combined_normal": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "MovingKnuckle_01": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_01",
+        "mesh_sha256": "f527a16bd7df356c79ade3cff07fcdc68edff9b0a4e6f11ccef0e201551a43f0",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_01_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_01_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "oxide_roughness": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "FixedKnuckle_02": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_02",
+        "mesh_sha256": "f8e0f98cca09e6a988e6a7321a76245fe8f8f56305b4d8ddbe83118b8caf5c7e",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_02_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_FixedKnuckle_02_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "oxide_roughness": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "MovingKnuckle_03": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_03",
+        "mesh_sha256": "32b28d4e03198fece5b3b96e9e2710f55e57f8888e2a7afb87b1859d34f074dd",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_03_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_03_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "oxide_roughness": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "FixedKnuckle_04": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_04",
+        "mesh_sha256": "090fbc53f8d439897cff37e413b6e3eda51d8ae5b71f47ecb4e1882a3e9f3acf",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_FixedKnuckle_04_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_FixedKnuckle_04_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "oxide_roughness": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "combined_normal": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      },
+      "MovingKnuckle_05": {
+        "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_05",
+        "mesh_sha256": "ca102cbef6c44690dab507dd657f69fec1d9f2e94314e56efec9adbf65cfb87d",
+        "uv_layers": [
+          "IGGY_IronFieldUV_v001",
+          "IGGY_IronTangentUV_v001",
+          "IGGY_IronUV"
+        ],
+        "images": {
+          "oxide_base": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideBase",
+          "oxide_roughness": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_OxideRoughness",
+          "combined_normal": "IGGY_IMG_ConnectedOxide_v004_1_MovingKnuckle_05_BroadForgingNormal",
+          "luster_control": "IGGY_IMG_ConnectedOxide_v004_2_MovingKnuckle_05_LusterControl"
+        },
+        "image_pixel_sha256": {
+          "oxide_base": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "oxide_roughness": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "combined_normal": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497"
+        },
+        "all_images_packed": true,
+        "luster_control_resolution": [
+          4,
+          4
+        ],
+        "luster_amount_range": [
+          0.28,
+          0.28
+        ],
+        "luster_rotation_range": [
+          0.5,
+          0.5
+        ],
+        "luster_rest_range": [
+          1.0,
+          1.0
+        ]
+      }
+    }
+  },
+  "separate_process_reopen": {
+    "verified": true,
+    "contract": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/reopen_contract.json",
+      "sha256": "ca7a9ac6c11418983d178487468e06f743032fff64f11c9ce3b7e83bee1eb773"
+    },
+    "verifier": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/verify_connected_oxide_candidate_v004_2.py",
+      "sha256": "588ad41a4264dc10622b13b455100841f367892ee4f80abe83b267690054d9e2"
+    }
+  },
+  "locked_absences": [
+    "new_base_colour",
+    "new_roughness",
+    "new_normal",
+    "height",
+    "oxide_height",
+    "exposed_conductor",
+    "rust",
+    "damage",
+    "scratches",
+    "dents",
+    "contact_polish",
+    "soot",
+    "dirt",
+    "blood",
+    "visible_brushing_pattern",
+    "grooves",
+    "cat_face_motifs",
+    "diamond_stamps",
+    "baked_light_direction"
+  ],
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "manual_acceptance_established": false,
+  "unreal_parity_verified": false,
+  "promotion_boundary": "v004.2 requires a separate-process reopen and paired v004.1 proof; it cannot become an accepted material or donor in this build step."
+}

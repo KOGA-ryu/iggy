@@ -1,0 +1,63 @@
+roof_key	church	county	roof_type	desc_leaf	span_ft_in	truss_spacing_ft_in	member	dim_a	dim_b	status	note
+st_martins_leicester	St Martin's Church, Leicester	Leicestershire	tie-beam (no principals)	82	23 0	12 6	Tie-beam	1 ft 8 in	1 ft 2 in	VERIFIED	Carries the entire roof; ridge and purlins bear on it via short templates (3 ft 6 in / 2 ft 6 in).
+st_martins_leicester	St Martin's Church, Leicester	Leicestershire	tie-beam (no principals)	82	23 0	12 6	Cornice	10 in	8 in	VERIFIED	Framed into the tie-beam; does not touch the wall.
+st_martins_leicester	St Martin's Church, Leicester	Leicestershire	tie-beam (no principals)	82	23 0	12 6	Purlin	10 in	10 in	VERIFIED
+st_martins_leicester	St Martin's Church, Leicester	Leicestershire	tie-beam (no principals)	82	23 0	12 6	Ridge	10 in	9 in	VERIFIED
+st_martins_leicester	St Martin's Church, Leicester	Leicestershire	tie-beam (no principals)	82	23 0	12 6	Common Rafter	6.5 in	4.5 in	VERIFIED
+holy_trinity_cirencester	Chapel of the Holy Trinity, Cirencester	Gloucestershire	tie-beam	90	18 0	11 0	Tie-beam	2 ft 8 in	11 in	VERIFIED	Deepest tie-beam in the set. Supersedes the cycle-5 OCR-PARTIAL rows, which were Leicester values showing through and are now DELETED.
+holy_trinity_cirencester	Chapel of the Holy Trinity, Cirencester	Gloucestershire	tie-beam	90	18 0	11 0	Cornice	1 ft 9 in	11 in	VERIFIED
+holy_trinity_cirencester	Chapel of the Holy Trinity, Cirencester	Gloucestershire	tie-beam	90	18 0	11 0	Intermediate Principal	8 in thick		VERIFIED	Single-dimension entry (thickness only) as printed.
+holy_trinity_cirencester	Chapel of the Holy Trinity, Cirencester	Gloucestershire	tie-beam	90	18 0	11 0	Braces	3 in thick		VERIFIED	Single-dimension entry as printed.
+st_andrews_nave	St Andrew's Church	(unstated)	(hammer-beam context)	94	about 21 0		(no scantling table)			VERIFIED	Description gives only nave width, ~21 ft. Cites "Roof over the Nave of St Stephen's Church, Plates 32 and 33" — the anchor confirming plate N -> leaf 2N+61.
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Principal Rafters	10 in	8 in	VERIFIED	A moulded three-inch plank is tenoned into the hammer-beams; openwork tracery inserted between it and the lowest purlin.
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Common Rafters	6 in	3 in	VERIFIED
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Hammer-beam	10 in	8 in	VERIFIED	Same section as principal rafters and collar-beam — one stock size serves three members.
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Collar-beam	10 in	8 in	VERIFIED
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Purlins	6 in	5 in	VERIFIED
+capel_st_mary_nave	Capel St Mary	Suffolk	hammer-beam	104	18 3	6 0	Ridge-piece	6 in	6 in	VERIFIED
+trunch_nave	Trunch Church	Norfolk	hammer-beam	110	19 0	5 6	Principal Rafters	10 in	9 in	VERIFIED	Worstead Church has a very similar design but a wider nave with hammer-beams projecting less in proportion, which the authors call grander.
+trunch_nave	Trunch Church	Norfolk	hammer-beam	110	19 0	5 6	Common Rafters	6 in	4 in	VERIFIED
+trunch_nave	Trunch Church	Norfolk	hammer-beam	110	19 0	5 6	Hammer-beam	10 in	10 in	VERIFIED
+trunch_nave	Trunch Church	Norfolk	hammer-beam	110	19 0	5 6	Purlin	8 in	5 in	VERIFIED
+trunch_nave	Trunch Church	Norfolk	hammer-beam	110	19 0	5 6	Ridge-piece	10 in	10 in	VERIFIED
+palgrave_nave	Palgrave Church	Suffolk	hammer-beam	118	20 4	5 9	Principal Rafters	1 ft 1 in	10 in	VERIFIED
+palgrave_nave	Palgrave Church	Suffolk	hammer-beam	118	20 4	5 9	Common Rafters	6 in	4 in	VERIFIED
+palgrave_nave	Palgrave Church	Suffolk	hammer-beam	118	20 4	5 9	Hammer-beam	1 ft 1 in	10 in	VERIFIED	Same section as the principal rafters.
+palgrave_nave	Palgrave Church	Suffolk	hammer-beam	118	20 4	5 9	Cornice	1 ft 7 in	7 in	VERIFIED
+palgrave_nave	Palgrave Church	Suffolk	hammer-beam	118	20 4	5 9	Wall-piece	10 in	7 in	VERIFIED
+brinton_nave	Brinton Church	Norfolk	trussed-rafter / principals	128	17 0	12 0	Principal Rafters	10.5 in	9 in	VERIFIED	RIDGE ANGLE STATED: "the angle formed by the rafters at the ridge is of 100 degrees" = a 40-degree pitch. Only explicit pitch in the set so far.
+brinton_nave	Brinton Church	Norfolk	trussed-rafter / principals	128	17 0	12 0	Common Rafters	6 in	4 in	VERIFIED
+brinton_nave	Brinton Church	Norfolk	trussed-rafter / principals	128	17 0	12 0	Purlin	7 in	6 in	VERIFIED
+brinton_nave	Brinton Church	Norfolk	trussed-rafter / principals	128	17 0	12 0	Ridge-piece	9 in	7 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Principal Rafters	10 in	8 in	VERIFIED	Truss-spacing line is printed "7 by 10" in the ft/in columns; read as 7 ft 10 in by analogy with the other spacing rows.
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Common Rafter	7 in	3 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Hammer-beam	10 in	8 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Collar-beam	1 ft 2 in	8 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Wall-piece	11 in	8 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Purlin	7.5 in	5.5 in	VERIFIED
+fressingfield_nave	Fressingfield Church	Suffolk	hammer-beam	146	19 8	7 10	Depth of Cornice	3 in	3.5 in	VERIFIED
+heckington_s_porch	Heckington Church (south porch)	Lincolnshire	common-rafter (no trusses)	50	10 9	1 2	Rafters	5.5 in	4.5 in	VERIFIED	Rafters at 1 ft 2 in centres — no trusses at all. A cornice plate projecting from the wall receives struts and wall-beams by tenon and is called 'of considerable importance in keeping all the trusses in their proper positions' = the longitudinal alignment member. Boarded longitudinally, covered with lead.
+heckington_s_porch	Heckington Church (south porch)	Lincolnshire	common-rafter (no trusses)	50	10 9	1 2	Central Plate	4 in	2.5 in	VERIFIED	Rafters at 1 ft 2 in centres — no trusses at all. A cornice plate projecting from the wall receives struts and wall-beams by tenon and is called 'of considerable importance in keeping all the trusses in their proper positions' = the longitudinal alignment member. Boarded longitudinally, covered with lead.
+starston_nave	Starston Church	Norfolk	principals	140	21 10		Principal Rafters	10 in	9 in	VERIFIED	No truss spacing printed for this roof.
+starston_nave	Starston Church	Norfolk	principals	140	21 10		Common Rafters	6 in	4 in	VERIFIED	No truss spacing printed for this roof.
+starston_nave	Starston Church	Norfolk	principals	140	21 10		Wall-piece	10 in	7.5 in	VERIFIED	No truss spacing printed for this roof.
+starston_nave	Starston Church	Norfolk	principals	140	21 10		Purlin	6.5 in	5.5 in	VERIFIED	No truss spacing printed for this roof.
+starston_nave	Starston Church	Norfolk	principals	140	21 10		Cornice	11 in	10 in	VERIFIED	No truss spacing printed for this roof.
+bacton_nave	Bacton Church	Suffolk	hammer-beam	158	19 4	6 4.5	Hammer-beams	10.5 in	9 in	VERIFIED	Spacing 6 ft 4.5 in sits inside the hammer-beam band, confirming the cycle-6 rule. Cites Brandon's 'Parish Churches'. Cornice depth printed in the ft/in columns as 3 0.
+bacton_nave	Bacton Church	Suffolk	hammer-beam	158	19 4	6 4.5	Principal Rafters	9.5 in	9 in	VERIFIED	Spacing 6 ft 4.5 in sits inside the hammer-beam band, confirming the cycle-6 rule. Cites Brandon's 'Parish Churches'. Cornice depth printed in the ft/in columns as 3 0.
+bacton_nave	Bacton Church	Suffolk	hammer-beam	158	19 4	6 4.5	Common Rafters	6 in	3 in	VERIFIED	Spacing 6 ft 4.5 in sits inside the hammer-beam band, confirming the cycle-6 rule. Cites Brandon's 'Parish Churches'. Cornice depth printed in the ft/in columns as 3 0.
+bacton_nave	Bacton Church	Suffolk	hammer-beam	158	19 4	6 4.5	Purlin	8.5 in	6.5 in	VERIFIED	Spacing 6 ft 4.5 in sits inside the hammer-beam band, confirming the cycle-6 rule. Cites Brandon's 'Parish Churches'. Cornice depth printed in the ft/in columns as 3 0.
+bacton_nave	Bacton Church	Suffolk	hammer-beam	158	19 4	6 4.5	Depth of Cornice	3 ft 0 in		VERIFIED	Spacing 6 ft 4.5 in sits inside the hammer-beam band, confirming the cycle-6 rule. Cites Brandon's 'Parish Churches'. Cornice depth printed in the ft/in columns as 3 0.
+north_aisle_l186	(north aisle roof, leaf 186)	(unstated)	curved-brace truss	186	11 0.5	14 0	Principal Rafters	11 in	10.5 in	VERIFIED	KEY CASE: narrowest span in the set (11 ft) but the WIDEST truss spacing (14 ft) — so spacing does NOT scale with span. Stout principals (11x10.5) and the deepest common rafters in the set (8x4) span the wide bay. Cites Brandon's own 'Analysis of Gothick Architecture', Section I Decorated, plate 33.
+north_aisle_l186	(north aisle roof, leaf 186)	(unstated)	curved-brace truss	186	11 0.5	14 0	Common Rafters	8 in	4 in	VERIFIED	KEY CASE: narrowest span in the set (11 ft) but the WIDEST truss spacing (14 ft) — so spacing does NOT scale with span. Stout principals (11x10.5) and the deepest common rafters in the set (8x4) span the wide bay. Cites Brandon's own 'Analysis of Gothick Architecture', Section I Decorated, plate 33.
+north_aisle_l186	(north aisle roof, leaf 186)	(unstated)	curved-brace truss	186	11 0.5	14 0	Curved Braces	7.5 in	6.75 in	VERIFIED	KEY CASE: narrowest span in the set (11 ft) but the WIDEST truss spacing (14 ft) — so spacing does NOT scale with span. Stout principals (11x10.5) and the deepest common rafters in the set (8x4) span the wide bay. Cites Brandon's own 'Analysis of Gothick Architecture', Section I Decorated, plate 33.
+north_aisle_l186	(north aisle roof, leaf 186)	(unstated)	curved-brace truss	186	11 0.5	14 0	Purlin	11 in	10 in	VERIFIED	KEY CASE: narrowest span in the set (11 ft) but the WIDEST truss spacing (14 ft) — so spacing does NOT scale with span. Stout principals (11x10.5) and the deepest common rafters in the set (8x4) span the wide bay. Cites Brandon's own 'Analysis of Gothick Architecture', Section I Decorated, plate 33.
+aldenham_nave	Aldenham Church	Hertfordshire	(coloured roof)	170			(no scantling table)			VERIFIED	POLYCHROMY: coloured roofs use 'a spiral band of black on a white ground', described as INVARIABLE in all coloured work; Aldenham's nave roof 'richly coloured' throughout. Lead: Blackburn's work on 'Decorative Painting' has a coloured illustration.
+bramford_s_aisle	Bramford Church (south aisle)	Suffolk	truss roof over aisle	178	11 5	13 9	Principal Rafters	11.5 in	10 in	VERIFIED	Second aisle case: narrow span, very wide truss spacing. Description notes carved figures of angels 'the heads of which have been sawn off' — iconoclast damage, useful for a weathering/defacement pass.
+bramford_s_aisle	Bramford Church (south aisle)	Suffolk	truss roof over aisle	178	11 5	13 9	Common Rafters	7 in	3 in	VERIFIED	Second aisle case: narrow span, very wide truss spacing. Description notes carved figures of angels 'the heads of which have been sawn off' — iconoclast damage, useful for a weathering/defacement pass.
+bramford_s_aisle	Bramford Church (south aisle)	Suffolk	truss roof over aisle	178	11 5	13 9	Wall-piece	11.5 in	8.5 in	VERIFIED	Second aisle case: narrow span, very wide truss spacing. Description notes carved figures of angels 'the heads of which have been sawn off' — iconoclast damage, useful for a weathering/defacement pass.
+bramford_s_aisle	Bramford Church (south aisle)	Suffolk	truss roof over aisle	178	11 5	13 9	Purlin	11.5 in	7 in	VERIFIED	Second aisle case: narrow span, very wide truss spacing. Description notes carved figures of angels 'the heads of which have been sawn off' — iconoclast damage, useful for a weathering/defacement pass.
+s_aisle_l182	(south aisle roof, leaf 182)	(unstated)	truss roof over aisle	182	11 10.5	9 7	Principal Rafters	12 in	10.5 in	VERIFIED	Third aisle case. Same page notes the chancel is nearly 20 ft wide. Spacing row printed 'centre to centre of principal Truss'.
+s_aisle_l182	(south aisle roof, leaf 182)	(unstated)	truss roof over aisle	182	11 10.5	9 7	Common Rafters	6 in	4.5 in	VERIFIED	Third aisle case. Same page notes the chancel is nearly 20 ft wide. Spacing row printed 'centre to centre of principal Truss'.
+s_aisle_l182	(south aisle roof, leaf 182)	(unstated)	truss roof over aisle	182	11 10.5	9 7	Purlin	8 in	6 in	VERIFIED	Third aisle case. Same page notes the chancel is nearly 20 ft wide. Spacing row printed 'centre to centre of principal Truss'.
+s_aisle_l182	(south aisle roof, leaf 182)	(unstated)	truss roof over aisle	182	11 10.5	9 7	Wall-piece	7.5 in	5.5 in	VERIFIED	Third aisle case. Same page notes the chancel is nearly 20 ft wide. Spacing row printed 'centre to centre of principal Truss'.

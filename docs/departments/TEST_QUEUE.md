@@ -8,6 +8,7 @@ These checks require a person to judge the visible or interactive result. Automa
 | --- | --- | --- | --- | --- | --- |
 | [AST-MAN-001](assets-objects/TESTING.md) | Assets and Object Composition | AST-002 | Find, preview, place, transform, duplicate, replace, delete, undo, and reload a catalog asset | `./build/i3dc --desktop-ui` | Not yet |
 | [BLD-MAN-001](building-layout/TESTING.md) | Building and World Layout | BLD-001 | Stage a two-storey building and inspect scale, slabs, walls, rooms, openings, stairs, and roof in plan and 3D | `./build/i3dc --desktop-ui` | Not yet |
+| [FM-MAN-001](playtest-simulation/TESTING.md) | Playtest and Simulation | FM-001 | Complete untimed Hunt with keyboard and pointer, review an error, finish, and restart at ordinary and enlarged text sizes | `./build/first_move` | Not yet |
 | [FND-MAN-001](foundation-build/TESTING.md) | Foundation and Build | FND-001 | Open the department index and confirm current work, manual test demand, and file ownership are understandable without repository archaeology | Read documentation | Not yet |
 | [INT-MAN-001](interaction-controls/TESTING.md) | Interaction and Controls | INT-001 | Navigate and edit with MacBook touchpad, keyboard, and PS5 controller without capture loss or conflicting actions | `./build/i3dc` | Not yet |
 | [PER-MAN-001](persistence-validation/TESTING.md) | Persistence and Validation | PER-001 | Save and reopen one map containing a building, edited terrain, imported assets, transforms, and gameplay markers | `./build/i3dc --desktop-ui` | Not yet |

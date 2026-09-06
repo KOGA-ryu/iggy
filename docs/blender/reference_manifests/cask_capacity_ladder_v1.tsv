@@ -1,0 +1,7 @@
+vessel	gallons_imperial	litres	int_bilge_mm	int_height_mm	int_head_mm	ext_bilge_mm	ext_height_mm	tier	method
+Firkin	9	40.9	344	482	296	388	526	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm
+Kilderkin	18	81.8	434	607	373	478	651	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm
+Barrel	36	163.7	546	765	470	590	809	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm
+Hogshead	54	245.5	625	875	538	669	919	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm
+Butt / pipe	108	491.0	788	1103	678	832	1147	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm
+Tun	216	982.0	993	1390	854	1037	1434	standards-derived	Kepler barrel rule, h=1.40D, d=0.86D, stave 22mm

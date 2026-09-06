@@ -15,6 +15,28 @@ function(iggy3d_add_unit_test test_name source_file)
   set_tests_properties("${test_name}" PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endfunction()
 
+iggy3d_add_unit_test(first_move_hunt_tests
+  tests/unit/first_move_hunt_tests.cpp)
+set_tests_properties(first_move_hunt_tests PROPERTIES
+  LABELS "unit;app;playtest;first_move;iggy3d")
+
+iggy3d_add_unit_test(first_move_layered_question_tests
+  tests/unit/first_move_layered_question_tests.cpp)
+set_tests_properties(first_move_layered_question_tests PROPERTIES
+  LABELS "unit;app;playtest;first_move;iggy3d")
+
+add_executable(first_move_input_tests
+  tests/unit/first_move_input_tests.cpp)
+target_link_libraries(first_move_input_tests PRIVATE first_move_ui)
+target_include_directories(first_move_input_tests SYSTEM PRIVATE
+  "${IGGY3D_IMGUI_ROOT}")
+iggy3d_apply_warnings(first_move_input_tests)
+add_test(NAME first_move_input_tests
+  COMMAND "$<TARGET_FILE:first_move_input_tests>")
+set_tests_properties(first_move_input_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;input;first_move;iggy3d")
+
 iggy3d_add_unit_test(math_tests tests/unit/math_tests.cpp)
 set_tests_properties(math_tests PROPERTIES LABELS "unit;core;iggy3d")
 
@@ -1610,6 +1632,28 @@ if(IGGY3D_SHADER_COMPILER_AVAILABLE)
     ENVIRONMENT "SDL_VIDEODRIVER=offscreen"
     LABELS "smoke;app;creative;capture;iggy3d")
 endif()
+
+add_test(NAME first_move_capture_smoke
+  COMMAND "$<TARGET_FILE:first_move>" --offscreen --frames 4
+          --capture "${CMAKE_CURRENT_BINARY_DIR}/first_move_smoke.png"
+          --report "${CMAKE_CURRENT_BINARY_DIR}/first_move_smoke.json")
+set_tests_properties(first_move_capture_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;capture;first_move;iggy3d")
+
+set(first_move_guided_smoke_script
+  "${CMAKE_CURRENT_BINARY_DIR}/first_move_guided_capture.script")
+file(GENERATE OUTPUT "${first_move_guided_smoke_script}" CONTENT
+  "guided_open\nguided_select 1\nguided_check\n")
+add_test(NAME first_move_guided_capture_smoke
+  COMMAND "$<TARGET_FILE:first_move>" --offscreen
+          --start-mode guided --resolution 1024x768 --text-scale 1.5
+          --script "${first_move_guided_smoke_script}"
+          --capture "${CMAKE_CURRENT_BINARY_DIR}/first_move_guided_smoke.png"
+          --report "${CMAKE_CURRENT_BINARY_DIR}/first_move_guided_smoke.json")
+set_tests_properties(first_move_guided_capture_smoke PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "smoke;app;playtest;capture;guided;first_move;iggy3d")
 
 add_executable(playtest_lifecycle_tests
   tests/unit/playtest_lifecycle_tests.cpp)

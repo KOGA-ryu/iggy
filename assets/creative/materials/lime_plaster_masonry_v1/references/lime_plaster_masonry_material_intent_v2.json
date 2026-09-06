@@ -1,0 +1,135 @@
+{
+  "schema": "iggy3d.material_intent.lime_plaster_masonry.v2",
+  "source": {
+    "kind": "written_conservation_and_authored_material_contract",
+    "uses_ai_generated_reference": false,
+    "uses_sampled_reference_pixels": false,
+    "research_dossier": "LIME_PLASTER_MASONRY_RESEARCH_V2.md"
+  },
+  "construction_measurements_m": {
+    "scratch_coat": 0.009525,
+    "brown_coat": 0.009525,
+    "finish_coat": 0.003175,
+    "complete_three_coat_build": 0.022225,
+    "finish_aggregate_maximum": 0.001,
+    "authored_bed_joint": 0.05,
+    "authored_perpend_joint": 0.038
+  },
+  "materials": {
+    "plaster": {
+      "shade_anchors_rgb": [
+        [104, 101, 91],
+        [132, 128, 114],
+        [163, 157, 139],
+        [195, 188, 168],
+        [229, 223, 205]
+      ]
+    },
+    "finish_coat": {
+      "shade_anchors_rgb": [
+        [116, 113, 103],
+        [145, 141, 127],
+        [176, 170, 151],
+        [207, 200, 180],
+        [236, 231, 215]
+      ]
+    },
+    "brown_coat": {
+      "shade_anchors_rgb": [
+        [82, 70, 54],
+        [109, 92, 68],
+        [139, 119, 88],
+        [170, 149, 113],
+        [202, 184, 151]
+      ]
+    },
+    "scratch_coat": {
+      "shade_anchors_rgb": [
+        [67, 58, 47],
+        [91, 77, 58],
+        [121, 101, 73],
+        [153, 132, 98],
+        [187, 169, 135]
+      ]
+    },
+    "mortar": {
+      "shade_anchors_rgb": [
+        [57, 58, 54],
+        [78, 78, 70],
+        [102, 99, 87],
+        [128, 122, 104],
+        [159, 151, 130]
+      ]
+    },
+    "stone": {
+      "common_field": {
+        "shade_anchors_rgb": [
+          [50, 50, 48],
+          [68, 68, 64],
+          [87, 87, 81],
+          [108, 108, 99],
+          [132, 132, 120]
+        ]
+      },
+      "families": {
+        "cool_limestone": {
+          "shade_anchors_rgb": [
+            [52, 57, 58],
+            [68, 74, 74],
+            [87, 93, 91],
+            [108, 114, 109],
+            [133, 138, 131]
+          ]
+        },
+        "warm_limestone": {
+          "shade_anchors_rgb": [
+            [55, 51, 45],
+            [73, 67, 57],
+            [94, 85, 70],
+            [118, 106, 87],
+            [144, 130, 108]
+          ]
+        },
+        "grey_green": {
+          "shade_anchors_rgb": [
+            [49, 55, 52],
+            [66, 74, 68],
+            [85, 93, 84],
+            [106, 114, 101],
+            [131, 137, 119]
+          ]
+        },
+        "umber_vein": {
+          "shade_anchors_rgb": [
+            [51, 45, 41],
+            [68, 58, 51],
+            [89, 74, 62],
+            [112, 93, 77],
+            [137, 118, 98]
+          ]
+        },
+        "pale_chalk": {
+          "shade_anchors_rgb": [
+            [69, 68, 63],
+            [89, 87, 80],
+            [110, 107, 97],
+            [134, 130, 117],
+            [158, 152, 137]
+          ]
+        }
+      }
+    }
+  },
+  "style_intent": {
+    "line_color_rgb": [45, 44, 42],
+    "maximum_stone_line_coverage": 0.22,
+    "maximum_plaster_line_coverage": 0.12,
+    "quiet_surface_is_primary": true,
+    "large_medium_small_order": true
+  },
+  "production_translation": {
+    "raw_pixels_used_as_runtime_texture": false,
+    "third_party_pixels_stored": false,
+    "legacy_ai_experiments_are_build_inputs": false
+  }
+}

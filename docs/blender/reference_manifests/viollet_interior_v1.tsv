@@ -1,0 +1,35 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+hall_manor	manor, printed vertical budget (COLUMN A: mezzanine side)	entresolled storey height	2.30	m	measured	Manoir	L'étage entrésolé 2 m ,30 | 5 m ,20 — printed as a summing table
+hall_manor	manor, printed vertical budget (COLUMN A)	floor construction thickness	0.30	m	measured	Manoir	Épaisseur du plancher 30
+hall_manor	manor, printed vertical budget (COLUMN A)	entresol height	2.30	m	measured	Manoir	L'entresol 2 m ,30
+hall_manor	manor, printed vertical budget (COLUMN A)	second floor construction thickness	0.30	m	measured	Manoir	Épaisseur du plancher 30
+hall_manor	manor, printed vertical budget (COLUMN A)	COLUMN A TOTAL (2.30+0.30+2.30+0.30)	5.20	m	measured	Manoir	5 m ,20 — the printed total for the mezzanine side
+hall_manor	manor, printed vertical budget (COLUMN B: hall side)	grande salle floor-to-ceiling	4.30	m	measured	Manoir	La grande salle R avait entre le plancher et le plafond 4 m ,30 de hauteur
+hall_manor	manor, printed vertical budget (COLUMN B)	beams and corbels depth	0.60	m	measured	Manoir	Poutres et corbeaux 60
+hall_manor	manor, printed vertical budget (COLUMN B)	joisting depth	0.30	m	measured	Manoir	Solivages 30
+hall_manor	manor, printed vertical budget (COLUMN B)	COLUMN B TOTAL (4.30+0.60+0.30)	5.20	m	measured	Manoir	5 m ,20 — the printed total for the hall side. THE TWO COLUMNS ARE EQUAL: a single-height great hall and a two-level entresolled block level out at the same chemin-de-ronde datum.
+hall_manor	manor ground floor	ground floor, sol to plafond, maximum	2.65	m	measured	Manoir	Ce rez-de-chaussée du sol au plafond n'a pas plus de 2 m , 65
+monastic	cloister arcade	bahut (dwarf wall) height above the gallery pavement	0.45	m	measured	Cloître	Les piles portent sur un bahut épais élevé de 0,45 c. au-dessus du pavé des galeries, et forment ainsi un banc continu A
+monastic	cloister arcade	cul-de-lampe height above the pilaster heads	0.60	m	measured	Cloître	les culs-de-lampe A , portant les sommiers des arcs doubleaux du côté du mur, sont placés à 0,60 c. au-dessus des têtes des pilastres
+monastic	cloister arcade, later raising	bahut raised above the original gutter level	2.00	m	measured	Cloître	le bahut L , avec banc pour s'asseoir et trous percés de distance en distance ... fut monté à 2 m ,00 au-dessus du niveau du premier égout
+monastic	cloister ground gallery	pier face width	0.50	m	measured	Cloître	une suite de grosses piles de 0,50 c. de face sur 1 m , 50 d'épaisseur, réunies par des archivoltes
+monastic	cloister ground gallery	pier thickness	1.50	m	measured	Cloître	sur 1 m , 50 d'épaisseur
+monastic	cloister upper wall	rose-pierced wall thickness (a screen, not a load wall)	0.35	m	measured	Cloître	le mur percé de roses qui surmonte, l'arcature est très-mince, 0,35 c., et n'est réellement qu'une cloison évidée
+monastic	cloister colonnette	marble colonnette diameter	0.11	m	measured	Cloître	Les colonnettes et bases sont en marbre, n'ont que 0,11 c. de diamètre
+monastic	cloister colonnette (CONSTRUCTION REFINEMENT)	deliberate outward lean of the outer colonnette	0.02 to 0.03	m	measured	Cloître	la colonnette C sera posée verticale, tandis que la colonnette D sera posée inclinée de 0,02 c. ou 0,03 c., de G en H
+monastic	cloister colonnette	base centres set wider than capital astragal centres	0.01 to 0.03	m	measured	Cloître	les centres des bases, en plan, sont presque toujours plus écartés que les centres des astragales des chapiteaux de 0,01 c., 0,02 c. ou même 0,03 c.
+hall_manor	fireplace, primitive type	mantel (manteau) thickness	0.20	m	measured	Cheminée	son manteau se compose de deux sommiers engagés dans le mur, portant sur les deux pieds-droits, et d'une clef ; il n'a que 0,20 c. d'épaisseur environ
+hall_manor	great fireplace, fuel	log length thrown into a great fireplace	2 to 3	m	measured	Cheminée	on jetait des troncs d'arbres de deux ou trois mètres de long
+hall_manor	Poitiers grand'salle fireplace (XIIIc)	fireplace width	10.00	m	measured	Cheminée	elle n'a pas moins de 10 m ,00 de largeur sur 2 m ,30 sous le manteau (sept pieds)
+hall_manor	Poitiers grand'salle fireplace	clear height under the mantel	2.30	m	measured	Cheminée	sur 2 m ,30 sous le manteau (sept pieds)
+hall_manor	Poitiers grand'salle	hall width in-works	16.30	m	measured	Cheminée	cette belle salle dont la largeur, dans œuvre, est de 16 m ,30
+hall_manor	hôtel fireplace (sculpted frieze)	clear height under the mantel	1.66	m	measured	Cheminée	Cette cheminée porte 1 m ,66 sous le manteau sur 2 m ,57 de largeur
+hall_manor	hôtel fireplace	fireplace width	2.57	m	measured	Cheminée	sur 2 m ,57 de largeur
+timber_frame	floor framing, narrow rooms	span below which simple joisting on a wall corbel suffices	2 to 3	m	author-rule	Plafond	si entre les murs il n'existait qu'un espace de deux ou trois mètres, on se contentait d'un simple solivage
+timber_frame	boarded floor	board thickness	1.5 pouces (0.034 m)	m	measured	Plafond	Des planches d'un pouce et demi étaient posées en long sur les solives et maintenues par les languettes T
+timber_frame	XVc carved ceiling	room length it covers	15	m	measured	Plafond	Il recouvre une salle de 15 mètres de longueur sur 6 m ,50 de largeur, et se divise en cinq travées séparées par six poutres
+timber_frame	XVc carved ceiling	room width it covers	6.50	m	measured	Plafond	sur 6 m ,50 de largeur
+timber_frame	XVc carved ceiling	bays / beams	5 bays, 6 beams	count	measured	Plafond	se divise en cinq travées séparées par six poutres
+timber_frame	brick-vaulted floor	voutain brick thickness	0.03	m	measured	Plafond	Ces briques ont 3 centimètres d'épaisseur sur 10 centimètres de côté
+timber_frame	brick-vaulted floor	voutain brick side	0.10	m	measured	Plafond	sur 10 centimètres de côté
+timber_frame	brick-vaulted floor	joist section, SET DIAGONALLY for stiffness	0.32	m	measured	Plafond	Les solives ont 32 centimètres de côté (un pied) et placées sur la diagonale, elles offrent une grande roideur

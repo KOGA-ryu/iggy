@@ -1,0 +1,55 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+castle	motte-and-bailey enclosure	bailey parallelogram length	150	m	measured	Château	un fossé C ferme le quatrième côté du parallélogramme, qui a 150 mètres de long sur 90 mètres à 110 mètres environ
+castle	motte-and-bailey enclosure	bailey width range	90 to 110	m	measured	Château	sur 90 mètres à 110 mètres environ
+castle	motte-and-bailey enclosure	motte diameter	27	m	measured	Château	s’élève une motte D de 27 mètres de diamètre
+castle	motte-and-bailey enclosure	motte ditch width	10 to 15	m	measured	Château	dont le fossé varie en largeur de 10 à 15 mètres
+castle	motte-and-bailey enclosure	vallum height	2	m	measured	Château	s’élève un vallum haut de deux mètres environ et large de 10 mètres
+castle	motte-and-bailey enclosure	vallum width	10	m	measured	Château	et large de 10 mètres
+castle	covered way (crête)	width of the covered way outside the defences	2	m	measured	Château	une crête A , sorte de chemin couvert de deux mètres de largeur
+castle	gate defence	gate threshold above the ditch counterscarp	2	m	measured	Château	En K s’ouvre la porte du château ; son seuil est élevé de plus de deux mètres au-dessus de la contrescarpe du fossé L
+castle	late elliptical enceinte	segment chord	3	m	measured	Château	c’est une suite de segments de cercle de trois mètres de corde environ, séparés par des portions de courtine d’un mètre seulement
+castle	late elliptical enceinte	curtain portion between segments	1	m	measured	Château	séparés par des portions de courtine d’un mètre seulement
+keep_donjon	Coucy	donjon external diameter	31	m	measured	Château	le donjon qui porte trente-un mètres de diamètre hors œuvre sur soixante-quatre mètres depuis le fond du fossé jusqu’au couronnement
+keep_donjon	Coucy	donjon height, ditch bottom to crown	64	m	measured	Château	sur soixante-quatre mètres depuis le fond du fossé jusqu’au couronnement   [CONFLICT: a FOOTNOTE IN THIS SAME ARTICLE says 'sa hauteur de soixante-cinq environ' = 65 m; the Donjon article says 55 m]
+keep_donjon	Coucy	donjon height per this article's own footnote	65	m	measured	Château	son diamètre étant de trente-un mètres et sa hauteur de soixante-cinq environ
+keep_donjon	Coucy	projectile drop from the donjon's upper defences	60	m	measured	Château	battu par les défenses supérieures du donjon qui lui envoyaient des projectiles d’une hauteur de 60 mètres
+castle	Coucy	plateau escarpment above the valley	50	m	measured	Château	le château de Coucy domine des escarpements assez roides qui s’élèvent de cinquante mètres environ
+castle	Coucy	ditch separating château from bailey	20	m	measured	Château	Un fossé de vingt mètres de largeur sépare le château de la basse-cour
+tower	Coucy flanking towers	tower external diameter	18	m	measured	Château	Ces tours, qui n’ont pas moins de dix-huit mètres de diamètre hors œuvre sur trente-cinq mètres de hauteur
+tower	Coucy flanking towers	tower height above external ground	35	m	measured	Château	sur trente-cinq mètres de hauteur environ au-dessus du sol extérieur
+keep_donjon	Louvre donjon	donjon diameter	20	m	measured	Château	le donjon du Louvre n’avait que vingt mètres de diamètre environ sur trente mètres de haut   [RESOLVES the flagged 30-vs-40 m conflict: this article states 30 m]
+keep_donjon	Louvre donjon	donjon height	30	m	measured	Château	sur trente mètres de haut
+castle	Louvre outer defence	outwork distance from the entrance	50	m	measured	Château	une première défense, assez basse, flanquée de tours, avait été bâtie à cinquante mètres environ de l’entrée du Louvre
+castle	XIIIc rectangular castle (Gironde)	enceinte in-works length	47.50	m	measured	Château	flanquant à chaque angle un parallélogramme de 47 m ,50 sur 39 m ,00 dans œuvre
+castle	XIIIc rectangular castle (Gironde)	enceinte in-works width	39.00	m	measured	Château	sur 39 m ,00 dans œuvre
+castle	courtyard	internal courtyard size	25.00 x 30.00	m	measured	Château	de manière à laisser une cour de 25 m ,00 sur 30 m ,00 environ
+curtain_rampart	XIIIc castle curtain	curtain thickness	2.70	m	measured	Château	elles commandaient de beaucoup les courtines, dont l’épaisseur est de 2 m ,70
+keep_donjon	gate-guarding donjon tower	wall thickness, no ground-floor openings	4.60	m	measured	Château	la grosse tour I du donjon dont les murs, d’une épaisseur considérable (4 m ,60), ne sont, à rez-de-chaussée, percés d’aucune ouverture
+defensive_misc	postern with drawbridge	sill above the external wall base	8	m	measured	Château	le seuil de cette poterne est placé à huit mètres au-dessus de la base extérieure de la muraille
+undercroft	Pierrefonds	cellar depth below the vaulted storey	7	m	documented-reconstruction	Château	au-dessous de cet étage une cave d’une profondeur de 7 mètres, voûtée en calotte elliptique   [PIERREFONDS = VIOLLET'S OWN RESTORATION SITE]
+defensive_misc	Pierrefonds	well depth (partly filled)	8	m	documented-reconstruction	Château	un puits, qui nous a paru avoir huit mètres de profondeur, bien qu’en partie comblé
+defensive_misc	Pierrefonds	well opening diameter, matching the vault oculus	1.60	m	documented-reconstruction	Château	puits dont l’ouverture de 1 m ,60 de diamètre correspond à l’œil pratiqué au centre de la voûte elliptique
+castle	lices	lices floor below the inner courtyard	8	m	measured	Château	au niveau du sol des lices, qui se trouve à huit mètres en contrebas du sol de la cour intérieure
+curtain_rampart	machicolation corbel	simple corbel thickness range	0.30 to 0.40	m	measured	Château	de simples corbeaux de 0,30 c. à 0,40 c. d’épaisseur
+castle	Château-Gaillard rock-cut ditch	ditch width	10	m	measured	Château	le fossé est creusé dans le roc, à fond de cuve ; il a dix mètres de large environ sur sept à huit mètres de profondeur
+castle	Château-Gaillard rock-cut ditch	ditch depth	7 to 8	m	measured	Château	sur sept à huit mètres de profondeur
+castle	Château-Gaillard counterscarp	ledge between counterscarp crest and tower base	0.60	m	measured	Château	Une saillie de soixante centimètres environ qui existe entre le sommet de la contrescarpe et la base de la tour
+castle	La Roche-Guyon	promontory height above the Seine	100	m	measured	Château	Sur un promontoire élevé de plus de cent mètres au-dessus du niveau de la Seine
+church_chapel	octagonal crossing tower (Vosges sandstone)	tower width over-works	10.00	m	measured	Clocher	Ce clocher, qui porte 10 m ,00 de largeur hors œuvre, surmonte une coupole octogone
+church_chapel	octagonal crossing tower	octagon wall thickness	0.80	m	measured	Clocher	de donner aux murs de l’octogone une épaisseur assez faible (0,80 c.)
+church_chapel	stone spire	spire shell thickness above the gables	0.25	m	measured	Clocher	à partir de ce point, celle-ci n’a pas plus de 0,25 c. d’épaisseur
+church_chapel	Saint-Georges de Bocherville clocher	tower width over-works	11.00	m	measured	Clocher	dont la largeur hors œuvre est de 11 m ,00, ne possède qu’un étage supérieur destiné aux cloches, ayant 4 m ,00 de hauteur
+church_chapel	Saint-Georges de Bocherville clocher	belfry stage height	4.00	m	measured	Clocher	ayant 4 m ,00 de hauteur
+church_chapel	Saint-Georges de Bocherville clocher	timber spire height	27.00	m	measured	Clocher	s’élève une flèche en charpente ayant 27 m ,00 de hauteur, passant du carré à l’octogone au moyen de coyaux sur les diagonales
+church_chapel	Carolingian tower base	square plan side range	5 to 8	m	measured	Clocher	n’occupent guère qu’une superficie en carré, de cinq à huit mètres de côté
+church_chapel	Carolingian tower base (Poissy type)	base side over-works, excluding buttress projection	6	m	measured	Clocher	Cette base, non compris la saillie des contreforts, n’a que six mètres hors œuvre en carré
+church_chapel	tall romanesque clocher	total height, base to spire tip	80.00	m	measured	Clocher	sa hauteur, qui est considérable (environ 80 m , 00 de la base au sommet de la flèche)
+church_chapel	tall romanesque clocher	wall thickness at base	0.50	m	measured	Clocher	ne porte, dans cette énorme hauteur, que 0,50 c. d’épaisseur à sa base et 0,30 c. à son sommet
+church_chapel	tall romanesque clocher	wall thickness at summit	0.30	m	measured	Clocher	et 0,30 c. à son sommet
+church_chapel	Chartres, clocher vieux	total height, base to foot of the iron cross	103.50	m	measured	Clocher	dont la hauteur est de 103 m , 50 de la base au pied de la croix en fer qui couronne la flèche
+church_chapel	Chartres, clocher vieux	spire base, in-works across	10.20	m	measured	Clocher	le dans-œuvre de la souche de la flèche n’a pas moins de 10 m ,20 d’un parement à l’autre
+church_chapel	Saint-Jean d'Auxerre clocher	total height, base to spire tip	49.00	m	measured	Clocher	De la base au sommet de la flèche, ce clocher porte 49 m ,00, soit cent cinquante pieds
+church_chapel	clocher interior	ground vault height above the church pavement	24.75	m	measured	Clocher	Du dessus de cette voûte, élevée de 24 m ,75 au-dessus du pavé de l’église, la construction est d’une seule venue, sans voûtes ni planchers
+church_chapel	clocher stage setback (PARAMETRIC)	internal setback per stage	0.08	m	measured	Clocher	Chaque étage se retraite de 0,08 c. à l’intérieur
+church_chapel	Mollèges clocher (smallest recorded)	base over-works	2.06	m	measured	Clocher	Le clocher de Mollèges n’a pas plus de 2 m ,06 à sa base hors œuvre
+church_chapel	Brantôme clocher	cliff relief above the nave pavement	12	m	measured	Clocher	les constructeurs ont profité d’une falaise escarpée présentant un relief de douze mètres environ au-dessus du pavé de la nef

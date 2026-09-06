@@ -1,0 +1,216 @@
+{
+  "schema": "iggy-rope-plant-fibre-build/1.0",
+  "profile_id": "rope_plant_fibre_v1",
+  "pattern_id": "three_strand_regular_lay_v1",
+  "bundle_pattern_id": "rope_bundle_tracks_champion_v2",
+  "fibre_pattern_id": "rope_fibre_tracks_champion_v2",
+  "variation_count": 4,
+  "atlas_layout": {
+    "columns": 1,
+    "rows": 4,
+    "tile_resolution": [
+      1536,
+      384
+    ]
+  },
+  "coordinate_contract": {
+    "space": "curve_local",
+    "unit": "metre",
+    "longitudinal_attribute": "sinc_rope_u_m",
+    "circumference_attribute": "sinc_rope_v_turn",
+    "diameter_attribute": "sinc_rope_diameter_m",
+    "variant_attribute": "sinc_seed",
+    "compression_attribute": "sinc_rope_compression_mask",
+    "wetness_attribute": "sinc_rope_wetness_mask",
+    "fray_attribute": "sinc_rope_fray_mask",
+    "rule": "U advances in metres along the evaluated curve before deformation; V makes one normalized turn around the circumference. Object length changes may not stretch the lay or yarn pitch."
+  },
+  "constraints": {
+    "uses_ai_generated_imagery": false,
+    "generates_geometry": false,
+    "uses_damage": false,
+    "uses_baked_directional_light": false
+  },
+  "presets": {
+    "fine_lashing": {
+      "diameter_m": 0.012,
+      "lay_length_m": 0.034,
+      "circumference_m": 0.03769911184307752,
+      "height_encoding_m": {
+        "minimum": -0.00030311907175928354,
+        "maximum": 0.00022716903185937554,
+        "neutral": 0.5716120533174597
+      },
+      "outputs": {
+        "base_color": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_basecolor.png",
+          "sha256": "c1374062e16759a170b2157d057cdedfcad01b2bc673fe80eceb1cffa0df909a"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_normal.png",
+          "sha256": "df6cd261d55a80714b80314a60ad781e5f5ad74e7823cc3586480fae70ded6be"
+        },
+        "height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_height.png",
+          "sha256": "e27673d4021b532b4ac653493b97867c469e3dd38ef7590c751860364ba40ac1"
+        },
+        "orm": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_orm.png",
+          "sha256": "79166369cd23ae3c557fa18fedc63826417d39df3ad1cfe04fefffcb010f924f"
+        },
+        "identity_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_identity_masks.png",
+          "sha256": "291db68ff6360a5dc83fb40adc2f01e8590e077f4dd59896df55308ccdcc2940"
+        },
+        "strand_identities": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_strand_identities.png",
+          "sha256": "37bfc2cc25b5b1a6ab196aa674f3253c6dc887efbd1775023517498298ffe766"
+        },
+        "fibre_detail_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_fibre_detail_masks.png",
+          "sha256": "b17e73bf6082593ec957b54f54a58499819b78bdb9b1ebbdc096c2f27ac75177"
+        },
+        "response_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_response_masks.png",
+          "sha256": "5331532feb65952c565111a38ad3405e3eec85c1a9bdd25b826611f77bd77746"
+        },
+        "bundle_event_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_bundle_event_masks.png",
+          "sha256": "c27d06c7932ee693f69fd0122949b83fdaff361a14d5b646b626b0f27d2aaf2e"
+        },
+        "stylization": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_stylization.png",
+          "sha256": "821d76efe63248b84ff3d3a15685486205472087e4807e0b4dd3908b2fb2e921"
+        },
+        "proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_proof.png",
+          "sha256": "c9a6b67a29ae9d4cde44439a75d2b007289c508bcbee0f56e8d473d8d85ccd61"
+        },
+        "cylinder_proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_fine_lashing_cylinder_proof.png",
+          "sha256": "91319773b74b22f74a0001342b3b3e30c2b7a6d2a205239901248cbb6d7bde87"
+        }
+      }
+    },
+    "utility_line": {
+      "diameter_m": 0.032,
+      "lay_length_m": 0.09,
+      "circumference_m": 0.10053096491487339,
+      "height_encoding_m": {
+        "minimum": -0.0008204943151213229,
+        "maximum": 0.0006331295589916408,
+        "neutral": 0.5644474679682929
+      },
+      "outputs": {
+        "base_color": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_basecolor.png",
+          "sha256": "5a8b68ee02a1ff4d62a37e499059fdf961418f8ab3c275b625ea167b1eddccd8"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_normal.png",
+          "sha256": "a2b4c65b5ddeac9a5ce71aadfc3b09f6d5c9d301985eb2ce04737830827cbdc1"
+        },
+        "height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_height.png",
+          "sha256": "1633f0c65535ec801375107637b8ddea53bfea1b27c5fce06cb9f60b3aa0b0e1"
+        },
+        "orm": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_orm.png",
+          "sha256": "7d9de2704614e064be26d1ed0848ba37a4fc4081e34ee5483a4060df8f6694fb"
+        },
+        "identity_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_identity_masks.png",
+          "sha256": "aac91cdbb4ae56e7cf3b52ee6e82550c6593aa176fb7bf18e53b1f73956e2959"
+        },
+        "strand_identities": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_strand_identities.png",
+          "sha256": "37bfc2cc25b5b1a6ab196aa674f3253c6dc887efbd1775023517498298ffe766"
+        },
+        "fibre_detail_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_fibre_detail_masks.png",
+          "sha256": "bf9bba5b805214bf93e03ac422d426126e95495785cf97b15d08a59936e923d0"
+        },
+        "response_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_response_masks.png",
+          "sha256": "dd1d5fd26aab7b01bf1c172f28fa12c6fef7f3642d9280935001a46f460a8372"
+        },
+        "bundle_event_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_bundle_event_masks.png",
+          "sha256": "7daa8a3654f71ca7ac4f7e3dd40fbd603704903128fd1ede89e0abbb6b22d1cd"
+        },
+        "stylization": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_stylization.png",
+          "sha256": "101c6b9d6c8bc663c154fe0d95eee80e51be5008d538aa01ae0bc9a91eff141b"
+        },
+        "proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_proof.png",
+          "sha256": "e40ee8784dcdc8d83211dc3649af8b6a2e5fc39b552a3cd3c0fc76e7a699048e"
+        },
+        "cylinder_proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_utility_line_cylinder_proof.png",
+          "sha256": "6577f6f2ebdca79c522f8104a5687d5954cd3d8bfcffbe52b0918de604215a13"
+        }
+      }
+    },
+    "heavy_hawser": {
+      "diameter_m": 0.07,
+      "lay_length_m": 0.196,
+      "circumference_m": 0.21991148575128555,
+      "height_encoding_m": {
+        "minimum": -0.001806684653274715,
+        "maximum": 0.0013462069910019636,
+        "neutral": 0.573024657080848
+      },
+      "outputs": {
+        "base_color": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_basecolor.png",
+          "sha256": "f2edc9c34a00f250b4d2e280b85f163852730c58f4f5bda0f4e828e9416257ea"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_normal.png",
+          "sha256": "e24a4dd3fb1ce529cbec729e9f5d2efaad7d82d33b156c304dc51fa105b88c03"
+        },
+        "height": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_height.png",
+          "sha256": "e3e43dea809436aaa127c0d726bba0d7f556f3538d1acfa99999090a8aa6ddfc"
+        },
+        "orm": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_orm.png",
+          "sha256": "9b242c900d3a880305ef684eae8743eae9d103ad1b35af4099c39716f129b2ee"
+        },
+        "identity_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_identity_masks.png",
+          "sha256": "e07348ebe9118032e6d5aae718e60d09775ef1b305673a968409a8c253b63831"
+        },
+        "strand_identities": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_strand_identities.png",
+          "sha256": "37bfc2cc25b5b1a6ab196aa674f3253c6dc887efbd1775023517498298ffe766"
+        },
+        "fibre_detail_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_fibre_detail_masks.png",
+          "sha256": "3af40951c7185ece471a5e54133fe23e92d886094d811443ff49b9bad2d4787d"
+        },
+        "response_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_response_masks.png",
+          "sha256": "f7e0bc76040098eae8c5ec9e80c2d57598a94491c31e1509ae88ecbfda4398f2"
+        },
+        "bundle_event_masks": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_bundle_event_masks.png",
+          "sha256": "8ad2e4278592eed8bf0123fe1653cdf3841b172c26cfb4c995cab94a231d680a"
+        },
+        "stylization": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_stylization.png",
+          "sha256": "1cad56c9f160b987410231da042a3746fdf0c66f8898106bd2d506e12dc02fa5"
+        },
+        "proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_proof.png",
+          "sha256": "ac15172c434a542006689e91ba8ed8d451b9baffb4b27bd3b317921fa48db121"
+        },
+        "cylinder_proof": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/rope_plant_fibre_v1/output/rope_plant_fibre_v1_heavy_hawser_cylinder_proof.png",
+          "sha256": "37c75c8ce83fcd177d111195ef679d640c717a3a4e04a0db3e453da466dc18ea"
+        }
+      }
+    }
+  }
+}

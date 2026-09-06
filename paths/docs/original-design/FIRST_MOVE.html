@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>First Move — a math arcade design</title>
+<style>
+:root{--bg:#101a17;--panel:#17241e;--panel2:#1c2c23;--line:#334439;--ink:#f3f0df;--muted:#a5b3a5;--mint:#c3ed9b;--gold:#efc77e;--soft:#dfaaa0;--math:#fcf7e9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,a,input{font:inherit}button{cursor:pointer}a{color:var(--mint);text-underline-offset:4px}button:disabled{cursor:default;opacity:.45}button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--mint);outline-offset:4px}[hidden]{display:none!important}
+.notice{padding:8px 25px;border-bottom:1px solid var(--line);color:var(--muted);font-size:11px;letter-spacing:.035em;display:flex;gap:20px;justify-content:space-between}.notice b{color:var(--ink);font-weight:500}.wrap{max-width:1390px;margin:auto;padding:27px 35px 50px}.mast{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:28px}.logo{display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--ink);font-weight:700;font-size:15px;letter-spacing:.14em}.sigil{width:25px;height:25px;border:1px solid var(--mint);transform:rotate(45deg);display:grid;place-items:center}.sigil:after{content:"";width:9px;height:9px;background:var(--mint)}.working{font-weight:400;font-size:9px;letter-spacing:.09em;color:var(--muted);margin-left:8px}nav{display:flex;gap:5px;flex-wrap:wrap}nav button{background:none;color:var(--muted);border:0;border-radius:5px;padding:9px 13px;font-size:12px}nav button.active{background:var(--panel2);color:var(--mint)}nav button:hover{color:var(--ink)}
+h1{font:normal clamp(32px,3.5vw,47px)/1.12 Georgia,serif;letter-spacing:-.035em;margin:0 0 11px}h2{font:normal 27px/1.25 Georgia,serif;letter-spacing:-.02em;margin:0 0 12px}h3{font-size:14px;margin:0 0 12px;font-weight:600}p{margin:0 0 15px}.lede{color:var(--muted);max-width:740px;font-size:14px}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:10px;color:var(--muted)}.heading{display:flex;justify-content:space-between;gap:22px;align-items:end;margin:10px 0 23px}.heading .lede{margin-bottom:0}.mode-tag{padding:5px 10px;border:1px solid #547349;color:var(--mint);border-radius:4px;font-size:11px;white-space:nowrap}.layout{display:grid;grid-template-columns:minmax(0,1fr) 278px;gap:22px;align-items:start}.card{padding:22px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}.card+.card{margin-top:17px}.small{font-size:12px;color:var(--muted)}.muted{color:var(--muted)}.btn{border:1px solid #52654f;background:transparent;color:var(--ink);border-radius:5px;padding:10px 15px;font-size:12px;text-decoration:none;display:inline-block;line-height:1.5}.btn:hover:not(:disabled){background:#243b2a}.btn.primary{background:var(--mint);border-color:var(--mint);color:#17251a;font-weight:600}.btn.primary:hover:not(:disabled){background:#daf6bc}.btn.gold{border-color:#78694b;color:var(--gold)}.btn.slim{padding:6px 10px;font-size:11px}.actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.text-button{border:0;background:none;padding:0;color:var(--muted);font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.rule{padding:22px 25px;border:1px solid #53614a;border-radius:8px 8px 0 0;background:#243323}.rule h2{font-size:25px;margin:5px 0 7px}.rule p{margin:0;color:#c4ceb7;font-size:12px}.scorebar{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-top:0;background:var(--panel);padding:15px 0}.stat{padding:0 20px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat strong{font:24px/1.15 Georgia,serif;display:block;color:var(--ink);margin:5px 0 1px}.stat .eyebrow{font-size:9px}.stat span{font-size:10px;color:var(--muted)}.arena{border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;background:linear-gradient(180deg,#101914,#15231b);padding:16px}.skyline{display:flex;gap:12px;align-items:center;margin:0 0 12px;color:#939f86;font-size:9px;letter-spacing:.11em;text-transform:uppercase}.skyline:after{content:"";height:1px;flex:1;background:repeating-linear-gradient(to right,#5a6347 0 6px,transparent 6px 11px)}.board{display:flex;flex-direction:column;gap:9px}.empty-row{height:77px;border:1px dashed #273a2c;border-radius:5px;background:#13201855;display:grid;place-items:center;color:#56654e;font:10px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.06em}.empty-row span{opacity:.7}.game-row{display:grid;grid-template-columns:26px minmax(0,1fr) 64px;gap:9px;align-items:stretch;min-height:77px;border-left:2px solid transparent;padding-left:5px}.row-id{font:10px/1.3 ui-monospace,SFMono-Regular,monospace;color:var(--muted);display:flex;align-items:center}.cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.tile{border:1px solid #405143;background:#213327;border-radius:5px;color:var(--math);min-height:77px;padding:10px 5px 17px;position:relative;transition:background .12s,border-color .12s,transform .12s}.tile .formula{font:19px/1.3 Georgia,"Times New Roman",serif;display:block}.tile .formula sup{font-size:.62em}.tile .indicator{position:absolute;bottom:4px;left:0;right:0;font-size:9px;line-height:1;letter-spacing:.05em;color:#b9cbaa}.tile:hover:not(:disabled){border-color:#a6c793;background:#2c4130}.tile.marked{background:#40583a;border-color:var(--mint)}.tile.marked .indicator{color:var(--mint)}.tile:disabled{opacity:1}.game-row.ready{border-left-color:var(--gold)}.ready .tile{background:#373827;border-color:#766b43}.ready .tile .indicator{color:var(--gold)}.game-row.error{border-left-color:#d2a788}.error .tile{background:#362c24;border-color:#705342}.error .tile .indicator{color:#d7b09b}.row-action{display:flex;align-items:center;justify-content:center}.seal{padding:7px 5px;width:64px;background:#253a2a;border:1px solid #586c4c;border-radius:5px;color:var(--mint);font-size:11px}.seal:hover{background:#355039}.seal.review{color:var(--gold);border-color:#756449;background:#372f23}.ready-label{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);text-align:center}.bar-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap}.board-status{font-size:12px;color:var(--muted);min-height:19px;margin:14px 0 0}.board-status.highlight{color:var(--mint)}.tally{display:flex;gap:4px;margin:12px 0}.tally span{height:6px;flex:1;background:#2f4132;border-radius:2px}.tally span.full{background:var(--mint)}.tally span.danger{background:var(--gold)}.preview-stack{display:grid;gap:9px;margin-top:13px}.incoming{padding:13px 14px;border:1px solid #3b4b3e;background:#1e2e23;border-radius:5px;display:flex;justify-content:space-between;align-items:center;font-size:12px}.incoming small{font-size:10px;color:var(--muted)}.steps{list-style:none;margin:0;padding:0;counter-reset:s}.steps li{position:relative;padding-left:27px;margin:13px 0;color:var(--muted);font-size:12px;counter-increment:s}.steps li:before{content:counter(s);position:absolute;left:0;font:14px/1.3 Georgia,serif;color:var(--mint)}.steps b{font-weight:500;color:var(--ink)}.score-key{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin:8px 0;color:var(--muted)}.score-key b{font-weight:500;color:var(--gold)}.note{padding:13px 15px;border-left:2px solid #6c8157;background:#243222;color:#bdcbb0;font-size:12px;margin:18px 0 0}.callout{padding:20px;background:#243424;border:1px solid #506743;border-radius:6px;font-size:14px}.ended{background:#403525;border-color:#927747;color:var(--gold);margin-bottom:20px}.view[hidden]{display:none}
+.influences{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:28px 0}.influences .card{margin:0;min-height:285px}.influences h2{margin-top:20px}.influence-num{font:38px/1 Georgia,serif;color:#69875b}.influences p{font-size:13px;color:var(--muted)}.influences .take{margin-top:24px;color:var(--mint);font-size:13px}.flow-line{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:24px 10px;font-size:13px;color:var(--mint);flex-wrap:wrap}.flow-line span.arrow{color:#6c795f}.lab-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:23px;margin-top:28px}.scenario-list{display:grid;gap:8px;align-content:start}.scenario{border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);padding:17px;text-align:left;font-size:13px}.scenario b{display:block;font-weight:500;margin-bottom:5px;color:var(--ink)}.scenario small{font-size:11px}.scenario.active{border-color:#849868;background:#253522}.scenario.active b{color:var(--mint)}.scenario-prompt{font:21px/1.7 Georgia,serif;margin:25px 0}.choices{display:grid;gap:10px}.choice{background:#1f3025;border:1px solid #405542;border-radius:5px;color:var(--ink);padding:13px 16px;text-align:left;font-size:14px}.choice:hover:not(:disabled){border-color:var(--mint)}.choice.correct{border-color:var(--mint);color:var(--mint)}.choice.incorrect{border-color:#b38e6f;color:var(--gold)}.choice:disabled{opacity:1}.lab-feedback{font-size:13px;padding:18px;border-left:2px solid var(--gold);background:#303222;color:#d5dabd;margin:21px 0 0}.chapter-list{display:grid;gap:12px;margin-top:27px}.chapter{padding:20px 23px;display:grid;grid-template-columns:50px 230px minmax(0,1fr);gap:17px;border:1px solid var(--line);background:var(--panel);border-radius:6px;align-items:start}.chapter .n{font:23px/1.2 Georgia,serif;color:var(--mint)}.chapter h3{margin:0;font-size:14px}.chapter p{margin:0;font-size:13px;color:var(--muted)}footer{display:flex;justify-content:space-between;gap:25px;flex-wrap:wrap;margin-top:32px;padding-top:20px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+dialog{background:#19291f;color:var(--ink);border:1px solid #637656;border-radius:9px;max-width:720px;width:calc(100vw - 35px);max-height:85vh;padding:28px}dialog::backdrop{background:#080f0be8}.review-item{padding:17px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:190px minmax(0,1fr);gap:21px}.review-formula{font:20px/1.5 Georgia,serif}.review-item p{font-size:13px;margin:0}.review-item small{display:block;font-size:11px;color:var(--muted);margin:7px 0}.dialog-head{display:flex;justify-content:space-between;gap:20px;align-items:start}.dialog-head .btn{padding:5px 9px}.review-footer{margin-top:21px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}.review-footer .small{margin:0}
+@media(prefers-reduced-motion:no-preference){.clear-burst{animation:burst .45s ease-out}@keyframes burst{0%{box-shadow:inset 0 0 65px #c3ed9b55}100%{box-shadow:inset 0 0 0 #c3ed9b00}}.tile:active:not(:disabled){transform:scale(.97)}}
+@media(max-width:1100px){.wrap{padding:22px}.layout{grid-template-columns:minmax(0,1fr)}.sidebar{display:grid;grid-template-columns:1fr 1fr;gap:17px}.sidebar .card+.card{margin-top:0}.sidebar .card:last-child{grid-column:1/-1}.empty-row,.tile{min-height:75px}.empty-row{height:75px}.lab-layout{grid-template-columns:240px minmax(0,1fr)}.chapter{grid-template-columns:40px 190px minmax(0,1fr)}}
+@media(max-width:720px){.notice{padding:8px 15px;font-size:10px;display:block}.notice a{display:none}.wrap{padding:21px 15px 35px}.mast{display:block;margin-bottom:20px}.logo{margin-bottom:20px}.working{font-size:8px}nav{margin-left:-8px}nav button{padding:8px 10px;font-size:11px}.heading{display:block}.heading .mode-tag{display:inline-block;margin-top:15px}h1{font-size:36px}.rule{padding:19px}.rule h2{font-size:23px}.stat{padding:0 10px}.stat strong{font-size:22px}.stat .eyebrow{font-size:8px}.stat span{font-size:9px}.arena{padding:11px}.game-row{grid-template-columns:17px minmax(0,1fr) 49px;gap:5px;padding-left:0}.cells{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.tile{min-height:66px;padding:8px 4px 15px}.tile .formula{font-size:18px}.row-id{font-size:9px}.seal{width:49px;font-size:10px;padding:8px 3px}.empty-row{height:38px;min-height:38px}.ready-label{font-size:8px}.sidebar,.influences,.lab-layout{grid-template-columns:1fr}.influences .card{min-height:0}.influences{margin-top:20px}.scenario-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.scenario{padding:11px;font-size:11px}.scenario small{font-size:10px}.chapter{grid-template-columns:35px minmax(0,1fr);gap:13px}.chapter p{grid-column:2}.flow-line{justify-content:flex-start}.review-item{grid-template-columns:1fr;gap:5px}.review-formula{font-size:21px}.card{padding:20px}}
+</style>
+</head>
+<body>
+<div class="notice"><span><b>INTERACTIVE DESIGN SKETCH</b> · Original examples · Untimed · Session only · No saved learning scores</span><a href="../app-plan/WALKTHROUGH.html">Back to the study workspace</a></div>
+<div class="wrap">
+<header class="mast"><a class="logo" href="#play"><span class="sigil" aria-hidden="true"></span>FIRST MOVE<span class="working">WORKING TITLE</span></a><nav aria-label="Game design"><button type="button" class="active" data-view="play" aria-current="page">Play the sketch</button><button type="button" data-view="lab">The Lab</button><button type="button" data-view="influence">The influences</button><button type="button" data-view="build">Construction</button></nav></header>
+<section class="view" id="play" aria-labelledby="play-title">
+  <div class="heading"><div><h1 id="play-title">Read it. Mark it. Clear it.</h1><p class="lede">Prepare a row, then decide: make space now, or bank another for a bigger clear.</p></div><span class="mode-tag">Hunt · manual arrivals</span></div>
+  <div id="end-banner" class="callout ended" hidden aria-live="polite"></div>
+  <div class="layout">
+    <div>
+      <div class="rule"><span class="eyebrow">The rule for this wave</span><h2>Select equations linear in <i>a</i> and <i>b</i>.</h2><p><i>x</i> is a known real number. Mark every equation that fits; leave the others unmarked.</p></div>
+      <div class="scorebar"><div class="stat"><span class="eyebrow">Arcade points</span><strong id="score">0</strong><span>this sketch only</span></div><div class="stat"><span class="eyebrow">Ready rows</span><strong id="ready">0</strong><span>banked for a clear</span></div><div class="stat"><span class="eyebrow">First commits</span><strong id="accuracy">—</strong><span>whole rows correct</span></div><div class="stat"><span class="eyebrow">Help</span><strong id="assistance">0</strong><span>rows explained</span></div></div>
+      <div class="arena" id="arena"><div class="skyline">Capacity · 6 rows</div><div class="board" id="board" aria-label="Equation rows"></div>
+        <div class="bar-actions"><div class="actions"><button type="button" class="btn primary" id="clear" disabled>Clear ready rows</button><button type="button" class="btn" id="arrive">Add incoming row</button></div><button type="button" class="text-button" id="restart">Restart sketch</button></div>
+        <p class="board-status" id="status" aria-live="polite">Click to mark a cell. Commit checks both marked and unmarked cells.</p>
+      </div>
+    </div>
+    <div class="sidebar">
+      <article class="card"><div style="display:flex;justify-content:space-between;gap:10px"><span class="eyebrow">Incoming</span><span class="small" id="remaining">5 rows left</span></div><div class="preview-stack" id="queue"></div><div class="tally" id="capacity" aria-hidden="true"></div><p class="small" id="space-note"></p><p class="small" style="margin:15px 0 0">Arrivals are manual in this sketch. In Cascade, a chosen pace would bring each next row onto the board.</p></article>
+      <article class="card"><h3>Three moves to learn</h3><ol class="steps"><li><b>Mark</b> every equation that fits the stated rule.</li><li><b>Commit</b> a row. A correct classification makes it ready.</li><li><b>Clear</b> ready rows now, or keep them while preparing another.</li></ol><p class="small">Tab, Space, and Enter also operate the buttons. Full directional cursor controls belong to the game construction.</p></article>
+      <article class="card"><h3>Make room. Make a chain.</h3><div class="score-key"><span>One row</span><b>100</b></div><div class="score-key"><span>Two together</span><b>240</b></div><div class="score-key"><span>Three together</span><b>420</b></div><p class="small" style="margin:12px 0 0">Additional rows add 100 each. Opening a review records help; releasing that row earns no points.</p><div class="actions" style="margin-top:15px"><button type="button" class="btn slim" id="sound" aria-pressed="false">Sound off</button><a class="btn slim" href="FIRST_MOVE_GAME_DESIGN.md">Full rules</a></div></article>
+    </div>
+  </div>
+</section>
+<section class="view" id="lab" aria-labelledby="lab-title" hidden>
+  <div class="heading"><div><span class="eyebrow">Focused practice</span><h1 id="lab-title" style="margin-top:10px">Train the distinction.</h1><p class="lede">The Lab isolates one skill at a time. These three sample questions illustrate the task types; they are not a benchmark.</p></div><span class="mode-tag">Three original examples</span></div>
+  <div class="lab-layout">
+    <div class="scenario-list"><button type="button" class="scenario active" data-scenario="0" aria-pressed="true"><b>Find the unknown</b><small>Read the role of each symbol.</small></button><button type="button" class="scenario" data-scenario="1" aria-pressed="false"><b>Dimension check</b><small>Check whether an operation fits.</small></button><button type="button" class="scenario" data-scenario="2" aria-pressed="false"><b>Next implication</b><small>Recognize the valid reason.</small></button></div>
+    <article class="card" id="scenario-panel"><span class="eyebrow" id="scenario-kind">Recognition · supplied choices</span><div class="scenario-prompt" id="scenario-prompt"></div><div class="choices" id="scenario-choices"></div><div class="lab-feedback" id="lab-feedback" hidden aria-live="polite"></div><p class="small" style="margin:22px 0 0">A later production task asks you to write a setup without answer choices. These are recorded as different activities.</p></article>
+  </div>
+  <div class="callout" style="margin-top:25px"><b>What the finished Lab would remember:</b> the task and its version, initial accuracy, response times on correct answers, omissions, prior exposure, help, and input method. Arcade points remain a separate result.</div>
+</section>
+<section class="view" id="influence" aria-labelledby="influence-title" hidden>
+  <div class="heading"><div><span class="eyebrow">Three influences. One useful rhythm.</span><h1 id="influence-title" style="margin-top:10px">The pieces fit here.</h1><p class="lede">Each influence contributes a different part of the experience.</p></div></div>
+  <div class="influences"><article class="card"><div class="influence-num">01</div><h2>Number Munchers</h2><p>A rule, a field of objects, and a satisfying action when you recognize what belongs.</p><p class="take">Our contribution: precise mathematical classification.</p><a class="small" href="https://files.eric.ed.gov/fulltext/ED312159.pdf">Contemporary software guide</a></article><article class="card"><div class="influence-num">02</div><h2>Aimlabs</h2><p>Short scenarios, specific skills, repeatable conditions, and feedback that helps choose the next practice.</p><p class="take">Our contribution: the Lab and personal comparisons.</p><a class="small" href="https://www.aimlabs.com/articles/aimlabs/how-to-develop-your-own-aim-training-regimen/">Aimlabs regimen guide</a></article><article class="card"><div class="influence-num">03</div><h2>Tetris</h2><p>Incoming work, limited space, planning ahead, and the release of clearing several rows.</p><p class="take">Our contribution: bank, clear, and recover.</p><a class="small" href="https://play.tetris.com/about">Official Tetris overview</a></article></div>
+  <div class="callout"><h2>The mathematics changes the board.</h2><p style="margin-bottom:0">Recognizing the structure earns room and makes a planned clear possible. A larger run score still needs a later, independent math question before we can infer transfer.</p></div>
+  <div class="flow-line"><span>Read the rule</span><span class="arrow">→</span><span>Scan and mark</span><span class="arrow">→</span><span>Commit</span><span class="arrow">→</span><span>Bank or clear</span><span class="arrow">→</span><span>Next arrival</span></div>
+  <p class="small"><a href="INFLUENCES.md">Read the influence study and research limits</a></p>
+</section>
+<section class="view" id="build" aria-labelledby="build-title" hidden>
+  <div class="heading"><div><span class="eyebrow">An optional construction branch</span><h1 id="build-title" style="margin-top:10px">Grow it from a good move.</h1><p class="lede">The game can reuse the app's reading and attempt foundations after Chapter 03. Its first mechanic can be explored now.</p></div><span class="mode-tag">Proposed · not accepted chapters</span></div>
+  <div class="chapter-list">
+    <article class="chapter"><span class="n">G00</span><h3>Rules on a small board</h3><p>One reviewed pack. Try marking, committing, banking, clearing, and recovering without a timer.</p></article>
+    <article class="chapter"><span class="n">G01</span><h3>A responsive Hunt board</h3><p>Readability, original visuals, keyboard and pointer controls, state, and a finite board.</p></article>
+    <article class="chapter"><span class="n">G02</span><h3>Clears and recovery</h3><p>Ready rows, combined clears, preserved first responses, explanations, and honest scoring.</p></article>
+    <article class="chapter"><span class="n">G03</span><h3>A Cascade wave</h3><p>Incoming rows, preview, chosen pace, pause, capacity, and a finish. The main arcade loop.</p></article>
+    <article class="chapter"><span class="n">G04</span><h3>The Lab</h3><p>Defined scenarios and comparable personal records, with recognition and production kept separate.</p></article>
+    <article class="chapter"><span class="n">G05</span><h3>Corpus packs</h3><p>Reviewed source-derived challenges, error review, and a fresh question back at the study desk.</p></article>
+    <article class="chapter"><span class="n">G06</span><h3>Playtest and transfer</h3><p>Tune the feel. Check mathematical correctness. Observe later independent work separately.</p></article>
+  </div>
+  <div class="actions" style="margin-top:25px"><a class="btn primary" href="CONSTRUCTION.md">Read the construction extension</a><a class="btn" href="../app-plan/CONSTRUCTION_CHAPTERS.md">Main application chapters</a></div>
+</section>
+<footer><span>First Move · an original math arcade proposal · September 2026</span><span><a href="FIRST_MOVE_GAME_DESIGN.md">Game design</a> · <a href="INFLUENCES.md">Influences</a> · <a href="../app-plan/WALKTHROUGH.html">Study workspace</a></span></footer>
+</div>
+<dialog id="review-dialog" aria-labelledby="review-title"><div class="dialog-head"><div><span class="eyebrow">Study the distinction</span><h2 id="review-title" style="margin-top:8px">Why these equations fit.</h2></div><button type="button" class="btn" id="close-review" aria-label="Close explanation">Close</button></div><p class="small">This row's original response is preserved for this session. Opening this explanation records help.</p><div id="review-content"></div><div class="review-footer"><button type="button" class="btn primary" id="release">Release reviewed row</button><p class="small">Recovers space · no points</p></div></dialog>
+<script>
+'use strict';
+const pack = [
+ [
+  ['2<i>a</i> + <i>b</i> = 7','2a + b = 7',true,'The coefficients of a and b are 2 and 1.'],
+  ['<i>a</i><sup>2</sup> + <i>b</i> = 7','a squared + b = 7',false,'The unknown a is squared. This is not a linear equation in a and b.'],
+  ['<i>a</i> − 3<i>b</i> = 2','a − 3b = 2',true,'The coefficients are 1 and −3.'],
+  ['<i>ab</i> = 4','a times b = 4',false,'Two unknowns multiply each other.']
+ ],
+ [
+  ['<i>ax</i><sup>2</sup> + <i>b</i> = 1','a x squared + b = 1',true,'x is known, so x squared is a known coefficient of a.'],
+  ['sin <i>a</i> + <i>b</i> = 0','sine of a + b = 0',false,'The unknown a appears inside sine.'],
+  ['<i>a</i> cos <i>x</i> +<br><i>b</i> sin <i>x</i> = 2','a cosine x + b sine x = 2',true,'cos x and sin x are known coefficients because x is supplied.'],
+  ['<i>e</i><sup><i>a</i></sup> + <i>b</i> = 3','e to the a + b = 3',false,'An unknown appears as an exponent.']
+ ],
+ [
+  ['<i>a</i> + <i>b</i> = <i>x</i><sup>2</sup>','a + b = x squared',true,'The right side is known. Both unknowns enter linearly.'],
+  ['(<i>a</i> + <i>b</i>)/2 = 1','(a + b) divided by 2 = 1',true,'Each unknown has coefficient one half.'],
+  ['<i>a</i><sup>2</sup> + <i>b</i><sup>2</sup> = 4','a squared + b squared = 4',false,'Both unknowns are squared.'],
+  ['3<i>a</i> − <i>b</i> = 0','3a − b = 0',true,'The equation has fixed coefficients 3 and −1.']
+ ],
+ [
+  ['<i>ab</i> + <i>a</i> = 1','a times b + a = 1',false,'The product ab makes the equation nonlinear in the pair of unknowns.'],
+  ['<i>b</i><sup>2</sup> − <i>a</i> = 0','b squared − a = 0',false,'The unknown b is squared.'],
+  ['<i>a</i> sin <i>x</i> + <i>b</i> = 0','a sine x + b = 0',true,'sin x is a known coefficient of a.'],
+  ['cos <i>b</i> + <i>a</i> = 2','cosine of b + a = 2',false,'The unknown b appears inside cosine.']
+ ],
+ [
+  ['<i>a</i> − <i>b</i> = sin <i>x</i>','a − b = sine x',true,'The right side is known and the unknowns enter linearly.'],
+  ['<i>a</i><sup>3</sup> + <i>b</i> = 1','a cubed + b = 1',false,'The unknown a is cubed.'],
+  ['<i>a</i> + 0<i>b</i> = 2','a + zero b = 2',true,'A zero coefficient is permitted. Linearity does not guarantee that all unknowns are determined.'],
+  ['<i>a</i> + <i>b</i> = cos <i>x</i>','a + b = cosine x',true,'cos x is known. This remains a linear equation in a and b.']
+ ],
+ [
+  ['(<i>a</i> − <i>b</i>)<sup>2</sup> = 1','(a − b) squared = 1',false,'Expanding gives squared unknowns and their product.'],
+  ['<i>a</i>/2 + <i>b</i>/3 = 1','a divided by 2 + b divided by 3 = 1',true,'The fixed coefficients are one half and one third.'],
+  ['<i>ab</i> + <i>b</i> = 0','a times b + b = 0',false,'The product of the two unknowns remains.'],
+  ['<i>a</i> + <i>b</i><sup>2</sup> = <i>x</i>','a + b squared = x',false,'The unknown b is squared, even though the right side is known.']
+ ],
+ [
+  ['<i>xa</i> + <i>xb</i> = 5','x a + x b = 5',true,'Both coefficients are the supplied value x. Consistency for a particular x is a separate question.'],
+  ['<i>a</i><sup>2</sup> + <i>xb</i> = 1','a squared + x b = 1',false,'The unknown a is squared.'],
+  ['<i>a</i> − (<i>b</i> + 1) = 0','a − (b + 1) = 0',true,'Rearrange to a − b = 1.'],
+  ['sin(<i>a</i> + <i>b</i>) = 0','sine of (a + b) = 0',false,'The unknowns occur inside sine.']
+ ],
+ [
+  ['<i>a</i> + <i>b</i> = <i>e</i><sup><i>x</i></sup>','a + b = e to the x',true,'The exponential is evaluated at a known input.'],
+  ['<i>a</i><sup>2</sup> + <i>b</i> = 0','a squared + b = 0',false,'The unknown a is squared.'],
+  ['(<i>a</i> + <i>b</i>)(<i>a</i> − <i>b</i>) = 1','(a + b) times (a − b) = 1',false,'Expansion gives a squared − b squared = 1.'],
+  ['<i>a</i> cos <i>x</i> − <i>b</i> = 2','a cosine x − b = 2',true,'The known coefficients are cos x and −1.']
+ ]
+];
+const initialMarks=()=>[false,false,false,false];
+function makeRow(i){return {id:i+1,items:pack[i],marks:initialMarks(),state:'open',first:null,helped:false};}
+let rows=[],next=0,score=0,submissions=0,correct=0,helpCount=0,ended=false,cleared=0,recovered=0;
+let reviewId=null,soundEnabled=false,audioContext=null;
+const $=id=>document.getElementById(id);
+function pointsFor(n){return n*100+(n>=3?120:n===2?40:0);}
+function setStatus(text,highlight=false){$('status').textContent=text;$('status').classList.toggle('highlight',highlight);}
+function tone(count){
+  if(!soundEnabled)return;
+  try{
+    audioContext ||= new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state==='suspended')audioContext.resume();
+    [523.25,659.25,783.99].slice(0,Math.min(count+1,3)).forEach((frequency,i)=>{
+      const osc=audioContext.createOscillator(),gain=audioContext.createGain(),start=audioContext.currentTime+i*.045;
+      osc.type='sine';osc.frequency.value=frequency;gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(.055,start+.008);gain.gain.exponentialRampToValueAtTime(.001,start+.22);
+      osc.connect(gain);gain.connect(audioContext.destination);osc.start(start);osc.stop(start+.24);
+    });
+  }catch(e){soundEnabled=false;$('sound').textContent='Sound unavailable';$('sound').setAttribute('aria-pressed','false');}
+}
+function mark(id,index){
+  if(ended)return;
+  const r=rows.find(r=>r.id===id);if(!r||r.state!=='open')return;
+  r.marks[index]=!r.marks[index];
+  render();
+}
+function commit(id){
+  if(ended)return;
+  const r=rows.find(r=>r.id===id);if(!r||r.state!=='open')return;
+  r.first=r.marks.slice();submissions++;
+  const good=r.items.every((item,i)=>item[2]===r.first[i]);
+  r.state=good?'ready':'error';
+  if(good){correct++;tone(0);setStatus('Row '+String(id).padStart(2,'0')+' is ready. Clear it now or bank another row.',true);}
+  else setStatus('Row '+String(id).padStart(2,'0')+' needs review. Its first classification is preserved.');
+  render();
+}
+function openReview(id){
+  const r=rows.find(r=>r.id===id);if(!r||r.state!=='error')return;
+  if(!r.helped){r.helped=true;helpCount++;}
+  reviewId=id;
+  $('review-content').replaceChildren(...r.items.map((item,i)=>{
+    const line=document.createElement('div');line.className='review-item';
+    const formula=document.createElement('div');formula.className='review-formula';formula.innerHTML=item[0];
+    const body=document.createElement('div'),classification=document.createElement('p'),mine=document.createElement('small'),reason=document.createElement('p');
+    classification.textContent=item[2]?'Fits the linear form.':'Does not fit the linear form.';
+    classification.style.color=item[2]?'var(--mint)':'var(--gold)';
+    mine.textContent='Your first judgment: '+(r.first[i]?'fits':'does not fit')+'.';
+    reason.textContent=item[3];body.append(classification,mine,reason);line.append(formula,body);return line;
+  }));
+  $('release').disabled=ended;
+  render();
+  $('review-dialog').showModal();
+}
+function clearReady(){
+  if(ended)return;
+  const n=rows.filter(r=>r.state==='ready').length;if(!n)return;
+  const added=pointsFor(n);score+=added;cleared+=n;rows=rows.filter(r=>r.state!=='ready');
+  setStatus(n+' '+(n===1?'row':'rows')+' cleared. +'+added+' points. You made space.',true);
+  tone(n);render();$('arena').classList.remove('clear-burst');void $('arena').offsetWidth;$('arena').classList.add('clear-burst');checkFinish();
+}
+function addRow(){
+  if(ended||next>=pack.length)return;
+  if(rows.length>=6){ended=true;$('end-banner').hidden=false;$('end-banner').textContent='The next row would exceed capacity. Run ended; the board is preserved. Restart to try a different clearing rhythm.';setStatus('Capacity reached. Cleared rows: '+cleared+'. Reviewed and released: '+recovered+'.');render();return;}
+  rows.push(makeRow(next));next++;setStatus('An incoming row joined the stack. '+(6-rows.length)+' spaces remain.');render();
+}
+function checkFinish(){
+  if(next===pack.length&&rows.length===0){ended=true;$('end-banner').hidden=false;$('end-banner').textContent='Wave complete. '+cleared+' rows cleared, '+recovered+' released after review. Try a fresh setup at the study desk to use the distinction without answer choices.';render();}
+}
+function render(){
+  const focused=document.activeElement?.dataset?.focusKey;
+  const board=$('board');board.replaceChildren();
+  for(let i=0;i<6-rows.length;i++){const e=document.createElement('div');e.className='empty-row';e.setAttribute('aria-hidden','true');if(i===0)e.innerHTML='<span>ROOM TO THINK</span>';board.append(e);}
+  rows.forEach(r=>{
+    const row=document.createElement('div');row.className='game-row '+r.state;row.setAttribute('role','group');row.setAttribute('aria-label','Row '+r.id+(r.state==='open'?'':', '+r.state));
+    const id=document.createElement('div');id.className='row-id';id.textContent=String(r.id).padStart(2,'0');
+    const cells=document.createElement('div');cells.className='cells';
+    r.items.forEach((item,i)=>{
+      const t=document.createElement('button');t.type='button';t.className='tile'+(r.marks[i]?' marked':'');t.disabled=r.state!=='open'||ended;
+      t.dataset.focusKey='cell-'+r.id+'-'+i;t.setAttribute('aria-label',item[1]);t.setAttribute('aria-pressed',String(r.marks[i]));
+      const f=document.createElement('span');f.className='formula';f.innerHTML=item[0];
+      const indicator=document.createElement('span');indicator.className='indicator';indicator.textContent=r.marks[i]?'✓ MARKED':'·';
+      t.append(f,indicator);t.addEventListener('click',()=>mark(r.id,i));cells.append(t);
+    });
+    const action=document.createElement('div');action.className='row-action';
+    if(r.state==='ready'){const label=document.createElement('span');label.className='ready-label';label.textContent='READY';action.append(label);}
+    else {const b=document.createElement('button');b.type='button';b.className='seal'+(r.state==='error'?' review':'');b.textContent=r.state==='error'?'Review':'Commit';b.dataset.focusKey='action-'+r.id;b.setAttribute('aria-label',(r.state==='error'?'Review':'Commit')+' row '+r.id);b.disabled=ended&&r.state!=='error';b.addEventListener('click',()=>r.state==='error'?openReview(r.id):commit(r.id));action.append(b);}
+    row.append(id,cells,action);board.append(row);
+  });
+  const ready=rows.filter(r=>r.state==='ready').length;
+  $('score').textContent=score.toLocaleString();$('ready').textContent=ready;$('accuracy').textContent=submissions?correct+' / '+submissions:'—';$('assistance').textContent=helpCount;
+  $('clear').disabled=ready===0||ended;$('clear').textContent=ready?'Clear '+ready+' ready '+(ready===1?'row':'rows')+' · +'+pointsFor(ready):'Clear ready rows';
+  $('arrive').disabled=next>=pack.length||ended;$('arrive').textContent=next>=pack.length?'All rows have arrived':'Add incoming row';
+  $('remaining').textContent=(pack.length-next)+' rows left';
+  $('queue').replaceChildren();
+  if(next<pack.length){
+    for(let i=next;i<Math.min(next+2,pack.length);i++){const e=document.createElement('div');e.className='incoming';const l=document.createElement('span'),s=document.createElement('small');l.textContent='Row '+String(i+1).padStart(2,'0');s.textContent='4 equations';e.append(l,s);$('queue').append(e);}
+  }else{const p=document.createElement('p');p.className='small';p.textContent='Final rows on the board.';$('queue').append(p);}
+  $('capacity').replaceChildren(...Array.from({length:6},(_,i)=>{const e=document.createElement('span');if(i<rows.length)e.className=rows.length>=5?'full danger':'full';return e;}));
+  $('space-note').textContent=rows.length+' of 6 row spaces occupied.';
+  if(focused){const target=[...document.querySelectorAll('[data-focus-key]')].find(e=>e.dataset.focusKey===focused);if(target&&!target.disabled)target.focus({preventScroll:true});}
+}
+function restart(){
+  if($('review-dialog').open)$('review-dialog').close();
+  rows=[makeRow(0),makeRow(1),makeRow(2)];next=3;score=0;submissions=0;correct=0;helpCount=0;ended=false;cleared=0;recovered=0;reviewId=null;$('end-banner').hidden=true;
+  setStatus('Click to mark a cell. Commit checks both marked and unmarked cells.');render();
+}
+$('clear').addEventListener('click',clearReady);$('arrive').addEventListener('click',addRow);$('restart').addEventListener('click',restart);
+$('close-review').addEventListener('click',()=>$('review-dialog').close());
+$('release').addEventListener('click',()=>{if(ended)return;const r=rows.find(r=>r.id===reviewId);if(!r||!r.helped||r.state!=='error')return;rows=rows.filter(r=>r.id!==reviewId);recovered++;$('review-dialog').close();setStatus('Reviewed row released for space. No points added; the initial error remains counted.');render();checkFinish();});
+$('sound').addEventListener('click',()=>{soundEnabled=!soundEnabled;$('sound').setAttribute('aria-pressed',String(soundEnabled));$('sound').textContent=soundEnabled?'Sound on':'Sound off';if(soundEnabled)tone(1);});
+const lab=[
+ {prompt:'Let f(x) = ax² + b, with f(0) = 1 and f(1) = 3. Which quantities must be found to determine the coefficients?',options:['a and b','The supplied inputs 0 and 1','x, a, and b together'],answer:0,reason:'a and b are the unknown coefficients. The inputs 0 and 1 have already been supplied.'},
+ {prompt:'A has 2 rows and 3 columns. B has 3 rows and 4 columns. What is the shape of AB?',options:['3 × 3','2 × 4','The product is not defined'],answer:1,reason:'The inner dimensions agree at 3. The product has the 2 rows of A and the 4 columns of B.'},
+ {prompt:'The composition g ∘ f is injective, and g(f(u)) = g(f(v)). Which conclusion follows from that hypothesis?',options:['g itself is injective','u = v','f is surjective'],answer:1,reason:'Injectivity of the composition means equal outputs of that composition imply equal inputs, here u and v.'}
+];
+const labAttempts=[null,null,null];
+let scenario=0;
+function chooseScenario(index){
+  scenario=index;
+  document.querySelectorAll('.scenario').forEach((b,i)=>{b.classList.toggle('active',i===index);b.setAttribute('aria-pressed',String(i===index));});
+  const data=lab[index],attempt=labAttempts[index];$('scenario-prompt').textContent=data.prompt;$('scenario-choices').replaceChildren();
+  data.options.forEach((option,i)=>{
+    const b=document.createElement('button');b.type='button';b.className='choice';b.textContent=option;
+    if(attempt!==null){b.disabled=true;if(i===data.answer)b.classList.add('correct');if(i===attempt&&i!==data.answer)b.classList.add('incorrect');}
+    b.addEventListener('click',()=>{if(labAttempts[index]!==null)return;labAttempts[index]=i;chooseScenario(index);});$('scenario-choices').append(b);
+  });
+  $('lab-feedback').hidden=attempt===null;
+  if(attempt!==null)$('lab-feedback').textContent=(attempt===data.answer?'Correct for this example. ':'That choice does not follow here. ')+data.reason+' This sample has now been explained.';
+}
+function navigate(view){
+  if(!['play','lab','influence','build'].includes(view))view='play';
+  document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!==view);
+  document.querySelectorAll('nav button').forEach(b=>{const active=b.dataset.view===view;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  history.replaceState(null,'','#'+view);window.scrollTo({top:0,behavior:'instant'});
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.view)));
+document.querySelectorAll('.scenario').forEach(b=>b.addEventListener('click',()=>chooseScenario(Number(b.dataset.scenario))));
+window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
+restart();chooseScenario(0);navigate(location.hash.slice(1)||'play');
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+{
+  "schema": "iggy3d.material.structural_oak_joinery.blender.v2",
+  "profile_id": "structural_oak_joinery_v1",
+  "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_joinery_v1/output/structural_oak_joinery_v1.blend",
+  "source_timber_blend": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_timber_v1/output/structural_oak_timber_v1_beam.blend",
+  "objects": {
+    "receiving": "IGGY_Joinery_ReceivingTimber",
+    "entering": "IGGY_Joinery_EnteringTenon",
+    "peg": "IGGY_Joinery_OctagonalDrawPeg"
+  },
+  "materials": {
+    "outer": "IGGY_MAT_StructuralOakTimberV1",
+    "cut": "IGGY_MAT_StructuralOakJoineryCutsV1",
+    "peg": "IGGY_MAT_RivenOakPegV1"
+  },
+  "measurements_m": {
+    "receiving_timber": {
+      "length": 4.2,
+      "width": 0.3,
+      "height": 0.34
+    },
+    "joint_center_x": 0.15,
+    "housing": {
+      "length_x": 0.26,
+      "width_y": 0.24,
+      "depth_z": 0.0254
+    },
+    "mortise": {
+      "length_x": 0.2,
+      "width_y": 0.075,
+      "depth_z": 0.155,
+      "bottom_extra_clearance": 0.004
+    },
+    "entering_timber": {
+      "length": 1.2,
+      "width": 0.24,
+      "height": 0.24
+    },
+    "tenon": {
+      "length": 0.16,
+      "width": 0.071,
+      "height": 0.196,
+      "side_clearance": 0.002,
+      "end_clearance": 0.004
+    },
+    "peg": {
+      "diameter": 0.038,
+      "bore_diameter": 0.04,
+      "length": 0.38,
+      "sides": 8,
+      "taper_length": 0.055,
+      "tip_diameter": 0.009,
+      "mortise_hole_depth_from_reference_face": 0.076,
+      "drawbore_offset": 0.0024
+    }
+  },
+  "boolean_contract": {
+    "solver": "EXACT",
+    "material_mode": "TRANSFER",
+    "cuts": [
+      {
+        "kind": "housing",
+        "marker_face_count": 5,
+        "surface_corner_counts": {
+          "5": 65,
+          "6": 4
+        }
+      },
+      {
+        "kind": "mortise",
+        "marker_face_count": 5,
+        "surface_corner_counts": {
+          "3": 16,
+          "4": 4
+        }
+      },
+      {
+        "kind": "receiving_bore",
+        "marker_face_count": 96,
+        "surface_corner_counts": {
+          "7": 398
+        }
+      },
+      {
+        "kind": "tenon_bore",
+        "marker_face_count": 48,
+        "surface_corner_counts": {
+          "7": 192
+        }
+      }
+    ],
+    "marker_material_present_after_build": false,
+    "surface_class_domain": "CORNER",
+    "cut_uv_domain": "CORNER"
+  },
+  "surface_classes": {
+    "IGGY_Joinery_ReceivingTimber": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "IGGY_Joinery_EnteringTenon": [
+      0,
+      1,
+      2,
+      7,
+      8,
+      9
+    ],
+    "IGGY_Joinery_OctagonalDrawPeg": [
+      10,
+      11
+    ]
+  },
+  "geometry": {
+    "IGGY_Joinery_ReceivingTimber": {
+      "vertices": 10573,
+      "polygons": 10511,
+      "manifold": true
+    },
+    "IGGY_Joinery_EnteringTenon": {
+      "vertices": 112,
+      "polygons": 64,
+      "manifold": true
+    },
+    "IGGY_Joinery_OctagonalDrawPeg": {
+      "vertices": 24,
+      "polygons": 18,
+      "manifold": true
+    }
+  },
+  "surface_response": {
+    "uniform_roughness": 0.76,
+    "roughness_map": false,
+    "damage": false
+  },
+  "proofs": {
+    "assembly_exploded": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_joinery_v1/output/renders/structural_oak_joinery_v1_assembly_exploded.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1199371
+    },
+    "mortise_housing_bore": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_joinery_v1/output/renders/structural_oak_joinery_v1_mortise_housing_bore.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1164986
+    },
+    "tenon_shoulder_bore": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_joinery_v1/output/renders/structural_oak_joinery_v1_tenon_shoulder_bore.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1032198
+    },
+    "cutface_closeup": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_joinery_v1/output/renders/structural_oak_joinery_v1_cutface_closeup.png",
+      "width": 1440,
+      "height": 810,
+      "file_size_bytes": 1413523
+    }
+  }
+}

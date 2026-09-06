@@ -1,0 +1,482 @@
+{
+  "schema": "iggy3d.forged_iron_v004_1_v004_2_cycles_proof.v1",
+  "status": "USER_NOT_ACCEPTED_PROOF_ONLY",
+  "render_engine": "CYCLES",
+  "cycles_samples": 32,
+  "persistent_render_data": false,
+  "tile_resolution": [
+    640,
+    220
+  ],
+  "consumer": {
+    "center": [
+      1.130000114440918,
+      0.0,
+      0.0
+    ],
+    "span": [
+      4.059999942779541,
+      0.11599999666213989,
+      0.4099999964237213
+    ],
+    "close_center": [
+      0.7200000286102295,
+      0.0,
+      0.0
+    ],
+    "pivot_center": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "rows": {
+    "A_v004_1_control": {
+      "row_id": "A_v004_1_control",
+      "label": "A  V004.1 CONTROL",
+      "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/forged_iron_connected_oxide_candidate_v004_1.blend",
+      "blend_sha256": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+      "manifest": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/manifest.json",
+      "manifest_sha256": "770a65899119c8fa925c82553889331e02fce8f078417d8768c5bd39d9dddaf1",
+      "group": "IGGY_SH_ConnectedOxideForgedIron_v004",
+      "group_contract": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "direction_multiplier": 0.0,
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_FixedLeaf",
+          "base_colour_pixel_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_pixel_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "source_normal_pixel_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_control_pixel_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57",
+          "luster_control_resolution": [
+            213,
+            103
+          ]
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_MovingLeaf_Openwork",
+          "base_colour_pixel_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_pixel_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "source_normal_pixel_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_control_pixel_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07",
+          "luster_control_resolution": [
+            768,
+            103
+          ]
+        },
+        "SM_GH018_Pintle": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__SM_GH018_Pintle",
+          "base_colour_pixel_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_pixel_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "source_normal_pixel_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        },
+        "MovingKnuckle_01": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_01",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        },
+        "FixedKnuckle_02": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_02",
+          "base_colour_pixel_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_pixel_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "source_normal_pixel_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        },
+        "MovingKnuckle_03": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_03",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        },
+        "FixedKnuckle_04": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__FixedKnuckle_04",
+          "base_colour_pixel_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_pixel_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "source_normal_pixel_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        },
+        "MovingKnuckle_05": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_1__MovingKnuckle_05",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "luster_control_resolution": [
+            128,
+            64
+          ]
+        }
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/close_neutral.png",
+          "bytes": 107437,
+          "sha256": "a3a6a518e385239a08232f302e5c3ecce64eca4c8db360da175daa12098362e2",
+          "decoded_pixel_sha256": "6340dfa9d2523fc890eaa9b113c41fc445532b5aa5583ced74c7a18b9c707aaf"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/grazing_left.png",
+          "bytes": 70962,
+          "sha256": "04c553471a3cf8c1aa993977681c53054bc5dfb7298f30a882d8fe1ff72f45bc",
+          "decoded_pixel_sha256": "3f2c63fc2f579a525a39f7aa755e99fdffb09a418cec9b71a6242ad50b184a40"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/grazing_right.png",
+          "bytes": 71691,
+          "sha256": "ff2588694de7183a59de41a778c7ee53d808cfec833f4f225d57df0632246e83",
+          "decoded_pixel_sha256": "5db0be94d54a3f1bfe23e56f39e62dca15d94423016d2330690540432c3bd68e"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/pivot_close.png",
+          "bytes": 124692,
+          "sha256": "090731270f4245516520e6a9363f7da3292ce0c7278acfe61e7668ec6cc28b40",
+          "decoded_pixel_sha256": "e4559bba271119507f4b6929ea044a481c059ff3cee0b418a30458afb84f2bfe"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/gameplay.png",
+          "bytes": 56478,
+          "sha256": "63414474388ab3ce55a3b18fd6cea94327db443c6a5378703496a629dbe4fa97",
+          "decoded_pixel_sha256": "9060244efd994b6e3ce719f1c596b6c1c391c0e9c0d409c6742438a51bcd441a"
+        },
+        "direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/direction_amount.png",
+          "bytes": 28889,
+          "sha256": "a826feb0b464e5c7129719bef6da4e7bcb4c6b63ccc0b75bfd6e58ad8212af02",
+          "decoded_pixel_sha256": "9cc6c5e7d5ee97e342e47767f3ded5c794adeb3f20512fd6f2d9f2de242e9fdb"
+        },
+        "source_normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/A_v004_1_control/source_normal.png",
+          "bytes": 62386,
+          "sha256": "4281f93935ab14b23f0b52ee7b790ae6737a5137c9c7f439d5301376ac9b2398",
+          "decoded_pixel_sha256": "a9d9912b4b6c2fd035e02b6f798584f942b9213cc5b4afffcc4b851ad061483c"
+        }
+      }
+    },
+    "B_v004_2_direction_response": {
+      "row_id": "B_v004_2_direction_response",
+      "label": "B  V004.2 DIRECTION RESPONSE",
+      "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/forged_iron_connected_oxide_candidate_v004_2.blend",
+      "blend_sha256": "d568dad25ab7400a5e51a3ec81eaf7db01665dab4bc35dff299eff09056e7864",
+      "manifest": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/manifest.json",
+      "manifest_sha256": "bcea6e5e7901f9adf54bf6ef2aa77049bcacb129b8d033a1d2029382d721cd77",
+      "group": "IGGY_SH_ConnectedOxideForgedIron_v004_2",
+      "group_contract": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004_2",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "direction_multiplier": 1.0,
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_FixedLeaf",
+          "base_colour_pixel_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "roughness_pixel_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "source_normal_pixel_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_MovingLeaf_Openwork",
+          "base_colour_pixel_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "roughness_pixel_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "source_normal_pixel_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "SM_GH018_Pintle": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__SM_GH018_Pintle",
+          "base_colour_pixel_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "roughness_pixel_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "source_normal_pixel_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "MovingKnuckle_01": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_01",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "FixedKnuckle_02": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_02",
+          "base_colour_pixel_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_pixel_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "source_normal_pixel_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "MovingKnuckle_03": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_03",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "FixedKnuckle_04": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__FixedKnuckle_04",
+          "base_colour_pixel_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "roughness_pixel_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "source_normal_pixel_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        },
+        "MovingKnuckle_05": {
+          "material": "IGGY_MAT_ConnectedOxideForgedIron_v004_2__MovingKnuckle_05",
+          "base_colour_pixel_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "roughness_pixel_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "source_normal_pixel_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_control_pixel_sha256": "a8938058946eb0901816c32292e58a1c9ecf943ef9a0f688046cf6c262ac9497",
+          "luster_control_resolution": [
+            4,
+            4
+          ]
+        }
+      },
+      "renders": {
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/close_neutral.png",
+          "bytes": 107321,
+          "sha256": "7632e89df15f915275cdb527d8b7a306bef660d86e151b911603fad0b726bc39",
+          "decoded_pixel_sha256": "8028385da47b648020d2bc98a5c22e79dedacdbc915866b128ed6228d9fc8024"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/grazing_left.png",
+          "bytes": 71042,
+          "sha256": "6cce32c9171fb5a96fc8aff32e8ceffd882f4f512a594d88067ee6adc4d1d2d0",
+          "decoded_pixel_sha256": "43a82f48d421d2267aedc41f3466051a8101be635e24474e951879d753eea1a2"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/grazing_right.png",
+          "bytes": 71546,
+          "sha256": "1c66e6501abf51b3cad0c0845c41a1cee31812076d09df527cd49f79c3d9f711",
+          "decoded_pixel_sha256": "033420e59693cc9721e7c9d7e5ea2f1ef0e3855eb02020dcb4e581db52f99d11"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/pivot_close.png",
+          "bytes": 125498,
+          "sha256": "18407abf958cc492ec696954a132208d09394978dab5c20704d947d0cb1ae438",
+          "decoded_pixel_sha256": "80d5a522ae6ff5280ecc499cb049cc7fb260d734c6191bca9d8f950f97ae1dfb"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/gameplay.png",
+          "bytes": 56333,
+          "sha256": "79dfe0498fe26e412f94a9105fc4b49b30879f4317506586c2c5d6bd24ec7e9f",
+          "decoded_pixel_sha256": "8a9792dbfd97190c2149aed6fcc09ddadf470664d934b7441aa933c9c69c15f5"
+        },
+        "direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/direction_amount.png",
+          "bytes": 58462,
+          "sha256": "5059c38e11d930f1d83c0d02f02673c503f72f1490fc89b24bbee39b9bd47245",
+          "decoded_pixel_sha256": "66f206b3067471a6408fc5a8b3c6976c2e17529d1356c232057c9524e37f72d5"
+        },
+        "source_normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/B_v004_2_direction_response/source_normal.png",
+          "bytes": 62386,
+          "sha256": "5727d98a1faa42c520f9fe6ca884b7d2152e6ea52d75704c66b60efcd56a1ce2",
+          "decoded_pixel_sha256": "a9d9912b4b6c2fd035e02b6f798584f942b9213cc5b4afffcc4b851ad061483c"
+        }
+      }
+    }
+  },
+  "frozen_lane_contract": {
+    "all_component_frozen_lane_hashes_match": true,
+    "source_normal_proof_decoded_pixels_identical": true,
+    "components": {
+      "SM_GH018_FixedLeaf": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "SM_GH018_Pintle": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "MovingKnuckle_01": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "FixedKnuckle_02": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "MovingKnuckle_03": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "FixedKnuckle_04": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      },
+      "MovingKnuckle_05": {
+        "base_colour_pixel_sha256": true,
+        "roughness_pixel_sha256": true,
+        "source_normal_pixel_sha256": true
+      }
+    }
+  },
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_2/cycles_v004_1_v004_2_proof_v1/forged_iron_v004_1_v004_2_cycles_comparison.png",
+    "resolution": [
+      4480,
+      440
+    ],
+    "bytes": 921199,
+    "sha256": "a6cf217ae7ce0d8542cd1eceb54ed4d30a73bdc3b6eab3d28b78a8a8572b0006",
+    "layout": "v004.1 row A above v004.2 row B; seven aligned columns",
+    "row_legend": {
+      "A": "A_v004_1_control",
+      "B": "B_v004_2_direction_response"
+    },
+    "column_legend": {
+      "1": {
+        "id": "close_neutral",
+        "label": "CLOSE NEUTRAL"
+      },
+      "2": {
+        "id": "grazing_left",
+        "label": "MOVING STRIP LEFT"
+      },
+      "3": {
+        "id": "grazing_right",
+        "label": "MOVING STRIP RIGHT"
+      },
+      "4": {
+        "id": "pivot_close",
+        "label": "PIVOT CLOSE"
+      },
+      "5": {
+        "id": "gameplay",
+        "label": "GAMEPLAY DISTANCE"
+      },
+      "6": {
+        "id": "direction_amount",
+        "label": "LIVE DIRECTION AMOUNT"
+      },
+      "7": {
+        "id": "source_normal",
+        "label": "FROZEN SOURCE NORMAL"
+      }
+    }
+  },
+  "visual_review": {
+    "decision": "prefer_v004_2_repair_candidate",
+    "preferred_row": "B_v004_2_direction_response",
+    "advancement_scope": "preferred_forged_iron_repair_candidate_not_acceptance",
+    "defect_ledger": [
+      "The v004.2 row changes highlight travel without drawing a surface pattern. Close neutral remains broad and quiet; neither opposed strip view develops brushing lines, grooves, repeated symbols, tangent bands, or a baked light direction.",
+      "The response is genuinely angle dependent and balanced: v004.2 differs from v004.1 by 44.03 dB close, 39.28 dB strip-left, 39.47 dB strip-right, 44.40 dB pivot, and 49.52 dB gameplay. These reproduce the selected disposable-C calibration rather than a new visual guess.",
+      "The live direction-amount proof changes from zero to uniform 0.28 while all eight base-colour, roughness, and source-normal float hashes remain identical. The decoded source-normal proof pixels are also identical.",
+      "No tangent seam is visible on the long leaves, rolled eyes, or pin. The strongest normalized differences remain broad highlight redistribution around real silhouette, apertures, joins, and cylindrical curvature rather than a finite motif.",
+      "The improvement is intentionally subordinate and nearly disappears at gameplay distance. It improves clean-metal plausibility but does not by itself create a complete forged-surface identity.",
+      "The inherited broad normal remains the previously rejected shape-normalized owner. This integration freezes it for isolation; it does not validate it.",
+      "The pivot remains a smooth coated cylinder with geometry-owned bearing gaps and highlight continuity. v004.2 does not repair or disguise that construction limitation.",
+      "A matched professional-reference acceptance plate and Unreal parity are still absent, so this row may become only the preferred repair base."
+    ],
+    "physical_panel_psnr_db": {
+      "close_neutral": 44.03004,
+      "grazing_left": 39.282581,
+      "grazing_right": 39.474193,
+      "pivot_close": 44.39769,
+      "gameplay": 49.521032
+    },
+    "strongest_visible_achievement": "quiet construction-oriented highlight response with no new texture motif",
+    "weakest_visible_area": "the inherited rejected broad normal and smooth pivot still limit forged-surface identity",
+    "repair_pass_count_since_v004_1": 1,
+    "manual_acceptance_established": false
+  },
+  "review_document": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/V004_2_INTEGRATION_REVIEW.md",
+    "sha256": "de49989766637e99317252486fe98ebb471d3b08af86c070c40bea2174c998c9"
+  },
+  "source_hashes": {
+    "before": {
+      "A_v004_1_control": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+      "B_v004_2_direction_response": "d568dad25ab7400a5e51a3ec81eaf7db01665dab4bc35dff299eff09056e7864"
+    },
+    "after": {
+      "A_v004_1_control": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+      "B_v004_2_direction_response": "d568dad25ab7400a5e51a3ec81eaf7db01665dab4bc35dff299eff09056e7864"
+    },
+    "sources_unchanged": true
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/render_connected_oxide_candidate_cycles_v004_2.py",
+    "sha256": "fe366b8b2061b44eab7be1bc58d96bcb9922357a7fcdde4fa93620f3cdd5335b"
+  },
+  "manual_acceptance_required": true,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "unreal_parity_verified": false,
+  "limitations": [
+    "This proof changes only the uniform direction-dependent intact-oxide response.",
+    "The existing v004.1 broad normal remains frozen for comparison, not accepted.",
+    "The pivot remains geometry-owned and is not repaired by this material response.",
+    "Cycles proof does not establish Unreal parity, donor status, or user acceptance."
+  ]
+}

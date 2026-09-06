@@ -1,0 +1,1057 @@
+{
+  "schema": "iggy-forged-iron-build/4.0",
+  "status": "LAYERED_NODE_FORGED_IRON_BUILT",
+  "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+  "reference_sample_audit": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/references/met_468492_front_iron_palette_samples.json",
+    "sha256": "09884bc671b0fcc8f4efaab4bec5aaf71bdcace941f2485622bf4ff5e29d87b0",
+    "base_hue_count": 11,
+    "oxidation_overlay_count": 3,
+    "excluded_count": 6
+  },
+  "pattern_build": {
+    "schema": "iggy-forged-iron-pattern-build/4.0",
+    "status": "AUTHORED_FORGE_PATTERN_COMPILED",
+    "pattern": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+    "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+    "physical_tile_m": {
+      "length": 1.218,
+      "width": 0.164
+    },
+    "worked_physical_tile_m": {
+      "length": 2.436,
+      "width": 0.492
+    },
+    "variation_count": 4,
+    "atlas_resolution": [
+      1536,
+      1024
+    ],
+    "tool_envelopes_m": {
+      "planishing_face": [
+        0.041275,
+        0.03175
+      ],
+      "cross_peen_face": [
+        0.0365125,
+        0.0127
+      ]
+    },
+    "height_encoding": {
+      "minimum_m": -0.00018,
+      "maximum_m": 0.00018,
+      "neutral": 0.5,
+      "rule": "Measured-proxy micro-topography is added to finite sub-millimetre hammer-plane and scale-lip relief. It never displaces the silhouette."
+    },
+    "layer_height_encoding": {
+      "macro_hammer": {
+        "minimum_m": -8.5e-05,
+        "maximum_m": 8.5e-05,
+        "neutral": 0.5
+      },
+      "scale_lip": {
+        "minimum_m": 0.0,
+        "maximum_m": 2e-05,
+        "neutral": 0.0
+      },
+      "micro_surface": {
+        "minimum_m": -3.2e-05,
+        "maximum_m": 3.2e-05,
+        "neutral": 0.5
+      }
+    },
+    "constraints": {
+      "uses_ai_generated_imagery": false,
+      "uses_damage": false,
+      "uses_generic_hammer_noise": false,
+      "tool_faces_are_finite": true,
+      "photograph_lighting_baked_into_base_color": false,
+      "continuous_compact_scale_ground": true,
+      "metalness_is_filtered_binary_layer": true,
+      "hammering_never_implies_exposed_iron": true,
+      "worked_surface_is_finite": true,
+      "worked_surface_uses_independent_non_grid_tile": true
+    },
+    "layer_statistics": {
+      "quiet_fraction_activity_below_0_10": 0.900933583577474,
+      "scale_plate_tone_fraction_above_0_10": 0.44136810302734375,
+      "conductive_fraction_above_0_90": 0.0,
+      "filtered_metal_boundary_fraction": 0.0,
+      "worked_fraction_above_0_10": 0.17695045471191406,
+      "protected_rest_fraction_above_0_75": 0.8630555470784506
+    },
+    "outputs": {
+      "base_color": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_base_color.png",
+        "channel": "compatibility composite sRGB base colour",
+        "bytes": 145857,
+        "sha256": "9ad56926210a6ca215f9ba92e96db579c07b0fd8765b6d036f40634c3f0ffd28"
+      },
+      "scale_color": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_color.png",
+        "channel": "sRGB dielectric compact-scale colour",
+        "bytes": 145857,
+        "sha256": "9ad56926210a6ca215f9ba92e96db579c07b0fd8765b6d036f40634c3f0ffd28"
+      },
+      "iron_color": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_iron_color.png",
+        "channel": "sRGB conductive exposed-iron reflectance",
+        "bytes": 55355,
+        "sha256": "67590137df3cffa3a9285c53c9588e3e67e24748c51dc722131fab4e8200261c"
+      },
+      "roughness": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_roughness.png",
+        "channel": "linear 16-bit roughness",
+        "bytes": 2741198,
+        "sha256": "095567006e5dc0463265c166ceaebd12f24b6f12fce2e70a07582860189e288a"
+      },
+      "metalness": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_metalness.png",
+        "channel": "linear 16-bit conductive iron versus dielectric compact scale",
+        "bytes": 3129,
+        "sha256": "d1833d212e0b38ec2c79612d69c348c24fdbe1a7a370a25e74ff225b16fb5223"
+      },
+      "layer_response": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_layer_response.png",
+        "channel": "R scale roughness, G iron roughness, B exposed-iron layer mask",
+        "bytes": 946821,
+        "sha256": "feb3f4d9ff5bde6bb63d5b7539658336cc8f1e552ed21604a5267db2108cea9b"
+      },
+      "height": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_height.png",
+        "channel": "compatibility combined 16-bit signed height",
+        "bytes": 2821449,
+        "sha256": "4e6ef7639b97129c5675f183197ebb04f5a50f7b12d829de42fee6f71b6e5c64"
+      },
+      "macro_height": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_macro_height.png",
+        "channel": "16-bit signed finite hammer-plane height",
+        "bytes": 340885,
+        "sha256": "3716a904c455f73205e05534263222be20121fd0905b0ab76a8cba1aff197a7a"
+      },
+      "scale_height": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_height.png",
+        "channel": "16-bit positive compact-scale lip height",
+        "bytes": 1424465,
+        "sha256": "fb9978a542d42c5c86e0d7f5721bed0be7cf20eb10280d9980639d1d9d32d5b2"
+      },
+      "micro_height": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_micro_height.png",
+        "channel": "16-bit signed measured-proxy micro height",
+        "bytes": 3069147,
+        "sha256": "ecd3c49efea4465f3e4b0380149f57dce5dec1587795bf644d0e10e43087efd6"
+      },
+      "normal": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_normal.png",
+        "channel": "compatibility combined OpenGL tangent-space normal",
+        "bytes": 310608,
+        "sha256": "33295ad17fede63df591465ad0bcb38d51cfa6291d01da7ed9dbff734a79d0b7"
+      },
+      "macro_normal": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_macro_normal.png",
+        "channel": "OpenGL tangent-space finite hammer-plane normal",
+        "bytes": 37664,
+        "sha256": "c6579162f1e340818e425b40835b5d8f40ab8e3f046107a756e8cd315355796f"
+      },
+      "scale_normal": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_normal.png",
+        "channel": "OpenGL tangent-space compact-scale lip normal",
+        "bytes": 127985,
+        "sha256": "3cee6330624d62f3a302cfefad14611f978b7e0b8647cf52001815f1eba4fd93"
+      },
+      "micro_normal": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_micro_normal.png",
+        "channel": "OpenGL tangent-space measured-proxy micro normal",
+        "bytes": 282332,
+        "sha256": "530f02069717be5806a68fc71b576e2bb99d56890b1d9a0f799c9fd93ef03cf3"
+      },
+      "worked_normal": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_worked_normal.png",
+        "channel": "OpenGL tangent-space finite worked-face normal",
+        "bytes": 50895,
+        "sha256": "1d2e59c662e8bd807dafc59c2aaf2aeeacb99b6115bcaef44a66b0ae2e90f34a"
+      },
+      "worked_response": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_worked_response.png",
+        "channel": "R finite worked coverage, G encoded local direction, B protected rest",
+        "bytes": 531804,
+        "sha256": "460b890ccc35ae82aaf17063fb6b08863d8dc40d92b55d2495257764dcbee98a"
+      },
+      "masks": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_masks.png",
+        "channel": "R planishing, G cross-peen, B compact scale plate tone",
+        "bytes": 733233,
+        "sha256": "c3a423e95d329f2db58481fa40e70bbf0473a507443bf0134369d0f1682dce44"
+      },
+      "proof": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_pattern_atlas.png",
+        "channel": "two material colours, response RGB, three normal bands, combined height, and semantic mask proof",
+        "bytes": 326584,
+        "sha256": "76f41665f7d68db8d11136030bbdd608d7a8278e6fd2d277c26e29d93e0f65e5"
+      }
+    }
+  },
+  "acceptance_fixture_realization": {
+    "vertices": 19956,
+    "polygons": 19687,
+    "materials": [
+      null,
+      "IGGY_MAT_NeutralIronProof_v001",
+      "IGGY_MAT_ReferenceStructuralOakDoor_v001"
+    ],
+    "attributes_preserved": [
+      ".corner_edge",
+      ".corner_vert",
+      ".edge_verts",
+      "UVMap",
+      "custom_normal",
+      "material_index",
+      "position",
+      "sharp_edge",
+      "sharp_face",
+      "sinc_iron_edge_mask",
+      "sinc_length_ratio",
+      "sinc_seed",
+      "sinc_wood_damage_mask",
+      "sinc_wood_edge_mask",
+      "sinc_wood_end_mask"
+    ]
+  },
+  "coordinate_build": {
+    "material_index": 1,
+    "component_count": 53,
+    "components": [
+      {
+        "vertices": 61,
+        "length_m": 0.027983131401544244,
+        "cross_stock_m": 0.027982965525335926
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.027834062887466142,
+        "cross_stock_m": 0.02783302897677805
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.02793293895550432,
+        "cross_stock_m": 0.027931868276714192
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.027989305487565404,
+        "cross_stock_m": 0.027989136267112504
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.027839753866790166,
+        "cross_stock_m": 0.027839759821407992
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.027983131401544244,
+        "cross_stock_m": 0.027982965525335926
+      },
+      {
+        "vertices": 784,
+        "length_m": 0.5619999170303349,
+        "cross_stock_m": 0.5160000324249264
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.035561803267292476,
+        "cross_stock_m": 0.035561902006669616
+      },
+      {
+        "vertices": 302,
+        "length_m": 0.08105939391251976,
+        "cross_stock_m": 0.07099176503484819
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.0359820710388954,
+        "cross_stock_m": 0.035982002325524856
+      },
+      {
+        "vertices": 302,
+        "length_m": 0.08015200215999288,
+        "cross_stock_m": 0.07196859112466927
+      },
+      {
+        "vertices": 450,
+        "length_m": 0.42005472540327593,
+        "cross_stock_m": 0.16046298150813657
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.039990782737731934,
+        "cross_stock_m": 0.03998994827270508
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09416050458912473,
+        "cross_stock_m": 0.08188570996778886
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.03998079435470779,
+        "cross_stock_m": 0.039980019022647126
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09244981267143725,
+        "cross_stock_m": 0.08359823494514901
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.039958587025833985,
+        "cross_stock_m": 0.03995786284095228
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09063582672540946,
+        "cross_stock_m": 0.0845233575276143
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.039875581140015874,
+        "cross_stock_m": 0.03987492511600026
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09416071484766986,
+        "cross_stock_m": 0.08188570994764804
+      },
+      {
+        "vertices": 834,
+        "length_m": 1.85760671739023,
+        "cross_stock_m": 0.2087861805996304
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.03975564376082895,
+        "cross_stock_m": 0.039755585412411275
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09416049138807238,
+        "cross_stock_m": 0.08188610002683269
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.03960647228675124,
+        "cross_stock_m": 0.039606555119954444
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.0924495522271155,
+        "cross_stock_m": 0.08359833599152852
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.03984790410850507,
+        "cross_stock_m": 0.03984776464579918
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09063601033542484,
+        "cross_stock_m": 0.08452333140902456
+      },
+      {
+        "vertices": 61,
+        "length_m": 0.039549760697966986,
+        "cross_stock_m": 0.039549697337444185
+      },
+      {
+        "vertices": 304,
+        "length_m": 0.09416050897851475,
+        "cross_stock_m": 0.08188610006845384
+      },
+      {
+        "vertices": 834,
+        "length_m": 1.8576067158212803,
+        "cross_stock_m": 0.20878624059339293
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09626073999421354,
+        "cross_stock_m": 0.0836734545225268
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.2099999785423279,
+        "cross_stock_m": 0.027760555670716273
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09446942160401584,
+        "cross_stock_m": 0.08546210566993157
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.2099999785423292,
+        "cross_stock_m": 0.027795801537143026
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09266049981652659,
+        "cross_stock_m": 0.08637166021599958
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.2099999785423279,
+        "cross_stock_m": 0.027702353311302243
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09626112116439749,
+        "cross_stock_m": 0.08367321611604261
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.20999998094630995,
+        "cross_stock_m": 0.027985950105797325
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09446972094417802,
+        "cross_stock_m": 0.08546216059540535
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.20999998121342228,
+        "cross_stock_m": 0.027812452069825987
+      },
+      {
+        "vertices": 56,
+        "length_m": 0.09266049923014924,
+        "cross_stock_m": 0.08637166198944404
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.2099999785423279,
+        "cross_stock_m": 0.027760555670716273
+      },
+      {
+        "vertices": 1440,
+        "length_m": 0.16597492772843614,
+        "cross_stock_m": 0.16597487930612412
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.0849999859929099,
+        "cross_stock_m": 0.03595710166053964
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.08499999708027542,
+        "cross_stock_m": 0.03596320732908374
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999135732651,
+        "cross_stock_m": 0.039999961853027344
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999135732688,
+        "cross_stock_m": 0.0399827150117629
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999135732651,
+        "cross_stock_m": 0.0399552440743674
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999135732733,
+        "cross_stock_m": 0.039708781935886145
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999237171301,
+        "cross_stock_m": 0.03957023452491792
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999230082827,
+        "cross_stock_m": 0.03997184936218346
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999231411899,
+        "cross_stock_m": 0.03968600702111874
+      },
+      {
+        "vertices": 120,
+        "length_m": 0.09499999230082841,
+        "cross_stock_m": 0.0398201857142083
+      }
+    ],
+    "attributes": [
+      "sinc_iron_u_m",
+      "sinc_iron_v_m",
+      "sinc_iron_fabrication_scale"
+    ],
+    "tangent_uv": "IGGY_IronUV"
+  },
+  "actual_hinge": {
+    "source": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_geometry_v1.blend",
+    "sha256": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+    "assembly_bounds_m": {
+      "minimum": [
+        -0.8999999761581421,
+        -0.057999998331069946,
+        -0.20499999821186066
+      ],
+      "maximum": [
+        3.1600000858306885,
+        0.057999998331069946,
+        0.20499999821186066
+      ],
+      "span": [
+        4.060000061988831,
+        0.11599999666213989,
+        0.4099999964237213
+      ]
+    },
+    "objects": {
+      "SM_GH018_FixedLeaf": {
+        "dimensions_m": [
+          0.8519999980926514,
+          0.05000000074505806,
+          0.4099999964237213
+        ],
+        "vertices": 268,
+        "polygons": 340,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "dimensions_m": [
+          3.111999988555908,
+          0.05245000123977661,
+          0.4099999964237213
+        ],
+        "vertices": 10779,
+        "polygons": 13652,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "SM_GH018_Pintle": {
+        "dimensions_m": [
+          0.052000001072883606,
+          0.052000001072883606,
+          0.4099999964237213
+        ],
+        "vertices": 144,
+        "polygons": 74,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_01": {
+        "dimensions_m": [
+          0.11316128075122833,
+          0.11599999666213989,
+          0.07559999823570251
+        ],
+        "vertices": 292,
+        "polygons": 290,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "FixedKnuckle_02": {
+        "dimensions_m": [
+          0.11316128075122833,
+          0.11599999666213989,
+          0.07559999823570251
+        ],
+        "vertices": 292,
+        "polygons": 290,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_03": {
+        "dimensions_m": [
+          0.11316128075122833,
+          0.11599999666213989,
+          0.07559999823570251
+        ],
+        "vertices": 292,
+        "polygons": 290,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "FixedKnuckle_04": {
+        "dimensions_m": [
+          0.11316128075122833,
+          0.11599999666213989,
+          0.07559999823570251
+        ],
+        "vertices": 292,
+        "polygons": 290,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      },
+      "MovingKnuckle_05": {
+        "dimensions_m": [
+          0.11316128075122833,
+          0.11599999666213989,
+          0.07559999823570251
+        ],
+        "vertices": 292,
+        "polygons": 290,
+        "fabrication_scale": 10.0,
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "IGGY_IronUV",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_iron_edge_mask",
+          "sinc_iron_fabrication_scale",
+          "sinc_iron_u_m",
+          "sinc_iron_v_m",
+          "sinc_rear_face",
+          "sinc_seed",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "uv_layers": [
+          "IGGY_IronUV"
+        ]
+      }
+    }
+  },
+  "source_fixture": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1.blend",
+    "sha256": "c7619ca1580faeb6449fecfcd0bc7915080a35086c0bc057d0192e38a2511d31"
+  },
+  "saved_blend": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "bytes": 11477112,
+    "sha256": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "authored_images_packed": true
+  },
+  "constraints": {
+    "uses_ai_generated_imagery": false,
+    "uses_real_door_reference": true,
+    "uses_measured_stock": true,
+    "uses_measured_tool_envelopes": true,
+    "uses_generic_hammer_noise": false,
+    "uses_active_orange_corrosion": false,
+    "uses_uniform_rust": false,
+    "uses_damage": false,
+    "uses_layered_principled_responses": true,
+    "uses_three_frequency_normals": true,
+    "uses_four_frequency_normals": true,
+    "uses_actual_openwork_hinge": true,
+    "uses_metre_displacement": true,
+    "unreal_runtime_parity_verified": false,
+    "brown_oxidation_default": 0.0,
+    "contact_polish_default": 0.0,
+    "approved_wood_changed": false
+  },
+  "validation": {
+    "door": {
+      "vertices": 19956,
+      "polygons": 19687,
+      "attributes": {
+        "sinc_length_ratio": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_wood_end_mask": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_wood_edge_mask": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_wood_damage_mask": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_iron_edge_mask": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_seed": {
+          "domain": "POINT",
+          "data_type": "INT"
+        },
+        "UVMap": {
+          "domain": "CORNER",
+          "data_type": "FLOAT_VECTOR"
+        },
+        "sharp_face": {
+          "domain": "FACE",
+          "data_type": "BOOLEAN"
+        },
+        "material_index": {
+          "domain": "FACE",
+          "data_type": "INT"
+        },
+        "position": {
+          "domain": "POINT",
+          "data_type": "FLOAT_VECTOR"
+        },
+        ".edge_verts": {
+          "domain": "EDGE",
+          "data_type": "INT32_2D"
+        },
+        ".corner_vert": {
+          "domain": "CORNER",
+          "data_type": "INT"
+        },
+        ".corner_edge": {
+          "domain": "CORNER",
+          "data_type": "INT"
+        },
+        "sharp_edge": {
+          "domain": "EDGE",
+          "data_type": "BOOLEAN"
+        },
+        "custom_normal": {
+          "domain": "CORNER",
+          "data_type": "INT16_2D"
+        },
+        "sinc_iron_u_m": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_iron_v_m": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "sinc_iron_fabrication_scale": {
+          "domain": "POINT",
+          "data_type": "FLOAT"
+        },
+        "IGGY_IronUV": {
+          "domain": "CORNER",
+          "data_type": "FLOAT2"
+        }
+      },
+      "materials": [
+        null,
+        "IGGY_MAT_ReferenceForgedIron_v003",
+        "IGGY_MAT_ReferenceStructuralOakDoor_v001"
+      ]
+    },
+    "shader_attributes": [
+      "sinc_iron_edge_mask",
+      "sinc_iron_fabrication_scale",
+      "sinc_iron_u_m",
+      "sinc_iron_v_m",
+      "sinc_seed"
+    ],
+    "node_groups": [
+      "IGGY_SH_AuthoredIronLanes_v004",
+      "IGGY_SH_ForgeScaleLayer_v002",
+      "IGGY_SH_HammerPlanes_v003",
+      "IGGY_SH_IronCoordinates_v004",
+      "IGGY_SH_IronMicroSurface_v002",
+      "IGGY_SH_NormalCombine_v003",
+      "IGGY_SH_ReferenceForgedIron_v003",
+      "IGGY_SH_SurfaceHeight_v003",
+      "IGGY_SH_WorkedIronSurface_v001"
+    ],
+    "group_node_count": 44,
+    "material_node_count": 19,
+    "image_texture_count": 12,
+    "generic_noise_node_count": 0,
+    "principled_count": 2,
+    "normal_map_count": 1,
+    "displacement_node_count": 1,
+    "normal_strength": 0.8500000238418579,
+    "measured_reference_strap_dimensions_m": [
+      0.4059999883174896,
+      0.006000000052154064,
+      0.04100000113248825
+    ],
+    "sample_audit": {
+      "base_hue": 11,
+      "oxidation_overlay": 3,
+      "excluded": 6
+    },
+    "forbidden_lanes_found": [],
+    "approved_wood_unchanged": true
+  },
+  "renders": {
+    "door_combined": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_door_combined.png",
+      "bytes": 869423,
+      "sha256": "9da74debe926a04bb76ba3542778ed1d5b4ae1cbc1b5f2ea2ffe1d5396e11dc0"
+    },
+    "specimen_combined": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_combined.png",
+      "bytes": 747884,
+      "sha256": "38182b4a61fc495a4451bea8523adaf5c6b2141c4d98d54fb62b06735a76c9f6"
+    },
+    "specimen_grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_grazing.png",
+      "bytes": 763680,
+      "sha256": "47b0b38fb5c65182a20c732bb9ada1e0ff65ff8dbf5abe0e2cb3726c7874b490"
+    },
+    "specimen_gameplay_distance": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_gameplay_distance.png",
+      "bytes": 722109,
+      "sha256": "332c415ccf05437ad5e21b656f68d7b54366b8238a779d7e97dc97e05c469b56"
+    },
+    "specimen_base_colour": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_base_colour.png",
+      "bytes": 679679,
+      "sha256": "6921658124346355aa43214740d64f785f94fe4e5014d8387d45e27c97d77e37"
+    },
+    "specimen_roughness": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_roughness.png",
+      "bytes": 624766,
+      "sha256": "4a1b09259c0283bfd3c2ee3cf3e7ae11292c3512fa0aac869b2d3a2ad3baec7f"
+    },
+    "specimen_metalness": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_metalness.png",
+      "bytes": 549442,
+      "sha256": "d58bc62661acf6151d69ef0c39ffd4235fefb4c8f8efceedd7239f402bd4b5bd"
+    },
+    "specimen_masks": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_masks.png",
+      "bytes": 656789,
+      "sha256": "d00e5bfbf60bfe6a41bc0b9f1e19254a7025892e33e6f4a9a6cecd17aca29a10"
+    },
+    "specimen_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_normal.png",
+      "bytes": 685921,
+      "sha256": "b0ddbe6a444772a4dae0c035b871b6b13546076d2e05ac1110d4d628c6f690ac"
+    },
+    "specimen_height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_specimen_height.png",
+      "bytes": 627888,
+      "sha256": "f58b7115cc5c132f5ee578c142431675ae18cec89f30ebd3546544d097cb74db"
+    },
+    "actual_hinge_clay_front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_actual_hinge_clay_front.png",
+      "bytes": 637346,
+      "sha256": "96d423a61db74e7d5bdb3d67ed099ceb1f4e912c29882d3a527e7536d71c1c97"
+    },
+    "actual_hinge_front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_actual_hinge_front.png",
+      "bytes": 642065,
+      "sha256": "3abcd6e7854256b2c2cc23be3dbbc3346b16462348b0182d26478dd5ee39acf7"
+    },
+    "actual_hinge_grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_actual_hinge_grazing.png",
+      "bytes": 685587,
+      "sha256": "08ce9c9cd7d347e41ece0d28f9977ecfe938943695330f00a8fb38b76115dda5"
+    },
+    "actual_hinge_base_colour": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_actual_hinge_base_colour.png",
+      "bytes": 612338,
+      "sha256": "6be7791b12ee5955598a858de026cdaac7df7903de189f89c56ee932e57f2cb5"
+    },
+    "actual_hinge_worked_response": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_actual_hinge_worked_response.png",
+      "bytes": 634553,
+      "sha256": "0c27d678d0f0dae3ca67777a31a9406d278c31716d1cc2d9bf7ef53338341afc"
+    }
+  }
+}

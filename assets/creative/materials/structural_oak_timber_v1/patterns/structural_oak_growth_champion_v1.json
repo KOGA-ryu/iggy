@@ -1,0 +1,856 @@
+{
+  "schema": "iggy3d.pattern.structural_oak_growth_champion.v1",
+  "pattern_id": "structural_oak_growth_champion_v1",
+  "growth_volume": {
+    "pith_y_knots_m": [
+      -0.245,
+      -0.242,
+      -0.248,
+      -0.246,
+      -0.239,
+      -0.244,
+      -0.241,
+      -0.247,
+      -0.243
+    ],
+    "pith_z_knots_m": [
+      -0.215,
+      -0.211,
+      -0.216,
+      -0.209,
+      -0.213,
+      -0.207,
+      -0.212,
+      -0.208,
+      -0.214
+    ],
+    "ring_radius_drift_knots_m": [
+      0.0,
+      0.0007,
+      -0.0005,
+      0.0011,
+      -0.0003,
+      0.0004,
+      -0.0008,
+      0.0006,
+      0.0
+    ],
+    "ellipse": [
+      1.025,
+      0.982
+    ],
+    "champion_ring_widths_m": [
+      0.00172,
+      0.00154,
+      0.00131,
+      0.00118,
+      0.00096,
+      0.00082,
+      0.00074,
+      0.00068,
+      0.00056,
+      0.00049,
+      0.00043,
+      0.00058,
+      0.00071,
+      0.00088,
+      0.00102,
+      0.00126,
+      0.00149,
+      0.00177,
+      0.00191,
+      0.00163,
+      0.00142,
+      0.00115,
+      0.00092,
+      0.00073,
+      0.00061,
+      0.00048,
+      0.00037,
+      0.00029,
+      0.00041,
+      0.00055,
+      0.00078,
+      0.00104,
+      0.00132,
+      0.00166,
+      0.00188,
+      0.00206,
+      0.00173,
+      0.00145,
+      0.00121,
+      0.00099,
+      0.00081,
+      0.00067,
+      0.00053,
+      0.00046,
+      0.00062,
+      0.00084,
+      0.00109,
+      0.00138,
+      0.00157,
+      0.00134,
+      0.00111,
+      0.00089,
+      0.00072,
+      0.00059,
+      0.00047,
+      0.00036,
+      0.00052,
+      0.00076,
+      0.00103,
+      0.00129,
+      0.00151,
+      0.00178,
+      0.00195,
+      0.00169
+    ],
+    "epoch_scales": [
+      0.88,
+      1.05,
+      0.72,
+      1.12,
+      0.93,
+      1.08,
+      0.81,
+      1.0
+    ],
+    "earlywood_fraction_cycle": [
+      0.24,
+      0.31,
+      0.27,
+      0.19,
+      0.34,
+      0.22,
+      0.29,
+      0.17,
+      0.26,
+      0.32,
+      0.21,
+      0.28
+    ],
+    "ring_colour_palette_cycle": [
+      7,
+      9,
+      11,
+      14,
+      8,
+      12,
+      10,
+      3,
+      13,
+      4,
+      15,
+      6,
+      18,
+      16,
+      5,
+      19
+    ]
+  },
+  "broad_colour_passages": [
+    {
+      "id": "long_cool_lower",
+      "faces": [
+        "front",
+        "bottom"
+      ],
+      "u_start_m": 0.0,
+      "u_length_m": 2.7,
+      "cross_centre_m": -0.07,
+      "cross_width_m": 0.24,
+      "palette_index": 5,
+      "strength": 0.34
+    },
+    {
+      "id": "middle_warm_body",
+      "faces": [
+        "front",
+        "back",
+        "top"
+      ],
+      "u_start_m": 0.62,
+      "u_length_m": 2.95,
+      "cross_centre_m": 0.035,
+      "cross_width_m": 0.29,
+      "palette_index": 13,
+      "strength": 0.29
+    },
+    {
+      "id": "right_muted_ochre",
+      "faces": [
+        "front",
+        "top"
+      ],
+      "u_start_m": 2.36,
+      "u_length_m": 1.64,
+      "cross_centre_m": 0.105,
+      "cross_width_m": 0.17,
+      "palette_index": 12,
+      "strength": 0.27
+    },
+    {
+      "id": "back_charcoal_passage",
+      "faces": [
+        "back"
+      ],
+      "u_start_m": 0.18,
+      "u_length_m": 1.88,
+      "cross_centre_m": -0.015,
+      "cross_width_m": 0.31,
+      "palette_index": 0,
+      "strength": 0.24
+    },
+    {
+      "id": "top_pale_passage",
+      "faces": [
+        "top"
+      ],
+      "u_start_m": 0.94,
+      "u_length_m": 2.2,
+      "cross_centre_m": -0.09,
+      "cross_width_m": 0.18,
+      "palette_index": 13,
+      "strength": 0.22
+    },
+    {
+      "id": "bottom_umber_passage",
+      "faces": [
+        "bottom"
+      ],
+      "u_start_m": 1.52,
+      "u_length_m": 2.46,
+      "cross_centre_m": 0.078,
+      "cross_width_m": 0.2,
+      "palette_index": 18,
+      "strength": 0.2
+    },
+    {
+      "id": "front_left_smoke",
+      "faces": [
+        "front"
+      ],
+      "u_start_m": 0.05,
+      "u_length_m": 1.12,
+      "cross_centre_m": 0.09,
+      "cross_width_m": 0.19,
+      "palette_index": 1,
+      "strength": 0.25
+    },
+    {
+      "id": "front_knot_umber",
+      "faces": [
+        "front"
+      ],
+      "u_start_m": 0.88,
+      "u_length_m": 1.2,
+      "cross_centre_m": 0.0,
+      "cross_width_m": 0.15,
+      "palette_index": 15,
+      "strength": 0.25
+    },
+    {
+      "id": "front_right_grey",
+      "faces": [
+        "front"
+      ],
+      "u_start_m": 2.75,
+      "u_length_m": 1.25,
+      "cross_centre_m": -0.065,
+      "cross_width_m": 0.21,
+      "palette_index": 10,
+      "strength": 0.27
+    },
+    {
+      "id": "back_pale_break",
+      "faces": [
+        "back"
+      ],
+      "u_start_m": 0.66,
+      "u_length_m": 1.1,
+      "cross_centre_m": 0.08,
+      "cross_width_m": 0.17,
+      "palette_index": 11,
+      "strength": 0.23
+    },
+    {
+      "id": "back_umber_right",
+      "faces": [
+        "back"
+      ],
+      "u_start_m": 2.4,
+      "u_length_m": 1.55,
+      "cross_centre_m": -0.08,
+      "cross_width_m": 0.2,
+      "palette_index": 15,
+      "strength": 0.3
+    },
+    {
+      "id": "top_cool_left",
+      "faces": [
+        "top"
+      ],
+      "u_start_m": 0.0,
+      "u_length_m": 1.24,
+      "cross_centre_m": 0.03,
+      "cross_width_m": 0.2,
+      "palette_index": 1,
+      "strength": 0.24
+    },
+    {
+      "id": "top_umber_middle",
+      "faces": [
+        "top"
+      ],
+      "u_start_m": 1.25,
+      "u_length_m": 1.15,
+      "cross_centre_m": -0.03,
+      "cross_width_m": 0.19,
+      "palette_index": 7,
+      "strength": 0.22
+    },
+    {
+      "id": "top_warm_right",
+      "faces": [
+        "top"
+      ],
+      "u_start_m": 2.35,
+      "u_length_m": 1.6,
+      "cross_centre_m": 0.07,
+      "cross_width_m": 0.21,
+      "palette_index": 19,
+      "strength": 0.26
+    },
+    {
+      "id": "bottom_pale_left",
+      "faces": [
+        "bottom"
+      ],
+      "u_start_m": 0.1,
+      "u_length_m": 1.3,
+      "cross_centre_m": -0.08,
+      "cross_width_m": 0.2,
+      "palette_index": 11,
+      "strength": 0.24
+    },
+    {
+      "id": "bottom_cool_middle",
+      "faces": [
+        "bottom"
+      ],
+      "u_start_m": 1.3,
+      "u_length_m": 1.4,
+      "cross_centre_m": 0.03,
+      "cross_width_m": 0.2,
+      "palette_index": 6,
+      "strength": 0.24
+    },
+    {
+      "id": "bottom_warm_right",
+      "faces": [
+        "bottom"
+      ],
+      "u_start_m": 2.65,
+      "u_length_m": 1.3,
+      "cross_centre_m": -0.02,
+      "cross_width_m": 0.18,
+      "palette_index": 19,
+      "strength": 0.22
+    }
+  ],
+  "grain_track_families": [
+    {
+      "face": "front",
+      "radii_m": [
+        0.118,
+        0.146,
+        0.177,
+        0.211,
+        0.249,
+        0.292,
+        0.338,
+        0.381
+      ],
+      "widths_m": [
+        0.0011,
+        0.0024,
+        0.0015,
+        0.0038,
+        0.0012,
+        0.0029,
+        0.0017,
+        0.0046
+      ],
+      "palette_indices": [
+        0,
+        8,
+        3,
+        13,
+        6,
+        18,
+        12,
+        5
+      ],
+      "starts_m": [
+        0.08,
+        0.42,
+        1.06,
+        0.0,
+        1.88,
+        0.71,
+        2.46,
+        0.31
+      ],
+      "lengths_m": [
+        2.2,
+        3.31,
+        2.7,
+        4.02,
+        1.84,
+        2.96,
+        1.58,
+        3.62
+      ],
+      "strengths": [
+        0.58,
+        0.29,
+        0.46,
+        0.24,
+        0.61,
+        0.33,
+        0.52,
+        0.21
+      ]
+    },
+    {
+      "face": "back",
+      "radii_m": [
+        0.405,
+        0.427,
+        0.451,
+        0.478,
+        0.509,
+        0.538
+      ],
+      "widths_m": [
+        0.0014,
+        0.0031,
+        0.001,
+        0.0042,
+        0.0018,
+        0.0026
+      ],
+      "palette_indices": [
+        4,
+        0,
+        11,
+        5,
+        15,
+        9
+      ],
+      "starts_m": [
+        0.15,
+        1.14,
+        0.61,
+        0.0,
+        2.18,
+        0.77
+      ],
+      "lengths_m": [
+        3.66,
+        2.64,
+        1.91,
+        2.48,
+        1.78,
+        3.21
+      ],
+      "strengths": [
+        0.36,
+        0.57,
+        0.43,
+        0.25,
+        0.62,
+        0.31
+      ]
+    },
+    {
+      "face": "top",
+      "radii_m": [
+        0.402,
+        0.423,
+        0.447,
+        0.472,
+        0.503,
+        0.535
+      ],
+      "widths_m": [
+        0.0012,
+        0.0027,
+        0.0016,
+        0.0035,
+        0.0011,
+        0.0041
+      ],
+      "palette_indices": [
+        13,
+        9,
+        6,
+        14,
+        0,
+        12
+      ],
+      "starts_m": [
+        0.0,
+        0.82,
+        1.74,
+        0.28,
+        2.63,
+        0.49
+      ],
+      "lengths_m": [
+        2.31,
+        3.01,
+        1.62,
+        2.79,
+        1.42,
+        3.51
+      ],
+      "strengths": [
+        0.3,
+        0.56,
+        0.41,
+        0.24,
+        0.64,
+        0.28
+      ]
+    },
+    {
+      "face": "bottom",
+      "radii_m": [
+        0.125,
+        0.156,
+        0.19,
+        0.228,
+        0.271,
+        0.318,
+        0.365
+      ],
+      "widths_m": [
+        0.0015,
+        0.0034,
+        0.0011,
+        0.0022,
+        0.0044,
+        0.0017,
+        0.003
+      ],
+      "palette_indices": [
+        18,
+        7,
+        0,
+        16,
+        3,
+        12,
+        5
+      ],
+      "starts_m": [
+        0.33,
+        0.0,
+        1.21,
+        0.76,
+        1.89,
+        2.58,
+        0.47
+      ],
+      "lengths_m": [
+        2.49,
+        3.74,
+        2.46,
+        1.87,
+        2.08,
+        1.37,
+        3.36
+      ],
+      "strengths": [
+        0.51,
+        0.26,
+        0.6,
+        0.38,
+        0.23,
+        0.58,
+        0.3
+      ]
+    }
+  ],
+  "track_events": [
+    {
+      "face": "front",
+      "track": 1,
+      "kind": "bury",
+      "start_u_m": 1.54,
+      "length_u_m": 0.58,
+      "strength": 0.74
+    },
+    {
+      "face": "front",
+      "track": 3,
+      "kind": "flatten",
+      "start_u_m": 2.04,
+      "length_u_m": 0.92,
+      "strength": 0.62
+    },
+    {
+      "face": "front",
+      "track": 6,
+      "kind": "fade",
+      "start_u_m": 3.21,
+      "length_u_m": 0.41,
+      "strength": 0.88
+    },
+    {
+      "face": "back",
+      "track": 0,
+      "kind": "flatten",
+      "start_u_m": 0.84,
+      "length_u_m": 0.72,
+      "strength": 0.57
+    },
+    {
+      "face": "back",
+      "track": 4,
+      "kind": "bury",
+      "start_u_m": 2.73,
+      "length_u_m": 0.53,
+      "strength": 0.69
+    },
+    {
+      "face": "top",
+      "track": 1,
+      "kind": "fade",
+      "start_u_m": 1.91,
+      "length_u_m": 0.64,
+      "strength": 0.78
+    },
+    {
+      "face": "top",
+      "track": 5,
+      "kind": "flatten",
+      "start_u_m": 2.88,
+      "length_u_m": 0.49,
+      "strength": 0.64
+    },
+    {
+      "face": "bottom",
+      "track": 2,
+      "kind": "bury",
+      "start_u_m": 1.7,
+      "length_u_m": 0.81,
+      "strength": 0.72
+    },
+    {
+      "face": "bottom",
+      "track": 4,
+      "kind": "flatten",
+      "start_u_m": 2.42,
+      "length_u_m": 0.67,
+      "strength": 0.59
+    }
+  ],
+  "quiet_fields": [
+    {
+      "face": "front",
+      "start_u_m": 0.0,
+      "length_u_m": 0.48,
+      "strength": 0.64
+    },
+    {
+      "face": "front",
+      "start_u_m": 2.02,
+      "length_u_m": 0.55,
+      "strength": 0.52
+    },
+    {
+      "face": "back",
+      "start_u_m": 1.58,
+      "length_u_m": 0.77,
+      "strength": 0.67
+    },
+    {
+      "face": "top",
+      "start_u_m": 0.12,
+      "length_u_m": 0.71,
+      "strength": 0.58
+    },
+    {
+      "face": "bottom",
+      "start_u_m": 2.91,
+      "length_u_m": 0.84,
+      "strength": 0.62
+    }
+  ],
+  "ray_families": {
+    "wide_angles_degrees": [
+      -171,
+      -148,
+      -126,
+      -101,
+      -79,
+      -56,
+      -32,
+      -9,
+      14,
+      38,
+      63,
+      87,
+      112,
+      136,
+      159
+    ],
+    "wide_widths_m": [
+      0.00044,
+      0.00081,
+      0.00029,
+      0.00112,
+      0.00053,
+      0.00072,
+      0.00035,
+      0.00094,
+      0.00026,
+      0.00067,
+      0.00048,
+      0.0012,
+      0.00039,
+      0.00076,
+      0.00057
+    ],
+    "narrow_angle_step_degrees": 5.8,
+    "narrow_angle_offsets_degrees": [
+      0.0,
+      0.7,
+      -0.4,
+      1.1,
+      -0.8,
+      0.3,
+      -1.2,
+      0.6
+    ]
+  },
+  "side_ray_flecks": [
+    {
+      "face": "front",
+      "u_m": 0.83,
+      "cross_m": -0.022,
+      "length_m": 0.074,
+      "width_m": 0.006,
+      "angle_degrees": 72,
+      "strength": 0.27
+    },
+    {
+      "face": "front",
+      "u_m": 2.71,
+      "cross_m": 0.084,
+      "length_m": 0.108,
+      "width_m": 0.009,
+      "angle_degrees": 67,
+      "strength": 0.22
+    },
+    {
+      "face": "back",
+      "u_m": 1.36,
+      "cross_m": -0.091,
+      "length_m": 0.061,
+      "width_m": 0.005,
+      "angle_degrees": -70,
+      "strength": 0.19
+    },
+    {
+      "face": "top",
+      "u_m": 1.92,
+      "cross_m": 0.037,
+      "length_m": 0.086,
+      "width_m": 0.007,
+      "angle_degrees": 78,
+      "strength": 0.31
+    },
+    {
+      "face": "bottom",
+      "u_m": 3.18,
+      "cross_m": -0.048,
+      "length_m": 0.069,
+      "width_m": 0.006,
+      "angle_degrees": -74,
+      "strength": 0.21
+    }
+  ],
+  "tool_linework_event_indices": {
+    "front": [
+      2,
+      5,
+      9,
+      12,
+      14
+    ],
+    "back": [
+      1,
+      4,
+      8,
+      11,
+      14
+    ],
+    "top": [
+      3,
+      6,
+      10
+    ],
+    "bottom": [
+      2,
+      7,
+      11,
+      14
+    ]
+  },
+  "pore_cycles": {
+    "spacing_m": [
+      0.00078,
+      0.00116,
+      0.00092,
+      0.00143,
+      0.00084,
+      0.00131,
+      0.00102
+    ],
+    "diameter_sigma_cycle": [
+      -0.71,
+      0.18,
+      0.64,
+      -0.22,
+      0.91,
+      -0.48,
+      0.37,
+      -0.09
+    ],
+    "presence_cycle": [
+      1.0,
+      0.82,
+      0.0,
+      0.64,
+      0.31,
+      0.0,
+      0.91,
+      0.46,
+      0.0,
+      0.73,
+      0.22
+    ],
+    "phase_cycle": [
+      0.11,
+      0.47,
+      0.76,
+      0.29,
+      0.63,
+      0.92,
+      0.38,
+      0.04
+    ]
+  }
+}

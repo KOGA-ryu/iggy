@@ -1,0 +1,12 @@
+material	crushing_kg_cm2_min	crushing_kg_cm2_max	shearing_kg_cm2_min	shearing_kg_cm2_max	shear_direction	tier	source
+Granite, diorite	500	1800	60	100	unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Limestone, dolomite	300	1000	30	50	a = in direction of bed	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Limestone, dolomite	300	1000	50	70	b = perpendicular to bed	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Sandstone	180	900	13	40	a = in direction of bed	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Sandstone	180	900	15	40	b = perpendicular to bed	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Limestone tufa, light	80	200	30	30	unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Clinker bricks	250	700	40	60	unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Good wall bricks	100	200	15	30	unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Porous or hollow bricks	40	100			unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Cement mortar	100	200	18	30	unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195
+Lime mortar, hard	50	90			unspecified	published-1892	Ungewitter/Mohrmann, Manual of Gothic Construction (Ricker tr. 1920) p.195

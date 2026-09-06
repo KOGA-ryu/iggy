@@ -1,0 +1,111 @@
+row_uid,candidate_id,broad_component,family_or_status,evidence_class,evidence_weight,family_host_interface,family_joint_schedule
+R051,FC-02-67_230,foot,foot.turned_interface_unresolved,VISIBLE,1.0,UNRESOLVED - the defining open question of this family,UNRESOLVED
+R161,FC-05-69_146_3,foot,foot.turned_interface_unresolved,VISIBLE,1.0,UNRESOLVED - the defining open question of this family,UNRESOLVED
+R193.a,FC-06-69_146_2,foot,foot.turned_interface_unresolved,PARTIALLY VISIBLE,0.5,UNRESOLVED - the defining open question of this family,UNRESOLVED
+R414,FC-11-10_125_133,foot,foot.turned_interface_unresolved,VISIBLE,1.0,UNRESOLVED - the defining open question of this family,UNRESOLVED
+R159,FC-05-69_146_3,post,post.carcase_unresolved,VISIBLE,1.0,UNRESOLVED,UNRESOLVED
+R270.a,FC-08-2019_59,post,post.carcase_unresolved,PARTIALLY VISIBLE,0.5,UNRESOLVED,UNRESOLVED
+R125,FC-04-1972_47,post,pier.midspan_support,PARTIALLY VISIBLE,0.5,"shelf below, drawer carcase above",UNRESOLVED at the shelf; joined by a cross rail to its pair
+R192,FC-06-69_146_2,post,partition.interior_vertical,PARTIALLY VISIBLE,0.5,case top and bottom; drawer runners fix to it,housed/dadoed into top and bottom; rails tenon into it
+R377,FC-10-1984_161,rear leg/stile,stile.case_corner_board,PARTIALLY VISIBLE,0.5,case sides and back,housed or tenoned; rails mortise in
+R001,FC-01-1999_488,rear leg/stile,stile.continuity_unresolved,PARTIALLY VISIBLE,0.5,UNRESOLVED,UNRESOLVED - masked by the seat rail and gilding
+R004,FC-01-1999_488,rail,seatframe.closed_frame_assembly,PARTIALLY VISIBLE,0.5,leg or post at each corner,"tenon, pin or mitre at four corners - varies by member family"
+R052.a,FC-02-67_230,rail,seatframe.closed_frame_assembly,PARTIALLY VISIBLE,0.5,leg or post at each corner,"tenon, pin or mitre at four corners - varies by member family"
+R004,FC-01-1999_488,rail,rail.seat_tenoned,PARTIALLY VISIBLE,0.5,legs or posts at each corner,tenoned into posts and leg blocks
+R052.a,FC-02-67_230,rail,rail.seat_mitred_box,PARTIALLY VISIBLE,0.5,column tops or leg dowels at the corners,"mitre, reinforced internally (block or leg dowel - not resolvable)"
+R216.b,FC-07-1999_79,rail,rail.drawer_divider,PARTIALLY VISIBLE,0.5,corner posts and interior partitions,tenoned into posts and partitions; receives drawer runners; may carry a lock keeper
+R247.d,FC-08-69_140ab,rail,rail.drawer_divider,VISIBLE,1.0,corner posts and interior partitions,tenoned into posts and partitions; receives drawer runners; may carry a lock keeper
+R216.a,FC-07-1999_79,rail,rail.frieze,PARTIALLY VISIBLE,0.5,corner posts or stiles,tenoned into posts; the cornice sits on it
+R415,FC-11-10_125_133,rail,rail.table_frame,PARTIALLY VISIBLE,0.5,corner legs,tenoned into the legs
+R361,FC-10-1971_281,rail,rail.chest_lock_and_lower,PARTIALLY VISIBLE,0.5,corner stiles,tenoned into the stiles; the upper rail is mortised for a lock
+R216.c,FC-07-1999_79,rail,rail.multi_purpose_unresolved,PARTIALLY VISIBLE,0.5,UNRESOLVED,UNRESOLVED
+R379,FC-10-1984_161,rail,rail.multi_purpose_unresolved,PARTIALLY VISIBLE,0.5,UNRESOLVED,UNRESOLVED
+R130,FC-04-1972_47,panel frame,frame.stile_rail_muntin_grid,VISIBLE,1.0,carcase or door opening,"mortise-and-tenon, often PEGGED; panels float in grooves, never glued"
+R164,FC-05-69_146_3,panel frame,frame.stile_rail_muntin_grid,PARTIALLY VISIBLE,0.5,carcase or door opening,"mortise-and-tenon, often PEGGED; panels float in grooves, never glued"
+R380,FC-10-1984_161,panel frame,frame.stile_rail_muntin_grid,PARTIALLY VISIBLE,0.5,carcase or door opening,"mortise-and-tenon, often PEGGED; panels float in grooves, never glued"
+R155,FC-04-1969_262,moulding run,moulding.profile_toolkit,PARTIALLY VISIBLE,0.5,"any edge, aperture or run on any object",mitre at corners; stopped ends; dies into posts; returns on visible faces
+R365,FC-10-1971_281,moulding run,moulding.profile_toolkit,PARTIALLY VISIBLE,0.5,"any edge, aperture or run on any object",mitre at corners; stopped ends; dies into posts; returns on visible faces
+R054,FC-02-67_230,repeated ornament master,bespoke.winged_sun_disk,VISIBLE,1.0,a long horizontal ground,UNRESOLVED - carved integral to the rail or applied is not stated
+R056,FC-02-67_230,repeated ornament master,ornament.radial_petal_array,PARTIALLY VISIBLE,0.5,column head,bell/host attachment UNRESOLVED - the petal geometry on the bell is visible; how the bell meets the column is not evidenced
+R038,FC-01-2012_216,repeated ornament master,bespoke.anthemion_cartouche,PARTIALLY VISIBLE,0.5,centre of an arm lattice,applied
+R303.a,FC-09-69_146_1,crest/cornice,relief.applied_wreath_ring,VISIBLE,1.0,"applied to the ground - ATTACHMENT METHOD UNRESOLVED (glue, screws or pins; the source shows the applied state, never the fixing)",applied; fixing method unresolved
+R243,FC-08-69_140ab,foot,QUARANTINED (construction),VISIBLE,1.0,held out,termination.stile_to_floor (deleted) claimed this as a proved continuous termination. 'Whether it is glued-on or integral is not resolvable under the ebonizing.
+R156,FC-04-1969_262,foot,QUARANTINED (construction),PARTIALLY VISIBLE,0.5,held out,'A horizontal seam crosses each leg roughly 12 cm above the floor where the stringing also stops - I cannot tell whether this is an original cuff line or a spli
+R320,FC-09-69_146_1,moulding run,QUARANTINED (construction),PARTIALLY VISIBLE,0.5,held out,Removed from muntin.panel_grooved: neither the opposite-face grooves nor the rail tenons are visible. The row records only 'spacing and count across a panel wid
+R338.b,FC-09-1954_151,rail,QUARANTINED (construction),NOT DETERMINABLE,0.0,held out,"'whether the ends are knockdown or fixed' - the rail FORM is fully visible (R338.a, in production) but its end joint is not."
+R072,FC-03-2011_3,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,panel.floating_wood_in_groove: inferred from type. The row records a carved show face and 'a plain UNGILDED board with a visible horizontal glue joint' - a glue
+R131,FC-04-1972_47,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,panel: inferred from type - no groove or frame evidence in the row.
+R219,FC-07-1999_79,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,"panel: inferred from type. 'Flat, flush, unornamented fields sitting inside the reeded margins' describes APPLIED margins, which is not a groove."
+R317,FC-09-69_146_1,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,"panel: inferred from type - the row records the marquetry, not the edge."
+R165,FC-05-69_146_3,floating panel,QUARANTINED (construction),PARTIALLY VISIBLE,0.5,held out,"panel: unresolved. 'recess depth' is recorded, the capture is not."
+R318,FC-09-69_146_1,floating panel,QUARANTINED (construction),PARTIALLY VISIBLE,0.5,held out,panel: unresolved. 'whether bays are flush or recessed' is open.
+R273,FC-08-2019_59,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,"panel.floating_wood_in_groove, final audit: companion row R272 proves frame layout, panel-opening count and peg pattern - never the concealed groove or the floa"
+R381,FC-10-1984_161,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,"panel.floating_wood_in_groove, final audit: companion row R380 records 'joined frame (stiles + rails + muntins)' and whether ornament is applied - frame layout "
+R249,FC-08-69_140ab,floating panel,QUARANTINED (construction),VISIBLE,1.0,held out,"panel: unresolved, and its own frame row (R248) states the case-side construction 'cannot be settled'. Admitting the panel would decide by the back door what th"
+R005,FC-01-1999_488,rail,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R018,FC-01-1999_488,upholstery webbing,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R045,FC-01-2012_216,rail,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R046,FC-01-2012_216,upholstery webbing,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R047,FC-01-2012_216,brace,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R052.b,FC-02-67_230,rail,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R053,FC-02-67_230,brace,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R062,FC-02-67_230,upholstery webbing,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R083,FC-03-2011_3,upholstery webbing,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R107,FC-03-30_120_59,upholstery webbing,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R118,FC-04-1972_47,drawer side,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R119,FC-04-1972_47,drawer bottom,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R120,FC-04-1972_47,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R121,FC-04-1972_47,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R122,FC-04-1972_47,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R123,FC-04-1972_47,lock/escutcheon,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R139,FC-04-1972_47,brace,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R140,FC-04-1972_47,back board,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R141,FC-04-1972_47,castor,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R152,FC-04-1969_262,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R160.b,FC-05-69_146_3,rear leg/stile,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R167,FC-05-69_146_3,hinge leaf,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R170,FC-05-69_146_3,drawer side,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R171,FC-05-69_146_3,drawer bottom,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R172,FC-05-69_146_3,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R173,FC-05-69_146_3,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R174,FC-05-69_146_3,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R188,FC-05-69_146_3,back board,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R193.b,FC-06-69_146_2,foot,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R214.b,FC-07-1999_79,rear leg/stile,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R225,FC-07-1999_79,drawer side,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R226,FC-07-1999_79,drawer bottom,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R227,FC-07-1999_79,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R228,FC-07-1999_79,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R229,FC-07-1999_79,hinge leaf,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R238,FC-07-1999_79,side board,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R241,FC-07-1999_79,brace,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R253,FC-08-69_140ab,drawer side,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R254,FC-08-69_140ab,drawer bottom,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R255,FC-08-69_140ab,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R256,FC-08-69_140ab,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R257,FC-08-69_140ab,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R291,FC-08-2019_59,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R298,FC-08-2019_59,wedge/key,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R322.b,FC-09-69_146_1,foot,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R325,FC-09-69_146_1,strap/band,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R326,FC-09-69_146_1,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R327,FC-09-69_146_1,textile support,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R328,FC-09-69_146_1,back board,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R337,FC-09-1954_151,foot,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R347,FC-09-1954_151,padding mass,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R348,FC-09-1954_151,upholstery webbing,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R351,FC-09-1954_151,wedge/key,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R388,FC-10-1984_161,hinge leaf,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R393,FC-10-1984_161,pintle,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R394,FC-10-1984_161,shelf,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R401,FC-10-1984_161,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R402,FC-10-1984_161,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R403,FC-10-1984_161,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R405.b,FC-10-1984_161,foot,UNASSIGNED - zero-weight evidence,NOT DETERMINABLE,0.0,n/a,n/a
+R421,FC-11-10_125_133,drawer side,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R422,FC-11-10_125_133,drawer bottom,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R423,FC-11-10_125_133,runner,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R424,FC-11-10_125_133,guide,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R425,FC-11-10_125_133,fixed stop,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R426,FC-11-10_125_133,pintle,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a
+R446,FC-12-2002_298_1,brace,UNASSIGNED - zero-weight evidence,INFERRED FROM TYPE,0.0,n/a,n/a

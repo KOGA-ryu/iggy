@@ -1,0 +1,128 @@
+{
+  "schema": "iggy3d.arming-sword-clean-steel-profile.v1",
+  "material_id": "sword_steel_v1",
+  "integration_id": "arming_sword_v1_clean_steel",
+  "capability": "pristine_bright_ground_steel_on_factory_arming_sword",
+  "consumer": {
+    "asset_id": "arming_sword_v1",
+    "actual_production_mesh_present": true,
+    "source_host": "linux-worker",
+    "source_object": "SW_blade.001",
+    "source_factory_relative_path": "tools/assemble_arming_sword.py",
+    "source_finish_relative_path": "tools/finish_arming_sword.py",
+    "source_blade_relative_path": "generators/sg/parts/blade.py",
+    "source_factory_sha256": "767515f2ba2599fcb077ab12c8f3c8ac1d9453abef559347c0cc0777edc53392",
+    "source_finish_sha256": "b9de19e5194ce36131cdab690b3f76a2bd005d53198f5279cd604195a4dd7000",
+    "source_blade_sha256": "e2fa5851ba20d41064eafb964a03d2f716a68d4307bf54a79a8e00b0bdb46322",
+    "blade_length_m": 0.78,
+    "shoulder_width_m": 0.048,
+    "pre_tip_width_m": 0.018,
+    "shoulder_thickness_m": 0.006,
+    "near_tip_thickness_m": 0.002,
+    "expected_vertex_count": 270,
+    "expected_polygon_count": 268,
+    "expected_quad_count": 268
+  },
+  "geometry": {
+    "cross_section": "lenticular_with_secondary_bevel",
+    "blade_axis": "+Z",
+    "width_axis": "X",
+    "thickness_axis": "Y",
+    "profile_width_exponent": 1.15,
+    "distal_taper_exponent": 1.6,
+    "secondary_bevel_half_width_fraction": 0.22,
+    "edge_land_m": 0.0004,
+    "has_fuller": false,
+    "source_zone_role": "audit_only_not_semantic_owner",
+    "expected_source_zone_mismatch_polygon_count": 28,
+    "expected_region_polygon_counts": {
+      "body": 176,
+      "fuller": 0,
+      "bevel": 56,
+      "edge": 36
+    },
+    "region_attribute": "sinc_sword_region",
+    "blade_uv": "IGGY_BladeUV"
+  },
+  "donors": {
+    "expected_f0_linear": [0.56, 0.57, 0.58],
+    "body_roughness": 0.38,
+    "body_anisotropy": 0.18
+  },
+  "finish": {
+    "macro_polish": {
+      "map_resolution": [512, 128],
+      "map_span_m": [0.78, 0.048],
+      "map_bit_depth": 16,
+      "control_grid_shape": [5, 8],
+      "u_knots": [0.0, 0.12, 0.27, 0.44, 0.61, 0.78, 0.9, 1.0],
+      "v_knots": [0.0, 0.22, 0.5, 0.78, 1.0],
+      "control_values": [
+        [0.43, 0.5, 0.37, 0.58, 0.47, 0.65, 0.52, 0.46],
+        [0.55, 0.6, 0.45, 0.64, 0.51, 0.7, 0.56, 0.49],
+        [0.48, 0.53, 0.41, 0.59, 0.46, 0.62, 0.5, 0.44],
+        [0.4, 0.47, 0.35, 0.54, 0.42, 0.58, 0.46, 0.4],
+        [0.46, 0.51, 0.39, 0.56, 0.45, 0.61, 0.49, 0.43]
+      ],
+      "roughness_amplitude": 0.028
+    },
+    "medium_grind": {
+      "map_resolution": [1024, 256],
+      "map_span_m": [0.78, 0.048],
+      "map_bit_depth": 16,
+      "track_count": 47,
+      "roughness_amplitude": 0.018,
+      "bump_distance_m": 0.000004,
+      "bump_strength": 0.22
+    },
+    "micro_response": {
+      "owner": "principled_anisotropy",
+      "coordinate": "IGGY_BladeUV tangent",
+      "texture_map": null
+    },
+    "regions": {
+      "body": {
+        "enabled": true,
+        "roughness": 0.38,
+        "anisotropy": 0.18,
+        "macro_strength": 0.8,
+        "grind_strength": 1.0
+      },
+      "fuller": {
+        "enabled": false,
+        "roughness": 0.0,
+        "anisotropy": 0.0,
+        "macro_strength": 0.0,
+        "grind_strength": 0.0
+      },
+      "bevel": {
+        "enabled": true,
+        "roughness": 0.24,
+        "anisotropy": 0.35,
+        "macro_strength": 0.52,
+        "grind_strength": 0.46
+      },
+      "edge": {
+        "enabled": true,
+        "roughness": 0.16,
+        "anisotropy": 0.42,
+        "macro_strength": 0.18,
+        "grind_strength": 0.12
+      }
+    }
+  },
+  "workflow_contract": {
+    "surface_method_contract": {
+      "effect_stack": [
+        "factory_lenticular_geometry",
+        "geometry_derived_region_identity",
+        "clean_conductor_identity",
+        "macro_polish_roughness",
+        "finite_medium_grind_response",
+        "anisotropic_microresponse"
+      ],
+      "damage_placement_state": "absent",
+      "engine_parity": "unverified"
+    }
+  }
+}

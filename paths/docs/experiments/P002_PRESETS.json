@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "status": "planned; not runtime configuration yet",
+  "presets": [
+    {
+      "id": "guided_calm",
+      "mode_id": "guided",
+      "objective_id": "finish_question_v1",
+      "objective_parameters": {},
+      "score_rule_id": "practice_none_v1",
+      "score_parameters": {},
+      "description": "Finish the question with as much help as you choose. Scoring off.",
+      "preset_version": 1,
+      "mode_version": 1,
+      "objective_version": 1,
+      "score_rule_version": 1
+    },
+    {
+      "id": "guided_progress",
+      "mode_id": "guided",
+      "objective_id": "finish_question_v1",
+      "objective_parameters": {},
+      "score_rule_id": "guided_completion_v1",
+      "score_parameters": {
+        "points_per_layer": 1
+      },
+      "description": "One point per resolved layer, including answers you choose to see.",
+      "preset_version": 1,
+      "mode_version": 1,
+      "objective_version": 1,
+      "score_rule_version": 1
+    },
+    {
+      "id": "hunt_classic",
+      "mode_id": "hunt",
+      "objective_id": "finish_hunt_pack_v1",
+      "objective_parameters": {},
+      "score_rule_id": "hunt_bank_v1",
+      "score_parameters": {
+        "bank_rewards": [
+          100,
+          240,
+          420,
+          520,
+          620,
+          720
+        ]
+      },
+      "description": "Banking 1, 2, 3, 4, 5, or 6 correct rows together earns 100, 240, 420, 520, 620, or 720 points.",
+      "preset_version": 1,
+      "mode_version": 1,
+      "objective_version": 1,
+      "score_rule_version": 1
+    },
+    {
+      "id": "hunt_even",
+      "mode_id": "hunt",
+      "objective_id": "finish_hunt_pack_v1",
+      "objective_parameters": {},
+      "score_rule_id": "hunt_bank_v1",
+      "score_parameters": {
+        "bank_rewards": [
+          100,
+          200,
+          300,
+          400,
+          500,
+          600
+        ]
+      },
+      "description": "100 points per banked correct row, regardless of grouping.",
+      "preset_version": 1,
+      "mode_version": 1,
+      "objective_version": 1,
+      "score_rule_version": 1
+    },
+    {
+      "id": "guided_three_layers",
+      "mode_id": "guided",
+      "objective_id": "resolve_layers_v1",
+      "objective_parameters": {
+        "target_layers": 3
+      },
+      "score_rule_id": "practice_none_v1",
+      "score_parameters": {},
+      "description": "Resolve three layers, with help whenever you want. You may keep practicing after the goal.",
+      "preset_version": 1,
+      "mode_version": 1,
+      "objective_version": 1,
+      "score_rule_version": 1
+    }
+  ]
+}

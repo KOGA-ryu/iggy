@@ -1,0 +1,202 @@
+{
+  "schema": "iggy3d.forged_iron_v003_v004_cycles_proof.v1",
+  "status": "USER_NOT_ACCEPTED_PROOF_ONLY",
+  "render_engine": "CYCLES",
+  "cycles_samples": 32,
+  "tile_resolution": [
+    720,
+    240
+  ],
+  "consumer": {
+    "center": [
+      1.130000114440918,
+      0.0,
+      0.0
+    ],
+    "span": [
+      4.059999942779541,
+      0.11599999666213989,
+      0.4099999964237213
+    ],
+    "close_center": [
+      0.7200000286102295,
+      0.0,
+      0.0
+    ]
+  },
+  "rows": {
+    "v003_frozen_root": {
+      "label": "v003 FROZEN ROOT",
+      "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+      "blend_sha256": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+      "material": "IGGY_MAT_ReferenceForgedIron_v003",
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/full_front.png",
+          "bytes": 85464,
+          "sha256": "cc12d76444d0809f1c2cd5c90160ae34f76dbb9d9d3027ef9ce16bb226b56a17"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/close_neutral.png",
+          "bytes": 129794,
+          "sha256": "2798943536cd588edf368ab61f4160dcab46b009283609ec87aa868f39fdddc3"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/opposed_light_difference.png",
+          "bytes": 123315,
+          "sha256": "a6a61d7f9fe689fc564d666602998b95f8698a81d63980d38565c08f044fe891",
+          "operation": "absolute sRGB difference of identical Cycles left/right close renders"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/grazing.png",
+          "bytes": 86828,
+          "sha256": "f5f38eef5879cf47ce2c1bcedff8ccdb7bd0132ed332501df353e13379a7d4e0"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/pivot_close.png",
+          "bytes": 152207,
+          "sha256": "bf41f60a8ee56d2d63324fd731398746412a2670a4c80cbdc455286da674da82"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/gameplay.png",
+          "bytes": 65336,
+          "sha256": "d1ab3e0eebd19e13db6ceff9a7463ac5c1eef04dfa8fbb0ec152af10a46ee21a"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/base_colour.png",
+          "bytes": 75368,
+          "sha256": "117b67c55f58ce920080e80a64368f7eef0354dd724055e0463ed18ee3731e7c"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/independent_roughness.png",
+          "bytes": 78467,
+          "sha256": "d5635bd71c8d397a216610a62d11cc95d307c187345f6453cc23dc398beb55fd"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v003_frozen_root/normal.png",
+          "bytes": 75554,
+          "sha256": "fc02a9809e24ce8af074bd5927c8f2fb811140ec785f575c486bd74c65bbd6b6"
+        }
+      }
+    },
+    "v004_connected_oxide": {
+      "label": "v004 CONNECTED OXIDE",
+      "blend": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/forged_iron_connected_oxide_candidate_v004.blend",
+      "blend_sha256": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481",
+      "shared_group": "IGGY_SH_ConnectedOxideForgedIron_v004",
+      "materials": [
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_FixedLeaf",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_MovingLeaf_Openwork",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__SM_GH018_Pintle",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_01",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_02",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_03",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__FixedKnuckle_04",
+        "IGGY_MAT_ConnectedOxideForgedIron_v004__MovingKnuckle_05"
+      ],
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/full_front.png",
+          "bytes": 85423,
+          "sha256": "8d05c1efe25f50f4c21741d8e9aab33adfb0b04a62aa602438703b16ea5d0e6d"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/close_neutral.png",
+          "bytes": 128047,
+          "sha256": "483fc4e36c441ed3871e2efc834c0bf90cc89caf362b4a6a36e19476f7547c30"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/opposed_light_difference.png",
+          "bytes": 123620,
+          "sha256": "d844b28880cb89bd732b568a3eefd397c4d4c82e5adc38a783313dd4a8ab6fe8",
+          "operation": "absolute sRGB difference of identical Cycles left/right close renders"
+        },
+        "grazing": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/grazing.png",
+          "bytes": 86005,
+          "sha256": "2cd41af5296662575485ce7e52ca2acf8dd2e40808b0e2e537d51bf005ddb7d5"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/pivot_close.png",
+          "bytes": 149674,
+          "sha256": "4d9fc84641d83ce3a8551fe3a592fdff1fbf0cdcc37ef9874350caef511bc734"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/gameplay.png",
+          "bytes": 65847,
+          "sha256": "bcce3c652f4ae60e6ce85579e608e309849c59ae808928f9ead55d378bc1b664"
+        },
+        "base_colour": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/base_colour.png",
+          "bytes": 63448,
+          "sha256": "07e3eb017a3e9774dc9233735009b673ad479806922ecb74f8b4ed033a0f1aa6"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/independent_roughness.png",
+          "bytes": 74888,
+          "sha256": "61608e0b21f9e0b0c5ef92b2ecec5e5179ce284a5c97ebc5909b19dfcf0773eb"
+        },
+        "normal": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/v004_connected_oxide/normal.png",
+          "bytes": 77106,
+          "sha256": "be8b291a0e0a8ce975c3e41a1134914260e75fb2bf39b960ee9ed10965953563"
+        }
+      }
+    }
+  },
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004/cycles_actual_hinge_proof_v1/forged_iron_v003_v004_cycles_comparison.png",
+    "resolution": [
+      4320,
+      720
+    ],
+    "bytes": 2159746,
+    "sha256": "34d769d22eddbb7011cc7e9b97813390c7b944ecc64c810ee694e9c605234989",
+    "layout": "three proof pairs per row; frozen v003 immediately left of v004",
+    "panel_order": [
+      "full_front",
+      "close_neutral",
+      "opposed_light_difference",
+      "grazing",
+      "pivot_close",
+      "gameplay",
+      "base_colour",
+      "independent_roughness",
+      "normal"
+    ]
+  },
+  "visual_review": {
+    "result": "repair_requested",
+    "preferred_row": "v004_connected_oxide",
+    "advancement_scope": "preferred_repair_base_not_material_acceptance",
+    "defect_ledger": [
+      "v004 removes the v003 soft cloud colour field and the finite striped worked-response language in every physical view.",
+      "v004 base colour is too close to black in the isolated proof, so the beauty render is carried primarily by the lamps rather than a readable dark oxide colour hierarchy.",
+      "v004 independent roughness remains nearly uniform at close and gameplay scale; it does not yet establish a broad-medium-micro manufacturing handoff.",
+      "v003 and v004 normal proofs are both nearly flat at the actual-consumer scale, so the broad forging-plane owner remains underpowered.",
+      "v004 pivot is cleaner than v003 but still reads as a smooth coated cylinder with no component-scale forged response.",
+      "The opposed-light comparison is still dominated by geometry-owned bevels, apertures, and barrel segmentation rather than a convincing intact forged surface.",
+      "No symbolic pattern, visible luster rail, rust, contact polish, or condition was introduced by v004."
+    ],
+    "manual_acceptance_established": false
+  },
+  "source_hashes": {
+    "v003_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "v003_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "v004_before": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481",
+    "v004_after": "b44261425c3a90b52c77c0cd164bd279b62dbbda0ee90beb981db298a45e3481"
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/render_connected_oxide_candidate_cycles_v004.py",
+    "sha256": "68953ee223700b1721bca865e0d9dfb8aad9742568ecfd5f0616e5f6a17d5302"
+  },
+  "manual_acceptance_required": true,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "unreal_parity_verified": false,
+  "limitations": [
+    "This board compares intact clean-core response only.",
+    "v004 is a noncanonical candidate and v003 remains frozen current work.",
+    "Cycles proof does not establish Unreal parity or user acceptance."
+  ]
+}

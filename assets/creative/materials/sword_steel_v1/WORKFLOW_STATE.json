@@ -1,0 +1,480 @@
+{
+  "current_revision": 9,
+  "package": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1",
+  "revisions": [
+    {
+      "build_entry": {
+        "coded_demands_sha256": "a7dd2e54a792a5ca3c25fc3e28fd605000b490352b457fa315bf0efb6571479a",
+        "opened_at": "2026-07-31T15:37:02.584199+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 13893,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "a7dd2e54a792a5ca3c25fc3e28fd605000b490352b457fa315bf0efb6571479a"
+      },
+      "coded_demands_sha256": "a7dd2e54a792a5ca3c25fc3e28fd605000b490352b457fa315bf0efb6571479a",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002"
+      ],
+      "frozen_at": "2026-07-31T15:37:02.516118+00:00",
+      "red_gate_evidence": [
+        "profile assertion failed: RED: macro polish band is absent"
+      ],
+      "revision": 1,
+      "revision_note": "Add authored macro polish and region-weighted medium sword finish",
+      "target_baselines": [
+        {
+          "bytes": 2276,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/sword_steel_v1.json",
+          "sha256": "fef8f113739e994e3a46d215accd829b1612c3b16fc6ada267ab151317c04929"
+        },
+        {
+          "bytes": 37513,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_sword_steel_v1.py",
+          "sha256": "b1936aa3911b19e3115bc773ed6e80bbbac8262c4ba520216ee40328af1f5bbc"
+        },
+        {
+          "bytes": 4268,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/sword_steel_v1_tests.py",
+          "sha256": "c062407ed0b8550fe3553f691af003ea0f5d34e327b64bdf23c8042d15f908c7"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 4577,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "aca1c13fb132bb6e0fea541360e61f8b25fc6900f8b9fcff9a3e241b9168979d"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "e5c93275fa8bc75b65d57d18fd2ff1b390f0f7cd1a51d64f3ce03776c33f6b31",
+        "opened_at": "2026-07-31T17:55:03.338237+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 31384,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "e5c93275fa8bc75b65d57d18fd2ff1b390f0f7cd1a51d64f3ce03776c33f6b31"
+      },
+      "coded_demands_sha256": "e5c93275fa8bc75b65d57d18fd2ff1b390f0f7cd1a51d64f3ce03776c33f6b31",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003"
+      ],
+      "frozen_at": "2026-07-31T17:55:03.295408+00:00",
+      "red_gate_evidence": [
+        "actual sword integration: profile and builder absent"
+      ],
+      "revision": 2,
+      "revision_note": "Install accepted clean steel on measured BATMAN arming sword",
+      "target_baselines": [
+        {
+          "bytes": null,
+          "exists": false,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": null
+        },
+        {
+          "bytes": null,
+          "exists": false,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": null
+        },
+        {
+          "bytes": 4902,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "39498328bb84324e4bfbfbc31e06239d88f4c2d870372fd44dd54bfd59b89a93"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 7546,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "670d08f503cbb12a55dfa1df1f7149f46e8b47db161e4dd36cd643877de6d79e"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "398edd6fdccb5763837e16a559b8c4e0472a41b87d773150c9f52e63afc5976f",
+        "opened_at": "2026-07-31T17:59:55.504198+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 36071,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "398edd6fdccb5763837e16a559b8c4e0472a41b87d773150c9f52e63afc5976f"
+      },
+      "coded_demands_sha256": "398edd6fdccb5763837e16a559b8c4e0472a41b87d773150c9f52e63afc5976f",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T17:59:55.460908+00:00",
+      "red_gate_evidence": [
+        "worker repair gate: finish_arming_sword.py fails on missing SW_grip zone attribute"
+      ],
+      "revision": 3,
+      "revision_note": "Isolate broken factory finish and reconstruct only blade baseline",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 27535,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "6d2154daae203b91b34e36f2f231174217caa3959ac3206c7ca13023908d38ec"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 8194,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "1357df2e393e35c170b41492c35078c19aefee3b914236c7b8493191e76885c2"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "296cae469745bb14d47122a42e77a7c97c5feab7e048088d0c7f1a8ba31a4382",
+        "opened_at": "2026-07-31T18:02:18.380309+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 36646,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "296cae469745bb14d47122a42e77a7c97c5feab7e048088d0c7f1a8ba31a4382"
+      },
+      "coded_demands_sha256": "296cae469745bb14d47122a42e77a7c97c5feab7e048088d0c7f1a8ba31a4382",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:02:18.341549+00:00",
+      "red_gate_evidence": [
+        "proof repair gate: Blender default Cube occluded the actual sword board"
+      ],
+      "revision": 4,
+      "revision_note": "Remove named factory defaults before actual-sword assembly proof",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29142,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "41fe2a1308ddf917fa738ae34437643b5ef0cf71c2a4df46a329fc2f41ec44f3"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 8570,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "227fd687348ce97da81315bff4f06038cfb6b13c832f31ebd122e126eaa25f47"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "a74e49b40dac55888ce4261c8967f1268e3b01c0e57af00c63ee22706c2a39b0",
+        "opened_at": "2026-07-31T18:03:23.294536+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 37090,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "a74e49b40dac55888ce4261c8967f1268e3b01c0e57af00c63ee22706c2a39b0"
+      },
+      "coded_demands_sha256": "a74e49b40dac55888ce4261c8967f1268e3b01c0e57af00c63ee22706c2a39b0",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:03:23.262064+00:00",
+      "red_gate_evidence": [
+        "proof repair gate: 650/210/900 light envelope saturated all material views"
+      ],
+      "revision": 5,
+      "revision_note": "Restore accepted 22/5/24 sword-steel proof lighting",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29313,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "4d6df976f9aa2d8fb5857b42057e1d3dabc83a950d4f5f25eb8060fe5405e9af"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 9014,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "e3885389a8f275c7c662e0539a4579c49063ea90d2b64142c6b17acbf24c9ee3"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "f0ea5f966f97e36c9b25c1e7285732fc722d93873328a1648a147a6576c32966",
+        "opened_at": "2026-07-31T18:04:41.371026+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 37565,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "f0ea5f966f97e36c9b25c1e7285732fc722d93873328a1648a147a6576c32966"
+      },
+      "coded_demands_sha256": "f0ea5f966f97e36c9b25c1e7285732fc722d93873328a1648a147a6576c32966",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:04:41.338888+00:00",
+      "red_gate_evidence": [
+        "proof repair gate: horizontal light card collapsed body, bevel, and edge to white"
+      ],
+      "revision": 6,
+      "revision_note": "Use tall sword-studio reflection strips",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29305,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "12cd8dc7e74cb399bb2ca6d625c2328a95b65ec308417a5e9e0680ff2b56fbc6"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 9464,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "bdd1f12e0aa1fd3a6c98fa0739d3d4e198d3f9cd67701d785222be38ee237040"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "adc0bdb74a0f2f23ef2bacd0023811e417b03fa3c6b104b66fb2a3263451456e",
+        "opened_at": "2026-07-31T18:05:51.310148+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 37911,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "adc0bdb74a0f2f23ef2bacd0023811e417b03fa3c6b104b66fb2a3263451456e"
+      },
+      "coded_demands_sha256": "adc0bdb74a0f2f23ef2bacd0023811e417b03fa3c6b104b66fb2a3263451456e",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:05:51.278588+00:00",
+      "red_gate_evidence": [
+        "proof repair gate: clean-conductor reflection still reached display ceiling"
+      ],
+      "revision": 7,
+      "revision_note": "Set shared actual-sword proof exposure to minus 1.25 stops",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29304,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "a6d4097b8c03800b2ff47c132f9ace9a6d4e30a9f1426bcf19dc9146b1a8c5cd"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 9847,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "593776ea95dc18266447c5c552ee7a7a54e45a3c7d315dd0730898adac276daf"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "cd9ff6f786a4cf2d063e3e1ad6e5ef523ab76a45f5c2131e3c9a473f5fac57e6",
+        "opened_at": "2026-07-31T18:07:46.325226+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 38247,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "cd9ff6f786a4cf2d063e3e1ad6e5ef523ab76a45f5c2131e3c9a473f5fac57e6"
+      },
+      "coded_demands_sha256": "cd9ff6f786a4cf2d063e3e1ad6e5ef523ab76a45f5c2131e3c9a473f5fac57e6",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:07:46.291424+00:00",
+      "red_gate_evidence": [
+        "proof repair gate: final close grazing panel was a featureless white reflection card"
+      ],
+      "revision": 8,
+      "revision_note": "Move actual-sword grazing strip off axis and lower energy",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29345,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "0626c8350ff5684425c20f0a909545bb581f715281f57639d51a260896bd84ee"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 10217,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "77785776adc869ae5d649a00544ca555eae1e2cbd8626e11825506a48b3b8b97"
+      }
+    },
+    {
+      "build_entry": {
+        "coded_demands_sha256": "9e289431b3680bef68e597f436945a10ed6560356c2f29ae831bb0887592332d",
+        "opened_at": "2026-07-31T18:10:03.577549+00:00",
+        "target_baselines_verified": true
+      },
+      "coded_demands": {
+        "bytes": 38364,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/CODED_DEMANDS.md",
+        "sha256": "9e289431b3680bef68e597f436945a10ed6560356c2f29ae831bb0887592332d"
+      },
+      "coded_demands_sha256": "9e289431b3680bef68e597f436945a10ed6560356c2f29ae831bb0887592332d",
+      "demand_ids": [
+        "DEM-SWORD-POLISH-001",
+        "DEM-SWORD-POLISH-002",
+        "DEM-SWORD-ACTUAL-003",
+        "DEM-SWORD-ACTUAL-004"
+      ],
+      "frozen_at": "2026-07-31T18:10:03.542957+00:00",
+      "red_gate_evidence": [],
+      "revision": 9,
+      "revision_note": "Record verified actual arming-sword clean-steel production candidate",
+      "target_baselines": [
+        {
+          "bytes": 4032,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/profiles/arming_sword_v1_clean_steel.json",
+          "sha256": "410dd8171ef58a9ca36d5d26f62bceb6009a3c9a4a38bdf3ce267a8e67ebc982"
+        },
+        {
+          "bytes": 29390,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/build_arming_sword_v1_clean_steel.py",
+          "sha256": "58ff4c45a630aec6b336979916a4ac22b84d254abfb7cb392a2c61ef9907fd5d"
+        },
+        {
+          "bytes": 5038,
+          "exists": true,
+          "path": "/Users/kogaryu/iggy3d/tests/unit/arming_sword_v1_clean_steel_tests.py",
+          "sha256": "16dc358ea5f4cc8992dbb66ba96dd33ff668f7b4fe7f65a63195dd90367724e2"
+        }
+      ],
+      "tier": "reusable-family",
+      "workstream": {
+        "bytes": 12719,
+        "exists": true,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/WORKSTREAM.md",
+        "sha256": "5a98ca0162de901741c36e91ba850a9829a14bed9f45131f6f2752e4211fe1c5"
+      }
+    }
+  ],
+  "schema": "iggy3d.material_workflow_state.v1",
+  "updated_at": "2026-07-31T18:10:03.577673+00:00"
+}

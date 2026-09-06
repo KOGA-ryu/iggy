@@ -1,0 +1,42 @@
+rank,priority_score,recipe_family,parent,weighted_evidence,reuse_class,sinc_donor_status
+1,69.2,moulding.profile_library,moulding run,9.5,shared_profile,AUDIT_REQUIRED - none
+2,63.3,inlay.linear_stringing_path,inlay path,7.0,parameterized_recipe,AUDIT_REQUIRED - none
+3,60.4,ornament.instanced_relief_master,repeated ornament master,8.0,assembly_grammar,AUDIT_REQUIRED - none
+4,60.0,foot.turned_separate,foot,6.0,parameterized_recipe,AUDIT_REQUIRED - no tu
+5,58.3,panel.floating_board_in_groove,floating panel,5.5,parameterized_recipe,AUDIT_REQUIRED - none
+6,57.5,cornice.stacked_fillet_moulding,crest/cornice,6.0,shared_profile,AUDIT_REQUIRED - none
+7,53.3,ornament.marquetry_motif_set,repeated ornament master,4.0,parameterized_recipe,AUDIT_REQUIRED - none
+8,53.3,frame.applied_moulded_surround,panel frame,4.0,parameterized_recipe,AUDIT_REQUIRED - none
+9,50.8,crest.shaped_sawn_board,crest/cornice,4.0,shared_profile,AUDIT_REQUIRED - none
+10,50.0,stile.separate_rear_leg,rear leg/stile,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+11,50.0,rail.drawer_divider,rail,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+12,50.0,post.panel_muntin,post,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+13,50.0,post.case_corner_structural,post,3.0,parameterized_recipe,AUDIT_REQUIRED - candi
+14,50.0,panel.upholstered_field,floating panel,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+15,50.0,moulding.repeating_cell_run,moulding run,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+16,50.0,inlay.node_and_cell_punctuation,inlay path,3.0,parameterized_recipe,AUDIT_REQUIRED - none
+17,48.8,frame.stile_rail_muntin_grid,panel frame,4.5,assembly_grammar,AUDIT_REQUIRED - struc
+18,48.3,rail.frame_and_panel,rail,2.5,parameterized_recipe,AUDIT_REQUIRED - struc
+19,47.5,rail.swept_show_wood_arm,rail,3.0,shared_profile,AUDIT_REQUIRED - none
+20,47.5,brace.shaped_show_bracket,brace,3.0,shared_profile,AUDIT_REQUIRED - none
+21,46.7,stile.plain_back_board,rear leg/stile,2.0,parameterized_recipe,AUDIT_REQUIRED - none
+22,46.7,rail.seat_frame,rail,2.0,parameterized_recipe,AUDIT_REQUIRED - none
+23,46.7,rail.bed_side,rail,2.0,parameterized_recipe,AUDIT_REQUIRED - none
+24,46.7,brace.lid_cleat,brace,2.0,parameterized_recipe,AUDIT_REQUIRED - none
+25,45.4,foot.integral_stile_termination,foot,3.5,assembly_grammar,AUDIT_REQUIRED - candi
+26,43.8,frame.assembled_from_members,panel frame,3.0,assembly_grammar,AUDIT_REQUIRED - none
+27,43.3,rail.gallery_cap,rail,1.0,parameterized_recipe,AUDIT_REQUIRED - none
+28,43.3,post.board_standard,post,1.0,parameterized_recipe,AUDIT_REQUIRED - none
+29,43.3,foot.block,foot,1.0,parameterized_recipe,AUDIT_REQUIRED - none
+30,42.1,stile.continuous_leg_and_stile,rear leg/stile,2.5,assembly_grammar,AUDIT_REQUIRED - candi
+31,40.4,post.bed_stacked_block,post,2.0,assembly_grammar,AUDIT_REQUIRED - none
+32,40.4,post.arm_support,post,2.0,assembly_grammar,AUDIT_REQUIRED - none
+33,30.0,brace.corner_glue_block,brace,1.5,parameterized_recipe,AUDIT_REQUIRED - none
+34,25.0,post.turned_support,post,0.0,parameterized_recipe,AUDIT_REQUIRED - none
+35,20.8,rail.moving_fly,rail,1.0,bespoke,AUDIT_REQUIRED - none
+36,20.8,ornament.figural_bespoke,repeated ornament master,1.0,bespoke,AUDIT_REQUIRED - none
+37,20.8,inlay.absent_recorded,inlay path,1.0,bespoke,n/a
+38,20.8,foot.carved_figural,foot,1.0,bespoke,AUDIT_REQUIRED - none
+39,20.8,brace.metal_stay,brace,1.0,bespoke,AUDIT_REQUIRED - forge
+40,2.5,foot.spun_metal_base,foot,0.0,bespoke,AUDIT_REQUIRED - forge
+41,2.5,crest.metal_capital,crest/cornice,0.0,bespoke,AUDIT_REQUIRED - none

@@ -122,6 +122,9 @@ makeCreativeEditorWorldLayoutBlockoutDraft() noexcept {
   CreativeEditorWorldLayoutBuildingBlockoutSettings draft;
   draft.shell.footprint.minimum = {0, 0};
   draft.shell.footprint.maximum = {8, 8};
+  draft.architecturalProfileKind =
+      iggy3d::creative::
+          CreativeWorldLayoutArchitecturalProfileKind::Residential;
   return draft;
 }
 

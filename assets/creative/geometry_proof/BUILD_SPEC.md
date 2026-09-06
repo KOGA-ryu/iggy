@@ -318,12 +318,14 @@ old-vs-new comparison, then the side quest ends.
 
 ## 9a. Research intake (added after the 451A measurement thread)
 
-Measurement threads hand off ONE document (`SINC_GeometryProof_Handoff/1`,
-contract in INTAKE.md): calibration with residual, working-crop frames as
-declared transforms, named 2D landmarks with evidence, scalar extents with
-statuses, optional arc traces. `profile_intake.py` resolves frames, fits
-circles (Kasa least-squares, residuals reported), derives
-`tolerance.distance` = 2 x calibration RMS, and emits a DRAFT spec that
+Measurement threads hand off ONE document (`SINC_GeometryProof_Handoff/2`,
+contract in INTAKE.md): calibration with explicit control-point uncertainty,
+source projection model and any authored model assumption; working-crop frames
+as declared transforms; named 2D landmarks with evidence; scalar extents with
+statuses; optional arc traces. The retained `/1` records remain readable.
+`profile_intake.py` resolves frames, fits circles (Kasa least-squares,
+residuals reported), derives `tolerance.distance` = 2 x control-point
+uncertainty, and emits a DRAFT spec that
 fails compilation until an author declares segments, joins, roles, arc
 directions, and solid side. Intake never interprets pixels - the Phase 0
 boundary stands. Proof: the fig 6 handoff example round-trips into the

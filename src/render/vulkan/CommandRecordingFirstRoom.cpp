@@ -83,6 +83,7 @@ RenderReceipt firstRoomReceipt(const CommandRecording& recording,
 }  // namespace
 
 using command_recording_internal::recordExternalUi;
+using command_recording_internal::recordCaptureAndPresent;
 using command_recording_internal::recordHudGlyphQuads;
 using command_recording_internal::recordOverlayRects;
 using command_recording_internal::reasonFor;
@@ -431,65 +432,9 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   const bool externalUiRecorded = recordExternalUi(
       info.externalUiHook, info.commandBuffer, info.swapchainImage,
       info.swapchainImageView, info.extent, info.frameSlot);
-
-  if (info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE &&
-      info.captureBufferSize >= static_cast<VkDeviceSize>(info.extent.width) *
-                                    info.extent.height * 4ULL) {
-    VkImageMemoryBarrier colorToTransfer{};
-    colorToTransfer.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    colorToTransfer.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    colorToTransfer.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    colorToTransfer.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorToTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    colorToTransfer.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    colorToTransfer.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    colorToTransfer.image = info.swapchainImage;
-    colorToTransfer.subresourceRange = colorToAttachment.subresourceRange;
-    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
-                         &colorToTransfer);
-
-    VkBufferImageCopy copyRegion{};
-    copyRegion.bufferOffset = 0;
-    copyRegion.bufferRowLength = 0;
-    copyRegion.bufferImageHeight = 0;
-    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegion.imageSubresource.mipLevel = 0;
-    copyRegion.imageSubresource.baseArrayLayer = 0;
-    copyRegion.imageSubresource.layerCount = 1;
-    copyRegion.imageExtent = {info.extent.width, info.extent.height, 1U};
-    vkCmdCopyImageToBuffer(info.commandBuffer, info.swapchainImage,
-                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, info.captureBuffer, 1,
-                           &copyRegion);
-
-    VkImageMemoryBarrier transferToPresent{};
-    transferToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    transferToPresent.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    transferToPresent.dstAccessMask = 0;
-    transferToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    transferToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    transferToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    transferToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    transferToPresent.image = info.swapchainImage;
-    transferToPresent.subresourceRange = colorToAttachment.subresourceRange;
-    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
-                         &transferToPresent);
-  } else {
-    VkImageMemoryBarrier colorToPresent{};
-    colorToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    colorToPresent.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    colorToPresent.dstAccessMask = 0;
-    colorToPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    colorToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    colorToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    colorToPresent.image = info.swapchainImage;
-    colorToPresent.subresourceRange = colorToAttachment.subresourceRange;
-    vkCmdPipelineBarrier(info.commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1,
-                         &colorToPresent);
-  }
+  const bool captureRecorded = recordCaptureAndPresent(
+      info.commandBuffer, info.swapchainImage, info.extent,
+      info.captureEnabled, info.captureBuffer, info.captureBufferSize);
 
   vkResult = vkEndCommandBuffer(info.commandBuffer);
   if (vkResult != VK_SUCCESS) {
@@ -528,8 +473,7 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
                      static_cast<std::uint64_t>(info.uiOverlayRectCount));
   appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
                      static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
-  appendReceiptField(result.receipt, "capture_copy_recorded",
-                     info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE);
+  appendReceiptField(result.receipt, "capture_copy_recorded", captureRecorded);
   appendReceiptField(result.receipt, "external_ui_recorded", externalUiRecorded);
   return result;
 }

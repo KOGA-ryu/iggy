@@ -1,0 +1,102 @@
+{
+  "candidate_metrics": {
+    "A_UNIFORM_50UM": {
+      "coverage_max": 1.0,
+      "coverage_min": 1.0,
+      "height_abs_max_m": 0.0,
+      "metalness_max": 0.0,
+      "thickness_max_m": 4.999999873689376e-05,
+      "thickness_min_m": 4.999999873689376e-05,
+      "thickness_std_m": 3.637978807091713e-12
+    },
+    "B_THERMAL_RAILS": {
+      "coverage_max": 1.0,
+      "coverage_min": 1.0,
+      "height_abs_max_m": 0.0,
+      "metalness_max": 0.0,
+      "thickness_max_m": 7.069943239912391e-05,
+      "thickness_min_m": 3.319407187518664e-05,
+      "thickness_std_m": 5.746888291469077e-06
+    },
+    "C_RESTRAINED_FLOW": {
+      "coverage_max": 1.0,
+      "coverage_min": 1.0,
+      "height_abs_max_m": 0.0,
+      "metalness_max": 0.0,
+      "thickness_max_m": 7.380997703876346e-05,
+      "thickness_min_m": 3.182351792929694e-05,
+      "thickness_std_m": 6.273149665503297e-06
+    },
+    "D_OVER_INTERPRETED": {
+      "coverage_max": 1.0,
+      "coverage_min": 1.0,
+      "height_abs_max_m": 0.0,
+      "metalness_max": 0.0,
+      "thickness_max_m": 7.380997703876346e-05,
+      "thickness_min_m": 3.182351792929694e-05,
+      "thickness_std_m": 6.273149665503297e-06
+    }
+  },
+  "champion": "B_THERMAL_RAILS",
+  "champion_reason": "Preserves a continuous dielectric skin and broad thermal organization without adding a second structure that has no decisive actual-asset gain.",
+  "component": "continuous_intact_oxide_coverage_and_thickness",
+  "consumer": {
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "length_m": 3.112000085413456,
+    "moving_leaf": "SM_GH018_MovingLeaf_Openwork",
+    "width_m": 0.4099999964237213
+  },
+  "file_sha256": {
+    "a_uniform_50um_front.png": "abf01baec3374d5bbd8468ca52cfc27f5fe66a180a1eeb2e891743453075568b",
+    "a_uniform_50um_grazing.png": "7fc98754b9dfb53246f7974d81e044b97c5f2fb08dc4f9718c940374190aa334",
+    "a_uniform_50um_neutral_close.png": "2319c314e297c4b19f26752831bc2df3739dbe014f85e99b6fd509be667a7b07",
+    "b_thermal_rails_front.png": "3858c8c93c14810de48c93f7f597ee2371a814167fc4a8de76fdea4541a20471",
+    "b_thermal_rails_grazing.png": "47c7dabd3b52bafca52328c50c48c4deb57aafe075d0604afda6a79ece95981f",
+    "b_thermal_rails_neutral_close.png": "a29eb2dbc7022e5753d54f3d97d92c4148ae7c6b7dcfef723e8c445bc0695120",
+    "c_restrained_flow_front.png": "738f7cc402a2bad535fc5a28662bc5c9e76dfd5b01644a69f04e209cdf852683",
+    "c_restrained_flow_grazing.png": "d7bfee8ccfe2518095e57a7b3056376fa08ce9bf76682eaeec93b9439dff4763",
+    "c_restrained_flow_neutral_close.png": "8ac125f323f73e01ccbc4eefc916bd87d5159ecf2b5cfed42cc9eae4aee37752",
+    "candidate_c_optional_compression_response.png": "6eca415f9b29bc72bbdec8f3b37a875eee23a8c3c99576a7b180df67cec0fc44",
+    "champion_b_coverage.png": "dc89f4ef60692f2de06e3c77c995ba9d37cf425767679ec7d50ca0dd16285049",
+    "champion_b_thickness_response.png": "06011486ee7ad7dc1ed21236ddb933da890f25ced942dc11b651cbada4e57fb7",
+    "comparison_board.png": "e7720c2dc4680d324dd39102ea2ff3b18833d9448cbc7367eb6923f6ae8365d2",
+    "d_over_interpreted_front.png": "242d92b0d784c799c588a2455fc3e5838c2f6b1d719fc7e2cc174d24a203c5d8",
+    "d_over_interpreted_grazing.png": "6818cdab0aaa51cdae835e6e1d918a66684197610b0ddcccf05d9355a7df2c4c",
+    "d_over_interpreted_neutral_close.png": "87671e7250f6f8b86ae3793d56ac1c35aba69ef514333dbddb87902d7d533a7f",
+    "lane_board.png": "1d1facdce876659bf8297138a0f6056667a64811e9831f31f6a14711da8741b8"
+  },
+  "lane_contract": {
+    "coverage": "1.0 everywhere for intact oxide",
+    "metalness": "0.0 everywhere; oxide is dielectric",
+    "roughness": "0.655-0.760 restrained response owned by oxide optics",
+    "surface_height_m": "0.0 everywhere; thickness is optical, not relief",
+    "thickness_m": {
+      "champion_maximum": 7.069943239912391e-05,
+      "champion_minimum": 3.319407187518664e-05,
+      "champion_std": 5.746888291469077e-06,
+      "maximum_envelope": 9e-05,
+      "minimum_envelope": 2e-05
+    }
+  },
+  "limitations": [
+    "This proves the isolated intact oxide component only.",
+    "No exposed conductor, removal, rust, pitting, or damage is present.",
+    "Thickness does not displace geometry or create a normal.",
+    "The canonical forged-iron shader and package were not modified.",
+    "Blender proof does not establish Unreal parity."
+  ],
+  "proof": {
+    "comparison_board": "comparison_board.png",
+    "lane_board": "lane_board.png",
+    "source_blend_sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_blend_sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+    "source_blend_unchanged": true
+  },
+  "rejections": {
+    "A_UNIFORM_50UM": "Useful quiet control but omits broad heat and cooling history.",
+    "C_RESTRAINED_FLOW": "Valid bounded optional strategy, but it did not produce a decisive actual-asset improvement over B and therefore stays disabled by default.",
+    "D_OVER_INTERPRETED": "Turns the same physical field into decorative bands and equalizes the subordinate compression signal with thermal organization.",
+    "legacy_closed_scale_plates": "Prohibited: finite closed plate silhouettes produced diamonds, cat-face pareidolia, and invented spall on an intact layer."
+  },
+  "status": "selected_component_candidate_not_integrated"
+}

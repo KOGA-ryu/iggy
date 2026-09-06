@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "status": "planned reference outputs; not application execution evidence",
+  "invocation": "Fresh process for each script; paths --offscreen --start-mode title --script SCRIPT --report REPORT",
+  "scripts": {
+    "hunt_comparison": {
+      "mode": "hunt",
+      "run_number": 1,
+      "finished": true,
+      "initial_correct_rows": 6,
+      "banks": [
+        {
+          "sequence": 1,
+          "cleared_row_mask": 7
+        },
+        {
+          "sequence": 2,
+          "cleared_row_mask": 56
+        }
+      ],
+      "original_points": 840,
+      "comparison_points": 600,
+      "incorrect_rows": 0,
+      "expected_rejected_commands": []
+    },
+    "guided_partial_archive": {
+      "current_run_number": 2,
+      "archived_runs": 1,
+      "archived_run_1": {
+        "first_try_correct": 1,
+        "corrected_after_retry": 1,
+        "shown_answers": 1,
+        "incorrect_checked_attempts": 2,
+        "resolved_layers": 3,
+        "completed": false,
+        "ended_by_player": true,
+        "opened": true,
+        "score_rule_id": "guided_completion_v1",
+        "points": 3
+      },
+      "current_run_2": {
+        "prior_exposure": true,
+        "opened": false,
+        "completed": false,
+        "score_rule_id": "practice_none_v1",
+        "points": null,
+        "checked_attempts": 0
+      },
+      "comparison": {
+        "source_run_number": 1,
+        "points": null
+      },
+      "expected_rejected_commands": [
+        {
+          "command": "start_new_run 202",
+          "occurrence": 2,
+          "reason": "start_request_not_new"
+        }
+      ]
+    },
+    "guided_three_layer_goal": {
+      "run_number": 1,
+      "first_try_correct": 3,
+      "resolved_layers": 3,
+      "completed": false,
+      "objective_progress": 3,
+      "objective_target": 3,
+      "objective_reached": true,
+      "points": null,
+      "expected_rejected_commands": []
+    },
+    "resume_frozen_config": {
+      "run_number": 1,
+      "archived_runs": 0,
+      "first_try_correct": 1,
+      "current_step_number": 2,
+      "points": 1,
+      "frozen_score_rule_id": "guided_completion_v1",
+      "draft_score_rule_id": "practice_none_v1",
+      "expected_rejected_commands": []
+    },
+    "incompatible_comparison": {
+      "run_number": 1,
+      "first_try_correct": 7,
+      "completed": true,
+      "points": 7,
+      "comparison": null,
+      "expected_rejected_commands": [
+        {
+          "command": "compare_score guided 1 hunt_classic",
+          "reason": "score_mode_mismatch"
+        }
+      ]
+    }
+  },
+  "invalid_before_native_startup": [
+    "preset unknown_preset",
+    "start_new_run 0",
+    "start_new_run 18446744073709551616",
+    "compare_score guided 0 guided_progress"
+  ]
+}

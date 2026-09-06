@@ -1,0 +1,251 @@
+{
+  "blender_version": "5.1.1",
+  "consumer": {
+    "actual_production_mesh_present": true,
+    "asset_id": "arming_sword_v1",
+    "blade_length_m": 0.78,
+    "expected_polygon_count": 268,
+    "expected_quad_count": 268,
+    "expected_vertex_count": 270,
+    "near_tip_thickness_m": 0.002,
+    "pre_tip_width_m": 0.018,
+    "shoulder_thickness_m": 0.006,
+    "shoulder_width_m": 0.048,
+    "source_blade_relative_path": "generators/sg/parts/blade.py",
+    "source_blade_sha256": "e2fa5851ba20d41064eafb964a03d2f716a68d4307bf54a79a8e00b0bdb46322",
+    "source_factory_relative_path": "tools/assemble_arming_sword.py",
+    "source_factory_sha256": "767515f2ba2599fcb077ab12c8f3c8ac1d9453abef559347c0cc0777edc53392",
+    "source_finish_relative_path": "tools/finish_arming_sword.py",
+    "source_finish_sha256": "b9de19e5194ce36131cdab690b3f76a2bd005d53198f5279cd604195a4dd7000",
+    "source_host": "linux-worker",
+    "source_object": "SW_blade.001"
+  },
+  "finish": {
+    "macro_polish": {
+      "map_span_m": [
+        0.78,
+        0.048
+      ],
+      "maximum": 0.6989063024520874,
+      "mean": 0.510582447052002,
+      "minimum": 0.35016682744026184,
+      "resolution": [
+        512,
+        128
+      ],
+      "signed_abs_p95": 0.12329091131687164
+    },
+    "medium_grind": {
+      "map_span_m": [
+        0.78,
+        0.048
+      ],
+      "maximum": 0.985575795173645,
+      "mean": 0.49843350052833557,
+      "minimum": 0.0,
+      "resolution": [
+        1024,
+        256
+      ],
+      "signed_abs_p95": 0.27321678400039673,
+      "track_count": 47
+    },
+    "micro_response": {
+      "coordinate": "IGGY_BladeUV tangent",
+      "owner": "principled_anisotropy",
+      "texture_map": null
+    }
+  },
+  "geometry": {
+    "blade_uv": "IGGY_BladeUV",
+    "cross_section": "lenticular_with_secondary_bevel",
+    "dimensions_m": [
+      0.048,
+      0.006,
+      0.78
+    ],
+    "has_fuller": false,
+    "polygon_count": 268,
+    "quad_count": 268,
+    "region_attribute": "sinc_sword_region",
+    "region_polygon_counts": {
+      "bevel": 56,
+      "body": 176,
+      "edge": 36,
+      "fuller": 0
+    },
+    "source_zone_counts": {
+      "blade": 224,
+      "blade_edge": 36,
+      "ricasso": 8
+    },
+    "source_zone_mismatch_polygon_count": 28,
+    "vertex_count": 270
+  },
+  "limitations": [
+    "Abrasive-track population and finish amplitudes are authored transfers, not measurements from the factory blade.",
+    "The source zone labels contain a recorded 28-polygon side-face mismatch; the integration semantic is geometry-derived.",
+    "The clean-steel pass changes only the blade; guard, grip, pommel, fittings, and their source styling remain context.",
+    "Blender Cycles proof does not establish Unreal anisotropy parity."
+  ],
+  "material": {
+    "anisotropy_socket": "Anisotropic",
+    "blade_uv": "IGGY_BladeUV",
+    "body_anisotropy": 0.18,
+    "body_roughness": 0.38,
+    "bump_count": 1,
+    "conductor_f0_linear": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "image_texture_count": 2,
+    "material_name": "IGGY_MAT_ArmingSword_CleanSteel_v001",
+    "metalness": 1.0,
+    "micro_response_owner": "principled_anisotropy",
+    "mix_shader_count": 0,
+    "principled_count": 1,
+    "region_attribute": "sinc_sword_region",
+    "tangent_count": 1
+  },
+  "outputs": {
+    "comparison_board": {
+      "bytes": 1254067,
+      "order": [
+        "baseline",
+        "front",
+        "three_quarter",
+        "grazing",
+        "gameplay",
+        "clay",
+        "regions",
+        "macro",
+        "finish"
+      ],
+      "path": "arming_sword_v1_clean_steel_comparison_board.png",
+      "sha256": "e78ed77ae643dd20cb94b2fa6253c07b17e735995d0a24a8c221251b1fbda839"
+    },
+    "grind_field": {
+      "bytes": 234188,
+      "path": "arming_sword_v1_grind_field.png",
+      "sha256": "20c0e37c662261c1651ad52794d7fdfd3eb4bf2cf92ac86c945f800f323b6668"
+    },
+    "macro_polish_field": {
+      "bytes": 119858,
+      "path": "arming_sword_v1_macro_polish.png",
+      "sha256": "dcffc56eed667746218c001503e923defcc9b9a8855b3ace371237d2cb084e35"
+    },
+    "renders": {
+      "baseline": {
+        "bytes": 280724,
+        "path": "arming_sword_v1_baseline.png",
+        "sha256": "0b09443c0ee68999fb730201257b2fc61b6a54663e21b412213c3676e8e530bd"
+      },
+      "clay": {
+        "bytes": 275565,
+        "path": "arming_sword_v1_clay.png",
+        "sha256": "653b040859c24e9aa4c5441a5ce2cfdfb472d4bbfd1dc84f25e4d781d24196d0"
+      },
+      "finish": {
+        "bytes": 335841,
+        "path": "arming_sword_v1_finish.png",
+        "sha256": "f0a4c625d0144c935c505af875deeb362293b5ca821849dcfb8f1c6b39a76e77"
+      },
+      "front": {
+        "bytes": 283058,
+        "path": "arming_sword_v1_front.png",
+        "sha256": "86fb1fa86493cc5d7a2341a16348712660aa87ea437340bcd741b2e2c5bd6af2"
+      },
+      "gameplay": {
+        "bytes": 250002,
+        "path": "arming_sword_v1_gameplay.png",
+        "sha256": "5ec9c12d89d605229d2e6ef1ef3c32661eaf57c41a9045deb330c75337ef3149"
+      },
+      "grazing": {
+        "bytes": 359027,
+        "path": "arming_sword_v1_grazing.png",
+        "sha256": "e86fdc62cc2fff52380afe7d6efc7ae0717b46421dfcf1fef159a89e0b592114"
+      },
+      "macro": {
+        "bytes": 329432,
+        "path": "arming_sword_v1_macro.png",
+        "sha256": "c6353a247ac97e14aeddc2138d79f6f2d21603558dbf684fc3e5f74596d22728"
+      },
+      "regions": {
+        "bytes": 254772,
+        "path": "arming_sword_v1_regions.png",
+        "sha256": "2424abaebe493cdd6ac34228de343dc5b51264b2e83a6fdb97b7c8482af31865"
+      },
+      "three_quarter": {
+        "bytes": 276988,
+        "path": "arming_sword_v1_three_quarter.png",
+        "sha256": "2e4f33aca5b782df5ff22b64476fe9e536aca7cd8587972fbf7a138b9058fd61"
+      }
+    },
+    "saved_blend": {
+      "bytes": 503357,
+      "path": "arming_sword_v1_clean_steel.blend",
+      "sha256": "e97374dddc040153087f4f2cc465e0d865dc86e5db78013ce7b6e2a71d1faa75"
+    }
+  },
+  "proof_contract": {
+    "blade_outline_show_render_before": false,
+    "blade_outline_show_render_during_proofs": false,
+    "factory_finish_failure": "SW_grip is missing the expected zone attribute",
+    "factory_finish_script_executable": false,
+    "look": "AgX - Medium High Contrast",
+    "matched_baseline_and_front": true,
+    "render_device": "OPTIX_GPU",
+    "render_engine": "CYCLES",
+    "resolution": [
+      720,
+      1080
+    ],
+    "samples": 48,
+    "view_transform": "AgX"
+  },
+  "reopen_validated": true,
+  "reopen_validation": {
+    "blend_sha256": "e97374dddc040153087f4f2cc465e0d865dc86e5db78013ce7b6e2a71d1faa75",
+    "dimensions_m": [
+      0.048,
+      0.006,
+      0.78
+    ],
+    "material": "IGGY_MAT_ArmingSword_CleanSteel_v001",
+    "object": "SW_blade.001",
+    "packed_images": [
+      "IGGY_IMG_ArmingSword_LongitudinalGrind_v001",
+      "IGGY_IMG_ArmingSword_MacroPolish_v001"
+    ],
+    "region_polygon_counts": {
+      "bevel": 56,
+      "body": 176,
+      "edge": 36,
+      "fuller": 0
+    }
+  },
+  "saved_blend_images_packed": true,
+  "schema": "iggy3d.arming-sword-clean-steel-build.v1",
+  "source_files": {
+    "blade": {
+      "path": "/home/kogaRyu/blender-refs/generators/sg/parts/blade.py",
+      "sha256_after": "e2fa5851ba20d41064eafb964a03d2f716a68d4307bf54a79a8e00b0bdb46322",
+      "sha256_before": "e2fa5851ba20d41064eafb964a03d2f716a68d4307bf54a79a8e00b0bdb46322"
+    },
+    "factory": {
+      "path": "/home/kogaRyu/blender-refs/tools/assemble_arming_sword.py",
+      "sha256_after": "767515f2ba2599fcb077ab12c8f3c8ac1d9453abef559347c0cc0777edc53392",
+      "sha256_before": "767515f2ba2599fcb077ab12c8f3c8ac1d9453abef559347c0cc0777edc53392"
+    },
+    "finish": {
+      "path": "/home/kogaRyu/blender-refs/tools/finish_arming_sword.py",
+      "sha256_after": "b9de19e5194ce36131cdab690b3f76a2bd005d53198f5279cd604195a4dd7000",
+      "sha256_before": "b9de19e5194ce36131cdab690b3f76a2bd005d53198f5279cd604195a4dd7000"
+    }
+  },
+  "status": "ACTUAL_ASSET_PRODUCTION_CANDIDATE",
+  "unreal_parity_verified": false,
+  "uses_ai_generated_imagery": false,
+  "uses_damage": false
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "iggy3d.sword-reference-donor.v1",
+  "reference_id": "historical_swords_set_v1",
+  "title": "Historical Swords Set",
+  "creator": "Clint Bellanger",
+  "publisher": "OpenGameArt.org",
+  "source_page_url": "https://opengameart.org/content/historical-swords-set",
+  "download_url": "https://opengameart.org/sites/default/files/historical_swords_set.blend",
+  "accessed_on": "2026-08-02",
+  "selected_license": {
+    "id": "CC-BY-3.0",
+    "name": "Creative Commons Attribution 3.0",
+    "url": "https://creativecommons.org/licenses/by/3.0/",
+    "redistribution_allowed": true,
+    "commercial_use_allowed": true,
+    "attribution_required": true,
+    "attribution_text": "Historical sword models by Clint Bellanger, licensed CC BY 3.0 via OpenGameArt.org."
+  },
+  "alternate_license_offered": "OGA-BY-3.0",
+  "source_archive": {
+    "filename": "historical_swords_set.blend",
+    "bytes": 26102712,
+    "sha256": "b090eddf53f63cb8fd8a3bfac0c3dbe36749d934ca079595485629c2a2eb55de",
+    "declared_blender_generation": "2.7x",
+    "contains_four_swords": true
+  },
+  "creator_claims": {
+    "scope": "four simple historical-ish sword models",
+    "models": {
+      "ArmingSword": {
+        "declared_total_length_m": 0.96,
+        "declared_triangle_budget": 1000
+      },
+      "BastardSword": {
+        "declared_total_length_m": 1.08,
+        "declared_triangle_budget": 1000
+      },
+      "LongSword": {
+        "declared_total_length_m": 1.22,
+        "declared_triangle_budget": 1300
+      },
+      "ClaymoreSword": {
+        "declared_total_length_m": 1.39,
+        "declared_triangle_budget": 2200
+      }
+    },
+    "uv_statement": "blade, crossguard, grip, and pommel each occupy one quarter of the UV space so parts can be mixed and matched",
+    "material_statement": "included metal and leather materials may be replaced"
+  },
+  "evidence_class": "licensed_external_model_donor",
+  "authorized_use": [
+    "cross_section_study",
+    "distal_and_profile_taper_study",
+    "fuller_termination_study",
+    "blade_plane_and_highlight_stress_fixture",
+    "guard_grip_pommel_component_decomposition",
+    "clean_steel_shader_transfer_test"
+  ],
+  "prohibited_claims": [
+    "historically_measured_specimen",
+    "surveyed_real_sword_dimensions",
+    "production_game_asset_acceptance",
+    "material_or_texture_donor_acceptance",
+    "proof_of_metallurgy_or_historical_finish",
+    "permission_to_copy_source_textures_into_runtime_materials"
+  ],
+  "study_contract": {
+    "source_objects": [
+      "ArmingSword",
+      "BastardSword",
+      "LongSword",
+      "ClaymoreSword"
+    ],
+    "blade_axis": "+Y",
+    "width_axis": "X",
+    "thickness_axis": "Z",
+    "section_stations_from_blade_root": [
+      0.12,
+      0.25,
+      0.5,
+      0.75,
+      0.88
+    ],
+    "source_materials_are_evidence_only": true,
+    "source_geometry_is_never_modified": true,
+    "source_blend_is_never_saved": true,
+    "uses_ai_generated_imagery": false,
+    "manual_acceptance_established": false,
+    "unreal_parity_verified": false
+  }
+}

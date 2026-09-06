@@ -1,0 +1,212 @@
+{
+  "asset_id": "GH-018-Openwork-Strap-Hinge-v1",
+  "authorization": "User said gogo after the five-view neutral-clay proof scope was stated.",
+  "outputs": {
+    "cell_macro": {
+      "bytes": 974105,
+      "camera_type": "ORTHO",
+      "lens_mm": null,
+      "location_m": [
+        1.54,
+        3.2,
+        0.0
+      ],
+      "ortho_scale_m": 0.54,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_clay_cell_macro.png",
+      "purpose": "Middle cell openings, minimum webs, and the two continuous front crease loops.",
+      "resolution_px": [
+        1200,
+        820
+      ],
+      "rotation_quaternion": [
+        5.3e-08,
+        -5.3e-08,
+        -0.707106769,
+        -0.707106769
+      ],
+      "sha256": "f5a9e57a48404d4f36d7b99c41bc241b3d0dff11fdf186206b6ba64362ea7c43",
+      "side": "front",
+      "target_m": [
+        1.54,
+        0.0,
+        0.0
+      ]
+    },
+    "oblique_depth": {
+      "bytes": 1054429,
+      "camera_type": "PERSP",
+      "lens_mm": 54.0,
+      "location_m": [
+        1.1,
+        7.2,
+        2.25
+      ],
+      "ortho_scale_m": null,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_clay_oblique_depth.png",
+      "purpose": "Stock thickness, crown, bevel shoulder, aperture lip, and terminal depth.",
+      "resolution_px": [
+        1600,
+        760
+      ],
+      "rotation_quaternion": [
+        0.001678554,
+        0.001233993,
+        -0.592336237,
+        -0.805688322
+      ],
+      "sha256": "f189f3a6235e26d63b4362935b99c21dbc8333a7947732d00af5908c0ea69473",
+      "side": "front",
+      "target_m": [
+        1.13,
+        0.0,
+        0.0
+      ]
+    },
+    "pivot_macro": {
+      "bytes": 945554,
+      "camera_type": "PERSP",
+      "lens_mm": 68.0,
+      "location_m": [
+        -0.03,
+        1.42,
+        0.46
+      ],
+      "ortho_scale_m": null,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_clay_pivot_macro.png",
+      "purpose": "Five alternating knuckles, open seams, bearing gap, and leaf root overlap.",
+      "resolution_px": [
+        1200,
+        900
+      ],
+      "rotation_quaternion": [
+        6.1e-08,
+        -4.4e-08,
+        -0.588142514,
+        -0.808757424
+      ],
+      "sha256": "84883e01e4769c8106e96c8b7b7dc4317262c50fcebee4e77386642f11ccdebc",
+      "side": "front",
+      "target_m": [
+        -0.03,
+        0.0,
+        0.0
+      ]
+    },
+    "rear_construction": {
+      "bytes": 864957,
+      "camera_type": "ORTHO",
+      "lens_mm": null,
+      "location_m": [
+        1.13,
+        -7.0,
+        0.0
+      ],
+      "ortho_scale_m": 4.55,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_clay_rear_construction.png",
+      "purpose": "Planar rear stock, genuine through-holes, aperture walls, and absence of front-relief fakery.",
+      "resolution_px": [
+        1800,
+        520
+      ],
+      "rotation_quaternion": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "sha256": "6d54c1d7b4c25925a4117993dade0066bd295f2435cd995c6d7568380f397bfd",
+      "side": "rear",
+      "target_m": [
+        1.13,
+        0.0,
+        0.0
+      ]
+    },
+    "reference_front": {
+      "bytes": 895323,
+      "camera_type": "ORTHO",
+      "lens_mm": null,
+      "location_m": [
+        1.13,
+        7.0,
+        0.0
+      ],
+      "ortho_scale_m": 4.55,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_clay_reference_front.png",
+      "purpose": "Complete front silhouette, rail continuity, five-cell rhythm, and negative-space comparison.",
+      "resolution_px": [
+        1800,
+        520
+      ],
+      "rotation_quaternion": [
+        5.3e-08,
+        -5.3e-08,
+        -0.707106769,
+        -0.707106769
+      ],
+      "sha256": "84ddb4ba15e6306400f099148a8b1d0d5fa19f1246bec3c35e13f78f4ce56b68",
+      "side": "front",
+      "target_m": [
+        1.13,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "reference_object": "Met 55.61.58",
+  "saved_proof_validation": {
+    "blender_version": "5.1.1",
+    "camera_count": 1,
+    "camera_names": [
+      "CAM_GH018_ClayProof"
+    ],
+    "expected_views_match": true,
+    "forged_iron_material_authored": false,
+    "geometry_mutated": false,
+    "light_count": 3,
+    "light_names": [
+      "LGT_GH018_ClayProof_Fill",
+      "LGT_GH018_ClayProof_Key",
+      "LGT_GH018_ClayProof_Rim"
+    ],
+    "material_names": [
+      "M_GH018_NeutralClay"
+    ],
+    "proof_views": [
+      "reference_front",
+      "oblique_depth",
+      "cell_macro",
+      "pivot_macro",
+      "rear_construction"
+    ],
+    "render_engine": "BLENDER_EEVEE",
+    "runtime_geometry_hash_after": "a9de14c91b37461ec200d0b360fb628d4ddfcb072e3564d69e8f8681fda3e2d5",
+    "runtime_geometry_hash_before": "a9de14c91b37461ec200d0b360fb628d4ddfcb072e3564d69e8f8681fda3e2d5",
+    "runtime_mesh_count": 8,
+    "runtime_objects": [
+      "FixedKnuckle_02",
+      "FixedKnuckle_04",
+      "MovingKnuckle_01",
+      "MovingKnuckle_03",
+      "MovingKnuckle_05",
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle"
+    ],
+    "surface_detail_authored": false
+  },
+  "schema": "iggy-openwork-strap-hinge-clay-proof-manifest/1.0",
+  "scope": {
+    "ai_generated_imagery": false,
+    "forged_iron_material_authorized": false,
+    "geometry_mutation_authorized": false,
+    "neutral_clay_only": true,
+    "surface_detail_authorized": false
+  },
+  "source_hashes": {
+    "geometry_sha256": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+    "profile_sha256": "5c352970e7e8ececacd687d74b056b67a62c4ce6e69a1b0f9dda4d7e024c764b",
+    "proof_blend_sha256": "5eaa6613d3d8939f74df8d1148251e129275f7172cde5ec1ddb8464ea712f091",
+    "proof_builder_sha256": "ce742795b25b85d9c3027c9db4450bd7391739aef5674ce664aa389f796557cd"
+  }
+}

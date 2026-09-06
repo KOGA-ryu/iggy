@@ -1,0 +1,25 @@
+preset guided_progress
+start_new_run 201
+guided_open
+guided_select 2
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_retry
+guided_select 3
+guided_check
+guided_next
+guided_select 1
+guided_check
+guided_show
+back_title
+preset guided_calm
+start_new_run 202
+back_title
+open_workshop
+start_new_run 202
+resume_mode guided
+back_title
+open_stats
+compare_score guided 1 guided_calm

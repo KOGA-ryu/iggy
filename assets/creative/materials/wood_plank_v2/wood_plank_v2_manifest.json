@@ -1,0 +1,137 @@
+{
+  "height_encoding": {
+    "file": "wood_plank_v2_height.png",
+    "format": "16-bit linear grayscale PNG",
+    "maximum_m": 0.00553662097081542,
+    "minimum_m": -0.001076835091225803
+  },
+  "map_contract": {
+    "base_color": "sRGB color; painterly pigment and ink, no baked light",
+    "height": "linear normalized data; reconstruct metres from height_encoding",
+    "normal": "linear RGB; tangent-space OpenGL/Y+",
+    "orm": "linear RGB; R=ambient occlusion G=roughness B=metallic"
+  },
+  "material_book": {
+    "chapters": [
+      {
+        "number": 1,
+        "path": "proofs/wood_plank_v2_book/01_authored_layout.png",
+        "title": "Authored Layout"
+      },
+      {
+        "number": 2,
+        "path": "proofs/wood_plank_v2_book/02_boards_and_joints.png",
+        "title": "Boards And Joints"
+      },
+      {
+        "number": 3,
+        "path": "proofs/wood_plank_v2_book/03_grain_anatomy.png",
+        "title": "Grain Anatomy"
+      },
+      {
+        "number": 4,
+        "path": "proofs/wood_plank_v2_book/04_character_marks.png",
+        "title": "Character Marks"
+      },
+      {
+        "number": 5,
+        "path": "proofs/wood_plank_v2_book/05_height_stack.png",
+        "title": "Height Stack"
+      },
+      {
+        "number": 6,
+        "path": "proofs/wood_plank_v2_book/06_color_script.png",
+        "title": "Color Script"
+      },
+      {
+        "number": 7,
+        "path": "proofs/wood_plank_v2_book/07_material_response.png",
+        "title": "Material Response"
+      },
+      {
+        "number": 8,
+        "path": "proofs/wood_plank_v2_book/08_scale_seams_final_read.png",
+        "title": "Scale Final Read"
+      }
+    ],
+    "index": "proofs/wood_plank_v2_breakdown.png",
+    "narrative": "wood_plank_v2_material_book.md"
+  },
+  "meters_per_pixel": 0.00078125,
+  "node_contract": {
+    "authored_damage": "typed paths validate knot, end, edge, and use habitats before producing recess, raised lip, finish loss, and response masks",
+    "branch_intersection": "authored branches produce knot body, core, boundary rings, influence, and a metre-valued coordinate warp",
+    "causality_proof": "proofs/wood_plank_v2_anatomy_causality.png",
+    "damage_proof": "proofs/wood_plank_v2_damage_causality.png",
+    "grain_proof": "proofs/wood_plank_v2_grain_anatomy.png",
+    "groove_specimen": "proofs/wood_plank_v2_groove_specimen.png",
+    "intra_board_shade_proof": "proofs/wood_plank_v2_intra_board_shades.png",
+    "layered_wood_state": "each segment owns twenty related brown controls; slow pigment history and wood anatomy sample them continuously before finish, compressed wood, exposed substrate, and retained dirt",
+    "oak_microstructure": "ring history owns earlywood and latewood pores, saw relation owns rays, and broken fibre families follow growth flow",
+    "pigment_proof": "proofs/wood_plank_v2_pigment_layers.png",
+    "virtual_log_rings": "authored saw position and growth epochs produce continuous ring phase, earlywood, latewood, and growth flow"
+  },
+  "outputs": {
+    "anatomy_causality": "proofs/wood_plank_v2_anatomy_causality.png",
+    "base_color": "wood_plank_v2_basecolor.png",
+    "book_text": "wood_plank_v2_material_book.md",
+    "breakdown": "proofs/wood_plank_v2_breakdown.png",
+    "damage_causality": "proofs/wood_plank_v2_damage_causality.png",
+    "grain_anatomy": "proofs/wood_plank_v2_grain_anatomy.png",
+    "groove_specimen": "proofs/wood_plank_v2_groove_specimen.png",
+    "height": "wood_plank_v2_height.png",
+    "intra_board_shades": "proofs/wood_plank_v2_intra_board_shades.png",
+    "manifest": "wood_plank_v2_manifest.json",
+    "normal": "wood_plank_v2_normal.png",
+    "orm": "wood_plank_v2_orm.png",
+    "pattern_variations": "proofs/wood_plank_v2_pattern_variations.png",
+    "pigment_layers": "proofs/wood_plank_v2_pigment_layers.png",
+    "tiling": "proofs/wood_plank_v2_tiling.png"
+  },
+  "parameters": {
+    "bevel_width_m": 0.0018,
+    "board_raise_m": 0.0042,
+    "deepest_damage_m": 0.0006200000061653554,
+    "gap_half_width_m": 0.0012,
+    "grain_relief_m": 0.00011500000255182385,
+    "knot_depth_m": 0.00032
+  },
+  "pattern": {
+    "board_count": 9,
+    "characters": {
+      "clear": 14,
+      "knot": 4
+    },
+    "damage": {
+      "edge_splinter": 1,
+      "end_check": 2,
+      "knot_check": 1,
+      "scratch": 3
+    },
+    "name": "aged_oak_champion_v1",
+    "schema": "iggy3d.pattern.aged_oak.v1",
+    "segment_count": 18,
+    "source": "/Users/kogaryu/iggy3d/assets/creative/materials/wood_plank_v2/patterns/aged_oak_champion_v1.json",
+    "variation": 0
+  },
+  "reproduction": "Run Blender headless with this script and the recorded seed, resolution, tile size, pattern recipe, and variation.",
+  "resolution": 2048,
+  "schema": "iggy3d.material.wood_plank_v2.v1",
+  "seed": 73129,
+  "statistics": {
+    "ao_mean": 0.983487606048584,
+    "board_coverage": 0.9712477922439575,
+    "check_coverage": 0.00011822715896414593,
+    "compressed_wood_coverage": 0.00024870940251275897,
+    "dirt_deposit_coverage": 7.626230944879353e-05,
+    "exposed_wood_coverage": 0.000349952548276633,
+    "grain_coverage": 0.0930645614862442,
+    "height_mean_m": 0.004551398567855358,
+    "knot_coverage": 0.0013519928324967623,
+    "roughness_mean": 0.5840712785720825,
+    "scratch_coverage": 0.0006233375752344728,
+    "shade_family_size_per_segment": 20,
+    "splinter_coverage": 0.00015724227705504745
+  },
+  "tile_size_m": 1.6
+}

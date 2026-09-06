@@ -1,0 +1,45 @@
+{
+  "schema": "iggy3d.material_reference_capture_regions.v1",
+  "source": "../ai_reference_experiments/attempt_01_grounded_material.png",
+  "scale_reference": {
+    "role": "approved giant-house door height",
+    "bbox_px": [607, 239, 905, 1057],
+    "height_m": 4.8
+  },
+  "regions": [
+    {"name": "plaster_right_quiet", "material": "plaster", "box_px": [930, 370, 1220, 820]},
+    {"name": "plaster_upper_quiet", "material": "plaster", "box_px": [70, 30, 900, 175]},
+    {"name": "plaster_lower_right", "material": "plaster", "box_px": [930, 825, 1190, 945]},
+
+    {"name": "stone_cool_top", "material": "stone", "family": "cool_limestone", "box_px": [350, 310, 430, 350]},
+    {"name": "stone_cool_mid", "material": "stone", "family": "cool_limestone", "box_px": [185, 635, 275, 685]},
+    {"name": "stone_cool_low", "material": "stone", "family": "cool_limestone", "box_px": [445, 735, 535, 785]},
+
+    {"name": "stone_warm_upper", "material": "stone", "family": "warm_limestone", "box_px": [215, 430, 315, 480]},
+    {"name": "stone_warm_mid", "material": "stone", "family": "warm_limestone", "box_px": [465, 535, 555, 590]},
+    {"name": "stone_warm_low", "material": "stone", "family": "warm_limestone", "box_px": [175, 725, 270, 780]},
+
+    {"name": "stone_green_left", "material": "stone", "family": "grey_green", "box_px": [175, 540, 275, 605]},
+    {"name": "stone_green_center", "material": "stone", "family": "grey_green", "box_px": [315, 725, 405, 785]},
+    {"name": "stone_green_low", "material": "stone", "family": "grey_green", "box_px": [320, 835, 405, 885]},
+
+    {"name": "stone_umber_center", "material": "stone", "family": "umber_vein", "box_px": [405, 430, 495, 490]},
+    {"name": "stone_umber_low", "material": "stone", "family": "umber_vein", "box_px": [455, 830, 535, 885]},
+    {"name": "stone_umber_base", "material": "stone", "family": "umber_vein", "box_px": [275, 920, 365, 980]},
+
+    {"name": "stone_pale_ledge", "material": "stone", "family": "pale_chalk", "box_px": [305, 495, 395, 545]},
+    {"name": "stone_pale_projecting", "material": "stone", "family": "pale_chalk", "box_px": [425, 615, 535, 665]},
+    {"name": "stone_pale_lower", "material": "stone", "family": "pale_chalk", "box_px": [335, 955, 420, 1000]},
+
+    {"name": "mortar_horizontal_upper", "material": "mortar", "box_px": [230, 495, 385, 512]},
+    {"name": "mortar_vertical_center", "material": "mortar", "box_px": [397, 525, 418, 610]},
+    {"name": "mortar_horizontal_center", "material": "mortar", "box_px": [190, 690, 390, 708]},
+    {"name": "mortar_lower_joint", "material": "mortar", "box_px": [285, 805, 430, 822]},
+
+    {"name": "finish_coat_left_edge", "material": "finish_coat", "box_px": [102, 430, 119, 790]},
+    {"name": "brown_coat_left_edge", "material": "brown_coat", "box_px": [121, 450, 145, 775]},
+    {"name": "scratch_coat_left_edge", "material": "scratch_coat", "box_px": [147, 475, 171, 750]},
+
+    {"name": "linework_stone_and_joint", "material": "linework", "box_px": [165, 300, 575, 955]}
+  ]
+}

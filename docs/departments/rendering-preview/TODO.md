@@ -10,3 +10,4 @@
 | REN-006 | Imported static mesh presentation | Integrated | Needs Audit | Static mesh resource and catalog paths exist | Prove materials, pivots, LOD policy, missing resources, and reload |
 | REN-007 | Capture and renderer lifecycle | Support | Needs Audit | Capture and Vulkan smoke gates exist | Keep headless capture deterministic and external UI isolated |
 | REN-008 | Performance budgets and diagnostics | Prototype | Planned | Render budget policies and counters exist | Establish visible budgets for uploads, triangles, cache rebuilds, and frame time |
+| REN-009 | Capture native UI-only frames | Support | Automated Green | Shared capture/present tail implemented; First Move, Creative capture, and empty-frame focused gate independently pass 3/3, with native game captures inspected | Keep the shared empty-frame capture path covered as later native tools reuse it; broader renderer acceptance remains separate |

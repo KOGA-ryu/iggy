@@ -1,0 +1,119 @@
+{
+  "checks": {
+    "acceptance": {
+      "actual_target_identifier": "pending-selection: production cathedral portal consumer",
+      "actual_target_proofs": [],
+      "actual_target_required_for_acceptance": true,
+      "errors": [],
+      "manual_review_records": [],
+      "manual_review_required_for_acceptance": true,
+      "passed": true,
+      "requested_state": "candidate",
+      "tier": "hero-master"
+    },
+    "artifact_hashes": {
+      "errors": [],
+      "passed": true
+    },
+    "canonical_output": {
+      "actual_count": 17,
+      "expected_count": 17,
+      "missing": [],
+      "passed": true,
+      "unexpected": []
+    },
+    "documentation_drift": {
+      "actual_sha256": "7c9c52e8c4a0355f210daa372a251af947592f059f98dd48ccca699d19c565a2",
+      "coded_demands": "assets/creative/materials/cathedral_stone_trim_fracture_v1/CODED_DEMANDS.md",
+      "expected_sha256": "7c9c52e8c4a0355f210daa372a251af947592f059f98dd48ccca699d19c565a2",
+      "passed": true
+    },
+    "layer_provenance": {
+      "declared_layer_ids": [
+        "construction",
+        "cumulative_color",
+        "edge_event",
+        "height_normal",
+        "macro",
+        "medium",
+        "micro",
+        "response",
+        "stylization"
+      ],
+      "errors": [],
+      "passed": true,
+      "required_layer_ids": [
+        "construction",
+        "cumulative_color",
+        "edge_event",
+        "height_normal",
+        "macro",
+        "medium",
+        "micro",
+        "response",
+        "stylization"
+      ]
+    },
+    "live_routes": {
+      "dormant_attribute_nodes": [],
+      "dormant_image_nodes": [],
+      "errors": [],
+      "passed": true,
+      "unknown_storage_only_attributes": [],
+      "unowned_geometry_attributes": []
+    },
+    "measurement_claims": {
+      "claim_count": 33,
+      "errors": [],
+      "passed": true,
+      "root_count": 3
+    },
+    "performance": {
+      "actual": {
+        "product_objects": 16,
+        "proof_count": 9,
+        "shader_links": 103,
+        "shader_nodes": 79,
+        "total_polygons": 26368,
+        "total_texture_bytes": 5568072,
+        "total_vertices": 26400,
+        "unique_images": 5
+      },
+      "budget": {
+        "max_product_objects": 16,
+        "max_proof_count": 9,
+        "max_shader_links": 110,
+        "max_shader_nodes": 85,
+        "max_total_polygons": 30000,
+        "max_total_texture_bytes": 6500000,
+        "max_total_vertices": 30000,
+        "max_unique_images": 5
+      },
+      "errors": [],
+      "passed": true
+    },
+    "workflow_state": {
+      "declared_target_count": 6,
+      "errors": [],
+      "omitted_targets": [],
+      "passed": true,
+      "required_targets": [
+        "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/profiles/cathedral_stone_trim_fracture_v1.json",
+        "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/patterns/cathedral_trim_fracture_atlas_v1.json",
+        "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/generate_cathedral_stone_trim_fracture_v1.py",
+        "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1/build_cathedral_stone_trim_fracture_v1.py",
+        "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_generator_tests.py",
+        "/Users/kogaryu/iggy3d/tests/unit/cathedral_stone_trim_fracture_v1_blend_tests.py"
+      ],
+      "revision": 2,
+      "tier": "hero-master",
+      "workflow_state": "assets/creative/materials/cathedral_stone_trim_fracture_v1/WORKFLOW_STATE.json"
+    }
+  },
+  "package": "/Users/kogaryu/iggy3d/assets/creative/materials/cathedral_stone_trim_fracture_v1",
+  "passed": true,
+  "pattern_schema": "iggy3d.pattern.chevron_voussoir_portal.v2",
+  "profile_schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.profile.v2",
+  "requested_state": "candidate",
+  "schema": "iggy3d.material_package_audit.v1"
+}

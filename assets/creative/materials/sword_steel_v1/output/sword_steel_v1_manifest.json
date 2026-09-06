@@ -1,0 +1,195 @@
+{
+  "consumer": {
+    "actual_production_mesh_present": false,
+    "base_thickness_m": 0.006,
+    "base_width_m": 0.0318,
+    "blade_length_m": 0.889,
+    "contract": "WPN-001",
+    "fixture": "SM_WPN001_BladeSteelFixture",
+    "fixture_object": "SM_WPN001_BladeSteelFixture",
+    "measurement_authority": {
+      "length_and_width": "met_1978.145a_b_proxy",
+      "thickness_and_section": "authored_diagnostic_translation"
+    }
+  },
+  "donors": {
+    "conductor_manifest": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/conductor_preview_v1/manifest.json",
+      "sha256_after": "2f3c3b86fd344e83b0d13ffb0ea6f4abca9177265a6867063b358d0e99144815",
+      "sha256_before": "2f3c3b86fd344e83b0d13ffb0ea6f4abca9177265a6867063b358d0e99144815"
+    },
+    "tangent_manifest": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/tangent_anisotropy_preview_v1/manifest.json",
+      "sha256_after": "db3a9382094e116926724d7cfbc7af9f39d0116b1d5e46a58842722f0cc3ff94",
+      "sha256_before": "db3a9382094e116926724d7cfbc7af9f39d0116b1d5e46a58842722f0cc3ff94"
+    }
+  },
+  "finish": {
+    "macro_polish": {
+      "control_grid_shape": [
+        5,
+        8
+      ],
+      "map_bit_depth": 16,
+      "map_span_m": [
+        0.889,
+        0.0318
+      ],
+      "maximum": 0.6989063024520874,
+      "mean": 0.510582447052002,
+      "minimum": 0.35016682744026184,
+      "resolution": [
+        512,
+        128
+      ],
+      "signed_abs_p95": 0.12329091131687164
+    },
+    "medium_grind": {
+      "map_bit_depth": 16,
+      "map_span_m": [
+        0.889,
+        0.0318
+      ],
+      "maximum": 0.9855757355690002,
+      "mean": 0.49843350052833557,
+      "minimum": 0.0,
+      "resolution": [
+        1024,
+        256
+      ],
+      "signed_abs_p95": 0.27321678400039673,
+      "track_count": 47
+    },
+    "micro_response": {
+      "coordinate": "IGGY_BladeUV tangent",
+      "owner": "principled_anisotropy",
+      "texture_map": null
+    }
+  },
+  "geometry": {
+    "base_thickness_m": 0.006,
+    "base_width_m": 0.0318,
+    "blade_uv": "IGGY_BladeUV",
+    "edge_land_m": 0.0004,
+    "length_m": 0.889,
+    "polygon_count": 1312,
+    "region_attribute": "sinc_sword_region",
+    "region_polygon_counts": {
+      "bevel": 292,
+      "body": 292,
+      "edge": 436,
+      "fuller": 292
+    },
+    "straight_centerline_deviation_m": 0.0,
+    "vertex_count": 1314
+  },
+  "limitations": [
+    "The consumer is an analytic diagnostic fixture, not the finished WPN-001 mesh.",
+    "Only length and base width use the declared Met measurement proxy.",
+    "Section, thickness, fuller, finish tracks, and response amplitudes are authored proof translations.",
+    "Blender Cycles proof does not establish Unreal anisotropy parity."
+  ],
+  "material": {
+    "anisotropy_socket": "Anisotropic",
+    "blade_uv": "IGGY_BladeUV",
+    "body_anisotropy": 0.18,
+    "body_roughness": 0.38,
+    "bump_count": 1,
+    "conductor_f0_linear": [
+      0.56,
+      0.57,
+      0.58
+    ],
+    "image_texture_count": 2,
+    "material_name": "IGGY_MAT_SwordSteel_CleanGround_v001",
+    "metalness": 1.0,
+    "micro_response_owner": "principled_anisotropy",
+    "mix_shader_count": 0,
+    "principled_count": 1,
+    "region_attribute": "sinc_sword_region",
+    "tangent_count": 1
+  },
+  "outputs": {
+    "comparison_board": {
+      "bytes": 829704,
+      "order": [
+        "front",
+        "grazing",
+        "gameplay",
+        "clay",
+        "macro",
+        "finish"
+      ],
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_comparison_board.png",
+      "sha256": "a5606d1f3fb7cf5c6cfd5be925678aabbc89caaf3d35ecfa559a57263cb67b3c"
+    },
+    "grind_field": {
+      "bytes": 234196,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_grind_field.png",
+      "sha256": "52c7b2f15c8a176d67d9c0d6e722f49f3b2be86c511eea7a6a438eca902f6c63"
+    },
+    "macro_polish_field": {
+      "bytes": 119858,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_macro_polish.png",
+      "sha256": "dcffc56eed667746218c001503e923defcc9b9a8855b3ace371237d2cb084e35"
+    },
+    "renders": {
+      "clay": {
+        "bytes": 154482,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_clay.png",
+        "sha256": "641f5d1ff8db0bdbb8319b04d657d9d581bc2784bfc25a3363624fbbf3ac0bb4"
+      },
+      "finish": {
+        "bytes": 187875,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_finish.png",
+        "sha256": "f7198201d7df70b4f0f7678bbdc9e1d303e205d52a7761369bb94235fd28a7fd"
+      },
+      "front": {
+        "bytes": 199111,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_front.png",
+        "sha256": "dd0f1f8630af8f19cb39864d6a1b4d748130c556619252c3616722ea610e8353"
+      },
+      "gameplay": {
+        "bytes": 98097,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_gameplay.png",
+        "sha256": "634d381173b4defd4b25c8bbc45e408e66cd09fcb210029acd0bdc8bd938c017"
+      },
+      "grazing": {
+        "bytes": 197367,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_grazing.png",
+        "sha256": "2bc0b77d57de2b27fce7446e982798d41c99e704045f9345842b43e8d3d88686"
+      },
+      "macro": {
+        "bytes": 194308,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_macro.png",
+        "sha256": "cdc9543cecb18360ba6376d7adb8a65b3bc179ca184990bd3dbc838e165f28e2"
+      },
+      "regions": {
+        "bytes": 152157,
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1_regions.png",
+        "sha256": "0024ec0d3afe75a3d7adf2be91a248a7125cd5661fb699e6685c3e13f1eac2f5"
+      }
+    },
+    "saved_blend": {
+      "bytes": 493358,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/sword_steel_v1/output/sword_steel_v1.blend",
+      "sha256": "8c94dfd24a9c6a427d95f9335694a8ed959bf15eebb46f94a9005564c6a63e4d"
+    }
+  },
+  "reopen_validated": true,
+  "reopen_validation": {
+    "blend_sha256": "8c94dfd24a9c6a427d95f9335694a8ed959bf15eebb46f94a9005564c6a63e4d",
+    "material": "IGGY_MAT_SwordSteel_CleanGround_v001",
+    "object": "SM_WPN001_BladeSteelFixture",
+    "packed_images": [
+      "IGGY_IMG_SwordSteel_LongitudinalGrind_v001",
+      "IGGY_IMG_SwordSteel_MacroPolish_v001"
+    ]
+  },
+  "saved_blend_images_packed": true,
+  "schema": "iggy3d.sword-steel-build.v1",
+  "status": "DIAGNOSTIC_PRODUCTION_CANDIDATE",
+  "unreal_parity_verified": false,
+  "uses_ai_generated_imagery": false,
+  "uses_damage": false
+}

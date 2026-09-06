@@ -1,0 +1,182 @@
+{
+  "schema": "iggy-forged-iron-pattern-build/4.0",
+  "status": "AUTHORED_FORGE_PATTERN_COMPILED",
+  "pattern": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/patterns/forged_iron_face_champion_v1.json",
+  "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/profiles/forged_iron_v1.json",
+  "physical_tile_m": {
+    "length": 1.218,
+    "width": 0.164
+  },
+  "worked_physical_tile_m": {
+    "length": 2.436,
+    "width": 0.492
+  },
+  "variation_count": 4,
+  "atlas_resolution": [
+    1536,
+    1024
+  ],
+  "tool_envelopes_m": {
+    "planishing_face": [
+      0.041275,
+      0.03175
+    ],
+    "cross_peen_face": [
+      0.0365125,
+      0.0127
+    ]
+  },
+  "height_encoding": {
+    "minimum_m": -0.00018,
+    "maximum_m": 0.00018,
+    "neutral": 0.5,
+    "rule": "Measured-proxy micro-topography is added to finite sub-millimetre hammer-plane and scale-lip relief. It never displaces the silhouette."
+  },
+  "layer_height_encoding": {
+    "macro_hammer": {
+      "minimum_m": -8.5e-05,
+      "maximum_m": 8.5e-05,
+      "neutral": 0.5
+    },
+    "scale_lip": {
+      "minimum_m": 0.0,
+      "maximum_m": 2e-05,
+      "neutral": 0.0
+    },
+    "micro_surface": {
+      "minimum_m": -3.2e-05,
+      "maximum_m": 3.2e-05,
+      "neutral": 0.5
+    }
+  },
+  "constraints": {
+    "uses_ai_generated_imagery": false,
+    "uses_damage": false,
+    "uses_generic_hammer_noise": false,
+    "tool_faces_are_finite": true,
+    "photograph_lighting_baked_into_base_color": false,
+    "continuous_compact_scale_ground": true,
+    "metalness_is_filtered_binary_layer": true,
+    "hammering_never_implies_exposed_iron": true,
+    "worked_surface_is_finite": true,
+    "worked_surface_uses_independent_non_grid_tile": true
+  },
+  "layer_statistics": {
+    "quiet_fraction_activity_below_0_10": 0.900933583577474,
+    "scale_plate_tone_fraction_above_0_10": 0.44136810302734375,
+    "conductive_fraction_above_0_90": 0.0,
+    "filtered_metal_boundary_fraction": 0.0,
+    "worked_fraction_above_0_10": 0.17695045471191406,
+    "protected_rest_fraction_above_0_75": 0.8630555470784506
+  },
+  "outputs": {
+    "base_color": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_base_color.png",
+      "channel": "compatibility composite sRGB base colour",
+      "bytes": 145857,
+      "sha256": "9ad56926210a6ca215f9ba92e96db579c07b0fd8765b6d036f40634c3f0ffd28"
+    },
+    "scale_color": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_color.png",
+      "channel": "sRGB dielectric compact-scale colour",
+      "bytes": 145857,
+      "sha256": "9ad56926210a6ca215f9ba92e96db579c07b0fd8765b6d036f40634c3f0ffd28"
+    },
+    "iron_color": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_iron_color.png",
+      "channel": "sRGB conductive exposed-iron reflectance",
+      "bytes": 55355,
+      "sha256": "67590137df3cffa3a9285c53c9588e3e67e24748c51dc722131fab4e8200261c"
+    },
+    "roughness": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_roughness.png",
+      "channel": "linear 16-bit roughness",
+      "bytes": 2741198,
+      "sha256": "095567006e5dc0463265c166ceaebd12f24b6f12fce2e70a07582860189e288a"
+    },
+    "metalness": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_metalness.png",
+      "channel": "linear 16-bit conductive iron versus dielectric compact scale",
+      "bytes": 3129,
+      "sha256": "d1833d212e0b38ec2c79612d69c348c24fdbe1a7a370a25e74ff225b16fb5223"
+    },
+    "layer_response": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_layer_response.png",
+      "channel": "R scale roughness, G iron roughness, B exposed-iron layer mask",
+      "bytes": 946821,
+      "sha256": "feb3f4d9ff5bde6bb63d5b7539658336cc8f1e552ed21604a5267db2108cea9b"
+    },
+    "height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_height.png",
+      "channel": "compatibility combined 16-bit signed height",
+      "bytes": 2821449,
+      "sha256": "4e6ef7639b97129c5675f183197ebb04f5a50f7b12d829de42fee6f71b6e5c64"
+    },
+    "macro_height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_macro_height.png",
+      "channel": "16-bit signed finite hammer-plane height",
+      "bytes": 340885,
+      "sha256": "3716a904c455f73205e05534263222be20121fd0905b0ab76a8cba1aff197a7a"
+    },
+    "scale_height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_height.png",
+      "channel": "16-bit positive compact-scale lip height",
+      "bytes": 1424465,
+      "sha256": "fb9978a542d42c5c86e0d7f5721bed0be7cf20eb10280d9980639d1d9d32d5b2"
+    },
+    "micro_height": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_micro_height.png",
+      "channel": "16-bit signed measured-proxy micro height",
+      "bytes": 3069147,
+      "sha256": "ecd3c49efea4465f3e4b0380149f57dce5dec1587795bf644d0e10e43087efd6"
+    },
+    "normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_normal.png",
+      "channel": "compatibility combined OpenGL tangent-space normal",
+      "bytes": 310608,
+      "sha256": "33295ad17fede63df591465ad0bcb38d51cfa6291d01da7ed9dbff734a79d0b7"
+    },
+    "macro_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_macro_normal.png",
+      "channel": "OpenGL tangent-space finite hammer-plane normal",
+      "bytes": 37664,
+      "sha256": "c6579162f1e340818e425b40835b5d8f40ab8e3f046107a756e8cd315355796f"
+    },
+    "scale_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_scale_normal.png",
+      "channel": "OpenGL tangent-space compact-scale lip normal",
+      "bytes": 127985,
+      "sha256": "3cee6330624d62f3a302cfefad14611f978b7e0b8647cf52001815f1eba4fd93"
+    },
+    "micro_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_micro_normal.png",
+      "channel": "OpenGL tangent-space measured-proxy micro normal",
+      "bytes": 282332,
+      "sha256": "530f02069717be5806a68fc71b576e2bb99d56890b1d9a0f799c9fd93ef03cf3"
+    },
+    "worked_normal": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_worked_normal.png",
+      "channel": "OpenGL tangent-space finite worked-face normal",
+      "bytes": 50895,
+      "sha256": "1d2e59c662e8bd807dafc59c2aaf2aeeacb99b6115bcaef44a66b0ae2e90f34a"
+    },
+    "worked_response": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_worked_response.png",
+      "channel": "R finite worked coverage, G encoded local direction, B protected rest",
+      "bytes": 531804,
+      "sha256": "460b890ccc35ae82aaf17063fb6b08863d8dc40d92b55d2495257764dcbee98a"
+    },
+    "masks": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_masks.png",
+      "channel": "R planishing, G cross-peen, B compact scale plate tone",
+      "bytes": 733233,
+      "sha256": "c3a423e95d329f2db58481fa40e70bbf0473a507443bf0134369d0f1682dce44"
+    },
+    "proof": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1_pattern_atlas.png",
+      "channel": "two material colours, response RGB, three normal bands, combined height, and semantic mask proof",
+      "bytes": 326584,
+      "sha256": "76f41665f7d68db8d11136030bbdd608d7a8278e6fd2d277c26e29d93e0f65e5"
+    }
+  }
+}

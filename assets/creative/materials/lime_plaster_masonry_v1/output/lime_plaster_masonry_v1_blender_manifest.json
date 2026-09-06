@@ -1,0 +1,305 @@
+{
+  "constraints": {
+    "categorical_state_is_face_domain": true,
+    "unreal_runtime_parity_verified": false,
+    "uses_distance_faded_detail": true,
+    "uses_form_and_detail_normals": true,
+    "uses_metre_displacement": true,
+    "uses_object_space_metre_coordinates": true,
+    "uses_three_physical_dielectrics": true
+  },
+  "material": "IGGY_MAT_LimePlasterMasonry_v001",
+  "node_group": "IGGY_SH_LimePlasterMasonry_v001",
+  "output_blend": {
+    "bytes": 28769358,
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1.blend",
+    "sha256": "aae3f429ab867e8898a93eafc8247139d00d090d762c8e84f83cbf234771320d"
+  },
+  "renders": {
+    "door_hero": {
+      "bytes": 1093684,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_door_hero.png",
+      "sha256": "1be4e98bd6a31c87b6edf4738f195d27dba8ce4a5228edbd61465fe886220370"
+    },
+    "game_light": {
+      "bytes": 1106604,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_game_light.png",
+      "sha256": "1f37a2cc573e38d674c5147b92f3f9f7704ef5b523f66d857209a7150c006f07"
+    },
+    "gameplay_distance": {
+      "bytes": 1101635,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_gameplay_distance.png",
+      "sha256": "aedfc20b5fb20c63a9d470381f3fbc2ba766dd93270c0d6bdbb8bbd387213ddf"
+    },
+    "grazing": {
+      "bytes": 1302122,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_grazing.png",
+      "sha256": "a4cc4cbfc6765c88ec0ccf65c65b6fb5f0cb46e3ae24b45be7497ceb48687ae9"
+    },
+    "height": {
+      "bytes": 824977,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_height.png",
+      "sha256": "ad3b890170e7e2e99971dab94857571ce3e13cf94a3f2be987b938193897bc1a"
+    },
+    "layer_states": {
+      "bytes": 1026436,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_layer_states.png",
+      "sha256": "a39305a7d01b1026e810240b7daa4f0f02d94f58e81d3068cf5aaeb0e7e72b30"
+    },
+    "normal": {
+      "bytes": 1059509,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_normal.png",
+      "sha256": "1044bd394bb1788b005a1503df2fdcedc41aaf9f784e181cb8d0e8bfcf095a0b"
+    },
+    "transition_close": {
+      "bytes": 1123106,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_transition_close.png",
+      "sha256": "c3944c0b9366291121c37a1c2131dfd332b4bb9f4953af93326b0d68bc7a5316"
+    },
+    "traversal": {
+      "bytes": 939924,
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/output/lime_plaster_masonry_v1_traversal.png",
+      "sha256": "e2b9448b097b8693060a71961d1f61f2bb5e504d60007b9ee84c0c053485fad6"
+    }
+  },
+  "schema": "iggy3d.material.lime_plaster_masonry_v1.blender.v2",
+  "source_blend": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+    "sha256": "fbe0b22d7a14bc9aa98a7fee9e3f73d09f162385ea688410e0608233dd16ea1a"
+  },
+  "source_policy": {
+    "ai_generated_reference_capture": false,
+    "ai_generated_runtime_texture": false,
+    "legacy_ai_experiments_are_build_inputs": false,
+    "raw_reference_pixels_used_as_runtime_texture": false,
+    "third_party_pixels_stored": false
+  },
+  "texture_manifest": {
+    "authored_scale_m": {
+      "course_height_max": 0.6999999999999997,
+      "course_height_min": 0.4500000000000002,
+      "stone_width_max": 1.1400000000000001,
+      "stone_width_min": 0.3799999999999999
+    },
+    "constraints": {
+      "categorical_state_is_face_domain": true,
+      "form_and_detail_normals_are_separate": true,
+      "height_is_authored_in_metres": true,
+      "narrative_overlays_default_off": true,
+      "unreal_runtime_parity_verified": false,
+      "uses_ai_generated_reference": false,
+      "uses_sampled_reference_pixels": false
+    },
+    "default_overlays": {
+      "damp": 0.0,
+      "edge_accumulation": 0.0,
+      "soot": 0.0
+    },
+    "geometry_attributes": {
+      "categorical_attribute_domain": "FACE",
+      "continuous_attribute_domain": "POINT",
+      "damp_attribute": "iggy_damp_mask",
+      "layer_state_attribute": "iggy_plaster_layer_state",
+      "phase_attribute": "iggy_material_phase",
+      "plaster_coverage_attribute": "iggy_plaster_coverage",
+      "soot_attribute": "iggy_soot_mask",
+      "space": "object_position_xz_metres",
+      "tile_span_m": 4.0,
+      "topology_rule": "Regenerate categorical face state and continuous transition attributes after topology-changing operations; never infer a categorical layer from interpolated triangle IDs.",
+      "transition_edge_attribute": "iggy_transition_edge",
+      "traversal_id_attribute": "iggy_traversal_id",
+      "variant_attribute": "iggy_material_variant"
+    },
+    "height_range_m": {
+      "masonry": [
+        -0.011842875741422176,
+        0.015205067582428455
+      ],
+      "plaster": [
+        -0.0009396240930072963,
+        0.0009734999621286988
+      ]
+    },
+    "material_id": "lime_plaster_masonry_v1",
+    "material_intent": {
+      "authored_material_lanes": [
+        "plaster",
+        "mortar",
+        "finish_coat",
+        "brown_coat",
+        "scratch_coat",
+        "stone/cool_limestone",
+        "stone/warm_limestone",
+        "stone/grey_green",
+        "stone/umber_vein",
+        "stone/pale_chalk",
+        "linework"
+      ],
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/lime_plaster_masonry_material_intent_v2.json",
+      "raw_pixels_used_as_runtime_texture": false,
+      "schema": "iggy3d.material_intent.lime_plaster_masonry.v2",
+      "sha256": "d597899b2f50c2e46e2d6cc4853f02367cc357c260468ce67985a42e592fb4ec",
+      "source_kind": "written_conservation_and_authored_material_contract",
+      "uses_ai_generated_reference": false,
+      "uses_sampled_reference_pixels": false
+    },
+    "metrics": {
+      "authored_style_intent": {
+        "large_medium_small_order": true,
+        "line_color_rgb": [
+          45,
+          44,
+          42
+        ],
+        "maximum_plaster_line_coverage": 0.12,
+        "maximum_stone_line_coverage": 0.22,
+        "quiet_surface_is_primary": true
+      },
+      "authored_trowel_event_count": 13,
+      "masonry_basecolor_seam": 3.904395271092653e-06,
+      "masonry_ink_coverage": 0.09322118125846764,
+      "masonry_roughness_range": [
+        0.6899999976158142,
+        0.9199999570846558
+      ],
+      "plaster_basecolor_seam": 5.555299139814451e-05,
+      "plaster_line_coverage": 0.0333145989312066,
+      "plaster_roughness_range": [
+        0.6797076463699341,
+        0.771900475025177
+      ],
+      "traversal_stone_fraction": 0.13955052196979523
+    },
+    "outputs": {
+      "brush_direction": "lime_plaster_masonry_v1_brush_direction.png",
+      "masonry_basecolor": "giant_masonry_v1_basecolor.png",
+      "masonry_detail_normal": "giant_masonry_v1_detail_normal.png",
+      "masonry_form_normal": "giant_masonry_v1_form_normal.png",
+      "masonry_height": "giant_masonry_v1_height.png",
+      "masonry_masks": "giant_masonry_v1_masks.png",
+      "masonry_normal": "giant_masonry_v1_normal.png",
+      "masonry_orm": "giant_masonry_v1_orm.png",
+      "plaster_basecolor": "lime_plaster_v1_basecolor.png",
+      "plaster_detail_normal": "lime_plaster_v1_detail_normal.png",
+      "plaster_form_normal": "lime_plaster_v1_form_normal.png",
+      "plaster_height": "lime_plaster_v1_height.png",
+      "plaster_normal": "lime_plaster_v1_normal.png",
+      "plaster_orm": "lime_plaster_v1_orm.png",
+      "proof_color": "proofs/lime_plaster_masonry_v1_color.png",
+      "proof_construction": "proofs/lime_plaster_masonry_v1_construction.png",
+      "proof_linework": "proofs/lime_plaster_masonry_v1_linework.png",
+      "proof_response": "proofs/lime_plaster_masonry_v1_response.png",
+      "proof_scale": "proofs/lime_plaster_masonry_v1_scale.png",
+      "proof_transition": "proofs/lime_plaster_masonry_v1_transition.png",
+      "stylization": "lime_plaster_masonry_v1_stylization.png"
+    },
+    "pattern_variation": 0,
+    "resolution": 1536,
+    "schema": "iggy3d.material.lime_plaster_masonry_v1.v2",
+    "seed": 73129,
+    "shade_family_size": 20,
+    "source_policy": {
+      "ai_generated_reference_capture": false,
+      "ai_generated_runtime_texture": false,
+      "legacy_ai_experiments_are_build_inputs": false,
+      "raw_reference_pixels_used_as_runtime_texture": false,
+      "third_party_pixels_stored": false
+    },
+    "sources": {
+      "giant_house_rubble_v1.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/patterns/giant_house_rubble_v1.json",
+        "sha256": "e4d05bb9b081d2f066c9e3e224d07d9bd94454b267232ba18f38000bca4baf5e"
+      },
+      "lime_plaster_masonry_material_intent_v2.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/references/lime_plaster_masonry_material_intent_v2.json",
+        "sha256": "d597899b2f50c2e46e2d6cc4853f02367cc357c260468ce67985a42e592fb4ec"
+      },
+      "lime_plaster_masonry_v1.json": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/lime_plaster_masonry_v1/profiles/lime_plaster_masonry_v1.json",
+        "sha256": "954f460f42df8ca0c33987d0e5309e94f67329b057e5fe7d3c17f5e3e2eb8b4a"
+      }
+    },
+    "stone_count": 36,
+    "tile_size_m": 4.0,
+    "transition_states": [
+      "masonry",
+      "flush_lime_mortar",
+      "scratched_coarse_coat",
+      "brown_float_coat",
+      "lime_finish"
+    ]
+  },
+  "validation": {
+    "attribute_names": [
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_plaster_coverage",
+      "iggy_plaster_layer_state",
+      "iggy_transition_edge",
+      "iggy_traversal_id",
+      "iggy_damp_mask",
+      "iggy_soot_mask"
+    ],
+    "bump_count": 0,
+    "camera_distance_count": 1,
+    "coordinate_space": "object_position_xz_metres",
+    "displacement_count": 1,
+    "generic_noise_count": 0,
+    "geometry_transition": true,
+    "image_texture_count": 12,
+    "material_state_domain": "FACE",
+    "material_state_range": [
+      0.07000000029802322,
+      0.9399999976158142
+    ],
+    "narrative_overlays_default_off": true,
+    "node_groups": [
+      "IGGY_SH_LimePlasterMasonry_v001",
+      "IGGY_SH_PlasterMasonryHeight_v002",
+      "IGGY_SH_PlasterMasonryNormalCombine_v002",
+      "IGGY_SH_PlasterMasonrySurfaceData_v002"
+    ],
+    "normal_map_count": 1,
+    "occupied_state_bands": [
+      {
+        "face_count": 58201,
+        "name": "masonry"
+      },
+      {
+        "face_count": 10811,
+        "name": "flush_lime_mortar"
+      },
+      {
+        "face_count": 11977,
+        "name": "scratched_coarse_coat"
+      },
+      {
+        "face_count": 11685,
+        "name": "brown_float_coat"
+      },
+      {
+        "face_count": 199066,
+        "name": "lime_finish"
+      }
+    ],
+    "packed_images": [
+      "giant_masonry_v1_basecolor.png",
+      "giant_masonry_v1_detail_normal.png",
+      "giant_masonry_v1_form_normal.png",
+      "giant_masonry_v1_height.png",
+      "giant_masonry_v1_masks.png",
+      "giant_masonry_v1_orm.png",
+      "lime_plaster_masonry_v1_stylization.png",
+      "lime_plaster_v1_basecolor.png",
+      "lime_plaster_v1_detail_normal.png",
+      "lime_plaster_v1_form_normal.png",
+      "lime_plaster_v1_height.png",
+      "lime_plaster_v1_orm.png"
+    ],
+    "principled_count": 3,
+    "prior_contracts_unchanged": true,
+    "projecting_footholds": 5,
+    "wall_polygon_count": 291740,
+    "wall_vertex_count": 361665
+  }
+}

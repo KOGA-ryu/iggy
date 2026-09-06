@@ -20,7 +20,7 @@ PACKAGE = ROOT / "assets" / "creative" / "geometry_proof"
 sys.path.insert(0, str(PACKAGE))
 
 from profile_intake import (  # noqa: E402
-    build_draft, fit_arc, resolve_to_root, validate_handoff)
+    HANDOFF_FORMAT_V2, build_draft, fit_arc, resolve_to_root, validate_handoff)
 from profile_spec import SpecError, validate_structure  # noqa: E402
 
 EXAMPLE = PACKAGE / "handoffs" / "EXAMPLE_paley_pl1_fig6_handoff.json"
@@ -69,6 +69,35 @@ class HandoffValidationTests(unittest.TestCase):
         h["extents"] = [e for e in h["extents"] if not e.get("between")]
         problems = validate_handoff(h)
         self.assertTrue(any("origin_landmark" in p for p in problems))
+
+    def test_v2_names_uncertainty_honestly_and_carries_model_assumption(self):
+        h = example()
+        h["format"] = HANDOFF_FORMAT_V2
+        rms = h["calibration"].pop("rms_residual_px")
+        h["calibration"].update({
+            "control_point_uncertainty_px": rms,
+            "source_projection_model": "UNIFORM_ORTHOGRAPHIC",
+            "model_assumption": {
+                "name": "fronto_parallel_subject",
+                "evidence_class": "AUTHORED",
+                "note": "catalog photograph treated as fronto-parallel",
+            },
+        })
+        self.assertEqual(validate_handoff(h), [])
+        draft, _ = build_draft(h)
+        self.assertAlmostEqual(draft["tolerance"]["distance"], 0.1, places=4)
+        notes = draft["reference"]["notes"]
+        self.assertIn("control-point uncertainty", notes)
+        self.assertIn("fronto_parallel_subject (AUTHORED)", notes)
+
+    def test_v2_rejects_the_legacy_misnamed_uncertainty_field(self):
+        h = example()
+        h["format"] = HANDOFF_FORMAT_V2
+        h["calibration"]["source_projection_model"] = "PLANAR_HOMOGRAPHY"
+        problems = validate_handoff(h)
+        self.assertTrue(any("rms_residual_px" in p and "unknown" in p for p in problems))
+        self.assertTrue(any("control_point_uncertainty_px" in p and "missing" in p
+                            for p in problems))
 
 
 class FrameResolutionTests(unittest.TestCase):

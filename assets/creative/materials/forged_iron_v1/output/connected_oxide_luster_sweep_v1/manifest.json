@@ -1,0 +1,380 @@
+{
+  "schema": "iggy3d.connected_oxide_luster_sweep.v1",
+  "status": "EXPLORATORY_COMPARISON_NOT_CANONICAL",
+  "consumer": {
+    "collection": "IGGY_ForgedIronActualHingeProof",
+    "objects": [
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle",
+      "MovingKnuckle_01",
+      "FixedKnuckle_02",
+      "MovingKnuckle_03",
+      "FixedKnuckle_04",
+      "MovingKnuckle_05"
+    ],
+    "assembly_span_m": [
+      4.059999942779541,
+      0.11599999666213989,
+      0.4099999964237213
+    ]
+  },
+  "tile_resolution": [
+    560,
+    180
+  ],
+  "render_engine": "BLENDER_EEVEE",
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/compare_connected_oxide_luster_v1.py",
+    "sha256": "952c3ae7b6a723ae5093ba696af86682fcb9a26c16703ebb8de3fc11252c9a72"
+  },
+  "candidates": {
+    "A_frozen_root_control": {
+      "label": "A  FROZEN ROOT CONTROL",
+      "recipe": {
+        "candidate_id": "A_frozen_root_control",
+        "label": "A  FROZEN ROOT CONTROL",
+        "luster_mode": "frozen_root",
+        "luster_anisotropy_maximum": 0.0
+      },
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/full_front.png",
+          "bytes": 63762,
+          "sha256": "e4b8612fe53a7402d43288ba33805eb69dbab987131dc76921e6b19c179f192d"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/close_neutral.png",
+          "bytes": 99230,
+          "sha256": "238a2f6d615b0c798bf544c03451991c2c9a658b1cdf928944e8ab2e2acb425b"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/opposed_light_difference.png",
+          "bytes": 96389,
+          "sha256": "1c0b31322b60284fb950cb8e99a3331f55cc4ddff8f1f540336f3e5bd4576178",
+          "operation": "absolute sRGB difference of identical left/right close renders"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/gameplay.png",
+          "bytes": 49548,
+          "sha256": "c958a379290ebe52f8986de4ec73bd4ac4f7f9b8a451753b795de2c2ca1a101a"
+        },
+        "connected_oxide": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/connected_oxide.png",
+          "bytes": 57893,
+          "sha256": "937a07eeebd485ca6c13fca1eb74bd20f2e5737aae44a4e42449d0b09e528465"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/independent_roughness.png",
+          "bytes": 46064,
+          "sha256": "fbc32ed9087b8afe2430a32882db32ab450e47d7488f3982564da9a6abb18e1b"
+        },
+        "luster_diagnostic": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/A_frozen_root_control/luster_diagnostic.png",
+          "bytes": 63513,
+          "sha256": "d819d219ba4c3a62ecf29c877e45c2f1fc0f88b48ddc99e4ecdbd1ae8f8e4200"
+        }
+      },
+      "diagnostic_proxies": {
+        "connected_oxide": "root base-colour proof",
+        "independent_roughness": "root roughness proof",
+        "luster_diagnostic": "root worked-response proof"
+      },
+      "canonical_material_unchanged": true
+    },
+    "B_connected_oxide_no_luster": {
+      "label": "B  CONNECTED OXIDE / NO LUSTER",
+      "recipe": {
+        "candidate_id": "B_connected_oxide_no_luster",
+        "label": "B  CONNECTED OXIDE / NO LUSTER",
+        "luster_mode": "none",
+        "luster_anisotropy_maximum": 0.0
+      },
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/full_front.png",
+          "bytes": 63164,
+          "sha256": "3ed78ed1aff8a5173c92fae075a5f35dc76d0e5934bfaf58b6fbd1326b970375"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/close_neutral.png",
+          "bytes": 98209,
+          "sha256": "c0b811536e516f7f5bbf12caf20020ad90681438baa0338f68b9869867c21648"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/opposed_light_difference.png",
+          "bytes": 96510,
+          "sha256": "bb703d314f30a02fc92af330a75abb3a1cc83feda7d5f8dd598a8ef042f01c92",
+          "operation": "absolute sRGB difference of identical left/right close renders"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/gameplay.png",
+          "bytes": 48961,
+          "sha256": "aa13e54936b792bb41477cc9a6818e835e41cf918ff375bfb490c9242f693231"
+        },
+        "connected_oxide": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/connected_oxide.png",
+          "bytes": 77984,
+          "sha256": "4d8303040d5deefc505ab76094bb54bb3be54be6c272171fa751f7d273b4fecd"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/independent_roughness.png",
+          "bytes": 44804,
+          "sha256": "61494b79fde798bb02e10cbcc9a1b11ae0cb3cc5a87eb998f5cd68945fa01f43"
+        },
+        "luster_diagnostic": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/B_connected_oxide_no_luster/luster_diagnostic.png",
+          "bytes": 55027,
+          "sha256": "4bf1bd3caeda38531758bd8c0ede06d83de0be321ffff81fa0d3649eb5a2dd5f"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6653972864151001,
+        0.7649999856948853
+      ],
+      "luster_amount_range": [
+        0.0,
+        0.0
+      ],
+      "topology": {
+        "principled": 2,
+        "mix_shader": 1,
+        "normal_map": 1,
+        "tangent": 1,
+        "image_texture": 4,
+        "oxide_anisotropy_socket": "Anisotropic",
+        "oxide_rotation_socket": "Anisotropic Rotation",
+        "luster_anisotropy_maximum": 0.0,
+        "exposure": 0.0
+      },
+      "resources_released_after_render": true
+    },
+    "C_connected_oxide_continuous_luster": {
+      "label": "C  CONTINUOUS ALIGNED LUSTER",
+      "recipe": {
+        "candidate_id": "C_connected_oxide_continuous_luster",
+        "label": "C  CONTINUOUS ALIGNED LUSTER",
+        "luster_mode": "continuous",
+        "luster_anisotropy_maximum": 0.11
+      },
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/full_front.png",
+          "bytes": 63164,
+          "sha256": "5ebcf92b00f0eb26fe1235b2aadb4d6baa64a54d20d2a509dcb5b27b3dbd76ac"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/close_neutral.png",
+          "bytes": 98209,
+          "sha256": "2b7d25a20b5ca80caef8ddfd8395af10395a8fd5f1238a6a1b15a1e2c85d6783"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/opposed_light_difference.png",
+          "bytes": 96510,
+          "sha256": "bb703d314f30a02fc92af330a75abb3a1cc83feda7d5f8dd598a8ef042f01c92",
+          "operation": "absolute sRGB difference of identical left/right close renders"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/gameplay.png",
+          "bytes": 48961,
+          "sha256": "aa13e54936b792bb41477cc9a6818e835e41cf918ff375bfb490c9242f693231"
+        },
+        "connected_oxide": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/connected_oxide.png",
+          "bytes": 77984,
+          "sha256": "ac416deb246d62d1f45edcb76bc99342bd43e77a66c40e9a7e926ad4cea8f8dc"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/independent_roughness.png",
+          "bytes": 44804,
+          "sha256": "61494b79fde798bb02e10cbcc9a1b11ae0cb3cc5a87eb998f5cd68945fa01f43"
+        },
+        "luster_diagnostic": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/C_connected_oxide_continuous_luster/luster_diagnostic.png",
+          "bytes": 57949,
+          "sha256": "96db67d7bc078c830b49f1fa1679526d0ce19adf7b6422f3b5746fa0ca9d2915"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6653972864151001,
+        0.7649999856948853
+      ],
+      "luster_amount_range": [
+        1.0,
+        1.0
+      ],
+      "topology": {
+        "principled": 2,
+        "mix_shader": 1,
+        "normal_map": 1,
+        "tangent": 1,
+        "image_texture": 4,
+        "oxide_anisotropy_socket": "Anisotropic",
+        "oxide_rotation_socket": "Anisotropic Rotation",
+        "luster_anisotropy_maximum": 0.11,
+        "exposure": 0.0
+      },
+      "resources_released_after_render": true
+    },
+    "D_connected_oxide_open_rail_luster": {
+      "label": "D  SPARSE OPEN-RAIL LUSTER",
+      "recipe": {
+        "candidate_id": "D_connected_oxide_open_rail_luster",
+        "label": "D  SPARSE OPEN-RAIL LUSTER",
+        "luster_mode": "open_rails",
+        "luster_anisotropy_maximum": 0.13
+      },
+      "renders": {
+        "full_front": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/full_front.png",
+          "bytes": 63164,
+          "sha256": "ca170307f37f49e1e4397e156e7657591e108e382242e08a41b6595becf6b5a0"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/close_neutral.png",
+          "bytes": 98209,
+          "sha256": "072afc12e9d7ea70ab8704aaf488cdb9c6305fc23a3517a435dd1894cff6405b"
+        },
+        "opposed_light_difference": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/opposed_light_difference.png",
+          "bytes": 96510,
+          "sha256": "bb703d314f30a02fc92af330a75abb3a1cc83feda7d5f8dd598a8ef042f01c92",
+          "operation": "absolute sRGB difference of identical left/right close renders"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/gameplay.png",
+          "bytes": 48961,
+          "sha256": "8099aeaf55a5c9f2ab94aeea5662f524f3b9b562397b93bc68c75b178b9fb37d"
+        },
+        "connected_oxide": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/connected_oxide.png",
+          "bytes": 77984,
+          "sha256": "51c19a1760ec2b7dd62f180a640edd42733b2caa4773dcb9ab47a639584b01ae"
+        },
+        "independent_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/independent_roughness.png",
+          "bytes": 44804,
+          "sha256": "eb09a7805b145c4e9bc5f4081855e85f7f2aca9cdb8e142b495c1386427e083e"
+        },
+        "luster_diagnostic": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/D_connected_oxide_open_rail_luster/luster_diagnostic.png",
+          "bytes": 61574,
+          "sha256": "19043d91ae855b1e10745cef14322e162fed18bf0d797c03acd7bed059833d9d"
+        }
+      },
+      "coverage_range": [
+        1.0,
+        1.0
+      ],
+      "metalness_maximum": 0.0,
+      "exposure_maximum": 0.0,
+      "oxide_surface_height_absolute_maximum_m": 0.0,
+      "roughness_range": [
+        0.6653972864151001,
+        0.7649999856948853
+      ],
+      "luster_amount_range": [
+        3.3628938467837184e-17,
+        1.0
+      ],
+      "topology": {
+        "principled": 2,
+        "mix_shader": 1,
+        "normal_map": 1,
+        "tangent": 1,
+        "image_texture": 4,
+        "oxide_anisotropy_socket": "Anisotropic",
+        "oxide_rotation_socket": "Anisotropic Rotation",
+        "luster_anisotropy_maximum": 0.13,
+        "exposure": 0.0
+      },
+      "resources_released_after_render": true
+    }
+  },
+  "comparison_board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/connected_oxide_luster_sweep_v1/connected_oxide_luster_comparison_board.png",
+    "resolution": [
+      3920,
+      720
+    ],
+    "bytes": 2073643,
+    "sha256": "6d92554a36f4d9b3ac80771be674d752560119844140ce177d09c430707ce2ca",
+    "row_order": [
+      "A_frozen_root_control",
+      "B_connected_oxide_no_luster",
+      "C_connected_oxide_continuous_luster",
+      "D_connected_oxide_open_rail_luster"
+    ],
+    "column_order": [
+      "full_front",
+      "close_neutral",
+      "opposed_light_difference",
+      "gameplay",
+      "connected_oxide",
+      "independent_roughness",
+      "luster_diagnostic"
+    ]
+  },
+  "visual_review": {
+    "decision": "select_B",
+    "ranking": [
+      "B_connected_oxide_no_luster",
+      "C_connected_oxide_continuous_luster",
+      "A_frozen_root_control",
+      "D_connected_oxide_open_rail_luster"
+    ],
+    "recommended_candidate": "B_connected_oxide_no_luster",
+    "advancement_scope": "response_strategy_only_not_material_acceptance",
+    "physical_panel_comparison": {
+      "B_vs_C": "pixel_identical_in_all_four_physical_panels",
+      "B_vs_D": "pixel_identical_in_all_four_physical_panels",
+      "interpretation": "The reduced Eevee gate proves no visible benefit from either added luster strategy."
+    },
+    "defect_ledger": [
+      "A retains the rejected soft closed colour clouds and finite striped worked-response stamps.",
+      "B removes both symbolic owners and protects quiet plate regions, but remains a flat repair baseline rather than a finished forged-iron material.",
+      "B roughness is independent and subtle; the opposed-light panel still reads geometry bevels and lamp travel more strongly than a forged surface hierarchy.",
+      "C adds a continuous anisotropy control but changes no physical proof pixel under this Eevee gate, so it has no demonstrated value here.",
+      "D adds three visually dominant rail bands in its isolated response, recreating a decorative stripe language while also changing no physical proof pixel.",
+      "All new rows leave the pivot too smooth and coated-looking; integration must prove a component-scale response without reintroducing motifs."
+    ],
+    "manual_acceptance_established": false
+  },
+  "sources": {
+    "canonical_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v1.blend",
+      "sha256_before": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10",
+      "sha256_after": "1a25f14f755ef1e15fd87eae509477a14b1dc5e2e1af0fdd72a4a27d29ff9b10"
+    },
+    "geometry_blend": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/openwork_strap_hinge_geometry_v1.blend",
+      "sha256_before": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+      "sha256_after": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69"
+    }
+  },
+  "canonical_source_unchanged": true,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "unreal_parity_verified": false,
+  "manual_acceptance_required": true,
+  "limitations": [
+    "This reduced Eevee matrix selects one response strategy only.",
+    "The A-row connected-oxide and luster columns are frozen-root proof proxies.",
+    "No candidate is integrated into or saved over the researched root.",
+    "A Blender selection does not establish Unreal parity or user acceptance."
+  ]
+}

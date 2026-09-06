@@ -4,6 +4,7 @@
 #include "EditorWorldLayoutInternal.hpp"
 
 #include "app/iggy3d/creative/world/WorldLayoutBlockoutMaterialization.hpp"
+#include "app/iggy3d/creative/world/WorldLayoutArchitecture.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutBuildingOps.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutLevels.hpp"
 #include "app/iggy3d/creative/world/WorldLayoutRooms.hpp"
@@ -251,6 +252,32 @@ std::size_t firstBuildingLevelIndex(const cr::CreativeWorldLayout& layout,
 }
 
 }  // namespace
+
+bool applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+    CreativeEditorWorldLayoutBuildingBlockoutSettings& settings,
+    cr::CreativeGridSettings grid,
+    cr::CreativeWorldLayoutArchitecturalProfileKind kind) noexcept {
+  if (kind >= cr::CreativeWorldLayoutArchitecturalProfileKind::Count) {
+    return false;
+  }
+  if (kind == cr::CreativeWorldLayoutArchitecturalProfileKind::Custom) {
+    settings.architecturalProfileKind = kind;
+    return true;
+  }
+  const cr::CreativeWorldLayoutArchitecturalProfile profile =
+      cr::defaultCreativeWorldLayoutArchitecturalProfile(kind);
+  std::uint16_t floorToFloorCells = 0U;
+  if (!cr::resolveCreativeWorldLayoutArchitecturalProfileFloorToFloorCells(
+          grid, profile, floorToFloorCells)) {
+    return false;
+  }
+  settings.architecturalProfileKind = kind;
+  settings.floorToFloorCells = floorToFloorCells;
+  settings.shell.floorThicknessLayers = profile.floorThicknessLayers;
+  settings.ceilingThicknessLayers = profile.ceilingThicknessLayers;
+  settings.shell.roofThicknessLayers = profile.roofThicknessLayers;
+  return true;
+}
 
 CreativeEditorWorldLayoutEditReceipt
 createCreativeEditorWorldLayoutBuildingBlockout(

@@ -1,0 +1,2318 @@
+{
+  "schema": "iggy3d.forged_iron_v004_1_reflection_routing_sweep.v1",
+  "status": "EXPLORATORY_REFLECTION_ROUTING_NOT_CANONICAL",
+  "source": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_connected_oxide_candidate_v004_1/forged_iron_connected_oxide_candidate_v004_1.blend",
+    "sha256_before": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81",
+    "sha256_after": "8c091eed67b9a989c035eab7efb5b2a365be203d7f4f0bb569ad5b97b6c99b81"
+  },
+  "script": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/compare_v004_1_reflection_routing_v1.py",
+    "sha256": "040860793084fd0f881b35abbf2c86e54bdcf0755135f12cb6af550046ea93df"
+  },
+  "geometry_proof": {
+    "frames": {
+      "SM_GH018_FixedLeaf": {
+        "mode": "longitudinal_leaf",
+        "field_coordinate_mode": "object_xz_host",
+        "minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "maximum_m": [
+          -0.04800000041723251,
+          0.20499999821186066
+        ],
+        "span_m": [
+          0.8519999980926514,
+          0.4099999964237213
+        ],
+        "tangent_minimum_m": [
+          -0.8999999761581421,
+          -0.20499999821186066
+        ],
+        "tangent_maximum_m": [
+          0.8895581960678101,
+          0.20499999821186066
+        ],
+        "tangent_span_m": [
+          1.7895581722259521,
+          0.4099999964237213
+        ],
+        "loop_count": 1220
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "mode": "longitudinal_leaf",
+        "field_coordinate_mode": "object_xz_host",
+        "minimum_m": [
+          0.04800000041723251,
+          -0.20499999821186066
+        ],
+        "maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "span_m": [
+          3.111999988555908,
+          0.4099999964237213
+        ],
+        "tangent_minimum_m": [
+          -3.0933139324188232,
+          -0.20499999821186066
+        ],
+        "tangent_maximum_m": [
+          3.1600000858306885,
+          0.20499999821186066
+        ],
+        "tangent_span_m": [
+          6.253314018249512,
+          0.4099999964237213
+        ],
+        "loop_count": 49038
+      },
+      "SM_GH018_Pintle": {
+        "mode": "axial_pin",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ],
+        "tangent_minimum_m": [
+          -0.20499999821186066,
+          -0.07941248267889023
+        ],
+        "tangent_maximum_m": [
+          0.20499999821186066,
+          0.08395033329725266
+        ],
+        "tangent_span_m": [
+          0.4099999964237213,
+          0.16336281597614288
+        ],
+        "loop_count": 432
+      },
+      "MovingKnuckle_01": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "FixedKnuckle_02": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "MovingKnuckle_03": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "FixedKnuckle_04": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.12492828071117401,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.12492828071117401,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.24985656142234802,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      },
+      "MovingKnuckle_05": {
+        "mode": "circumferential_barrel",
+        "field_coordinate_mode": "component_tangent_host",
+        "minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "tangent_minimum_m": [
+          -0.13458609580993652,
+          -0.057999998331069946
+        ],
+        "tangent_maximum_m": [
+          0.14175020158290863,
+          0.057999998331069946
+        ],
+        "tangent_span_m": [
+          0.27633631229400635,
+          0.11599999666213989
+        ],
+        "loop_count": 1160
+      }
+    },
+    "renders": {
+      "clay_full_left": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/geometry_moving_strip/clay_full_left.png",
+        "bytes": 69906,
+        "sha256": "63ebfd4d8c0c927b8fe5f7f4e3ce8d0d20a98e11dd9bcb85fa7fb2ce28bbf25b"
+      },
+      "clay_full_right": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/geometry_moving_strip/clay_full_right.png",
+        "bytes": 69204,
+        "sha256": "d167f1759188f5a626801dbaab0117dc92c36be8725840825609622c5b834510"
+      },
+      "clay_pivot_left": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/geometry_moving_strip/clay_pivot_left.png",
+        "bytes": 130274,
+        "sha256": "deb4048eb3bbd9492393188ab759455a1c9f9828552a96365838164e578ab6bc"
+      },
+      "clay_pivot_right": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/geometry_moving_strip/clay_pivot_right.png",
+        "bytes": 129834,
+        "sha256": "36aeae349bc427295c7eb6dc008856fd6245b3e23ecf8b75050a9ec363abb9b0"
+      },
+      "construction_tangent": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/geometry_moving_strip/construction_tangent.png",
+        "bytes": 67969,
+        "sha256": "e8a362cdfa6827d5b3e4e77ede3cab362cb10b0db61155b145f4b3c46c208646"
+      }
+    },
+    "view_contract": {
+      "full_center": [
+        1.130000114440918,
+        0.0,
+        0.0
+      ],
+      "full_span": [
+        4.059999942779541,
+        0.11599999666213989,
+        0.4099999964237213
+      ],
+      "pivot_center": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "clay_base_colour": [
+        0.42,
+        0.42,
+        0.42
+      ],
+      "clay_roughness": 0.38,
+      "clay_metalness": 0.0,
+      "normal_input": null
+    },
+    "board": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/forged_iron_v004_1_geometry_moving_strip_board.png",
+      "resolution": [
+        3200,
+        220
+      ],
+      "bytes": 430373,
+      "sha256": "fab500b63de24c7a1704c607a6fae1358c467f317e3f6229d6a2ba2bef0c3ddd",
+      "panel_legend": {
+        "1": {
+          "id": "clay_full_left",
+          "label": "CLAY FULL  STRIP LEFT"
+        },
+        "2": {
+          "id": "clay_full_right",
+          "label": "CLAY FULL  STRIP RIGHT"
+        },
+        "3": {
+          "id": "clay_pivot_left",
+          "label": "CLAY PIVOT  STRIP LEFT"
+        },
+        "4": {
+          "id": "clay_pivot_right",
+          "label": "CLAY PIVOT  STRIP RIGHT"
+        },
+        "5": {
+          "id": "construction_tangent",
+          "label": "CONSTRUCTION TANGENT RGB"
+        }
+      }
+    }
+  },
+  "roughness_contract": {
+    "stations": [
+      0.0,
+      0.12,
+      0.29,
+      0.51,
+      0.73,
+      0.9,
+      1.0
+    ],
+    "longitudinal_amplitude": 0.04,
+    "pintle_amplitude": 0.02,
+    "review_envelope": [
+      0.58,
+      0.8
+    ],
+    "compact_supports": false,
+    "height_or_normal_source": false,
+    "per_component_operation": "shared analytic sample plus scalar DC mean preservation only"
+  },
+  "direction_contract": {
+    "amount": 0.28,
+    "rotation": 0.5,
+    "control_image": "uniform 4x4 RGB=(0.28,0.50,1.0)",
+    "source_multiplier": 0.0,
+    "candidate_multiplier": 1.0,
+    "tangent_uv": "IGGY_IronTangentUV_v001",
+    "visible_direction_pattern": false
+  },
+  "candidates": [
+    {
+      "candidate_id": "A_v004_1_control",
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6123578548431396,
+            "p01": 0.6351201784610748,
+            "p05": 0.645740270614624,
+            "median": 0.6779871582984924,
+            "p95": 0.7076246738433838,
+            "p99": 0.7195749402046203,
+            "maximum": 0.7456921935081482,
+            "mean": 0.6774480454744258,
+            "standard_deviation": 0.01876103332015399,
+            "peak_to_peak": 0.13333433866500854
+          },
+          "roughness_float_sha256": "f6c0c1884b757a485cc9ac75849cc15558d080af22500c959dd81b5d4b12ad49",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6774480938911438,
+            "candidate_mean": 0.6774480938911438,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57",
+          "directional_response_amount": 0.0
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6165838837623596,
+            "p01": 0.6360656660795212,
+            "p05": 0.6470925807952881,
+            "median": 0.6783168017864227,
+            "p95": 0.7097573816776276,
+            "p99": 0.722466658949852,
+            "maximum": 0.7505144476890564,
+            "mean": 0.6783088997404263,
+            "standard_deviation": 0.019154655385501016,
+            "peak_to_peak": 0.13393056392669678
+          },
+          "roughness_float_sha256": "8136e44a0906cc29080aed293f9363b669f11ebcb6ef3460ff3036782efe2adb",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.67830890417099,
+            "candidate_mean": 0.67830890417099,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07",
+          "directional_response_amount": 0.0
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "tangent_mode": "axial_pin",
+          "roughness": {
+            "minimum": 0.6195710897445679,
+            "p01": 0.634720613360405,
+            "p05": 0.6442941516637802,
+            "median": 0.6769919395446777,
+            "p95": 0.7152608692646026,
+            "p99": 0.7287499099969864,
+            "maximum": 0.7473722100257874,
+            "mean": 0.6775768069564947,
+            "standard_deviation": 0.020981899446288862,
+            "peak_to_peak": 0.12780112028121948
+          },
+          "roughness_float_sha256": "83bc062e380706473c4f5c2c203113402fe2f1f3a94210fa5e785c1b9aa33ec0",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6775767803192139,
+            "candidate_mean": 0.6775767803192139,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6283392310142517,
+            "p01": 0.6400205105543136,
+            "p05": 0.6500771552324295,
+            "median": 0.679514080286026,
+            "p95": 0.707792854309082,
+            "p99": 0.7201747906208038,
+            "maximum": 0.7266809344291687,
+            "mean": 0.679744626962929,
+            "standard_deviation": 0.01731925915391033,
+            "peak_to_peak": 0.09834170341491699
+          },
+          "roughness_float_sha256": "3d08c8b3c697138ad913116e160f1cc8b5708f2f3c1d5a2cb75b5453017ae351",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6797446012496948,
+            "candidate_mean": 0.6797446012496948,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6312507390975952,
+            "p01": 0.6450093078613282,
+            "p05": 0.6565355986356736,
+            "median": 0.6810286641120911,
+            "p95": 0.7066440880298615,
+            "p99": 0.7159154903888703,
+            "maximum": 0.7326441407203674,
+            "mean": 0.6812710092199268,
+            "standard_deviation": 0.015357382278267101,
+            "peak_to_peak": 0.10139340162277222
+          },
+          "roughness_float_sha256": "fb3e404c5dd0726e8a6bd6ff74fe3d585c0e418cfba279b3d1c4275590323d29",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6812710165977478,
+            "candidate_mean": 0.6812710165977478,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6182275414466858,
+            "p01": 0.6366298943758011,
+            "p05": 0.6464615166187286,
+            "median": 0.6790582239627838,
+            "p95": 0.706179216504097,
+            "p99": 0.715276545882225,
+            "maximum": 0.7269384860992432,
+            "mean": 0.6777533052081708,
+            "standard_deviation": 0.01803190106581757,
+            "peak_to_peak": 0.10871094465255737
+          },
+          "roughness_float_sha256": "52700c4e396d8281dbd13e9c62c6ed4cd485eca6c541ad505ba68ee4b5047024",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6777533292770386,
+            "candidate_mean": 0.6777533292770386,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6303580403327942,
+            "p01": 0.6412008076906204,
+            "p05": 0.6524919956922531,
+            "median": 0.6798858940601349,
+            "p95": 0.7069432139396667,
+            "p99": 0.7142890250682831,
+            "maximum": 0.7260047197341919,
+            "mean": 0.6801809294265695,
+            "standard_deviation": 0.016775124122092686,
+            "peak_to_peak": 0.0956466794013977
+          },
+          "roughness_float_sha256": "183d0ab4104231c4dc560348e35308eee87bc3e2c5a49cc07c30d07dcec134c8",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6801809072494507,
+            "candidate_mean": 0.6801809072494507,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6207530498504639,
+            "p01": 0.6348271238803863,
+            "p05": 0.6445424348115921,
+            "median": 0.6719039380550385,
+            "p95": 0.7047070950269699,
+            "p99": 0.7140179121494293,
+            "maximum": 0.7286924123764038,
+            "mean": 0.6732087793134269,
+            "standard_deviation": 0.018432827823174985,
+            "peak_to_peak": 0.10793936252593994
+          },
+          "roughness_float_sha256": "f80b06d70cc435e4d3e43a8d1ab533dcd9f6b4d4740c9cfddcc17baf28c09392",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6732087731361389,
+            "candidate_mean": 0.6732087731361389,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        }
+      },
+      "directional_response_amount": 0.0,
+      "directional_response_rotation": null,
+      "disposable_direction_group_created": false,
+      "direction_group_contract": null,
+      "source_group_signature": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_value_unchanged": true,
+      "renders": {
+        "isolated_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/isolated_roughness.png",
+          "bytes": 61505,
+          "sha256": "265013b897b338a1848acfbcfa89873ba53aa010015d146d88b9ef18de9db913"
+        },
+        "isolated_direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/isolated_direction_amount.png",
+          "bytes": 28889,
+          "sha256": "6c0269bd2e6c625f02b21956d95bc718cc60ee958382fd5a3e9f7e68ecc586d6"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/close_neutral.png",
+          "bytes": 107437,
+          "sha256": "f443e79cda73c3b6fe858a292882701c753160bb2db7706497fb35ea8d3bd049"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/grazing_left.png",
+          "bytes": 70962,
+          "sha256": "4047e804a7e32ea4f33596e6f5cd2675ac770d7e9d91d323263c81095606f0be"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/grazing_right.png",
+          "bytes": 71691,
+          "sha256": "14bed5fd30ab74f727d00b3f3e20df7104df49994937e5f8fd6c644c3c8fe9d5"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/pivot_close.png",
+          "bytes": 124692,
+          "sha256": "d1d97bf0eed082cfee5ca66237c3f865000fe4c718c65078b528039767c33fbd"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/A_v004_1_control/gameplay.png",
+          "bytes": 56478,
+          "sha256": "87b57558d9650314a7cf5ac018ef8aaae67a86beadf167b0dbd3f5cad5af0122"
+        }
+      }
+    },
+    {
+      "candidate_id": "B_construction_roughness_only",
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6107140779495239,
+            "p01": 0.6334402441978455,
+            "p05": 0.6449786782264709,
+            "median": 0.6779240369796753,
+            "p95": 0.7082679390907287,
+            "p99": 0.7206963086128234,
+            "maximum": 0.7481538653373718,
+            "mean": 0.6774480453358673,
+            "standard_deviation": 0.01923540644330168,
+            "peak_to_peak": 0.1374397873878479
+          },
+          "roughness_float_sha256": "35d99ba4d05b9d8cf72d300d626947bc6af787b843a5ad7ae4447fa4b7ca8479",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "leaf_object_xz_is_parent_rest_stock",
+              "rest_u_range_m": [
+                -0.8999999761581421,
+                -0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "compiled_image_resolution": [
+                213,
+                103
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.010808859020471573,
+              "p01": -0.00885763667523861,
+              "p05": -0.0054466863162815566,
+              "median": -0.00020408903947100043,
+              "p95": 0.005713891191408037,
+              "p99": 0.007798926215618848,
+              "maximum": 0.00891068670898676,
+              "mean": -2.7044315584402283e-11,
+              "standard_deviation": 0.0031462997751745703,
+              "peak_to_peak": 0.019719545729458332
+            },
+            "source_mean": 0.6774480938911438,
+            "candidate_mean": 0.6774480938911438,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57",
+          "directional_response_amount": 0.0
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6160482168197632,
+            "p01": 0.6355977082252502,
+            "p05": 0.6466467410326004,
+            "median": 0.6782360374927521,
+            "p95": 0.7102115184068679,
+            "p99": 0.722338382601738,
+            "maximum": 0.7471626996994019,
+            "mean": 0.678308899661309,
+            "standard_deviation": 0.0193768501108542,
+            "peak_to_peak": 0.13111448287963867
+          },
+          "roughness_float_sha256": "dfcabaa0236b92d5ec9ca81826ff5cad4f1d0e67fcb336530e8d9835717c6bfb",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "leaf_object_xz_is_parent_rest_stock",
+              "rest_u_range_m": [
+                0.04800000041723251,
+                3.1600000858306885
+              ],
+              "rest_v_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "compiled_image_resolution": [
+                768,
+                103
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.00998206902295351,
+              "p01": -0.008565529445186258,
+              "p05": -0.005911194300279021,
+              "median": -0.00020392675651237369,
+              "p95": 0.006240688660182041,
+              "p99": 0.009111967235803604,
+              "maximum": 0.010729753412306309,
+              "mean": -6.5489137306181e-11,
+              "standard_deviation": 0.0034011980457189263,
+              "peak_to_peak": 0.02071182243525982
+            },
+            "source_mean": 0.67830890417099,
+            "candidate_mean": 0.67830890417099,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07",
+          "directional_response_amount": 0.0
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "tangent_mode": "axial_pin",
+          "roughness": {
+            "minimum": 0.6063854098320007,
+            "p01": 0.6276563251018524,
+            "p05": 0.6417800635099411,
+            "median": 0.6764519214630127,
+            "p95": 0.7198198080062866,
+            "p99": 0.7405342417955398,
+            "maximum": 0.7574537992477417,
+            "mean": 0.677576746988052,
+            "standard_deviation": 0.023252219108260735,
+            "peak_to_peak": 0.15106838941574097
+          },
+          "roughness_float_sha256": "f6dca80d089a47bc65587952b5bc588d73f8b890804cdf65ad10e98270a965ee",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "separate_axial_u_and_first_order_circumferential_passage",
+              "u_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "v_range_m": [
+                -0.07941248267889023,
+                0.08395033329725266
+              ],
+              "prohibits_axial_only_rings": true
+            },
+            "delta": {
+              "minimum": -0.015344318002462387,
+              "p01": -0.014008936360478402,
+              "p05": -0.011641280632466078,
+              "median": -9.074411991605302e-06,
+              "p95": 0.011639799457043408,
+              "p99": 0.014059192817658186,
+              "maximum": 0.015339018777012825,
+              "mean": -6.79227785127523e-11,
+              "standard_deviation": 0.006572559978272851,
+              "peak_to_peak": 0.030683336779475212
+            },
+            "source_mean": 0.6775767803192139,
+            "candidate_mean": 0.6775767207145691,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6295555830001831,
+            "p01": 0.6407025218009949,
+            "p05": 0.6500775247812272,
+            "median": 0.6795509457588196,
+            "p95": 0.7076779395341873,
+            "p99": 0.7203517627716065,
+            "maximum": 0.7257951498031616,
+            "mean": 0.6797445669944864,
+            "standard_deviation": 0.017273756453998302,
+            "peak_to_peak": 0.09623956680297852
+          },
+          "roughness_float_sha256": "358c92ebdf621ffcbb70aaa44fdb256d4cd92a2006a107191cd393f70b1e6ddd",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.22519999742507935,
+                -0.10920000076293945
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0011250355746597052,
+              "p01": -0.001051108700921759,
+              "p05": -0.0009178398118820042,
+              "median": -0.00018863024888560176,
+              "p95": 0.00152628842042759,
+              "p99": 0.0019412817200645804,
+              "maximum": 0.002085141371935606,
+              "mean": -4.0461856087858905e-11,
+              "standard_deviation": 0.0007623645131207378,
+              "peak_to_peak": 0.003210176946595311
+            },
+            "source_mean": 0.6797446012496948,
+            "candidate_mean": 0.67974454164505,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6306077241897583,
+            "p01": 0.6441775465011597,
+            "p05": 0.656400740146637,
+            "median": 0.6809273064136505,
+            "p95": 0.7068165063858032,
+            "p99": 0.7166137331724167,
+            "maximum": 0.7340692281723022,
+            "mean": 0.6812710685917409,
+            "standard_deviation": 0.015560127423472531,
+            "peak_to_peak": 0.10346150398254395
+          },
+          "roughness_float_sha256": "9a56961c9746243ebf47b7633cbe4315cb283e8c8d13651a4a1ed4be1ce5137f",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "roughness_mean_drift": 5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.04800000041723251,
+                0.2018565610051155
+              ],
+              "rest_v_range_m": [
+                -0.14159999787807465,
+                -0.025600001215934753
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0017302394844591618,
+              "p01": -0.0016066222451627254,
+              "p05": -0.0013098839786835014,
+              "median": 6.286099960561842e-06,
+              "p95": 0.0012987174617592242,
+              "p99": 0.001580564312171191,
+              "maximum": 0.00170054379850626,
+              "mean": -3.3084202044619815e-11,
+              "standard_deviation": 0.0007654325674133347,
+              "peak_to_peak": 0.0034307832829654217
+            },
+            "source_mean": 0.6812710165977478,
+            "candidate_mean": 0.6812710762023926,
+            "mean_drift": 5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6195228099822998,
+            "p01": 0.6374903047084808,
+            "p05": 0.6469471007585526,
+            "median": 0.6791157722473145,
+            "p95": 0.7057276666164398,
+            "p99": 0.7147324764728546,
+            "maximum": 0.7268361449241638,
+            "mean": 0.6777533054046216,
+            "standard_deviation": 0.017744558471465006,
+            "peak_to_peak": 0.10731333494186401
+          },
+          "roughness_float_sha256": "52c8cbf3722a096a14adf7591bde17238de68cc8887f7e3f0b201809e60522d7",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.057999998331069946,
+                0.057999998331069946
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.002923092106357217,
+              "p01": -0.0024577585281804204,
+              "p05": -0.0018524157931096852,
+              "median": 0.00017006680718623102,
+              "p95": 0.0012399237137287855,
+              "p99": 0.001388447362696752,
+              "maximum": 0.0015191931743174791,
+              "mean": 1.9618084934336366e-11,
+              "standard_deviation": 0.0009570737624669336,
+              "peak_to_peak": 0.004442285280674696
+            },
+            "source_mean": 0.6777533292770386,
+            "candidate_mean": 0.6777533292770386,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6304283142089844,
+            "p01": 0.6391919380426407,
+            "p05": 0.6511051684617997,
+            "median": 0.6799787282943726,
+            "p95": 0.7080627799034118,
+            "p99": 0.7158097994327545,
+            "maximum": 0.7269694805145264,
+            "mean": 0.6801808696545777,
+            "standard_deviation": 0.0173434760867281,
+            "peak_to_peak": 0.09654116630554199
+          },
+          "roughness_float_sha256": "e49288e08747038b227181ec591bcb9ae1370d2ece5d4f695c10f3fa77450297",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.04800000041723251,
+                0.2018565610051155
+              ],
+              "rest_v_range_m": [
+                0.025600001215934753,
+                0.14159999787807465
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0035901260562241077,
+              "p01": -0.0033760845428332685,
+              "p05": -0.0029241700191050767,
+              "median": -0.0005205359775573015,
+              "p95": 0.004841240285895765,
+              "p99": 0.00587614140007645,
+              "maximum": 0.0066886055283248425,
+              "mean": 2.738431703619426e-11,
+              "standard_deviation": 0.0022942157505361645,
+              "peak_to_peak": 0.01027873158454895
+            },
+            "source_mean": 0.6801809072494507,
+            "candidate_mean": 0.6801808476448059,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6212888360023499,
+            "p01": 0.6362524646520614,
+            "p05": 0.6445490121841431,
+            "median": 0.672163724899292,
+            "p95": 0.7045396238565445,
+            "p99": 0.7144017153978348,
+            "maximum": 0.7308738827705383,
+            "mean": 0.6732087792479433,
+            "standard_deviation": 0.01804791903196099,
+            "peak_to_peak": 0.10958504676818848
+          },
+          "roughness_float_sha256": "d0936d1efe2caf2e61b9d8ca37cd6fc8e7a939fe2afbedc6a6ea8269da598540",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                0.10920000076293945,
+                0.22519999742507935
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.004844028502702713,
+              "p01": -0.004521986003965139,
+              "p05": -0.003731723898090422,
+              "median": 5.8025121688842773e-05,
+              "p95": 0.003441248065792024,
+              "p99": 0.003741110560949892,
+              "maximum": 0.0038754884153604507,
+              "mean": -3.7616132431139704e-11,
+              "standard_deviation": 0.002280903924184247,
+              "peak_to_peak": 0.008719516918063164
+            },
+            "source_mean": 0.6732087731361389,
+            "candidate_mean": 0.6732087731361389,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.0
+        }
+      },
+      "directional_response_amount": 0.0,
+      "directional_response_rotation": null,
+      "disposable_direction_group_created": false,
+      "direction_group_contract": null,
+      "source_group_signature": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_value_unchanged": true,
+      "renders": {
+        "isolated_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/isolated_roughness.png",
+          "bytes": 61495,
+          "sha256": "554b32313c4891d620b9574f4f08444444ec720da65de87c620d7ca552feec6b"
+        },
+        "isolated_direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/isolated_direction_amount.png",
+          "bytes": 28889,
+          "sha256": "660a8c033a6afaad44e0ae72d38a4bd871cc07acddc2341caa715fd339cb4adb"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/close_neutral.png",
+          "bytes": 107594,
+          "sha256": "57029864852f7817bf57567a21b93f43fa4d82c893cb776df74d38fff182a2f2"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/grazing_left.png",
+          "bytes": 70977,
+          "sha256": "48ac645e4d74c2003d0240e91cf9c3be06934f48ab4a334f7f80125b6dbbc66f"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/grazing_right.png",
+          "bytes": 71664,
+          "sha256": "6dd193fd7b24134074b864c216c690e0f845f816c87fe53d1046683ce2c08dd2"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/pivot_close.png",
+          "bytes": 124811,
+          "sha256": "ea8f96b19a6eb29d25bd8e0b8fa30b2c850eda5b2240e5e209c4bf43a8e32290"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/B_construction_roughness_only/gameplay.png",
+          "bytes": 56478,
+          "sha256": "c5edfaef1dc2427fb053b48592dac973940ec2ef958e46c3e077e92daf5a8b0e"
+        }
+      }
+    },
+    {
+      "candidate_id": "C_directional_reflection_only",
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6123578548431396,
+            "p01": 0.6351201784610748,
+            "p05": 0.645740270614624,
+            "median": 0.6779871582984924,
+            "p95": 0.7076246738433838,
+            "p99": 0.7195749402046203,
+            "maximum": 0.7456921935081482,
+            "mean": 0.6774480454744258,
+            "standard_deviation": 0.01876103332015399,
+            "peak_to_peak": 0.13333433866500854
+          },
+          "roughness_float_sha256": "f6c0c1884b757a485cc9ac75849cc15558d080af22500c959dd81b5d4b12ad49",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6774480938911438,
+            "candidate_mean": 0.6774480938911438,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57",
+          "directional_response_amount": 0.28
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6165838837623596,
+            "p01": 0.6360656660795212,
+            "p05": 0.6470925807952881,
+            "median": 0.6783168017864227,
+            "p95": 0.7097573816776276,
+            "p99": 0.722466658949852,
+            "maximum": 0.7505144476890564,
+            "mean": 0.6783088997404263,
+            "standard_deviation": 0.019154655385501016,
+            "peak_to_peak": 0.13393056392669678
+          },
+          "roughness_float_sha256": "8136e44a0906cc29080aed293f9363b669f11ebcb6ef3460ff3036782efe2adb",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.67830890417099,
+            "candidate_mean": 0.67830890417099,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07",
+          "directional_response_amount": 0.28
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "tangent_mode": "axial_pin",
+          "roughness": {
+            "minimum": 0.6195710897445679,
+            "p01": 0.634720613360405,
+            "p05": 0.6442941516637802,
+            "median": 0.6769919395446777,
+            "p95": 0.7152608692646026,
+            "p99": 0.7287499099969864,
+            "maximum": 0.7473722100257874,
+            "mean": 0.6775768069564947,
+            "standard_deviation": 0.020981899446288862,
+            "peak_to_peak": 0.12780112028121948
+          },
+          "roughness_float_sha256": "83bc062e380706473c4f5c2c203113402fe2f1f3a94210fa5e785c1b9aa33ec0",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6775767803192139,
+            "candidate_mean": 0.6775767803192139,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6283392310142517,
+            "p01": 0.6400205105543136,
+            "p05": 0.6500771552324295,
+            "median": 0.679514080286026,
+            "p95": 0.707792854309082,
+            "p99": 0.7201747906208038,
+            "maximum": 0.7266809344291687,
+            "mean": 0.679744626962929,
+            "standard_deviation": 0.01731925915391033,
+            "peak_to_peak": 0.09834170341491699
+          },
+          "roughness_float_sha256": "3d08c8b3c697138ad913116e160f1cc8b5708f2f3c1d5a2cb75b5453017ae351",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6797446012496948,
+            "candidate_mean": 0.6797446012496948,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6312507390975952,
+            "p01": 0.6450093078613282,
+            "p05": 0.6565355986356736,
+            "median": 0.6810286641120911,
+            "p95": 0.7066440880298615,
+            "p99": 0.7159154903888703,
+            "maximum": 0.7326441407203674,
+            "mean": 0.6812710092199268,
+            "standard_deviation": 0.015357382278267101,
+            "peak_to_peak": 0.10139340162277222
+          },
+          "roughness_float_sha256": "fb3e404c5dd0726e8a6bd6ff74fe3d585c0e418cfba279b3d1c4275590323d29",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6812710165977478,
+            "candidate_mean": 0.6812710165977478,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6182275414466858,
+            "p01": 0.6366298943758011,
+            "p05": 0.6464615166187286,
+            "median": 0.6790582239627838,
+            "p95": 0.706179216504097,
+            "p99": 0.715276545882225,
+            "maximum": 0.7269384860992432,
+            "mean": 0.6777533052081708,
+            "standard_deviation": 0.01803190106581757,
+            "peak_to_peak": 0.10871094465255737
+          },
+          "roughness_float_sha256": "52700c4e396d8281dbd13e9c62c6ed4cd485eca6c541ad505ba68ee4b5047024",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6777533292770386,
+            "candidate_mean": 0.6777533292770386,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6303580403327942,
+            "p01": 0.6412008076906204,
+            "p05": 0.6524919956922531,
+            "median": 0.6798858940601349,
+            "p95": 0.7069432139396667,
+            "p99": 0.7142890250682831,
+            "maximum": 0.7260047197341919,
+            "mean": 0.6801809294265695,
+            "standard_deviation": 0.016775124122092686,
+            "peak_to_peak": 0.0956466794013977
+          },
+          "roughness_float_sha256": "183d0ab4104231c4dc560348e35308eee87bc3e2c5a49cc07c30d07dcec134c8",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6801809072494507,
+            "candidate_mean": 0.6801809072494507,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6207530498504639,
+            "p01": 0.6348271238803863,
+            "p05": 0.6445424348115921,
+            "median": 0.6719039380550385,
+            "p95": 0.7047070950269699,
+            "p99": 0.7140179121494293,
+            "maximum": 0.7286924123764038,
+            "mean": 0.6732087793134269,
+            "standard_deviation": 0.018432827823174985,
+            "peak_to_peak": 0.10793936252593994
+          },
+          "roughness_float_sha256": "f80b06d70cc435e4d3e43a8d1ab533dcd9f6b4d4740c9cfddcc17baf28c09392",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "unchanged_v004_1_control"
+            },
+            "delta": {
+              "minimum": 0.0,
+              "p01": 0.0,
+              "p05": 0.0,
+              "median": 0.0,
+              "p95": 0.0,
+              "p99": 0.0,
+              "maximum": 0.0,
+              "mean": 0.0,
+              "standard_deviation": 0.0,
+              "peak_to_peak": 0.0
+            },
+            "source_mean": 0.6732087731361389,
+            "candidate_mean": 0.6732087731361389,
+            "mean_drift": 0.0,
+            "dc_compensation_only": false
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        }
+      },
+      "directional_response_amount": 0.28,
+      "directional_response_rotation": 0.5,
+      "disposable_direction_group_created": true,
+      "direction_group_contract": {
+        "source_multiplier": 0.0,
+        "candidate_multiplier": 1.0,
+        "topology_matches_source": true,
+        "source_topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b",
+        "candidate_topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_signature": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_value_unchanged": true,
+      "renders": {
+        "isolated_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/isolated_roughness.png",
+          "bytes": 61505,
+          "sha256": "45505bfadb2279858a3ba115d064f1031a27fb13c291e3d49749f9851263c103"
+        },
+        "isolated_direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/isolated_direction_amount.png",
+          "bytes": 58494,
+          "sha256": "10cb8fd8fba9f0a3c47331f8f9624433e934e01fcfc598db6b10f9b523245ba8"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/close_neutral.png",
+          "bytes": 107321,
+          "sha256": "bc41c51b03587d19a373ee12d43841fcccd7962209c57aaaca18d2edf30dd18f"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/grazing_left.png",
+          "bytes": 71054,
+          "sha256": "1fb665dcc4e3aad76395d4fc165b335da018d34713be181402ef59370901a17c"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/grazing_right.png",
+          "bytes": 71546,
+          "sha256": "4f26698300958265cc25de67de7845eb39ffa6e05b84fffc567218d857c46a23"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/pivot_close.png",
+          "bytes": 125498,
+          "sha256": "8ca680025bea184d2c6b7541b65495e6c81e24c2e15ab5546d909d1dc2472a0e"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/C_directional_reflection_only/gameplay.png",
+          "bytes": 56333,
+          "sha256": "6a961017d8494198d65822568473f0c7cc9d0fe64b65e43d12a7a7b74ce0c21f"
+        }
+      }
+    },
+    {
+      "candidate_id": "D_roughness_plus_direction",
+      "components": {
+        "SM_GH018_FixedLeaf": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6107140779495239,
+            "p01": 0.6334402441978455,
+            "p05": 0.6449786782264709,
+            "median": 0.6779240369796753,
+            "p95": 0.7082679390907287,
+            "p99": 0.7206963086128234,
+            "maximum": 0.7481538653373718,
+            "mean": 0.6774480453358673,
+            "standard_deviation": 0.01923540644330168,
+            "peak_to_peak": 0.1374397873878479
+          },
+          "roughness_float_sha256": "35d99ba4d05b9d8cf72d300d626947bc6af787b843a5ad7ae4447fa4b7ca8479",
+          "roughness_source_sha256": "623daf1a7d2d3b5653b85b0cd2053dea8436d53326407d2a87020731055590fd",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "leaf_object_xz_is_parent_rest_stock",
+              "rest_u_range_m": [
+                -0.8999999761581421,
+                -0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "compiled_image_resolution": [
+                213,
+                103
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.010808859020471573,
+              "p01": -0.00885763667523861,
+              "p05": -0.0054466863162815566,
+              "median": -0.00020408903947100043,
+              "p95": 0.005713891191408037,
+              "p99": 0.007798926215618848,
+              "maximum": 0.00891068670898676,
+              "mean": -2.7044315584402283e-11,
+              "standard_deviation": 0.0031462997751745703,
+              "peak_to_peak": 0.019719545729458332
+            },
+            "source_mean": 0.6774480938911438,
+            "candidate_mean": 0.6774480938911438,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "aa95b140afee7071f3ee9bed24570fa310db914179fec84c30b813bf7300c4fa",
+          "normal_source_sha256": "ad59be1c2edcf3ee78dfe0c93fff0854ad8fa6285821a792b917452953dd8ab4",
+          "luster_source_sha256": "2c05c5d18726400714ce157cd797f1552c2c9e00f77f548e6f8ca00dcdcfcf57",
+          "directional_response_amount": 0.28
+        },
+        "SM_GH018_MovingLeaf_Openwork": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "longitudinal_leaf",
+          "roughness": {
+            "minimum": 0.6160482168197632,
+            "p01": 0.6355977082252502,
+            "p05": 0.6466467410326004,
+            "median": 0.6782360374927521,
+            "p95": 0.7102115184068679,
+            "p99": 0.722338382601738,
+            "maximum": 0.7471626996994019,
+            "mean": 0.678308899661309,
+            "standard_deviation": 0.0193768501108542,
+            "peak_to_peak": 0.13111448287963867
+          },
+          "roughness_float_sha256": "dfcabaa0236b92d5ec9ca81826ff5cad4f1d0e67fcb336530e8d9835717c6bfb",
+          "roughness_source_sha256": "97012757ee80598d4dd05be8f0390181477deda115b1c485eaaa302ffb9ab8df",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "leaf_object_xz_is_parent_rest_stock",
+              "rest_u_range_m": [
+                0.04800000041723251,
+                3.1600000858306885
+              ],
+              "rest_v_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "compiled_image_resolution": [
+                768,
+                103
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.00998206902295351,
+              "p01": -0.008565529445186258,
+              "p05": -0.005911194300279021,
+              "median": -0.00020392675651237369,
+              "p95": 0.006240688660182041,
+              "p99": 0.009111967235803604,
+              "maximum": 0.010729753412306309,
+              "mean": -6.5489137306181e-11,
+              "standard_deviation": 0.0034011980457189263,
+              "peak_to_peak": 0.02071182243525982
+            },
+            "source_mean": 0.67830890417099,
+            "candidate_mean": 0.67830890417099,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "bc6749a44dac107798e5cee7d4348f4bfd26e6a59b5624abfd9a8cd12aa7cc25",
+          "normal_source_sha256": "d5084d06247da71db6f71e6d3aa3396811aab54cabc03a6a65ddac32c7cb90d6",
+          "luster_source_sha256": "210f1a0e69809b615fc2f9233db368f4f8bbf173aabfac6257665f1e35787b07",
+          "directional_response_amount": 0.28
+        },
+        "SM_GH018_Pintle": {
+          "stock_lineage": "pintle_stock",
+          "tangent_mode": "axial_pin",
+          "roughness": {
+            "minimum": 0.6063854098320007,
+            "p01": 0.6276563251018524,
+            "p05": 0.6417800635099411,
+            "median": 0.6764519214630127,
+            "p95": 0.7198198080062866,
+            "p99": 0.7405342417955398,
+            "maximum": 0.7574537992477417,
+            "mean": 0.677576746988052,
+            "standard_deviation": 0.023252219108260735,
+            "peak_to_peak": 0.15106838941574097
+          },
+          "roughness_float_sha256": "f6dca80d089a47bc65587952b5bc588d73f8b890804cdf65ad10e98270a965ee",
+          "roughness_source_sha256": "05ad031a3700284408053d7f3446687fbed064e45846e3a2b831980ce877ddbb",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "separate_axial_u_and_first_order_circumferential_passage",
+              "u_range_m": [
+                -0.20499999821186066,
+                0.20499999821186066
+              ],
+              "v_range_m": [
+                -0.07941248267889023,
+                0.08395033329725266
+              ],
+              "prohibits_axial_only_rings": true
+            },
+            "delta": {
+              "minimum": -0.015344318002462387,
+              "p01": -0.014008936360478402,
+              "p05": -0.011641280632466078,
+              "median": -9.074411991605302e-06,
+              "p95": 0.011639799457043408,
+              "p99": 0.014059192817658186,
+              "maximum": 0.015339018777012825,
+              "mean": -6.79227785127523e-11,
+              "standard_deviation": 0.006572559978272851,
+              "peak_to_peak": 0.030683336779475212
+            },
+            "source_mean": 0.6775767803192139,
+            "candidate_mean": 0.6775767207145691,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "a56427d1259bf28cd3132d1d611e7137568a3ac8c7e5ee6eca263d669a6b0009",
+          "normal_source_sha256": "68bcd3ee4aaeffb1cf3a94cd0e1fef599eeacc833b24788db7fa8d406d1be38c",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_01": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6295555830001831,
+            "p01": 0.6407025218009949,
+            "p05": 0.6500775247812272,
+            "median": 0.6795509457588196,
+            "p95": 0.7076779395341873,
+            "p99": 0.7203517627716065,
+            "maximum": 0.7257951498031616,
+            "mean": 0.6797445669944864,
+            "standard_deviation": 0.017273756453998302,
+            "peak_to_peak": 0.09623956680297852
+          },
+          "roughness_float_sha256": "358c92ebdf621ffcbb70aaa44fdb256d4cd92a2006a107191cd393f70b1e6ddd",
+          "roughness_source_sha256": "3703b736ad54fdc1cda43a824d80824f35bee0db1204c3c02520a441b502ee5b",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.22519999742507935,
+                -0.10920000076293945
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0011250355746597052,
+              "p01": -0.001051108700921759,
+              "p05": -0.0009178398118820042,
+              "median": -0.00018863024888560176,
+              "p95": 0.00152628842042759,
+              "p99": 0.0019412817200645804,
+              "maximum": 0.002085141371935606,
+              "mean": -4.0461856087858905e-11,
+              "standard_deviation": 0.0007623645131207378,
+              "peak_to_peak": 0.003210176946595311
+            },
+            "source_mean": 0.6797446012496948,
+            "candidate_mean": 0.67974454164505,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "FixedKnuckle_02": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6306077241897583,
+            "p01": 0.6441775465011597,
+            "p05": 0.656400740146637,
+            "median": 0.6809273064136505,
+            "p95": 0.7068165063858032,
+            "p99": 0.7166137331724167,
+            "maximum": 0.7340692281723022,
+            "mean": 0.6812710685917409,
+            "standard_deviation": 0.015560127423472531,
+            "peak_to_peak": 0.10346150398254395
+          },
+          "roughness_float_sha256": "9a56961c9746243ebf47b7633cbe4315cb283e8c8d13651a4a1ed4be1ce5137f",
+          "roughness_source_sha256": "2fa53f1c05da2e4692d1b3b25db467d566cf6b84c85421c86591c675b46e8774",
+          "roughness_mean_drift": 5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.04800000041723251,
+                0.2018565610051155
+              ],
+              "rest_v_range_m": [
+                -0.14159999787807465,
+                -0.025600001215934753
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0017302394844591618,
+              "p01": -0.0016066222451627254,
+              "p05": -0.0013098839786835014,
+              "median": 6.286099960561842e-06,
+              "p95": 0.0012987174617592242,
+              "p99": 0.001580564312171191,
+              "maximum": 0.00170054379850626,
+              "mean": -3.3084202044619815e-11,
+              "standard_deviation": 0.0007654325674133347,
+              "peak_to_peak": 0.0034307832829654217
+            },
+            "source_mean": 0.6812710165977478,
+            "candidate_mean": 0.6812710762023926,
+            "mean_drift": 5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_03": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6195228099822998,
+            "p01": 0.6374903047084808,
+            "p05": 0.6469471007585526,
+            "median": 0.6791157722473145,
+            "p95": 0.7057276666164398,
+            "p99": 0.7147324764728546,
+            "maximum": 0.7268361449241638,
+            "mean": 0.6777533054046216,
+            "standard_deviation": 0.017744558471465006,
+            "peak_to_peak": 0.10731333494186401
+          },
+          "roughness_float_sha256": "52c8cbf3722a096a14adf7591bde17238de68cc8887f7e3f0b201809e60522d7",
+          "roughness_source_sha256": "635187b1220326b34b68f973a34c0e54181b8d3303324643eb711f96185eb2c3",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                -0.057999998331069946,
+                0.057999998331069946
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.002923092106357217,
+              "p01": -0.0024577585281804204,
+              "p05": -0.0018524157931096852,
+              "median": 0.00017006680718623102,
+              "p95": 0.0012399237137287855,
+              "p99": 0.001388447362696752,
+              "maximum": 0.0015191931743174791,
+              "mean": 1.9618084934336366e-11,
+              "standard_deviation": 0.0009570737624669336,
+              "peak_to_peak": 0.004442285280674696
+            },
+            "source_mean": 0.6777533292770386,
+            "candidate_mean": 0.6777533292770386,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "FixedKnuckle_04": {
+          "stock_lineage": "fixed_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6304283142089844,
+            "p01": 0.6391919380426407,
+            "p05": 0.6511051684617997,
+            "median": 0.6799787282943726,
+            "p95": 0.7080627799034118,
+            "p99": 0.7158097994327545,
+            "maximum": 0.7269694805145264,
+            "mean": 0.6801808696545777,
+            "standard_deviation": 0.0173434760867281,
+            "peak_to_peak": 0.09654116630554199
+          },
+          "roughness_float_sha256": "e49288e08747038b227181ec591bcb9ae1370d2ece5d4f695c10f3fa77450297",
+          "roughness_source_sha256": "888e2321e421c3098c720c0e871af8989ca8e0fa81291543ed7036384404db15",
+          "roughness_mean_drift": -5.960464477539063e-08,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.04800000041723251,
+                0.2018565610051155
+              ],
+              "rest_v_range_m": [
+                0.025600001215934753,
+                0.14159999787807465
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.0035901260562241077,
+              "p01": -0.0033760845428332685,
+              "p05": -0.0029241700191050767,
+              "median": -0.0005205359775573015,
+              "p95": 0.004841240285895765,
+              "p99": 0.00587614140007645,
+              "maximum": 0.0066886055283248425,
+              "mean": 2.738431703619426e-11,
+              "standard_deviation": 0.0022942157505361645,
+              "peak_to_peak": 0.01027873158454895
+            },
+            "source_mean": 0.6801809072494507,
+            "candidate_mean": 0.6801808476448059,
+            "mean_drift": -5.960464477539063e-08,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "e95d9bcb8fd5900335b1876eec6167b005aab0e18fe9e88d5696be4a84ce5f02",
+          "normal_source_sha256": "6a403b116141876f8ad7d5392eb7035a55c1763dd6a643624c4e1cab2f2b53d6",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        },
+        "MovingKnuckle_05": {
+          "stock_lineage": "moving_leaf_stock",
+          "tangent_mode": "circumferential_barrel",
+          "roughness": {
+            "minimum": 0.6212888360023499,
+            "p01": 0.6362524646520614,
+            "p05": 0.6445490121841431,
+            "median": 0.672163724899292,
+            "p95": 0.7045396238565445,
+            "p99": 0.7144017153978348,
+            "maximum": 0.7308738827705383,
+            "mean": 0.6732087792479433,
+            "standard_deviation": 0.01804791903196099,
+            "peak_to_peak": 0.10958504676818848
+          },
+          "roughness_float_sha256": "d0936d1efe2caf2e61b9d8ca37cd6fc8e7a939fe2afbedc6a6ea8269da598540",
+          "roughness_source_sha256": "4264e392f11414be1a0b177fa658d43bcfd089d8ede4f0ffbc388e91e1f2078d",
+          "roughness_mean_drift": 0.0,
+          "roughness_contract": {
+            "coordinate_contract": {
+              "mapping": "circumferential_u_unrolled_from_leaf_root_with_actual_axial_z",
+              "rest_u_range_m": [
+                -0.22833629697561264,
+                0.04800000041723251
+              ],
+              "rest_v_range_m": [
+                0.10920000076293945,
+                0.22519999742507935
+              ],
+              "compiled_image_resolution": [
+                128,
+                64
+              ],
+              "field_operation": "open_nonperiodic_longitudinal_Hermite_plus_cross_stock_tilt"
+            },
+            "delta": {
+              "minimum": -0.004844028502702713,
+              "p01": -0.004521986003965139,
+              "p05": -0.003731723898090422,
+              "median": 5.8025121688842773e-05,
+              "p95": 0.003441248065792024,
+              "p99": 0.003741110560949892,
+              "maximum": 0.0038754884153604507,
+              "mean": -3.7616132431139704e-11,
+              "standard_deviation": 0.002280903924184247,
+              "peak_to_peak": 0.008719516918063164
+            },
+            "source_mean": 0.6732087731361389,
+            "candidate_mean": 0.6732087731361389,
+            "mean_drift": 0.0,
+            "dc_compensation_only": true
+          },
+          "base_colour_source_sha256": "c1a0e344ba0ccc29edac6f328e74c5f45de41022f8a23a60df942074dc2e9e95",
+          "normal_source_sha256": "a70b867cb50ab21aa9191a3d97c3c78fcaebd6b7dc67dfdef51d2e5a5cc922ce",
+          "luster_source_sha256": "afec7dd22c7aa749d5c03229c41d00e6e916d32c2f78934707010297c584526e",
+          "directional_response_amount": 0.28
+        }
+      },
+      "directional_response_amount": 0.28,
+      "directional_response_rotation": 0.5,
+      "disposable_direction_group_created": true,
+      "direction_group_contract": {
+        "source_multiplier": 0.0,
+        "candidate_multiplier": 1.0,
+        "topology_matches_source": true,
+        "source_topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b",
+        "candidate_topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_signature": {
+        "name": "IGGY_SH_ConnectedOxideForgedIron_v004",
+        "node_count": 9,
+        "link_count": 20,
+        "interface_socket_count": 11,
+        "topology_sha256": "ce47658c611f97e6b4032596b223a7016fb05bf1daf30646b89c72b04227523b"
+      },
+      "source_group_value_unchanged": true,
+      "renders": {
+        "isolated_roughness": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/isolated_roughness.png",
+          "bytes": 61495,
+          "sha256": "b618538910185314ead90f931bdcf12a6f00fcd2e4b93bf0ba9f3ed3927fd02b"
+        },
+        "isolated_direction_amount": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/isolated_direction_amount.png",
+          "bytes": 58494,
+          "sha256": "1521752a5aa3886e7c11a5c2a9df00a52d9d000bb2b2939214cfc4961caf9ea3"
+        },
+        "close_neutral": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/close_neutral.png",
+          "bytes": 107527,
+          "sha256": "b701304a3a21e3832cedc3a1ac0edbbe588195e9b115388f75bb62a50959e06c"
+        },
+        "grazing_left": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/grazing_left.png",
+          "bytes": 71044,
+          "sha256": "cec1b0e6e12caa75759982c5f9d3dfc798c6b4bd3a744cd3fa8b5841163e6d40"
+        },
+        "grazing_right": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/grazing_right.png",
+          "bytes": 71565,
+          "sha256": "8306dc2fe5fed809c19e06f0f5fe6b5e704b7114cc4083e791a5a4a3741c36d1"
+        },
+        "pivot_close": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/pivot_close.png",
+          "bytes": 125285,
+          "sha256": "3e659f502bd4ce1b908736bd113c12c9b4719b682dd908a51ffc4c2e96a4847b"
+        },
+        "gameplay": {
+          "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/D_roughness_plus_direction/gameplay.png",
+          "bytes": 56420,
+          "sha256": "add1b92c7ad307b2ef40ca00779aee88730fb00eccdd26a60cb06b09af5d6597"
+        }
+      }
+    }
+  ],
+  "board": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/output/forged_iron_v004_1_reflection_routing_sweep_v1/forged_iron_v004_1_reflection_routing_board.png",
+    "resolution": [
+      4480,
+      880
+    ],
+    "bytes": 1843165,
+    "sha256": "f44d70084274c045e152b5bfa0e94780905f3c967db07c7b47430a17c0aeecdc",
+    "row_legend": {
+      "A": "A_v004_1_control",
+      "B": "B_construction_roughness_only",
+      "C": "C_directional_reflection_only",
+      "D": "D_roughness_plus_direction"
+    },
+    "column_legend": {
+      "1": {
+        "id": "isolated_roughness",
+        "label": "ABSOLUTE ROUGHNESS"
+      },
+      "2": {
+        "id": "isolated_direction_amount",
+        "label": "DIRECTION RESPONSE AMOUNT"
+      },
+      "3": {
+        "id": "close_neutral",
+        "label": "CLOSE NEUTRAL"
+      },
+      "4": {
+        "id": "grazing_left",
+        "label": "MOVING STRIP LEFT"
+      },
+      "5": {
+        "id": "grazing_right",
+        "label": "MOVING STRIP RIGHT"
+      },
+      "6": {
+        "id": "pivot_close",
+        "label": "PIVOT CLOSE"
+      },
+      "7": {
+        "id": "gameplay",
+        "label": "GAMEPLAY DISTANCE"
+      }
+    }
+  },
+  "review_document": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/forged_iron_v1/REFLECTION_ROUTING_SWEEP_REVIEW.md",
+    "sha256": "49c592e973713d7e3a3230ec2a49268cb8bba8f34cf4c236450e4bf516379729"
+  },
+  "visual_review": {
+    "decision": "select_C_directional_reflection_recipe",
+    "ranking": [
+      "C_directional_reflection_only",
+      "D_roughness_plus_direction",
+      "B_construction_roughness_only",
+      "A_v004_1_control"
+    ],
+    "recommended_recipe": "C_directional_reflection_only",
+    "advancement_scope": "uniform_0_28_component_tangent_oxide_response_recipe_only; no saved material or donor promotion",
+    "geometry_defect_ledger": [
+      "The moving-strip clay proof shows the long leaves as deliberately planar plates with one broad uninterrupted highlight. Any surviving hand-forged plane break must come from geometry or a separately accepted bounded response; material colour cannot claim it.",
+      "The pintle and rolled eyes retain smooth cylindrical highlight bands. Hard black interruptions come from real bearing gaps, while the near-perfect vertical highlight is dominated by cylinder geometry rather than a missing texture pattern.",
+      "The construction-tangent proof remains coherent: leaf U is longitudinal, rolled-eye U is circumferential, and pintle U is axial. The cyan pivot transition is a class change, not a random UV rotation.",
+      "No material row repairs or hides the clay-owned pivot limitation; it remains a separate geometry decision outside this texture workstream."
+    ],
+    "material_defect_ledger": [
+      "A is the frozen control and retains the previously rejected shape-normalized broad normal owner.",
+      "B preserves source roughness means and creates no closed motif, but its physical change is too weak to justify a new layer. Against A it measures 57.61 dB close, 63.42 dB strip-left, 63.70 dB strip-right, 57.40 dB pivot, and 64.62 dB gameplay.",
+      "C supplies one uniform 0.28 oxide anisotropy amount through existing construction tangents. It draws no brushing line, groove, cloud, stamp, or condition mask and changes the opposing strip response in both directions.",
+      "Against A, C measures 44.03 dB close, 39.28 dB strip-left, 39.47 dB strip-right, 44.40 dB pivot, and 49.52 dB gameplay. The change is visible but remains subordinate to the broad dark oxide and geometry.",
+      "D adds B's roughness to C but is 57.74 dB close, 64.09 dB strip-left, 63.63 dB strip-right, 57.78 dB pivot, and 64.69 dB gameplay relative to C. The extra roughness has no persuasive visual contribution and is rejected.",
+      "C is selected only as a response calibration. Its 0.28 value is authored, not measured; integration requires a separate demand, new candidate file, reopen proof, and paired comparison against v004.1."
+    ],
+    "physical_panel_psnr_db": {
+      "B_against_A": {
+        "close_neutral": 57.610787,
+        "grazing_left": 63.423462,
+        "grazing_right": 63.702845,
+        "pivot_close": 57.402862,
+        "gameplay": 64.619959
+      },
+      "C_against_A": {
+        "close_neutral": 44.03004,
+        "grazing_left": 39.282571,
+        "grazing_right": 39.474193,
+        "pivot_close": 44.39769,
+        "gameplay": 49.521032
+      },
+      "D_against_C": {
+        "close_neutral": 57.736268,
+        "grazing_left": 64.092582,
+        "grazing_right": 63.631843,
+        "pivot_close": 57.776165,
+        "gameplay": 64.685039
+      }
+    },
+    "manual_acceptance_established": false
+  },
+  "source_unchanged": true,
+  "source_group_unchanged": true,
+  "material_candidate_created": false,
+  "uses_ai_generated_imagery": false,
+  "uses_condition": false,
+  "manual_acceptance_established": false,
+  "unreal_parity_verified": false,
+  "locked_absences": [
+    "new_normal",
+    "height",
+    "oxide_height",
+    "rust",
+    "damage",
+    "scratches",
+    "dents",
+    "contact_polish",
+    "exposed_conductor",
+    "baked_light_direction",
+    "saved_shader_topology_change"
+  ],
+  "promotion_boundary": "The board may select one response-routing recipe only; integration requires a separate frozen demand."
+}

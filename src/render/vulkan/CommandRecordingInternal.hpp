@@ -30,5 +30,12 @@ void recordOverlayRects(
     VkImageView colorImageView,
     VkExtent2D extent,
     std::uint32_t frameSlot);
+[[nodiscard]] bool recordCaptureAndPresent(
+    VkCommandBuffer commandBuffer,
+    VkImage swapchainImage,
+    VkExtent2D extent,
+    bool captureEnabled,
+    VkBuffer captureBuffer,
+    VkDeviceSize captureBufferSize);
 
 }  // namespace iggy3d::vulkan::command_recording_internal

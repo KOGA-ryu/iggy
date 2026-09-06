@@ -1,0 +1,535 @@
+#include "NativeVulkanHost.hpp"
+
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <cstring>
+#include <cstdlib>
+#include <fstream>
+#include <limits>
+#include <stdexcept>
+#include <vector>
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+#include <vulkan/vulkan.h>
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_vulkan.h"
+#include "render/vulkan/FrameCapture.hpp"
+
+namespace paths {
+namespace {
+void check(VkResult result, const char* operation) {
+  if (result != VK_SUCCESS)
+    throw std::runtime_error(std::string(operation) + " (VkResult " +
+                             std::to_string(result) + ")");
+}
+void backendCheck(VkResult result) { check(result, "ImGui Vulkan backend"); }
+bool hasExtension(const std::vector<VkExtensionProperties>& list, const char* name) {
+  return std::any_of(list.begin(), list.end(), [name](const auto& entry) {
+    return std::strcmp(entry.extensionName, name) == 0;
+  });
+}
+constexpr VkFormat kColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+constexpr auto kInfinite = std::numeric_limits<std::uint64_t>::max();
+}
+
+struct NativeVulkanHost::Impl {
+  NativeLaunchConfig config;
+  SDL_Window* window = nullptr;
+  bool sdlReady = false, sdlBackendReady = false;
+  ImGuiContext* context = nullptr;
+  VkInstance instance = VK_NULL_HANDLE;
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  VkPhysicalDevice physical = VK_NULL_HANDLE;
+  VkDevice device = VK_NULL_HANDLE;
+  VkQueue queue = VK_NULL_HANDLE;
+  std::uint32_t family = 0;
+  VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+  VkFormat swapFormat = VK_FORMAT_UNDEFINED;
+  VkExtent2D extent{};
+  std::vector<VkImage> swapImages;
+  std::vector<VkSemaphore> presentReady;
+  VkSemaphore acquired = VK_NULL_HANDLE;
+  bool resizeNeeded = false;
+  VkCommandPool pool = VK_NULL_HANDLE;
+  VkCommandBuffer command = VK_NULL_HANDLE;
+  VkFence fence = VK_NULL_HANDLE;
+  VkRenderPass pass = VK_NULL_HANDLE;
+  VkImageView view = VK_NULL_HANDLE;
+  VkFramebuffer framebuffer = VK_NULL_HANDLE;
+  iggy3d::vulkan::VulkanMemoryAllocator allocator;
+  iggy3d::vulkan::VulkanImageAllocation target;
+  iggy3d::vulkan::FrameCapture readback;
+  bool uiRecorded = false;
+  std::uint64_t frameNumber = 0;
+
+  explicit Impl(const NativeLaunchConfig& value) : config(value) {}
+  ~Impl() {
+    if (device) vkDeviceWaitIdle(device);
+    if (context) {
+      ImGui::SetCurrentContext(context);
+      if (ImGui::GetIO().BackendRendererUserData) ImGui_ImplVulkan_Shutdown();
+      if (sdlBackendReady) ImGui_ImplSDL3_Shutdown();
+      ImGui::DestroyContext(context);
+    }
+    destroyTarget();
+    if (device) {
+      for (const auto semaphore : presentReady) vkDestroySemaphore(device, semaphore, nullptr);
+      if (acquired) vkDestroySemaphore(device, acquired, nullptr);
+      if (swapchain) vkDestroySwapchainKHR(device, swapchain, nullptr);
+      if (fence) vkDestroyFence(device, fence, nullptr);
+      if (pool) vkDestroyCommandPool(device, pool, nullptr);
+      if (pass) vkDestroyRenderPass(device, pass, nullptr);
+      static_cast<void>(allocator.destroy());
+      vkDestroyDevice(device, nullptr);
+    }
+    if (surface) vkDestroySurfaceKHR(instance, surface, nullptr);
+    if (instance) vkDestroyInstance(instance, nullptr);
+    if (window) SDL_DestroyWindow(window);
+    if (sdlReady) SDL_Quit();
+  }
+
+  void destroyTarget() {
+    readback.destroy();
+    if (device && framebuffer) vkDestroyFramebuffer(device, framebuffer, nullptr);
+    if (device && view) vkDestroyImageView(device, view, nullptr);
+    framebuffer = VK_NULL_HANDLE;
+    view = VK_NULL_HANDLE;
+    if (target.image) static_cast<void>(allocator.destroyImage(target));
+    target = {};
+    uiRecorded = false;
+  }
+
+  void initialize() {
+#ifdef PATHS_DEFAULT_VULKAN_ICD
+    if (!std::getenv("VK_DRIVER_FILES") && !std::getenv("VK_ICD_FILENAMES"))
+      setenv("VK_DRIVER_FILES", PATHS_DEFAULT_VULKAN_ICD, 0);
+#endif
+    std::vector<const char*> extensions;
+    if (!config.offscreen) {
+      if (!SDL_Init(SDL_INIT_VIDEO)) throw std::runtime_error(SDL_GetError());
+      sdlReady = true;
+      window = SDL_CreateWindow("Paths", static_cast<int>(config.width),
+          static_cast<int>(config.height), SDL_WINDOW_VULKAN |
+          SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+      if (!window) throw std::runtime_error(SDL_GetError());
+      std::uint32_t count = 0;
+      const char* const* required = SDL_Vulkan_GetInstanceExtensions(&count);
+      if (!required) throw std::runtime_error(SDL_GetError());
+      extensions.assign(required, required + count);
+    }
+    std::uint32_t count = 0;
+    check(vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr), "instance extensions");
+    std::vector<VkExtensionProperties> available(count);
+    check(vkEnumerateInstanceExtensionProperties(nullptr, &count, available.data()), "instance extensions");
+    VkInstanceCreateFlags flags = 0;
+    if (hasExtension(available, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
+      extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+      flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    }
+    for (const char* name : extensions)
+      if (!hasExtension(available, name))
+        throw std::runtime_error(std::string("Required Vulkan extension unavailable: ") + name);
+    VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
+    app.pApplicationName = "Paths";
+    app.apiVersion = VK_API_VERSION_1_1;
+    VkInstanceCreateInfo info{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    info.flags = flags;
+    info.pApplicationInfo = &app;
+    info.enabledExtensionCount = static_cast<std::uint32_t>(extensions.size());
+    info.ppEnabledExtensionNames = extensions.data();
+    check(vkCreateInstance(&info, nullptr, &instance), "create Vulkan instance");
+    if (window && !SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface))
+      throw std::runtime_error(SDL_GetError());
+    check(vkEnumeratePhysicalDevices(instance, &count, nullptr), "enumerate Vulkan devices");
+    std::vector<VkPhysicalDevice> devices(count);
+    check(vkEnumeratePhysicalDevices(instance, &count, devices.data()), "enumerate Vulkan devices");
+    std::vector<const char*> deviceExtensions;
+    for (const auto candidate : devices) {
+      VkPhysicalDeviceProperties properties{};
+      vkGetPhysicalDeviceProperties(candidate, &properties);
+      if (properties.apiVersion < VK_API_VERSION_1_1) continue;
+      std::uint32_t extensionCount = 0;
+      check(vkEnumerateDeviceExtensionProperties(candidate, nullptr, &extensionCount, nullptr), "device extensions");
+      std::vector<VkExtensionProperties> candidateExtensions(extensionCount);
+      check(vkEnumerateDeviceExtensionProperties(candidate, nullptr, &extensionCount, candidateExtensions.data()), "device extensions");
+      if (surface && !hasExtension(candidateExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME)) continue;
+      std::uint32_t queueCount = 0;
+      vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueCount, nullptr);
+      std::vector<VkQueueFamilyProperties> queues(queueCount);
+      vkGetPhysicalDeviceQueueFamilyProperties(candidate, &queueCount, queues.data());
+      for (std::uint32_t index = 0; index < queueCount; ++index) {
+        if (!(queues[index].queueFlags & VK_QUEUE_GRAPHICS_BIT)) continue;
+        VkBool32 supportsPresent = VK_TRUE;
+        if (surface) check(vkGetPhysicalDeviceSurfaceSupportKHR(candidate, index, surface, &supportsPresent), "surface support");
+        if (!supportsPresent) continue;
+        physical = candidate;
+        family = index;
+        if (surface) deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        if (hasExtension(candidateExtensions, "VK_KHR_portability_subset"))
+          deviceExtensions.push_back("VK_KHR_portability_subset");
+        break;
+      }
+      if (physical) break;
+    }
+    if (!physical) throw std::runtime_error("No compatible Vulkan 1.1 graphics device/queue available");
+    VkFormatProperties formatProperties{};
+    vkGetPhysicalDeviceFormatProperties(physical, kColorFormat, &formatProperties);
+    const auto requiredFeatures = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+    if ((formatProperties.optimalTilingFeatures & requiredFeatures) != requiredFeatures)
+      throw std::runtime_error("Vulkan device cannot render/capture an RGBA8 target");
+    float priority = 1;
+    VkDeviceQueueCreateInfo queueInfo{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+    queueInfo.queueFamilyIndex = family;
+    queueInfo.queueCount = 1;
+    queueInfo.pQueuePriorities = &priority;
+    VkDeviceCreateInfo deviceInfo{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+    deviceInfo.queueCreateInfoCount = 1;
+    deviceInfo.pQueueCreateInfos = &queueInfo;
+    deviceInfo.enabledExtensionCount = static_cast<std::uint32_t>(deviceExtensions.size());
+    deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+    check(vkCreateDevice(physical, &deviceInfo, nullptr, &device), "create Vulkan device");
+    vkGetDeviceQueue(device, family, 0, &queue);
+    static_cast<void>(allocator.create({physical, device, VK_API_VERSION_1_1}));
+
+    VkCommandPoolCreateInfo poolInfo{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+    poolInfo.queueFamilyIndex = family;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    check(vkCreateCommandPool(device, &poolInfo, nullptr, &pool), "create command pool");
+    VkCommandBufferAllocateInfo commandInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    commandInfo.commandPool = pool;
+    commandInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandInfo.commandBufferCount = 1;
+    check(vkAllocateCommandBuffers(device, &commandInfo, &command), "allocate command buffer");
+    VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    check(vkCreateFence(device, &fenceInfo, nullptr, &fence), "create frame fence");
+    VkAttachmentDescription attachment{};
+    attachment.format = kColorFormat;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    VkAttachmentReference reference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription subpass{};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &reference;
+    std::array<VkSubpassDependency, 2> dependencies{};
+    dependencies[0] = {VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0};
+    dependencies[1] = {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT, 0};
+    VkRenderPassCreateInfo passInfo{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+    passInfo.attachmentCount = 1;
+    passInfo.pAttachments = &attachment;
+    passInfo.subpassCount = 1;
+    passInfo.pSubpasses = &subpass;
+    passInfo.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
+    passInfo.pDependencies = dependencies.data();
+    check(vkCreateRenderPass(device, &passInfo, nullptr, &pass), "create UI render pass");
+    if (surface) {
+      VkSemaphoreCreateInfo semaphoreInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+      check(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &acquired), "create acquire semaphore");
+      recreateSwapchain();
+    } else {
+      extent = {config.width, config.height};
+    }
+    createTarget();
+    IMGUI_CHECKVERSION();
+    context = ImGui::CreateContext();
+    ImGui::GetIO().IniFilename = nullptr;
+    ImGui::StyleColorsDark();
+    if (window) {
+      if (!ImGui_ImplSDL3_InitForVulkan(window)) throw std::runtime_error("SDL ImGui backend initialization failed");
+      sdlBackendReady = true;
+    }
+    ImGui_ImplVulkan_InitInfo imgui{};
+    imgui.ApiVersion = VK_API_VERSION_1_1;
+    imgui.Instance = instance;
+    imgui.PhysicalDevice = physical;
+    imgui.Device = device;
+    imgui.QueueFamily = family;
+    imgui.Queue = queue;
+    imgui.DescriptorPoolSize = 128;
+    imgui.MinImageCount = 2;
+    imgui.ImageCount = 2;
+    imgui.PipelineInfoMain.RenderPass = pass;
+    imgui.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    imgui.CheckVkResultFn = backendCheck;
+    if (!ImGui_ImplVulkan_Init(&imgui)) throw std::runtime_error("Vulkan ImGui backend initialization failed");
+  }
+
+  void recreateSwapchain() {
+    check(vkDeviceWaitIdle(device), "wait before swapchain recreation");
+    VkSurfaceCapabilitiesKHR capabilities{};
+    check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &capabilities), "surface capabilities");
+    if (!(capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+      throw std::runtime_error("Surface cannot accept the Paths UI transfer");
+    std::uint32_t count = 0;
+    check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &count, nullptr), "surface formats");
+    std::vector<VkSurfaceFormatKHR> formats(count);
+    check(vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &count, formats.data()), "surface formats");
+    if (formats.size() == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
+      formats[0].format = kColorFormat;
+    const auto selected = std::find_if(formats.begin(), formats.end(), [](const auto& format) {
+      return (format.format == kColorFormat || format.format == VK_FORMAT_B8G8R8A8_UNORM) &&
+             format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    });
+    if (selected == formats.end()) throw std::runtime_error("Surface lacks a supported RGBA/BGRA UNORM format");
+    swapFormat = selected->format;
+    if (swapFormat != kColorFormat) {
+      VkFormatProperties source{}, destination{};
+      vkGetPhysicalDeviceFormatProperties(physical, kColorFormat, &source);
+      vkGetPhysicalDeviceFormatProperties(physical, swapFormat, &destination);
+      if (!(source.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_SRC_BIT) ||
+          !(destination.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_DST_BIT))
+        throw std::runtime_error("Surface channel conversion requires unsupported Vulkan blitting");
+    }
+    int width = 0, height = 0;
+    if (!SDL_GetWindowSizeInPixels(window, &width, &height)) throw std::runtime_error(SDL_GetError());
+    extent = capabilities.currentExtent;
+    if (extent.width == std::numeric_limits<std::uint32_t>::max()) {
+      extent.width = std::clamp(static_cast<std::uint32_t>(std::max(1, width)), capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+      extent.height = std::clamp(static_cast<std::uint32_t>(std::max(1, height)), capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+    }
+    VkSwapchainCreateInfoKHR info{VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
+    info.surface = surface;
+    info.minImageCount = std::max(2U, capabilities.minImageCount);
+    if (capabilities.maxImageCount) info.minImageCount = std::min(info.minImageCount, capabilities.maxImageCount);
+    info.imageFormat = selected->format;
+    info.imageColorSpace = selected->colorSpace;
+    info.imageExtent = extent;
+    info.imageArrayLayers = 1;
+    info.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.preTransform = capabilities.currentTransform;
+    for (const auto alpha : {VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR}) {
+      if (capabilities.supportedCompositeAlpha & alpha) { info.compositeAlpha = alpha; break; }
+    }
+    info.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    info.clipped = VK_TRUE;
+    info.oldSwapchain = swapchain;
+    VkSwapchainKHR next = VK_NULL_HANDLE;
+    check(vkCreateSwapchainKHR(device, &info, nullptr, &next), "create swapchain");
+    for (const auto semaphore : presentReady) vkDestroySemaphore(device, semaphore, nullptr);
+    presentReady.clear();
+    if (swapchain) vkDestroySwapchainKHR(device, swapchain, nullptr);
+    swapchain = next;
+    check(vkGetSwapchainImagesKHR(device, swapchain, &count, nullptr), "swapchain images");
+    swapImages.resize(count);
+    check(vkGetSwapchainImagesKHR(device, swapchain, &count, swapImages.data()), "swapchain images");
+    presentReady.resize(count, VK_NULL_HANDLE);
+    VkSemaphoreCreateInfo semaphoreInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    for (auto& semaphore : presentReady)
+      check(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &semaphore), "create present semaphore");
+    resizeNeeded = false;
+  }
+
+  void createTarget() {
+    auto result = allocator.createImage("paths_ui", {extent.width, extent.height, 1}, kColorFormat,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (result.outcome != iggy3d::RenderOutcome::Ok)
+      throw std::runtime_error(iggy3d::formatRenderReceipt(result.receipt));
+    target = result.image;
+    VkImageViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+    viewInfo.image = target.image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = kColorFormat;
+    viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+    check(vkCreateImageView(device, &viewInfo, nullptr, &view), "create UI image view");
+    VkFramebufferCreateInfo framebufferInfo{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+    framebufferInfo.renderPass = pass;
+    framebufferInfo.attachmentCount = 1;
+    framebufferInfo.pAttachments = &view;
+    framebufferInfo.width = extent.width;
+    framebufferInfo.height = extent.height;
+    framebufferInfo.layers = 1;
+    check(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &framebuffer), "create UI framebuffer");
+    const auto receipt = readback.create({physical, device, extent, kColorFormat});
+    if (!readback.ready()) throw std::runtime_error(iggy3d::formatRenderReceipt(receipt));
+  }
+
+  NativeFrameResult frame(const std::function<void(const SDL_Event&)>& onEvent,
+                          const std::function<void()>& draw) {
+    ImGui::SetCurrentContext(context);
+    if (window) {
+      SDL_Event event;
+      while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        onEvent(event);
+        if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+          return {FrameStatus::Closed, {}};
+        if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) resizeNeeded = true;
+      }
+      int width = 0, height = 0;
+      if (!SDL_GetWindowSizeInPixels(window, &width, &height)) throw std::runtime_error(SDL_GetError());
+      if (width <= 0 || height <= 0 || (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)) {
+        SDL_Delay(16);
+        return {FrameStatus::Skipped, {}};
+      }
+      if (resizeNeeded) {
+        recreateSwapchain();
+        destroyTarget();
+        createTarget();
+      }
+    }
+    check(vkWaitForFences(device, 1, &fence, VK_TRUE, kInfinite), "wait for UI frame");
+    std::uint32_t imageIndex = 0;
+    if (surface) {
+      const auto result = vkAcquireNextImageKHR(device, swapchain, kInfinite, acquired, VK_NULL_HANDLE, &imageIndex);
+      if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        resizeNeeded = true;
+        return {FrameStatus::Skipped, {}};
+      }
+      if (result == VK_SUBOPTIMAL_KHR) resizeNeeded = true;
+      else check(result, "acquire swapchain image");
+    }
+    ImGui_ImplVulkan_NewFrame();
+    if (window) ImGui_ImplSDL3_NewFrame();
+    else {
+      ImGui::GetIO().DisplaySize = {static_cast<float>(extent.width), static_cast<float>(extent.height)};
+      ImGui::GetIO().DisplayFramebufferScale = {1, 1};
+      ImGui::GetIO().DeltaTime = 1.0F / 60.0F;
+    }
+    ImGui::NewFrame();
+    draw();
+    ImGui::Render();
+    check(vkResetCommandBuffer(command, 0), "reset UI command buffer");
+    VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    check(vkBeginCommandBuffer(command, &begin), "begin UI command buffer");
+    VkClearValue clear{{{0.035F, 0.055F, 0.075F, 1.0F}}};
+    VkRenderPassBeginInfo render{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    render.renderPass = pass;
+    render.framebuffer = framebuffer;
+    render.renderArea.extent = extent;
+    render.clearValueCount = 1;
+    render.pClearValues = &clear;
+    vkCmdBeginRenderPass(command, &render, VK_SUBPASS_CONTENTS_INLINE);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command);
+    uiRecorded = ImGui::GetDrawData()->TotalVtxCount > 0;
+    vkCmdEndRenderPass(command);
+    VkBufferImageCopy copy{};
+    copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    copy.imageExtent = {extent.width, extent.height, 1};
+    vkCmdCopyImageToBuffer(command, target.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           readback.buffer(), 1, &copy);
+    VkBufferMemoryBarrier hostRead{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+    hostRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    hostRead.dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+    hostRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    hostRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    hostRead.buffer = readback.buffer();
+    hostRead.size = VK_WHOLE_SIZE;
+    vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_HOST_BIT,
+                          0, 0, nullptr, 1, &hostRead, 0, nullptr);
+    if (surface) {
+      VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+      barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image = swapImages[imageIndex];
+      barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+      vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            0, 0, nullptr, 0, nullptr, 1, &barrier);
+      if (swapFormat == kColorFormat) {
+        VkImageCopy imageCopy{};
+        imageCopy.srcSubresource = copy.imageSubresource;
+        imageCopy.dstSubresource = copy.imageSubresource;
+        imageCopy.extent = copy.imageExtent;
+        vkCmdCopyImage(command, target.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                         barrier.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+      } else {
+        VkImageBlit blit{};
+        blit.srcSubresource = copy.imageSubresource;
+        blit.dstSubresource = copy.imageSubresource;
+        blit.srcOffsets[1] = {static_cast<std::int32_t>(extent.width), static_cast<std::int32_t>(extent.height), 1};
+        blit.dstOffsets[1] = blit.srcOffsets[1];
+        vkCmdBlitImage(command, target.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                         barrier.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_NEAREST);
+      }
+      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+      barrier.dstAccessMask = 0;
+      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+      barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+      vkCmdPipelineBarrier(command, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                            0, 0, nullptr, 0, nullptr, 1, &barrier);
+    }
+    check(vkEndCommandBuffer(command), "end UI command buffer");
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submit.commandBufferCount = 1;
+    submit.pCommandBuffers = &command;
+    if (surface) {
+      submit.waitSemaphoreCount = 1;
+      submit.pWaitSemaphores = &acquired;
+      submit.pWaitDstStageMask = &waitStage;
+      submit.signalSemaphoreCount = 1;
+      submit.pSignalSemaphores = &presentReady[imageIndex];
+    }
+    check(vkResetFences(device, 1, &fence), "reset frame fence");
+    check(vkQueueSubmit(queue, 1, &submit, fence), "submit UI frame");
+    if (surface) {
+      VkPresentInfoKHR present{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+      present.waitSemaphoreCount = 1;
+      present.pWaitSemaphores = &presentReady[imageIndex];
+      present.swapchainCount = 1;
+      present.pSwapchains = &swapchain;
+      present.pImageIndices = &imageIndex;
+      const auto result = vkQueuePresentKHR(queue, &present);
+      if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) resizeNeeded = true;
+      else check(result, "present UI frame");
+    }
+    ++frameNumber;
+    return {FrameStatus::Rendered, {}};
+  }
+};
+
+CapturePaths capturePaths(const std::filesystem::path& screenshot) {
+  CapturePaths result{screenshot, screenshot, screenshot, screenshot};
+  result.rawPath.replace_extension(".rgba");
+  result.metaPath.replace_extension(".meta.kv");
+  result.hashPath.replace_extension(".sha256");
+  return result;
+}
+NativeVulkanHost::NativeVulkanHost(const NativeLaunchConfig& config)
+    : impl_(std::make_unique<Impl>(config)) { impl_->initialize(); }
+NativeVulkanHost::~NativeVulkanHost() = default;
+NativeFrameResult NativeVulkanHost::frame(
+    const std::function<void(const SDL_Event&)>& onEvent, const std::function<void()>& draw) {
+  try { return impl_->frame(onEvent, draw); }
+  catch (const std::exception& error) { return {FrameStatus::Failed, error.what()}; }
+}
+bool NativeVulkanHost::capture(const CapturePaths& paths, std::string& error) {
+  try {
+    if (!impl_->uiRecorded || !impl_->frameNumber) throw std::runtime_error("No rendered UI frame is available for capture");
+    check(vkWaitForFences(impl_->device, 1, &impl_->fence, VK_TRUE, kInfinite), "wait for capture");
+    const auto pixels = impl_->readback.readMappedRgba();
+    bool visible = false;
+    for (std::size_t i = 4; i + 3 < pixels.rgba.size(); i += 4)
+      if (pixels.rgba[i + 3] && (pixels.rgba[i] != pixels.rgba[0] ||
+          pixels.rgba[i + 1] != pixels.rgba[1] || pixels.rgba[i + 2] != pixels.rgba[2])) { visible = true; break; }
+    if (!visible) throw std::runtime_error("Capture has no nonuniform UI pixels");
+    const auto result = iggy3d::vulkan::writePacket7CaptureArtifacts(pixels,
+        {paths.screenshotPath, paths.rawPath, paths.metaPath, paths.hashPath, true});
+    if (!result.written) throw std::runtime_error(iggy3d::formatRenderReceipt(result.receipt));
+    std::ofstream receipt(paths.metaPath, std::ios::app);
+    receipt << "product=paths\nhost=native_vulkan\nhelper_origin=iggy3d\nui_recorded=true\nnonuniform_rgb=true\noffscreen="
+            << (impl_->config.offscreen ? "true" : "false") << '\n';
+    receipt.flush();
+    if (!receipt) throw std::runtime_error("Cannot write Paths capture receipt");
+    return true;
+  } catch (const std::exception& failure) { error = failure.what(); return false; }
+}
+}  // namespace paths

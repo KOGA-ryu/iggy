@@ -1,0 +1,4029 @@
+{
+  "attributes": {
+    "all_required_present": true,
+    "fracture_values_all_zero": true,
+    "present": [
+      "iggy_carved_trim",
+      "iggy_chevron_front",
+      "iggy_chevron_highlight",
+      "iggy_chevron_hollow",
+      "iggy_chevron_ink",
+      "iggy_chevron_quiet",
+      "iggy_chevron_roll",
+      "iggy_fracture_interior",
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_voussoir_id"
+    ],
+    "required": [
+      "iggy_carved_trim",
+      "iggy_chevron_front",
+      "iggy_chevron_highlight",
+      "iggy_chevron_hollow",
+      "iggy_chevron_ink",
+      "iggy_chevron_quiet",
+      "iggy_chevron_roll",
+      "iggy_fracture_interior",
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_voussoir_id"
+    ]
+  },
+  "authored_completion": {
+    "body_angle_deg": 11.042294066,
+    "clear_diameter_m": 1.455102821,
+    "count": 16,
+    "derivation": "body_angle=pitch-joint_gap_centerline/(inner_radius+height/2); inner_radius=inner_chord/(2*sin(body_angle/2)); solved iteratively",
+    "derived_outer_chord_m": 0.1784852529,
+    "inner_radius_m": 0.7275514105,
+    "joint_gap_centerline_m": 0.003,
+    "outer_diameter_m": 1.855102821,
+    "outer_radius_m": 0.9275514105,
+    "pitch_angle_deg": 11.25
+  },
+  "blend": {
+    "bytes": 6078808,
+    "filename": "cathedral_stone_trim_fracture_v1.blend",
+    "sha256": "4a65204c313967c375616f26487bea4806b383ba3cff8b3c5e07e3e3289b5ca7"
+  },
+  "blender_version": "5.1.1",
+  "build_mode": {
+    "canonical_candidate_complete": true,
+    "proof_set": "all",
+    "selected_proofs": [
+      "distance_read",
+      "identity_proof",
+      "live_material_front",
+      "live_material_grazing",
+      "measured_close",
+      "moulding_proof",
+      "neutral_clay_front",
+      "neutral_clay_grazing",
+      "wireframe_proof"
+    ]
+  },
+  "geometry": {
+    "all_meshes_manifold": true,
+    "all_object_scales_unit": true,
+    "all_separate_mesh_datablocks": true,
+    "bevel_modifier_count": 0,
+    "boolean_modifier_count": 0,
+    "catalogue_inner_chord_m": 0.13999999999527266,
+    "centerline_joint_gap_m": 0.003000000001949058,
+    "clear_diameter_m": 1.455102821,
+    "derived_outer_chord_m": 0.17848525285157857,
+    "front_polygons_per_object": 768,
+    "object_count": 16,
+    "outer_diameter_m": 1.855102821,
+    "polygons_per_object": 1648,
+    "vertices_per_object": 1650
+  },
+  "pattern_schema": "iggy3d.pattern.chevron_voussoir_portal.v2",
+  "proofs": {
+    "distance_read": {
+      "bytes": 875446,
+      "filename": "cathedral_stone_trim_fracture_v1_distance_read.png",
+      "sha256": "13db5974f9d568f4bcba55a19b485583cb32a2b0ac74686037de907159855c0d"
+    },
+    "identity_proof": {
+      "bytes": 974268,
+      "filename": "cathedral_stone_trim_fracture_v1_identity_proof.png",
+      "sha256": "f82e78aa91f7503a47470337cea8e824cca34812127fc940401cc8315bde44b8"
+    },
+    "live_material_front": {
+      "bytes": 960345,
+      "filename": "cathedral_stone_trim_fracture_v1_live_material_front.png",
+      "sha256": "3cd0b0a7fb13547b2e43929fc16c61d41cacd8219d5fe877fafa1206dfa68a73"
+    },
+    "live_material_grazing": {
+      "bytes": 973608,
+      "filename": "cathedral_stone_trim_fracture_v1_live_material_grazing.png",
+      "sha256": "def8b8c79f2d315a2f4efb7618064b32ff61a4c84627cb5a278a6bead1a7f42a"
+    },
+    "measured_close": {
+      "bytes": 1196037,
+      "filename": "cathedral_stone_trim_fracture_v1_measured_close.png",
+      "sha256": "9c16ca33e344fecb753c24f39f49e36c0e63c0afedaf30747bea6d9c63a15755"
+    },
+    "moulding_proof": {
+      "bytes": 1059566,
+      "filename": "cathedral_stone_trim_fracture_v1_moulding_proof.png",
+      "sha256": "5d5e220e1b9eeef728bb6ac8270b9d55f7c903eb34b1f8c4e88fdb66efa528ef"
+    },
+    "neutral_clay_front": {
+      "bytes": 949306,
+      "filename": "cathedral_stone_trim_fracture_v1_neutral_clay_front.png",
+      "sha256": "54d1fdb24de24ca3880f1cbb7c55ff588de5a9a9bcbe51092ee4808342b46d1f"
+    },
+    "neutral_clay_grazing": {
+      "bytes": 958202,
+      "filename": "cathedral_stone_trim_fracture_v1_neutral_clay_grazing.png",
+      "sha256": "52114fffcec87dede15b66158fabf530f2f7adbb08bca5ca5b66a2fc7adc4b9d"
+    },
+    "wireframe_proof": {
+      "bytes": 1067201,
+      "filename": "cathedral_stone_trim_fracture_v1_wireframe_proof.png",
+      "sha256": "5e7380a881a818f87bd6dd3153516097013793118f07b3378eaefb1eb3da6893"
+    }
+  },
+  "schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.blender_manifest.v2",
+  "shader": {
+    "all_image_nodes_packed": true,
+    "attribute_nodes": [
+      "iggy_carved_trim",
+      "iggy_chevron_front",
+      "iggy_chevron_highlight",
+      "iggy_chevron_hollow",
+      "iggy_chevron_ink",
+      "iggy_chevron_quiet",
+      "iggy_chevron_roll",
+      "iggy_material_phase",
+      "iggy_material_variant",
+      "iggy_voussoir_id"
+    ],
+    "bump_nodes": [
+      "IGGY_DecorrelatedBodyHeight91mm"
+    ],
+    "group_name": "IGGY_SH_ChevronVoussoir_v002",
+    "link_count": 103,
+    "links": [
+      {
+        "from_node": "IGGY_AddHollowRoughness",
+        "from_socket": "Value",
+        "to_node": "IGGY_RoughnessMinimum",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_AddPoreRoughness",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddSilicateRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_AddRollRoughness",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddHollowRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_AddSilicateRoughness",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddRollRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_carved_trim",
+        "from_socket": "Factor",
+        "to_node": "IGGY_FrontTimesCarved",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_front",
+        "from_socket": "Factor",
+        "to_node": "IGGY_FrontTimesCarved",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_highlight",
+        "from_socket": "Factor",
+        "to_node": "IGGY_LiveHighlightMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_hollow",
+        "from_socket": "Factor",
+        "to_node": "IGGY_LiveHollowMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_ink",
+        "from_socket": "Factor",
+        "to_node": "IGGY_LiveInkMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_quiet",
+        "from_socket": "Factor",
+        "to_node": "IGGY_LiveQuietMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_chevron_roll",
+        "from_socket": "Factor",
+        "to_node": "IGGY_LiveRollMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_material_phase",
+        "from_socket": "Vector",
+        "to_node": "IGGY_PhaseVectorLength",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_material_variant",
+        "from_socket": "Factor",
+        "to_node": "IGGY_HighVariant",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_material_variant",
+        "from_socket": "Factor",
+        "to_node": "IGGY_VariantNormalized",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_material_variant",
+        "from_socket": "Factor",
+        "to_node": "IGGY_VariantParity",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_Attribute_iggy_voussoir_id",
+        "from_socket": "Factor",
+        "to_node": "IGGY_VoussoirIdNormalized",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_BaseCoordinate_512mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_TrimBaseColor",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_BaseCoordinate_512mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_TrimORM",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_Blend64mmAnd91mmBodyMasks",
+        "from_socket": "Color",
+        "to_node": "IGGY_SeparateBodyMasks",
+        "to_socket": "Color"
+      },
+      {
+        "from_node": "IGGY_BodyHeight91",
+        "from_socket": "Color",
+        "to_node": "IGGY_BodyHeight91mmValue",
+        "to_socket": "Color"
+      },
+      {
+        "from_node": "IGGY_BodyHeight91mmValue",
+        "from_socket": "Val",
+        "to_node": "IGGY_DecorrelatedBodyHeight91mm",
+        "to_socket": "Height"
+      },
+      {
+        "from_node": "IGGY_BodyMasks64",
+        "from_socket": "Color",
+        "to_node": "IGGY_Blend64mmAnd91mmBodyMasks",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_BodyMasks91",
+        "from_socket": "Color",
+        "to_node": "IGGY_Blend64mmAnd91mmBodyMasks",
+        "to_socket": "Color2"
+      },
+      {
+        "from_node": "IGGY_BodyNormal64",
+        "from_socket": "Color",
+        "to_node": "IGGY_OpenGLBodyNormal64mm",
+        "to_socket": "Color"
+      },
+      {
+        "from_node": "IGGY_CameraDistance",
+        "from_socket": "View Distance",
+        "to_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_CameraDistance",
+        "from_socket": "View Distance",
+        "to_node": "IGGY_LineFullAt030mZeroAt6m",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_CoolVariantFactor",
+        "from_socket": "Value",
+        "to_node": "IGGY_PerStoneCoolWash",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_DecorrelatedBodyHeight91mm",
+        "from_socket": "Normal",
+        "to_node": "Group_Output",
+        "to_socket": "Combined Normal"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "Group_Output",
+        "to_socket": "Detail Distance Fade"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "IGGY_DecorrelatedBodyHeight91mm",
+        "to_socket": "Strength"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "IGGY_FossilTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "IGGY_PoreTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "IGGY_PrimaryNormalStrength66Percent",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "from_socket": "Result",
+        "to_node": "IGGY_SilicateTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FossilColorAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_FossilFragmentColor",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_FossilFragmentColor",
+        "from_socket": "Color",
+        "to_node": "IGGY_SilicateGrainColor",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_FossilTimesDetailFade",
+        "from_socket": "Value",
+        "to_node": "IGGY_FossilColorAmount",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FrontTimesCarved",
+        "from_socket": "Value",
+        "to_node": "IGGY_LiveHighlightMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FrontTimesCarved",
+        "from_socket": "Value",
+        "to_node": "IGGY_LiveHollowMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FrontTimesCarved",
+        "from_socket": "Value",
+        "to_node": "IGGY_LiveInkMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FrontTimesCarved",
+        "from_socket": "Value",
+        "to_node": "IGGY_LiveQuietMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_FrontTimesCarved",
+        "from_socket": "Value",
+        "to_node": "IGGY_LiveRollMask",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_HighVariant",
+        "from_socket": "Value",
+        "to_node": "IGGY_CoolVariantFactor",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_HighlightTimesLineFade",
+        "from_socket": "Value",
+        "to_node": "IGGY_SelectiveHighlightAmount",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_HollowCoolness",
+        "from_socket": "Color",
+        "to_node": "IGGY_SelectiveChevronInk",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_HollowCoolnessFactor",
+        "from_socket": "Value",
+        "to_node": "IGGY_HollowCoolness",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_HollowRoughnessDelta",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddHollowRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_IdentityProofRGB",
+        "from_socket": "Color",
+        "to_node": "Group_Output",
+        "to_socket": "Identity Proof"
+      },
+      {
+        "from_node": "IGGY_InkTimesLineFade",
+        "from_socket": "Value",
+        "to_node": "IGGY_SelectiveInkAmount",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LineFullAt030mZeroAt6m",
+        "from_socket": "Result",
+        "to_node": "IGGY_HighlightTimesLineFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LineFullAt030mZeroAt6m",
+        "from_socket": "Result",
+        "to_node": "IGGY_InkTimesLineFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveHighlightMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_HighlightTimesLineFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveHollowMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_HollowCoolnessFactor",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveHollowMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_HollowRoughnessDelta",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveHollowMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_MouldingProofRGB",
+        "to_socket": "Green"
+      },
+      {
+        "from_node": "IGGY_LiveInkMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_InkTimesLineFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveQuietMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_MouldingProofRGB",
+        "to_socket": "Blue"
+      },
+      {
+        "from_node": "IGGY_LiveRollMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_MouldingProofRGB",
+        "to_socket": "Red"
+      },
+      {
+        "from_node": "IGGY_LiveRollMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_RollRoughnessDelta",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_LiveRollMask",
+        "from_socket": "Value",
+        "to_node": "IGGY_RollWarmthFactor",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_MouldingProofRGB",
+        "from_socket": "Color",
+        "to_node": "Group_Output",
+        "to_socket": "Moulding Proof"
+      },
+      {
+        "from_node": "IGGY_OpenGLBodyNormal64mm",
+        "from_socket": "Normal",
+        "to_node": "IGGY_DecorrelatedBodyHeight91mm",
+        "to_socket": "Normal"
+      },
+      {
+        "from_node": "IGGY_PerStoneCoolWash",
+        "from_socket": "Color",
+        "to_node": "IGGY_FossilFragmentColor",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_PerStoneWarmWash",
+        "from_socket": "Color",
+        "to_node": "IGGY_PerStoneCoolWash",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_PhaseLengthNormalized",
+        "from_socket": "Result",
+        "to_node": "IGGY_IdentityProofRGB",
+        "to_socket": "Green"
+      },
+      {
+        "from_node": "IGGY_PhaseVectorLength",
+        "from_socket": "Value",
+        "to_node": "IGGY_PhaseLengthNormalized",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_PoreColorAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_PoreIdentityColor",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_PoreColorAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_PoreRoughnessDelta",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_PoreIdentityColor",
+        "from_socket": "Color",
+        "to_node": "IGGY_RollWarmth",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_PoreRoughnessDelta",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddPoreRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_PoreTimesDetailFade",
+        "from_socket": "Value",
+        "to_node": "IGGY_PoreColorAmount",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_PrimaryCoordinate_64mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_BodyMasks64",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_PrimaryCoordinate_64mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_BodyNormal64",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_PrimaryNormalStrength66Percent",
+        "from_socket": "Value",
+        "to_node": "IGGY_OpenGLBodyNormal64mm",
+        "to_socket": "Strength"
+      },
+      {
+        "from_node": "IGGY_RollRoughnessDelta",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddRollRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_RollWarmth",
+        "from_socket": "Color",
+        "to_node": "IGGY_HollowCoolness",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_RollWarmthFactor",
+        "from_socket": "Value",
+        "to_node": "IGGY_RollWarmth",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_RoughnessMaximum",
+        "from_socket": "Value",
+        "to_node": "Group_Output",
+        "to_socket": "Combined Roughness"
+      },
+      {
+        "from_node": "IGGY_RoughnessMinimum",
+        "from_socket": "Value",
+        "to_node": "IGGY_RoughnessMaximum",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SecondaryCoordinate_91mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_BodyHeight91",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_SecondaryCoordinate_91mm",
+        "from_socket": "Vector",
+        "to_node": "IGGY_BodyMasks91",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_SelectiveChevronInk",
+        "from_socket": "Color",
+        "to_node": "IGGY_SelectiveCrestHighlight",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_SelectiveCrestHighlight",
+        "from_socket": "Color",
+        "to_node": "Group_Output",
+        "to_socket": "Combined Color"
+      },
+      {
+        "from_node": "IGGY_SelectiveHighlightAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_SelectiveCrestHighlight",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_SelectiveInkAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_SelectiveChevronInk",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_SeparateBodyMasks",
+        "from_socket": "Blue",
+        "to_node": "IGGY_PoreTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SeparateBodyMasks",
+        "from_socket": "Green",
+        "to_node": "IGGY_SilicateTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SeparateBodyMasks",
+        "from_socket": "Red",
+        "to_node": "IGGY_FossilTimesDetailFade",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SeparateORM",
+        "from_socket": "Green",
+        "to_node": "IGGY_AddPoreRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SilicateColorAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_SilicateGrainColor",
+        "to_socket": "Factor"
+      },
+      {
+        "from_node": "IGGY_SilicateColorAmount",
+        "from_socket": "Value",
+        "to_node": "IGGY_SilicateRoughnessDelta",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SilicateGrainColor",
+        "from_socket": "Color",
+        "to_node": "IGGY_PoreIdentityColor",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_SilicateRoughnessDelta",
+        "from_socket": "Value",
+        "to_node": "IGGY_AddSilicateRoughness",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_SilicateTimesDetailFade",
+        "from_socket": "Value",
+        "to_node": "IGGY_SilicateColorAmount",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_StoneUV_A",
+        "from_socket": "UV",
+        "to_node": "IGGY_BaseCoordinate_512mm",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_StoneUV_A",
+        "from_socket": "UV",
+        "to_node": "IGGY_PrimaryCoordinate_64mm",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_StoneUV_B",
+        "from_socket": "UV",
+        "to_node": "IGGY_SecondaryCoordinate_91mm",
+        "to_socket": "Vector"
+      },
+      {
+        "from_node": "IGGY_TrimBaseColor",
+        "from_socket": "Color",
+        "to_node": "IGGY_PerStoneWarmWash",
+        "to_socket": "Color1"
+      },
+      {
+        "from_node": "IGGY_TrimORM",
+        "from_socket": "Color",
+        "to_node": "IGGY_SeparateORM",
+        "to_socket": "Color"
+      },
+      {
+        "from_node": "IGGY_VariantNormalized",
+        "from_socket": "Value",
+        "to_node": "IGGY_IdentityProofRGB",
+        "to_socket": "Blue"
+      },
+      {
+        "from_node": "IGGY_VariantParity",
+        "from_socket": "Value",
+        "to_node": "IGGY_WarmVariantFactor",
+        "to_socket": "Value"
+      },
+      {
+        "from_node": "IGGY_VoussoirIdNormalized",
+        "from_socket": "Value",
+        "to_node": "IGGY_IdentityProofRGB",
+        "to_socket": "Red"
+      },
+      {
+        "from_node": "IGGY_WarmVariantFactor",
+        "from_socket": "Value",
+        "to_node": "IGGY_PerStoneWarmWash",
+        "to_socket": "Factor"
+      }
+    ],
+    "node_count": 79,
+    "nodes": [
+      {
+        "bl_idname": "NodeGroupOutput",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Socket_0",
+            "linked": true,
+            "name": "Combined Color",
+            "type": "RGBA"
+          },
+          {
+            "default": null,
+            "identifier": "Socket_1",
+            "linked": true,
+            "name": "Combined Roughness",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Socket_2",
+            "linked": true,
+            "name": "Combined Normal",
+            "type": "VECTOR"
+          },
+          {
+            "default": null,
+            "identifier": "Socket_3",
+            "linked": true,
+            "name": "Moulding Proof",
+            "type": "RGBA"
+          },
+          {
+            "default": null,
+            "identifier": "Socket_4",
+            "linked": true,
+            "name": "Identity Proof",
+            "type": "RGBA"
+          },
+          {
+            "default": null,
+            "identifier": "Socket_5",
+            "linked": true,
+            "name": "Detail Distance Fade",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "__extend__",
+            "linked": false,
+            "name": "",
+            "type": "CUSTOM"
+          }
+        ],
+        "name": "Group_Output",
+        "outputs": []
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_AddHollowRoughness",
+        "operation": "ADD",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_AddPoreRoughness",
+        "operation": "ADD",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_AddRollRoughness",
+        "operation": "ADD",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_AddSilicateRoughness",
+        "operation": "ADD",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_carved_trim",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_carved_trim",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_front",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_front",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_highlight",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_highlight",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_hollow",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_hollow",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_ink",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_ink",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_quiet",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_quiet",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_chevron_roll",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_chevron_roll",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_material_phase",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_material_phase",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": false,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_material_variant",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_material_variant",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "attribute_name": "iggy_voussoir_id",
+        "bl_idname": "ShaderNodeAttribute",
+        "inputs": [],
+        "name": "IGGY_Attribute_iggy_voussoir_id",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": false,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeVectorMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_001",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_002",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": 1.953125,
+            "identifier": "Scale",
+            "linked": false,
+            "name": "Scale",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_BaseCoordinate_512mm",
+        "operation": "SCALE",
+        "outputs": [
+          {
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Value",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": 0.3400000035762787,
+            "identifier": "Fac",
+            "linked": false,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": null,
+            "identifier": "Color2",
+            "linked": true,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_Blend64mmAnd91mmBodyMasks",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "Non-Color",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_body_height.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_BodyHeight91",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeRGBToBW",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_BodyHeight91mmValue",
+        "outputs": [
+          {
+            "identifier": "Val",
+            "linked": true,
+            "name": "Val",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "Non-Color",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_body_masks.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_BodyMasks64",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "Non-Color",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_body_masks.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_BodyMasks91",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "Non-Color",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_body_normal.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_BodyNormal64",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeCameraData",
+        "inputs": [],
+        "name": "IGGY_CameraDistance",
+        "outputs": [
+          {
+            "identifier": "View Vector",
+            "linked": false,
+            "name": "View Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "View Z Depth",
+            "linked": false,
+            "name": "View Z Depth",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "View Distance",
+            "linked": true,
+            "name": "View Distance",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.054999999701976776,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_CoolVariantFactor",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeBump",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Strength",
+            "linked": true,
+            "name": "Strength",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.00038419998600147665,
+            "identifier": "Distance",
+            "linked": false,
+            "name": "Distance",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.10000000149011612,
+            "identifier": "Filter Width",
+            "linked": false,
+            "name": "Filter Width",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Height",
+            "linked": true,
+            "name": "Height",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Normal",
+            "linked": true,
+            "name": "Normal",
+            "type": "VECTOR"
+          }
+        ],
+        "invert": false,
+        "name": "IGGY_DecorrelatedBodyHeight91mm",
+        "outputs": [
+          {
+            "identifier": "Normal",
+            "linked": true,
+            "name": "Normal",
+            "type": "VECTOR"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMapRange",
+        "clamp": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.30000001192092896,
+            "identifier": "From Min",
+            "linked": false,
+            "name": "From Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 3.5,
+            "identifier": "From Max",
+            "linked": false,
+            "name": "From Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 1.0,
+            "identifier": "To Min",
+            "linked": false,
+            "name": "To Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.0,
+            "identifier": "To Max",
+            "linked": false,
+            "name": "To Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 4.0,
+            "identifier": "Steps",
+            "linked": false,
+            "name": "Steps",
+            "type": "VALUE"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "From_Min_FLOAT3",
+            "linked": false,
+            "name": "From Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "From_Max_FLOAT3",
+            "linked": false,
+            "name": "From Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "To_Min_FLOAT3",
+            "linked": false,
+            "name": "To Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "To_Max_FLOAT3",
+            "linked": false,
+            "name": "To Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "identifier": "Steps_FLOAT3",
+            "linked": false,
+            "name": "Steps",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation_type": "SMOOTHERSTEP",
+        "name": "IGGY_DetailFullAt030mZeroAt3p5m",
+        "outputs": [
+          {
+            "identifier": "Result",
+            "linked": true,
+            "name": "Result",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.12999999523162842,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_FossilColorAmount",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.7454041838645935,
+              0.5906188488006592,
+              0.38132601976394653,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_FossilFragmentColor",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_FossilTimesDetailFade",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_FrontTimesCarved",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 1.5,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_HighVariant",
+        "operation": "GREATER_THAN",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_HighlightTimesLineFade",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.19806931912899017,
+              0.16513219475746155,
+              0.13286831974983215,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_HollowCoolness",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.2199999988079071,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_HollowCoolnessFactor",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.02800000086426735,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_HollowRoughnessDelta",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeCombineColor",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Red",
+            "linked": true,
+            "name": "Red",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Green",
+            "linked": true,
+            "name": "Green",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Blue",
+            "linked": true,
+            "name": "Blue",
+            "type": "VALUE"
+          }
+        ],
+        "mode": "RGB",
+        "name": "IGGY_IdentityProofRGB",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_InkTimesLineFade",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMapRange",
+        "clamp": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.30000001192092896,
+            "identifier": "From Min",
+            "linked": false,
+            "name": "From Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 6.0,
+            "identifier": "From Max",
+            "linked": false,
+            "name": "From Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 1.0,
+            "identifier": "To Min",
+            "linked": false,
+            "name": "To Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.0,
+            "identifier": "To Max",
+            "linked": false,
+            "name": "To Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 4.0,
+            "identifier": "Steps",
+            "linked": false,
+            "name": "Steps",
+            "type": "VALUE"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "From_Min_FLOAT3",
+            "linked": false,
+            "name": "From Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "From_Max_FLOAT3",
+            "linked": false,
+            "name": "From Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "To_Min_FLOAT3",
+            "linked": false,
+            "name": "To Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "To_Max_FLOAT3",
+            "linked": false,
+            "name": "To Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "identifier": "Steps_FLOAT3",
+            "linked": false,
+            "name": "Steps",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation_type": "SMOOTHERSTEP",
+        "name": "IGGY_LineFullAt030mZeroAt6m",
+        "outputs": [
+          {
+            "identifier": "Result",
+            "linked": true,
+            "name": "Result",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_LiveHighlightMask",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_LiveHollowMask",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_LiveInkMask",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_LiveQuietMask",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_LiveRollMask",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeCombineColor",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Red",
+            "linked": true,
+            "name": "Red",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Green",
+            "linked": true,
+            "name": "Green",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Blue",
+            "linked": true,
+            "name": "Blue",
+            "type": "VALUE"
+          }
+        ],
+        "mode": "RGB",
+        "name": "IGGY_MouldingProofRGB",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeNormalMap",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Strength",
+            "linked": true,
+            "name": "Strength",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_OpenGLBodyNormal64mm",
+        "outputs": [
+          {
+            "identifier": "Normal",
+            "linked": true,
+            "name": "Normal",
+            "type": "VECTOR"
+          }
+        ],
+        "space": "TANGENT",
+        "uv_map": ""
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.33716362714767456,
+              0.34191441535949707,
+              0.30054378509521484,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_PerStoneCoolWash",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.6514056324958801,
+              0.4125426113605499,
+              0.18116424977779388,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_PerStoneWarmWash",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMapRange",
+        "clamp": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.0,
+            "identifier": "From Min",
+            "linked": false,
+            "name": "From Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.75,
+            "identifier": "From Max",
+            "linked": false,
+            "name": "From Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.0,
+            "identifier": "To Min",
+            "linked": false,
+            "name": "To Min",
+            "type": "VALUE"
+          },
+          {
+            "default": 1.0,
+            "identifier": "To Max",
+            "linked": false,
+            "name": "To Max",
+            "type": "VALUE"
+          },
+          {
+            "default": 4.0,
+            "identifier": "Steps",
+            "linked": false,
+            "name": "Steps",
+            "type": "VALUE"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "From_Min_FLOAT3",
+            "linked": false,
+            "name": "From Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "From_Max_FLOAT3",
+            "linked": false,
+            "name": "From Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "To_Min_FLOAT3",
+            "linked": false,
+            "name": "To Min",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "identifier": "To_Max_FLOAT3",
+            "linked": false,
+            "name": "To Max",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "identifier": "Steps_FLOAT3",
+            "linked": false,
+            "name": "Steps",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation_type": "LINEAR",
+        "name": "IGGY_PhaseLengthNormalized",
+        "outputs": [
+          {
+            "identifier": "Result",
+            "linked": true,
+            "name": "Result",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeVectorMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_001",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_002",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": 1.0,
+            "identifier": "Scale",
+            "linked": false,
+            "name": "Scale",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PhaseVectorLength",
+        "operation": "LENGTH",
+        "outputs": [
+          {
+            "identifier": "Vector",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.17000000178813934,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PoreColorAmount",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.15896083414554596,
+              0.1119324266910553,
+              0.07227185368537903,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_PoreIdentityColor",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.09000000357627869,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PoreRoughnessDelta",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PoreTimesDetailFade",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeVectorMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_001",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_002",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": 15.625,
+            "identifier": "Scale",
+            "linked": false,
+            "name": "Scale",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PrimaryCoordinate_64mm",
+        "operation": "SCALE",
+        "outputs": [
+          {
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Value",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.6600000262260437,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_PrimaryNormalStrength66Percent",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": -0.017999999225139618,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_RollRoughnessDelta",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.7011018991470337,
+              0.4910208582878113,
+              0.2581828534603119,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_RollWarmth",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.1599999964237213,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_RollWarmthFactor",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.8999999761581421,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_RoughnessMaximum",
+        "operation": "MINIMUM",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.6200000047683716,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_RoughnessMinimum",
+        "operation": "MAXIMUM",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeVectorMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_001",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "identifier": "Vector_002",
+            "linked": false,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "default": 10.98901081085205,
+            "identifier": "Scale",
+            "linked": false,
+            "name": "Scale",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SecondaryCoordinate_91mm",
+        "operation": "SCALE",
+        "outputs": [
+          {
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          },
+          {
+            "identifier": "Value",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.09758734703063965,
+              0.07227185368537903,
+              0.052860647439956665,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_SelectiveChevronInk",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.7991027235984802,
+              0.6514056324958801,
+              0.43415364623069763,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_SelectiveCrestHighlight",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.14000000059604645,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SelectiveHighlightAmount",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.30000001192092896,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SelectiveInkAmount",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeSeparateColor",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "mode": "RGB",
+        "name": "IGGY_SeparateBodyMasks",
+        "outputs": [
+          {
+            "identifier": "Red",
+            "linked": true,
+            "name": "Red",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Green",
+            "linked": true,
+            "name": "Green",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Blue",
+            "linked": true,
+            "name": "Blue",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeSeparateColor",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "mode": "RGB",
+        "name": "IGGY_SeparateORM",
+        "outputs": [
+          {
+            "identifier": "Red",
+            "linked": false,
+            "name": "Red",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Green",
+            "linked": true,
+            "name": "Green",
+            "type": "VALUE"
+          },
+          {
+            "identifier": "Blue",
+            "linked": false,
+            "name": "Blue",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.09000000357627869,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SilicateColorAmount",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMixRGB",
+        "blend_type": "MIX",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Fac",
+            "linked": true,
+            "name": "Factor",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Color1",
+            "linked": true,
+            "name": "Color1",
+            "type": "RGBA"
+          },
+          {
+            "default": [
+              0.3049873113632202,
+              0.31854677200317383,
+              0.28744083642959595,
+              1.0
+            ],
+            "identifier": "Color2",
+            "linked": false,
+            "name": "Color2",
+            "type": "RGBA"
+          }
+        ],
+        "name": "IGGY_SilicateGrainColor",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          }
+        ],
+        "use_clamp": false
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": -0.03999999910593033,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SilicateRoughnessDelta",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": null,
+            "identifier": "Value_001",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_SilicateTimesDetailFade",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeUVMap",
+        "inputs": [],
+        "name": "IGGY_StoneUV_A",
+        "outputs": [
+          {
+            "identifier": "UV",
+            "linked": true,
+            "name": "UV",
+            "type": "VECTOR"
+          }
+        ],
+        "uv_map": "IGGY_StoneUV_A"
+      },
+      {
+        "bl_idname": "ShaderNodeUVMap",
+        "inputs": [],
+        "name": "IGGY_StoneUV_B",
+        "outputs": [
+          {
+            "identifier": "UV",
+            "linked": true,
+            "name": "UV",
+            "type": "VECTOR"
+          }
+        ],
+        "uv_map": "IGGY_StoneUV_B"
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "sRGB",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_basecolor.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_TrimBaseColor",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeTexImage",
+        "color_space": "Non-Color",
+        "extension": "REPEAT",
+        "image": "cathedral_stone_trim_fracture_v1_orm.png",
+        "image_packed": true,
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Vector",
+            "linked": true,
+            "name": "Vector",
+            "type": "VECTOR"
+          }
+        ],
+        "interpolation": "Linear",
+        "name": "IGGY_TrimORM",
+        "outputs": [
+          {
+            "identifier": "Color",
+            "linked": true,
+            "name": "Color",
+            "type": "RGBA"
+          },
+          {
+            "identifier": "Alpha",
+            "linked": false,
+            "name": "Alpha",
+            "type": "VALUE"
+          }
+        ],
+        "projection": "FLAT"
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 3.0,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_VariantNormalized",
+        "operation": "DIVIDE",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 2.0,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_VariantParity",
+        "operation": "MODULO",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 15.0,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_VoussoirIdNormalized",
+        "operation": "DIVIDE",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      },
+      {
+        "bl_idname": "ShaderNodeMath",
+        "inputs": [
+          {
+            "default": null,
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.07000000029802322,
+            "identifier": "Value_001",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          },
+          {
+            "default": 0.5,
+            "identifier": "Value_002",
+            "linked": false,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ],
+        "name": "IGGY_WarmVariantFactor",
+        "operation": "MULTIPLY",
+        "outputs": [
+          {
+            "identifier": "Value",
+            "linked": true,
+            "name": "Value",
+            "type": "VALUE"
+          }
+        ]
+      }
+    ],
+    "normal_map_nodes": [
+      "IGGY_OpenGLBodyNormal64mm"
+    ]
+  },
+  "source_measurement": {
+    "catalogue_item": 55,
+    "depth_m": 0.27,
+    "height_m": 0.2,
+    "inner_chord_m": 0.14,
+    "outer_chord_m": 0.18,
+    "source_id": "S01_old_sarum_catalogue_item_55"
+  },
+  "texture_manifest_schema": "iggy3d.material.cathedral_stone_trim_fracture_v1.manifest.v2",
+  "uv_layers": {
+    "IGGY_ChevronVoussoir_00": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_01": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_02": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_03": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_04": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_05": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_06": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_07": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_08": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_09": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_10": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_11": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_12": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_13": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_14": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ],
+    "IGGY_ChevronVoussoir_15": [
+      "IGGY_StoneUV_A",
+      "IGGY_StoneUV_B"
+    ]
+  },
+  "validation": {
+    "all_texture_nodes_packed": true,
+    "catalogue_inner_chord_within_0p005m": true,
+    "catalogue_outer_chord_within_0p005m": true,
+    "centerline_joint_gap_is_0p003m": true,
+    "closed_manifold_stones": true,
+    "complete_proof_set": true,
+    "damage_authored": false,
+    "fracture_authored": false,
+    "height_not_inverted": true,
+    "individual_voussoirs": true,
+    "no_bevel_modifiers": true,
+    "no_boolean_modifiers": true,
+    "normal_map_live": true,
+    "proof_count": 9,
+    "required_attributes_present": true
+  }
+}

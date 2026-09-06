@@ -7,7 +7,7 @@ named landmarks, scalar extents, optional traced curve samples - and this
 module converts it into a DRAFT profile spec:
 
   - stations placed in the profile frame, with source_px in the root frame;
-  - tolerance.distance derived from the calibration residual (2 x RMS);
+  - tolerance.distance derived from control-point uncertainty (2 x uncertainty);
   - parameters carrying the measured extents as claims;
   - reference/calibration blocks filled;
   - circle fits for traced curved members, with residuals reported.
@@ -22,11 +22,17 @@ what remains. No pixels are interpreted; only declared measurements move.
 Handoff format (strict, unknown keys rejected):
 
 {
-  "format": "SINC_GeometryProof_Handoff/1",
+  "format": "SINC_GeometryProof_Handoff/2",
   "id": "ellis_451a_no4",
   "source": { "citation": "...", "image": "optional/path.png", "notes": ["..."] },
   "calibration": {
-    "px_per_unit": 70.401, "units": "in", "rms_residual_px": 1.66,
+    "px_per_unit": 70.401, "units": "in",
+    "control_point_uncertainty_px": 1.66,
+    "source_projection_model": "PLANAR_HOMOGRAPHY",
+    "model_assumption": {
+      "name": "fronto_parallel_subject", "evidence_class": "AUTHORED",
+      "note": "optional; required when the source model depends on an authored assumption"
+    },
     "method": "...", "crosscheck": "optional"
   },
   "frames": {
@@ -72,7 +78,16 @@ if __package__ is None and str(Path(__file__).resolve().parent) not in sys.path:
 
 from profile_spec import EVIDENCE_CLASSES, SpecError  # noqa: E402
 
-HANDOFF_FORMAT = "SINC_GeometryProof_Handoff/1"
+HANDOFF_FORMAT_V1 = "SINC_GeometryProof_Handoff/1"
+HANDOFF_FORMAT_V2 = "SINC_GeometryProof_Handoff/2"
+HANDOFF_FORMATS = {HANDOFF_FORMAT_V1, HANDOFF_FORMAT_V2}
+HANDOFF_FORMAT = HANDOFF_FORMAT_V2
+SOURCE_PROJECTION_MODELS = {
+    "UNIFORM_ORTHOGRAPHIC",
+    "LINEAR_SEGMENT",
+    "PLANAR_HOMOGRAPHY",
+    "MULTIVIEW",
+}
 STATUS_TO_EVIDENCE = {
     "PRINTED": "PRINTED",
     "MEASURED": "MEASURED",
@@ -117,8 +132,11 @@ def validate_handoff(handoff):
     if problems:
         return problems
 
-    if handoff["format"] != HANDOFF_FORMAT:
-        problems.append(f"format: expected '{HANDOFF_FORMAT}', got '{handoff['format']}'")
+    handoff_format = handoff["format"]
+    if handoff_format not in HANDOFF_FORMATS:
+        problems.append(
+            f"format: expected one of {sorted(HANDOFF_FORMATS)}, got "
+            f"'{handoff_format}'")
     if not isinstance(handoff["id"], str) or not handoff["id"].replace("_", "").isalnum():
         problems.append("id: must be a lowercase [a-z0-9_] identifier")
 
@@ -131,13 +149,56 @@ def validate_handoff(handoff):
 
     cal = handoff["calibration"]
     if isinstance(cal, dict):
-        _check_keys(cal, allowed={"px_per_unit", "units", "rms_residual_px", "method", "crosscheck"},
-                    required={"px_per_unit", "units", "rms_residual_px", "method"},
-                    where="calibration", problems=problems)
+        if handoff_format == HANDOFF_FORMAT_V2:
+            _check_keys(
+                cal,
+                allowed={"px_per_unit", "units", "control_point_uncertainty_px",
+                         "source_projection_model", "model_assumption", "method",
+                         "crosscheck"},
+                required={"px_per_unit", "units", "control_point_uncertainty_px",
+                          "source_projection_model", "method"},
+                where="calibration", problems=problems)
+        else:
+            _check_keys(
+                cal,
+                allowed={"px_per_unit", "units", "rms_residual_px", "method",
+                         "crosscheck"},
+                required={"px_per_unit", "units", "rms_residual_px", "method"},
+                where="calibration", problems=problems)
         if "px_per_unit" in cal and (not _is_num(cal["px_per_unit"]) or cal["px_per_unit"] <= 0):
             problems.append("calibration.px_per_unit: must be a positive number")
-        if "rms_residual_px" in cal and (not _is_num(cal["rms_residual_px"]) or cal["rms_residual_px"] < 0):
-            problems.append("calibration.rms_residual_px: must be a non-negative number")
+        uncertainty_key = (
+            "control_point_uncertainty_px"
+            if handoff_format == HANDOFF_FORMAT_V2 else "rms_residual_px")
+        if uncertainty_key in cal and (
+                not _is_num(cal[uncertainty_key]) or cal[uncertainty_key] < 0):
+            problems.append(
+                f"calibration.{uncertainty_key}: must be a non-negative number")
+        if handoff_format == HANDOFF_FORMAT_V2:
+            if cal.get("source_projection_model") not in SOURCE_PROJECTION_MODELS:
+                problems.append(
+                    "calibration.source_projection_model: must be one of "
+                    f"{sorted(SOURCE_PROJECTION_MODELS)}")
+            assumption = cal.get("model_assumption")
+            if assumption is not None:
+                if isinstance(assumption, dict):
+                    _check_keys(
+                        assumption,
+                        allowed={"name", "evidence_class", "note"},
+                        required={"name", "evidence_class", "note"},
+                        where="calibration.model_assumption", problems=problems)
+                    if assumption.get("evidence_class") not in EVIDENCE_CLASSES:
+                        problems.append(
+                            "calibration.model_assumption.evidence_class: must be "
+                            f"one of {EVIDENCE_CLASSES}")
+                    if not isinstance(assumption.get("name"), str) or not assumption.get("name"):
+                        problems.append(
+                            "calibration.model_assumption.name: must be a non-empty string")
+                    if not isinstance(assumption.get("note"), str):
+                        problems.append(
+                            "calibration.model_assumption.note: must be a string")
+                else:
+                    problems.append("calibration.model_assumption: must be an object")
         if cal.get("units") not in UNIT_TO_METRES:
             problems.append(f"calibration.units: must be one of {sorted(UNIT_TO_METRES)}")
     else:
@@ -372,7 +433,11 @@ def build_draft(handoff):
     cal = handoff["calibration"]
     frames = handoff["frames"]
     ppu = cal["px_per_unit"]
-    tol_dist = max(round(2.0 * cal["rms_residual_px"] / ppu, 4), 1e-4)
+    uncertainty_key = (
+        "control_point_uncertainty_px"
+        if handoff["format"] == HANDOFF_FORMAT_V2 else "rms_residual_px")
+    point_uncertainty_px = cal[uncertainty_key]
+    tol_dist = max(round(2.0 * point_uncertainty_px / ppu, 4), 1e-4)
 
     origin_name = handoff["profile_frame"]["origin_landmark"]
     _, origin_root, _ = _profile_transform(handoff)
@@ -447,8 +512,16 @@ def build_draft(handoff):
             "scale_px_per_unit": ppu,
             "source_frame": "root frame of handoff "
                             f"'{handoff['id']}', y-down; origin landmark '{origin_name}'",
-            "notes": f"calibration: {cal['method']}; rms {cal['rms_residual_px']} px"
-                     + (f"; crosscheck: {cal['crosscheck']}" if cal.get("crosscheck") else ""),
+            "notes": (f"calibration: {cal['method']}; control-point uncertainty "
+                      f"{point_uncertainty_px} px"
+                      + (f"; source projection model: {cal['source_projection_model']}"
+                         if handoff["format"] == HANDOFF_FORMAT_V2 else
+                         "; legacy /1 field rms_residual_px supplied this uncertainty")
+                      + (f"; model assumption: {cal['model_assumption']['name']} "
+                         f"({cal['model_assumption']['evidence_class']})"
+                         if cal.get("model_assumption") else "")
+                      + (f"; crosscheck: {cal['crosscheck']}"
+                         if cal.get("crosscheck") else "")),
         },
         "units": units,
         "datum": datum if datum else "TODO_choose_datum",

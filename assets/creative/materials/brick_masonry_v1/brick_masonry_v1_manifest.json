@@ -1,0 +1,87 @@
+{
+  "height_encoding": {
+    "file": "brick_masonry_v1_height.png",
+    "format": "16-bit linear grayscale PNG",
+    "maximum_m": 0.010597609914839268,
+    "minimum_m": -0.004066836088895798
+  },
+  "map_contract": {
+    "base_color": "sRGB fired-clay and mortar color with structural ink; no baked light",
+    "brush_direction": "linear RGB; RG stores signed XY direction remapped to zero through one",
+    "height": "linear normalized data reconstructed from height_encoding",
+    "normal": "linear RGB tangent-space OpenGL/Y+",
+    "orm": "linear RGB R=AO G=roughness B=metallic",
+    "stylization": "linear RGB R=ink G=highlight stroke B=detail priority"
+  },
+  "outputs": {
+    "base_color": "brick_masonry_v1_basecolor.png",
+    "brush_direction": "brick_masonry_v1_brush_direction.png",
+    "color_proof": "proofs/brick_masonry_v1_color_anatomy.png",
+    "construction_proof": "proofs/brick_masonry_v1_construction.png",
+    "height": "brick_masonry_v1_height.png",
+    "linework_proof": "proofs/brick_masonry_v1_linework.png",
+    "manifest": "brick_masonry_v1_manifest.json",
+    "normal": "brick_masonry_v1_normal.png",
+    "orm": "brick_masonry_v1_orm.png",
+    "response_proof": "proofs/brick_masonry_v1_response.png",
+    "stylization": "brick_masonry_v1_stylization.png",
+    "tiling_proof": "proofs/brick_masonry_v1_tiling.png",
+    "variation_proof": "proofs/brick_masonry_v1_variations.png"
+  },
+  "pattern": {
+    "brick_count": 140,
+    "champion_count": 20,
+    "columns": 7,
+    "course_count": 20,
+    "mortar_profile": "compressed_shallow_recess",
+    "name": "kiln_fired_running_bond_v1",
+    "schema": "iggy3d.pattern.brick_masonry.v1",
+    "source": "/Users/kogaryu/iggy3d/assets/creative/materials/brick_masonry_v1/patterns/kiln_fired_running_bond_v1.json",
+    "variation": 0
+  },
+  "references": [
+    {
+      "title": "Arcane Brick Wall in Substance Designer",
+      "url": "https://rosko.artstation.com/blog/YjnN/free-material-tutorial-arcane-brick-wall-in-substance-designer",
+      "use": "art-directed shape masks, directional color masks, and selected normal-channel outlines"
+    },
+    {
+      "title": "High temperature reactions and colour development in brick clays",
+      "url": "https://openresearch.surrey.ac.uk/esploro/outputs/doctoral/High-temperature-reactions-and-colour-development/99516275302346",
+      "use": "iron-rich clay and firing-temperature color provenance"
+    },
+    {
+      "title": "Mortar for Brickwork Technical Guide",
+      "url": "https://www.brick.org.uk/uploads/downloads/08.-Mortar-for-Brickwork-Technical-Guide-2023.f1678701358.pdf",
+      "use": "compressed and shallow-recess mortar profile"
+    }
+  ],
+  "reproduction": "Run Blender headless with this generator and the recorded seed, resolution, recipe, tile size, and variation.",
+  "resolution": 2048,
+  "schema": "iggy3d.material.brick_masonry_v1.v1",
+  "seed": 88421,
+  "statistics": {
+    "brick_coverage": 0.7804698348045349,
+    "height_max_m": 0.010597609914839268,
+    "height_min_m": -0.004066836088895798,
+    "highlight_coverage": 0.01861262321472168,
+    "ink_coverage": 0.14948225021362305,
+    "mortar_coverage": 0.21953019499778748,
+    "roughness_mean": 0.7605506181716919
+  },
+  "stylization": {
+    "ink_color_srgb": [
+      54,
+      30,
+      30
+    ],
+    "line_families": [
+      "primary",
+      "secondary",
+      "tertiary"
+    ],
+    "proof_brick_id": 73,
+    "shade_family_size_per_brick": 20
+  },
+  "tile_size_m": 1.6
+}

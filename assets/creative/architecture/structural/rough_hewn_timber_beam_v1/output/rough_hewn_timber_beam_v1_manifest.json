@@ -1,0 +1,201 @@
+{
+  "schema": "iggy3d.world_asset.rough_hewn_timber_beam.build.v1",
+  "asset_id": "world_asset_001_rough_hewn_timber_beam",
+  "asset_scope": "one_master_beam",
+  "repair_pass_count": 10,
+  "source": {
+    "profile": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/profiles/rough_hewn_timber_beam_v1.json",
+    "profile_sha256": "91f286a3db83edb0366b45daaa216b499cb96bb54b993ed16cdd6145ad523ff6",
+    "builder": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/build_rough_hewn_timber_beam_v1.py",
+    "builder_sha256": "5c0b4f4861d8b1ab5de22b0fe80e4e226b265f871748962b6d35a4a749281cd6",
+    "ai_generated_imagery": false
+  },
+  "geometry": {
+    "hewn_face_count": 4,
+    "knot_count": 2,
+    "end_check_count": 5,
+    "edge_chip_count": 2,
+    "joinery_reserved_zone_count": 3,
+    "source_vertices": 10442,
+    "source_polygons": 10512,
+    "evaluated_vertices": 13587,
+    "evaluated_polygons": 13447,
+    "evaluated_edges": 27032,
+    "non_manifold_edges": 0,
+    "dimensions_m": [
+      4.199999809265137,
+      0.3051919639110565,
+      0.34876084327697754
+    ],
+    "clean_source_modifier_count": 0,
+    "modifier_types": [
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BOOLEAN",
+      "BEVEL",
+      "WEIGHTED_NORMAL"
+    ],
+    "attribute_names": [
+      ".corner_edge",
+      ".corner_vert",
+      ".edge_verts",
+      ".select_edge",
+      ".select_poly",
+      ".select_vert",
+      ".uv_select_edge",
+      ".uv_select_face",
+      ".uv_select_vert",
+      "IGGY_TimberUV",
+      "custom_normal",
+      "position",
+      "sharp_edge",
+      "sharp_face",
+      "sinc_end_distance_m",
+      "sinc_hewing_depth_m",
+      "sinc_hewing_event_id",
+      "sinc_joinery_reserved",
+      "sinc_timber_face_id",
+      "sinc_timber_u_m"
+    ]
+  },
+  "blender": {
+    "version": "5.1.1",
+    "blend_path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/rough_hewn_timber_beam_v1.blend"
+  },
+  "renders": {
+    "front": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_front.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 780470,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "back": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_back.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 778601,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "top": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_top.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 758515,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "bottom": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_bottom.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 757084,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "end_left": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_end_left.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 899156,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "end_right": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_end_right.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 969284,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "perspective_a": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_perspective_a.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 1052399,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "perspective_b": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_perspective_b.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 1031345,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "wireframe": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_wireframe.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 1163143,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "clay_silhouette": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_clay_silhouette.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 579808,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "toolmark_grazing": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_toolmark_grazing.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 811040,
+      "render_result_size": [
+        0,
+        0
+      ]
+    },
+    "end_checks_closeup": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/architecture/structural/rough_hewn_timber_beam_v1/output/renders/rough_hewn_timber_beam_v1_end_checks_closeup.png",
+      "width": 1400,
+      "height": 760,
+      "file_size_bytes": 861884,
+      "render_result_size": [
+        0,
+        0
+      ]
+    }
+  },
+  "material_status": "neutral_clay_only",
+  "remaining_material_only_details": [
+    "white-oak longitudinal fibre and growth-ring colour hierarchy",
+    "end-grain ring and pore response",
+    "knot-driven grain deflection",
+    "fine tool-edge linework",
+    "independent roughness after geometry acceptance"
+  ]
+}

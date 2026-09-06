@@ -51,11 +51,21 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
         result.message = "layout building blockout: payload mismatch";
         break;
       }
+      CreativeEditorWorldLayoutBuildingBlockoutSettings settings =
+          payload->settings;
+      if (!applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+              settings, activeAppState.facade.document().gridSettings(),
+              settings.architecturalProfileKind)) {
+        editor.worldLayout.statusMessage =
+            "building profile cannot be represented on this document grid";
+        result.message = editor.worldLayout.statusMessage;
+        break;
+      }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutEditReceipt receipt =
           createCreativeEditorWorldLayoutBuildingBlockout(
-              editor.worldLayout, payload->settings);
+              editor.worldLayout, std::move(settings));
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;
@@ -71,11 +81,22 @@ bool dispatchCreativeDesktopWorldLayoutBuildingCommand(
         result.message = "layout building blockout update: payload mismatch";
         break;
       }
+      CreativeEditorWorldLayoutBuildingBlockoutSettings settings =
+          payload->settings;
+      if (!applyCreativeEditorWorldLayoutBlockoutArchitecturalProfile(
+              settings, activeAppState.facade.document().gridSettings(),
+              settings.architecturalProfileKind)) {
+        editor.worldLayout.statusMessage =
+            "building profile cannot be represented on this document grid";
+        result.message = editor.worldLayout.statusMessage;
+        break;
+      }
       const bool previewWasActive =
           creativeEditorWorldLayoutPreviewActive(editor.worldLayout);
       const CreativeEditorWorldLayoutEditReceipt receipt =
           updateCreativeEditorWorldLayoutBuildingBlockout(
-              editor.worldLayout, payload->buildingIndex, payload->settings);
+              editor.worldLayout, payload->buildingIndex,
+              std::move(settings));
       result.accepted = receipt.accepted;
       result.changed = receipt.changed;
       result.worldLayoutChanged = receipt.changed;

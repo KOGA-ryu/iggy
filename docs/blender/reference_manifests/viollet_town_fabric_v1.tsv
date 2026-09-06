@@ -1,0 +1,17 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+town_house	public fountain	lower basin height above the ground	2 to 3 pieds (0.60-0.90 m)	m	measured	Fontaine	un bassin inférieur élevé de deux à trois pieds au-dessus du sol (0,60 c. à 0,90 c.)
+defensive_misc	town aqueduct passage (WALKABLE)	passage height	6 pieds (1.95 m)	m	measured	Fontaine	de six pieds de hauteur sur trois pieds de largeur, le long desquels les personnes peuvent facilement cheminer la lumière à la main
+defensive_misc	town aqueduct passage (WALKABLE)	passage width	3 pieds (0.97 m)	m	measured	Fontaine	sur trois pieds de largeur
+defensive_misc	town aqueduct passage	run length, unlit	500+ toises (975+ m)	m	measured	Fontaine	iceux aquéducs, cinq cents toises de longueur et plus, sans qu'il y aie aucune clarté sinon celle que l'on y peut porter avec feu
+defensive_misc	town aqueduct, 1457 rebuild	length rebuilt new	96 toises (187.08 m)	m	measured	Fontaine	en l'an 1457, en fut refait de neuf environ quatre vingt seize toises de longueur
+workshop_mill	timber pigeonnier (lesser right)	height	16 pieds (5.20 m)	m	author-rule	Colombier	un pigeonnier en bois de seize pieds de hauteur et pouvant contenir seulement de soixante à cent vingt boulins
+workshop_mill	timber pigeonnier	nest-hole (boulin) capacity	60 to 120	count	author-rule	Colombier	pouvant contenir seulement de soixante à cent vingt boulins
+workshop_mill	Nesle / Créteil pigeonnier	internal diameter	6.80	m	measured	Colombier	le pigeonnier de Nesle porte les mêmes dimensions que celui de Créteil , 6 m ,80 de diamètre intérieur et 1 m ,00 d'épaisseur de mur
+workshop_mill	Nesle / Créteil pigeonnier	wall thickness	1.00	m	measured	Colombier	et 1 m ,00 d'épaisseur de mur
+workshop_mill	small stone colombier	internal diameter	4.60	m	measured	Colombier	Ce petit édifice n'a que 4 m , 60 de diamètre sur environ 11 m ,50 du sol au sommet des trois pinacles
+workshop_mill	small stone colombier	height, ground to pinnacle tops	11.50	m	measured	Colombier	sur environ 11 m ,50 du sol au sommet des trois pinacles
+timber_frame	Notre-Dame de Paris, choir and nave roofs	bahut (dwarf wall carrying the roof) height	1.25	m	measured	Bahut	Les grands combles du chœur et de la nef de la cathédrale de Paris sont ainsi portés sur des bahuts de 1 m , 25 de hauteur
+timber_frame	great roofs generally	bahut thickness	0.40 to 0.60	m	measured	Bahut	Les bahuts des grands combles n'ont guère que 0, 40 ou 0, 60 centimètres d'épaisseur et portent sur les formerets des voûtes hautes
+curtain_rampart	échauguette	second machicolation slot width	0.25	m	measured	Échauguette	est pratiqué un second mâchicoulis C , comme une rainure de 0,25 c. de largeur environ
+masonry	mortar joint (lit), XIIIc	joint thickness range	0.01 to 0.03	m	measured	Lit	reprennent une épaisseur qui varie de 0,01 c. à 0,03 c. au XIII e siècle   [NB: Viollet's 'Lit' is the MORTAR BED / stone bed, NOT a bedstead]
+masonry	mortar joint, XIV-XVc	joint thickness maximum	0.01	m	measured	Lit	s'amincissent de nouveau pendant les XIV e et XV e siècles, mais en conservant toujours une épaisseur de 0,01 c. au maximum

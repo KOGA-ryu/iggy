@@ -1,0 +1,157 @@
+{
+  "height_encoding": {
+    "file": "stone_rough_v2_height.png",
+    "format": "16-bit linear grayscale PNG",
+    "maximum_m": 0.02006012201309204,
+    "minimum_m": -0.0009359827963635325
+  },
+  "map_contract": {
+    "base_color": "sRGB color; no baked AO or lighting",
+    "height": "linear normalized data; reconstruct metres from height_encoding",
+    "normal": "linear RGB; tangent-space OpenGL/Y+",
+    "orm": "linear RGB; R=ambient occlusion G=roughness B=metallic"
+  },
+  "material_book": {
+    "chapters": [
+      {
+        "number": 1,
+        "path": "proofs/stone_rough_v2_book/01_pattern_language.png",
+        "title": "Pattern Language"
+      },
+      {
+        "number": 2,
+        "path": "proofs/stone_rough_v2_book/02_mortar_and_bevel.png",
+        "title": "Mortar And Bevel"
+      },
+      {
+        "number": 3,
+        "path": "proofs/stone_rough_v2_book/03_surface_relief.png",
+        "title": "Surface Relief"
+      },
+      {
+        "number": 4,
+        "path": "proofs/stone_rough_v2_book/04_damage_grammar.png",
+        "title": "Damage Grammar"
+      },
+      {
+        "number": 5,
+        "path": "proofs/stone_rough_v2_book/05_color_script.png",
+        "title": "Color Script"
+      },
+      {
+        "number": 6,
+        "path": "proofs/stone_rough_v2_book/06_material_response.png",
+        "title": "Material Response"
+      },
+      {
+        "number": 7,
+        "path": "proofs/stone_rough_v2_book/07_scale_and_seams.png",
+        "title": "Scale And Seams"
+      },
+      {
+        "number": 8,
+        "path": "proofs/stone_rough_v2_book/08_final_read.png",
+        "title": "Final Read"
+      }
+    ],
+    "index": "proofs/stone_rough_v2_breakdown.png",
+    "narrative": "stone_rough_v2_material_book.md"
+  },
+  "meters_per_pixel": 0.0015625,
+  "outputs": {
+    "base_color": "stone_rough_v2_basecolor.png",
+    "book_text": "stone_rough_v2_material_book.md",
+    "breakdown": "proofs/stone_rough_v2_breakdown.png",
+    "height": "stone_rough_v2_height.png",
+    "manifest": "stone_rough_v2_manifest.json",
+    "normal": "stone_rough_v2_normal.png",
+    "orm": "stone_rough_v2_orm.png",
+    "pattern_variations": "proofs/stone_rough_v2_pattern_variations.png",
+    "tiling": "proofs/stone_rough_v2_tiling.png"
+  },
+  "parameters": {
+    "bevel_width_m": 0.007,
+    "chip_depth_m": 0.0045,
+    "crack_depth_m": 0.0024,
+    "face_relief_m": 0.0042,
+    "mortar_half_width_m": 0.0045,
+    "pit_depth_m": 0.0017,
+    "stone_cell_count": 31,
+    "stone_raise_range_m": [
+      0.01,
+      0.019
+    ]
+  },
+  "pattern": {
+    "name": "fieldstone_hand_authored_v1",
+    "role_counts": {
+      "anchor": 8,
+      "infill": 10,
+      "medium": 13
+    },
+    "schema": "iggy3d.pattern.site_layout.v1",
+    "site_count": 31,
+    "source": "/Users/kogaryu/iggy3d/assets/creative/materials/stone_rough_v2/patterns/fieldstone_hand_authored_v1.json",
+    "variation": 0
+  },
+  "reference_palette": {
+    "colors_srgb": [
+      [
+        82,
+        81,
+        75
+      ],
+      [
+        89,
+        87,
+        79
+      ],
+      [
+        96,
+        93,
+        84
+      ],
+      [
+        104,
+        101,
+        91
+      ],
+      [
+        113,
+        109,
+        98
+      ],
+      [
+        92,
+        90,
+        83
+      ]
+    ],
+    "lighting_extremes_rejected": true,
+    "schema": "iggy3d.stone_palette.v1",
+    "source": "built_in",
+    "weights": [
+      0.07,
+      0.2,
+      0.3,
+      0.22,
+      0.07,
+      0.14
+    ]
+  },
+  "reproduction": "Run Blender headless with this script and the recorded seed, resolution, tile size, pattern recipe, pattern variation, and optional Inkblotter style recipe.",
+  "resolution": 1024,
+  "schema": "iggy3d.material.stone_rough_v2.v1",
+  "seed": 240619,
+  "statistics": {
+    "ao_mean": 0.958070695400238,
+    "cell_area_coefficient_of_variation": 0.3070905559186851,
+    "cell_area_p90_p10_ratio": 2.23495673671199,
+    "chip_coverage": 0.002891692565754056,
+    "crack_coverage": 0.008019894361495972,
+    "height_mean_m": 0.012573713436722755,
+    "roughness_mean": 0.780883252620697,
+    "stone_coverage": 0.9012439250946045
+  },
+  "tile_size_m": 1.6
+}

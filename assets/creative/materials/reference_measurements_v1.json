@@ -1,0 +1,707 @@
+{
+  "schema": "iggy3d.reference_measurements.v1",
+  "version": 1,
+  "accessed_utc": "2026-07-29",
+  "purpose": "Measured construction evidence for authored masonry, timber, and door-hardware assets. A value in this file is evidence, not permission to blend unrelated periods or scale different members independently.",
+  "evidence_classes": {
+    "surveyed": "Direct dimensions published from a building or archaeological survey.",
+    "catalogued": "Direct dimensions published by the museum or collection holding the object.",
+    "laboratory_characterized": "Composition or physical properties measured from material samples using published laboratory methods.",
+    "project_measured": "Dimension read from the evaluated iggy3d asset, not from the historical source.",
+    "derived": "Calculated from published or project-measured dimensions; the calculation is stated.",
+    "technical_guidance": "A numeric working value published by an authoritative technical guide; it is not a measurement of the selected historic building.",
+    "qualitative": "Source-backed construction information without a numeric dimension.",
+    "unsupported": "A number currently present in an iggy3d recipe for which no measurement authority has been identified."
+  },
+  "sources": [
+    {
+      "id": "S01_early_gothic_andalusian_ashlar",
+      "title": "Diseno estructural en el primer gotico andaluz II: maestros y medidas",
+      "authority": "Universidad de Sevilla repository",
+      "url": "https://idus.us.es/server/api/core/bitstreams/221b3aff-c8d0-444a-8081-bb65fd96167e/content",
+      "scope": "Measurements of ashlar in seven thirteenth- and fourteenth-century parish churches in Cordoba."
+    },
+    {
+      "id": "S02_historic_england_repointing",
+      "title": "Repointing Brick and Stone Walls",
+      "authority": "Historic England",
+      "url": "https://historicengland.org.uk/images-books/publications/repointing-brick-and-stone-walls/heag144-repointing-brick-and-stone-walls/",
+      "scope": "Historic joint widths, profiles, and pointing practice."
+    },
+    {
+      "id": "S03_caen_stone_tooling",
+      "title": "The archaeology of the medieval Horselydown waterfront",
+      "authority": "Surrey Archaeological Collections via Archaeology Data Service",
+      "url": "https://archaeologydataservice.ac.uk/catalogue/adsdata/arch-379-1/dissemination/pdf/vol_90/surreyac090_181-210_wooldridge.pdf",
+      "scope": "Measured medieval tooling spacing on Caen-stone ashlar fragments."
+    },
+    {
+      "id": "S04_bgs_ooid_definition",
+      "title": "BGS Rock Classification Scheme: Ooid-limestone",
+      "authority": "British Geological Survey",
+      "url": "https://webapps.bgs.ac.uk/bgsrcs/rcs_details.cfm?code=LMOOL",
+      "scope": "Definition and maximum grain size of ooids."
+    },
+    {
+      "id": "S05_portland_limestone_petrology",
+      "title": "Rock fracture and transport properties thesis, Portland Limestone description",
+      "authority": "University College London",
+      "url": "https://discovery.ucl.ac.uk/id/eprint/1444651/1/U591960.pdf",
+      "scope": "Measured shell-fragment size and porosity in Portland limestone."
+    },
+    {
+      "id": "S06_wells_medieval_repairs",
+      "title": "A Survey of Medieval Repairs to the Fabric of the West Front, Wells Cathedral",
+      "authority": "Association for Studies in the Conservation of Historic Buildings",
+      "url": "https://www.aschb.org.uk/wp-content/uploads/2021/12/Vol-7.pdf",
+      "scope": "Measured medieval insert repairs and repaired breaks."
+    },
+    {
+      "id": "S07_elgin_arch_moulding",
+      "title": "Arch moulding, object ELG/am/26",
+      "authority": "Historic Environment Scotland",
+      "url": "https://www.trove.scot/object/10266?rsrc=historicenvironment.scot",
+      "scope": "Catalogue envelope of a 1266-1300 sandstone arch-moulding fragment."
+    },
+    {
+      "id": "S08_elgin_dogtooth_jamb",
+      "title": "Jamb with surviving dogtooth ornament, object ELG/j/19",
+      "authority": "Historic Environment Scotland",
+      "url": "https://www.trove.scot/object/10427?rsrc=historicenvironment.scot",
+      "scope": "Catalogue envelope of a fifteenth-century sandstone jamb fragment."
+    },
+    {
+      "id": "S09_pyx_vestibule_door",
+      "title": "A Carpenter's Study of the Chapter House Vestibule Door, Westminster Abbey",
+      "authority": "Regional Furniture Society",
+      "url": "https://www.medievalbuildings.co.uk/pdfs/RFSJ-2021-Massey-and-Reed-2021-Published.pdf",
+      "scope": "Measured board, ledge, tool, and whole-door dimensions for an eleventh-century oak door."
+    },
+    {
+      "id": "S10_tallinn_bremen_tower_door",
+      "title": "A Door in Use in Tallinn Appeared to Be Over 600 Years Old",
+      "authority": "Baltic Journal of Art History, University of Tartu",
+      "url": "https://ojs.utlib.ee/index.php/bjah/article/download/BJAH.2021.21.04/13095",
+      "scope": "Measured whole-door and board-thickness dimensions for an oak door dated AD 1400-1410."
+    },
+    {
+      "id": "S11_national_trust_floor_survey",
+      "title": "Observations on earlier floor construction, late-medieval open-hall conversion",
+      "authority": "National Trust Historic Buildings, Sites and Monuments Record",
+      "url": "https://heritagerecords.nationaltrust.org.uk/LibraryLinkWS/LLFiles/150740/original_150740.pdf",
+      "scope": "Measured boards, joists, centres, mortises, and chamfered members associated with a floor whose beam was felled 1465-1497."
+    },
+    {
+      "id": "S12_hampton_court_floorboards",
+      "title": "Hampton Court Palace Clore Learning Centre: Watching Brief and Building Recording Report",
+      "authority": "Oxford Archaeology",
+      "url": "https://eprints.oxfordarchaeology.com/1778/1/HCP44.pdfa.pdf",
+      "scope": "Measured earlier and later softwood floorboards."
+    },
+    {
+      "id": "S13_latton_priory_great_brick",
+      "title": "Latton Priory Farm Historic Landscape Investigations",
+      "authority": "Historic England",
+      "url": "https://historicengland.org.uk/research/results/reports/7468/LattonPrioryFarmNorthWealdBassettEssex_HistoricLandscapeInvestigations",
+      "scope": "Measured medieval Great Bricks from Waltham Abbey comparison material."
+    },
+    {
+      "id": "S14_ightfield_hall_brick",
+      "title": "The Historical Development of Ightfield Hall Farm Barn",
+      "authority": "Historic England",
+      "url": "https://historicengland.org.uk/research/results/reports/6728/THEHISTORICALDEVELOPMENTOFIGHTFIELDHALLFARMBARNIGHTFIELDNORTHSHROPSHIRE",
+      "scope": "Measured sixteenth-century and later hand-made bricks with inclusions and arris descriptions."
+    },
+    {
+      "id": "S15_met_door_55_61_170",
+      "title": "Door, object 55.61.170",
+      "authority": "The Metropolitan Museum of Art",
+      "url": "https://www.metmuseum.org/art/collection/search/468492",
+      "scope": "Catalogue dimensions and mass for the fourteenth-century door used as the colour reference."
+    },
+    {
+      "id": "S16_british_museum_medieval_hinge",
+      "title": "Iron strap hinge, object 1985,1101.449",
+      "authority": "British Museum",
+      "url": "https://www.britishmuseum.org/collection/object/H_1985-1101-449",
+      "scope": "Catalogue dimensions for a circa 1418-1434 iron strap hinge."
+    },
+    {
+      "id": "S17_met_strap_hinge_55_61_63",
+      "title": "Strap Hinge, object 55.61.63",
+      "authority": "The Metropolitan Museum of Art",
+      "url": "https://www.metmuseum.org/art/collection/search/475522",
+      "scope": "Catalogue dimensions for a fifteenth- to sixteenth-century European strap hinge."
+    },
+    {
+      "id": "S18_basque_ashlar_dataset",
+      "title": "Machine Learning for the Built Heritage Archaeological Study",
+      "authority": "University of the Basque Country open repository; ACM Journal on Computing and Cultural Heritage",
+      "url": "https://addi.ehu.es/bitstream/handle/10810/50895/3422993.pdf?sequence=1",
+      "scope": "Per-block measurements from historic limestone buildings, including the late-twelfth-century San Vicentejo church, with 4,316 ashlar observations."
+    },
+    {
+      "id": "S19_hes_repointing_ashlar",
+      "title": "INFORM Guide: Repointing Ashlar Masonry",
+      "authority": "Historic Environment Scotland",
+      "url": "https://www.historicenvironment.scot/publications/all/publication/?publicationid=5073eef0-ee70-4398-8f86-a5950102f1b2",
+      "scope": "Ashlar construction and broken-bond guidance: square true edges, equal-height courses with random lengths, and upper-course block centres covering perpendicular joints below."
+    },
+    {
+      "id": "S20_nsw_mortars_technical_guide",
+      "title": "Mortars: Materials, Mixes and Methods",
+      "authority": "New South Wales Department of Planning and Environment",
+      "url": "https://www.environment.nsw.gov.au/sites/default/files/heritage-maintenance-mortars-materials-mixes-methods-guide.pdf",
+      "scope": "Numeric conservation guidance identifies 3 mm as the narrow joint used for ashlar mortar sand grading."
+    },
+    {
+      "id": "S21_santa_marina_biocalcarenite",
+      "title": "Biocalcarenites as construction materials in Santa Marina de Aguas Santas Church at Cordoba, Spain",
+      "authority": "Materiales de Construccion, CSIC",
+      "url": "https://materconstrucc.revistas.csic.es/index.php/materconstrucc/article/download/123/162",
+      "scope": "Petrographic, mineralogical, porosity, fossil-content, quarry-provenance, and scaled macro/microscopy evidence for the stone used at Santa Marina de Aguas Santas."
+    },
+    {
+      "id": "S22_santa_marina_facade_photo",
+      "title": "Cordoba - Santa Marina de Aguas Santas",
+      "authority": "Wikimedia Commons quality image by Benjamin Smith",
+      "url": "https://commons.wikimedia.org/wiki/File:C%C3%B3rdoba_-_Santa_Marina_de_Aguas_Santas.jpg",
+      "scope": "High-resolution 2024 facade photograph used only to measure relative sunlit stone color families. The unpolarized photograph is not an absolute albedo or roughness measurement."
+    },
+    {
+      "id": "S23_unreal_physically_based_materials",
+      "title": "Physically Based Materials in Unreal Engine",
+      "authority": "Epic Games documentation",
+      "url": "https://dev.epicgames.com/documentation/unreal-engine/physically-based-materials-in-unreal-engine",
+      "scope": "Engine PBR contract: non-metal stone uses Metallic 0, dielectric Specular normally remains at its 0.5 default, Base Color excludes specular lighting, and surface reflection variation belongs in Roughness."
+    },
+    {
+      "id": "S24_sabucina_surface_metrology",
+      "title": "Measuring weathering and nanoparticle coating impact on surface roughness of natural stones",
+      "authority": "Studies in Conservation 64:5 (2019), Raneri et al.; University of Pisa open postprint",
+      "url": "https://arpi.unipi.it/retrieve/e0d6c92c-c7ba-fcf8-e053-d805fe0aa794/SIC906_R1_postprint.pdf",
+      "doi": "10.1080/00393630.2018.1507706",
+      "scope": "Scale-bearing 3 x 1.5 mm digital multi-focus microscopy and ISO 25178 areal topography measurements for fresh and artificially weathered yellowish coarse-grained Sabucina calcarenite. Used only as an explicitly labeled stone-body relief proxy."
+    },
+    {
+      "id": "S25_moulis_medieval_tool_traces",
+      "title": "Batir en Lorraine meridionale (XIe-XIIe siecles). Chantier et mise en oeuvre des materiaux",
+      "authority": "Universite de Lorraine doctoral thesis, Cedric Moulis",
+      "url": "https://docnum.univ-lorraine.fr/public/DDOC_T_2018_0184_MOULIS_vol1.pdf",
+      "scope": "Archaeological survey and experimental reconstruction of medieval stone finishing: straight-hammer edge length, fine-impact width, visible-impact density, overlap, direction, and face-organization evidence."
+    }
+  ],
+  "measurements": {
+    "stone": [
+      {
+        "id": "cordoba_early_gothic_ashlar",
+        "source": "S01_early_gothic_andalusian_ashlar",
+        "period": "13th-14th century",
+        "location": "Cordoba, Spain",
+        "evidence": "surveyed",
+        "length_m": {
+          "common": [1.0, 1.1],
+          "observed_range": [0.78, 1.13]
+        },
+        "face_height_m": {
+          "common": [0.4, 0.41],
+          "observed_range": [0.32, 0.43]
+        },
+        "depth_m": {
+          "common": [0.2, 0.21],
+          "observed_range": [0.17, 0.3]
+        },
+        "use_limit": "A coherent Cordoba early-Gothic ashlar family. Do not describe these dimensions as universal English or French cathedral dimensions."
+      },
+      {
+        "id": "santa_marina_naranjo_biocalcarenite_body",
+        "source": "S21_santa_marina_biocalcarenite",
+        "period": "13th-14th century church fabric; Tortonian source stone",
+        "location": "Santa Marina de Aguas Santas and the likely Naranjo quarry, Cordoba, Spain",
+        "evidence": "laboratory_characterized",
+        "lithology": "Yellowish clastic sandy biocalcarenite and fine sandy biomicrite with carbonated micritic cement.",
+        "likely_quarry": "Naranjo",
+        "porosity_fraction": 0.13,
+        "fossil_component_fraction": [0.3, 0.4],
+        "fossil_components": [
+          "foraminifera",
+          "algae",
+          "bryozoans",
+          "bivalves",
+          "echinoid bristles and plates"
+        ],
+        "naranjo_mineral_fraction_ranges": {
+          "calcite": [0.65, 0.85],
+          "quartz": [0.1, 0.25],
+          "feldspar": [0.03, 0.06],
+          "clay": [0.01, 0.03]
+        },
+        "nondegraded_naranjo_mineral_fractions": {
+          "calcite": 0.8,
+          "quartz": 0.15,
+          "feldspar": 0.03,
+          "clay": 0.02
+        },
+        "grain_size": "Medium, with abundant fragmented microfauna; the paper does not publish a sieve-derived numeric grain distribution.",
+        "color_cause": "Visible iron oxyhydroxides produce the more saturated yellow Naranjo color.",
+        "dominant_lithotypes": [
+          "clastic sandy yellowish biocalcarenite",
+          "sandy fine-grained biomicrite"
+        ],
+        "rare_lithotypes": [
+          "conglomeratic biocalcarenite with greater-than-2-mm non-carbonate clasts",
+          "biosparite"
+        ],
+        "surface_figure_scale_bars_m": {
+          "macrophotographs": 0.05,
+          "thin_sections": 0.001
+        },
+        "surface_relief_depth_status": "unknown; the scaled figures establish lateral identity and frequency but not relief depth",
+        "optical_roughness_status": "unknown; the paper does not publish a PBR roughness or gloss measurement",
+        "use_limit": "The intact core uses the dominant Santa Marina/Naranjo biocalcarenite body. Rare conglomeratic and biosparite faces require explicit variants and may not be scattered universally. Porosity and fossil percentages describe the rock body; they are not permission to paint the same fraction of the surface as black holes."
+      },
+      {
+        "id": "sabucina_calcarenite_surface_topography_proxy",
+        "source": "S24_sabucina_surface_metrology",
+        "period": "fresh quarry reference sample measured for a 2019 conservation study",
+        "location": "Sabucina, Sicily, Italy",
+        "evidence": "laboratory_characterized",
+        "lithology": "Yellowish coarse-grained calcarenite used as building stone.",
+        "sample_geometry_m": [0.04, 0.04, 0.04],
+        "scan_area_m": [0.003, 0.0015],
+        "scan_spot_count_per_sample": 3,
+        "magnification": 100,
+        "z_nominal_resolution_m": 0.0000005,
+        "z_stack_range_m": 0.002,
+        "z_stack_plane_count": 64,
+        "z_stack_step_m": 0.000025,
+        "roughness_cutoff_m": 0.0008,
+        "fresh_reference_unfiltered": {
+          "sq_m": 0.00013,
+          "ssk": -0.39,
+          "sku": 3.16,
+          "sp_m": 0.00055,
+          "sv_m": 0.00058,
+          "sz_m": 0.00113,
+          "sa_m": 0.0001,
+          "str": 0.51,
+          "fractal_dimension": 2.53
+        },
+        "fresh_reference_roughness_component": {
+          "sq_m": 0.00011,
+          "ssk": -0.41,
+          "sku": 3.82,
+          "sp_m": 0.00058,
+          "sv_m": 0.0005,
+          "sz_m": 0.00108,
+          "sa_m": 0.00008,
+          "str": 0.69,
+          "fractal_dimension": 2.49
+        },
+        "fresh_reference_waviness_component": {
+          "sq_m": 0.00005055,
+          "ssk": -0.24,
+          "sku": 2.81,
+          "sp_m": 0.00010853,
+          "sv_m": 0.00014397,
+          "sz_m": 0.0002525,
+          "sa_m": 0.00004042,
+          "str": 0.59,
+          "fractal_dimension": 2.08
+        },
+        "height_distribution_interpretation": "Negative skew represents a surface dominated by the upper body with sparse deeper valleys. The published 3D map shows angular and elongated grains rather than circular cellular noise.",
+        "use_limit": "This is a relief proxy from a comparable yellow coarse calcarenite, not the Santa Marina or Naranjo stone and not a medieval dressed-face scan. It may constrain stone-body relief scale and distribution only. It does not authorize tool-mark depth, block-plane deformation, arris rounding, mortar recession, damage, weathering, or PBR roughness values."
+      },
+      {
+        "id": "basque_historic_ashlar_population",
+        "source": "S18_basque_ashlar_dataset",
+        "period": "historic fabric including late 12th century",
+        "location": "Alava and Trevino, Spain",
+        "evidence": "surveyed",
+        "sample_count": 4316,
+        "face_height_m": {
+          "mean": 0.264,
+          "standard_deviation": 0.111
+        },
+        "face_length_m": {
+          "mean": 0.527,
+          "standard_deviation": 0.284
+        },
+        "site_mean_length_m": {
+          "Armentia_and_Trevino": 0.42,
+          "San_Vicentejo": 0.53
+        },
+        "observed_relation": "The paper notes larger mean ashlar length closer to the source quarry.",
+        "use_limit": "Population statistics are valuable variation evidence but are not a course recipe. Preserve building and phase identity rather than drawing independent Gaussian widths and heights."
+      },
+      {
+        "id": "high_quality_ashlar_joint",
+        "source": "S02_historic_england_repointing",
+        "evidence": "qualitative",
+        "joint_width": "A few millimetres; the source does not publish one universal numeric width.",
+        "profile": "Narrow and commonly flush for high-quality ashlar.",
+        "use_limit": "Select an exact width from a building-specific measured reference. Eleven- to fourteen-millimetre joints cannot be labelled fine ashlar joints."
+      },
+      {
+        "id": "ashlar_joint_3mm_conservation_guide",
+        "source": "S20_nsw_mortars_technical_guide",
+        "evidence": "technical_guidance",
+        "joint_width_m": 0.003,
+        "profile": "The 3 mm value is used for narrow ashlar-joint mortar grading.",
+        "use_limit": "This is a published numeric working value, not a measured joint from the selected Cordoba churches. Retain that limitation in the asset manifest."
+      },
+      {
+        "id": "medieval_caen_stone_tooling",
+        "source": "S03_caen_stone_tooling",
+        "evidence": "surveyed",
+        "tool_mark_spacing_m": [0.001, 0.004],
+        "direction": "Characteristically diagonal on the recorded medieval fragments; some visible faces carried closely set vertical claw marks.",
+        "use_limit": "Spacing is measured evidence for this excavated Caen-stone assemblage, not a universal stroke prescription."
+      },
+      {
+        "id": "medieval_fine_oblique_layage",
+        "source": "S25_moulis_medieval_tool_traces",
+        "period": "11th-12th century",
+        "location": "former diocese of Toul, southern Lorraine",
+        "evidence": "surveyed_and_experimental",
+        "tool": "straight stone hammer, or laie",
+        "straight_hammer_edge_length_range_m": [0.06, 0.094],
+        "fine_impact_width_range_m": [0.001, 0.002],
+        "inclined_impact_trail_max_m": 0.012,
+        "visible_impact_density_per_m2": {
+          "observed_range": [720, 2420],
+          "observed_mean": 1369,
+          "fresh_experiment": 4444
+        },
+        "fresh_experiment_overlap_fraction": 0.756,
+        "organization": "Finishing marks are often oblique; individual faces may be parallel, slightly fanned, chevroned, crossed, or disordered. The mason works inward from an arris to avoid spalling.",
+        "selected_family": "Fine oblique parallel layage with slight fan variation; crossed, chevroned, toothed, point, and unfinished coarse faces remain separate finish families.",
+        "depth_status": "No groove depth is published for the surveyed fine layage.",
+        "use_limit": "This is an 11th-12th-century southern-Lorraine comparative finish study, not a Cordoba face survey. It may constrain finite mark length, width, density, overlap logic, and working organization, but it does not authorize groove depth or identify one exact mason."
+      },
+      {
+        "id": "oolitic_limestone_grain",
+        "source": "S04_bgs_ooid_definition",
+        "evidence": "catalogued",
+        "ooid_diameter_m": {
+          "maximum": 0.002
+        },
+        "use_limit": "Ooids are material-body grains. They do not justify centimetre-scale cellular noise."
+      },
+      {
+        "id": "portland_limestone_shell_fragments",
+        "source": "S05_portland_limestone_petrology",
+        "evidence": "surveyed",
+        "typical_shell_fragment_m": 0.005,
+        "porosity_fraction": [0.18, 0.2],
+        "use_limit": "Portland limestone evidence only. Use when the authored stone family is explicitly oolitic limestone."
+      },
+      {
+        "id": "wells_medieval_insert_repairs",
+        "source": "S06_wells_medieval_repairs",
+        "period": "medieval",
+        "location": "Wells Cathedral west front",
+        "evidence": "surveyed",
+        "sample_count": 48,
+        "insert_count": 39,
+        "joined_break_count": 9,
+        "smallest_socket_face_m": [0.025, 0.012],
+        "largest_insert_face_m": [0.382, 0.051],
+        "most_repaired_breaks_max_length_m": 0.063,
+        "use_limit": "These are repair and break dimensions, not permission to distribute damage across every block."
+      },
+      {
+        "id": "elgin_arch_moulding_fragment",
+        "source": "S07_elgin_arch_moulding",
+        "period": "1266-1300",
+        "location": "Elgin Cathedral",
+        "evidence": "catalogued",
+        "fragment_envelope_m": [0.229, 0.398, 0.274],
+        "use_limit": "The catalogue envelope does not reveal the moulding profile, projection, or repeat. A measured profile drawing or direct 3D survey is still required."
+      },
+      {
+        "id": "elgin_dogtooth_jamb_fragment",
+        "source": "S08_elgin_dogtooth_jamb",
+        "period": "1401-1500",
+        "location": "Elgin Cathedral",
+        "evidence": "catalogued",
+        "fragment_envelope_m": [0.285, 0.26, 0.13],
+        "use_limit": "The catalogue envelope does not establish dogtooth motif width, height, depth, or centre spacing."
+      }
+    ],
+    "brick": [
+      {
+        "id": "waltham_abbey_medieval_great_brick",
+        "source": "S13_latton_priory_great_brick",
+        "period": "late 12th century comparison assemblage",
+        "evidence": "surveyed",
+        "length_m": [0.29, 0.38],
+        "width_m": [0.145, 0.195],
+        "thickness_m": [0.032, 0.09],
+        "early_thin_type_thickness_m": [0.032, 0.05],
+        "use_limit": "A Great Brick family, not a generic modern brick."
+      },
+      {
+        "id": "ightfield_early_foundation_brick",
+        "source": "S14_ightfield_hall_brick",
+        "period": "16th century",
+        "evidence": "surveyed",
+        "length_m": [0.235, 0.24],
+        "width_m": [0.1, 0.105],
+        "thickness_m": 0.055,
+        "observed_form": "Irregular shape, slightly rounded arrises, pebble and angular flint inclusions."
+      },
+      {
+        "id": "ightfield_infill_brick",
+        "source": "S14_ightfield_hall_brick",
+        "evidence": "surveyed",
+        "length_m": [0.23, 0.235],
+        "width_m": [0.11, 0.115],
+        "thickness_m": [0.065, 0.07],
+        "observed_form": "Irregular arrises, rough faces, large pebble inclusions, shallow horizontal drying creases."
+      }
+    ],
+    "wood": [
+      {
+        "id": "westminster_pyx_vestibule_door",
+        "source": "S09_pyx_vestibule_door",
+        "period": "1050-1066, reused in the 13th century",
+        "location": "Westminster Abbey",
+        "evidence": "surveyed",
+        "current_door_width_m": 1.27,
+        "current_door_height_m": 1.98,
+        "reconstructed_original_width_m": 1.35,
+        "reconstructed_original_height_m": 2.49,
+        "board_count": 5,
+        "board_width_m": [0.225, 0.39],
+        "board_thickness_m": 0.04,
+        "ledge_width_m": {
+          "at_edges": 0.14,
+          "at_centre": 0.09
+        },
+        "housing_chisel_width_m": 0.04,
+        "joinery": "Rebated boards; housed oak ledges let in flush; original centre ledge blind-pegged.",
+        "surface_evidence": "Cross-grain finishing, surviving saw marks, router marks in the ledge housing, and coarse-stone abrasion."
+      },
+      {
+        "id": "tallinn_bremen_tower_door",
+        "source": "S10_tallinn_bremen_tower_door",
+        "period": "AD 1400-1410",
+        "location": "Bremen Tower, Tallinn",
+        "evidence": "surveyed",
+        "door_height_m": 1.6,
+        "door_width_m": 0.807,
+        "board_count": 3,
+        "board_thickness_m": [0.062, 0.065],
+        "joinery": "Three vertical oak planks assembled closely to one another and to the opening."
+      },
+      {
+        "id": "late_medieval_open_hall_floor",
+        "source": "S11_national_trust_floor_survey",
+        "period": "floor associated with a beam felled 1465-1497",
+        "evidence": "surveyed",
+        "board_width_m": {
+          "common_recorded": [0.229, 0.254],
+          "maximum_recorded": 0.381
+        },
+        "board_thickness_m": 0.025,
+        "joist_section_m": [0.15, 0.12],
+        "joist_centres_m": 0.47,
+        "alternate_joist_section_m": [0.171, 0.127],
+        "alternate_joist_centres_m": 0.445,
+        "mortise_m": [0.15, 0.035, 0.07],
+        "observed_form": "Lower joist edges chamfered; some chamfers terminate in plain notched stops; some boards use wooden tongues in opposing grooves."
+      },
+      {
+        "id": "hampton_court_earlier_floorboards",
+        "source": "S12_hampton_court_floorboards",
+        "evidence": "surveyed",
+        "earlier_board_width_m": 0.2,
+        "earlier_board_thickness_m": 0.02,
+        "later_board_width_m": 0.14,
+        "observed_form": "Earlier boards were more worn; reused boards retained doubled nail holes."
+      },
+      {
+        "id": "met_reference_door",
+        "source": "S15_met_door_55_61_170",
+        "period": "14th century",
+        "evidence": "catalogued",
+        "height_m": 1.74,
+        "width_m": 1.092,
+        "overall_depth_m": 0.165,
+        "mass_kg": 79.4,
+        "use_limit": "The catalogue depth includes the assembled wood and iron object. It is not evidence that every plank is 165 mm thick."
+      }
+    ],
+    "iron": [
+      {
+        "id": "faccombe_netherton_strap_hinge",
+        "source": "S16_british_museum_medieval_hinge",
+        "period": "circa 1418-1434",
+        "evidence": "catalogued",
+        "length_m": 0.172,
+        "width_m": 0.035,
+        "mass_kg": 0.0904
+      },
+      {
+        "id": "met_european_strap_hinge",
+        "source": "S17_met_strap_hinge_55_61_63",
+        "period": "15th-16th century",
+        "evidence": "catalogued",
+        "length_m": 0.349,
+        "width_m": 0.038
+      }
+    ]
+  },
+  "current_asset_audit": {
+    "cathedral_stone_v1": {
+      "recipe": "cathedral_stone_v1/patterns/cathedral_ashlar_courses_v1.json",
+      "evidence": "project_measured",
+      "tile_size_m": 4.0,
+      "source_design_count": 40,
+      "proof_physical_block_count": 69,
+      "course_face_height_m": [0.38, 0.41],
+      "block_face_length_m": [0.8, 1.12],
+      "block_depth_m": [0.17, 0.3],
+      "bed_joint_m": 0.003,
+      "perpend_joint_m": 0.003,
+      "mortar_recess_m": 0.0,
+      "construction_representation": "individual closed six-face stone volumes and separate mortar bodies",
+      "findings": [
+        "All selected face lengths, face heights, and depths remain inside S01's surveyed Cordoba envelope.",
+        "The exact course sequence is an authored translation rather than a claimed stone-for-stone survey.",
+        "The 3 mm joint is a published numeric working value from S20; it is technical guidance rather than a building-specific Cordoba survey.",
+        "The source establishes square true arrises and 1-4 mm tool spacing but not arris radius or groove depth, so neither is authored.",
+        "The proof covers one facing wythe and does not infer wall core, corner bond, arches, openings, trim, or damage."
+      ],
+      "superseded_prototype_values": {
+        "course_height_m": [0.36, 0.64],
+        "block_length_m": [0.48, 1.24],
+        "bed_joint_m": 0.014,
+        "perpend_joint_m": 0.011,
+        "mortar_recess_m": 0.008
+      },
+      "status": "measured intact facing-wythe construction milestone; final surface and later construction layers remain open"
+    },
+    "cathedral_stone_trim_fracture_v1": {
+      "recipe": "cathedral_stone_trim_fracture_v1/patterns/cathedral_trim_fracture_atlas_v1.json",
+      "evidence": "project_measured",
+      "trim_band_height_m": [0.26, 0.28],
+      "dogtooth_centre_spacing_m": 0.0833333333,
+      "leaf_centre_spacing_m": 0.132,
+      "fracture_feature_size_m": [0.18, 0.85],
+      "fracture_edge_lift_m": [0.0011, 0.0027],
+      "fracture_cavity_depth_m": [0.0026, 0.0042],
+      "findings": [
+        "No measured profile drawing supports the four current moulding cross-sections.",
+        "The motif centre spacings are computed from authored repeat counts, not measured from a surviving ornament.",
+        "The fracture sizes, edge lifts, and cavity depths currently have no identified survey authority.",
+        "Catalogue envelopes S07 and S08 prove plausible fragment scale but cannot validate profile or motif dimensions."
+      ],
+      "status": "research prototype; ornament and fracture dimensions remain unsupported"
+    },
+    "brick_masonry_v1": {
+      "recipe": "brick_masonry_v1/patterns/kiln_fired_running_bond_v1.json",
+      "evidence": "project_measured",
+      "tile_size_m": 1.6,
+      "course_count": 20,
+      "column_count": 7,
+      "brick_pitch_m": 0.2285714286,
+      "course_pitch_m": [0.0742144638, 0.0861845387],
+      "rendered_face_length_m": [0.2089142857, 0.2208],
+      "rendered_face_height_m": [0.0584809975, 0.0742910723],
+      "bed_joint_m": 0.0115,
+      "perpend_joint_m": 0.01,
+      "mortar_recess_m": 0.0034,
+      "corner_round_m": [0.0015, 0.0045],
+      "face_crown_m": [0.0006, 0.0029],
+      "findings": [
+        "The face scale overlaps some later hand-made brick populations but does not match either surveyed family in this ledger.",
+        "If S14 Ightfield infill brick is selected, seven 230-235 mm bricks plus 10 mm perpends require a row pitch near 1.68-1.715 m, not the current 1.6 m.",
+        "The recipe has no brick depth, header face, frog state, or geometry placement contract.",
+        "The 1.5-4.5 mm corner rounds and 0.6-2.9 mm crowns are authored values without an identified measured authority.",
+        "The running bond is a valid explicit choice only after it is tied to a named wall or design brief."
+      ],
+      "status": "research prototype; face-only scale is known but the brick volume and source family are unresolved"
+    },
+    "structural_oak_door_v1": {
+      "blend": "structural_oak_door_v1/output/structural_oak_door_v1.blend",
+      "object": "SINC_DemoDoorAssembly",
+      "evidence": "project_measured",
+      "evaluated_object_dimensions_m": [2.168492, 0.410999, 4.8],
+      "connected_component_count": 61,
+      "primary_board_count": 3,
+      "primary_board_oriented_dimensions_m": [
+        [4.8, 0.739415, 0.128749],
+        [4.76, 0.715435, 0.127676],
+        [4.763999, 0.680092, 0.13102]
+      ],
+      "derived_scale_comparisons": {
+        "whole_assembly_to_met_reference": {
+          "width_ratio": 1.9858,
+          "overall_depth_ratio": 2.4909,
+          "height_ratio": 2.7586
+        },
+        "whole_assembly_to_tallinn_reference": {
+          "width_ratio": 2.6871,
+          "height_ratio": 3.0
+        },
+        "project_board_thickness_to_tallinn_board_thickness": [1.9642, 2.1132],
+        "project_board_length_to_reconstructed_pyx_height": [1.9116, 1.9277],
+        "project_board_thickness_to_pyx_board_thickness": [3.1919, 3.2755]
+      },
+      "major_timber_oriented_dimensions_m": [
+        [2.399611, 0.229822, 0.101323],
+        [2.39953, 0.228959, 0.101123],
+        [2.005624, 0.266367, 0.103554],
+        [2.003605, 0.239862, 0.11772],
+        [2.001228, 0.212519, 0.101704]
+      ],
+      "findings": [
+        "The project door is not a uniform enlargement of the Met, Westminster, or Tallinn door.",
+        "The three principal project boards are 680-739 mm wide, 128-131 mm thick, and 4.76-4.80 m long.",
+        "Its dimensions are valid project facts, but each giant-scale adaptation ratio still needs an explicit design authority.",
+        "The Met object is a valid colour and assembly reference; its 165 mm overall catalogue depth is not a valid plank-thickness measurement."
+      ],
+      "status": "project geometry measured; historical-to-giant adaptation remains undocumented"
+    }
+  },
+  "unresolved_measurements": [
+    {
+      "id": "cathedral_specific_ashlar",
+      "required": "The Córdoba family now bounds the intact facing wythe. Obtain a stone-for-stone elevation and building-specific joint survey before claiming reconstruction of one named church rather than a bounded family translation."
+    },
+    {
+      "id": "moulding_profiles",
+      "required": "Obtain scaled cross-sections or a licensed 3D survey for every roll, cavetto, cyma, fillet, dogtooth, and leaf band."
+    },
+    {
+      "id": "arris_and_chip_geometry",
+      "required": "Measure intact arris radius, tooling depth, isolated chip envelopes, and fracture planes from scaled close-ups or scan data."
+    },
+    {
+      "id": "mortar_specificity",
+      "required": "Record exact joint width and profile per chosen wall phase; do not use one universal mortar recess."
+    },
+    {
+      "id": "ashlar_corner_and_wall_core",
+      "required": "Measure one named corner bond, quoin sequence, total wall thickness, backing wythe, fill, and through-stone placement before generating returns or a structural wall core."
+    },
+    {
+      "id": "ashlar_openings_and_arches",
+      "required": "Measure jamb bond, opening span, intrados and extrados radii, voussoir wedges, ring depth, springing, skewbacks, and through-depth joints before restoring the former generic arch fixture."
+    },
+    {
+      "id": "giant_scale_rule",
+      "required": "Define one approved player-to-giant scale transform and state which members scale structurally rather than uniformly."
+    },
+    {
+      "id": "door_member_joinery",
+      "required": "Document plank edge joints, ledge and brace housings, peg diameters, hinge thickness, pintles, nail heads, and clearances for the chosen door family."
+    },
+    {
+      "id": "bg3_exact_mesh_dimensions",
+      "required": "Portfolio renders establish visual quality, not dimensions. Exact BG3 asset dimensions remain unverified unless measured through Larian's officially supplied Toolkit assets under its terms."
+    }
+  ]
+}

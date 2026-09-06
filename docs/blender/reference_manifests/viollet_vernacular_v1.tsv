@@ -1,0 +1,43 @@
+family	subject	element	value	unit	evidence_class	source_article	french_quote
+workshop_mill	monastic grange, contracted 'pourpris' (court)	court length	40 toises (77.95 m)	m	author-rule	Ferme (Constructions rurales)	La cour ou pourpris de la grange devait avoir quarante toises de long et trente de large
+workshop_mill	monastic grange court	court width	30 toises (58.46 m)	m	author-rule	Ferme (Constructions rurales)	et trente de large
+workshop_mill	monastic grange court	enclosure wall height, excluding the coping	18 pieds (5.85 m)	m	author-rule	Ferme (Constructions rurales)	le mur de clôture dix-huit pieds de haut, non compris le chaperon
+workshop_mill	the barn proper	barn length, minimum	20 toises (38.98 m)	m	author-rule	Ferme (Constructions rurales)	Elle devait avoir vingt toises au moins de longueur et neuf toises ou environ de largeur
+workshop_mill	the barn proper	barn width	9 toises (17.54 m)	m	author-rule	Ferme (Constructions rurales)	et neuf toises ou environ de largeur
+workshop_mill	the barn proper	eaves (gouttière) height	12 pieds (3.90 m)	m	author-rule	Ferme (Constructions rurales)	avec une gouttière à la hauteur de douze pieds
+workshop_mill	grange lean-to dwelling	appentis length beside the gate	10 to 12 toises (19.49-23.39 m)	m	author-rule	Ferme (Constructions rurales)	Près de la porte un appentis de dix ou douze toises était destiné à l'habitation
+defensive_misc	well, general range	well internal diameter, smallest	3 pieds (0.97 m)	m	author-rule	Puits	Il est des puits qui n'ont que trois pieds de diamètre dans œuvre, d'autres qui ont jusqu'à deux et trois toises
+defensive_misc	well, general range	well internal diameter, largest	2 to 3 toises (3.90-5.85 m)	m	author-rule	Puits	d'autres qui ont jusqu'à deux et trois toises
+defensive_misc	sandstone-cut well	internal diameter	2.57	m	measured	Puits	Son diamètre intérieur est de 2 m ,57
+defensive_misc	sandstone-cut well	present depth	30.20	m	measured	Puits	La profondeur actuelle est de 30 m ,20
+defensive_misc	sandstone-cut well	water column height at times	6.30	m	measured	Puits	La nappe d'eau s'élève parfois jusqu'à 6 m ,30 de hauteur
+defensive_misc	XIVc well margelle	kerb (bahut) height	1.00	m	measured	Puits	Le bahut de grès, d'un mètre de hauteur et de 0 m ,22 d'épaisseur, supporte trois piles monolithes
+defensive_misc	XIVc well margelle	kerb thickness	0.22	m	measured	Puits	et de 0 m ,22 d'épaisseur
+defensive_misc	second well	depth	21.40	m	measured	Puits	La profondeur de ce puits est de 21 m ,40, et la nappe d'eau de 3 m ,50
+defensive_misc	second well	water column	3.50	m	measured	Puits	et la nappe d'eau de 3 m ,50
+defensive_misc	Château-Landon abbey well	diameter of a well SERVING SEVERAL STOREYS	1.05	m	measured	Puits	un puits de 1 m , 05 de diamètre, qui était disposé de manière à desservir plusieurs étages
+defensive_misc	well windlass	squared winding beam section	0.25	m	measured	Puits	l'arbre du treuil roulant dans le milieu d'une pièce de bois bien équarrie et de 25 centimètres de côté
+monastic	Hôtel-Dieu great ward	ward width in-works	18.60	m	measured	Hôtel-Dieu	ce magnifique vaisseau, qui n'a pas moins de 18 m ,60 de largeur dans œuvre sur 88 m ,00 de long depuis le porche jusqu'au sanctuaire
+monastic	Hôtel-Dieu great ward	ward length, porch to sanctuary	88.00	m	measured	Hôtel-Dieu	sur 88 m ,00 de long depuis le porche jusqu'au sanctuaire
+timber_frame	Hôtel-Dieu roof	oak tie-beam length, ONE PIECE	21.40	m	measured	Hôtel-Dieu	les entraits, d'un seul morceau, ont 21 m ,40 ; les arbalétriers et chevrons portant ferme, 19 m ,00
+timber_frame	Hôtel-Dieu roof	principal rafter length	19.00	m	measured	Hôtel-Dieu	les arbalétriers et chevrons portant ferme, 19 m ,00
+timber_frame	Hôtel-Dieu roof	ventilator opening in the panelled barrel	0.10	m	measured	Hôtel-Dieu	une coupe d'une travée de charpente avec le lambrissage et les ventilateurs E , de 0 m ,10 d'ouverture
+monastic	Tonnerre hospital	partition (cell) spacing	2 toises (3.95 m)	m	measured	Hôtel-Dieu	À Tonnerre, l'intervalle entre chaque cloison est de 2 toises (3 m ,95)
+monastic	hospital ward, worked example	ward width	10	m	author-rule	Hôtel-Dieu	la salle ayant dix mètres de large, il restait six mètres pour la circulation du côté de l'entrée, en dehors des cellules
+monastic	hospital ward, worked example	circulation width left outside the cells	6	m	author-rule	Hôtel-Dieu	il restait six mètres pour la circulation
+monastic	hospital great gallery (contract)	gallery length	20 toises (38.98 m)	m	measured	Hôtel-Dieu	la fasson de la grande gallery dudit hospital, contenant 20 toises de long et 2 de large
+monastic	hospital great gallery (contract)	gallery width	2 toises (3.90 m)	m	measured	Hôtel-Dieu	et 2 de large
+monastic	early stone ward (chronicle)	ward length	22.5 toises (43.85 m)	m	measured	Hôtel-Dieu	elle avait vingt-deux toises et demie de long et six toises de largeur
+monastic	early stone ward (chronicle)	ward width	6 toises (11.69 m)	m	measured	Hôtel-Dieu	et six toises de largeur
+monastic	Saint-Germain-des-Prés refectory (c.1240)	length	40	m	measured	Réfectoire	ce réfectoire avait cent quinze pieds de long sur trente-deux de largeur (40 mètres sur 10)
+monastic	Saint-Germain-des-Prés refectory	width	10	m	measured	Réfectoire	(40 mètres sur 10)
+monastic	Saint-Germain-des-Prés refectory	vault key height above the floor, NO central column line	16	m	measured	Réfectoire	Il n'avait pas d'épine de colonnes au milieu, et la clef des voûtes s'élevait à près de 16 mètres au-dessus du sol
+monastic	Poissy abbey refectory	length in-works	47	m	measured	Réfectoire	il avait dans œuvre 47 mètres de longueur sur 12 de largeur, et les clefs de voûtes étaient posées à 20 mètres au-dessus du sol
+monastic	Poissy abbey refectory	width in-works	12	m	measured	Réfectoire	sur 12 de largeur
+monastic	Poissy abbey refectory	vault key height above the floor	20	m	measured	Réfectoire	à 20 mètres au-dessus du sol
+town_house	shopfront (boutique)	ground-storey height of the period	3 to 4	m	author-rule	Boutique	limité par la hauteur des rez-de-chaussée, qui ne dépassait guère alors trois ou quatre mètres
+town_house	Saint-Antonin shopfront (XVc)	shop opening width	7	m	measured	Boutique	son ouverture n'a pas moins de sept mètres ; sa construction remonte au XV e siècle
+town_house	market stall counter	display surface of a let-down shutter	4 to 5	m2	measured	Boutique	Sur ces petits volets abattus, ne présentant qu'une surface de quatre ou cinq mètres, des fortunes solides se faisaient
+workshop_mill	Paris cloth hall (1417, 20 bays)	hall width	6 toises (11.69 m)	m	measured	Halle	la halle aux draps en gros de Paris, qui, dès 1417, consistait en vingt travées, avait six toises de large, et était couverte d'une voûte de pierre de taille
+defensive_misc	latrine shaft	roof set above the upper window head; NO FLOORS through the shaft	1.00	m	measured	Latrines	du sol D (rez-de-chaussée) au comble, posé à 1 m ,00 environ en contre-haut de la fenêtre supérieure E , il n'y avait pas de planchers
+church_chapel	belfry frame (beffroi)	sway at the top when the great bell swings full	0.05	m	measured	Beffroi	l'oscillation de ce beffroi à son sommet est de cinq centimètres environ, à peine sensible au niveau B des galeries

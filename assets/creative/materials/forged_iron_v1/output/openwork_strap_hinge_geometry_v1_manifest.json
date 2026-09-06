@@ -1,0 +1,481 @@
+{
+  "asset_id": "GH-018-Openwork-Strap-Hinge-v1",
+  "plan": {
+    "build_authorized": true,
+    "catalogued_complete_envelope_m": {
+      "length": 4.06,
+      "width": 0.41
+    },
+    "component_spans_m": {
+      "fixed_leaf": 0.9,
+      "moving_leaf": 3.16
+    },
+    "components": {
+      "fixed_plate": {
+        "apertures": 2,
+        "bounds": {
+          "max_x": -0.048,
+          "max_y": 0.205,
+          "min_x": -0.9,
+          "min_y": -0.205
+        }
+      },
+      "knuckles": {
+        "count": 5,
+        "fixed_owned": 2,
+        "leaf_connection_overlap_m": 0.007161277945118907,
+        "moving_owned": 3
+      },
+      "moving_plate": {
+        "apertures": 45,
+        "bounds": {
+          "max_x": 3.16,
+          "max_y": 0.205,
+          "min_x": 0.048,
+          "min_y": -0.205
+        }
+      },
+      "pintle": {
+        "length_m": 0.41,
+        "owner_id": 3,
+        "radial_clearance_m": 0.004,
+        "radius_m": 0.026
+      }
+    },
+    "pattern": {
+      "cell_count": 5,
+      "cell_pitch_m": 0.37,
+      "field_end_m": 2.465,
+      "field_start_m": 0.615,
+      "junction_count": 4,
+      "minimum_aperture_gap_m": 0.03235277222728931,
+      "shape_counts": {
+        "S1_central_lancet_aperture": 5,
+        "S2_flank_leaf_aperture": 10,
+        "S3_junction_petal_aperture": 16,
+        "S4_rail_lune_aperture": 8,
+        "fastener_hole": 5,
+        "terminal_bore": 1
+      }
+    },
+    "profile_sha256": "5c352970e7e8ececacd687d74b056b67a62c4ce6e69a1b0f9dda4d7e024c764b",
+    "proof_media_authored": false
+  },
+  "reference_object": "Met 55.61.58",
+  "saved_file_validation": {
+    "blender_version": "5.1.1",
+    "camera_or_light_objects": [],
+    "datum_objects": [
+      "SOCKET_GH018_PintleAxis",
+      "SOCKET_GH018_Tail"
+    ],
+    "expected_genus": {
+      "FixedKnuckle_02": 0,
+      "FixedKnuckle_04": 0,
+      "MovingKnuckle_01": 0,
+      "MovingKnuckle_03": 0,
+      "MovingKnuckle_05": 0,
+      "SM_GH018_FixedLeaf": 2,
+      "SM_GH018_MovingLeaf_Openwork": 45,
+      "SM_GH018_Pintle": 0
+    },
+    "images_in_file": [
+      "Render Result",
+      "Viewer Node"
+    ],
+    "material_nodes": [
+      "ShaderNodeBsdfPrincipled",
+      "ShaderNodeOutputMaterial"
+    ],
+    "mesh_reports": {
+      "FixedKnuckle_02": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.113161,
+          0.116,
+          0.0756
+        ],
+        "edges": 580,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 290,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0005261484404865462,
+        "vertices": 292
+      },
+      "FixedKnuckle_04": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.113161,
+          0.116,
+          0.0756
+        ],
+        "edges": 580,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 290,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0005261484404865468,
+        "vertices": 292
+      },
+      "MovingKnuckle_01": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.113161,
+          0.116,
+          0.0756
+        ],
+        "edges": 580,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 290,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0005261484404865469,
+        "vertices": 292
+      },
+      "MovingKnuckle_03": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.113161,
+          0.116,
+          0.0756
+        ],
+        "edges": 580,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 290,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0005261484404865466,
+        "vertices": 292
+      },
+      "MovingKnuckle_05": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.113161,
+          0.116,
+          0.0756
+        ],
+        "edges": 580,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 290,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0005261484404865466,
+        "vertices": 292
+      },
+      "SM_GH018_FixedLeaf": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.852,
+          0.05,
+          0.41
+        ],
+        "edges": 610,
+        "euler_characteristic": -2,
+        "genus_total": 2,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 340,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 64,
+          "sinc_front_face": 202,
+          "sinc_rear_face": 70
+        },
+        "signed_volume_m3": 0.005682142251849679,
+        "vertices": 268
+      },
+      "SM_GH018_MovingLeaf_Openwork": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          3.112,
+          0.05245,
+          0.41
+        ],
+        "edges": 24519,
+        "euler_characteristic": -88,
+        "genus_total": 45,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 13652,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 2688,
+          "sinc_front_face": 8170,
+          "sinc_rear_face": 2785
+        },
+        "signed_volume_m3": 0.0275140289879804,
+        "vertices": 10779
+      },
+      "SM_GH018_Pintle": {
+        "attributes": [
+          ".corner_edge",
+          ".corner_vert",
+          ".edge_verts",
+          ".select_edge",
+          ".select_poly",
+          ".select_vert",
+          "position",
+          "sharp_face",
+          "sinc_aperture_wall",
+          "sinc_bevel_land",
+          "sinc_cell_index",
+          "sinc_front_face",
+          "sinc_hinge_zone",
+          "sinc_interface_id",
+          "sinc_rear_face",
+          "sinc_shape_id",
+          "sinc_web_station"
+        ],
+        "boundary_edges": 0,
+        "components": 1,
+        "dimensions_m": [
+          0.052,
+          0.052,
+          0.41
+        ],
+        "edges": 216,
+        "euler_characteristic": 2,
+        "genus_total": 0,
+        "materials": [
+          "M_GH018_NeutralClay"
+        ],
+        "modifiers": [],
+        "non_manifold_edges": 0,
+        "polygons": 74,
+        "semantic_face_counts": {
+          "sinc_aperture_wall": 0,
+          "sinc_front_face": 0,
+          "sinc_rear_face": 0
+        },
+        "signed_volume_m3": 0.0008696190608565634,
+        "vertices": 144
+      }
+    },
+    "proof_media_authored": false,
+    "render_authorized": true,
+    "reopen_validated": true,
+    "runtime_objects": [
+      "FixedKnuckle_02",
+      "FixedKnuckle_04",
+      "MovingKnuckle_01",
+      "MovingKnuckle_03",
+      "MovingKnuckle_05",
+      "SM_GH018_FixedLeaf",
+      "SM_GH018_MovingLeaf_Openwork",
+      "SM_GH018_Pintle"
+    ],
+    "world_bounds_m": {
+      "extent": [
+        4.06,
+        0.116,
+        0.41
+      ],
+      "maximum": [
+        3.16,
+        0.058,
+        0.205
+      ],
+      "minimum": [
+        -0.9,
+        -0.058,
+        -0.205
+      ]
+    }
+  },
+  "schema": "iggy-openwork-strap-hinge-geometry-manifest/1.0",
+  "source_hashes": {
+    "blend_sha256": "87fbb751ca5a9290b25d0fff0e9bb1569ff21875e71d3e79e4ae77aac235ac69",
+    "builder_sha256": "084ea3b04e901a6139c19b52699c931d9620baf5d74a28be47fdfc859316ff6b",
+    "profile_sha256": "5c352970e7e8ececacd687d74b056b67a62c4ce6e69a1b0f9dda4d7e024c764b"
+  }
+}

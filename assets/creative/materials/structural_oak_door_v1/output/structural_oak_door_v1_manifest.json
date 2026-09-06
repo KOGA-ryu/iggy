@@ -1,0 +1,300 @@
+{
+  "schema": "iggy-structural-oak-build/2.0",
+  "status": "REFERENCE_ATLAS_BUILT_AND_HEADLESSLY_VALIDATED",
+  "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/profiles/structural_oak_door_v1.json",
+  "source_fixture": "/Users/kogaryu/Documents/Codex/2026-07-25/sinc/outputs/sinc-blender-node-library-v1/sinc_blender_node_library_v1.blend",
+  "atlas_build": {
+    "schema": "iggy-structural-oak-atlas-build/2.0",
+    "status": "REFERENCE_FIELDS_COMPILED",
+    "profile": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/profiles/structural_oak_door_v1.json",
+    "reference_fields": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/patterns/structural_oak_reference_fields_v1.json",
+    "palette_samples": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/references/met_468492_reverse_palette_samples.json",
+    "reference": {
+      "authority": "The Metropolitan Museum of Art",
+      "object_number": "55.61.170",
+      "object_url": "https://www.metmuseum.org/art/collection/search/468492",
+      "reverse_image_url": "https://collectionapi.metmuseum.org/api/collection/v1/iiif/468492/1642536/main-image",
+      "source_image_size": [
+        751,
+        1200
+      ],
+      "sample_count": 20,
+      "local_reverse_path": "/Users/kogaryu/Documents/Codex/2026-07-25/sinc/outputs/reference-images/giant-house-door-hero-plank-rp2/met_468492_reverse.jpg",
+      "local_reverse_sha256": "86a31a09d68dc2850659d0816eaa4389bc4d2463b66c2d88a7bae36af0e1c70b",
+      "palette_sample_sha256": "8b5a7342741f979e54f2ca2c730af3fe673d57ec94d20032c291c33b2ad78078",
+      "reference_fields_sha256": "00b9882f34baf9c216081d9b7be987b447964dcc7e283074f11bbb84f8f684b8"
+    },
+    "tile_resolution": 512,
+    "columns": 4,
+    "rows": 3,
+    "constraints": {
+      "ai_generated_imagery": false,
+      "floor_pattern_source": false,
+      "periodic_grain_functions": false,
+      "random_noise": false,
+      "surface_variation_maps": false,
+      "relief_maps": false,
+      "damage_maps": false
+    },
+    "variants": [
+      {
+        "id": "reverse_left_charcoal",
+        "source_region": "reverse left upper and centre planks",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.26226806640625,
+        "linear_luminance_min": 0.053259603679180145,
+        "linear_luminance_max": 0.31651294231414795
+      },
+      {
+        "id": "reverse_left_pale",
+        "source_region": "reverse left lower plank",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2676048278808594,
+        "linear_luminance_min": 0.061371706426143646,
+        "linear_luminance_max": 0.30934837460517883
+      },
+      {
+        "id": "reverse_centre_cool",
+        "source_region": "reverse centre upper plank",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.3017234802246094,
+        "linear_luminance_min": 0.09808605909347534,
+        "linear_luminance_max": 0.28183430433273315
+      },
+      {
+        "id": "reverse_centre_umber",
+        "source_region": "reverse centre lower plank",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2635498046875,
+        "linear_luminance_min": 0.08060456812381744,
+        "linear_luminance_max": 0.31169772148132324
+      },
+      {
+        "id": "reverse_right_grey",
+        "source_region": "reverse right upper plank",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2344818115234375,
+        "linear_luminance_min": 0.11598122119903564,
+        "linear_luminance_max": 0.3104958236217499
+      },
+      {
+        "id": "reverse_right_ochre",
+        "source_region": "reverse right lower plank and stile",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.24808502197265625,
+        "linear_luminance_min": 0.11157677322626114,
+        "linear_luminance_max": 0.3331790566444397
+      },
+      {
+        "id": "reverse_ledge_dark",
+        "source_region": "reverse upper ledge",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2868843078613281,
+        "linear_luminance_min": 0.06241672486066818,
+        "linear_luminance_max": 0.2381679117679596
+      },
+      {
+        "id": "reverse_ledge_pale",
+        "source_region": "reverse lower ledge",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2818260192871094,
+        "linear_luminance_min": 0.08336352556943893,
+        "linear_luminance_max": 0.28567519783973694
+      },
+      {
+        "id": "reverse_quiet_taupe",
+        "source_region": "reverse broad quiet centre field",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.295196533203125,
+        "linear_luminance_min": 0.10540824383497238,
+        "linear_luminance_max": 0.30860230326652527
+      },
+      {
+        "id": "reverse_warm_passage",
+        "source_region": "reverse warm ledge and plank passages",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2823448181152344,
+        "linear_luminance_min": 0.060544662177562714,
+        "linear_luminance_max": 0.23563013970851898
+      },
+      {
+        "id": "reverse_muted_red",
+        "source_region": "reverse right edge and repair-colour family without copying damage",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.22650527954101562,
+        "linear_luminance_min": 0.09148707240819931,
+        "linear_luminance_max": 0.3023529350757599
+      },
+      {
+        "id": "reverse_cool_warm_split",
+        "source_region": "reverse cool upper to warm lower relationship",
+        "reference_anchor_count": 20,
+        "colour_field_count": 3,
+        "fibre_count": 4,
+        "ink_coverage": 0.2600517272949219,
+        "linear_luminance_min": 0.06735000759363174,
+        "linear_luminance_max": 0.30091625452041626
+      }
+    ],
+    "outputs": {
+      "colour": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_colour_atlas.png",
+        "bytes": 1618255,
+        "sha256": "f5c3b8bbd7521a8dbfafdf5c4e7e6c5e334affad345bb4d86694a3e28dfa8219"
+      },
+      "ink": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_ink_atlas.png",
+        "bytes": 518768,
+        "sha256": "3c53035392e63b8568799549cae12e8d98e5e2ebcabd0859ae64297e0a2f4862"
+      },
+      "reference_palette": {
+        "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_reference_palette.png",
+        "bytes": 4031,
+        "sha256": "ca4f6117dc92a77fe6c9abd64c01acb8fbf64d4cc65c2efbd0737f55704b4961"
+      }
+    }
+  },
+  "saved_blend": {
+    "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1.blend",
+    "bytes": 2278465,
+    "sha256": "c7619ca1580faeb6449fecfcd0bc7915080a35086c0bc057d0192e38a2511d31",
+    "authored_images_packed": true
+  },
+  "constraints": {
+    "uses_floor_pattern": false,
+    "uses_ai_generated_imagery": false,
+    "uses_real_door_reference": true,
+    "uses_surface_variation": false,
+    "uses_relief": false,
+    "uses_damage": false,
+    "proof_surface": "uniform diffuse"
+  },
+  "door_contract": {
+    "vertices": 19956,
+    "polygons": 19687,
+    "attributes": {
+      "sinc_length_ratio": {
+        "domain": "POINT",
+        "data_type": "FLOAT"
+      },
+      "sinc_wood_end_mask": {
+        "domain": "POINT",
+        "data_type": "FLOAT"
+      },
+      "sinc_wood_edge_mask": {
+        "domain": "POINT",
+        "data_type": "FLOAT"
+      },
+      "sinc_wood_damage_mask": {
+        "domain": "POINT",
+        "data_type": "FLOAT"
+      },
+      "sinc_iron_edge_mask": {
+        "domain": "POINT",
+        "data_type": "FLOAT"
+      },
+      "sinc_seed": {
+        "domain": "POINT",
+        "data_type": "INT"
+      },
+      "UVMap": {
+        "domain": "CORNER",
+        "data_type": "FLOAT_VECTOR"
+      },
+      "sharp_face": {
+        "domain": "FACE",
+        "data_type": "BOOLEAN"
+      },
+      "material_index": {
+        "domain": "FACE",
+        "data_type": "INT"
+      },
+      "position": {
+        "domain": "POINT",
+        "data_type": "FLOAT_VECTOR"
+      },
+      ".edge_verts": {
+        "domain": "EDGE",
+        "data_type": "INT32_2D"
+      },
+      ".corner_vert": {
+        "domain": "CORNER",
+        "data_type": "INT"
+      },
+      ".corner_edge": {
+        "domain": "CORNER",
+        "data_type": "INT"
+      },
+      "sharp_edge": {
+        "domain": "EDGE",
+        "data_type": "BOOLEAN"
+      },
+      "custom_normal": {
+        "domain": "CORNER",
+        "data_type": "INT16_2D"
+      }
+    },
+    "materials": [
+      null,
+      "IGGY_MAT_NeutralIronProof_v001",
+      "IGGY_MAT_ReferenceStructuralOakDoor_v001"
+    ]
+  },
+  "shader_contract": {
+    "required_door_attributes": [
+      "UVMap",
+      "sinc_length_ratio",
+      "sinc_seed",
+      "sinc_wood_end_mask"
+    ],
+    "shader_attributes": [
+      "UVMap",
+      "sinc_seed"
+    ],
+    "group_node_count": 35,
+    "material_node_count": 8,
+    "image_texture_count": 2,
+    "forbidden_node_types_found": [],
+    "surface_variation_nodes": 0,
+    "damage_inputs": 0
+  },
+  "renders": {
+    "colour": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_colour.png",
+      "bytes": 692831,
+      "sha256": "634f448b333d02f89540cbf04e20fd48442ffcf0a0020f481b44109625afdec7"
+    },
+    "linework": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_linework.png",
+      "bytes": 681516,
+      "sha256": "51551ebf75d34925447398ec9673e313bc62880d5c5956a6f72ab352f0bdccf6"
+    },
+    "combined": {
+      "path": "/Users/kogaryu/iggy3d/assets/creative/materials/structural_oak_door_v1/output/structural_oak_door_v1_combined.png",
+      "bytes": 695220,
+      "sha256": "44f62c22c10ee3cb752050250263e169278680559ecee7d36920f27251e46de2"
+    }
+  }
+}
