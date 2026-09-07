@@ -315,5 +315,68 @@ unchanged. No windows, screenshots, captures or image files were produced;
 earlier visual acceptance remains deferred. Changes remain uncommitted.
 
 The remaining cost is laying out rows and expanded text to establish their
-scrolling positions. The next candidate is keyboard navigation through long
-histories; no additional implementation is included in this checkpoint.
+scrolling positions. At this checkpoint the next candidate was keyboard
+navigation through long histories, investigated below.
+
+## Long-history keyboard investigation
+
+The existing `drawMathSolving()` presentation owns history navigation through
+ImGui `Selectable` rows and the `Attempts from this step` tree. The keyboard
+route reaches offscreen rows, scrolls focused rows into view, and opens details
+without issuing a mathematical command. No second input dispatcher is needed
+for those controls.
+
+The existing input test now exercises real Tab, arrows, Home, End, Page Up,
+Page Down, Enter and Space in scalar and matrix histories at **1440×860,
+800×600 and 360×480**. It traverses 80 rows, including an earlier Undo branch,
+inspects that branch, and checks that the active working, events, revision,
+journal and completion state remain unchanged. The attempt tree is now opened
+with keyboard input instead of directly changing ImGui storage. Held Enter,
+Left to close and Right to reopen are checked. The earlier pointer, wheel and
+128-node follow/Undo checks remain in the same test.
+
+The headless harness also refreshes its existing internal font atlas before
+each frame, matching the legacy ImGui backend contract when new font sizes or
+glyphs have been requested. The previous constructor-only refresh produced
+font-atlas warnings during longer runs. This changes test setup only; there is
+no native host, image output or production renderer change.
+
+### Open defect: paging expanded attempt text
+
+The reproduction builds 127-node histories with 12 retries at node 60, selects
+that node using keys, tabs to its attempt disclosure and opens it with Enter.
+Eight Page Down presses then fail to reveal the overflowing attempt text:
+
+- At 1440×860, focus moves from the inspection panel back to history row 126.
+- At 800×600 and 360×480, focus stays on the disclosure and its panel does not
+  scroll further.
+
+This occurs for both scalar and matrix histories. The disclosure is navigable;
+the expanded `TextWrapped` entries have no keyboard focus targets. Shared
+navigation across sibling panels additionally permits the wide-layout jump.
+The passing row-navigation gate does **not** cover successful keyboard paging
+through that text, and this defect is not marked fixed.
+
+The proposed repair belongs entirely in the existing detail presentation:
+provide keyboard access through the overflowing attempt text, keep paging in
+the relevant panel, and preserve a usable route back to the step list and
+solving controls. It must handle wrapped text taller than a short viewport,
+repeat entries, held keys, and focus recovery. The mathematical model,
+equation-entry policy and save format remain outside this change. This needs
+additional production logic; no production patch has been applied because the
+supplied parent `AGENTS.md` requires direction before a cleanup increases
+production LOC or file count. No unrelated deletion is proposed to offset it.
+
+Current checkpoint: **zero production files changed, zero production LOC
+added or removed**. One existing test file and this record changed. No
+conflicting production routes were deleted. Release `sorter` and
+`paths_sorter_input_tests` build successfully; the exact
+`paths_sorter_input_tests` CTest entry passes without ImGui warnings.
+
+Evidence is in `build/history-keyboard-evidence/verification.json`, alongside
+the baseline, keyboard probe, reproduction log, build/test logs, hashes and
+baseline-relative patch. The probe uses the frozen baseline test so subsequent
+regression additions do not change its setup. All changes remain uncommitted;
+unrelated work is preserved. No windows, screenshots or captures were used.
+Visual review remains deferred. The next candidate is the documented attempt
+text repair, pending direction on the production-growth exception.

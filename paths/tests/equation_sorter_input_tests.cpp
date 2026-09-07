@@ -30,14 +30,14 @@ struct Harness {
     io.DisplaySize = {width, height};
     io.DeltaTime = 1.0F / 60;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    unsigned char* pixels; int w, h;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &w, &h);
-    io.Fonts->SetTexID(static_cast<ImTextureID>(1));
     frame(3);
   }
   ~Harness() { ImGui::DestroyContext(); }
   void frame(int count = 1) {
     for (int i = 0; i < count; ++i) {
+      unsigned char* pixels; int w, h;
+      ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &w, &h);
+      ImGui::GetIO().Fonts->SetTexID(static_cast<ImTextureID>(1));
       ImGui::NewFrame();
       beginEquationSorterFrame(ui, session);
       drawEquationSorter(ui, session.view(), session.content(), session.activeSolve());
@@ -1333,6 +1333,29 @@ void longHistoryControls(void (*observe)(const Harness&,const char*)=nullptr) {
         std::tuple{.5F,0.0F,"middle"},std::tuple{1.0F,-18.0F,"bottom_edge"},std::tuple{1.0F,0.0F,"bottom"}}) {
       ImGui::SetScrollY(history,history->ScrollMax.y*fraction+offset);h.frame(4);check(stage);
     }
+    const auto focused=[&](std::size_t index) {
+      if(GImGui->NavWindow!=history || !GImGui->NavId)return false;
+      const auto rect=ImGui::WindowRectRelToAbs(history,history->NavRectRel[GImGui->NavLayer]);
+      const auto& row=h.ui.mathNodes[index];
+      return row.available && std::abs(rect.Min.x-row.x)<1 && std::abs(rect.Min.y-row.y)<1;
+    };
+    for(int tabs=0;!focused(0) && tabs<160;++tabs)h.press(ImGuiKey_Tab);
+    expect(focused(0),"Tab reaches and reveals the first row from a history scrolled to the bottom");
+    h.press(ImGuiKey_End);expect(focused(126),"End reveals the last retained row");
+    h.press(ImGuiKey_PageUp);expect(!focused(126) && GImGui->NavWindow==history,"Page Up moves back within the history");
+    h.press(ImGuiKey_Home);expect(focused(0),"Home returns to the original working");
+    for(std::size_t i=1;i<=80;++i) {
+      h.press(ImGuiKey_DownArrow);
+      expect(focused(i),"Down follows each row through the viewport boundary and the retained Undo branch");
+    }
+    expect(!h.ui.mathInspected,"moving keyboard focus does not select or edit a step");
+    h.press(ImGuiKey_Enter);expect(h.ui.mathInspected==80,"Enter inspects the old branch without restoring it");
+    h.press(ImGuiKey_UpArrow);expect(focused(79),"Up reveals the preceding retained step");
+    h.press(ImGuiKey_Space);expect(h.ui.mathInspected==79,"Space inspects the focused step");
+    h.press(ImGuiKey_Home);h.press(ImGuiKey_PageDown);
+    expect(!focused(0) && GImGui->NavWindow==history,"Page Down advances through the row list");
+    expect(h.ui.mathInspected==79 && evidence()==untouched,"keyboard browsing preserves inspection and mathematical evidence");
+    check("keyboard_rows");
     const auto target=h.ui.mathNodes[60];
     ImGui::SetScrollY(history,history->Scroll.y+target.y+target.height*.5F-history->Pos.y-history->Size.y*.5F);h.frame(4);
     expect(h.ui.mathNodes[60].available,"an earlier branch point remains reachable by scrolling");
@@ -1341,11 +1364,19 @@ void longHistoryControls(void (*observe)(const Harness&,const char*)=nullptr) {
     auto* details=size.x>=900?panel("/Working inspection_"):history;
     const int index=60;
     const auto seed=size.x>=900?details->IDStack.back():ImHashData(&index,sizeof(index),details->IDStack.back());
+    const auto attempts=ImHashStr("Attempts from this step",0,seed);
+    for(int tabs=0;GImGui->NavId!=attempts && tabs<140;++tabs)h.press(ImGuiKey_Tab);
+    expect(GImGui->NavWindow==details && GImGui->NavId==attempts,"Tab reaches the selected step's attempt disclosure");
     const float collapsedHeight=details->ContentSize.y;
-    details->StateStorage.SetInt(ImHashStr("Attempts from this step",0,seed),1);h.frame(4);
+    auto& io=ImGui::GetIO();io.AddKeyEvent(ImGuiKey_Enter,true);h.frame(90);
+    io.AddKeyEvent(ImGuiKey_Enter,false);h.frame(2);
+    expect(details->StateStorage.GetInt(attempts)==1,"holding Enter opens the attempts once");
+    h.press(ImGuiKey_LeftArrow);expect(details->StateStorage.GetInt(attempts)==0,"Left closes the attempt disclosure");
+    h.press(ImGuiKey_RightArrow);expect(details->StateStorage.GetInt(attempts)==1,"Right reopens the attempt disclosure");
     expect(details->ContentSize.y>collapsedHeight+100,"opening the attempt tree lays out the retained retries");check("expanded");
+    ImGui::SetScrollY(history,history->Scroll.y+h.ui.mathNodes[60].y-history->Pos.y);h.frame(4);
     const float before=history->Scroll.y;
-    auto& io=ImGui::GetIO();io.AddMousePosEvent(history->Pos.x+history->Size.x*.5F,history->Pos.y+history->Size.y*.5F);h.frame();
+    io.AddMousePosEvent(history->Pos.x+history->Size.x*.5F,history->Pos.y+history->Size.y*.5F);h.frame();
     io.AddMouseWheelEvent(0,-3);h.frame(4);
     expect(history->Scroll.y>before,"real wheel input scrolls a long history with expanded details");check("expanded_scrolled");
     expect(evidence()==untouched,"scrolling and expanded inspection preserve all solving evidence");
