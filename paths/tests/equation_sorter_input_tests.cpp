@@ -78,6 +78,30 @@ bool contains(const SorterCardBounds& outer,const SorterCardBounds& inner) {
   return inner.x>=outer.x && inner.y>=outer.y && inner.x+inner.width<=outer.x+outer.width+.1F &&
       inner.y+inner.height<=outer.y+outer.height+.1F;
 }
+void contentsMark(Harness& h,std::size_t home,iggy3d::first_move::QuestionProgress expected) {
+  for(int i=0;i<60 && !contains(h.ui.studyProblemPanel,h.ui.studyProgressMarks[home]);++i) {
+    const auto panel=h.ui.studyProblemPanel;auto& io=ImGui::GetIO();
+    io.AddMousePosEvent(panel.x+panel.width*.7F,panel.y+panel.height*.5F);h.frame();
+    io.AddMouseWheelEvent(0,h.ui.studyProgressMarks[home].y<panel.y?.5F:-.5F);h.frame(3);
+  }
+  const auto mark=h.ui.studyProgressMarks[home],row=h.ui.studyQuestions[home];
+  expect(h.session.view().studying && h.session.view().study.progress[home]==expected,"Contents presents the current attempt's progress");
+  expect(mark.available && mark.equation==row.equation && contains(h.ui.studyProblemPanel,mark) &&
+      mark.width==16 && mark.height==16 && mark.x+mark.width<row.x && mark.y>=row.y && mark.y+mark.height<=row.y+row.height,
+      "the compact progress symbol remains visible beside its own checkbox without overlapping it");
+}
+void chapterCountFits(const Harness& h,std::size_t chapter) {
+  const auto row=h.ui.studyChapters[chapter],count=h.ui.studyChapterCounts[chapter];
+  const SorterCardBounds window{0,0,0,ImGui::GetIO().DisplaySize.x,ImGui::GetIO().DisplaySize.y,true};
+  const auto title=ImGui::GetFont()->CalcTextSizeA(15,1e6F,row.width,h.session.view().study.types[chapter].chapter.c_str());
+  const bool fits=contains(window,row) && contains(window,count) && title.x<=row.width+.1F && title.y+4<=row.height+.1F &&
+      row.x+row.width<=count.x && count.y>=row.y && count.y+count.height<=row.y+row.height;
+  if(!fits)std::cerr<<"Chapter "<<chapter<<" at "<<window.width<<'x'<<window.height<<": title "
+      <<row.x<<','<<row.y<<' '<<row.width<<'x'<<row.height<<" text "<<title.x<<'x'<<title.y
+      <<" count "<<count.x<<','<<count.y<<' '<<count.width<<'x'<<count.height<<'\n';
+  expect(fits,
+      "wrapped chapter title and completion count fit side by side without clipping or overlap");
+}
 auto workspaceBounds(const EquationSorterUiState& ui) {
   return std::array{ui.solveBoard,ui.solveWorking,ui.solveStage,ui.solveSupport};
 }
@@ -589,6 +613,8 @@ void studySelectionControls() {
     const auto control=[&](StudyControl which)->const SorterCardBounds& {return h.ui.studyControls[static_cast<std::size_t>(which)];};
     h.click(h.ui.studyEntry);
     expect(h.session.view().studying && h.session.view().study.selectedCount==6,"Contents opens the authored chapter with six prepared questions");
+    contentsMark(h,0,iggy3d::first_move::QuestionProgress::NotStarted);chapterCountFits(h,0);
+    expect(h.session.view().study.chapters[0].completed==0 && h.session.view().study.chapters[0].total==6,"chapter starts at zero of six");
     const SorterCardBounds window{0,0,0,size.x,size.y,true};
     for(const auto which:{StudyControl::All,StudyControl::Random,StudyControl::Specific,StudyControl::Groups,StudyControl::Resume,StudyControl::Start})
       expect(contains(window,control(which)) && control(which).height<=30,"compact selection controls stay within the window, including its footer");
@@ -629,6 +655,7 @@ void studySelectionControls() {
     h.click(h.ui.solveControls[3]);h.click(h.ui.solveControls[0]);
     expect(h.session.view().studying && first->view().paused && control(StudyControl::Resume).available,
         "Back to contents pauses the question and offers Resume set");
+    contentsMark(h,0,iggy3d::first_move::QuestionProgress::InProgress);
     h.click(control(StudyControl::All));h.click(control(StudyControl::Resume));
     expect(h.session.activeSolve()==first && first->view().step==2 && h.session.view().solveCount==3,
         "Resume restores the same step and original set after changing the draft");
@@ -642,13 +669,18 @@ void studySelectionControls() {
       h.click(h.ui.solveControls[5]);
     }
     h.press(ImGuiKey_Escape);expect(h.session.view().studying,"Escape from a study question returns to contents");
+    contentsMark(h,0,iggy3d::first_move::QuestionProgress::Completed);chapterCountFits(h,0);
+    expect(h.session.view().study.chapters[0].completed==3 && h.session.view().study.chapters[0].total==6,
+        "completed selected questions count once against the whole chapter");
     const auto startFocused=[] {return GImGui->NavWindow && GImGui->NavId==GImGui->NavWindow->GetID("Start set");};
     for(int tabs=0;!startFocused() && tabs<100;++tabs)h.press(ImGuiKey_Tab);
     expect(startFocused(),"Start set is reachable by keyboard across the selection panels");
     io.AddKeyEvent(ImGuiKey_Enter,true);h.frame(90);io.AddKeyEvent(ImGuiKey_Enter,false);h.frame(2);
     expect(h.session.view().solveCount==6 && h.session.activeSolve()->view().step==1 &&
         h.session.activeSolve()->question().currentRun().runNumber==2,"held Enter starts one fresh set without selecting an answer");
-    h.press(ImGuiKey_Escape);h.click(control(StudyControl::Groups));
+    h.press(ImGuiKey_Escape);contentsMark(h,0,iggy3d::first_move::QuestionProgress::NotStarted);
+    expect(h.session.view().study.chapters[0].completed==0,"starting a fresh set resets current chapter completion");
+    h.click(control(StudyControl::Groups));
     expect(!h.session.view().studying && h.ui.cardCount==100,"Groups returns to the existing sorter");
   }
 }
@@ -1017,6 +1049,11 @@ void matrixMoveControls() {
     const auto subject=static_cast<std::size_t>(SorterSubject::LinearAlgebra);
     revealContents([&]{return h.ui.studySubjects[subject];});h.click(h.ui.studySubjects[subject]);
     expect(h.session.view().study.selectedCount==13,"real linear algebra checkbox includes the example and twelve new problems");
+    for(const auto& card:h.session.content())if(h.session.view().study.available[card.homeIndex]) {
+      const auto row=h.ui.studyQuestions[card.homeIndex];
+      expect(row.x+row.width<=h.ui.studyProblemPanel.x+h.ui.studyProblemPanel.width-4,
+          "matrix question labels still fit beside the added progress marks");
+    }
     const auto& types=h.session.view().study.types;
     const auto practice=std::find_if(types.begin(),types.end(),[](const auto& t){return t.chapter=="Matrix practice";});
     expect(practice!=types.end(),"new practice chapter is available through the existing contents controls");
@@ -1026,6 +1063,7 @@ void matrixMoveControls() {
     const auto chapter=found->chapterId;
     revealContents([&]{return h.ui.studyChapters[chapter];});h.click(h.ui.studyChapters[chapter]);
     expect(h.ui.studyChapter==chapter && h.ui.studyTypes[chapter].available,"row reduction title opens through the real chapter control");
+    chapterCountFits(h,chapter);
     h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Start)]);
     auto* game=h.session.activeSolve();expect(game && game->question().content().id=="sorter_matrix_rows","Start opens the chosen matrix in the shared workspace");
     const auto original=workspaceBounds(h.ui);
@@ -1231,6 +1269,7 @@ void restoredPracticeControls() {
     const std::string working(game->view().working);
     const auto saved=h.session.studyProgress();h.session.restoreStudyProgress(saved);h.ui={};
     h.ui.progressMessage="Saved practice ready. Resume set.";h.frame(3);
+    contentsMark(h,0,fm::QuestionProgress::InProgress);chapterCountFits(h,0);
     expect(contains({0,0,0,size.x,52},h.ui.progressStatus),"save status fits the compact heading at all supported sizes");
     const auto resume=static_cast<std::size_t>(StudyControl::Resume);
     expect(h.ui.studyControls[resume].available,"restored set exposes the real Resume control");
@@ -1245,7 +1284,9 @@ void restoredPracticeControls() {
     expect(tile!=choice->results.end(),"restored result tile is available");const auto result=static_cast<std::size_t>(tile-choice->results.begin());
     h.click(h.ui.mathOperations[index]);h.click(h.ui.mathResults[result]);
     expect(game->view().completed,"restored problem finishes through the existing visual controls");
-    h.click(h.ui.solveControls[0]);h.click(h.ui.studyControls[resume]);
+    h.click(h.ui.solveControls[0]);contentsMark(h,0,fm::QuestionProgress::Completed);
+    expect(h.session.view().study.chapters[0].completed==1,"restored question completion updates its chapter count");
+    h.click(h.ui.studyControls[resume]);
     expect(h.session.activeSolve()->view().completed && h.session.view().solveNumber==1,"Resume keeps a finished problem until Next");
     h.click(h.ui.solveControls[0]);h.ui.progressFailed=true;h.ui.progressMessage="Practice could not save: test failure";h.frame(3);
     expect(contains({0,0,0,size.x,52},h.ui.progressStatus) && h.ui.studyControls[resume].available,"save errors remain readable and do not disable Resume");

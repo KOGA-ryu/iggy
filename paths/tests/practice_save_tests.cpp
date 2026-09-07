@@ -56,6 +56,7 @@ void roundTrip(const fs::path& path,EquationSorterSession& s,StudyProgressFile& 
   expect(!disk.failed() && reopened.view().studying && reopened.view().study.canResume && !reopened.activeSolve(),"restart offers Resume without starting play");
   expect(reopened.studyProgress().queue==s.studyProgress().queue && reopened.studyProgress().selected==s.studyProgress().selected,
       "frozen queue and pending selection survive independently");
+  expect(reopened.view().study.progress==s.view().study.progress,"all current-attempt marks return from the saved evidence");
   if(s.savedSolve()->question().currentRun().math)checkScalar(*reopened.savedSolve());
   else {
     const auto& run=reopened.savedSolve()->question().currentRun();
@@ -189,6 +190,69 @@ std::vector<SorterEquation> grownCatalogue() {
   std::reverse(content.begin(),content.end());
   return content;
 }
+void contentsProgress(const fs::path& folder) {
+  using Progress=fm::QuestionProgress;
+  const auto mark=[](const EquationSorterSession& s,SorterEquationId id) {
+    const auto c=std::find_if(s.content().begin(),s.content().end(),[&](const auto& c){return c.id==id;});
+    expect(c!=s.content().end(),"progress question has a stable identity");
+    return s.view().study.progress[c->homeIndex];
+  };
+  const auto chapter=[](const EquationSorterSession& s,std::string_view title,std::size_t completed,std::size_t total) {
+    const auto view=s.view();const auto t=std::find_if(view.study.types.begin(),view.study.types.end(),[&](const auto& t){return t.chapter==title;});
+    expect(t!=view.study.types.end(),"progress chapter exists");
+    const auto count=view.study.chapters[t->chapterId];
+    expect(count.completed==completed && count.total==total,"chapter counts reflect current attempts across every problem type");
+  };
+  const auto path=folder/"contents-progress.json";auto s=fresh();StudyProgressFile disk(path);disk.load(s);
+  select(s,{3001,4001,6001,6101,6102});
+  const auto unopened=s.view();
+  expect(std::all_of(unopened.study.progress.begin(),unopened.study.progress.end(),[](auto p){return p==Progress::NotStarted;}),
+      "preparing and opening questions does not claim an attempt");
+  chapter(s,"Linear equations",0,6);chapter(s,"Matrix practice",0,12);
+  auto& scalar=*s.activeSolve();
+  expect(!scalar.dispatch(MathematicalMove{scalar.view().challenge,{}}).accepted && mark(s,3001)==Progress::NotStarted,
+      "rejected input does not start a question");
+  move(scalar,Op::Divide,"3","x+2=8",false);
+  expect(mark(s,3001)==Progress::InProgress,"a wrong first answer still records an attempt");
+  move(scalar,Op::Expand,"","3x+6=21");move(scalar,Op::Subtract,"6","3x=15");move(scalar,Op::Divide,"3","x=5");
+  expect(mark(s,3001)==Progress::Completed,"checked scalar completion produces a completed mark");chapter(s,"Linear equations",1,6);
+  move(scalar,Op::Expand,"","",false,fm::MathMoveKind::Undo);
+  expect(mark(s,3001)==Progress::InProgress,"Undo reopens the current attempt");chapter(s,"Linear equations",0,6);
+  move(scalar,Op::Divide,"3","x=5");chapter(s,"Linear equations",1,6);
+  expect(scalar.dispatch(ReplayQuestion{}).accepted && mark(s,3001)==Progress::NotStarted && scalar.question().archivedRuns().back().completed,
+      "Replay resets the mark while retaining the completed archive");chapter(s,"Linear equations",0,6);
+  action(s,SorterActionKind::ReturnToSorter);action(s,SorterActionKind::OpenSolve,4001);
+  auto& graph=*s.activeSolve();help(graph,GalleryHelpKind::Hint);
+  expect(mark(s,4001)==Progress::InProgress,"hint-only prepared work counts as started");
+  while(!graph.view().completed)choose(graph,true);
+  expect(mark(s,4001)==Progress::Completed,"prepared graph completion uses the same mark");chapter(s,"Straight lines",1,4);
+  action(s,SorterActionKind::ReturnToSorter);action(s,SorterActionKind::OpenSolve,6101);auto& matrix=*s.activeSolve();
+  expect(matrix.question().mathReference("row_scaling") && mark(s,6101)==Progress::NotStarted,
+      "reading a row reference does not start the actual problem");
+  move(matrix,Op::AddRow1ToRow2,"-2","[1,1|5] [0,1|2]");
+  move(matrix,Op::AddRow2ToRow1,"-1","[1,0|3] [0,1|2]");
+  expect(mark(s,6101)==Progress::Completed && mark(s,6102)==Progress::NotStarted,"matrix marks stay independent within the same chapter");
+  chapter(s,"Matrix practice",1,12);
+  action(s,SorterActionKind::ReturnToSorter);action(s,SorterActionKind::OpenStudy);
+  const auto types=s.view().study.types;
+  const auto matrixChapter=std::find_if(types.begin(),types.end(),[](const auto& t){return t.chapter=="Matrix practice";})->chapterId;
+  action(s,SorterActionKind::ToggleStudyChapter,0,matrixChapter);
+  chapter(s,"Matrix practice",1,12);
+  expect(mark(s,6101)==Progress::Completed,"changing selected titles cannot clear working or alter completion");
+  const auto revision=s.progressRevision();const auto saved=s.studyProgress();
+  for(int i=0;i<30;++i)(void)s.view();
+  expect(s.progressRevision()==revision && s.studyProgress().questions.size()==saved.questions.size(),"reading progress does not mutate or dirty the save");
+  disk.save(s);expect(!disk.failed(),"current-attempt progress saves through the existing journal");
+  auto restored=fresh(grownCatalogue());StudyProgressFile reopened(path);reopened.load(restored);
+  expect(!reopened.failed(),"progress survives catalogue additions and reordered homes");
+  for(const auto id:{3001U,4001U,6001U,6101U,6102U})expect(mark(restored,id)==mark(s,id),"restored marks follow stable question IDs");
+  expect(mark(restored,9901)==Progress::NotStarted && mark(restored,9902)==Progress::NotStarted,"new questions begin with empty marks");
+  chapter(restored,"Linear equations",0,8);chapter(restored,"Straight lines",1,4);chapter(restored,"Matrix practice",1,12);
+  select(restored,{6101});
+  expect(mark(restored,6101)==Progress::NotStarted && mark(restored,4001)==Progress::Completed,
+      "Start set resets only the selected attempts and leaves other chapter progress intact");
+  chapter(restored,"Matrix practice",0,12);chapter(restored,"Straight lines",1,4);
+}
 void catalogueGrowth(const fs::path& folder) {
   const auto grown=grownCatalogue();
   // This file was written by the frozen, unmodified P036 executable, including
@@ -203,6 +267,8 @@ void catalogueGrowth(const fs::path& folder) {
       "stable IDs preserve the selected order and current frozen queue position");
   expect(s.savedSolve()->question().content().id=="sorter_matrix_rows" && s.view().study.availableCount>p.selectionPool.size(),
       "same matrix returns while new questions become available for future selection");
+  expect(s.savedSolve()->question().progress()==fm::QuestionProgress::InProgress,
+      "a genuine P036 save reconstructs the current progress state without a stored badge");
   action(s,SorterActionKind::ResumeStudy);action(s,SorterActionKind::ReturnToStudy);store.save(s);
   expect(!store.failed(),"compatible P036 progress saves as the current format after an action");
   const auto migrated=Json::parse(read(path));
@@ -262,6 +328,7 @@ void partialCollection() {
     return g.dispatch(Shoot{g.scene().frame().id,view.challenge,point.x,point.y});
   };
   expect(shoot(game,q.steps[0].options[0].id).accepted && game.view().collected==1 && game.view().step==1,"first answer partially collects the set");
+  expect(game.question().progress()==fm::QuestionProgress::InProgress,"partial answer collection counts as started before the step resolves");
   GallerySession restored(config,{q},{0},game.question().journal());(void)restored.publishFrame();
   expect(restored.view().ready && restored.view().collected==1 && restored.view().correctHits==1,"partial collection resumes with the remaining targets ready");
   const auto journal=restored.question().journal().size();
@@ -277,7 +344,7 @@ int main(int argc,char** argv) {
       else throw std::runtime_error("unknown test phase");
     } else {
       const auto folder=fs::temp_directory_path()/("paths-practice-test-"+std::to_string(std::random_device{}()));fs::create_directory(folder);
-      failureCases(folder);randomDraft(folder);catalogueGrowth(folder);partialCollection();fs::remove_all(folder);
+      failureCases(folder);randomDraft(folder);contentsProgress(folder);catalogueGrowth(folder);partialCollection();fs::remove_all(folder);
     }
     std::cout<<"Practice persistence, checked restoration and saved-file protection passed\n";
   } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

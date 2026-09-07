@@ -28,6 +28,12 @@ another set saves earlier attempts and begins fresh ones. Text and selection
 buttons remain compact; more subjects and problem types will join this catalogue
 as their solving content is prepared.
 
+[Contents progress](docs/P038_CONTENTS_PROGRESS.md) uses a small empty grey circle
+for an unstarted attempt, a **cyan dot** for work in progress and a **green tick**
+for a completed current attempt. Chapters show completed/total, such as **5/12**,
+across all their questions. Undo, Replay and starting a fresh set update the marks;
+earlier runs remain saved. The marks return with saved practice.
+
 [Practice progress](docs/P036_SAVED_PRACTICE.md) now saves automatically in the
 rebuilt sorter. Close the game and reopen it: the contents page shows a **green**
 save message and a **blue Resume set** button. Your question order, current

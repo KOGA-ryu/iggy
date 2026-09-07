@@ -29,6 +29,7 @@ struct EquationSorterUiState {
   std::array<SorterCardBounds,static_cast<std::size_t>(StudyControl::CountControls)> studyControls{};
   std::array<SorterCardBounds,sorterSubjects.size()> studySubjects{};
   std::array<SorterCardBounds,sorterEquationCount> studyChapters{}, studyChapterChecks{}, studyTypes{}, studyQuestions{};
+  std::array<SorterCardBounds,sorterEquationCount> studyProgressMarks{}, studyChapterCounts{};
   std::array<SorterCardBounds, 6> solveControls{}; // Back, Hint/Resume, Next move, Do step, Replay, Next problem
   std::array<SorterCardBounds, 8> solveOptions{};
   std::array<OptionId, 8> solveOptionIds{};

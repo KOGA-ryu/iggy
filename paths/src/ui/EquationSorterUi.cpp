@@ -762,6 +762,7 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   ImGui::End();
 }
 void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::span<const SorterEquation> content) {
+  using Progress=iggy3d::first_move::QuestionProgress;
   const auto& io=ImGui::GetIO();const auto& study=view.study;
   const bool narrow=io.DisplaySize.x<700;
   const float footer=narrow?132.0F:102.0F, top=52, body=io.DisplaySize.y-top-footer;
@@ -776,6 +777,7 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   const auto bounds=[&](StudyControl control,bool enabled=true) {ui.studyControls[static_cast<std::size_t>(control)]=itemBounds(enabled);};
   ui.shootAvailable=false;ui.solveButton={};ui.cardCount=0;
   ui.studySubjects={};ui.studyChapters={};ui.studyChapterChecks={};ui.studyTypes={};ui.studyQuestions={};ui.studyControls={};
+  ui.studyProgressMarks={};ui.studyChapterCounts={};
   if(!study.types.empty() && (!ui.studyChapter || std::none_of(study.types.begin(),study.types.end(),[&](const auto& t){return t.chapterId==*ui.studyChapter;})))
     ui.studyChapter=study.types[0].chapterId;
   const auto flags=ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings;
@@ -824,8 +826,20 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
         checked=included==total;ImGui::PushItemFlag(ImGuiItemFlags_MixedValue,included && included<total);
         if(ImGui::Checkbox("##chapter",&checked))queue(SorterActionKind::ToggleStudyChapter,i);
         ui.studyChapterChecks[i]=itemBounds();ImGui::PopItemFlag();ImGui::SameLine();
-        if(ImGui::Selectable(chapter.chapter.c_str(),ui.studyChapter==i,0,{0,26}))ui.studyChapter=i;
-        ui.studyChapters[i]=itemBounds();ImGui::PopID();
+        const auto count=study.chapters[i];
+        const std::string tally=std::to_string(count.completed)+"/"+std::to_string(count.total);
+        const float titleWidth=std::max(40.0F,ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(tally.c_str()).x-8);
+        const auto titleSize=ImGui::CalcTextSize(chapter.chapter.c_str(),nullptr,false,titleWidth);
+        const float height=std::max(26.0F,titleSize.y+4);
+        if(ImGui::Selectable("##chapter_title",ui.studyChapter==i,0,{titleWidth,height}))ui.studyChapter=i;
+        ui.studyChapters[i]=itemBounds();const auto row=ui.studyChapters[i];
+        ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(),ImGui::GetFontSize(),
+            {row.x,row.y+(height-titleSize.y)*.5F},ImGui::GetColorU32(ImGuiCol_Text),chapter.chapter.c_str(),nullptr,titleWidth);
+        ImGui::SameLine(0,8);ImGui::SetCursorPosY(ImGui::GetCursorPosY()+(height-ImGui::GetTextLineHeight())*.5F);
+        ImGui::TextColored(count.completed?ImVec4{.4F,.9F,.65F,1}:ImVec4{.55F,.63F,.7F,1},"%s",tally.c_str());
+        ui.studyChapterCounts[i]=itemBounds();
+        if(ImGui::IsItemHovered())ImGui::SetTooltip("Completed / total questions in this chapter (current attempts).");
+        ImGui::PopID();
       }
       ImGui::TreePop();
     }
@@ -847,8 +861,22 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   for(const auto& e:content)if(study.available[e.homeIndex]) {
     ImGui::PushID(static_cast<int>(e.id));bool selected=study.selected[e.homeIndex];
     const std::string label=std::to_string(e.homeIndex+1)+".  "+e.text;
+    const float markX=ImGui::GetCursorScreenPos().x;
+    ImGui::Dummy({16,1});ImGui::SameLine(0,6);
     if(ImGui::Checkbox(label.c_str(),&selected))queue(SorterActionKind::ToggleStudyQuestion,0,e.id);
     ui.studyQuestions[e.homeIndex]=itemBounds();ui.studyQuestions[e.homeIndex].equation=e.id;
+    const auto row=ui.studyQuestions[e.homeIndex];const ImVec2 centre{markX+8,row.y+row.height*.5F};
+    ui.studyProgressMarks[e.homeIndex]={e.id,markX,centre.y-8,16,16,ImGui::IsItemVisible()};
+    auto* draw=ImGui::GetWindowDrawList();
+    switch(study.progress[e.homeIndex]) {
+      case Progress::NotStarted:draw->AddCircle(centre,4,IM_COL32(140,161,179,255),0,1.5F);break;
+      case Progress::InProgress:draw->AddCircleFilled(centre,4,IM_COL32(77,217,242,255));break;
+      case Progress::Completed:
+        draw->AddLine({centre.x-5,centre.y},{centre.x-1,centre.y+4},IM_COL32(102,230,166,255),2);
+        draw->AddLine({centre.x-1,centre.y+4},{centre.x+6,centre.y-4},IM_COL32(102,230,166,255),2);break;
+    }
+    constexpr std::array descriptions{"Not started","In progress","Completed (current attempt)"};
+    if(ImGui::IsItemHovered())ImGui::SetTooltip("%s",descriptions[static_cast<std::size_t>(study.progress[e.homeIndex])]);
     ImGui::PopID();
   }
   ImGui::EndChild();

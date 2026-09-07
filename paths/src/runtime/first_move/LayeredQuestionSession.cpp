@@ -364,6 +364,15 @@ const LayeredQuestionRunRecord& LayeredQuestionSession::currentRun()
   return current_;
 }
 
+QuestionProgress LayeredQuestionSession::progress() const noexcept {
+  if(current_.completed)return QuestionProgress::Completed;
+  const bool started=current_.math?!current_.math->events.empty():
+      std::any_of(current_.steps.begin(),current_.steps.end(),[](const auto& step) {
+        return !step.attempts.empty() || step.hintRequested || step.nextMoveRequested || layeredQuestionStepResolved(step);
+      });
+  return started?QuestionProgress::InProgress:QuestionProgress::NotStarted;
+}
+
 const std::vector<LayeredQuestionRunRecord>&
 LayeredQuestionSession::archivedRuns() const noexcept {
   return archived_;

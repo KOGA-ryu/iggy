@@ -112,6 +112,12 @@ SorterView EquationSorterSession::view() const {
   for (const auto& e : content_) if (e.solution) {
     ++v.solveCount;
     if (solving_ && e.homeIndex==solveHome_) v.solveNumber=v.solveCount;
+    if(solves_[e.homeIndex])v.study.progress[e.homeIndex]=solves_[e.homeIndex]->question().progress();
+  }
+  for(const auto& type:studyTypes_) {
+    auto& chapter=v.study.chapters[type.chapterId];chapter.total+=type.homes.size();
+    for(const auto index:type.homes)
+      if(v.study.progress[index]==iggy3d::first_move::QuestionProgress::Completed)++chapter.completed;
   }
   if(studyRun_) {v.solveCount=studyQueue_.size();v.solveNumber=studyPosition_+1;}
   if (const auto next=nextSolveHome()) v.nextSolve=content_[*next].id;

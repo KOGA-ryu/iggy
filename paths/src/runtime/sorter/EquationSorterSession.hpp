@@ -64,12 +64,15 @@ struct StudyProblemType {
   std::string chapter, title, form;
   std::vector<std::size_t> homes;
 };
+struct StudyChapterProgress { std::size_t completed=0, total=0; };
 struct StudySelectionView {
   std::span<const StudyProblemType> types;
   std::array<bool,sorterEquationCount> includedTypes{}, available{}, selected{};
   StudyMode mode=StudyMode::All;
   std::size_t availableCount=0, selectedCount=0, randomCount=3;
   bool canResume=false;
+  std::array<iggy3d::first_move::QuestionProgress,sorterEquationCount> progress{};
+  std::array<StudyChapterProgress,sorterEquationCount> chapters{};
 };
 struct SavedStudyTitle { SorterSubject subject; std::string chapter, type; };
 struct SavedStudyQuestion {

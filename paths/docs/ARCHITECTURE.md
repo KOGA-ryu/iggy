@@ -487,6 +487,17 @@ incompatible dependency identifies its card, preserves the file and live state,
 and pauses saving for that launch. Existing atomic writes and external-change
 checks remain the filesystem adapter's responsibility.
 
+[P038](P038_CONTENTS_PROGRESS.md) adds current-attempt progress to Contents.
+`LayeredQuestionSession::progress()` derives NotStarted/InProgress/Completed from
+current completion, move events and prepared answer/help evidence. Navigation,
+reference browsing and archived runs do not start a fresh attempt. Undo and
+Replay therefore change the projection without deleting earlier evidence.
+`EquationSorterSession::view()` projects these states per question and aggregates
+completed/total across every type in each chapter, independently of selection.
+The UI draws small circles/ticks and counts; it stores no progress policy.
+Save restoration rebuilds the same evidence through the existing checker, so
+these marks require no new persisted fields, revisions or migration.
+
 ## Modes and navigation
 
 Use `PathsScreen { Title, Playing, Stats }` and retain the existing

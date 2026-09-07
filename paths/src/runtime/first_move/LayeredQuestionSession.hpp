@@ -209,6 +209,7 @@ struct MathMoveRun {
 [[nodiscard]] bool layeredQuestionStepResolved(
     const LayeredQuestionStepRecord& step) noexcept;
 
+enum class QuestionProgress : std::uint8_t { NotStarted, InProgress, Completed };
 struct LayeredQuestionRunRecord {
   std::string questionId;
   std::uint32_t contentVersion = 0;
@@ -304,6 +305,8 @@ public:
       const LayeredQuestionCommand& command);
 
   [[nodiscard]] const LayeredQuestionRunRecord& currentRun() const noexcept;
+  // Current-attempt evidence only; opening, pausing and archived runs do not count.
+  [[nodiscard]] QuestionProgress progress() const noexcept;
   [[nodiscard]] const std::vector<LayeredQuestionRunRecord>& archivedRuns()
       const noexcept;
   [[nodiscard]] const LayeredQuestionContent& content() const noexcept { return (*catalog_)[contentIndex_]; }
