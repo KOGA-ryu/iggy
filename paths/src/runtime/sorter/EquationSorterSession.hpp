@@ -82,7 +82,8 @@ struct StudyProgress {
   std::vector<SavedStudyTitle> titles;
   StudyMode mode=StudyMode::All;
   std::size_t randomCount=3, position=0;
-  std::vector<SorterEquationId> selected, queue;
+  // Freeze the pool and selected order until the player edits the next-set draft.
+  std::vector<SorterEquationId> selectionPool, selected, queue;
   std::vector<SavedStudyQuestion> questions;
 };
 
@@ -140,7 +141,8 @@ private:
   std::size_t solveHome_ = 0;
   bool solving_ = false;
   std::vector<StudyProblemType> studyTypes_;
-  std::array<bool,sorterEquationCount> includedTypes_{}, studyAvailable_{}, studySelected_{};
+  std::array<bool,sorterEquationCount> includedTypes_{}, studyAvailable_{};
+  std::vector<std::size_t> studySelectionPool_, studySelected_;
   StudyMode studyMode_=StudyMode::All;
   std::size_t studyRandomCount_=3, studyPosition_=0;
   bool studying_=false, studyRun_=false;

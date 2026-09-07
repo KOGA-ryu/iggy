@@ -460,7 +460,7 @@ void linkedValues(const fm::LayeredQuestionSession& question,const fm::Coordinat
 void coordinateGraphs() {
   const auto content=loadSorterContent(SORTER_STUDY_FIXTURE);
   EquationSorterSession session(content);
-  expect(session.view().study.types.size()==4,"combined contents includes graphs and the new row-reduction chapter");
+  expect(session.view().study.types.size()==7,"combined contents retains graph types and includes all three new matrix practice types");
   for(std::uint32_t id=4001;id<=4004;++id) {
     apply(session,SorterActionKind::OpenSolve,id);auto& game=*session.activeSolve();
     const auto equation=std::string(game.view().equation);const auto& source=game.question().content();

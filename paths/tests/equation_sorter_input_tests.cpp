@@ -480,11 +480,11 @@ void switchPreparedCards() {
     }
     // A queued command belongs to the old UI context even when two cards have
     // the same local challenge/frame numbers. Opening another card consumes it.
-    h.ui.pendingGame=GalleryHelp{first->view().challenge,GalleryHelpKind::DoStep};
+    h.ui.pending=GalleryCommand{GalleryHelp{first->view().challenge,GalleryHelpKind::DoStep}};
     h.ui.pending=SorterAction{SorterActionKind::OpenSolve,SorterBucket::A,3002,h.session.view().revision};
     h.ui.shootAvailable=true;h.ui.shootChallenge=first->view().challenge;
     h.frame();
-    expect(h.session.activeSolve()->view().step==2 && !h.ui.pendingGame,
+    expect(h.session.activeSolve()->view().step==2 && !h.ui.pending,
         "queued help from another card cannot advance the newly opened question");
   }
 }
@@ -567,10 +567,10 @@ void continuousWorkspace() {
         expect(h.session.view().solving && h.session.view().solveNumber==2 && h.session.activeSolve()->view().step==1,
             "held Enter on Next advances once and cannot activate a replacement control");
       } else if(question==1) {
+        h.ui.pending=GalleryCommand{GalleryHelp{{1},GalleryHelpKind::DoStep}};
         h.ui.pending=SorterAction{SorterActionKind::NextSolve,SorterBucket::A,0,h.session.view().revision};
-        h.ui.pendingGame=GalleryHelp{{1},GalleryHelpKind::DoStep};
         h.frame(2);
-        expect(h.session.activeSolve()->view().step==1 && !h.ui.pendingGame,
+        expect(h.session.activeSolve()->view().step==1 && !h.ui.pending,
             "Next consumes old queued help even when its local challenge matches the next question");
       } else h.click(h.ui.solveControls[5]);
       fixedWorkspace(h,original);
@@ -970,9 +970,9 @@ void mathematicalMoveControls() {
     const auto check=h.ui.mathResults[resultIndex("3x+6=21")];
     io.AddMousePosEvent(check.x+check.width*.5F,check.y+check.height*.5F);h.frame();
     io.AddMouseButtonEvent(0,true);h.frame();io.AddMouseButtonEvent(0,false);h.frame();
-    expect(h.ui.pendingGame.has_value(),"result tile release queues the mathematical action");
+    expect(h.ui.pending && std::holds_alternative<GalleryCommand>(*h.ui.pending),"result tile release queues the mathematical action");
     io.AddFocusEvent(false);h.frame(3);
-    expect(!h.ui.pendingGame && game->question().currentRun().math->events.empty(),"focus loss discards the queued mathematical action");
+    expect(!h.ui.pending && game->question().currentRun().math->events.empty(),"focus loss discards the queued mathematical action");
     io.AddFocusEvent(true);h.frame(3);h.click(h.ui.solveControls[1]);
     struct Remaining {std::uint32_t id;const char *factor,*divided,*amount,*answer;fm::MathOperation operation;};
     for(const auto& e:std::array{
@@ -1016,8 +1016,12 @@ void matrixMoveControls() {
     h.click(h.ui.studyTypes[0]);
     const auto subject=static_cast<std::size_t>(SorterSubject::LinearAlgebra);
     revealContents([&]{return h.ui.studySubjects[subject];});h.click(h.ui.studySubjects[subject]);
-    expect(h.session.view().study.selectedCount==1,"real linear algebra checkbox selects one matrix question");
+    expect(h.session.view().study.selectedCount==13,"real linear algebra checkbox includes the example and twelve new problems");
     const auto& types=h.session.view().study.types;
+    const auto practice=std::find_if(types.begin(),types.end(),[](const auto& t){return t.chapter=="Matrix practice";});
+    expect(practice!=types.end(),"new practice chapter is available through the existing contents controls");
+    revealContents([&]{return h.ui.studyChapterChecks[practice->chapterId];});h.click(h.ui.studyChapterChecks[practice->chapterId]);
+    expect(h.session.view().study.selectedCount==1,"deselecting the new chapter preserves the accepted single-example route");
     const auto found=std::find_if(types.begin(),types.end(),[](const auto& t){return t.subject==SorterSubject::LinearAlgebra;});
     const auto chapter=found->chapterId;
     revealContents([&]{return h.ui.studyChapters[chapter];});h.click(h.ui.studyChapters[chapter]);
@@ -1091,6 +1095,46 @@ void matrixMoveControls() {
   }
 }
 
+void matrixChapterFractionControls() {
+  namespace fm=iggy3d::first_move;using Op=fm::MathOperation;
+  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
+    Harness h(size.x,size.y,SORTER_STUDY_FIXTURE);h.action(SorterActionKind::OpenSolve,6112);
+    const auto original=workspaceBounds(h.ui);const SorterCardBounds window{0,0,0,size.x,size.y,true};
+    auto* game=h.session.activeSolve();
+    for(const auto& [operation,operand,expected]:std::array{
+        std::tuple{Op::DivideRow1,"3/2","[1,-2/3|8/9] [2,3|1/3]"},
+        std::tuple{Op::AddRow1ToRow2,"-2","[1,-2/3|8/9] [0,13/3|-13/9]"},
+        std::tuple{Op::DivideRow2,"13/3","[1,-2/3|8/9] [0,1|-1/3]"},
+        std::tuple{Op::AddRow2ToRow1,"2/3","[1,0|2/3] [0,1|-1/3]"}}) {
+      const auto choice=std::find_if(h.ui.mathChoices.begin(),h.ui.mathChoices.end(),[&](const auto& c) {
+        return c.operation==operation && c.operand==operand;
+      });
+      expect(choice!=h.ui.mathChoices.end(),"new fractional route offers its authored operation");
+      const auto index=static_cast<std::size_t>(choice-h.ui.mathChoices.begin());h.click(h.ui.mathOperations[index]);
+      expect(h.ui.mathSelectedMove==index,"new fractional operation opens through the actual button");
+      const auto choices=h.ui.mathChoices[index].results;
+      for(std::size_t i=0;i<choices.size();++i) {
+        const auto& box=h.ui.mathResults[i];
+        const auto text=ImGui::GetFont()->CalcTextSizeA(15,1e6F,0,choices[i].c_str());
+        expect(box.available && contains(window,box) && contains(h.ui.solveStage,box) &&
+            text.x+16<=box.width && text.y+6<=box.height,
+            "fractional result labels fit their actual two-row buttons with padding");
+      }
+      const auto matrix=fm::parseAugmentedMatrix(expected);
+      expect(matrix.result.has_value(),"independent fractional working parses");
+      const auto result=std::find(choices.begin(),choices.end(),matrix.result->display);
+      expect(result!=choices.end(),"new fractional result is selectable");
+      h.click(h.ui.mathResults[static_cast<std::size_t>(result-choices.begin())]);
+      expect(game->view().working==matrix.result->display,"actual result click advances to the expected exact fractional working");
+      const auto panels=workspaceBounds(h.ui);
+      for(std::size_t i=0;i<panels.size();++i)expect(sameRect(panels[i],original[i]) && contains(window,panels[i]),
+          "new fraction problems retain the accepted fixed workspace at every tested size");
+    }
+    expect(game->view().completed && !game->view().verification.empty(),"new fractional final answer remains checked through the existing UI");
+    h.frame(90);expect(game->view().completed && game->question().content().id=="sorter_matrix_practice_6112",
+        "finished new problem stays until explicit Next");
+  }
+}
 void matrixReferenceControls() {
   namespace fm=iggy3d::first_move;using Op=fm::MathOperation;
   for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
@@ -1209,6 +1253,6 @@ void restoredPracticeControls() {
 }
 
 int main() {
-  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixReferenceControls(); restoredPracticeControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
+  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixChapterFractionControls(); matrixReferenceControls(); restoredPracticeControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
   catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

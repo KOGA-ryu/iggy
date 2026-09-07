@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {
+      "sorter_id": 6101,
+      "content_version": 1,
+      "group": "integers",
+      "skill": "Eliminate a multiple of a unit pivot",
+      "rows": [["1", "1", "5"], ["2", "3", "12"]],
+      "answer": ["3", "2"],
+      "routes": [
+        {"name": "Unit pivot first", "moves": [
+          {"operation": "add_row_1_to_2", "operand": "-2"},
+          {"operation": "add_row_2_to_1", "operand": "-1"}
+        ]},
+        {"name": "Swap and normalize first", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-1/2"},
+          {"operation": "add_row_2_to_1", "operand": "-3/2"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6102,
+      "content_version": 1,
+      "group": "integers",
+      "skill": "Normalize a common row factor before eliminating",
+      "rows": [["2", "2", "14"], ["1", "3", "13"]],
+      "answer": ["4", "3"],
+      "routes": [
+        {"name": "Normalize the first row", "moves": [
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "2"},
+          {"operation": "add_row_2_to_1", "operand": "-1"}
+        ]},
+        {"name": "Swap to the unit pivot", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "-2"},
+          {"operation": "divide_row_2", "operand": "-4"},
+          {"operation": "add_row_2_to_1", "operand": "-3"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6103,
+      "content_version": 1,
+      "group": "integers",
+      "skill": "Clear coefficients with two row additions",
+      "rows": [["1", "2", "7"], ["3", "7", "24"]],
+      "answer": ["1", "3"],
+      "routes": [
+        {"name": "Clear below then above", "moves": [
+          {"operation": "add_row_1_to_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "-2"}
+        ]},
+        {"name": "Swap and divide by three", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "divide_row_1", "operand": "3"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-1/3"},
+          {"operation": "add_row_2_to_1", "operand": "-7/3"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6104,
+      "content_version": 1,
+      "group": "integers",
+      "skill": "Keep all three columns together when dividing",
+      "rows": [["3", "6", "24"], ["1", "3", "11"]],
+      "answer": ["2", "3"],
+      "routes": [
+        {"name": "Divide before elimination", "moves": [
+          {"operation": "divide_row_1", "operand": "3"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "add_row_2_to_1", "operand": "-2"}
+        ]},
+        {"name": "Swap before elimination", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "-3"},
+          {"operation": "divide_row_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "-3"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6105,
+      "content_version": 1,
+      "group": "signed",
+      "skill": "Swap a zero first pivot and retain a negative answer",
+      "rows": [["0", "2", "-6"], ["1", "-1", "7"]],
+      "answer": ["4", "-3"],
+      "routes": [
+        {"name": "Swap the zero pivot first", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "divide_row_2", "operand": "2"},
+          {"operation": "add_row_2_to_1", "operand": "1"}
+        ]},
+        {"name": "Solve y before swapping", "moves": [
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "1"},
+          {"operation": "swap_rows", "operand": ""}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6106,
+      "content_version": 1,
+      "group": "signed",
+      "skill": "Eliminate a negative coefficient with row addition",
+      "rows": [["-2", "4", "20"], ["1", "1", "-1"]],
+      "answer": ["-4", "3"],
+      "routes": [
+        {"name": "Swap then add twice the pivot", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "2"},
+          {"operation": "divide_row_2", "operand": "6"},
+          {"operation": "add_row_2_to_1", "operand": "-1"}
+        ]},
+        {"name": "Divide by the negative pivot", "moves": [
+          {"operation": "divide_row_1", "operand": "-2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "3"},
+          {"operation": "add_row_2_to_1", "operand": "2"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6107,
+      "content_version": 1,
+      "group": "signed",
+      "skill": "Normalize a negative second pivot after a swap",
+      "rows": [["-3", "-6", "15"], ["1", "-1", "-8"]],
+      "answer": ["-7", "1"],
+      "routes": [
+        {"name": "Swap then clear the negative row", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "3"},
+          {"operation": "divide_row_2", "operand": "-9"},
+          {"operation": "add_row_2_to_1", "operand": "1"}
+        ]},
+        {"name": "Normalize the negative first row", "moves": [
+          {"operation": "divide_row_1", "operand": "-3"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "-2"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6108,
+      "content_version": 1,
+      "group": "signed",
+      "skill": "Swap a zero pivot and divide both negative pivots",
+      "rows": [["0", "-3", "6"], ["-1", "1", "-5"]],
+      "answer": ["3", "-2"],
+      "routes": [
+        {"name": "Swap then normalize both rows", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "divide_row_1", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "1"}
+        ]},
+        {"name": "Clear y before the final swap", "moves": [
+          {"operation": "divide_row_1", "operand": "-3"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-1"},
+          {"operation": "swap_rows", "operand": ""}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6109,
+      "content_version": 1,
+      "group": "fractions",
+      "skill": "Carry halves through elimination to an integer answer",
+      "rows": [["2", "1", "8"], ["1", "2", "7"]],
+      "answer": ["3", "2"],
+      "routes": [
+        {"name": "Normalize to halves first", "moves": [
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "3/2"},
+          {"operation": "add_row_2_to_1", "operand": "-1/2"}
+        ]},
+        {"name": "Swap to keep integer working", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "-2"},
+          {"operation": "divide_row_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "-2"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6110,
+      "content_version": 1,
+      "group": "fractions",
+      "skill": "Divide by a fractional first pivot",
+      "rows": [["1/2", "1", "4"], ["1", "-1", "2"]],
+      "answer": ["4", "2"],
+      "routes": [
+        {"name": "Divide by one half first", "moves": [
+          {"operation": "divide_row_1", "operand": "1/2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "-3"},
+          {"operation": "add_row_2_to_1", "operand": "-2"}
+        ]},
+        {"name": "Swap and eliminate with a half", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "-1/2"},
+          {"operation": "divide_row_2", "operand": "3/2"},
+          {"operation": "add_row_2_to_1", "operand": "1"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6111,
+      "content_version": 1,
+      "group": "fractions",
+      "skill": "Reduce fractional working to a fractional x answer",
+      "rows": [["2", "1", "2"], ["1", "3", "7/2"]],
+      "answer": ["1/2", "1"],
+      "routes": [
+        {"name": "Normalize and retain exact halves", "moves": [
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "-1"},
+          {"operation": "divide_row_2", "operand": "5/2"},
+          {"operation": "add_row_2_to_1", "operand": "-1/2"}
+        ]},
+        {"name": "Swap and clear an integer multiple", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "add_row_1_to_2", "operand": "-2"},
+          {"operation": "divide_row_2", "operand": "-5"},
+          {"operation": "add_row_2_to_1", "operand": "-3"}
+        ]}
+      ]
+    },
+    {
+      "sorter_id": 6112,
+      "content_version": 1,
+      "group": "fractions",
+      "skill": "Keep signed fractions exact in both final answers",
+      "rows": [["3/2", "-1", "4/3"], ["2", "3", "1/3"]],
+      "answer": ["2/3", "-1/3"],
+      "routes": [
+        {"name": "Normalize the fractional first row", "moves": [
+          {"operation": "divide_row_1", "operand": "3/2"},
+          {"operation": "add_row_1_to_2", "operand": "-2"},
+          {"operation": "divide_row_2", "operand": "13/3"},
+          {"operation": "add_row_2_to_1", "operand": "2/3"}
+        ]},
+        {"name": "Swap and use the integer first pivot", "moves": [
+          {"operation": "swap_rows", "operand": ""},
+          {"operation": "divide_row_1", "operand": "2"},
+          {"operation": "add_row_1_to_2", "operand": "-3/2"},
+          {"operation": "divide_row_2", "operand": "-13/4"},
+          {"operation": "add_row_2_to_1", "operand": "-3/2"}
+        ]}
+      ]
+    }
+  ]
+}

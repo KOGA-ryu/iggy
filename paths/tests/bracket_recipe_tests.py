@@ -127,11 +127,13 @@ class BracketRecipes(unittest.TestCase):
             (root / "tools").mkdir()
             script = root / "tools/generate_sorter_fixture.py"
             script.write_bytes((ROOT / "tools/generate_sorter_fixture.py").read_bytes())
+            (root / "tools/generate_matrix_practice.py").write_bytes((ROOT / "tools/generate_matrix_practice.py").read_bytes())
             graph_source = root / "content/authoring/line_graph_recipes.json"
             graph_source.parent.mkdir(parents=True)
             graph_source.write_bytes((ROOT / "content/authoring/line_graph_recipes.json").read_bytes())
             system_source = root / "content/authoring/system_graph_recipes.json"
             system_source.write_bytes((ROOT / "content/authoring/system_graph_recipes.json").read_bytes())
+            (root / "content/authoring/matrix_practice_recipes.json").write_bytes((ROOT / "content/authoring/matrix_practice_recipes.json").read_bytes())
             matrix_source = root / "content/cards/sorter_matrix_rows.json"
             matrix_source.parent.mkdir(parents=True)
             matrix_source.write_bytes((ROOT / "content/cards/sorter_matrix_rows.json").read_bytes())

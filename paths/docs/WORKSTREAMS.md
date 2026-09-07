@@ -38,6 +38,7 @@
 | P034 | Solve one linear algebra question with row moves and matrix tiles | Accepted by user; automated checks passed; uncommitted | Same question owner and visual format; exact row operations; alternate routes, retained branches and original-system verification |
 | P035 | Read linked row-operation definitions and step through separate examples beside the problem | Automated Green; user visual confirmation pending; uncommitted | One shared library and exact row kernel; immutable linked definitions; fixed workspace, no player attempts from reference browsing |
 | P036 | Save practice and resume the same checked working after restarting | Automated Green; user visual confirmation pending; uncommitted | Canonical command replay; exact drafts and frozen queue; preserved attempts, help, branches and archived runs; device-local atomic file replacement |
+| P037 | Add twelve matrix problems while keeping existing saved practice compatible | Automated Green; user visual confirmation pending; uncommitted | Frozen P036 worker copy; 24 checked routes; both 100-card catalogues integrated; stable-ID save dependencies; preserved drafts, queue order and history across catalogue growth |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -48,7 +49,7 @@ The current native targets are `sorter`, `gallery`, and `paths`; Release builds
 use `b`. See the [README](../README.md) for current commands. Historical
 checkpoint sections retain the target names and build paths used for their evidence.
 
-The current sorter checkpoint is P036; the standalone gallery remains at P019. The preceding
+The current sorter checkpoint is P037; the standalone gallery remains at P019. The preceding
 [P006_TARGET_FOUNDATION.md](P006_TARGET_FOUNDATION.md) implements the
 target/question boundary proposed in
 [TARGET_FOUNDATION_DESIGN.md](TARGET_FOUNDATION_DESIGN.md). It adds four
@@ -60,15 +61,18 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user authorized choosing another capability after assessing the separate
-math-notes project. [P036 saved practice](P036_SAVED_PRACTICE.md) preserves the
-selected set and mathematical working across app restarts. The existing visual
-format remains: symbolic moves, result tiles, fixed original problem, checked
-branches, and explicit Next. The user's parser and notes remain separate.
-P034's format is accepted; P031 and P035 retain their own pending visual checks.
-No screenshots or windows are used for this work. Stop after this capability.
-The next candidate is compact started/finished marks beside problems in the
-contents page, derived from the saved question evidence.
+The user authorized [P037 matrix practice and catalogue growth](P037_GROWING_MATRIX_PRACTICE.md):
+a worker builds twelve new matrix problems from a frozen copy of P036 while the
+current session owns save compatibility and default-catalogue/build integration.
+New IDs are 6101–6112 at version 1. Existing playable questions retain their
+identities and content. Both catalogues retain the 100-card requirement.
+The existing visual format remains: symbolic moves, result tiles, gold original,
+cyan working, green checked branches, and explicit Next. The user's parser and
+notes remain separate. P034's format is accepted; earlier visual gates keep their
+own status. Use targeted headless checks, with no screenshots, captures or
+windows. Stop after this integrated capability and provide one short colour-based
+visual check. The next candidate is started/finished marks in Contents, derived
+from saved question evidence.
 
 Keep the build focused on answering questions quickly and continuously for
 long sessions. Before adding systems, check rapid repeated input, automatic

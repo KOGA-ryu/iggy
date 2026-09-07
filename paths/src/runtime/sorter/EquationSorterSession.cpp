@@ -105,9 +105,10 @@ SorterView EquationSorterSession::view() const {
   describeNextStep(v);
   v.solving = solving_;
   v.studying=studying_;v.studyRun=studyRun_;
-  v.study={studyTypes_,includedTypes_,studyAvailable_,studySelected_,studyMode_,
+  v.study={studyTypes_,includedTypes_,studyAvailable_,{},studyMode_,
       static_cast<std::size_t>(std::count(studyAvailable_.begin(),studyAvailable_.end(),true)),
-      static_cast<std::size_t>(std::count(studySelected_.begin(),studySelected_.end(),true)),studyRandomCount_,!studyQueue_.empty()};
+      studySelected_.size(),studyRandomCount_,!studyQueue_.empty()};
+  for(const auto index:studySelected_)v.study.selected[index]=true;
   for (const auto& e : content_) if (e.solution) {
     ++v.solveCount;
     if (solving_ && e.homeIndex==solveHome_) v.solveNumber=v.solveCount;
@@ -357,17 +358,17 @@ void EquationSorterSession::refreshStudySelection() {
   studyAvailable_.fill(false);
   for(std::size_t i=0;i<studyTypes_.size();++i)if(includedTypes_[i])
     for(const auto index:studyTypes_[i].homes)studyAvailable_[index]=true;
+  studySelectionPool_.clear();
+  for(std::size_t i=0;i<content_.size();++i)if(studyAvailable_[i])studySelectionPool_.push_back(i);
   if(studyMode_==StudyMode::Specific) {
-    for(std::size_t i=0;i<content_.size();++i)studySelected_[i]=studySelected_[i] && studyAvailable_[i];
+    std::erase_if(studySelected_,[&](auto i){return !studyAvailable_[i];});
     return;
   }
-  studySelected_=studyAvailable_;
+  studySelected_=studySelectionPool_;
   if(studyMode_==StudyMode::Random) {
-    std::vector<std::size_t> pool;
-    for(std::size_t i=0;i<content_.size();++i)if(studyAvailable_[i])pool.push_back(i);
-    std::shuffle(pool.begin(),pool.end(),studyRandom_);
-    studySelected_.fill(false);
-    for(std::size_t i=0;i<std::min(studyRandomCount_,pool.size());++i)studySelected_[pool[i]]=true;
+    std::shuffle(studySelected_.begin(),studySelected_.end(),studyRandom_);
+    studySelected_.resize(std::min(studyRandomCount_,studySelected_.size()));
+    std::sort(studySelected_.begin(),studySelected_.end());
   }
 }
 SorterResult EquationSorterSession::dispatchStudy(const SorterAction& action) {
@@ -399,7 +400,8 @@ SorterResult EquationSorterSession::dispatchStudy(const SorterAction& action) {
   }
   case SorterActionKind::SetStudyMode:
     if(action.value>static_cast<unsigned>(StudyMode::Specific))return {false,false,"invalid selection mode"};
-    if(studyMode_==static_cast<StudyMode>(action.value))return accept(false);
+    if(studyMode_==static_cast<StudyMode>(action.value) &&
+        (studyMode_!=StudyMode::All || studySelected_.size()==std::count(studyAvailable_.begin(),studyAvailable_.end(),true)))return accept(false);
     studyMode_=static_cast<StudyMode>(action.value);refreshStudySelection();return accept(true);
   case SorterActionKind::SetStudyCount:
     if(!action.value || action.value>sorterEquationCount)return {false,false,"random count must be 1 through 100"};
@@ -411,12 +413,16 @@ SorterResult EquationSorterSession::dispatchStudy(const SorterAction& action) {
   case SorterActionKind::ToggleStudyQuestion: {
     const auto index=home(action.equation);
     if(!index || !studyAvailable_[*index])return {false,false,"question is outside the chosen titles"};
-    studyMode_=StudyMode::Specific;studySelected_[*index]=!studySelected_[*index];return accept(true);
+    studyMode_=StudyMode::Specific;refreshStudySelection();
+    const auto selected=std::find(studySelected_.begin(),studySelected_.end(),*index);
+    if(selected!=studySelected_.end())studySelected_.erase(selected);
+    else {studySelected_.push_back(*index);std::sort(studySelected_.begin(),studySelected_.end());}
+    return accept(true);
   }
   case SorterActionKind::StartStudy: {
     std::vector<std::size_t> queue;
     std::vector<std::unique_ptr<GallerySession>> prepared;
-    for(std::size_t i=0;i<content_.size();++i)if(studySelected_[i]) {
+    for(const auto i:studySelected_) {
       queue.push_back(i);prepared.push_back(freshSolve(i));
     }
     if(queue.empty())return {false,false,"select at least one problem"};
@@ -438,8 +444,9 @@ StudyProgress EquationSorterSession::studyProgress() const {
     const auto& t=studyTypes_[i];saved.titles.push_back({t.subject,t.chapter,t.title});
   }
   for(const auto index:studyQueue_)saved.queue.push_back(content_[index].id);
+  for(const auto index:studySelectionPool_)saved.selectionPool.push_back(content_[index].id);
+  for(const auto index:studySelected_)saved.selected.push_back(content_[index].id);
   for(std::size_t i=0;i<content_.size();++i) {
-    if(studySelected_[i])saved.selected.push_back(content_[i].id);
     if(solves_[i]) {
       const auto& question=solves_[i]->question();
       const auto commands=question.journal();
@@ -468,13 +475,20 @@ void EquationSorterSession::restoreStudyProgress(const StudyProgress& saved) {
     require(!staged.includedTypes_[index],"duplicate saved title");staged.includedTypes_[index]=true;
   }
   staged.studyMode_=saved.mode;staged.studyRandomCount_=saved.randomCount;
-  staged.refreshStudySelection();staged.studySelected_.fill(false);
+  staged.refreshStudySelection();staged.studySelected_.clear();staged.studySelectionPool_.clear();
+  for(const auto id:saved.selectionPool) {
+    const auto index=home(id);
+    require(index && staged.studyAvailable_[*index],"saved selection pool is outside the selected titles");
+    require(std::find(staged.studySelectionPool_.begin(),staged.studySelectionPool_.end(),*index)==staged.studySelectionPool_.end(),"duplicate saved pool question");
+    staged.studySelectionPool_.push_back(*index);
+  }
   for(const auto id:saved.selected) {
     const auto index=home(id);
-    require(index && staged.studyAvailable_[*index],"saved question is outside the selected titles");
-    require(!staged.studySelected_[*index],"duplicate saved selection");staged.studySelected_[*index]=true;
+    require(index && std::find(staged.studySelectionPool_.begin(),staged.studySelectionPool_.end(),*index)!=staged.studySelectionPool_.end(),"saved question is outside the selection pool");
+    require(std::find(staged.studySelected_.begin(),staged.studySelected_.end(),*index)==staged.studySelected_.end(),"duplicate saved selection");
+    staged.studySelected_.push_back(*index);
   }
-  const auto available=static_cast<std::size_t>(std::count(staged.studyAvailable_.begin(),staged.studyAvailable_.end(),true));
+  const auto available=staged.studySelectionPool_.size();
   if(saved.mode==StudyMode::All)require(saved.selected.size()==available,"saved all selection has changed");
   if(saved.mode==StudyMode::Random)require(saved.selected.size()==std::min(available,saved.randomCount),"saved random selection has changed");
   for(const auto& question:saved.questions) {

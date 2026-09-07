@@ -79,8 +79,8 @@ in its prepared choices; statement text is not interpreted as a solving task.
 
 The default [study_practice_v1.json](sorter/study_practice_v1.json) combines
 those six bracket questions with four straight-line graph questions and four
-simultaneous equations and one matrix row-reduction question. The remaining
-85 slots keep sorting content. The graph
+simultaneous equations and thirteen matrix row-reduction questions. The remaining
+73 slots keep sorting content. The graph
 chapters are **Straight lines → Slope and intercept** and **Simultaneous
 equations → Two straight lines**. Prepared graph geometry lives in the linked
 question, alongside its four accepted decisions and reveal states.
@@ -109,6 +109,16 @@ is the editing source for this one question, rather than a generated recipe.
 The existing publisher reads it to produce [matrix_rows_pack.json](sorter/matrix_rows_pack.json)
 and its entry in the default study pack. Increase the card's content version
 when editing it, republish, and run the matrix/content checks.
+
+The generated **Linear algebra → Matrix practice** chapter adds twelve cards,
+IDs 6101–6112 at content version 1, under **Integer foundations**, **Swaps and
+negatives**, and **Exact fractions**. The separately loadable
+[matrix_practice_v1.json](sorter/matrix_practice_v1.json) has the same 100-card
+contract as the default catalogue. Both retain all fifteen earlier playable
+questions and use the existing row-operation reference library. See the
+[result sheet](../docs/P037_MATRIX_PRACTICE_RESULTS.md) for recipes, answers,
+reproduction commands and independently tested routes. Publishing the chapter
+replaces only sorting filler slots; existing question files keep their bytes.
 
 Version 2 of this question links `row_swap`, `row_scaling` and `row_addition`
 through `concept_ids`. Its generated pack selects the shared

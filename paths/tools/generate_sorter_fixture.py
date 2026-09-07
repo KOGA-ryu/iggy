@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Author fixed algebra cards and prepared bracket/graph practice. No runtime generation."""
+"""Author fixed algebra cards and prepared bracket/graph/matrix practice. No runtime generation."""
 import argparse
 import hashlib
 import json
@@ -424,6 +424,14 @@ def main():
         generated.update(system_graph_outputs(json.loads(active_source.read_text(), object_pairs_hook=unique_fields), generated))
         active_source = root / "content/cards/sorter_matrix_rows.json"
         generated.update(matrix_study_outputs(json.loads(active_source.read_text(), object_pairs_hook=unique_fields), generated))
+        from generate_matrix_practice import matrix_practice_outputs
+        active_source = root / "content/authoring/matrix_practice_recipes.json"
+        chapter_document = json.loads(active_source.read_text(), object_pairs_hook=unique_fields)
+        chapter = matrix_practice_outputs(chapter_document, generated["content/sorter/study_practice_v1.json"])
+        if len(chapter_document["recipes"]) != 12:
+            raise ValueError("matrix practice: publication requires all twelve recipes")
+        generated.update(chapter)
+        generated["content/sorter/study_practice_v1.json"] = chapter["content/sorter/matrix_practice_v1.json"]
     except (OSError, ValueError) as error:
         parser.error(f"{active_source}:{error}")
     outputs.extend((root / path, data) for path, data in generated.items())
@@ -445,7 +453,7 @@ def main():
                 temporary.write(expected)
             Path(temporary.name).replace(path)
     count = sum("working_states" in value for value in generated.values())
-    print(f"100-card study pack and {count} generated bracket/graph sequences plus one authored matrix question: " + ("unchanged" if args.check else "written"))
+    print(f"100-card study pack and {count} generated bracket/graph/matrix sequences plus one authored matrix question: " + ("unchanged" if args.check else "written"))
 
 
 if __name__ == "__main__":

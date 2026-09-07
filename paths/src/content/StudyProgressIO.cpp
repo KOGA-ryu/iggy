@@ -6,6 +6,7 @@
 #include <fstream>
 #include <limits>
 #include <random>
+#include <set>
 
 namespace paths {
 namespace {
@@ -112,7 +113,7 @@ Json catalogStamp(const EquationSorterSession& session) {
 }
 Json encode(const EquationSorterSession& session) {
   const auto p=session.studyProgress();
-  Json j{{"format","paths_practice"},{"version",1},{"catalog",catalogStamp(session)},
+  Json j{{"format","paths_practice"},{"version",2},{"catalog",catalogStamp(session)},{"selection_pool",p.selectionPool},
     {"mode",p.mode},{"random_count",p.randomCount},{"position",p.position},{"selected",p.selected},{"queue",p.queue},
     {"titles",Json::array()},{"questions",Json::array()}};
   for(const auto& t:p.titles)j["titles"].push_back({{"subject",t.subject},{"chapter",t.chapter},{"type",t.type}});
@@ -125,8 +126,8 @@ Json encode(const EquationSorterSession& session) {
   return j;
 }
 StudyProgress decode(const Json& j,const EquationSorterSession& session) {
-  require(j.at("format")=="paths_practice" && number(j.at("version"))==1,"unsupported practice save version");
-  require(j.at("catalog")==catalogStamp(session),"question content has changed; the saved practice was kept");
+  const auto version=number(j.at("version"));
+  require(j.at("format")=="paths_practice" && (version==1 || version==2),"unsupported practice save version");
   StudyProgress p;
   p.mode=static_cast<StudyMode>(number(j.at("mode"),2));p.randomCount=number(j.at("random_count"),100);p.position=number(j.at("position"),99);
   for(const auto& t:array(j.at("titles")))p.titles.push_back({static_cast<SorterSubject>(number(t.at("subject"),4)),string(t.at("chapter"),80),string(t.at("type"),80)});
@@ -136,6 +137,33 @@ StudyProgress decode(const Json& j,const EquationSorterSession& session) {
     SavedStudyQuestion question{static_cast<SorterEquationId>(number(q.at("card"))),string(q.at("id")),static_cast<std::uint32_t>(number(q.at("version"))),{}};
     for(const auto& c:array(q.at("commands"),maxCommands))question.commands.push_back(readCommand(c,question));
     p.questions.push_back(std::move(question));
+  }
+  const auto& previous=array(j.at("catalog"));
+  std::set<SorterEquationId> catalogIds;
+  for(const auto& stamp:previous) {
+    const auto id=number(stamp.at("card"));
+    require(id && catalogIds.insert(id).second,"invalid or duplicate saved catalogue card");
+  }
+  if(version==1) {
+    // P036 stamped all playable cards. Intersect that frozen catalogue with the
+    // saved titles to recover its selection pool without admitting new cards.
+    for(const auto& card:session.content())if(card.study && catalogIds.contains(card.id) &&
+        std::any_of(p.titles.begin(),p.titles.end(),[&](const auto& t) {
+          return card.subject==t.subject && card.study->chapter==t.chapter && card.study->type==t.type;
+        }))p.selectionPool.push_back(card.id);
+  } else for(const auto& id:array(j.at("selection_pool")))p.selectionPool.push_back(number(id));
+  // Only questions used by the saved draft or retained runs can reinterpret
+  // saved work. Resolve each dependency by identity, never catalogue position.
+  std::set<SorterEquationId> required(p.selected.begin(),p.selected.end());
+  required.insert(p.queue.begin(),p.queue.end());
+  for(const auto& q:p.questions)required.insert(q.equation);
+  const auto current=catalogStamp(session);
+  for(const auto id:required) {
+    const auto matches=[&](const auto& stamp){return stamp.at("card")==id;};
+    const auto old=std::find_if(previous.begin(),previous.end(),matches);
+    const auto now=std::find_if(current.begin(),current.end(),matches);
+    if(old==previous.end() || now==current.end() || *old!=*now)
+      throw std::runtime_error("question card "+std::to_string(id)+" has changed or is unavailable; the saved practice was kept");
   }
   return p;
 }

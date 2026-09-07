@@ -16,7 +16,10 @@ The separate `sorter` app now opens a [table of contents](docs/P028_STUDY_SELECT
 **Algebra → Simultaneous equations → Two straight lines**, and
 **Linear algebra → Matrices and systems → Row reduction**. The default study pack
 has six bracket problems, four single-line graphs, four simultaneous equations
-and one matrix row-reduction question.
+and thirteen matrix row-reduction questions. The new **Linear algebra → Matrix
+practice** chapter adds four **Integer foundations**, four **Swaps and negatives**,
+and four **Exact fractions** problems. The [problem and answer sheet](docs/P037_MATRIX_PRACTICE_RESULTS.md)
+lists their intended skills and tested solving routes.
 Choose whole chapters, a random
 number, or individual questions, then **Start set**. **Next**
 follows only your selection. **Back to contents** pauses the question, and
@@ -31,6 +34,15 @@ save message and a **blue Resume set** button. Your question order, current
 working, wrong attempts, help use, Undo branches and earlier runs are retained.
 A completed problem still waits for **Next**. Selection edits for a future set
 stay separate from the active practice queue.
+
+[Catalogue growth](docs/P037_GROWING_MATRIX_PRACTICE.md) preserves existing saved
+practice when questions are added or reordered. Resume keeps the same problem,
+working, history and question order. New problems appear in Contents for your
+next selection; selecting **All** again includes newly available problems in the
+chosen titles. **Start set** explicitly replaces the active queue. P036 saves
+open directly and migrate after the next change. If a question needed by your
+saved draft or working has changed, the amber message identifies its card and
+the original save stays untouched.
 
 The file lives in SDL's user application-data folder for **Paths**, named
 `practice-study_practice_v1.json` for the default catalogue. Each catalogue

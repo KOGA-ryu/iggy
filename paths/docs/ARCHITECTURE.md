@@ -464,6 +464,29 @@ green save status, a blue Resume button and amber failure details; it owns no
 persistence or recovery policy. Transient graph probes, reference-page cursors,
 camera state and grouping history remain outside this practice capability.
 
+[P037](P037_GROWING_MATRIX_PRACTICE.md) extends the catalogue with twelve generated
+matrix problems while preserving P036 saves. The existing publisher composes
+the new chapter with the default 100-card catalogue; its standalone catalogue
+uses the same cards and shared row references. The live mathematical palette,
+question judge and UI retain their existing owners.
+
+Practice format 2 records the pool at the last selection edit and the exact
+selected order. `EquationSorterSession` now owns an ordered selected-home vector;
+the UI's selection mask is its read-only projection. Restoration maps saved
+card IDs to current homes and validates All/Random counts against the saved pool.
+The current title pool can grow while the saved draft and active queue remain
+frozen. Deliberate selection edits refresh the pool; Start set freezes the chosen
+order, and Resume/Next continue to use the existing queue.
+
+`StudyProgressFile` checks teaching stamps by stable card identity for the saved
+draft, queue and retained runs. Catalogue order and unrelated additions do not
+affect compatibility. Version 1's full stamp supplies the old selection pool;
+version 2 saves it explicitly so repeated reloads remain stable after growth.
+No saved command is reinterpreted against changed teaching content. An
+incompatible dependency identifies its card, preserves the file and live state,
+and pauses saving for that launch. Existing atomic writes and external-change
+checks remain the filesystem adapter's responsibility.
+
 ## Modes and navigation
 
 Use `PathsScreen { Title, Playing, Stats }` and retain the existing

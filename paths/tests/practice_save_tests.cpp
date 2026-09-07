@@ -15,7 +15,7 @@ namespace fs=std::filesystem;
 using Json=nlohmann::json;
 using Op=fm::MathOperation;
 void expect(bool yes,const char* why) {if(!yes)throw std::runtime_error(why);}
-EquationSorterSession fresh() {return EquationSorterSession(loadSorterContent(SORTER_STUDY_FIXTURE));}
+EquationSorterSession fresh(std::vector<SorterEquation> content=loadSorterContent(SORTER_STUDY_FIXTURE)) {return EquationSorterSession(std::move(content));}
 void action(EquationSorterSession& s,SorterActionKind kind,std::uint32_t id=0,std::uint32_t value=0) {
   const auto r=s.dispatch({kind,SorterBucket::A,id,s.view().revision,value});
   if(!r.accepted)throw std::runtime_error(std::string(r.reason));
@@ -89,8 +89,8 @@ void createPractice(const fs::path& path) {
   for(int i=0;i<120;++i)store.save(s);
   expect(fs::last_write_time(path)==lastWrite,"idle frames do not rewrite saved progress");
 }
-void resumePractice(const fs::path& path) {
-  auto s=fresh();StudyProgressFile store(path);store.load(s);
+void resumePractice(const fs::path& path,const std::vector<SorterEquation>& content=loadSorterContent(SORTER_STUDY_FIXTURE)) {
+  auto s=fresh(content);StudyProgressFile store(path);store.load(s);
   expect(!store.failed() && s.view().studying && !s.activeSolve() && s.view().study.canResume,"separate process opens contents with Resume");
   expect(s.studyProgress().queue==std::vector<SorterEquationId>{3001,4001,6001} && s.studyProgress().selected==std::vector<SorterEquationId>{4001,6001},"selection edits do not replace frozen questions");
   expect(s.savedSolve()->view().paused && s.view().solveNumber==3 && s.view().solveCount==3,"saved position is restored safely paused");
@@ -108,15 +108,17 @@ void resumePractice(const fs::path& path) {
   for(int i=0;i<8;++i)expect(g.dispatch(GalleryTick{.25F}).accepted,"complete tick accepted");
   expect(g.view().completed && g.question().currentRun().runNumber==2,"completed problem waits for explicit action");
   store.save(s);expect(!store.failed(),"completed progress replaces the last good save");
-  auto again=fresh();StudyProgressFile last(path);last.load(again);expect(!last.failed(),"completed save reopens");
+  auto again=fresh(content);StudyProgressFile last(path);last.load(again);expect(!last.failed(),"completed save reopens");
   expect(again.savedSolve()->question().currentRun().completed,"completed working remains completed after another restart");
   action(again,SorterActionKind::ResumeStudy);expect(again.activeSolve()->dispatch(ReplayQuestion{}).accepted,"Play again works after reload");
-  last.save(again);auto third=fresh();StudyProgressFile thirdFile(path);thirdFile.load(third);
+  last.save(again);auto third=fresh(content);StudyProgressFile thirdFile(path);thirdFile.load(third);
   expect(!thirdFile.failed() && third.savedSolve()->question().currentRun().runNumber==3 && third.savedSolve()->question().archivedRuns().size()==2,
       "repeated saves and reloads neither lose nor duplicate archived runs");
 }
 void failureCases(const fs::path& folder) {
   const auto source=folder/"source.json";createPractice(source);const auto good=Json::parse(read(source));
+  const auto requiredStamp=static_cast<std::size_t>(std::find_if(good.at("catalog").begin(),good.at("catalog").end(),
+      [](const auto& stamp){return stamp.at("card")==3001;})-good.at("catalog").begin());
   const auto reject=[&](const Json& bad) {
     const auto path=folder/"bad.json";write(path,bad.is_string()?bad.get<std::string>():bad.dump());const auto bytes=read(path);
     auto s=fresh();select(s,{3001});move(*s.activeSolve(),Op::Divide,"3","x+2=7");
@@ -126,8 +128,8 @@ void failureCases(const fs::path& folder) {
     move(*s.activeSolve(),Op::Subtract,"2","x=5");store.save(s);
     expect(read(path)==bytes,"failed or incompatible saved file is never overwritten");
   };
-  reject(Json("{"));auto bad=good;bad["version"]=2;reject(bad);
-  bad=good;bad["catalog"][0]["version"]=999;reject(bad);
+  reject(Json("{"));auto bad=good;bad["version"]=3;reject(bad);
+  bad=good;bad["catalog"][requiredStamp]["version"]=999;reject(bad);
   bad=good;bad["questions"][2]["version"]=999;reject(bad);
   bad=good;bad["questions"][2]["commands"].back()["revision"]=999;reject(bad);
   bad=good;bad["questions"][1]["commands"][1]["option"]=999;reject(bad);
@@ -136,10 +138,18 @@ void failureCases(const fs::path& folder) {
   bad=good;bad["questions"].erase(2);reject(bad);
   bad=good;bad["position"]=-1;reject(bad);
   bad=good;bad["selected"].push_back(999);reject(bad);
+  bad=good;bad["selection_pool"].push_back(3001);reject(bad);
+  bad=good;bad["selection_pool"].clear();reject(bad);
+  bad=good;bad["catalog"].push_back(bad["catalog"][0]);reject(bad);
+  bad=good;bad["catalog"].erase(requiredStamp);reject(bad);
+  const auto originalBytes=read(source);
   auto changed=loadSorterContent(SORTER_STUDY_FIXTURE);
   for(auto& card:changed)if(card.id==3001) {auto q=std::make_shared<fm::LayeredQuestionContent>(*card.solution);q->steps[0].acceptedOptions^=3;card.solution=q;}
   EquationSorterSession changedSession(std::move(changed));StudyProgressFile changedStore(source);changedStore.load(changedSession);
-  expect(changedStore.failed(),"an edited answer key without a version bump cannot reinterpret saved attempts");
+  expect(changedStore.failed() && changedStore.message().find("3001")!=std::string::npos,
+      "an edited answer key identifies the incompatible card without reinterpreting saved attempts");
+  action(changedSession,SorterActionKind::OpenStudy);changedStore.save(changedSession);
+  expect(read(source)==originalBytes,"changed mathematics cannot overwrite the old working");
   auto s=fresh();StudyProgressFile a(source);a.load(s);expect(!a.failed(),"valid file still loads after rejected fixtures");
   write(source,read(source)+" ");const auto other=read(source);action(s,SorterActionKind::ResumeStudy);
   move(*s.activeSolve(),Op::AddRow1ToRow2,"-1","[1,1/2|7/2] [0,-3/2|-9/2]");a.save(s);
@@ -162,6 +172,80 @@ void randomDraft(const fs::path& folder) {
   auto third=fresh();StudyProgressFile thirdFile(path);thirdFile.load(third);
   expect(!thirdFile.failed() && third.studyProgress().queue==s.studyProgress().selected && third.view().study.canResume,
       "starting a restored random draft freezes that same selection");
+}
+std::vector<SorterEquation> grownCatalogue() {
+  auto content=loadSorterContent(SORTER_STUDY_FIXTURE);
+  const auto original=*std::find_if(content.begin(),content.end(),[](const auto& c){return c.id==3001;});
+  for(std::size_t i=0;i<2;++i) {
+    auto card=original;card.id=9901+i;card.homeIndex=content[content.size()-1-i].homeIndex;
+    expect(!content[content.size()-1-i].solution,"growth replaces only sorting filler");
+    auto q=std::make_shared<fm::LayeredQuestionContent>(*card.solution);
+    q->id="test_catalogue_growth_"+std::to_string(i);q->equation+=std::string(i+1,' ');
+    card.text=q->equation;card.solution=q;
+    if(i==1)card.study->type="New problem type";
+    content[content.size()-1-i]=std::move(card);
+  }
+  for(auto& card:content)card.homeIndex=sorterEquationCount-1-card.homeIndex;
+  std::reverse(content.begin(),content.end());
+  return content;
+}
+void catalogueGrowth(const fs::path& folder) {
+  const auto grown=grownCatalogue();
+  // This file was written by the frozen, unmodified P036 executable, including
+  // its complete v1 catalogue stamp and real scalar/graph/matrix journals.
+  const auto path=folder/"p036.json";const auto bytes=read(SORTER_P036_SAVE_FIXTURE);
+  write(path,bytes);const auto original=Json::parse(bytes);
+  auto s=fresh(grown);StudyProgressFile store(path);store.load(s);
+  expect(!store.failed() && read(path)==bytes,"P036 loads after growth and reordering without rewriting the save");
+  const auto p=s.studyProgress();
+  expect(p.queue==original.at("queue").get<std::vector<SorterEquationId>>() &&
+      p.selected==original.at("selected").get<std::vector<SorterEquationId>>() && p.position==2,
+      "stable IDs preserve the selected order and current frozen queue position");
+  expect(s.savedSolve()->question().content().id=="sorter_matrix_rows" && s.view().study.availableCount>p.selectionPool.size(),
+      "same matrix returns while new questions become available for future selection");
+  action(s,SorterActionKind::ResumeStudy);action(s,SorterActionKind::ReturnToStudy);store.save(s);
+  expect(!store.failed(),"compatible P036 progress saves as the current format after an action");
+  const auto migrated=Json::parse(read(path));
+  expect(migrated.at("version")==2 && migrated.at("selected")==original.at("selected") &&
+      migrated.at("queue")==original.at("queue"),"migration retains the exact draft and queue order");
+  for(const auto& q:original.at("questions")) {
+    const auto& questions=migrated.at("questions");
+    const auto found=std::find_if(questions.begin(),questions.end(),[&](const auto& item){return item.at("card")==q.at("card");});
+    expect(found!=questions.end() && *found==q,"all original commands, attempts, branches, help and archives survive migration unchanged");
+  }
+  resumePractice(path,grown);
+  for(const auto mode:{StudyMode::All,StudyMode::Random,StudyMode::Specific}) {
+    const auto draftPath=folder/("growth-draft-"+std::to_string(static_cast<unsigned>(mode))+".json");
+    auto before=fresh();StudyProgressFile draft(draftPath);draft.load(before);
+    action(before,SorterActionKind::OpenStudy);
+    action(before,SorterActionKind::SetStudyMode,0,static_cast<unsigned>(mode));
+    if(mode==StudyMode::Random)action(before,SorterActionKind::SetStudyCount,0,100);
+    const auto selected=before.studyProgress().selected;
+    // Random is deliberately unstarted and underfilled: its six original
+    // choices must neither reshuffle nor silently grow on catalogue reload.
+    if(mode!=StudyMode::Random)action(before,SorterActionKind::StartStudy);
+    const auto saved=before.studyProgress();draft.save(before);expect(!draft.failed(),"growth fixture saves");
+    if(mode!=StudyMode::Specific) {
+      auto legacy=Json::parse(read(draftPath));legacy["version"]=1;legacy.erase("selection_pool");write(draftPath,legacy.dump());
+    }
+    auto after=fresh(grown);StudyProgressFile reopened(draftPath);reopened.load(after);
+    const auto pool=after.studyProgress().selectionPool;
+    expect(!reopened.failed() && after.studyProgress().selected==selected && after.studyProgress().queue==saved.queue &&
+        std::set(pool.begin(),pool.end())==std::set(saved.selectionPool.begin(),saved.selectionPool.end()) &&
+        after.view().study.availableCount==saved.selectionPool.size()+1,
+        "all, random and specific drafts retain their original pool and order while the catalogue grows");
+    action(after,SorterActionKind::StartStudy);
+    expect(after.studyProgress().queue==selected,"starting an unchanged draft preserves its saved order after home positions move");
+    action(after,SorterActionKind::ReturnToStudy);reopened.save(after);
+    auto again=fresh(grown);StudyProgressFile againFile(draftPath);againFile.load(again);
+    expect(!againFile.failed() && again.studyProgress().selected==selected,"repeated reload keeps a frozen draft valid against the expanded pool");
+    action(again,SorterActionKind::SetStudyMode,0,static_cast<unsigned>(StudyMode::All));
+    const auto next=again.studyProgress();
+    expect(std::find(next.selected.begin(),next.selected.end(),9901)!=next.selected.end() && next.queue==selected,
+        "explicitly selecting All admits the new problem only to a future draft");
+    action(again,SorterActionKind::StartStudy);
+    expect(again.studyProgress().queue==next.selected,"only Start set replaces the frozen queue with the expanded selection");
+  }
 }
 void partialCollection() {
   auto content=loadSorterContent(SORTER_STUDY_FIXTURE);
@@ -193,7 +277,7 @@ int main(int argc,char** argv) {
       else throw std::runtime_error("unknown test phase");
     } else {
       const auto folder=fs::temp_directory_path()/("paths-practice-test-"+std::to_string(std::random_device{}()));fs::create_directory(folder);
-      failureCases(folder);randomDraft(folder);partialCollection();fs::remove_all(folder);
+      failureCases(folder);randomDraft(folder);catalogueGrowth(folder);partialCollection();fs::remove_all(folder);
     }
     std::cout<<"Practice persistence, checked restoration and saved-file protection passed\n";
   } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

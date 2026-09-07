@@ -345,7 +345,7 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   const bool blocked=io.AppFocusLost || ui.solvePointerHeld;
   const bool full=math.nodes.size()>=fm::kMathNodeCapacity || math.events.size()>=fm::kMathEventCapacity;
   const bool canUndo=math.active && !v.paused && math.events.size()<fm::kMathEventCapacity;
-  const auto queue=[&](GalleryCommand command) {if(!blocked && !ui.pending && !ui.pendingGame)ui.pendingGame=std::move(command);};
+  const auto queue=[&](GalleryCommand command) {if(!blocked && !ui.pending)ui.pending=std::move(command);};
   const auto move=[&](fm::MathMoveKind kind,const fm::MathMoveChoice* choice=nullptr,std::string entry={}) {
     queue(MathematicalMove{v.challenge,{kind,choice?choice->operation:fm::MathOperation::Expand,
         choice?choice->operand:std::string{},std::move(entry),evidence.runNumber,math.revision,evidence.questionId,evidence.contentVersion}});
@@ -398,7 +398,7 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   if(ImGui::Button("Play again",{width,24}))queue(ReplayQuestion{});
   ui.solveControls[4]=itemBounds(v.completed && !v.paused && !blocked);ImGui::EndDisabled();ImGui::SameLine();
   ImGui::BeginDisabled(!sorter.nextSolve || v.paused);
-  if(ImGui::Button("Next problem",{width,24}) && !ui.pending && !ui.pendingGame)
+  if(ImGui::Button("Next problem",{width,24}) && !ui.pending)
     ui.pending=SorterAction{SorterActionKind::NextSolve,SorterBucket::A,0,sorter.revision};
   ui.solveControls[5]=itemBounds(sorter.nextSolve.has_value() && !v.paused && !blocked);ImGui::EndDisabled();
   ImGui::EndDisabled();ImGui::EndChild();
@@ -567,7 +567,7 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   const float scale=layout.scale;
   const bool changed=ui.solveDisplayedChallenge!=v.challenge || ui.solveCompleteVisible!=v.completed;
   const bool helpChanged=ui.solveHintVisible!=!v.hint.empty() || ui.solveNextVisible!=!v.nextMove.empty();
-  const auto queue=[&](GalleryCommand command) { if(!ui.pending && !ui.pendingGame && !io.AppFocusLost)ui.pendingGame=command; };
+  const auto queue=[&](GalleryCommand command) { if(!ui.pending && !io.AppFocusLost)ui.pending=std::move(command); };
   const auto flags=ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{0,0});
   ImGui::SetNextWindowPos({0,0});ImGui::SetNextWindowSize(io.DisplaySize);
@@ -660,7 +660,7 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
     if(ImGui::Button("Play again",{buttonWidth,graph?32:48*scale}))queue(ReplayQuestion{});
     ui.solveControls[4]=itemBounds();
     ImGui::SameLine(0,8);ImGui::BeginDisabled(!sorter.nextSolve);
-    if(ImGui::Button("Next problem",{buttonWidth,graph?32:48*scale}) && !ui.pending && !ui.pendingGame)
+    if(ImGui::Button("Next problem",{buttonWidth,graph?32:48*scale}) && !ui.pending)
       ui.pending=SorterAction{SorterActionKind::NextSolve,SorterBucket::A,0,sorter.revision};
     ImGui::EndDisabled();ui.solveControls[5]=itemBounds(sorter.nextSolve.has_value());
   } else if(calculation) {
@@ -771,7 +771,7 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   const SceneViewport questions=narrow?SceneViewport{0,top+tocHeight,side,body-tocHeight}:
       SceneViewport{side,top,io.DisplaySize.x-side,body};
   const auto queue=[&](SorterActionKind kind,std::uint32_t value=0,SorterEquationId id=0) {
-    if(!ui.pending && !ui.pendingGame && !io.AppFocusLost)ui.pending=SorterAction{kind,SorterBucket::A,id,view.revision,value};
+    if(!ui.pending && !io.AppFocusLost)ui.pending=SorterAction{kind,SorterBucket::A,id,view.revision,value};
   };
   const auto bounds=[&](StudyControl control,bool enabled=true) {ui.studyControls[static_cast<std::size_t>(control)]=itemBounds(enabled);};
   ui.shootAvailable=false;ui.solveButton={};ui.cardCount=0;
@@ -887,20 +887,16 @@ void beginEquationSorterFrame(EquationSorterUiState& ui, EquationSorterSession& 
   if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))ui.solvePointerHeld=false;
   if (ImGui::GetIO().AppFocusLost) {
     ui.pending.reset();
-    ui.pendingGame.reset();
     if(auto* game=session.activeSolve())(void)game->dispatch(GalleryPause{true});
     else (void)session.dispatch({SorterActionKind::ClearInspection});
   } else if (ui.pending) {
-    (void)session.dispatch(*ui.pending);
+    if(const auto* action=std::get_if<SorterAction>(&*ui.pending)) {
+      (void)session.dispatch(*action);
+      ui.shootAvailable=false;
+      ui.solvePointerHeld=ImGui::IsMouseDown(ImGuiMouseButton_Left);
+      ui.solveDisplayedChallenge={};
+    } else if(auto* game=session.activeSolve())(void)game->dispatch(std::get<GalleryCommand>(*ui.pending));
     ui.pending.reset();
-    ui.pendingGame.reset();
-    ui.shootAvailable=false;
-    ui.solvePointerHeld=ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    ui.solveDisplayedChallenge={};
-  }
-  if(ui.pendingGame) {
-    if(auto* game=session.activeSolve())(void)game->dispatch(*ui.pendingGame);
-    ui.pendingGame.reset();
   }
   if(auto* game=session.activeSolve()) {
     const auto& io=ImGui::GetIO();const auto r=ui.shootViewport;

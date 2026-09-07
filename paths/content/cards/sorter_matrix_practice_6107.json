@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "id": "sorter_matrix_practice_6107",
+  "content_version": 1,
+  "equation": "[-3, -6 | 15] [ 1, -1 | -8]",
+  "skill": "row_reduction",
+  "description": "Normalize a negative second pivot after a swap. Each augmented row contains the x coefficient, y coefficient and right-hand value. Make the left block the identity matrix.",
+  "working_model": "matrix_rows",
+  "working_states": [
+    {
+      "id": 10,
+      "display": "[-3, -6 | 15]\n[ 1, -1 | -8]"
+    },
+    {
+      "id": 20,
+      "display": "[ 1, -1 | -8]\n[-3, -6 | 15]"
+    },
+    {
+      "id": 30,
+      "display": "[1, -1 | -8]\n[0, -9 | -9]"
+    },
+    {
+      "id": 40,
+      "display": "[1, -1 | -8]\n[0,  1 |  1]"
+    },
+    {
+      "id": 50,
+      "display": "[1, 0 | -7]\n[0, 1 |  1]"
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "layer_name": "ROW REDUCTION",
+      "prompt": "R1 <-> R2",
+      "options": [
+        {
+          "id": 101,
+          "label": "[ 1, -1 | -8]\n[-3, -6 | 15]"
+        },
+        {
+          "id": 108,
+          "label": "[ 1, -1 | -7]\n[-3, -6 | 15]"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Check every value in the changed row.",
+      "explanation": "Apply the row operation to all three columns.",
+      "hint": "Keep the other row unchanged, except when swapping rows.",
+      "next_move": "R1 <-> R2",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    },
+    {
+      "id": 2,
+      "layer_name": "ROW REDUCTION",
+      "prompt": "R2 + 3R1",
+      "options": [
+        {
+          "id": 101,
+          "label": "[1, -1 | -8]\n[0, -9 | -9]"
+        },
+        {
+          "id": 108,
+          "label": "[1, -1 | -8]\n[0, -9 | -8]"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Check every value in the changed row.",
+      "explanation": "Apply the row operation to all three columns.",
+      "hint": "Keep the other row unchanged, except when swapping rows.",
+      "next_move": "R2 + 3R1",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 20,
+        "after": 30
+      }
+    },
+    {
+      "id": 3,
+      "layer_name": "ROW REDUCTION",
+      "prompt": "R2 \u00f7 (-9)",
+      "options": [
+        {
+          "id": 101,
+          "label": "[1, -1 | -8]\n[0,  1 |  1]"
+        },
+        {
+          "id": 108,
+          "label": "[1, -1 | -8]\n[0,  1 |  2]"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Check every value in the changed row.",
+      "explanation": "Apply the row operation to all three columns.",
+      "hint": "Keep the other row unchanged, except when swapping rows.",
+      "next_move": "R2 \u00f7 (-9)",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 30,
+        "after": 40
+      }
+    },
+    {
+      "id": 4,
+      "layer_name": "ROW REDUCTION",
+      "prompt": "R1 + R2",
+      "options": [
+        {
+          "id": 101,
+          "label": "[1, 0 | -7]\n[0, 1 |  1]"
+        },
+        {
+          "id": 108,
+          "label": "[1, 0 | -6]\n[0, 1 |  1]"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Check every value in the changed row.",
+      "explanation": "x = -7, y = 1. The original rows check: (-3)(-7) + (-6)(1) = 15 and (1)(-7) + (-1)(1) = -8.",
+      "hint": "Keep the other row unchanged, except when swapping rows.",
+      "next_move": "R1 + R2",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 40,
+        "after": 50
+      }
+    }
+  ],
+  "concept_ids": [
+    "row_swap",
+    "row_scaling",
+    "row_addition"
+  ]
+}

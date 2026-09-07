@@ -260,7 +260,7 @@ void matrixRows() {
       std::holds_alternative<fm::AugmentedMatrix>(game.question().currentRun().math->nodes.front().equation),"replay archives matrix history and retains its working type");
   action(session,SorterActionKind::ReturnToSorter);action(session,SorterActionKind::OpenStudy);
   action(session,SorterActionKind::ToggleStudyType,0);
-  action(session,SorterActionKind::ToggleStudySubject,0,static_cast<unsigned>(SorterSubject::LinearAlgebra));
+  action(session,SorterActionKind::ToggleStudyType,0,static_cast<unsigned>(type-session.view().study.types.begin()));
   action(session,SorterActionKind::StartStudy);
   expect(session.view().solveCount==1 && session.activeSolve()->question().content().id=="sorter_matrix_rows","matrix-only study selection opens exactly the requested question");
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "runtime/sorter/EquationSorterSession.hpp"
+#include <variant>
 
 namespace paths {
 inline constexpr std::size_t sorterUndoControl = sorterBucketCount;
@@ -16,8 +17,7 @@ struct EquationSorterUiState {
   std::string progressMessage;
   bool progressFailed=false;
   SorterCardBounds progressStatus;
-  std::optional<SorterAction> pending;
-  std::optional<GalleryCommand> pendingGame;
+  std::optional<std::variant<SorterAction,GalleryCommand>> pending;
   // The native evidence report and input tests read the same presented rectangles.
   std::array<SorterCardBounds, sorterEquationCount> cards{};
   std::array<SorterCardBounds, sorterHintControl + 1> toolbar{};
