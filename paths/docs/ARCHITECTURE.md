@@ -157,13 +157,21 @@ The existing question owner still advances after its required correct answer
 or answer set; targets pop and the next step/question starts automatically.
 There is no mistake-triggered pause, review, retry round or game-over route.
 
-`GallerySession::submitHit()` sets a typed `GalleryFeedback` and an expiry
-30 scene ticks later. `view()` exposes it for half a second of active time;
+`GallerySession::submitAnswer()` forwards button choices and target-hit options
+to the question owner and consumes its recorded verdict in one place. It sets
+a typed `GalleryFeedback` and an expiry 30 scene ticks later. `view()` exposes
+it for half a second of active time;
 the indicator does not gate input or advance a question. A later accepted shot
 replaces it and a new challenge clears it. Misses remain distinct from wrong
 mathematical answers. The UI renders the short signal without interpreting
 answer labels. The old persistent coaching strings and their active-time
 display/unused per-challenge clock fields are removed.
+
+The dispatcher retains input-specific guards, hit validation and aiming misses.
+The shared answer route advances resolved button choices and finite practice
+immediately; arcade targets retain their pop interval. It updates target colour
+history only for an accepted correct target hit. See the
+[prepared-answer cleanup](CLEANUP_SORTER_INPUT.md#follow-up-prepared-answer-feedback).
 
 Stop/Esc uses the existing `GalleryPause` route. While paused, the UI displays
 the existing totals and offers Resume, optional Answer review, question
@@ -172,6 +180,13 @@ does not create a completed-run record or new scoring policy. The current mode
 is endless; a whole-run countdown is a later capability. These rules supersede
 the proposed automatic missed-question retry direction after P018. See
 [P019_CONTINUOUS_PLAY.md](P019_CONTINUOUS_PLAY.md).
+
+`GallerySession::view()` assembles shared identity, working, pause state,
+completion and accumulated attempt totals once, then fills the mode-specific
+fields. `GalleryScene` still owns pause state and `LayeredQuestionSession`
+still owns question evidence. Mathematical Submit events and prepared answer
+attempts retain their existing counting rules; Undo and rejected input do not
+become additional answers. See the [summary cleanup](CLEANUP_SORTER_INPUT.md#follow-up-shared-game-summary).
 
 The [P020 Equation Sorter](P020_EQUATION_SORTER_SPEC.md) is a separate native
 `sorter` startup sharing the host and ImGui. `EquationSorterSession` owns
@@ -717,3 +732,23 @@ The planner works in docs/content; Sol builds the scoped source changes and
 pushes a completion brief. No repeated worker observation is needed. Each
 brief advances the active packet in `WORKSTREAMS.md` and identifies the next
 capability rather than growing an unbounded refactor.
+
+## Native mathematical objects (P039)
+
+`MathObjects` owns the mathematical parameters, derived primitive placements,
+readouts, graph adjacency and route, and one challenge per object. Its semantic
+dispatch validates changes before rebuilding a bounded, immutable snapshot.
+It has no SDL, Vulkan, ImGui, content loading, or study-save dependency.
+
+`MathObjectScene` tessellates the snapshot into the existing `SceneFrame` format:
+position / colour / UV vertices and 16-bit indices, within the existing fixed
+GPU capacities. Unit geometry is cached and frame buffers are reserved. Camera
+motion uses the existing viewport-navigation kernel; both scene producers use
+`publishSceneCamera` for the same Vulkan projection convention. The native host
+continues to own buffers, shaders, synchronization and command recording.
+
+`app/math_lab_main.cpp` is the live UI/CLI consumer. It forwards parameter, route
+and Check actions to the model and camera input to the scene adapter. It does
+not calculate mathematical answers, alter study attempts or write personal
+saves. This object library and exploration startup are a separate capability
+from scored question integration and persistent lessons.

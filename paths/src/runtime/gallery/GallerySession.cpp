@@ -164,28 +164,22 @@ void GallerySession::commitChallenge(PreparedChallenge&& next) {
   deckIndex_=next.deckIndex;transitionAt_.reset();ready_=false;presentedChallenge_={};
   feedback_=GalleryFeedback::None;
 }
-GalleryResult GallerySession::submitHit(const SceneHit& hit) {
-  const auto& challenge=challenges_.back();
-  const auto bindings=std::span(challenge.bindings.data(),challenge.count);
-  const auto binding=std::find_if(bindings.begin(),bindings.end(),[&](const auto& b){return b.object==hit.object;});
-  if(binding==bindings.end()) {
-    ++aimMisses_;feedback_=GalleryFeedback::Miss;feedbackUntilTick_=scene_.tickCount()+feedbackTicks;
-    return {true,"aim_miss"};
-  }
-  if(hit.phase!=VisualPhase::Active)return {false,"target_not_active"};
-  const auto verdict=question_.dispatch(fm::LayeredQuestionCommand::submitOption(binding->option));
+GalleryResult GallerySession::submitAnswer(OptionId option, const TargetBinding* target) {
+  const auto verdict=question_.dispatch(fm::LayeredQuestionCommand::submitOption(option));
   if(!verdict.accepted)return {false,verdict.reason};
   const auto& record=question_.currentRun().steps[question_.currentRun().currentStep];
   feedback_=record.attempts.back().correct?GalleryFeedback::Correct:GalleryFeedback::Incorrect;
   feedbackUntilTick_=scene_.tickCount()+feedbackTicks;
   // Consume the model's judged fact. No label, RGB value or second answer key.
   if(record.attempts.back().correct) {
-    const auto popped=scene_.dispatch({GalleryActionKind::Pop,{},0,binding->object.value});
-    if(!popped.accepted)throw std::logic_error("validated_target_pop_failed");
-    const auto& step=question_.content().steps[question_.currentRun().currentStep];
-    if(std::popcount(step.acceptedOptions)==1)previousCorrectColour_=binding->token;
+    if(target) {
+      const auto popped=scene_.dispatch({GalleryActionKind::Pop,{},0,target->object.value});
+      if(!popped.accepted)throw std::logic_error("validated_target_pop_failed");
+      const auto& step=question_.content().steps[question_.currentRun().currentStep];
+      if(std::popcount(step.acceptedOptions)==1)previousCorrectColour_=target->token;
+    }
     if(record.resolvedByPlayer) {
-      if(config_.stopAfterQuestion)advanceChallenge();
+      if(!target || config_.stopAfterQuestion)advanceChallenge();
       else transitionAt_=scene_.tickCount()+kTargetPopTicks;
     }
   }
@@ -236,7 +230,15 @@ GalleryResult GallerySession::dispatch(const GalleryCommand& command) {
         return {false,"choose_an_operation"};
       const auto hit=scene_.hitTestPresentedFrame(action.frame,action.u,action.v);
       if(!hit.accepted)return {false,hit.reason};
-      return submitHit(hit);
+      const auto& challenge=challenges_.back();
+      const auto bindings=std::span(challenge.bindings.data(),challenge.count);
+      const auto binding=std::find_if(bindings.begin(),bindings.end(),[&](const auto& b){return b.object==hit.object;});
+      if(binding==bindings.end()) {
+        ++aimMisses_;feedback_=GalleryFeedback::Miss;feedbackUntilTick_=scene_.tickCount()+feedbackTicks;
+        return {true,"aim_miss"};
+      }
+      if(hit.phase!=VisualPhase::Active)return {false,"target_not_active"};
+      return submitAnswer(binding->option,&*binding);
     } else if constexpr(std::is_same_v<T,ChooseAnswer> || std::is_same_v<T,GalleryHelp>) {
       if(question_.currentRun().math)return {false,"math_move_required"};
       if(action.challenge!=challenges_.back().id)return {false,"stale_challenge"};
@@ -246,13 +248,7 @@ GalleryResult GallerySession::dispatch(const GalleryCommand& command) {
       if constexpr(std::is_same_v<T,ChooseAnswer>) {
         if(step.semantics.purpose!=fm::StepPurpose::OperationChoice && step.semantics.purpose!=fm::StepPurpose::GraphChoice)
           return {false,"button_choice_not_available"};
-        const auto result=question_.dispatch(fm::LayeredQuestionCommand::submitOption(action.option));
-        if(!result.accepted)return {false,result.reason};
-        const auto& record=question_.currentRun().steps[run.currentStep];
-        feedback_=record.attempts.back().correct?GalleryFeedback::Correct:GalleryFeedback::Incorrect;
-        feedbackUntilTick_=scene_.tickCount()+feedbackTicks;
-        if(record.resolvedByPlayer)advanceChallenge();
-        return {true,result.reason};
+        return submitAnswer(action.option);
       } else {
         constexpr std::array commands{fm::LayeredQuestionCommandKind::RequestHint,
             fm::LayeredQuestionCommandKind::RevealNextMove,fm::LayeredQuestionCommandKind::ApplyPreparedStep};
@@ -286,30 +282,31 @@ const SceneFrame& GallerySession::publishFrame() {
 GallerySessionView GallerySession::view() const {
   GallerySessionView view;
   const auto& run=question_.currentRun();
-  if(run.math) {
-    const auto& math=*run.math;const auto& node=math.nodes[math.active];
-    view.challenge=challenges_.back().id;view.title="MATHEMATICAL MOVES";view.equation=question_.content().equation;
-    view.working=node.working.display;view.verification=node.verification;
-    view.paused=scene_.paused();view.ready=!view.paused;view.completed=run.completed;view.priorExposure=run.priorExposure;
-    view.step=math.active+1;view.stepCount=math.nodes.size();
-    const auto count=[&](const auto& evidence) {
-      view.completedQuestions+=evidence.completed;
+  view.challenge=challenges_.back().id;view.equation=question_.content().equation;view.working=question_.visibleWorking();
+  view.paused=scene_.paused();view.completed=run.completed;view.priorExposure=run.priorExposure;
+  const auto count=[&](const fm::LayeredQuestionRunRecord& evidence) {
+    view.completedQuestions+=evidence.completed;
+    if(run.math) {
       if(evidence.math)for(const auto& event:evidence.math->events)if(event.kind==fm::MathMoveKind::Submit)
         event.correct?++view.correctHits:++view.wrongHits;
-    };
-    count(run);for(const auto& archived:question_.archivedRuns())count(archived);
+    } else for(const auto& step:evidence.steps)for(const auto& attempt:step.attempts)
+      attempt.correct?++view.correctHits:++view.wrongHits;
+  };
+  count(run);for(const auto& archived:question_.archivedRuns())count(archived);
+  if(run.math) {
+    const auto& math=*run.math;const auto& node=math.nodes[math.active];
+    view.title="MATHEMATICAL MOVES";view.verification=node.verification;view.ready=!view.paused;
+    view.step=math.active+1;view.stepCount=math.nodes.size();
     return view;
   }
   const auto& content=question_.content();const auto& step=content.steps[run.currentStep];
   const auto& record=run.steps[run.currentStep];const auto& challenge=challenges_.back();
-  view.challenge=challenge.id;view.title=descriptor(config_.variation).title;
-  view.equation=content.equation;view.prompt=step.prompt;view.working=question_.visibleWorking();
+  view.title=descriptor(config_.variation).title;view.prompt=step.prompt;
   view.workingHighlights=question_.visibleWorkingState().highlights;
   view.feedback=scene_.tickCount()<feedbackUntilTick_?feedback_:GalleryFeedback::None;
   view.step=run.currentStep+1;view.stepCount=run.steps.size();view.choiceCount=step.options.size();
   view.required=fm::requiredAnswerCount(step);view.collected=std::popcount(record.collectedOptions);
-  view.paused=scene_.paused();view.ready=ready_;view.transitioning=transitionAt_.has_value();view.priorExposure=run.priorExposure;
-  view.completed=run.completed;view.purpose=step.semantics.purpose;
+  view.ready=ready_;view.transitioning=transitionAt_.has_value();view.purpose=step.semantics.purpose;
   view.canHint=!run.completed && !step.hint.empty();view.canReveal=!run.completed && !step.nextMove.empty();
   if(record.hintRequested)view.hint=step.hint;
   if(record.nextMoveRequested)view.nextMove=step.nextMove;
@@ -321,12 +318,6 @@ GallerySessionView GallerySession::view() const {
     const auto index=static_cast<std::size_t>(option-step.options.begin());
     view.answers[i]={binding,option->label,(record.collectedOptions & (1U << index))!=0};
   }
-  const auto count=[&](const fm::LayeredQuestionRunRecord& evidence) {
-    view.completedQuestions+=evidence.completed;
-    for(const auto& s:evidence.steps)for(const auto& attempt:s.attempts)
-      attempt.correct ? ++view.correctHits:++view.wrongHits;
-  };
-  count(run);for(const auto& archived:question_.archivedRuns())count(archived);
   return view;
 }
 }  // namespace paths

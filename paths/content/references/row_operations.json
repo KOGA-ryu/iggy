@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "references": [
+    {
+      "id": "row_swap",
+      "content_version": 1,
+      "title": "Swap rows",
+      "definition": "Exchange two whole rows. The equations change places and keep the same solutions.",
+      "rule": "Ri <-> Rj. Include every entry, including the right-hand value.",
+      "example": {
+        "operation": "swap_rows",
+        "operand": "",
+        "before": "[3, 5 | 11] [1, 2 | 4]"
+      }
+    },
+    {
+      "id": "row_scaling",
+      "content_version": 1,
+      "title": "Divide a row",
+      "definition": "Divide every entry in one row by the same nonzero number. The other row stays unchanged.",
+      "rule": "Ri' = Ri / k, k != 0. This is row scaling by 1/k.",
+      "example": {
+        "operation": "divide_row_2",
+        "operand": "2",
+        "before": "[1, 2 | 4] [6, 10 | 22]"
+      }
+    },
+    {
+      "id": "row_addition",
+      "content_version": 1,
+      "title": "Add a row multiple",
+      "definition": "Add a multiple of one row to another. Use matching columns and keep the source row unchanged. A negative multiple subtracts.",
+      "rule": "Ri' = Ri + k Rj, i != j. Include the right-hand value.",
+      "example": {
+        "operation": "add_row_1_to_2",
+        "operand": "-2",
+        "before": "[1, 2 | 4] [3, 5 | 11]"
+      }
+    }
+  ]
+}

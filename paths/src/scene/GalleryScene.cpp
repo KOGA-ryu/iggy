@@ -27,8 +27,10 @@ Vec3 forward(const ProductCreativeViewportPose& pose) {
   return {std::sin(yaw)*std::cos(pitch), std::sin(pitch), -std::cos(yaw)*std::cos(pitch)};
 }
 
+} // namespace
+
 // Adapted from CreativeSceneFrame: row-major CPU matrices, Vulkan Z in [0,1].
-void cameraFrame(SceneFrame& frame, const ProductCreativeViewportPose& pose) {
+void publishSceneCamera(SceneFrame& frame, const ProductCreativeViewportPose& pose) {
   frame.eye = pose.anchorPositionMeters + Vec3{0,kProductCreativeCameraEyeHeightMeters,0};
   frame.forward = forward(pose);
   frame.right = normalizedOr(cross(frame.forward, {0,1,0}), {1,0,0});
@@ -51,6 +53,7 @@ void cameraFrame(SceneFrame& frame, const ProductCreativeViewportPose& pose) {
   frame.clipFromWorld = projection * view;
 }
 
+namespace {
 void triangle(SceneFrame& frame, std::size_t base, unsigned a, unsigned b, unsigned c) {
   // Parent primitives are double-sided; preserve their topology for room interiors.
   for (auto i : {a,b,c,c,b,a}) frame.indices.push_back(static_cast<std::uint16_t>(base+i));
@@ -413,7 +416,7 @@ GalleryResult GalleryScene::dispatch(const GalleryAction& a) {
 }
 
 const SceneFrame& GalleryScene::publishFrame() {
-  cameraFrame(frame_,camera_);
+  publishSceneCamera(frame_,camera_);
   frame_.vertices.clear();frame_.indices.clear();frame_.draws.clear();
   const auto box=[&](Vec3 pos,Vec3 size,Vec3 color){objectMesh(frame_,{},GalleryPrimitive::Box,pos,size,color);};
   box({0,-0.15F,-4},{18,0.3F,20},{0.075F,0.105F,0.14F});

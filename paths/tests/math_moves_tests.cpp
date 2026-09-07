@@ -113,12 +113,20 @@ void branchesAndAllExamples() {
     const auto& math=*game.question().currentRun().math;
     expect(game.view().completed && math.nodes.size()==6 && math.nodes[3].parent==0 && math.nodes[4].parent==3,"expansion creates a second checked branch from the original problem");
     expect(game.question().review()->math==&math && game.question().review()->steps.empty(),"review exposes the same move evidence and no prepared working");
+    expect(game.view().correctHits==5 && game.view().wrongHits==1 && game.view().completedQuestions==1,
+        "both checked branches count as answers while Undo and stale input do not");
     const auto old=command(game,Op::Divide,e.factor,e.answer);
     expect(game.dispatch(ReplayQuestion{}).accepted,"explicit replay starts another attempt");
     expect(!game.dispatch(old).accepted && game.question().archivedRuns().size()==1 &&
         game.question().archivedRuns()[0].math->nodes.size()==6 && game.question().currentRun().math->nodes.size()==1,"replay archives both branches and blocks commands from the previous run");
+    expect(game.view().correctHits==5 && game.view().wrongHits==1 && game.view().completedQuestions==1 &&
+        !game.view().completed && game.view().priorExposure && game.view().working==game.question().visibleWorking(),
+        "fresh working retains archived totals and exposure without claiming completion");
     move(game,Op::Divide,e.factor,e.divided);move(game,e.shiftOperation,e.shift,e.answer);
     action(session,SorterActionKind::ReturnToSorter);
+    expect(game.view().paused && !game.view().ready && game.view().completed && game.view().completedQuestions==2 &&
+        game.view().correctHits==7 && game.view().wrongHits==1,
+        "pause preserves exact current-plus-archived answer and completion totals");
   }
   expect(session.view().owners==owners,"solving never changes grouping ownership");
   for(const auto* game:games)expect(game->view().completed && game->view().paused,"all six independent sessions retain their solutions");

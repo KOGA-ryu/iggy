@@ -51,6 +51,9 @@ struct SceneFrame {
   std::vector<SceneDraw> draws;
 };
 
+// Shared camera projection for all native SceneFrame producers.
+void publishSceneCamera(SceneFrame&, const iggy3d::ProductCreativeViewportPose&);
+
 enum class GalleryPrimitive : std::uint8_t { Box, Ramp, Frame, Sphere };
 struct GalleryObject {
   SceneObjectId id;

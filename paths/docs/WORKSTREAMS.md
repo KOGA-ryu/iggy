@@ -40,13 +40,14 @@
 | P036 | Save practice and resume the same checked working after restarting | Automated Green; user visual confirmation pending; uncommitted | Canonical command replay; exact drafts and frozen queue; preserved attempts, help, branches and archived runs; device-local atomic file replacement |
 | P037 | Add twelve matrix problems while keeping existing saved practice compatible | Automated Green; user visual confirmation pending; uncommitted | Frozen P036 worker copy; 24 checked routes; both 100-card catalogues integrated; stable-ID save dependencies; preserved drafts, queue order and history across catalogue growth |
 | P038 | Show current-attempt progress and chapter completion counts in Contents | Automated Green; user visual confirmation pending; uncommitted | Question-owned progress; selection-independent totals; Undo, Replay and saved evidence remain canonical; compact native symbols |
+| P039 | Explore five native 3D mathematical objects with live parameters and challenges | In Progress; user-authorized; uncommitted | One mathematical owner; existing SceneFrame/Vulkan pipeline; bounded meshes and separate exploration state |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
 commit-state descriptions.
 P014 and P015 are recorded together in local commit `6a9f1c8`.
 
-The current native targets are `sorter`, `gallery`, and `paths`; Release builds
+The current native targets are `math_lab`, `sorter`, `gallery`, and `paths`; Release builds
 use `b`. See the [README](../README.md) for current commands. Historical
 checkpoint sections retain the target names and build paths used for their evidence.
 
@@ -62,18 +63,29 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user authorized [P038 Contents progress](P038_CONTENTS_PROGRESS.md): small
-empty circles, cyan in-progress dots, green completed ticks and chapter counts
-derived from the existing current-attempt evidence. It is implemented and passes
-five targeted headless checks and all three native builds. Undo, Replay,
-selected-set restart and save/reopen retain their existing owners and behaviour.
-The P037 chapter and input cleanup are integrated and preserved. The existing
-visual format remains: compact symbolic moves, result tiles, gold original,
-cyan working, green checked branches and explicit Next. The user's parser and
-notes remain separate. Earlier visual gates retain their own status. Use no
-screenshots, captures or windows. Stop after this capability and provide a short
-colour-based visual check. The next candidate is an unfinished-question filter
-in Contents, using the same projection without changing an active queue.
+The user requested interactive 3D objects across algebra, trigonometry, calculus,
+linear algebra and discrete maths, then identified this C++ Vulkan project as
+the destination. [P039](P039_MATH_OBJECTS.md) implements one native object library
+and a live exploration startup using the existing renderer. Changes are scoped
+to that capability and preserve the existing study/sorter work.
+
+## Previous cleanup checkpoint
+
+The user requested another bounded code cleanup and deferred manual review.
+The [prepared-answer cleanup](CLEANUP_SORTER_INPUT.md#follow-up-prepared-answer-feedback)
+merges duplicate submission, feedback and advancement in
+`GallerySession::submitAnswer()`. It removes four net production lines across
+two existing files. Release builds of `sorter` and `gallery` and three targeted
+headless checks pass. The earlier shared-summary cleanup is preserved. This
+checkpoint stops at answer handling; no new visual check is requested.
+
+[P038 Contents progress](P038_CONTENTS_PROGRESS.md) remains implemented with
+five targeted headless checks and all three native builds passed. Its visual
+confirmation and earlier visual gates retain their own pending status. The
+P037 chapter, prior input cleanup and current UI format are preserved. Use no
+screenshots, captures or windows. The user's parser and notes remain separate.
+The unfinished-question filter remains a later feature candidate, using the
+existing progress projection without changing an active queue.
 
 Keep the build focused on answering questions quickly and continuously for
 long sessions. Before adding systems, check rapid repeated input, automatic

@@ -19,6 +19,11 @@ add_library(paths_scene
   vendor/iggy3d/src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp)
 target_include_directories(paths_scene PUBLIC src vendor/iggy3d/src)
 
+add_library(paths_math_objects
+  src/runtime/math_objects/MathObjects.cpp
+  src/scene/MathObjectScene.cpp)
+target_link_libraries(paths_math_objects PUBLIC paths_scene)
+
 add_library(paths_model
   src/runtime/first_move/HuntSession.cpp
   src/runtime/first_move/LinearEquation.cpp
@@ -103,6 +108,8 @@ if(PATHS_BUILD_NATIVE)
 
   add_executable(paths app/main.cpp)
   target_link_libraries(paths PRIVATE paths_ui paths_native)
+  add_executable(math_lab app/math_lab_main.cpp)
+  target_link_libraries(math_lab PRIVATE paths_math_objects paths_native paths_imgui SDL3::SDL3)
   add_executable(gallery app/gallery_main.cpp)
   target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
   add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp)
@@ -132,6 +139,9 @@ if(PATHS_BUILD_NATIVE)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_math_object_tests tests/math_object_tests.cpp)
+  target_link_libraries(paths_math_object_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_object_tests COMMAND paths_math_object_tests)
   add_executable(paths_practice_save_tests tests/practice_save_tests.cpp)
   target_link_libraries(paths_practice_save_tests PRIVATE paths_sorter_content paths_json)
   target_compile_definitions(paths_practice_save_tests PRIVATE

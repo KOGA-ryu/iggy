@@ -78,9 +78,21 @@ void playerLoop() {
   expect(game.view().step==1 && game.view().wrongHits==1 && game.view().feedback==GalleryFeedback::Incorrect &&
       game.view().working=="-2(x + 1) = 22" && !step(game).awaitingRecoveryChoice,
       "wrong operation briefly signals and keeps the same working active");
+  tick(game,.25F);
+  expect(!game.dispatch(ChooseAnswer{game.view().challenge,{9999}}).accepted &&
+      game.view().feedback==GalleryFeedback::Incorrect && step(game).attempts.size()==1,
+      "an unknown operation leaves the existing feedback and attempt evidence intact");
+  apply(game,GalleryPause{true});tick(game,.25F);
+  expect(game.view().feedback==GalleryFeedback::Incorrect &&
+      !game.dispatch(ChooseAnswer{game.view().challenge,{101}}).accepted,
+      "paused button feedback keeps its remaining active time and rejects answers");
+  apply(game,GalleryPause{false});tick(game,.25F);
+  expect(game.view().feedback==GalleryFeedback::None && game.view().step==1 && game.view().wrongHits==1 &&
+      step(game).attempts.size()==1,"rejected button input cannot extend feedback expiry or add attempts");
   const auto stale=GalleryHelp{game.view().challenge,GalleryHelpKind::DoStep};
   choose(game,101);
-  expect(game.view().step==2 && game.view().working=="x + 1 = 22 / (-2)","operation reveals the arithmetic to perform");
+  expect(game.view().step==2 && game.view().working=="x + 1 = 22 / (-2)" && game.view().feedback==GalleryFeedback::None,
+      "operation reveals the arithmetic to perform and clears the old feedback immediately");
   expect(!game.dispatch(stale).accepted && game.view().step==2,"old help cannot skip a new decision");
   expect(!game.dispatch(ChooseAnswer{game.view().challenge,{101}}).accepted,"arithmetic requires the target route");
   (void)game.publishFrame();
@@ -89,12 +101,14 @@ void playerLoop() {
   (void)game.publishFrame();
   expect(!game.dispatch(previousShot).accepted && game.view().wrongHits==1,"stale geometry never records an answer");
   apply(game,shot(game,108));
-  expect(game.view().step==2 && game.view().wrongHits==2 && !game.view().transitioning && game.view().ready,
+  expect(game.view().step==2 && game.view().wrongHits==2 && !game.view().transitioning && game.view().ready &&
+      game.view().feedback==GalleryFeedback::Incorrect,
       "wrong arithmetic leaves every target and the current calculation active");
   const auto correctShot=shot(game,101);
   const auto oldHelp=GalleryHelp{game.view().challenge,GalleryHelpKind::DoStep};
   apply(game,correctShot);
-  expect(game.view().step==3 && game.view().working=="x + 1 = -11" && !game.view().transitioning,
+  expect(game.view().step==3 && game.view().working=="x + 1 = -11" && !game.view().transitioning &&
+      game.view().feedback==GalleryFeedback::None,
       "correct arithmetic immediately updates working and opens the next operation without a clock tick");
   expect(!game.dispatch(correctShot).accepted && !game.dispatch(oldHelp).accepted && game.view().step==3,
       "the previous shot and help cannot skip the newly opened decision");

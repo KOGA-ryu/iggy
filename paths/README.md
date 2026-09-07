@@ -1,5 +1,27 @@
 # Paths
 
+## Interactive 3D maths objects
+
+The native `math_lab` explores five reusable objects: an algebra expansion cube,
+a unit circle linked to a sine wave, integration disks, a transforming vector
+cube, and a binary graph. Each has live parameters, numerical readouts, a small
+challenge, and a School / Bridge / Introductory university explanation.
+
+```sh
+cmake -S . -B b -DCMAKE_BUILD_TYPE=Release
+cmake --build b -t math_lab -j4
+./b/math_lab
+```
+
+Left-drag to orbit, right-drag to pan, and scroll to zoom. Choose a subject across
+the top. This is C++ geometry using Paths' existing Vulkan host; no browser or
+JavaScript runtime is required. The reusable model and scene adapter are in
+`src/runtime/math_objects/` and `src/scene/MathObjectScene.*`. Exploration has its
+own transient state; study saves and scored question attempts retain their
+existing owners. See [P039](docs/P039_MATH_OBJECTS.md) for integration and checks.
+
+## Existing game modes
+
 A continuous arcade math game. Read the prompt, click the matching coloured
 targets, and keep shooting. Wrong clicks give a brief signal while the same
 question stays active. Clearing its required answers automatically starts the

@@ -95,7 +95,7 @@ private:
   struct PreparedChallenge;
   [[nodiscard]] PreparedChallenge prepareChallenge(bool advance, bool replay=false, bool archiveUnfinished=false) const;
   void commitChallenge(PreparedChallenge&&);
-  [[nodiscard]] GalleryResult submitHit(const SceneHit&);
+  [[nodiscard]] GalleryResult submitAnswer(OptionId, const TargetBinding* target=nullptr);
   [[nodiscard]] GalleryResult tick(float seconds);
   void advanceChallenge();
   GalleryConfig config_;
