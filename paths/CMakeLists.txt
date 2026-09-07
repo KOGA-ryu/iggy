@@ -7,15 +7,61 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(CTest)
 
+add_library(paths_scene
+  src/scene/GalleryScene.cpp
+  src/scene/TargetMotion.cpp
+  vendor/iggy3d/src/core/math/Vec3.cpp
+  vendor/iggy3d/src/core/math/Mat4.cpp
+  vendor/iggy3d/src/core/math/Aabb3.cpp
+  vendor/iggy3d/src/core/math/EulerRotation.cpp
+  vendor/iggy3d/src/app/iggy3d/creative/camera/Fly.cpp
+  vendor/iggy3d/src/app/iggy3d/creative/camera/ViewportNavigation.cpp
+  vendor/iggy3d/src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp)
+target_include_directories(paths_scene PUBLIC src vendor/iggy3d/src)
+
 add_library(paths_model
   src/runtime/first_move/HuntSession.cpp
+  src/runtime/first_move/LinearEquation.cpp
   src/runtime/first_move/LayeredQuestionSession.cpp)
 target_include_directories(paths_model PUBLIC src)
+
+add_library(paths_json INTERFACE)
+target_include_directories(paths_json SYSTEM INTERFACE third_party)
+add_library(paths_content src/content/QuestionContentIO.cpp)
+target_link_libraries(paths_content PUBLIC paths_model PRIVATE paths_json)
+
+add_library(paths_sorter_model src/runtime/sorter/EquationSorterSession.cpp)
+target_include_directories(paths_sorter_model PUBLIC src)
+add_library(paths_sorter_content src/content/EquationSorterContentIO.cpp)
+target_link_libraries(paths_sorter_content PUBLIC paths_sorter_model PRIVATE paths_json)
+
+add_library(paths_gallery_model src/runtime/gallery/GallerySession.cpp)
+target_link_libraries(paths_gallery_model PUBLIC paths_model paths_scene)
+target_link_libraries(paths_sorter_model PUBLIC paths_gallery_model)
+target_link_libraries(paths_sorter_content PRIVATE paths_content)
+
+add_library(paths_gallery_menu src/ui/GalleryMenu.cpp)
+target_link_libraries(paths_gallery_menu PUBLIC paths_gallery_model PRIVATE paths_content)
 
 option(PATHS_BUILD_NATIVE "Build the SDL3/Vulkan app and input tests" ON)
 if(PATHS_BUILD_NATIVE)
   find_package(SDL3 CONFIG REQUIRED)
   find_package(Vulkan REQUIRED)
+  find_program(PATHS_GLSLANG_VALIDATOR NAMES glslangValidator glslang
+    HINTS "$ENV{VULKAN_SDK}/bin" REQUIRED)
+  foreach(stage vert frag)
+    set(shader "${CMAKE_CURRENT_SOURCE_DIR}/shaders/first_room.${stage}.glsl")
+    set(spirv "${CMAKE_CURRENT_BINARY_DIR}/generated/first_room.${stage}.spv")
+    set(header "${CMAKE_CURRENT_BINARY_DIR}/generated/first_room_${stage}.hpp")
+    add_custom_command(OUTPUT "${header}"
+      COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+      COMMAND "${PATHS_GLSLANG_VALIDATOR}" -V --target-env vulkan1.1 -S ${stage} -o "${spirv}" "${shader}"
+      COMMAND "${CMAKE_COMMAND}" "-DINPUT=${spirv}" "-DOUTPUT=${header}" "-DNAME=first_room_${stage}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EmbedSpirv.cmake"
+      DEPENDS "${shader}" cmake/EmbedSpirv.cmake
+      BYPRODUCTS "${spirv}" VERBATIM)
+    list(APPEND PATHS_SHADER_HEADERS "${header}")
+  endforeach()
   add_library(paths_imgui
     third_party/imgui/imgui.cpp
     third_party/imgui/imgui_draw.cpp
@@ -32,12 +78,13 @@ if(PATHS_BUILD_NATIVE)
   target_link_libraries(paths_ui PUBLIC paths_model PRIVATE paths_imgui SDL3::SDL3)
 
   add_library(paths_native src/platform/NativeVulkanHost.cpp
+    ${PATHS_SHADER_HEADERS}
     vendor/iggy3d/src/render/RenderDiagnostics.cpp
     vendor/iggy3d/src/render/vulkan/VulkanMemoryAllocator.cpp
     vendor/iggy3d/src/render/vulkan/FrameCapture.cpp)
-  target_include_directories(paths_native PUBLIC src PRIVATE vendor/iggy3d/src)
+  target_include_directories(paths_native PUBLIC src PRIVATE vendor/iggy3d/src "${CMAKE_CURRENT_BINARY_DIR}/generated")
   target_compile_definitions(paths_native PRIVATE IGGY3D_HAS_VULKAN=1)
-  target_link_libraries(paths_native PRIVATE paths_imgui SDL3::SDL3 Vulkan::Vulkan)
+  target_link_libraries(paths_native PRIVATE paths_scene paths_imgui SDL3::SDL3 Vulkan::Vulkan)
   if(APPLE)
     # MoltenVK is an external SDK dependency. Resolve its installed manifest
     # at configure time; explicit Vulkan driver environment overrides win.
@@ -56,16 +103,97 @@ if(PATHS_BUILD_NATIVE)
 
   add_executable(paths app/main.cpp)
   target_link_libraries(paths PRIVATE paths_ui paths_native)
+  add_executable(gallery app/gallery_main.cpp)
+  target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
+  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp)
+  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model PRIVATE paths_imgui)
+  add_executable(sorter app/sorter_main.cpp)
+  target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_native paths_imgui paths_json SDL3::SDL3)
+  add_custom_target(paths_sorter_content_files
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_FILE_DIR:sorter>/content/sorter"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/sorter"
+      "$<TARGET_FILE_DIR:sorter>/content/sorter"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_FILE_DIR:sorter>/content/cards"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/cards"
+      "$<TARGET_FILE_DIR:sorter>/content/cards"
+    VERBATIM)
+  add_dependencies(sorter paths_sorter_content_files)
+  # Deploy editable content next to the executable, including multi-config builds.
+  add_custom_target(paths_gallery_content
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content" "$<TARGET_FILE_DIR:gallery>/content"
+    VERBATIM)
+  add_dependencies(gallery paths_gallery_content)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_math_moves_tests tests/math_moves_tests.cpp)
+  target_link_libraries(paths_math_moves_tests PRIVATE paths_sorter_content paths_content paths_json)
+  target_compile_definitions(paths_math_moves_tests PRIVATE SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
+  add_test(NAME paths_math_moves_tests COMMAND paths_math_moves_tests)
+  add_executable(paths_sorter_tests tests/equation_sorter_tests.cpp)
+  target_link_libraries(paths_sorter_tests PRIVATE paths_sorter_model)
+  add_test(NAME paths_sorter_tests COMMAND paths_sorter_tests)
+  add_executable(paths_sorter_content_tests tests/equation_sorter_content_tests.cpp)
+  target_link_libraries(paths_sorter_content_tests PRIVATE paths_sorter_content paths_json)
+  target_compile_definitions(paths_sorter_content_tests PRIVATE
+    SORTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/equations_v1.json"
+    SORTER_SOLUTIONS="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/equation_sorter_v1.solutions.json")
+  add_test(NAME paths_sorter_content_tests COMMAND paths_sorter_content_tests)
+  add_executable(paths_sorter_mixed_tests tests/equation_sorter_mixed_tests.cpp)
+  target_link_libraries(paths_sorter_mixed_tests PRIVATE paths_sorter_content paths_json)
+  target_compile_definitions(paths_sorter_mixed_tests PRIVATE
+    SORTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/equations_v1.json"
+    SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
+  add_test(NAME paths_sorter_mixed_tests COMMAND paths_sorter_mixed_tests)
+  add_executable(paths_sorter_solve_tests tests/equation_sorter_solve_tests.cpp)
+  target_link_libraries(paths_sorter_solve_tests PRIVATE paths_sorter_content paths_content paths_json)
+  target_compile_definitions(paths_sorter_solve_tests PRIVATE
+    SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json"
+    SORTER_BRACKET_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/bracket_practice_v1.json"
+    SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
+  add_test(NAME paths_sorter_solve_tests COMMAND paths_sorter_solve_tests)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME paths_bracket_recipe_tests COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/bracket_recipe_tests.py")
+  add_executable(paths_gallery_menu_tests tests/gallery_menu_tests.cpp)
+  target_link_libraries(paths_gallery_menu_tests PRIVATE paths_gallery_menu paths_content paths_json)
+  target_compile_definitions(paths_gallery_menu_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
+  add_test(NAME paths_gallery_menu_tests COMMAND paths_gallery_menu_tests)
+  add_executable(paths_gallery_tests tests/gallery_session_tests.cpp)
+  target_link_libraries(paths_gallery_tests PRIVATE paths_gallery_model paths_content)
+  target_compile_definitions(paths_gallery_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
+  add_test(NAME paths_gallery_tests COMMAND paths_gallery_tests)
+  add_executable(paths_scene_tests tests/gallery_scene_tests.cpp)
+  target_link_libraries(paths_scene_tests PRIVATE paths_scene)
+  add_test(NAME paths_scene_tests COMMAND paths_scene_tests)
   add_executable(paths_hunt_tests tests/first_move_hunt_tests.cpp)
   target_link_libraries(paths_hunt_tests PRIVATE paths_model)
   add_test(NAME paths_hunt_tests COMMAND paths_hunt_tests)
   add_executable(paths_guided_tests tests/first_move_layered_question_tests.cpp)
-  target_link_libraries(paths_guided_tests PRIVATE paths_model)
+  target_link_libraries(paths_guided_tests PRIVATE paths_content)
+  target_compile_definitions(paths_guided_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_guided_tests COMMAND paths_guided_tests)
+  add_executable(paths_content_tests tests/question_content_tests.cpp)
+  target_link_libraries(paths_content_tests PRIVATE paths_content paths_gallery_model paths_json)
+  target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
+  add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_executable(paths_sorter_input_tests tests/equation_sorter_input_tests.cpp)
+    target_link_libraries(paths_sorter_input_tests PRIVATE paths_sorter_ui paths_sorter_content paths_imgui)
+    target_compile_definitions(paths_sorter_input_tests PRIVATE
+      SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json"
+      SORTER_BRACKET_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/bracket_practice_v1.json"
+      SORTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/equations_v1.json"
+      SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
+    add_test(NAME paths_sorter_input_tests COMMAND paths_sorter_input_tests)
+    add_test(NAME paths_content_startup_tests COMMAND "${CMAKE_COMMAND}"
+      "-DGALLERY=$<TARGET_FILE:gallery>"
+      "-DSOURCE_CONTENT=${CMAKE_CURRENT_SOURCE_DIR}/content"
+      "-DTEST_DIR=${CMAKE_CURRENT_BINARY_DIR}/content-startup-test"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_content_startup.cmake")
     add_executable(paths_input_tests tests/first_move_input_tests.cpp)
     target_link_libraries(paths_input_tests PRIVATE paths_ui paths_imgui SDL3::SDL3)
     add_test(NAME paths_input_tests COMMAND paths_input_tests)

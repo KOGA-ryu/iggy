@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "foundation_equality_24",
+  "content_version": 1,
+  "equation": "Equal to 24",
+  "skill": "arithmetic_equivalence",
+  "description": "Equality Sweep fixture",
+  "working_states": [
+    {
+      "id": 10,
+      "display": "Equal to 24"
+    },
+    {
+      "id": 20,
+      "display": "6 * 4 = 24 and 18 + 6 = 24"
+    }
+  ],
+  "steps": [
+    {
+      "id": 10,
+      "layer_name": "COLLECT THE SET",
+      "prompt": "Pop every expression equal to 24.",
+      "options": [
+        {
+          "id": 101,
+          "label": "6 * 4"
+        },
+        {
+          "id": 108,
+          "label": "18 + 6"
+        },
+        {
+          "id": 115,
+          "label": "6 + 4"
+        },
+        {
+          "id": 122,
+          "label": "30 - 5"
+        }
+      ],
+      "accepted_option_ids": [
+        101,
+        108
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "6 * 4 = 24 and 18 + 6 = 24. The others equal 10 and 25.",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "all_accepted",
+        "before": 10,
+        "after": 20
+      }
+    }
+  ]
+}

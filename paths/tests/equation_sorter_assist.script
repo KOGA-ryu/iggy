@@ -1,0 +1,14 @@
+# Auto sort is one transaction, with optional help and ordinary recovery.
+auto_sort
+hint
+close_hint
+bucket E
+activate 2301
+activate 2301
+undo
+empty
+hint
+close_hint
+confirm_empty
+undo
+frame

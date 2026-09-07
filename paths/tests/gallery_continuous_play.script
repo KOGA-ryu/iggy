@@ -1,0 +1,12 @@
+# 1440x900, seed 19, stationary. Keep firing after repeated wrong answers.
+play
+tick 0.150000006
+shoot 0.59911716 0.48049283
+shoot 0.59911716 0.48049283
+shoot 0.40088287 0.48049283
+shoot 0.398926139 0.34087342
+tick 0.25
+tick 0.05
+tick 0.15
+# Stop to see totals after the next question has already started.
+pause 1

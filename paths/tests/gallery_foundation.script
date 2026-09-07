@@ -1,0 +1,11 @@
+# 1440x900, equality_sweep, seed 19, stationary. Real mesh hits.
+tick 0.15
+shoot 0.59911715 0.48049284
+shoot 0.40088285 0.48049284
+tick 0.15
+shoot 0.39892612 0.34087343
+tick 0.25
+tick 0.05
+tick 0.15
+frame
+pause 1

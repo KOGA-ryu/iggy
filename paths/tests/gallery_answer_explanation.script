@@ -1,0 +1,12 @@
+# 1440x900, seed 19, stationary. Resolve one source-card step after a retry.
+# Review must show its explanation while the next step remains hidden.
+choose_pack 1
+play
+tick 0.150000006
+shoot 0.40088287 0.48049283
+shoot 0.398926139 0.34087342
+tick 0.25
+tick 0.0500000007
+tick 0.150000006
+review
+review_step 0

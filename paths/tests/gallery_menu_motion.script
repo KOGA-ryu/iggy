@@ -1,0 +1,19 @@
+# Both games keep their movement settings when switching and resuming.
+choose_pack 0
+choose_motion figure_eight
+set_pace 1.4
+play
+tick 0.150000006
+tick 0.25
+questions
+choose_pack 1
+choose_motion circle
+set_pace 2.4
+play
+tick 0.150000006
+tick 0.25
+questions
+choose_pack 0
+play
+tick 0.25
+questions

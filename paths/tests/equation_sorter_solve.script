@@ -1,0 +1,17 @@
+# Exercise the prepared method with two errors, optional help and real sphere hits.
+auto_sort
+bucket A
+bucket A
+activate 1012
+solve 1012
+step_hint
+next_move
+choose 108
+choose 101
+shoot_answer 108
+shoot_answer 101
+return
+solve 1012
+choose 101
+shoot_answer 101
+frame

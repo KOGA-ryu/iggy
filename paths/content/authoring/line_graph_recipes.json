@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {"id": "sorter_graph_positive", "sorter_id": 4001, "content_version": 1, "rise": 2, "run": 1, "intercept": 1},
+    {"id": "sorter_graph_negative", "sorter_id": 4002, "content_version": 1, "rise": -1, "run": 1, "intercept": 2},
+    {"id": "sorter_graph_fraction", "sorter_id": 4003, "content_version": 1, "rise": 1, "run": 2, "intercept": -1},
+    {"id": "sorter_graph_horizontal", "sorter_id": 4004, "content_version": 1, "rise": 0, "run": 1, "intercept": 1}
+  ]
+}

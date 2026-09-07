@@ -64,7 +64,7 @@ void drawOption(FirstMoveUiState& ui, HuntSession& hunt, LayeredQuestionSession&
                 std::size_t option, float scale) {
   const bool selected = record.selectedOption == option;
   const bool resolved = layeredQuestionStepResolved(record);
-  const bool correct = resolved && option == content.correctOption;
+  const bool correct = resolved && acceptsOption(content, option);
   const bool incorrect = std::any_of(record.attempts.begin(), record.attempts.end(), [option](const auto& attempt) {
     return attempt.optionIndex == option && !attempt.correct;
   });
@@ -104,18 +104,19 @@ void drawOption(FirstMoveUiState& ui, HuntSession& hunt, LayeredQuestionSession&
 
 void drawAnswering(FirstMoveUiState& ui, HuntSession& hunt, LayeredQuestionSession& guided, float scale) {
   const auto& run = guided.currentRun();
-  const auto& content = layeredQuestion().steps[run.currentStep];
+  const auto& content = guided.content().steps[run.currentStep];
   const auto& record = run.steps[run.currentStep];
   if (ui.guidedRevealRequested && ui.guidedReveal == GuidedReveal::Prompt) {
     ImGui::SetScrollY(0);
     ui.guidedRevealRequested = false;
   }
-  if (!content.workingLine.empty()) {
+  const auto working = guided.visibleWorking();
+  if (!working.empty() && working != guided.content().equation) {
     ImGui::PushFont(nullptr, 14 * scale);
     ImGui::TextColored(kMint, "CURRENT WORK");
     ImGui::PopFont();
     ImGui::PushFont(nullptr, 28 * scale);
-    wrapped(content.workingLine);
+    wrapped(working);
     ImGui::PopFont();
     ImGui::Separator();
   }
@@ -141,9 +142,7 @@ void drawComplete(const LayeredQuestionSession& guided, float scale) {
   ImGui::TextColored(kMint, "QUESTION COMPLETE");
   ImGui::PopFont();
   ImGui::PushFont(nullptr, 22 * scale);
-  wrapped("3a + 5 = 20");
-  wrapped("3a = 15    subtract 5 from both sides");
-  wrapped("a = 5      divide both sides by 3");
+  wrapped(guided.visibleWorking());
   ImGui::PopFont();
   ImGui::Separator();
   ImGui::Text("First-try correct: %zu / %zu", summary.correctOnFirstTry, kLayeredQuestionStepCount);

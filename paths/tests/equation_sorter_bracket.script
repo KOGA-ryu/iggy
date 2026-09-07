@@ -1,0 +1,24 @@
+# Leave the fractional equation partway through, solve a different card,
+# then return and complete the original equation with its evidence intact.
+auto_sort
+bucket A
+activate 3004
+solve 3004
+step_hint
+choose 108
+choose 101
+shoot_answer 108
+shoot_answer 101
+return
+activate 3002
+solve 3002
+choose 101
+shoot_answer 101
+choose 101
+shoot_answer 101
+return
+activate 3004
+solve 3004
+choose 101
+shoot_answer 101
+frame

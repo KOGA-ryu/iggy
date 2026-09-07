@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/sorter_bracket_fraction.json"
+  ],
+  "decks": {
+    "solve": [
+      {
+        "question_id": "sorter_bracket_fraction",
+        "content_version": 5
+      }
+    ]
+  }
+}

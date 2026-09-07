@@ -1,0 +1,50 @@
+# All 20 new subjects use the same assignment, return and Undo route.
+bucket A
+activate 2001
+activate 2001
+activate 2101
+activate 2101
+activate 2201
+activate 2201
+activate 2301
+activate 2301
+activate 2002
+activate 2002
+activate 2102
+activate 2102
+activate 2202
+activate 2202
+activate 2302
+activate 2302
+activate 2003
+activate 2003
+activate 2103
+activate 2103
+activate 2203
+activate 2203
+activate 2303
+activate 2303
+activate 2004
+activate 2004
+activate 2104
+activate 2104
+activate 2204
+activate 2204
+activate 2304
+activate 2304
+activate 2005
+activate 2005
+activate 2105
+activate 2105
+activate 2205
+activate 2205
+activate 2305
+activate 2305
+bucket A
+activate 2001
+activate 2001
+undo
+empty
+confirm_empty
+undo
+frame

@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "id": "sorter_system_parallel",
+  "content_version": 2,
+  "equation": "1: y = x + 1; 2: y = x - 1",
+  "skill": "linear_system_graph",
+  "description": "Read both slopes, compare the lines, then check their shared solutions. N is the number of solutions.",
+  "line_graph": {
+    "rise": 1,
+    "run": 1,
+    "intercept": 1,
+    "x_min": -3,
+    "x_max": 3,
+    "y_min": -3,
+    "y_max": 4,
+    "second": {
+      "rise": 1,
+      "run": 1,
+      "intercept": -1
+    }
+  },
+  "working_states": [
+    {
+      "id": 10,
+      "display": "m1 = ?    m2 = ?",
+      "graph_stage": "grid"
+    },
+    {
+      "id": 20,
+      "display": "m1 = 1    m2 = ?",
+      "graph_stage": "first_line"
+    },
+    {
+      "id": 30,
+      "display": "m1 = 1    m2 = 1",
+      "graph_stage": "both_lines"
+    },
+    {
+      "id": 40,
+      "display": "N = 0",
+      "graph_stage": "classified"
+    },
+    {
+      "id": 50,
+      "display": "N = 0    m1 = m2    b1 != b2",
+      "graph_stage": "system_solution"
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "layer_name": "FIRST LINE",
+      "prompt": "m1 = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "1"
+        },
+        {
+          "id": 108,
+          "label": "-1"
+        },
+        {
+          "id": 115,
+          "label": "2"
+        },
+        {
+          "id": 122,
+          "label": "0"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "next_move": "Line 1 has slope 1. Its graph is shown in teal.",
+      "explanation": "Line 1 has slope 1. Its graph is shown in teal.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    },
+    {
+      "id": 2,
+      "layer_name": "SECOND LINE",
+      "prompt": "m2 = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "1"
+        },
+        {
+          "id": 108,
+          "label": "-1"
+        },
+        {
+          "id": 115,
+          "label": "2"
+        },
+        {
+          "id": 122,
+          "label": "0"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "Find the slope of the second equation in the same way. Both lines use the same axes.",
+      "next_move": "Line 2 has slope 1. Its graph is shown in violet.",
+      "explanation": "Line 2 has slope 1. Its graph is shown in violet.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 20,
+        "after": 30
+      }
+    },
+    {
+      "id": 3,
+      "layer_name": "SOLUTION COUNT",
+      "prompt": "N = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "0"
+        },
+        {
+          "id": 108,
+          "label": "1"
+        },
+        {
+          "id": 115,
+          "label": "2"
+        },
+        {
+          "id": 122,
+          "label": "\u221e"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "N counts shared solutions. Cross once: 1. Parallel: 0. Same line: infinity. Move the guide to compare y-values.",
+      "next_move": "Their slopes match but their intercepts differ, so N = 0.",
+      "explanation": "Their slopes match but their intercepts differ, so N = 0.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 30,
+        "after": 40
+      }
+    },
+    {
+      "id": 4,
+      "layer_name": "CHECK BOTH",
+      "prompt": "b1 - b2 = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "2"
+        },
+        {
+          "id": 108,
+          "label": "-2"
+        },
+        {
+          "id": 115,
+          "label": "3"
+        },
+        {
+          "id": 122,
+          "label": "1"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "Subtract the second y-intercept from the first. Equal slopes need equal intercepts to describe the same line.",
+      "next_move": "Both slopes equal 1, but their intercepts differ by 2. The parallel lines never meet, so there is no solution.",
+      "explanation": "Both slopes equal 1, but their intercepts differ by 2. The parallel lines never meet, so there is no solution.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 40,
+        "after": 50
+      }
+    }
+  ]
+}

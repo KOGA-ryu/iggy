@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/foundation_equality_24.json",
+    "../cards/foundation_relay_add.json",
+    "../cards/foundation_relay_notation.json",
+    "../cards/foundation_chain_2x_plus_3.json",
+    "../cards/foundation_substitution_integral_6x.json"
+  ],
+  "decks": {
+    "equality_sweep": [
+      {
+        "question_id": "foundation_equality_24",
+        "content_version": 1
+      }
+    ],
+    "question_relay": [
+      {
+        "question_id": "foundation_relay_add",
+        "content_version": 1
+      },
+      {
+        "question_id": "foundation_relay_notation",
+        "content_version": 1
+      }
+    ],
+    "equation_chain": [
+      {
+        "question_id": "foundation_chain_2x_plus_3",
+        "content_version": 1
+      }
+    ],
+    "substitution_chain": [
+      {
+        "question_id": "foundation_substitution_integral_6x",
+        "content_version": 1
+      }
+    ]
+  }
+}

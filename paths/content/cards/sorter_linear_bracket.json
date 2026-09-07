@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "id": "sorter_linear_bracket",
+  "content_version": 5,
+  "equation": "-2(x + 1) = 22",
+  "skill": "linear_equation",
+  "description": "The outside factor -2 multiplies the whole bracket (x + 1). Choose your own valid moves in the workspace. The prepared arcade sequence uses division first.",
+  "working_model": "linear_moves",
+  "preparation": {
+    "method": "divide_then_shift",
+    "generator_version": 3,
+    "recipe_sha256": "95117d970ac9d353d7f7b709333100c4791698becb37aa9608e9a75256f91e45"
+  },
+  "working_states": [
+    {
+      "id": 10,
+      "display": "-2(x + 1) = 22",
+      "highlights": [
+        {
+          "offset": 0,
+          "length": 2,
+          "label": "Outside factor"
+        },
+        {
+          "offset": 2,
+          "length": 7,
+          "label": "Whole bracket"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "display": "x + 1 = 22 / (-2)"
+    },
+    {
+      "id": 30,
+      "display": "x + 1 = -11"
+    },
+    {
+      "id": 40,
+      "display": "x = -11 - 1"
+    },
+    {
+      "id": 50,
+      "display": "x = -12"
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "layer_name": "REMOVE THE OUTSIDE FACTOR",
+      "prompt": "Both sides: remove the factor",
+      "options": [
+        {
+          "id": 101,
+          "label": "\u00f7 (-2)"
+        },
+        {
+          "id": 108,
+          "label": "\u00d7 (-2)"
+        },
+        {
+          "id": 115,
+          "label": "- 2"
+        },
+        {
+          "id": 122,
+          "label": "+ 2"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "explanation": "Dividing both sides by the nonzero factor -2 preserves equality and removes the outside factor.",
+      "hint": "What is multiplying the entire bracket? Use the inverse of multiplication.",
+      "next_move": "Divide both sides by -2. This leaves x + 1 = 22 / (-2).",
+      "semantics": {
+        "purpose": "operation_choice",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    },
+    {
+      "id": 2,
+      "layer_name": "CALCULATE THE DIVISION",
+      "prompt": "What is 22 divided by -2?",
+      "options": [
+        {
+          "id": 101,
+          "label": "-11"
+        },
+        {
+          "id": 108,
+          "label": "11"
+        },
+        {
+          "id": 115,
+          "label": "24"
+        },
+        {
+          "id": 122,
+          "label": "-44"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "explanation": "22 / (-2) = -11. The equation is now x + 1 = -11.",
+      "hint": "Divide the magnitudes, then check the signs. Keep a non-integer result as an exact fraction.",
+      "next_move": "22 / (-2) = -11, so x + 1 = -11.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 20,
+        "after": 30
+      }
+    },
+    {
+      "id": 3,
+      "layer_name": "REMOVE THE CONSTANT",
+      "prompt": "Both sides: isolate x",
+      "options": [
+        {
+          "id": 101,
+          "label": "- 1"
+        },
+        {
+          "id": 108,
+          "label": "+ 1"
+        },
+        {
+          "id": 115,
+          "label": "\u00d7 2"
+        },
+        {
+          "id": 122,
+          "label": "\u00f7 2"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "explanation": "Subtract 1 from both sides to preserve equality and isolate x.",
+      "hint": "The goal is to leave x alone. Which operation undoes adding 1?",
+      "next_move": "Subtract 1 from both sides. This leaves x = -11 - 1.",
+      "semantics": {
+        "purpose": "operation_choice",
+        "completion": "any_accepted",
+        "before": 30,
+        "after": 40
+      }
+    },
+    {
+      "id": 4,
+      "layer_name": "CALCULATE THE ANSWER",
+      "prompt": "What is -11 - 1?",
+      "options": [
+        {
+          "id": 101,
+          "label": "-12"
+        },
+        {
+          "id": 108,
+          "label": "-10"
+        },
+        {
+          "id": 115,
+          "label": "12"
+        },
+        {
+          "id": 122,
+          "label": "-11"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "explanation": "Substitute x = -12 into the original equation: -2(-12 + 1) = -2(-11) = 22. Both sides equal 22.",
+      "hint": "Subtracting 1 moves left on the number line. Use a common denominator if needed.",
+      "next_move": "-11 - 1 = -12, so x = -12.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 40,
+        "after": 50
+      }
+    }
+  ]
+}

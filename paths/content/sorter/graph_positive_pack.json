@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/sorter_graph_positive.json"
+  ],
+  "decks": {
+    "solve": [
+      {
+        "question_id": "sorter_graph_positive",
+        "content_version": 1
+      }
+    ]
+  }
+}

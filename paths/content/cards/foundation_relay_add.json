@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "foundation_relay_add",
+  "content_version": 1,
+  "equation": "7 + 5",
+  "skill": "addition",
+  "description": "Question Relay fixture",
+  "working_states": [
+    {
+      "id": 10,
+      "display": "7 + 5"
+    },
+    {
+      "id": 20,
+      "display": "7 + 5 = 12"
+    }
+  ],
+  "steps": [
+    {
+      "id": 10,
+      "layer_name": "ADD",
+      "prompt": "What is 7 + 5?",
+      "options": [
+        {
+          "id": 101,
+          "label": "12"
+        },
+        {
+          "id": 108,
+          "label": "10"
+        },
+        {
+          "id": 115,
+          "label": "13"
+        },
+        {
+          "id": 122,
+          "label": "14"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "7 + 5 = 12.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    }
+  ]
+}

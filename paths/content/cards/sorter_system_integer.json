@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "id": "sorter_system_integer",
+  "content_version": 2,
+  "equation": "1: y = 2x + 1; 2: y = -x + 4",
+  "skill": "linear_system_graph",
+  "description": "Read both slopes, compare the lines, then check their shared solutions. N is the number of solutions.",
+  "line_graph": {
+    "rise": 2,
+    "run": 1,
+    "intercept": 1,
+    "x_min": -3,
+    "x_max": 3,
+    "y_min": -2,
+    "y_max": 6,
+    "second": {
+      "rise": -1,
+      "run": 1,
+      "intercept": 4
+    }
+  },
+  "working_states": [
+    {
+      "id": 10,
+      "display": "m1 = ?    m2 = ?",
+      "graph_stage": "grid"
+    },
+    {
+      "id": 20,
+      "display": "m1 = 2    m2 = ?",
+      "graph_stage": "first_line"
+    },
+    {
+      "id": 30,
+      "display": "m1 = 2    m2 = -1",
+      "graph_stage": "both_lines"
+    },
+    {
+      "id": 40,
+      "display": "N = 1",
+      "graph_stage": "classified"
+    },
+    {
+      "id": 50,
+      "display": "(x,y) = (1,3)",
+      "graph_stage": "system_solution"
+    }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "layer_name": "FIRST LINE",
+      "prompt": "m1 = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "2"
+        },
+        {
+          "id": 108,
+          "label": "-2"
+        },
+        {
+          "id": 115,
+          "label": "3"
+        },
+        {
+          "id": 122,
+          "label": "1"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "next_move": "Line 1 has slope 2. Its graph is shown in teal.",
+      "explanation": "Line 1 has slope 2. Its graph is shown in teal.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    },
+    {
+      "id": 2,
+      "layer_name": "SECOND LINE",
+      "prompt": "m2 = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "-1"
+        },
+        {
+          "id": 108,
+          "label": "1"
+        },
+        {
+          "id": 115,
+          "label": "0"
+        },
+        {
+          "id": 122,
+          "label": "-2"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "Find the slope of the second equation in the same way. Both lines use the same axes.",
+      "next_move": "Line 2 has slope -1. Its graph is shown in violet.",
+      "explanation": "Line 2 has slope -1. Its graph is shown in violet.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 20,
+        "after": 30
+      }
+    },
+    {
+      "id": 3,
+      "layer_name": "SOLUTION COUNT",
+      "prompt": "N = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "1"
+        },
+        {
+          "id": 108,
+          "label": "0"
+        },
+        {
+          "id": 115,
+          "label": "2"
+        },
+        {
+          "id": 122,
+          "label": "\u221e"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "N counts shared solutions. Cross once: 1. Parallel: 0. Same line: infinity. Move the guide to compare y-values.",
+      "next_move": "The lines cross once, so N = 1.",
+      "explanation": "The lines cross once, so N = 1.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 30,
+        "after": 40
+      }
+    },
+    {
+      "id": 4,
+      "layer_name": "CHECK BOTH",
+      "prompt": "(x,y) = ?",
+      "options": [
+        {
+          "id": 101,
+          "label": "(1,3)"
+        },
+        {
+          "id": 108,
+          "label": "(1,4)"
+        },
+        {
+          "id": 115,
+          "label": "(2,3)"
+        },
+        {
+          "id": 122,
+          "label": "(0,0)"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "",
+      "hint": "Find the point where the guide shows the same y-value on both lines.",
+      "next_move": "At x = 1: line 1 gives (2)(1) + (1) = 3; line 2 gives (-1)(1) + (4) = 3. The point (1,3) satisfies both original equations.",
+      "explanation": "At x = 1: line 1 gives (2)(1) + (1) = 3; line 2 gives (-1)(1) + (4) = 3. The point (1,3) satisfies both original equations.",
+      "semantics": {
+        "purpose": "graph_choice",
+        "completion": "any_accepted",
+        "before": 40,
+        "after": 50
+      }
+    }
+  ]
+}

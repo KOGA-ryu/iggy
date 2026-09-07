@@ -1,8 +1,13 @@
 # First Move — source-card architecture
 
-Status: detailed plan and authored content, not an implemented importer.
-FM002 remains the current implementation slice. FM003 adds source card 002
-after that checkpoint; card 013 is prepared for the following content slice.
+Status: retained authoring plan. [P011](../docs/P011_CARD_002_ADAPTATION.md) and
+[P012](../docs/P012_CARD_013_ADAPTATION.md) provide prepared gallery packs for
+cards 002 and 013 through the P010 JSON loader. The original authoring files
+remain unchanged. P003's multi-card Guided grid remains a separate checkpoint.
+
+The older FM003 C++ integration proposal below predates P010. Current gallery
+work uses the existing loader and question/session contracts described in the
+P011/P012 records; no importer for this older authoring shape is implemented.
 
 ## 1. Concrete product path
 
@@ -19,8 +24,8 @@ The first three cards, in this order, are:
 | `Three points, one formula` | math page 002, Meckes & Meckes 1.1.7 | distinguish function inputs from unknown coefficients; build and solve a system | FM003 |
 | `The closest point on a line` | math page 013, Meckes & Meckes 4.3.9 | parameters, projection, a derivation, and uniqueness | following content slice |
 
-Use the exact authored layers in `cards/002_guided.json` and
-`cards/013_guided.json`. The JSON is a reviewable authoring artifact. It is not
+Use the exact authored layers in `authoring/002_guided.json` and
+`authoring/013_guided.json`. The JSON is a reviewable authoring artifact. It is not
 a new runtime file format or a request to load Markdown in the game.
 
 ## 2. Source identity and what counts as evidence

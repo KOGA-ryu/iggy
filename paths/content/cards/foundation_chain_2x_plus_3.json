@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "id": "foundation_chain_2x_plus_3",
+  "content_version": 1,
+  "equation": "2x + 3 = 11",
+  "skill": "linear_equation",
+  "description": "Equation Chain fixture",
+  "working_states": [
+    {
+      "id": 10,
+      "display": "2x + 3 = 11"
+    },
+    {
+      "id": 20,
+      "display": "2x + 3 - 3 = 11 - 3"
+    },
+    {
+      "id": 30,
+      "display": "2x = 8"
+    },
+    {
+      "id": 40,
+      "display": "x = 4"
+    }
+  ],
+  "steps": [
+    {
+      "id": 10,
+      "layer_name": "FIRST MOVE",
+      "prompt": "Which operation removes +3 while preserving equality?",
+      "options": [
+        {
+          "id": 101,
+          "label": "Add 3 to both sides"
+        },
+        {
+          "id": 108,
+          "label": "Subtract 3 from both sides"
+        },
+        {
+          "id": 115,
+          "label": "Divide only the left side by 2"
+        },
+        {
+          "id": 122,
+          "label": "Subtract x from the left side"
+        }
+      ],
+      "accepted_option_ids": [
+        108
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "Subtract 3 from both sides.",
+      "semantics": {
+        "purpose": "operation_choice",
+        "completion": "all_accepted",
+        "before": 10,
+        "after": 20
+      }
+    },
+    {
+      "id": 11,
+      "layer_name": "SIMPLIFY",
+      "prompt": "What equation remains after subtracting 3 from both sides?",
+      "options": [
+        {
+          "id": 101,
+          "label": "2x = 8"
+        },
+        {
+          "id": 108,
+          "label": "2x = 14"
+        },
+        {
+          "id": 115,
+          "label": "x = 8"
+        },
+        {
+          "id": 122,
+          "label": "2x = 11"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "2x + 3 - 3 = 11 - 3, so 2x = 8.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "all_accepted",
+        "before": 20,
+        "after": 30
+      }
+    },
+    {
+      "id": 12,
+      "layer_name": "SOLVE",
+      "prompt": "Divide both sides by 2. What is x?",
+      "options": [
+        {
+          "id": 101,
+          "label": "x = 8"
+        },
+        {
+          "id": 108,
+          "label": "x = 2"
+        },
+        {
+          "id": 115,
+          "label": "x = 4"
+        },
+        {
+          "id": 122,
+          "label": "x = 6"
+        }
+      ],
+      "accepted_option_ids": [
+        115
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "x = 4; checking gives 2(4) + 3 = 11.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "all_accepted",
+        "before": 30,
+        "after": 40
+      }
+    }
+  ]
+}

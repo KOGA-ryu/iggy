@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {
+      "id": "sorter_system_integer",
+      "sorter_id": 5001,
+      "content_version": 2,
+      "first": {
+        "rise": 2,
+        "run": 1,
+        "intercept": 1,
+        "scale": 1
+      },
+      "second": {
+        "rise": -1,
+        "run": 1,
+        "intercept": 4,
+        "scale": 1
+      }
+    },
+    {
+      "id": "sorter_system_fraction",
+      "sorter_id": 5002,
+      "content_version": 2,
+      "first": {
+        "rise": 2,
+        "run": 1,
+        "intercept": 0,
+        "scale": 1
+      },
+      "second": {
+        "rise": -2,
+        "run": 1,
+        "intercept": 3,
+        "scale": 1
+      }
+    },
+    {
+      "id": "sorter_system_parallel",
+      "sorter_id": 5003,
+      "content_version": 2,
+      "first": {
+        "rise": 1,
+        "run": 1,
+        "intercept": 1,
+        "scale": 1
+      },
+      "second": {
+        "rise": 1,
+        "run": 1,
+        "intercept": -1,
+        "scale": 1
+      }
+    },
+    {
+      "id": "sorter_system_coincident",
+      "sorter_id": 5004,
+      "content_version": 2,
+      "first": {
+        "rise": 1,
+        "run": 1,
+        "intercept": 1,
+        "scale": 1
+      },
+      "second": {
+        "rise": 1,
+        "run": 1,
+        "intercept": 1,
+        "scale": 2
+      }
+    }
+  ]
+}

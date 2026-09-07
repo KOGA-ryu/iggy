@@ -1,0 +1,20 @@
+# Assign two cards, return the first, add a third, then undo across inventory opens.
+bucket A
+activate 1001
+activate 1001
+activate 1038
+activate 1038
+bucket A
+activate 1001
+activate 1001
+grid
+activate 1075
+activate 1075
+bucket A
+undo
+undo
+empty
+confirm_empty
+undo
+activate 1038
+frame

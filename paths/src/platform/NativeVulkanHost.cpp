@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -17,6 +18,9 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
 #include "render/vulkan/FrameCapture.hpp"
+#include "scene/GalleryScene.hpp"
+#include "first_room_vert.hpp"
+#include "first_room_frag.hpp"
 
 namespace paths {
 namespace {
@@ -61,8 +65,17 @@ struct NativeVulkanHost::Impl {
   VkFramebuffer framebuffer = VK_NULL_HANDLE;
   iggy3d::vulkan::VulkanMemoryAllocator allocator;
   iggy3d::vulkan::VulkanImageAllocation target;
+  iggy3d::vulkan::VulkanImageAllocation depthTarget;
+  VkImageView depthView = VK_NULL_HANDLE;
+  VkPipelineLayout sceneLayout = VK_NULL_HANDLE;
+  VkPipeline scenePipeline = VK_NULL_HANDLE;
+  iggy3d::vulkan::VulkanBufferAllocation sceneVertices, sceneIndices;
+  void* vertexMapping = nullptr;
+  void* indexMapping = nullptr;
   iggy3d::vulkan::FrameCapture readback;
   bool uiRecorded = false;
+  bool sceneRecorded = false;
+  std::size_t sceneIndexCount = 0;
   std::uint64_t frameNumber = 0;
 
   explicit Impl(const NativeLaunchConfig& value) : config(value) {}
@@ -76,6 +89,12 @@ struct NativeVulkanHost::Impl {
     }
     destroyTarget();
     if (device) {
+      if (vertexMapping) vkUnmapMemory(device, sceneVertices.allocation.memory);
+      if (indexMapping) vkUnmapMemory(device, sceneIndices.allocation.memory);
+      if (sceneVertices.buffer) static_cast<void>(allocator.destroyBuffer(sceneVertices));
+      if (sceneIndices.buffer) static_cast<void>(allocator.destroyBuffer(sceneIndices));
+      if (scenePipeline) vkDestroyPipeline(device, scenePipeline, nullptr);
+      if (sceneLayout) vkDestroyPipelineLayout(device, sceneLayout, nullptr);
       for (const auto semaphore : presentReady) vkDestroySemaphore(device, semaphore, nullptr);
       if (acquired) vkDestroySemaphore(device, acquired, nullptr);
       if (swapchain) vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -95,11 +114,113 @@ struct NativeVulkanHost::Impl {
     readback.destroy();
     if (device && framebuffer) vkDestroyFramebuffer(device, framebuffer, nullptr);
     if (device && view) vkDestroyImageView(device, view, nullptr);
+    if (device && depthView) vkDestroyImageView(device, depthView, nullptr);
     framebuffer = VK_NULL_HANDLE;
     view = VK_NULL_HANDLE;
+    depthView = VK_NULL_HANDLE;
     if (target.image) static_cast<void>(allocator.destroyImage(target));
     target = {};
+    if (depthTarget.image) static_cast<void>(allocator.destroyImage(depthTarget));
+    depthTarget = {};
     uiRecorded = false;
+    sceneRecorded = false;
+  }
+
+  void createScenePipeline() {
+    // Port of FirstRoomPipeline's vertex-colour path, using this host's render
+    // pass and sole device. Geometry shaders remain byte-for-byte source copies.
+    VkPushConstantRange push{VK_SHADER_STAGE_VERTEX_BIT, 0, 64};
+    VkPipelineLayoutCreateInfo layout{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+    layout.pushConstantRangeCount=1; layout.pPushConstantRanges=&push;
+    check(vkCreatePipelineLayout(device,&layout,nullptr,&sceneLayout),"scene layout");
+    VkShaderModule vert=VK_NULL_HANDLE, frag=VK_NULL_HANDLE;
+    const auto shader=[&](const auto& words,VkShaderModule& module) {
+      VkShaderModuleCreateInfo info{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+      info.codeSize=sizeof(words); info.pCode=words;
+      check(vkCreateShaderModule(device,&info,nullptr,&module),"scene shader");
+    };
+    try {
+      shader(first_room_vert,vert); shader(first_room_frag,frag);
+      std::array<VkPipelineShaderStageCreateInfo,2> stages{};
+      stages[0]={VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_VERTEX_BIT,vert,"main",nullptr};
+      stages[1]={VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,nullptr,0,VK_SHADER_STAGE_FRAGMENT_BIT,frag,"main",nullptr};
+      const VkVertexInputBindingDescription binding{0,sizeof(SceneVertex),VK_VERTEX_INPUT_RATE_VERTEX};
+      const std::array<VkVertexInputAttributeDescription,2> attributes{{
+        {0,0,VK_FORMAT_R32G32B32_SFLOAT,offsetof(SceneVertex,position)},
+        {2,0,VK_FORMAT_R32G32B32_SFLOAT,offsetof(SceneVertex,color)}}};
+      VkPipelineVertexInputStateCreateInfo input{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+      input.vertexBindingDescriptionCount=1; input.pVertexBindingDescriptions=&binding;
+      input.vertexAttributeDescriptionCount=2; input.pVertexAttributeDescriptions=attributes.data();
+      VkPipelineInputAssemblyStateCreateInfo assembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+      assembly.topology=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+      VkPipelineViewportStateCreateInfo viewport{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+      viewport.viewportCount=1;viewport.scissorCount=1;
+      VkPipelineRasterizationStateCreateInfo raster{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+      raster.polygonMode=VK_POLYGON_MODE_FILL;raster.cullMode=VK_CULL_MODE_NONE;raster.lineWidth=1;
+      VkPipelineMultisampleStateCreateInfo sampling{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+      sampling.rasterizationSamples=VK_SAMPLE_COUNT_1_BIT;
+      VkPipelineDepthStencilStateCreateInfo depth{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+      depth.depthTestEnable=VK_TRUE;depth.depthWriteEnable=VK_TRUE;depth.depthCompareOp=VK_COMPARE_OP_LESS;
+      VkPipelineColorBlendAttachmentState color{};
+      color.colorWriteMask=VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT;
+      VkPipelineColorBlendStateCreateInfo blend{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+      blend.attachmentCount=1;blend.pAttachments=&color;
+      const std::array<VkDynamicState,2> states{VK_DYNAMIC_STATE_VIEWPORT,VK_DYNAMIC_STATE_SCISSOR};
+      VkPipelineDynamicStateCreateInfo dynamic{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+      dynamic.dynamicStateCount=2;dynamic.pDynamicStates=states.data();
+      VkGraphicsPipelineCreateInfo pipeline{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+      pipeline.stageCount=2;pipeline.pStages=stages.data();pipeline.pVertexInputState=&input;
+      pipeline.pInputAssemblyState=&assembly;pipeline.pViewportState=&viewport;pipeline.pRasterizationState=&raster;
+      pipeline.pMultisampleState=&sampling;pipeline.pDepthStencilState=&depth;
+      pipeline.pColorBlendState=&blend;pipeline.pDynamicState=&dynamic;pipeline.layout=sceneLayout;pipeline.renderPass=pass;
+      check(vkCreateGraphicsPipelines(device,VK_NULL_HANDLE,1,&pipeline,nullptr,&scenePipeline),"scene pipeline");
+    } catch (...) {
+      if(vert)vkDestroyShaderModule(device,vert,nullptr);
+      if(frag)vkDestroyShaderModule(device,frag,nullptr);
+      throw;
+    }
+    vkDestroyShaderModule(device,vert,nullptr);vkDestroyShaderModule(device,frag,nullptr);
+    const auto allocate=[&](const char* name,VkDeviceSize bytes,VkBufferUsageFlags usage,
+                            auto& destination,void*& mapping) {
+      const auto result=allocator.createBuffer(name,bytes,usage,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      if(result.outcome!=iggy3d::RenderOutcome::Ok)throw std::runtime_error(iggy3d::formatRenderReceipt(result.receipt));
+      destination=result.buffer;
+      check(vkMapMemory(device,destination.allocation.memory,0,bytes,0,&mapping),"map scene buffer");
+    };
+    allocate("paths_scene_vertices",kSceneVertexCapacity*sizeof(SceneVertex),VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,sceneVertices,vertexMapping);
+    allocate("paths_scene_indices",kSceneIndexCapacity*sizeof(std::uint16_t),VK_BUFFER_USAGE_INDEX_BUFFER_BIT,sceneIndices,indexMapping);
+  }
+
+  void recordScene(const SceneFrame& scene) {
+    if(!config.enableScene || !scenePipeline)throw std::runtime_error("Scene rendering was not enabled");
+    if(scene.vertices.size()>kSceneVertexCapacity || scene.indices.size()>kSceneIndexCapacity)
+      throw std::runtime_error("Scene exceeds Vulkan buffer capacity");
+    if(scene.vertices.empty() || scene.indices.empty())return;
+    if(!iggy3d::isFinite(scene.clipFromWorld) || scene.indices.size()%3!=0 ||
+       std::any_of(scene.indices.begin(),scene.indices.end(),[&](auto i){return i>=scene.vertices.size();}))
+      throw std::runtime_error("Invalid scene matrix or triangle indices");
+    const auto scale=ImGui::GetIO().DisplayFramebufferScale;
+    const auto& v=scene.viewport;
+    const float x=v.x*scale.x,y=v.y*scale.y,w=v.width*scale.x,h=v.height*scale.y;
+    if(!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(w) || !std::isfinite(h) ||
+       x<0 || y<0 || w<1 || h<1 || x+w>extent.width+0.5F || y+h>extent.height+0.5F)
+      throw std::runtime_error("Scene viewport outside render target");
+    std::memcpy(vertexMapping,scene.vertices.data(),scene.vertices.size()*sizeof(SceneVertex));
+    std::memcpy(indexMapping,scene.indices.data(),scene.indices.size()*sizeof(std::uint16_t));
+    vkCmdBindPipeline(command,VK_PIPELINE_BIND_POINT_GRAPHICS,scenePipeline);
+    const VkViewport viewport{x,y,w,h,0,1};
+    const VkRect2D scissor{{static_cast<std::int32_t>(x),static_cast<std::int32_t>(y)},
+      {static_cast<std::uint32_t>(w),static_cast<std::uint32_t>(h)}};
+    vkCmdSetViewport(command,0,1,&viewport);vkCmdSetScissor(command,0,1,&scissor);
+    std::array<float,16> matrix{};
+    for(std::size_t row=0;row<4;++row)for(std::size_t col=0;col<4;++col)
+      matrix[col*4+row]=scene.clipFromWorld.m[row*4+col];
+    vkCmdPushConstants(command,sceneLayout,VK_SHADER_STAGE_VERTEX_BIT,0,64,matrix.data());
+    const VkDeviceSize offset=0;
+    vkCmdBindVertexBuffers(command,0,1,&sceneVertices.buffer,&offset);
+    vkCmdBindIndexBuffer(command,sceneIndices.buffer,0,VK_INDEX_TYPE_UINT16);
+    vkCmdDrawIndexed(command,static_cast<std::uint32_t>(scene.indices.size()),1,0,0,0);
+    sceneRecorded=true;sceneIndexCount=scene.indices.size();
   }
 
   void initialize() {
@@ -115,6 +236,8 @@ struct NativeVulkanHost::Impl {
           static_cast<int>(config.height), SDL_WINDOW_VULKAN |
           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
       if (!window) throw std::runtime_error(SDL_GetError());
+      if(config.enableScene && !SDL_SetWindowMinimumSize(window,800,600))
+        throw std::runtime_error(SDL_GetError());
       std::uint32_t count = 0;
       const char* const* required = SDL_Vulkan_GetInstanceExtensions(&count);
       if (!required) throw std::runtime_error(SDL_GetError());
@@ -206,7 +329,8 @@ struct NativeVulkanHost::Impl {
     VkFenceCreateInfo fenceInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     check(vkCreateFence(device, &fenceInfo, nullptr, &fence), "create frame fence");
-    VkAttachmentDescription attachment{};
+    std::array<VkAttachmentDescription,2> attachments{};
+    auto& attachment=attachments[0];
     attachment.format = kColorFormat;
     attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -216,10 +340,22 @@ struct NativeVulkanHost::Impl {
     attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     VkAttachmentReference reference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference depthReference{1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    if(config.enableScene) {
+      VkFormatProperties depthProperties{};
+      vkGetPhysicalDeviceFormatProperties(physical,VK_FORMAT_D32_SFLOAT,&depthProperties);
+      if(!(depthProperties.optimalTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+        throw std::runtime_error("Scene requires D32 depth attachment support");
+      attachments[1]=attachment;
+      attachments[1].format=VK_FORMAT_D32_SFLOAT;
+      attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &reference;
+    if(config.enableScene)subpass.pDepthStencilAttachment=&depthReference;
     std::array<VkSubpassDependency, 2> dependencies{};
     dependencies[0] = {VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_TRANSFER_READ_BIT,
@@ -227,14 +363,21 @@ struct NativeVulkanHost::Impl {
     dependencies[1] = {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         VK_ACCESS_TRANSFER_READ_BIT, 0};
+    if(config.enableScene) {
+      dependencies[0].srcStageMask|=VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      dependencies[0].srcAccessMask|=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      dependencies[0].dstStageMask|=VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT|VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      dependencies[0].dstAccessMask|=VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT|VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
     VkRenderPassCreateInfo passInfo{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-    passInfo.attachmentCount = 1;
-    passInfo.pAttachments = &attachment;
+    passInfo.attachmentCount = config.enableScene ? 2U:1U;
+    passInfo.pAttachments = attachments.data();
     passInfo.subpassCount = 1;
     passInfo.pSubpasses = &subpass;
     passInfo.dependencyCount = static_cast<std::uint32_t>(dependencies.size());
     passInfo.pDependencies = dependencies.data();
     check(vkCreateRenderPass(device, &passInfo, nullptr, &pass), "create UI render pass");
+    if(config.enableScene)createScenePipeline();
     if (surface) {
       VkSemaphoreCreateInfo semaphoreInfo{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
       check(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &acquired), "create acquire semaphore");
@@ -346,10 +489,20 @@ struct NativeVulkanHost::Impl {
     viewInfo.format = kColorFormat;
     viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     check(vkCreateImageView(device, &viewInfo, nullptr, &view), "create UI image view");
+    if(config.enableScene) {
+      const auto depth=allocator.createImage("paths_depth",{extent.width,extent.height,1},VK_FORMAT_D32_SFLOAT,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      if(depth.outcome!=iggy3d::RenderOutcome::Ok)throw std::runtime_error(iggy3d::formatRenderReceipt(depth.receipt));
+      depthTarget=depth.image;
+      viewInfo.image=depthTarget.image;viewInfo.format=VK_FORMAT_D32_SFLOAT;
+      viewInfo.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
+      check(vkCreateImageView(device,&viewInfo,nullptr,&depthView),"create depth image view");
+    }
+    const std::array<VkImageView,2> views{view,depthView};
     VkFramebufferCreateInfo framebufferInfo{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     framebufferInfo.renderPass = pass;
-    framebufferInfo.attachmentCount = 1;
-    framebufferInfo.pAttachments = &view;
+    framebufferInfo.attachmentCount = config.enableScene ? 2U:1U;
+    framebufferInfo.pAttachments = views.data();
     framebufferInfo.width = extent.width;
     framebufferInfo.height = extent.height;
     framebufferInfo.layers = 1;
@@ -359,7 +512,7 @@ struct NativeVulkanHost::Impl {
   }
 
   NativeFrameResult frame(const std::function<void(const SDL_Event&)>& onEvent,
-                          const std::function<void()>& draw) {
+                          const std::function<void()>& draw, const SceneFrame* scene) {
     ImGui::SetCurrentContext(context);
     if (window) {
       SDL_Event event;
@@ -407,14 +560,18 @@ struct NativeVulkanHost::Impl {
     VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     begin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     check(vkBeginCommandBuffer(command, &begin), "begin UI command buffer");
-    VkClearValue clear{{{0.035F, 0.055F, 0.075F, 1.0F}}};
+    std::array<VkClearValue,2> clear{};
+    clear[0].color={{0.035F,0.055F,0.075F,1}};
+    clear[1].depthStencil={1,0};
     VkRenderPassBeginInfo render{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     render.renderPass = pass;
     render.framebuffer = framebuffer;
     render.renderArea.extent = extent;
-    render.clearValueCount = 1;
-    render.pClearValues = &clear;
+    render.clearValueCount = config.enableScene ? 2U:1U;
+    render.pClearValues = clear.data();
     vkCmdBeginRenderPass(command, &render, VK_SUBPASS_CONTENTS_INLINE);
+    sceneRecorded=false;sceneIndexCount=0;
+    if(scene)recordScene(*scene);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command);
     uiRecorded = ImGui::GetDrawData()->TotalVtxCount > 0;
     vkCmdEndRenderPass(command);
@@ -507,8 +664,9 @@ NativeVulkanHost::NativeVulkanHost(const NativeLaunchConfig& config)
     : impl_(std::make_unique<Impl>(config)) { impl_->initialize(); }
 NativeVulkanHost::~NativeVulkanHost() = default;
 NativeFrameResult NativeVulkanHost::frame(
-    const std::function<void(const SDL_Event&)>& onEvent, const std::function<void()>& draw) {
-  try { return impl_->frame(onEvent, draw); }
+    const std::function<void(const SDL_Event&)>& onEvent, const std::function<void()>& draw,
+    const SceneFrame* scene) {
+  try { return impl_->frame(onEvent, draw, scene); }
   catch (const std::exception& error) { return {FrameStatus::Failed, error.what()}; }
 }
 bool NativeVulkanHost::capture(const CapturePaths& paths, std::string& error) {
@@ -527,6 +685,9 @@ bool NativeVulkanHost::capture(const CapturePaths& paths, std::string& error) {
     std::ofstream receipt(paths.metaPath, std::ios::app);
     receipt << "product=paths\nhost=native_vulkan\nhelper_origin=iggy3d\nui_recorded=true\nnonuniform_rgb=true\noffscreen="
             << (impl_->config.offscreen ? "true" : "false") << '\n';
+    receipt << "scene_recorded=" << (impl_->sceneRecorded ? "true":"false")
+            << "\nscene_index_count=" << impl_->sceneIndexCount
+            << "\ndepth_enabled=" << (impl_->config.enableScene ? "true":"false") << '\n';
     receipt.flush();
     if (!receipt) throw std::runtime_error("Cannot write Paths capture receipt");
     return true;

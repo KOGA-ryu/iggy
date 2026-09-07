@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/source_013_closest_point_line.json"
+  ],
+  "decks": {
+    "equation_chain": [
+      {
+        "question_id": "rb_math_013_closest_point_line_guided",
+        "content_version": 1
+      }
+    ]
+  }
+}

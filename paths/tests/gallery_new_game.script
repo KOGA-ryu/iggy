@@ -1,0 +1,24 @@
+# Run at 1440x900 with seed 19 and stationary initial targets.
+play
+tick 0.150000006
+shoot 0.59911716 0.48049283
+shoot 0.40088287 0.48049283
+questions
+new_game
+choose_motion circle
+set_pace 2
+cancel_new_game
+play
+questions
+choose_pack 1
+play
+tick 0.150000006
+shoot 0.40088287 0.48049283
+questions
+choose_pack 0
+new_game
+choose_motion figure_eight
+set_pace 1.4
+start_new_game
+tick 0.150000006
+tick 0.25

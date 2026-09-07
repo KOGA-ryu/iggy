@@ -1,0 +1,7 @@
+# 1440x900, seed 19, stationary. Wrong click then a partial answer set.
+play
+tick 0.150000006
+shoot 0.59911716 0.48049283
+shoot 0.40088287 0.48049283
+review
+tick 0.25

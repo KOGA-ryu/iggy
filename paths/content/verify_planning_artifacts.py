@@ -43,7 +43,7 @@ def check_cards():
              "mechanics", "result", "justification", "verification"}
     question_ids = set()
     for page_id, expected in EXPECTED.items():
-        card = json.loads((ROOT / "cards" / f"{page_id}_guided.json").read_text())
+        card = json.loads((ROOT / "authoring" / f"{page_id}_guided.json").read_text())
         require(card["schema_version"] == 1 and card["content_version"] == 1, "Version mismatch")
         require(card["question_id"] not in question_ids, "Duplicate question ID")
         question_ids.add(card["question_id"])

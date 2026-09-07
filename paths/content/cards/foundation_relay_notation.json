@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "id": "foundation_relay_notation",
+  "content_version": 1,
+  "equation": "Compare two values",
+  "skill": "inequality_notation",
+  "description": "Question Relay fixture",
+  "working_states": [
+    {
+      "id": 10,
+      "display": "Compare two values"
+    },
+    {
+      "id": 20,
+      "display": "< means less than"
+    }
+  ],
+  "steps": [
+    {
+      "id": 10,
+      "layer_name": "READ THE SYMBOL",
+      "prompt": "Which symbol means less than?",
+      "options": [
+        {
+          "id": 101,
+          "label": "<"
+        },
+        {
+          "id": 108,
+          "label": ">"
+        },
+        {
+          "id": 115,
+          "label": "="
+        },
+        {
+          "id": 122,
+          "label": "+"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "Try another colour.",
+      "explanation": "The symbol < means less than; > means greater than.",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "any_accepted",
+        "before": 10,
+        "after": 20
+      }
+    }
+  ]
+}

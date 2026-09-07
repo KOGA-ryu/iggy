@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/source_002_quadratic_three_points.json"
+  ],
+  "decks": {
+    "equation_chain": [
+      {
+        "question_id": "rb_math_002_quadratic_three_points_guided",
+        "content_version": 1
+      }
+    ]
+  }
+}

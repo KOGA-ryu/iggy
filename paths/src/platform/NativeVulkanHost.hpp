@@ -10,10 +10,13 @@ union SDL_Event;
 
 namespace paths {
 
+struct SceneFrame;
+
 struct NativeLaunchConfig {
   bool offscreen = false;
   std::uint32_t width = 1440;
   std::uint32_t height = 900;
+  bool enableScene = false;
 };
 
 struct CapturePaths {
@@ -28,7 +31,7 @@ struct NativeFrameResult {
 };
 
 // Owns the sole native window, Vulkan resources and ImGui frame lifecycle.
-// The draw callback only presents UI; neither it nor main sees GPU objects.
+// The callback prepares UI and optional scene data; callers never see GPU objects.
 class NativeVulkanHost {
 public:
   explicit NativeVulkanHost(const NativeLaunchConfig& config);
@@ -37,7 +40,8 @@ public:
   NativeVulkanHost& operator=(const NativeVulkanHost&) = delete;
   [[nodiscard]] NativeFrameResult frame(
       const std::function<void(const SDL_Event&)>& onEvent,
-      const std::function<void()>& draw);
+      const std::function<void()>& draw,
+      const SceneFrame* scene = nullptr);
   [[nodiscard]] bool capture(const CapturePaths& paths, std::string& error);
 
 private:

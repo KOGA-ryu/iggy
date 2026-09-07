@@ -1,0 +1,510 @@
+{
+  "schema_version": 1,
+  "id": "rb_math_002_quadratic_three_points_guided",
+  "content_version": 1,
+  "equation": "Three points, one formula\nQuadratic f(x) = a*x^2 + b*x + c\nThrough (-1,1), (0,0), (1,2).\nBuild a linear system; then find f.\nGuided adaptation - Meckes & Meckes\nCh. 1, exercise 1.1.7",
+  "skill": "linear_system_from_observations",
+  "description": "Read the symbols, build the equations, solve, and check.",
+  "working_states": [
+    {
+      "id": 100,
+      "display": "f(x) = a*x^2 + b*x + c\nGiven points: (-1, 1), (0, 0), (1, 2)"
+    },
+    {
+      "id": 200,
+      "display": "f(x) = a*x^2 + b*x + c"
+    },
+    {
+      "id": 300,
+      "display": "f(x) = a*x^2 + b*x + c\nEach observation supplies a value of x."
+    },
+    {
+      "id": 400,
+      "display": "a*x^2 + b*x + c"
+    },
+    {
+      "id": 500,
+      "display": "a*0^2 + b*0 + c = 0"
+    },
+    {
+      "id": 600,
+      "display": "a*(-1)^2 + b*(-1) + c = 1"
+    },
+    {
+      "id": 700,
+      "display": "a*1^2 + b*1 + c = 2"
+    },
+    {
+      "id": 800,
+      "display": "c = 0\na - b = 1\na + b = 2"
+    },
+    {
+      "id": 900,
+      "display": "2a = 3"
+    },
+    {
+      "id": 1000,
+      "display": "3/2 + b = 2"
+    },
+    {
+      "id": 1100,
+      "display": "a = 3/2\nb = 1/2\nc = 0\nf(x) = a*x^2 + b*x + c"
+    },
+    {
+      "id": 1200,
+      "display": "f(-1) = 1\nf(0) = 0\nf(1) = 2"
+    },
+    {
+      "id": 1300,
+      "display": "Coefficient rows: [1, -1, 1], [0, 0, 1], [1, 1, 1]\ndeterminant = -2"
+    },
+    {
+      "id": 1400,
+      "display": "a - b + c = 1; c = 0; a + b + c = 2\na - b = 1; a + b = 2\n2a = 3; a = 3/2\nb = 2 - 3/2 = 1/2\nf(x) = (3/2)*x^2 + (1/2)*x\nf(-1)=1; f(0)=0; f(1)=2\ndeterminant = -2, nonzero"
+    }
+  ],
+  "steps": [
+    {
+      "id": 10,
+      "layer_name": "Find the unknowns",
+      "prompt": "Which quantities must we determine in this problem?",
+      "options": [
+        {
+          "id": 101,
+          "label": "x only"
+        },
+        {
+          "id": 108,
+          "label": "a, b, and c"
+        },
+        {
+          "id": 115,
+          "label": "The three supplied input values -1, 0, and 1"
+        },
+        {
+          "id": 122,
+          "label": "No quantities; all coefficients are already given"
+        }
+      ],
+      "accepted_option_ids": [
+        108
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "a, b, and c are the unknown coefficients. Each observation supplies an input and its output, which will give an equation for those coefficients.",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "any_accepted",
+        "before": 100,
+        "after": 200
+      }
+    },
+    {
+      "id": 20,
+      "layer_name": "Name a symbol's role",
+      "prompt": "What role does x play when we use the three supplied points?",
+      "options": [
+        {
+          "id": 101,
+          "label": "An unknown coefficient to solve for"
+        },
+        {
+          "id": 108,
+          "label": "The output height at every point"
+        },
+        {
+          "id": 115,
+          "label": "The function input, supplied as -1, 0, and 1"
+        },
+        {
+          "id": 122,
+          "label": "The number of equations in the system"
+        }
+      ],
+      "accepted_option_ids": [
+        115
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "A letter's role comes from this problem, not its name. Here x is a supplied function input. The unknowns are a, b, and c.",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "any_accepted",
+        "before": 200,
+        "after": 300
+      }
+    },
+    {
+      "id": 30,
+      "layer_name": "Name the structure",
+      "prompt": "After each supplied x is substituted, why are the equations linear in a, b, and c?",
+      "options": [
+        {
+          "id": 101,
+          "label": "Squaring x means that a is also squared"
+        },
+        {
+          "id": 108,
+          "label": "Every problem with three observations is linear"
+        },
+        {
+          "id": 115,
+          "label": "x is always the unknown in an equation"
+        },
+        {
+          "id": 122,
+          "label": "Each unknown coefficient appears only to the first power, multiplied by a known number"
+        }
+      ],
+      "accepted_option_ids": [
+        122
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The function is quadratic in its input x. The system is linear in its unknowns a, b, and c, because the supplied x-values turn x^2, x, and 1 into known multipliers.",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "any_accepted",
+        "before": 300,
+        "after": 400
+      }
+    },
+    {
+      "id": 40,
+      "layer_name": "Read an unwritten coefficient",
+      "prompt": "What number multiplies c in a*x^2 + b*x + c?",
+      "options": [
+        {
+          "id": 101,
+          "label": "1: the term c means 1*c"
+        },
+        {
+          "id": 108,
+          "label": "0: no number is written next to c"
+        },
+        {
+          "id": 115,
+          "label": "x"
+        },
+        {
+          "id": 122,
+          "label": "x^2"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The implicit coefficient of c is 1. In unknown order (a,b,c), the equation from an input x has coefficient row [x^2, x, 1].",
+      "semantics": {
+        "purpose": "answer_choice",
+        "completion": "any_accepted",
+        "before": 400,
+        "after": 500
+      }
+    },
+    {
+      "id": 50,
+      "layer_name": "Use the easiest observation",
+      "prompt": "What does the observation f(0) = 0 tell us?",
+      "options": [
+        {
+          "id": 101,
+          "label": "a = 0"
+        },
+        {
+          "id": 108,
+          "label": "b = 0"
+        },
+        {
+          "id": 115,
+          "label": "c = 0"
+        },
+        {
+          "id": 122,
+          "label": "a + b + c = 0"
+        }
+      ],
+      "accepted_option_ids": [
+        115
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "At x=0, both a*x^2 and b*x are zero. The equation becomes c=0.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 500,
+        "after": 600
+      }
+    },
+    {
+      "id": 60,
+      "layer_name": "Build the next equation",
+      "prompt": "Directly substitute the point (-1,1) into the formula. Which equation results?",
+      "options": [
+        {
+          "id": 101,
+          "label": "a + b + c = 1"
+        },
+        {
+          "id": 108,
+          "label": "a - b + c = 1"
+        },
+        {
+          "id": 115,
+          "label": "-a - b + c = 1"
+        },
+        {
+          "id": 122,
+          "label": "a - b + c = -1"
+        }
+      ],
+      "accepted_option_ids": [
+        108
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The point says f(-1)=1. Squaring -1 gives +1 and multiplying b by -1 gives -b, so a-b+c=1.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 600,
+        "after": 700
+      }
+    },
+    {
+      "id": 70,
+      "layer_name": "Complete the system",
+      "prompt": "Which equation comes from the point (1,2)?",
+      "options": [
+        {
+          "id": 101,
+          "label": "a + b + c = 1"
+        },
+        {
+          "id": 108,
+          "label": "a - b + c = 2"
+        },
+        {
+          "id": 115,
+          "label": "-a + b + c = 2"
+        },
+        {
+          "id": 122,
+          "label": "a + b + c = 2"
+        }
+      ],
+      "accepted_option_ids": [
+        122
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Substitution at x=1 gives a+b+c=2. Together with a-b+c=1 and c=0, this is the requested system.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 700,
+        "after": 800
+      }
+    },
+    {
+      "id": 80,
+      "layer_name": "Explain the move",
+      "prompt": "Why can we add these two equations and cancel b?",
+      "options": [
+        {
+          "id": 101,
+          "label": "Adding equal quantities to equal quantities preserves equality, and -b + b = 0"
+        },
+        {
+          "id": 108,
+          "label": "The opposite input values force b = 0"
+        },
+        {
+          "id": 115,
+          "label": "A quadratic term is zero for every input"
+        },
+        {
+          "id": 122,
+          "label": "We may add the right sides while leaving the left sides unchanged"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "The sum is (a-b)+(a+b)=1+2. Opposite b terms cancel, leaving 2a=3. This is elimination justified by equality.",
+      "semantics": {
+        "purpose": "verification",
+        "completion": "any_accepted",
+        "before": 800,
+        "after": 900
+      }
+    },
+    {
+      "id": 90,
+      "layer_name": "Solve for a",
+      "prompt": "What is a after dividing both sides of 2a = 3 by 2?",
+      "options": [
+        {
+          "id": 101,
+          "label": "a = 3"
+        },
+        {
+          "id": 108,
+          "label": "a = 1/2"
+        },
+        {
+          "id": 115,
+          "label": "a = 3/2"
+        },
+        {
+          "id": 122,
+          "label": "a = 2"
+        }
+      ],
+      "accepted_option_ids": [
+        115
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Dividing both sides by 2 gives a=3/2. The fraction is exact.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 900,
+        "after": 1000
+      }
+    },
+    {
+      "id": 100,
+      "layer_name": "Substitute back",
+      "prompt": "Substitute a = 3/2 in a + b = 2. What is b?",
+      "options": [
+        {
+          "id": 101,
+          "label": "b = 3/2"
+        },
+        {
+          "id": 108,
+          "label": "b = 1/2"
+        },
+        {
+          "id": 115,
+          "label": "b = -1/2"
+        },
+        {
+          "id": 122,
+          "label": "b = 2"
+        }
+      ],
+      "accepted_option_ids": [
+        108
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "b=2-3/2=4/2-3/2=1/2. We already found c=0.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 1000,
+        "after": 1100
+      }
+    },
+    {
+      "id": 110,
+      "layer_name": "Put the answer together",
+      "prompt": "Which function uses the recovered coefficients?",
+      "options": [
+        {
+          "id": 101,
+          "label": "f(x) = (3/2)*x^2 + (1/2)*x + 1"
+        },
+        {
+          "id": 108,
+          "label": "f(x) = (1/2)*x^2 + (3/2)*x"
+        },
+        {
+          "id": 115,
+          "label": "f(x) = 3*x^2 + x"
+        },
+        {
+          "id": 122,
+          "label": "f(x) = (3/2)*x^2 + (1/2)*x"
+        }
+      ],
+      "accepted_option_ids": [
+        122
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Insert a=3/2, b=1/2, and c=0 into the supplied model. The constant term vanishes.",
+      "semantics": {
+        "purpose": "calculation",
+        "completion": "any_accepted",
+        "before": 1100,
+        "after": 1200
+      }
+    },
+    {
+      "id": 120,
+      "layer_name": "Say what the check establishes",
+      "prompt": "What does evaluating the recovered function at -1, 0, and 1 directly check?",
+      "options": [
+        {
+          "id": 101,
+          "label": "The recovered function passes through all three supplied points"
+        },
+        {
+          "id": 108,
+          "label": "No other function of any kind can pass through those points"
+        },
+        {
+          "id": 115,
+          "label": "Every numerical solver is stable on every matrix"
+        },
+        {
+          "id": 122,
+          "label": "The coefficient c still has to be determined"
+        }
+      ],
+      "accepted_option_ids": [
+        101
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "Substitution verifies the three required outputs. Uniqueness within the specified model needs a separate argument about the system.",
+      "semantics": {
+        "purpose": "verification",
+        "completion": "any_accepted",
+        "before": 1200,
+        "after": 1300
+      }
+    },
+    {
+      "id": 130,
+      "layer_name": "Explain why this model has one answer",
+      "prompt": "For unknown order (a,b,c), the coefficient matrix has determinant -2. What does that imply?",
+      "options": [
+        {
+          "id": 101,
+          "label": "Any number of unknown coefficients would be determined by these three points"
+        },
+        {
+          "id": 108,
+          "label": "The system has no solution because the determinant is negative"
+        },
+        {
+          "id": 115,
+          "label": "The matrix is invertible, so this model's coefficient vector is unique"
+        },
+        {
+          "id": 122,
+          "label": "The determinant must be zero for the three points to fit"
+        }
+      ],
+      "accepted_option_ids": [
+        115
+      ],
+      "wrong_hint": "That choice does not fit this step. You can try again or see the answer and why.",
+      "explanation": "A square matrix with a nonzero determinant is invertible. Thus the given right-hand side determines exactly one (a,b,c). This statement is about the specified model.",
+      "semantics": {
+        "purpose": "verification",
+        "completion": "any_accepted",
+        "before": 1300,
+        "after": 1400
+      }
+    }
+  ]
+}

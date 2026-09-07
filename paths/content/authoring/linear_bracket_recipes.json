@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "method": "divide_then_shift",
+  "recipes": [
+    {
+      "id": "sorter_linear_bracket",
+      "content_version": 5,
+      "sorter_id": 1012,
+      "pack": "linear_bracket_pack",
+      "coefficient": -2,
+      "offset": 1,
+      "rhs": 22
+    },
+    {
+      "id": "sorter_bracket_positive",
+      "content_version": 5,
+      "sorter_id": 3001,
+      "pack": "bracket_positive_pack",
+      "coefficient": 3,
+      "offset": 2,
+      "rhs": 21
+    },
+    {
+      "id": "sorter_bracket_subtraction",
+      "content_version": 5,
+      "sorter_id": 3002,
+      "pack": "bracket_subtraction_pack",
+      "coefficient": 4,
+      "offset": -3,
+      "rhs": 8
+    },
+    {
+      "id": "sorter_bracket_zero",
+      "content_version": 5,
+      "sorter_id": 3003,
+      "pack": "bracket_zero_pack",
+      "coefficient": 5,
+      "offset": 3,
+      "rhs": 15
+    },
+    {
+      "id": "sorter_bracket_fraction",
+      "content_version": 5,
+      "sorter_id": 3004,
+      "pack": "bracket_fraction_pack",
+      "coefficient": 4,
+      "offset": 1,
+      "rhs": 10
+    },
+    {
+      "id": "sorter_bracket_negative_fraction",
+      "content_version": 5,
+      "sorter_id": 3005,
+      "pack": "bracket_negative_fraction_pack",
+      "coefficient": -6,
+      "offset": 2,
+      "rhs": 9
+    }
+  ]
+}

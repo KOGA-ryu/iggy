@@ -1,0 +1,45 @@
+# Select, play, pause, switch and resume through the same menu actions.
+# Use --seed 19 --motion stationary at 1440x900.
+choose_pack 0
+play
+tick 0.150000006
+shoot 0.59911716 0.48049283
+shoot 0.40088287 0.48049283
+questions
+tick 0.25
+choose_pack 1
+play
+tick 0.150000006
+shoot 0.40088287 0.48049283
+shoot 0.398926139 0.34087342
+questions
+choose_pack 2
+play
+tick 0.150000006
+shoot 0.40088287 0.48049283
+shoot 0.601073861 0.34087342
+tick 0.25
+tick 0.0500000007
+tick 0.150000006
+questions
+choose_pack 1
+play
+tick 0.25
+tick 0.0500000007
+tick 0.150000006
+questions
+choose_pack 0
+play
+tick 0.150000006
+shoot 0.398926139 0.34087342
+tick 0.25
+tick 0.0500000007
+tick 0.150000006
+questions
+workshop
+add_sphere
+frame
+questions
+choose_pack 2
+play
+frame

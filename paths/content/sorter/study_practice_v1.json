@@ -1,0 +1,795 @@
+{
+  "schema_version": 1,
+  "equations": [
+    {
+      "id": 1012,
+      "home_index": 0,
+      "text": "-2(x + 1) = 22",
+      "subject": "algebra",
+      "hint": "Divide both sides by -2 first. Then subtract 1 from both sides.",
+      "solve_pack": "linear_bracket_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 3001,
+      "home_index": 1,
+      "text": "3(x + 2) = 21",
+      "subject": "algebra",
+      "hint": "Divide both sides by 3 first. Then subtract 2 from both sides.",
+      "solve_pack": "bracket_positive_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 3002,
+      "home_index": 2,
+      "text": "4(x - 3) = 8",
+      "subject": "algebra",
+      "hint": "Divide both sides by 4 first. Then add 3 to both sides.",
+      "solve_pack": "bracket_subtraction_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 3003,
+      "home_index": 3,
+      "text": "5(x + 3) = 15",
+      "subject": "algebra",
+      "hint": "Divide both sides by 5 first. Then subtract 3 from both sides.",
+      "solve_pack": "bracket_zero_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 3004,
+      "home_index": 4,
+      "text": "4(x + 1) = 10",
+      "subject": "algebra",
+      "hint": "Divide both sides by 4 first. Then subtract 1 from both sides.",
+      "solve_pack": "bracket_fraction_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 3005,
+      "home_index": 5,
+      "text": "-6(x + 2) = 9",
+      "subject": "algebra",
+      "hint": "Divide both sides by -6 first. Then subtract 2 from both sides.",
+      "solve_pack": "bracket_negative_fraction_pack.json",
+      "study": {
+        "chapter": "Linear equations",
+        "type": "Bracket equations",
+        "form": "a(x + b) = c"
+      }
+    },
+    {
+      "id": 4001,
+      "text": "y = 2x + 1",
+      "subject": "algebra",
+      "hint": "Set x to zero. The remaining constant is the y-intercept.",
+      "solve_pack": "graph_positive_pack.json",
+      "study": {
+        "chapter": "Straight lines",
+        "type": "Slope and intercept",
+        "form": "y = mx + b"
+      },
+      "home_index": 6
+    },
+    {
+      "id": 4002,
+      "text": "y = -x + 2",
+      "subject": "algebra",
+      "hint": "Set x to zero. The remaining constant is the y-intercept.",
+      "solve_pack": "graph_negative_pack.json",
+      "study": {
+        "chapter": "Straight lines",
+        "type": "Slope and intercept",
+        "form": "y = mx + b"
+      },
+      "home_index": 7
+    },
+    {
+      "id": 4003,
+      "text": "y = (1/2)x - 1",
+      "subject": "algebra",
+      "hint": "Set x to zero. The remaining constant is the y-intercept.",
+      "solve_pack": "graph_fraction_pack.json",
+      "study": {
+        "chapter": "Straight lines",
+        "type": "Slope and intercept",
+        "form": "y = mx + b"
+      },
+      "home_index": 8
+    },
+    {
+      "id": 4004,
+      "text": "y = 1",
+      "subject": "algebra",
+      "hint": "Set x to zero. The remaining constant is the y-intercept.",
+      "solve_pack": "graph_horizontal_pack.json",
+      "study": {
+        "chapter": "Straight lines",
+        "type": "Slope and intercept",
+        "form": "y = mx + b"
+      },
+      "home_index": 9
+    },
+    {
+      "id": 5001,
+      "text": "1: y = 2x + 1; 2: y = -x + 4",
+      "subject": "algebra",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "solve_pack": "system_integer_pack.json",
+      "study": {
+        "chapter": "Simultaneous equations",
+        "type": "Two straight lines",
+        "form": "y = m1 x + b1; y = m2 x + b2"
+      },
+      "home_index": 10
+    },
+    {
+      "id": 5002,
+      "text": "1: y = 2x; 2: y = -2x + 3",
+      "subject": "algebra",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "solve_pack": "system_fraction_pack.json",
+      "study": {
+        "chapter": "Simultaneous equations",
+        "type": "Two straight lines",
+        "form": "y = m1 x + b1; y = m2 x + b2"
+      },
+      "home_index": 11
+    },
+    {
+      "id": 5003,
+      "text": "1: y = x + 1; 2: y = x - 1",
+      "subject": "algebra",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "solve_pack": "system_parallel_pack.json",
+      "study": {
+        "chapter": "Simultaneous equations",
+        "type": "Two straight lines",
+        "form": "y = m1 x + b1; y = m2 x + b2"
+      },
+      "home_index": 12
+    },
+    {
+      "id": 5004,
+      "text": "1: y = x + 1; 2: 2y = 2x + 2",
+      "subject": "algebra",
+      "hint": "For the first equation, divide the x coefficient by the y coefficient to find its slope.",
+      "solve_pack": "system_coincident_pack.json",
+      "study": {
+        "chapter": "Simultaneous equations",
+        "type": "Two straight lines",
+        "form": "y = m1 x + b1; y = m2 x + b2"
+      },
+      "home_index": 13
+    },
+    {
+      "id": 6001,
+      "home_index": 14,
+      "text": "[2,  1 |  7] [1, -1 | -1]",
+      "subject": "linear_algebra",
+      "hint": "Each row gives x, y and the right-hand value. Use row operations to make the left block the identity matrix.",
+      "solve_pack": "matrix_rows_pack.json",
+      "study": {
+        "chapter": "Matrices and systems",
+        "type": "Row reduction",
+        "form": "Ax = b; [A | b] -> [I | x]"
+      }
+    },
+    {
+      "id": 1001,
+      "home_index": 15,
+      "text": "x + 1 = -11",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 1 from both sides."
+    },
+    {
+      "id": 1038,
+      "home_index": 16,
+      "text": "-2x = 24",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -2."
+    },
+    {
+      "id": 1075,
+      "home_index": 17,
+      "text": "-2x + 1 = 25",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 1 from both sides. Then divide both sides by -2."
+    },
+    {
+      "id": 1049,
+      "home_index": 18,
+      "text": "x - 2 = -7",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 2 to both sides."
+    },
+    {
+      "id": 1086,
+      "home_index": 19,
+      "text": "3x = -15",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 3."
+    },
+    {
+      "id": 1023,
+      "home_index": 20,
+      "text": "3x - 2 = -17",
+      "subject": "algebra",
+      "hint": "Algebra: Add 2 to both sides. Then divide both sides by 3."
+    },
+    {
+      "id": 1060,
+      "home_index": 21,
+      "text": "3(x - 2) = -21",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 3 first. Then add 2 to both sides."
+    },
+    {
+      "id": 1097,
+      "home_index": 22,
+      "text": "x + 3 = 5",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 3 from both sides."
+    },
+    {
+      "id": 1034,
+      "home_index": 23,
+      "text": "4x = 8",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 4."
+    },
+    {
+      "id": 1071,
+      "home_index": 24,
+      "text": "4x + 3 = 11",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 3 from both sides. Then divide both sides by 4."
+    },
+    {
+      "id": 1008,
+      "home_index": 25,
+      "text": "4(x + 3) = 20",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 4 first. Then subtract 3 from both sides."
+    },
+    {
+      "id": 1045,
+      "home_index": 26,
+      "text": "x - 4 = 5",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 4 to both sides."
+    },
+    {
+      "id": 1082,
+      "home_index": 27,
+      "text": "-5x = -45",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -5."
+    },
+    {
+      "id": 1019,
+      "home_index": 28,
+      "text": "-5x - 4 = -49",
+      "subject": "algebra",
+      "hint": "Algebra: Add 4 to both sides. Then divide both sides by -5."
+    },
+    {
+      "id": 1056,
+      "home_index": 29,
+      "text": "-5(x - 4) = -25",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -5 first. Then add 4 to both sides."
+    },
+    {
+      "id": 1093,
+      "home_index": 30,
+      "text": "x + 5 = -4",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 5 from both sides."
+    },
+    {
+      "id": 1030,
+      "home_index": 31,
+      "text": "6x = -54",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 6."
+    },
+    {
+      "id": 1067,
+      "home_index": 32,
+      "text": "6x + 5 = -49",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 5 from both sides. Then divide both sides by 6."
+    },
+    {
+      "id": 1004,
+      "home_index": 33,
+      "text": "6(x + 5) = -24",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 6 first. Then subtract 5 from both sides."
+    },
+    {
+      "id": 1041,
+      "home_index": 34,
+      "text": "x - 6 = -8",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 6 to both sides."
+    },
+    {
+      "id": 1078,
+      "home_index": 35,
+      "text": "7x = -14",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 7."
+    },
+    {
+      "id": 1015,
+      "home_index": 36,
+      "text": "7x - 6 = -20",
+      "subject": "algebra",
+      "hint": "Algebra: Add 6 to both sides. Then divide both sides by 7."
+    },
+    {
+      "id": 1052,
+      "home_index": 37,
+      "text": "7(x - 6) = -56",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 7 first. Then add 6 to both sides."
+    },
+    {
+      "id": 1089,
+      "home_index": 38,
+      "text": "x + 7 = 12",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 7 from both sides."
+    },
+    {
+      "id": 1026,
+      "home_index": 39,
+      "text": "-8x = -40",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -8."
+    },
+    {
+      "id": 1063,
+      "home_index": 40,
+      "text": "-8x + 7 = -33",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 7 from both sides. Then divide both sides by -8."
+    },
+    {
+      "id": 1100,
+      "home_index": 41,
+      "text": "-8(x + 7) = -96",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -8 first. Then subtract 7 from both sides."
+    },
+    {
+      "id": 1037,
+      "home_index": 42,
+      "text": "x - 8 = 4",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 8 to both sides."
+    },
+    {
+      "id": 1074,
+      "home_index": 43,
+      "text": "2x = 24",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 2."
+    },
+    {
+      "id": 1011,
+      "home_index": 44,
+      "text": "2x - 8 = 16",
+      "subject": "algebra",
+      "hint": "Algebra: Add 8 to both sides. Then divide both sides by 2."
+    },
+    {
+      "id": 1048,
+      "home_index": 45,
+      "text": "2(x - 8) = 8",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 2 first. Then add 8 to both sides."
+    },
+    {
+      "id": 1085,
+      "home_index": 46,
+      "text": "x + 9 = 3",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 9 from both sides."
+    },
+    {
+      "id": 1022,
+      "home_index": 47,
+      "text": "3x = -18",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 3."
+    },
+    {
+      "id": 1059,
+      "home_index": 48,
+      "text": "3x + 9 = -9",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 9 from both sides. Then divide both sides by 3."
+    },
+    {
+      "id": 1096,
+      "home_index": 49,
+      "text": "3(x + 9) = 9",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 3 first. Then subtract 9 from both sides."
+    },
+    {
+      "id": 1033,
+      "home_index": 50,
+      "text": "x - 1 = 0",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 1 to both sides."
+    },
+    {
+      "id": 1070,
+      "home_index": 51,
+      "text": "-4x = -4",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -4."
+    },
+    {
+      "id": 1007,
+      "home_index": 52,
+      "text": "-4x - 1 = -5",
+      "subject": "algebra",
+      "hint": "Algebra: Add 1 to both sides. Then divide both sides by -4."
+    },
+    {
+      "id": 1044,
+      "home_index": 53,
+      "text": "-4(x - 1) = 0",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -4 first. Then add 1 to both sides."
+    },
+    {
+      "id": 1081,
+      "home_index": 54,
+      "text": "x + 2 = 10",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 2 from both sides."
+    },
+    {
+      "id": 1018,
+      "home_index": 55,
+      "text": "5x = 40",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 5."
+    },
+    {
+      "id": 1055,
+      "home_index": 56,
+      "text": "5x + 2 = 42",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 2 from both sides. Then divide both sides by 5."
+    },
+    {
+      "id": 1092,
+      "home_index": 57,
+      "text": "5(x + 2) = 50",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 5 first. Then subtract 2 from both sides."
+    },
+    {
+      "id": 1029,
+      "home_index": 58,
+      "text": "x - 3 = -13",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 3 to both sides."
+    },
+    {
+      "id": 1066,
+      "home_index": 59,
+      "text": "6x = -60",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 6."
+    },
+    {
+      "id": 1003,
+      "home_index": 60,
+      "text": "6x - 3 = -63",
+      "subject": "algebra",
+      "hint": "Algebra: Add 3 to both sides. Then divide both sides by 6."
+    },
+    {
+      "id": 1040,
+      "home_index": 61,
+      "text": "6(x - 3) = -78",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 6 first. Then add 3 to both sides."
+    },
+    {
+      "id": 1077,
+      "home_index": 62,
+      "text": "x + 4 = 1",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 4 from both sides."
+    },
+    {
+      "id": 1014,
+      "home_index": 63,
+      "text": "-7x = 21",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -7."
+    },
+    {
+      "id": 1051,
+      "home_index": 64,
+      "text": "-7x + 4 = 25",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 4 from both sides. Then divide both sides by -7."
+    },
+    {
+      "id": 1088,
+      "home_index": 65,
+      "text": "-7(x + 4) = -7",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -7 first. Then subtract 4 from both sides."
+    },
+    {
+      "id": 1025,
+      "home_index": 66,
+      "text": "x - 5 = -1",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 5 to both sides."
+    },
+    {
+      "id": 1062,
+      "home_index": 67,
+      "text": "8x = 32",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 8."
+    },
+    {
+      "id": 1099,
+      "home_index": 68,
+      "text": "8x - 5 = 27",
+      "subject": "algebra",
+      "hint": "Algebra: Add 5 to both sides. Then divide both sides by 8."
+    },
+    {
+      "id": 1036,
+      "home_index": 69,
+      "text": "8(x - 5) = -8",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 8 first. Then add 5 to both sides."
+    },
+    {
+      "id": 1073,
+      "home_index": 70,
+      "text": "x + 6 = 17",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 6 from both sides."
+    },
+    {
+      "id": 1010,
+      "home_index": 71,
+      "text": "2x = 22",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 2."
+    },
+    {
+      "id": 1047,
+      "home_index": 72,
+      "text": "2x + 6 = 28",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 6 from both sides. Then divide both sides by 2."
+    },
+    {
+      "id": 1084,
+      "home_index": 73,
+      "text": "2(x + 6) = 34",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 2 first. Then subtract 6 from both sides."
+    },
+    {
+      "id": 1021,
+      "home_index": 74,
+      "text": "x - 7 = -14",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 7 to both sides."
+    },
+    {
+      "id": 1058,
+      "home_index": 75,
+      "text": "-3x = 21",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -3."
+    },
+    {
+      "id": 1095,
+      "home_index": 76,
+      "text": "-3x - 7 = 14",
+      "subject": "algebra",
+      "hint": "Algebra: Add 7 to both sides. Then divide both sides by -3."
+    },
+    {
+      "id": 1032,
+      "home_index": 77,
+      "text": "-3(x - 7) = 42",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -3 first. Then add 7 to both sides."
+    },
+    {
+      "id": 1069,
+      "home_index": 78,
+      "text": "x + 8 = 8",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 8 from both sides."
+    },
+    {
+      "id": 1006,
+      "home_index": 79,
+      "text": "4x = 0",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 4."
+    },
+    {
+      "id": 1043,
+      "home_index": 80,
+      "text": "4x + 8 = 8",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 8 from both sides. Then divide both sides by 4."
+    },
+    {
+      "id": 1080,
+      "home_index": 81,
+      "text": "4(x + 8) = 32",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 4 first. Then subtract 8 from both sides."
+    },
+    {
+      "id": 1017,
+      "home_index": 82,
+      "text": "x - 9 = -2",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 9 to both sides."
+    },
+    {
+      "id": 1054,
+      "home_index": 83,
+      "text": "5x = 35",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 5."
+    },
+    {
+      "id": 1091,
+      "home_index": 84,
+      "text": "5x - 9 = 26",
+      "subject": "algebra",
+      "hint": "Algebra: Add 9 to both sides. Then divide both sides by 5."
+    },
+    {
+      "id": 1028,
+      "home_index": 85,
+      "text": "5(x - 9) = -10",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 5 first. Then add 9 to both sides."
+    },
+    {
+      "id": 1065,
+      "home_index": 86,
+      "text": "x + 1 = -10",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 1 from both sides."
+    },
+    {
+      "id": 1002,
+      "home_index": 87,
+      "text": "-6x = 66",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -6."
+    },
+    {
+      "id": 1039,
+      "home_index": 88,
+      "text": "-6x + 1 = 67",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 1 from both sides. Then divide both sides by -6."
+    },
+    {
+      "id": 1076,
+      "home_index": 89,
+      "text": "-6(x + 1) = 60",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by -6 first. Then subtract 1 from both sides."
+    },
+    {
+      "id": 1013,
+      "home_index": 90,
+      "text": "x - 2 = -6",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 2 to both sides."
+    },
+    {
+      "id": 1050,
+      "home_index": 91,
+      "text": "7x = -28",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 7."
+    },
+    {
+      "id": 1087,
+      "home_index": 92,
+      "text": "7x - 2 = -30",
+      "subject": "algebra",
+      "hint": "Algebra: Add 2 to both sides. Then divide both sides by 7."
+    },
+    {
+      "id": 1024,
+      "home_index": 93,
+      "text": "7(x - 2) = -42",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 7 first. Then add 2 to both sides."
+    },
+    {
+      "id": 1061,
+      "home_index": 94,
+      "text": "x + 3 = 6",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Subtract 3 from both sides."
+    },
+    {
+      "id": 1098,
+      "home_index": 95,
+      "text": "8x = 24",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by 8."
+    },
+    {
+      "id": 1035,
+      "home_index": 96,
+      "text": "8x + 3 = 27",
+      "subject": "algebra",
+      "hint": "Algebra: Subtract 3 from both sides. Then divide both sides by 8."
+    },
+    {
+      "id": 1072,
+      "home_index": 97,
+      "text": "8(x + 3) = 48",
+      "subject": "algebra",
+      "hint": "Algebra: divide both sides by 8 first. Then subtract 3 from both sides."
+    },
+    {
+      "id": 1009,
+      "home_index": 98,
+      "text": "x - 4 = 6",
+      "subject": "algebra",
+      "hint": "Algebra: x is the unknown. Add 4 to both sides."
+    },
+    {
+      "id": 1046,
+      "home_index": 99,
+      "text": "-2x = -20",
+      "subject": "algebra",
+      "hint": "Algebra: isolate x by dividing both sides by -2."
+    }
+  ]
+}

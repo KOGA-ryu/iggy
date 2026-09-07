@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "questions": [
+    "../cards/sorter_graph_fraction.json"
+  ],
+  "decks": {
+    "solve": [
+      {
+        "question_id": "sorter_graph_fraction",
+        "content_version": 1
+      }
+    ]
+  }
+}
