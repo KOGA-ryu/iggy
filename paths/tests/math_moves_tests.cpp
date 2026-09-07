@@ -2,6 +2,7 @@
 #include "content/QuestionContentIO.hpp"
 
 #include <array>
+#include <bit>
 #include <set>
 #include <fstream>
 #include <iostream>
@@ -21,11 +22,28 @@ MathematicalMove command(const GallerySession& game,fm::MathOperation operation,
   const auto& run=game.question().currentRun();
   return {game.view().challenge,{kind,operation,std::move(operand),std::move(entry),run.runNumber,run.math->revision,run.questionId,run.contentVersion}};
 }
+void checkTotals(const GallerySession& game) {
+  std::size_t correct=0,wrong=0,completed=0;
+  const auto count=[&](const fm::LayeredQuestionRunRecord& run,std::size_t reviewIndex) {
+    std::size_t runWrong=0;completed+=run.completed;
+    for(const auto& event:run.math->events)if(event.kind==fm::MathMoveKind::Submit) {
+      if(event.correct)++correct;else ++runWrong;
+    }
+    wrong+=runWrong;
+    expect(game.question().review(reviewIndex)->wrongAttempts==runWrong,"review total matches recorded wrong verdicts");
+  };
+  count(game.question().currentRun(),0);
+  for(std::size_t i=0;i<game.question().archivedRuns().size();++i)count(game.question().archivedRuns()[i],i+1);
+  const auto view=game.view();
+  expect(view.correctHits==correct && view.wrongHits==wrong && view.completedQuestions==completed,
+      "mathematical totals match independent replay of current and archived verdicts");
+}
 void move(GallerySession& game,fm::MathOperation operation,std::string operand,std::string entry,bool correct=true) {
   const auto result=game.dispatch(command(game,operation,std::move(operand),std::move(entry)));
   if(!result.accepted)throw std::runtime_error(std::string(result.reason));
   const auto& event=game.question().currentRun().math->events.back();
   if(event.correct!=correct)throw std::runtime_error("unexpected verdict for "+event.entry+": "+event.feedback);
+  checkTotals(game);
 }
 void action(EquationSorterSession& session,SorterActionKind kind,std::uint32_t id=0,std::uint32_t value=0) {
   const auto result=session.dispatch({kind,SorterBucket::A,id,session.view().revision,value});
@@ -105,6 +123,7 @@ void branchesAndAllExamples() {
     for(int j=0;j<240;++j)(void)game.dispatch(GalleryTick{.25F});
     expect(game.view().completed && game.question().currentRun().math->events.size()==before,"completion waits indefinitely for an explicit action");
     for(int j=0;j<2;++j)expect(game.dispatch(command(game,Op::Expand,"","",fm::MathMoveKind::Undo)).accepted,"Undo returns to the parent even after completion");
+    checkTotals(game);
     expect(!game.view().completed && game.question().currentRun().math->nodes.size()==3 && game.question().currentRun().math->active==0,"Undo retains the first solution branch");
     move(game,Op::Expand,"",e.expanded);
     // For a negative outside factor, subtracting its negative constant is equivalent to adding its magnitude.
@@ -117,6 +136,7 @@ void branchesAndAllExamples() {
         "both checked branches count as answers while Undo and stale input do not");
     const auto old=command(game,Op::Divide,e.factor,e.answer);
     expect(game.dispatch(ReplayQuestion{}).accepted,"explicit replay starts another attempt");
+    checkTotals(game);
     expect(!game.dispatch(old).accepted && game.question().archivedRuns().size()==1 &&
         game.question().archivedRuns()[0].math->nodes.size()==6 && game.question().currentRun().math->nodes.size()==1,"replay archives both branches and blocks commands from the previous run");
     expect(game.view().correctHits==5 && game.view().wrongHits==1 && game.view().completedQuestions==1 &&
@@ -319,14 +339,33 @@ void contentAndBounds() {
   }
   GalleryConfig config;config.stopAfterQuestion=true;config.mathematicalMoves=true;
   GallerySession game(config,{question},{0});
-  for(std::size_t i=0;i<fm::kMathEventCapacity;++i)move(game,fm::MathOperation::Expand,"","x=999",false);
+  const auto& attempts=*game.question().currentRun().math;
+  std::size_t eventGrowth=0,eventRelocations=0;
+  for(std::size_t i=0;i<fm::kMathEventCapacity;++i) {
+    const auto capacity=attempts.events.capacity();
+    move(game,fm::MathOperation::Expand,"","x=999",false);
+    if(attempts.events.capacity()!=capacity) {++eventGrowth;eventRelocations+=i;}
+  }
+  expect(eventGrowth<=std::bit_width(fm::kMathEventCapacity) && eventRelocations<2*fm::kMathEventCapacity,
+      "long attempt histories grow with few allocations and linear total record relocation");
+  expect(attempts.events.size()==fm::kMathEventCapacity && attempts.events.capacity()<=fm::kMathEventCapacity &&
+      attempts.nodes.size()==1 && game.question().journal().size()==fm::kMathEventCapacity+1,
+      "all wrong attempts remain journaled within the storage limit without changing working");
   const auto revision=game.question().currentRun().math->revision;
   expect(!game.dispatch(command(game,fm::MathOperation::Expand,"","x=999")).accepted &&
       game.question().currentRun().math->revision==revision,"bounded attempt history refuses further mutation without losing evidence");
   auto other=question;other.equation="2x=4";
   GallerySession many(config,{other},{0});
-  for(std::size_t i=1;i<fm::kMathNodeCapacity;++i)
+  const auto& working=*many.question().currentRun().math;
+  std::size_t nodeGrowth=0,nodeRelocations=0;
+  for(std::size_t i=1;i<fm::kMathNodeCapacity;++i) {
+    const auto capacity=working.nodes.capacity();
     move(many,fm::MathOperation::Add,"1","2x+"+std::to_string(i)+"="+std::to_string(4+i));
+    if(working.nodes.capacity()!=capacity) {++nodeGrowth;nodeRelocations+=i;}
+  }
+  expect(nodeGrowth<=std::bit_width(fm::kMathNodeCapacity) && nodeRelocations<2*fm::kMathNodeCapacity &&
+      working.nodes.size()==fm::kMathNodeCapacity && working.nodes.capacity()<=fm::kMathNodeCapacity,
+      "long checked derivations retain every working node with bounded geometric storage growth");
   expect(!many.dispatch(command(many,fm::MathOperation::Add,"1","2x+128=132")).accepted,"working graph has a bounded node count");
   expect(many.dispatch(command(many,fm::MathOperation::Expand,"","",fm::MathMoveKind::Undo)).accepted,"Undo remains available at the node limit");
 }

@@ -286,11 +286,11 @@ GallerySessionView GallerySession::view() const {
   view.paused=scene_.paused();view.completed=run.completed;view.priorExposure=run.priorExposure;
   const auto count=[&](const fm::LayeredQuestionRunRecord& evidence) {
     view.completedQuestions+=evidence.completed;
-    if(run.math) {
-      if(evidence.math)for(const auto& event:evidence.math->events)if(event.kind==fm::MathMoveKind::Submit)
-        event.correct?++view.correctHits:++view.wrongHits;
-    } else for(const auto& step:evidence.steps)for(const auto& attempt:step.attempts)
-      attempt.correct?++view.correctHits:++view.wrongHits;
+    if(evidence.math) {
+      view.correctHits+=evidence.math->nodes.size()-1;view.wrongHits+=evidence.math->incorrectCheckedAttempts;
+    } else for(const auto& step:evidence.steps) {
+      view.correctHits+=step.attempts.size()-step.incorrectCheckedAttempts;view.wrongHits+=step.incorrectCheckedAttempts;
+    }
   };
   count(run);for(const auto& archived:question_.archivedRuns())count(archived);
   if(run.math) {

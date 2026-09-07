@@ -1,8 +1,9 @@
 # Paths cleanup review — 2026-09-07
 
 Authority: the user requested a repository review and a decision about what to
-clean next, then approved the selected cleanup with “gogo”. The initial review
-made no production edits. The completed publication cleanup is recorded below.
+clean next, then approved publication cleanup, history-growth repair and the
+subsequent idle-history investigation with “gogo”. The initial review made no
+production edits. Completed workstreams are recorded below.
 
 ## Decision
 
@@ -71,8 +72,8 @@ Evidence: `build/repo-cleanup-review-evidence/catalogue-capacity-probe.json`.
 
 ### P2 — Every mathematical attempt grows event storage by one allocation
 
-**Classification:** Contract Risk for sustained play. **Disposition:** second,
-separate cleanup after publication.
+**Classification:** Contract Risk for sustained play. **Disposition:** resolved
+by the separate history-growth cleanup.
 
 `LayeredQuestionSession::applyMathMove()` reserves `size()+1` for events and
 successful working nodes at `src/runtime/first_move/LayeredQuestionSession.cpp:699`.
@@ -160,6 +161,109 @@ remain uncommitted; no windows or captures were used and visual review remains
 deferred.
 
 Publication still replaces files individually, as before; this cleanup does not
-provide rollback of a partially written batch after an I/O failure. The next
-candidate is the separate history-allocation finding above. No history storage,
-Undo, save or runtime behaviour was changed in this workstream.
+provide rollback of a partially written batch after an I/O failure. At this
+checkpoint the next candidate was the separate history-allocation finding above.
+No history storage, Undo, save or runtime behaviour changed in publication cleanup.
+
+## History-growth cleanup completed
+
+The live route remains symbolic answer/Undo controls → `MathematicalMove` →
+`GallerySession::dispatch()` → `LayeredQuestionSession::dispatch()` →
+`applyMathMove()`. The question session remains the owner of checked working,
+attempts and their journal. Saved practice replays that journal through the same
+owner; storage capacities are not part of the save format.
+
+The two exact-one-element reserve requests in `applyMathMove()` now round up to
+the next power of two with the already available `std::bit_ceil`, capped at the
+existing 1,024-event and 128-node limits. Both reserves still precede either
+append, so a reserve failure cannot publish half a checked move. No helper,
+header, second route or production file was added. Production change is
+**3 lines added / 3 removed (net zero)** in one existing file, including its
+comment. The old exact-growth policy is gone.
+
+A fresh Release baseline and the revised build produced these measurements:
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Event reallocations over 1,024 wrong attempts | 1,024 | 11 |
+| Existing event records relocated | 523,776 | 1,023 |
+| Node reallocations while reaching 128 working nodes | 127 | 7 |
+| Existing working nodes relocated | 8,128 | 127 |
+
+The existing long-session test now guards allocation and relocation growth,
+retained counts, journal preservation and capacity limits. The four focused
+CTest entries passed: `paths_math_moves_tests`, `paths_practice_save_tests`,
+`paths_practice_save_write` and `paths_practice_save_read`. They cover correct
+and wrong moves, Undo branches, completion, limits and saved practice. A mixed
+practice save generated before the source change is byte-identical to the same
+scenario generated afterwards; the revised executable also resumed, completed
+and reopened a copy of that earlier save.
+
+Release `sorter`, `gallery` and `paths` builds passed in the isolated verification
+directory and were rebuilt in the usual `b/` directory. Evidence, before/after
+measurements, saved files, logs and a baseline-relative patch are under
+`build/history-growth-evidence/`, with the result in `verification.json`.
+
+The tradeoff is spare allocated slots between growth points, bounded by the
+existing limits. This establishes reduced storage churn, not a measured frame
+rate improvement. No other production source, content or saved-data schema was
+edited. Changes remain uncommitted. No windows, screenshots or captures were
+used; earlier visual acceptance remains deferred.
+
+At this checkpoint the next candidate was a focused check of whether idle frames
+repeatedly rebuild history summaries. That investigation and its resulting
+cleanup are recorded below.
+
+## History-totals cleanup completed
+
+**Finding:** P3, Duplicate Implementation. Each solver frame calls
+`GallerySession::view()`, which recounted every prepared attempt and mathematical
+Submit event in the current and archived runs. Prepared runs already maintain
+wrong-attempt counts, while mathematical working nodes already record every
+correct move. A headless Release probe with 16 runs, 4,128 attempts and 16 Undo
+events confirmed repeated totals reads without any new input.
+
+The question session retains ownership of checked facts. `MathMoveRun` now has
+the same `incorrectCheckedAttempts` count as prepared steps; `applyMathMove()`
+increments it only after recording a wrong Submit event. Correct moves and Undo
+leave it unchanged. New runs initialize it to zero, archived runs copy it, and
+saved practice reconstructs it through the existing journal replay. The save
+format contains no new field.
+
+`GallerySession::view()` now adds these per-run/per-step facts: mathematical
+correct moves are the working-node count minus the original node; prepared
+correct answers are the attempt count minus wrong attempts. Both repeated
+attempt scans were deleted. Mathematical `QuestionReview` reads the same
+owner-maintained wrong count, deleting its separate event scan. No view cache,
+revision key or invalidation route was introduced.
+
+Production scope is **8 lines added / 8 removed (net zero)** across three
+existing files, with no new production files. Two existing test files gained
+29 lines comparing the projected totals with independent recounts of raw
+verdicts through ordinary moves, partial collection, Undo, replay and archives.
+
+Verification completed:
+
+- Five targeted CTest entries passed: gallery, mathematical moves, practice
+  persistence, separate-process save writing and separate-process save reading.
+- The pre-change and revised executables produce byte-identical mixed-practice
+  saves. The revised executable resumed, completed and reopened the earlier save.
+- Release `sorter`, `gallery` and `paths` were rebuilt in the usual `b/` directory.
+- The probe returned identical totals, journal length and checksums. Across five
+  trials of 20,000 reads, median `GallerySession::view()` time fell from **3.5486
+  microseconds to 0.022225 microseconds** on this host. This measures the totals
+  view in an isolated synthetic history, not whole-frame or rendering speed.
+
+Evidence is in `build/history-totals-evidence/verification.json`, alongside the
+probe, measurements, saved files, logs, hashes and baseline-relative patch.
+
+The tradeoff is eight extra bytes per mathematical run on this build. Totals
+still visit retained runs and prepared steps; individual attempt records are no
+longer revisited for those totals. Full first-try/retry classification and
+expanded history drawing retain their existing on-demand traversal. Content,
+input, UI layout and save rules are unchanged. Changes remain uncommitted; no
+windows, screenshots or captures were used and prior visual acceptance remains
+deferred.
+
+The next candidate is a focused check of long-history scrolling and expanded
+step details. No rendering change or additional audit is included here.

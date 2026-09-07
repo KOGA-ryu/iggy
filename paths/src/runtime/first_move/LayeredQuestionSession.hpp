@@ -202,7 +202,7 @@ struct MathMoveEvent {
 struct MathMoveRun {
   std::vector<MathWorkingNode> nodes;
   std::vector<MathMoveEvent> events; // Append-only: Undo records a move to a parent; it never deletes evidence.
-  std::size_t active=0;
+  std::size_t active=0, incorrectCheckedAttempts=0;
   std::uint64_t revision=1;
 };
 

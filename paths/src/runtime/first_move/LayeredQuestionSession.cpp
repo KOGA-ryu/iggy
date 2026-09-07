@@ -445,7 +445,7 @@ std::optional<QuestionReview> LayeredQuestionSession::review(std::size_t runInde
   result.version=question.version;result.runNumber=run.runNumber;result.completed=run.completed;
   if(run.math) {
     result.math=&*run.math;
-    for(const auto& event:run.math->events)if(event.kind==MathMoveKind::Submit && !event.correct)++result.wrongAttempts;
+    result.wrongAttempts=run.math->incorrectCheckedAttempts;
     return result;
   }
   for(std::size_t i=0;i<=run.currentStep;++i) {
@@ -695,15 +695,15 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applyMathMove(const MathMo
   const auto next=correct?run.nodes.size():run.active;
   MathMoveEvent event{MathMoveKind::Submit,run.active,next,command.operation,command.operand,command.entry,
       correct,std::string(feedback)};
-  // Reserve both append-only stores before publishing either part of a checked move.
-  run.events.reserve(run.events.size()+1);
-  if(node)run.nodes.reserve(run.nodes.size()+1);
+  // Grow both append-only stores geometrically before publishing either part of a checked move.
+  run.events.reserve(std::min(kMathEventCapacity,std::bit_ceil(run.events.size()+1)));
+  if(node)run.nodes.reserve(std::min(kMathNodeCapacity,std::bit_ceil(run.nodes.size()+1)));
   run.events.push_back(std::move(event));
   if(node) {
     run.nodes.push_back(std::move(*node));run.active=next;
     current_.completed=!run.nodes.back().verification.empty();
     if(current_.completed)current_.phase=LayeredQuestionPhase::Complete;
-  }
+  } else ++run.incorrectCheckedAttempts;
   ++run.revision;
   return accepted(true,correct?"math_move_correct":"math_move_incorrect");
 }

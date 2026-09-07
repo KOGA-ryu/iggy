@@ -17,6 +17,16 @@ void expect(bool condition,std::string_view message) {
 }
 void apply(GallerySession& session,const GalleryCommand& command) {
   const auto result=session.dispatch(command);expect(result.accepted,result.reason);
+  std::size_t correct=0,wrong=0,completed=0;
+  const auto count=[&](const fm::LayeredQuestionRunRecord& run) {
+    completed+=run.completed;
+    for(const auto& step:run.steps)for(const auto& attempt:step.attempts)
+      attempt.correct?++correct:++wrong;
+  };
+  count(session.question().currentRun());for(const auto& run:session.question().archivedRuns())count(run);
+  const auto view=session.view();
+  expect(view.correctHits==correct && view.wrongHits==wrong && view.completedQuestions==completed,
+      "prepared totals match independent replay of current and archived verdicts");
 }
 void publish(GallerySession& session) {static_cast<void>(session.publishFrame());}
 GallerySession makeGame(GalleryVariation variation,RouteKind motion=RouteKind::Stationary,
