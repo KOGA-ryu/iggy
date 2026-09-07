@@ -325,7 +325,8 @@ std::optional<std::size_t> EquationSorterSession::nextSolveHome() const {
     if (content_[i].solution) return i;
   return std::nullopt;
 }
-std::unique_ptr<GallerySession> EquationSorterSession::freshSolve(std::size_t index) const {
+std::unique_ptr<GallerySession> EquationSorterSession::freshSolve(std::size_t index,
+    std::span<const iggy3d::first_move::LayeredQuestionCommand> savedProgress) const {
   std::unique_ptr<GallerySession> game;
   if(solves_[index]) {
     game=std::make_unique<GallerySession>(*solves_[index]);
@@ -336,7 +337,7 @@ std::unique_ptr<GallerySession> EquationSorterSession::freshSolve(std::size_t in
     config.motion=RouteKind::Horizontal; config.pace=.4F; config.stopAfterQuestion=true;
     config.mathematicalMoves=content_[index].solution->supportsMathMoves;
     game=std::make_unique<GallerySession>(config,
-        std::vector<iggy3d::first_move::LayeredQuestionContent>{*content_[index].solution},std::vector<std::size_t>{0});
+        std::vector<iggy3d::first_move::LayeredQuestionContent>{*content_[index].solution},std::vector<std::size_t>{0},savedProgress);
   }
   (void)game->dispatch(GalleryPause{true});return game;
 }
@@ -429,5 +430,72 @@ SorterResult EquationSorterSession::dispatchStudy(const SorterAction& action) {
     studyRun_=true;return openSolve(studyQueue_[studyPosition_]);
   default:return {false,false,"invalid study action"};
   }
+}
+StudyProgress EquationSorterSession::studyProgress() const {
+  StudyProgress saved;
+  saved.mode=studyMode_;saved.randomCount=studyRandomCount_;saved.position=studyPosition_;
+  for(std::size_t i=0;i<studyTypes_.size();++i)if(includedTypes_[i]) {
+    const auto& t=studyTypes_[i];saved.titles.push_back({t.subject,t.chapter,t.title});
+  }
+  for(const auto index:studyQueue_)saved.queue.push_back(content_[index].id);
+  for(std::size_t i=0;i<content_.size();++i) {
+    if(studySelected_[i])saved.selected.push_back(content_[i].id);
+    if(solves_[i]) {
+      const auto& question=solves_[i]->question();
+      const auto commands=question.journal();
+      saved.questions.push_back({content_[i].id,question.content().id,question.content().version,{commands.begin(),commands.end()}});
+    }
+  }
+  return saved;
+}
+std::uint64_t EquationSorterSession::progressRevision() const {
+  auto revision=revision_;
+  for(const auto& game:solves_)if(game)revision+=game->question().journal().size();
+  return revision;
+}
+void EquationSorterSession::restoreStudyProgress(const StudyProgress& saved) {
+  const auto require=[](bool valid,const char* reason) {if(!valid)throw std::invalid_argument(reason);};
+  EquationSorterSession staged(content_);
+  staged.includedTypes_.fill(false);
+  require(static_cast<unsigned>(saved.mode)<=static_cast<unsigned>(StudyMode::Specific),"invalid saved selection mode");
+  require(saved.randomCount>0 && saved.randomCount<=sorterEquationCount,"invalid saved random count");
+  for(const auto& key:saved.titles) {
+    const auto found=std::find_if(studyTypes_.begin(),studyTypes_.end(),[&](const auto& t) {
+      return t.subject==key.subject && t.chapter==key.chapter && t.title==key.type;
+    });
+    require(found!=studyTypes_.end(),"saved title is no longer available");
+    const auto index=static_cast<std::size_t>(found-studyTypes_.begin());
+    require(!staged.includedTypes_[index],"duplicate saved title");staged.includedTypes_[index]=true;
+  }
+  staged.studyMode_=saved.mode;staged.studyRandomCount_=saved.randomCount;
+  staged.refreshStudySelection();staged.studySelected_.fill(false);
+  for(const auto id:saved.selected) {
+    const auto index=home(id);
+    require(index && staged.studyAvailable_[*index],"saved question is outside the selected titles");
+    require(!staged.studySelected_[*index],"duplicate saved selection");staged.studySelected_[*index]=true;
+  }
+  const auto available=static_cast<std::size_t>(std::count(staged.studyAvailable_.begin(),staged.studyAvailable_.end(),true));
+  if(saved.mode==StudyMode::All)require(saved.selected.size()==available,"saved all selection has changed");
+  if(saved.mode==StudyMode::Random)require(saved.selected.size()==std::min(available,saved.randomCount),"saved random selection has changed");
+  for(const auto& question:saved.questions) {
+    const auto index=home(question.equation);
+    require(index && content_[*index].solution,"saved question is no longer available");
+    require(!staged.solves_[*index],"duplicate saved question");
+    const auto& content=*content_[*index].solution;
+    require(content.id==question.questionId && content.version==question.contentVersion,"saved question version has changed");
+    require(!question.commands.empty(),"saved question has no opening command");
+    staged.solves_[*index]=staged.freshSolve(*index,question.commands);
+  }
+  for(const auto id:saved.queue) {
+    const auto index=home(id);
+    require(index && content_[*index].study && staged.solves_[*index],"saved practice queue has a missing question");
+    require(std::find(staged.studyQueue_.begin(),staged.studyQueue_.end(),*index)==staged.studyQueue_.end(),"duplicate saved queue question");
+    staged.studyQueue_.push_back(*index);
+  }
+  require(saved.queue.empty()?saved.position==0:saved.position<saved.queue.size(),"invalid saved queue position");
+  staged.studyPosition_=saved.position;staged.studyRun_=!saved.queue.empty();staged.studying_=!studyTypes_.empty();
+  if(staged.studyRun_)staged.solveHome_=staged.studyQueue_[saved.position];
+  staged.revision_=revision_+1;
+  *this=std::move(staged);
 }
 } // namespace paths

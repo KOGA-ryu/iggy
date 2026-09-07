@@ -374,7 +374,7 @@ continues to be in memory; durable persistence is not implemented.
 [P033](P033_VISUAL_MATH_MOVES.md) replaces the equation/number fields and Check
 button with concrete operation buttons and four result tiles. The shared
 question owner's `mathMoveChoices()` projects the current equation through
-`LinearEquation::linearMoveChoices()`. Generation and submission call the same
+`availableMathMoves()`. Generation and submission call the same
 transformation rules; only submission records an attempt or advances working.
 The bounded palette includes expansion, coefficient division, reciprocal
 multiplication, and signed constant moves. Result choices contain one valid
@@ -403,6 +403,66 @@ original rows before completion. The UI uses the same operation/result/history
 panels, with extra height for two-line matrices. The new authored card is linked
 through the existing content publisher and study catalogue. No parent project,
 native renderer, build graph or additional production file is involved.
+
+[P035](P035_ROW_REFERENCES.md) adds an optional shared reference library to the
+existing question-pack loader. Cards resolve `concept_ids` into immutable
+`MathReference` copies, including versions, before the existing constructor
+validation. A single declared row-operation table supplies file keys, operation
+families and move-palette concept IDs. It replaces the former private
+declaration; transformation, example projection and decoding use that table.
+
+`LayeredQuestionSession::mathReference()` exposes only linked reference content.
+`mathReferenceExample()` uses the existing exact row transformation to project
+the authored example's before/after cells and per-column arithmetic. Neither
+question-answer choices nor the player's working are used as example inputs.
+The UI owns the open reference ID and a bounded column cursor, just as it owns
+working inspection. These presentation actions create no attempt, completion,
+hint or answer-reveal records. Correct result submissions still use the sole
+`MathematicalMove` dispatcher; no reference-specific solver or progression
+route is added.
+
+The reference replaces inspection in the right support pane at wide sizes,
+or occupies the existing lower support area at narrow sizes. The problem,
+current working and answer tiles keep their rectangles. Its content scrolls
+inside fixed Close/previous/next controls. Example stepping follows the game's
+pause state, and Escape closes a reference before returning to Contents.
+Question/run changes clear the reference; same-question return/resume preserves
+it. CMake deploys the shared library with both native content consumers.
+
+[P036](P036_SAVED_PRACTICE.md) adds device-local practice persistence to the
+sorter. Finite `GallerySession` instances opt into the question owner's accepted
+command journal. `LayeredQuestionSession::dispatch()` records only accepted
+changes before publishing their evidence; unchanged help requests and rejected
+or stale input do not enter the journal. Other gameplay modes do not allocate
+this journal. It covers current and archived runs, including mathematical Undo.
+
+`EquationSorterSession::studyProgress()` publishes stable card IDs, selected
+titles, the exact random/specific draft, the frozen queue and its position,
+plus each started question's ID/version and command journal.
+`restoreStudyProgress()` stages a complete replacement and constructs every
+saved finite game through the existing question checker. It publishes only if
+all titles, IDs, versions, selections and journals validate. Startup returns to
+contents with each game paused; Resume/Next keep their existing action routes.
+The gallery regenerates scene bindings from checked collection facts, including
+partly collected answer sets. It does not restore a physics clock or aim misses.
+
+`StudyProgressFile` is the filesystem/JSON adapter. Its versioned format contains
+inputs and a content stamp; no saved result, correctness flag or completion flag
+is trusted. Reopening replays inputs through the same domain dispatch and exact
+math kernel. The content stamp catches edited judging material even without a
+version bump. Restoring an incompatible file leaves the live session and original
+file untouched, pauses saving for that launch, and reports the problem. Writes
+use a complete temporary file in the same directory followed by replacement.
+Before writing, the adapter checks that the destination still matches its last
+read version. The revision check excludes idle frame updates, and identical
+snapshots do not rewrite the file.
+
+The native sorter loads before creating its host and saves after applying frame
+commands. It chooses SDL's user-data folder unless the user supplies a path.
+Checks/scripts/bounded runs have no implicit personal save. The UI presents a
+green save status, a blue Resume button and amber failure details; it owns no
+persistence or recovery policy. Transient graph probes, reference-page cursors,
+camera state and grouping history remain outside this practice capability.
 
 ## Modes and navigation
 

@@ -269,6 +269,69 @@ void drawCoordinateGraph(EquationSorterUiState& ui,const GallerySession& game) {
   }
 }
 
+void drawMathReference(EquationSorterUiState& ui,const iggy3d::first_move::MathReference& reference,bool blocked,bool paused) {
+  const auto& example=*ui.mathExample;
+  const ImVec4 violet{.76F,.65F,1,1},cyan{.3F,.85F,.95F,1},green{.4F,.9F,.65F,1};
+  ImGui::BeginDisabled(blocked);
+  constexpr std::array labels{"Close","<",">"};
+  auto* window=ImGui::GetCurrentWindow();ImGuiID closeId=0;ImRect closeRect;
+  for(std::size_t i=0;i<labels.size();++i) {
+    if(i)ImGui::SameLine();
+    const bool available=i==0 || (!paused && (i==1?ui.mathReferenceStep>0:ui.mathReferenceStep<3));
+    ImGui::BeginDisabled(!available);
+    if(ImGui::Button(labels[i],{i==0?46.0F:26.0F,24})) {
+      switch(i) {
+        case 0:ui.mathReferenceId.clear();break;
+        case 1:--ui.mathReferenceStep;ui.mathReferenceFollow=true;break;
+        case 2:++ui.mathReferenceStep;ui.mathReferenceFollow=true;break;
+      }
+    }
+    ui.mathReferenceControls[i]=itemBounds(!blocked && available);
+    if(!i) {closeId=ImGui::GetItemID();closeRect={ImGui::GetItemRectMin(),ImGui::GetItemRectMax()};}
+    ImGui::EndDisabled();
+  }
+  ImGui::SameLine();ImGui::TextColored(violet,"REFERENCE  %zu/3",ui.mathReferenceStep);
+  ImGui::EndDisabled();
+  if(ui.mathReferenceFollow && !ui.mathReferenceStep)ImGui::SetNextWindowScroll({0,0});
+  ImGui::BeginChild("Reference text",{0,0},ImGuiChildFlags_NavFlattened,ImGuiWindowFlags_NoSavedSettings);
+  const auto at=ImGui::GetWindowPos(),size=ImGui::GetWindowSize();ui.mathReferenceBody={0,at.x,at.y,size.x,size.y,true};
+  ImGui::TextColored(violet,"%s",reference.title.c_str());
+  ImGui::TextWrapped("%s",reference.definition.c_str());
+  ImGui::TextWrapped("%s",reference.rule.c_str());
+  ImGui::Separator();ImGui::TextDisabled("SEPARATE EXAMPLE");
+  ImGui::TextColored(cyan,"%s",example.operation.c_str());
+  const auto matrix=[&](bool result) {
+    ImGui::BeginGroup();ImGui::TextDisabled("%s",result?"Example working":"Before");
+    if(ImGui::BeginTable(result?"Reference result":"Reference source",4,ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_BordersInnerV)) {
+      for(std::size_t row=0;row<2;++row) {
+        ImGui::TableNextRow();ImGui::TableNextColumn();ImGui::TextDisabled("R%zu",row+1);
+        for(std::size_t col=0;col<3;++col) {
+          ImGui::TableNextColumn();
+          const bool changed=result && col<ui.mathReferenceStep,focus=ui.mathReferenceStep && col==ui.mathReferenceStep-1;
+          const auto colour=result && ui.mathReferenceStep==3?green:focus?cyan:changed?green:ImVec4{.72F,.77F,.82F,1};
+          ImGui::TextColored(colour,"%s",(changed?example.after:example.before)[row][col].c_str());
+        }
+      }
+      ImGui::EndTable();
+    }
+    ImGui::EndGroup();ui.mathReferenceMatrices[result?1:0]=itemBounds();
+  };
+  matrix(false);
+  ImGui::BeginGroup();
+  if(ui.mathReferenceStep) {
+    constexpr std::array columns{"x column","y column","Right-hand column"};
+    ImGui::TextDisabled("%s",columns[ui.mathReferenceStep-1]);
+    ImGui::PushStyleColor(ImGuiCol_Text,cyan);ImGui::TextWrapped("%s",example.calculations[ui.mathReferenceStep-1].c_str());ImGui::PopStyleColor();
+  } else ImGui::TextDisabled("Use > to follow each column.");
+  ImGui::EndGroup();ui.mathReferenceCalculation=itemBounds();
+  if(ui.mathReferenceFollow && ui.mathReferenceStep)ImGui::SetScrollHereY(.4F);
+  matrix(true);
+  ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+  ImGui::TextWrapped("%s",ui.mathReferenceStep==3?"Example complete. Return to your question.":"Partial example; finish all three columns.");ImGui::PopStyleColor();
+  ui.mathReferenceFollow=false;ImGui::EndChild();
+  recoverFocus(window,closeId,closeRect);
+}
+
 void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const GallerySession& game) {
   namespace fm=iggy3d::first_move;
   const auto v=game.view();const auto& evidence=game.question().currentRun();const auto& math=*evidence.math;
@@ -290,6 +353,7 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   if(ui.mathQuestion!=evidence.questionId || ui.mathRun!=evidence.runNumber) {
     ui.mathQuestion=evidence.questionId;ui.mathRun=evidence.runNumber;ui.mathRevision=0;
     ui.mathChoices.clear();ui.mathSelectedMove.reset();ui.mathInspected.reset();
+    ui.mathReferenceId.clear();ui.mathExample.reset();ui.mathReferenceStep=0;
     ImGui::ClearActiveID();
   }
   if(ui.mathRevision!=math.revision) {
@@ -302,6 +366,8 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   }
   ui.shootAvailable=false;ui.solveOptionCount=0;ui.solveAnswers={};ui.solveControls={};ui.mathNodes={};
   ui.mathOperations={};ui.mathResults={};
+  ui.mathReferenceButton={};ui.mathReferencePanel={};ui.mathReferenceBody={};ui.mathReferenceCalculation={};
+  ui.mathReferenceControls={};ui.mathReferenceMatrices={};
   ui.solveHelp={};ui.solveVerification={};ui.mathInspection={};ui.graphBoard={};ui.graphPlot={};
   ui.graphTable={};ui.graphDisplayedValues.reset();ui.graphSlider={};ui.graphReplay={};
   ui.graphSampleRows={};ui.graphCurrentRow={};ui.graphReadouts={};
@@ -318,9 +384,11 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   auto* headerWindow=ImGui::GetCurrentWindow();ImGuiID backId=0;ImRect backRect;
   ImGui::BeginDisabled(blocked);
   const float width=std::min(150.0F,(ImGui::GetContentRegionAvail().x-6*(narrow?2:4))/(narrow?3:5));
+  if(ui.progressFailed)ImGui::PushStyleColor(ImGuiCol_Text,{1,.68F,.27F,1});
   if(ImGui::Button(sorter.studyRun?"Contents":"Groups",{width,24}))
     ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
   ui.solveControls[0]=itemBounds(!blocked);backId=ImGui::GetItemID();backRect={ImGui::GetItemRectMin(),ImGui::GetItemRectMax()};
+  if(ui.progressFailed) {ImGui::PopStyleColor();if(ImGui::IsItemHovered())ImGui::SetTooltip("%s",ui.progressMessage.c_str());}
   ImGui::SameLine();if(ImGui::Button(v.paused?"Resume":"Pause",{width,24}))queue(GalleryPause{!v.paused});
   ui.solveControls[1]=itemBounds(!blocked);ImGui::SameLine();ImGui::BeginDisabled(!canUndo);
   if(ImGui::Button("Undo move",{width,24}))move(fm::MathMoveKind::Undo);
@@ -350,6 +418,12 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   ui.solveStage=beginSolvePanel("Math moves",{0,header+boardHeight+workingHeight,io.DisplaySize.x,inputHeight},flags & ~ImGuiWindowFlags_NoScrollbar);
   ImGui::BeginDisabled(blocked || v.paused || v.completed || full);
   // Present the question owner's choices verbatim; the UI never derives maths.
+  const auto openReference=[&](std::string_view conceptId) {
+    if(const auto* ref=game.question().mathReference(conceptId)) {
+      ui.mathExample=fm::mathReferenceExample(*ref);ui.mathReferenceId=ref->id;
+      ui.mathReferenceStep=0;ui.mathReferenceFollow=true;
+    } else ui.mathReferenceId.clear();
+  };
   ImGui::PushID(static_cast<int>(active.working.id.value));
   const float moveWidth=std::min(110.0F,(ImGui::GetContentRegionAvail().x-12)/3);
   const float moveLeft=(io.DisplaySize.x-(moveWidth*3+12))*.5F;
@@ -357,12 +431,25 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
     const auto& choice=ui.mathChoices[i];
     ImGui::SetCursorPos({moveLeft+(i%3)*(moveWidth+6),6+(i/3)*30.0F});
     ImGui::PushStyleColor(ImGuiCol_Button,ui.mathSelectedMove==i?ImVec4{.08F,.39F,.46F,1}:ImVec4{.09F,.14F,.18F,1});
-    if(ImGui::Button(choice.label.c_str(),{moveWidth,26}))ui.mathSelectedMove=i;
+    if(ImGui::Button(choice.label.c_str(),{moveWidth,26})) {
+      ui.mathSelectedMove=i;
+      if(!ui.mathReferenceId.empty() && ui.mathReferenceId!=choice.conceptId)openReference(choice.conceptId);
+    }
     ui.mathOperations[i]=itemBounds(!blocked && !v.paused && !v.completed && !full);ImGui::PopStyleColor();
   }
   ImGui::SetCursorPos({12,68});
   const char* prompt=ui.mathSelectedMove?(matrix?"Choose the resulting matrix.":"Choose the resulting equation."):"Choose a move above.";
-  if(!v.completed) {centerLine(prompt);ImGui::TextDisabled("%s",prompt);}
+  const auto* selected=ui.mathSelectedMove && *ui.mathSelectedMove<ui.mathChoices.size()?&ui.mathChoices[*ui.mathSelectedMove]:nullptr;
+  if(!v.completed && selected && game.question().mathReference(selected->conceptId)) {
+    const float lineWidth=ImGui::CalcTextSize(selected->label.c_str()).x+32;
+    ImGui::SetCursorPos({(io.DisplaySize.x-lineWidth)*.5F,64});
+    ImGui::AlignTextToFramePadding();ImGui::TextDisabled("%s",selected->label.c_str());ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
+    if(ImGui::Button("?",{26,22})) {
+      if(ui.mathReferenceId==selected->conceptId)ui.mathReferenceId.clear();else openReference(selected->conceptId);
+    }
+    ui.mathReferenceButton=itemBounds(!blocked && !v.paused && !full);ImGui::PopStyleColor();
+  } else if(!v.completed) {centerLine(prompt);ImGui::TextDisabled("%s",prompt);}
   if(ui.mathSelectedMove && *ui.mathSelectedMove<ui.mathChoices.size()) {
     const auto& choice=ui.mathChoices[*ui.mathSelectedMove];
     ImGui::PushID(static_cast<int>(*ui.mathSelectedMove));
@@ -393,7 +480,13 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   ImGui::EndChild();
 
   const float historyWidth=split?std::floor(io.DisplaySize.x*.64F):io.DisplaySize.x;
-  ui.solveSupport=beginSolvePanel("Solution blueprint",{0,historyTop,historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},flags & ~ImGuiWindowFlags_NoScrollbar);
+  const auto* reference=game.question().mathReference(ui.mathReferenceId);
+  if(!split && reference)ImGui::SetNextWindowScroll({0,0});
+  ui.solveSupport=beginSolvePanel("Solution blueprint",{0,historyTop,historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},
+      !split && reference?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
+  if(!split && reference) {
+    ui.mathReferencePanel=ui.solveSupport;drawMathReference(ui,*reference,blocked,v.paused);ImGui::EndChild();
+  } else {
   ImGui::TextDisabled("WORKING    %zu checked moves    %zu attempts",math.nodes.size()-1,math.events.size());
   std::array<bool,fm::kMathNodeCapacity> branch{};
   for(std::size_t i=math.active;;i=math.nodes[i].parent) {branch[i]=true;if(!i)break;}
@@ -444,14 +537,23 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   }
   ui.mathFollow=false;ImGui::EndDisabled();ImGui::EndChild();
   if(split) {
-    ui.mathInspection=beginSolvePanel("Working inspection",{historyWidth,historyTop,io.DisplaySize.x-historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},flags & ~ImGuiWindowFlags_NoScrollbar);
-    const auto inspected=ui.mathInspected.value_or(math.active);
-    ImGui::TextDisabled("STEP %zu",inspected);ImGui::BeginDisabled(blocked);detail(inspected);ImGui::EndDisabled();ImGui::EndChild();
+    if(reference)ImGui::SetNextWindowScroll({0,0});
+    ui.mathInspection=beginSolvePanel("Working inspection",{historyWidth,historyTop,io.DisplaySize.x-historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},
+        reference?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
+    if(reference) {ui.mathReferencePanel=ui.mathInspection;drawMathReference(ui,*reference,blocked,v.paused);}
+    else {
+      const auto inspected=ui.mathInspected.value_or(math.active);
+      ImGui::TextDisabled("STEP %zu",inspected);ImGui::BeginDisabled(blocked);detail(inspected);ImGui::EndDisabled();
+    }
+    ImGui::EndChild();
+  }
   }
   recoverFocus(headerWindow,backId,backRect);
   ui.solveDisplayedChallenge=v.challenge;ui.solveCompleteVisible=v.completed;
-  if(ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !blocked && !io.WantTextInput)
-    ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
+  if(ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !blocked && !io.WantTextInput) {
+    if(reference)ui.mathReferenceId.clear();
+    else ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
+  }
   ImGui::PopItemFlag();ImGui::PopFont();ImGui::PopStyleColor();ImGui::PopStyleVar(3);ImGui::End();
 }
 void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const GallerySession& game) {
@@ -513,12 +615,14 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   for(std::size_t i=0;i<labels.size();++i) {
     if(i%columns)ImGui::SameLine(0,8);
     ImGui::BeginDisabled(!enabled[i]);
+    if(i==0 && ui.progressFailed)ImGui::PushStyleColor(ImGuiCol_Text,{1,.68F,.27F,1});
     if(ImGui::Button(labels[i],{width,26})) {
       if(i==0)ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
       else if(i==1 && v.paused)queue(GalleryPause{false});
       else queue(GalleryHelp{v.challenge,static_cast<GalleryHelpKind>(i-1)});
     }
     ImGui::EndDisabled();ui.solveControls[i]=itemBounds(enabled[i]);
+    if(i==0 && ui.progressFailed) {ImGui::PopStyleColor();if(ImGui::IsItemHovered())ImGui::SetTooltip("%s",ui.progressMessage.c_str());}
     if(i==0) {backFocus=ImGui::GetItemID();backRectangle={ImGui::GetItemRectMin(),ImGui::GetItemRectMax()};}
   }
   ImGui::PopFont();ImGui::EndDisabled();ImGui::EndChild();
@@ -689,7 +793,14 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   ImGui::PushFont(nullptr,15);
   beginSolvePanel("Study heading",{0,0,io.DisplaySize.x,top},flags);
   ImGui::PushFont(nullptr,20);ImGui::TextColored({1,.78F,.3F,1},"Table of contents");ImGui::PopFont();
-  ImGui::TextDisabled("Choose titles, then problems.");ImGui::EndChild();
+  if(ui.progressMessage.empty())ImGui::TextDisabled("Choose titles, then problems.");
+  else {
+    ImGui::TextColored(ui.progressFailed?ImVec4{1,.68F,.27F,1}:ImVec4{.4F,.9F,.65F,1},"%s",
+        ui.progressFailed?"Saving paused. Hover for details.":ui.progressMessage.c_str());
+    ui.progressStatus=itemBounds(false);
+    if(ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))ImGui::SetTooltip("%s",ui.progressMessage.c_str());
+  }
+  ImGui::EndChild();
 
   beginSolvePanel("Study contents",toc,flags & ~ImGuiWindowFlags_NoScrollbar);
   for(std::size_t subject=0;subject<sorterSubjects.size();++subject) {
@@ -762,8 +873,9 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   bounds(StudyControl::Groups);auto* focusWindow=ImGui::GetCurrentWindow();
   const auto focusId=ImGui::GetItemID();const ImRect focusRect{ImGui::GetItemRectMin(),ImGui::GetItemRectMax()};
   ImGui::SameLine();ImGui::BeginDisabled(!study.canResume);
+  ImGui::PushStyleColor(ImGuiCol_Button,{.08F,.28F,.40F,1});
   if(ImGui::Button("Resume set",{buttonWidth,30}))queue(SorterActionKind::ResumeStudy);
-  bounds(StudyControl::Resume,study.canResume);ImGui::EndDisabled();ImGui::SameLine();
+  bounds(StudyControl::Resume,study.canResume);ImGui::PopStyleColor();ImGui::EndDisabled();ImGui::SameLine();
   ImGui::PushStyleColor(ImGuiCol_Button,{.10F,.30F,.29F,1});ImGui::BeginDisabled(!study.selectedCount);
   if(ImGui::Button("Start set",{buttonWidth,30}))queue(SorterActionKind::StartStudy);
   bounds(StudyControl::Start,study.selectedCount!=0);ImGui::EndDisabled();ImGui::PopStyleColor();

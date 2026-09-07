@@ -6,6 +6,7 @@ through a pack in **packs/**. The menu uses the three bundled packs below.
 | Location | Purpose | What to edit here |
 | --- | --- | --- |
 | [cards/](cards/) | Playable questions in the current runtime JSON format | Prompts, working steps, choices and accepted answer IDs |
+| [references/](references/) | Shared versioned definitions, rules and example inputs | Reusable concept entries linked by ID from questions |
 | [packs/](packs/) | Explicit question-file lists and ordered practice decks | Which questions a practice type uses, and their order |
 | [sorter/](sorter/) | Independent 100-card packs for the Equation Sorter | Displayed equations, IDs, home slots, subjects and hints; separate from the gallery schema |
 | [authoring/](authoring/) | Retained 002/013 authoring cards and compact bracket recipes | Original authoring formats remain separate; bracket recipes generate the prepared solving cards |
@@ -108,6 +109,21 @@ is the editing source for this one question, rather than a generated recipe.
 The existing publisher reads it to produce [matrix_rows_pack.json](sorter/matrix_rows_pack.json)
 and its entry in the default study pack. Increase the card's content version
 when editing it, republish, and run the matrix/content checks.
+
+Version 2 of this question links `row_swap`, `row_scaling` and `row_addition`
+through `concept_ids`. Its generated pack selects the shared
+[row_operations.json](references/row_operations.json) library. Each definition
+has a stable ID, content version, title, explanation, rule and a separate
+example input. The same exact row kernel generates the example calculations;
+no answer matrices are authored for this reference panel. See the
+[reference format](../docs/QUESTION_CONTENT_FORMAT.md#shared-row-references-p035).
+
+Edit a definition once to update every linked question on the next launch.
+Increase that entry's content version when editing it. Loaded sessions keep
+immutable copies of the definitions they started with. Building `sorter` or
+`gallery` copies the reference library beside the executable. The first library
+covers the three existing row-operation families; other mathematical concepts
+and the user's parser remain later integration work.
 
 ### Generating bracket and graph questions
 

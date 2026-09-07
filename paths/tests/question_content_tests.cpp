@@ -169,6 +169,47 @@ void testPackFailures() {
   expectError([&]{static_cast<void>(pack.deck("missing/mode"));}, path, "/decks/missing~1mode", "missing deck");
 }
 
+void testSharedRowReferences() {
+  Scratch temp;fs::create_directories(temp.root/"cards");fs::create_directories(temp.root/"packs");fs::create_directories(temp.root/"references");
+  const auto sourceRoot=starterPack.parent_path().parent_path();
+  const auto libraryPath=temp.root/"references/rows.json",cardPath=temp.root/"cards/matrix.json",packPath=temp.root/"packs/matrix.json";
+  const auto library=read(sourceRoot/"references/row_operations.json");auto question=card("sorter_matrix_rows");
+  write(libraryPath,library);write(cardPath,question);
+  Json pack={{"schema_version",1},{"questions",{"../cards/matrix.json","../cards/second.json"}},
+      {"reference_library","../references/rows.json"},{"decks",{{"solve",Json::array({{{"question_id",question["id"]},{"content_version",question["content_version"]}}})}}}};
+  auto second=question;second["id"]="another_matrix";write(temp.root/"cards/second.json",second);write(packPath,pack);
+  const auto loaded=loadQuestionPack(packPath);fm::LayeredQuestionSession frozen(loaded.catalog,fm::QuestionInteraction::MathMoves);
+  expect(loaded.catalog.size()==2 && loaded.catalog[0].references.size()==3 && loaded.catalog[1].references.size()==3,"two questions resolve the same three definitions from one relative library");
+  const auto original=frozen.mathReference("row_swap")->definition;
+  auto edited=library;edited["references"][0]["definition"]="Updated shared definition.";edited["references"][0]["content_version"]=2;write(libraryPath,edited);
+  const auto updated=loadQuestionPack(packPath);
+  expect(updated.catalog[0].references[0].definition=="Updated shared definition." && updated.catalog[1].references[0].version==2,"one shared edit reaches both questions on the next load");
+  expect(frozen.mathReference("row_swap")->definition==original && frozen.mathReference("row_swap")->version==1,"an active run retains its original definition and revision");
+  const auto invalidLibrary=[&](Json value,std::string_view field,std::string_view reason) {
+    write(libraryPath,value);expectError([&]{(void)loadQuestionPack(packPath);},libraryPath,field,reason);
+  };
+  edited=library;edited["references"][1]=edited["references"][0];invalidLibrary(edited,"/references/1/id","duplicate concept ID");
+  edited=library;edited["references"][0]["id"]="row_addition";invalidLibrary(edited,"/references/0/id","does not match");
+  edited=library;edited["references"][1]["example"]["operand"]="0";invalidLibrary(edited,"/references/1","invalid_math_reference");
+  edited=library;edited["references"][1]["example"]["operation"]="other";invalidLibrary(edited,"/references/1/example/operation","unknown row operation");
+  edited=library;edited["references"][0]["definition"]=false;invalidLibrary(edited,"/references/0/definition","expected a string");
+  edited=library;edited["references"][0]["rule"]=std::string(161,'a');invalidLibrary(edited,"/references/0","invalid_math_reference");
+  edited=library;while(edited["references"].size()<17)edited["references"].push_back(edited["references"][0]);invalidLibrary(edited,"/references","capacity of 16");
+  write(libraryPath,library);
+  auto bad=question;bad["concept_ids"][0]="missing";write(cardPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},cardPath,"/concept_ids/0","unknown concept ID");
+  bad=question;bad["concept_ids"].push_back("row_swap");write(cardPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},cardPath,"/concept_ids/3","duplicate concept ID");write(cardPath,question);
+  auto badPack=pack;badPack["reference_library"]="/absolute.json";write(packPath,badPack);
+  expectError([&]{(void)loadQuestionPack(packPath);},packPath,"/reference_library","pack-relative");
+  badPack=pack;badPack["reference_library"]="../references/missing.json";write(packPath,badPack);
+  expectError([&]{(void)loadQuestionPack(packPath);},temp.root/"references/missing.json","","cannot open");
+  badPack=pack;badPack.erase("reference_library");write(packPath,badPack);
+  expectError([&]{(void)loadQuestionPack(packPath);},cardPath,"/concept_ids/0","unknown concept ID");
+  expectError([&]{(void)parseQuestionContent(question.dump(),cardPath);},cardPath,"/concept_ids/0","unknown concept ID");
+  expect(parseQuestionContent(question.dump(),cardPath,loaded.catalog[0].references).references.size()==3,"in-memory import uses the same explicit library resolution");
+}
+
 void completeCurrentQuestion(GallerySession& game) {
   const auto apply = [&](const GalleryCommand& command) { expect(game.dispatch(command).accepted, "loaded gallery action accepted"); };
   apply(GalleryViewport{{0,78,1030,822}}); apply(GalleryTick{0.15F});
@@ -322,7 +363,7 @@ void testSource013Adaptation() {
 int main() {
   try {
     testCardsAndSharedValidation(); testOptionIdentityAndInteraction(); testPackFailures(); testEditablePackAndFrozenRun();
-    testSource002Adaptation(); testSource013Adaptation();
+    testSource002Adaptation(); testSource013Adaptation(); testSharedRowReferences();
   } catch(const std::exception& error) { ++failures; std::cerr << "Unexpected: " << error.what() << '\n'; }
   if(!failures) std::cout << "Question content loader tests passed\n";
   return failures ? 1 : 0;

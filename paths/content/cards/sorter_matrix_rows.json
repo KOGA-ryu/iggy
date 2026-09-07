@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "sorter_matrix_rows",
-  "content_version": 1,
+  "content_version": 2,
   "equation": "[2,  1 |  7] [1, -1 | -1]",
   "skill": "row_reduction",
   "description": "Solve 2x + y = 7 and x - y = -1. Each augmented row contains the x coefficient, y coefficient and right-hand value. Make the left block the identity matrix.",
@@ -141,5 +141,10 @@
         "after": 50
       }
     }
+  ],
+  "concept_ids": [
+    "row_swap",
+    "row_scaling",
+    "row_addition"
   ]
 }

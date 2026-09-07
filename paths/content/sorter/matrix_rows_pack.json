@@ -3,11 +3,12 @@
   "questions": [
     "../cards/sorter_matrix_rows.json"
   ],
+  "reference_library": "../references/row_operations.json",
   "decks": {
     "solve": [
       {
         "question_id": "sorter_matrix_rows",
-        "content_version": 1
+        "content_version": 2
       }
     ]
   }

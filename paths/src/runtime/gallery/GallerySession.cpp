@@ -82,11 +82,23 @@ struct GallerySession::PreparedChallenge {
   std::size_t deckIndex;
 };
 GallerySession::GallerySession(GalleryConfig config,std::vector<fm::LayeredQuestionContent> catalog,
-                               std::vector<std::size_t> resolvedDeck)
+                               std::vector<std::size_t> resolvedDeck,
+                               std::span<const fm::LayeredQuestionCommand> savedProgress)
     : config_(config),deck_(checkedDeck(std::move(resolvedDeck),catalog.size())),
-      question_(std::move(catalog),config.mathematicalMoves?fm::QuestionInteraction::MathMoves:fm::QuestionInteraction::ArcadeCollect,deck_.front()),assignmentEngine_(config.seed) {
+      question_(std::move(catalog),config.mathematicalMoves?fm::QuestionInteraction::MathMoves:fm::QuestionInteraction::ArcadeCollect,deck_.front(),config.stopAfterQuestion),assignmentEngine_(config.seed) {
   const auto valid=validateGalleryConfig(config);
   if(!valid.accepted)throw std::invalid_argument(std::string(valid.reason));
+  if(!savedProgress.empty()) {
+    if(!config_.stopAfterQuestion || deck_.size()!=1)throw std::invalid_argument("saved_progress_requires_single_question");
+    for(const auto& command:savedProgress) {
+      const auto result=question_.dispatch(command);
+      if(!result.accepted || !result.changed)throw std::invalid_argument("invalid_saved_progress: "+std::string(result.reason));
+    }
+    const auto& run=question_.currentRun();
+    if(run.phase==fm::LayeredQuestionPhase::Grid || (!run.math && !run.completed &&
+        fm::layeredQuestionStepResolved(run.steps[run.currentStep])))
+      throw std::invalid_argument("saved_progress_between_steps");
+  }
   commitChallenge(prepareChallenge(false));
 }
 GallerySession::PreparedChallenge GallerySession::prepareChallenge(bool advance, bool replay, bool archiveUnfinished) const {
@@ -106,7 +118,7 @@ GallerySession::PreparedChallenge GallerySession::prepareChallenge(bool advance,
       const auto started=next.question.dispatch(restart);
       if(!started.accepted)throw std::logic_error(std::string(started.reason));
     }
-  } else if (!replay) {
+  } else if (!replay && next.question.currentRun().phase==fm::LayeredQuestionPhase::Grid) {
     const auto opened=next.question.dispatch({fm::LayeredQuestionCommandKind::OpenQuestion});
     if(!opened.accepted)throw std::logic_error(std::string(opened.reason));
   }
@@ -134,6 +146,14 @@ GallerySession::PreparedChallenge GallerySession::prepareChallenge(bool advance,
   next.record.runNumber=run.runNumber;next.record.step=step.id;next.record.count=step.options.size();
   for(std::size_t i=0;i<step.options.size();++i)
     next.record.bindings[i]={next.scene.objects()[i].id,assignment[i],DisplayToken{static_cast<std::uint8_t>(i)}};
+  // A restored partial answer set must not respawn its already collected targets.
+  for(const auto& binding:std::span(next.record.bindings.data(),next.record.count)) {
+    const auto option=std::find_if(step.options.begin(),step.options.end(),[&](const auto& o){return o.id==binding.option;});
+    if(run.steps[run.currentStep].collectedOptions & (1U << (option-step.options.begin()))) {
+      const auto popped=next.scene.dispatch({GalleryActionKind::Pop,{},0,binding.object.value});
+      if(!popped.accepted)throw std::logic_error("restored_target_pop_failed");
+    }
+  }
   return next;
 }
 void GallerySession::commitChallenge(PreparedChallenge&& next) {
@@ -258,7 +278,7 @@ GalleryResult GallerySession::dispatch(const GalleryCommand& command) {
 const SceneFrame& GallerySession::publishFrame() {
   const auto& frame=scene_.publishFrame();
   presentedChallenge_=challenges_.back().id;
-  if(!ready_ && !question_.currentRun().completed && std::all_of(scene_.objects().begin(),scene_.objects().end(),[](const auto& o){return o.phase==VisualPhase::Active;})) {
+  if(!ready_ && !question_.currentRun().completed && std::all_of(scene_.objects().begin(),scene_.objects().end(),[](const auto& o){return o.phase!=VisualPhase::Spawning;})) {
     ready_=true;
   }
   return frame;

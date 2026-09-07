@@ -13,6 +13,9 @@ struct SorterCardBounds {
   bool available = false;
 };
 struct EquationSorterUiState {
+  std::string progressMessage;
+  bool progressFailed=false;
+  SorterCardBounds progressStatus;
   std::optional<SorterAction> pending;
   std::optional<GalleryCommand> pendingGame;
   // The native evidence report and input tests read the same presented rectangles.
@@ -54,6 +57,13 @@ struct EquationSorterUiState {
   std::array<SorterCardBounds,iggy3d::first_move::kMathMoveChoiceCapacity> mathOperations{};
   std::array<SorterCardBounds,iggy3d::first_move::kMathResultChoiceCount> mathResults{};
   SorterCardBounds mathUndo, mathInspection;
+  SorterCardBounds mathReferenceButton, mathReferencePanel, mathReferenceBody, mathReferenceCalculation;
+  std::array<SorterCardBounds,3> mathReferenceControls{}; // Close, previous example column, next example column.
+  std::array<SorterCardBounds,2> mathReferenceMatrices{};
+  std::string mathReferenceId;
+  std::optional<iggy3d::first_move::MathReferenceExample> mathExample;
+  std::size_t mathReferenceStep=0;
+  bool mathReferenceFollow=false;
   std::array<SorterCardBounds,iggy3d::first_move::kMathNodeCapacity> mathNodes{};
   std::vector<iggy3d::first_move::MathMoveChoice> mathChoices;
   std::optional<std::size_t> mathSelectedMove;

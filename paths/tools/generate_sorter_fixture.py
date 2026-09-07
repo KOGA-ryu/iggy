@@ -391,6 +391,7 @@ def matrix_study_outputs(card, existing):
         value["home_index"] = index
     return {"content/sorter/study_practice_v1.json": {"schema_version": 1, "equations": records},
             "content/sorter/matrix_rows_pack.json": {"schema_version": 1, "questions": [f"../cards/{identity}.json"],
+            "reference_library": "../references/row_operations.json",
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}}
 
 

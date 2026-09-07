@@ -82,7 +82,8 @@ class GallerySession {
 public:
   GallerySession(GalleryConfig config,
       std::vector<iggy3d::first_move::LayeredQuestionContent> catalog,
-      std::vector<std::size_t> resolvedDeck);
+      std::vector<std::size_t> resolvedDeck,
+      std::span<const iggy3d::first_move::LayeredQuestionCommand> savedProgress={});
   [[nodiscard]] GalleryResult dispatch(const GalleryCommand&);
   [[nodiscard]] GallerySessionView view() const;
   [[nodiscard]] const SceneFrame& publishFrame();

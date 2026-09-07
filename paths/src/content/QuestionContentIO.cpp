@@ -105,6 +105,28 @@ constexpr std::array completions{
   std::pair{std::string_view("all_accepted"), fm::CompletionRule::AllAccepted},
 };
 
+std::vector<fm::MathReference> readReferences(const std::filesystem::path& source) {
+  const auto document=parseJson(readText(source),source);const Field root{document,source,""};checkSchema(root);
+  const auto records=root.member("references");const auto count=records.array(fm::kMathReferenceCapacity);
+  std::vector<fm::MathReference> references;
+  for(std::size_t i=0;i<count;++i) {
+    const auto record=records.element(i), example=record.member("example");
+    fm::MathReference ref;
+    ref.id=record.member("id").string();ref.version=record.member("content_version").integer();
+    ref.title=record.member("title").string();ref.definition=record.member("definition").string();ref.rule=record.member("rule").string();
+    const auto operation=example.member("operation");const auto key=operation.string();
+    const auto found=std::find_if(fm::rowOperations.begin(),fm::rowOperations.end(),[&](const auto& op){return op.key==key;});
+    if(found==fm::rowOperations.end())operation.fail("unknown row operation: "+key);
+    if(ref.id!=found->conceptId)record.member("id").fail("concept ID does not match the example's row operation");
+    if(std::any_of(references.begin(),references.end(),[&](const auto& previous){return previous.id==ref.id;}))
+      record.member("id").fail("duplicate concept ID: "+ref.id);
+    ref.operation=found->operation;ref.operand=example.member("operand").string();ref.example=example.member("before").string();
+    if(!fm::mathReferenceExample(ref))record.fail("invalid_math_reference: check text limits, version and example operation");
+    references.push_back(std::move(ref));
+  }
+  return references;
+}
+
 std::string validationField(const fm::QuestionValidationResult& result) {
   std::string path;
   if(result.workingStateIndex) path = "/working_states/" + std::to_string(*result.workingStateIndex);
@@ -166,7 +188,8 @@ const std::vector<std::size_t>& QuestionPack::deck(std::string_view mode) const 
   return found->second;
 }
 
-fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std::filesystem::path& sourcePath) {
+fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std::filesystem::path& sourcePath,
+                                               std::span<const fm::MathReference> references) {
   const auto document = parseJson(json, sourcePath);
   const Field root{document, sourcePath, ""};
   checkSchema(root);
@@ -176,6 +199,17 @@ fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std
   question.equation = root.member("equation").string();
   question.skill = root.member("skill").string();
   question.description = root.member("description").string();
+  if(document.contains("concept_ids")) {
+    const auto ids=root.member("concept_ids");const auto count=ids.array(fm::kMathReferenceCapacity);
+    for(std::size_t i=0;i<count;++i) {
+      const auto field=ids.element(i);const auto id=field.string();
+      const auto found=std::find_if(references.begin(),references.end(),[&](const auto& ref){return ref.id==id;});
+      if(found==references.end())field.fail("unknown concept ID: "+id);
+      if(std::any_of(question.references.begin(),question.references.end(),[&](const auto& ref){return ref.id==id;}))
+        field.fail("duplicate concept ID: "+id);
+      question.references.push_back(*found);
+    }
+  }
   if(document.contains("working_model")) {
     const auto model=root.member("working_model");
     question.mathModel=enumValue(model,std::array{
@@ -259,6 +293,12 @@ QuestionPack loadQuestionPack(const std::filesystem::path& path) {
   checkSchema(root);
   QuestionPack pack;
   pack.source = sourcePath;
+  std::vector<fm::MathReference> references;
+  if(document.contains("reference_library")) {
+    const auto field=root.member("reference_library");const std::filesystem::path relative=field.string();
+    if(relative.empty() || relative.is_absolute())field.fail("expected a nonempty pack-relative reference library path");
+    references=readReferences((sourcePath.parent_path()/relative).lexically_normal());
+  }
   std::vector<std::filesystem::path> sources;
   const auto questions = root.member("questions");
   const auto count = questions.array(fm::kQuestionCatalogCapacity);
@@ -268,7 +308,7 @@ QuestionPack loadQuestionPack(const std::filesystem::path& path) {
     if(relative.empty() || relative.is_absolute()) field.fail("expected a nonempty pack-relative card path");
     const auto cardPath = (sourcePath.parent_path() / relative).lexically_normal();
     sources.push_back(cardPath);
-    pack.catalog.push_back(parseQuestionContent(readText(cardPath), cardPath));
+    pack.catalog.push_back(parseQuestionContent(readText(cardPath), cardPath, references));
   }
   const auto result = fm::validateCatalog(pack.catalog, fm::QuestionInteraction::ArcadeCollect);
   if(!result.valid()) {

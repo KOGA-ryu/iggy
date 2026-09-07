@@ -1,4 +1,5 @@
 #include "content/EquationSorterContentIO.hpp"
+#include "content/StudyProgressIO.hpp"
 #include "platform/NativeVulkanHost.hpp"
 #include "ui/EquationSorterUi.hpp"
 
@@ -27,9 +28,9 @@ std::uint32_t positive(std::string_view text) {
 }
 struct Options {
   NativeLaunchConfig native;
-  std::filesystem::path content, script, report, capture;
+  std::filesystem::path content, script, report, capture, progress;
   std::uint32_t frames = 0;
-  bool check = false;
+  bool check = false, noProgress=false;
 };
 Options options(int argc, char** argv) {
   Options o;
@@ -39,11 +40,13 @@ Options options(int argc, char** argv) {
   o.content = std::filesystem::path(base) / "content/sorter/study_practice_v1.json";
   constexpr std::array pathOptions{
       std::pair{"--content", &Options::content}, std::pair{"--script", &Options::script},
-      std::pair{"--report", &Options::report}, std::pair{"--capture", &Options::capture}};
+      std::pair{"--report", &Options::report}, std::pair{"--capture", &Options::capture},
+      std::pair{"--progress", &Options::progress}};
   for (int i = 1; i < argc; ++i) {
     const std::string_view arg = argv[i];
     if (arg == "--offscreen") { o.native.offscreen = true; continue; }
     if (arg == "--check-content") { o.check = true; continue; }
+    if (arg == "--no-progress") {o.noProgress=true;continue;}
     if (i + 1 == argc) throw std::invalid_argument("missing value for " + std::string(arg));
     const std::string_view value = argv[++i];
     auto path = std::find_if(pathOptions.begin(), pathOptions.end(), [&](const auto& item) { return item.first == arg; });
@@ -60,6 +63,7 @@ Options options(int argc, char** argv) {
     }
     throw std::invalid_argument("unknown option: " + std::string(arg));
   }
+  if(o.noProgress && !o.progress.empty())throw std::invalid_argument("choose --progress or --no-progress");
   return o;
 }
 using ScriptAction=std::variant<SorterAction,GalleryCommand,OptionId>;
@@ -157,20 +161,25 @@ void applyScript(EquationSorterSession& session,ScriptAction action) {
   },std::move(action));
 }
 void prepareOutputs(const Options& o) {
+  const auto resolve=[](const auto& path) {
+    std::error_code error;auto resolved=std::filesystem::weakly_canonical(path,error);
+    return error?std::filesystem::absolute(path).lexically_normal():resolved;
+  };
   std::vector<std::filesystem::path> outputs;
+  if (!o.progress.empty()) outputs.push_back(o.progress);
   if (!o.report.empty()) outputs.push_back(o.report);
   if (!o.capture.empty()) {
     const auto c = capturePaths(o.capture);
     outputs.insert(outputs.end(), {c.screenshotPath, c.rawPath, c.metaPath, c.hashPath});
   }
   for (std::size_t i = 0; i < outputs.size(); ++i) {
-    const auto resolved = std::filesystem::weakly_canonical(outputs[i]);
+    const auto resolved = resolve(outputs[i]);
     for (const auto& source : {o.content, o.script})
-      if (!source.empty() && resolved == std::filesystem::weakly_canonical(source))
+      if (!source.empty() && resolved == resolve(source))
         throw std::invalid_argument("output would overwrite an input file");
     for (std::size_t j = 0; j < i; ++j)
-      if (resolved == std::filesystem::weakly_canonical(outputs[j])) throw std::invalid_argument("output paths overlap");
-    if (!outputs[i].parent_path().empty()) std::filesystem::create_directories(outputs[i].parent_path());
+      if (resolved == resolve(outputs[j])) throw std::invalid_argument("output paths overlap");
+    if (outputs[i]!=o.progress && !outputs[i].parent_path().empty()) std::filesystem::create_directories(outputs[i].parent_path());
   }
 }
 void report(const std::filesystem::path& path, const EquationSorterSession& session, const EquationSorterUiState& ui) {
@@ -229,18 +238,29 @@ int main(int argc, char** argv) {
   try {
     if (argc == 2 && std::string_view(argv[1]) == "--help") {
       std::cout << "sorter [--content FILE] [--check-content] [--offscreen] [--frames N]\n"
-                   "       [--resolution WxH] [--script FILE] [--report FILE] [--capture PNG]\n";
+                   "       [--resolution WxH] [--script FILE] [--report FILE] [--capture PNG]\n"
+                   "       [--progress FILE | --no-progress]\n";
       return 0;
     }
     auto o = options(argc, argv);
     EquationSorterSession session(loadSorterContent(o.content)); // Fail before creating the native host.
     if (o.check) { std::cout << "Validated 100 sortable cards: " << o.content << '\n'; return 0; }
     const auto commands = script(o.script);
+    std::string progressLocationError;
+    // Bounded runs and scripts never touch personal progress implicitly.
+    if(o.progress.empty() && !o.noProgress && o.script.empty() && !o.frames && !o.native.offscreen) {
+      char* folder=SDL_GetPrefPath("KOGA ryu","Paths");
+      if(!folder)progressLocationError="Practice cannot save: "+std::string(SDL_GetError());
+      else {o.progress=std::filesystem::path(folder)/("practice-"+o.content.stem().string()+".json");SDL_free(folder);}
+    }
+    prepareOutputs(o);
+    StudyProgressFile progress(o.progress);progress.load(session);
+    if(progress.failed())std::cerr << progress.message() << '\n';
+    if(!progressLocationError.empty())std::cerr << progressLocationError << '\n';
     if(commands.empty() && !session.view().study.types.empty())
       (void)session.dispatch({SorterActionKind::OpenStudy,SorterBucket::A,0,session.view().revision});
     if (o.frames && o.frames < commands.size() + 2) throw std::invalid_argument("--frames must allow the complete script plus two frames");
     if (o.native.offscreen && !o.frames) o.frames = static_cast<std::uint32_t>(commands.size() + 3);
-    prepareOutputs(o);
     NativeVulkanHost host(o.native);
     EquationSorterUiState ui;
     SceneFrame renderScene;
@@ -253,6 +273,8 @@ int main(int argc, char** argv) {
           }
         }
         beginEquationSorterFrame(ui, session, commands.empty()?-1.0F:0.0F);
+        progress.save(session);ui.progressMessage=progressLocationError.empty()?progress.message():progressLocationError;
+        ui.progressFailed=progress.failed() || !progressLocationError.empty();
         drawEquationSorter(ui, session.view(), session.content(), session.activeSolve());
         // The host consumes this stable snapshot after the callback, even when
         // opening/closing the solver changed which session supplied the frame.
@@ -263,6 +285,8 @@ int main(int argc, char** argv) {
       if (result.status == FrameStatus::Failed) throw std::runtime_error(result.error);
       if (result.status == FrameStatus::Rendered) ++rendered;
     }
+    progress.save(session);
+    if(progress.failed())std::cerr << progress.message() << '\n';
     if (!o.capture.empty()) {
       std::string error;
       if (!host.capture(capturePaths(o.capture), error)) throw std::runtime_error(error);

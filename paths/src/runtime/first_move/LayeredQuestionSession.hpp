@@ -104,6 +104,7 @@ struct LayeredQuestionContent {
   std::optional<LineGraph> lineGraph;
   bool supportsMathMoves=false; // Explicit content opt-in; prepared arcade consumers still use their authored chain.
   MathWorkingModel mathModel=MathWorkingModel::LinearEquation;
+  std::vector<MathReference> references; // Resolved immutable copies from the pack's shared library.
 };
 
 [[nodiscard]] const LayeredQuestionContent& layeredQuestion() noexcept;
@@ -122,7 +123,7 @@ enum class QuestionValidationCode : std::uint8_t {
   MissingOptionId, MissingOptionLabel, DuplicateOptionIdentity,
   InvalidWorkingStateCount, MissingWorkingStateId, DuplicateWorkingStateIdentity,
   InvalidWorkingHighlight,
-  InvalidStepPurpose, InvalidCompletionRule, UnknownWorkingState, BrokenStepChain, InvalidGraph, InvalidMathMoves,
+  InvalidStepPurpose, InvalidCompletionRule, UnknownWorkingState, BrokenStepChain, InvalidGraph, InvalidMathMoves, InvalidMathReference,
 };
 
 struct QuestionValidationResult {
@@ -296,7 +297,8 @@ class LayeredQuestionSession {
 public:
   LayeredQuestionSession();
   LayeredQuestionSession(std::vector<LayeredQuestionContent> catalog,
-                         QuestionInteraction interaction,std::size_t initialQuestion = 0);
+                         QuestionInteraction interaction,std::size_t initialQuestion = 0,
+                         bool recordProgress=false);
 
   [[nodiscard]] LayeredQuestionDispatchResult dispatch(
       const LayeredQuestionCommand& command);
@@ -307,6 +309,9 @@ public:
   [[nodiscard]] const LayeredQuestionContent& content() const noexcept { return (*catalog_)[contentIndex_]; }
   [[nodiscard]] std::size_t contentIndex() const noexcept { return contentIndex_; }
   [[nodiscard]] QuestionInteraction interaction() const noexcept { return interaction_; }
+  // Accepted changes only. Replaying these inputs through dispatch reconstructs
+  // checked evidence; saved files never supply correct/complete flags or working.
+  [[nodiscard]] std::span<const LayeredQuestionCommand> journal() const { return journal_; }
   [[nodiscard]] WorkingStateId visibleWorkingId() const noexcept;
   // Borrows immutable content for the lifetime of this session's catalog.
   [[nodiscard]] const WorkingState& visibleWorkingState() const noexcept;
@@ -315,12 +320,14 @@ public:
   // answer, change the working state, or create attempt/assistance evidence.
   [[nodiscard]] std::optional<CoordinateGraphView> coordinateGraph(float probeX=0) const noexcept;
   [[nodiscard]] std::vector<MathMoveChoice> mathMoveChoices() const;
+  [[nodiscard]] const MathReference* mathReference(std::string_view conceptId) const noexcept;
 
   // 0 selects the current run; 1..N select archived runs in their stored order.
   // Invalid selection returns nullopt. This does not change progression or evidence.
   [[nodiscard]] std::optional<QuestionReview> review(std::size_t runIndex=0) const;
 
 private:
+  [[nodiscard]] LayeredQuestionDispatchResult apply(const LayeredQuestionCommand&);
   void beginRun(std::uint32_t runNumber,
                 bool priorExposure,
                 LayeredQuestionPhase phase);
@@ -333,6 +340,8 @@ private:
   QuestionInteraction interaction_ = QuestionInteraction::Guided;
   LayeredQuestionRunRecord current_{};
   std::vector<LayeredQuestionRunRecord> archived_;
+  std::vector<LayeredQuestionCommand> journal_;
+  bool recordProgress_=false;
 };
 
 }  // namespace iggy3d::first_move

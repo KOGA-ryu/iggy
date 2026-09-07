@@ -1,6 +1,6 @@
 # P034: a linear algebra question with visual row moves
 
-Status: Automated Green; user visual confirmation pending; uncommitted.
+Status: Accepted by user; automated checks passed; uncommitted.
 
 The user accepted the visual format and asked for the same format on a linear
 algebra question. This checkpoint adds one question, solving `2x + y = 7` and
@@ -94,7 +94,7 @@ The publisher's `--check` passes. The executable validates its bundled 100-card
 pack when launched from outside the repository, and all 52 bundled JSON files
 match their source bytes. Evidence, before/after hashes and the scoped diff are
 in `build/matrix-moves-evidence/`. No screenshot, capture, visible
-window, delegation, commit or push was used. Human visual acceptance is pending.
+window, delegation, commit or push was used. The user accepted this format before authorizing P035.
 
 ## User visual check
 
@@ -105,5 +105,5 @@ above, selecting each resulting matrix. Green working should end at
 `[1, 0 | 2] [0, 1 | 3]` and show `x = 2, y = 3`. A wrong choice should leave
 working in place; Undo should retain the earlier branch.
 
-Next candidate after the visual check: another 2x2 matrix question with a
-fractional final solution, using this same interaction.
+Following checkpoint: [P035 row references](P035_ROW_REFERENCES.md), authorized
+after the user accepted the matrix format.

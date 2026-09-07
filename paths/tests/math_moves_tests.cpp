@@ -264,6 +264,36 @@ void matrixRows() {
   action(session,SorterActionKind::StartStudy);
   expect(session.view().solveCount==1 && session.activeSolve()->question().content().id=="sorter_matrix_rows","matrix-only study selection opens exactly the requested question");
 }
+void rowReferences() {
+  EquationSorterSession session(loadSorterContent(SORTER_STUDY_FIXTURE));action(session,SorterActionKind::OpenSolve,6001);
+  const auto& question=session.activeSolve()->question();const auto& run=*question.currentRun().math;
+  struct Known {const char* id;std::array<std::array<std::string,3>,2> after;std::array<std::string,3> calculations;};
+  const std::array expected{
+    Known{"row_swap",{{{"1","2","4"},{"3","5","11"}}},{"3 <-> 1","5 <-> 2","11 <-> 4"}},
+    Known{"row_scaling",{{{"1","2","4"},{"3","5","11"}}},{"6 ÷ 2 = 3","10 ÷ 2 = 5","22 ÷ 2 = 11"}},
+    Known{"row_addition",{{{"1","2","4"},{"1","1","3"}}},{"3 - 2 × 1 = 1","5 - 2 × 2 = 1","11 - 2 × 4 = 3"}}};
+  for(const auto& known:expected) {
+    const auto* ref=question.mathReference(known.id);expect(ref!=nullptr,"each linked definition is available from the question owner");
+    const auto example=fm::mathReferenceExample(*ref);
+    expect(example && example->after==known.after && example->calculations==known.calculations,"reference columns match independently calculated examples, including the right-hand value");
+    expect(matrix(ref->example).rows!=std::get<fm::AugmentedMatrix>(run.nodes.front().equation).rows,"reference numbers are separate from the player's problem");
+    auto bad=*ref;bad.version=0;expect(!fm::mathReferenceExample(bad),"unversioned definitions cannot enter a run");
+    bad=*ref;bad.definition=std::string(401,'a');expect(!fm::mathReferenceExample(bad),"reference text is bounded");
+    bad=*ref;bad.id="other";expect(!fm::mathReferenceExample(bad),"a row rule cannot be mislabelled as another concept");
+  }
+  auto fraction=*question.mathReference("row_scaling");fraction.operation=fm::MathOperation::DivideRow1;fraction.operand="-2";
+  fraction.example="[-3,1/2|4] [1,2|5]";
+  const auto fractional=fm::mathReferenceExample(fraction);
+  expect(fractional && fractional->after[0]==std::array<std::string,3>{"3/2","-1/4","-2"} && fractional->calculations[1]=="1/2 ÷ (-2) = -1/4","alternate target rows and signed fractions use the same exact projection");
+  fraction.operand="0";expect(!fm::mathReferenceExample(fraction),"invalid example division is refused");
+  fraction.operand="1";expect(!fm::mathReferenceExample(fraction),"unchanged examples are refused");
+  for(const auto& choice:question.mathMoveChoices())expect(question.mathReference(choice.conceptId)!=nullptr,"every concrete row move resolves its operation family's concept ID");
+  expect(!question.mathReference("unknown") && run.active==0 && run.revision==1 && run.nodes.size()==1 && run.events.empty(),"reference lookup and example projection never submit, reveal or advance player working");
+  auto bad=question.content();bad.references.push_back(bad.references.front());
+  expect(!fm::validateQuestion(bad,fm::QuestionInteraction::MathMoves).valid(),"direct model construction rejects duplicate references");
+  action(session,SorterActionKind::ReturnToSorter);action(session,SorterActionKind::OpenSolve,3001);
+  expect(!session.activeSolve()->question().mathReference("row_swap"),"unlinked questions do not expose unrelated definitions");
+}
 void contentAndBounds() {
   auto content=loadSorterContent(SORTER_STUDY_FIXTURE);
   const auto question=*content.front().solution;
@@ -293,6 +323,6 @@ void contentAndBounds() {
   expect(many.dispatch(command(many,fm::MathOperation::Expand,"","",fm::MathMoveKind::Undo)).accepted,"Undo remains available at the node limit");
 }
 int main() {
-  try {exactRules();branchesAndAllExamples();visualChoices();matrixRows();contentAndBounds();std::cout<<"Exact algebra and matrix moves, visual choices, alternate routes, branches, immutable evidence, resume, Next and bounds passed\n";}
+  try {exactRules();branchesAndAllExamples();visualChoices();matrixRows();rowReferences();contentAndBounds();std::cout<<"Exact algebra and matrix moves, shared row references, visual choices, alternate routes, branches, immutable evidence, resume, Next and bounds passed\n";}
   catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}
 }

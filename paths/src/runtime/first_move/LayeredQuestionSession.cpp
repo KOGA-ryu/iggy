@@ -276,6 +276,7 @@ std::string_view QuestionValidationResult::reason() const noexcept {
     case QuestionValidationCode::UnknownWorkingState:return "unknown_working_state";
     case QuestionValidationCode::BrokenStepChain:return "broken_step_chain";
     case QuestionValidationCode::InvalidMathMoves:return "invalid_math_moves";
+    case QuestionValidationCode::InvalidMathReference:return "invalid_math_reference";
   }
   return "unknown_question_validation_code";
 }
@@ -287,6 +288,12 @@ QuestionValidationResult validateQuestion(const LayeredQuestionContent& question
     return {Code::InvalidInteraction,"interaction"};
   if(question.id.empty())return {Code::MissingQuestionId,"id",0};
   if(!question.version)return {Code::MissingQuestionVersion,"version",0};
+  if(question.references.size()>kMathReferenceCapacity)return {Code::InvalidMathReference,"concept_ids",0};
+  for(std::size_t i=0;i<question.references.size();++i) {
+    if(!mathReferenceExample(question.references[i]))return {Code::InvalidMathReference,"concept_ids",0};
+    for(std::size_t j=0;j<i;++j)if(question.references[i].id==question.references[j].id)
+      return {Code::InvalidMathReference,"concept_ids",0};
+  }
   if(question.supportsMathMoves || interaction==QuestionInteraction::MathMoves) {
     if(!question.supportsMathMoves || question.lineGraph || !prepareMathWorking(question.mathModel,question.equation).result)
       return {Code::InvalidMathMoves,"working_model",0};
@@ -342,8 +349,8 @@ LayeredQuestionSession::LayeredQuestionSession()
     : LayeredQuestionSession({layeredQuestion()},QuestionInteraction::Guided) {}
 
 LayeredQuestionSession::LayeredQuestionSession(std::vector<LayeredQuestionContent> catalog,
-    QuestionInteraction interaction,std::size_t initialQuestion)
-    : contentIndex_(initialQuestion),interaction_(interaction) {
+    QuestionInteraction interaction,std::size_t initialQuestion,bool recordProgress)
+    : contentIndex_(initialQuestion),interaction_(interaction),recordProgress_(recordProgress) {
   if(initialQuestion>=catalog.size())
     throw std::invalid_argument("invalid_question_catalog");
   const auto validation=validateCatalog(catalog,interaction);
@@ -476,6 +483,18 @@ void LayeredQuestionSession::beginRun(std::uint32_t runNumber,
 }
 
 LayeredQuestionDispatchResult LayeredQuestionSession::dispatch(
+    const LayeredQuestionCommand& command) {
+  if(!recordProgress_)return apply(command);
+  // Allocate the journal entry before changing evidence, including its strings.
+  journal_.push_back(command);
+  try {
+    const auto result=apply(journal_.back());
+    if(!result.accepted || !result.changed)journal_.pop_back();
+    return result;
+  } catch(...) {journal_.pop_back();throw;}
+}
+
+LayeredQuestionDispatchResult LayeredQuestionSession::apply(
     const LayeredQuestionCommand& command) {
   if(current_.math) {
     switch(command.kind) {
@@ -629,6 +648,12 @@ std::vector<MathMoveChoice> LayeredQuestionSession::mathMoveChoices() const {
   if(!current_.math || current_.completed)return {};
   const auto& run=*current_.math;
   return std::visit([](const auto& before){return availableMathMoves(before);},run.nodes[run.active].equation);
+}
+const MathReference* LayeredQuestionSession::mathReference(std::string_view conceptId) const noexcept {
+  if(!current_.math)return nullptr;
+  const auto& references=content().references;
+  const auto found=std::find_if(references.begin(),references.end(),[&](const auto& ref){return ref.id==conceptId;});
+  return found==references.end()?nullptr:&*found;
 }
 
 LayeredQuestionDispatchResult LayeredQuestionSession::applyMathMove(const MathMoveCommand& command) {

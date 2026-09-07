@@ -71,6 +71,21 @@ struct StudySelectionView {
   std::size_t availableCount=0, selectedCount=0, randomCount=3;
   bool canResume=false;
 };
+struct SavedStudyTitle { SorterSubject subject; std::string chapter, type; };
+struct SavedStudyQuestion {
+  SorterEquationId equation=0;
+  std::string questionId;
+  std::uint32_t contentVersion=0;
+  std::vector<iggy3d::first_move::LayeredQuestionCommand> commands;
+};
+struct StudyProgress {
+  std::vector<SavedStudyTitle> titles;
+  StudyMode mode=StudyMode::All;
+  std::size_t randomCount=3, position=0;
+  std::vector<SorterEquationId> selected, queue;
+  std::vector<SavedStudyQuestion> questions;
+};
+
 struct SorterView {
   std::array<SorterOwner, sorterEquationCount> owners{};
   std::array<std::size_t, sorterBucketCount + 1> counts{}; // Unsorted, A-E, Dump
@@ -103,6 +118,11 @@ public:
   [[nodiscard]] GallerySession* activeSolve() { return solving_ ? solves_[solveHome_].get() : nullptr; }
   [[nodiscard]] const GallerySession* activeSolve() const { return solving_ ? savedSolve() : nullptr; }
   [[nodiscard]] const GallerySession* savedSolve() const { return solves_[solveHome_].get(); }
+  [[nodiscard]] StudyProgress studyProgress() const;
+  [[nodiscard]] std::uint64_t progressRevision() const;
+  // Stage every question through its checker before replacing live state.
+  // Reopening returns to contents; Resume remains an explicit action.
+  void restoreStudyProgress(const StudyProgress&);
 
 private:
   struct OwnerChange { SorterEquationId equation; SorterOwner from, to; };
@@ -133,7 +153,8 @@ private:
   [[nodiscard]] SorterResult commitTransaction(Transaction changes);
   [[nodiscard]] SorterResult undo();
   [[nodiscard]] SorterResult openSolve(std::size_t index);
-  [[nodiscard]] std::unique_ptr<GallerySession> freshSolve(std::size_t index) const;
+  [[nodiscard]] std::unique_ptr<GallerySession> freshSolve(std::size_t index,
+      std::span<const iggy3d::first_move::LayeredQuestionCommand> savedProgress={}) const;
   [[nodiscard]] SorterResult dispatchStudy(const SorterAction& action);
   void refreshStudySelection();
   [[nodiscard]] std::optional<std::size_t> nextSolveHome() const;

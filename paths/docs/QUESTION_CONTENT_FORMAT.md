@@ -283,9 +283,82 @@ question/version/run/revision guards, attempts, Undo branches and archives
 apply. The UI carries the selected operation, operand and matrix text through
 the existing command; it does not parse or judge matrix arithmetic.
 
-The first card is `sorter_matrix_rows`, version 1, sorter ID 6001. Its four-step
+The first card is `sorter_matrix_rows`, sorter ID 6001 (introduced at version 1;
+version 2 adds P035 reference links). Its four-step
 prepared route remains valid for prepared consumers, while the finite sorter
 uses contextual row moves and four result choices per move. The chapter is
 Linear algebra / Matrices and systems / Row reduction. This checkpoint covers
 two equations in two variables; larger matrices and singular-system outcomes
 are not supplied as exercises.
+
+## Shared row references (P035)
+
+A question pack may select one shared library using a nonempty relative path:
+
+```json
+"reference_library": "../references/row_operations.json"
+```
+
+A question opts into specific entries, in display-independent ID order:
+
+```json
+"concept_ids": ["row_swap", "row_scaling", "row_addition"]
+```
+
+The library has `schema_version: 1` and a `references` array. One entry is:
+
+```json
+{
+  "id": "row_addition",
+  "content_version": 1,
+  "title": "Add a row multiple",
+  "definition": "Add a multiple of one row to another. Keep the source row unchanged.",
+  "rule": "Ri' = Ri + k Rj, i != j. Include the right-hand value.",
+  "example": {
+    "operation": "add_row_1_to_2",
+    "operand": "-2",
+    "before": "[1, 2 | 4] [3, 5 | 11]"
+  }
+}
+```
+
+All shown fields are required. Entries have positive unsigned 32-bit content
+versions. Nonempty titles, definitions and rules are limited to 64, 400 and
+160 bytes respectively. Library and question link arrays allow at most 16
+entries; duplicate IDs and unresolved question links fail. An ID must match
+the operation's declared family:
+
+| Concept ID | Example operation keys |
+| --- | --- |
+| `row_swap` | `swap_rows` |
+| `row_scaling` | `divide_row_1`, `divide_row_2` |
+| `row_addition` | `add_row_1_to_2`, `add_row_2_to_1` |
+
+`before` follows the bounded two-row matrix grammar. `operand` is an exact
+number for scaling/addition and must be empty for a swap. Zero divisors,
+unchanged transformations, unsupported shapes and arithmetic overflow fail.
+Examples may use either target row, negative operands and exact fractions.
+The kernel computes the result and each column calculation through the same
+row transformation used in play. Definition and rule prose remain authored
+text; the loader does not interpret that prose as mathematics.
+
+`loadQuestionPack()` loads the selected library before resolving the cards.
+`parseQuestionContent()` accepts an explicit reference span for in-memory
+imports; its default empty span continues to support unlinked cards and
+rejects unresolved links. Every resolved question owns immutable copies,
+including reference versions. Editing a shared file affects subsequent loads;
+existing sessions and archived attempts retain their original content.
+Errors preserve the source library/card and JSON pointer. A declared library
+must load successfully, even if an individual card uses only a subset.
+
+This first consumer is the matrix move reference panel. The operation palette
+supplies concept IDs from the canonical row-operation table. The UI looks up
+the linked reference through the question owner and displays its separate
+example. Its local column cursor is presentation state: partial example rows
+are labelled as partial and never submitted as actual working. Reading or
+stepping an example creates no attempts or assistance records. Existing
+question hints and answer-reveal evidence keep their separate semantics.
+
+The user's external parser is not part of this checkpoint. It can eventually
+emit this content shape for supported concepts; adding a new mathematical
+interaction still requires its domain operations and checking.

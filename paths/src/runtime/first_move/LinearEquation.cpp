@@ -323,15 +323,6 @@ bool identityMatrix(const AugmentedMatrix& matrix) {
   return matrix.rows[0][0]==ExactNumber{1,1} && matrix.rows[0][1]==ExactNumber{} &&
       matrix.rows[1][0]==ExactNumber{} && matrix.rows[1][1]==ExactNumber{1,1};
 }
-enum class RowMove { Swap, Divide, Add };
-struct RowOperation { MathOperation operation;RowMove kind;std::size_t target,source; };
-constexpr std::array rowOperations{
-  RowOperation{MathOperation::SwapRows,RowMove::Swap,0,1},
-  RowOperation{MathOperation::DivideRow1,RowMove::Divide,0,0},
-  RowOperation{MathOperation::DivideRow2,RowMove::Divide,1,1},
-  RowOperation{MathOperation::AddRow1ToRow2,RowMove::Add,1,0},
-  RowOperation{MathOperation::AddRow2ToRow1,RowMove::Add,0,1}
-};
 CheckedMathMove<AugmentedMatrix> transformMatrix(const AugmentedMatrix& before,MathOperation operation,std::string_view operand) {
   const auto found=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& move){return move.operation==operation;});
   if(found==rowOperations.end())throw MathError{"Choose a row operation for this matrix."};
@@ -363,6 +354,38 @@ CheckedMathMove<AugmentedMatrix> transformMatrix(const AugmentedMatrix& before,M
 CheckedMathMove<AugmentedMatrix> parseAugmentedMatrix(std::string_view input) {
   try {return {readMatrix(input),{},{},{}};}
   catch(const MathError& error) {return {{},{},{},error.message};}
+}
+std::optional<MathReferenceExample> mathReferenceExample(const MathReference& reference) {
+  const auto found=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==reference.operation;});
+  if(found==rowOperations.end() || reference.id!=found->conceptId || !reference.version ||
+      reference.title.empty() || reference.title.size()>64 || reference.definition.empty() || reference.definition.size()>400 ||
+      reference.rule.empty() || reference.rule.size()>160 || (found->kind==RowMove::Swap && !reference.operand.empty()))return {};
+  try {
+    const auto before=readMatrix(reference.example);
+    const auto checked=transformMatrix(before,reference.operation,reference.operand);
+    MathReferenceExample example;example.operation=checked.operation;
+    for(std::size_t row=0;row<2;++row)for(std::size_t col=0;col<3;++col) {
+      example.before[row][col]=text(before.rows[row][col]);
+      example.after[row][col]=text(checked.result->rows[row][col]);
+    }
+    const auto parenthesized=[](ExactNumber number) {
+      const auto value=text(number);return number.numerator<0 || number.denominator!=1?"("+value+")":value;
+    };
+    for(std::size_t col=0;col<3;++col) {
+      const auto a=before.rows[found->target][col], b=before.rows[found->source][col];
+      auto& line=example.calculations[col];
+      switch(found->kind) {
+        case RowMove::Swap:line=text(a)+" <-> "+text(b);break;
+        case RowMove::Divide:line=text(a)+" ÷ "+parenthesized(Parser(reference.operand).operand());break;
+        case RowMove::Add: {
+          const auto factor=Parser(reference.operand).operand();
+          line=text(a)+(factor.numerator<0?" - ":" + ")+parenthesized(factor.numerator<0?neg(factor):factor)+" × "+parenthesized(b);break;
+        }
+      }
+      if(found->kind!=RowMove::Swap)line+=" = "+example.after[found->target][col];
+    }
+    return example;
+  } catch(const MathError&) {return {};}
 }
 CheckedMathMove<MathWorkingValue> prepareMathWorking(MathWorkingModel model,std::string_view input) {
   try {
@@ -400,6 +423,7 @@ std::vector<MathMoveChoice> availableMathMoves(const AugmentedMatrix& before) {
       const auto& after=*transformed.result;
       if(after.display.size()>160)return;
       MathMoveChoice choice{operation,operand,transformed.operation,{after.display}};std::size_t count=1;
+      choice.conceptId=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==operation;})->conceptId;
       const auto wrong=[&](AugmentedMatrix candidate) {
         if(count==choice.results.size())return;
         const auto entry=matrixText(candidate);

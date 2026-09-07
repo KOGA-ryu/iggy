@@ -28,6 +28,7 @@ struct QuestionPack {
 // Decode prepared instructions, then use the shared ArcadeCollect structural
 // checks. No judgments, attempts, progression or file watching live here.
 [[nodiscard]] iggy3d::first_move::LayeredQuestionContent parseQuestionContent(
-    std::string_view json, const std::filesystem::path& sourcePath);
+    std::string_view json, const std::filesystem::path& sourcePath,
+    std::span<const iggy3d::first_move::MathReference> references={});
 [[nodiscard]] QuestionPack loadQuestionPack(const std::filesystem::path& path);
 }  // namespace paths

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <tuple>
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -1090,7 +1091,124 @@ void matrixMoveControls() {
   }
 }
 
+void matrixReferenceControls() {
+  namespace fm=iggy3d::first_move;using Op=fm::MathOperation;
+  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
+    Harness h(size.x,size.y,SORTER_STUDY_FIXTURE);auto& io=ImGui::GetIO();h.action(SorterActionKind::OpenSolve,6001);
+    auto* game=h.session.activeSolve();const auto initial=workspaceBounds(h.ui);
+    const auto evidence=[&] {
+      const auto& run=*game->question().currentRun().math;
+      return std::tuple{run.active,run.revision,run.nodes.size(),run.events.size(),std::string(game->view().working),game->view().correctHits,game->view().wrongHits,game->view().completed};
+    };
+    const auto untouched=evidence();
+    const auto select=[&](Op op,const char* operand) {
+      const auto found=std::find_if(h.ui.mathChoices.begin(),h.ui.mathChoices.end(),[&](const auto& c){return c.operation==op && c.operand==operand;});
+      expect(found!=h.ui.mathChoices.end(),"reference setup move is offered");h.click(h.ui.mathOperations[static_cast<std::size_t>(found-h.ui.mathChoices.begin())]);
+    };
+    const auto fit=[&] {
+      const SorterCardBounds window{0,0,0,io.DisplaySize.x,io.DisplaySize.y,true};
+      expect(contains(window,h.ui.mathReferencePanel) && contains(h.ui.mathReferencePanel,h.ui.mathReferenceBody),"reference uses the existing support space with a contained scrollable body");
+      for(const auto& control:h.ui.mathReferenceControls)expect(contains(h.ui.mathReferencePanel,control),"reference controls stay visible even in a short window");
+      if(io.DisplaySize.x>=900 && io.DisplaySize.y>=800) {
+        for(const auto& matrix:h.ui.mathReferenceMatrices)expect(contains(h.ui.mathReferenceBody,matrix),"both example matrices fit the wide reference body without clipping");
+        expect(contains(h.ui.mathReferenceBody,h.ui.mathReferenceCalculation),"the current column calculation fits beside the example matrices");
+      }
+      for(const auto& result:h.ui.mathResults)if(result.available)expect(contains(h.ui.solveStage,result),"reference does not cover or displace answer choices");
+      expect(!io.WantTextInput,"reference examples use buttons without typing");
+    };
+    select(Op::SwapRows,"");const auto selected=h.ui.mathSelectedMove;const auto tiles=h.ui.mathResults;
+    const auto choices=h.ui.mathChoices[*selected].results;
+    expect(h.ui.mathReferenceButton.available,"selected matrix move has a reference button");h.click(h.ui.mathReferenceButton);fit();
+    expect(h.ui.mathReferenceId=="row_swap" && h.ui.mathReferenceStep==0,"question-mark opens the linked rule at the example's beginning");
+    for(std::size_t step=1;step<=3;++step) {h.click(h.ui.mathReferenceControls[2]);fit();expect(h.ui.mathReferenceStep==step,"each next click reveals one example column");}
+    expect(!h.ui.mathReferenceControls[2].available && h.ui.mathReferenceControls[1].available,"example ends after the right-hand column");
+    h.click(h.ui.mathReferenceControls[1]);expect(h.ui.mathReferenceStep==2,"example can be stepped backward");
+    expect(evidence()==untouched && h.ui.mathChoices[*selected].results==choices,"reference browsing preserves all mathematical evidence and result order");
+    for(std::size_t i=0;i<tiles.size();++i)expect(sameRect(tiles[i],h.ui.mathResults[i]),"opening and stepping a reference retain exact result rectangles");
+    const auto current=workspaceBounds(h.ui);for(std::size_t i=0;i<current.size();++i)expect(sameRect(current[i],initial[i]),"reference retains fixed problem, working, activity and history footprints");
+    h.press(ImGuiKey_Escape);expect(h.ui.mathReferenceId.empty() && h.session.activeSolve()==game,"Escape closes only the reference");
+    expect(h.ui.mathSelectedMove==selected && evidence()==untouched,"closing restores the selected move without an attempt");
+    h.click(h.ui.mathReferenceButton);const auto target=h.ui.mathReferenceControls[2];
+    const auto focused=[&] {
+      if(!GImGui->NavWindow || !GImGui->NavId)return false;
+      const auto rect=ImGui::WindowRectRelToAbs(GImGui->NavWindow,GImGui->NavWindow->NavRectRel[GImGui->NavLayer]);
+      return std::abs(rect.Min.x-target.x)<1 && std::abs(rect.Min.y-target.y)<1;
+    };
+    for(int i=0;!focused() && i<100;++i)h.press(ImGuiKey_Tab);
+    expect(focused(),"reference example controls are reachable by keyboard");
+    io.AddKeyEvent(ImGuiKey_Enter,true);h.frame(90);io.AddKeyEvent(ImGuiKey_Enter,false);h.frame(2);
+    expect(h.ui.mathReferenceStep==1 && evidence()==untouched,"held Enter advances the example once without submitting a result");
+    h.press(ImGuiKey_Space);expect(h.ui.mathReferenceStep==2,"Space also advances the focused example");
+    select(Op::DivideRow1,"2");fit();expect(h.ui.mathReferenceId=="row_scaling" && h.ui.mathReferenceStep==0,"changing operation family updates an open reference");
+    h.click(h.ui.mathReferenceControls[2]);select(Op::AddRow1ToRow2,"-1/2");fit();
+    expect(h.ui.mathReferenceId=="row_addition" && h.ui.mathReferenceStep==0,"row-addition variants share a separate reusable example");
+    h.click(h.ui.mathReferenceControls[2]);
+    for(const auto resized:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
+      io.DisplaySize=resized;h.frame(4);fit();expect(h.ui.mathReferenceStep==1 && evidence()==untouched,"live resize preserves the example and actual problem");
+    }
+    io.DisplaySize=size;h.frame(4);fit();
+    // The content body scrolls independently; its controls stay pinned above it.
+    const auto controls=h.ui.mathReferenceControls;
+    io.AddMousePosEvent(h.ui.mathReferenceBody.x+20,h.ui.mathReferenceBody.y+8);h.frame();io.AddMouseWheelEvent(0,-4);h.frame(4);fit();
+    for(std::size_t i=0;i<controls.size();++i)expect(sameRect(controls[i],h.ui.mathReferenceControls[i]),"scrolling an explanation leaves its controls in place");
+    io.AddFocusEvent(false);h.frame(3);const auto step=h.ui.mathReferenceStep;h.click(h.ui.mathReferenceControls[2]);
+    expect(h.ui.mathReferenceStep==step && evidence()==untouched,"focus loss blocks reference controls and preserves player working");
+    io.AddFocusEvent(true);h.frame(3);h.click(h.ui.solveControls[1]);
+    h.click(h.ui.mathReferenceControls[0]);expect(h.ui.mathReferenceId.empty(),"Close returns to working inspection");
+    select(Op::SwapRows,"");h.click(h.ui.mathReferenceButton);
+    const auto submit=[&](Op op,const char* operand,const char* result) {
+      select(op,operand);const auto expected=fm::parseAugmentedMatrix(result);const auto& options=h.ui.mathChoices[*h.ui.mathSelectedMove].results;
+      const auto found=std::find(options.begin(),options.end(),expected.result->display);expect(found!=options.end(),"known actual result remains available beside the reference");
+      h.click(h.ui.mathResults[static_cast<std::size_t>(found-options.begin())]);fit();
+    };
+    submit(Op::SwapRows,"","[1,-1|-1] [2,1|7]");submit(Op::AddRow1ToRow2,"-2","[1,-1|-1] [0,3|9]");
+    submit(Op::DivideRow2,"3","[1,-1|-1] [0,1|3]");submit(Op::AddRow2ToRow1,"1","[1,0|2] [0,1|3]");
+    expect(game->view().completed && game->question().currentRun().math->events.size()==4 && !h.ui.mathReferenceId.empty(),"four real answers complete the problem while reference activity never becomes an answer");
+    h.frame(90);expect(game->view().completed && h.session.activeSolve()==game,"reference completion never advances the problem automatically");
+    h.click(h.ui.mathUndo);expect(game->question().currentRun().math->nodes.size()==5 && !game->view().completed,"Undo keeps the completed branch while the reference stays open");
+    h.click(h.ui.solveControls[0]);h.action(SorterActionKind::OpenSolve,6001);
+    expect(!h.ui.mathReferenceId.empty() && game->question().currentRun().math->active==3,"return and resume preserve current working and its reference");
+    h.click(h.ui.solveControls[0]);h.action(SorterActionKind::OpenSolve,3001);
+    expect(h.ui.mathReferenceId.empty() && !h.ui.mathReferencePanel.available,"another question clears the previous reference");
+    h.click(h.ui.solveControls[0]);h.action(SorterActionKind::OpenSolve,6001);select(Op::AddRow2ToRow1,"1");h.click(h.ui.mathReferenceButton);
+    expect(game->dispatch(ReplayQuestion{true}).accepted,"explicit fresh attempt archives unfinished working");h.frame(3);
+    expect(h.ui.mathReferenceId.empty() && game->question().currentRun().math->active==0 && !game->question().archivedRuns().empty(),"fresh runs reset reference presentation while retaining archived evidence");
+  }
+}
+
+void restoredPracticeControls() {
+  namespace fm=iggy3d::first_move;
+  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
+    Harness h(size.x,size.y,SORTER_STUDY_FIXTURE);
+    h.action(SorterActionKind::OpenStudy);h.action(SorterActionKind::StartStudy);
+    auto* game=h.session.activeSolve();const auto& run=game->question().currentRun();
+    expect(game->dispatch(MathematicalMove{game->view().challenge,{fm::MathMoveKind::Submit,fm::MathOperation::Divide,"-2","x+1=-11",
+        run.runNumber,run.math->revision,run.questionId,run.contentVersion}}).accepted,"fixture records real mathematical progress");
+    const std::string working(game->view().working);
+    const auto saved=h.session.studyProgress();h.session.restoreStudyProgress(saved);h.ui={};
+    h.ui.progressMessage="Saved practice ready. Resume set.";h.frame(3);
+    expect(contains({0,0,0,size.x,52},h.ui.progressStatus),"save status fits the compact heading at all supported sizes");
+    const auto resume=static_cast<std::size_t>(StudyControl::Resume);
+    expect(h.ui.studyControls[resume].available,"restored set exposes the real Resume control");
+    h.click(h.ui.studyControls[resume]);game=h.session.activeSolve();
+    expect(game && game->view().working==working && game->question().currentRun().math->nodes.size()==2,
+        "clicking Resume restores working without adding an attempt");
+    const auto choice=std::find_if(h.ui.mathChoices.begin(),h.ui.mathChoices.end(),[](const auto& c){return c.operation==fm::MathOperation::Subtract && c.operand=="1";});
+    expect(choice!=h.ui.mathChoices.end(),"restored symbolic move is available");
+    const auto index=static_cast<std::size_t>(choice-h.ui.mathChoices.begin());
+    const auto expected=fm::parseLinearEquation("x=-12").equation->display;
+    const auto tile=std::find(choice->results.begin(),choice->results.end(),expected);
+    expect(tile!=choice->results.end(),"restored result tile is available");const auto result=static_cast<std::size_t>(tile-choice->results.begin());
+    h.click(h.ui.mathOperations[index]);h.click(h.ui.mathResults[result]);
+    expect(game->view().completed,"restored problem finishes through the existing visual controls");
+    h.click(h.ui.solveControls[0]);h.click(h.ui.studyControls[resume]);
+    expect(h.session.activeSolve()->view().completed && h.session.view().solveNumber==1,"Resume keeps a finished problem until Next");
+    h.click(h.ui.solveControls[0]);h.ui.progressFailed=true;h.ui.progressMessage="Practice could not save: test failure";h.frame(3);
+    expect(contains({0,0,0,size.x,52},h.ui.progressStatus) && h.ui.studyControls[resume].available,"save errors remain readable and do not disable Resume");
+  }
+}
+
 int main() {
-  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); std::cout << "Actual visual move and result choices, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
+  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixReferenceControls(); restoredPracticeControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
   catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }

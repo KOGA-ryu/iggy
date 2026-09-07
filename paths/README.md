@@ -25,6 +25,22 @@ another set saves earlier attempts and begins fresh ones. Text and selection
 buttons remain compact; more subjects and problem types will join this catalogue
 as their solving content is prepared.
 
+[Practice progress](docs/P036_SAVED_PRACTICE.md) now saves automatically in the
+rebuilt sorter. Close the game and reopen it: the contents page shows a **green**
+save message and a **blue Resume set** button. Your question order, current
+working, wrong attempts, help use, Undo branches and earlier runs are retained.
+A completed problem still waits for **Next**. Selection edits for a future set
+stay separate from the active practice queue.
+
+The file lives in SDL's user application-data folder for **Paths**, named
+`practice-study_practice_v1.json` for the default catalogue. Each catalogue
+filename has its own save. Use `--progress /absolute/path/practice.json` to
+choose a file, or `--no-progress` for a temporary session. Content checks,
+scripts and bounded runs do not use personal saves unless a progress file is
+explicitly supplied. An unreadable or incompatible file remains untouched;
+an amber status explains why saving is paused. This saves practice on this
+device; group arrangements and presentation settings are not part of the save.
+
 The [coordinate board](docs/P029_COORDINATE_BOARD.md) builds a line in four
 decisions: intercept, run, rise, and second point. The **gold** problem stays
 fixed, the **teal** slope triangle grows with accepted answers, and the final
@@ -87,6 +103,14 @@ matrix. Both a swap-first route and a fraction route reach `x = 2, y = 3`.
 In Contents, uncheck Bracket equations and select Linear algebra to practise
 only the matrix question. Its original matrix stays gold, current working cyan
 and checked steps green. No equation or matrix typing is needed.
+
+A **violet ?** beside the selected row move opens its [reference](docs/P035_ROW_REFERENCES.md)
+in the existing support area. Read the definition and rule, then use **< / >**
+to follow a separate example through its three columns. Cyan links the current
+column and calculation; green marks completed example working. **Close** or
+**Esc** returns to inspection. Reference browsing preserves the original
+problem, selected choices, attempts and working. On short windows, the reference
+body scrolls beneath pinned controls. Example stepping follows Pause / Resume.
 
 The **gold** original problem stays above the **cyan** active equation and its
 compact controls. Each checked move adds a connected **green** block with a

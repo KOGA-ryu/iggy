@@ -35,7 +35,9 @@
 | P031 | Linked numerical substitution, graph and value table | Automated Green; user visual confirmation pending; uncommitted | Same question-owned projection and x guide; selectable samples; fixed problem and unchanged attempt evidence |
 | P032 | Check mathematical moves and construct an inspectable solution blueprint | Automated Green; typing interface rejected by user; replaced by P033; uncommitted | Exact per-side transformations; multiple valid routes; append-only attempts and Undo branches; same question owner and explicit Next |
 | P033 | Solve mathematical moves using symbols and result tiles | Visual format accepted by user; automated checks passed; uncommitted | No equation typing; same exact checker, retained branches and explicit Next; mouse and keyboard controls |
-| P034 | Solve one linear algebra question with row moves and matrix tiles | Automated Green; user visual confirmation pending; uncommitted | Same question owner and visual format; exact row operations; alternate routes, retained branches and original-system verification |
+| P034 | Solve one linear algebra question with row moves and matrix tiles | Accepted by user; automated checks passed; uncommitted | Same question owner and visual format; exact row operations; alternate routes, retained branches and original-system verification |
+| P035 | Read linked row-operation definitions and step through separate examples beside the problem | Automated Green; user visual confirmation pending; uncommitted | One shared library and exact row kernel; immutable linked definitions; fixed workspace, no player attempts from reference browsing |
+| P036 | Save practice and resume the same checked working after restarting | Automated Green; user visual confirmation pending; uncommitted | Canonical command replay; exact drafts and frozen queue; preserved attempts, help, branches and archived runs; device-local atomic file replacement |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -46,7 +48,7 @@ The current native targets are `sorter`, `gallery`, and `paths`; Release builds
 use `b`. See the [README](../README.md) for current commands. Historical
 checkpoint sections retain the target names and build paths used for their evidence.
 
-The current sorter checkpoint is P034; the standalone gallery remains at P019. The preceding
+The current sorter checkpoint is P036; the standalone gallery remains at P019. The preceding
 [P006_TARGET_FOUNDATION.md](P006_TARGET_FOUNDATION.md) implements the
 target/question boundary proposed in
 [TARGET_FOUNDATION_DESIGN.md](TARGET_FOUNDATION_DESIGN.md). It adds four
@@ -58,15 +60,15 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user accepted P033's visual format and requested the same format for a
-linear algebra question. [P034 matrix row moves](P034_MATRIX_ROW_MOVES.md) adds
-one row-reduction question under Linear algebra / Matrices and systems. The
-same question owner checks every matrix cell, preserves attempts and Undo
-branches, and verifies x = 2, y = 3 against both original equations. All three
-native targets build and five focused suites pass. User visual confirmation is
-pending; no screenshots or windows were used. P030 remains accepted, and P031
-retains its own pending visual check. A second matrix question with fractional
-answers is the next content candidate after this interaction is checked.
+The user authorized choosing another capability after assessing the separate
+math-notes project. [P036 saved practice](P036_SAVED_PRACTICE.md) preserves the
+selected set and mathematical working across app restarts. The existing visual
+format remains: symbolic moves, result tiles, fixed original problem, checked
+branches, and explicit Next. The user's parser and notes remain separate.
+P034's format is accepted; P031 and P035 retain their own pending visual checks.
+No screenshots or windows are used for this work. Stop after this capability.
+The next candidate is compact started/finished marks beside problems in the
+contents page, derived from the saved question evidence.
 
 Keep the build focused on answering questions quickly and continuously for
 long sessions. Before adding systems, check rapid repeated input, automatic

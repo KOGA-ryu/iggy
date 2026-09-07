@@ -32,7 +32,7 @@ target_link_libraries(paths_content PUBLIC paths_model PRIVATE paths_json)
 
 add_library(paths_sorter_model src/runtime/sorter/EquationSorterSession.cpp)
 target_include_directories(paths_sorter_model PUBLIC src)
-add_library(paths_sorter_content src/content/EquationSorterContentIO.cpp)
+add_library(paths_sorter_content src/content/EquationSorterContentIO.cpp src/content/StudyProgressIO.cpp)
 target_link_libraries(paths_sorter_content PUBLIC paths_sorter_model PRIVATE paths_json)
 
 add_library(paths_gallery_model src/runtime/gallery/GallerySession.cpp)
@@ -118,6 +118,9 @@ if(PATHS_BUILD_NATIVE)
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/content/cards"
       "$<TARGET_FILE_DIR:sorter>/content/cards"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/references"
+      "$<TARGET_FILE_DIR:sorter>/content/references"
     VERBATIM)
   add_dependencies(sorter paths_sorter_content_files)
   # Deploy editable content next to the executable, including multi-config builds.
@@ -129,6 +132,14 @@ if(PATHS_BUILD_NATIVE)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_practice_save_tests tests/practice_save_tests.cpp)
+  target_link_libraries(paths_practice_save_tests PRIVATE paths_sorter_content paths_json)
+  target_compile_definitions(paths_practice_save_tests PRIVATE SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
+  add_test(NAME paths_practice_save_tests COMMAND paths_practice_save_tests)
+  add_test(NAME paths_practice_save_write COMMAND paths_practice_save_tests write "${CMAKE_CURRENT_BINARY_DIR}/practice-save-test.json")
+  add_test(NAME paths_practice_save_read COMMAND paths_practice_save_tests read "${CMAKE_CURRENT_BINARY_DIR}/practice-save-test.json")
+  set_tests_properties(paths_practice_save_write PROPERTIES FIXTURES_SETUP practice_saved)
+  set_tests_properties(paths_practice_save_read PROPERTIES FIXTURES_REQUIRED practice_saved)
   add_executable(paths_math_moves_tests tests/math_moves_tests.cpp)
   target_link_libraries(paths_math_moves_tests PRIVATE paths_sorter_content paths_content paths_json)
   target_compile_definitions(paths_math_moves_tests PRIVATE SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")

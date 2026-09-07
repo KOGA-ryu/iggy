@@ -34,6 +34,35 @@ enum class MathOperation : std::uint8_t {
   Expand, Simplify, Add, Subtract, Multiply, Divide,
   SwapRows, DivideRow1, DivideRow2, AddRow1ToRow2, AddRow2ToRow1
 };
+enum class RowMove { Swap, Divide, Add };
+struct RowOperation {
+  MathOperation operation;
+  std::string_view key, conceptId;
+  RowMove kind;
+  std::size_t target, source;
+};
+inline constexpr std::array rowOperations{
+  RowOperation{MathOperation::SwapRows,"swap_rows","row_swap",RowMove::Swap,0,1},
+  RowOperation{MathOperation::DivideRow1,"divide_row_1","row_scaling",RowMove::Divide,0,0},
+  RowOperation{MathOperation::DivideRow2,"divide_row_2","row_scaling",RowMove::Divide,1,1},
+  RowOperation{MathOperation::AddRow1ToRow2,"add_row_1_to_2","row_addition",RowMove::Add,1,0},
+  RowOperation{MathOperation::AddRow2ToRow1,"add_row_2_to_1","row_addition",RowMove::Add,0,1}
+};
+inline constexpr std::size_t kMathReferenceCapacity=16;
+struct MathReference {
+  std::string id, title, definition, rule;
+  std::uint32_t version=0;
+  MathOperation operation=MathOperation::SwapRows;
+  std::string operand, example;
+};
+struct MathReferenceExample {
+  std::array<std::array<std::string,3>,2> before, after;
+  std::array<std::string,3> calculations;
+  std::string operation;
+};
+// A separate authored example, projected by the same exact row rules as play.
+// Invalid metadata or examples return no projection. No player evidence changes.
+[[nodiscard]] std::optional<MathReferenceExample> mathReferenceExample(const MathReference&);
 struct LinearEquationResult {
   std::optional<LinearEquation> equation;
   std::string_view error;
@@ -55,6 +84,7 @@ struct MathMoveChoice {
   MathOperation operation;
   std::string operand, label;
   std::array<std::string,kMathResultChoiceCount> results;
+  std::string_view conceptId;
 };
 // Bounded presentation projection: concrete moves and distinct result choices,
 // without a public answer key. Submission still goes through checkMathMove.
