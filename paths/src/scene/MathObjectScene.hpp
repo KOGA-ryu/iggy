@@ -23,6 +23,7 @@ private:
   iggy3d::ProductCreativeViewportPose camera_{};
   iggy3d::ProductCreativeViewportFocus focus_{};
   MathObjectKind kind_ = MathObjectKind::Count;
+  unsigned level_ = 0;
   std::uint64_t revision_ = 0, frameId_ = 0;
 };
 

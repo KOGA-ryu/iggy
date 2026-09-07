@@ -1,11 +1,23 @@
 # Paths
 
-## Interactive 3D maths objects
+## Interactive maths objects and linked diagrams
 
-The native `math_lab` explores five reusable objects: an algebra expansion cube,
-a unit circle linked to a sine wave, integration disks, a transforming vector
-cube, and a binary graph. Each has live parameters, numerical readouts, a small
-challenge, and a School / Bridge / Introductory university explanation.
+The native `math_lab` now contains seven objects. The original expansion cube,
+unit circle, integration disks and binary graph remain available. The matrix
+object now has four working learning layers, and the new function and surface
+laboratories connect their geometry to interactive diagrams.
+
+| Object | Learning layers |
+| --- | --- |
+| Functions | Inputs/roots; secants and derivative limits; signed accumulation and bound reversal; Taylor approximation |
+| Matrices | Volume/rank; full 3x3 matrices, composition and eigenvector probes; projection/least squares; four SVD stages |
+| Surfaces | Height/contours; sections, partial derivatives and tangent planes; gradient descent/Hessian; stationary points on a circle |
+
+The level selector changes the available operations and challenge. Drag a
+plot to move its input, drag entries in the matrix diagram to edit A, or click
+the contour map to move the surface point. Narrow windows put linked plots
+and matrices in tabs. Left-drag the 3D viewport to orbit, right-drag to pan,
+and scroll to zoom.
 
 ```sh
 cmake -S . -B b -DCMAKE_BUILD_TYPE=Release
@@ -13,12 +25,20 @@ cmake --build b -t math_lab -j4
 ./b/math_lab
 ```
 
-Left-drag to orbit, right-drag to pan, and scroll to zoom. Choose a subject across
-the top. This is C++ geometry using Paths' existing Vulkan host; no browser or
-JavaScript runtime is required. The reusable model and scene adapter are in
-`src/runtime/math_objects/` and `src/scene/MathObjectScene.*`. Exploration has its
-own transient state; study saves and scored question attempts retain their
-existing owners. See [P039](docs/P039_MATH_OBJECTS.md) for integration and checks.
+For a text-only run that creates no native host, window, rendering or images:
+
+```sh
+./b/math_lab --validate --object function --level 3 --set function=2 --set at=0.5 --set degree=5 --check
+./b/math_lab --validate --object linear --level 3 --preset 2 --check
+./b/math_lab --validate --object surface --level 3 --set surface=1 --set constraint=1 --set circle_angle=0 --check
+```
+
+Arguments apply in order. `--help` lists every parameter and its range. The
+reusable model and scene adapter remain in `src/runtime/math_objects/` and
+`src/scene/MathObjectScene.*`; they use the existing SceneFrame/Vulkan pipeline.
+Exploration state is separate from scored question attempts and study saves.
+See [P039](docs/P039_MATH_OBJECTS.md) for the original five objects and
+[P040](docs/P040_LINKED_MATH_LAYERS.md) for the new layers and verification.
 
 ## Existing game modes
 

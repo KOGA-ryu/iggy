@@ -752,3 +752,31 @@ and Check actions to the model and camera input to the scene adapter. It does
 not calculate mathematical answers, alter study attempts or write personal
 saves. This object library and exploration startup are a separate capability
 from scored question integration and persistent lessons.
+
+## Linked mathematical layers (P040)
+
+`MathObjects::dispatch` also owns level selection, matrix presets, integral-bound
+reversal, contour point moves and gradient-descent steps. Parameter availability
+comes from the model; lowering a level restores hidden higher-level parameters
+to defaults. The original shear/scale controls are entries in the same 3x3 A
+used by the matrix editor, composition, projection and SVD.
+
+Snapshots contain bounded plot samples, matrix views, one surface patch and
+contour segments. Function values, derivatives, antiderivatives, surface
+partials and Hessian entries are analytic. Contours interpolate the sampled
+surface; Jacobi diagonalisation of A-transpose-A supplies the SVD. Numerical
+formulas and challenge tolerances live in the mathematical owner. UI code
+maps the supplied coordinates to screen positions and forwards semantic input.
+Diagram edits are applied before drawing the following frame so its geometry,
+readouts and diagrams share one model revision.
+
+`MathObjectScene` appends the optional patch to the same reserved SceneFrame
+buffers and checks the existing GPU capacities. It never creates GPU resources.
+Changing a subject or level reframes its camera. SVD stages carry labelled,
+coloured basis directions so rotations of the sphere remain inspectable.
+
+`math_lab --validate` applies the same CLI actions, publishes CPU geometry and
+prints measurements before constructing `NativeVulkanHost`. It rejects capture
+requests and creates no native host, window or images. The numerical tests
+build with `PATHS_BUILD_NATIVE=OFF`. P040 extends the existing production files;
+no parent source or third-party implementation was imported.

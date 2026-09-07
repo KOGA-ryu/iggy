@@ -2,7 +2,7 @@
 
 Authority: the user requested a repository review and a decision about what to
 clean next, then approved publication cleanup, history-growth repair and the
-subsequent idle-history investigation with “gogo”. The initial review made no
+subsequent history investigations with “gogo”. The initial review made no
 production edits. Completed workstreams are recorded below.
 
 ## Decision
@@ -265,5 +265,55 @@ input, UI layout and save rules are unchanged. Changes remain uncommitted; no
 windows, screenshots or captures were used and prior visual acceptance remains
 deferred.
 
-The next candidate is a focused check of long-history scrolling and expanded
-step details. No rendering change or additional audit is included here.
+At this checkpoint the next candidate was a focused check of long-history
+scrolling and expanded step details, recorded below.
+
+## History-drawing cleanup completed
+
+The existing `drawMathSolving()` UI adapter emitted connector and checkmark
+geometry for every retained node, including strokes wholly outside the history
+panel. ImGui's renderer would clip that geometry later. The panel's existing
+clip rectangle is now checked before those raw draw-list calls, using
+`ImGui::IsRectVisible()` and bounds that include the strokes' antialiasing margin.
+Connectors crossing the visible area still draw even if their endpoints belong
+to offscreen rows.
+
+This removes unconditional tessellation of invisible decorations. Row layout,
+labels, IDs, hit rectangles, branch colours, expanded details and automatic
+following remain on their existing routes. No row virtualization, cache or
+additional model state was introduced. Production change is **3 lines added /
+3 removed (net zero)** in one existing UI file, with no new production files.
+
+The existing input test now builds long scalar and matrix histories with 127
+nodes, retained Undo branches and retries at a branch point. It checks the top,
+middle, bottom and partially clipped edges at **1440×860, 800×600 and 360×480**;
+selects an earlier node with the actual pointer; scrolls with wheel input; and
+checks following a new node and using the actual Undo button at the 128-node
+limit. The existing ImGui tree state is opened directly to check expanded
+attempt layout at wide and narrow sizes. Inspection preserves all run evidence
+and the fixed workspace rectangles. The test file changes by +67/-2 lines.
+
+A numeric probe reuses those checks and compares **54 states** before and after.
+It hashes triangle vertices, colours, texture coordinates and clip rectangles
+for every triangle whose bounds intersect its clip rectangle, independently of
+draw-buffer indices. Those hashes, visible-triangle counts, presented control
+rectangles and solving evidence all match. Total emitted vertices across the
+states fell from **259,700 to 104,092** (about 60%); indices fell from **525,948
+to 214,572**. Every sampled state emits less geometry. These are draw-data
+measurements, not a frame-rate benchmark or a pixel-based visual review.
+
+The targeted `paths_sorter_input_tests` CTest entry passed, including its
+existing input, focus, references, saved Resume and explicit Next checks. The
+affected Release `sorter` target was rebuilt in `b/`. The current build graph
+does not link this UI library into `gallery` or `paths`, so those applications
+did not require another build.
+
+Evidence is in `build/history-drawing-evidence/verification.json`, with the
+numeric probe, comparisons, logs, hashes and baseline-relative patch alongside
+it. Source content and mathematical, persistence and input-routing owners remain
+unchanged. No windows, screenshots, captures or image files were produced;
+earlier visual acceptance remains deferred. Changes remain uncommitted.
+
+The remaining cost is laying out rows and expanded text to establish their
+scrolling positions. The next candidate is keyboard navigation through long
+histories; no additional implementation is included in this checkpoint.

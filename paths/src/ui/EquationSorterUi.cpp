@@ -515,8 +515,8 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
     const auto at=ImGui::GetCursorScreenPos();
     const ImVec4 colour=!i?ImVec4{1,.77F,.29F,1}:i==math.active && !v.completed?ImVec4{.3F,.85F,.95F,1}:
         branch[i]?ImVec4{.4F,.9F,.65F,1}:ImVec4{.55F,.63F,.7F,1};
-    if(i) {
-      const auto& parent=ui.mathNodes[node.parent];
+    const auto& parent=ui.mathNodes[node.parent];
+    if(i && ImGui::IsRectVisible({at.x+4,parent.y+parent.height*.5F-2},{at.x+22,at.y+17})) {
       draw->AddLine({at.x+6,parent.y+parent.height*.5F},{at.x+6,at.y+15},ImGui::ColorConvertFloat4ToU32(colour));
       draw->AddLine({at.x+6,at.y+15},{at.x+20,at.y+15},ImGui::ColorConvertFloat4ToU32(colour));
     }
@@ -526,7 +526,7 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
     ImGui::PushStyleColor(ImGuiCol_Text,colour);
     if(ImGui::Selectable(label.c_str(),ui.mathInspected.value_or(math.active)==i,0,{0,nodeHeight}))ui.mathInspected=i;
     ui.mathNodes[i]=itemBounds(!blocked && ImGui::IsItemVisible());ImGui::PopStyleColor();
-    if(i) {
+    if(i && ImGui::IsRectVisible({at.x+6,at.y+9},{at.x+19,at.y+20})) {
       const ImVec2 tick{at.x+12,at.y+15};
       draw->AddLine({tick.x-4,tick.y},{tick.x-1,tick.y+3},ImGui::ColorConvertFloat4ToU32(colour),1.5F);
       draw->AddLine({tick.x-1,tick.y+3},{tick.x+5,tick.y-4},ImGui::ColorConvertFloat4ToU32(colour),1.5F);

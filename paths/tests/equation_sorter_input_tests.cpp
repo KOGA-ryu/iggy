@@ -1293,7 +1293,72 @@ void restoredPracticeControls() {
   }
 }
 
+void longHistoryControls(void (*observe)(const Harness&,const char*)=nullptr) {
+  namespace fm=iggy3d::first_move;
+  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}})for(const bool matrix:{false,true}) {
+    Harness h(size.x,size.y,SORTER_STUDY_FIXTURE);h.action(SorterActionKind::OpenSolve,matrix?6001:3001);
+    auto& game=*h.session.activeSolve();const auto& run=game.question().currentRun();
+    const auto move=[&](fm::MathMoveKind kind,int n,bool wrong=false) {
+      const auto entry=kind==fm::MathMoveKind::Undo?std::string{}:wrong?"x=999":matrix?
+          "[2,1|7] ["+std::to_string(1+2*n)+","+std::to_string(-1+n)+"|"+std::to_string(-1+7*n)+"]":
+          "3x+"+std::to_string(6+n)+"="+std::to_string(21+n);
+      const auto result=game.dispatch(MathematicalMove{game.view().challenge,{kind,
+          matrix?fm::MathOperation::AddRow1ToRow2:fm::MathOperation::Add,"1",entry,
+          run.runNumber,run.math->revision,run.questionId,run.contentVersion}});
+      expect(result.accepted,"long-history setup uses accepted mathematical commands");
+      if(kind==fm::MathMoveKind::Submit)expect(run.math->events.back().correct!=wrong,"long-history setup has the intended verdict");
+    };
+    for(int n=1;n<=80;++n)move(fm::MathMoveKind::Submit,n);
+    for(int n=0;n<20;++n)move(fm::MathMoveKind::Undo,0);
+    for(int n=0;n<12;++n)move(fm::MathMoveKind::Submit,0,true);
+    for(int n=61;n<=106;++n)move(fm::MathMoveKind::Submit,n);
+    h.frame(4);
+    const auto original=workspaceBounds(h.ui);
+    const auto evidence=[&] {return std::tuple{run.math->nodes.size(),run.math->events.size(),run.math->active,
+        run.math->revision,game.question().journal().size(),run.completed};};
+    const auto untouched=evidence();
+    const auto panel=[&](std::string_view name) {
+      for(auto* window:GImGui->Windows)if(std::string_view(window->Name).find(name)!=std::string_view::npos)return window;
+      throw std::runtime_error("long-history panel missing");
+    };
+    auto* history=panel("/Solution blueprint_");
+    const auto check=[&](const char* stage) {
+      const auto current=workspaceBounds(h.ui);
+      for(std::size_t i=0;i<current.size();++i)expect(sameRect(current[i],original[i]),"long history keeps the fixed workspace rectangles");
+      expect(!ImGui::GetIO().WantTextInput,"long history remains controlled without equation typing");
+      if(observe)observe(h,stage);
+    };
+    expect(run.math->nodes.size()==127 && history->ScrollMax.y>1000,"history contains both long retained branches");
+    for(const auto [fraction,offset,stage]:{std::tuple{0.0F,0.0F,"top"},std::tuple{0.0F,18.0F,"top_edge"},
+        std::tuple{.5F,0.0F,"middle"},std::tuple{1.0F,-18.0F,"bottom_edge"},std::tuple{1.0F,0.0F,"bottom"}}) {
+      ImGui::SetScrollY(history,history->ScrollMax.y*fraction+offset);h.frame(4);check(stage);
+    }
+    const auto target=h.ui.mathNodes[60];
+    ImGui::SetScrollY(history,history->Scroll.y+target.y+target.height*.5F-history->Pos.y-history->Size.y*.5F);h.frame(4);
+    expect(h.ui.mathNodes[60].available,"an earlier branch point remains reachable by scrolling");
+    h.click(h.ui.mathNodes[60]);
+    expect(h.ui.mathInspected==60,"actual pointer selects the earlier branch point");
+    auto* details=size.x>=900?panel("/Working inspection_"):history;
+    const int index=60;
+    const auto seed=size.x>=900?details->IDStack.back():ImHashData(&index,sizeof(index),details->IDStack.back());
+    const float collapsedHeight=details->ContentSize.y;
+    details->StateStorage.SetInt(ImHashStr("Attempts from this step",0,seed),1);h.frame(4);
+    expect(details->ContentSize.y>collapsedHeight+100,"opening the attempt tree lays out the retained retries");check("expanded");
+    const float before=history->Scroll.y;
+    auto& io=ImGui::GetIO();io.AddMousePosEvent(history->Pos.x+history->Size.x*.5F,history->Pos.y+history->Size.y*.5F);h.frame();
+    io.AddMouseWheelEvent(0,-3);h.frame(4);
+    expect(history->Scroll.y>before,"real wheel input scrolls a long history with expanded details");check("expanded_scrolled");
+    expect(evidence()==untouched,"scrolling and expanded inspection preserve all solving evidence");
+    move(fm::MathMoveKind::Submit,107);h.frame(4);
+    expect(h.ui.mathNodes[127].available,"a new checked move follows its row near the history limit");check("follow");
+    h.click(h.ui.mathUndo);
+    expect(run.math->active==126 && run.math->nodes.size()==128 && h.ui.mathNodes[126].available,
+        "actual Undo follows its retained parent without deleting either branch");check("undo_follow");
+  }
+}
+
 int main() {
-  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixChapterFractionControls(); matrixReferenceControls(); restoredPracticeControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
+  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixChapterFractionControls(); matrixReferenceControls(); restoredPracticeControls(); longHistoryControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
   catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
+  return 0;
 }

@@ -86,7 +86,7 @@ void include(Aabb3& b,Vec3 p) {
 } // namespace
 
 MathObjectScene::MathObjectScene() {
-  frame_.vertices.reserve(kSceneVertexCapacity);frame_.indices.reserve(kSceneIndexCapacity);frame_.draws.reserve(MathObjectSnapshot::kPartCapacity);
+  frame_.vertices.reserve(kSceneVertexCapacity);frame_.indices.reserve(kSceneIndexCapacity);frame_.draws.reserve(MathObjectSnapshot::kPartCapacity+1);
 }
 void MathObjectScene::rebuild(const MathObjectSnapshot& snapshot) {
   frame_.vertices.clear();frame_.indices.clear();frame_.draws.clear();
@@ -113,13 +113,37 @@ void MathObjectScene::rebuild(const MathObjectSnapshot& snapshot) {
     for(std::size_t n=base;n<frame_.vertices.size();++n)include(draw.bounds,position(frame_.vertices[n]));
     frame_.draws.push_back(draw);
   }
+  const auto& patch=snapshot.surface;
+  if(patch.rows||patch.columns) {
+    if(patch.rows<2||patch.columns<2||patch.rows>patch.vertices.size()/patch.columns)throw std::runtime_error("invalid mathematical surface grid");
+    const auto count=patch.rows*patch.columns,indexCount=(patch.rows-1)*(patch.columns-1)*6;
+    const auto base=frame_.vertices.size();
+    if(base+count>kSceneVertexCapacity||frame_.indices.size()+indexCount>kSceneIndexCapacity)throw std::runtime_error("math surface exceeds Paths scene buffer capacity");
+    SceneDraw draw{{static_cast<std::uint32_t>((static_cast<unsigned>(snapshot.kind)+1)*1000+999)},frame_.indices.size(),indexCount,{patch.vertices[0].position,patch.vertices[0].position}};
+    for(unsigned i=0;i<count;++i) {
+      const auto& v=patch.vertices[i];
+      if(!isFinite(v.position)||!isFinite(v.normal)||!isFinite(v.color))throw std::runtime_error("nonfinite math surface vertex");
+      const auto color=v.color*(.48F+.52F*std::max(0.0F,dot(v.normal,light)));
+      frame_.vertices.push_back({{v.position.x,v.position.y,v.position.z},{color.x,color.y,color.z},{}});include(draw.bounds,v.position);
+    }
+    const auto triangle=[&](unsigned a,unsigned b,unsigned c) {
+      const auto geometric=cross(patch.vertices[b].position-patch.vertices[a].position,patch.vertices[c].position-patch.vertices[a].position);
+      const auto normal=patch.vertices[a].normal+patch.vertices[b].normal+patch.vertices[c].normal;
+      if(dot(geometric,normal)<0)std::swap(b,c);
+      for(auto i:{a,b,c})frame_.indices.push_back(static_cast<std::uint16_t>(base+i));
+    };
+    for(unsigned row=0;row+1<patch.rows;++row)for(unsigned col=0;col+1<patch.columns;++col) {
+      const unsigned a=row*patch.columns+col,b=a+patch.columns;triangle(a,b,a+1);triangle(a+1,b,b+1);
+    }
+    frame_.draws.push_back(draw);
+  }
   if(frame_.vertices.empty())throw std::runtime_error("empty mathematical object");
   bounds_={position(frame_.vertices.front()),position(frame_.vertices.front())};for(const auto& v:frame_.vertices)include(bounds_,position(v));
 }
 const SceneFrame& MathObjectScene::publish(const MathObjectSnapshot& snapshot,SceneViewport viewport) {
-  if(!std::isfinite(viewport.width)||!std::isfinite(viewport.height)||viewport.width<1||viewport.height<1)throw std::invalid_argument("invalid math viewport");
-  const bool changed=kind_!=snapshot.kind;frame_.viewport=viewport;
-  if(changed || revision_!=snapshot.revision){rebuild(snapshot);kind_=snapshot.kind;revision_=snapshot.revision;}
+  if(!std::isfinite(viewport.x)||!std::isfinite(viewport.y)||!std::isfinite(viewport.width)||!std::isfinite(viewport.height)||viewport.width<1||viewport.height<1)throw std::invalid_argument("invalid math viewport");
+  const bool changed=kind_!=snapshot.kind||level_!=snapshot.level;frame_.viewport=viewport;
+  if(changed || revision_!=snapshot.revision){rebuild(snapshot);kind_=snapshot.kind;level_=snapshot.level;revision_=snapshot.revision;}
   if(changed)resetView();
   publishSceneCamera(frame_,camera_);frame_.id={++frameId_};return frame_;
 }

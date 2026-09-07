@@ -41,6 +41,7 @@
 | P037 | Add twelve matrix problems while keeping existing saved practice compatible | Automated Green; user visual confirmation pending; uncommitted | Frozen P036 worker copy; 24 checked routes; both 100-card catalogues integrated; stable-ID save dependencies; preserved drafts, queue order and history across catalogue growth |
 | P038 | Show current-attempt progress and chapter completion counts in Contents | Automated Green; user visual confirmation pending; uncommitted | Question-owned progress; selection-independent totals; Undo, Replay and saved evidence remain canonical; compact native symbols |
 | P039 | Explore five native 3D mathematical objects with live parameters and challenges | Build and headless tests passed; visual/interactive review unperformed; uncommitted | One mathematical owner; existing SceneFrame/Vulkan pipeline; bounded meshes and separate exploration state |
+| P040 | Explore linked function, matrix and surface learning layers | Native build and six targeted text-only checks passed; visual/interactive review unperformed; uncommitted | One mathematical owner; analytic readouts; linked plots/matrices/contours; bounded geometry; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -63,15 +64,18 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user requested interactive 3D objects across algebra, trigonometry, calculus,
-linear algebra and discrete maths, then identified this C++ Vulkan project as
-the destination. [P039](P039_MATH_OBJECTS.md) implements one native object library
-and a live exploration startup using the existing renderer. Native build and
-fresh pure-model/scene tests pass. This capability is complete through text-only
-verification; visual and interactive acceptance remain unperformed. The user
-prohibits taking or viewing images for this continuation: do not capture,
-render, open image files or launch previews. Changes preserve the existing
-study/sorter work and remain uncommitted.
+The user authorised the proposed higher maths progression. The first three
+priorities are implemented in [P040](P040_LINKED_MATH_LAYERS.md): the function
+laboratory, the expanded matrix object, and the surface/contour laboratory.
+Each has four working layers with different operations and challenge checks.
+The existing P039 objects and existing study/sorter work remain available.
+
+The user prohibits taking or viewing images. Do not capture, render, open
+image files or launch previews as part of this work. Use the pure-model/scene
+tests and `math_lab --validate` for text-only verification. Visual layout,
+pointer feel and swapchain acceptance remain unverified. Keep changes
+uncommitted. The wider collection proposed in the conversation remains future
+work; P040 does not claim that collection is implemented.
 
 ## Previous cleanup checkpoint
 
