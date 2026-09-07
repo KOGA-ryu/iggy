@@ -51,19 +51,25 @@ The native app uses only the SDL3/Vulkan dependencies already declared by Paths.
 Orbit with left drag, pan with right drag, and zoom with the wheel. The sidebar
 holds the parameter controls, measurements, challenge and learning progression.
 
-For a bounded offscreen run:
+For text-only verification, configure a separate build with the native host
+excluded. These two tests calculate geometry and camera matrices on the CPU;
+they do not create a window, render frames, capture, or load images.
 
 ```sh
-./b/math_lab --offscreen --object linear --set scale=0 --check \
-  --capture /private/tmp/paths-math-objects/linear-flat.png
-./b/math_lab --offscreen --object discrete --route BDH --check
+cmake -S . -B b-math-headless -DCMAKE_BUILD_TYPE=Release -DPATHS_BUILD_NATIVE=OFF
+cmake --build b-math-headless -t paths_math_object_tests paths_scene_tests -j4
+ctest --test-dir b-math-headless -R '^(paths_math_object_tests|paths_scene_tests)$' --output-on-failure
 ```
 
 `--object` accepts `algebra`, `trig`, `calculus`, `linear` and `discrete`.
 `--set key=value` follows the selected object's control schema. Disk sampling
 is 0=left, 1=midpoint, 2=right. `--route` contains moves after the initial A.
-The CLI uses the same semantic model route as the controls. Captures use the
-existing native capture implementation. Offscreen mode creates no visible window.
+The CLI uses the same semantic model route as the controls. `math_lab --help`
+prints its options and exits before creating the native host.
+
+The user's continuation instruction prohibits taking or viewing any images.
+Do not run captures, image viewers, browser previews, or rendering as part of
+this work. Native build verification compiles the app without launching it.
 
 ## Representation limits
 
@@ -77,9 +83,23 @@ The optional A-H shortcut changes the graph; moving its layers does not.
 
 ## Verification
 
-Implementation is ready for the focused pure-model, scene and native offscreen
-checks. Interactive pointer feel and swapchain acceptance require a user test;
-offscreen evidence must retain that distinction. Changes remain uncommitted.
+Build and text-only verification completed on 2026-09-07:
+
+- The existing Release `math_lab` target builds successfully; its `--help`
+  command exits successfully before native host creation.
+- A fresh Release configuration with `PATHS_BUILD_NATIVE=OFF` builds and passes
+  `paths_math_object_tests` and `paths_scene_tests` (2/2 tests).
+- The maths test covers cube volume and winding, the unit-circle identity,
+  disk-sum bounds and midpoint convergence, signed determinant and rank,
+  shortest graph paths, invalid actions, mesh bounds and camera navigation.
+- The tested parameter extremes use at most 7,179 of 8,192 vertices and 22,800
+  of 65,536 indices. The pure test executable links only the system C++ and
+  system libraries, with no SDL/Vulkan dependency.
+
+The completion pass used source inspection and text-only commands. No images
+were captured, generated, rendered or viewed, and no app window was opened.
+Visual layout, interactive pointer feel and swapchain acceptance remain
+unverified. Changes remain uncommitted; existing study/sorter work is preserved.
 
 References: [Khronos vertex input](https://docs.vulkan.org/guide/latest/vertex_input_data_processing.html),
 [OpenStax unit circle](https://openstax.org/books/precalculus-2e/pages/5-2-unit-circle-sine-and-cosine-functions),

@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 SPEC = importlib.util.spec_from_file_location("generator", ROOT / "tools/generate_sorter_fixture.py")
 GENERATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GENERATOR)
@@ -144,6 +145,16 @@ class BracketRecipes(unittest.TestCase):
             files = {p.relative_to(root): p.read_bytes() for p in root.rglob("*.json") if p != source}
             def unchanged():
                 self.assertEqual(files, {p.relative_to(root): p.read_bytes() for p in root.rglob("*.json") if p != source})
+            for identity in ("sorter_graph_positive", "sorter_system_integer", "sorter_matrix_rows", "sorter_matrix_practice_6101"):
+                with self.subTest(collision=identity):
+                    broken = copy.deepcopy(RECIPES)
+                    broken["recipes"][0].update(id=identity, pack="bracket_collision_probe", sorter_id=3501, content_version=10)
+                    source.write_text(json.dumps(broken))
+                    result = subprocess.run(command, capture_output=True, text=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("publication path already owned", result.stderr)
+                    self.assertIn(identity + ".json", result.stderr)
+                    unchanged()
             broken = copy.deepcopy(RECIPES)
             broken["recipes"][-1]["coefficient"] = 0
             source.write_text(json.dumps(broken))
@@ -166,6 +177,38 @@ class BracketRecipes(unittest.TestCase):
             source.write_text(json.dumps(RECIPES))
             subprocess.run(command + ["--check"], check=True, capture_output=True)
             unchanged()
+
+
+class PublicationAssembly(unittest.TestCase):
+    def test_chapters_preserve_playable_questions_and_refuse_overflow(self):
+        full = {"schema_version": 1, "equations": [
+            {"id": 9000+i, "home_index": i, "text": f"x = {10000+i}", "subject": "algebra",
+             "solve_pack": f"retained_{i}.json", "study": {"chapter": "Retained", "type": "Equations", "form": "x = n"}}
+            for i in range(100)]}
+        del full["equations"][0]["study"]  # Playable questions without Contents metadata also survive.
+        line = json.loads((ROOT / "content/authoring/line_graph_recipes.json").read_text())
+        system = json.loads((ROOT / "content/authoring/system_graph_recipes.json").read_text())
+        matrix = json.loads((ROOT / "content/cards/sorter_matrix_rows.json").read_text())
+        study_path = "content/sorter/study_practice_v1.json"
+        for prepare, document, source, identities in (
+                (GENERATOR.line_graph_outputs, line, "content/sorter/bracket_practice_v1.json", {r["sorter_id"] for r in line["recipes"]}),
+                (GENERATOR.system_graph_outputs, system, study_path, {r["sorter_id"] for r in system["recipes"]}),
+                (GENERATOR.matrix_study_outputs, matrix, study_path, {6001})):
+            with self.subTest(chapter=prepare.__name__):
+                before = copy.deepcopy(full)
+                with self.assertRaisesRegex(ValueError, "cannot discard a playable question"):
+                    prepare(document, {source: full})
+                self.assertEqual(full, before)
+                room = copy.deepcopy(full)
+                for record in room["equations"][-len(identities):]:
+                    del record["solve_pack"], record["study"]
+                before = copy.deepcopy(room)
+                records = prepare(document, {source: room})[study_path]["equations"]
+                self.assertEqual(room, before, "successful assembly also leaves its source catalogue untouched")
+                self.assertEqual(len(records), 100)
+                self.assertEqual([r["id"] for r in records[:-len(identities)]], [r["id"] for r in room["equations"][:-len(identities)]])
+                self.assertEqual({r["id"] for r in records[-len(identities):]}, identities)
+                self.assertEqual([r["home_index"] for r in records], list(range(100)))
 
 
 class LineGraphs(unittest.TestCase):

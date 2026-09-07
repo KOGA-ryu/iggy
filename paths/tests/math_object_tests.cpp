@@ -57,7 +57,7 @@ int main() {
     checked(m,false);set(m,MathParameter::Angle,150);checked(m,true);
 
     select(m,MathObjectKind::Calculus);
-    for(double n:{3,8,32,64})for(double sample:{0,1,2})for(double gap:{0,.12}) {
+    for(double n:{3,8,32,64})for(double sample:{0,1,2})for(double gap:{0.0,.12}) {
       set(m,MathParameter::Slices,n);set(m,MathParameter::Sample,sample);set(m,MathParameter::SliceGap,gap);
       const auto& s=m.snapshot();const double exact=8*pi/3,estimate=s.metrics[0].value;
       if(sample==0)require(estimate<exact,"left sum not below cone volume");
@@ -69,7 +69,7 @@ int main() {
     set(m,MathParameter::Sample,1);set(m,MathParameter::Slices,32);checked(m,true);
 
     select(m,MathObjectKind::Linear);
-    for(double k:{-1.2,0,1.2})for(double scale:{-2,-1,0,1,2}) {
+    for(double k:{-1.2,0.0,1.2})for(double scale:{-2,-1,0,1,2}) {
       set(m,MathParameter::Shear,k);set(m,MathParameter::Scale,scale);
       const auto& s=m.snapshot();near(s.metrics[0].value,scale,1e-12,"signed determinant wrong");near(s.metrics[1].value,std::fabs(scale),1e-12,"volume sign wrong");
       near(s.metrics[2].value,scale==0?2:3,0,"rank wrong");inspect(s,scene,maxVertices,maxIndices);

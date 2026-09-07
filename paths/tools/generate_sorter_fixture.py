@@ -4,9 +4,9 @@ import argparse
 import hashlib
 import json
 import re
-import tempfile
 from fractions import Fraction
 from pathlib import Path
+from generate_matrix_practice import assemble_catalogue, matrix_practice_outputs, publish_outputs, unique_fields
 
 
 def shifted(expression, offset):
@@ -267,14 +267,8 @@ def line_graph_outputs(document, bracket):
             "decks": {"solve": [{"question_id": identity, "content_version": recipe["content_version"]}]}}
         prepared.append({"id": sorter_id, "text": equation, "subject": "algebra", "hint": hints[0],
                          "solve_pack": f"{pack}.json", "study": {"chapter": "Straight lines", "type": "Slope and intercept", "form": "y = mx + b"}})
-    old = bracket["content/sorter/bracket_practice_v1.json"]["equations"]
-    records = [dict(e) for e in old if "study" in e] + prepared + [dict(e) for e in old if "study" not in e]
-    records = records[:100]
-    if len({e["id"] for e in records}) != 100 or len({e["text"] for e in records}) != 100:
-        raise ValueError("line graphs: combined study pack must have 100 distinct cards")
-    for i, record in enumerate(records):
-        record["home_index"] = i
-    outputs["content/sorter/study_practice_v1.json"] = {"schema_version": 1, "equations": records}
+    outputs["content/sorter/study_practice_v1.json"] = assemble_catalogue(
+        bracket["content/sorter/bracket_practice_v1.json"], prepared)
     return outputs
 
 
@@ -364,13 +358,8 @@ def system_graph_outputs(document, existing):
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}
         prepared.append({"id": sorter_id, "text": equation, "subject": "algebra", "hint": hints[0], "solve_pack": f"{pack}.json",
             "study": {"chapter": "Simultaneous equations", "type": "Two straight lines", "form": "y = m1 x + b1; y = m2 x + b2"}})
-    old = existing["content/sorter/study_practice_v1.json"]["equations"]
-    records = ([dict(e) for e in old if "study" in e] + prepared + [dict(e) for e in old if "study" not in e])[:100]
-    if len(records) != 100 or len({e["id"] for e in records}) != 100 or len({e["text"] for e in records}) != 100:
-        raise ValueError("systems: combined study pack needs 100 distinct cards")
-    for i, record in enumerate(records):
-        record["home_index"] = i
-    outputs["content/sorter/study_practice_v1.json"] = {"schema_version": 1, "equations": records}
+    outputs["content/sorter/study_practice_v1.json"] = assemble_catalogue(
+        existing["content/sorter/study_practice_v1.json"], prepared)
     return outputs
 
 
@@ -383,13 +372,7 @@ def matrix_study_outputs(card, existing):
               "hint": "Each row gives x, y and the right-hand value. Use row operations to make the left block the identity matrix.",
               "solve_pack": "matrix_rows_pack.json", "study": {"chapter": "Matrices and systems",
               "type": "Row reduction", "form": "Ax = b; [A | b] -> [I | x]"}}
-    old = existing["content/sorter/study_practice_v1.json"]["equations"]
-    records = ([dict(e) for e in old if "study" in e] + [record] + [dict(e) for e in old if "study" not in e])[:100]
-    if len(records) != 100 or len({e["id"] for e in records}) != 100 or len({e["text"] for e in records}) != 100:
-        raise ValueError("matrix question: combined study pack needs 100 distinct cards")
-    for index, value in enumerate(records):
-        value["home_index"] = index
-    return {"content/sorter/study_practice_v1.json": {"schema_version": 1, "equations": records},
+    return {"content/sorter/study_practice_v1.json": assemble_catalogue(existing["content/sorter/study_practice_v1.json"], [record]),
             "content/sorter/matrix_rows_pack.json": {"schema_version": 1, "questions": [f"../cards/{identity}.json"],
             "reference_library": "../references/row_operations.json",
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}}
@@ -402,57 +385,35 @@ def main():
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     content, solutions = fixture()
-    outputs = [(root / "content/sorter/equations_v1.json", content),
-               (root / "tests/fixtures/equation_sorter_v1.solutions.json", solutions)]
+    outputs = [("content/sorter/equations_v1.json", content),
+               ("tests/fixtures/equation_sorter_v1.solutions.json", solutions)]
     recipe_source = args.recipes or root / "content/authoring/linear_bracket_recipes.json"
-    def unique_fields(pairs):
-        result = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError(f"duplicate JSON field: {key}")
-            result[key] = value
-        return result
+    sources = [recipe_source]
     active_source = recipe_source
     try:
         if recipe_source.stat().st_size > 65536:
             raise ValueError("file exceeds 64 KiB")
         generated = bracket_outputs(json.loads(recipe_source.read_text(), object_pairs_hook=unique_fields))
-        active_source = root / "content/authoring/line_graph_recipes.json"
-        generated.update(line_graph_outputs(json.loads(active_source.read_text(),
-                                                      object_pairs_hook=unique_fields), generated))
-        active_source = root / "content/authoring/system_graph_recipes.json"
-        generated.update(system_graph_outputs(json.loads(active_source.read_text(), object_pairs_hook=unique_fields), generated))
-        active_source = root / "content/cards/sorter_matrix_rows.json"
-        generated.update(matrix_study_outputs(json.loads(active_source.read_text(), object_pairs_hook=unique_fields), generated))
-        from generate_matrix_practice import matrix_practice_outputs
+        outputs.extend(generated.items())
+        study_path = "content/sorter/study_practice_v1.json"
+        for relative, prepare in (("content/authoring/line_graph_recipes.json", line_graph_outputs),
+                                  ("content/authoring/system_graph_recipes.json", system_graph_outputs),
+                                  ("content/cards/sorter_matrix_rows.json", matrix_study_outputs)):
+            active_source = root / relative; sources.append(active_source)
+            generated = prepare(json.loads(active_source.read_text(), object_pairs_hook=unique_fields), generated)
+            outputs.extend((path, data) for path, data in generated.items() if path != study_path)
         active_source = root / "content/authoring/matrix_practice_recipes.json"
+        sources.append(active_source)
         chapter_document = json.loads(active_source.read_text(), object_pairs_hook=unique_fields)
         chapter = matrix_practice_outputs(chapter_document, generated["content/sorter/study_practice_v1.json"])
         if len(chapter_document["recipes"]) != 12:
             raise ValueError("matrix practice: publication requires all twelve recipes")
-        generated.update(chapter)
-        generated["content/sorter/study_practice_v1.json"] = chapter["content/sorter/matrix_practice_v1.json"]
+        outputs.extend(chapter.items())
+        outputs.append((study_path, chapter["content/sorter/matrix_practice_v1.json"]))
+        publish_outputs(root, outputs, args.check, sources=sources)
     except (OSError, ValueError) as error:
         parser.error(f"{active_source}:{error}")
-    outputs.extend((root / path, data) for path, data in generated.items())
-    # Check every version before writing anything. Changed questions require
-    # a new version, including generated changes to explanations or choices.
-    for path, data in outputs:
-        if "working_states" in data and path.is_file():
-            previous = json.loads(path.read_text())
-            if previous != data and data["content_version"] <= previous["content_version"]:
-                parser.error(f"{path}:/content_version: increase the version before changing prepared content")
-    for path, data in outputs:
-        expected = json.dumps(data, indent=2) + "\n"
-        if args.check:
-            if not path.is_file() or path.read_text() != expected:
-                raise SystemExit(f"Fixture differs: {path}")
-        else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=path.name + ".", suffix=".tmp", delete=False) as temporary:
-                temporary.write(expected)
-            Path(temporary.name).replace(path)
-    count = sum("working_states" in value for value in generated.values())
+    count = sum("working_states" in value for _, value in outputs)
     print(f"100-card study pack and {count} generated bracket/graph/matrix sequences plus one authored matrix question: " + ("unchanged" if args.check else "written"))
 
 

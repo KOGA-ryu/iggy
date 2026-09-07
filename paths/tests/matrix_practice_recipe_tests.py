@@ -194,6 +194,11 @@ class MatrixPracticeRecipes(unittest.TestCase):
             json.loads('{"schema_version": 1, "schema_version": 2}', object_pairs_hook=GENERATOR.unique_fields)
 
     def test_catalogue_collision_and_playable_capacity_refusals(self):
+        entries = GENERATOR.chapter_entries(DOCUMENT)
+        with self.assertRaisesRegex(ValueError, "chapter ID collides"):
+            GENERATOR.assemble_catalogue(BASE, entries)
+        self.assertEqual(GENERATOR.assemble_catalogue(BASE, entries, replace_existing=True), BASE,
+                         "refreshing an existing chapter requires an explicit same-pack replacement")
         collision = copy.deepcopy(BASE)
         collision["equations"][-1]["id"] = 6101
         with self.assertRaises(ValueError):

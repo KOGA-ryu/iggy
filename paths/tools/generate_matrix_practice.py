@@ -150,25 +150,26 @@ def chapter_entries(document):
     return entries
 
 
-def assemble_catalogue(base_catalogue, entries):
+def assemble_catalogue(base_catalogue, entries, *, replace_existing=False):
     """Retain existing playable records; replace only the sorting-only tail."""
     if (not isinstance(base_catalogue, dict) or base_catalogue.get("schema_version") != 1 or
             not isinstance(base_catalogue.get("equations"), list) or len(base_catalogue["equations"]) != 100):
-        raise ValueError("matrix practice: base catalogue must have exactly 100 records")
-    old = copy.deepcopy(base_catalogue["equations"])
-    chapter_ids = {entry["id"] for entry in entries}
+        raise ValueError("base catalogue must have exactly 100 records")
+    old = base_catalogue["equations"]
+    incoming = {entry["id"]: entry for entry in entries}
     for record in old:
-        if record.get("id") in chapter_ids and record.get("solve_pack") != f"{PREFIX}{record['id']}_pack.json":
-            raise ValueError("matrix practice: chapter ID collides with existing content")
-    retained = [record for record in old if record.get("id") not in chapter_ids]
+        if record.get("id") in incoming and (not replace_existing or not record.get("solve_pack") or
+                record["solve_pack"] != incoming[record["id"]].get("solve_pack")):
+            raise ValueError("chapter ID collides with existing content")
+    retained = [record for record in old if record.get("id") not in incoming]
     playable = [record for record in retained if "solve_pack" in record or "study" in record]
     filler = [record for record in retained if "solve_pack" not in record and "study" not in record]
     if len(playable) + len(entries) > 100:
-        raise ValueError("matrix practice: cannot discard a playable question to fit the catalogue")
-    records = playable + copy.deepcopy(entries) + filler[:100-len(playable)-len(entries)]
+        raise ValueError("cannot discard a playable question to fit the catalogue")
+    records = copy.deepcopy(playable + entries + filler[:100-len(playable)-len(entries)])
     if (len(records) != 100 or len({record["id"] for record in records}) != 100 or
             len({record["text"] for record in records}) != 100):
-        raise ValueError("matrix practice: catalogue needs 100 distinct IDs and statements")
+        raise ValueError("catalogue needs 100 distinct IDs and statements")
     for index, record in enumerate(records):
         record["home_index"] = index
     return {"schema_version": 1, "equations": records}
@@ -206,8 +207,33 @@ def matrix_practice_outputs(document, base_catalogue):
             "schema_version": 1, "questions": [f"../cards/{identity}.json"],
             "reference_library": "../references/row_operations.json",
             "decks": {"solve": [{"question_id": identity, "content_version": recipe["content_version"]}]}}
-    outputs[CATALOGUE] = assemble_catalogue(base_catalogue, chapter_entries(document))
+    outputs[CATALOGUE] = assemble_catalogue(base_catalogue, chapter_entries(document), replace_existing=True)
     return outputs
+
+
+def publish_outputs(destination, outputs, check=False, *, sources=()):
+    """Check ownership and every question version before publishing any file."""
+    files = [(destination / relative, data) for relative, data in outputs]
+    seen = {source.resolve() for source in sources}
+    for path, _ in files:
+        if path.resolve() in seen:
+            raise ValueError(f"{path}: publication path already owned")
+        seen.add(path.resolve())
+    for path, data in files:
+        if "working_states" in data and path.is_file():
+            previous = json.loads(path.read_text())
+            if previous != data and data["content_version"] <= previous["content_version"]:
+                raise ValueError(f"{path}:/content_version: increase content_version before changing an existing question")
+    for path, data in files:
+        expected = json.dumps(data, indent=2) + "\n"
+        if check:
+            if not path.is_file() or path.read_text() != expected:
+                raise ValueError(f"generated file differs: {path}")
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, prefix=path.name + ".", suffix=".tmp", delete=False) as temporary:
+                temporary.write(expected)
+            Path(temporary.name).replace(path)
 
 
 def main():
@@ -225,23 +251,9 @@ def main():
             raise ValueError("matrix practice: publication requires all twelve recipes")
         base = json.loads((root / "content/sorter/study_practice_v1.json").read_text(), object_pairs_hook=unique_fields)
         outputs = matrix_practice_outputs(document, base)
-        destination = args.output_root or root
-        for relative, data in outputs.items():
-            path = destination / relative
-            if "working_states" in data and path.is_file():
-                previous = json.loads(path.read_text())
-                if previous != data and data["content_version"] <= previous["content_version"]:
-                    raise ValueError(f"{path}: increase content_version before changing an existing question")
-        for relative, data in outputs.items():
-            path, expected = destination / relative, json.dumps(data, indent=2) + "\n"
-            if args.check:
-                if not path.is_file() or path.read_text() != expected:
-                    raise ValueError(f"generated file differs: {path}")
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, prefix=path.name + ".", suffix=".tmp", delete=False) as temporary:
-                    temporary.write(expected)
-                Path(temporary.name).replace(path)
+        publish_outputs(args.output_root or root, outputs.items(), args.check,
+                        sources=(root / "content/authoring/matrix_practice_recipes.json",
+                                 root / "content/sorter/study_practice_v1.json"))
     except (OSError, ValueError, TypeError) as error:
         parser.error(str(error))
     print(f"{len(document['recipes'])} matrix questions and 100-card standalone catalogue: " + ("unchanged" if args.check else "written"))

@@ -1,22 +1,25 @@
 # Paths cleanup review — 2026-09-07
 
 Authority: the user requested a repository review and a decision about what to
-clean next. This checkpoint records that decision; no production code was edited.
+clean next, then approved the selected cleanup with “gogo”. The initial review
+made no production edits. The completed publication cleanup is recorded below.
 
 ## Decision
 
-Clean **question-publication assembly** next. The authoring pipeline has a
+The selected workstream was **question-publication assembly**. The review found a
 confirmed output-identity collision and three copies of catalogue composition
-that disagree with the newer matrix assembler about capacity. Both belong to
+that disagreed with the newer matrix assembler about capacity. Both belong to
 the same boundary: combining generated cards, packs and catalogue entries before
-publishing files. Keep this work in the existing authoring files, with the
+publishing files. The cleanup stayed in the existing authoring files, with the
 question model and saved-practice format retaining their current owners.
 
 ## Findings
 
+These findings and source line numbers describe the code at the initial review.
+
 ### P2 — Generated question files can silently replace another family's output
 
-**Classification:** Contract Risk. **Disposition:** first cleanup.
+**Classification:** Contract Risk. **Disposition:** resolved by publication cleanup.
 
 The route is custom bracket recipes → `bracket_outputs()` → the successive
 `generated.update(...)` calls in `tools/generate_sorter_fixture.py:421` → written
@@ -44,8 +47,8 @@ and `collision-loader-result.json`.
 
 ### P3 — Repeated catalogue assembly silently omits additions at capacity
 
-**Classification:** Duplicate Implementation. **Disposition:** merge during the
-same publication cleanup.
+**Classification:** Duplicate Implementation. **Disposition:** resolved by
+publication cleanup.
 
 The straight-line, system and authored-matrix assemblers in
 `tools/generate_sorter_fixture.py:270`, `:367` and `:386` independently append
@@ -120,3 +123,43 @@ Those edits were left alone. Hash checks confirm that all sources cited by the
 findings remained unchanged during the review. `scope.json` in the evidence
 directory records that boundary. Existing work remains uncommitted; visual
 acceptance retains its earlier deferred status.
+
+## Publication cleanup completed
+
+`assemble_catalogue()` in `tools/generate_matrix_practice.py` now owns the
+chapter capacity, retained-question and home-assignment rules for all chapter
+appenders. A question with a solve pack remains playable even without study
+metadata. Replacing an existing chapter is explicit and requires the same pack
+identity. The three competing append/truncate/reindex blocks were deleted.
+
+`publish_outputs()` in the same existing module owns publication path identity,
+question-version checks and file replacement for both generators. It checks all
+output paths against one another and against authored inputs before writing.
+Intermediate catalogue snapshots are assembled explicitly; only the final study
+catalogue is published. Unrestricted cross-family dictionary replacement,
+duplicate JSON-field parsing and duplicate publication loops were removed.
+
+Production scope: two existing authoring files, **62 lines added / 89 removed
+(27 fewer lines)**, no new production files and no runtime C++ edits. Two existing
+test files gained 48 lines covering cross-family collisions, authored-input
+protection, capacity refusal, retained order and explicit chapter replacement.
+
+Verification completed:
+
+- The two targeted recipe CTest entries passed.
+- Both generators passed `--check`; question bytes, IDs, versions and catalogue
+  order remain unchanged.
+- Release `sorter` and `gallery` builds passed in an isolated build directory.
+- The rebuilt headless loader validated both 100-card catalogues from outside
+  the repository. All 79 deployed JSON files match their unchanged sources.
+
+The evidence is in `build/publication-cleanup-evidence/verification.json`, with
+logs, source hashes and a baseline-relative patch alongside it. Concurrent edits
+to `docs/P039_MATH_OBJECTS.md` and `docs/WORKSTREAMS.md` were preserved. Changes
+remain uncommitted; no windows or captures were used and visual review remains
+deferred.
+
+Publication still replaces files individually, as before; this cleanup does not
+provide rollback of a partially written batch after an I/O failure. The next
+candidate is the separate history-allocation finding above. No history storage,
+Undo, save or runtime behaviour was changed in this workstream.
