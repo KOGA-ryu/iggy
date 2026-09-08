@@ -86,6 +86,14 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
     if(ImGui::Button("Equations",{78,22}))ImGui::OpenPopup("Native equations");
     record(CorpusControl::Equations);ImGui::PopStyleColor();
   }
+  if(ui.practice && ui.math) {
+    if(!narrow)ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
+    if(ImGui::Button(ui.questions?"Definitions###starters":"Questions###starters",{88,22})) {
+      ui.questions=!ui.questions;ui.refresh=true;ui.query={};
+    }
+    record(CorpusControl::Questions);ImGui::PopStyleColor();
+  }
   ui.equations.open=ImGui::IsPopupOpen("Native equations");
   const float available=ImGui::GetContentRegionAvail().x,half=(available-6)*.5F;
   ImGui::SetNextItemWidth(narrow?available:half);
@@ -119,6 +127,14 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   record(CorpusControl::Search);ImGui::SameLine();
   if(ImGui::Button("Clear",{48,22})){ui.query={};ui.refresh=true;}
   record(CorpusControl::Clear);
+  if(ui.questions && ui.practice && ui.math) {
+    drawCorpusQuestions(ui,corpus,blocked);
+    if(!blocked && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive())ui.open=false;
+    ImGui::EndDisabled();ImGui::PopFont();
+    drawEquations(ui.equations,*ui.math,blocked);
+    ui.equations.open=ImGui::IsPopupOpen("Native equations");
+    ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();return;
+  }
   if(ui.refresh) {
     ui.trail.clear();ui.restoreScroll.reset();ui.restoreHorizontal.reset();ui.focusReader=false;
     ui.matches=corpus.find(ui.subject,ui.topic,ui.query.data());

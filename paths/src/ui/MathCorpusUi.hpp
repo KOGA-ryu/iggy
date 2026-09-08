@@ -1,12 +1,13 @@
 #pragma once
 
 #include "content/MathCorpus.hpp"
+#include "content/CorpusPractice.hpp"
 #include "ui/MathNotationUi.hpp"
 #include "ui/NativeMath.hpp"
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Count };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, Count };
 struct NativeMathSample {const char* label;const char* title;const char* latex;};
 inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
   {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
@@ -28,6 +29,11 @@ struct NativeMathPanelState {
 struct CorpusBookmark { std::size_t entry; float scroll; bool original; bool raw=false; float horizontal=0; };
 struct MathCorpusUiState {
   NativeMath* math=nullptr;
+  CorpusPractice* practice=nullptr;
+  bool questions=false;
+  std::vector<std::size_t> questionMatches;
+  std::vector<NotationBounds> answerTiles;
+  NotationBounds questionInk,choiceArea;
   NativeMathPanelState equations;
   bool open=false, refresh=true, top=true, follow=true;
   std::optional<std::size_t> subject, topic, entry;
@@ -48,4 +54,5 @@ struct MathCorpusUiState {
   bool original=false, raw=false, reviewedVisible=false, focusReader=false;
 };
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
+void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 } // namespace paths

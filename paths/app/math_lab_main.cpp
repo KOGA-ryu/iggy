@@ -1,6 +1,7 @@
 #include "runtime/math_objects/MathObjects.hpp"
 #include "ui/MatrixBoardUi.hpp"
 #include "ui/TextbookUi.hpp"
+#include "ui/NativeMath.hpp"
 #include "scene/MathObjectScene.hpp"
 #include "platform/NativeVulkanHost.hpp"
 
@@ -452,7 +453,9 @@ int main(int argc,char** argv) {
     const auto applyBookActions=[&]{for(const auto action:options.bookActions){const auto result=book.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}};
     if(options.validate&&page==LabPage::Textbook){
       applyBookActions();const auto v=book.view();const auto matrix=book.board().view();
-      std::printf("textbook text validation: sections=%zu terms=%zu section=%u id=%s page=%u mode=%u card=%03u working=%d checked=%d bookmark_io=0\n",matrixChapter().size(),matrixChapter().size()*matrixChapter()[0].terms.size(),v.section+1,matrixChapter()[v.section].id,static_cast<unsigned>(v.page),static_cast<unsigned>(v.mode),matrix.card,matrix.working,matrix.checked);
+      std::size_t terms=0,openHelp=0;for(const auto& section:matrixChapter())terms+=section.terms.size();
+      const auto lesson=book.lessonView();for(const auto& block:lesson)for(const auto& help:block.help)openHelp+=help.open;
+      std::printf("textbook text validation: sections=%zu terms=%zu section=%u id=%s page=%u mode=%u card=%03u working=%d checked=%d blocks=%zu open_help=%zu bookmark_io=0\n",matrixChapter().size(),terms,v.section+1,matrixChapter()[v.section].id,static_cast<unsigned>(v.page),static_cast<unsigned>(v.mode),matrix.card,matrix.working,matrix.checked,lesson.size(),openHelp);
       return 0;
     }
     for(const auto& action:options.boardActions){const auto result=board.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}
@@ -475,12 +478,13 @@ int main(int argc,char** argv) {
     auto lastBookmarkSave=std::chrono::steady_clock::now();
     const auto saveBookmark=[&]{if(bookmarkPath.empty()||book.bookmark()==lastSavedBookmark)return;const auto result=writeTextbookBookmark(bookmarkPath,book);if(result.accepted)lastSavedBookmark=book.bookmark();else bookUi.message=result.reason;};
     NativeVulkanHost host(options.native);
+    NativeMath math(std::filesystem::path(SDL_GetBasePath())/"math_typesetter");
     auto& style=ImGui::GetStyle();style.WindowPadding={15,13};style.FramePadding={8,5};style.ItemSpacing={7,8};style.FrameRounding=4;
     style.Colors[ImGuiCol_WindowBg]={.035F,.055F,.08F,1};style.Colors[ImGuiCol_Button]={.12F,.26F,.30F,1};
     unsigned frames=0,skipped=0;
     while(!ui.quit&&(!options.frames||frames<options.frames)) {
       const auto result=host.frame([&](const SDL_Event& event){if(event.type==SDL_EVENT_QUIT)ui.quit=true;},[&]{switch(page){
-        case LabPage::Textbook:if(drawTextbook(book,bookUi))page=LabPage::Objects;break;
+        case LabPage::Textbook:if(drawTextbook(book,bookUi,math))page=LabPage::Objects;break;
         case LabPage::Objects:draw(model,scene,ui,page);break;
         case LabPage::MatrixBoard:{bool stay=true;drawMatrixBoard(board,boardUi,stay,"Textbook");if(!stay)page=LabPage::Textbook;break;}
       }},page==LabPage::Objects?&scene.frame():nullptr);

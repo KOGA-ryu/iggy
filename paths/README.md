@@ -1,5 +1,16 @@
 # Paths
 
+**Contents → Library → Questions** now contains [278 representative starters](docs/CORPUS_STARTERS.md):
+one for each of six subjects, 178 chapters and 94 named subcategories. Choose
+symbolic Setup and Result tiles in the native workspace. The finished result
+waits for **Next**, and progress saves automatically. See the
+[complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
+
+[Section 1.2, Row operations and RREF](docs/P048_TEXTBOOK_SECTION_FORMAT.md),
+now demonstrates the textbook format: numbered definitions and reasoning,
+typeset mathematics, a captioned live figure, and practice with separate hints,
+answers and solutions. Open `./b/math_lab --book --section 2`.
+
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
 `math_lab` home. Its first chapter, **Matrices and Elimination**, has seven
 sections, an index, reading bookmarks and connected exercises. Run

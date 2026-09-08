@@ -1,6 +1,18 @@
 # Paths workstreams
 
-## Resting checkpoint: Library typesetting
+## Representative questions across the Library
+
+[CORPUS_STARTERS.md](CORPUS_STARTERS.md) adds one starting question for every
+subject, chapter and named subcategory: 278 total. Each uses two symbolic
+decisions, native notation, retained working and explicit Next. The existing
+question session remains the only answer owner. New progress is saved by
+stable identity in a separate file, with command replay and protection of
+incompatible originals. The [coverage sheet](CORPUS_STARTER_COVERAGE.md) records
+all assignments. Evidence lives in `build/corpus-starters-evidence/`; visual
+acceptance of this new capability remains pending. The next candidate is
+subject-specific formatting informed by the user's checks.
+
+## Accepted Library typesetting
 
 [LIBRARY_TYPESETTING.md](LIBRARY_TYPESETTING.md) puts native equations inside
 the actual Library entries. Cyan math shares lines with prose or occupies its
@@ -11,7 +23,7 @@ rendering results, not mathematical review. The Release sorter build and two
 targeted tests passed, including live resizing, source navigation and exact
 unfinished-practice preservation. Evidence is in
 `build/library-typesetting-evidence/verification.json`. Changes are uncommitted;
-visual acceptance remains with the user. A future content workstream can review
+the user subsequently reported “heyyy it looks great.” A future content workstream can review
 the reported source defects while retaining the pinned originals.
 
 ## Native equation panel
@@ -126,6 +138,7 @@ review remains deferred, and changes are uncommitted.
 | P045 | Explore spherical harmonics, quadratic forms and roots of unity | Native build and twenty-six targeted text-only checks passed; user visual review pending; uncommitted | Real orthonormal modes; heat diffusion; signed/singular forms; Rayleigh bounds; exact cyclotomic action; no images |
 | P046 | [Reusable matrix board](P046_MATRIX_BOARD.md) for six exercise cards | Native build and 33 targeted text-only checks passed; user visual review pending; uncommitted | Complex/rectangular matrices; row operations; pivot and block traces; setup disclosure; read-only source cards; no images |
 | P047 | [Interactive textbook](P047_INTERACTIVE_TEXTBOOK.md): Matrices and Elimination | Native build and 29 targeted text-only tests passed; user visual review pending; uncommitted | Seven sections; 21-term index; retained board work; reading bookmarks separate from exercise evidence; no images |
+| P048 | [Textbook section format](P048_TEXTBOOK_SECTION_FORMAT.md): Row operations and RREF | Native build and 30 targeted text-only tests passed; user visual review pending; uncommitted | Typed numbered blocks; stable references; typeset equations; separate redacted help; existing exercise evidence retained; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -148,13 +161,16 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-[P047](P047_INTERACTIVE_TEXTBOOK.md) makes the textbook the math lab's default
-home and assembles Matrices and Elimination as its first seven-section chapter.
-It adds contents, an index, Previous/Next navigation, optional worked examples,
-embedded exercises and reading bookmarks. The other parts remain an outline.
-The 22 objects and standalone matrix board remain accessible. Reading does not
-mark exercises complete; source pages and existing sorter/Library owners remain
-unchanged. P047 and earlier unreviewed visual checkpoints await the user.
+[P048](P048_TEXTBOOK_SECTION_FORMAT.md) refines section 1.2, Row operations and
+RREF, into the reference format for later textbook sections. It adds typed and
+numbered definitions, a proposition and proof, typeset working, a captioned
+interactive figure, and three practice questions with independent hints,
+answers and solutions. Stable links return to definitions and examples. The
+reader offers a narrower prose column, optional contents and text up to 200%.
+The seven-section chapter, six retained boards and 22 objects remain available.
+Reading, references and disclosures do not change exercise evidence. Source
+pages and sorter/Library owners are unchanged. Native appearance and scrolling
+await the user's manual test.
 
 The user prohibits taking or viewing images. Do not capture, render, open
 image files or launch previews as part of this work. Use the pure-model/scene

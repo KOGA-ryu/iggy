@@ -19,37 +19,71 @@ unsigned boardIndex(unsigned section) {
 Textbook::Textbook() {
   for(unsigned i=0;i<boards_.size();++i)
     static_cast<void>(boards_[i].dispatch({BoardActionKind::Select,matrixCards()[i].id}));
+  for(unsigned i=0;i<helpMasks_.size();++i)helpMasks_[i].resize(matrixChapter()[i].lesson.size());
 }
 BoardResult Textbook::dispatch(BookAction action) {
   switch(action.kind) {
     case BookActionKind::OpenSection:
       if(action.section>=matrixChapter().size())return {false,"Unknown section."};
-      section_=action.section;page_=BookPage::Section;mode_=BookMode::Reading;break;
+      section_=action.section;page_=BookPage::Section;mode_=BookMode::Reading;anchor_={};break;
     case BookActionKind::Next:
       if(section_+1>=matrixChapter().size())return {false,"This is the last section."};
-      ++section_;page_=BookPage::Section;mode_=BookMode::Reading;break;
+      ++section_;page_=BookPage::Section;mode_=BookMode::Reading;anchor_={};break;
     case BookActionKind::Previous:
       if(section_==0)return {false,"This is the first section."};
-      --section_;page_=BookPage::Section;mode_=BookMode::Reading;break;
-    case BookActionKind::Contents:page_=BookPage::Contents;break;
-    case BookActionKind::Index:page_=BookPage::Index;break;
-    case BookActionKind::Resume:page_=BookPage::Section;mode_=BookMode::Reading;break;
+      --section_;page_=BookPage::Section;mode_=BookMode::Reading;anchor_={};break;
+    case BookActionKind::Contents:page_=BookPage::Contents;anchor_={};break;
+    case BookActionKind::Index:page_=BookPage::Index;anchor_={};break;
+    case BookActionKind::Resume:page_=BookPage::Section;mode_=BookMode::Reading;anchor_={};break;
     case BookActionKind::Read:
     case BookActionKind::Exercise:
       if(page_!=BookPage::Section)return {false,"Open a section first."};
-      mode_=action.kind==BookActionKind::Read?BookMode::Reading:BookMode::Exercise;break;
+      mode_=action.kind==BookActionKind::Read?BookMode::Reading:BookMode::Exercise;anchor_={};break;
     case BookActionKind::RememberScroll:
       if(page_!=BookPage::Section||mode_!=BookMode::Reading||action.section!=section_||!std::isfinite(action.value)||action.value<0||action.value>100000)
         return {false,"Invalid reading position."};
       scrolls_[section_]=action.value;break;
     case BookActionKind::SetTextScale:
-      if(!std::isfinite(action.value)||action.value<.9||action.value>1.5)return {false,"Text size must be between 90% and 150%."};
+      if(!std::isfinite(action.value)||action.value<.9||action.value>2)return {false,"Text size must be between 90% and 200%."};
       textScale_=action.value;break;
+    case BookActionKind::OpenBlock:
+    case BookActionKind::ToggleHelp: {
+      if(action.section>=matrixChapter().size())return {false,"Unknown section."};
+      const auto blocks=matrixChapter()[action.section].lesson;
+      const auto found=std::find_if(blocks.begin(),blocks.end(),[&](const auto& b){return action.target==b.id;});
+      if(found==blocks.end())return {false,"Unknown section reference."};
+      if(action.kind==BookActionKind::OpenBlock){
+        section_=action.section;page_=BookPage::Section;mode_=BookMode::Reading;
+        anchor_=found->id;++anchorRevision_;
+      }else {
+        const auto help=static_cast<unsigned>(action.help);
+        if(page_!=BookPage::Section||mode_!=BookMode::Reading||section_!=action.section)
+          return {false,"Open this reading section before revealing its help."};
+        if(help>=static_cast<unsigned>(BookHelp::Count)||found->help[help].empty())
+          return {false,"This block has no such help."};
+        helpMasks_[section_][static_cast<std::size_t>(found-blocks.begin())]^=static_cast<std::uint8_t>(1u<<help);
+      }
+      break;
+    }
     default:return {false,"Unknown textbook action."};
   }
   return {true,{}};
 }
-BookView Textbook::view()const {return {page_,mode_,section_,scrolls_[section_],textScale_};}
+BookView Textbook::view()const {return {page_,mode_,section_,scrolls_[section_],textScale_,anchor_,anchorRevision_};}
+std::vector<BookBlockView> Textbook::lessonView()const {
+  std::vector<BookBlockView> result;
+  if(page_!=BookPage::Section||mode_!=BookMode::Reading)return result;
+  const auto blocks=matrixChapter()[section_].lesson;result.reserve(blocks.size());
+  for(std::size_t i=0;i<blocks.size();++i){
+    const auto& b=blocks[i];BookBlockView v{b.id,b.kind,b.number,b.title,b.body,{},b.references};
+    for(unsigned h=0;h<b.help.size();++h){
+      const bool open=(helpMasks_[section_][i]&(1u<<h))!=0;
+      v.help[h]={!b.help[h].empty(),open,open?std::span<const BookPassage>(b.help[h]):std::span<const BookPassage>{}};
+    }
+    result.push_back(v);
+  }
+  return result;
+}
 unsigned Textbook::exerciseIndex()const{return boardIndex(section_);}
 MatrixBoard& Textbook::board(){return boards_.at(boardIndex(section_));}
 const MatrixBoard& Textbook::board()const{return boards_.at(boardIndex(section_));}
@@ -61,7 +95,7 @@ std::string Textbook::bookmark()const {
 BoardResult Textbook::restoreBookmark(std::string_view data) {
   if(data.size()>4096)return {false,"Reading bookmark is too large."};
   std::istringstream in{std::string(data)};std::string magic,id;unsigned version=0;double scale=0;
-  if(!(in>>magic>>version>>id>>scale)||magic!="paths-textbook"||version!=1||!std::isfinite(scale)||scale<.9||scale>1.5)
+  if(!(in>>magic>>version>>id>>scale)||magic!="paths-textbook"||version!=1||!std::isfinite(scale)||scale<.9||scale>2)
     return {false,"Unsupported reading bookmark."};
   const auto& sections=matrixChapter();auto section=std::find_if(sections.begin(),sections.end(),[&](auto s){return id==s.id;});
   if(section==sections.end())return {false,"Unknown bookmarked section."};
@@ -76,7 +110,7 @@ BoardResult Textbook::restoreBookmark(std::string_view data) {
   std::string trailing;if(in>>trailing)return {false,"Unexpected bookmark content."};
   section_=static_cast<unsigned>(section-sections.begin());textScale_=scale;scrolls_=scrolls;
   // Restore reading only: exercise states and results are deliberately untouched.
-  page_=BookPage::Contents;mode_=BookMode::Reading;return {true,{}};
+  page_=BookPage::Contents;mode_=BookMode::Reading;anchor_={};return {true,{}};
 }
 BoardResult readTextbookBookmark(const std::filesystem::path& path,Textbook& book) {
   std::error_code error;

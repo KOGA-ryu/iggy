@@ -246,7 +246,8 @@ int main(int argc, char** argv) {
     auto o = options(argc, argv);
     EquationSorterSession session(loadSorterContent(o.content)); // Fail before creating the native host.
     const auto corpus=loadMathCorpus(o.library);
-    if (o.check) { std::cout << "Validated 100 sortable cards and " << corpus.entries.size() << " library entries: " << o.content << '\n'; return 0; }
+    CorpusPractice starters(loadCorpusStarters(o.library.parent_path()/"starters.json",corpus));
+    if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries and " << starters.questions().size() << " starting questions: " << o.content << '\n'; return 0; }
     const auto commands = script(o.script);
     std::string progressLocationError;
     // Bounded runs and scripts never touch personal progress implicitly.
@@ -257,6 +258,7 @@ int main(int argc, char** argv) {
     }
     prepareOutputs(o);
     StudyProgressFile progress(o.progress);progress.load(session);
+    starters.loadProgress(o.progress.empty()?std::filesystem::path{}:o.progress.parent_path()/"corpus-starters-v1.json");
     if(progress.failed())std::cerr << progress.message() << '\n';
     if(!progressLocationError.empty())std::cerr << progressLocationError << '\n';
     if(commands.empty() && !session.view().study.types.empty())
@@ -268,6 +270,7 @@ int main(int argc, char** argv) {
     EquationSorterUiState ui;
     ui.corpus=&corpus;
     ui.library.math=&math;
+    ui.library.practice=&starters;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
     while (!o.frames || rendered < o.frames) {
@@ -281,6 +284,7 @@ int main(int argc, char** argv) {
         progress.save(session);ui.progressMessage=progressLocationError.empty()?progress.message():progressLocationError;
         ui.progressFailed=progress.failed() || !progressLocationError.empty();
         drawEquationSorter(ui, session.view(), session.content(), session.activeSolve());
+        starters.saveProgress();
         // The host consumes this stable snapshot after the callback, even when
         // opening/closing the solver changed which session supplied the frame.
         const auto* active=session.activeSolve();
@@ -291,6 +295,7 @@ int main(int argc, char** argv) {
       if (result.status == FrameStatus::Rendered) ++rendered;
     }
     progress.save(session);
+    starters.saveProgress();
     if(progress.failed())std::cerr << progress.message() << '\n';
     if (!o.capture.empty()) {
       std::string error;

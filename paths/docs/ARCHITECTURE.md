@@ -1,5 +1,20 @@
 # Paths architecture
 
+[Corpus starters](CORPUS_STARTERS.md) connects 278 authored questions to the
+six-subject Library hierarchy. `CorpusPractice` selects independently frozen
+`LayeredQuestionSession` instances and persists their canonical command journals;
+the existing question owner alone judges answers and publishes working/history.
+`CorpusPracticeUi` displays native symbolic choices in the Library workspace.
+This collection consumes no sorter slots and leaves the old catalogue and
+practice-save owner unchanged. The explicit authoring map and generator prove
+subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P048](P048_TEXTBOOK_SECTION_FORMAT.md) adds variable-length typed lesson blocks
+and stable internal references. `Textbook` owns independent help disclosures
+and publishes only opened passages; reading cannot rewrite exercise evidence.
+`TextbookUi` renders section 1.2 through the existing `NativeMath` adapter, whose
+implementation and Library ownership remain unchanged.
+
 [P047](P047_INTERACTIVE_TEXTBOOK.md) adds `paths_textbook` for chapter content,
 reading navigation and bounded bookmarks. It retains one existing MatrixBoard
 owner per chapter exercise. `TextbookUi` embeds the reusable grid/workspace;
