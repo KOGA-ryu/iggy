@@ -264,8 +264,10 @@ int main(int argc, char** argv) {
     if (o.frames && o.frames < commands.size() + 2) throw std::invalid_argument("--frames must allow the complete script plus two frames");
     if (o.native.offscreen && !o.frames) o.frames = static_cast<std::uint32_t>(commands.size() + 3);
     NativeVulkanHost host(o.native);
+    NativeMath math(std::filesystem::path(SDL_GetBasePath())/"math_typesetter");
     EquationSorterUiState ui;
     ui.corpus=&corpus;
+    ui.library.math=&math;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
     while (!o.frames || rendered < o.frames) {

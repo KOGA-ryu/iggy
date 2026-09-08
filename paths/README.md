@@ -1,5 +1,33 @@
 # Paths
 
+The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
+`math_lab` home. Its first chapter, **Matrices and Elimination**, has seven
+sections, an index, reading bookmarks and connected exercises. Run
+`./b/math_lab`; the existing 22 objects are under **Explore 3D objects**.
+
+The [exercise matrix board](docs/P046_MATRIX_BOARD.md) connects cards 001, 004,
+018, 031, 044 and 059 with reusable indexed diagrams, row operations and numeric
+checks. Launch `./b/math_lab --card 004` or use **Exercise matrix board** in the lab.
+
+## Native math in the Library
+
+In `sorter`, open **Contents → Library** and choose a title. Its formulas now
+appear in cyan alongside the prose, with larger equations on their own lines.
+**Raw source / Typeset** switches presentation; amber notation retains source
+that cannot be typeset, with a reason on hover. Long formulas scroll horizontally.
+Fonts and the typesetter are bundled for offline use. See
+[the Library checkpoint](docs/LIBRARY_TYPESETTING.md).
+
+The **Equations** button still opens the four-sample panel for fractions,
+nested roots, matrices and problem 095, with A-/A+ and Show source controls.
+See [the original panel checkpoint](docs/NATIVE_EQUATION_PANEL.md).
+
+```sh
+cmake -S . -B b -DCMAKE_BUILD_TYPE=Release
+cmake --build b --target sorter -j 6
+./b/sorter
+```
+
 ## Interactive maths objects and linked diagrams
 
 The native `math_lab` now contains twenty-two objects. The original expansion cube,

@@ -13,6 +13,56 @@ NotationBounds panel() {
   const auto p=ImGui::GetWindowPos(),s=ImGui::GetWindowSize();return {p.x,p.y,s.x,s.y,true};
 }
 constexpr ImVec4 violet{.76F,.65F,1,1},gold{1,.78F,.3F,1};
+void drawEquations(NativeMathPanelState& ui,NativeMath& math,bool blocked) {
+  ui.samples={};ui.controls={};ui.viewport={};ui.ink={};
+  const auto size=ImGui::GetIO().DisplaySize;
+  ImGui::SetNextWindowPos({size.x*.5F,size.y*.5F},ImGuiCond_Always,{.5F,.5F});
+  ImGui::SetNextWindowSize({std::min(720.0F,size.x-24),std::min(500.0F,size.y-24)});
+  if(!ImGui::BeginPopupModal("Native equations",nullptr,ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoMove))return;
+  ImGui::PushFont(nullptr,13);ImGui::BeginDisabled(blocked);
+  constexpr std::array colours{IM_COL32(89,217,255,255),IM_COL32(255,199,77,255),IM_COL32(102,230,166,255),IM_COL32(194,166,255,255)};
+  for(std::size_t i=0;i<nativeMathSamples.size();++i) {
+    if(i)ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text,colours[i]);
+    if(ImGui::Button(nativeMathSamples[i].label,{i==0?66.0F:54.0F,22}))ui.sample=i;
+    ui.samples[i]=item(!blocked);ImGui::PopStyleColor();
+  }
+  const auto record=[&](MathPanelControl c,bool enabled=true){ui.controls[static_cast<std::size_t>(c)]=item(enabled && !blocked);};
+  ImGui::BeginDisabled(ui.pixels==16);
+  if(ImGui::Button("A-",{30,22}))ui.pixels-=2;
+  record(MathPanelControl::Smaller,ui.pixels>16);ImGui::EndDisabled();ImGui::SameLine();
+  ImGui::Text("%d",ui.pixels);ImGui::SameLine();ImGui::BeginDisabled(ui.pixels==40);
+  if(ImGui::Button("A+",{30,22}))ui.pixels+=2;
+  record(MathPanelControl::Larger,ui.pixels<40);ImGui::EndDisabled();ImGui::SameLine();
+  if(ImGui::Button(ui.source?"Hide source###equation_source":"Show source###equation_source",{98,22}))ui.source=!ui.source;
+  record(MathPanelControl::Source);
+  const auto& sample=nativeMathSamples[ui.sample];
+  ImGui::TextWrapped("%s",sample.title);
+  const auto& equation=math.layout(sample.latex,static_cast<float>(ui.pixels));ui.error=equation.error;
+  ImGui::BeginChild("Equation viewport",{0,std::max(120.0F,ImGui::GetContentRegionAvail().y*.6F)},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+  ui.viewport=panel();
+  if(equation.error.empty()) {
+    const auto available=ImGui::GetContentRegionAvail();
+    ImGui::SetCursorPos({std::max(8.0F,(available.x-equation.width)*.5F),std::max(8.0F,(available.y-equation.height)*.5F)});
+    const auto p=ImGui::GetCursorScreenPos();math.draw(equation,p.x,p.y,colours[ui.sample]);
+    ui.ink={p.x,p.y,equation.width,equation.height,true};
+    ImGui::Dummy({equation.width+8,equation.height+8});
+  } else {
+    ImGui::TextColored({1,.5F,.5F,1},"Unable to typeset this equation.");
+    ImGui::TextWrapped("%s",equation.error.c_str());ImGui::TextWrapped("%s",sample.latex);
+  }
+  ui.horizontalScrollMax=ImGui::GetScrollMaxX();ImGui::EndChild();
+  if(ui.source) {
+    ImGui::BeginChild("Equation source",{0,std::max(30.0F,ImGui::GetContentRegionAvail().y-29)},ImGuiChildFlags_Borders);
+    ImGui::TextWrapped("%s",sample.latex);ImGui::EndChild();
+  } else {
+    if(ui.sample==3)ImGui::TextWrapped("Trefethen · Spectral Methods in MATLAB · 11.3");
+    ImGui::Dummy({0,std::max(0.0F,ImGui::GetContentRegionAvail().y-27)});
+  }
+  if(ImGui::Button("Close",{58,22}) || (!blocked && ImGui::IsKeyPressed(ImGuiKey_Escape,false)))ImGui::CloseCurrentPopup();
+  record(MathPanelControl::Close);
+  ImGui::EndDisabled();ImGui::PopFont();ImGui::EndPopup();
+}
 }
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked) {
   auto& io=ImGui::GetIO();blocked=blocked || io.AppFocusLost;
@@ -31,6 +81,12 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   if(ImGui::Button("Practice",{68,22}))ui.open=false;
   record(CorpusControl::Practice);ImGui::PopStyleColor();ImGui::SameLine();
   ImGui::TextColored(violet,"Math library");
+  if(ui.math) {
+    ImGui::SameLine();ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
+    if(ImGui::Button("Equations",{78,22}))ImGui::OpenPopup("Native equations");
+    record(CorpusControl::Equations);ImGui::PopStyleColor();
+  }
+  ui.equations.open=ImGui::IsPopupOpen("Native equations");
   const float available=ImGui::GetContentRegionAvail().x,half=(available-6)*.5F;
   ImGui::SetNextItemWidth(narrow?available:half);
   if(ImGui::BeginCombo("##subject",ui.subject?corpus.subjects[*ui.subject].title.c_str():"All subjects")) {
@@ -64,7 +120,7 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   if(ImGui::Button("Clear",{48,22})){ui.query={};ui.refresh=true;}
   record(CorpusControl::Clear);
   if(ui.refresh) {
-    ui.trail.clear();ui.restoreScroll.reset();ui.focusReader=false;
+    ui.trail.clear();ui.restoreScroll.reset();ui.restoreHorizontal.reset();ui.focusReader=false;
     ui.matches=corpus.find(ui.subject,ui.topic,ui.query.data());
     if(!ui.entry || std::find(ui.matches.begin(),ui.matches.end(),*ui.entry)==ui.matches.end())
       ui.entry=ui.matches.empty()?std::nullopt:std::optional{ui.matches.front()};
@@ -113,6 +169,9 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
       }
     }
     record(static_cast<CorpusControl>(static_cast<std::size_t>(CorpusControl::Previous)+i),enabled[i]);ImGui::EndDisabled();
+    // A paging control can disable itself at the end of a note. Move focus
+    // onward so Tab is not anchored to an item that no longer participates.
+    if(!enabled[i] && ImGui::IsItemFocused())ImGui::SetKeyboardFocusHere();
   }
   if(ui.shown!=ui.entry){ui.shown=ui.entry;ui.original=false;}
   if(ui.entry && corpus.entries[*ui.entry].review) {
@@ -124,14 +183,22 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   if(!ui.trail.empty()) {
     ImGui::SameLine();back=ImGui::Button("Back",{52,22});record(CorpusControl::Back);
   }
-  if(ui.top){scroll=0;ui.restoreScroll.reset();}
-  if(scroll)ImGui::SetNextWindowScroll({0,*scroll});
-  ImGui::BeginChild("Source notes",{0,0},ImGuiChildFlags_NavFlattened);
+  if(ui.math && ui.entry && (!corpus.entries[*ui.entry].review || ui.original)) {
+    ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
+    if(ImGui::Button(ui.raw?"Typeset###format":"Raw source###format",{84,22})){ui.raw=!ui.raw;ui.top=true;}
+    record(CorpusControl::Format);ImGui::PopStyleColor();
+  }
+  if(ui.top){scroll=0;ui.restoreScroll.reset();ui.restoreHorizontal.reset();}
+  if(scroll)ImGui::SetNextWindowScroll({ui.top?0.0F:-1.0F,*scroll});
+  ImGui::BeginChild("Source notes",{0,0},ImGuiChildFlags_NavFlattened,ImGuiWindowFlags_HorizontalScrollbar);
   ui.reader=panel();
-  ui.reviewedVisible=false;
+  ui.reviewedVisible=false;ui.body={};ui.bodyEquations=0;ui.bodyFallbacks=0;
+  // Reserve a vertical scrollbar consistently; horizontal scrolling must not
+  // change prose wrapping or move the equation farther away on the next frame.
+  const float wrapWidth=std::max(1.0F,ImGui::GetWindowWidth()-2*ImGui::GetStyle().WindowPadding.x-ImGui::GetStyle().ScrollbarSize);
   if(ui.entry) {
     const auto& entry=corpus.entries[*ui.entry];const auto& topic=corpus.topics[entry.topic];
-    ImGui::PushTextWrapPos();ImGui::TextColored(violet,"%s / %s",corpus.subjects[topic.subject].title.c_str(),topic.title.c_str());
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX()+wrapWidth);ImGui::TextColored(violet,"%s / %s",corpus.subjects[topic.subject].title.c_str(),topic.title.c_str());
     ImGui::TextColored(gold,"%s",entry.title.c_str());
     if(entry.review && !ui.original) {
       const auto& review=*entry.review;ui.reviewedVisible=true;
@@ -148,14 +215,21 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
       }
     } else {
       ImGui::TextDisabled("%s · Not yet fact-checked",entry.kind.c_str());ImGui::Separator();
-      ImGui::TextUnformatted(entry.body.c_str());
+      if(ui.math && !ui.raw) {
+        const auto& document=ui.math->layoutDocument(entry.body,wrapWidth);
+        ui.bodyEquations=document.equations;ui.bodyFallbacks=document.fallbacks;
+        if(document.fallbacks)ImGui::TextColored({1,.78F,.3F,1},"Amber notation is shown as source. Hover for the reason.");
+        const auto p=ImGui::GetCursorScreenPos();
+        ui.math->draw(document,p.x,p.y,ImGui::GetColorU32(ImGuiCol_Text),IM_COL32(89,217,255,255),IM_COL32(255,199,77,255));
+        ImGui::Dummy({document.width,document.height});ui.body=item();
+      } else {ImGui::TextUnformatted(entry.body.c_str());ui.body=item();}
     }
     if(!entry.related.empty()) {
       ImGui::Separator();ImGui::TextDisabled("RELATED NOTES");
       ImGui::PushStyleColor(ImGuiCol_Text,{.35F,.85F,1,1});
       for(const auto target:entry.related) {
         const auto& related=corpus.entries[target];ImGui::PushID(related.id.c_str());
-        if(ImGui::Button(related.title.c_str(),{ImGui::GetContentRegionAvail().x,22}))linkedEntry=target;
+        if(ImGui::Button(related.title.c_str(),{wrapWidth,22}))linkedEntry=target;
         ui.relatedRows.push_back({target,item(!blocked)});ImGui::PopID();
       }
       ImGui::PopStyleColor();
@@ -166,18 +240,24 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   // Restore after submitting the destination so the next frame clamps against
   // its height, not the shorter note we just left.
   if(ui.restoreScroll){ImGui::SetScrollY(*ui.restoreScroll);ui.restoreScroll.reset();}
+  if(ui.restoreHorizontal){ImGui::SetScrollX(*ui.restoreHorizontal);ui.restoreHorizontal.reset();}
   ui.scroll=ImGui::GetScrollY();ui.scrollMax=ImGui::GetScrollMaxY();ui.pageHeight=ui.reader.height;ui.top=false;
+  ui.horizontal=ImGui::GetScrollX();ui.horizontalMax=ImGui::GetScrollMaxX();
   ImGui::EndChild();ImGui::EndChild();
-  if(!blocked && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive()) {
+  if(!blocked && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive()) {
     if(!ui.trail.empty())back=true;else ui.open=false;
   }
   if(back) {
     const auto previous=ui.trail.back();ui.trail.pop_back();
-    ui.entry=previous.entry;ui.shown=ui.entry;ui.original=previous.original;ui.restoreScroll=previous.scroll;ui.focusReader=true;
+    ui.entry=previous.entry;ui.shown=ui.entry;ui.original=previous.original;ui.raw=previous.raw;
+    ui.restoreScroll=previous.scroll;ui.restoreHorizontal=previous.horizontal;ui.focusReader=true;
   } else if(linkedEntry && ui.entry) {
     if(ui.trail.size()==16)ui.trail.erase(ui.trail.begin());
-    ui.trail.push_back({*ui.entry,ui.scroll,ui.original});ui.entry=linkedEntry;ui.top=true;ui.focusReader=true;
+    ui.trail.push_back({*ui.entry,ui.scroll,ui.original,ui.raw,ui.horizontal});ui.entry=linkedEntry;ui.top=true;ui.focusReader=true;
   }
-  ImGui::EndDisabled();ImGui::PopFont();ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();
+  ImGui::EndDisabled();ImGui::PopFont();
+  if(ui.math)drawEquations(ui.equations,*ui.math,blocked);
+  ui.equations.open=ImGui::IsPopupOpen("Native equations");
+  ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();
 }
 } // namespace paths

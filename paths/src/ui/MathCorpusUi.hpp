@@ -2,12 +2,33 @@
 
 #include "content/MathCorpus.hpp"
 #include "ui/MathNotationUi.hpp"
+#include "ui/NativeMath.hpp"
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Count };
-struct CorpusBookmark { std::size_t entry; float scroll; bool original; };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Count };
+struct NativeMathSample {const char* label;const char* title;const char* latex;};
+inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
+  {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
+  {"Root","A nested root",R"(\sqrt{1+\sqrt{1+x^{2}}})"},
+  {"Matrix","A matrix with a fractional entry",R"(A=\begin{bmatrix}1&\frac{1}{2}&0\\-2&3&1\\0&-1&4\end{bmatrix})"},
+  {"095","095 · Eigenmodes of a lopsided drum",R"(\Delta u=-\lambda^{2}\left(1+\frac{x}{2}\right)u)"}
+}};
+enum class MathPanelControl : std::size_t { Smaller,Larger,Source,Close,Count };
+struct NativeMathPanelState {
+  bool open=false,source=false;
+  std::size_t sample=0;
+  int pixels=24;
+  std::array<NotationBounds,4> samples{};
+  std::array<NotationBounds,static_cast<std::size_t>(MathPanelControl::Count)> controls{};
+  NotationBounds viewport,ink;
+  float horizontalScrollMax=0;
+  std::string error;
+};
+struct CorpusBookmark { std::size_t entry; float scroll; bool original; bool raw=false; float horizontal=0; };
 struct MathCorpusUiState {
+  NativeMath* math=nullptr;
+  NativeMathPanelState equations;
   bool open=false, refresh=true, top=true, follow=true;
   std::optional<std::size_t> subject, topic, entry;
   std::array<char,128> query{};
@@ -19,9 +40,12 @@ struct MathCorpusUiState {
   std::vector<std::pair<std::size_t,NotationBounds>> relatedRows;
   std::vector<CorpusBookmark> trail;
   std::optional<float> restoreScroll;
-  NotationBounds list, reader;
+  std::optional<float> restoreHorizontal;
+  NotationBounds list, reader, body;
+  float horizontal=0,horizontalMax=0;
+  std::size_t bodyEquations=0,bodyFallbacks=0;
   std::optional<std::size_t> shown;
-  bool original=false, reviewedVisible=false, focusReader=false;
+  bool original=false, raw=false, reviewedVisible=false, focusReader=false;
 };
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 } // namespace paths

@@ -1,5 +1,25 @@
 # Paths architecture
 
+[P047](P047_INTERACTIVE_TEXTBOOK.md) adds `paths_textbook` for chapter content,
+reading navigation and bounded bookmarks. It retains one existing MatrixBoard
+owner per chapter exercise. `TextbookUi` embeds the reusable grid/workspace;
+reading position and exercise evidence remain separate. `LabPage` selects the
+textbook, objects or standalone board in the native math lab.
+
+[P046](P046_MATRIX_BOARD.md) adds `paths_matrix_board`, a pure owner for bounded
+complex matrices, authored exercise instances, row operations, pivot traces and
+numerical checks. `MatrixBoardUi` presents its disclosure-aware snapshots inside
+`math_lab`; the twenty-two object models and native host retain their owners.
+
+The [native equation panel](NATIVE_EQUATION_PANEL.md) adds `NativeMath`, a
+MicroTeX-to-ImGui adapter with bundled fonts and bounded layout caching.
+Library owns its four-sample panel and presentation state; the existing
+Vulkan host owns all GPU resources. Question and corpus mathematics retain
+their current owners. [Library typesetting](LIBRARY_TYPESETTING.md) extends
+that same adapter with source spans, prose wrapping, inline baselines and
+display equations. The reader owns Raw source / Typeset and restores that
+choice through its existing reading trail. Unsupported notation remains source.
+
 The [linked-note checkpoint](LINKED_CORPUS_NOTES.md) adds explicit related-entry
 IDs to the corpus. `MathCorpus` resolves and validates them; `MathCorpusUi`
 owns the bounded reading trail and restores reader position without changing

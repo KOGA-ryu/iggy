@@ -19,6 +19,12 @@ add_library(paths_scene
   vendor/iggy3d/src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp)
 target_include_directories(paths_scene PUBLIC src vendor/iggy3d/src)
 
+add_library(paths_matrix_board src/runtime/matrix_board/MatrixBoard.cpp)
+target_include_directories(paths_matrix_board PUBLIC src)
+
+add_library(paths_textbook src/runtime/textbook/Textbook.cpp src/runtime/textbook/MatrixChapter.cpp)
+target_link_libraries(paths_textbook PUBLIC paths_matrix_board)
+
 add_library(paths_math_objects
   src/runtime/math_objects/MathObjects.cpp
   src/scene/MathObjectScene.cpp)
@@ -82,6 +88,11 @@ if(PATHS_BUILD_NATIVE)
     third_party/imgui third_party/imgui/backends)
   target_link_libraries(paths_imgui PRIVATE SDL3::SDL3 Vulkan::Vulkan)
 
+  add_subdirectory(third_party/microtex)
+  add_library(paths_native_math src/ui/NativeMath.cpp)
+  target_include_directories(paths_native_math PUBLIC src)
+  target_link_libraries(paths_native_math PRIVATE paths_microtex paths_imgui)
+
   add_library(paths_ui src/ui/FirstMoveUi.cpp src/ui/LayeredQuestionUi.cpp)
   target_include_directories(paths_ui PUBLIC src src/ui)
   target_link_libraries(paths_ui PUBLIC paths_model PRIVATE paths_imgui SDL3::SDL3)
@@ -112,16 +123,21 @@ if(PATHS_BUILD_NATIVE)
 
   add_executable(paths app/main.cpp)
   target_link_libraries(paths PRIVATE paths_ui paths_native)
-  add_executable(math_lab app/math_lab_main.cpp)
-  target_link_libraries(math_lab PRIVATE paths_math_objects paths_native paths_imgui SDL3::SDL3)
+  add_executable(math_lab app/math_lab_main.cpp src/ui/MatrixBoardUi.cpp src/ui/TextbookUi.cpp)
+  target_link_libraries(math_lab PRIVATE paths_textbook paths_matrix_board paths_math_objects paths_native paths_imgui SDL3::SDL3)
   add_executable(gallery app/gallery_main.cpp)
   target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
   add_library(paths_notation_ui src/ui/MathNotationUi.cpp)
   target_link_libraries(paths_notation_ui PUBLIC paths_model PRIVATE paths_imgui)
   add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp)
-  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_math_corpus PRIVATE paths_imgui)
+  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_math_corpus paths_native_math PRIVATE paths_imgui)
   add_executable(sorter app/sorter_main.cpp)
   target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_native paths_imgui paths_json SDL3::SDL3)
+  add_custom_target(paths_native_math_resources
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/third_party/microtex/res"
+      "$<TARGET_FILE_DIR:sorter>/math_typesetter")
+  add_dependencies(sorter paths_native_math_resources)
   add_custom_target(paths_sorter_content_files
     COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_FILE_DIR:sorter>/content/sorter"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
@@ -171,6 +187,14 @@ if(BUILD_TESTING)
   add_executable(paths_math_layers_tests tests/math_layers_tests.cpp)
   target_link_libraries(paths_math_layers_tests PRIVATE paths_math_objects)
   add_test(NAME paths_math_layers_tests COMMAND paths_math_layers_tests)
+  add_executable(paths_textbook_tests tests/textbook_tests.cpp)
+  target_link_libraries(paths_textbook_tests PRIVATE paths_textbook)
+  add_test(NAME paths_textbook_tests COMMAND paths_textbook_tests)
+
+  add_executable(paths_matrix_board_tests tests/matrix_board_tests.cpp)
+  target_link_libraries(paths_matrix_board_tests PRIVATE paths_matrix_board)
+  add_test(NAME paths_matrix_board_tests COMMAND paths_matrix_board_tests)
+
   add_executable(paths_math_object_tests tests/math_object_tests.cpp)
   target_link_libraries(paths_math_object_tests PRIVATE paths_math_objects)
   add_test(NAME paths_math_object_tests COMMAND paths_math_object_tests)
@@ -244,6 +268,31 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_executable(paths_native_math_tests tests/native_math_tests.cpp)
+    target_link_libraries(paths_native_math_tests PRIVATE paths_sorter_ui paths_imgui paths_json)
+    target_compile_definitions(paths_native_math_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json")
+    add_dependencies(paths_native_math_tests paths_native_math_resources)
+    add_test(NAME paths_native_math_tests COMMAND paths_native_math_tests)
+    add_test(NAME paths_math_book_cli COMMAND math_lab --validate --book --section 2 --book-next --book-exercise)
+    set_tests_properties(paths_math_book_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=3.*card=031.*working=0.*checked=0.*bookmark_io=0")
+    add_test(NAME paths_math_book_last_cli COMMAND math_lab --validate --section 6 --book-next --book-read)
+    set_tests_properties(paths_math_book_last_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=7.*card=059.*bookmark_io=0")
+    add_test(NAME paths_math_book_index_cli COMMAND math_lab --validate --book-index)
+    set_tests_properties(paths_math_book_index_cli PROPERTIES PASS_REGULAR_EXPRESSION "page=2.*bookmark_io=0")
+    add_test(NAME paths_math_board001_cli COMMAND math_lab --validate --card 001 --board-step 6 --board-check)
+    set_tests_properties(paths_math_board001_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
+    add_test(NAME paths_math_board004_cli COMMAND math_lab --validate --card 004 --board-step 2 --board-check)
+    set_tests_properties(paths_math_board004_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
+    add_test(NAME paths_math_board018_cli COMMAND math_lab --validate --card 018 --board-step 6 --board-check)
+    set_tests_properties(paths_math_board018_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
+    add_test(NAME paths_math_board031_cli COMMAND math_lab --validate --card 031 --board-step 6 --board-check)
+    set_tests_properties(paths_math_board031_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
+    add_test(NAME paths_math_board044_cli COMMAND math_lab --validate --card 044 --board-step 2 --board-check)
+    set_tests_properties(paths_math_board044_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
+    add_test(NAME paths_math_board059_cli COMMAND math_lab --validate --card 059 --board-step 2 --board-check)
+    set_tests_properties(paths_math_board059_cli PROPERTIES PASS_REGULAR_EXPRESSION "passed=1")
     add_test(NAME paths_math_function_cli COMMAND math_lab --validate --object function --level 3 --set function=2 --set at=0.5 --set degree=5 --check)
     add_test(NAME paths_math_matrix_cli COMMAND math_lab --validate --object linear --level 3 --preset 2 --check)
     add_test(NAME paths_math_surface_cli COMMAND math_lab --validate --object surface --level 3 --set surface=1 --set constraint=1 --set circle_angle=0 --check)
@@ -267,11 +316,13 @@ if(BUILD_TESTING)
     add_executable(paths_sorter_input_tests tests/equation_sorter_input_tests.cpp)
     target_link_libraries(paths_sorter_input_tests PRIVATE paths_sorter_ui paths_sorter_content paths_imgui)
     target_compile_definitions(paths_sorter_input_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
       CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
       SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json"
       SORTER_BRACKET_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/bracket_practice_v1.json"
       SORTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/equations_v1.json"
       SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
+    add_dependencies(paths_sorter_input_tests paths_native_math_resources)
     add_test(NAME paths_sorter_input_tests COMMAND paths_sorter_input_tests)
     add_test(NAME paths_content_startup_tests COMMAND "${CMAKE_COMMAND}"
       "-DGALLERY=$<TARGET_FILE:gallery>"

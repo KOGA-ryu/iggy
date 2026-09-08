@@ -1,14 +1,39 @@
 # Paths workstreams
 
-## Resting checkpoint: linked reviewed notes
+## Resting checkpoint: Library typesetting
+
+[LIBRARY_TYPESETTING.md](LIBRARY_TYPESETTING.md) puts native equations inside
+the actual Library entries. Cyan math shares lines with prose or occupies its
+own display line; Raw source remains available and amber notation explains
+fallbacks. All 930 entries passed the headless layout/drawing probe, with
+2,139 formulas typeset and 72 source fallbacks across 41 entries. These are
+rendering results, not mathematical review. The Release sorter build and two
+targeted tests passed, including live resizing, source navigation and exact
+unfinished-practice preservation. Evidence is in
+`build/library-typesetting-evidence/verification.json`. Changes are uncommitted;
+visual acceptance remains with the user. A future content workstream can review
+the reported source defects while retaining the pinned originals.
+
+## Native equation panel
+
+[NATIVE_EQUATION_PANEL.md](NATIVE_EQUATION_PANEL.md) establishes native
+typesetting through the existing ImGui/Vulkan path. Library → Equations opens
+four coloured samples with text-size controls and retained LaTeX source.
+Release builds and targeted headless checks passed, including dynamic font
+atlas requests and three viewport sizes. Evidence is in
+`build/native-equation-evidence/verification.json`. Changes are uncommitted;
+the user's visual check remains pending. The Library integration above follows
+this rendering checkpoint.
+
+## Linked reviewed notes
 
 [LINKED_CORPUS_NOTES.md](LINKED_CORPUS_NOTES.md) connects the four reviewed notes
 with seven explicit reading links. Cyan Related notes controls stay within the
 Library reader; Back and Escape restore the previous location and reading mode.
 The exact search and subject/topic filters survive linked reading, as does
 unfinished practice. Evidence: `build/linked-notes-evidence/verification.json`.
-Changes are uncommitted, visual review remains deferred, and no next workstream
-has been started or scheduled.
+Changes are uncommitted; the user subsequently reported that the Library work
+was good and identified LaTeX display as its remaining visible issue.
 
 ## Rank, nullity and consistency
 
@@ -99,6 +124,8 @@ review remains deferred, and changes are uncommitted.
 | P043 | Explore flux shells, tensor blocks and probability networks | Native build and eighteen targeted text-only checks passed; user reported successful try; uncommitted | Oriented surface/volume integrals; tensor contractions and basis invariants; stochastic matrices and bounded walk evidence; no images |
 | P044 | Explore binomial trials, Bayesian conditioning and covariance geometry | Native build and twenty-two targeted text-only checks passed; user visual review pending; uncommitted | Exact finite probabilities; explicit undefined cases; moments from actual points; PCA/whitening; no images |
 | P045 | Explore spherical harmonics, quadratic forms and roots of unity | Native build and twenty-six targeted text-only checks passed; user visual review pending; uncommitted | Real orthonormal modes; heat diffusion; signed/singular forms; Rayleigh bounds; exact cyclotomic action; no images |
+| P046 | [Reusable matrix board](P046_MATRIX_BOARD.md) for six exercise cards | Native build and 33 targeted text-only checks passed; user visual review pending; uncommitted | Complex/rectangular matrices; row operations; pivot and block traces; setup disclosure; read-only source cards; no images |
+| P047 | [Interactive textbook](P047_INTERACTIVE_TEXTBOOK.md): Matrices and Elimination | Native build and 29 targeted text-only tests passed; user visual review pending; uncommitted | Seven sections; 21-term index; retained board work; reading bookmarks separate from exercise evidence; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -121,14 +148,13 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user requested a few more focused batches and authorized selection from
-the expanded TOC. This batch, [P045](P045_SPECTRAL_FORMS_ROOTS.md), adds spherical
-harmonics, quadratic forms and roots of unity. Each has four working layers
-and challenge checks; the math lab now contains twenty-two objects. Further
-batches remain to be chosen. This packet does not claim the source corpus is
-reviewed or adapted in full. The user reported successful tries of P041 and
-P043; P044 and P045 visual review remain for the user. Existing sorter, Library,
-reviewed teaching notes and earlier gates are preserved.
+[P047](P047_INTERACTIVE_TEXTBOOK.md) makes the textbook the math lab's default
+home and assembles Matrices and Elimination as its first seven-section chapter.
+It adds contents, an index, Previous/Next navigation, optional worked examples,
+embedded exercises and reading bookmarks. The other parts remain an outline.
+The 22 objects and standalone matrix board remain accessible. Reading does not
+mark exercises complete; source pages and existing sorter/Library owners remain
+unchanged. P047 and earlier unreviewed visual checkpoints await the user.
 
 The user prohibits taking or viewing images. Do not capture, render, open
 image files or launch previews as part of this work. Use the pure-model/scene

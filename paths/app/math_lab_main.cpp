@@ -1,4 +1,6 @@
 #include "runtime/math_objects/MathObjects.hpp"
+#include "ui/MatrixBoardUi.hpp"
+#include "ui/TextbookUi.hpp"
 #include "scene/MathObjectScene.hpp"
 #include "platform/NativeVulkanHost.hpp"
 
@@ -7,6 +9,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -18,12 +21,17 @@
 namespace {
 using namespace paths;
 using Navigation = iggy3d::ProductCreativeViewportNavigationOperation;
+enum class LabPage { Textbook, Objects, MatrixBoard };
 struct Options {
   NativeLaunchConfig native{false,1440,900,true};
   unsigned frames=0;
   bool validate=false;
   std::filesystem::path capture;
   std::vector<MathAction> actions;
+  std::vector<BoardAction> boardActions;
+  bool board=false,book=false;
+  LabPage page=LabPage::Textbook;
+  std::vector<BookAction> bookActions;
 };
 double number(std::string_view text) {
   double result=0;const auto parsed=std::from_chars(text.data(),text.data()+text.size(),result);
@@ -32,16 +40,16 @@ double number(std::string_view text) {
 unsigned integer(std::string_view text,unsigned minimum,unsigned maximum) {
   const double result=number(text);if(result<minimum||result>maximum||std::floor(result)!=result)throw std::invalid_argument("Integer option out of range");return static_cast<unsigned>(result);
 }
-enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Turn,UndoTurn,Identity,Advance,ModularStep,ResetWalk,ReversePath,WalkStep,ResetProbability,TrialStep,ResetTrials,Help };
+enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Turn,UndoTurn,Identity,Advance,ModularStep,ResetWalk,ReversePath,WalkStep,ResetProbability,TrialStep,ResetTrials,Card,BoardCase,BoardSize,BoardStep,BoardUndo,BoardCheck,Book,Section,BookNext,BookPrevious,BookExercise,BookRead,BookIndex,Help };
 Options parse(int argc,char** argv) {
-  constexpr std::array<std::pair<std::string_view,Flag>,25> flags{{
+  constexpr std::array<std::pair<std::string_view,Flag>,38> flags{{
     {"--offscreen",Flag::Offscreen},{"--frames",Flag::Frames},{"--capture",Flag::Capture},
     {"--resolution",Flag::Resolution},{"--object",Flag::Object},{"--set",Flag::Set},
     {"--route",Flag::Route},{"--check",Flag::Check},{"--level",Flag::Level},
     {"--preset",Flag::Preset},{"--descent",Flag::Descent},{"--swap-bounds",Flag::Swap},
     {"--validate",Flag::Validate},{"--turn",Flag::Turn},{"--undo-turn",Flag::UndoTurn},
     {"--identity",Flag::Identity},{"--advance",Flag::Advance},{"--step",Flag::ModularStep},
-    {"--reset-walk",Flag::ResetWalk},{"--reverse-path",Flag::ReversePath},{"--walk-step",Flag::WalkStep},{"--reset-probability-walk",Flag::ResetProbability},{"--trial-step",Flag::TrialStep},{"--reset-trials",Flag::ResetTrials},{"--help",Flag::Help}}};
+    {"--reset-walk",Flag::ResetWalk},{"--reverse-path",Flag::ReversePath},{"--walk-step",Flag::WalkStep},{"--reset-probability-walk",Flag::ResetProbability},{"--trial-step",Flag::TrialStep},{"--reset-trials",Flag::ResetTrials},{"--card",Flag::Card},{"--board-case",Flag::BoardCase},{"--board-size",Flag::BoardSize},{"--board-step",Flag::BoardStep},{"--board-undo",Flag::BoardUndo},{"--board-check",Flag::BoardCheck},{"--book",Flag::Book},{"--section",Flag::Section},{"--book-next",Flag::BookNext},{"--book-previous",Flag::BookPrevious},{"--book-exercise",Flag::BookExercise},{"--book-read",Flag::BookRead},{"--book-index",Flag::BookIndex},{"--help",Flag::Help}}};
   Options options;
   for(int i=1;i<argc;++i) {
     const std::string_view name=argv[i];const auto flag=std::find_if(flags.begin(),flags.end(),[&](const auto& item){return item.first==name;});
@@ -88,12 +96,38 @@ Options parse(int argc,char** argv) {
       case Flag::ResetProbability:options.actions.push_back({MathActionKind::ResetProbabilityWalk});break;
       case Flag::TrialStep:options.actions.push_back({MathActionKind::BernoulliStep});break;
       case Flag::ResetTrials:options.actions.push_back({MathActionKind::ResetBernoulli});break;
+      case Flag::Card:options.board=true;options.boardActions.push_back({BoardActionKind::Select,integer(next(),1,95)});break;
+      case Flag::BoardCase: {
+        if(options.boardActions.empty()||options.boardActions.back().kind!=BoardActionKind::Select)throw std::invalid_argument("--board-case must immediately follow --card");
+        options.boardActions.back().second=integer(next(),0,5);break;
+      }
+      case Flag::BoardSize: {
+        const auto n=integer(next(),2,32),b=integer(next(),0,31),cut=integer(next(),1,32);options.boardActions.push_back({BoardActionKind::Configure,n,b,cut});break;
+      }
+      case Flag::BoardStep: {const auto count=integer(next(),1,128);for(unsigned k=0;k<count;++k)options.boardActions.push_back({BoardActionKind::Step});break;}
+      case Flag::BoardUndo:options.boardActions.push_back({BoardActionKind::Undo});break;
+      case Flag::BoardCheck:options.boardActions.push_back({BoardActionKind::Check});break;
+      case Flag::Book:options.book=true;options.bookActions.push_back({BookActionKind::Resume});break;
+      case Flag::Section:options.bookActions.push_back({BookActionKind::OpenSection,integer(next(),1,7)-1});break;
+      case Flag::BookNext:options.bookActions.push_back({BookActionKind::Next});break;
+      case Flag::BookPrevious:options.bookActions.push_back({BookActionKind::Previous});break;
+      case Flag::BookExercise:options.bookActions.push_back({BookActionKind::Exercise});break;
+      case Flag::BookRead:options.bookActions.push_back({BookActionKind::Read});break;
+      case Flag::BookIndex:options.bookActions.push_back({BookActionKind::Index});break;
       case Flag::Help:
+        std::puts("Textbook (default): [--book] [--section 1..7] [--book-next] [--book-previous] [--book-exercise] [--book-read] [--book-index] [--validate]\n--validate never reads or writes a reading bookmark.");
+        std::puts("Matrix board: --card 001|004|018|031|044|059 [--board-case 0..5] [--board-size SIZE BAND CUT] [--board-step N] [--board-undo] [--board-check] [--validate]");
         std::puts("math_lab [--object algebra|trig|calculus|linear|discrete|function|surface|symmetry|harmonics|oscillator|modular|gaussian|field|flux|tensor|probability|binomial|bayes|covariance|spherical|quadratic|roots] [--level 0..3]\n         [--set key=value] [--preset 0..4] [--descent] [--swap-bounds] [--route BDH] [--check]\n         [--turn x|y|z|x-inverse|y-inverse|z-inverse] [--undo-turn] [--identity] [--advance duration]\n         [--step 1|-1] [--reset-walk] [--reverse-path] [--walk-step] [--reset-probability-walk] [--trial-step] [--reset-trials]\n         [--validate] [--offscreen] [--frames N] [--resolution 1440x900] [--capture /path/view.png]\n--validate computes geometry and prints measurements without creating a native host or images.\nArguments apply in order: select the object and level before setting its parameters.\nMatrix presets: 0 identity, 1 shear, 2 xy projection, 3 stretch/reflection, 4 z rotation.");
         for(const auto& p:mathParameterSpecs())std::printf("  %s [%g,%g]  %s (level %u+)\n",p.key.data(),p.minimum,p.maximum,p.label.data(),p.minimumLevel);
         std::exit(0);
     }
   }
+  options.book=options.book||!options.bookActions.empty();
+  if(options.book&&(options.board||!options.actions.empty()))throw std::invalid_argument("Use textbook, card, or object arguments in one invocation");
+  if(options.board)options.page=LabPage::MatrixBoard;
+  if(!options.actions.empty())options.page=LabPage::Objects;
+  if(!options.boardActions.empty()&&!options.board)throw std::invalid_argument("Board actions require --card");
+  if(options.board&&!options.actions.empty())throw std::invalid_argument("Use either card actions or object actions in one invocation");
   if(options.native.offscreen&&!options.frames)options.frames=3;
   if(!options.capture.empty()&&!options.frames)options.frames=3;
   if(options.validate&&!options.capture.empty())throw std::invalid_argument("Text validation cannot capture images");
@@ -286,15 +320,17 @@ void linkedViews(const MathObjects& model,UiState& ui) {
   } else if(snapshot.plotCount)panels(snapshot.plotCount,[&](std::size_t i,bool show){if(show)plotView(snapshot.plots[i],model,ui);return snapshot.plots[i].title;});
   else if(snapshot.matrixCount)panels(snapshot.matrixCount,[&](std::size_t i,bool show){if(show)matrixView(snapshot.matrices[i],model,ui);return snapshot.matrices[i].name;});
 }
-void draw(MathObjects& model,MathObjectScene& scene,UiState& ui) {
+void draw(MathObjects& model,MathObjectScene& scene,UiState& ui,LabPage& page) {
   if(ui.hasPending){apply(model,ui.pending);ui.hasPending=false;}
   if(model.snapshot().playing)apply(model,{MathActionKind::AdvanceTime,{},{},std::clamp(static_cast<double>(ImGui::GetIO().DeltaTime),.001,.1)});
   const auto size=ImGui::GetIO().DisplaySize;
   const unsigned columns=std::clamp(static_cast<unsigned>(std::max(1.0F,size.x/145)),1U,static_cast<unsigned>(mathObjectSpecs().size()));
   const unsigned rows=(static_cast<unsigned>(mathObjectSpecs().size())+columns-1)/columns;
   const bool compactSubjects=size.y<720;
-  const float sidebar=std::clamp(size.x*.29F,280.0F,380.0F),top=compactSubjects?90:50+42.0F*rows,footer=148;
+  const float sidebar=std::clamp(size.x*.29F,280.0F,380.0F),top=compactSubjects?104:64+42.0F*rows,footer=148;
   window("Subjects",{0,0},{size.x,top-8});
+  if(ImGui::Button("Textbook"))page=LabPage::Textbook;ImGui::SameLine();
+  if(ImGui::Button("Exercise matrix board"))page=LabPage::MatrixBoard;ImGui::SameLine();
   ImGui::TextUnformatted("PATHS / MATH OBJECTS");ImGui::SameLine();ImGui::TextDisabled("Explore a relationship in three dimensions");
   ImGui::Spacing();
   if(compactSubjects) {
@@ -411,6 +447,19 @@ int main(int argc,char** argv) {
   try {
     const auto options=parse(argc,argv);MathObjects model;for(const auto& action:options.actions)apply(model,action);
     MathObjectScene scene;UiState ui;
+    MatrixBoard board;MatrixBoardUiState boardUi;LabPage page=options.page;
+    Textbook book;TextbookUiState bookUi;
+    const auto applyBookActions=[&]{for(const auto action:options.bookActions){const auto result=book.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}};
+    if(options.validate&&page==LabPage::Textbook){
+      applyBookActions();const auto v=book.view();const auto matrix=book.board().view();
+      std::printf("textbook text validation: sections=%zu terms=%zu section=%u id=%s page=%u mode=%u card=%03u working=%d checked=%d bookmark_io=0\n",matrixChapter().size(),matrixChapter().size()*matrixChapter()[0].terms.size(),v.section+1,matrixChapter()[v.section].id,static_cast<unsigned>(v.page),static_cast<unsigned>(v.mode),matrix.card,matrix.working,matrix.checked);
+      return 0;
+    }
+    for(const auto& action:options.boardActions){const auto result=board.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}
+    if(options.validate&&page==LabPage::MatrixBoard){
+      const auto v=board.view();std::printf("matrix_board text validation: card=%03u case=%u rows=%u cols=%u steps=%u working=%d complete=%d blocked=%d checked=%d passed=%d residual=%.12g tolerance=%.12g\n",v.card,v.example,v.given.rows,v.given.cols,v.steps,v.working,v.complete,v.blocked,v.checked,v.passed,v.residual,v.tolerance);
+      std::printf("%s\n%s\n",v.status.c_str(),v.evidence.c_str());return v.checked&&!v.passed?2:0;
+    }
     if(options.validate) {
       const auto& frame=scene.publish(model.snapshot(),{0,0,static_cast<float>(options.native.width),static_cast<float>(options.native.height)});
       std::printf("math_lab text validation: object=%s level=%u vertices=%zu indices=%zu plots=%zu matrices=%zu contours=%zu feedback=%u\n",mathObjectSpecs()[static_cast<std::size_t>(model.snapshot().kind)].key.data(),model.snapshot().level,frame.vertices.size(),frame.indices.size(),model.snapshot().plotCount,model.snapshot().matrixCount,model.snapshot().contours.count,static_cast<unsigned>(model.snapshot().feedback));
@@ -419,16 +468,28 @@ int main(int argc,char** argv) {
       if(table.rowCount){std::printf("  Table: %s\n",table.title.data());for(std::size_t r=0;r<table.rowCount;++r){std::printf("    %s:",table.rowLabels[r].data());for(std::size_t c=0;c<table.columnCount;++c)std::printf(" %s=%.12g",table.columns[c].data(),table.values[r][c]);std::putchar('\n');}}
       return 0;
     }
+    std::filesystem::path bookmarkPath;
+    if(char* folder=SDL_GetPrefPath("Paths","MathLab")){bookmarkPath=std::filesystem::path(folder)/"reading-v1.txt";SDL_free(folder);}
+    if(!bookmarkPath.empty()){const auto result=readTextbookBookmark(bookmarkPath,book);if(!result.accepted)bookUi.message=result.reason;}
+    std::string lastSavedBookmark=book.bookmark();applyBookActions();
+    auto lastBookmarkSave=std::chrono::steady_clock::now();
+    const auto saveBookmark=[&]{if(bookmarkPath.empty()||book.bookmark()==lastSavedBookmark)return;const auto result=writeTextbookBookmark(bookmarkPath,book);if(result.accepted)lastSavedBookmark=book.bookmark();else bookUi.message=result.reason;};
     NativeVulkanHost host(options.native);
     auto& style=ImGui::GetStyle();style.WindowPadding={15,13};style.FramePadding={8,5};style.ItemSpacing={7,8};style.FrameRounding=4;
     style.Colors[ImGuiCol_WindowBg]={.035F,.055F,.08F,1};style.Colors[ImGuiCol_Button]={.12F,.26F,.30F,1};
     unsigned frames=0,skipped=0;
     while(!ui.quit&&(!options.frames||frames<options.frames)) {
-      const auto result=host.frame([&](const SDL_Event& event){if(event.type==SDL_EVENT_QUIT)ui.quit=true;},[&]{draw(model,scene,ui);},&scene.frame());
+      const auto result=host.frame([&](const SDL_Event& event){if(event.type==SDL_EVENT_QUIT)ui.quit=true;},[&]{switch(page){
+        case LabPage::Textbook:if(drawTextbook(book,bookUi))page=LabPage::Objects;break;
+        case LabPage::Objects:draw(model,scene,ui,page);break;
+        case LabPage::MatrixBoard:{bool stay=true;drawMatrixBoard(board,boardUi,stay,"Textbook");if(!stay)page=LabPage::Textbook;break;}
+      }},page==LabPage::Objects?&scene.frame():nullptr);
       if(result.status==FrameStatus::Failed)throw std::runtime_error(result.error);if(result.status==FrameStatus::Closed)break;
       if(result.status==FrameStatus::Skipped){if(++skipped>1000)throw std::runtime_error("Too many skipped native frames");continue;}
       skipped=0;++frames;
+      const auto now=std::chrono::steady_clock::now();if(now-lastBookmarkSave>std::chrono::seconds(2)){saveBookmark();lastBookmarkSave=now;}
     }
+    saveBookmark();
     if(!options.capture.empty()) {
       if(!options.capture.parent_path().empty())std::filesystem::create_directories(options.capture.parent_path());
       std::string error;if(!host.capture(capturePaths(options.capture),error))throw std::runtime_error(error);

@@ -1,0 +1,2443 @@
+{
+  "schema_version": 1,
+  "status": "partial_runtime_integration_six_matrix_adapters",
+  "created_date": "2026-09-08",
+  "source_root": "/Users/kogaryu/devil/99-red-booleans/problems",
+  "source_page_count": 95,
+  "distinct_source_locators": 91,
+  "same_source_groups": [
+    [
+      "012",
+      "052"
+    ],
+    [
+      "022",
+      "061"
+    ],
+    [
+      "024",
+      "062"
+    ],
+    [
+      "037",
+      "077"
+    ]
+  ],
+  "source_policy": {
+    "read_only": true,
+    "preserve": [
+      "Question",
+      "Attempt",
+      "setup",
+      "solve",
+      "opened",
+      "Run"
+    ],
+    "executed_commands": [
+      "python3 problems/work/pp.py status"
+    ],
+    "check_programs_executed": false,
+    "images_taken_or_viewed": false
+  },
+  "disclosure_contract": {
+    "setup": [
+      "question_givens",
+      "declared_roles",
+      "dimensions",
+      "domains",
+      "source_conditions"
+    ],
+    "help": [
+      "explicitly_opened_notation_or_method_stage"
+    ],
+    "working": [
+      "learner_submitted_operations",
+      "candidate_objects"
+    ],
+    "check": [
+      "actual_measured_values",
+      "tolerance",
+      "check_kind",
+      "evidence_scope"
+    ],
+    "solution": [
+      "explicit_solution_reveal"
+    ],
+    "enforcement": "A future semantic card-session owner filters the presentation snapshot. Hide labels, geometry, tooltips, legends, matrix cells and plots consistently; no UI-only reveal switch. Existing standalone math_lab explorers remain ungated sandboxes."
+  },
+  "components": [
+    {
+      "id": "matrix_board",
+      "name": "Matrix board",
+      "presentation": "2D indexed cells / block views",
+      "existing_foundation": [
+        "linear",
+        "tensor"
+      ],
+      "contract": "Rectangular arrays; real, complex or GF(2) domains; structural zero versus measured small value; block boundaries; pivot/permutation overlays; paired numeric/structural views.",
+      "gap": "Current matrix diagrams hold nine values. Add a separately bounded viewport/tiling model and variable-shape data; do not enlarge 3D primitives per entry.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "linear_map",
+      "name": "Vectors, bases and linear maps",
+      "presentation": "2D / 3D geometric scene",
+      "existing_foundation": [
+        "linear",
+        "symmetry",
+        "covariance"
+      ],
+      "contract": "Ordered bases, arrows, coordinate representations, spans, residuals, transformed disk/sphere, decomposition stages and explicit metric.",
+      "gap": "Extend beyond the present real 3-by-3 explorer: rectangular domain/codomain and complex/high-dimensional numeric views. Any projection into 3D must name what is omitted.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "basis_fit",
+      "name": "Functions, bases and samples",
+      "presentation": "2D plots + coefficient rows",
+      "existing_foundation": [
+        "function",
+        "harmonics",
+        "surface"
+      ],
+      "contract": "Declarative basis functions, given sample nodes, candidate coefficients, residuals, derivative/integral traces and fitting domain.",
+      "gap": "Replace fixed example functions with per-card basis definitions and exact sample data; finite samples cannot certify an infinite-dimensional subspace claim.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "metric_surface",
+      "name": "Inner products and quadratic geometry",
+      "presentation": "2D contours + 3D surface",
+      "existing_foundation": [
+        "quadratic",
+        "surface",
+        "tensor",
+        "linear"
+      ],
+      "contract": "Declared Gram matrix, candidate vectors, norm/angle data, affine quadratic forms, level sets, tangent/gradient and distance constructions.",
+      "gap": "General symmetric metrics, oblique coordinate frames, linear terms and non-Euclidean orthogonality are not all exposed by existing presets.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "spectrum",
+      "name": "Spectra and the complex plane",
+      "presentation": "2D points / contours + scalar panels",
+      "existing_foundation": [
+        "roots",
+        "gaussian",
+        "linear",
+        "quadratic"
+      ],
+      "contract": "Eigenvalues, singular values, complex-plane probes, perturbation contours, polynomial matrix functions and comparison bands.",
+      "gap": "Current roots/Gaussian objects do not compute arbitrary matrix spectra or pseudospectra. Add an independent complex numerical owner and explicit domain masks.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "iteration",
+      "name": "Evolution and convergence",
+      "presentation": "2D traces + optional geometric probe",
+      "existing_foundation": [
+        "oscillator",
+        "probability",
+        "harmonics"
+      ],
+      "contract": "Snapshots by step/time, true error versus residual, directions, scalar rates, thresholds, seeds and repeatable experiment metadata.",
+      "gap": "Reuse plot/time UI; add each actual algorithm or validated result input. The current oscillator kernel is not a general matrix-exponential or eigensolver.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "error_work",
+      "name": "Precision, work and experiments",
+      "presentation": "2D plots / counters / distributions",
+      "existing_foundation": [
+        "binomial",
+        "covariance; shared plots/tables"
+      ],
+      "contract": "Representation bins, perturbation/error scales, operation counts, sample distributions, parameter sweeps and measured timings.",
+      "gap": "Separate observed timings, analytical counts and estimates. No synthetic timings; no fixed n=3 substitute for n=60 or n=100 cards.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "spectral_grid",
+      "name": "Sampling and spectral discretization",
+      "presentation": "2D nodes / stencils / contours",
+      "existing_foundation": [
+        "harmonics",
+        "function",
+        "surface",
+        "spherical"
+      ],
+      "contract": "Node coordinates, weights, interpolation bases, derivative operators, boundary conditions, complex error fields and resolution comparisons.",
+      "gap": "The 21-by-21 display patch is not a discretization solver. Add genuine periodic/Chebyshev operators and distinguish solver resolution from display sampling.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "incidence_graph",
+      "name": "Incidence, parity and dependency graphs",
+      "presentation": "2D / 3D graph",
+      "existing_foundation": [
+        "discrete",
+        "modular",
+        "probability"
+      ],
+      "contract": "Typed vertices/edges, matrix-index links, parity bits, syndromes, path weights and disjoint pair stages.",
+      "gap": "Generalize the fixed graph layouts. GF(2) parity is exact arithmetic; Markov probabilities and real geometric dot products are different domains.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "mechanics",
+      "name": "Meshes, coordinates and physical fields",
+      "presentation": "2D / 3D geometry",
+      "existing_foundation": [
+        "flux",
+        "surface",
+        "vector field",
+        "oscillator",
+        "spherical"
+      ],
+      "contract": "Nodes/bars/faces, supports, coordinate maps, vector/scalar fields, trajectories, boundary conditions, density and mesh/result identity.",
+      "gap": "Add arbitrary domains and validated field samples. Spherical harmonics do not supply disk/cube eigenmodes; a sculpted vibration shape is not an eigenproblem result.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "proof_links",
+      "name": "Assumptions and licensed steps",
+      "presentation": "Text + code-native node/edge diagram",
+      "existing_foundation": [
+        "discrete primitives; existing teaching-note text"
+      ],
+      "contract": "Given statements, named dependencies, implication edges, candidate steps and local justification prompts.",
+      "gap": "A visual example illustrates a theorem; it is not a proof checker. Preserve source gaps and a separate human/key review state.",
+      "status": "proposed_component_contract"
+    },
+    {
+      "id": "operator_chain",
+      "name": "Composition and computation flow",
+      "presentation": "2D stages + linked arrays / vectors",
+      "existing_foundation": [
+        "linear",
+        "tensor; shared panels"
+      ],
+      "contract": "Typed input/output shapes, ordered factors, reusable intermediates, active computational step and optional work count.",
+      "gap": "One declared domain-action owner supplies results to every view. Shape checking and step semantics must live outside presentation.",
+      "status": "proposed_component_contract"
+    }
+  ],
+  "cards": [
+    {
+      "id": "001",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Band mask, active pivot and linked A/L/U patterns; import the leading-block assumption from 018.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/001_banded_lu_sparsity.md",
+        "sha256": "431acb2bee12778624b87a71e291be128ac3dfe45d46fa12b7cf41fca79cbd33",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "20.2"
+      },
+      "title": "001 — the sparsity of L and U for a banded matrix",
+      "source_check_kind": "invariant",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Exercise 20.1 leading-block assumption is supplied in Notation; retain unpivoted factorization scope.",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 001",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "002",
+      "primary": "basis_fit",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "Known sample points and unknown coefficient slots for the basis x^2,x,1.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/002_quadratic_through_three_points.md",
+        "sha256": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_01",
+        "exercise": "1.1.7"
+      },
+      "title": "002 — a quadratic through three points",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "003",
+      "primary": "basis_fit",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "The same coefficient/sample layout with basis 1,cos(x),sin(x); angles in radians.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/003_trigonometric_polynomial.md",
+        "sha256": "47d49b4f50c3509820e3ec59876c3e705a610b79168c4ff11f90ce6c74c4df24",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_01",
+        "exercise": "1.1.8"
+      },
+      "title": "003 — the same method, different building blocks",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "004",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Six rectangular matrices; show only learner-authorized row operations and pivot history.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/004_rref_six_matrices.md",
+        "sha256": "25ee3405d2c36411196098bcc9c267562bf144679d3c000ba249b76662e5f8c6",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_01",
+        "exercise": "1.2.3"
+      },
+      "title": "004 — six matrices, one shape",
+      "source_check_kind": "two methods",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 004",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "005",
+      "primary": "basis_fit",
+      "secondary": [
+        "proof_links"
+      ],
+      "graphic_recipe": "Function constraints and linear combinations; sampled curves illustrate rather than prove closure.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/005_subspaces_of_function_spaces.md",
+        "sha256": "8c222013668c3a0c5e3b8382e13a860beae70fa80b6f2a42bb00f767787ff8c7",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_01",
+        "exercise": "1.5.4"
+      },
+      "title": "005 — five conditions on a function",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "006",
+      "primary": "linear_map",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Unit square and arrows through ordered rotation/reflection stages.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/006_rotate_then_reflect.md",
+        "sha256": "8dc6d1d1b0d025e4f1e678dcb0c045ece6e0d34aedfdb064e9a52a4fe4aff43b",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.3.4"
+      },
+      "title": "006 — rotate, then reflect",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "007",
+      "primary": "matrix_board",
+      "secondary": [
+        "proof_links"
+      ],
+      "graphic_recipe": "Leading zero pivot, triangular structure and singularity argument; keep counterexamples separate.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/007_zero_corner_blocks_lu.md",
+        "sha256": "0ab9214ca7bccb8243fd16752ee15a93469d53c6a804f22232e0a34e60f4924a",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.4.16"
+      },
+      "title": "007 — a zero corner blocks the LU decomposition",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "008",
+      "primary": "incidence_graph",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "GF(2) message/check nodes, encoding matrix, syndrome and one-bit perturbations.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/008_extending_the_hamming_code.md",
+        "sha256": "82cc8a79218c835b13152c7df11d96afabb3f20ef44cf8f370a39777672053ea",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.6.10"
+      },
+      "title": "008 — extending the Hamming code",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "A 15x11 and B 4x15 are the page-authored reading of scanner-damaged dimensions; retain that provenance."
+    },
+    {
+      "id": "009",
+      "primary": "basis_fit",
+      "secondary": [
+        "linear_map",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Polynomial vectors and selected sublists; retain each explicit reading of the missing signs.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/009_sublist_that_is_a_basis.md",
+        "sha256": "94e64674be48e28d0518188bfca8edfa0e8629524c8a009b1e0b530b4cd0fe5d",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.2.16"
+      },
+      "title": "009 — cutting a list down to a basis",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Two signs remain unresolved. Keep all explicitly labeled readings; no single default masquerading as exact source."
+    },
+    {
+      "id": "010",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Domain/codomain dimensions, image and kernel; reveal rank-dependent conclusions after setup.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/010_full_rank_injective_or_surjective.md",
+        "sha256": "db0a146933005978646f6a6c21577261e0924b31ad2c638cc96231757608017a",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.4.13"
+      },
+      "title": "010 — maximum rank forces one of the two",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "011",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "A fixed world vector with changing coordinate frames and both conversion directions.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/011_change_of_basis_both_directions.md",
+        "sha256": "429bebfa4c70fd9eb18f02a8ec8ec0aa95d5003a203f674081d39d4753e62596",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.6.6"
+      },
+      "title": "011 — change of basis, both directions",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "012",
+      "primary": "metric_surface",
+      "secondary": [
+        "linear_map"
+      ],
+      "graphic_recipe": "Compare Euclidean and weighted lengths/angles using the declared inner product.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/012_a_weighted_inner_product.md",
+        "sha256": "770453f0647456b035fc764b3d0441e43e17967c85c5736f02993175f00258ec",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.1.11"
+      },
+      "title": "012 — a weighted inner product",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "012",
+        "052"
+      ],
+      "reuse_group": "exercise_012"
+    },
+    {
+      "id": "013",
+      "primary": "metric_surface",
+      "secondary": [
+        "linear_map",
+        "basis_fit"
+      ],
+      "graphic_recipe": "Point, line, candidate foot and residual segment; the requested closest point is initially hidden.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/013_closest_point_on_a_line.md",
+        "sha256": "a341f24ee344a9974a6424990befba34aa56bb9cf50fec6df303df04cebac873",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.3.9"
+      },
+      "title": "013 — the closest point on a line",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "014",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Column arrows and successive orthogonalization; parts a-c only until d is recovered.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/014_qr_by_gram_schmidt.md",
+        "sha256": "95dbd01475632e71b67b701a529aaf59db2bb86239aff625a055effb9a49d88e",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.5.7"
+      },
+      "title": "014 — QR by Gram-Schmidt",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Part d has an incomplete fourth row. Only a-c are candidates for exact-data bindings."
+    },
+    {
+      "id": "015",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "A 2D input disk maps to a planar ellipse in 3D; rectangular SVD stages retain dimensions.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/015_svd_of_a_three_by_two_map.md",
+        "sha256": "5eec4ade6a461e325736df1d62327b5e5eb84070d3c474ae64eb4b9ec13b2f12",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.1.2"
+      },
+      "title": "015 — an SVD by inspection",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "016",
+      "primary": "linear_map",
+      "secondary": [
+        "metric_surface",
+        "proof_links"
+      ],
+      "graphic_recipe": "Parallel/perpendicular components and a reflection; use a labeled low-dimensional example for the general claim.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/016_reflection_across_a_line_is_self_adjoint.md",
+        "sha256": "2afbe616116a36bff93dd68058067ef1240f3b5069144ba778fbd4e6c76d01ee",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.3.5"
+      },
+      "title": "016 — reflection across a line is self-adjoint",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Ambient dimension is unresolved; n-dimensional derivation and 2D/3D illustrative views must be distinguished."
+    },
+    {
+      "id": "017",
+      "primary": "spectrum",
+      "secondary": [
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Hermitian eigenvalue map through the exponential; complex adjoints remain explicit.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/017_exponential_of_a_hermitian_matrix.md",
+        "sha256": "3a8bdefbc2e1214331ae57b3bfd37ddda3886b523305f319bfe3291180b074a2",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.4.8"
+      },
+      "title": "017 — the exponential of a Hermitian matrix",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "018",
+      "primary": "matrix_board",
+      "secondary": [
+        "proof_links"
+      ],
+      "graphic_recipe": "Nested leading blocks and elimination conditions; one finite example does not prove iff or uniqueness.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/018_lu_exists_iff_leading_blocks_nonsingular.md",
+        "sha256": "03deb8e43553be9cdec01cea33c2480ecedf53bf1d7595b5b457f4d362a66e7a",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "20.1"
+      },
+      "title": "018 — LU exists exactly when every leading block is nonsingular",
+      "source_check_kind": "planted",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 018",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "019",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain",
+        "error_work"
+      ],
+      "graphic_recipe": "Reuse factorization across right-hand sides; compare triangular solves with inverse formation.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/019_inverse_by_gaussian_elimination.md",
+        "sha256": "436786e5536a5d3149132ad2935791ad9800e9728f5600254179209e58ca6d08",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "21.4"
+      },
+      "title": "019 — the price of an inverse",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "020",
+      "primary": "error_work",
+      "secondary": [
+        "matrix_board",
+        "iteration"
+      ],
+      "graphic_recipe": "Pivot growth, perturbations, forward error and residual for the specified 60-by-60 family.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/020_worst_case_growth_at_sixty.md",
+        "sha256": "b257cbd57881679a181cf1aef8eca4ceb8d9aac983fce4f0c2e4c2fe7726e456",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "22.2"
+      },
+      "title": "020 — worst-case growth at sixty",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Display 22.4 is truncated; the page reconstructs an experimental family. Pin that construction and label it."
+    },
+    {
+      "id": "021",
+      "primary": "error_work",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "Seeded growth-factor distributions with matched dimensions and documented trial counts.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/021_growth_factors_uniform_versus_normal.md",
+        "sha256": "3ec51348910e88bf5ec804dc77496da40d6d039bcd2b41b096f8f419c810fdd6",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "22.3"
+      },
+      "title": "021 — growth factors for uniform random matrices",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Original figure dimensions are unavailable; page-selected sizes and sampling protocol are adaptations."
+    },
+    {
+      "id": "022",
+      "primary": "iteration",
+      "secondary": [
+        "spectrum",
+        "error_work"
+      ],
+      "graphic_recipe": "Ten matrix-exponential norm traces and the spectral-abscissa comparison on log axes.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/022_matrix_exponential_versus_spectral_abscissa.md",
+        "sha256": "45081d690ee965f84cebff187edc701d1461280880303987e65a4e6c1421c1d5",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "24.3"
+      },
+      "title": "022 — the matrix exponential against the spectral abscissa",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "022",
+        "061"
+      ],
+      "reuse_group": "exercise_022"
+    },
+    {
+      "id": "023",
+      "primary": "iteration",
+      "secondary": [
+        "error_work",
+        "proof_links"
+      ],
+      "graphic_recipe": "Error recurrence, stopping threshold and work count; separate asymptotic bounds from exact trajectories.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/023_work_to_reach_machine_precision.md",
+        "sha256": "3f0988a4893b72490cb6e21092e1fbb5b64bc69ff37dd81a123188397d95575e",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "25.2"
+      },
+      "title": "023 — work to reach machine precision",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The onset of the asymptotic bound and starting error are not supplied; illustrative traces need named choices."
+    },
+    {
+      "id": "024",
+      "primary": "spectrum",
+      "secondary": [
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Complex-plane probe links perturbations, residual, smallest singular value and resolvent norm.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/024_pseudospectrum_four_definitions.md",
+        "sha256": "a8d9d427ed8797981c8048661ab999a29cf760b6d44b6c6a22b0a4ae13842b43",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "26.1"
+      },
+      "title": "024 — four descriptions of one set",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "024",
+        "062"
+      ],
+      "reuse_group": "exercise_024"
+    },
+    {
+      "id": "025",
+      "primary": "iteration",
+      "secondary": [
+        "linear_map",
+        "error_work"
+      ],
+      "graphic_recipe": "Inverse iteration separates vector magnitude error from normalized direction error.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/025_ill_conditioning_in_inverse_iteration.md",
+        "sha256": "cc3ee382a0fc8b8f0d37ca4a1b3f0d4add04a6535377e8408544d8b8e1a20c60",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "27.5"
+      },
+      "title": "025 — ill-conditioning does not hurt inverse iteration",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The cited p.95 calculation is unresolved. A direction-error experiment does not recover the missing source."
+    },
+    {
+      "id": "026",
+      "primary": "spectral_grid",
+      "secondary": [
+        "matrix_board",
+        "basis_fit"
+      ],
+      "graphic_recipe": "Periodic samples and two distinct second-derivative operators, with a difference display.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/026_second_derivative_two_ways.md",
+        "sha256": "3a643d9430e62e3a8cd6b5d13959e5a39a7e27aad80e1c6e0e134fb7b6eab947",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "3.1"
+      },
+      "title": "026 — a second derivative, two ways",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Use the stated derivative/DFT conventions in the page, not the damaged printed matrix layout."
+    },
+    {
+      "id": "027",
+      "primary": "proof_links",
+      "secondary": [
+        "spectral_grid",
+        "iteration"
+      ],
+      "graphic_recipe": "Dependencies from the supplied smoothness theorems; examples supplement the logical argument.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/027_theorem_4_from_theorem_3.md",
+        "sha256": "91cd22be3c8ef6b8b852cce8d126057dc39c6d4d8f76e2c454532cbe16200de7",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "4.2"
+      },
+      "title": "027 — Theorem 4 from Theorem 3",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Missing theorem definitions are explicitly listed; dependency visualization must display the gap."
+    },
+    {
+      "id": "028",
+      "primary": "spectral_grid",
+      "secondary": [
+        "metric_surface",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Movable interpolation nodes, interaction energy and differentiation diagonal; endpoint conditions fixed.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/028_minimal_energy_zero_diagonal.md",
+        "sha256": "99def5fc3d9dfb4a69cce898c8d242da2077bdbde74cad129f270befa4c35a07",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "6.3"
+      },
+      "title": "028 — minimal energy zeroes the diagonal",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "029",
+      "primary": "spectral_grid",
+      "secondary": [
+        "basis_fit",
+        "proof_links"
+      ],
+      "graphic_recipe": "Chebyshev polynomial coefficients and the potential-theory limit, with local n/N repair identified.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/029_leading_coefficient_from_potential_theory.md",
+        "sha256": "4c2ffff3bce105bc1a5213df142d17a0bcf86ad213dacd49122330eb275ca391",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "8.1"
+      },
+      "title": "029 — a leading coefficient from potential theory",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The page reads exponent 1/N as 1/n and supplies the Chapter 5 dependency; preserve those notes."
+    },
+    {
+      "id": "030",
+      "primary": "error_work",
+      "secondary": [],
+      "graphic_recipe": "Number-line bins and spacing for declared fixed/floating formats; exact model rounding rules.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/030_fixed_point_versus_floating_point.md",
+        "sha256": "e2de16bb6b97da1e81ff40fe965eb9545b383852040e552df054241bdb1a2e5f",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_02",
+        "exercise": "2.1"
+      },
+      "title": "030 — fixed point or floating point",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "031",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Pivot candidates, row swaps, elimination and the matching right-hand-side updates.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/031_partial_pivoting_in_forward_substitution.md",
+        "sha256": "b3d645586afcf441ca64690face57f76b83fd0fdb138df6c9ab3779fe3fb7fd6",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_03",
+        "exercise": "3.4"
+      },
+      "title": "031 — partial pivoting in forward-substitution",
+      "source_check_kind": "planted",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 031",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "032",
+      "primary": "matrix_board",
+      "secondary": [
+        "metric_surface",
+        "proof_links"
+      ],
+      "graphic_recipe": "Block elimination and a quadratic-form interpretation of the Schur complement.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/032_schur_complement_stays_spd.md",
+        "sha256": "0c57c5fcee22372095a3e9bf6242bab7411e9808454fd1128ad3a61111f4afc4",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_04",
+        "exercise": "4.2"
+      },
+      "title": "032 — the block left after one Cholesky step is still SPD",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "033",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "error_work"
+      ],
+      "graphic_recipe": "Vector, column span, projection and residual; handle rank deficiency explicitly.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/033_projection_onto_a_column_space.md",
+        "sha256": "6d625bbe752d2a3045f9afb54882f443d1e61f0590701f646934446624a68c38",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_05",
+        "exercise": "5.6"
+      },
+      "title": "033 — projection onto a column space",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Rank is not specified. Support rank-deficient projection or declare a full-column-rank variant."
+    },
+    {
+      "id": "034",
+      "primary": "operator_chain",
+      "secondary": [
+        "matrix_board",
+        "error_work"
+      ],
+      "graphic_recipe": "Follow e1 through factors to compute one output column without forming every product.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/034_first_column_of_a_shifted_product.md",
+        "sha256": "cbe40ce99ab67f44c7e9953be954889cc36fc59c4d875f463946e2581f5743ad",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_01",
+        "exercise": "P1.1.1"
+      },
+      "title": "034 — the first column of a product of shifted copies of A",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The operator between A and shift times I is absent. Keep the selected reading and alternate-reading notes."
+    },
+    {
+      "id": "035",
+      "primary": "metric_surface",
+      "secondary": [
+        "linear_map",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Quadratic height, gradient and directional derivative; include nonsymmetric A and linear term b.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/035_gradient_of_a_quadratic_form.md",
+        "sha256": "e27f5ae73934d921f98da61997cd79e1fae06f45f06fb4398048e46ac4e63dd2",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_02",
+        "exercise": "P2.1.3"
+      },
+      "title": "035 — the gradient of a quadratic form",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "036",
+      "primary": "incidence_graph",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Strict-triangle paths and the finite inverse series, with index-dependent path weights.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/036_unit_lower_triangular_inverse_series.md",
+        "sha256": "d41907fb2710d84f3ac90550a9c1baff57e509a6ca25853e05c644a53edb5305",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_03",
+        "exercise": "P3.1.2"
+      },
+      "title": "036 — the inverse of a unit lower triangular matrix, as a series that stops",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "037",
+      "primary": "matrix_board",
+      "secondary": [
+        "linear_map",
+        "basis_fit"
+      ],
+      "graphic_recipe": "The same 2-by-2 system as intersections, column combinations and pivot history.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/037_when_elimination_fails.md",
+        "sha256": "4f216154b8f8d4744f0d86d0e81695fffc1a5d37a00a838c8215453cb8935cac",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "1.2.4"
+      },
+      "title": "037 — when elimination fails",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "037",
+        "077"
+      ],
+      "reuse_group": "exercise_037"
+    },
+    {
+      "id": "038",
+      "primary": "basis_fit",
+      "secondary": [
+        "matrix_board",
+        "linear_map"
+      ],
+      "graphic_recipe": "One data set, three basis sizes, residual segments and least-squares projections.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/038_three_fits_to_three_points.md",
+        "sha256": "bff1d31e3b65694526e9d0a9614e7feb6626e6b8fc6063e30d45ef29edd8fa24",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "1.4.7"
+      },
+      "title": "038 — three fits to three points",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "039",
+      "primary": "metric_surface",
+      "secondary": [
+        "linear_map",
+        "proof_links"
+      ],
+      "graphic_recipe": "A line, points and planes with linked distances; geometry supports the weak-duality argument.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/039_weak_duality_max_le_min.md",
+        "sha256": "8c4faa70ccd5157e8d7aa7e3ead196b5ad93db6ed711a86e04e24aa243771f5a",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "2.2.9"
+      },
+      "title": "039 — why maximum is at most minimum",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "040",
+      "primary": "mechanics",
+      "secondary": [
+        "incidence_graph",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Nodes, bars, supports and force arrows linked to equilibrium rows; reconstructed geometry labeled.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/040_forces_in_a_determinate_truss.md",
+        "sha256": "d3d970b5a681b393c16b308042f2e9d86688c1c479ecdb85785a5a9532c00ad1",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "2.4.3"
+      },
+      "title": "040 — forces in a determinate truss",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Truss geometry is a page-authored textual reconstruction; no source figure was viewed in this mapping task."
+    },
+    {
+      "id": "041",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Reuse the RREF board with six new input matrices, including rectangular cases.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/041_rref_of_six_more_matrices.md",
+        "sha256": "74487579eb29a89dc5a39026a6e50ee2e2d6318339bc15b5d451e2e3e2201743",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_01",
+        "exercise": "1.2.4"
+      },
+      "title": "041 — six more matrices into one shape",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "042",
+      "primary": "spectrum",
+      "secondary": [
+        "linear_map",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Real/complex eigenvalues and eigenspaces, including defective and nonsymmetric examples.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/042_all_eigenvalues_of_four_matrices.md",
+        "sha256": "e1ebb7d9d54341ae4bb429a4bd16a4e033ab0bfd78877b5fe4ca924b7673ee5e",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.1.9"
+      },
+      "title": "042 — all the eigenvalues of four matrices",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "043",
+      "primary": "linear_map",
+      "secondary": [
+        "spectrum"
+      ],
+      "graphic_recipe": "Unit-square image and supplied/candidate eigenvector probes; missing printed vectors stay unresolved.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/043_eigenvectors_and_the_unit_square.md",
+        "sha256": "391bc6e6cd643b55b8edd44b4c61a8025fbd21607c0fe18e14c2fabf3c685939",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.2.13"
+      },
+      "title": "043 — eigenvectors, and where the unit square lands",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The two candidate eigenvectors are missing. Part b can use the supplied A; solving all eigenvectors is an explicitly broader task."
+    },
+    {
+      "id": "044",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Row pivoting and factors using the current source convention PA=LU.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/044_lup_when_the_pivot_is_zero.md",
+        "sha256": "e95d587aaedaca7dfb1f0a32c93cc5d66b474f2ed869605dbd3ca3a4d05c78ad",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.4.12"
+      },
+      "title": "044 — an LUP decomposition when the pivot is zero",
+      "source_check_kind": "two methods",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Re-read current Notation: PA=LU, not A=LUP. The earlier map convention was wrong; source pin refreshed in P046.",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 044",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "045",
+      "primary": "incidence_graph",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "Parity checks and all compatible originals; single parity detects an error without locating it uniquely.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/045_parity_bit_decoding.md",
+        "sha256": "baeff8f8bdefc04c60056a460bd018aef2a8123c275a0dc2387e8a74d9e0172f",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "2.6.3"
+      },
+      "title": "045 — parity bit decoding",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "046",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board"
+      ],
+      "graphic_recipe": "Vector-list selection, span and dependence in the declared ambient dimension.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/046_is_this_list_a_basis.md",
+        "sha256": "c950ed63fd8ec0e445f387c6ca8ba703bf22e10abd5e9c04e4b30b09b7f0a72c",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.2.2"
+      },
+      "title": "046 — is this list a basis",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "047",
+      "primary": "linear_map",
+      "secondary": [
+        "incidence_graph",
+        "proof_links"
+      ],
+      "graphic_recipe": "Dependent input combinations and conflicting output assignments as a counterexample construction.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/047_no_map_from_a_dependent_list.md",
+        "sha256": "5ecf4b95ff6db203fa5b5fe88d5f7a4eacecf8b4b2d2fdac9771d17544504377",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.2.23"
+      },
+      "title": "047 — no map from a dependent list",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "048",
+      "primary": "matrix_board",
+      "secondary": [
+        "linear_map"
+      ],
+      "graphic_recipe": "Rank/nullity for rectangular inputs; coordinates above dimension three use faithful tables.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/048_rank_and_nullity_of_five_matrices.md",
+        "sha256": "84aabb9ea1769fa3e844277f5ab72ffec22530e923b8f75b3f322183624ed618",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.4.2"
+      },
+      "title": "048 — rank and nullity of five matrices",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "049",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Distinct source and target bases for 2-to-3 and 3-to-2 maps, with six coordinate requests.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/049_six_coordinate_representations.md",
+        "sha256": "986545af3dc035d43d4d1e57d526754771984aec94e56eee2d66873a81f3c9eb",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.5.6"
+      },
+      "title": "049 — six coordinate representations",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "S[2,2] in one-based indexing is -3 on this page; it is +3 on 050. Share graphics, never silently merge input data."
+    },
+    {
+      "id": "050",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Reuse coordinate conversions but preserve this card's different S entry and local notation repairs.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/050_change_of_basis_for_two_maps.md",
+        "sha256": "3dc831fc1804ce78c571603d2b45acb9d6c9669802ceb81f124ca75158c8d4d5",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.6.8"
+      },
+      "title": "050 — change of basis for two maps",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Coordinate subscripts and missing T are locally repaired; S[2,2]=+3 differs from 049."
+    },
+    {
+      "id": "051",
+      "primary": "linear_map",
+      "secondary": [
+        "spectrum"
+      ],
+      "graphic_recipe": "A plane reflection and basis directions; reveal trace calculation in the working stage.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/051_trace_of_a_reflection_in_a_plane.md",
+        "sha256": "dd4df89e05d80a76f74bae9a220b2c8754c288c9f02faf390fb32d38bdd846cb",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_03",
+        "exercise": "3.6.21"
+      },
+      "title": "051 — the trace of a reflection in a plane",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "052",
+      "primary": "metric_surface",
+      "secondary": [
+        "linear_map"
+      ],
+      "graphic_recipe": "Reuse 012's weighted-inner-product recipe while keeping this page's learner state separate.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/052_a_weighted_inner_product_on_r2.md",
+        "sha256": "a82b96c306748ca58e21e0123a20dffc4c3349331f0c6c533a82f47f697457b4",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.1.11"
+      },
+      "title": "052 — a weighted inner product on R²",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "012",
+        "052"
+      ],
+      "reuse_group": "exercise_012"
+    },
+    {
+      "id": "053",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "metric_surface"
+      ],
+      "graphic_recipe": "Orthogonal projections over R4, C3, R5 and Rn; adjoint convention and repaired part c are explicit.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/053_the_matrix_of_an_orthogonal_projection.md",
+        "sha256": "fd78abe4116bd519567d25b46b477c2d30566b6cd6fd8c9aa4ab4e8326e64ad4",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.3.1"
+      },
+      "title": "053 — the matrix of an orthogonal projection",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "High-dimensional/complex examples and repaired part c require explicit source binding; inner product is linear in the first slot."
+    },
+    {
+      "id": "054",
+      "primary": "basis_fit",
+      "secondary": [
+        "metric_surface"
+      ],
+      "graphic_recipe": "Continuous least squares on [0,1], integral residuals and the comparison polynomial.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/054_best_linear_approximation_to_exp.md",
+        "sha256": "417b07c9dee5f835136601d1322bcf265e2093e9ef6591dc32939474b72722c2",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.3.11"
+      },
+      "title": "054 — best linear approximation to the exponential",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "055",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "metric_surface"
+      ],
+      "graphic_recipe": "Same physical reflection in an oblique basis, with Gram-matrix-aware length checks.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/055_reflection_matrix_in_a_skew_basis.md",
+        "sha256": "acbb38b332f25cb913a442c80681ceff6c83b04ddaeea7ec344c905005d08ed3",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_04",
+        "exercise": "4.5.4"
+      },
+      "title": "055 — a reflection whose matrix is not orthogonal",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "A reflection in an oblique basis need not have an orthogonal coordinate matrix; display its Gram metric."
+    },
+    {
+      "id": "056",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Ordered rotation then projection, then a singular-value decomposition of that map.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/056_svd_of_rotate_then_project.md",
+        "sha256": "dc8113a372c4d0c851ae78081ce9a9ca5e7297d092926fa5cad47fd10849841e",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.1.3"
+      },
+      "title": "056 — an SVD for rotate, then project",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "057",
+      "primary": "linear_map",
+      "secondary": [
+        "spectrum",
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Paired A and A* singular-value diagrams; rectangular/complex shapes retained.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/057_adjoint_has_the_same_singular_values.md",
+        "sha256": "b1d4b1234e95912991000a3d2f449e97300da5fac279f1e9ac5c89da992206f8",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.2.5"
+      },
+      "title": "057 — the adjoint has the same singular values",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "058",
+      "primary": "spectrum",
+      "secondary": [
+        "linear_map",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Spectral decomposition panels with real and complex spectral data as required.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/058_spectral_decomposition_of_four_matrices.md",
+        "sha256": "08989a91f0c29e63d3f86ff3639fd28d05cde43396395e5cee45cdb05c7138bb",
+        "book": "meckes_meckes_linear_algebra",
+        "chapter": "ch_05",
+        "exercise": "5.4.1"
+      },
+      "title": "058 — a spectral decomposition of four matrices",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "059",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Partitioned matrix, active block, Schur complement and row-versus-block comparison.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/059_block_elimination_and_the_schur_complement.md",
+        "sha256": "559f152250dd6eb8dbbd5343a374304ae64e62e6d04052b0420ce2f4d624873e",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "20.3"
+      },
+      "title": "059 — eliminating a block, and the Schur complement",
+      "source_check_kind": "two methods",
+      "status": "matrix_board_adapter_implemented_visual_review_pending",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "runtime_binding": {
+        "component": "paths_matrix_board",
+        "entry": "math_lab --card 059",
+        "checkpoint": "P046",
+        "source_exercise_completion": "not_claimed"
+      }
+    },
+    {
+      "id": "060",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "Two LU-related determinant computations and permutation parity, with source display dependency.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/060_determinant_from_an_lu_factorization.md",
+        "sha256": "b4790ec04254929a8a2f2168544f47cde214a802e69f51d2762be67f220ed104",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "21.1"
+      },
+      "title": "060 — the determinant from an LU factorization",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The original 20.5 printing is unavailable. Retain the page reconstruction and factorization convention."
+    },
+    {
+      "id": "061",
+      "primary": "iteration",
+      "secondary": [
+        "spectrum",
+        "error_work"
+      ],
+      "graphic_recipe": "Reuse 022's experiment recipe; this page retains its own attempt and solve state.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/061_transient_growth_and_the_abscissa_line.md",
+        "sha256": "a046d3987dbf9dc380f68abea0b4f62bbccb11f66c49d08124d8c5d9cc6b48ad",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "24.3"
+      },
+      "title": "061 — transient growth above the abscissa line",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "022",
+        "061"
+      ],
+      "reuse_group": "exercise_022"
+    },
+    {
+      "id": "062",
+      "primary": "spectrum",
+      "secondary": [
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Reuse 024's pseudospectrum displays; proof disclosure and attempt state stay page-specific.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/062_when_a_number_is_nearly_an_eigenvalue.md",
+        "sha256": "9410edeb6887eb59bd30950e799e304dddf49a61528c291e2c96b13f10c87842",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "26.1"
+      },
+      "title": "062 — when a number is nearly an eigenvalue",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "024",
+        "062"
+      ],
+      "reuse_group": "exercise_024"
+    },
+    {
+      "id": "063",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain",
+        "error_work"
+      ],
+      "graphic_recipe": "Tridiagonal masks and local orthogonal transformations across a QR step.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/063_qr_step_preserves_tridiagonal.md",
+        "sha256": "9359bb14f73f0d2e2789eb09cef5502f0ad111209a3deb3ac39bf7d1d5ad9248",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "28.2"
+      },
+      "title": "063 — a QR step keeps a tridiagonal matrix tridiagonal",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "064",
+      "primary": "error_work",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Separate arithmetic counters for eigenvalues only and accumulating eigenvectors.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/064_flops_in_one_qr_step.md",
+        "sha256": "e2a2303e3a2d95c30f653dd2df48b5185ad472964aeb220893b91e99c3ea8bb4",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "28.4"
+      },
+      "title": "064 — the cost of one QR step",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Exact source wording of flop counting is missing; choose and display a cost convention."
+    },
+    {
+      "id": "065",
+      "primary": "incidence_graph",
+      "secondary": [
+        "matrix_board",
+        "error_work"
+      ],
+      "graphic_recipe": "Disjoint row/column pair matching and parallel stages; no inferred wall-clock speedup.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/065_parallel_jacobi_on_disjoint_pairs.md",
+        "sha256": "4c1ee76bbd6bf281bd39094717ab536d422a7a2647855e25935d0bba8a9f9b62",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "30.4"
+      },
+      "title": "065 — m/2 Jacobi rotations at once",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "066",
+      "primary": "iteration",
+      "secondary": [
+        "spectrum",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Eigenvector magnitude traces on log axes plus a threshold count across the full 100-by-100 Q.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/066_localization_in_a_random_tridiagonal.md",
+        "sha256": "5bb47d9f9c4f09d8c25e6b4f2362485dde00d0608832f3eb685c67e0896eacd6",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "30.7"
+      },
+      "title": "066 — localization in a random tridiagonal matrix",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The distribution of random entries is unspecified; pin a named distribution and seed for any experiment."
+    },
+    {
+      "id": "067",
+      "primary": "error_work",
+      "secondary": [
+        "mechanics"
+      ],
+      "graphic_recipe": "Mesh scale, degrees of freedom and cost relation; distinguish stated runtime from extrapolation.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/067_the_price_of_one_more_digit.md",
+        "sha256": "f97a9eea2365e885248bf0daa67127244a5f6225d3d7ac2120456f8292feb8df",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "32.1"
+      },
+      "title": "067 — the price of one more digit",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "068",
+      "primary": "spectrum",
+      "secondary": [
+        "operator_chain",
+        "proof_links"
+      ],
+      "graphic_recipe": "Polynomial action on a matrix and singular-value probes; numerical searches do not prove existence/uniqueness.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/068_the_chebyshev_polynomial_of_a_matrix.md",
+        "sha256": "0071643a7dea595677ebca9ef5b1f81342a8a57891a21d56a2f32d360f8e6bf5",
+        "book": "trefethen_bau_numerical_linear_algebra",
+        "chapter": "ch_02",
+        "exercise": "34.2"
+      },
+      "title": "068 — the Chebyshev polynomial of a matrix",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "OCR repairs and ideal-Arnoldi polynomial definitions are in Notation; read before implementing optimization."
+    },
+    {
+      "id": "069",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain",
+        "error_work"
+      ],
+      "graphic_recipe": "Packed symmetric index map and congruence data flow; missing column count stays a parameter.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/069_congruence_in_packed_symmetric_storage.md",
+        "sha256": "d4caf30e86893739d99a1d39c05be9b857c98b5f36b76f51b8f98f7bca6c6f70",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_01",
+        "exercise": "P1.2.6"
+      },
+      "title": "069 — X transpose A X with both matrices packed",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "X column count is scanner-damaged and treated as a parameter; packed storage order is a required dependency."
+    },
+    {
+      "id": "070",
+      "primary": "error_work",
+      "secondary": [
+        "matrix_board",
+        "proof_links"
+      ],
+      "graphic_recipe": "Triangular product errors, factor perturbations and backward-error claims with stated norm.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/070_backward_error_for_a_triangular_product.md",
+        "sha256": "e2d9682968328c9886e8e700729a9b866038bb3b6c902ec463444ed660b3994f",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_02",
+        "exercise": "P2.7.5"
+      },
+      "title": "070 — is a rounded triangular product anybody's exact product?",
+      "source_check_kind": "planted",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "071",
+      "primary": "matrix_board",
+      "secondary": [
+        "metric_surface",
+        "proof_links"
+      ],
+      "graphic_recipe": "Block dominance and norm-bound panels; cited inequalities remain attached prerequisites.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/071_block_diagonal_dominance_and_the_lu_bounds.md",
+        "sha256": "0f1ce2e675ae6a95570becc8de2ddc5d10a88c69d7d987e6546788eb572e9227",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_04",
+        "exercise": "P4.5.1"
+      },
+      "title": "071 — block diagonal dominance and the size of the LU factors",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Import the named block-dominance inequalities before showing bound values."
+    },
+    {
+      "id": "072",
+      "primary": "proof_links",
+      "secondary": [
+        "linear_map",
+        "iteration"
+      ],
+      "graphic_recipe": "Dependency chain for differentiating a minimum-norm solution, with numeric perturbation illustrations.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/072_derivative_of_the_minimum_norm_solution.md",
+        "sha256": "e77587452f7e91b9c6469bdf52b081d63e2e36c90cf9792fa3ede2adb0a9a2e4",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_05",
+        "exercise": "P5.6.1"
+      },
+      "title": "072 — the derivative of a minimum-norm solution",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Import equation 5.6.2 and its hypotheses; the short prompt alone cannot supply a model."
+    },
+    {
+      "id": "073",
+      "primary": "spectrum",
+      "secondary": [
+        "matrix_board",
+        "error_work"
+      ],
+      "graphic_recipe": "Schur off-diagonal magnitude, normality defect and two bound comparisons for n=2.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/073_departure_from_normality_bounds.md",
+        "sha256": "fb8106ba48363ff1d20408956660a5feb9848869a44996ed617a9fe46ff9e421",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_07",
+        "exercise": "P7.2.1"
+      },
+      "title": "073 — how far from normal, at 2-by-2",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "074",
+      "primary": "matrix_board",
+      "secondary": [
+        "spectrum",
+        "operator_chain"
+      ],
+      "graphic_recipe": "One shifted QR step with the repaired shift convention recorded and both computations compared.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/074_one_shifted_qr_step_on_a_two_by_two.md",
+        "sha256": "492fccf31062488f481dfd738a570a2da89bad6ee6a8efea84847aff25cb86dc",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_08",
+        "exercise": "P8.3.3"
+      },
+      "title": "074 — one shifted QR step on a 2-by-2",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Use the page-recorded shift repair, not the scan-literal 2*z expression."
+    },
+    {
+      "id": "075",
+      "primary": "incidence_graph",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Increasing-index paths for entries of powers of a strict upper triangle.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/075_paths_in_a_power_of_the_strict_upper_triangle.md",
+        "sha256": "f324c24e4e3b468502d9517f1b3d0308d6429f9e4da4df98e7c450e63b4de138",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_09",
+        "exercise": "P9.2.1"
+      },
+      "title": "075 — counting paths in a power of the strict upper triangle",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Import equation 9.2.2 and its index conventions before connecting paths to powers."
+    },
+    {
+      "id": "076",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain",
+        "iteration"
+      ],
+      "graphic_recipe": "Hessenberg structure in a Newton correction solve; import equation 10.6.1 first.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/076_hessenberg_newton_correction.md",
+        "sha256": "e2f53893d4a24b4571eaeac4fd2299fcde9178b78a8bb655e8193081f031efa1",
+        "book": "golub_van_loan_matrix_computations",
+        "chapter": "ch_10",
+        "exercise": "P10.6.1"
+      },
+      "title": "076 — the Newton correction when A is upper Hessenberg",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Import equation 10.6.1 and the correction constraints before binding any solve."
+    },
+    {
+      "id": "077",
+      "primary": "matrix_board",
+      "secondary": [
+        "linear_map",
+        "basis_fit"
+      ],
+      "graphic_recipe": "Reuse 037's system recipe and preserve the separate page identity.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/077_the_q_that_collapses_the_columns.md",
+        "sha256": "08a7873598f5410faa28acd396730e6256cf5db651d80045b994cdc06dbe88a2",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "1.2.4"
+      },
+      "title": "077 — the q that collapses the columns",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "same_source_exercise": [
+        "037",
+        "077"
+      ],
+      "reuse_group": "exercise_037"
+    },
+    {
+      "id": "078",
+      "primary": "linear_map",
+      "secondary": [
+        "spectrum",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Positive-definite ellipse and square-root eigenvalue scaling, with reconstruction check.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/078_positive_definite_square_root.md",
+        "sha256": "7c91038b5134dc43801251f87d3dcb2963ae29fa3c5fbdf2d9eeae2f8f559dc3",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "1.5.23"
+      },
+      "title": "078 — the positive definite square root",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "079",
+      "primary": "linear_map",
+      "secondary": [
+        "spectrum",
+        "proof_links"
+      ],
+      "graphic_recipe": "Subspace and orthogonal complement under projection; abstract n-dimensional argument remains explicit.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/079_eigenvalues_of_a_projection_from_geometry.md",
+        "sha256": "914bcd047fa41d9f4c6f9c624d345969824e426d69dcbcdeeeba24caa7f77efc",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "2.2.15"
+      },
+      "title": "079 — the eigenvectors of a projection",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "080",
+      "primary": "mechanics",
+      "secondary": [
+        "metric_surface",
+        "linear_map"
+      ],
+      "graphic_recipe": "Curvilinear coordinate grid, tangent arrows and scale factors; source operator reading labeled.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/080_parabolic_cylinder_scale_factors.md",
+        "sha256": "8d6d478b32b600c674869964516ba5a56fea6c151f40949cfbcac5ebb9560749",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_01",
+        "exercise": "3.4.28"
+      },
+      "title": "080 — the scale factors of parabolic cylinder coordinates",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Coordinate-map operator is repaired on the page; keep that interpretation and singular points explicit."
+    },
+    {
+      "id": "081",
+      "primary": "basis_fit",
+      "secondary": [
+        "spectrum"
+      ],
+      "graphic_recipe": "One-sided pulse and Fourier transform magnitude/phase with transform convention and parameter domain.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/081_transform_of_the_ascending_pulse.md",
+        "sha256": "b33a03bede317aaaaf47fc88470ea2d6e19bca1cfca24691eb83ebaaef2010be",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_03",
+        "exercise": "4.3.1"
+      },
+      "title": "081 — the transform of the ascending pulse",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Pin Fourier sign/normalization and the parameter condition from the page before plotting the transform."
+    },
+    {
+      "id": "082",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Householder normal, reflected vector and QR stage with the prescribed x-axis target.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/082_householder_reflection_to_the_x_axis.md",
+        "sha256": "5a0af926dd655bae5d84b335e6450fab8743b948115a81aec0387a219b3ac875",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_03",
+        "exercise": "5.2.20"
+      },
+      "title": "082 — the reflection that takes a unit vector to the x-axis",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "083",
+      "primary": "mechanics",
+      "secondary": [
+        "iteration",
+        "metric_surface"
+      ],
+      "graphic_recipe": "Rigid-body axes and the stated nonlinear state trajectory, conserved quantities and local perturbations.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/083_spinning_book_three_axes.md",
+        "sha256": "c5f74bfafbdad10f2338261a09389c037dcef03ffe07ff5ddfabc27845ce2973",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_03",
+        "exercise": "6.2.6"
+      },
+      "title": "083 — the spinning book, and which of its axes is unstable",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Exercise 6.2.5 supplies the equation/energy dependency; state coordinates are not automatically a full rigid-body orientation."
+    },
+    {
+      "id": "084",
+      "primary": "mechanics",
+      "secondary": [
+        "basis_fit",
+        "iteration"
+      ],
+      "graphic_recipe": "Characteristic lines, wave profile and approach to loss of regularity in x-t coordinates.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/084_blow_up_time_of_a_nonlinear_wave.md",
+        "sha256": "be3dabbe82e1602b7e37b17766566db14c96441064a2211dc65ae16a1f637793",
+        "book": "strang_introduction_applied_mathematics",
+        "chapter": "ch_03",
+        "exercise": "6.6.19"
+      },
+      "title": "084 — the blow-up time of a nonlinear wave",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Use the card-local characteristic sign convention and restrict the interpretation at loss of regularity."
+    },
+    {
+      "id": "085",
+      "primary": "operator_chain",
+      "secondary": [
+        "matrix_board",
+        "iteration"
+      ],
+      "graphic_recipe": "Differentiate the inverse identity; paired perturbations and product-rule dependencies.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/085_derivative_of_a_matrix_inverse.md",
+        "sha256": "217c62d0e02557bea5549c44ff5602f55485214964b2f1466a35fb60c0e84438",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_01",
+        "exercise": "1.13"
+      },
+      "title": "085 — the derivative of a matrix inverse",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "086",
+      "primary": "matrix_board",
+      "secondary": [
+        "operator_chain"
+      ],
+      "graphic_recipe": "LU determinant recipe with the truncated requested object identified as an assumption.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/086_determinant_from_the_lu_factorization.md",
+        "sha256": "4fdc33515c89a3e36feb6a1bc21933eb464b0c91393bb79bd25d51c2f9fe6844",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_03",
+        "exercise": "3.11"
+      },
+      "title": "086 — the determinant from the LU factorization",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The object of the determinant is truncated; page assumes det(A), which remains labeled."
+    },
+    {
+      "id": "087",
+      "primary": "error_work",
+      "secondary": [
+        "linear_map",
+        "matrix_board",
+        "operator_chain"
+      ],
+      "graphic_recipe": "Rank-one Householder update with an operation count, sharing the reflection geometry.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/087_householder_times_a_matrix_in_quadratic_time.md",
+        "sha256": "3b2809438b99ee20732bbe789461926c5762c5f96f9c0123243748978a57d37e",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_05",
+        "exercise": "5.2"
+      },
+      "title": "087 — a Householder reflection times a matrix, in quadratic time",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "088",
+      "primary": "iteration",
+      "secondary": [
+        "linear_map",
+        "spectrum"
+      ],
+      "graphic_recipe": "Power-iteration directions on the swap matrix, with initial-vector choices and stopping observations.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/088_power_iteration_on_the_swap_matrix.md",
+        "sha256": "ddb4c085b336af82e783cb22e87ae2dfbae21dce1b8496caca7049040af9cbdc",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_06",
+        "exercise": "6.2"
+      },
+      "title": "088 — power iteration on the swap matrix",
+      "source_check_kind": "invariant",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "089",
+      "primary": "linear_map",
+      "secondary": [
+        "matrix_board",
+        "iteration"
+      ],
+      "graphic_recipe": "Polar decomposition as stretch and orthogonal motion; iterative path only for invertible inputs.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/089_polar_decomposition.md",
+        "sha256": "66117829e13db87a1bd585e14e5c0336a6e4895c37abd97a9ba1747074c37c66",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_07",
+        "exercise": "7.8"
+      },
+      "title": "089 — the polar decomposition, and Higham's iteration for it",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified"
+    },
+    {
+      "id": "090",
+      "primary": "iteration",
+      "secondary": [
+        "matrix_board",
+        "spectrum"
+      ],
+      "graphic_recipe": "Matrix splitting, error propagation and stopping traces with the local minus-sign convention.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/090_convergence_of_a_matrix_splitting.md",
+        "sha256": "5f31de7c082393a600a5f50f2f949b6486c643c0715cb684a01bc8616e33a4d9",
+        "book": "solomon_numerical_algorithms",
+        "chapter": "ch_11",
+        "exercise": "11.4"
+      },
+      "title": "090 — when a splitting iteration converges",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "The local split is A=M-N and the typo/notation should remain associated with its source."
+    },
+    {
+      "id": "091",
+      "primary": "spectral_grid",
+      "secondary": [
+        "basis_fit",
+        "matrix_board"
+      ],
+      "graphic_recipe": "Periodic sinc basis and its two derivative stencils; endpoint-frequency convention pinned.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/091_periodic_sinc_derivatives.md",
+        "sha256": "f65f62a1c16ac91bdc78b4b125e23c6f9038d6bc2ae5244eb89e6d67ad863e0d",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "3.2"
+      },
+      "title": "091 — deriving the periodic sinc derivatives",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Equations 3.8 and 2.12 are absent; use the stated sinc construction without claiming those source equations were recovered."
+    },
+    {
+      "id": "092",
+      "primary": "spectral_grid",
+      "secondary": [
+        "spectrum",
+        "basis_fit"
+      ],
+      "graphic_recipe": "Complex interpolation error contours, actual grid values and poles; N=10,20,30 stay distinct.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/092_runge_error_in_the_complex_plane.md",
+        "sha256": "b7cf233a445c5c59b300d0c28c0a8c5aee6db379dc03018bb37ff07536102f6b",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "5.2"
+      },
+      "title": "092 — the interpolation error off the real axis",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Program 9 and its interpolation convention are dependencies; requested N=10,20,30 must use actual computations."
+    },
+    {
+      "id": "093",
+      "primary": "spectral_grid",
+      "secondary": [
+        "matrix_board",
+        "iteration"
+      ],
+      "graphic_recipe": "Chebyshev nodes, boundary conditions, sampled BVP solution and resolution convergence.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/093_ten_digits_from_a_chebyshev_bvp.md",
+        "sha256": "b68fc1f873b80b4e9c01e28638f7a2419813ca4f837cce63d1b2bc45d5f17874",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "7.2"
+      },
+      "title": "093 — ten digits from a Chebyshev BVP",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Ten-digit accuracy requires documented resolution convergence; a visually smooth curve supplies no accuracy evidence."
+    },
+    {
+      "id": "094",
+      "primary": "mechanics",
+      "secondary": [
+        "spectral_grid",
+        "matrix_board",
+        "error_work"
+      ],
+      "graphic_recipe": "Cube eigenfunction field and tensor-product grid; exact requested dimensions and timed results from a real solve.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/094_lowest_eigenvalue_on_the_cube.md",
+        "sha256": "b532dde8fe17cc03c94d3ccb2876a5460f1563f3d9eb302d0d0852a2c5217f7d",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "9.3"
+      },
+      "title": "094 — the lowest eigenvalue on the cube",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Program 23 is damaged. Preserve sign, boundary conditions, tensor-product ordering and requested N values from the card notes."
+    },
+    {
+      "id": "095",
+      "primary": "mechanics",
+      "secondary": [
+        "spectral_grid",
+        "spectrum"
+      ],
+      "graphic_recipe": "Circular membrane, varying density and actual computed eigenmode fields with residual/convergence data.",
+      "source": {
+        "path": "/Users/kogaryu/devil/99-red-booleans/problems/math/095_eigenmodes_of_a_lopsided_drum.md",
+        "sha256": "5742bc007a473b7c85f15e11c7536ad69a4e23a820f99502d8a5d2c71856dab9",
+        "book": "trefethen_spectral_methods_matlab",
+        "chapter": "ch_00",
+        "exercise": "11.3"
+      },
+      "title": "095 — eigenmodes of a lopsided drum",
+      "source_check_kind": "two methods",
+      "status": "mapped_not_implemented",
+      "source_review": "question_and_targeted_notes_read_not_key_certified",
+      "binding_review_note": "Use the varying-density disk eigenproblem in the page, distinguish lambda from lambda squared, and retain normalization/convergence evidence."
+    }
+  ],
+  "example_bindings": [
+    {
+      "id": "fit_polynomial_002",
+      "card": "002",
+      "component": "basis_fit",
+      "state": "example_binding_not_runtime_loaded",
+      "data_kind": "exact_question_givens",
+      "basis": [
+        {
+          "id": "a",
+          "function": "power",
+          "degree": 2
+        },
+        {
+          "id": "b",
+          "function": "power",
+          "degree": 1
+        },
+        {
+          "id": "c",
+          "function": "constant"
+        }
+      ],
+      "samples": [
+        {
+          "x": -1,
+          "y": 1
+        },
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 1,
+          "y": 2
+        }
+      ],
+      "unknowns": [
+        "a",
+        "b",
+        "c"
+      ],
+      "initial_display": [
+        "given_sample_points",
+        "basis_names",
+        "empty_coefficient_slots"
+      ],
+      "working_display": [
+        "learner_candidate_curve",
+        "candidate_residual_segments"
+      ],
+      "check_contract": {
+        "kind": "invariant",
+        "quantity": "interpolation residual at the three supplied nodes",
+        "numeric_tolerance": "must be declared by the checked adapter; not executed here",
+        "scope": "verifies this numerical instance, not a general theorem"
+      }
+    },
+    {
+      "id": "fit_trigonometric_003",
+      "card": "003",
+      "component": "basis_fit",
+      "state": "example_binding_not_runtime_loaded",
+      "data_kind": "exact_question_givens",
+      "basis": [
+        {
+          "id": "a",
+          "function": "constant"
+        },
+        {
+          "id": "b",
+          "function": "cos"
+        },
+        {
+          "id": "c",
+          "function": "sin"
+        }
+      ],
+      "angle_unit": "radians",
+      "samples": [
+        {
+          "x": {
+            "pi_multiple": [
+              0,
+              1
+            ]
+          },
+          "y": -1
+        },
+        {
+          "x": {
+            "pi_multiple": [
+              1,
+              2
+            ]
+          },
+          "y": 2
+        },
+        {
+          "x": {
+            "pi_multiple": [
+              1,
+              1
+            ]
+          },
+          "y": 3
+        }
+      ],
+      "unknowns": [
+        "a",
+        "b",
+        "c"
+      ],
+      "initial_display": [
+        "given_sample_points",
+        "basis_names",
+        "empty_coefficient_slots"
+      ],
+      "working_display": [
+        "learner_candidate_curve",
+        "candidate_residual_segments"
+      ],
+      "check_contract": {
+        "kind": "invariant",
+        "quantity": "interpolation residual at the three supplied nodes",
+        "numeric_tolerance": "must be declared by the checked adapter; not executed here",
+        "scope": "verifies this numerical instance, not a general theorem"
+      }
+    },
+    {
+      "id": "rectangular_map_015",
+      "card": "015",
+      "component": "linear_map",
+      "state": "example_binding_not_runtime_loaded",
+      "data_kind": "exact_question_givens",
+      "field": "real",
+      "domain_dimension": 2,
+      "codomain_dimension": 3,
+      "matrix": {
+        "rows": 3,
+        "columns": 2,
+        "layout": "row_major",
+        "values": [
+          1,
+          0,
+          0,
+          1,
+          -1,
+          1
+        ]
+      },
+      "unknowns": [
+        "singular_value_decomposition"
+      ],
+      "initial_display": [
+        "input_basis",
+        "supplied_matrix"
+      ],
+      "working_display": [
+        "learner_candidate_factors",
+        "linked_2d_input_and_3d_output"
+      ],
+      "check_contract": {
+        "kind": "invariant",
+        "quantity": "reconstruction and orthonormality in declared full or thin SVD convention",
+        "numeric_tolerance": "must be declared by the checked adapter; not executed here",
+        "scope": "factorization is not unique; do not compare singular-vector signs to one answer"
+      }
+    },
+    {
+      "id": "band_pattern_001",
+      "card": "001",
+      "component": "matrix_board",
+      "state": "example_binding_not_runtime_loaded",
+      "data_kind": "symbolic_question_family",
+      "field": "complex",
+      "matrix_shape": [
+        "m",
+        "m"
+      ],
+      "parameters": [
+        "m",
+        "p"
+      ],
+      "given_zero_rule": "abs(i-j) > p",
+      "conditions": [
+        "each leading principal block is nonsingular",
+        "unpivoted LU convention pinned by adapter"
+      ],
+      "unknowns": [
+        "factor_sparsity_pattern_L",
+        "factor_sparsity_pattern_U"
+      ],
+      "initial_display": [
+        "given_band_mask_A",
+        "unknown_factor_slots"
+      ],
+      "working_display": [
+        "learner_proposed_patterns",
+        "authorized_elimination_steps"
+      ],
+      "check_contract": {
+        "kind": "invariant",
+        "quantity": "factorization residual and structural pattern in chosen instances",
+        "numeric_tolerance": "must be declared by the checked adapter; not executed here",
+        "scope": "three or more parameter choices support exploration; a general sparsity claim still needs proof"
+      }
+    }
+  ],
+  "next_build": {
+    "component": "matrix_board",
+    "reason": "Largest foundational gap: variable rectangular dimensions, structural masks, pivot steps and block views are repeatedly requested.",
+    "first_card_bindings": [
+      "001",
+      "004",
+      "018",
+      "031",
+      "044",
+      "059"
+    ],
+    "validation": "Pure CPU state/geometry tests; explicit permutation convention; atomic steps; three instance sizes for parameterized examples; no source writes; no images.",
+    "status": "implemented_in_P046_with_documented_limits"
+  }
+}

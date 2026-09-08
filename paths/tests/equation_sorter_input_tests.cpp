@@ -14,7 +14,8 @@ void expect(bool value, const char* message) { if (!value) throw std::runtime_er
 struct Harness {
   EquationSorterSession session;
   EquationSorterUiState ui;
-  Harness(float width = 1440, float height = 900, const std::filesystem::path& content = SORTER_FIXTURE, bool mathematicalMoves = true)
+  std::unique_ptr<NativeMath> math;
+  Harness(float width = 1440, float height = 900, const std::filesystem::path& content = SORTER_FIXTURE, bool mathematicalMoves = true, bool typesetLibrary = false)
       : session([&] {
           auto result=loadSorterContent(content);
           // Explicit prepared fixtures retain the authored-question UI gate.
@@ -30,9 +31,10 @@ struct Harness {
     io.DisplaySize = {width, height};
     io.DeltaTime = 1.0F / 60;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    if(typesetLibrary){math=std::make_unique<NativeMath>(MATH_RESOURCES);ui.library.math=math.get();}
     frame(3);
   }
-  ~Harness() { ImGui::DestroyContext(); }
+  ~Harness() { math.reset();ImGui::DestroyContext(); }
   void frame(int count = 1) {
     for (int i = 0; i < count; ++i) {
       unsigned char* pixels; int w, h;
@@ -1480,7 +1482,7 @@ void longHistoryControls(void (*observe)(const Harness&,const char*)=nullptr) {
 void corpusContentsControls() {
   const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
   for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
-    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false);
+    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false,true);
     h.ui.corpus=&corpus;h.action(SorterActionKind::OpenStudy);
     h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Start)]);
     h.click(h.ui.solveControls[3]);h.click(h.ui.solveControls[0]);
@@ -1494,6 +1496,13 @@ void corpusContentsControls() {
     h.click(h.ui.libraryEntry);h.frame(3);
     auto& ui=h.ui.library;auto& io=ImGui::GetIO();
     expect(ui.open && ui.matches.size()==930 && ui.entry,"Library exposes the entire corpus");
+    expect(control(CorpusControl::Format).available,"the real sorter Library exposes presentation controls");
+    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("Quadratic Formula");h.frame(3);
+    expect(ui.bodyEquations==2 && ui.bodyFallbacks==0,"the real sorter Library typesets both quadratic formulas");
+    const auto equations=ui.bodyEquations;h.click(control(CorpusControl::Format));
+    expect(ui.raw && ui.bodyEquations==0,"Raw source is available inside the live practice session");
+    h.click(control(CorpusControl::Format));expect(!ui.raw && ui.bodyEquations==equations,"Typeset restores the same formulas");
+    h.click(control(CorpusControl::Clear));
     expect(contains(window,rect(ui.list)) && contains(window,rect(ui.reader)) && ui.reader.height>80,"list and reading area fit the viewport");
     for(const auto c:{CorpusControl::Practice,CorpusControl::Subject,CorpusControl::Topic,CorpusControl::Search,CorpusControl::Clear,CorpusControl::Next})
       expect(control(c).available && contains(window,control(c)),"primary library controls remain visible");
@@ -1594,7 +1603,7 @@ void reviewedMatrixControls() {
 void linkedCorpusControls() {
   const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
   for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
-    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false);h.ui.corpus=&corpus;
+    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false,true);h.ui.corpus=&corpus;
     h.action(SorterActionKind::OpenStudy);h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Start)]);
     h.click(h.ui.solveControls[3]);h.click(h.ui.solveControls[0]);
     const auto before=h.session.studyProgress();const auto revision=h.session.progressRevision();
@@ -1636,10 +1645,13 @@ void linkedCorpusControls() {
     h.press(ImGuiKey_Escape);h.frame(3);
     expect(current()=="corpus_00514" && !ui.original && ui.trail.empty() && ui.open && std::abs(ui.scroll-nullityScroll)<1,
         "Escape restores the longer reviewed origin after leaving a short original note");
-    h.click(control(CorpusControl::Source));reveal("corpus_00513");
+    h.click(control(CorpusControl::Source));h.click(control(CorpusControl::Format));reveal("corpus_00513");
+    expect(ui.raw,"raw presentation can be selected independently of Original/Reviewed");
     const auto originalScroll=ui.scroll;h.click(link("corpus_00513"));h.frame(3);
+    h.click(control(CorpusControl::Source));h.click(control(CorpusControl::Format));
+    expect(!ui.raw,"a linked entry can change its presentation");
     h.click(control(CorpusControl::Back));h.frame(3);
-    expect(ui.original && current()=="corpus_00514" && std::abs(ui.scroll-originalScroll)<1,"Back also preserves an Original-view bookmark");
+    expect(ui.original && ui.raw && current()=="corpus_00514" && std::abs(ui.scroll-originalScroll)<1,"Back preserves the source presentation and Original-view bookmark");
     h.click(control(CorpusControl::Source));reveal("corpus_00513");
     const auto focused=[&] {
       if(!GImGui->NavWindow || !GImGui->NavId)return false;
