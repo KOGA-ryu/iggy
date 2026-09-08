@@ -127,6 +127,61 @@ std::vector<fm::MathReference> readReferences(const std::filesystem::path& sourc
   return references;
 }
 
+std::vector<fm::NotationLesson> readNotation(const std::filesystem::path& source) {
+  const auto document=parseJson(readText(source),source);const Field root{document,source,""};checkSchema(root);
+  std::vector<fm::NotationDefinition> terms;
+  const auto definitions=root.member("terms");const auto termCount=definitions.array(fm::kNotationTermCapacity);
+  for(std::size_t i=0;i<termCount;++i) {
+    const auto field=definitions.element(i);fm::NotationDefinition term;
+    term.id=field.member("id").string();term.version=field.member("content_version").integer();
+    term.title=field.member("title").string();term.meaning=field.member("meaning").string();
+    term.definition=field.member("definition").string();term.example=field.member("example").string();
+    if(!fm::validNotationDefinition(term))field.fail("invalid notation definition: check IDs, versions and text limits");
+    if(std::any_of(terms.begin(),terms.end(),[&](const auto& previous){return previous.id==term.id;}))
+      field.member("id").fail("duplicate notation term ID");
+    terms.push_back(std::move(term));
+  }
+  std::vector<fm::NotationLesson> lessons;
+  const auto records=root.member("lessons");const auto count=records.array(fm::kNotationLibraryCapacity);
+  for(std::size_t i=0;i<count;++i) {
+    const auto field=records.element(i);fm::NotationLesson lesson;
+    lesson.id=field.member("id").string();lesson.version=field.member("content_version").integer();
+    lesson.title=field.member("title").string();lesson.context=field.member("context").string();
+    lesson.reading=field.member("reading").string();
+    const auto tokens=field.member("tokens");const auto tokenCount=tokens.array(fm::kNotationTokenCapacity);
+    for(std::size_t j=0;j<tokenCount;++j) {
+      const auto token=tokens.element(j);const auto id=token.member("term_id").string();
+      const auto term=std::find_if(terms.begin(),terms.end(),[&](const auto& value){return value.id==id;});
+      if(term==terms.end())token.member("term_id").fail("unknown notation term ID: "+id);
+      lesson.tokens.push_back({token.member("text").string(),token.member("role").string(),*term});
+    }
+    if(field.value.contains("check")) {
+      const auto check=field.member("check");
+      lesson.check=fm::NotationCheck{check.member("prompt").string(),check.member("correct").string(),
+          check.member("retry").string(),check.member("answer_token").integer()};
+      if(lesson.check->answer>=lesson.tokens.size())check.member("answer_token").fail("answer must name an existing token");
+    }
+    if(!fm::validNotationLesson(lesson))field.fail("invalid notation lesson: check IDs, versions and text limits");
+    if(std::any_of(lessons.begin(),lessons.end(),[&](const auto& previous){return previous.id==lesson.id;}))
+      field.member("id").fail("duplicate notation lesson ID");
+    lessons.push_back(std::move(lesson));
+  }
+  return lessons;
+}
+
+std::vector<fm::NotationLesson> readNotationIds(const Field& ids,std::span<const fm::NotationLesson> library) {
+  std::vector<fm::NotationLesson> result;const auto count=ids.array(fm::kNotationLessonCapacity);
+  for(std::size_t i=0;i<count;++i) {
+    const auto field=ids.element(i);const auto id=field.string();
+    const auto found=std::find_if(library.begin(),library.end(),[&](const auto& lesson){return lesson.id==id;});
+    if(found==library.end())field.fail("unknown notation lesson ID: "+id);
+    if(std::any_of(result.begin(),result.end(),[&](const auto& lesson){return lesson.id==id;}))
+      field.fail("duplicate notation lesson ID: "+id);
+    result.push_back(*found);
+  }
+  return result;
+}
+
 std::string validationField(const fm::QuestionValidationResult& result) {
   std::string path;
   if(result.workingStateIndex) path = "/working_states/" + std::to_string(*result.workingStateIndex);
@@ -189,7 +244,8 @@ const std::vector<std::size_t>& QuestionPack::deck(std::string_view mode) const 
 }
 
 fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std::filesystem::path& sourcePath,
-                                               std::span<const fm::MathReference> references) {
+                                               std::span<const fm::MathReference> references,
+                                               std::span<const fm::NotationLesson> notation) {
   const auto document = parseJson(json, sourcePath);
   const Field root{document, sourcePath, ""};
   checkSchema(root);
@@ -199,6 +255,7 @@ fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std
   question.equation = root.member("equation").string();
   question.skill = root.member("skill").string();
   question.description = root.member("description").string();
+  if(document.contains("notation_ids"))question.notation=readNotationIds(root.member("notation_ids"),notation);
   if(document.contains("concept_ids")) {
     const auto ids=root.member("concept_ids");const auto count=ids.array(fm::kMathReferenceCapacity);
     for(std::size_t i=0;i<count;++i) {
@@ -299,6 +356,13 @@ QuestionPack loadQuestionPack(const std::filesystem::path& path) {
     if(relative.empty() || relative.is_absolute())field.fail("expected a nonempty pack-relative reference library path");
     references=readReferences((sourcePath.parent_path()/relative).lexically_normal());
   }
+  std::vector<fm::NotationLesson> notation;
+  if(document.contains("notation_library")) {
+    const auto field=root.member("notation_library");const std::filesystem::path relative=field.string();
+    if(relative.empty() || relative.is_absolute())field.fail("expected a nonempty pack-relative notation library path");
+    notation=readNotation((sourcePath.parent_path()/relative).lexically_normal());
+  }
+  const auto defaultNotation=document.contains("notation_ids")?readNotationIds(root.member("notation_ids"),notation):std::vector<fm::NotationLesson>{};
   std::vector<std::filesystem::path> sources;
   const auto questions = root.member("questions");
   const auto count = questions.array(fm::kQuestionCatalogCapacity);
@@ -308,7 +372,8 @@ QuestionPack loadQuestionPack(const std::filesystem::path& path) {
     if(relative.empty() || relative.is_absolute()) field.fail("expected a nonempty pack-relative card path");
     const auto cardPath = (sourcePath.parent_path() / relative).lexically_normal();
     sources.push_back(cardPath);
-    pack.catalog.push_back(parseQuestionContent(readText(cardPath), cardPath, references));
+    pack.catalog.push_back(parseQuestionContent(readText(cardPath), cardPath, references, notation));
+    if(pack.catalog.back().notation.empty())pack.catalog.back().notation=defaultNotation;
   }
   const auto result = fm::validateCatalog(pack.catalog, fm::QuestionInteraction::ArcadeCollect);
   if(!result.valid()) {

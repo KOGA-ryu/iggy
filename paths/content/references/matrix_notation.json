@@ -1,0 +1,330 @@
+{
+  "schema_version": 1,
+  "terms": [
+    {
+      "id": "constant",
+      "content_version": 1,
+      "title": "Constant",
+      "meaning": "A fixed value in this expression.",
+      "definition": "A constant has a value that does not depend on the variables under discussion.",
+      "example": "In x + 2, the number 2 is constant."
+    },
+    {
+      "id": "subtraction",
+      "content_version": 1,
+      "title": "Subtraction",
+      "meaning": "Subtract the following value or expression.",
+      "definition": "Subtracting a quantity is equivalent to adding its additive inverse. A grouped expression following minus is subtracted as a whole.",
+      "example": "7 - (2 + 1) = 4."
+    },
+    {
+      "id": "fraction",
+      "content_version": 1,
+      "title": "Fraction",
+      "meaning": "Divide the numerator by a nonzero denominator.",
+      "definition": "For integers a and b with b nonzero, a/b denotes their exact quotient. A fraction beside a row can multiply every entry of that row.",
+      "example": "1/2 means one divided by two; (1/2)R1 means half of every entry in R1."
+    },
+    {
+      "id": "row",
+      "content_version": 1,
+      "title": "Matrix row",
+      "meaning": "One horizontal sequence of matrix entries.",
+      "definition": "Rows are ordered horizontal sequences. In an augmented system, a row records the coefficients and right-hand value of one equation. R1 and R2 name its first and second rows.",
+      "example": "[2, 1 | 7] represents 2x + y = 7 when the columns are x, y | b."
+    },
+    {
+      "id": "replacement",
+      "content_version": 1,
+      "title": "Replacement",
+      "meaning": "Replace the named object with the following expression.",
+      "definition": "The left side of <- names the destination. The right side is evaluated using the current values, then becomes the new destination value.",
+      "example": "R2 <- R2 - R1 replaces row two; row one stays unchanged."
+    },
+    {
+      "id": "exchange",
+      "content_version": 1,
+      "title": "Exchange",
+      "meaning": "Swap the two named rows.",
+      "definition": "The row-operation symbol <-> exchanges the complete rows, including right-hand entries. This meaning is specific to the row-operation context.",
+      "example": "R1 <-> R2 puts the previous second row first."
+    },
+    {
+      "id": "division",
+      "content_version": 1,
+      "title": "Division",
+      "meaning": "Divide by the following nonzero number.",
+      "definition": "Dividing a row by a nonzero scalar divides every entry of that row, including its right-hand value. Zero is not an allowed divisor.",
+      "example": "[2, 4 | 6] divided by 2 becomes [1, 2 | 3]."
+    },
+    {
+      "id": "matrix_block",
+      "content_version": 1,
+      "title": "Matrix block",
+      "meaning": "The coefficient entries of a linear system.",
+      "definition": "In [A | b], A contains coefficients in the declared variable order. It does not include the right-hand values b.",
+      "example": "For 2x + y = 7, the coefficient row is [2, 1]."
+    },
+    {
+      "id": "right_hand",
+      "content_version": 1,
+      "title": "Right-hand values",
+      "meaning": "The values on the other side of the system equations.",
+      "definition": "In an augmented matrix [A | b], b is the column of right-hand values, kept with its rows during row operations.",
+      "example": "For 2x + y = 7, the right-hand value is 7."
+    },
+    {
+      "id": "augmentation_bar",
+      "content_version": 1,
+      "title": "Augmentation separator",
+      "meaning": "Separate coefficients from right-hand values.",
+      "definition": "The bar inside [A | b] marks a column boundary. Here it is a separator, not absolute value or a determinant.",
+      "example": "[2, 1 | 7] separates the coefficients 2, 1 from the right-hand value 7."
+    },
+    {
+      "id": "corpus_00511",
+      "title": "Gaussian Elimination",
+      "content_version": 1,
+      "meaning": "Use reversible row operations to remove coefficients and expose a linear system's solutions.",
+      "definition": "Elimination uses row swaps, nonzero scaling and adding a multiple of a different row. Applied to whole augmented rows, these preserve the solutions. Forward elimination clears entries below successive pivots to reach echelon form. Normalizing pivots and clearing above them produces reduced row echelon form (RREF).",
+      "example": "[1,2|4] [3,5|11]\nR2 <- R2 - 3 R1\n[1,2|4] [0,-1|-1]\nThis is echelon form. Back-substitution gives y=1, x=2."
+    },
+    {
+      "id": "corpus_00512",
+      "title": "Reduced Row Echelon Form",
+      "content_version": 1,
+      "meaning": "RREF is a precisely defined final matrix form. Its uniqueness does not mean that a system has exactly one solution.",
+      "definition": "Zero rows follow all nonzero rows. Each nonzero row starts with 1; these leading 1s move strictly right as you go down. Each leading 1 is the only nonzero entry in its column. For a fixed matrix over a field, the RREF is unique even when different legal operation sequences produce it.",
+      "example": "[1,2|4] [0,-1|-1]\nR2 <- R2 / -1; R1 <- R1 - 2 R2\n[1,0|2] [0,1|1]\nHere the equations read x=2 and y=1."
+    },
+    {
+      "id": "corpus_00513",
+      "title": "Rank",
+      "content_version": 1,
+      "meaning": "Rank counts independent columns. Comparing the ranks of A and [A|b] tells whether Ax=b has a solution.",
+      "definition": "For a matrix A over a field, rank(A) is the dimension of its column space. It also equals the dimension of its row space and the number of pivots after row reduction. In Ax=b, A contains only the variable coefficients; [A|b] includes the right-hand column. The system is consistent (has at least one solution) exactly when rank(A)=rank([A|b]).",
+      "example": "[1,2|3] [2,4|7]\nR2 <- R2 - 2 R1 gives [1,2|3] [0,0|1].\nrank(A)=1; rank([A|b])=2: no solution.\nChange 7 to 6: both ranks are 1, with infinitely many rational solutions."
+    },
+    {
+      "id": "corpus_00514",
+      "title": "Nullity",
+      "content_version": 1,
+      "meaning": "Nullity counts independent directions that A sends to zero, and the free parameters available when Ax=b is consistent.",
+      "definition": "For an m by n matrix A over a field, its kernel (null space) is the set of vectors x with Ax=0. Nullity is the dimension of that space. Rank-nullity says rank(A)+nullity(A)=n, the number of coefficient columns. In a consistent system, variables whose columns have no pivot in echelon form are free: they may be chosen independently, and the pivot variables follow from the equations.",
+      "example": "[1,0,2|5] [0,1,-1|1]\nrank(A)=2; nullity(A)=3-2=1.\nz=t; x=5-2t; y=1+t.\nAll rational solutions: (5,1,0)+t(-2,1,1).\nThe kernel is spanned by (-2,1,1)."
+    }
+  ],
+  "lessons": [
+    {
+      "id": "augmented_matrix",
+      "content_version": 1,
+      "title": "Read an augmented matrix",
+      "context": "Matrix notation: x, y | b",
+      "reading": "The coefficient block A is followed by the right-hand column b.",
+      "tokens": [
+        {
+          "text": "A",
+          "term_id": "matrix_block",
+          "role": "Contains the coefficients."
+        },
+        {
+          "text": "|",
+          "term_id": "augmentation_bar",
+          "role": "Separates the two blocks inside [A | b]."
+        },
+        {
+          "text": "b",
+          "term_id": "right_hand",
+          "role": "Contains the right-hand values."
+        }
+      ],
+      "check": {
+        "prompt": "Select the separator between the coefficient block and right-hand values.",
+        "answer_token": 1,
+        "correct": "Yes. Here the bar marks the augmented column boundary.",
+        "retry": "The separator is the bar between A and b."
+      }
+    },
+    {
+      "id": "row_add_syntax",
+      "content_version": 1,
+      "title": "Read a row replacement",
+      "context": "Separate row-operation example",
+      "reading": "Replace row two with its current entries minus half of the corresponding row-one entries. Row one stays unchanged.",
+      "tokens": [
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The destination: row two will be replaced."
+        },
+        {
+          "text": "<-",
+          "term_id": "replacement",
+          "role": "Replace the destination with the expression on the right."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The old row-two values used to calculate the replacement."
+        },
+        {
+          "text": "-",
+          "term_id": "subtraction",
+          "role": "Subtract the following row multiple."
+        },
+        {
+          "text": "1/2",
+          "term_id": "fraction",
+          "role": "Multiply each row-one entry by one half."
+        },
+        {
+          "text": "R1",
+          "term_id": "row",
+          "role": "The source row; it stays unchanged."
+        }
+      ],
+      "check": {
+        "prompt": "Select the destination row name, to the LEFT of the replacement arrow.",
+        "answer_token": 0,
+        "correct": "Yes. The left-hand R2 names the row to replace.",
+        "retry": "The right side describes the calculation. Choose the destination before the arrow."
+      }
+    },
+    {
+      "id": "row_scale_syntax",
+      "content_version": 1,
+      "title": "Read row division",
+      "context": "Separate row-operation example",
+      "reading": "Replace row two with every entry of row two divided by two.",
+      "tokens": [
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The destination: row two will be replaced."
+        },
+        {
+          "text": "<-",
+          "term_id": "replacement",
+          "role": "Replace the destination with the right-hand expression."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The current row-two values used in the calculation."
+        },
+        {
+          "text": "÷",
+          "term_id": "division",
+          "role": "Divide every entry by the next number."
+        },
+        {
+          "text": "2",
+          "term_id": "constant",
+          "role": "The nonzero divisor."
+        }
+      ],
+      "check": {
+        "prompt": "Select the nonzero divisor.",
+        "answer_token": 4,
+        "correct": "Yes. Every entry of row two is divided by 2.",
+        "retry": "The divisor is the number after the division sign."
+      }
+    },
+    {
+      "id": "row_swap_syntax",
+      "content_version": 1,
+      "title": "Read a row swap",
+      "context": "Separate row-operation example",
+      "reading": "Exchange the complete first and second rows.",
+      "tokens": [
+        {
+          "text": "R1",
+          "term_id": "row",
+          "role": "The first row to exchange."
+        },
+        {
+          "text": "<->",
+          "term_id": "exchange",
+          "role": "Exchange both rows."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The second row to exchange."
+        }
+      ],
+      "check": {
+        "prompt": "Select the symbol that exchanges the rows.",
+        "answer_token": 1,
+        "correct": "Yes. This symbol swaps the rows in this context.",
+        "retry": "Choose the operation between the two row names."
+      }
+    },
+    {
+      "content_version": 1,
+      "id": "elimination_meaning",
+      "title": "Why row elimination works",
+      "context": "Reviewed teaching note; separate example",
+      "reading": "The example replaces row two with row two minus three copies of row one. It clears the first coefficient of row two while preserving the original solutions.",
+      "tokens": [
+        {
+          "text": "R2 <- R2 - 3 R1",
+          "term_id": "corpus_00511",
+          "role": "One whole-row elimination step in the separate example."
+        }
+      ]
+    },
+    {
+      "content_version": 1,
+      "id": "rref_meaning",
+      "title": "What reduced form means",
+      "context": "Reviewed teaching note; separate example",
+      "reading": "This example is in RREF and has x=2, y=1. RREF can also describe an inconsistent system or a system with free variables; the unique form alone does not guarantee a unique solution.",
+      "tokens": [
+        {
+          "text": "[1,0|2] [0,1|1]",
+          "term_id": "corpus_00512",
+          "role": "Each variable column has a leading 1, with zero in the other row."
+        }
+      ]
+    },
+    {
+      "content_version": 1,
+      "id": "rank_consistency",
+      "title": "Rank and consistency",
+      "context": "Reviewed teaching note; separate example",
+      "reading": "Compare coefficient rank r=rank(A) with rank([A|b]). Unequal ranks: no solution. Equal ranks: the system is consistent. For n unknowns, r=n then gives one solution; r<n gives infinitely many over the rationals or reals. The column after | holds b, not another unknown. In the separate example, changing 7 to 6 removes the contradiction.",
+      "tokens": [
+        {
+          "text": "rank(A)=1",
+          "term_id": "corpus_00513",
+          "role": "One coefficient pivot remains after eliminating the dependent second row."
+        },
+        {
+          "text": "rank([A|b])=2",
+          "term_id": "corpus_00513",
+          "role": "The extra pivot in the right-hand column signals the contradiction 0=1."
+        }
+      ]
+    },
+    {
+      "content_version": 1,
+      "id": "nullity_free_variables",
+      "title": "Nullity and free variables",
+      "context": "Reviewed teaching note; separate example",
+      "reading": "Here x and y have pivots; z does not. Choose any rational t for z, then x=5-2t and y=1+t. This describes every solution of the separate example. Its three coefficient columns and two pivots leave one free parameter. The last column supplies 5 and 1; it does not add an unknown. Check consistency before describing a solution family.",
+      "tokens": [
+        {
+          "text": "nullity(A)=3-2=1",
+          "term_id": "corpus_00514",
+          "role": "Three unknowns minus two coefficient pivots leave one kernel direction."
+        },
+        {
+          "text": "z=t",
+          "term_id": "corpus_00514",
+          "role": "The nonpivot variable is free. Choosing t determines x and y through the displayed equations."
+        }
+      ]
+    }
+  ]
+}

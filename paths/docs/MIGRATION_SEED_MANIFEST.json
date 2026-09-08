@@ -726,6 +726,62 @@
       "bytes": 1076,
       "port_kind": "exact_copy",
       "purpose": "P010 pinned JSON syntax dependency; nlohmann/json v3.12.0"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/README.md",
+      "destination": "content/source_snapshots/math_terms_v1/README.md",
+      "source_sha256": "715b464e6d744ce3d66ceb7cd544bd02b524afe12d6b1b6280937a21b64d578d",
+      "bytes": 66441,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/algebra.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/algebra.md",
+      "source_sha256": "3ec485be6e68b2ba60ee4ad9cbc5397a186e1e394837f4f67f65377a3b6938b4",
+      "bytes": 34662,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/calculus.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/calculus.md",
+      "source_sha256": "628bf8b5fa9eecfa36f8d3b0e525f6ffa7f4559e9ee005df43bbe4a34e025b60",
+      "bytes": 32225,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/discrete_math.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/discrete_math.md",
+      "source_sha256": "e080ba6858b9bac2aab6d53c85829267c81bb6ffabf8e9c3973c015fcadd1425",
+      "bytes": 28982,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/linear_algebra.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/linear_algebra.md",
+      "source_sha256": "490594ac1a3d2835f5d2f08959fa720be078aecf53da8cd255b54b2cfbda1596",
+      "bytes": 29614,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/probability_statistics.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/probability_statistics.md",
+      "source_sha256": "381d62a857e8003c488cc95cf3786e65d6db59394816965bdbb2ae30e9285b87",
+      "bytes": 24650,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
+    },
+    {
+      "source": "/Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/trigonometry.md",
+      "destination": "content/source_snapshots/math_terms_v1/sections/trigonometry.md",
+      "source_sha256": "ec3f62c1b8152b32c7bc756548170fd56927598a70729268b761fffa3ff375a6",
+      "bytes": 29122,
+      "port_kind": "exact_copy",
+      "purpose": "Math corpus table of contents; source notes, not checked game questions"
     }
   ],
   "engine_port_note": "P005 records exact copies and bounded function/type adaptations. source_head and source_sha256 identify the parent seed; destination_sha256_at_port identifies the initial port. Renderer/bootstrap and game ownership remain in Paths."

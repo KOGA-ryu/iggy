@@ -28,7 +28,7 @@ std::uint32_t positive(std::string_view text) {
 }
 struct Options {
   NativeLaunchConfig native;
-  std::filesystem::path content, script, report, capture, progress;
+  std::filesystem::path content, library, script, report, capture, progress;
   std::uint32_t frames = 0;
   bool check = false, noProgress=false;
 };
@@ -38,8 +38,9 @@ Options options(int argc, char** argv) {
   const char* base = SDL_GetBasePath();
   if (!base) throw std::runtime_error("cannot locate executable directory");
   o.content = std::filesystem::path(base) / "content/sorter/study_practice_v1.json";
+  o.library = std::filesystem::path(base) / "content/corpus/toc.json";
   constexpr std::array pathOptions{
-      std::pair{"--content", &Options::content}, std::pair{"--script", &Options::script},
+      std::pair{"--content", &Options::content}, std::pair{"--library", &Options::library}, std::pair{"--script", &Options::script},
       std::pair{"--report", &Options::report}, std::pair{"--capture", &Options::capture},
       std::pair{"--progress", &Options::progress}};
   for (int i = 1; i < argc; ++i) {
@@ -239,12 +240,13 @@ int main(int argc, char** argv) {
     if (argc == 2 && std::string_view(argv[1]) == "--help") {
       std::cout << "sorter [--content FILE] [--check-content] [--offscreen] [--frames N]\n"
                    "       [--resolution WxH] [--script FILE] [--report FILE] [--capture PNG]\n"
-                   "       [--progress FILE | --no-progress]\n";
+                   "       [--progress FILE | --no-progress] [--library FILE]\n";
       return 0;
     }
     auto o = options(argc, argv);
     EquationSorterSession session(loadSorterContent(o.content)); // Fail before creating the native host.
-    if (o.check) { std::cout << "Validated 100 sortable cards: " << o.content << '\n'; return 0; }
+    const auto corpus=loadMathCorpus(o.library);
+    if (o.check) { std::cout << "Validated 100 sortable cards and " << corpus.entries.size() << " library entries: " << o.content << '\n'; return 0; }
     const auto commands = script(o.script);
     std::string progressLocationError;
     // Bounded runs and scripts never touch personal progress implicitly.
@@ -263,6 +265,7 @@ int main(int argc, char** argv) {
     if (o.native.offscreen && !o.frames) o.frames = static_cast<std::uint32_t>(commands.size() + 3);
     NativeVulkanHost host(o.native);
     EquationSorterUiState ui;
+    ui.corpus=&corpus;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
     while (!o.frames || rendered < o.frames) {

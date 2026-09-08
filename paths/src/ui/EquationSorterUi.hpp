@@ -1,6 +1,8 @@
 #pragma once
 
 #include "runtime/sorter/EquationSorterSession.hpp"
+#include "ui/MathNotationUi.hpp"
+#include "ui/MathCorpusUi.hpp"
 #include <variant>
 
 namespace paths {
@@ -14,6 +16,10 @@ struct SorterCardBounds {
   bool available = false;
 };
 struct EquationSorterUiState {
+  const MathCorpus* corpus=nullptr;
+  MathCorpusUiState library;
+  SorterCardBounds libraryEntry;
+  MathNotationUiState notation;
   std::string progressMessage;
   bool progressFailed=false;
   SorterCardBounds progressStatus;

@@ -210,6 +210,60 @@ void testSharedRowReferences() {
   expect(parseQuestionContent(question.dump(),cardPath,loaded.catalog[0].references).references.size()==3,"in-memory import uses the same explicit library resolution");
 }
 
+void testMathNotation() {
+  Scratch temp;const auto sourceRoot=starterPack.parent_path().parent_path();
+  const auto libraryPath=temp.root/"notation.json",cardPath=temp.root/"question.json",packPath=temp.root/"pack.json";
+  auto question=card("sorter_matrix_rows");question.erase("concept_ids");write(cardPath,question);
+  const auto library=read(sourceRoot/"references/math_notation.json");write(libraryPath,library);
+  Json pack={{"schema_version",1},{"questions",{"question.json"}},{"notation_library","notation.json"},
+      {"notation_ids",{"row_add_syntax","augmented_matrix","equation_equality"}},
+      {"decks",{{"solve",Json::array({{{"question_id",question["id"]},{"content_version",question["content_version"]}}})}}}};
+  write(packPath,pack);const auto loaded=loadQuestionPack(packPath);
+  const auto& lessons=loaded.catalog[0].notation;
+  expect(lessons.size()==3 && lessons[0].id=="row_add_syntax","pack selects and orders notation without changing question content");
+  const auto& row=lessons[0];
+  expect(row.tokens[0].text==row.tokens[2].text && row.tokens[0].role!=row.tokens[2].role &&
+      row.tokens[0].definition.id==row.tokens[2].definition.id,"repeated row glyphs share a definition and retain occurrence-specific roles");
+  expect(fm::checkNotation(row,0)==fm::NotationVerdict::Correct && fm::checkNotation(row,2)==fm::NotationVerdict::Retry &&
+      fm::checkNotation(row,99)==fm::NotationVerdict::Unavailable,"reading check distinguishes destination from source syntax and refuses missing tokens");
+  auto general=row;general.check.reset();
+  expect(fm::validNotationLesson(general) && fm::checkNotation(general,0)==fm::NotationVerdict::Unavailable,"a definition lesson can omit practice");
+  general=row;general.context="Absolute value";general.tokens[1].text="|";
+  general.tokens[1].definition={"absolute_value","Absolute value","Distance from zero.","For real x, |x| is x if x is nonnegative and -x otherwise.","|-3| = 3.",1};
+  expect(fm::validNotationLesson(general) && lessons[1].tokens[1].text=="|" &&
+      general.tokens[1].definition.id!=lessons[1].tokens[1].definition.id,"the same bar glyph can have independently authored mathematical meanings");
+  auto edited=library;edited["terms"][8]["meaning"]="Updated row meaning.";edited["terms"][8]["content_version"]=2;write(libraryPath,edited);
+  const auto changed=loadQuestionPack(packPath);
+  expect(changed.catalog[0].notation[0].tokens[0].definition.meaning=="Updated row meaning." &&
+      row.tokens[0].definition.meaning!="Updated row meaning.","definitions resolve from one source and remain frozen after loading");
+  const auto invalid=[&](Json value,std::string_view field,std::string_view reason) {
+    write(libraryPath,value);expectError([&]{(void)loadQuestionPack(packPath);},libraryPath,field,reason);
+  };
+  edited=library;edited["terms"][1]["id"]=edited["terms"][0]["id"];invalid(edited,"/terms/1/id","duplicate");
+  edited=library;edited["lessons"][1]["id"]=edited["lessons"][0]["id"];invalid(edited,"/lessons/1/id","duplicate");
+  edited=library;edited["lessons"][0]["tokens"][0]["term_id"]="missing";invalid(edited,"/lessons/0/tokens/0/term_id","unknown");
+  edited=library;edited["lessons"][0]["check"]["answer_token"]=99;invalid(edited,"/lessons/0/check/answer_token","existing token");
+  edited=library;edited["lessons"][0]["tokens"]=Json::array();edited["lessons"][0].erase("check");invalid(edited,"/lessons/0","invalid notation lesson");
+  edited=library;edited["terms"][0]["meaning"]=std::string("hidden\0text",11);invalid(edited,"/terms/0","invalid notation definition");
+  edited=library;edited["terms"][0]["definition"]=std::string(481,'a');invalid(edited,"/terms/0","text limits");
+  edited=library;edited["lessons"][0]["tokens"][0]["text"]="##hidden";invalid(edited,"/lessons/0","text limits");
+  edited=library;while(edited["lessons"][0]["tokens"].size()<17)edited["lessons"][0]["tokens"].push_back(edited["lessons"][0]["tokens"][0]);
+  invalid(edited,"/lessons/0/tokens","capacity of 16");write(libraryPath,library);
+  auto bad=pack;bad["notation_ids"].push_back("row_add_syntax");write(packPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},packPath,"/notation_ids/3","duplicate");
+  bad=pack;bad["notation_ids"][0]="unknown";write(packPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},packPath,"/notation_ids/0","unknown");
+  bad=pack;bad["notation_library"]="/absolute.json";write(packPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},packPath,"/notation_library","pack-relative");
+  bad=pack;bad["notation_library"]="missing.json";write(packPath,bad);
+  expectError([&]{(void)loadQuestionPack(packPath);},temp.root/"missing.json","","cannot open");
+  write(packPath,pack);question["notation_ids"]={"equation_equality"};write(cardPath,question);
+  expect(loadQuestionPack(packPath).catalog[0].notation.size()==1,"explicit card notation replaces pack defaults");
+  expect(parseQuestionContent(question.dump(),cardPath,{},lessons).notation[0].id=="equation_equality","parser import uses the same explicit bindings");
+  auto malformed=loaded.catalog[0];malformed.notation[0].check->answer=99;
+  expect(!fm::validateQuestion(malformed,fm::QuestionInteraction::MathMoves).valid(),"direct question construction validates notation too");
+}
+
 void completeCurrentQuestion(GallerySession& game) {
   const auto apply = [&](const GalleryCommand& command) { expect(game.dispatch(command).accepted, "loaded gallery action accepted"); };
   apply(GalleryViewport{{0,78,1030,822}}); apply(GalleryTick{0.15F});
@@ -363,7 +417,7 @@ void testSource013Adaptation() {
 int main() {
   try {
     testCardsAndSharedValidation(); testOptionIdentityAndInteraction(); testPackFailures(); testEditablePackAndFrozenRun();
-    testSource002Adaptation(); testSource013Adaptation(); testSharedRowReferences();
+    testSource002Adaptation(); testSource013Adaptation(); testSharedRowReferences(); testMathNotation();
   } catch(const std::exception& error) { ++failures; std::cerr << "Unexpected: " << error.what() << '\n'; }
   if(!failures) std::cout << "Question content loader tests passed\n";
   return failures ? 1 : 0;

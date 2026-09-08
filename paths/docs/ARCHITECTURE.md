@@ -1,5 +1,26 @@
 # Paths architecture
 
+The [linked-note checkpoint](LINKED_CORPUS_NOTES.md) adds explicit related-entry
+IDs to the corpus. `MathCorpus` resolves and validates them; `MathCorpusUi`
+owns the bounded reading trail and restores reader position without changing
+filters, question state or persistence. The existing Symbols content is unchanged.
+
+The [matrix corpus review](RANK_CORPUS_REVIEW.md) provides four separately reviewed
+teaching adaptations to the Library and reuses their definitions in all thirteen
+matrix questions. Original source records remain unreviewed and immutable;
+the existing question and save owners are unchanged.
+
+The [corpus table of contents](MATH_CORPUS_TOC.md) adds `paths_math_corpus` for
+bounded source-reading records and filtering, and `MathCorpusUi` within the
+existing sorter Contents. The pinned corpus is explicitly unreviewed. Its
+930 reading entries do not occupy sorter slots or alter question/save evidence.
+
+The reusable [notation feature](MATH_NOTATION_DESIGN.md) adds a pure authored
+definition/token model and `paths_notation_ui`, shared by the sorter's prepared
+and mathematical-move workspaces. Question packs explicitly link lessons;
+the component never infers symbol meaning or judges a player move. Existing
+solver, reference-example, save and 3D-object owners remain in place.
+
 Authority: the user's request to isolate the math game in its own `paths/`
 folder and give it a title screen, game variations, objectives, statistics,
 and scoring experiments. This supersedes plans to extend First Move inside
@@ -780,3 +801,115 @@ prints measurements before constructing `NativeVulkanHost`. It rejects capture
 requests and creates no native host, window or images. The numerical tests
 build with `PATHS_BUILD_NATIVE=OFF`. P040 extends the existing production files;
 no parent source or third-party implementation was imported.
+
+
+## Symmetry, harmonics and motion (P041)
+
+The same `MathObjects` owner now handles exact cube rotations and bounded turn
+history, harmonic synthesis, oscillator initial data and preview time. All new
+input enters its exhaustive semantic dispatcher. Symmetry enumerates the 24
+proper rotations using signed-permutation matrices; the snapshot publishes the
+vertex permutation and orbit. Plot flags provide spectrum stems and equal-axis
+Lissajous presentation without adding another mathematical owner.
+
+Harmonic coefficients and Parseval RMS are analytic; a bounded midpoint sum
+independently estimates a selected coefficient. Motion uses deterministic RK4
+from initial data to the selected time and a fixed 129-point trace. Work and
+loss use the same integration stages. The linear spring also exposes the
+causal impulse response of 1/(s^2+c*s+k) and a Simpson convolution, with their
+agreement against the ODE in the snapshot. The nonlinear pendulum does not use
+that linear response decomposition. Preview time does not enter scored-game,
+question-attempt or study-save state.
+
+The app forwards time ticks before presenting any view. Play stops at the
+bounded horizon; scrubbing and checking pause it. Diagram edits still apply
+before the following frame. The existing scene adapter and native host are
+unchanged. The renderer retains its original buffer capacities; P041 tests and
+CLI verification require no window, image or native host construction.
+
+
+## Modular numbers, Gaussian integers and vector fields (P042)
+
+`MathObjects` remains the sole owner of parameters, semantic actions, exact
+number operations, path evaluation and challenges. Modular walks retain a
+bounded step count and a visited-residue mask; changing their setup clears the
+evidence. Integer kernels handle positive remainders, GCD, inverses and general
+CRT consistency. Gaussian kernels distinguish nearest-integer Euclidean
+division from the floor-based half-open-cell representatives used for ideals
+and quotient rings. Undefined division by zero has an explicit readout.
+
+Vector fields and paths evaluate in double precision. Analytic positions and
+velocities feed Simpson line integrals and independent exact reference values.
+Path reversal retains the probe position and reverses its tangent. The shared
+`playbackParameter()` supplies the time parameter to both model actions and UI.
+All preview state stays outside scored attempts and saved study practice.
+
+Snapshots add one bounded 32-row, four-value-column table; label capacity rises
+from 16 to 32 for two residue drums. UI renders the supplied table and forwards
+step/reverse actions. Tables and plots share tabs. Primitive, plot and GPU
+capacities are unchanged; the existing scene adapter and renderer require no
+changes. Tests use CPU geometry and `--validate`, with no native host, window,
+rendering or images. See the P042 packet for mathematical conventions and bounds.
+
+
+## Flux shells, tensors and probability (P043)
+
+The existing MathObjects owner gains three families and twelve lessons. Flux
+uses weighted midpoint quadrature on spheres, box faces and disk annuli, with
+separate analytic references. Stokes uses Simpson boundary integration and
+independent curl flux. Tensor snapshots derive rank-two/rank-three components,
+Euclidean contractions and orthonormal coordinate changes from three vectors.
+Markov snapshots use row-stochastic matrices and bounded distribution traces;
+sampled walks keep a separate 65-state history and explicit xorshift32 seed.
+Changing walk setup clears that evidence before rebuilding the snapshot.
+
+The existing surface patch handles sphere and disk shells. Box faces and tensor
+cells use existing primitives. No renderer or GPU-capacity changes are needed.
+Probability spheres below 1e-9 are replaced by fixed grey markers to avoid
+singular transforms; numeric probabilities remain unchanged. The UI adds two
+walk actions, table/matrix/plot tabs and a compact selector below 720 pixels in
+height. Distribution steps use the existing parameter action; boundary playback
+uses the existing semantic time owner. All verification remains text-only.
+
+
+## Probability and statistics objects (P044)
+
+The existing MathObjects owner adds binomial, Bayesian and covariance families.
+Binomial mass uses bounded Bernoulli convolution; a separate seeded trial path
+records at most twelve outcomes through semantic actions. Normal approximation
+uses the Gaussian CDF and continuity correction, with zero variance explicitly
+excluded. Bayesian updates normalize two joint masses only for positive evidence
+probability; repeated evidence uses conditional independence and retains both
+posterior components directly to avoid cancellation of small probabilities.
+
+The covariance object derives population moments from eight actual points.
+The existing SVD kernel supplies ordered principal directions and variances.
+Whitening centers the cloud, rotates to principal coordinates and rescales each
+axis; the inverse is unavailable for singular covariance. Snapshot matrices and
+coordinate tables share the same points used by geometry. The fixed primitive,
+plot, table, label and GPU capacities are unchanged. Tiny probability geometry
+uses documented baseline/omission thresholds while readouts retain numeric mass.
+The common xorshift32 helper preserves previous probability-walk replay. No
+renderer, source-note, scored-attempt or study-save behavior changed.
+
+
+## Spherical harmonics, quadratic forms and roots (P045)
+
+MathObjects owns three additional families and twelve lessons. Spherical modes
+use a bounded associated-Legendre recurrence through degree four, with explicit
+real-basis and phase conventions. A separate 8-by-16 spherical quadrature checks
+orthogonality and energy; analytic spectral decay supplies heat flow. Finite
+differences at a fixed interior direction check Laplace-Beltrami eigenvalues.
+
+Quadratic forms use Q D Q^T and preserve their exact chosen principal values,
+including zero and negative values. A section height map changes to a unit
+Rayleigh sphere at the fourth layer. Marching-squares zero contours share the
+existing bounded contour view. MoveSurfacePoint now resolves its two parameters
+through an exhaustive owner switch, validating both coordinates before either
+write. Table-bearing snapshots can also expose the contour tab.
+
+Roots use exact integer exponent arithmetic, bounded monic polynomial division
+and the unit group modulo n (3-12). Invalid automorphism candidates remain valid
+power-map examples with an explicit unavailable automorphism state. Snapshot
+geometry is generated from the same maps as the tables. No host, scene-adapter,
+GPU-capacity, scored-attempt, source-note or study-save change is required.

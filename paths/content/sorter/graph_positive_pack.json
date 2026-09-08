@@ -3,6 +3,12 @@
   "questions": [
     "../cards/sorter_graph_positive.json"
   ],
+  "notation_library": "../references/math_notation.json",
+  "notation_ids": [
+    "line_syntax",
+    "equation_equality",
+    "exact_fraction"
+  ],
   "decks": {
     "solve": [
       {

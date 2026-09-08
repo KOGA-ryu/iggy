@@ -9,14 +9,30 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Count };
 enum class MathParameter : std::uint8_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
   A00, A02, A10, A12, A20, A21, A22, VectorX, VectorY, VectorZ, ComposeAngle, SvdStage,
-  SurfaceRule, SurfaceU, SurfaceV, DirectionAngle, DescentRate, Constraint, CircleAngle, Count
+  SurfaceRule, SurfaceU, SurfaceV, DirectionAngle, DescentRate, Constraint, CircleAngle,
+  SymmetryFirst, SymmetrySecond, SymmetryGenerator, SymmetryPower, SymmetryElement, SymmetryVertex,
+  HarmonicTime, Amplitude1, Frequency1, Phase1, Amplitude2, Frequency2, Phase2, Waveform, HarmonicTerms, ProbeFrequency,
+  MotionSystem, InitialPosition, InitialVelocity, Stiffness, MotionTime, Damping, DriveAmplitude, DriveFrequency,
+  Modulus, ModValue, ModStep, InverseGuess, SecondModulus, SecondResidue, CrtGuess,
+  GaussianReal, GaussianImag, GaussianOtherReal, GaussianOtherImag, GaussianOperation, GaussianHeight, GaussianQuotient,
+  FieldRule, FieldX, FieldY, FieldZ, FieldYaw, FieldPitch, FieldPath, FieldTime,
+  FluxShape, FluxField, FluxRadius, FluxTilt, FluxOrientation, FluxProbe, FluxResolution, FluxTime,
+  TensorU0, TensorU1, TensorU2, TensorV0, TensorV1, TensorV2, TensorW0, TensorW1, TensorW2,
+  TensorI, TensorJ, TensorK, TensorGap, TensorBasis,
+  ProbabilityRule, ProbabilityStay, ProbabilityStart, ProbabilityMix, ProbabilitySeed, ProbabilityRow, ProbabilitySteps,
+  BinomialTrials, BinomialChance, BinomialCut, BinomialSeed,
+  BayesPrior, BayesHit, BayesFalse, BayesEvent, BayesPositive, BayesNegative,
+  CloudX, CloudY, CloudZ, CloudYaw, CloudPitch, CloudShear, CloudMeanX, CloudMeanY, CloudMeanZ, CloudComponent, CloudWhiten,
+  SphereTheta, SpherePhi, SphereMode, SphereSecond, SphereMix, SphereHeat,
+  QuadLambdaX, QuadLambdaY, QuadLambdaZ, QuadYaw, QuadPitch, QuadX, QuadY, QuadZ,
+  RootN, RootIndex, RootMultiplier, RootPower, RootAutomorphism, Count
 };
-enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint };
+enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };
 enum class MathFeedback : std::uint8_t { None, TryAgain, Solved };
 
@@ -68,13 +84,14 @@ struct MathPlotSeries {
   std::array<MathPlotPoint,129> points{};
   std::size_t count = 0;
   bool signedFill = false;
+  bool stems = false;
 };
 struct MathPlot {
   std::string_view title;
   std::array<MathPlotSeries,3> series{};
   std::size_t seriesCount = 0;
   MathPlotPoint marker{};
-  bool hasMarker = false;
+  bool hasMarker = false, equalAspect = false;
   MathParameter scrubParameter = MathParameter::Count;
 };
 struct MathMatrixView {
@@ -97,6 +114,20 @@ struct MathContourMap {
   MathPlotPoint point{}, gradient{};
   bool active = false, constrained = false;
 };
+struct MathSymmetryView {
+  bool active = false;
+  std::array<unsigned,8> permutation{}; // Original labelled vertex -> destination slot.
+  std::array<bool,8> orbit{};
+  std::array<unsigned,64> moves{}; // World-axis turns: X, Y, Z, X inverse, Y inverse, Z inverse.
+  std::size_t moveCount = 0;
+};
+struct MathValueTable {
+  std::string_view title;
+  std::array<std::string_view,4> columns{};
+  std::array<std::string_view,32> rowLabels{};
+  std::array<std::array<double,4>,32> values{};
+  std::size_t rowCount = 0, columnCount = 0;
+};
 struct MathObjectSnapshot {
   static constexpr std::size_t kPartCapacity = 192, kRouteCapacity = 64;
   MathObjectKind kind = MathObjectKind::Algebra;
@@ -104,7 +135,7 @@ struct MathObjectSnapshot {
   std::uint64_t revision = 1;
   std::array<MathPart,kPartCapacity> parts{};
   std::size_t partCount = 0;
-  std::array<MathLabel,16> labels{};
+  std::array<MathLabel,32> labels{};
   std::size_t labelCount = 0;
   std::array<MathMetric,12> metrics{};
   std::size_t metricCount = 0;
@@ -114,6 +145,15 @@ struct MathObjectSnapshot {
   std::size_t matrixCount = 0;
   MathSurfacePatch surface;
   MathContourMap contours;
+  MathSymmetryView symmetry;
+  MathValueTable table;
+  unsigned modularWalkSteps = 0, modularVisitedMask = 0;
+  bool fieldPathReversed = false;
+  std::array<unsigned,65> probabilityWalk{};
+  std::size_t probabilityWalkCount = 1;
+  std::array<unsigned,13> bernoulliPath{};
+  unsigned bernoulliSteps = 0;
+  bool playing = false;
   std::array<unsigned,kRouteCapacity> route{};
   std::size_t routeCount = 1;
   std::array<bool,8> allowedVertices{};
@@ -123,14 +163,15 @@ struct MathObjectSnapshot {
 };
 
 // One semantic action owner, independent of UI, SDL, Vulkan and persistence.
-// Validation is atomic. Snapshot building is bounded by 192 parts and 64 disks;
-// graph search is deterministic BFS over eight vertices. No per-action heap use.
+// Validation is atomic. Snapshots use fixed capacities; graph/group closure and
+// numerical motion/quadrature have bounded loops. No per-action heap use.
 class MathObjects {
 public:
   MathObjects();
   [[nodiscard]] MathActionResult dispatch(const MathAction&);
   [[nodiscard]] double parameter(MathParameter p) const;
   [[nodiscard]] bool parameterAvailable(MathParameter p) const;
+  [[nodiscard]] MathParameter playbackParameter() const;
   [[nodiscard]] const MathObjectSnapshot& snapshot() const { return snapshot_; }
 private:
   void rebuild();
@@ -138,6 +179,16 @@ private:
   std::array<double,static_cast<std::size_t>(MathParameter::Count)> parameters_{};
   MathObjectSnapshot snapshot_;
   bool reversedNegativeIntegral_ = false;
+  std::array<unsigned,64> symmetryMoves_{};
+  std::size_t symmetryMoveCount_ = 0;
+  unsigned modularWalkSteps_ = 0, modularVisitedMask_ = 1;
+  bool fieldPathReversed_ = false;
+  std::array<unsigned,65> probabilityWalk_{};
+  std::size_t probabilityWalkCount_ = 1;
+  std::uint32_t probabilityRng_ = 7;
+  std::array<unsigned,13> bernoulliPath_{};
+  unsigned bernoulliSteps_ = 0;
+  std::uint32_t bernoulliRng_ = 11;
 };
 
 } // namespace paths

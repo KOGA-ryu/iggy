@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 #include "runtime/first_move/LinearEquation.hpp"
+#include "runtime/first_move/MathNotation.hpp"
 
 namespace iggy3d::first_move {
 
@@ -105,6 +106,7 @@ struct LayeredQuestionContent {
   bool supportsMathMoves=false; // Explicit content opt-in; prepared arcade consumers still use their authored chain.
   MathWorkingModel mathModel=MathWorkingModel::LinearEquation;
   std::vector<MathReference> references; // Resolved immutable copies from the pack's shared library.
+  std::vector<NotationLesson> notation; // Optional read-only teaching material; never an answer rule.
 };
 
 [[nodiscard]] const LayeredQuestionContent& layeredQuestion() noexcept;

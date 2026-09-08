@@ -32,14 +32,16 @@ double number(std::string_view text) {
 unsigned integer(std::string_view text,unsigned minimum,unsigned maximum) {
   const double result=number(text);if(result<minimum||result>maximum||std::floor(result)!=result)throw std::invalid_argument("Integer option out of range");return static_cast<unsigned>(result);
 }
-enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Help };
+enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Turn,UndoTurn,Identity,Advance,ModularStep,ResetWalk,ReversePath,WalkStep,ResetProbability,TrialStep,ResetTrials,Help };
 Options parse(int argc,char** argv) {
-  constexpr std::array<std::pair<std::string_view,Flag>,14> flags{{
+  constexpr std::array<std::pair<std::string_view,Flag>,25> flags{{
     {"--offscreen",Flag::Offscreen},{"--frames",Flag::Frames},{"--capture",Flag::Capture},
     {"--resolution",Flag::Resolution},{"--object",Flag::Object},{"--set",Flag::Set},
     {"--route",Flag::Route},{"--check",Flag::Check},{"--level",Flag::Level},
     {"--preset",Flag::Preset},{"--descent",Flag::Descent},{"--swap-bounds",Flag::Swap},
-    {"--validate",Flag::Validate},{"--help",Flag::Help}}};
+    {"--validate",Flag::Validate},{"--turn",Flag::Turn},{"--undo-turn",Flag::UndoTurn},
+    {"--identity",Flag::Identity},{"--advance",Flag::Advance},{"--step",Flag::ModularStep},
+    {"--reset-walk",Flag::ResetWalk},{"--reverse-path",Flag::ReversePath},{"--walk-step",Flag::WalkStep},{"--reset-probability-walk",Flag::ResetProbability},{"--trial-step",Flag::TrialStep},{"--reset-trials",Flag::ResetTrials},{"--help",Flag::Help}}};
   Options options;
   for(int i=1;i<argc;++i) {
     const std::string_view name=argv[i];const auto flag=std::find_if(flags.begin(),flags.end(),[&](const auto& item){return item.first==name;});
@@ -71,8 +73,23 @@ Options parse(int argc,char** argv) {
       case Flag::Descent:options.actions.push_back({MathActionKind::DescentStep});break;
       case Flag::Swap:options.actions.push_back({MathActionKind::SwapBounds});break;
       case Flag::Validate:options.validate=true;break;
+      case Flag::Turn: {
+        static constexpr std::array<std::string_view,6> turns{"x","y","z","x-inverse","y-inverse","z-inverse"};
+        const auto name=next();const auto found=std::find(turns.begin(),turns.end(),name);if(found==turns.end())throw std::invalid_argument("Unknown cube turn");
+        options.actions.push_back({MathActionKind::SymmetryTurn,{},{},0,static_cast<unsigned>(found-turns.begin())});break;
+      }
+      case Flag::UndoTurn:options.actions.push_back({MathActionKind::SymmetryUndo});break;
+      case Flag::Identity:options.actions.push_back({MathActionKind::SymmetryIdentity});break;
+      case Flag::Advance:options.actions.push_back({MathActionKind::AdvanceTime,{},{},number(next())});break;
+      case Flag::ModularStep:options.actions.push_back({MathActionKind::ModularStep,{},{},number(next())});break;
+      case Flag::ResetWalk:options.actions.push_back({MathActionKind::ResetModularWalk});break;
+      case Flag::ReversePath:options.actions.push_back({MathActionKind::ReverseFieldPath});break;
+      case Flag::WalkStep:options.actions.push_back({MathActionKind::ProbabilityStep});break;
+      case Flag::ResetProbability:options.actions.push_back({MathActionKind::ResetProbabilityWalk});break;
+      case Flag::TrialStep:options.actions.push_back({MathActionKind::BernoulliStep});break;
+      case Flag::ResetTrials:options.actions.push_back({MathActionKind::ResetBernoulli});break;
       case Flag::Help:
-        std::puts("math_lab [--object algebra|trig|calculus|linear|discrete|function|surface] [--level 0..3]\n         [--set key=value] [--preset 0..4] [--descent] [--swap-bounds] [--route BDH] [--check]\n         [--validate] [--offscreen] [--frames N] [--resolution 1440x900] [--capture /path/view.png]\n--validate computes geometry and prints measurements without creating a native host or images.\nArguments apply in order: select the object and level before setting its parameters.\nMatrix presets: 0 identity, 1 shear, 2 xy projection, 3 stretch/reflection, 4 z rotation.");
+        std::puts("math_lab [--object algebra|trig|calculus|linear|discrete|function|surface|symmetry|harmonics|oscillator|modular|gaussian|field|flux|tensor|probability|binomial|bayes|covariance|spherical|quadratic|roots] [--level 0..3]\n         [--set key=value] [--preset 0..4] [--descent] [--swap-bounds] [--route BDH] [--check]\n         [--turn x|y|z|x-inverse|y-inverse|z-inverse] [--undo-turn] [--identity] [--advance duration]\n         [--step 1|-1] [--reset-walk] [--reverse-path] [--walk-step] [--reset-probability-walk] [--trial-step] [--reset-trials]\n         [--validate] [--offscreen] [--frames N] [--resolution 1440x900] [--capture /path/view.png]\n--validate computes geometry and prints measurements without creating a native host or images.\nArguments apply in order: select the object and level before setting its parameters.\nMatrix presets: 0 identity, 1 shear, 2 xy projection, 3 stretch/reflection, 4 z rotation.");
         for(const auto& p:mathParameterSpecs())std::printf("  %s [%g,%g]  %s (level %u+)\n",p.key.data(),p.minimum,p.maximum,p.label.data(),p.minimumLevel);
         std::exit(0);
     }
@@ -100,8 +117,13 @@ void plotView(const MathPlot& plot,const MathObjects& model,UiState& ui) {
   for(std::size_t s=0;s<plot.seriesCount;++s)for(std::size_t i=0;i<plot.series[s].count;++i) {
     const auto p=plot.series[s].points[i];minX=std::min(minX,p.x);maxX=std::max(maxX,p.x);minY=std::min(minY,p.y);maxY=std::max(maxY,p.y);
   }
-  if(plot.hasMarker){minY=std::min(minY,plot.marker.y);maxY=std::max(maxY,plot.marker.y);}
+  if(plot.hasMarker){minX=std::min(minX,plot.marker.x);maxX=std::max(maxX,plot.marker.x);minY=std::min(minY,plot.marker.y);maxY=std::max(maxY,plot.marker.y);}
   const double pad=std::max(.25,(maxY-minY)*.08);minY-=pad;maxY+=pad;if(maxX-minX<1e-9)maxX=minX+1;
+  if(plot.equalAspect) {
+    const double aspect=size.x/size.y,dx=maxX-minX,dy=maxY-minY;
+    if(dx<aspect*dy){const double extra=(aspect*dy-dx)/2;minX-=extra;maxX+=extra;}
+    else {const double extra=(dx/aspect-dy)/2;minY-=extra;maxY+=extra;}
+  }
   const auto project=[&](MathPlotPoint p){return ImVec2{origin.x+static_cast<float>((p.x-minX)/(maxX-minX))*size.x,origin.y+size.y-static_cast<float>((p.y-minY)/(maxY-minY))*size.y};};
   draw->AddRectFilled(origin,{origin.x+size.x,origin.y+size.y},IM_COL32(16,28,39,255),3);
   draw->PushClipRect(origin,{origin.x+size.x,origin.y+size.y},true);
@@ -120,6 +142,10 @@ void plotView(const MathPlot& plot,const MathObjects& model,UiState& ui) {
       const bool negative=a.y+b.y<0;if(negative)std::reverse(quad.begin(),quad.end());
       draw->AddConvexPolyFilled(quad.data(),4,negative?IM_COL32(242,143,99,75):colour(series.color,.28F));
     };
+    if(series.stems) {
+      for(std::size_t i=0;i<series.count;++i){const auto p=series.points[i];draw->AddLine(project({p.x,0}),project(p),colour(series.color),2);draw->AddCircleFilled(project(p),3,colour(series.color));}
+      continue;
+    }
     for(std::size_t i=1;i<series.count;++i) {
       const auto a=series.points[i-1],b=series.points[i];
       if(series.signedFill) {
@@ -151,8 +177,8 @@ void matrixView(const MathMatrixView& matrix,const MathObjects& model,UiState& u
   if(matrix.editable)ImGui::TextWrapped("Drag entries to change the same A used by the object and measurements.");
   ImGui::PopID();
 }
-void contourView(const MathContourMap& map,UiState& ui) {
-  ImGui::TextUnformatted("Contours in the input plane (u,v)");
+void contourView(const MathContourMap& map,UiState& ui,bool quadratic=false) {
+  ImGui::TextUnformatted(quadratic?"Zero set q(x,y,z0)=0 in the input plane":"Contours in the input plane (u,v)");
   const ImVec2 available=ImGui::GetContentRegionAvail();const float side=std::max(50.0F,std::min(available.x,available.y-25));
   const ImVec2 origin=ImGui::GetCursorScreenPos();ImGui::InvisibleButton("contour map",{side,side});auto* draw=ImGui::GetWindowDrawList();
   const auto project=[&](MathPlotPoint p){return ImVec2{origin.x+static_cast<float>((p.x+2)/4)*side,origin.y+static_cast<float>((2-p.y)/4)*side};};
@@ -168,7 +194,65 @@ void contourView(const MathContourMap& map,UiState& ui) {
     const auto mouse=ImGui::GetIO().MousePos;
     queue(ui,{MathActionKind::MoveSurfacePoint,{},{},std::clamp(-2+4.0*(mouse.x-origin.x)/side,-2.0,2.0),0,std::clamp(2-4.0*(mouse.y-origin.y)/side,-2.0,2.0)});
   }
-  ImGui::TextDisabled("u/v: -2 .. 2; gradient shown at 1/4 scale");
+  ImGui::TextDisabled(quadratic?"x/y: -2 .. 2; drag to move the probe; gradient at 1/4 scale":"u/v: -2 .. 2; gradient shown at 1/4 scale");
+}
+void symmetryView(const MathSymmetryView& view) {
+  ImGui::TextUnformatted("Label -> fixed destination slot");
+  if(ImGui::BeginTable("permutation",4,ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_BordersInner)) {
+    for(unsigned i=0;i<8;++i){ImGui::TableNextColumn();ImGui::Text("%c -> %c",'A'+i,'A'+view.permutation[i]);}ImGui::EndTable();
+  }
+  std::string orbit;for(unsigned i=0;i<8;++i)if(view.orbit[i]){if(!orbit.empty())orbit+=" ";orbit+=static_cast<char>('A'+i);}
+  if(!orbit.empty())ImGui::TextWrapped("Orbit destinations (gold slots): %s",orbit.c_str());
+  if(view.moveCount) {
+    static constexpr std::array<const char*,6> moves{"X+","Y+","Z+","X-","Y-","Z-"};std::string word;
+    for(std::size_t i=0;i<view.moveCount;++i){if(i)word+=" ";word+=moves[view.moves[i]];}ImGui::TextWrapped("Applied in order: %s",word.c_str());
+  }
+  ImGui::TextWrapped("Slots A-H have sign bits x=1, y=2, z=4; A=(-,-,-), H=(+,+,+). Labels move with the cube.");
+}
+void explorationControls(MathObjects& model) {
+  const auto& s=model.snapshot();
+  if(s.kind==MathObjectKind::Symmetry&&s.level<2) {
+    static constexpr std::array<const char*,6> labels{"X +90","Y +90","Z +90","X -90","Y -90","Z -90"};
+    ImGui::TextUnformatted("Turn about a fixed world axis");ImGui::BeginDisabled(s.symmetry.moveCount==s.symmetry.moves.size());
+    for(unsigned i=0;i<6;++i){if(i%3)ImGui::SameLine();if(ImGui::Button(labels[i]))apply(model,{MathActionKind::SymmetryTurn,{},{},0,i});}
+    if(s.level==1){if(ImGui::Button("Apply first"))apply(model,{MathActionKind::SymmetryTurn,{},{},0,static_cast<unsigned>(model.parameter(MathParameter::SymmetryFirst))});ImGui::SameLine();if(ImGui::Button("Apply second"))apply(model,{MathActionKind::SymmetryTurn,{},{},0,static_cast<unsigned>(model.parameter(MathParameter::SymmetrySecond))});}
+    ImGui::EndDisabled();ImGui::BeginDisabled(s.symmetry.moveCount==0);if(ImGui::Button("Undo turn"))apply(model,{MathActionKind::SymmetryUndo});ImGui::EndDisabled();ImGui::SameLine();if(ImGui::Button("Return to identity"))apply(model,{MathActionKind::SymmetryIdentity});
+  }
+  if(s.kind==MathObjectKind::Modular&&s.level==1) {
+    ImGui::BeginDisabled(s.modularWalkSteps==64);
+    if(ImGui::Button("Step forward"))apply(model,{MathActionKind::ModularStep,{},{},1});ImGui::SameLine();if(ImGui::Button("Step backward"))apply(model,{MathActionKind::ModularStep,{},{},-1});
+    ImGui::EndDisabled();if(ImGui::Button("Reset walk"))apply(model,{MathActionKind::ResetModularWalk});
+    if(s.modularWalkSteps==64)ImGui::TextWrapped("Walk limit reached. Reset to explore another cycle.");
+  }
+  if(s.kind==MathObjectKind::VectorField&&s.level>0) {
+    if(ImGui::Button("Reverse path"))apply(model,{MathActionKind::ReverseFieldPath});ImGui::SameLine();ImGui::TextUnformatted(s.fieldPathReversed?"Reversed":"Forward");
+  }
+  if(s.kind==MathObjectKind::Probability&&s.level==0) {
+    ImGui::BeginDisabled(s.probabilityWalkCount==s.probabilityWalk.size());if(ImGui::Button("Next walk step"))apply(model,{MathActionKind::ProbabilityStep});ImGui::EndDisabled();ImGui::SameLine();if(ImGui::Button("Reset walk"))apply(model,{MathActionKind::ResetProbabilityWalk});
+    if(s.probabilityWalkCount==s.probabilityWalk.size())ImGui::TextWrapped("Walk limit reached. Reset to start again.");
+  }
+  if(s.kind==MathObjectKind::Probability&&s.level>=2) {
+    const auto p=MathParameter::ProbabilitySteps;ImGui::BeginDisabled(model.parameter(p)>=64);if(ImGui::Button("Next distribution"))apply(model,{MathActionKind::SetParameter,{},p,model.parameter(p)+1});ImGui::EndDisabled();ImGui::SameLine();if(ImGui::Button("Restart distribution"))apply(model,{MathActionKind::SetParameter,{},p,0});
+  }
+  if(s.kind==MathObjectKind::Binomial&&s.level==0) {
+    ImGui::BeginDisabled(s.bernoulliSteps>=model.parameter(MathParameter::BinomialTrials));if(ImGui::Button("Next trial"))apply(model,{MathActionKind::BernoulliStep});ImGui::EndDisabled();ImGui::SameLine();if(ImGui::Button("Reset trials"))apply(model,{MathActionKind::ResetBernoulli});
+    if(s.bernoulliSteps>=model.parameter(MathParameter::BinomialTrials))ImGui::TextWrapped("Trial path complete. Reset to replay it, or change the seed for another path.");
+  }
+  const auto time=model.playbackParameter();
+  if(model.parameterAvailable(time)) {
+    const bool atEnd=model.parameter(time)>=mathParameterSpecs()[static_cast<std::size_t>(time)].maximum;
+    ImGui::BeginDisabled(atEnd);if(ImGui::Button(s.playing?"Pause":"Play"))apply(model,{MathActionKind::TogglePlayback});ImGui::SameLine();if(ImGui::Button("Advance 0.1"))apply(model,{MathActionKind::AdvanceTime,{},{},.1});ImGui::EndDisabled();ImGui::SameLine();
+    if(ImGui::Button("Restart time"))apply(model,{MathActionKind::SetParameter,{},time,0});
+    if(atEnd)ImGui::TextWrapped("Time window complete. Restart or scrub time to explore again.");
+  }
+}
+void valueTable(const MathValueTable& table) {
+  ImGui::TextWrapped("%s",table.title.data());
+  if(ImGui::BeginTable("values",static_cast<int>(table.columnCount+1),ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_BordersInner|ImGuiTableFlags_RowBg|ImGuiTableFlags_ScrollY,{0,std::max(45.0F,ImGui::GetContentRegionAvail().y)})) {
+    ImGui::TableSetupColumn("Value");for(std::size_t c=0;c<table.columnCount;++c)ImGui::TableSetupColumn(table.columns[c].data());ImGui::TableSetupScrollFreeze(0,1);ImGui::TableHeadersRow();
+    for(std::size_t r=0;r<table.rowCount;++r){ImGui::TableNextRow();ImGui::TableNextColumn();ImGui::TextUnformatted(table.rowLabels[r].data());for(std::size_t c=0;c<table.columnCount;++c){ImGui::TableNextColumn();ImGui::Text("%.5g",table.values[r][c]);}}
+    ImGui::EndTable();
+  }
 }
 void linkedViews(const MathObjects& model,UiState& ui) {
   const auto& snapshot=model.snapshot();
@@ -179,7 +263,21 @@ void linkedViews(const MathObjects& model,UiState& ui) {
       for(std::size_t i=0;i<count;++i){ImGui::TableNextColumn();display(i,true);}ImGui::EndTable();
     }
   };
-  if(snapshot.contours.active) {
+  if(snapshot.table.rowCount) {
+    if((snapshot.plotCount||snapshot.matrixCount||snapshot.contours.active)&&ImGui::BeginTabBar("number and field views")) {
+      if(ImGui::BeginTabItem("Values")){valueTable(snapshot.table);ImGui::EndTabItem();}
+      if(snapshot.contours.active&&ImGui::BeginTabItem("Zero set")){contourView(snapshot.contours,ui,snapshot.kind==MathObjectKind::Quadratic);ImGui::EndTabItem();}
+      if(snapshot.matrixCount&&ImGui::BeginTabItem("Matrices")){panels(snapshot.matrixCount,[&](std::size_t i,bool show){if(show)matrixView(snapshot.matrices[i],model,ui);return snapshot.matrices[i].name;});ImGui::EndTabItem();}
+      if(snapshot.plotCount&&ImGui::BeginTabItem("Linked plots")){panels(snapshot.plotCount,[&](std::size_t i,bool show){if(show)plotView(snapshot.plots[i],model,ui);return snapshot.plots[i].title;});ImGui::EndTabItem();}
+      ImGui::EndTabBar();
+    } else if(!snapshot.plotCount&&!snapshot.matrixCount&&!snapshot.contours.active)valueTable(snapshot.table);
+  } else if(snapshot.symmetry.active) {
+    if(ImGui::BeginTabBar("symmetry views")) {
+      if(ImGui::BeginTabItem("Vertex permutation")){symmetryView(snapshot.symmetry);ImGui::EndTabItem();}
+      if(ImGui::BeginTabItem("Rotation matrices")){panels(snapshot.matrixCount,[&](std::size_t i,bool show){if(show)matrixView(snapshot.matrices[i],model,ui);return snapshot.matrices[i].name;});ImGui::EndTabItem();}
+      ImGui::EndTabBar();
+    }
+  } else if(snapshot.contours.active) {
     if(ImGui::BeginTabBar("surface views")) {
       if(ImGui::BeginTabItem("Contour map")){contourView(snapshot.contours,ui);ImGui::EndTabItem();}
       if(ImGui::BeginTabItem("Linked sections")){panels(snapshot.plotCount,[&](std::size_t i,bool show){if(show)plotView(snapshot.plots[i],model,ui);return snapshot.plots[i].title;});ImGui::EndTabItem();}
@@ -190,14 +288,20 @@ void linkedViews(const MathObjects& model,UiState& ui) {
 }
 void draw(MathObjects& model,MathObjectScene& scene,UiState& ui) {
   if(ui.hasPending){apply(model,ui.pending);ui.hasPending=false;}
+  if(model.snapshot().playing)apply(model,{MathActionKind::AdvanceTime,{},{},std::clamp(static_cast<double>(ImGui::GetIO().DeltaTime),.001,.1)});
   const auto size=ImGui::GetIO().DisplaySize;
   const unsigned columns=std::clamp(static_cast<unsigned>(std::max(1.0F,size.x/145)),1U,static_cast<unsigned>(mathObjectSpecs().size()));
   const unsigned rows=(static_cast<unsigned>(mathObjectSpecs().size())+columns-1)/columns;
-  const float sidebar=std::clamp(size.x*.29F,280.0F,380.0F),top=50+42.0F*rows,footer=148;
+  const bool compactSubjects=size.y<720;
+  const float sidebar=std::clamp(size.x*.29F,280.0F,380.0F),top=compactSubjects?90:50+42.0F*rows,footer=148;
   window("Subjects",{0,0},{size.x,top-8});
   ImGui::TextUnformatted("PATHS / MATH OBJECTS");ImGui::SameLine();ImGui::TextDisabled("Explore a relationship in three dimensions");
   ImGui::Spacing();
-  for(const auto& spec:mathObjectSpecs()) {
+  if(compactSubjects) {
+    ImGui::SetNextItemWidth(-1);if(ImGui::BeginCombo("##subject",mathObjectSpecs()[static_cast<std::size_t>(model.snapshot().kind)].name.data())) {
+      for(const auto& item:mathObjectSpecs())if(ImGui::Selectable(item.name.data(),model.snapshot().kind==item.id))apply(model,{MathActionKind::Select,item.id});ImGui::EndCombo();
+    }
+  } else for(const auto& spec:mathObjectSpecs()) {
     if(static_cast<unsigned>(spec.id)%columns)ImGui::SameLine();
     const bool active=model.snapshot().kind==spec.id;
     if(active)ImGui::PushStyleColor(ImGuiCol_Button,{.14F,.45F,.40F,1});
@@ -240,6 +344,7 @@ void draw(MathObjects& model,MathObjectScene& scene,UiState& ui) {
     }
     if(changed)apply(model,{MathActionKind::SetParameter,{},p.id,value});ImGui::PopID();ImGui::Spacing();
   }
+  explorationControls(model);
   if(ImGui::Button("Reset values"))apply(model,{MathActionKind::Reset});ImGui::SameLine();if(ImGui::Button("Reset view"))scene.resetView();
   if(model.snapshot().kind==MathObjectKind::Function&&model.snapshot().level>=2&&ImGui::Button("Swap bounds"))apply(model,{MathActionKind::SwapBounds});
   if(model.snapshot().kind==MathObjectKind::Surface&&model.parameterAvailable(MathParameter::DescentRate)&&ImGui::Button("Take a descent step")) {
@@ -273,7 +378,7 @@ void draw(MathObjects& model,MathObjectScene& scene,UiState& ui) {
   else if(ImGui::CollapsingHeader("Learning connections",ImGuiTreeNodeFlags_DefaultOpen))for(const auto text:spec.progression)ImGui::BulletText("%s",text.data());
   ImGui::End();
 
-  const bool linked=snapshot.plotCount||snapshot.matrixCount||snapshot.contours.active;
+  const bool linked=snapshot.plotCount||snapshot.matrixCount||snapshot.contours.active||snapshot.symmetry.active||snapshot.table.rowCount;
   const float diagramHeight=linked?std::clamp(size.y*.26F,170.0F,250.0F):0;
   const SceneViewport viewport{16,top,std::max(80.0F,size.x-sidebar-42),std::max(80.0F,size.y-top-footer-diagramHeight-24)};
   static_cast<void>(scene.publish(model.snapshot(),viewport));
@@ -310,6 +415,8 @@ int main(int argc,char** argv) {
       const auto& frame=scene.publish(model.snapshot(),{0,0,static_cast<float>(options.native.width),static_cast<float>(options.native.height)});
       std::printf("math_lab text validation: object=%s level=%u vertices=%zu indices=%zu plots=%zu matrices=%zu contours=%zu feedback=%u\n",mathObjectSpecs()[static_cast<std::size_t>(model.snapshot().kind)].key.data(),model.snapshot().level,frame.vertices.size(),frame.indices.size(),model.snapshot().plotCount,model.snapshot().matrixCount,model.snapshot().contours.count,static_cast<unsigned>(model.snapshot().feedback));
       for(std::size_t i=0;i<model.snapshot().metricCount;++i){const auto& metric=model.snapshot().metrics[i];std::printf("  %s = %.12g\n",metric.label.data(),metric.value);}
+      const auto& table=model.snapshot().table;
+      if(table.rowCount){std::printf("  Table: %s\n",table.title.data());for(std::size_t r=0;r<table.rowCount;++r){std::printf("    %s:",table.rowLabels[r].data());for(std::size_t c=0;c<table.columnCount;++c)std::printf(" %s=%.12g",table.columns[c].data(),table.values[r][c]);std::putchar('\n');}}
       return 0;
     }
     NativeVulkanHost host(options.native);

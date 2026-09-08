@@ -27,6 +27,7 @@ target_link_libraries(paths_math_objects PUBLIC paths_scene)
 add_library(paths_model
   src/runtime/first_move/HuntSession.cpp
   src/runtime/first_move/LinearEquation.cpp
+  src/runtime/first_move/MathNotation.cpp
   src/runtime/first_move/LayeredQuestionSession.cpp)
 target_include_directories(paths_model PUBLIC src)
 
@@ -34,6 +35,9 @@ add_library(paths_json INTERFACE)
 target_include_directories(paths_json SYSTEM INTERFACE third_party)
 add_library(paths_content src/content/QuestionContentIO.cpp)
 target_link_libraries(paths_content PUBLIC paths_model PRIVATE paths_json)
+add_library(paths_math_corpus src/content/MathCorpus.cpp)
+target_include_directories(paths_math_corpus PUBLIC src)
+target_link_libraries(paths_math_corpus PUBLIC paths_model PRIVATE paths_json)
 
 add_library(paths_sorter_model src/runtime/sorter/EquationSorterSession.cpp)
 target_include_directories(paths_sorter_model PUBLIC src)
@@ -112,8 +116,10 @@ if(PATHS_BUILD_NATIVE)
   target_link_libraries(math_lab PRIVATE paths_math_objects paths_native paths_imgui SDL3::SDL3)
   add_executable(gallery app/gallery_main.cpp)
   target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
-  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp)
-  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model PRIVATE paths_imgui)
+  add_library(paths_notation_ui src/ui/MathNotationUi.cpp)
+  target_link_libraries(paths_notation_ui PUBLIC paths_model PRIVATE paths_imgui)
+  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp)
+  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_math_corpus PRIVATE paths_imgui)
   add_executable(sorter app/sorter_main.cpp)
   target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_native paths_imgui paths_json SDL3::SDL3)
   add_custom_target(paths_sorter_content_files
@@ -128,6 +134,9 @@ if(PATHS_BUILD_NATIVE)
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/content/references"
       "$<TARGET_FILE_DIR:sorter>/content/references"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/corpus"
+      "$<TARGET_FILE_DIR:sorter>/content/corpus"
     VERBATIM)
   add_dependencies(sorter paths_sorter_content_files)
   # Deploy editable content next to the executable, including multi-config builds.
@@ -139,6 +148,26 @@ if(PATHS_BUILD_NATIVE)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_corpus_tests tests/math_corpus_tests.cpp)
+  target_link_libraries(paths_corpus_tests PRIVATE paths_math_corpus paths_sorter_content paths_json)
+  target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+    SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
+  add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_spectral_roots_tests tests/math_spectral_roots_tests.cpp)
+  target_link_libraries(paths_math_spectral_roots_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_spectral_roots_tests COMMAND paths_math_spectral_roots_tests)
+  add_executable(paths_math_statistics_tests tests/math_statistics_tests.cpp)
+  target_link_libraries(paths_math_statistics_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_statistics_tests COMMAND paths_math_statistics_tests)
+  add_executable(paths_math_shell_tensor_probability_tests tests/math_shell_tensor_probability_tests.cpp)
+  target_link_libraries(paths_math_shell_tensor_probability_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_shell_tensor_probability_tests COMMAND paths_math_shell_tensor_probability_tests)
+  add_executable(paths_math_number_field_tests tests/math_number_field_tests.cpp)
+  target_link_libraries(paths_math_number_field_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_number_field_tests COMMAND paths_math_number_field_tests)
+  add_executable(paths_math_exploration_tests tests/math_exploration_tests.cpp)
+  target_link_libraries(paths_math_exploration_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_exploration_tests COMMAND paths_math_exploration_tests)
   add_executable(paths_math_layers_tests tests/math_layers_tests.cpp)
   target_link_libraries(paths_math_layers_tests PRIVATE paths_math_objects)
   add_test(NAME paths_math_layers_tests COMMAND paths_math_layers_tests)
@@ -186,6 +215,8 @@ if(BUILD_TESTING)
     SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
   add_test(NAME paths_sorter_solve_tests COMMAND paths_sorter_solve_tests)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME paths_corpus_toc_tests COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/corpus_toc_tests.py")
   add_test(NAME paths_bracket_recipe_tests COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/bracket_recipe_tests.py")
   add_test(NAME paths_matrix_practice_recipe_tests COMMAND "${Python3_EXECUTABLE}"
@@ -216,11 +247,27 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_function_cli COMMAND math_lab --validate --object function --level 3 --set function=2 --set at=0.5 --set degree=5 --check)
     add_test(NAME paths_math_matrix_cli COMMAND math_lab --validate --object linear --level 3 --preset 2 --check)
     add_test(NAME paths_math_surface_cli COMMAND math_lab --validate --object surface --level 3 --set surface=1 --set constraint=1 --set circle_angle=0 --check)
-    set_tests_properties(paths_math_function_cli paths_math_matrix_cli paths_math_surface_cli
+    add_test(NAME paths_math_symmetry_cli COMMAND math_lab --validate --object symmetry --level 1 --turn y --identity --turn x --turn z --undo-turn --turn y --check)
+    add_test(NAME paths_math_harmonics_cli COMMAND math_lab --validate --object harmonics --level 3 --set waveform=0 --set probe_frequency=2 --advance 0.2 --check)
+    add_test(NAME paths_math_oscillator_cli COMMAND math_lab --validate --object oscillator --level 3 --advance 8 --check)
+    add_test(NAME paths_math_modular_cli COMMAND math_lab --validate --object modular --level 1 --set modulus=7 --set step=3 --reset-walk --step 1 --step -1 --step 1 --step 1 --step 1 --step 1 --step 1 --step 1 --check)
+    add_test(NAME paths_math_gaussian_cli COMMAND math_lab --validate --object gaussian --level 3 --set quotient=0 --check)
+    add_test(NAME paths_math_field_cli COMMAND math_lab --validate --object field --level 2 --set field=2 --set path=4 --reverse-path --set path_time=0 --advance 1 --check)
+    add_test(NAME paths_math_flux_cli COMMAND math_lab --validate --object flux --level 3 --set flux_field=2 --set flux_orientation=1 --set boundary_time=0 --advance 1 --check)
+    add_test(NAME paths_math_tensor_cli COMMAND math_lab --validate --object tensor --level 2 --set tensor_v0=1 --set tensor_v1=1 --set tensor_v2=0 --set tensor_w0=1 --set tensor_w1=-1 --set tensor_w2=0 --check)
+    add_test(NAME paths_math_probability_cli COMMAND math_lab --validate --object probability --walk-step --reset-probability-walk --level 3 --set chain=1 --set chain_steps=12 --check)
+    add_test(NAME paths_math_binomial_cli COMMAND math_lab --validate --object binomial --trial-step --reset-trials --level 3 --set trials=12 --set success_chance=0.5 --check)
+    add_test(NAME paths_math_bayes_cli COMMAND math_lab --validate --object bayes --level 3 --set positive_evidence=3 --set negative_evidence=0 --check)
+    add_test(NAME paths_math_covariance_cli COMMAND math_lab --validate --object covariance --level 3 --set whiten=1 --check)
+    add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
+    add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
+    add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    set_tests_properties(paths_math_function_cli paths_math_matrix_cli paths_math_surface_cli paths_math_symmetry_cli paths_math_harmonics_cli paths_math_oscillator_cli paths_math_modular_cli paths_math_gaussian_cli paths_math_field_cli paths_math_flux_cli paths_math_tensor_cli paths_math_probability_cli paths_math_binomial_cli paths_math_bayes_cli paths_math_covariance_cli paths_math_spherical_cli paths_math_quadratic_cli paths_math_roots_cli
       PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_executable(paths_sorter_input_tests tests/equation_sorter_input_tests.cpp)
     target_link_libraries(paths_sorter_input_tests PRIVATE paths_sorter_ui paths_sorter_content paths_imgui)
     target_compile_definitions(paths_sorter_input_tests PRIVATE
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
       SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json"
       SORTER_BRACKET_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/bracket_practice_v1.json"
       SORTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/equations_v1.json"

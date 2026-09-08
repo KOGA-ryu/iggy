@@ -407,6 +407,8 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   ui.solveBoard=beginSolvePanel("Problem board",{0,header,io.DisplaySize.x,boardHeight},flags);
   ImGui::TextColored({1,.77F,.29F,1},"PROBLEM %zu / %zu",sorter.solveNumber,sorter.solveCount);
   if(matrix) {ImGui::SameLine();ImGui::TextDisabled("x, y | b");}
+  drawMathNotationToggle(ui.notation,!game.question().content().notation.empty(),blocked);
+  if(ui.notation.open)ui.mathReferenceId.clear();
   const std::string_view original=matrix?math.nodes.front().working.display:v.equation;
   ImGui::PushFont(nullptr,matrix?18:22);centerLine(original);ImGui::TextUnformatted(original.data(),original.data()+original.size());
   ui.solveEquation=itemBounds();ImGui::PopFont();ImGui::EndChild();ImGui::PopStyleColor();
@@ -446,6 +448,7 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
     ImGui::AlignTextToFramePadding();ImGui::TextDisabled("%s",selected->label.c_str());ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
     if(ImGui::Button("?",{26,22})) {
+      ui.notation.open=false;
       if(ui.mathReferenceId==selected->conceptId)ui.mathReferenceId.clear();else openReference(selected->conceptId);
     }
     ui.mathReferenceButton=itemBounds(!blocked && !v.paused && !full);ImGui::PopStyleColor();
@@ -481,11 +484,13 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
 
   const float historyWidth=split?std::floor(io.DisplaySize.x*.64F):io.DisplaySize.x;
   const auto* reference=game.question().mathReference(ui.mathReferenceId);
-  if(!split && reference)ImGui::SetNextWindowScroll({0,0});
+  if(!split && (reference || ui.notation.open))ImGui::SetNextWindowScroll({0,0});
   ui.solveSupport=beginSolvePanel("Solution blueprint",{0,historyTop,historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},
-      !split && reference?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
-  if(!split && reference) {
-    ui.mathReferencePanel=ui.solveSupport;drawMathReference(ui,*reference,blocked,v.paused);ImGui::EndChild();
+      !split && (reference || ui.notation.open)?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
+  if(!split && (reference || ui.notation.open)) {
+    if(ui.notation.open)drawMathNotation(ui.notation,game.question().content().notation,blocked,v.paused);
+    else {ui.mathReferencePanel=ui.solveSupport;drawMathReference(ui,*reference,blocked,v.paused);}
+    ImGui::EndChild();
   } else {
   ImGui::TextDisabled("WORKING    %zu checked moves    %zu attempts",math.nodes.size()-1,math.events.size());
   std::array<bool,fm::kMathNodeCapacity> branch{};
@@ -537,10 +542,11 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   }
   ui.mathFollow=false;ImGui::EndDisabled();ImGui::EndChild();
   if(split) {
-    if(reference)ImGui::SetNextWindowScroll({0,0});
+    if(reference || ui.notation.open)ImGui::SetNextWindowScroll({0,0});
     ui.mathInspection=beginSolvePanel("Working inspection",{historyWidth,historyTop,io.DisplaySize.x-historyWidth,std::max(50.0F,io.DisplaySize.y-historyTop)},
-        reference?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
-    if(reference) {ui.mathReferencePanel=ui.mathInspection;drawMathReference(ui,*reference,blocked,v.paused);}
+        reference || ui.notation.open?flags|ImGuiWindowFlags_NoScrollWithMouse:flags & ~ImGuiWindowFlags_NoScrollbar);
+    if(ui.notation.open)drawMathNotation(ui.notation,game.question().content().notation,blocked,v.paused);
+    else if(reference) {ui.mathReferencePanel=ui.mathInspection;drawMathReference(ui,*reference,blocked,v.paused);}
     else {
       const auto inspected=ui.mathInspected.value_or(math.active);
       ImGui::TextDisabled("STEP %zu",inspected);ImGui::BeginDisabled(blocked);detail(inspected);ImGui::EndDisabled();
@@ -551,7 +557,8 @@ void drawMathSolving(EquationSorterUiState& ui,const SorterView& sorter,const Ga
   recoverFocus(headerWindow,backId,backRect);
   ui.solveDisplayedChallenge=v.challenge;ui.solveCompleteVisible=v.completed;
   if(ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !blocked && !io.WantTextInput) {
-    if(reference)ui.mathReferenceId.clear();
+    if(ui.notation.open)ui.notation.open=false;
+    else if(reference)ui.mathReferenceId.clear();
     else ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
   }
   ImGui::PopItemFlag();ImGui::PopFont();ImGui::PopStyleColor();ImGui::PopStyleVar(3);ImGui::End();
@@ -567,6 +574,7 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   const float scale=layout.scale;
   const bool changed=ui.solveDisplayedChallenge!=v.challenge || ui.solveCompleteVisible!=v.completed;
   const bool helpChanged=ui.solveHintVisible!=!v.hint.empty() || ui.solveNextVisible!=!v.nextMove.empty();
+  if(helpChanged && (!v.hint.empty() || !v.nextMove.empty()))ui.notation.open=false;
   const auto queue=[&](GalleryCommand command) { if(!ui.pending && !io.AppFocusLost)ui.pending=std::move(command); };
   const auto flags=ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{0,0});
@@ -593,6 +601,7 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   if(graph)ImGui::TextColored({1,.77F,.29F,1},"PROBLEM %zu / %zu    STEP %zu / %zu",sorter.solveNumber,sorter.solveCount,v.step,v.stepCount);
   else ImGui::TextColored({1,.77F,.29F,1},"ORIGINAL PROBLEM   %zu / %zu",sorter.solveNumber,sorter.solveCount);
   ImGui::PopFont();
+  drawMathNotationToggle(ui.notation,!game.question().content().notation.empty(),io.AppFocusLost || ui.solvePointerHeld);
   ImGui::PushFont(nullptr,fittedFont(v.equation,26*scale));centerLine(v.equation);
   ImGui::TextWrapped("%s",v.equation.data());ui.solveEquation=itemBounds();ImGui::PopFont();
   ImGui::EndChild();ImGui::PopStyleColor();
@@ -722,10 +731,12 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
   }
   ImGui::PopFont();ImGui::EndDisabled();ImGui::EndChild();
 
-  if(changed || helpChanged)ImGui::SetNextWindowScroll({-1,0});
+  if(changed || helpChanged || ui.notation.open)ImGui::SetNextWindowScroll({-1,0});
   ui.solveSupport=beginSolvePanel("Solve support",layout.support,flags & ~ImGuiWindowFlags_NoScrollbar);
   ImGui::BeginDisabled(io.AppFocusLost || ui.solvePointerHeld);
   ImGui::PushFont(nullptr,15*std::min(scale,1.3F));
+  if(ui.notation.open)drawMathNotation(ui.notation,game.question().content().notation,io.AppFocusLost || ui.solvePointerHeld,v.paused);
+  else {
   if(v.completed) {
     ImGui::BeginGroup();ImGui::SeparatorText("Check the result");
     if(system)ImGui::PushStyleColor(ImGuiCol_Text,{.4F,.9F,.73F,1});
@@ -750,14 +761,17 @@ void drawSolving(EquationSorterUiState& ui,const SorterView& sorter,const Galler
     ImGui::TextWrapped("%s",v.workingHighlights[i].label.c_str());ImGui::PopStyleColor();
   }
   if(v.step==1)ImGui::TextWrapped("%s",game.question().content().description.c_str());
+  }
   ImGui::PopFont();ImGui::EndDisabled();ImGui::EndChild();
   recoverFocus(headerWindow,backFocus,backRectangle);
   ui.solveDisplayedChallenge=v.challenge;ui.solveHintVisible=!v.hint.empty();
   ui.solveNextVisible=!v.nextMove.empty();ui.solveCompleteVisible=v.completed;
   ui.shootAvailable=calculation && v.ready && !v.paused && !v.transitioning;
   ui.shootViewport=viewport;ui.shootFrame=game.scene().frame().id;ui.shootChallenge=v.challenge;
-  if(ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !io.AppFocusLost)
-    ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
+  if(ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !io.AppFocusLost) {
+    if(ui.notation.open)ui.notation.open=false;
+    else ui.pending=SorterAction{sorter.studyRun?SorterActionKind::ReturnToStudy:SorterActionKind::ReturnToSorter,SorterBucket::A,0,sorter.revision};
+  }
   ImGui::PopItemFlag();ImGui::PopStyleColor();ImGui::PopStyleVar(3);
   ImGui::End();
 }
@@ -795,6 +809,14 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   ImGui::PushFont(nullptr,15);
   beginSolvePanel("Study heading",{0,0,io.DisplaySize.x,top},flags);
   ImGui::PushFont(nullptr,20);ImGui::TextColored({1,.78F,.3F,1},"Table of contents");ImGui::PopFont();
+  ui.libraryEntry={};
+  if(ui.corpus) {
+    const auto cursor=ImGui::GetCursorPos();ImGui::SameLine(ImGui::GetWindowWidth()-82);
+    ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
+    if(ImGui::Button("Library",{70,22}))ui.library.open=true;
+    ui.libraryEntry=itemBounds(!io.AppFocusLost && !ui.solvePointerHeld);
+    ImGui::PopStyleColor();ImGui::SetCursorPos(cursor);
+  }
   if(ui.progressMessage.empty())ImGui::TextDisabled("Choose titles, then problems.");
   else {
     ImGui::TextColored(ui.progressFailed?ImVec4{1,.68F,.27F,1}:ImVec4{.4F,.9F,.65F,1},"%s",
@@ -946,8 +968,17 @@ void drawEquationSorter(EquationSorterUiState& ui, const SorterView& view,
   auto& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigNavCursorVisibleAlways = true;
-  if(view.solving && game) {drawSolving(ui,view,*game);return;}
-  if(view.studying) {drawStudySelection(ui,view,content);return;}
+  if(view.solving && game) {
+    const auto& run=game->question().currentRun();syncMathNotation(ui.notation,run.questionId,run.runNumber);
+    drawSolving(ui,view,*game);return;
+  }
+  if(view.studying) {
+    if(ui.library.open && ui.corpus) {
+      ui.shootAvailable=false;ui.solveButton={};ui.cardCount=0;
+      drawMathCorpus(ui.library,*ui.corpus,ui.solvePointerHeld);return;
+    }
+    drawStudySelection(ui,view,content);return;
+  }
   ui.shootAvailable=false;ui.solveButton={};
   const auto queue = [&](SorterActionKind kind, SorterBucket bucket = SorterBucket::A,
                          SorterEquationId equation = 0) {

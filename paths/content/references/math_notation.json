@@ -1,0 +1,443 @@
+{
+  "schema_version": 1,
+  "terms": [
+    {
+      "id": "variable",
+      "content_version": 1,
+      "title": "Variable",
+      "meaning": "A symbol standing for a value.",
+      "definition": "In these equations, a variable represents a number whose value is constrained by the equation. Repeated occurrences of the same variable refer to the same value.",
+      "example": "In x + 2 = 5, x is the unknown value."
+    },
+    {
+      "id": "coefficient",
+      "content_version": 1,
+      "title": "Coefficient",
+      "meaning": "A number multiplying a variable or expression.",
+      "definition": "A coefficient is a multiplicative factor. Juxtaposition can indicate multiplication: 3x means 3 times x.",
+      "example": "In 3x, the coefficient of x is 3."
+    },
+    {
+      "id": "constant",
+      "content_version": 1,
+      "title": "Constant",
+      "meaning": "A fixed value in this expression.",
+      "definition": "A constant has a value that does not depend on the variables under discussion.",
+      "example": "In x + 2, the number 2 is constant."
+    },
+    {
+      "id": "equality",
+      "content_version": 1,
+      "title": "Equality",
+      "meaning": "The expressions on both sides have the same value.",
+      "definition": "An equation asserts equality between two expressions. An equals sign states a relation; a replacement arrow describes an update.",
+      "example": "3 + 2 = 5 states that both sides have value 5."
+    },
+    {
+      "id": "addition",
+      "content_version": 1,
+      "title": "Addition",
+      "meaning": "Combine values by adding.",
+      "definition": "Addition forms the sum of its operands. In a matrix row expression, corresponding entries are added.",
+      "example": "2 + 3 = 5."
+    },
+    {
+      "id": "subtraction",
+      "content_version": 1,
+      "title": "Subtraction",
+      "meaning": "Subtract the following value or expression.",
+      "definition": "Subtracting a quantity is equivalent to adding its additive inverse. A grouped expression following minus is subtracted as a whole.",
+      "example": "7 - (2 + 1) = 4."
+    },
+    {
+      "id": "grouping",
+      "content_version": 1,
+      "title": "Grouping",
+      "meaning": "Treat the enclosed expression as one quantity.",
+      "definition": "Parentheses group an expression. A factor outside a group multiplies every term inside when the expression is expanded.",
+      "example": "3(x + 2) = 3x + 6."
+    },
+    {
+      "id": "fraction",
+      "content_version": 1,
+      "title": "Fraction",
+      "meaning": "Divide the numerator by a nonzero denominator.",
+      "definition": "For integers a and b with b nonzero, a/b denotes their exact quotient. A fraction beside a row can multiply every entry of that row.",
+      "example": "1/2 means one divided by two; (1/2)R1 means half of every entry in R1."
+    },
+    {
+      "id": "row",
+      "content_version": 1,
+      "title": "Matrix row",
+      "meaning": "One horizontal sequence of matrix entries.",
+      "definition": "Rows are ordered horizontal sequences. In an augmented system, a row records the coefficients and right-hand value of one equation. R1 and R2 name its first and second rows.",
+      "example": "[2, 1 | 7] represents 2x + y = 7 when the columns are x, y | b."
+    },
+    {
+      "id": "replacement",
+      "content_version": 1,
+      "title": "Replacement",
+      "meaning": "Replace the named object with the following expression.",
+      "definition": "The left side of <- names the destination. The right side is evaluated using the current values, then becomes the new destination value.",
+      "example": "R2 <- R2 - R1 replaces row two; row one stays unchanged."
+    },
+    {
+      "id": "exchange",
+      "content_version": 1,
+      "title": "Exchange",
+      "meaning": "Swap the two named rows.",
+      "definition": "The row-operation symbol <-> exchanges the complete rows, including right-hand entries. This meaning is specific to the row-operation context.",
+      "example": "R1 <-> R2 puts the previous second row first."
+    },
+    {
+      "id": "division",
+      "content_version": 1,
+      "title": "Division",
+      "meaning": "Divide by the following nonzero number.",
+      "definition": "Dividing a row by a nonzero scalar divides every entry of that row, including its right-hand value. Zero is not an allowed divisor.",
+      "example": "[2, 4 | 6] divided by 2 becomes [1, 2 | 3]."
+    },
+    {
+      "id": "matrix_block",
+      "content_version": 1,
+      "title": "Matrix block",
+      "meaning": "The coefficient entries of a linear system.",
+      "definition": "In [A | b], A contains coefficients in the declared variable order. It does not include the right-hand values b.",
+      "example": "For 2x + y = 7, the coefficient row is [2, 1]."
+    },
+    {
+      "id": "right_hand",
+      "content_version": 1,
+      "title": "Right-hand values",
+      "meaning": "The values on the other side of the system equations.",
+      "definition": "In an augmented matrix [A | b], b is the column of right-hand values, kept with its rows during row operations.",
+      "example": "For 2x + y = 7, the right-hand value is 7."
+    },
+    {
+      "id": "augmentation_bar",
+      "content_version": 1,
+      "title": "Augmentation separator",
+      "meaning": "Separate coefficients from right-hand values.",
+      "definition": "The bar inside [A | b] marks a column boundary. Here it is a separator, not absolute value or a determinant.",
+      "example": "[2, 1 | 7] separates the coefficients 2, 1 from the right-hand value 7."
+    },
+    {
+      "id": "slope",
+      "content_version": 1,
+      "title": "Slope",
+      "meaning": "Vertical change divided by nonzero horizontal change.",
+      "definition": "For a line written y = mx + b, m is its slope: change in y divided by change in x. A vertical line has no finite slope in this form.",
+      "example": "A rise of 2 over a run of 3 gives slope 2/3."
+    },
+    {
+      "id": "intercept",
+      "content_version": 1,
+      "title": "Y-intercept",
+      "meaning": "The y value where x is zero.",
+      "definition": "In y = mx + b, setting x to zero leaves y = b. The graph crosses the y axis at (0, b).",
+      "example": "In y = 2x + 3, the y-intercept is 3."
+    }
+  ],
+  "lessons": [
+    {
+      "id": "equation_equality",
+      "content_version": 1,
+      "title": "Read an equation",
+      "context": "Separate algebra example",
+      "reading": "Three times x, plus two, equals eleven.",
+      "tokens": [
+        {
+          "text": "3",
+          "term_id": "coefficient",
+          "role": "Multiplies x."
+        },
+        {
+          "text": "x",
+          "term_id": "variable",
+          "role": "The unknown in this example."
+        },
+        {
+          "text": "+",
+          "term_id": "addition",
+          "role": "Adds the next term."
+        },
+        {
+          "text": "2",
+          "term_id": "constant",
+          "role": "The constant added on the left."
+        },
+        {
+          "text": "=",
+          "term_id": "equality",
+          "role": "Relates the complete left and right sides."
+        },
+        {
+          "text": "11",
+          "term_id": "constant",
+          "role": "The right-hand value."
+        }
+      ],
+      "check": {
+        "prompt": "Select the sign that says both sides have the same value.",
+        "answer_token": 4,
+        "correct": "Yes. The equals sign relates both sides.",
+        "retry": "Look for the relation between the two sides, rather than an arithmetic operation."
+      }
+    },
+    {
+      "id": "linear_brackets",
+      "content_version": 1,
+      "title": "Read a bracket",
+      "context": "Separate algebra example",
+      "reading": "Three multiplies the whole quantity x plus two.",
+      "tokens": [
+        {
+          "text": "3",
+          "term_id": "coefficient",
+          "role": "Multiplies the complete bracket."
+        },
+        {
+          "text": "(x + 2)",
+          "term_id": "grouping",
+          "role": "Everything inside is multiplied by 3."
+        }
+      ],
+      "check": {
+        "prompt": "Select the whole quantity multiplied by three.",
+        "answer_token": 1,
+        "correct": "Yes. The entire bracket is the factor.",
+        "retry": "Select the grouped expression, including both terms."
+      }
+    },
+    {
+      "id": "exact_fraction",
+      "content_version": 1,
+      "title": "Read a fraction",
+      "context": "Separate exact-number example",
+      "reading": "One half plus one half equals one.",
+      "tokens": [
+        {
+          "text": "1/2",
+          "term_id": "fraction",
+          "role": "The first exact half."
+        },
+        {
+          "text": "+",
+          "term_id": "addition",
+          "role": "Add the two halves."
+        },
+        {
+          "text": "1/2",
+          "term_id": "fraction",
+          "role": "The second exact half."
+        },
+        {
+          "text": "=",
+          "term_id": "equality",
+          "role": "States equality."
+        },
+        {
+          "text": "1",
+          "term_id": "constant",
+          "role": "One whole."
+        }
+      ],
+      "check": {
+        "prompt": "Select the first fraction, to the left of the plus sign.",
+        "answer_token": 0,
+        "correct": "Yes. That occurrence is the first half.",
+        "retry": "The same fraction appears twice; choose its first occurrence."
+      }
+    },
+    {
+      "id": "augmented_matrix",
+      "content_version": 1,
+      "title": "Read an augmented matrix",
+      "context": "Matrix notation: x, y | b",
+      "reading": "The coefficient block A is followed by the right-hand column b.",
+      "tokens": [
+        {
+          "text": "A",
+          "term_id": "matrix_block",
+          "role": "Contains the coefficients."
+        },
+        {
+          "text": "|",
+          "term_id": "augmentation_bar",
+          "role": "Separates the two blocks inside [A | b]."
+        },
+        {
+          "text": "b",
+          "term_id": "right_hand",
+          "role": "Contains the right-hand values."
+        }
+      ],
+      "check": {
+        "prompt": "Select the separator between the coefficient block and right-hand values.",
+        "answer_token": 1,
+        "correct": "Yes. Here the bar marks the augmented column boundary.",
+        "retry": "The separator is the bar between A and b."
+      }
+    },
+    {
+      "id": "row_swap_syntax",
+      "content_version": 1,
+      "title": "Read a row swap",
+      "context": "Separate row-operation example",
+      "reading": "Exchange the complete first and second rows.",
+      "tokens": [
+        {
+          "text": "R1",
+          "term_id": "row",
+          "role": "The first row to exchange."
+        },
+        {
+          "text": "<->",
+          "term_id": "exchange",
+          "role": "Exchange both rows."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The second row to exchange."
+        }
+      ],
+      "check": {
+        "prompt": "Select the symbol that exchanges the rows.",
+        "answer_token": 1,
+        "correct": "Yes. This symbol swaps the rows in this context.",
+        "retry": "Choose the operation between the two row names."
+      }
+    },
+    {
+      "id": "row_scale_syntax",
+      "content_version": 1,
+      "title": "Read row division",
+      "context": "Separate row-operation example",
+      "reading": "Replace row two with every entry of row two divided by two.",
+      "tokens": [
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The destination: row two will be replaced."
+        },
+        {
+          "text": "<-",
+          "term_id": "replacement",
+          "role": "Replace the destination with the right-hand expression."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The current row-two values used in the calculation."
+        },
+        {
+          "text": "\u00f7",
+          "term_id": "division",
+          "role": "Divide every entry by the next number."
+        },
+        {
+          "text": "2",
+          "term_id": "constant",
+          "role": "The nonzero divisor."
+        }
+      ],
+      "check": {
+        "prompt": "Select the nonzero divisor.",
+        "answer_token": 4,
+        "correct": "Yes. Every entry of row two is divided by 2.",
+        "retry": "The divisor is the number after the division sign."
+      }
+    },
+    {
+      "id": "row_add_syntax",
+      "content_version": 1,
+      "title": "Read a row replacement",
+      "context": "Separate row-operation example",
+      "reading": "Replace row two with its current entries minus half of the corresponding row-one entries. Row one stays unchanged.",
+      "tokens": [
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The destination: row two will be replaced."
+        },
+        {
+          "text": "<-",
+          "term_id": "replacement",
+          "role": "Replace the destination with the expression on the right."
+        },
+        {
+          "text": "R2",
+          "term_id": "row",
+          "role": "The old row-two values used to calculate the replacement."
+        },
+        {
+          "text": "-",
+          "term_id": "subtraction",
+          "role": "Subtract the following row multiple."
+        },
+        {
+          "text": "1/2",
+          "term_id": "fraction",
+          "role": "Multiply each row-one entry by one half."
+        },
+        {
+          "text": "R1",
+          "term_id": "row",
+          "role": "The source row; it stays unchanged."
+        }
+      ],
+      "check": {
+        "prompt": "Select the destination row name, to the LEFT of the replacement arrow.",
+        "answer_token": 0,
+        "correct": "Yes. The left-hand R2 names the row to replace.",
+        "retry": "The right side describes the calculation. Choose the destination before the arrow."
+      }
+    },
+    {
+      "id": "line_syntax",
+      "content_version": 1,
+      "title": "Read a line equation",
+      "context": "Separate graph example",
+      "reading": "y equals m times x plus b.",
+      "tokens": [
+        {
+          "text": "y",
+          "term_id": "variable",
+          "role": "The vertical coordinate."
+        },
+        {
+          "text": "=",
+          "term_id": "equality",
+          "role": "The two expressions have equal value."
+        },
+        {
+          "text": "m",
+          "term_id": "slope",
+          "role": "The slope multiplying x."
+        },
+        {
+          "text": "x",
+          "term_id": "variable",
+          "role": "The horizontal coordinate."
+        },
+        {
+          "text": "+",
+          "term_id": "addition",
+          "role": "Adds the intercept."
+        },
+        {
+          "text": "b",
+          "term_id": "intercept",
+          "role": "The y-intercept."
+        }
+      ],
+      "check": {
+        "prompt": "Select the slope in y = mx + b.",
+        "answer_token": 2,
+        "correct": "Yes. m multiplies x and determines the slope.",
+        "retry": "The slope is the coefficient multiplying x."
+      }
+    }
+  ]
+}

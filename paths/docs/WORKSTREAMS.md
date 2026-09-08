@@ -1,5 +1,57 @@
 # Paths workstreams
 
+## Resting checkpoint: linked reviewed notes
+
+[LINKED_CORPUS_NOTES.md](LINKED_CORPUS_NOTES.md) connects the four reviewed notes
+with seven explicit reading links. Cyan Related notes controls stay within the
+Library reader; Back and Escape restore the previous location and reading mode.
+The exact search and subject/topic filters survive linked reading, as does
+unfinished practice. Evidence: `build/linked-notes-evidence/verification.json`.
+Changes are uncommitted, visual review remains deferred, and no next workstream
+has been started or scheduled.
+
+## Rank, nullity and consistency
+
+[RANK_CORPUS_REVIEW.md](RANK_CORPUS_REVIEW.md) extends the reviewed-note contract
+with Rank and Nullity, including consistency and free-variable explanations.
+All thirteen matrix questions share eight Symbols lessons; the Library has
+four reviewed adaptations and 926 entries still without one. Original sources,
+earlier notes and playable mathematics are unchanged. Evidence is in
+`build/rank-review-evidence/verification.json`. Visual review remains deferred
+and changes are uncommitted.
+
+## Reviewed matrix teaching notes
+
+[MATRIX_CORPUS_REVIEW.md](MATRIX_CORPUS_REVIEW.md) records source comparison,
+corrections, exact examples and the shared publication contract for Gaussian
+elimination and RREF. Two reviewed adaptations are available in Library and
+matrix Symbols; 928 corpus entries remain without a reviewed adaptation.
+Original sources and playable mathematics are unchanged. Evidence is in
+`build/matrix-review-evidence/verification.json`; visual review remains deferred
+and changes are uncommitted.
+
+## Corpus table of contents
+
+The [corpus TOC](MATH_CORPUS_TOC.md) connects the pinned six-subject source to
+Contents → Library, with subject/topic filters, title search and source notes.
+All 930 entries are marked not yet fact-checked. This is navigation and reading;
+mathematical review and adaptation to playable lessons remain a later capability.
+Evidence: `build/corpus-toc-evidence/verification.json`. The existing practice
+queue and unfinished question are preserved. Visual review remains deferred,
+and changes are uncommitted.
+
+## Definitions, symbols and syntax
+
+The user authorized a reusable notation feature while another builder owns the
+3D mathematical objects. The [design and content contract](MATH_NOTATION_DESIGN.md)
+covers a shared Symbols panel, contextual definitions, selectable occurrences
+and optional reading practice, linked to the 27 existing playable study
+questions. The long-history repair remains deferred. Build and headless results
+are recorded in `build/notation-feature-evidence/verification.json`. Visual
+review remains deferred, and changes are uncommitted.
+
+## Workstream history
+
 | ID | User-visible capability | Delivery | Required boundary |
 | --- | --- | --- | --- |
 | P001 | Standalone Paths app with title screen, Guided Questions, Quick Hunt, and session stats | In Progress; current session owns implementation after cross-chat failure | Paths-only copy builds/runs without the parent repo; carried models and captured title/modes agree |
@@ -42,6 +94,11 @@
 | P038 | Show current-attempt progress and chapter completion counts in Contents | Automated Green; user visual confirmation pending; uncommitted | Question-owned progress; selection-independent totals; Undo, Replay and saved evidence remain canonical; compact native symbols |
 | P039 | Explore five native 3D mathematical objects with live parameters and challenges | Build and headless tests passed; visual/interactive review unperformed; uncommitted | One mathematical owner; existing SceneFrame/Vulkan pipeline; bounded meshes and separate exploration state |
 | P040 | Explore linked function, matrix and surface learning layers | Native build and six targeted text-only checks passed; visual/interactive review unperformed; uncommitted | One mathematical owner; analytic readouts; linked plots/matrices/contours; bounded geometry; no images |
+| P041 | Explore symmetry, harmonic synthesis and spring/pendulum dynamics | Native build and ten targeted text-only checks passed; user reported successful visual try; uncommitted | Exact cube rotations; Fourier coefficients; deterministic motion and spring convolution; existing renderer; no images |
+| P042 | Explore modular arithmetic, Gaussian integers and vector fields | Native build and fourteen targeted text-only checks passed; user visual review pending; uncommitted | Exact integer kernels; bounded tables and walks; linked paths and integrals; existing renderer; no images |
+| P043 | Explore flux shells, tensor blocks and probability networks | Native build and eighteen targeted text-only checks passed; user reported successful try; uncommitted | Oriented surface/volume integrals; tensor contractions and basis invariants; stochastic matrices and bounded walk evidence; no images |
+| P044 | Explore binomial trials, Bayesian conditioning and covariance geometry | Native build and twenty-two targeted text-only checks passed; user visual review pending; uncommitted | Exact finite probabilities; explicit undefined cases; moments from actual points; PCA/whitening; no images |
+| P045 | Explore spherical harmonics, quadratic forms and roots of unity | Native build and twenty-six targeted text-only checks passed; user visual review pending; uncommitted | Real orthonormal modes; heat diffusion; signed/singular forms; Rayleigh bounds; exact cyclotomic action; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -64,18 +121,20 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The user authorised the proposed higher maths progression. The first three
-priorities are implemented in [P040](P040_LINKED_MATH_LAYERS.md): the function
-laboratory, the expanded matrix object, and the surface/contour laboratory.
-Each has four working layers with different operations and challenge checks.
-The existing P039 objects and existing study/sorter work remain available.
+The user requested a few more focused batches and authorized selection from
+the expanded TOC. This batch, [P045](P045_SPECTRAL_FORMS_ROOTS.md), adds spherical
+harmonics, quadratic forms and roots of unity. Each has four working layers
+and challenge checks; the math lab now contains twenty-two objects. Further
+batches remain to be chosen. This packet does not claim the source corpus is
+reviewed or adapted in full. The user reported successful tries of P041 and
+P043; P044 and P045 visual review remain for the user. Existing sorter, Library,
+reviewed teaching notes and earlier gates are preserved.
 
 The user prohibits taking or viewing images. Do not capture, render, open
 image files or launch previews as part of this work. Use the pure-model/scene
 tests and `math_lab --validate` for text-only verification. Visual layout,
 pointer feel and swapchain acceptance remain unverified. Keep changes
-uncommitted. The wider collection proposed in the conversation remains future
-work; P040 does not claim that collection is implemented.
+uncommitted.
 
 ## Previous cleanup checkpoint
 

@@ -1,5 +1,25 @@
 # Question content
 
+[Related Library notes](../docs/LINKED_CORPUS_NOTES.md) are explicitly connected
+by `reading_links` in `authoring/matrix_corpus_review.json`. Use permanent entry
+IDs; both ends must have reviewed adaptations. Navigation metadata is published
+separately from reviewed mathematics and does not revise the Symbols lessons.
+
+[Four reviewed matrix notes](../docs/RANK_CORPUS_REVIEW.md) are now shared between
+Library and matrix Symbols. Edit their reviewed adaptations in
+`authoring/matrix_corpus_review.json`; `generate_corpus_toc.py` publishes both
+the Library metadata and `references/matrix_notation.json`. Preserve the original
+source snapshot. Other corpus entries still await mathematical review.
+
+The [corpus library](../docs/MATH_CORPUS_TOC.md) is available through the violet
+Library control in sorter Contents. `corpus/toc.json` contains 930 source-reading
+entries across six subjects, explicitly **not yet fact-checked**. Its permanent
+IDs live in `authoring/math_corpus_map.json`; the original seven files remain in
+`source_snapshots/math_terms_v1/`. Reproduce the catalogue with
+`python3 tools/generate_corpus_toc.py`, or verify it with `--check`.
+Library entries are separate from playable question cards and checked notation
+lessons; original Markdown/LaTeX is preserved for reading and later adaptation.
+
 To change what the gallery plays, edit a question in **cards/** and select it
 through a pack in **packs/**. The menu uses the three bundled packs below.
 

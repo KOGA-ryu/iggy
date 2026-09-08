@@ -288,6 +288,7 @@ QuestionValidationResult validateQuestion(const LayeredQuestionContent& question
     return {Code::InvalidInteraction,"interaction"};
   if(question.id.empty())return {Code::MissingQuestionId,"id",0};
   if(!question.version)return {Code::MissingQuestionVersion,"version",0};
+  if(!validNotationLessons(question.notation))return {Code::InvalidMathReference,"notation_ids",0};
   if(question.references.size()>kMathReferenceCapacity)return {Code::InvalidMathReference,"concept_ids",0};
   for(std::size_t i=0;i<question.references.size();++i) {
     if(!mathReferenceExample(question.references[i]))return {Code::InvalidMathReference,"concept_ids",0};

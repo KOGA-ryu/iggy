@@ -313,6 +313,41 @@ void catalogueGrowth(const fs::path& folder) {
     expect(again.studyProgress().queue==next.selected,"only Start set replaces the frozen queue with the expanded selection");
   }
 }
+void notationSaveCompatibility(const fs::path& folder) {
+  auto previous=loadSorterContent(SORTER_STUDY_FIXTURE);
+  for(auto& card:previous)if(card.solution) {
+    auto question=std::make_shared<fm::LayeredQuestionContent>(*card.solution);question->notation.clear();card.solution=std::move(question);
+  }
+  auto old=fresh(std::move(previous));select(old,{3001,6001});
+  move(*old.activeSolve(),Op::Expand,"","3x+6=21");
+  const auto path=folder/"before-notation.json";StudyProgressFile oldFile(path);oldFile.save(old);
+  expect(!oldFile.failed(),"practice without notation metadata saves");const auto bytes=read(path);
+  auto current=fresh();StudyProgressFile file(path);file.load(current);
+  action(current,SorterActionKind::ResumeStudy);
+  expect(!file.failed() && current.activeSolve() && !current.activeSolve()->question().content().notation.empty(),
+      "earlier saves resume the checked working with newly linked notation");
+  const auto& lesson=current.activeSolve()->question().content().notation.front();
+  expect(fm::checkNotation(lesson,lesson.check->answer)==fm::NotationVerdict::Correct,"reading exercise checks through its own pure owner");
+  file.save(current);expect(!file.failed() && read(path)==bytes,"adding and practising notation leaves saved solving evidence byte-identical");
+
+  for(const auto priorLessons:{4U,6U}) {
+    auto prior=loadSorterContent(SORTER_STUDY_FIXTURE);
+    for(auto& card:prior)if(card.solution && card.solution->mathModel==fm::MathWorkingModel::RowReduction) {
+      auto question=std::make_shared<fm::LayeredQuestionContent>(*card.solution);
+      question->notation.resize(priorLessons);
+      card.solution=std::move(question);
+    }
+    auto matrix=fresh(std::move(prior));select(matrix,{6001});
+    move(*matrix.activeSolve(),Op::SwapRows,"","[1,-1|-1] [2,1|7]");
+    const auto matrixPath=folder/("before-reviewed-notes-"+std::to_string(priorLessons)+".json");StudyProgressFile matrixFile(matrixPath);matrixFile.save(matrix);
+    expect(!matrixFile.failed(),"matrix progress before reviewed notes saves");const auto matrixBytes=read(matrixPath);
+    auto revised=fresh();StudyProgressFile revisedFile(matrixPath);revisedFile.load(revised);action(revised,SorterActionKind::ResumeStudy);
+    expect(!revisedFile.failed() && revised.activeSolve()->question().currentRun().math->nodes.size()==2 &&
+        revised.activeSolve()->question().content().notation.size()==8,"four- and six-lesson matrix saves retain working with all eight lessons");
+    revisedFile.save(revised);expect(!revisedFile.failed() && read(matrixPath)==matrixBytes,"reviewed teaching additions leave matrix save bytes unchanged");
+  }
+}
+
 void partialCollection() {
   auto content=loadSorterContent(SORTER_STUDY_FIXTURE);
   const auto card=std::find_if(content.begin(),content.end(),[](const auto& c){return c.id==3001;});
@@ -344,7 +379,7 @@ int main(int argc,char** argv) {
       else throw std::runtime_error("unknown test phase");
     } else {
       const auto folder=fs::temp_directory_path()/("paths-practice-test-"+std::to_string(std::random_device{}()));fs::create_directory(folder);
-      failureCases(folder);randomDraft(folder);contentsProgress(folder);catalogueGrowth(folder);partialCollection();fs::remove_all(folder);
+      failureCases(folder);randomDraft(folder);contentsProgress(folder);catalogueGrowth(folder);notationSaveCompatibility(folder);partialCollection();fs::remove_all(folder);
     }
     std::cout<<"Practice persistence, checked restoration and saved-file protection passed\n";
   } catch(const std::exception& e) {std::cerr<<e.what()<<'\n';return 1;}

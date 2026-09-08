@@ -4,6 +4,17 @@
     "../cards/sorter_matrix_practice_6106.json"
   ],
   "reference_library": "../references/row_operations.json",
+  "notation_library": "../references/matrix_notation.json",
+  "notation_ids": [
+    "augmented_matrix",
+    "row_add_syntax",
+    "row_scale_syntax",
+    "row_swap_syntax",
+    "elimination_meaning",
+    "rref_meaning",
+    "rank_consistency",
+    "nullity_free_variables"
+  ],
   "decks": {
     "solve": [
       {

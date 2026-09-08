@@ -162,6 +162,8 @@ def bracket_outputs(document):
             "working_states": states, "steps": steps}
         outputs[f"content/sorter/{recipe['pack']}.json"] = {
             "schema_version": 1, "questions": [f"../cards/{identity}.json"],
+            "notation_library": "../references/math_notation.json",
+            "notation_ids": ["equation_equality", "linear_brackets", "exact_fraction"],
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}
         prepared.append({"id": recipe["sorter_id"], "home_index": len(prepared), "text": equation,
                          "subject": "algebra", "hint": f"Divide both sides by {a} first. Then {inverse.lower()}.",
@@ -264,6 +266,7 @@ def line_graph_outputs(document, bracket):
                                enumerate(zip(states, ("grid", "intercept", "run", "rise", "line")))], "steps": steps}
         outputs[f"content/sorter/{pack}.json"] = {
             "schema_version": 1, "questions": [f"../cards/{identity}.json"],
+            "notation_library": "../references/math_notation.json", "notation_ids": ["line_syntax", "equation_equality", "exact_fraction"],
             "decks": {"solve": [{"question_id": identity, "content_version": recipe["content_version"]}]}}
         prepared.append({"id": sorter_id, "text": equation, "subject": "algebra", "hint": hints[0],
                          "solve_pack": f"{pack}.json", "study": {"chapter": "Straight lines", "type": "Slope and intercept", "form": "y = mx + b"}})
@@ -355,6 +358,7 @@ def system_graph_outputs(document, existing):
             "line_graph": graph, "working_states": [{"id": (i+1)*10, "display": display, "graph_stage": stage} for i,(display,stage) in
             enumerate(zip(displays,("grid","first_line","both_lines","classified","system_solution")))], "steps": steps}
         outputs[f"content/sorter/{pack}.json"] = {"schema_version": 1, "questions": [f"../cards/{identity}.json"],
+            "notation_library": "../references/math_notation.json", "notation_ids": ["line_syntax", "equation_equality", "exact_fraction"],
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}
         prepared.append({"id": sorter_id, "text": equation, "subject": "algebra", "hint": hints[0], "solve_pack": f"{pack}.json",
             "study": {"chapter": "Simultaneous equations", "type": "Two straight lines", "form": "y = m1 x + b1; y = m2 x + b2"}})
@@ -375,6 +379,8 @@ def matrix_study_outputs(card, existing):
     return {"content/sorter/study_practice_v1.json": assemble_catalogue(existing["content/sorter/study_practice_v1.json"], [record]),
             "content/sorter/matrix_rows_pack.json": {"schema_version": 1, "questions": [f"../cards/{identity}.json"],
             "reference_library": "../references/row_operations.json",
+            "notation_library": "../references/matrix_notation.json",
+            "notation_ids": ["augmented_matrix", "row_add_syntax", "row_scale_syntax", "row_swap_syntax", "elimination_meaning", "rref_meaning", "rank_consistency", "nullity_free_variables"],
             "decks": {"solve": [{"question_id": identity, "content_version": version}]}}}
 
 

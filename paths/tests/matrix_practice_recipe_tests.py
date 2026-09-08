@@ -162,6 +162,8 @@ class MatrixPracticeRecipes(unittest.TestCase):
             self.assertEqual(self.outputs[path], {
                 "schema_version": 1, "questions": [f"../cards/sorter_matrix_practice_{identity}.json"],
                 "reference_library": "../references/row_operations.json",
+                "notation_library": "../references/matrix_notation.json",
+                "notation_ids": ["augmented_matrix", "row_add_syntax", "row_scale_syntax", "row_swap_syntax", "elimination_meaning", "rref_meaning", "rank_consistency", "nullity_free_variables"],
                 "decks": {"solve": [{"question_id": f"sorter_matrix_practice_{identity}", "content_version": 1}]}})
         self.assertEqual(set(self.outputs), expected_paths)
         self.assertEqual(self.outputs, GENERATOR.matrix_practice_outputs(copy.deepcopy(DOCUMENT), copy.deepcopy(BASE)))

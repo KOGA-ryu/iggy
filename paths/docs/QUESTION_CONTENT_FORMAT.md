@@ -1,5 +1,11 @@
 # P010 prepared question files
 
+Optional definitions, symbols and syntax use the
+[reusable notation contract](MATH_NOTATION_DESIGN.md#data-contract): a pack
+links `notation_library` and ordered `notation_ids`, with optional per-card
+lesson selection. This teaching metadata does not change solution checking
+or the saved mathematical identity of an existing question.
+
 The gallery reads reviewed question instructions from JSON. The loader does
 not solve equations or judge display text. It produces the existing question
 model; `LayeredQuestionSession` still owns correctness, attempts, collection,

@@ -206,6 +206,8 @@ def matrix_practice_outputs(document, base_catalogue):
         outputs[f"content/sorter/{identity}_pack.json"] = {
             "schema_version": 1, "questions": [f"../cards/{identity}.json"],
             "reference_library": "../references/row_operations.json",
+            "notation_library": "../references/matrix_notation.json",
+            "notation_ids": ["augmented_matrix", "row_add_syntax", "row_scale_syntax", "row_swap_syntax", "elimination_meaning", "rref_meaning", "rank_consistency", "nullity_free_variables"],
             "decks": {"solve": [{"question_id": identity, "content_version": recipe["content_version"]}]}}
     outputs[CATALOGUE] = assemble_catalogue(base_catalogue, chapter_entries(document), replace_existing=True)
     return outputs

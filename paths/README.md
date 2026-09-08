@@ -2,22 +2,56 @@
 
 ## Interactive maths objects and linked diagrams
 
-The native `math_lab` now contains seven objects. The original expansion cube,
+The native `math_lab` now contains twenty-two objects. The original expansion cube,
 unit circle, integration disks and binary graph remain available. The matrix
 object now has four working learning layers, and the new function and surface
-laboratories connect their geometry to interactive diagrams.
+laboratories connect their geometry to interactive diagrams. Symmetry, harmonics
+and motion add three further families. Modular drums, the Gaussian lattice and
+the vector-field chamber add another three. Flux shells, tensor blocks and a
+probability network extend the collection. The new probability/statistics batch
+adds a binomial board, Bayesian cube and covariance cloud. Spherical harmonics,
+quadratic forms and roots of unity now add twelve more working layers.
 
 | Object | Learning layers |
 | --- | --- |
 | Functions | Inputs/roots; secants and derivative limits; signed accumulation and bound reversal; Taylor approximation |
 | Matrices | Volume/rank; full 3x3 matrices, composition and eigenvector probes; projection/least squares; four SVD stages |
 | Surfaces | Height/contours; sections, partial derivatives and tangent planes; gradient descent/Hessian; stationary points on a circle |
+| Symmetry | Labelled cube rotations; composition/Undo; cyclic subgroups; orbits, stabilisers and permutations |
+| Harmonics | Complex rotor; Lissajous curves; Fourier sums and signed spectra; coefficient extraction |
+| Motion | Spring/pendulum initial states; phase/energy; damping; forcing and linear-spring convolution |
+| Modular drums | Residues; cycles and GCD; modular inverses; Chinese remainder systems |
+| Gaussian lattice | Complex arithmetic; norm and Euclidean division; principal ideals; quotient rings and zero divisors |
+| Vector-field chamber | Vectors and dot products; parameterized paths; line integrals; potentials and path dependence |
+| Flux shells | Surface normals; flux integrals; divergence theorem; Stokes and oriented boundaries |
+| Tensor blocks | Outer products; three-index tensors; contraction; orthonormal coordinate changes |
+| Probability network | Sampled walks; transition matrices; distribution evolution; stationarity and convergence |
+| Binomial board | Independent trials; binomial probabilities; mean/variance/tails; normal approximation |
+| Bayesian cube | Joint probability; conditioning; Bayesian odds; repeated evidence |
+| Covariance cloud | Mean; covariance/correlation; PCA; whitening |
+| Harmonic sphere | Spherical coordinates; 25 real harmonic modes; superposition/orthogonality; spherical heat diffusion |
+| Quadratic forms | Evaluation/sections; orthogonal diagonalization; inertia/zero sets; Rayleigh quotient extrema |
+| Roots of unity | Root constellation; complex power maps; cyclic subgroups; cyclotomic polynomials/Galois action |
 
 The level selector changes the available operations and challenge. Drag a
 plot to move its input, drag entries in the matrix diagram to edit A, or click
 the contour map to move the surface point. Narrow windows put linked plots
 and matrices in tabs. Left-drag the 3D viewport to orbit, right-drag to pan,
-and scroll to zoom.
+and scroll to zoom. Symmetry has turn and Undo controls. Harmonics and motion
+can play, pause, advance, restart or scrub time; playback stops at the time limit.
+Modular drums have forward/backward steps and an observed-visit table. Gaussian
+integers have plane/norm-height views and exact quotient-class colouring. The
+field chamber adds path reversal and playback with linked work plots. Values
+and plots occupy separate tabs when both are available. The newest objects
+also expose matrices in their own tab. Short windows use a compact subject
+selector. The probability network has separate controls for sampled walks
+and advancing complete distributions; the Stokes boundary can play or scrub.
+The binomial board steps through a reproducible trial path. The Bayesian cube
+compares joint and conditioned probabilities. The covariance cloud projects
+points onto principal axes and transforms full-rank data into whitened coordinates.
+The harmonic sphere links angular probes to meridian/latitude plots and a heat
+energy curve. Quadratic zero-set diagrams can move the shared probe. The root
+constellation shows power maps, rising subgroup paths and exact polynomial coefficients.
 
 ```sh
 cmake -S . -B b -DCMAKE_BUILD_TYPE=Release
@@ -31,6 +65,21 @@ For a text-only run that creates no native host, window, rendering or images:
 ./b/math_lab --validate --object function --level 3 --set function=2 --set at=0.5 --set degree=5 --check
 ./b/math_lab --validate --object linear --level 3 --preset 2 --check
 ./b/math_lab --validate --object surface --level 3 --set surface=1 --set constraint=1 --set circle_angle=0 --check
+./b/math_lab --validate --object symmetry --level 1 --turn x --turn y --check
+./b/math_lab --validate --object harmonics --level 3 --set waveform=0 --set probe_frequency=2 --check
+./b/math_lab --validate --object oscillator --level 3 --advance 8 --check
+./b/math_lab --validate --object modular --level 3 --set modulus=3 --set integer=2 --set modulus2=5 --set residue2=3 --set crt=8 --check
+./b/math_lab --validate --object gaussian --level 3 --set quotient=0 --check
+./b/math_lab --validate --object field --level 2 --set field=2 --set path=4 --reverse-path --set path_time=0 --advance 1 --check
+./b/math_lab --validate --object flux --level 3 --set flux_field=2 --set flux_orientation=1 --set boundary_time=0 --advance 1 --check
+./b/math_lab --validate --object tensor --level 3 --set basis_angle=45 --check
+./b/math_lab --validate --object probability --level 3 --set chain=1 --set chain_steps=12 --check
+./b/math_lab --validate --object binomial --level 3 --set trials=12 --check
+./b/math_lab --validate --object bayes --level 3 --check
+./b/math_lab --validate --object covariance --level 3 --check
+./b/math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check
+./b/math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check
+./b/math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check
 ```
 
 Arguments apply in order. `--help` lists every parameter and its range. The
@@ -38,7 +87,16 @@ reusable model and scene adapter remain in `src/runtime/math_objects/` and
 `src/scene/MathObjectScene.*`; they use the existing SceneFrame/Vulkan pipeline.
 Exploration state is separate from scored question attempts and study saves.
 See [P039](docs/P039_MATH_OBJECTS.md) for the original five objects and
-[P040](docs/P040_LINKED_MATH_LAYERS.md) for the new layers and verification.
+[P040](docs/P040_LINKED_MATH_LAYERS.md) for function/matrix/surface layers, and
+[P041](docs/P041_SYMMETRY_HARMONICS_MOTION.md) for symmetry, harmonics and motion.
+[P042](docs/P042_NUMBERS_AND_FIELDS.md) documents modular, Gaussian and field
+objects. [P043](docs/P043_SHELLS_TENSORS_PROBABILITY.md) documents flux shells,
+tensors and probability. [P044](docs/P044_PROBABILITY_STATISTICS.md) adds binomial,
+Bayesian and covariance objects from the expanded TOC.
+[P045](docs/P045_SPECTRAL_FORMS_ROOTS.md) adds spherical harmonics, quadratic forms
+and cyclotomic root constellations. Agent verification
+remains text-only under the user's no-images constraint. The user reported
+successful tries of P041 and P043; P044 and P045 visual review remain for the user.
 
 ## Existing game modes
 

@@ -3,6 +3,12 @@
   "questions": [
     "../cards/sorter_bracket_fraction.json"
   ],
+  "notation_library": "../references/math_notation.json",
+  "notation_ids": [
+    "equation_equality",
+    "linear_brackets",
+    "exact_fraction"
+  ],
   "decks": {
     "solve": [
       {
