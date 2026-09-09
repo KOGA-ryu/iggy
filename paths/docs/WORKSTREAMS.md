@@ -1,5 +1,40 @@
 # Paths workstreams
 
+Deferred project: [Standalone calculator and connected tutoring](CALCULATOR_TUTOR_PROJECT.md)
+records the future independent calculator, Eigen backend, named-control guidance,
+local app connection and reusable lesson bindings. It contains staged TODOs and
+acceptance checks. This is planning only; implementation has not started and the
+current question/audit queue is unchanged.
+
+## Audit repair: Library autosave recovery
+
+`CorpusPractice` remains the owner of Library progress. It now creates an
+exclusive temporary file for each write, preserving abandoned files instead of
+letting the old fixed `.tmp` path disable saving. A short OS-managed lock
+serializes app writers; original-byte checks retain another window's saved work.
+Only failed-load validation remains permanently blocked. Write failures retain
+the newest draft and retry after two seconds, and the existing app-close call
+requests one immediate retry. The journal, question stamps and save format are
+unchanged. [Recovery rules](CORPUS_STARTERS.md#canonical-owners-and-persistence) describe
+the retained temporary files and persistent lock file.
+
+The orphan regression failed against the original writer. Release `sorter`,
+`paths_corpus_starter_tests` and `paths_four_level_tests` builds now pass, as do
+both targeted CTest entries. They cover three orphan forms, first-save recovery,
+lock contention, automatic and closing retries, latest-draft replay, repaired
+destinations, competing writers, symbolic paths and invalid-load preservation.
+Existing coverage retains 278 prepared routes and 100 four-level routes, with
+1,034 wrong-response checks, frozen identities, archived working and v1/v2 replay.
+Default startup and published-store inspection pass with the same 936 readings
+and 318 question stamps as the preceding checkpoint.
+
+Production C++ changes are +53/-16 lines (net +37) across three existing files;
+no production source files were added. Tests and documents use existing files.
+Changes remain uncommitted. No windows, images, captures, font probes or personal
+progress files were used. Evidence: `build/autosave-recovery-evidence/verification.json`.
+Manual close/reopen confirmation remains with the user. The remaining audit
+candidate is precise source locations and reasons for invalid matrix steps.
+
 ## Audit repair: public lesson figure placement
 
 `LearningDocuments` now rejects `@figure`, `@parameter` and `@caption` inside
@@ -24,8 +59,7 @@ Production change: two added C++ lines in one existing file; no new production
 files. Tests and authoring documentation use existing files. Changes remain
 uncommitted. No windows, images, captures, font probes or personal saves were
 used. Evidence: `build/lesson-disclosure-evidence/verification.json`.
-Next candidate: recovery from an abandoned temporary starter save; precise
-matrix-step diagnostics remain the other audit finding.
+Autosave recovery is recorded above; precise matrix-step diagnostics remain.
 
 ## Source lesson 002: reviewed text into the existing textbook and solving game
 
@@ -150,6 +184,20 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P058: vibrating membrane assets
+
+The user visually accepted Patch Lab and approved a vibrating membrane next.
+[P058_VIBRATING_MEMBRANE.md](P058_VIBRATING_MEMBRANE.md) adds drumhead,
+divided membrane, interference and damped pluck as the 29th object, `membrane`.
+Four editable mode slots connect displacement, nodal lines, superposition and
+energy/damping, using the existing compact controls, playback and indexed mesh.
+The document records the model contract and final build/check evidence.
+
+This is one asset checkpoint. Geometry and motion stay in the asset owner;
+textbook integration remains with the textbook worker. Source cards and learner
+attempts are preserved. Checks use CPU/text paths with no images, windows or
+font rasterization; changes remain uncommitted. The user performs visual review.
 
 ## P057: parametric patch assets
 

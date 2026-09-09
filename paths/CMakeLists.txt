@@ -34,6 +34,8 @@ add_library(paths_math_objects
   src/runtime/math_objects/BezierCurve.cpp
   src/runtime/math_objects/BezierPatch.cpp
   src/runtime/math_objects/PatchGeometry.cpp
+  src/runtime/math_objects/Membrane.cpp
+  src/runtime/math_objects/MembraneGeometry.cpp
   src/runtime/math_objects/LatheProfile.cpp
   src/runtime/math_objects/LatheGeometry.cpp
   src/runtime/math_objects/BooleanSolid.cpp
@@ -226,6 +228,10 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_membrane_tests tests/math_membrane_tests.cpp)
+  target_link_libraries(paths_math_membrane_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_membrane_tests COMMAND paths_math_membrane_tests)
+
   add_executable(paths_math_patch_tests tests/math_patch_tests.cpp)
   target_link_libraries(paths_math_patch_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_patch_tests COMMAND paths_math_patch_tests)
@@ -482,6 +488,11 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_membrane_motion_cli COMMAND math_lab --validate --object membrane --level 0 --object-preset 0 --advance 4 --check)
+    add_test(NAME paths_math_membrane_nodes_cli COMMAND math_lab --validate --object membrane --level 1 --object-preset 1 --check)
+    add_test(NAME paths_math_membrane_mix_cli COMMAND math_lab --validate --object membrane --level 2 --object-preset 2 --check)
+    add_test(NAME paths_math_membrane_energy_cli COMMAND math_lab --validate --object membrane --level 3 --object-preset 3 --set membrane_time=6 --check --resolution 800x600)
+    set_tests_properties(paths_math_membrane_motion_cli paths_math_membrane_nodes_cli paths_math_membrane_mix_cli paths_math_membrane_energy_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_patch_blend_cli COMMAND math_lab --validate --object patch --level 0 --set patch_control=0 --set patch_u=0 --set patch_v=0 --check)
     add_test(NAME paths_math_patch_normal_cli COMMAND math_lab --validate --object patch --level 1 --object-preset 1 --check)
     add_test(NAME paths_math_patch_curvature_cli COMMAND math_lab --validate --object patch --level 2 --object-preset 3 --check)

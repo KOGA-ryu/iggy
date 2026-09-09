@@ -2,10 +2,17 @@
 #include "content/QuestionContentIO.hpp"
 #include <algorithm>
 #include <array>
+#include <cerrno>
+#include <cstdio>
+#include <fcntl.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <random>
 #include <set>
 #include <stdexcept>
+#include <sys/file.h>
+#include <system_error>
+#include <unistd.h>
 
 namespace paths {
 namespace {
@@ -13,6 +20,20 @@ namespace fm=iggy3d::first_move;
 using Json=nlohmann::json;
 constexpr std::size_t maxBytes=8*1024*1024,maxQuestions=1024,maxCommands=200000;
 void require(bool yes,const std::string& why){if(!yes)throw std::runtime_error(why);}
+struct ProgressWriteLock {
+  int descriptor;
+  explicit ProgressWriteLock(const std::filesystem::path& path) {
+    descriptor=::open((path.string()+".lock").c_str(),O_RDWR|O_CREAT|O_CLOEXEC|O_NOFOLLOW,0600);
+    if(descriptor<0)throw std::system_error(errno,std::generic_category(),"Cannot open starter save lock");
+    if(::flock(descriptor,LOCK_EX|LOCK_NB)!=0) {
+      const int error=errno;::close(descriptor);
+      throw std::system_error(error,std::generic_category(),"Starter save lock unavailable");
+    }
+  }
+  ~ProgressWriteLock(){::close(descriptor);}
+  ProgressWriteLock(const ProgressWriteLock&)=delete;
+  ProgressWriteLock& operator=(const ProgressWriteLock&)=delete;
+};
 std::string read(const std::filesystem::path& path) {
   std::ifstream file(path,std::ios::binary);require(bool(file),"Cannot read "+path.string());
   std::string text(maxBytes+1,'\0');file.read(text.data(),text.size());
@@ -108,6 +129,7 @@ bool CorpusPractice::dispatch(const fm::LayeredQuestionCommand& command) {
 void CorpusPractice::loadProgress(const std::filesystem::path& path) {
   progressPath_=path;if(path.empty()){message_="Progress is kept for this session.";return;}
   try {
+    require(!std::filesystem::is_symlink(path),"Starter save is a symbolic link");
     if(!std::filesystem::exists(path)){message_="Starter progress saves automatically.";return;}
     disk_=read(path);const auto root=Json::parse(*disk_);
     require(root.at("format")=="paths_corpus_starters" && (root.at("version")==1 || root.at("version")==2),"Unknown starter save format");
@@ -152,10 +174,11 @@ void CorpusPractice::loadProgress(const std::filesystem::path& path) {
       require(selected && restored[*selected],"Unknown saved starter selection");
     }
     attempts_=std::move(restored);selected_=selected;dirty_=false;message_="Starter progress restored.";
-  } catch(const std::exception& error) {blocked_=true;message_=std::string(error.what())+". Original save retained.";}
+  } catch(const std::exception& error) {loadBlocked_=true;message_=std::string(error.what())+". Original save retained.";}
 }
-void CorpusPractice::saveProgress() {
-  if(progressPath_.empty() || blocked_ || !dirty_)return;
+void CorpusPractice::saveProgress(bool closing) {
+  if(progressPath_.empty() || loadBlocked_ || !dirty_ || (!closing && std::chrono::steady_clock::now()<retryAfter_))return;
+  std::filesystem::path temporary;bool ownsTemporary=false;
   try {
     Json root{{"format","paths_corpus_starters"},{"version",2},{"selected",selected_?Json(questions_[*selected_].id):Json(nullptr)},{"runs",Json::array()}};
     std::size_t total=0;
@@ -173,12 +196,24 @@ void CorpusPractice::saveProgress() {
       total+=commands.size();require(total<=maxCommands,"Starter history exceeds limit");
       root["runs"].push_back({{"id",questions_[i].id},{"question",Json::parse(questions_[i].stamp)},{"commands",std::move(commands)}});
     }
-    const auto text=root.dump(2)+"\n";require(text.size()<=maxBytes,"Starter save exceeds 8 MiB");
-    require(std::filesystem::exists(progressPath_)?disk_ && read(progressPath_)==disk_:!disk_,"Starter save changed outside this window");
-    auto temporary=progressPath_;temporary+=".tmp";
-    require(!std::filesystem::exists(temporary) && !std::filesystem::is_symlink(temporary),"Starter temporary save already exists");
-    std::ofstream file(temporary,std::ios::binary);file<<text;file.close();require(bool(file),"Cannot write starter save");
-    std::filesystem::rename(temporary,progressPath_);disk_=text;dirty_=false;message_="Starter progress saved.";
-  } catch(const std::exception& error) {blocked_=true;message_=std::string(error.what())+". Previous save retained.";}
+    auto text=root.dump(2)+"\n";require(text.size()<=maxBytes,"Starter save exceeds 8 MiB");
+    const ProgressWriteLock lock(progressPath_);
+    const auto unchanged=[&] {
+      require(!std::filesystem::is_symlink(progressPath_),"Starter save became a symbolic link");
+      require(std::filesystem::exists(progressPath_)?disk_ && read(progressPath_)==disk_:!disk_,"Starter save changed outside this window");
+    };
+    unchanged();temporary=progressPath_;temporary+="."+std::to_string(std::random_device{}())+".tmp";
+    auto* file=std::fopen(temporary.string().c_str(),"wbx");
+    if(!file)throw std::system_error(errno,std::generic_category(),"Cannot create starter temporary save");
+    ownsTemporary=true;
+    const bool written=std::fwrite(text.data(),1,text.size(),file)==text.size();const int closed=std::fclose(file);
+    require(written && closed==0,"Cannot finish writing starter save");unchanged();
+    std::filesystem::rename(temporary,progressPath_);ownsTemporary=false;
+    disk_=std::move(text);dirty_=false;retryAfter_={};message_="Starter progress saved.";
+  } catch(const std::exception& error) {
+    if(ownsTemporary){std::error_code ignored;std::filesystem::remove(temporary,ignored);}
+    retryAfter_=std::chrono::steady_clock::now()+std::chrono::seconds(2);
+    message_=std::string(error.what())+". Previous save retained. Saving will retry automatically.";
+  }
 }
 }

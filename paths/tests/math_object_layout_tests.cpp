@@ -43,6 +43,7 @@ void controlChecks(){
       require(rows.count==0||open,"all controls initially hidden");
       for(const auto& p:mathParameterSpecs())if(model.parameterAvailable(p.id)){
         bool expected=!(p.matrixEntry&&level>0);
+        if(p.id>=P::MembraneM0&&p.id<=P::MembraneV3)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::MembraneM0))/4==static_cast<unsigned>(model.parameter(P::MembraneSlot));
         if(p.id>=P::PatchP00X&&p.id<=P::PatchP33Z)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::PatchP00X))/3==static_cast<unsigned>(model.parameter(P::PatchControl));
         if(p.id>=P::CurveP0X&&p.id<=P::CurveP3Z)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::CurveP0X))/3==static_cast<unsigned>(model.parameter(P::CurveControl));
         if(p.id>=P::LatheR0&&p.id<=P::LatheR6)expected=expected&&static_cast<unsigned>(p.id)-static_cast<unsigned>(P::LatheR0)==static_cast<unsigned>(model.parameter(P::LatheControl));
@@ -57,6 +58,8 @@ void controlChecks(){
   act(model,{MathActionKind::ObjectPreset,{},{},0,0});memory.rememberExample(model,mathObjectPresets(K::Boolean,0)[0].name);const auto name=memory.exampleTitle(model);require(name!="Custom","selected example reported Custom");set(model,P::BooleanSizeA,model.parameter(P::BooleanSizeA)+.1);require(memory.exampleTitle(model)=="Custom","edited example name stayed stale");
   select(model,K::Curve);memory.visit(model);act(model,{MathActionKind::ObjectPreset,{},{},0,0});memory.rememberExample(model,mathObjectPresets(K::Curve,0)[0].name);const auto curve=memory.exampleTitle(model);set(model,P::CurveControl,2);require(memory.exampleTitle(model)==curve,"selecting a handle changed the example name");
   MathInspectorMemory fresh;set(model,P::CurveP0Y,model.parameter(P::CurveP0Y)+.05);fresh.visit(model);require(fresh.exampleTitle(model)=="Custom","preset detection ignored an edited parameter");
+  // The shared selection table must retain the older curve/lathe control rules.
+  for(auto kind:{K::Curve,K::Lathe}){select(model,kind);const bool lathe=kind==K::Lathe;for(unsigned chosen=0;chosen<(lathe?7U:4U);++chosen){set(model,lathe?P::LatheControl:P::CurveControl,chosen);const auto rows=mathControlRows(model);unsigned coordinates=0,heights=0;for(unsigned i=0;i<rows.count;++i)for(unsigned j=0;j<rows.rows[i].count;++j){const auto p=rows.rows[i].parameters[j];if(lathe&&p>=P::LatheR0&&p<=P::LatheR6){require(static_cast<unsigned>(p)-static_cast<unsigned>(P::LatheR0)==chosen,"lathe selected radius");++coordinates;}if(lathe&&p>=P::LatheH1&&p<=P::LatheH5){require(static_cast<unsigned>(p)-static_cast<unsigned>(P::LatheH1)+1==chosen,"lathe selected height");++heights;}if(!lathe&&p>=P::CurveP0X&&p<=P::CurveP3Z){require((static_cast<unsigned>(p)-static_cast<unsigned>(P::CurveP0X))/3==chosen,"curve selected coordinates");++coordinates;}}require(coordinates==(lathe?1U:3U),"selected coordinate count");require(heights==(lathe&&chosen>0&&chosen<6?1U:0U),"lathe endpoint height rule");}}
 }
 void resetChecks(){
   MathObjects m;select(m,K::Boolean);set(m,P::BooleanSizeA,1.2);set(m,P::BooleanSizeB,.7);const auto b=m.parameter(P::BooleanSizeB);const auto revision=m.snapshot().revision;

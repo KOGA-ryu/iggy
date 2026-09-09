@@ -337,7 +337,7 @@ int main(int argc, char** argv) {
       if (result.status == FrameStatus::Rendered) ++rendered;
     }
     progress.save(session);
-    starters.saveProgress();
+    starters.saveProgress(true);
     motionProgress.save(motion,true);
     if(motionProgress.failed())std::cerr << motionProgress.message() << '\n';
     if(progress.failed())std::cerr << progress.message() << '\n';

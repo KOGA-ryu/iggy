@@ -1,6 +1,7 @@
 #pragma once
 #include "content/MathCorpus.hpp"
 #include "runtime/first_move/LayeredQuestionSession.hpp"
+#include <chrono>
 #include <memory>
 
 namespace paths {
@@ -29,7 +30,7 @@ public:
   const iggy3d::first_move::LayeredQuestionSession* attempt(std::size_t index) const;
   bool dispatch(const iggy3d::first_move::LayeredQuestionCommand&);
   void loadProgress(const std::filesystem::path&);
-  void saveProgress();
+  void saveProgress(bool closing=false);
   const std::string& message() const { return message_; }
 private:
   std::vector<CorpusStarter> questions_;
@@ -37,7 +38,8 @@ private:
   std::optional<std::size_t> selected_;
   std::filesystem::path progressPath_;
   std::optional<std::string> disk_;
-  bool dirty_=false,blocked_=false;
+  bool dirty_=false,loadBlocked_=false;
+  std::chrono::steady_clock::time_point retryAfter_{};
   std::string message_;
 };
 }

@@ -10,7 +10,7 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -49,7 +49,14 @@ enum class MathParameter : std::uint16_t {
   PatchP10X, PatchP10Y, PatchP10Z, PatchP11X, PatchP11Y, PatchP11Z, PatchP12X, PatchP12Y, PatchP12Z, PatchP13X, PatchP13Y, PatchP13Z,
   PatchP20X, PatchP20Y, PatchP20Z, PatchP21X, PatchP21Y, PatchP21Z, PatchP22X, PatchP22Y, PatchP22Z, PatchP23X, PatchP23Y, PatchP23Z,
   PatchP30X, PatchP30Y, PatchP30Z, PatchP31X, PatchP31Y, PatchP31Z, PatchP32X, PatchP32Y, PatchP32Z, PatchP33X, PatchP33Y, PatchP33Z,
-  PatchU, PatchV, PatchResolution, PatchGuides, Count
+  PatchU, PatchV, PatchResolution, PatchGuides,
+  MembraneSlot,
+  MembraneM0, MembraneN0, MembraneA0, MembraneV0,
+  MembraneM1, MembraneN1, MembraneA1, MembraneV1,
+  MembraneM2, MembraneN2, MembraneA2, MembraneV2,
+  MembraneM3, MembraneN3, MembraneA3, MembraneV3,
+  MembraneWidth, MembraneDepth, MembraneTension, MembraneDensity, MembraneDamping,
+  MembraneTime, MembraneU, MembraneV, MembraneResolution, MembraneGuides, MembraneView, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };

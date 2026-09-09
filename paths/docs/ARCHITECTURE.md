@@ -87,6 +87,14 @@ This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
 
+[P058](P058_VIBRATING_MEMBRANE.md) adds the `membrane` provider. `Membrane`
+owns bounded closed-form modal evolution, spatial derivatives, coherent duplicate
+mode grouping and integrated energy. `MembraneGeometry` publishes the existing
+indexed surface and its analytic normals. `MathObjects` supplies 28 controls,
+four atomic presets, retained layers, half-speed playback and linked readouts.
+Compact mode selection exposes only the selected slot. The figure registry,
+renderer, content pipeline and learner state retain their existing owners.
+
 [P057](P057_PARAMETRIC_PATCHES.md) adds the `patch` provider. `BezierPatch`
 owns bicubic evaluation, analytic derivatives, regularity, curvature and bounded
 area estimates; `PatchGeometry` produces an open indexed surface. `MathObjects`

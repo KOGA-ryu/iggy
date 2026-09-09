@@ -64,7 +64,24 @@ stamps permit catalogue reordering and additions. On incompatible mathematics,
 malformed commands or outside edits, the original file is retained and the
 message names the problem. Replay through the question owner reconstructs
 evidence; saved files do not dictate correctness flags. Atomic replacement uses
-a sibling temporary file. This is a local single-writer save, not cloud sync.
+an exclusively created sibling temporary file for each write. Abandoned `.tmp`
+files are left intact and are never promoted into learner evidence. They do not
+prevent later saves, including the first successful save.
+
+`CorpusPractice` owns write recovery. A persistent `.lock` sibling uses the OS
+file lock on macOS/Linux while checking and replacing progress. Closing its
+descriptor, including on process exit, releases the lock; the lock file stays
+in place so app instances cannot lock different replacement files. Writers check
+the original save bytes while holding the lock and again before replacement.
+Another window's committed work is retained; automatic retries never merge or
+adopt its evidence. Symbolic save and lock paths are rejected.
+
+Transient write errors retain the latest in-memory working, show the actual
+failure and retry automatically after two seconds. Closing the app makes one
+immediate attempt, bypassing that delay. Invalid or incompatible loaded saves
+remain protected even on close. If a failure remains visible, keep the window
+open until saving succeeds; abandoned temporary bytes are not a recovered draft.
+The save payload and v1/v2 replay formats are unchanged.
 
 ## Authoring and mathematical evidence
 

@@ -77,6 +77,12 @@ symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
 
+[Vibrating Membrane Lab](docs/P058_VIBRATING_MEMBRANE.md) adds drumhead,
+divided-membrane, interference and damped-pluck presets. Open
+`./b/math_lab --object membrane --level 0 --object-preset 0` and press Play.
+Four editable mode slots connect displacement, nodal lines, superposition and
+energy through the existing compact inspector.
+
 [Parametric Patch Lab](docs/P057_PARAMETRIC_PATCHES.md) adds editable canopy,
 sail, curved-ramp and saddle-terrain surfaces. Open
 `./b/math_lab --object patch --level 0 --object-preset 0` to select one of sixteen
@@ -139,7 +145,7 @@ answers and solutions. Open `./b/math_lab --book --section 2`.
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
 `math_lab` home. Its first chapter, **Matrices and Elimination**, has nine
 sections, an index, reading bookmarks and connected exercises. Run
-`./b/math_lab`; the existing 27 objects are under **Explore 3D objects**.
+`./b/math_lab`; the 29 objects are under **Explore 3D objects**.
 
 The [exercise matrix board](docs/P046_MATRIX_BOARD.md) connects cards 001, 004,
 018, 031, 044 and 059 with reusable indexed diagrams, row operations and numeric
@@ -166,7 +172,7 @@ cmake --build b --target sorter -j 6
 
 ## Interactive maths objects and linked diagrams
 
-The native `math_lab` now contains twenty-eight objects. The original expansion cube,
+The native `math_lab` now contains twenty-nine objects. The original expansion cube,
 unit circle, integration disks and binary graph remain available. The matrix
 object now has four working learning layers, and the new function and surface
 laboratories connect their geometry to interactive diagrams. Symmetry, harmonics
@@ -179,7 +185,8 @@ balls add eight layers of convex geometry. Curves and sweeps connect four more
 layers through editable pipes, cables, ribbons and horns. Lathe Lab adds four
 more through editable profiles, revolutions, volume elements and surface bands.
 Boolean Solids joins and cuts volumes; Patch Lab adds four layers through open
-bicubic surfaces, their differential geometry and area convergence.
+bicubic surfaces, their differential geometry and area convergence. Membrane Lab
+adds animated sheets, normal modes, superposition and energy/damping.
 
 | Object | Learning layers |
 | --- | --- |
@@ -204,6 +211,7 @@ bicubic surfaces, their differential geometry and area convergence.
 | PSD cone | Matrix membership; eigenvalues/quadratic directions; convex mixtures/rays; fixed-trace optimization |
 | Norm balls | Unit distance; triangle inequality; finite-p convergence to the max norm; dual norms/supporting planes |
 | Curves and sweeps | Control-point interpolation; tangent/speed/curvature; equal-distance travel; profiles/taper/twist |
+| Membrane Lab | Displacement/motion; eigenmodes/nodal lines; superposition; energy and damping |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
 | Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |

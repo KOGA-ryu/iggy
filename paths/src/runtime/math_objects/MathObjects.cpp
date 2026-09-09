@@ -5,6 +5,8 @@
 #include "runtime/math_objects/BooleanSolid.hpp"
 #include "runtime/math_objects/BezierPatch.hpp"
 #include "runtime/math_objects/PatchGeometry.hpp"
+#include "runtime/math_objects/Membrane.hpp"
+#include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
 
 #include <algorithm>
@@ -306,6 +308,35 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::PatchV,MathObjectKind::Patch,"patch_v","Probe v",0,1,0.01,0.5},
   {MathParameter::PatchResolution,MathObjectKind::Patch,"patch_resolution","Subdivisions / axis",4,32,4,20},
   {MathParameter::PatchGuides,MathObjectKind::Patch,"patch_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
+,
+  {MathParameter::MembraneSlot,MathObjectKind::Membrane,"membrane_slot","Mode slot",0,3,1,0,0,false,"Slot 1\0Slot 2\0Slot 3\0Slot 4\0"},
+  {MathParameter::MembraneM0,MathObjectKind::Membrane,"membrane_m0","m",1,6,1,1},
+  {MathParameter::MembraneN0,MathObjectKind::Membrane,"membrane_n0","n",1,6,1,1},
+  {MathParameter::MembraneA0,MathObjectKind::Membrane,"membrane_a0","Initial displacement",-0.6,0.6,0.01,0.35},
+  {MathParameter::MembraneV0,MathObjectKind::Membrane,"membrane_v0","Initial velocity",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneM1,MathObjectKind::Membrane,"membrane_m1","m",1,6,1,2},
+  {MathParameter::MembraneN1,MathObjectKind::Membrane,"membrane_n1","n",1,6,1,1},
+  {MathParameter::MembraneA1,MathObjectKind::Membrane,"membrane_a1","Initial displacement",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneV1,MathObjectKind::Membrane,"membrane_v1","Initial velocity",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneM2,MathObjectKind::Membrane,"membrane_m2","m",1,6,1,1},
+  {MathParameter::MembraneN2,MathObjectKind::Membrane,"membrane_n2","n",1,6,1,2},
+  {MathParameter::MembraneA2,MathObjectKind::Membrane,"membrane_a2","Initial displacement",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneV2,MathObjectKind::Membrane,"membrane_v2","Initial velocity",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneM3,MathObjectKind::Membrane,"membrane_m3","m",1,6,1,2},
+  {MathParameter::MembraneN3,MathObjectKind::Membrane,"membrane_n3","n",1,6,1,2},
+  {MathParameter::MembraneA3,MathObjectKind::Membrane,"membrane_a3","Initial displacement",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneV3,MathObjectKind::Membrane,"membrane_v3","Initial velocity",-0.6,0.6,0.01,0},
+  {MathParameter::MembraneWidth,MathObjectKind::Membrane,"membrane_width","Width",1,4,0.05,3},
+  {MathParameter::MembraneDepth,MathObjectKind::Membrane,"membrane_depth","Depth",1,4,0.05,3},
+  {MathParameter::MembraneTension,MathObjectKind::Membrane,"membrane_tension","Tension",0.25,4,0.05,1},
+  {MathParameter::MembraneDensity,MathObjectKind::Membrane,"membrane_density","Areal density",0.5,2,0.05,1},
+  {MathParameter::MembraneDamping,MathObjectKind::Membrane,"membrane_damping","Damping gamma",0,2,0.05,0},
+  {MathParameter::MembraneTime,MathObjectKind::Membrane,"membrane_time","Time",0,12,0.01,0},
+  {MathParameter::MembraneU,MathObjectKind::Membrane,"membrane_u","Probe u",0,1,0.01,0.5},
+  {MathParameter::MembraneV,MathObjectKind::Membrane,"membrane_v","Probe v",0,1,0.01,0.5},
+  {MathParameter::MembraneResolution,MathObjectKind::Membrane,"membrane_resolution","Subdivisions / axis",12,48,4,32},
+  {MathParameter::MembraneGuides,MathObjectKind::Membrane,"membrane_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::MembraneView,MathObjectKind::Membrane,"membrane_view","Surface",0,1,1,0,0,false,"Combined surface\0Selected slot\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -429,6 +460,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
    "S(u,v) = sum[i,j] B_i(u) B_j(v) P_ij; 0 <= u,v <= 1","Select a corner control and put the probe at that corner.",
    "Open bicubic sheet, with world y vertical. Normal orientation is S_u cross S_v. Folded area counts overlap with multiplicity; no closed-solid volume is claimed.",
    {"Blend sixteen controls into one editable surface.","Use partial derivatives to construct tangent planes and normals.","Connect curvature, metric and area to the same patch."},{1,.8F,1}}
+,
+  {MathObjectKind::Membrane,"membrane","Membrane Lab","Set a stretched sheet in motion",
+   "h_tt + 2*gamma*h_t = (T/rho)*(h_xx+h_yy)","Move a nonzero membrane below equilibrium at the probe.",
+   "Linear motion with all four edges fixed. World y is displacement. Four sine-mode slots combine; duplicate (m,n) pairs combine before energy. Time is model seconds; playback runs at half speed. Colours and energy density follow the displayed surface; global energy readouts always describe the combined membrane.",
+   {"Follow displacement and velocity on a moving sheet.","Explore eigenmodes, nodal lines and superposition.","Connect a wave equation to kinetic energy, strain energy and damping."},{1,.8F,1},.5}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -567,6 +603,19 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> membraneLessons{{
+  {"Displacement and motion","h = sum q_mn(t)*sin(m*pi*u)*sin(n*pi*v)","At positive time, make the combined probe displacement less than -0.05.","Play, pause or scrub time. Coral is positive displacement, blue negative. The gold point follows the displayed surface; all numerical probe readings refer to the combined membrane. Initial displacement and velocity belong to the selected mode slot. Edits recompute the chosen time from those initial conditions and pause playback."},
+  {"Modes and nodal lines","omega_mn = pi*sqrt(T/rho)*sqrt((m/width)^2+(n/depth)^2)","Find an interior node of an excited selected slot; do not use the fixed boundary.","Choose a mode slot and edit m,n. Its internal zero lines are u=k/m and v=k/n. Gold reference lines lie on the equilibrium plane and refer to that slot, not generally to the combined membrane. Choose Selected slot in Surface to isolate it. Basis colour is time independent, so an instant of zero amplitude is not confused with a spatial node. Frequencies in the table are undamped natural frequencies."},
+  {"Superposition","h_total = h_selected + h_other; distinct modes are orthogonal over the rectangle","Make distinct modes cancel at the probe: |h_total| < 0.005 with cancelling contributions above 0.1.","The plots compare the combined displacement, selected slot and remaining slots at the same point or section. Cancellation at one point need not persist in time. The numerical cancellation measure groups equal mode pairs first. Equal frequencies do not make two different spatial modes identical. The Damped pluck preset is a four-term approximation of a centred tent, released from rest."},
+  {"Energy and damping","E = integral [rho*h_t^2 + T*|grad h|^2]/2; dE/dt = -4*gamma*K","With positive damping and nonzero initial energy, advance to at least 3 seconds and retain less than 25 percent of the initial energy.","Kinetic and strain energy exchange while total energy stays constant for gamma=0. Positive damping removes energy. Global energies integrate the combined membrane analytically, independently of mesh resolution. Duplicate mode pairs combine coherently before squaring. The energy table lists distinct pairs; colours show local energy density of the displayed surface. Time plots adapt their window to resolve the mode frequencies."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> membranePresetParameters{MathParameter::MembraneSlot,MathParameter::MembraneM0,MathParameter::MembraneN0,MathParameter::MembraneA0,MathParameter::MembraneV0,MathParameter::MembraneM1,MathParameter::MembraneN1,MathParameter::MembraneA1,MathParameter::MembraneV1,MathParameter::MembraneM2,MathParameter::MembraneN2,MathParameter::MembraneA2,MathParameter::MembraneV2,MathParameter::MembraneM3,MathParameter::MembraneN3,MathParameter::MembraneA3,MathParameter::MembraneV3,MathParameter::MembraneWidth,MathParameter::MembraneDepth,MathParameter::MembraneTension,MathParameter::MembraneDensity,MathParameter::MembraneDamping,MathParameter::MembraneTime,MathParameter::MembraneU,MathParameter::MembraneV,MathParameter::MembraneResolution,MathParameter::MembraneGuides,MathParameter::MembraneView};
+constexpr std::array<MathObjectPreset,4> membranePresets{{
+  {"Drumhead",membranePresetParameters,{0,1,1,0.35,0,2,1,0,0,1,2,0,0,2,2,0,0,3,3,1,1,0,0,0.5,0.5,32,1,0},28},
+  {"Divided membrane",membranePresetParameters,{0,2,3,0.35,0,1,1,0,0,1,2,0,0,2,2,0,0,3,3,1,1,0,0,0.5,0.5,32,1,0},28},
+  {"Interference",membranePresetParameters,{0,1,1,0.3,0,3,1,-0.3,0,1,2,0,0,2,2,0,0,3,3,1,1,0,0,0.25,0.5,32,1,0},28},
+  {"Damped pluck",membranePresetParameters,{0,1,1,0.3285114321498988,0,1,3,-0.03650127023887765,0,3,1,-0.03650127023887765,0,3,3,0.004055696693208627,0,3,3,1,1,0.35,0,0.5,0.5,32,1,0},28}
 }};
 constexpr std::array<MathLesson,4> patchLessons{{
   {"Control net and blending","S(u,v) = sum B_i(u) B_j(v) P_ij; weights >= 0 and sum to 1","Select a corner control and move the UV probe onto that corner, so its weight becomes 1.","Click a control or choose P00 through P33; edit its XYZ row. The first index follows u and the second follows v. Interior controls influence the sheet without generally lying on it. Gold tint shows the selected control's influence; red and blue curves trace u and v through the gold probe."},
@@ -1172,6 +1221,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Lathe:return latheLessons;
     case MathObjectKind::Boolean:return booleanLessons;
     case MathObjectKind::Patch:return patchLessons;
+    case MathObjectKind::Membrane:return membraneLessons;
     default:return {};
   }
 }
@@ -1186,6 +1236,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Lathe:return lathePresets;
     case MathObjectKind::Boolean:return booleanPresets;
     case MathObjectKind::Patch:return patchPresets;
+    case MathObjectKind::Membrane:return membranePresets;
     default:return {};
   }
 }
@@ -1251,6 +1302,7 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
 MathParameter MathObjects::playbackParameter() const {
   switch(snapshot_.kind) {
     case MathObjectKind::Harmonics:return MathParameter::HarmonicTime;
+    case MathObjectKind::Membrane:return MathParameter::MembraneTime;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1277,8 +1329,8 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      if(snapshot_.kind==MathObjectKind::Curve||snapshot_.kind==MathObjectKind::Lathe)snapshot_.playing=false;
-      if(a.parameter==MathParameter::MotionTime||a.parameter==MathParameter::HarmonicTime||a.parameter==MathParameter::FieldTime||a.parameter==MathParameter::FluxTime)snapshot_.playing=false;
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:snapshot_.playing=false;break;default:break;}
+      if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
     }
@@ -1649,6 +1701,13 @@ void MathObjects::check() {
         case 1:solved=measured("Regular probe")==1&&std::fabs(measured("Normal y"))<.2;good="Yes: this regular sheet has a nearly horizontal unit normal.";bad="Try the Sail preset and inspect the normal near the centre.";break;
         case 2:solved=measured("Regular probe")==1&&measured("Gaussian curvature")<-.03;good="Yes: negative Gaussian curvature identifies a saddle with opposite principal-curvature signs.";bad="Try Saddle terrain near u=0.5, v=0.5 and inspect K.";break;
         case 3:solved=parameter(MathParameter::PatchResolution)>=24&&measured("Quadrature area")>.1&&measured("Mesh difference")<.5&&measured("Quadrature change")<.1;good="Yes: both comparisons agree at the requested tolerance. This is numerical evidence, not an exact error bound.";bad="Use Canopy with at least 24 subdivisions and inspect both percentage comparisons.";break;
+      }break;
+    case MathObjectKind::Membrane:
+      switch(snapshot_.level){
+        case 0:solved=parameter(MathParameter::MembraneTime)>0&&measured("Initial energy")>1e-6&&measured("Combined displacement")<-.05;good="Yes: the membrane has crossed below equilibrium at the probe.";bad="Choose Drumhead and advance model time to about 2 seconds with the probe at the centre.";break;
+        case 1:solved=parameter(MathParameter::MembraneU)>.01&&parameter(MathParameter::MembraneU)<.99&&parameter(MathParameter::MembraneV)>.01&&parameter(MathParameter::MembraneV)<.99&&measured("Selected excitation")>1e-9&&measured("Internal nodal lines")>0&&std::fabs(measured("Selected spatial weight"))<1e-8;good="Yes: this interior point lies on a spatial node of the excited selected mode.";bad="Choose Divided membrane, Slot 1, and put the probe at u=0.5, v=0.5. An instant of zero displacement is not enough.";break;
+        case 2:solved=measured("Distinct active modes")>=2&&std::fabs(measured("Combined displacement"))<.005&&measured("Cancellation magnitude")>.1;good="Yes: nonzero contributions from distinct spatial modes cancel at this point.";bad="Choose Interference at time 0 with u=0.25 and v=0.5; inspect the component curves.";break;
+        case 3:solved=parameter(MathParameter::MembraneDamping)>0&&parameter(MathParameter::MembraneTime)>=3&&measured("Initial energy")>.01&&measured("Energy retained")<25;good="Yes: damping has removed more than three quarters of the initial energy.";bad="Choose Damped pluck and advance model time to 6 seconds. Compare total and initial energy.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -2867,6 +2926,71 @@ void MathObjects::rebuild() {
         constexpr std::array<std::string_view,8> labels{"4 cells","8 cells","12 cells","16 cells","20 cells","24 cells","28 cells","32 cells"};
         for(unsigned i=0;i<8;++i){const unsigned cells=4*(i+1);const auto estimate=measurePatchMesh(patch,cells);b.row(labels[i],{static_cast<double>(cells),estimate.area,percentage(estimate.area),static_cast<double>(estimate.triangles)});line.points[i]={static_cast<double>(cells),estimate.area};}
         b.curve(plot,"Gauss comparison",teal,4,32,[&](double){return fine;});plot.hasMarker=true;plot.marker={static_cast<double>(n),mesh.area};
+      }
+      break;
+    }
+    case MathObjectKind::Membrane: {
+      MembraneInput input;input.width=parameter(MathParameter::MembraneWidth);input.depth=parameter(MathParameter::MembraneDepth);input.tension=parameter(MathParameter::MembraneTension);input.density=parameter(MathParameter::MembraneDensity);input.damping=parameter(MathParameter::MembraneDamping);
+      for(unsigned i=0;i<4;++i){const unsigned first=index(MathParameter::MembraneM0)+4*i;input.modes[i]={static_cast<unsigned>(parameters_[first]),static_cast<unsigned>(parameters_[first+1]),parameters_[first+2],parameters_[first+3]};}
+      const double time=parameter(MathParameter::MembraneTime),u=parameter(MathParameter::MembraneU),v=parameter(MathParameter::MembraneV);
+      const unsigned level=snapshot_.level,selected=static_cast<unsigned>(parameter(MathParameter::MembraneSlot)),n=static_cast<unsigned>(parameter(MathParameter::MembraneResolution));
+      const bool isolated=parameter(MathParameter::MembraneView)==1,guides=parameter(MathParameter::MembraneGuides)==1;
+      const auto state=prepareMembrane(input,time);const auto probe=sampleMembrane(state,u,v);const auto& slot=state.slots[selected];
+      const auto colour=level==1?MembraneColour::SelectedBasis:level==3?MembraneColour::Energy:MembraneColour::Displacement;
+      buildMembraneSurface(state,{n,selected,isolated,colour},snapshot_.solid);
+      auto shownInput=input;if(isolated)for(unsigned i=0;i<4;++i)if(i!=selected)shownInput.modes[i].displacement=shownInput.modes[i].velocity=0;
+      const auto shown=prepareMembrane(shownInput,time);const auto shownProbe=sampleMembrane(shown,u,v);
+      const auto at=[&](double a,double c){return Vec3{static_cast<float>(input.width*(a-.5)),static_cast<float>(sampleMembrane(shown,a,c).displacement),static_cast<float>(input.depth*(.5-c))};};
+      const auto rest=[&](double a,double c){return Vec3{static_cast<float>(input.width*(a-.5)),0,static_cast<float>(input.depth*(.5-c))};};
+      const auto point=at(u,v);
+      if(guides){
+        const std::array corners{rest(0,0),rest(1,0),rest(1,1),rest(0,1)};for(unsigned i=0;i<4;++i)b.rod(corners[i],corners[(i+1)%4],white,.025F,"membrane_fixed_edge");
+        for(unsigned i=0;i<32;++i){const double a=i/32.,c=(i+1)/32.;b.rod(at(a,v),at(c,v),coral,.009F,"membrane_u_section");b.rod(at(u,a),at(u,c),blue,.009F,"membrane_v_section");}
+        b.rod(rest(u,v),point,gold,.012F,"membrane_displacement");b.ball(point,.05F,gold,"membrane_probe");b.label(isolated?"Selected slot probe":"Combined probe",point+Vec3{0,.16F,0},gold);
+        if(level==0)b.arrow(point,point+Vec3{0,static_cast<float>(.55*std::tanh(shownProbe.velocity)),0},teal,"membrane_velocity_direction");
+        if(level==1){
+          for(unsigned k=1;k<slot.m;++k)b.rod(rest(static_cast<double>(k)/slot.m,0)+Vec3{0,-.035F,0},rest(static_cast<double>(k)/slot.m,1)+Vec3{0,-.035F,0},gold,.017F,"membrane_slot_node_u");
+          for(unsigned k=1;k<slot.n;++k)b.rod(rest(0,static_cast<double>(k)/slot.n)+Vec3{0,-.035F,0},rest(1,static_cast<double>(k)/slot.n)+Vec3{0,-.035F,0},gold,.017F,"membrane_slot_node_v");
+          b.label("Selected slot nodes: rest-plane reference",rest(.5,1)+Vec3{0,-.14F,0},gold);
+        }
+      }
+      constexpr std::array<std::string_view,4> names{"Slot 1","Slot 2","Slot 3","Slot 4"},pairs{"Pair 1","Pair 2","Pair 3","Pair 4"};
+      if(level==0){
+        b.metric("Combined displacement",probe.displacement);b.metric("Combined velocity",probe.velocity);b.metric("Time",time,"s");b.metric("Wave speed",state.waveSpeed);b.metric("Initial energy",state.initialEnergy);
+        b.table("Slot contributions at the probe",{"m","n","height","velocity"},4);for(unsigned i=0;i<4;++i)b.row(names[i],{static_cast<double>(state.slots[i].m),static_cast<double>(state.slots[i].n),probe.contributions[i],probe.velocities[i]});
+      }
+      if(level==1){
+        b.metric("Selected spatial weight",probe.weights[selected]);b.metric("Natural frequency",slot.omega/(2*pi),"Hz");b.metric("Internal nodal lines",slot.m+slot.n-2);b.metric("Selected excitation",std::hypot(slot.initialDisplacement,slot.initialVelocity));b.metric("Damping ratio",input.damping/slot.omega);
+        b.table("Mode slots: undamped natural frequencies",{"m","n","natural Hz","q(t)"},4);for(unsigned i=0;i<4;++i){const auto& mode=state.slots[i];b.row(names[i],{static_cast<double>(mode.m),static_cast<double>(mode.n),mode.omega/(2*pi),mode.q});}
+        auto& horizontal=b.plot("Selected spatial basis along u",MathParameter::MembraneU);b.curve(horizontal,"sin(m*pi*u) sin(n*pi*v)",coral,0,1,[&](double a){return sampleMembrane(state,a,v).weights[selected];});horizontal.hasMarker=true;horizontal.marker={u,probe.weights[selected]};
+        auto& vertical=b.plot("Selected spatial basis along v",MathParameter::MembraneV);b.curve(vertical,"sin(m*pi*u) sin(n*pi*v)",blue,0,1,[&](double c){return sampleMembrane(state,u,c).weights[selected];});vertical.hasMarker=true;vertical.marker={v,probe.weights[selected]};
+      }
+      if(level==2){
+        b.metric("Combined displacement",probe.displacement);b.metric("Cancellation magnitude",std::max(0.0,probe.absoluteContributions-std::fabs(probe.displacement)));b.metric("Distinct active modes",state.activeModes);b.metric("Absolute pair contributions",probe.absoluteContributions);b.metric("Time",time,"s");
+        b.table("Slot contributions; equal pairs combine coherently",{"m","n","height","velocity"},4);for(unsigned i=0;i<4;++i)b.row(names[i],{static_cast<double>(state.slots[i].m),static_cast<double>(state.slots[i].n),probe.contributions[i],probe.velocities[i]});
+      }
+      if(level==3){
+        const double total=state.kinetic+state.potential;
+        b.metric("Kinetic energy",state.kinetic);b.metric("Strain energy",state.potential);b.metric("Total energy",total);b.metric("Initial energy",state.initialEnergy);
+        if(state.initialEnergy>1e-12)b.metric("Energy retained",100*total/state.initialEnergy,"%");
+        b.metric("Energy loss rate",state.lossRate);b.metric("Energy lost",std::max(0.0,state.initialEnergy-total));b.metric("Time",time,"s");
+        b.table("Integrated energy by distinct mode pair",{"m","n","kinetic","strain"},4);for(unsigned i=0;i<state.combinedCount;++i){const auto& mode=state.combined[i];b.row(pairs[i],{static_cast<double>(mode.m),static_cast<double>(mode.n),mode.kinetic,mode.potential});}
+      }
+      b.metric("Displayed probe height",shownProbe.displacement);b.metric("Selected slot only",isolated);
+      // At most four cycles of the fastest natural mode: energy has twice the
+      // oscillation frequency and still receives at least 16 samples per cycle.
+      const double window=std::min(12.0,8*pi/state.maxOmega),start=std::clamp(time-window/2,0.0,12-window),end=std::min(12.0,start+window);
+      if(level!=1){
+        auto& plot=b.plot(level==3?"Combined energy near the selected time":"Combined and component motion near the selected time",MathParameter::MembraneTime);
+        if(level==3){
+          b.curve(plot,"Kinetic",coral,start,end,[&](double t){return prepareMembrane(input,t).kinetic;});b.curve(plot,"Strain",blue,start,end,[&](double t){return prepareMembrane(input,t).potential;});b.curve(plot,"Total",gold,start,end,[&](double t){const auto s=prepareMembrane(input,t);return s.kinetic+s.potential;});plot.marker={time,state.kinetic+state.potential};
+        }else{
+          b.curve(plot,"Combined",gold,start,end,[&](double t){return sampleMembrane(prepareMembrane(input,t),u,v).displacement;});b.curve(plot,"Selected slot",coral,start,end,[&](double t){return sampleMembrane(prepareMembrane(input,t),u,v).contributions[selected];});b.curve(plot,"Other slots",blue,start,end,[&](double t){const auto p=sampleMembrane(prepareMembrane(input,t),u,v);return p.displacement-p.contributions[selected];});plot.marker={time,probe.displacement};
+        }plot.hasMarker=true;
+      }
+      if(level==0||level==2){
+        auto& plot=b.plot("Combined and component heights along u",MathParameter::MembraneU);
+        b.curve(plot,"Combined",gold,0,1,[&](double a){return sampleMembrane(state,a,v).displacement;});b.curve(plot,"Selected slot",coral,0,1,[&](double a){return sampleMembrane(state,a,v).contributions[selected];});b.curve(plot,"Other slots",blue,0,1,[&](double a){const auto p=sampleMembrane(state,a,v);return p.displacement-p.contributions[selected];});plot.hasMarker=true;plot.marker={u,probe.displacement};
       }
       break;
     }
