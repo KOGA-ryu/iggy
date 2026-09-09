@@ -47,12 +47,13 @@ def tex(value):
     return ('-' if q < 0 else '') + rf'\frac{{{abs(q.numerator)}}}{{{q.denominator}}}'
 
 
-def equation(state):
+def equation(state, *, typeset=True):
     a, b, c = (exact(state[k]) for k in ('a', 'b', 'c'))
-    lhs = 'x' if a == 1 else '-x' if a == -1 else tex(str(a)) + 'x'
+    number = tex if typeset else lambda value: str(exact(value))
+    lhs = 'x' if a == 1 else '-x' if a == -1 else number(str(a)) + 'x'
     if b:
-        lhs += ('+' if b > 0 else '-') + tex(str(abs(b)))
-    return lhs + '=' + tex(str(c))
+        lhs += ('+' if b > 0 else '-') + number(str(abs(b)))
+    return lhs + '=' + number(str(c))
 
 
 def validate_spec(spec):
@@ -255,12 +256,6 @@ def runtime_bank(spec):
     golden = make_question(spec, spec['family']['golden_parameters'])
     instances = [golden] + [q for q in generate(spec) if q['id'] != golden['id']]
     rows = []
-    def plain(state):
-        a, b, c = (exact(state[k]) for k in ('a', 'b', 'c'))
-        lhs = 'x' if a == 1 else str(a)+'x'
-        if b:
-            lhs += ('+' if b > 0 else '') + str(b)
-        return lhs+'='+str(c)
     for number, q in enumerate(instances, 1):
         verify_question(q)
         prepared, support = [], []
@@ -278,7 +273,7 @@ def runtime_bank(spec):
                 wrong_hint='Working retained. Check the sign and apply the operation to both sides.',
                 explanation=teaching['after'], hint=teaching['why'], next_move=equation(q['states'][i+1]),
                 semantics=dict(purpose='calculation', completion='any_accepted', before=i+1, after=i+2)))
-            support.append(dict(equation=plain(q['states'][i+1]), response_prefix=(str(a)+'x=' if i==0 else 'x='),
+            support.append(dict(equation=equation(q['states'][i+1],typeset=False), response_prefix=(str(a)+'x=' if i==0 else 'x='),
                 definitions=definitions, teaching=teaching['goal']+'\n\n'+binding+'\n\n'+teaching['why']+'\n\n'+definitions,
                 responses=[o['value'] for o in step['choices']]))
         rows.append(dict(id=q['id'], title=f'Linear practice {number:02}', level='practice',
@@ -286,7 +281,7 @@ def runtime_bank(spec):
             question=dict(schema_version=1, id=q['id'], content_version=1,
                 equation=equation(q['states'][0]), skill=spec['family']['skill_id'], description='Solve for x.',
                 working_states=[dict(id=i+1, display=equation(s)) for i,s in enumerate(q['states'])], steps=prepared,
-                support=dict(family='linear_balance_ax_b_v1', equation=plain(q['states'][0]),
+                support=dict(family='linear_balance_ax_b_v1', equation=equation(q['states'][0],typeset=False),
                              domain='x is real.', steps=support))))
     return dict(schema_version=1, collection='linear_support', questions=rows)
 

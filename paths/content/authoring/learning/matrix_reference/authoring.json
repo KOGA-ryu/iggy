@@ -1,0 +1,18 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "matrix_reference",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "matrix_reference_original",
+      "kind": "original",
+      "title": "Fractional solutions: matrix reference card",
+      "uri": "paths:authored/matrix_reference",
+      "revision": "1",
+      "attribution": "Original Paths explanations. The example reuses one checked system from the original matrix repetition family.",
+      "reuse": "Authored for this project; no external exercise text copied. Reference format awaits user visual acceptance.",
+      "content_ids": ["matrix_reference_reading", "matrix_reference_fraction_01"]
+    }
+  ]
+}

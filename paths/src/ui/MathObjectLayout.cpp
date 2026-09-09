@@ -14,7 +14,7 @@ const auto& metadata(){
     for(const auto& p:mathParameterSpecs())result[index(p.id)]={p.minimumLevel>=2?G::Advanced:G::Shape,p.label};
     const auto range=[&](P a,P b,G g){for(unsigned i=index(a);i<=index(b);++i)result[i].group=g;};
     const auto group=[&](G g,std::initializer_list<P> params){for(auto p:params)result[index(p)].group=g;};
-    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides,P::TrussGuides});
+    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides,P::TrussGuides,P::SimplexGuides});
     group(G::Sampling,{P::Slices,P::Sample,P::DeltaX,P::TaylorDegree,P::HarmonicTerms,P::FluxResolution,P::ProbabilitySeed,P::BinomialSeed,P::LatheSlices,P::LatheMethod,P::BooleanResolution,P::PatchResolution,P::MembraneResolution});
     group(G::Operation,{P::Shortcut,P::IntegralStart,P::ComposeAngle,P::SvdStage,P::DescentRate,P::Constraint,P::GaussianOperation,P::GaussianQuotient,P::FluxOrientation,P::TensorBasis,P::CloudWhiten,P::NormSupport,P::BooleanOperation,P::BooleanBlend});
     range(P::VectorX,P::VectorZ,G::Probe);range(P::SurfaceU,P::DirectionAngle,G::Probe);range(P::FieldX,P::FieldPitch,G::Probe);
@@ -30,6 +30,7 @@ const auto& metadata(){
     range(P::MembraneSlot,P::MembraneV3,G::Profile);range(P::MembraneU,P::MembraneV,G::Probe);group(G::Animation,{P::MembraneDamping,P::MembraneTime});
     range(P::RigidRotX,P::RigidRotZ,G::Transform);range(P::RigidSpinX,P::RigidTime,G::Animation);group(G::Probe,{P::RigidAxis});
     range(P::TrussJoint,P::TrussP5Y,G::Profile);group(G::Animation,{P::TrussPosition});range(P::TrussLoadX,P::TrussLoadY,G::Operation);group(G::Operation,{P::TrussBrace,P::TrussSupports});group(G::Probe,{P::TrussMember});range(P::TrussTensionLimit,P::TrussCompressionLimit,G::Advanced);
+    range(P::SimplexP0,P::SimplexP1,G::ShapeA);range(P::SimplexQ0,P::SimplexQ1,G::ShapeB);range(P::SimplexValue0,P::SimplexValue2,G::Shape);group(G::Operation,{P::SimplexFunction});group(G::Animation,{P::SimplexMix});
     const auto label=[&](P p,std::string_view text){result[index(p)].label=text;};
     label(P::MembraneSlot,"Mode slot");label(P::MembraneResolution,"Subdivisions");label(P::MembraneGuides,"Guides");
     label(P::PatchControl,"Control point");label(P::PatchResolution,"Subdivisions");label(P::PatchGuides,"Guides");
@@ -42,6 +43,7 @@ const auto& metadata(){
 }
 struct Tuple { P first;unsigned count;std::string_view label;std::array<std::string_view,3> components{"X","Y","Z"}; };
 constexpr std::array tuples{
+  Tuple{P::SimplexP0,2,"Distribution P",{"A","B",""}},Tuple{P::SimplexQ0,2,"Distribution Q",{"A","B",""}},Tuple{P::SimplexValue0,3,"Outcome values",{"A","B","C"}},
   Tuple{P::TrussSpan,2,"Dimensions (m)",{"W","H",""}},Tuple{P::TrussLoadX,2,"Applied load (kN)",{"X","Y",""}},
   Tuple{P::TrussP0X,2,"Joint offset (m)",{"X","Y",""}},
   Tuple{P::TrussP1X,2,"Joint offset (m)",{"X","Y",""}},
@@ -100,6 +102,7 @@ MathControlRows mathControlRows(const MathObjects& m){
 MathControlRange mathControlRange(const MathObjects& m,P p){
   if(p>=P::Count)throw std::invalid_argument("unknown control range");
   const auto& spec=mathParameterSpecs()[index(p)];MathControlRange range{spec.minimum,spec.maximum};
+  if(p>=P::SimplexP0&&p<=P::SimplexQ1){const auto offset=index(p)-index(P::SimplexP0);range.maximum=std::max(0.,1-m.parameter(static_cast<P>(index(P::SimplexP0)+(offset^1U))));}
   if(p>=P::LatheH1&&p<=P::LatheH5){range.minimum=(p==P::LatheH1?0:m.parameter(static_cast<P>(index(p)-1)))+.04;range.maximum=(p==P::LatheH5?1:m.parameter(static_cast<P>(index(p)+1)))-.04;}return range;
 }
 MathAction mathResetControlGroup(const MathObjects& m,G group){MathAction action{MathActionKind::ResetParameters};for(const auto& p:mathParameterSpecs())if(p.owner==m.snapshot().kind&&mathControlMetadata(p.id).group==group)action.resetParameters.set(index(p.id));return action;}

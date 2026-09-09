@@ -6,9 +6,103 @@ local app connection and reusable lesson bindings. It contains staged TODOs and
 acceptance checks. This is planning only; implementation has not started and the
 current question/audit queue is unchanged.
 
+## Worked linear practice through the shared batch pipeline
+
+**Built and locally published; generated appearance awaits the user's visual check.**
+Package `linear_repetitions` version 1 adds 12 cards and six readings under
+**Algebra → Worked linear practice**. There are two cards each for positive
+integers, negative coefficients, negative offsets, negative answers, zero as
+the answer, and fractions. Each has two balanced steps, neutral definitions,
+separate hints, typeset arithmetic and substitution into the original equation.
+Practice keeps symbolic choices and optional typing; completion waits for Next.
+
+The existing `question_workflow.py` recipe owns linear generation and independent
+arithmetic checks. One new Markdown template supplies the prose. The existing
+batch producer selects a family through a table and shares its compiler, model
+gate and exporter across both families. `LearningDocuments`,
+`LayeredQuestionSession`, `CorpusPractice` and `export_learning.py` retain their
+runtime ownership. A duplicate nested plain-equation formatter was removed;
+the recipe's equation formatter now serves plain and typeset consumers. The
+pure batch gate reads the compiler's canonical reached displays for either family.
+
+Release `sorter`, `paths_learning_document_tests` and `paths_four_level_tests`
+build. Four targeted CTest entries pass: document/model, four-level sessions,
+original question workflow and the ten-test batch suite. After removing the
+redundant matrix-only uniqueness check, the shared batch suite passes again.
+The published cards pass 60 solving routes, 144 wrong-response checks and 384
+help-disclosure checks. The tests cover all 36 bounded recipe instances, malformed
+source, unknown fields, repeat publication, six-to-twelve-card extension and
+save replay with completion, selection, drafts, help and Undo branches retained.
+
+The library now contains 354 questions and 948 readings. All 342 earlier question
+records and 942 reading records remain identical, including existing taxonomy
+records. The earlier 25 linear runtime cards and both published matrix formats
+reproduce byte for byte. No personal save was read or changed.
+
+Runtime C++ delta: **zero files, zero lines**. Authoring Python changes total
++115/-36 lines (net +79 across two existing files); one 81-line Markdown template
+was added. Tests and documentation use existing files. Concurrent P061 asset
+documentation is preserved and is outside this workstream. Changes remain
+uncommitted. Evidence: `build/linear-batch-evidence/verification.json`.
+No windows, screenshots, captures, images or font probes were used.
+
+Manual check: launch `b/sorter`, open **Algebra → Worked linear practice**, and
+try a negative offset, zero and fractional case. Gold Given stays beside cyan
+Working/choices. Purple Help should distinguish Terms, Hint, Next line and
+Solution; Learn should show legible balanced calculations. Green completion
+waits for Next. Close/reopen partway through Practice once to confirm your place.
+Next candidate: an editable draft command that copies a generated chapter into
+the live-preview folder, keeping immutable published content intact.
+
+## Worked matrix batch from the approved reference
+
+**Built and locally published; generated variants await the user's visual check.**
+The user approved continuing with the reference format. Package
+`matrix_repetitions` version 2 retains the original 12 cards and adds 12 worked
+versions under **Linear Algebra → Worked matrix practice**: four integer, four
+negative-number and four fractional exercises. They revisit the same systems
+with readable titles, neutral Terms, directional Hint and detailed typeset Learn
+explanations. Next line and Solution retain their existing disclosure behavior.
+
+One new Markdown authoring template,
+`content/authoring/learning/matrix_reference/question.paths.md.in`, owns the
+reusable wording. The existing batch producer fills exact numeric/display fields
+and emits ordinary learning documents. `LearningDocuments` still compiles them,
+`LayeredQuestionSession` checks answers/disclosures, `CorpusPractice` owns saves,
+and `export_learning.py` publishes. No competing runtime route was introduced.
+The original formatter remains a live consumer for byte-stable retained cards;
+package version and teaching-format version are separate. See
+[batch commands and template fields](QUESTION_BATCHES.md).
+
+Release `sorter` and `paths_learning_document_tests` build. Two selected CTest
+entries pass: document/model regressions and the eight-test batch suite. The
+published package completes 120 solving routes, 432 wrong-response checks and
+528 disclosure checks. Independent arithmetic validates every matrix/choice;
+template sign/fraction checks span the bounded 36-system pool. Frozen document
+hashes protect version 1. Upgrade tests preserve completed and partial old work,
+selection, draft, help, level and Undo branches; repeat and extension checks pass.
+
+The active catalogue now contains 342 questions and 942 readings. Every one of
+the earlier 330 question records and 939 reading records remains identical,
+along with existing subjects/chapters. Actual version-1 → version-2 save replay
+passes using temporary progress, without reading personal saves.
+
+Runtime C++ delta: **zero files, zero lines**. The existing authoring producer
+adds +95/-4 Python lines (net +91), and one 115-line Markdown template was added.
+Tests and documentation use existing files. Changes remain uncommitted. Evidence:
+`build/worked-batch-evidence/verification.json`. No windows, screenshots, captures,
+images, native rendering harnesses or font probes were used.
+
+Manual check: launch `b/sorter` normally. Open **Worked matrix practice** and try
+one card from each group. Check gold Given beside cyan Working/choices, the
+distinct purple Help disclosures, typeset fractions/matrices in Learn, and green
+completion staying until Next. Close/reopen during Practice once to check saved
+progress. Next candidate: carry this template-driven batch workflow to linear
+equation practice through its existing exact checker.
+
 ## Editable reference: definitions, hints and worked fractions
 
-**Built and headlessly verified; user visual acceptance pending.** One original
+**Built and headlessly verified; user approved applying it to the batch above.** One original
 fractional-matrix reference now lives in
 `content/authoring/learning/matrix_reference/documents/reference.paths.md`.
 It has a neutral `lesson.v2` reading, a readable exercise title and three fully
@@ -356,6 +450,19 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P061: probability simplex assets
+
+The user approved [Probability Simplex Lab](P061_PROBABILITY_SIMPLEX.md) from
+math cards 101 and 103. The 32nd object has four retained layers and five
+examples covering distributions, expectation, entropy, variance, mixtures and
+KL divergence. Ten appended parameters use paired probability controls and
+the shared playback route. Boundary references expose their actual finite
+support face. The packet records scope, numerical contracts and verification.
+
+This is one asset family; textbook integration remains with its current owner.
+Source cards and learner state are unchanged. Verification is CPU/text only;
+no images or windows. Changes remain uncommitted.
 
 ## P060: bridge and truss assets
 

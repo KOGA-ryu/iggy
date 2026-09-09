@@ -6,6 +6,7 @@
 #include "runtime/math_objects/BezierPatch.hpp"
 #include "runtime/math_objects/PatchGeometry.hpp"
 #include "runtime/math_objects/Truss.hpp"
+#include "runtime/math_objects/Simplex.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -378,7 +379,17 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::TrussSupports,MathObjectKind::Truss,"truss_supports","Supports",0,2,1,0,0,false,"As designed\0Release restraint\0Add restraint\0"},
   {MathParameter::TrussTensionLimit,MathObjectKind::Truss,"truss_tension_limit","Tension limit (kN)",0.25,10,0.05,2},
   {MathParameter::TrussCompressionLimit,MathObjectKind::Truss,"truss_compression_limit","Compression limit (kN)",0.25,10,0.05,2},
-  {MathParameter::TrussGuides,MathObjectKind::Truss,"truss_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
+  {MathParameter::TrussGuides,MathObjectKind::Truss,"truss_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::SimplexP0,MathObjectKind::Simplex,"simplex_p_a","P: probability of A",0,1,.01,1./3},
+  {MathParameter::SimplexP1,MathObjectKind::Simplex,"simplex_p_b","P: probability of B",0,1,.01,1./3},
+  {MathParameter::SimplexQ0,MathObjectKind::Simplex,"simplex_q_a","Q: probability of A",0,1,.01,1./3},
+  {MathParameter::SimplexQ1,MathObjectKind::Simplex,"simplex_q_b","Q: probability of B",0,1,.01,1./3},
+  {MathParameter::SimplexValue0,MathObjectKind::Simplex,"simplex_value_a","Outcome A value",-3,3,.1,-1},
+  {MathParameter::SimplexValue1,MathObjectKind::Simplex,"simplex_value_b","Outcome B value",-3,3,.1,0},
+  {MathParameter::SimplexValue2,MathObjectKind::Simplex,"simplex_value_c","Outcome C value",-3,3,.1,1},
+  {MathParameter::SimplexFunction,MathObjectKind::Simplex,"simplex_function","Surface function",0,3,1,1,0,false,"Expected value\0Entropy\0Negative entropy\0Variance\0"},
+  {MathParameter::SimplexMix,MathObjectKind::Simplex,"simplex_mix","Mixture toward Q",0,1,.01,.5},
+  {MathParameter::SimplexGuides,MathObjectKind::Simplex,"simplex_guides","Construction guides",0,1,1,1,0,false,"Surface and markers\0Show construction\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -516,7 +527,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Truss,"truss","Bridge & Truss Lab","Follow a load through a structure",
    "Sum of forces at each joint = 0; E*member_and_support_forces = -applied_loads","Apply horizontal and vertical load to a determinate truss.",
    "Planar, weightless, pin-jointed bars shown in 3D. Tension is positive (teal), compression negative (coral). Loads transfer to adjacent joints along the gold path. Supports constrain both force senses. Play sweeps through static load positions; it does not simulate a moving vehicle. Member limits are specified force caps, without bending or buckling.",
-   {"Resolve loads and support reactions into vectors.","Inspect tension, compression and equilibrium at a joint.","Connect rank, mechanisms and force limits to a design."},{.35F,.3F,1},.12,"Restart load sweep","Load sweep complete. Restart or move the load position."}
+   {"Resolve loads and support reactions into vectors.","Inspect tension, compression and equilibrium at a joint.","Connect rank, mechanisms and force limits to a design."},{.35F,.3F,1},.12,"Restart load sweep","Load sweep complete. Restart or move the load position."},
+  {MathObjectKind::Simplex,"simplex","Probability Simplex Lab","Explore distributions as geometry",
+   "p_A + p_B + p_C = 1; r(t) = (1-t)*P + t*Q","Make the mixture uniform across the three outcomes.",
+   "The horizontal triangle is the complete three-outcome probability simplex. A and B are editable; C is the remainder. Teal is P, violet is Q, gold is their mixture. Height represents the selected function with the stated display scale. Logs are natural; entropy and KL use nats. Play changes mixture amount, not random samples or physical time.",
+   {"Represent probability distributions with barycentric coordinates.","Compare expectation, entropy, variance and convex mixtures.","Explore relative entropy, supporting planes and zero-probability boundaries."},{.45F,1.1F,1},.12,"Restart mixture","Mixture reached Q. Restart or scrub the mixture amount."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -655,6 +670,20 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> simplexLessons{{
+  {"Distributions as positions","p_A+p_B+p_C=1; E[X]=sum p_i*a_i","Make all three mixture probabilities equal within 0.005.","Each corner assigns probability one to a named outcome; an edge excludes one outcome. Set A and B with the paired controls; C is their remainder. Each slider stops where A+B=1. The table lists P, Q and their gold mixture. Outcome values affect expectation and variance; equal values are allowed, and entropy still describes the three named categories."},
+  {"Entropy and variance","H(p)=-sum p_i*log(p_i); Var[X]=sum p_i*(a_i-E[X])^2","On the entropy surface, reach at least 99 percent of log(3).","Choose a function in Operation. Entropy forms a concave dome and is zero at a certain outcome; negative entropy forms a convex bowl. Variance depends on outcome values, so distributions with the same mean can have different spread. The piecewise planar mesh samples the function; numerical readouts evaluate it directly. The reported height scale is visual only."},
+  {"Convexity and mixtures","r=(1-t)P+tQ; chord=(1-t)f(P)+t*f(Q)","With negative entropy and an interior mixture, make chord minus surface exceed 0.1.","Play or scrub the gold mixture. The pale chord joins the two endpoint heights; the curved trace evaluates the function along the same probability segment. Chord minus surface is nonnegative for a convex function and nonpositive for a concave one. Expectation is affine, so both agree. This explores examples; sampled curves do not prove a global inequality."},
+  {"Information divergence","D(P||Q)=sum P_i*log(P_i/Q_i) >= 0","Find finite divergences in both directions whose values differ by more than 0.1 nats.","Q is the reference for the raised KL surface. The information graph compares negative entropy with its supporting plane at Q; their vertical gap is D(r||Q). That plane requires every Q_i>0. A zero P_i contributes zero to KL, but P_i>0 with Q_i=0 makes it infinite. When Q has zeros, only its supported edge or vertex has finite KL; no finite surface is invented elsewhere. Infinite plot values are omitted and explicitly labelled. KL is generally asymmetric, so it is not a distance metric."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> simplexPresetParameters{MathParameter::SimplexP0,MathParameter::SimplexP1,MathParameter::SimplexQ0,MathParameter::SimplexQ1,MathParameter::SimplexValue0,MathParameter::SimplexValue1,MathParameter::SimplexValue2,MathParameter::SimplexFunction,MathParameter::SimplexMix,MathParameter::SimplexGuides};
+constexpr std::array<MathObjectPreset,5> simplexPresets{{
+  {"Balanced uncertainty",simplexPresetParameters,{1./3,1./3,1./3,1./3,-1,0,1,1,.5,1},10},
+  {"Mix two certainties",simplexPresetParameters,{1,0,0,0,-1,0,1,2,.5,1},10},
+  {"Same mean, different spread",simplexPresetParameters,{0,1,.5,0,-1,0,1,3,.5,1},10},
+  {"Asymmetric information",simplexPresetParameters,{.9,.05,.2,.3,-1,0,1,2,.5,1},10},
+  {"Missing outcome",simplexPresetParameters,{.2,.3,.5,.5,-1,0,1,2,.5,1},10}
 }};
 constexpr std::array<MathLesson,4> trussLessons{{
   {"Geometry, loads and supports","load = Fx*e_x + Fy*e_y; sum F = 0; sum moments = 0","Apply at least 0.2 kN in both directions to a determinate structure.","Choose an example, click a joint or select A-F, then edit its XY offset. Span, height and crown shift change the template beneath those offsets. The gold load is split between adjacent path joints, preserving its force and moment. Gold arrows are applied loads; blue arrows are support reactions. The drawn arrows use a common bounded scale; tables retain kN. An edit pauses the static load sweep."},
@@ -1269,6 +1298,27 @@ public:
   }
   MathObjectSnapshot& s;
 };
+// The equilateral triangle is an affine embedding of p_A+p_B+p_C=1.
+Vec3 simplexPosition(const SimplexPoint& p,double height=0) {
+  return {static_cast<float>(2*(p[1]-p[0])),static_cast<float>(height),static_cast<float>(3.4641016151377546*p[2]-1.1547005383792515)};
+}
+template<class F> void simplexMesh(MathTriangleSurface& mesh,F height) {
+  constexpr unsigned n=32;
+  const auto at=[](unsigned i,unsigned j){return i*(n+1)-i*(i-1)/2+j;};
+  mesh.vertexCount=(n+1)*(n+2)/2;mesh.indexCount=0;
+  for(unsigned i=0;i<=n;++i)for(unsigned j=0;j<=n-i;++j){
+    const auto p=simplexPoint(i/static_cast<double>(n),j/static_cast<double>(n));
+    auto& v=mesh.vertices[at(i,j)];v={};v.position=simplexPosition(p,height(p));
+    v.color=(coral*static_cast<float>(p[0])+teal*static_cast<float>(p[1])+blue*static_cast<float>(p[2]))*.72F+white*.12F;
+  }
+  const auto triangle=[&](unsigned a,unsigned c,unsigned d){
+    auto normal=cross(mesh.vertices[c].position-mesh.vertices[a].position,mesh.vertices[d].position-mesh.vertices[a].position);
+    if(normal.y<0){std::swap(c,d);normal=normal*-1;}
+    for(auto i:{a,c,d}){mesh.indices[mesh.indexCount++]=static_cast<std::uint16_t>(i);mesh.vertices[i].normal=mesh.vertices[i].normal+normal;}
+  };
+  for(unsigned i=0;i<n;++i)for(unsigned j=0;j<n-i;++j){triangle(at(i,j),at(i+1,j),at(i,j+1));if(i+j+1<n)triangle(at(i+1,j),at(i+1,j+1),at(i,j+1));}
+  for(unsigned i=0;i<mesh.vertexCount;++i)mesh.vertices[i].normal=normalized(mesh.vertices[i].normal);
+}
 } // namespace
 
 std::span<const MathObjectSpec> mathObjectSpecs(){return objects;}
@@ -1302,6 +1352,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Membrane:return membraneLessons;
     case MathObjectKind::Rigid:return rigidLessons;
     case MathObjectKind::Truss:return trussLessons;
+    case MathObjectKind::Simplex:return simplexLessons;
     default:return {};
   }
 }
@@ -1319,6 +1370,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Membrane:return membranePresets;
     case MathObjectKind::Rigid:return rigidPresets;
     case MathObjectKind::Truss:return trussPresets;
+    case MathObjectKind::Simplex:return simplexPresets;
     default:return {};
   }
 }
@@ -1332,6 +1384,7 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
   switch(p) {
+    case MathParameter::SimplexFunction:return snapshot_.level==1||snapshot_.level==2;
     case MathParameter::RigidBalance:return parameter(MathParameter::RigidShape)==1||parameter(MathParameter::RigidShape)==3;
     case MathParameter::BooleanBlend:return parameter(MathParameter::BooleanOperation)==3;
     case MathParameter::BooleanFit:return parameter(MathParameter::BooleanShapeB)==1&&parameter(MathParameter::BooleanOperation)==2;
@@ -1388,6 +1441,7 @@ MathParameter MathObjects::playbackParameter() const {
     case MathObjectKind::Membrane:return MathParameter::MembraneTime;
     case MathObjectKind::Rigid:return MathParameter::RigidTime;
     case MathObjectKind::Truss:return MathParameter::TrussPosition;
+    case MathObjectKind::Simplex:return MathParameter::SimplexMix;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1410,11 +1464,12 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(p.owner!=snapshot_.kind)return {false,"parameter_not_owned_by_object"};
       if(!parameterAvailable(a.parameter))return {false,"parameter_not_available_at_this_level"};
       if(!std::isfinite(a.value)||a.value<p.minimum-1e-6||a.value>p.maximum+1e-6)return {false,"parameter_out_of_range"};
-      const double next=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,p.maximum);
+      double next=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,p.maximum);
       if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
+      if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1424,6 +1479,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       auto next=parameters_;
       for(const auto& p:parameters)if(a.resetParameters.test(index(p.id))){if(p.owner!=snapshot_.kind)return {false,"parameter_not_owned_by_object"};next[index(p.id)]=p.initial;}
       if(snapshot_.kind==MathObjectKind::Lathe){double previous=0;for(unsigned i=index(MathParameter::LatheH1);i<=index(MathParameter::LatheH5);++i){if(next[i]<previous+.04-1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};previous=next[i];}if(previous>1-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
+      if(snapshot_.kind==MathObjectKind::Simplex)for(auto first:{MathParameter::SimplexP0,MathParameter::SimplexQ0})if(next[index(first)]+next[index(first)+1]>1+1e-12)return {false,"probabilities A+B must not exceed one"};
       parameters_=next;snapshot_.playing=false;
       if(a.resetParameters.test(index(MathParameter::Shortcut)))snapshot_.routeCount=1;
       if(a.resetParameters.test(index(MathParameter::FieldPath))){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;}
@@ -1807,6 +1863,13 @@ void MathObjects::check() {
         case 1:solved=measured("Unique equilibrium")==1&&measured("Selected member active")==1&&measured("Selected member force")<-.25;good="Yes: the selected member is in compression and pushes on its two joints.";bad="Use Triangular support and select M3, with the load at the crown.";break;
         case 2:solved=measured("Unique equilibrium")==1&&measured("Joint applied magnitude")>=.25&&measured("Active incident members")>=3&&measured("Joint residual")<1e-8;good="Yes: the loaded joint balances, and its force polygon closes.";bad="Use Bridge at load position 0.5 and inspect joint C.";break;
         case 3:solved=measured("Unique equilibrium")==1&&std::hypot(parameter(MathParameter::TrussLoadX),parameter(MathParameter::TrussLoadY))>=1&&parameter(MathParameter::TrussTensionLimit)<=2&&parameter(MathParameter::TrussCompressionLimit)<=2&&measured("Worst sweep utilization")<=1+1e-10&&measured("Reciprocal condition")>1e-5;good="Yes: this determinate truss carries the load over the whole path within both specified force limits.";bad="Use Bridge with both force limits at 2 kN, then increase height to 1.4 m.";break;
+      }break;
+    case MathObjectKind::Simplex:
+      switch(snapshot_.level){
+        case 0:solved=std::fabs(measured("Mixture P(A)")-1./3)<.005&&std::fabs(measured("Mixture P(B)")-1./3)<.005&&std::fabs(measured("Mixture P(C)")-1./3)<.005;good="Yes: the gold point is the uniform distribution at the centre.";bad="Use Balanced uncertainty, or balance all three mixture probabilities.";break;
+        case 1:solved=parameter(MathParameter::SimplexFunction)==1&&measured("Entropy")>=.99*std::log(3.);good="Yes: uncertainty is near its maximum at the uniform distribution.";bad="Choose Entropy and move the mixture close to the triangle centre.";break;
+        case 2:solved=parameter(MathParameter::SimplexFunction)==2&&parameter(MathParameter::SimplexMix)>0&&parameter(MathParameter::SimplexMix)<1&&measured("Chord - surface")>.1;good="Yes: the convex negative-entropy surface lies strictly below this chord.";bad="Choose Mix two certainties and keep the mixture between its endpoints.";break;
+        case 3:solved=measured("KL(P||Q) finite")==1&&measured("KL(Q||P) finite")==1&&std::fabs(measured("KL(P||Q)")-measured("KL(Q||P)"))>.1;good="Yes: swapping the distributions changes KL, even though both values are finite.";bad="Try Asymmetric information. Both distributions must give finite KL in each direction.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -3222,6 +3285,88 @@ void MathObjects::rebuild() {
         if(level==1||level==2){auto& plot=b.plot("Selected member force as the load moves",MathParameter::TrussPosition);b.curve(plot,memberNames[selected],gold,0,1,[&](double t){return sampleTruss(structure,t).forces[selected];});plot.hasMarker=true;plot.marker={input.position,solution.forces[selected]};}
         if(level==1){auto& plot=b.plot("Member forces (kN): teal tension, coral compression");for(unsigned sign=0;sign<2;++sign){auto& line=plot.series[plot.seriesCount++];line={};line.name=sign?"Compression":"Tension";line.color=sign?coral:teal;line.stems=true;line.count=9;for(unsigned i=0;i<9;++i)line.points[i]={static_cast<double>(i+1),sign?std::min(0.,solution.forces[i]):std::max(0.,solution.forces[i])};}}
         if(level==3){auto& plot=b.plot("Peak force-limit utilization as the load moves",MathParameter::TrussPosition);b.curve(plot,"Peak utilization",gold,0,1,[&](double t){return sampleTruss(structure,t).maxUtilization;});b.curve(plot,"Specified limit",coral,0,1,[](double){return 1.;});plot.hasMarker=true;plot.marker={input.position,solution.maxUtilization};}
+      }
+      break;
+    }
+    case MathObjectKind::Simplex: {
+      using P=MathParameter;using F=SimplexFunction;
+      const unsigned level=snapshot_.level;const bool guides=parameter(P::SimplexGuides)==1;
+      const auto p=simplexPoint(parameter(P::SimplexP0),parameter(P::SimplexP1)),q=simplexPoint(parameter(P::SimplexQ0),parameter(P::SimplexQ1));
+      const SimplexPoint outcomes{parameter(P::SimplexValue0),parameter(P::SimplexValue1),parameter(P::SimplexValue2)};
+      const double t=parameter(P::SimplexMix);const auto mix=mixSimplex(p,q,t);
+      const auto function=level==0?F::Mean:static_cast<F>(parameter(P::SimplexFunction));
+      const auto f=[&](const SimplexPoint& x){return simplexFunction(function,x,outcomes);};
+      const auto surface=[&](const SimplexPoint& x){return level==3?simplexKl(x,q):f(x);};
+      const auto [lo,hi]=std::minmax_element(outcomes.begin(),outcomes.end());
+      double scale=function==F::Mean?.65:function==F::Variance?std::min(1.,8/std::max(1e-12,(*hi-*lo)*(*hi-*lo))):1.5;
+      unsigned support=0;double maxKl=0;for(double x:q)if(x>0){++support;maxKl=std::max(maxKl,-std::log(x));}
+      if(level==3)scale=std::min(1.5,2/std::max(1.,maxKl));
+      const auto height=[&](const SimplexPoint& x){return level==0?0.:scale*surface(x);};
+      const auto lifted=[&](const SimplexPoint& x){return simplexPosition(x,height(x)+.055);};
+      constexpr std::array<SimplexPoint,3> corners{SimplexPoint{1,0,0},SimplexPoint{0,1,0},SimplexPoint{0,0,1}};
+      constexpr std::array<std::string_view,3> names{"A: certain","B: certain","C: certain"};
+      constexpr std::array<Vec3,3> colors{coral,teal,blue};
+      if(level!=3||support==3)simplexMesh(snapshot_.solid,height);
+      for(unsigned i=0;i<3;++i){const auto a=simplexPosition(corners[i]);b.rod(a,simplexPosition(corners[(i+1)%3]),colors[i],.025F,"simplex_edge");b.label(names[i],a+Vec3{0,-.15F,0},colors[i]);}
+      if(guides)for(unsigned axis=0;axis<3;++axis)for(unsigned k=1;k<4;++k){SimplexPoint a{},c{};a[axis]=c[axis]=k/4.;a[(axis+1)%3]=1-k/4.;c[(axis+2)%3]=1-k/4.;b.rod(simplexPosition(a),simplexPosition(c),muted,.009F,"constant_probability");}
+      if(level==3&&support<3){
+        b.label("KL is infinite outside Q's supported face",{0,2.5F,0},gold);
+        std::array<unsigned,3> active{};unsigned count=0;for(unsigned i=0;i<3;++i)if(q[i]>0)active[count++]=i;
+        if(support==2)for(unsigned i=0;i<48;++i){const auto a=mixSimplex(corners[active[0]],corners[active[1]],i/48.),c=mixSimplex(corners[active[0]],corners[active[1]],(i+1)/48.);b.rod(lifted(a),lifted(c),blue,.024F,"finite_kl_face");}
+        else b.scaled(MathShape::Sphere,lifted(q),{.12F,.12F,.12F},blue,"finite_kl_vertex");
+      }
+      const std::array<SimplexPoint,3> distributions{p,q,mix};
+      constexpr std::array<Vec3,3> pointColors{teal,violet,gold};
+      constexpr std::array<std::string_view,3> pointNames{"P","Q (reference)","Mixture"};
+      const bool coincident=length(simplexPosition(p)-simplexPosition(q))<1e-6F;
+      for(unsigned i=0;i<3;++i){
+        const auto& x=distributions[i];const bool finite=std::isfinite(surface(x));const auto base=simplexPosition(x,.045);const auto top=finite?lifted(x):base;
+        b.scaled(MathShape::Sphere,top,{.105F,.105F,.105F},pointColors[i],"simplex_marker");
+        if(guides&&level>0&&finite)b.rod(base,top,pointColors[i],.013F,"function_height");
+        if(!coincident)b.label(pointNames[i],top+Vec3{static_cast<float>(static_cast<int>(i)-1)*.2F,.19F+.12F*i,0},pointColors[i]);
+      }
+      if(coincident)b.label("P = Q = mixture",lifted(mix)+Vec3{0,.22F,0},gold);
+      if(guides){b.rod(simplexPosition(p,.04),simplexPosition(q,.04),gold,.019F,"probability_mixture_segment");}
+      if(level>0){
+        b.label(level==3?"KL(p || Q), nats":simplexFunctionName(function),{0,2.9F,0},white);
+        b.metric("Height / function unit",scale);
+        if(guides){
+          for(unsigned i=0;i<32;++i){const auto a=mixSimplex(p,q,i/32.),c=mixSimplex(p,q,(i+1)/32.);if(std::isfinite(surface(a))&&std::isfinite(surface(c)))b.rod(lifted(a),lifted(c),gold,.018F,"mixture_surface_trace");}
+          if(level==2){b.rod(lifted(p),lifted(q),white,.022F,"function_chord");b.rod(lifted(mix),simplexPosition(mix,scale*((1-t)*f(p)+t*f(q))+.055),coral,.026F,"jensen_gap");}
+        }
+      }
+      b.metric("Mixture P(A)",mix[0]);b.metric("Mixture P(B)",mix[1]);b.metric("Mixture P(C)",mix[2]);
+      b.table("Three named outcomes: C is the remaining probability",{"value","P","Q","mixture"},4);
+      constexpr std::array<std::string_view,3> outcomeNames{"A","B","C"};for(unsigned i=0;i<3;++i)b.row(outcomeNames[i],{outcomes[i],p[i],q[i],mix[i]});
+      auto& probabilities=b.plot("Outcome probabilities: P, Q and mixture");
+      for(unsigned i=0;i<3;++i){auto& line=probabilities.series[probabilities.seriesCount++];line={};line.name=pointNames[i];line.color=pointColors[i];line.count=3;line.stems=true;for(unsigned j=0;j<3;++j)line.points[j]={static_cast<double>(j+1),distributions[i][j]};}
+      if(level<3){
+        b.metric("Expected value",simplexFunction(F::Mean,mix,outcomes));b.metric("Entropy",simplexFunction(F::Entropy,mix,outcomes),"nats");b.metric("Variance",simplexFunction(F::Variance,mix,outcomes));
+        auto& plot=b.plot("Function along the mixture from P to Q",P::SimplexMix);
+        b.curve(plot,"Surface value",gold,0,1,[&](double u){return f(mixSimplex(p,q,u));});
+        if(level==2){
+          const double chord=(1-t)*f(p)+t*f(q),gap=chord-f(mix);
+          b.curve(plot,"Endpoint chord",white,0,1,[&](double u){return (1-u)*f(p)+u*f(q);});
+          b.metric("f(P)",f(p));b.metric("f(Q)",f(q));b.metric("Chord - surface",gap);
+          b.label(simplexCurvature(function),{0,3.2F,0},white);
+        }
+        plot.hasMarker=true;plot.marker={t,f(mix)};
+      }else{
+        const double forward=simplexKl(p,q),reverse=simplexKl(q,p),current=simplexKl(mix,q);
+        b.metric("Q support dimension",support-1);b.metric("KL(P||Q) finite",std::isfinite(forward));b.metric("KL(Q||P) finite",std::isfinite(reverse));
+        if(std::isfinite(forward))b.metric("KL(P||Q)",forward,"nats");else b.label("KL(P || Q) = infinity",{0,2.15F,0},teal);
+        if(std::isfinite(reverse))b.metric("KL(Q||P)",reverse,"nats");else b.label("KL(Q || P) = infinity",{0,1.85F,0},violet);
+        if(std::isfinite(current))b.metric("KL(mixture||Q)",current,"nats");else b.label("Mixture has infinite KL against Q",{0,1.55F,0},gold);
+        auto& plot=b.plot("KL along mixture (infinite values omitted)",P::SimplexMix);
+        for(unsigned direction=0;direction<2;++direction){auto& line=plot.series[plot.seriesCount++];line={};line.name=direction?"D(r || P)":"D(r || Q)";line.color=direction?teal:violet;for(unsigned i=0;i<=128;++i){const double u=i/128.,value=simplexKl(mixSimplex(p,q,u),direction?p:q);if(std::isfinite(value))line.points[line.count++]={u,value};}}
+        if(std::isfinite(current)){plot.hasMarker=true;plot.marker={t,current};}
+        if(support==3){
+          auto& tangent=b.plot("Information inequality: surface above supporting plane",P::SimplexMix);
+          b.curve(tangent,"Negative entropy",gold,0,1,[&](double u){return simplexFunction(F::NegativeEntropy,mixSimplex(p,q,u),outcomes);});
+          b.curve(tangent,"Supporting plane at Q",blue,0,1,[&](double u){return simplexEntropyTangent(mixSimplex(p,q,u),q);});
+          tangent.hasMarker=true;tangent.marker={t,simplexFunction(F::NegativeEntropy,mix,outcomes)};
+          b.metric("Surface - tangent",simplexFunction(F::NegativeEntropy,mix,outcomes)-simplexEntropyTangent(mix,q),"nats");
+        }else b.label("No full-simplex tangent at boundary Q",{0,3.2F,0},white);
       }
       break;
     }

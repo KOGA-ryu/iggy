@@ -27,8 +27,8 @@ class BatchTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def args(self, count=12, version=1, publish=False):
-        return argparse.Namespace(count=count, version=version, publish=publish,
+    def args(self, count=12, version=1, publish=False, format_version=1, family='matrix'):
+        return argparse.Namespace(count=count, version=version, publish=publish, format_version=format_version, family=family,
             target=OPTIONS.target, model=OPTIONS.model, output=self.root / 'batches' / str(version),
             store=self.store, base_documents=ROOT / 'content/write')
 
@@ -42,6 +42,10 @@ class BatchTests(unittest.TestCase):
             self.assertTrue(batch.verify(q)['accepted'])
             positions.update(s['choices'].index(s['answer']) for s in q['steps'])
         self.assertEqual(positions, {0, 1, 2})
+        self.assertEqual({name:export.sha(data) for name,data in batch.documents(questions).items()}, {
+            'fractions.paths.md':'4cc101d3fdb97dd1d224dee1c8063fcbdd063048903dcf930a373e6f6cca2db7',
+            'integers.paths.md':'639c5d5928d19ebefcec98cc5ba56c8e6c7a0247dffd5369210138ff35f76480',
+            'negative.paths.md':'530f40f82ddceceb57bc44169ab6361d13e42dec0c1e29dfefba879e5b6042f4'})
         for count in (0, -3, 4, 39, True):
             with self.assertRaises(export.ExportError):
                 batch.generate(count)
@@ -123,6 +127,150 @@ class BatchTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(json.loads(result.stderr)['code'], 'batch.count')
         self.assertEqual(result.stdout, '')
+
+    def test_worked_upgrade_preserves_published_cards_and_replays_saves(self):
+        original=batch.run(self.args(publish=True))
+        old_source=Path(original['generated_authoring'])/'documents'
+        old_bytes=export.capture(old_source)
+        before=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        upgraded=batch.run(self.args(version=2,format_version=2,publish=True))
+        source=Path(upgraded['generated_authoring'])/'documents'
+        after=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        self.assertEqual(upgraded['worked_questions'],12)
+        self.assertEqual(upgraded['retained_questions'],12)
+        self.assertEqual(upgraded['route_checks']['routes'],120)
+        self.assertEqual(upgraded['route_checks']['wrong_choices'],432)
+        self.assertEqual(upgraded['route_checks']['disclosure_checks'],528)
+        self.assertTrue(all(export.read_bytes(source/name)==data for name,data in old_bytes.items()))
+        for kind in ('questions','readings','chapters','subjects'):
+            indexed={row['id']:row for row in after[kind]}
+            self.assertTrue(all(indexed[row['id']]==row for row in before[kind]),kind)
+        self.assertEqual(len(after['questions']),len(before['questions'])+12)
+        migration=subprocess.run([str(OPTIONS.model),'--question-batch-upgrade',str(old_source),str(source)],
+                                 text=True,capture_output=True,timeout=30)
+        self.assertEqual(migration.returncode,0,migration.stderr)
+        self.assertTrue(json.loads(migration.stdout)['save_replay'])
+        active=(self.store/'active.json').read_bytes()
+        repeat=batch.run(self.args(version=2,format_version=2,publish=True))
+        self.assertTrue(repeat['publication']['unchanged'])
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+        more=batch.run(self.args(count=24,version=3,format_version=2,publish=True))
+        expanded=export.capture(Path(more['generated_authoring'])/'documents')
+        for name,data in export.capture(source).items():
+            # Reading links grow; existing question text and IDs stay byte-stable.
+            for card in data.decode().split('@question ')[1:]:
+                self.assertIn('@question '+card.strip(),expanded[name].decode())
+        with patch.object(batch,'REFERENCE_TEMPLATE',self.root/'invalid-template.md'):
+            batch.REFERENCE_TEMPLATE.write_text('@question {{missing_field}}\n')
+            with self.assertRaisesRegex(export.ExportError, 'Unknown field missing_field'):
+                batch.run(self.args(version=4,format_version=2,publish=True))
+        self.assertFalse((self.root/'batches/4').exists())
+
+    def test_worked_template_number_signs_and_structure(self):
+        template=batch.REFERENCE_TEMPLATE.read_text()
+        self.assertEqual([batch.tex(v) for v in ('0','-3/2','2/3','-4','4')],
+                         ['0',r'-\frac{3}{2}',r'\frac{2}{3}','-4','4'])
+        for n,q in enumerate(batch.generate(36),1):
+            fields=batch.worked_fields(q,n)
+            text=batch.fill_template(template,fields)
+            self.assertEqual(text.count('@hint\n'),3)
+            self.assertNotIn('{{',text)
+            self.assertNotIn('+-',text)
+            for i in range(1,4):
+                self.assertIn('$$'+fields[f'calculation_{i}']+'$$',text)
+                self.assertEqual(fields[f'calculation_{i}'].count('&='),3)
+                self.assertIn(batch.matrix_tex(q['states'][i]),text)
+                hint=text.split('@hint\n')[i].split('@wrong')[0]
+                self.assertNotIn('$',hint)
+                self.assertNotIn(batch.matrix(q['states'][i]),hint)
+            # Original equations are actually substituted, not just the final identity.
+            for i,row in enumerate(q['states'][0],1):
+                a,b,c=map(Fraction,row);x,y=map(Fraction,q['answer'])
+                self.assertEqual(a*x+b*y,c)
+                self.assertTrue(fields[f'check_{i}'].endswith('='+batch.tex(c)+'.'))
+            self.assertEqual(text.count('$$')%2,0)
+            self.assertEqual(text.count('{'),text.count('}'))
+
+    def test_linear_recipe_template_and_all_six_cases(self):
+        spec=json.loads(batch.linear.SPEC.read_text())
+        small=batch.linear_questions(12,spec);large=batch.linear_questions(36,spec)
+        self.assertEqual(large[:12],small)
+        self.assertEqual({g:sum(q['stratum']==g for q in small) for g in batch.linear.STRATA},
+                         dict.fromkeys(batch.linear.STRATA,2))
+        template=batch.LINEAR_TEMPLATE.read_text()
+        positions=set()
+        for q in large:
+            batch.linear.verify_question(q)
+            fields=batch.linear_fields(q,1);text=batch.fill_template(template,fields,batch.LINEAR_TEMPLATE)
+            a,b,c=(Fraction(q['parameters'][k]) for k in ('a','b','c'));answer=Fraction(q['answer']['value'])
+            self.assertEqual((c-b)/a,answer)
+            self.assertEqual(a*answer+b,c)
+            for state in q['states']:
+                aa,bb,cc=(Fraction(state[k]) for k in ('a','b','c'))
+                self.assertEqual(aa*answer+bb,cc)
+                self.assertIn(batch.linear.equation(state),text)
+                self.assertNotIn('\\',batch.linear.equation(state,typeset=False))
+            for step in q['steps']:
+                positions.add(next(i for i,o in enumerate(step['choices']) if o['id']=='correct'))
+            self.assertIn('$$'+fields['check']+'.$$',text)
+            self.assertEqual(text.count('@hint\n'),2)
+            for hint in text.split('@hint\n')[1:]:
+                self.assertNotIn('$',hint.split('@wrong')[0])
+            self.assertNotIn('{{',text)
+            self.assertNotIn('+-',text)
+            self.assertIn(r'\frac',text)
+            self.assertEqual(text.count('{'),text.count('}'))
+            delimiters=re.findall(r'(?<!\\)\$\$|(?<!\\)\$',text)
+            self.assertTrue(all(delimiters[i]==delimiters[i+1] for i in range(0,len(delimiters),2)))
+            self.assertGreater(text.count('$$'),20)
+        self.assertEqual(positions,{0,1,2})
+        for count in (0,3,7,42,True):
+            with self.assertRaises(export.ExportError):batch.linear_questions(count,spec)
+        original=batch.linear.runtime_bank(spec)
+        self.assertEqual(json.dumps(original,ensure_ascii=False,indent=2)+'\n',
+                         (ROOT/'content/corpus/linear_support.json').read_text())
+
+    def test_linear_publish_extend_save_and_failure(self):
+        before=export.Target(OPTIONS.target).inspect(documents=ROOT/'content/write')['catalogue']
+        first=batch.run(self.args(count=6,family='linear',publish=True))
+        old_source=Path(first['generated_authoring'])/'documents'
+        more=batch.run(self.args(count=12,version=2,family='linear',publish=True))
+        source=Path(more['generated_authoring'])/'documents'
+        self.assertEqual(more['route_checks']['routes'],60)
+        self.assertEqual(more['route_checks']['wrong_choices'],144)
+        self.assertEqual(more['route_checks']['disclosure_checks'],384)
+        self.assertEqual(more['worked_questions'],12)
+        after=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        for kind in ('questions','readings','chapters','subjects'):
+            indexed={row['id']:row for row in after[kind]}
+            self.assertTrue(all(indexed[row['id']]==row for row in before[kind]),kind)
+        self.assertEqual(len(after['questions']),len(before['questions'])+12)
+        migration=subprocess.run([str(OPTIONS.model),'--question-batch-upgrade',str(old_source),str(source)],
+                                 capture_output=True,text=True,timeout=30)
+        self.assertEqual(migration.returncode,0,migration.stderr)
+        self.assertTrue(json.loads(migration.stdout)['save_replay'])
+        active=(self.store/'active.json').read_bytes()
+        self.assertTrue(batch.run(self.args(version=2,family='linear',publish=True))['publication']['unchanged'])
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+        with self.assertRaisesRegex(export.ExportError,'Existing question must remain unchanged'):
+            batch.run(self.args(count=6,version=3,family='linear',publish=True))
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+        original=batch.linear_fields
+        def wrong(q,n):
+            fields=original(q,n);fields['after_1']='3x=999';return fields
+        with patch.object(batch,'linear_fields',side_effect=wrong),self.assertRaises(export.ExportError) as caught:
+            batch.run(self.args(version=4,family='linear',publish=True))
+        self.assertTrue(caught.exception.diagnostics)
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+        self.assertFalse((self.root/'batches/4').exists())
+        damaged=self.root/'broken-linear.md.in';damaged.write_text('@question {{typo}}\n')
+        with patch.object(batch,'LINEAR_TEMPLATE',damaged),self.assertRaisesRegex(export.ExportError,'broken-linear.md.in:1: Unknown field typo'):
+            batch.run(self.args(version=4,family='linear',publish=True))
+        # The original matrix format remains the default CLI family.
+        result=subprocess.run([sys.executable,'-B',str(ROOT/'tools/build_question_batch.py'),'--family','linear','--count','3'],
+                              capture_output=True,text=True,timeout=30)
+        self.assertNotEqual(result.returncode,0)
+        self.assertEqual(json.loads(result.stderr)['code'],'batch.count')
 
     def test_reference_card_arithmetic_and_authored_math(self):
         source = ROOT / 'content/authoring/learning/matrix_reference/documents'

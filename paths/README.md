@@ -1,9 +1,31 @@
 # Paths
 
+**Library → Algebra → Worked linear practice** now adds 12 questions in the same
+template-driven format. Choose positive integers, negative coefficients, negative
+offsets, negative answers, zero as the answer, or fractions. Learn explains both
+balanced operations and checks the original equation; Practice uses symbolic
+choices with separate Terms, Hint, Next line and Solution. The normal library now
+has **354 questions and 948 readings**, with all 342 earlier questions unchanged.
+
+The [linear Markdown template](content/authoring/learning/linear_reference/question.paths.md.in)
+reuses the existing exact recipe and checker. Build and publish through the same
+[batch workflow](docs/QUESTION_BATCHES.md#linear-equations):
+
+```sh
+python3 -B tools/build_question_batch.py --family linear --publish
+./b/sorter
+```
+
+**Library → Linear Algebra → Worked matrix practice** now has 12 questions in
+the approved reference format: four integer, four negative-number and four
+fractional exercises. Readable titles, typeset working and separate
+**Terms / Hint / Next line / Solution** disclosures use the existing workspace.
+Learn opens definitions and the worked step; Practice keeps symbolic choices.
+Launch `./b/sorter` normally for saved progress. Its original questions and
+published matrix documents remain unchanged.
+
 The [editable matrix reference](docs/QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
-now demonstrates a readable exercise title, typeset fractional working and
-separate **Terms / Hint / Next line / Solution** disclosures. Learn opens the
-definitions and worked step; Practice keeps the symbolic choices. Preview it:
+remains available for live authoring:
 
 ```sh
 ./b/sorter --documents content/authoring/learning/matrix_reference/documents --watch-documents
@@ -11,8 +33,9 @@ definitions and worked step; Practice keeps the symbolic choices. Preview it:
 
 Open **Linear Algebra → Matrix reference → Fractional solutions** and its
 exercise link. Edit the [source Markdown](content/authoring/learning/matrix_reference/documents/reference.paths.md)
-and save to refresh. This is one unpublished candidate awaiting visual acceptance;
-the published 330-question library and the existing batch generator are unchanged.
+and save to refresh. The standalone reference remains unpublished; its generated
+variants are locally published and await your visual check. Their reusable
+wording lives in [question.paths.md.in](content/authoring/learning/matrix_reference/question.paths.md.in).
 
 For **save Markdown → refresh the open app**, use live authoring preview:
 
@@ -27,16 +50,17 @@ in memory and personal saves remain untouched. See the [preview workflow](docs/L
 for revision recovery, limits and publication. No rebuild is needed for supported
 Markdown content edits after building this version of the app.
 
-The [checked batch command](docs/QUESTION_BATCHES.md) generates 12 matrix
-repetitions, independently checks each step and choice, replays all five answering
-routes with saves, then publishes through the existing learning pipeline:
+The [checked batch command](docs/QUESTION_BATCHES.md) produces 12 worked matrix
+cards and retains the original 12. It independently checks each step and choice,
+replays all five answering routes with saves, then publishes through the existing
+learning pipeline:
 
 ```sh
 python3 -B tools/build_question_batch.py --publish
 ```
 
 Build `sorter` and `paths_learning_document_tests` first. Omit `--publish` to
-export only. In Library → Linear Algebra → **Matrix repetitions**, choose integer,
+export only. In Library → Linear Algebra → **Worked matrix practice**, choose integer,
 negative or fractional solutions; blue question links open the regular workspace.
 **2 Practice** uses cyan symbolic tiles with purple Help on demand. Visual
 acceptance of this batch remains pending.
@@ -125,6 +149,13 @@ one for each of six subjects, 178 chapters and 94 named subcategories. Choose
 symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
+
+[Probability Simplex Lab](docs/P061_PROBABILITY_SIMPLEX.md) turns three-outcome
+distributions into an editable triangle, entropy/variance surfaces, mixture
+chords and KL-divergence geometry. Open
+`./b/math_lab --object simplex --level 2 --object-preset 1 --set simplex_mix=0`
+and press Play. Five examples include equal means with different variances and
+reference distributions with missing outcomes.
 
 [Bridge & Truss Lab](docs/P060_BRIDGE_TRUSS.md) adds triangular support, bridge,
 crane boom and roof truss presets. Open
@@ -233,7 +264,7 @@ cmake --build b --target sorter -j 6
 
 ## Interactive maths objects and linked diagrams
 
-The native `math_lab` now contains twenty-nine objects. The original expansion cube,
+The native `math_lab` now contains thirty-two objects. The original expansion cube,
 unit circle, integration disks and binary graph remain available. The matrix
 object now has four working learning layers, and the new function and surface
 laboratories connect their geometry to interactive diagrams. Symmetry, harmonics
@@ -276,6 +307,7 @@ Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 | Membrane Lab | Displacement/motion; eigenmodes/nodal lines; superposition; energy and damping |
 | Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
 | Bridge & Truss Lab | Geometry/loads; tension/compression; joint equilibrium; rank and force limits |
+| Probability Simplex Lab | Distributions; entropy/variance; convex mixtures; information divergence |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
 | Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |

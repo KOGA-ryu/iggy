@@ -1,0 +1,115 @@
+@question {{id}} | {{title}}
+@template matrix.v1
+@version 1
+@goal Find the common solution of the two equations by row reduction.
+@given {{given}}
+@domain Real x and y; the column after the bar holds constants. Keep fractions exact.
+
+@step 10 | Cancel x in row 2. Choose the multiple of row 1 to add.
+@operation add_row_1_to_2
+{{choices_1}}
+@after {{after_1}}
+@hint
+Compare the first entries of the two rows. Choose a multiplier that makes their sum zero, then apply the addition to every column. Keep the original first row.
+@wrong Check the sign and size of the multiplier. The first entry of row 2 must become zero; changing only its constant cannot cancel the unknown.
+@why The first unknown is eliminated from row 2. Row 1 is unchanged. Subtracting the same multiple of row 1 reverses the operation, so both systems have exactly the same solutions.
+@definitions
+A coefficient multiplies an unknown: in $ax$, the coefficient is $a$.
+The labels $R_1$ and $R_2$ refer to complete equations, including their constants.
+
+Elimination makes a chosen coefficient zero. A row addition has the form
+
+$$R_2\leftarrow R_2+mR_1.$$
+
+Subtracting the same multiple reverses this change. A zero multiplier leaves the row unchanged; to eliminate a nonzero entry, choose a multiplier that cancels it.
+@teaching
+The first entries are $1$ in row 1 and ${{k}}$ in row 2. Choose the multiplier $m$ so that
+
+$${{k}}+m(1)=0.$$
+
+Therefore $m={{minus_k}}$, and the operation is
+
+$${{operation_1}}$$
+
+Apply it to the coefficient of each unknown and to the constant:
+
+$${{calculation_1}}$$
+
+The reached matrix is
+
+$${{matrix_1}}$$
+
+The first row stays unchanged. Only the second row has been replaced.
+
+@step 20 | Make the leading entry of row 2 equal to 1. Choose its divisor.
+@operation divide_row_2
+{{choices_2}}
+@after {{after_2}}
+@hint
+Divide the leading entry by itself to obtain one. Use that same nonzero divisor for every entry of the row, and keep track of its sign.
+@wrong The leading entry divided by your chosen number must be one. Dividing by its opposite gives the wrong sign; dividing by twice its value gives half the required coefficient.
+@why The leading coefficient in row 2 is now one, so this row gives the second unknown directly. Multiplying the entire row by the original nonzero divisor reverses the operation.
+@definitions
+A pivot is a leading nonzero entry used in elimination. Normalizing a pivot means making that entry equal to $1$.
+
+For a nonzero divisor $d$, row division is
+
+$$R_2\leftarrow\frac{1}{d}R_2,\qquad d\ne0.$$
+
+Every entry must be divided by the same number. Division by zero is undefined. An exact fraction retains its numerator and denominator instead of rounding to a decimal.
+@teaching
+The pivot is ${{d}}$. Divide the complete second row by ${{d}}$:
+
+$${{operation_2}}$$
+
+The three entries become
+
+$${{calculation_2}}$$
+
+The reached matrix is
+
+$${{matrix_2}}$$
+
+Its second row now says $y={{y}}$. Keep the sign and any fraction exact. The first row stays unchanged.
+
+@step 30 | Cancel y in row 1. Choose the multiple of row 2 to add.
+@operation add_row_2_to_1
+{{choices_3}}
+@after {{after_3}}
+@hint
+Use the second row's unit coefficient to cancel the second entry of row 1. Choose the opposite multiple, then apply it to all three entries of row 1.
+@wrong The second entry of row 1 must become zero. Adding the same sign or twice the cancelling multiple will leave a nonzero entry.
+@why The coefficient block is now the identity matrix, so each row isolates one unknown. Substitution into both original equations confirms the pair. The reversible operations preserve the full solution set, which proves this solution is unique.
+@definitions
+The identity coefficient matrix has $1$ on its diagonal and $0$ elsewhere:
+
+$$I=\begin{bmatrix}1&0\\0&1\end{bmatrix}.$$
+
+With this coefficient block, the constants give the unknowns directly. A simultaneous solution must satisfy both original equations. Substitution verifies a candidate; reversible row operations show that no other solutions were lost or added.
+@teaching
+The second entries are ${{p}}$ in row 1 and $1$ in row 2. Choose $m$ so that
+
+$${{p}}+m(1)=0.$$
+
+Thus $m={{minus_p}}$, and the operation is
+
+$${{operation_3}}$$
+
+The entries of row 1 become
+
+$${{calculation_3}}$$
+
+The final matrix and answer are
+
+$${{matrix_3}},\qquad x={{x}},\quad y={{y}}.$$
+
+Check the first original equation:
+
+$${{check_1}}$$
+
+Check the second original equation:
+
+$${{check_2}}$$
+
+Both original equations hold. The reversible reductions reached an identity coefficient matrix, so this is their unique common solution.
+@end

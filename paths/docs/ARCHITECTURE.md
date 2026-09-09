@@ -6,6 +6,15 @@ content, UI, solving, persistence, the content pipeline and figure integration.
 The separate worker builds 3D assets/models. This division assigns implementation
 responsibility; the canonical mathematical and state owners below remain intact.
 
+The batch producer now selects matrix or linear authoring through a small family
+table, then runs one shared compiler/model/export path. Linear authoring reuses
+`question_workflow.py` for bounded instance construction and independent arithmetic
+checks, and one Markdown template for prose. That recipe's equation formatter now
+serves both typeset and plain output; its duplicate nested plain formatter was
+removed. The original 25-card runtime pack still reproduces byte for byte.
+The pure batch gate reads canonical reached working displays for either family
+instead of parsing matrix-only test projections. No runtime C++ changed.
+
 The [matrix reference](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
 connects optional document `@hint` to the existing question-step `hint` field.
 `LayeredQuestionSession::supportView` owns its disclosure separately from worked
@@ -13,7 +22,15 @@ teaching; older steps without a hint receive a general direction. Learn combines
 the current definitions and teaching. The UI displays the catalogue title and
 uses its existing math-document renderer for the projected reading. No question
 schema, save schema, checker or renderer was added. Omitting `@hint` emits the
-same question data as before; the new reference remains an unpublished candidate.
+same question data as before. The user approved the reference for batching;
+the standalone reference remains unpublished.
+
+Batch format 2 reads one Markdown source template for the worked explanations
+and supplies exact number/matrix display fields. The output is ordinary
+`matrix.v1`/`lesson.v2` content, checked and published by the existing owners.
+The package retains format-1 documents byte for byte and adds new worked-card
+identities; it never changes the content behind a saved question. Package version
+and teaching-format version are separate. No runtime source changed for this batch.
 
 `LearningDocumentPreview`, inside the existing document module, captures bounded
 source bytes and sends settled snapshots through `LearningDocuments`. An explicit
@@ -125,6 +142,14 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P061](P061_PROBABILITY_SIMPLEX.md) adds `simplex`. `Simplex` owns normalized
+three-outcome mixtures, moments, entropy and support-aware relative entropy.
+`MathObjects` projects those values into an affine triangle, sampled height
+surfaces, convexity chords and supporting-plane plots. Coupled probability
+controls validate before mutation and reuse the compact inspector. Finite KL
+faces remain explicit at boundary references. No renderer, content or
+learner-state ownership changes.
 
 [P060](P060_BRIDGE_TRUSS.md) adds the `truss` provider. `Truss` owns planar
 joint geometry, member/support equilibrium, complete-pivot factorization and

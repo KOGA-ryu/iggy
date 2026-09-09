@@ -14,6 +14,14 @@ Every question therefore has four support levels. A separate complexity band
 describes the mathematics. Changing support never changes the problem, domain,
 answer, or mathematical standard of correctness.
 
+The [linear batch](QUESTION_BATCHES.md#linear-equations) now applies the worked
+reference format to 12 `linear.v1` cards, using the existing exact recipe. One
+Markdown template supplies neutral definitions, separate hints, detailed balanced
+operations and substitution into the original equation. Six arithmetic cases
+include negative coefficients/offsets, negative or zero answers, and fractions.
+The original 25 linear cards remain unchanged. Practice still defaults to symbolic
+choices; written input is optional. Generated appearance remains a manual check.
+
 ## Shared textbook presentation standard
 
 The user has selected the existing textbook work as the presentation standard
@@ -146,7 +154,7 @@ example can be opened on request, with distinct givens and an exposure record.
 
 ## Editable matrix reference
 
-**Implemented and headlessly verified; visual acceptance pending.** The source
+**Implemented; user approved applying it to the batch.** The source
 is `content/authoring/learning/matrix_reference/documents/reference.paths.md`,
 with package provenance one directory above. It contains one neutral `lesson.v2`
 reading and one three-step `matrix.v1` question, **Fractional solutions · Exercise 1**.
@@ -208,9 +216,11 @@ Before producing a batch from this format:
 Evidence is in `build/reference-card-evidence/verification.json`, including 48
 disclosure checks, five answer routes, 18 wrong responses, hint save replay and
 live source editing. Eight malformed-hint direct/include cases identify their
-source locations. The reference is exported but **not published**. The earlier
-12-question generator and the active 330-question library remain unchanged;
-applying the visually accepted reference to generated questions is the next step.
+source locations. The standalone reference is exported but **not published**.
+The [worked batch](QUESTION_BATCHES.md) now applies this format to 12 new card
+identities while retaining the original questions and saves. Its wording comes
+from `content/authoring/learning/matrix_reference/question.paths.md.in`; the active
+library has 342 questions. Generated variations still await a visual check.
 
 ## Fully specified example: 3x + 5 = 20
 

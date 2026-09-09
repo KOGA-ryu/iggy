@@ -222,15 +222,25 @@ void matrixDiagnostics(const Path& folder) {
 }
 void questionBatch(const Path& root,const Path& folder) {
   Fixture f;const auto first=f.bank.size();const auto loaded=f.load(root);expect(loaded.accepted,loaded.message);
-  expect(f.bank.size()>first,"Batch must add questions");Json ids=Json::array();std::size_t routes=0,wrongs=0;
+  expect(f.bank.size()>first,"Batch must add questions");Json ids=Json::array();std::size_t routes=0,wrongs=0,disclosures=0;
   for(std::size_t n=first;n<f.bank.size();++n) {
-    const auto& q=f.bank[n];expect(q.question.support && q.question.support->model==fm::MathWorkingModel::RowReduction,"Batch uses the supported matrix checker");ids.push_back(q.id);
+    const auto& q=f.bank[n];expect(q.question.support.has_value(),"Batch uses an existing supported checker");ids.push_back(q.id);
     for(unsigned route=0;route<5;++route) {
       const auto level=route==4?1U:route;CorpusPractice p({q});const auto save=folder/(q.id+"-"+std::to_string(route)+".json");p.loadProgress(save);p.open(0);
       const auto send=[&](fm::SupportAction a,std::string text={},unsigned value=0){expect(p.dispatch(support(p,a,std::move(text),value)),"Batch response reaches its canonical owner");};
       send(fm::SupportAction::SelectLevel,{},level);
       expect(p.active()->supportView()->reading.empty()==(level!=0),"Batch teaching respects the selected support level");
+      const auto help=[&](std::size_t i) {
+        const auto& step=q.question.steps[i];if(step.hint.empty())return;
+        const auto& taught=q.question.support->steps[i];const auto before=p.active()->supportView()->working;
+        send(fm::SupportAction::ReadHelp,{},1);expect(p.active()->supportView()->reading==taught.definitions,"Generated Terms stays separate");
+        send(fm::SupportAction::ReadHelp,{},2);expect(p.active()->supportView()->reading==step.hint && step.hint!=taught.teaching,"Generated Hint uses its direction");
+        send(fm::SupportAction::ReadHelp,{},3);expect(p.active()->supportView()->reading.find(q.question.workingStates[i+1].display)!=std::string::npos,"Generated Next line reaches its authored state");
+        send(fm::SupportAction::ReadHelp,{},4);for(std::size_t j=1;j<q.question.workingStates.size();++j)expect(p.active()->supportView()->reading.find(q.question.workingStates[j].display)!=std::string::npos,"Generated Solution reveals the full route");
+        send(fm::SupportAction::ReadHelp,{},0);expect(p.active()->supportView()->working==before && p.active()->supportView()->reading.empty()==(level!=0),"Generated help closes without committing work");disclosures+=4;
+      };
       if(level<2)for(std::size_t i=0;i<q.question.steps.size();++i) {
+        help(i);
         const auto& step=q.question.steps[i];const auto correct=fm::firstAcceptedOption(step);const auto before=p.active()->supportView()->working;
         const auto answer=[&](std::size_t j){if(route==4){const auto value=q.question.support->steps[i].responses[j];send(fm::SupportAction::EditDraft,value);send(fm::SupportAction::SubmitBlank,value);}else send(fm::SupportAction::Choose,{},step.options[j].id.value);};
         for(std::size_t j=0;j<step.options.size();++j)if(j!=correct) {
@@ -243,16 +253,36 @@ void questionBatch(const Path& root,const Path& folder) {
           CorpusPractice resumed({q});resumed.loadProgress(save);expect(resumed.active() && resumed.active()->supportView()->working==p.active()->supportView()->working,"Generated Practice resumes checked working");p=std::move(resumed);
         }
       } else {
+        help(0);
         expect(p.active()->supportView()->choices.empty(),"Written batch levels do not disclose choices");std::string work;
         for(const auto& step:q.question.support->steps)work+=step.equation+"\n";
         send(fm::SupportAction::EditDraft,work);send(fm::SupportAction::CheckWork,work);
       }
-      expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Every generated route verifies both original equations");
+      expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Every generated route verifies the original problem");
       expect(!p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Generated completion waits for Next");p.saveProgress();
       CorpusPractice restored({q});restored.loadProgress(save);expect(restored.active() && restored.active()->currentRun().completed,"Generated completed state survives reopen");++routes;
     }
   }
-  std::cout<<Json{{"accepted",true},{"question_ids",ids},{"routes",routes},{"wrong_choices",wrongs},{"save_replay",true},{"windows",0}}.dump()<<'\n';
+  std::cout<<Json{{"accepted",true},{"question_ids",ids},{"routes",routes},{"wrong_choices",wrongs},{"disclosure_checks",disclosures},{"save_replay",true},{"windows",0}}.dump()<<'\n';
+}
+void questionBatchUpgrade(const Path& before,const Path& after,const Path& folder) {
+  Fixture old;const auto first=old.bank.size();expect(old.load(before).accepted,"Original batch imports");
+  expect(old.bank.size()>=first+2,"Upgrade needs two original questions");CorpusPractice p(old.bank);
+  const auto save=folder/"upgrade.json";p.loadProgress(save);p.open(first);
+  for(const auto& step:old.bank[first].question.steps)expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[fm::firstAcceptedOption(step)].id.value)),"Complete original question");
+  p.open(first+1);expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Original Practice opens");
+  const auto& step=old.bank[first+1].question.steps[0];const auto correct=fm::firstAcceptedOption(step);
+  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[(correct+1)%step.options.size()].id.value)),"Original wrong response retained");
+  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[correct].id.value)) && p.dispatch(support(p,fm::SupportAction::Undo)) && p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[correct].id.value)),"Original Undo branch retained");
+  expect(p.dispatch(support(p,fm::SupportAction::EditDraft,"unfinished fraction")) && p.dispatch(support(p,fm::SupportAction::ReadHelp,{},1)),"Original draft and help retained");p.saveProgress();
+  Fixture next;expect(next.load(after).accepted,"Updated batch imports");
+  for(const auto& q:old.bank)expect(next.bank[question(next.bank,q.id)].stamp==q.stamp,"Upgrade preserves every old question stamp");
+  CorpusPractice restored(next.bank);restored.loadProgress(save);
+  expect(restored.active() && restored.questions()[*restored.selected()].id==old.bank[first+1].id,"Upgrade reopens the original selected question");
+  const auto a=p.active()->supportView(),b=restored.active()->supportView();
+  expect(a->working==b->working && a->draft==b->draft && a->reading==b->reading && a->level==b->level && p.active()->journal().size()==restored.active()->journal().size() && p.active()->currentRun().support->nodes.size()==restored.active()->currentRun().support->nodes.size(),"Upgrade retains working, draft, help, level and branch journal");
+  expect(restored.attempt(question(next.bank,old.bank[first].id))->currentRun().completed,"Completed original still waits for Next");
+  std::cout<<Json{{"accepted",true},{"save_replay",true},{"old_questions",old.bank.size()-first},{"new_questions",next.bank.size()-old.bank.size()},{"windows",0}}.dump()<<'\n';
 }
 void imports(const Path& root) {
   Fixture f;const auto report=f.load(root);expect(report.accepted,report.message);
@@ -638,6 +668,9 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==4 && std::string_view(argv[1])=="--question-batch-upgrade") {
+      std::filesystem::create_directories(folder);questionBatchUpgrade(argv[2],argv[3],folder);std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==3 && std::string_view(argv[1])=="--reference-card") {
       std::filesystem::create_directories(folder);const auto result=referenceCard(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
     }
