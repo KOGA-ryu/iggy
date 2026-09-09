@@ -4,7 +4,7 @@
   "publication": "authoring_only",
   "profiles": [
     {"id": "learn", "label": "1 Learn", "input": "symbol_choices", "show_goal": true, "show_why": true, "show_definitions": true, "show_step_prompt": true},
-    {"id": "practice", "label": "2 Practice", "input": "structured_blank", "show_goal": true, "show_why": false, "show_definitions": false, "show_step_prompt": true},
+    {"id": "practice", "label": "2 Practice", "input": "symbol_choices_optional_blank", "show_goal": true, "show_why": false, "show_definitions": false, "show_step_prompt": true},
     {"id": "solve", "label": "3 Solve", "input": "checkpoint_and_working", "show_goal": false, "show_why": false, "show_definitions": false, "show_step_prompt": false},
     {"id": "independent", "label": "4 Independent", "input": "written_solution", "show_goal": false, "show_why": false, "show_definitions": false, "show_step_prompt": false}
   ],

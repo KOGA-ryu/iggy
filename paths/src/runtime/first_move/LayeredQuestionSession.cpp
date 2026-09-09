@@ -74,43 +74,55 @@ bool validLinearSupport(const LayeredQuestionContent& q) {
   }
   return !verifyMathSolution(original,before).empty();
 }
-bool validMatrixSupport(const LayeredQuestionContent& q) {
+QuestionValidationResult validMatrixSupport(const LayeredQuestionContent& q) {
+  const auto bad=[](std::string_view field,std::string_view why,std::optional<std::size_t> step={},std::optional<std::size_t> option={}) {
+    return QuestionValidationResult{QuestionValidationCode::InvalidSupport,field,0,step,option,{},why};
+  };
   const auto& s=*q.support;const auto initial=prepareMathWorking(MathWorkingModel::RowReduction,s.equation);
-  if(!initial.result)return false;
+  if(!initial.result)return bad("equation","Given must be a supported, unsolved two-row system with a unique solution.");
   const auto original=std::get<AugmentedMatrix>(*initial.result);auto before=original;
-  if(q.equation!=matrixEquationTex(original))return false;
+  if(q.equation!=matrixEquationTex(original))return bad("equation","Displayed given differs from the matrix being checked.");
   for(std::size_t i=0;i<s.steps.size();++i) {
     const auto& step=s.steps[i];const auto& prepared=q.steps[i];
     const auto op=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==step.operation;});
-    if(op==rowOperations.end() || op->kind==RowMove::Swap || !step.responsePrefix.empty() ||
-        step.responses.size()!=prepared.options.size() || step.teaching.empty() || step.definitions.empty() ||
-        step.teaching.size()>8000 || step.definitions.size()>8000)return false;
-    const auto after=parseAugmentedMatrix(step.equation);if(!after.result)return false;
+    if(op==rowOperations.end() || op->kind==RowMove::Swap || !step.responsePrefix.empty())
+      return bad("operation","Use a supported row-addition or row-division operation.",i);
+    if(step.responses.size()!=prepared.options.size())return bad("responses","Each choice needs one numeric operand.",i);
+    if(step.teaching.empty() || step.teaching.size()>8000)return bad("teaching","Step teaching needs 1-8000 bytes.",i);
+    if(step.definitions.empty() || step.definitions.size()>8000)return bad("definitions","Step definitions need 1-8000 bytes.",i);
+    const auto after=parseAugmentedMatrix(step.equation);
+    if(!after.result)return bad("equation","Expected a complete two-row augmented matrix after this step.",i);
     std::vector<ExactNumber> values;
     for(std::size_t j=0;j<step.responses.size();++j) {
       const auto response=parseLinearEquation("x="+step.responses[j]);
-      if(!response.equation || response.equation->right.coefficient.numerator)return false;
+      if(!response.equation || response.equation->right.coefficient.numerator)return bad("responses","Choice must be a supported exact numeric operand.",i,j);
       const auto value=response.equation->right.constant;
-      if(std::find(values.begin(),values.end(),value)!=values.end())return false;values.push_back(value);
+      if(std::find(values.begin(),values.end(),value)!=values.end())return bad("responses","Equivalent numeric choices are duplicates.",i,j);
+      values.push_back(value);
       const auto checked=checkMatrixResponse(original,before,step.operation,step.responses[j]);
-      if(checked.status==WrittenCheckStatus::Unsupported || prepared.options[j].label!=rowOperationTex(step.operation,step.responses[j]))return false;
+      if(checked.status==WrittenCheckStatus::Unsupported)return bad("responses","This operand cannot be checked for the row operation.",i,j);
+      if(prepared.options[j].label!=rowOperationTex(step.operation,step.responses[j]))return bad("responses","Choice label differs from its row operation and operand.",i,j);
       const bool correct=checked.status==WrittenCheckStatus::Correct && checked.lines.back().rows==after.result->rows;
-      if(acceptsOption(prepared,j)!=correct)return false;
+      if(acceptsOption(prepared,j)!=correct) {
+        if(op->kind==RowMove::Divide && !value.numerator && acceptsOption(prepared,j))return bad("responses","The accepted divisor must be nonzero.",i,j);
+        return bad("equation","The accepted choice must produce the declared @after matrix; check @answer, @operation and every entry including the constant.",i);
+      }
     }
     before=*after.result;
-    if(i+1<s.steps.size() && !verifyMathSolution(original,before).empty())return false;
+    if(i+1<s.steps.size() && !verifyMathSolution(original,before).empty())return bad("equation","This step already solves the system; remove later solving steps.",i);
   }
-  return !verifyMathSolution(original,before).empty();
+  if(verifyMathSolution(original,before).empty())return bad("equation","The final matrix must have identity coefficients and satisfy both original equations.",s.steps.size()-1);
+  return {};
 }
-bool validSupport(const LayeredQuestionContent& q) {
-  const auto& s=*q.support;
+QuestionValidationResult validSupport(const LayeredQuestionContent& q) {
+  const auto& s=*q.support;const QuestionValidationResult invalid{QuestionValidationCode::InvalidSupport,"support",0};
   if(s.steps.empty() || s.steps.size()>kQuestionStepCapacity || s.steps.size()!=q.steps.size() ||
-      s.domain.empty() || s.domain.size()>160 || q.supportsMathMoves || q.lineGraph)return false;
+      s.domain.empty() || s.domain.size()>160 || q.supportsMathMoves || q.lineGraph)return invalid;
   switch(s.model) {
-    case MathWorkingModel::LinearEquation:return validLinearSupport(q);
+    case MathWorkingModel::LinearEquation:return validLinearSupport(q)?QuestionValidationResult{}:invalid;
     case MathWorkingModel::RowReduction:return validMatrixSupport(q);
   }
-  return false;
+  return invalid;
 }
 
 const LayeredQuestionContent kQuestion=[] {
@@ -363,6 +375,7 @@ LayeredQuestionRunSummary summarizeLayeredQuestionRun(
 }
 
 std::string_view QuestionValidationResult::reason() const noexcept {
+  if(!detail.empty())return detail;
   switch(code) {
     case QuestionValidationCode::Valid:return "question_content_valid";
     case QuestionValidationCode::InvalidCatalogSize:
@@ -441,7 +454,7 @@ QuestionValidationResult validateQuestion(const LayeredQuestionContent& question
   const auto chain=validateStepChain(question);if(!chain.valid())return chain;
   if(interaction==QuestionInteraction::Supported && !question.support)return {Code::InvalidSupport,"support",0};
   if(question.support) {
-    try {if(!validSupport(question))return {Code::InvalidSupport,"support",0};}
+    try {const auto result=validSupport(question);if(!result.valid())return result;}
     catch(...){return {Code::InvalidSupport,"support",0};}
   }
   return {};
@@ -824,7 +837,8 @@ std::optional<SupportView> LayeredQuestionSession::supportView() const {
     if(anchor) {
       v.prompt=content().steps[*anchor].prompt;
       if(matrix && s.level==SupportLevel::Practice)v.responseCue=rowOperationTex(source.steps[*anchor].operation,{});
-      if(s.level==SupportLevel::Learn){v.choices=content().steps[*anchor].options;v.reading=source.steps[*anchor].teaching;}
+      v.choices=content().steps[*anchor].options;
+      if(s.level==SupportLevel::Learn)v.reading=source.steps[*anchor].teaching;
     } else v.prompt="Your working follows another route. Use Solve / Independent, or Again to retain this run and start a guided attempt.";
   }
   if(!v.completed && s.level==SupportLevel::Solve)v.prompt=matrix?"Write resulting matrices. Reduce the coefficient block to the identity to find x and y.":"Supply a resulting equation for x, with your working.";
@@ -885,7 +899,7 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const Support
   if(current_.phase!=LayeredQuestionPhase::Answering || s.submissions.size()>=kSupportSubmissionCapacity)return rejected("support_submission_unavailable");
   const auto& source=*content().support;std::string entry=command.text;const auto anchor=supportAnchor(content(),s);
   if(command.action==SupportAction::Choose) {
-    if(s.level!=SupportLevel::Learn || !anchor)return rejected("choice_unavailable");
+    if(s.level>SupportLevel::Practice || !anchor)return rejected("choice_unavailable");
     const auto& options=content().steps[*anchor].options;
     const auto found=std::find_if(options.begin(),options.end(),[&](const auto& option){return option.id.value==command.value;});
     if(found==options.end())return rejected("unknown_support_choice");
@@ -935,7 +949,7 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const Support
   if(checked.status==WrittenCheckStatus::Correct) {
     s.active=parent;s.help=SupportHelp::None;s.verification=checked.verification;
     current_.completed=checked.solved;current_.phase=checked.solved?LayeredQuestionPhase::Complete:LayeredQuestionPhase::Answering;
-    if(command.action==SupportAction::SubmitBlank)s.draft.clear();
+    if(command.action==SupportAction::SubmitBlank || (command.action==SupportAction::Choose && s.level==SupportLevel::Practice))s.draft.clear();
   }
   return accepted(true,"support_submission_recorded");
 }

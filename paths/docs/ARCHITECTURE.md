@@ -6,6 +6,26 @@ content, UI, solving, persistence, the content pipeline and figure integration.
 The separate worker builds 3D assets/models. This division assigns implementation
 responsibility; the canonical mathematical and state owners below remain intact.
 
+[Checked question batches](QUESTION_BATCHES.md) use one bounded Python matrix
+producer, the existing exact C++ question owner and the existing learning
+publisher. The producer supplies deterministic documents and an independent
+arithmetic audit; a pure model gate must replay every generated question before
+export/publication. Matrix validation returns static reasons with step/option
+locations, which content decoding preserves and the document compiler maps back
+to directive lines. No parallel mathematical validator or library store is added
+to the runtime. The authoring Practice projection now matches the app's choices
+and optional blank without changing any published linear question stamp.
+
+Practice now consumes the same symbolic choices and `SupportAction::Choose`
+route as Learn. `LayeredQuestionSession` still gates responses by level, anchor
+and revision and checks the exact mathematics. Its projection keeps Practice
+teaching closed until requested. The existing submission action/level and guarded
+journal distinguish tile input from optional `SubmitBlank` input without new
+question stamps or a save schema. `CorpusPracticeUi` only renders the choices
+and an optional typing disclosure; an existing draft opens that disclosure on
+first display. Correct Practice tiles clear the obsolete step draft, wrong ones
+retain it, and written levels still cannot consume prepared choices.
+
 The [learning publisher](LEARNING_EXPORTS.md) adds a structured inspection report
 and verified published generations. `LearningDocuments` reports its consumed
 file bytes, catalogue declarations and canonical `CorpusStarter` stamp digests.
@@ -86,6 +106,14 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P059](P059_RIGID_BODY_ROTATION.md) adds the `rigid` provider. `RigidBody`
+owns component mass properties, principal moments, body-to-world orientation
+and bounded cached RK4 free rotation. `MathObjects` projects the same assembly
+and state into existing primitives, axis trails, inertia tensors and invariant
+readouts. Fifteen appended controls and four complete presets use the shared
+compact inspector and half-speed playback. Cache replay makes scrubbing
+independent of playback history. Content and learner-state owners are unchanged.
 
 [P058](P058_VIBRATING_MEMBRANE.md) adds the `membrane` provider. `Membrane`
 owns bounded closed-form modal evolution, spatial derivatives, coherent duplicate

@@ -46,23 +46,24 @@ void kernel() {
 }
 void routes(const std::vector<CorpusStarter>& bank) {
   expect(bank.size()==25,"Golden example and 24 varied repetitions are published");
-  for(const auto& q:bank)for(std::uint32_t level=0;level<4;++level) {
+  for(const auto& q:bank)for(std::uint32_t route=0;route<5;++route) {
+    const auto level=route==4?1U:route;const bool tiles=level==0 || route==4;
     auto s=start(q,static_cast<fm::SupportLevel>(level));const auto& source=*q.question.support;
     expect(s.currentRun().steps.empty() && !s.currentRun().math,"Typed support owns its own evidence, not pretend tile attempts");
     expect(s.supportView()->given==q.question.equation && s.supportView()->working.empty(),"Given is present with no manufactured learner working");
     expect(s.supportView()->reading.empty()==(level!=0),"Only Learn shows teaching by default");
-    expect(s.supportView()->choices.empty()==(level!=0),"Only Learn offers tiles");
+    expect(s.supportView()->choices.empty()==(level>=2),"Learn and Practice offer tiles; written levels disclose none");
     expect(!s.dispatch(fm::LayeredQuestionCommand::submitOption(q.question.steps[0].options[0].id)).accepted,"Legacy prepared route cannot judge this run");
     if(level<2) {
       for(std::size_t i=0;i<2;++i) {
         const auto& step=q.question.steps[i];const auto accepted=fm::firstAcceptedOption(step);
         const auto old=s.supportView()->working;
         for(std::size_t j=0;j<step.options.size();++j)if(j!=accepted) {
-          if(level==0)send(s,fm::SupportAction::Choose,step.options[j].id.value);
+          if(tiles)send(s,fm::SupportAction::Choose,step.options[j].id.value);
           else submit(s,source.steps[i].responses[j],fm::SupportAction::SubmitBlank);
           expect(s.supportView()->working==old && !s.currentRun().completed,"Every wrong response preserves working");
         }
-        if(level==0)send(s,fm::SupportAction::Choose,step.options[accepted].id.value);
+        if(tiles)send(s,fm::SupportAction::Choose,step.options[accepted].id.value);
         else submit(s,source.steps[i].responses[accepted],fm::SupportAction::SubmitBlank);
         expect(s.supportView()->history.size()==i+1,"Correct guided response advances one checked step");
       }
@@ -71,7 +72,7 @@ void routes(const std::vector<CorpusStarter>& bank) {
     const auto view=*s.supportView();
     expect(view.completed && !view.verification.empty() && !view.canRespond,"Every level reaches a verified sticky completion");
     expect(s.currentRun().support->submissions.back().action==
-      (level==0?fm::SupportAction::Choose:level==1?fm::SupportAction::SubmitBlank:fm::SupportAction::CheckWork),"Submission records how the learner actually answered");
+      (tiles?fm::SupportAction::Choose:level==1?fm::SupportAction::SubmitBlank:fm::SupportAction::CheckWork),"Submission records how the learner actually answered");
     expect(!s.dispatch({fm::LayeredQuestionCommandKind::Continue}).accepted,"Completion requires explicit Next navigation");
     const auto original=*fm::parseLinearEquation(source.equation).equation;
     const auto answer=std::get<fm::LinearEquation>(s.currentRun().support->nodes.back().equation).right.constant;
@@ -80,6 +81,53 @@ void routes(const std::vector<CorpusStarter>& bank) {
       (a.numerator*answer.numerator+b.numerator*answer.denominator)*c.denominator==c.numerator*answer.denominator,
       "Independent integer cross multiplication verifies the original equation for every generated answer");
   }
+}
+void practiceChoices(const std::vector<CorpusStarter>& bank,const std::filesystem::path& folder) {
+  CorpusPractice p(bank);const auto file=folder/"practice-choices.json";p.loadProgress(file);p.open(0);
+  const auto sendP=[&](fm::SupportAction a,std::uint32_t value=0,std::string text={}) {
+    expect(p.dispatch(command(*p.active(),a,value,std::move(text))),"Practice command reaches the existing owner");
+  };
+  const auto& q=bank.front().question;const auto& first=q.steps.front();const auto correct=fm::firstAcceptedOption(first);
+  sendP(fm::SupportAction::SelectLevel,1);
+  expect(p.active()->supportView()->reading.empty() && !p.active()->supportView()->choices.empty(),"Practice choices do not automatically open teaching");
+  sendP(fm::SupportAction::ReadHelp,1);expect(p.active()->supportView()->reading==q.support->steps[0].definitions,"Practice Terms reads the current definition");
+  sendP(fm::SupportAction::ReadHelp,2);expect(p.active()->supportView()->reading==q.support->steps[0].teaching,"Practice Hint opens the current explanation on demand");
+  sendP(fm::SupportAction::ReadHelp,0);expect(p.active()->supportView()->reading.empty(),"Closing Practice Help hides teaching again");
+  sendP(fm::SupportAction::EditDraft,0,"unfinished optional input");
+  auto stale=command(*p.active(),fm::SupportAction::Choose,first.options[correct].id.value);
+  sendP(fm::SupportAction::Choose,first.options[(correct+1)%first.options.size()].id.value);
+  expect(p.active()->supportView()->working.empty() && p.active()->supportView()->draft=="unfinished optional input" &&
+    p.active()->review()->wrongAttempts==1,"Wrong Practice tile retains working and the optional draft, recording one wrong attempt");
+  const auto attempts=p.active()->currentRun().support->submissions.size();
+  expect(!p.dispatch(stale) && p.active()->currentRun().support->submissions.size()==attempts,"A stale tile cannot replay or create a second submission");
+  expect(!p.dispatch(command(*p.active(),fm::SupportAction::Choose,0)),"Unknown Practice choice is rejected");
+  for(unsigned level:{2U,3U}) {
+    sendP(fm::SupportAction::SelectLevel,level);
+    expect(p.active()->supportView()->choices.empty() && !p.dispatch(command(*p.active(),fm::SupportAction::Choose,first.options[correct].id.value)),"Written levels cannot submit hidden choices");
+  }
+  sendP(fm::SupportAction::SelectLevel,1);sendP(fm::SupportAction::Choose,first.options[correct].id.value);
+  expect(p.active()->supportView()->draft.empty() && p.active()->supportView()->history.size()==1 && p.active()->supportView()->reading.empty(),"Correct Practice tile clears its obsolete input, advances once and keeps teaching closed");
+  const auto nodes=p.active()->currentRun().support->nodes.size();sendP(fm::SupportAction::Undo);
+  const auto typed=q.support->steps[0].responses[correct];sendP(fm::SupportAction::EditDraft,0,typed);sendP(fm::SupportAction::SubmitBlank,0,typed);
+  expect(p.active()->currentRun().support->nodes.size()==nodes+1,"Typed answer after Undo keeps the former tile branch");
+  sendP(fm::SupportAction::EditDraft,0,"10/");p.saveProgress();const auto bytes=read(file);
+  auto reordered=bank;std::reverse(reordered.begin(),reordered.end());CorpusPractice restored(reordered);restored.loadProgress(file);
+  expect(restored.active() && restored.active()->content().id==bank.front().id,"Practice restores by stable question identity");
+  const auto& run=*restored.active()->currentRun().support;
+  expect(run.level==fm::SupportLevel::Practice && run.help==fm::SupportHelp::None && run.draft=="10/" &&
+    run.nodes.size()==nodes+1 && restored.active()->review()->wrongAttempts==1,"Practice level, typed draft, wrong attempt and Undo branches survive replay");
+  expect(run.submissions.size()==4 && run.submissions[0].action==fm::SupportAction::Choose &&
+    run.submissions[1].action==fm::SupportAction::Choose && run.submissions[2].action==fm::SupportAction::Undo &&
+    run.submissions[3].action==fm::SupportAction::SubmitBlank &&
+    std::all_of(run.submissions.begin(),run.submissions.end(),[](const auto& e){return e.level==fm::SupportLevel::Practice;}),"Replay distinguishes Practice choices, Undo and typed input");
+  expect((run.exposure&7)==7 && restored.active()->supportView()->reading.empty() &&
+    !restored.active()->supportView()->choices.empty(),"Help exposure persists without reopening it");
+  restored.saveProgress();expect(read(file)==bytes,"An unchanged Practice save stays byte-identical");
+  const auto& second=q.steps[1];const auto answer=second.options[fm::firstAcceptedOption(second)].id.value;
+  expect(restored.dispatch(command(*restored.active(),fm::SupportAction::Choose,answer)),"Resume can finish using a symbolic tile");
+  expect(restored.active()->currentRun().completed && restored.active()->supportView()->draft.empty() && restored.selected().has_value(),"Resumed tile completion clears only the stale draft and remains selected");
+  restored.saveProgress();CorpusPractice completed(bank);completed.loadProgress(file);
+  expect(completed.active() && completed.active()->currentRun().completed && completed.active()->supportView()->choices.empty(),"Saved completion stays finished until explicit Next");
 }
 void state(const CorpusStarter& q) {
   auto s=start(q,fm::SupportLevel::Independent);
@@ -196,8 +244,8 @@ int main() {
   try {
     std::filesystem::create_directories(folder);const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
     const auto bank=loadCorpusStarters(SUPPORT_FIXTURE,corpus);
-    kernel();routes(bank);state(bank.front());persistence(corpus,bank,folder);content(bank.front());limits(bank.front());
+    kernel();routes(bank);practiceChoices(bank,folder);state(bank.front());persistence(corpus,bank,folder);content(bank.front());limits(bank.front());
     std::filesystem::remove_all(folder);
-    std::cout<<"100 complete routes; 200 wrong-response checks; exact alternative working; typed evidence; guarded input; v1/v2 save replay and original-file preservation passed\n";
+    std::cout<<"125 complete routes; 300 wrong-response checks; Practice tiles and optional typing; help disclosure; mixed-input save/Undo/replay; exact alternative working; guarded input; v1/v2 save replay and original-file preservation passed\n";
   } catch(const std::exception& e){std::filesystem::remove_all(folder);std::cerr<<e.what()<<'\n';return 1;}
 }

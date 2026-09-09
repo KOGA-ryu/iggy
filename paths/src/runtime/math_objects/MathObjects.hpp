@@ -7,10 +7,11 @@
 #include <string_view>
 
 #include "core/math/Vec3.hpp"
+#include "runtime/math_objects/RigidBody.hpp"
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -56,7 +57,8 @@ enum class MathParameter : std::uint16_t {
   MembraneM2, MembraneN2, MembraneA2, MembraneV2,
   MembraneM3, MembraneN3, MembraneA3, MembraneV3,
   MembraneWidth, MembraneDepth, MembraneTension, MembraneDensity, MembraneDamping,
-  MembraneTime, MembraneU, MembraneV, MembraneResolution, MembraneGuides, MembraneView, Count
+  MembraneTime, MembraneU, MembraneV, MembraneResolution, MembraneGuides, MembraneView,
+  RigidShape, RigidWidth, RigidHeight, RigidDepth, RigidMass, RigidBalance, RigidRotX, RigidRotY, RigidRotZ, RigidSpinX, RigidSpinY, RigidSpinZ, RigidTime, RigidAxis, RigidGuides, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };
@@ -228,6 +230,7 @@ private:
   void check();
   std::array<double,static_cast<std::size_t>(MathParameter::Count)> parameters_{};
   MathObjectSnapshot snapshot_;
+  RigidMotion rigidMotion_;
   bool reversedNegativeIntegral_ = false;
   std::array<unsigned,64> symmetryMoves_{};
   std::size_t symmetryMoveCount_ = 0;

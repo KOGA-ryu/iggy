@@ -84,7 +84,7 @@ shared interface when the first concrete solver consumer requires it.
 | Level | What appears before a response | What the learner supplies | Reading and feedback |
 | --- | --- | --- | --- |
 | **1 Learn** | Given, current working, one small goal, its rule, relevant definitions and an explanation of why the step works | A symbolic choice for the next operation or result | Current-step teaching is expanded. Reached steps retain their full explanations. One accepted response advances immediately. |
-| **2 Practice** | The same given and short step cue, with a blank in the next expression | The missing value, term, symbol or operation, using a compact palette or typing | Definitions and detailed reasoning open on demand in place. A correct entry advances immediately. |
+| **2 Practice** | The same given, a short step cue and symbolic choices | Choose the next value/operation, or expand **Type an answer (optional)** to fill the blank | Definitions and detailed reasoning open on demand in place. A correct response advances immediately. |
 | **3 Solve** | Given, the learner's working and a meaningful checkpoint such as a factorization or resulting matrix | A complete intermediate result and their own working | No preselected method or list of possible answers. Check the submitted checkpoint; hints remain available on request. |
 | **4 Independent** | Only the problem statement/equation, essential assumptions, required output and a blank working area | Their complete written solution and final answer | No step cues, examples, answer tiles, prefilled derivation or unsolicited checking. Check work submits the composed solution; help can still be requested explicitly. |
 
@@ -100,6 +100,14 @@ timer, or requirement to solve the same numbers four times. A new learner can
 use Learn on a difficult topic; an experienced learner can use Independent on
 an elementary one. Repeating one instance at four levels counts as one distinct
 question, with four separate exposure conditions, not four new repetitions.
+
+For the supported linear and matrix families, Practice reuses Learn's validated
+symbolic choices while keeping teaching closed. The same semantic choice command
+records `Choose` at the Practice level; optional typing records `SubmitBlank`.
+Neither is independent written work. Existing typed drafts remain available and
+open the optional field on first display. Wrong tiles retain draft and working;
+correct Practice tiles clear the completed step's draft. Help exposure and Undo
+branches remain in the existing question owner and save journal.
 
 ## One workspace: read, act, continue
 
@@ -145,8 +153,8 @@ of the bounded `linear_balance_ax_b` authoring pilot.
 
 | Step | Goal, definition and reason | Input in Learn / Practice | Reached explanation |
 | --- | --- | --- | --- |
-| Remove the offset | Equality says both expressions have the same value. Subtract 5 from each side. Adding 5 back reverses this operation, so no solution is lost or gained. The left becomes 3x because 5-5=0; compute 20-5 on the right. | Learn: choose the right-hand result from 15, 20 and 25, in a shuffled order. Practice: fill `3x = [ ]`. | `3x=15`. Erasing only the left-hand 5 or adding 5 on the right would change the equation's solutions. x is still multiplied by 3. |
-| Divide the coefficient | The coefficient is the multiplier attached to x. Dividing each complete side by 3 undoes multiplication; 3 is nonzero, so multiplying back recovers the prior equation. | Learn: choose x from 5, 15 and 20/3, in a shuffled order. Practice: fill `x = [ ]`. | `x=5`. Substituting in the original gives 20 on each side. The equation has one solution because its x coefficient is nonzero. |
+| Remove the offset | Equality says both expressions have the same value. Subtract 5 from each side. Adding 5 back reverses this operation, so no solution is lost or gained. The left becomes 3x because 5-5=0; compute 20-5 on the right. | Learn: choose the right-hand result from 15, 20 and 25, in a shuffled order. Practice: choose from the same symbolic tiles, or optionally fill `3x = [ ]`. | `3x=15`. Erasing only the left-hand 5 or adding 5 on the right would change the equation's solutions. x is still multiplied by 3. |
+| Divide the coefficient | The coefficient is the multiplier attached to x. Dividing each complete side by 3 undoes multiplication; 3 is nonzero, so multiplying back recovers the prior equation. | Learn: choose x from 5, 15 and 20/3, in a shuffled order. Practice: choose from the same symbolic tiles, or optionally fill `x = [ ]`. | `x=5`. Substituting in the original gives 20 on each side. The equation has one solution because its x coefficient is nonzero. |
 
 At Solve, show `3x+5=20` and a checkpoint for x, with room for the learner's
 working. At Independent, show `3x+5=20`, "Solve for x; x is real", and an empty
@@ -184,7 +192,7 @@ prove that the learner supplied a multi-step derivation. Free prose, LaTeX
 commands, nonlinear equations and arbitrary proofs are **Not checked yet**.
 This is typed input, not handwriting recognition or a general CAS.
 
-Enter submits the Practice blank, but inserts a newline in Solve/Write.
+Enter submits the optional Practice blank, but inserts a newline in Solve/Write.
 **Check work** submits the composed written solution. Escape leaves editing
 and retains the latest draft. Drafts are bounded at 8 KiB, submitted work at
 32 lines and each parsed equation at 160 characters. A run retains at most
@@ -196,7 +204,8 @@ loading checkpoint in the authoring workflow.
 
 [`matrix.v1`](LEARNING_DOCUMENTS.md#matrix-documents) feeds the same four-level
 owner from `content/write/matrix.paths.md`. Learn chooses a symbolic row
-operation; Practice fills its multiplier or divisor; Solve and Write accept
+operation; Practice offers the same choices with optional typed multipliers or
+divisors and teaching on demand; Solve and Write accept
 complete two-row augmented matrices, one matrix per line. Exact fractions and
 alternative routes are supported. The matrix kernel checks the original unique
 solution at every line and substitutes the final values in both original rows.
@@ -302,7 +311,8 @@ The acceptance cases for this capability are concrete:
 
 - All four views share identical givens/domain/result; levels 3–4 contain no
   future working, answer-key IDs, hidden auto-filled values or default examples.
-- Learn exposes the current definitions/why. Practice has a real blank. Solve
+- Learn exposes the current definitions/why. Practice offers symbolic choices
+  and an optional blank with teaching closed until requested. Solve
   accepts a full checkpoint. Independent accepts an editable multiline solution.
 - The reference and valid alternative route above pass. A wrong equation,
   `0=0`, division by zero and an incorrect final result do not pass. A supported

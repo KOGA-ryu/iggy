@@ -8,7 +8,7 @@
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, CheckWork, UndoWork, OpenDocument, Count };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, CheckWork, UndoWork, OpenDocument, TypeAnswer, Count };
 struct NativeMathSample {const char* label;const char* title;const char* latex;};
 inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
   {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},

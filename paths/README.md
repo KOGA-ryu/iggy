@@ -1,5 +1,19 @@
 # Paths
 
+The [checked batch command](docs/QUESTION_BATCHES.md) generates 12 matrix
+repetitions, independently checks each step and choice, replays all five answering
+routes with saves, then publishes through the existing learning pipeline:
+
+```sh
+python3 -B tools/build_question_batch.py --publish
+```
+
+Build `sorter` and `paths_learning_document_tests` first. Omit `--publish` to
+export only. In Library → Linear Algebra → **Matrix repetitions**, choose integer,
+negative or fractional solutions; blue question links open the regular workspace.
+**2 Practice** uses cyan symbolic tiles with purple Help on demand. Visual
+acceptance of this batch remains pending.
+
 The first [reviewed source-card lesson](docs/SOURCE_LESSON_WORKFLOW.md) connects
 Claude card 002 to the existing textbook formatting and regular solving game.
 In Library, open **Linear Algebra → Three points, one formula**: nine textbook
@@ -40,7 +54,8 @@ open the existing solving workspace. Current templates are `lesson.v1`,
 
 **Library → Questions → search `Document matrix` → Focus** opens the
 [matrix document example](content/write/matrix.paths.md). Learn has explained
-symbolic row operations; Practice fills a multiplier or divisor; Solve and Write
+symbolic row operations; Practice offers the same choices with help on demand
+and optional typed multipliers/divisors; Solve and Write
 accept complete matrices, one per line. Gold Given stays beside cyan Working,
 and the green result waits for Next. The [matrix authoring contract](docs/LEARNING_DOCUMENTS.md#matrix-documents)
 lists supported operations and exact input syntax. This first template handles
@@ -48,13 +63,20 @@ two real unknowns with a unique solution; visual acceptance is pending.
 
 **Contents → Library → Questions → search `Linear practice` → Focus** opens
 25 [linear equations with four support levels](docs/QUESTION_PRACTICE_FORMAT.md).
-**1 Learn** uses explained symbolic choices; **2 Practice** has a typed blank;
+**1 Learn** uses explained symbolic choices; **2 Practice** keeps those choices
+with teaching behind **Help** and a collapsed **Type an answer (optional)** field;
 **3 Solve** accepts equation checkpoints; **4 Write** starts a blank multiline
 solution. Gold Given stays beside cyan Working, purple Help reads in place,
 and the green result waits for Next. Level, draft, help and checked history save
 automatically. The [authoring workflow](docs/QUESTION_AUTHORING_WORKFLOW.md)
 defines checked generation and a coverage ledger for 229 practice areas.
 This first family is implemented; visual acceptance and other families remain.
+
+Practice records whether each response was a choice or typed value. Existing
+typed drafts reopen in the optional field; a wrong tile retains the draft and
+working, while a correct tile clears that step's draft. Undo retains earlier
+branches and completion waits for Next. The Practice-choice extension has pure
+model/save verification; the user performs its visual and interaction check.
 
 For `3x+5=20`, levels 3–4 accept `3x=15` then `x=5`, one equation per line.
 **Enter** inserts a newline; **Check work** submits. Alternative valid routes
@@ -76,6 +98,12 @@ one for each of six subjects, 178 chapters and 94 named subcategories. Choose
 symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
+
+[Rigid-Body Rotation Lab](docs/P059_RIGID_BODY_ROTATION.md) adds flywheel,
+adjustable dumbbell, tumbling book and satellite presets. Open
+`./b/math_lab --object rigid --level 3 --object-preset 2` and press Play to
+watch the intermediate-axis flip. Four layers connect orientation, mass/inertia,
+angular motion and conservation through the compact controls.
 
 [Vibrating Membrane Lab](docs/P058_VIBRATING_MEMBRANE.md) adds drumhead,
 divided-membrane, interference and damped-pluck presets. Open
@@ -145,7 +173,7 @@ answers and solutions. Open `./b/math_lab --book --section 2`.
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
 `math_lab` home. Its first chapter, **Matrices and Elimination**, has nine
 sections, an index, reading bookmarks and connected exercises. Run
-`./b/math_lab`; the 29 objects are under **Explore 3D objects**.
+`./b/math_lab`; the 30 objects are under **Explore 3D objects**.
 
 The [exercise matrix board](docs/P046_MATRIX_BOARD.md) connects cards 001, 004,
 018, 031, 044 and 059 with reusable indexed diagrams, row operations and numeric
@@ -186,7 +214,8 @@ layers through editable pipes, cables, ribbons and horns. Lathe Lab adds four
 more through editable profiles, revolutions, volume elements and surface bands.
 Boolean Solids joins and cuts volumes; Patch Lab adds four layers through open
 bicubic surfaces, their differential geometry and area convergence. Membrane Lab
-adds animated sheets, normal modes, superposition and energy/damping.
+adds animated sheets, normal modes, superposition and energy/damping. Rigid-Body
+Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 
 | Object | Learning layers |
 | --- | --- |
@@ -212,6 +241,7 @@ adds animated sheets, normal modes, superposition and energy/damping.
 | Norm balls | Unit distance; triangle inequality; finite-p convergence to the max norm; dual norms/supporting planes |
 | Curves and sweeps | Control-point interpolation; tangent/speed/curvature; equal-distance travel; profiles/taper/twist |
 | Membrane Lab | Displacement/motion; eigenmodes/nodal lines; superposition; energy and damping |
+| Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
 | Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |

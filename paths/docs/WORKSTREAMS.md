@@ -6,6 +6,82 @@ local app connection and reusable lesson bindings. It contains staged TODOs and
 acceptance checks. This is planning only; implementation has not started and the
 current question/audit queue is unchanged.
 
+## Checked question batches: generate, verify and publish
+
+**Implemented and locally published; user visual acceptance pending.** The
+[batch command](QUESTION_BATCHES.md) generates one bounded three-step matrix
+family through existing `matrix.v1` and `lesson.v2` documents. Version 1 adds
+12 questions, evenly split among integer, negative and fractional solutions,
+and three readings under **Linear Algebra → Matrix repetitions**. Library now
+has 330 questions and 939 readings. All 318 earlier question identities/stamps,
+936 readings and existing subject/chapter records remain unchanged. Repeating
+the production command reports `unchanged: true` for the same generation.
+
+`LayeredQuestionSession` remains the mathematical owner; `LearningDocuments`
+compiles the documents and `export_learning.py` owns publication. The new
+authoring producer checks original givens independently with exact arithmetic,
+then requires the built app and pure model to accept every question before
+calling the existing exporter. No runtime checker, store or activation route
+was duplicated. Practice's authoring projection now includes symbolic choices
+and an optional blank; the existing 25 linear runtime cards reproduce unchanged.
+
+Release sorter and both affected model targets build. Three selected CTest
+entries pass, including ten direct/include matrix-error location regressions,
+existing linear/matrix model and save coverage, and five batch tests for
+arithmetic, export, publish, repeat, extension, rejection and stale-output
+handling. The authoring suite's eight tests and runtime reproduction check also
+pass. The published batch completes 60 solving routes, 216 wrong-choice checks,
+Undo and partial/completed save replay. Matrix errors now carry the owner's
+reason back to the offending given, reached matrix or numeric choice line.
+
+Production C++ delta: +81/-38 lines, **net +43 across five existing files**;
+no runtime source files added. One authoring producer, one Python test file and
+one workflow document were added. Evidence:
+`build/question-batch-evidence/verification.json`. Changes remain uncommitted;
+no windows, screenshots, captures, images, font probes or personal saves were
+used. The user's remaining check is the gold Given, cyan choices/Working,
+purple Help and green completion until Next. The next candidate is a second
+reviewed mathematical family through this same pipeline.
+
+## Practice choices: less guidance with the same symbolic controls
+
+**Automated model/save checks passed; user visual and interaction check pending.**
+`2 Practice` now offers the existing linear and two-variable matrix answer tiles
+with teaching behind Help. Optional typing lives in a collapsed **Type an answer
+(optional)** section; an existing draft opens it on first display. Gold Given
+and cyan Working remain adjacent, wrong choices preserve both working and draft,
+and completion stays green until Next.
+
+`LayeredQuestionSession` remains the sole answer/working owner. Its existing
+`Choose` action now accepts Practice responses as well as Learn responses, with
+the same exact checker, stable option IDs and revision/anchor guards. Correct
+Practice tiles clear the completed step's draft. Submission action and level
+already distinguish choices from typed blanks, and the existing journal retains
+that distinction through Undo, branches and reopen. Written levels reject choices.
+No parallel checker, new question stamp or persistence schema was added.
+
+The new regression failed against the previous model. Release `sorter`,
+`paths_four_level_tests`, `paths_learning_document_tests` and the updated native
+UI test target compile. Both selected pure CTest entries pass: 125 complete
+linear routes with 300 wrong-response checks, 80 matrix routes across 16 parameter
+sets (10 with fractional answers), mixed choice/typed history, help disclosure,
+stale-input rejection, Undo branches, reordered saves and retained completion.
+The old typed Practice routes and v1/v2 progress checks remain covered. The native
+UI test was compiled only; it was not run because its harness uses font atlases.
+The rebuilt app also passes `--check-content --no-progress` without a native host.
+
+Production delta: +13/-6 C++ lines, **net +7 across three existing files**, with
+no new production files. Tests and documentation were updated in existing files.
+Evidence: `build/practice-choice-evidence/verification.json`. Changes remain
+uncommitted; no windows, captures, images, font probes or personal saves were used.
+
+Manual check: launch `b/sorter`, open a Linear practice or Document matrix
+question, and choose **2 Practice**. Use the **cyan symbolic tiles** beneath the
+**gold question**; a wrong tile must retain working. **Purple Help** should open
+teaching in place. Try Undo, close/reopen partway through, and confirm a **green
+finished result** remains until Next. The next repair candidate is precise
+source locations and reasons for rejected matrix-card steps.
+
 ## Audit repair: Library autosave recovery
 
 `CorpusPractice` remains the owner of Library progress. It now creates an
@@ -184,6 +260,20 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P059: rigid-body rotation assets
+
+The user approved free-rotation assets after the vibrating membrane.
+[P059_RIGID_BODY_ROTATION.md](P059_RIGID_BODY_ROTATION.md) adds flywheel,
+adjustable dumbbell, tumbling book and satellite through the 30th object, `rigid`.
+Four retained layers connect orientation/quaternions, component inertia, angular
+motion and intermediate-axis stability. Geometry and physics share one component
+assembly; existing compact controls, playback and renderer contracts are reused.
+The packet records the numerical contract and build/check evidence. This is one
+asset checkpoint; textbook integration remains with the textbook worker.
+
+Checks use only CPU/text paths. No images, windows, font probes or personal
+saves are used. Changes remain uncommitted; the user performs visual review.
 
 ## P058: vibrating membrane assets
 

@@ -145,6 +145,7 @@ struct QuestionValidationResult {
   std::string_view field;  // Static member/parameter name; never borrows content.
   std::optional<std::size_t> questionIndex, stepIndex, optionIndex;
   std::optional<std::size_t> workingStateIndex;  // For a definition; step references use stepIndex.
+  std::string_view detail; // Static diagnostic text from the mathematical owner.
 
   [[nodiscard]] bool valid() const noexcept { return code == QuestionValidationCode::Valid; }
   // Retains the constructor's existing exception reasons for invalid content.

@@ -184,6 +184,13 @@ std::vector<fm::NotationLesson> readNotationIds(const Field& ids,std::span<const
 
 std::string validationField(const fm::QuestionValidationResult& result) {
   std::string path;
+  if(result.code==fm::QuestionValidationCode::InvalidSupport) {
+    path="/support";
+    if(result.stepIndex)path+="/steps/"+std::to_string(*result.stepIndex);
+    if(result.field!="support")path+="/"+std::string(result.field);
+    if(result.optionIndex)path+="/"+std::to_string(*result.optionIndex);
+    return path;
+  }
   if(result.workingStateIndex) path = "/working_states/" + std::to_string(*result.workingStateIndex);
   if(result.stepIndex) path = "/steps/" + std::to_string(*result.stepIndex);
   if(result.optionIndex) path += "/options/" + std::to_string(*result.optionIndex);
@@ -233,9 +240,10 @@ std::vector<std::size_t> resolveDeck(std::span<const fm::LayeredQuestionContent>
 }
 }  // namespace
 
-QuestionContentError::QuestionContentError(std::filesystem::path source, std::string field, std::string reason)
+QuestionContentError::QuestionContentError(std::filesystem::path source, std::string field, std::string reason,
+                                         std::optional<fm::QuestionValidationResult> validation)
     : std::runtime_error(source.string() + ":" + (field.empty() ? "<root>" : field) + ": " + reason),
-      source(std::move(source)), field(std::move(field)) {}
+      source(std::move(source)), field(std::move(field)), validation(validation) {}
 
 const std::vector<std::size_t>& QuestionPack::deck(std::string_view mode) const {
   const auto found = decks.find(mode);
@@ -359,7 +367,7 @@ fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std
     question.support=std::move(support);
   }
   const auto result = fm::validateQuestion(question, fm::QuestionInteraction::ArcadeCollect);
-  if(!result.valid()) throw QuestionContentError(sourcePath, validationField(result), std::string(result.reason()));
+  if(!result.valid()) throw QuestionContentError(sourcePath, validationField(result), std::string(result.reason()),result);
   return question;
 }
 

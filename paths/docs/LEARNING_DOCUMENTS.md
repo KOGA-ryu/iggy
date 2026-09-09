@@ -7,6 +7,12 @@ The producer-side [exporter and publisher](LEARNING_EXPORTS.md) packages authore
 documents and activates a checked complete library. Direct folder import remains
 available for authoring; both paths use the same compiler and question owners.
 
+The [checked batch producer](QUESTION_BATCHES.md) creates original matrix
+repetitions in this document format, checks them independently, replays their
+solving/save routes and passes them to that publisher. Matrix validation errors
+retain the mathematical owner's reason and map affected givens, reached matrices
+and numeric choices back to their directive lines, including included files.
+
 Reviewed source-card adaptation is implemented by
 [`prepare_source_lesson.py`](../tools/prepare_source_lesson.py). The
 [source lesson workflow](SOURCE_LESSON_WORKFLOW.md) supplies the current card
@@ -253,9 +259,10 @@ Adding the opposite multiple reverses the operation, preserving the solution.
 This assumes the given is `[1, 1 | 3] [2, -1 | 0]` and needs the two later
 steps in the complete example. **Choices are numeric operation operands**, not
 matrix entries or preformatted labels. Fractions such as `-3/2` are exact.
-The importer generates symbolic operation tiles and a corresponding Practice
-blank. It checks the accepted operand against the declared reached matrix;
-wrong choices must remain mathematically distinct, and equivalent duplicates
+The importer generates symbolic operation tiles for Learn and Practice and a
+corresponding optional Practice blank. It checks the accepted operand against
+the declared reached matrix; wrong choices must remain mathematically distinct,
+and equivalent duplicates
 such as `-2` and `-4/2` are rejected.
 
 | `@operation` | Meaning of the chosen number k |
@@ -265,8 +272,10 @@ such as `-2` and `-4/2` are rejected.
 | `divide_row_1` | Divide every entry of row 1 by nonzero k |
 | `divide_row_2` | Divide every entry of row 2 by nonzero k |
 
-Learn displays explanation and symbolic row-operation choices. Practice displays
-the same operation with a missing multiplier or divisor. Solve requests matrix
+Learn displays explanation and symbolic row-operation choices. Practice keeps
+the same choices with teaching closed until Help is requested; **Type an answer
+(optional)** opens a missing multiplier or divisor field. The submission records
+choice versus typed input at the selected level. Solve requests matrix
 checkpoints. Write starts with the original matrix and an empty editor. Both
 written levels accept one complete matrix per line:
 

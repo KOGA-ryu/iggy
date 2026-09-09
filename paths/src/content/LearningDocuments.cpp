@@ -1,4 +1,5 @@
 #include "LearningDocuments.hpp"
+#include "QuestionContentIO.hpp"
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -157,11 +158,12 @@ struct Expander {
     stack.erase(file);return lines;
   }
 };
-struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;};
+struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;Line source;std::map<std::string,Line> fields;std::vector<Line> choiceSources;};
 struct Block {
   bool question=false;std::string id,title,goal,given,domain,body;std::uint32_t version=0;
   std::optional<Template> format;std::vector<Step> steps;std::optional<CorpusFigure> figure;
   std::vector<std::string> links;Line source;
+  std::map<std::string,Line> fields;
   std::vector<BookBlock> lesson;
   bool bookBlock=false;
   std::optional<unsigned> help;
@@ -228,8 +230,8 @@ struct Compiler {
       require(b.version && !b.goal.empty() && !b.given.empty() && !b.domain.empty(),"Question needs @version, @goal, @given and @domain");
       require(!b.steps.empty(),"Question needs at least one @step");const bool linear=*b.format==Template::Linear,matrix=*b.format==Template::Matrix,typed=linear || matrix;
       require(!typed || b.links.empty(),"Four-level templates use step @definitions/@teaching, not @read");
-      const auto tex=[&](const std::string& raw)->std::string {
-        switch(*b.format) {
+      const auto tex=[&](const std::string& raw,const Line& source,std::string_view field)->std::string {
+        try {switch(*b.format) {
           case Template::Linear: {
             const auto parsed=fm::parseLinearEquation(raw);require(parsed.equation.has_value(),"linear.v1 expects plain linear equations: "+raw);return fm::linearEquationTex(*parsed.equation);
           }
@@ -237,21 +239,22 @@ struct Compiler {
             const auto parsed=fm::parseAugmentedMatrix(raw);require(parsed.result.has_value(),"matrix.v1 expects [a, b | c] [d, e | f]: "+raw);return fm::matrixEquationTex(*parsed.result);
           }
           default:return raw;
-        }
+        }} catch(const std::exception& e){throw DocumentError(source.file,source.number,std::string(field),"document.math",e.what());}
       };
-      Json states=Json::array({{{"id",1U},{"display",tex(b.given)}}}),steps=Json::array(),support=Json::array();
+      Json states=Json::array({{{"id",1U},{"display",tex(b.given,b.fields.at("given"),"given")}}}),steps=Json::array(),support=Json::array();
       for(std::size_t i=0;i<b.steps.size();++i) {
         auto& st=b.steps[i];st.after=trim(st.after);require(st.answer && !st.after.empty() && !trim(st.why).empty() && !trim(st.wrong).empty(),"Every @step needs @answer, @after, @why and @wrong");
         Json options=Json::array(),responses=Json::array();std::string prefix;
         require(!matrix || st.operation.has_value(),"Each matrix step needs @operation");
         if(linear){const auto at=st.after.find('=');require(at!=std::string::npos,"Linear @after needs '='");prefix=st.after.substr(0,at+1);}
-        for(const auto& [id,value]:st.choices) {
+        for(std::size_t j=0;j<st.choices.size();++j) {
+          const auto& [id,value]=st.choices[j];
           auto label=value;
-          if(linear){label=tex(prefix+value);label=label.substr(label.find('=')+1);responses.push_back(value);}
+          if(linear){label=tex(prefix+value,st.choiceSources[j],"choice");label=label.substr(label.find('=')+1);responses.push_back(value);}
           if(matrix){label=fm::rowOperationTex(fm::rowOperations[*st.operation].operation,value);require(!label.empty(),"Matrix choices need exact numeric operands");responses.push_back(value);}
           options.push_back({{"id",id},{"label",label}});
         }
-        states.push_back({{"id",i+2},{"display",tex(st.after)}});
+        states.push_back({{"id",i+2},{"display",tex(st.after,st.fields.at("after"),"after")}});
         steps.push_back({{"id",st.id},{"layer_name","Step "+std::to_string(i+1)},{"prompt",st.prompt},{"options",options},
           {"accepted_option_ids",Json::array({st.answer})},{"wrong_hint",trim(st.wrong)},{"explanation",trim(st.why)},
           {"semantics",{{"purpose","calculation"},{"completion","any_accepted"},{"before",i+1},{"after",i+2}}}});
@@ -261,12 +264,23 @@ struct Compiler {
         }
         else require(st.definitions.empty() && st.teaching.empty(),"choices.v1 uses @read for shared teaching");
       }
-      Json question{{"schema_version",1U},{"id",b.id},{"content_version",b.version},{"equation",tex(b.given)},
+      Json question{{"schema_version",1U},{"id",b.id},{"content_version",b.version},{"equation",tex(b.given,b.fields.at("given"),"given")},
         {"skill",typed?(matrix?"matrix_rows_2x2":"linear_balance_ax_b"):"document_choices"},{"description",b.goal+(typed?"":" "+b.domain)},
         {"working_states",states},{"steps",steps}};
       if(typed)question["support"]={{"family",matrix?"matrix_rows_2x2_v1":"linear_balance_ax_b_v1"},{"equation",b.given},{"domain",b.domain},{"steps",support}};
       const Json row{{"id",b.id},{"title",b.title},{"level","practice"},{"subject",s.id},{"topic",topic.id},{"reading_refs",b.links},{"question",question}};
-      auto parsed=parseCorpusStarters(Json{{"schema_version",1U},{"questions",Json::array({row})}}.dump(),corpus,b.source.file+":"+std::to_string(b.source.number));
+      std::vector<CorpusStarter> parsed;
+      try {parsed=parseCorpusStarters(Json{{"schema_version",1U},{"questions",Json::array({row})}}.dump(),corpus,b.source.file+":"+std::to_string(b.source.number));}
+      catch(const QuestionContentError& e) {
+        if(!e.validation)throw;
+        const auto& v=*e.validation;const Step* st=v.stepIndex && *v.stepIndex<b.steps.size()?&b.steps[*v.stepIndex]:nullptr;
+        const std::map<std::string_view,std::string_view> names{{"equation",st?"after":"given"},{"responses","choice"},{"acceptedOptions","answer"},{"options","choice"},{"support","template"}};
+        const auto name=names.find(v.field);const std::string key(name==names.end()?v.field:name->second);
+        const auto& fields=st?st->fields:b.fields;const auto found=fields.find(key);
+        auto source=found!=fields.end()?found->second:st?st->source:b.source;
+        if(st && key=="choice" && v.optionIndex && *v.optionIndex<st->choiceSources.size())source=st->choiceSources[*v.optionIndex];
+        throw DocumentError(source.file,source.number,key,"document.math",b.id+(st?" step "+std::to_string(st->id):"")+": "+std::string(v.reason()));
+      }
       questions.push_back(std::move(parsed.front()));questionSources.emplace(b.id,b.source);++report.questions;
       entity["version"]=b.version;entity["stamp_sha256"]=digest(questions.back().stamp);
     }
@@ -290,6 +304,10 @@ struct Compiler {
       const auto found=std::find_if(commands.begin(),commands.end(),[&](const auto& c){return key==c.first;});
       require(found!=commands.end(),"Unknown command @"+key);const auto cmd=found->second;
       require(header || cmd==Command::Paths,"Start each document with @paths 1");prose=nullptr;
+      if(block && block->question) {
+        block->fields.try_emplace(key,line);
+        if(!block->steps.empty())block->steps.back().fields.try_emplace(key,line);
+      }
       require((cmd!=Command::Figure && cmd!=Command::Parameter && cmd!=Command::Caption) || !current().bookBlock,
               "@"+key+" belongs outside @block; lesson figures and their metadata are always public");
       switch(cmd) {
@@ -324,7 +342,7 @@ struct Compiler {
         case Command::Given:require(current().question,"@given belongs to a question");field(block->given,value);break;
         case Command::Domain:require(current().question,"@domain belongs to a question");field(block->domain,value);break;
         case Command::Step: {
-          require(current().question && block->steps.size()<32,"Questions have at most 32 steps");const auto [id,prompt]=split(value,'|');Step st;st.id=integer(id);st.prompt=prompt;block->steps.push_back(std::move(st));break;
+          require(current().question && block->steps.size()<32,"Questions have at most 32 steps");const auto [id,prompt]=split(value,'|');Step st;st.id=integer(id);st.prompt=prompt;st.source=line;block->steps.push_back(std::move(st));break;
         }
         case Command::Operation: {
           auto& s=step();require(current().format==Template::Matrix && !s.operation,"One @operation per matrix step");
@@ -334,7 +352,7 @@ struct Compiler {
         }
         case Command::Choice:case Command::TextChoice: {
           auto& s=step();require(s.choices.size()<8,"A step has at most eight choices");const auto [id,label]=split(value,'|');
-          require(cmd!=Command::TextChoice || current().format==Template::Choices,"@textchoice is for choices.v1");s.choices.emplace_back(integer(id),cmd==Command::TextChoice?textTex(label):label);break;
+          require(cmd!=Command::TextChoice || current().format==Template::Choices,"@textchoice is for choices.v1");s.choices.emplace_back(integer(id),cmd==Command::TextChoice?textTex(label):label);s.choiceSources.push_back(line);break;
         }
         case Command::Answer:require(!step().answer,"One @answer per step");step().answer=integer(value);break;
         case Command::After:field(step().after,value);break;
@@ -385,7 +403,8 @@ struct Compiler {
         case Command::Caption:require(current().figure.has_value(),"@caption needs a figure");field(block->figure->caption,value);break;
         case Command::End:require(value.empty(),"@end takes no arguments");finish(line);break;
       }
-    } catch(const std::exception& e){throw DocumentError(line.file,line.number,activeField,"document.content",e.what());}
+    } catch(const DocumentError&){throw;}
+      catch(const std::exception& e){throw DocumentError(line.file,line.number,activeField,"document.content",e.what());}
     require(header,"Document needs @paths 1");
     if(block)throw DocumentError(block->source.file,block->source.number,"end","document.content","Missing @end");
   }

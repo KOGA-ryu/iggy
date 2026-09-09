@@ -336,7 +336,22 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::MembraneV,MathObjectKind::Membrane,"membrane_v","Probe v",0,1,0.01,0.5},
   {MathParameter::MembraneResolution,MathObjectKind::Membrane,"membrane_resolution","Subdivisions / axis",12,48,4,32},
   {MathParameter::MembraneGuides,MathObjectKind::Membrane,"membrane_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::MembraneView,MathObjectKind::Membrane,"membrane_view","Surface",0,1,1,0,0,false,"Combined surface\0Selected slot\0"}
+  {MathParameter::MembraneView,MathObjectKind::Membrane,"membrane_view","Surface",0,1,1,0,0,false,"Combined surface\0Selected slot\0"},
+  {MathParameter::RigidShape,MathObjectKind::Rigid,"rigid_shape","Body",0,3,1,0,0,false,"Flywheel\0Dumbbell\0Book\0Satellite\0"},
+  {MathParameter::RigidWidth,MathObjectKind::Rigid,"rigid_width","Width",0.2,3.5,0.05,2.4},
+  {MathParameter::RigidHeight,MathObjectKind::Rigid,"rigid_height","Height",0.2,3.5,0.05,0.3},
+  {MathParameter::RigidDepth,MathObjectKind::Rigid,"rigid_depth","Depth",0.2,3.5,0.05,2.4},
+  {MathParameter::RigidMass,MathObjectKind::Rigid,"rigid_mass","Total mass",0.2,5,0.1,1},
+  {MathParameter::RigidBalance,MathObjectKind::Rigid,"rigid_balance","Left mass share",0.2,0.8,0.01,0.5},
+  {MathParameter::RigidRotX,MathObjectKind::Rigid,"rigid_rot_x","Release X (deg)",-180,180,1,0},
+  {MathParameter::RigidRotY,MathObjectKind::Rigid,"rigid_rot_y","Release Y (deg)",-180,180,1,0},
+  {MathParameter::RigidRotZ,MathObjectKind::Rigid,"rigid_rot_z","Release Z (deg)",-180,180,1,0},
+  {MathParameter::RigidSpinX,MathObjectKind::Rigid,"rigid_spin_x","Initial spin X",-4,4,0.01,0},
+  {MathParameter::RigidSpinY,MathObjectKind::Rigid,"rigid_spin_y","Initial spin Y",-4,4,0.01,3},
+  {MathParameter::RigidSpinZ,MathObjectKind::Rigid,"rigid_spin_z","Initial spin Z",-4,4,0.01,0},
+  {MathParameter::RigidTime,MathObjectKind::Rigid,"rigid_time","Time",0,12,0.01,0},
+  {MathParameter::RigidAxis,MathObjectKind::Rigid,"rigid_axis","Track body axis",0,2,1,0,0,false,"Body X\0Body Y\0Body Z\0"},
+  {MathParameter::RigidGuides,MathObjectKind::Rigid,"rigid_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -465,6 +480,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
    "h_tt + 2*gamma*h_t = (T/rho)*(h_xx+h_yy)","Move a nonzero membrane below equilibrium at the probe.",
    "Linear motion with all four edges fixed. World y is displacement. Four sine-mode slots combine; duplicate (m,n) pairs combine before energy. Time is model seconds; playback runs at half speed. Colours and energy density follow the displayed surface; global energy readouts always describe the combined membrane.",
    {"Follow displacement and velocity on a moving sheet.","Explore eigenmodes, nodal lines and superposition.","Connect a wave equation to kinetic energy, strain energy and damping."},{1,.8F,1},.5}
+,
+  {MathObjectKind::Rigid,"rigid","Rigid-Body Rotation Lab","Spin a body and follow its momentum",
+   "L = I*omega; E = omega dot L / 2","Turn a tracked body axis perpendicular to its release direction.",
+   "Torque-free rotation about the centre of mass. Mass is in kg, dimensions in m, time in seconds, angular speed in rad/s. Playback runs at half speed. The same component assembly supplies geometry and inertia. No external torque, translation or collision is simulated.",
+   {"Connect moving body frames, rotation matrices and quaternions.","Derive inertia from shape and mass distribution.","Explore free rotation, intermediate-axis flips and conservation."},{1,.7F,1},.5}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -603,6 +623,19 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> rigidLessons{{
+  {"Orientation and frames","v_world = R(q) v_body; qdot = q*(0,omega_body)/2","Make the tracked axis perpendicular to its initial world direction.","Coral, teal and blue are body X,Y,Z; muted arrows are fixed world axes. The gold tip tracks the chosen body axis. Release angles apply fixed X, then Y, then Z; quaternion (w,x,y,z) maps body coordinates into world coordinates. R is a proper rotation. The trail covers recent motion. Shape markings carry no mass."},
+  {"Mass and inertia","I_COM = sum [I_part + m*(dot(r,r)*Id - r*r^T)]","Use unequal end masses or panels to move the assembly centre of mass by more than 0.05.","Dimensions are full body-space extents. Homogeneous boxes and an elliptical cylinder supply exact component moments. Parts meet without overlapping interiors. Left mass share changes the dumbbell weights or satellite panels; total mass stays fixed. Rotation is about the resulting centre of mass, shown in gold. The grey point marks the original assembly origin. Body axes are principal axes; the world tensor changes as the body turns."},
+  {"Angular motion","L_body = I_body*omega_body; L_world = R*L_body","Make angular velocity and momentum differ in direction by more than 10 degrees.","Gold is angular momentum; teal is angular velocity. These two arrows use equal display lengths so their directions can be compared; the table gives their actual components and magnitudes. Free motion keeps world angular momentum fixed while body components change. Graphs resolve a local time window; scrubbing always starts from the same release conditions."},
+  {"Stability and conservation","dL_body/dt = L_body cross (I_body^-1 L_body); E = omega dot L / 2","Flip the initially aligned intermediate axis past alignment -0.8 while preserving energy and world momentum within 0.001 percent.","Choose Tumbling book and play through 4 model seconds. A small perturbation near the intermediate principal axis grows into a flip. Spins near the smallest or largest distinct moment are stable. Exactly repeated moments have no unique intermediate axis. Alignment compares the tracked axis with the INITIAL world momentum; it is undefined at rest. The solver uses bounded RK4 with unit-quaternion normalization. Conservation errors measure numerical drift, not physical dissipation; they are shown as zero for exact rest. Editing any control pauses playback."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> rigidPresetParameters{MathParameter::RigidShape,MathParameter::RigidWidth,MathParameter::RigidHeight,MathParameter::RigidDepth,MathParameter::RigidMass,MathParameter::RigidBalance,MathParameter::RigidRotX,MathParameter::RigidRotY,MathParameter::RigidRotZ,MathParameter::RigidSpinX,MathParameter::RigidSpinY,MathParameter::RigidSpinZ,MathParameter::RigidTime,MathParameter::RigidAxis,MathParameter::RigidGuides};
+constexpr std::array<MathObjectPreset,4> rigidPresets{{
+  {"Flywheel",rigidPresetParameters,{0,2.4,.3,2.4,1,.5,0,0,0,0,3,0,0,0,1},15},
+  {"Adjustable dumbbell",rigidPresetParameters,{1,3,.7,.7,1,.5,0,0,0,.8,2,0,0,0,1},15},
+  {"Tumbling book",rigidPresetParameters,{2,2.4,.3,1.6,1,.5,0,0,0,.02,.02,3,0,2,1},15},
+  {"Satellite",rigidPresetParameters,{3,3.4,1,1.4,1,.5,15,0,20,1.2,.3,1.8,0,2,1},15}
 }};
 constexpr std::array<MathLesson,4> membraneLessons{{
   {"Displacement and motion","h = sum q_mn(t)*sin(m*pi*u)*sin(n*pi*v)","At positive time, make the combined probe displacement less than -0.05.","Play, pause or scrub time. Coral is positive displacement, blue negative. The gold point follows the displayed surface; all numerical probe readings refer to the combined membrane. Initial displacement and velocity belong to the selected mode slot. Edits recompute the chosen time from those initial conditions and pause playback."},
@@ -1222,6 +1255,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Boolean:return booleanLessons;
     case MathObjectKind::Patch:return patchLessons;
     case MathObjectKind::Membrane:return membraneLessons;
+    case MathObjectKind::Rigid:return rigidLessons;
     default:return {};
   }
 }
@@ -1237,6 +1271,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Boolean:return booleanPresets;
     case MathObjectKind::Patch:return patchPresets;
     case MathObjectKind::Membrane:return membranePresets;
+    case MathObjectKind::Rigid:return rigidPresets;
     default:return {};
   }
 }
@@ -1250,6 +1285,7 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
   switch(p) {
+    case MathParameter::RigidBalance:return parameter(MathParameter::RigidShape)==1||parameter(MathParameter::RigidShape)==3;
     case MathParameter::BooleanBlend:return parameter(MathParameter::BooleanOperation)==3;
     case MathParameter::BooleanFit:return parameter(MathParameter::BooleanShapeB)==1&&parameter(MathParameter::BooleanOperation)==2;
     case MathParameter::BooleanClearance:return parameter(MathParameter::BooleanShapeB)==1&&parameter(MathParameter::BooleanOperation)==2&&parameter(MathParameter::BooleanFit)==1;
@@ -1303,6 +1339,7 @@ MathParameter MathObjects::playbackParameter() const {
   switch(snapshot_.kind) {
     case MathObjectKind::Harmonics:return MathParameter::HarmonicTime;
     case MathObjectKind::Membrane:return MathParameter::MembraneTime;
+    case MathObjectKind::Rigid:return MathParameter::RigidTime;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1329,7 +1366,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1708,6 +1745,13 @@ void MathObjects::check() {
         case 1:solved=parameter(MathParameter::MembraneU)>.01&&parameter(MathParameter::MembraneU)<.99&&parameter(MathParameter::MembraneV)>.01&&parameter(MathParameter::MembraneV)<.99&&measured("Selected excitation")>1e-9&&measured("Internal nodal lines")>0&&std::fabs(measured("Selected spatial weight"))<1e-8;good="Yes: this interior point lies on a spatial node of the excited selected mode.";bad="Choose Divided membrane, Slot 1, and put the probe at u=0.5, v=0.5. An instant of zero displacement is not enough.";break;
         case 2:solved=measured("Distinct active modes")>=2&&std::fabs(measured("Combined displacement"))<.005&&measured("Cancellation magnitude")>.1;good="Yes: nonzero contributions from distinct spatial modes cancel at this point.";bad="Choose Interference at time 0 with u=0.25 and v=0.5; inspect the component curves.";break;
         case 3:solved=parameter(MathParameter::MembraneDamping)>0&&parameter(MathParameter::MembraneTime)>=3&&measured("Initial energy")>.01&&measured("Energy retained")<25;good="Yes: damping has removed more than three quarters of the initial energy.";bad="Choose Damped pluck and advance model time to 6 seconds. Compare total and initial energy.";break;
+      }break;
+    case MathObjectKind::Rigid:
+      switch(snapshot_.level){
+        case 0:solved=std::fabs(measured("Release-axis alignment"))<.05;good="Yes: the tracked body axis is perpendicular to its release direction.";bad="Choose Flywheel, track body X, and scrub time to about 0.52 seconds.";break;
+        case 1:solved=measured("COM offset")>.05;good="Yes: the mass imbalance shifts the centre of mass while the total mass stays fixed.";bad="Choose Adjustable dumbbell and change Left mass share to 0.7.";break;
+        case 2:solved=measured("Angular speed")>1e-8&&measured("Velocity-momentum angle")>10;good="Yes: angular velocity and momentum are not parallel for this rotation.";bad="Choose Adjustable dumbbell or Satellite and compare the two directions.";break;
+        case 3:solved=measured("Distinct principal moments")==1&&measured("Tracked intermediate axis")==1&&measured("Initial momentum alignment")>.99&&measured("Momentum alignment")<-.8&&std::fabs(measured("Relative energy error"))<1e-5&&measured("Relative momentum error")<1e-5;good="Yes: the intermediate axis has flipped while the measured invariants remain within tolerance.";bad="Choose Tumbling book, keep body Z tracked, and advance model time to 4 seconds.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -2991,6 +3035,71 @@ void MathObjects::rebuild() {
       if(level==0||level==2){
         auto& plot=b.plot("Combined and component heights along u",MathParameter::MembraneU);
         b.curve(plot,"Combined",gold,0,1,[&](double a){return sampleMembrane(state,a,v).displacement;});b.curve(plot,"Selected slot",coral,0,1,[&](double a){return sampleMembrane(state,a,v).contributions[selected];});b.curve(plot,"Other slots",blue,0,1,[&](double a){const auto p=sampleMembrane(state,a,v);return p.displacement-p.contributions[selected];});plot.hasMarker=true;plot.marker={u,probe.displacement};
+      }
+      break;
+    }
+    case MathObjectKind::Rigid: {
+      RigidInput input;input.shape=static_cast<RigidShape>(parameter(MathParameter::RigidShape));input.dimensions={parameter(MathParameter::RigidWidth),parameter(MathParameter::RigidHeight),parameter(MathParameter::RigidDepth)};input.mass=parameter(MathParameter::RigidMass);input.balance=parameter(MathParameter::RigidBalance);
+      input.rotationDegrees={parameter(MathParameter::RigidRotX),parameter(MathParameter::RigidRotY),parameter(MathParameter::RigidRotZ)};input.omega={parameter(MathParameter::RigidSpinX),parameter(MathParameter::RigidSpinY),parameter(MathParameter::RigidSpinZ)};
+      rigidMotion_.configure(input);const auto& body=rigidMotion_.body();const double time=parameter(MathParameter::RigidTime);const auto state=rigidMotion_.at(time),initial=rigidMotion_.at(0);
+      const unsigned level=snapshot_.level,axis=static_cast<unsigned>(parameter(MathParameter::RigidAxis));const bool guides=parameter(MathParameter::RigidGuides)==1;
+      const float radius=static_cast<float>(body.radius),axisLength=radius*1.16F;
+      const auto place=[&](const RigidVector& p){return tripleScene(rigidRotate(state.orientation,p));};
+      constexpr std::array<Vec3,3> axisColors{coral,teal,blue};
+      constexpr std::array<std::array<Vec3,3>,4> materials{{{teal,coral,white},{teal,coral,muted},{teal,coral,Vec3{.9F,.86F,.7F}},{blue,teal,gold}}};
+      for(unsigned i=0;i<body.count;++i){const auto& p=body.parts[i];auto d=p.dimensions;const bool cylinder=p.primitive==RigidPrimitive::Cylinder;if(cylinder){d[0]*=.5;d[2]*=.5;}
+        b.part(cylinder?MathShape::Disk:MathShape::Box,place(p.center),place({d[0],0,0}),place({0,d[1],0}),place({0,0,d[2]}),materials[static_cast<unsigned>(input.shape)][p.material],"rigid_mass_component");
+      }
+      // Thin surface markings identify orientation but do not enter the mass model.
+      if(input.shape==RigidShape::Flywheel){const double y=input.dimensions[1]/2+.004;b.rod(place({0,y,0}),place({input.dimensions[0]*.46,y,0}),gold,.012F,"rigid_surface_mark");}
+      if(input.shape==RigidShape::Satellite)for(unsigned part=1;part<=2;++part){const auto& p=body.parts[part];for(unsigned j=1;j<4;++j){const double z=p.dimensions[2]*(j/4.-.5),y=p.center[1]+p.dimensions[1]/2+.003;b.rod(place({p.center[0]-.46*p.dimensions[0],y,z}),place({p.center[0]+.46*p.dimensions[0],y,z}),white,.006F,"rigid_panel_mark");}}
+      RigidVector tracked{};tracked[axis]=1;const auto direction=rigidRotate(state.orientation,tracked),releaseDirection=rigidRotate(initial.orientation,tracked);
+      const double momentum=rigidMagnitude(initial.worldMomentum);
+      const auto alignment=[&](const RigidState& s){return momentum>0?std::clamp(tripleDot(rigidRotate(s.orientation,tracked),initial.worldMomentum)/momentum,-1.,1.):0.;};
+      const double releaseAlignment=tripleDot(direction,releaseDirection);
+      if(guides){
+        constexpr std::array<std::string_view,3> names{"Body X","Body Y","Body Z"},worldNames{"World X","World Y","World Z"};
+        for(unsigned i=0;i<3;++i){RigidVector e{};e[i]=axisLength;const auto end=place(e);b.arrow({},end,axisColors[i],"rigid_body_axis");b.label(names[i],end*1.1F,axisColors[i]);const auto fixed=tripleScene(e)*1.1F;b.rod({},fixed,muted,.009F,"rigid_world_axis");b.label(worldNames[i],fixed*1.1F,muted);}
+        const auto tip=tripleScene(direction)*axisLength;b.ball(tip,.045F,gold,"rigid_tracked_tip");b.ball({},.04F,gold,"rigid_center_of_mass");
+        if(level==1){const auto origin=place({-body.center[0],-body.center[1],-body.center[2]});b.ball(origin,.032F,muted,"rigid_assembly_origin");b.rod({},origin,gold,.014F,"rigid_com_offset");for(unsigned i=0;i<body.count;++i)b.ball(place(body.parts[i].center),static_cast<float>(.035+.045*std::cbrt(body.parts[i].mass/body.mass)),gold,"rigid_component_com");}
+        if(level>=2){const auto arrow=[&](const RigidVector& v,Vec3 color,std::string_view role){const double magnitude=rigidMagnitude(v);if(magnitude>0)b.arrow({},tripleScene(v)*static_cast<float>(1.38*radius/magnitude),color,role);};arrow(state.worldMomentum,gold,"rigid_world_momentum");arrow(state.worldOmega,teal,"rigid_world_velocity");}
+        const double history=std::min(time,4*pi/std::max(rigidMotion_.speedBound(),1e-12)),start=time-history;
+        auto previous=tripleScene(rigidRotate(rigidMotion_.at(start).orientation,tracked))*axisLength;
+        for(unsigned i=1;i<=64;++i){const auto p=tripleScene(rigidRotate(rigidMotion_.at(start+history*i/64).orientation,tracked))*axisLength;b.rod(previous,p,gold,.009F,"rigid_axis_trail");previous=p;}
+      }
+      b.metric("Time",time,"s");b.metric("Angular speed",rigidMagnitude(state.bodyOmega),"rad/s");
+      if(level==0){
+        double orthogonalError=0;for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j){double dot=0;for(unsigned k=0;k<3;++k)dot+=state.rotation[3*k+i]*state.rotation[3*k+j];orthogonalError=std::max(orthogonalError,std::fabs(dot-(i==j)));}
+        b.metric("Release-axis alignment",releaseAlignment);b.metric("Orthogonality error",orthogonalError);b.metric("Rotation determinant",determinant(state.rotation));
+        b.matrix("R: body to world",state.rotation);b.table("Unit quaternion: body to world",{"w","x","y","z"},4);b.row("q(t)",state.orientation);b.row("q(0)",initial.orientation);
+      }
+      if(level==1){
+        b.metric("Total mass",body.mass,"kg");b.metric("COM offset",rigidMagnitude(body.center),"m");b.metric("Inertia X",body.inertia[0],"kg m^2");b.metric("Inertia Y",body.inertia[1],"kg m^2");b.metric("Inertia Z",body.inertia[2],"kg m^2");
+        b.matrix("I_body about COM",{body.inertia[0],0,0,0,body.inertia[1],0,0,0,body.inertia[2]});b.matrix("I_world = R I_body R^T",state.worldInertia);
+        b.table("Component mass and position relative to COM",{"mass kg","x m","y m","z m"},4);constexpr std::array<std::string_view,5> names{"Part 1","Part 2","Part 3","Part 4","Part 5"};for(unsigned i=0;i<body.count;++i){const auto& p=body.parts[i];b.row(names[i],{p.mass,p.center[0],p.center[1],p.center[2]});}b.row("Original COM offset",{body.mass,body.center[0],body.center[1],body.center[2]});
+      }
+      if(level==2){
+        const double omega=rigidMagnitude(state.bodyOmega),l=rigidMagnitude(state.bodyMomentum),angle=omega*l>0?std::acos(std::clamp(tripleDot(state.bodyOmega,state.bodyMomentum)/(omega*l),-1.,1.))*180/pi:0;
+        b.metric("Velocity-momentum angle",angle,"deg");b.metric("Momentum magnitude",l,"kg m^2/s");b.metric("Rotational energy",state.energy,"J");b.metric("Relative momentum error",state.momentumError);
+        b.table("Angular vectors: arrows show direction, table retains magnitude",{"x","y","z","magnitude"},4);
+        const auto row=[&](std::string_view name,const RigidVector& v){b.row(name,{v[0],v[1],v[2],rigidMagnitude(v)});};row("omega body (rad/s)",state.bodyOmega);row("omega world (rad/s)",state.worldOmega);row("L body (kg m^2/s)",state.bodyMomentum);row("L world (kg m^2/s)",state.worldMomentum);
+      }
+      if(level==3){
+        b.metric("Rotational energy",state.energy,"J");b.metric("Momentum magnitude",rigidMagnitude(state.worldMomentum),"kg m^2/s");b.metric("Relative energy error",state.energyError);b.metric("Relative momentum error",state.momentumError);
+        b.metric("Distinct principal moments",body.distinctMoments);b.metric("Tracked intermediate axis",body.distinctMoments&&body.order[1]==axis);b.metric("Initial momentum alignment",alignment(initial));b.metric("Momentum alignment",alignment(state));
+        b.table(body.distinctMoments?"Principal moments: min/max stable, intermediate unstable":"Repeated moments: no unique intermediate axis",{"I (kg m^2)","omega0","omega(t)","L body"},4);
+        constexpr std::array<std::string_view,3> names{"Body X","Body Y","Body Z"};for(unsigned rank=0;rank<3;++rank){const auto i=body.order[rank];b.row(names[i],{body.inertia[i],input.omega[i],state.bodyOmega[i],state.bodyMomentum[i]});}
+      }
+      if(level!=1){
+        // Fixed sample count, at most four rotations under the energy-based speed
+        // bound. Random access shares checkpoints with the displayed state.
+        const double window=std::min(12.,8*pi/std::max(rigidMotion_.speedBound(),1e-12)),start=std::clamp(time-window/2,0.,12-window);
+        std::array<RigidState,RigidMotion::samples> trace;for(unsigned i=0;i<trace.size();++i)trace[i]=rigidMotion_.at(start+window*i/(trace.size()-1));
+        const auto line=[&](MathPlot& p,std::string_view name,Vec3 color,auto value){auto& c=p.series[p.seriesCount++];c={};c.name=name;c.color=color;c.count=trace.size();for(unsigned i=0;i<trace.size();++i)c.points[i]={trace[i].time,value(trace[i])};};
+        auto& plot=b.plot(level==0?"Tracked axis in world coordinates":level==2?"Angular velocity in body coordinates":"Tracked axis alignment with initial world momentum",MathParameter::RigidTime);
+        if(level==3){line(plot,momentum>0?"Axis dot L0/|L0|":"At rest: alignment undefined",gold,alignment);plot.hasMarker=true;plot.marker={time,alignment(state)};
+          auto& errors=b.plot("Relative conservation errors (zero at exact rest)",MathParameter::RigidTime);line(errors,"Energy (signed)",coral,[](const RigidState& s){return s.energyError;});line(errors,"World momentum vector",blue,[](const RigidState& s){return s.momentumError;});
+        }else{constexpr std::array<std::string_view,3> names{"X","Y","Z"};for(unsigned i=0;i<3;++i)line(plot,names[i],axisColors[i],[&](const RigidState& s){return level==0?rigidRotate(s.orientation,tracked)[i]:s.bodyOmega[i];});}
       }
       break;
     }

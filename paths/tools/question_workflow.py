@@ -60,7 +60,7 @@ def validate_spec(spec):
             and spec['publication'] == 'authoring_only', 'Not the authoring-only pilot contract')
     profiles = spec['profiles']
     require(tuple(p['id'] for p in profiles) == PROFILE_IDS, 'Exactly four ordered support profiles required')
-    inputs = ('symbol_choices', 'structured_blank', 'checkpoint_and_working', 'written_solution')
+    inputs = ('symbol_choices', 'symbol_choices_optional_blank', 'checkpoint_and_working', 'written_solution')
     for i, p in enumerate(profiles):
         require(set(p) == {'id', 'label', 'input', 'show_goal', 'show_why', 'show_definitions', 'show_step_prompt'},
                 'Unknown profile field; change the contract explicitly')
@@ -242,10 +242,10 @@ def project(spec, q, profile_id, step_index=0):
         view['why'] = teaching['why']
     if profile['show_definitions']:
         view['definitions'] = [spec['definitions'][key] for key in teaching['definition_ids']]
-    if profile_id == 'learn':
+    if profile_id in ('learn', 'practice'):
         # Opaque input IDs, not the authoring misconception/answer-key labels.
         view['choices'] = [dict(id=i+1, tex=o['tex']) for i, o in enumerate(step['choices'])]
-    else:
+    if profile_id == 'practice':
         view['blank_tex'] = step['blank_tex']
     return view
 

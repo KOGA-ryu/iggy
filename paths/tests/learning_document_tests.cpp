@@ -60,6 +60,64 @@ void routes(const Fixture& f) {
     expect(linear.active()->currentRun().completed && !linear.active()->supportView()->verification.empty(),"Each imported linear level reaches verified completion");
   }
 }
+void matrixDiagnostics(const Path& folder) {
+  const auto original=read(Path(DOCUMENT_FIXTURE)/"matrix.paths.md");
+  struct Case {std::string from,to,field,reason;};
+  const std::array cases{
+    Case{"@after [1, 1 | 3] [0, -3 | -6]","@after [1, 1 | 3] [0, -3 | -5]","after","accepted choice"},
+    Case{"@choice 13 | -1","@choice 13 | -4/2","choice","duplicates"},
+    Case{"@choice 23 | -3","@choice 23 | 0","choice","nonzero"},
+    Case{"@given [1, 1 | 3] [2, -1 | 0]","@given [1, 1 | 3] [2, 2 | 6]","given","unique solution"},
+    Case{"@after [1, 1 | 3] [0, -3 | -6]","@after [1, 1 | 3] [0, -3 | bad]","after","matrix.v1 expects"}};
+  unsigned checks=0;
+  for(bool included:{false,true})for(const auto& c:cases) {
+    const auto root=folder/("diagnostic-"+std::to_string(checks++));const auto changed=replace(original,c.from,c.to);
+    const auto split=changed.find("@question ");const auto text=included?changed.substr(split):changed;
+    const auto name=included?"shared/card.inc.md":"matrix.paths.md";
+    if(included)write(root/"matrix.paths.md",changed.substr(0,split)+"@include shared/card.inc.md\n");
+    write(root/name,text);Fixture f;const auto size=f.bank.size(),entries=f.corpus.entries.size();const auto result=f.load(root);
+    expect(!result.accepted && f.bank.size()==size && f.corpus.entries.size()==entries,"Bad matrix imports remain atomic");
+    const auto d=Json::parse(result.reportJson)["diagnostics"][0];const auto pos=text.find(c.to);
+    expect(pos!=text.npos && d["file"]==name && d["line"]==std::count(text.begin(),text.begin()+pos,'\n')+1 && d["field"]==c.field,
+      "Mathematical rejection names the original field and line, including fragments: "+d.dump());
+    expect(d["message"].get<std::string>().find(c.reason)!=std::string::npos,"Matrix rejection explains the actual reason: "+d.dump());
+  }
+  std::cout<<"MATRIX_DIAGNOSTICS "<<checks<<" direct/include failures located exactly\n";
+}
+void questionBatch(const Path& root,const Path& folder) {
+  Fixture f;const auto first=f.bank.size();const auto loaded=f.load(root);expect(loaded.accepted,loaded.message);
+  expect(f.bank.size()>first,"Batch must add questions");Json ids=Json::array();std::size_t routes=0,wrongs=0;
+  for(std::size_t n=first;n<f.bank.size();++n) {
+    const auto& q=f.bank[n];expect(q.question.support && q.question.support->model==fm::MathWorkingModel::RowReduction,"Batch uses the supported matrix checker");ids.push_back(q.id);
+    for(unsigned route=0;route<5;++route) {
+      const auto level=route==4?1U:route;CorpusPractice p({q});const auto save=folder/(q.id+"-"+std::to_string(route)+".json");p.loadProgress(save);p.open(0);
+      const auto send=[&](fm::SupportAction a,std::string text={},unsigned value=0){expect(p.dispatch(support(p,a,std::move(text),value)),"Batch response reaches its canonical owner");};
+      send(fm::SupportAction::SelectLevel,{},level);
+      expect(p.active()->supportView()->reading.empty()==(level!=0),"Batch teaching respects the selected support level");
+      if(level<2)for(std::size_t i=0;i<q.question.steps.size();++i) {
+        const auto& step=q.question.steps[i];const auto correct=fm::firstAcceptedOption(step);const auto before=p.active()->supportView()->working;
+        const auto answer=[&](std::size_t j){if(route==4){const auto value=q.question.support->steps[i].responses[j];send(fm::SupportAction::EditDraft,value);send(fm::SupportAction::SubmitBlank,value);}else send(fm::SupportAction::Choose,{},step.options[j].id.value);};
+        for(std::size_t j=0;j<step.options.size();++j)if(j!=correct) {
+          answer(j);expect(p.active()->supportView()->status==fm::WrittenCheckStatus::Incorrect && p.active()->supportView()->working==before,"Wrong generated tile retains working");++wrongs;
+        }
+        answer(correct);
+        if(route==1 && i==0) {
+          const auto count=p.active()->currentRun().support->nodes.size();send(fm::SupportAction::Undo);answer(correct);
+          expect(p.active()->currentRun().support->nodes.size()==count+1,"Batch Undo retains its earlier branch");p.saveProgress();
+          CorpusPractice resumed({q});resumed.loadProgress(save);expect(resumed.active() && resumed.active()->supportView()->working==p.active()->supportView()->working,"Generated Practice resumes checked working");p=std::move(resumed);
+        }
+      } else {
+        expect(p.active()->supportView()->choices.empty(),"Written batch levels do not disclose choices");std::string work;
+        for(const auto& step:q.question.support->steps)work+=step.equation+"\n";
+        send(fm::SupportAction::EditDraft,work);send(fm::SupportAction::CheckWork,work);
+      }
+      expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Every generated route verifies both original equations");
+      expect(!p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Generated completion waits for Next");p.saveProgress();
+      CorpusPractice restored({q});restored.loadProgress(save);expect(restored.active() && restored.active()->currentRun().completed,"Generated completed state survives reopen");++routes;
+    }
+  }
+  std::cout<<Json{{"accepted",true},{"question_ids",ids},{"routes",routes},{"wrong_choices",wrongs},{"save_replay",true},{"windows",0}}.dump()<<'\n';
+}
 void imports(const Path& root) {
   Fixture f;const auto report=f.load(root);expect(report.accepted,report.message);
   const auto details=Json::parse(report.reportJson);
@@ -187,14 +245,15 @@ void matrices(const Path& root,const Path& folder) {
     }
     auto varied=base;varied.stamp=authored.dump();varied.question=parseQuestionContent(varied.stamp,"matrix-variant-test");
     fractional+=(a+b)%3!=0 || (2*a-b)%3!=0;
-    for(unsigned level=0;level<4;++level) {
+    for(unsigned route=0;route<5;++route) {
+      const auto level=route==4?1U:route;
       CorpusPractice p({varied});p.open(0);send(p,fm::SupportAction::SelectLevel,{},level);
       expect(p.active()->supportView()->working.empty(),"Matrix working starts blank");
       if(level<2)for(std::size_t step=0;step<3;++step) {
         const auto& q=p.active()->content();const auto correct=fm::firstAcceptedOption(q.steps[step]);
         const auto before=p.active()->supportView()->working;
-        if(!level) {
-          expect(!p.active()->supportView()->reading.empty(),"Learn supplies authored teaching");
+        if(!level || route==4) {
+          expect(p.active()->supportView()->reading.empty()==(level==1) && !p.active()->supportView()->choices.empty(),"Matrix Practice offers symbols with teaching closed; Learn opens teaching");
           send(p,fm::SupportAction::Choose,{},q.steps[step].options[(correct+1)%3].id.value);
           expect(p.active()->supportView()->status==fm::WrittenCheckStatus::Incorrect && p.active()->supportView()->working==before,"Wrong row multiplier preserves working");
           send(p,fm::SupportAction::Choose,{},q.steps[step].options[correct].id.value);
@@ -207,6 +266,15 @@ void matrices(const Path& root,const Path& folder) {
         submit(p,states[1]+"\n"+states[2]+"\n"+states[3]);
       }
       expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Every matrix level verifies the original equations");
+      if(route==4) {
+        const auto& events=p.active()->currentRun().support->submissions;
+        expect(events.size()==6 && std::all_of(events.begin(),events.end(),[](const auto& e){return e.action==fm::SupportAction::Choose && e.level==fm::SupportLevel::Practice;}),"All wrong and correct matrix tiles retain Practice choice evidence");
+        const auto path=folder/"matrix-choices.json";p.loadProgress(path);p.saveProgress();
+        CorpusPractice restored({varied});restored.loadProgress(path);
+        expect(restored.active() && restored.active()->currentRun().completed && restored.active()->currentRun().support->submissions.size()==6 &&
+          restored.active()->review()->wrongAttempts==3 && restored.active()->supportView()->reading.empty(),"Every matrix Practice route reopens completed with its attempts and no teaching leak");
+        std::filesystem::remove(path);
+      }
       const auto& final=std::get<fm::AugmentedMatrix>(p.active()->currentRun().support->nodes.back().equation);
       const auto x=final.rows[0][2],y=final.rows[1][2];
       expect(3*x.numerator==(a+b)*x.denominator && 3*y.numerator==(2*a-b)*y.denominator,"Final values independently match exact expected fractions");
@@ -434,6 +502,9 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==3 && std::string_view(argv[1])=="--question-batch") {
+      std::filesystem::create_directories(folder);questionBatch(argv[2],folder);std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==3 && std::string_view(argv[1])=="--published-store") {
       std::filesystem::create_directories(folder);published(argv[2],folder);std::filesystem::remove_all(folder);return 0;
     }
@@ -442,7 +513,7 @@ int main(int argc,char** argv) {
     }
     expect(argc==1,"Use --published-store FOLDER or no arguments");
     const auto root=folder/"write";std::filesystem::create_directories(folder);std::filesystem::copy(DOCUMENT_FIXTURE,root,std::filesystem::copy_options::recursive);
-    imports(root);failures(root);matrices(root,folder);persistence(root,folder);bookDocuments(folder);std::filesystem::remove_all(folder);
+    imports(root);failures(root);matrixDiagnostics(folder);matrices(root,folder);persistence(root,folder);bookDocuments(folder);std::filesystem::remove_all(folder);
     std::cout<<"DOCUMENT_IMPORT {\"documents\":4,\"subjects_added\":2,\"lessons\":4,\"questions\":4,\"solving_routes\":6,\"atomic_import\":true,\"drop_file_discovery\":true,\"save_replay\":true,\"native_windows\":0,\"captures\":0}\n";
   } catch(const std::exception& e){std::filesystem::remove_all(folder);std::cerr<<e.what()<<'\n';return 1;}
 }

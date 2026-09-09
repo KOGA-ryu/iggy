@@ -81,11 +81,17 @@ void inputs(ImVec2 size,const std::filesystem::path& folder) {
         h.click(h.ui.answerTiles[correct],"Correct symbolic choice");
       }
     } else if(level==1) {
+      expect(!h.ui.supportEditor.available && !h.ui.answerTiles.empty(),"Practice starts with symbolic choices and optional typing closed");
+      const auto& step=h.practice.active()->content().steps[0];const auto correct=fm::firstAcceptedOption(step);
+      h.click(h.ui.answerTiles[(correct+1)%step.options.size()],"Wrong Practice tile");
+      expect(h.practice.active()->supportView()->working.empty(),"Wrong Practice tile retains working");
+      h.click(h.ui.answerTiles[correct],"Correct Practice tile");
+      expect(h.practice.active()->supportView()->working=="3x=15" && h.ui.readingSource.empty(),"Practice tile advances with teaching still closed");
+      h.click(h.control(CorpusControl::TypeAnswer),"Optional typing");
       h.replace("fifteen");h.click(h.control(CorpusControl::CheckWork),"Check blank");
       expect(h.practice.active()->supportView()->status==fm::WrittenCheckStatus::Unsupported,"Non-numeric blank is not a wrong-math answer");
-      h.replace("15");h.key(ImGuiKey_Enter);
-      expect(h.practice.active()->supportView()->working=="3x=15" && h.practice.active()->supportView()->draft.empty(),"Enter submits the actual blank and clears only that completed blank");
-      h.replace("10/2");h.click(h.control(CorpusControl::CheckWork),"Check fraction");
+      h.replace("10/2");h.key(ImGuiKey_Enter);
+      expect(h.practice.active()->supportView()->draft.empty(),"Optional typing still submits equivalent fractions and clears the completed blank");
     } else {
       expect(h.ui.answerTiles.empty() && h.practice.active()->supportView()->draft.empty(),"Written levels begin with a blank editor and no answer tiles");
       h.replace("3x=15");h.key(ImGuiKey_Enter);h.type("x=5");

@@ -13,9 +13,11 @@ namespace paths {
 // Source plus JSON pointer; an empty field identifies the document itself.
 class QuestionContentError : public std::runtime_error {
 public:
-  QuestionContentError(std::filesystem::path source, std::string field, std::string reason);
+  QuestionContentError(std::filesystem::path source, std::string field, std::string reason,
+                       std::optional<iggy3d::first_move::QuestionValidationResult> validation={});
   const std::filesystem::path source;
   const std::string field;
+  const std::optional<iggy3d::first_move::QuestionValidationResult> validation;
 };
 
 struct QuestionPack {

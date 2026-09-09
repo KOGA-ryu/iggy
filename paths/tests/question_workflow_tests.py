@@ -69,7 +69,9 @@ class QuestionWorkflow(unittest.TestCase):
                         self.assertTrue(all(set(o) == {'id', 'tex'} for o in view['choices']))
                     elif level == 'practice':
                         self.assertIn('blank_tex', view)
-                        self.assertNotIn('choices', view)
+                        self.assertEqual(view['input'], 'symbol_choices_optional_blank')
+                        self.assertEqual(view['choices'], workflow.project(self.spec, q, 'learn', step)['choices'])
+                        self.assertNotIn('definitions', view)
                         self.assertNotIn('why', view)
                     elif level == 'solve':
                         self.assertEqual(set(view), {'question_id', 'support', 'problem', 'input', 'working', 'checkpoint'})

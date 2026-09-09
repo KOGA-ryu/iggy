@@ -99,7 +99,7 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   if(!v.completed) {
     const auto p=ImGui::GetCursorScreenPos();
     ImGui::BeginDisabled(!v.canRespond);
-    if(v.level==fm::SupportLevel::Learn && v.canRespond) {
+    if(!v.choices.empty() && v.canRespond) {
       float used=0;
       for(const auto& option:v.choices) {
         const auto e=equation(math,option.label,width,17);const auto w=std::max(64.0F,e.width+22),h=std::max(34.0F,e.height+12);
@@ -109,7 +109,13 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
         ui.answerTiles.push_back(item(!blocked));math.draw(e,at.x+(w-e.width)/2,at.y+(h-e.height)/2,cyan);
         ImGui::PopID();used+=w+6;
       }
-    } else if(v.level>=fm::SupportLevel::Practice) {
+    }
+    bool typing=false;
+    if(v.level==fm::SupportLevel::Practice) {
+      typing=ImGui::CollapsingHeader("Type an answer (optional)",v.draft.empty()?ImGuiTreeNodeFlags_None:ImGuiTreeNodeFlags_DefaultOpen);
+      record(CorpusControl::TypeAnswer,v.canRespond);
+    }
+    if(typing || v.level>=fm::SupportLevel::Solve) {
       std::memcpy(ui.supportDraft.data(),v.draft.data(),v.draft.size());ui.supportDraft[v.draft.size()]='\0';
       bool submit=false,edited=false;
       if(v.level==fm::SupportLevel::Practice) {

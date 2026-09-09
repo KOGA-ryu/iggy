@@ -1,8 +1,13 @@
 # Creating trustworthy practice in every area
 
-Status: **authoring workflow and one implemented four-level linear family**.
-The 25 runtime questions include the golden example and 24 varied repetitions;
-visual acceptance is pending. This does not complete the question bank. Read
+Status: **authoring workflow, one four-level linear family and one checked
+matrix batch family**. The 25 linear runtime questions include the golden
+example and 24 varied repetitions. The [batch workflow](QUESTION_BATCHES.md)
+adds 12 matrix repetitions through the existing document compiler and publisher,
+with independent arithmetic and model/save gates. Its three arithmetic groups
+are one task family. The linear coverage ledger below still counts only its
+own 25 questions; it does not yet aggregate external published packages.
+Visual acceptance is pending. This does not complete the question bank. Read
 [QUESTION_PRACTICE_FORMAT.md](QUESTION_PRACTICE_FORMAT.md) for the learner-facing
 contract. The user prioritizes this foundation before more interactive 3D work.
 
@@ -77,9 +82,10 @@ leaf or provide four different task families.
    Every step gets the teaching fields from the format contract. Explain
    definitions at first use and state side conditions where they matter.
 4. **Derive all four views.** Use the same immutable mathematical instance.
-   Learn exposes the current goal/rule/why/definitions; Practice removes the
-   answer choices in favor of a real blank; Solve removes the prescribed
-   method; Independent starts with a blank work area. Prevent clues in titles,
+   Learn exposes the current goal/rule/why/definitions; Practice keeps the same
+   validated symbolic choices with teaching available on demand and an optional
+   typed blank; Solve removes the prescribed method; Independent starts with a
+   blank work area. Prevent clues in titles,
    filenames, status text, examples and figure captions as well as answer tiles.
 5. **Check the golden problem independently.** Use arithmetic, a separately
    implemented algorithm, enumeration or a proof/counterexample review suitable

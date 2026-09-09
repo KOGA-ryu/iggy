@@ -34,6 +34,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/BezierCurve.cpp
   src/runtime/math_objects/BezierPatch.cpp
   src/runtime/math_objects/PatchGeometry.cpp
+  src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
   src/runtime/math_objects/LatheProfile.cpp
@@ -228,6 +229,10 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_rigid_tests tests/math_rigid_tests.cpp)
+  target_link_libraries(paths_math_rigid_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_rigid_tests COMMAND paths_math_rigid_tests)
+
   add_executable(paths_math_membrane_tests tests/math_membrane_tests.cpp)
   target_link_libraries(paths_math_membrane_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_membrane_tests COMMAND paths_math_membrane_tests)
@@ -369,6 +374,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_test(NAME paths_question_batch_tests COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_batch_tests.py"
+      --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>")
     add_executable(paths_learning_document_ui_tests tests/learning_document_ui_tests.cpp)
     target_link_libraries(paths_learning_document_ui_tests PRIVATE paths_sorter_ui paths_imgui)
     target_compile_definitions(paths_learning_document_ui_tests PRIVATE
@@ -488,6 +496,11 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_rigid_orientation_cli COMMAND math_lab --validate --object rigid --level 0 --object-preset 0 --set rigid_time=0.52 --check)
+    add_test(NAME paths_math_rigid_inertia_cli COMMAND math_lab --validate --object rigid --level 1 --object-preset 1 --set rigid_balance=0.7 --check)
+    add_test(NAME paths_math_rigid_momentum_cli COMMAND math_lab --validate --object rigid --level 2 --object-preset 1 --check)
+    add_test(NAME paths_math_rigid_flip_cli COMMAND math_lab --validate --object rigid --level 3 --object-preset 2 --advance 8 --check --resolution 800x600)
+    set_tests_properties(paths_math_rigid_orientation_cli paths_math_rigid_inertia_cli paths_math_rigid_momentum_cli paths_math_rigid_flip_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_membrane_motion_cli COMMAND math_lab --validate --object membrane --level 0 --object-preset 0 --advance 4 --check)
     add_test(NAME paths_math_membrane_nodes_cli COMMAND math_lab --validate --object membrane --level 1 --object-preset 1 --check)
     add_test(NAME paths_math_membrane_mix_cli COMMAND math_lab --validate --object membrane --level 2 --object-preset 2 --check)

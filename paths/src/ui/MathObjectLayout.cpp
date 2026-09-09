@@ -14,7 +14,7 @@ const auto& metadata(){
     for(const auto& p:mathParameterSpecs())result[index(p.id)]={p.minimumLevel>=2?G::Advanced:G::Shape,p.label};
     const auto range=[&](P a,P b,G g){for(unsigned i=index(a);i<=index(b);++i)result[i].group=g;};
     const auto group=[&](G g,std::initializer_list<P> params){for(auto p:params)result[index(p)].group=g;};
-    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView});
+    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides});
     group(G::Sampling,{P::Slices,P::Sample,P::DeltaX,P::TaylorDegree,P::HarmonicTerms,P::FluxResolution,P::ProbabilitySeed,P::BinomialSeed,P::LatheSlices,P::LatheMethod,P::BooleanResolution,P::PatchResolution,P::MembraneResolution});
     group(G::Operation,{P::Shortcut,P::IntegralStart,P::ComposeAngle,P::SvdStage,P::DescentRate,P::Constraint,P::GaussianOperation,P::GaussianQuotient,P::FluxOrientation,P::TensorBasis,P::CloudWhiten,P::NormSupport,P::BooleanOperation,P::BooleanBlend});
     range(P::VectorX,P::VectorZ,G::Probe);range(P::SurfaceU,P::DirectionAngle,G::Probe);range(P::FieldX,P::FieldPitch,G::Probe);
@@ -28,6 +28,7 @@ const auto& metadata(){
     group(G::ShapeA,{P::BooleanShapeA,P::BooleanSizeA});group(G::ShapeB,{P::BooleanShapeB,P::BooleanSizeB,P::BooleanX,P::BooleanY,P::BooleanZ,P::BooleanYaw,P::BooleanPitch,P::BooleanFit,P::BooleanClearance});
     range(P::PatchControl,P::PatchP33Z,G::Profile);range(P::PatchU,P::PatchV,G::Probe);
     range(P::MembraneSlot,P::MembraneV3,G::Profile);range(P::MembraneU,P::MembraneV,G::Probe);group(G::Animation,{P::MembraneDamping,P::MembraneTime});
+    range(P::RigidRotX,P::RigidRotZ,G::Transform);range(P::RigidSpinX,P::RigidTime,G::Animation);group(G::Probe,{P::RigidAxis});
     const auto label=[&](P p,std::string_view text){result[index(p)].label=text;};
     label(P::MembraneSlot,"Mode slot");label(P::MembraneResolution,"Subdivisions");label(P::MembraneGuides,"Guides");
     label(P::PatchControl,"Control point");label(P::PatchResolution,"Subdivisions");label(P::PatchGuides,"Guides");
@@ -40,6 +41,7 @@ const auto& metadata(){
 }
 struct Tuple { P first;unsigned count;std::string_view label;std::array<std::string_view,3> components{"X","Y","Z"}; };
 constexpr std::array tuples{
+  Tuple{P::RigidWidth,3,"Dimensions (m)",{"W","H","D"}},Tuple{P::RigidRotX,3,"Release angles (deg)"},Tuple{P::RigidSpinX,3,"Initial spin (rad/s)"},
   Tuple{P::MembraneM0,2,"Mode numbers",{"m","n",""}},
   Tuple{P::MembraneM1,2,"Mode numbers",{"m","n",""}},
   Tuple{P::MembraneM2,2,"Mode numbers",{"m","n",""}},
