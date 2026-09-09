@@ -1,0 +1,81 @@
+{
+  "format": "paths_source_lesson_review",
+  "format_version": 1,
+  "status": "reviewed",
+  "parser_version": "0.8.0",
+  "inputs": [
+    {
+      "id": "source_card",
+      "root": "source",
+      "path": "002_quadratic_through_three_points.md",
+      "sha256": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea"
+    },
+    {
+      "id": "prepared_card",
+      "root": "repo",
+      "path": "content/cards/source_002_quadratic_three_points.json",
+      "sha256": "e0075946e46dbc0d0883215509f77324a38c3ad83a0283e2d05fd0d19e45dba4"
+    },
+    {
+      "id": "row_rules",
+      "root": "repo",
+      "path": "content/references/row_operations.json",
+      "sha256": "c3d573c49192cf2fd769d90d7e009573660d64a4db3caa90d844e8bbe18189c7"
+    },
+    {
+      "id": "presentation",
+      "root": "review",
+      "path": "presentation.json",
+      "sha256": "875becc4c53084f776d5a347e81f6ef5476216099326e9323212f32a19d76630"
+    },
+    {
+      "id": "lesson",
+      "root": "review",
+      "path": "lesson.in.md",
+      "sha256": "840ee485de76bd1da55a26f568f8244d9e931eaa3e362edeb110b11871f898b3"
+    }
+  ],
+  "question_selection": {
+    "start_byte": 295,
+    "end_byte": 619,
+    "sha256": "10715b4b50da62d906e4c5774979f47f46967424afca05b8a431416cbb84f7d0"
+  },
+  "review_notes": [
+    "Full two-part source question retained; 13 decisions and answer keys come from the current Paths card.",
+    "Presentation changes only notation; degree-at-most-two uniqueness is scoped to this model.",
+    "Four-level reduction is a separate exercise with x=a, y=b, c=0 supplied and t the polynomial input.",
+    "Independent exact checks live in tests/source_lesson_tests.py and the pure learning-document model test. Learner Attempt/setup/solve/Run fields are excluded."
+  ],
+  "row_definitions": [
+    "row_addition",
+    "row_scaling"
+  ],
+  "documents": [
+    {
+      "path": "chapter.paths.md",
+      "input": "lesson"
+    }
+  ],
+  "authoring": {
+    "format": "paths_learning_authoring",
+    "format_version": 1,
+    "package_id": "source_002_textbook",
+    "package_version": 1,
+    "sources": [
+      {
+        "id": "claude_002_adaptation",
+        "kind": "adapted",
+        "title": "Quadratic through three points; source card 002",
+        "uri": "paths:source/99-red-booleans/math/002_quadratic_through_three_points",
+        "revision": "8db455115202bf5cabc83b4053376670244037b73c839542d91dd91ea99f59ea",
+        "attribution": "Adapted from supplied card 002, attributed there to Meckes and Meckes, Linear Algebra, chapter 1, exercise 1.1.7. Reuses the current Paths guided question and row-operation definitions.",
+        "reuse": "Local educational adaptation of the supplied exercise. New exposition and reduced-system practice; no permission for redistribution is asserted.",
+        "content_ids": [
+          "source_002_reading",
+          "source_002_full_problem",
+          "source_002_reduction"
+        ]
+      }
+    ]
+  }
+}

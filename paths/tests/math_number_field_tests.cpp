@@ -127,7 +127,7 @@ void fields() {
   level(m,0);reject(m,{MathActionKind::ReverseFieldPath});reject(m,{MathActionKind::TogglePlayback});require(!m.snapshot().fieldPathReversed,"orientation leaked to lower layer");
 }
 void boundaries() {
-  MathObjects m;MathObjectScene scene;require(mathObjectSpecs().size()==22,"wrong object count");const auto specs=mathParameterSpecs();for(std::size_t i=0;i<specs.size();++i)require(static_cast<std::size_t>(specs[i].id)==i&&!specs[i].key.empty(),"incomplete parameter catalogue");
+  MathObjects m;MathObjectScene scene;require(mathObjectSpecs().size()==static_cast<std::size_t>(MathObjectKind::Count),"wrong object count");const auto specs=mathParameterSpecs();for(std::size_t i=0;i<specs.size();++i)require(static_cast<std::size_t>(specs[i].id)==i&&!specs[i].key.empty(),"incomplete parameter catalogue");
   for(auto kind:{MathObjectKind::Modular,MathObjectKind::Gaussian,MathObjectKind::VectorField})for(unsigned n=0;n<4;++n) {
     select(m,kind,n);require(mathLessons(kind).size()==4,"missing four layers");
     for(unsigned pass=0;pass<2;++pass)for(const auto& p:specs)if(m.parameterAvailable(p.id)){set(m,p.id,pass?p.maximum:p.minimum);inspect(m,scene);reject(m,{MathActionKind::SetParameter,{},p.id,std::numeric_limits<double>::quiet_NaN()});reject(m,{MathActionKind::SetParameter,{},p.id,p.maximum+1});}

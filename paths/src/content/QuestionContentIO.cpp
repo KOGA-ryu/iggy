@@ -336,6 +336,28 @@ fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std
       {semantics.member("before").integer()}, {semantics.member("after").integer()}};
     question.steps.push_back(std::move(step));
   }
+  if(document.contains("support")) {
+    const auto field=root.member("support");
+    fm::QuestionSupportContent support;support.equation=field.member("equation").string();support.domain=field.member("domain").string();
+    support.model=enumValue(field.member("family"),std::array{
+      std::pair{std::string_view("linear_balance_ax_b_v1"),fm::MathWorkingModel::LinearEquation},
+      std::pair{std::string_view("matrix_rows_2x2_v1"),fm::MathWorkingModel::RowReduction}});
+    const auto records=field.member("steps");const auto count=records.array(support.model==fm::MathWorkingModel::RowReduction?fm::kQuestionStepCapacity:2);
+    for(std::size_t i=0;i<count;++i) {
+      const auto entry=records.element(i);fm::SupportStepContent step;
+      step.equation=entry.member("equation").string();step.responsePrefix=entry.member("response_prefix").string();
+      step.definitions=entry.member("definitions").string();step.teaching=entry.member("teaching").string();
+      if(support.model==fm::MathWorkingModel::RowReduction) {
+        const auto operation=entry.member("operation");const auto key=operation.string();
+        const auto op=std::find_if(fm::rowOperations.begin(),fm::rowOperations.end(),[&](const auto& op){return op.key==key;});
+        if(op==fm::rowOperations.end())operation.fail("unknown row operation");step.operation=op->operation;
+      }
+      const auto responses=entry.member("responses");const auto n=responses.array(fm::kQuestionChoiceCapacity);
+      for(std::size_t j=0;j<n;++j)step.responses.push_back(responses.element(j).string());
+      support.steps.push_back(std::move(step));
+    }
+    question.support=std::move(support);
+  }
   const auto result = fm::validateQuestion(question, fm::QuestionInteraction::ArcadeCollect);
   if(!result.valid()) throw QuestionContentError(sourcePath, validationField(result), std::string(result.reason()));
   return question;

@@ -982,6 +982,7 @@ void drawEquationSorter(EquationSorterUiState& ui, const SorterView& view,
                         std::span<const SorterEquation> content, const GallerySession* game) {
   auto& io = ImGui::GetIO();
   ui.motion.presented=false;
+  ui.library.document.presented=false;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigNavCursorVisibleAlways = true;
   if(view.solving && game) {

@@ -1,4 +1,11 @@
 #include "runtime/math_objects/MathObjects.hpp"
+#include "runtime/math_objects/BezierCurve.hpp"
+#include "runtime/math_objects/LatheProfile.hpp"
+#include "runtime/math_objects/LatheGeometry.hpp"
+#include "runtime/math_objects/BooleanSolid.hpp"
+#include "runtime/math_objects/BezierPatch.hpp"
+#include "runtime/math_objects/PatchGeometry.hpp"
+#include "runtime/math_objects/BooleanGeometry.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -17,7 +24,7 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::Angle,MathObjectKind::Trig,"angle","Angle (degrees)",0,360,1,45},
   {MathParameter::Slices,MathObjectKind::Calculus,"slices","Number of slices",3,64,1,8},
   {MathParameter::SliceGap,MathObjectKind::Calculus,"slice_gap","Separate slices",0,.12,.01,0},
-  {MathParameter::Sample,MathObjectKind::Calculus,"sample","Sampling: left / midpoint / right",0,2,1,1},
+  {MathParameter::Sample,MathObjectKind::Calculus,"sample","Sampling",0,2,1,1,0,false,"Left sample\0Midpoint sample\0Right sample\0"},
   {MathParameter::Shear,MathObjectKind::Linear,"shear","A[0,1] / shear k",-1.2,1.2,.1,.6,0,true},
   {MathParameter::Scale,MathObjectKind::Linear,"scale","A[1,1] / vertical scale",-2,2,.1,1,0,true},
   {MathParameter::Depth,MathObjectKind::Discrete,"depth","Layer spacing",.3,1.5,.1,1},
@@ -161,7 +168,144 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::RootIndex,MathObjectKind::Roots,"root_index","Probe exponent (reduced modulo n)",0,11,1,1,0},
   {MathParameter::RootMultiplier,MathObjectKind::Roots,"root_multiplier","Power-map exponent / subgroup generator",0,12,1,2,1},
   {MathParameter::RootPower,MathObjectKind::Roots,"root_power","Generator power",0,12,1,1,2},
-  {MathParameter::RootAutomorphism,MathObjectKind::Roots,"root_auto","Candidate automorphism exponent a",1,11,1,2,3}
+  {MathParameter::RootAutomorphism,MathObjectKind::Roots,"root_auto","Candidate automorphism exponent a",1,11,1,2,3},
+  {MathParameter::PsdA,MathObjectKind::Psd,"psd_a","Matrix entry a",-2,2,.05,1},
+  {MathParameter::PsdB,MathObjectKind::Psd,"psd_b","Symmetric off-diagonal b",-2,2,.05,.5},
+  {MathParameter::PsdC,MathObjectKind::Psd,"psd_c","Matrix entry c",-2,2,.05,1},
+  {MathParameter::PsdProbeAngle,MathObjectKind::Psd,"psd_probe","Quadratic probe angle (degrees)",0,180,1,0,1},
+  {MathParameter::PsdMix,MathObjectKind::Psd,"psd_mix","Mix from A to B",0,1,.05,.5,2},
+  {MathParameter::PsdOtherAngle,MathObjectKind::Psd,"psd_other_angle","Rank-one B direction (degrees)",0,180,1,0,2},
+  {MathParameter::PsdRayScale,MathObjectKind::Psd,"psd_ray_scale","Scale the mixture along its ray",0,1.5,.05,1,2},
+  {MathParameter::PsdSlice,MathObjectKind::Psd,"psd_slice","Trace / 2: slice height t",0,2,.05,1,3},
+  {MathParameter::PsdCostAngle,MathObjectKind::Psd,"psd_cost_angle","Objective direction (degrees)",-180,180,1,30,3},
+  {MathParameter::PsdObjective,MathObjectKind::Psd,"psd_objective","Objective plane: fraction of best value",-1.25,1.25,.05,0,3},
+  {MathParameter::NormP,MathObjectKind::Norm,"norm_p","Exponent p",1,32,.25,2},
+  {MathParameter::NormInfinity,MathObjectKind::Norm,"norm_infinity","Norm family",0,1,1,0,0,false,"Finite p-norm\0Exact infinity norm\0"},
+  {MathParameter::NormX,MathObjectKind::Norm,"norm_x","Vector x: first component",-1.5,1.5,.05,.8},
+  {MathParameter::NormY,MathObjectKind::Norm,"norm_y","Vector x: second component",-1.5,1.5,.05,.6},
+  {MathParameter::NormZ,MathObjectKind::Norm,"norm_z","Vector x: third component",-1.5,1.5,.05,.4},
+  {MathParameter::NormOtherX,MathObjectKind::Norm,"norm_other_x","Vector y: first component",-1.5,1.5,.05,-.3,1},
+  {MathParameter::NormOtherY,MathObjectKind::Norm,"norm_other_y","Vector y: second component",-1.5,1.5,.05,.6,1},
+  {MathParameter::NormOtherZ,MathObjectKind::Norm,"norm_other_z","Vector y: third component",-1.5,1.5,.05,.2,1},
+  {MathParameter::NormSupport,MathObjectKind::Norm,"norm_support","Plane: fraction of support value",0,1.4,.05,.7,3},
+  {MathParameter::NormWire,MathObjectKind::Norm,"norm_wire","Boundary style",0,1,1,0,0,false,"Solid boundary\0Open cross-sections\0"},
+  {MathParameter::CurveControl,MathObjectKind::Curve,"curve_control","Selected control point",0,3,1,1,0,false,"P0: start\0P1: first handle\0P2: second handle\0P3: end\0"},
+  {MathParameter::CurveP0X,MathObjectKind::Curve,"curve_p0_x","P0: x coordinate",-2,2,.05,-1.5},
+  {MathParameter::CurveP0Y,MathObjectKind::Curve,"curve_p0_y","P0: y coordinate",-2,2,.05,0},
+  {MathParameter::CurveP0Z,MathObjectKind::Curve,"curve_p0_z","P0: z coordinate",-2,2,.05,0},
+  {MathParameter::CurveP1X,MathObjectKind::Curve,"curve_p1_x","P1: x coordinate",-2,2,.05,-1},
+  {MathParameter::CurveP1Y,MathObjectKind::Curve,"curve_p1_y","P1: y coordinate",-2,2,.05,1.3},
+  {MathParameter::CurveP1Z,MathObjectKind::Curve,"curve_p1_z","P1: z coordinate",-2,2,.05,0},
+  {MathParameter::CurveP2X,MathObjectKind::Curve,"curve_p2_x","P2: x coordinate",-2,2,.05,1},
+  {MathParameter::CurveP2Y,MathObjectKind::Curve,"curve_p2_y","P2: y coordinate",-2,2,.05,1.3},
+  {MathParameter::CurveP2Z,MathObjectKind::Curve,"curve_p2_z","P2: z coordinate",-2,2,.05,0},
+  {MathParameter::CurveP3X,MathObjectKind::Curve,"curve_p3_x","P3: x coordinate",-2,2,.05,1.5},
+  {MathParameter::CurveP3Y,MathObjectKind::Curve,"curve_p3_y","P3: y coordinate",-2,2,.05,0},
+  {MathParameter::CurveP3Z,MathObjectKind::Curve,"curve_p3_z","P3: z coordinate",-2,2,.05,0},
+  {MathParameter::CurveProgress,MathObjectKind::Curve,"curve_progress","Position along the curve",0,1,.005,.35},
+  {MathParameter::CurveTravel,MathObjectKind::Curve,"curve_travel","Travel rule",0,1,1,0,0,false,"Equal parameter steps\0Equal distance steps\0"},
+  {MathParameter::CurveProfile,MathObjectKind::Curve,"curve_profile","Cross-section",0,2,1,0,0,false,"Circle\0Square\0Norm profile\0"},
+  {MathParameter::CurveRadius,MathObjectKind::Curve,"curve_radius","Starting radius / half width",.05,.45,.01,.2},
+  {MathParameter::CurveAspect,MathObjectKind::Curve,"curve_aspect","Cross-section height / width",.05,1,.05,1},
+  {MathParameter::CurveEndScale,MathObjectKind::Curve,"curve_end_scale","End radius / start radius",0,1,.05,1},
+  {MathParameter::CurveTwist,MathObjectKind::Curve,"curve_twist","Total twist (degrees)",-360,360,5,0},
+  {MathParameter::CurveNormP,MathObjectKind::Curve,"curve_norm_p","Norm profile exponent p",1,16,.25,2},
+  {MathParameter::CurveGuides,MathObjectKind::Curve,"curve_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::LatheControl,MathObjectKind::Lathe,"lathe_control","Selected profile point",0,6,1,3,0,false,"P0: base\0P1\0P2\0P3\0P4\0P5\0P6: top\0"},
+  {MathParameter::LatheR0,MathObjectKind::Lathe,"lathe_r0","P0: radius",0,1.5,.01,0.65},
+  {MathParameter::LatheR1,MathObjectKind::Lathe,"lathe_r1","P1: radius",0,1.5,.01,0.9},
+  {MathParameter::LatheR2,MathObjectKind::Lathe,"lathe_r2","P2: radius",0,1.5,.01,1.15},
+  {MathParameter::LatheR3,MathObjectKind::Lathe,"lathe_r3","P3: radius",0,1.5,.01,1},
+  {MathParameter::LatheR4,MathObjectKind::Lathe,"lathe_r4","P4: radius",0,1.5,.01,0.55},
+  {MathParameter::LatheR5,MathObjectKind::Lathe,"lathe_r5","P5: radius",0,1.5,.01,0.48},
+  {MathParameter::LatheR6,MathObjectKind::Lathe,"lathe_r6","P6: radius",0,1.5,.01,0.62},
+  {MathParameter::LatheH1,MathObjectKind::Lathe,"lathe_h1","P1: height fraction",.04,.96,.01,0.12},
+  {MathParameter::LatheH2,MathObjectKind::Lathe,"lathe_h2","P2: height fraction",.04,.96,.01,0.35},
+  {MathParameter::LatheH3,MathObjectKind::Lathe,"lathe_h3","P3: height fraction",.04,.96,.01,0.6},
+  {MathParameter::LatheH4,MathObjectKind::Lathe,"lathe_h4","P4: height fraction",.04,.96,.01,0.8},
+  {MathParameter::LatheH5,MathObjectKind::Lathe,"lathe_h5","P5: height fraction",.04,.96,.01,0.92},
+  {MathParameter::LatheHeight,MathObjectKind::Lathe,"lathe_height","Total height",1,4,.05,3},
+  {MathParameter::LatheHollow,MathObjectKind::Lathe,"lathe_hollow","Interior",0,1,1,1,0,false,"Solid\0Hollow\0"},
+  {MathParameter::LatheWall,MathObjectKind::Lathe,"lathe_wall","Radial wall thickness",.03,.35,.01,.12},
+  {MathParameter::LatheFloor,MathObjectKind::Lathe,"lathe_floor","Cavity floor: height fraction",.04,.8,.01,.08},
+  {MathParameter::LatheTurn,MathObjectKind::Lathe,"lathe_turn","Revolution angle (degrees)",0,360,1,360},
+  {MathParameter::LatheCut,MathObjectKind::Lathe,"lathe_cut","Cutaway (% hidden)",0,75,5,25},
+  {MathParameter::LatheProbe,MathObjectKind::Lathe,"lathe_probe","Probe / highlighted element",0,1,.005,.5},
+  {MathParameter::LatheSlices,MathObjectKind::Lathe,"lathe_slices","Integration subdivisions",4,32,1,8},
+  {MathParameter::LatheMethod,MathObjectKind::Lathe,"lathe_method","Volume approximation",0,1,1,0,0,false,"Disks / washers\0Cylindrical shells\0"},
+  {MathParameter::LatheGuides,MathObjectKind::Lathe,"lathe_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::BooleanShapeA,MathObjectKind::Boolean,"boolean_shape_a","Shape A",0,3,1,0,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0"},
+  {MathParameter::BooleanShapeB,MathObjectKind::Boolean,"boolean_shape_b","Shape B / cutter",0,3,1,2,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0"},
+  {MathParameter::BooleanSizeA,MathObjectKind::Boolean,"boolean_size_a","Size A",0.2,1.5,0.05,1},
+  {MathParameter::BooleanSizeB,MathObjectKind::Boolean,"boolean_size_b","Size B",0.2,1.5,0.05,0.55},
+  {MathParameter::BooleanX,MathObjectKind::Boolean,"boolean_x","B: x position",-1.5,1.5,0.05,0},
+  {MathParameter::BooleanY,MathObjectKind::Boolean,"boolean_y","B: y position",-1.5,1.5,0.05,0},
+  {MathParameter::BooleanZ,MathObjectKind::Boolean,"boolean_z","B: z position",-1.5,1.5,0.05,0},
+  {MathParameter::BooleanYaw,MathObjectKind::Boolean,"boolean_yaw","B: yaw (degrees)",-180,180,5,0},
+  {MathParameter::BooleanPitch,MathObjectKind::Boolean,"boolean_pitch","B: pitch (degrees)",-180,180,5,0},
+  {MathParameter::BooleanOperation,MathObjectKind::Boolean,"boolean_operation","Combine A and B",0,3,1,2,0,false,"Union\0Intersection\0A minus B\0Smooth union\0"},
+  {MathParameter::BooleanBlend,MathObjectKind::Boolean,"boolean_blend","Blend width",0,0.6,0.02,0.4},
+  {MathParameter::BooleanProbeX,MathObjectKind::Boolean,"boolean_probe_x","Probe: x",-3,3,0.01,0},
+  {MathParameter::BooleanProbeY,MathObjectKind::Boolean,"boolean_probe_y","Probe: y",-3,3,0.01,0},
+  {MathParameter::BooleanProbeZ,MathObjectKind::Boolean,"boolean_probe_z","Probe: z / section plane",-3,3,0.01,0},
+  {MathParameter::BooleanResolution,MathObjectKind::Boolean,"boolean_resolution","Requested cells per axis",12,28,4,20},
+  {MathParameter::BooleanGuides,MathObjectKind::Boolean,"boolean_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::BooleanSection,MathObjectKind::Boolean,"boolean_section","Solid view",0,1,1,0,0,false,"Full solid\0Section at probe z\0"},
+  {MathParameter::BooleanFit,MathObjectKind::Boolean,"boolean_fit","Matching ball preview",0,1,1,0,0,false,"Hidden\0Show beside socket\0"},
+  {MathParameter::BooleanClearance,MathObjectKind::Boolean,"boolean_clearance","Ball radial clearance",0.02,0.15,0.01,0.08},
+  {MathParameter::PatchControl,MathObjectKind::Patch,"patch_control","Control point",0,15,1,5,0,false,"P00\0P01\0P02\0P03\0P10\0P11\0P12\0P13\0P20\0P21\0P22\0P23\0P30\0P31\0P32\0P33\0"},
+  {MathParameter::PatchP00X,MathObjectKind::Patch,"patch_p00x","P00: x",-2,2,0.01,-1.5},
+  {MathParameter::PatchP00Y,MathObjectKind::Patch,"patch_p00y","P00: y",-2,2,0.01,0},
+  {MathParameter::PatchP00Z,MathObjectKind::Patch,"patch_p00z","P00: z",-2,2,0.01,1.5},
+  {MathParameter::PatchP01X,MathObjectKind::Patch,"patch_p01x","P01: x",-2,2,0.01,-1.5},
+  {MathParameter::PatchP01Y,MathObjectKind::Patch,"patch_p01y","P01: y",-2,2,0.01,0.45},
+  {MathParameter::PatchP01Z,MathObjectKind::Patch,"patch_p01z","P01: z",-2,2,0.01,0.5},
+  {MathParameter::PatchP02X,MathObjectKind::Patch,"patch_p02x","P02: x",-2,2,0.01,-1.5},
+  {MathParameter::PatchP02Y,MathObjectKind::Patch,"patch_p02y","P02: y",-2,2,0.01,0.45},
+  {MathParameter::PatchP02Z,MathObjectKind::Patch,"patch_p02z","P02: z",-2,2,0.01,-0.5},
+  {MathParameter::PatchP03X,MathObjectKind::Patch,"patch_p03x","P03: x",-2,2,0.01,-1.5},
+  {MathParameter::PatchP03Y,MathObjectKind::Patch,"patch_p03y","P03: y",-2,2,0.01,0},
+  {MathParameter::PatchP03Z,MathObjectKind::Patch,"patch_p03z","P03: z",-2,2,0.01,-1.5},
+  {MathParameter::PatchP10X,MathObjectKind::Patch,"patch_p10x","P10: x",-2,2,0.01,-0.5},
+  {MathParameter::PatchP10Y,MathObjectKind::Patch,"patch_p10y","P10: y",-2,2,0.01,0.65},
+  {MathParameter::PatchP10Z,MathObjectKind::Patch,"patch_p10z","P10: z",-2,2,0.01,1.5},
+  {MathParameter::PatchP11X,MathObjectKind::Patch,"patch_p11x","P11: x",-2,2,0.01,-0.5},
+  {MathParameter::PatchP11Y,MathObjectKind::Patch,"patch_p11y","P11: y",-2,2,0.01,1.1},
+  {MathParameter::PatchP11Z,MathObjectKind::Patch,"patch_p11z","P11: z",-2,2,0.01,0.5},
+  {MathParameter::PatchP12X,MathObjectKind::Patch,"patch_p12x","P12: x",-2,2,0.01,-0.5},
+  {MathParameter::PatchP12Y,MathObjectKind::Patch,"patch_p12y","P12: y",-2,2,0.01,1.1},
+  {MathParameter::PatchP12Z,MathObjectKind::Patch,"patch_p12z","P12: z",-2,2,0.01,-0.5},
+  {MathParameter::PatchP13X,MathObjectKind::Patch,"patch_p13x","P13: x",-2,2,0.01,-0.5},
+  {MathParameter::PatchP13Y,MathObjectKind::Patch,"patch_p13y","P13: y",-2,2,0.01,0.65},
+  {MathParameter::PatchP13Z,MathObjectKind::Patch,"patch_p13z","P13: z",-2,2,0.01,-1.5},
+  {MathParameter::PatchP20X,MathObjectKind::Patch,"patch_p20x","P20: x",-2,2,0.01,0.5},
+  {MathParameter::PatchP20Y,MathObjectKind::Patch,"patch_p20y","P20: y",-2,2,0.01,0.65},
+  {MathParameter::PatchP20Z,MathObjectKind::Patch,"patch_p20z","P20: z",-2,2,0.01,1.5},
+  {MathParameter::PatchP21X,MathObjectKind::Patch,"patch_p21x","P21: x",-2,2,0.01,0.5},
+  {MathParameter::PatchP21Y,MathObjectKind::Patch,"patch_p21y","P21: y",-2,2,0.01,1.1},
+  {MathParameter::PatchP21Z,MathObjectKind::Patch,"patch_p21z","P21: z",-2,2,0.01,0.5},
+  {MathParameter::PatchP22X,MathObjectKind::Patch,"patch_p22x","P22: x",-2,2,0.01,0.5},
+  {MathParameter::PatchP22Y,MathObjectKind::Patch,"patch_p22y","P22: y",-2,2,0.01,1.1},
+  {MathParameter::PatchP22Z,MathObjectKind::Patch,"patch_p22z","P22: z",-2,2,0.01,-0.5},
+  {MathParameter::PatchP23X,MathObjectKind::Patch,"patch_p23x","P23: x",-2,2,0.01,0.5},
+  {MathParameter::PatchP23Y,MathObjectKind::Patch,"patch_p23y","P23: y",-2,2,0.01,0.65},
+  {MathParameter::PatchP23Z,MathObjectKind::Patch,"patch_p23z","P23: z",-2,2,0.01,-1.5},
+  {MathParameter::PatchP30X,MathObjectKind::Patch,"patch_p30x","P30: x",-2,2,0.01,1.5},
+  {MathParameter::PatchP30Y,MathObjectKind::Patch,"patch_p30y","P30: y",-2,2,0.01,0},
+  {MathParameter::PatchP30Z,MathObjectKind::Patch,"patch_p30z","P30: z",-2,2,0.01,1.5},
+  {MathParameter::PatchP31X,MathObjectKind::Patch,"patch_p31x","P31: x",-2,2,0.01,1.5},
+  {MathParameter::PatchP31Y,MathObjectKind::Patch,"patch_p31y","P31: y",-2,2,0.01,0.45},
+  {MathParameter::PatchP31Z,MathObjectKind::Patch,"patch_p31z","P31: z",-2,2,0.01,0.5},
+  {MathParameter::PatchP32X,MathObjectKind::Patch,"patch_p32x","P32: x",-2,2,0.01,1.5},
+  {MathParameter::PatchP32Y,MathObjectKind::Patch,"patch_p32y","P32: y",-2,2,0.01,0.45},
+  {MathParameter::PatchP32Z,MathObjectKind::Patch,"patch_p32z","P32: z",-2,2,0.01,-0.5},
+  {MathParameter::PatchP33X,MathObjectKind::Patch,"patch_p33x","P33: x",-2,2,0.01,1.5},
+  {MathParameter::PatchP33Y,MathObjectKind::Patch,"patch_p33y","P33: y",-2,2,0.01,0},
+  {MathParameter::PatchP33Z,MathObjectKind::Patch,"patch_p33z","P33: z",-2,2,0.01,-1.5},
+  {MathParameter::PatchU,MathObjectKind::Patch,"patch_u","Probe u",0,1,0.01,0.5},
+  {MathParameter::PatchV,MathObjectKind::Patch,"patch_v","Probe v",0,1,0.01,0.5},
+  {MathParameter::PatchResolution,MathObjectKind::Patch,"patch_resolution","Subdivisions / axis",4,32,4,20},
+  {MathParameter::PatchGuides,MathObjectKind::Patch,"patch_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -254,8 +398,37 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Roots,"roots","Roots of unity","Build algebra from a root constellation",
    "zeta^k = exp(2*pi*i*k/n)","Choose a primitive root for a composite n.",
    "n is 3-12. Rings lie in parallel complex planes; height separates maps or records a power step. Cyclotomic automorphisms fix Q and exist exactly for gcd(a,n)=1. A nonunit exponent is a power map, not a field automorphism.",
-   {"Locate roots and apply complex powers.","Trace cyclic subgroups and generator orders.","Inspect cyclotomic polynomials and their Galois action."},{.5F,.4F,1}}
+   {"Locate roots and apply complex powers.","Trace cyclic subgroups and generator orders.","Inspect cyclotomic polynomials and their Galois action."},{.5F,.4F,1}},
+  {MathObjectKind::Psd,"psd","PSD cone","Move matrices through a convex cone",
+   "A = [[a,b],[b,c]]; t=(a+c)/2, x=(a-c)/2, y=b", "Place a nonzero matrix on the PSD boundary.",
+   "Scene coordinates are (x,y,t); PSD means t >= sqrt(x*x+y*y), not entrywise positivity. The open cone is a finite guide to an unbounded set. This exact 3D model represents symmetric 2x2 matrices; symmetric 3x3 matrices need six coordinates.",
+   {"Locate matrices, eigenvalues and the rank-one boundary.","Mix PSD matrices and scale along a cone ray.","Optimize a linear objective on a fixed-trace disk."},{1,.7F,1}},
+  {MathObjectKind::Norm,"norm","Norm balls","Change the meaning of unit distance",
+   "||x||_p = (sum |x_i|^p)^(1/p); ||x||_infinity = max |x_i|", "At p=1, put a vector with at least two nonzero components on the unit boundary.",
+   "The boundary has norm one in real 3D. Finite p ranges from 1 to 32; the infinity norm is a separate exact mode. The finite mesh samples the true boundary. In the dual layer the two bodies are translated apart; their tables retain the original coordinates.",
+   {"Morph between an octahedron, a sphere and a cube.","Measure triangle inequalities and the p-to-infinity limit.","Pair primal and dual balls with a supporting plane."},{1,.7F,1}},
+  {MathObjectKind::Curve,"curve","Curves and sweeps","Grow a shaped object along a curve",
+   "r(t) = sum B_i^3(t) P_i; sweep = r(t) + profile in a moving frame",
+   "Choose an interior t and a non-coplanar control tetrahedron.",
+   "A cubic Bezier curve uses four controls. Click a control point or choose it in the sidebar, then edit its x/y/z coordinates. Arc length and equal-distance positions are numerical with displayed length bounds. Sweeps use transported frames and capped profiles; a zero tangent disables the sweep, and broad sweeps can intersect themselves.",
+   {"Construct a curve by repeated interpolation.","Inspect tangent, curvature and distance along the curve.","Sweep a circle, square or norm profile with taper and twist."},{1,.7F,1},.25,"Restart position","End of curve. Restart or scrub position."},
+  {MathObjectKind::Lathe,"lathe","Lathe Lab","Turn a profile into a measured solid",
+   "X(h,theta) = (R(h) cos(theta), h, R(h) sin(theta))",
+   "Make an interior profile point wider than both endpoints.",
+   "Seven ordered points define a smooth, shape-preserving Bezier profile. Select a point and edit its radius or height. Wall thickness is radial: narrow regions become solid. The cutaway changes visibility only; measurements use the complete selected revolution angle. The vertical axis is height.",
+   {"Shape a vase, bottle, goblet or pawn.","Revolve the profile and compare volume elements.","Measure lateral bands, closures and surface normals."},{1,.7F,-1},90,"Restart revolution","Revolution complete. Restart or change the angle."},
+  {MathObjectKind::Boolean,"boolean","Boolean Solids Lab","Cut, join and blend solids",
+   "Union: min(a,b); intersection: max(a,b); A minus B: max(a,-b)",
+   "Put the probe inside A and B, but outside the remaining material.",
+   "Negative field values mean interior, zero means boundary, positive means exterior. A is teal; B and cut walls are coral. Composite fields are defining functions, not generally exact distances. Section view hides z above the probe plane; full-solid measurements stay unchanged. Thin features can be missed by a finite grid.",
+   {"Classify points inside and outside a solid.","Link set operations to a live truth table.","Explore smooth blends, surface normals and numerical volume."},{1,.7F,1}}
 
+
+,
+  {MathObjectKind::Patch,"patch","Patch Lab","Shape a sheet with sixteen control points",
+   "S(u,v) = sum[i,j] B_i(u) B_j(v) P_ij; 0 <= u,v <= 1","Select a corner control and put the probe at that corner.",
+   "Open bicubic sheet, with world y vertical. Normal orientation is S_u cross S_v. Folded area counts overlap with multiplicity; no closed-solid volume is claimed.",
+   {"Blend sixteen controls into one editable surface.","Use partial derivatives to construct tangent planes and normals.","Connect curvature, metric and area to the same patch."},{1,.8F,1}}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -364,6 +537,104 @@ constexpr std::array<MathLesson,4> rootsLessons{{
   {"Complex power maps","(zeta^k)^a=zeta^(a*k mod n)","Choose a power map that has collisions but does not collapse every root to one.","The lower ring is the domain and the upper ring the image positions. Connections show powers. There are n/gcd(a,n) distinct images, each with gcd(a,n) preimages."},
   {"Cyclic subgroups","<zeta^a> has n/gcd(n,a) elements","Choose a nontrivial proper subgroup and return to identity after a positive number of steps.","The rising path records successive powers of the generator. The last point closes the cycle in the complex plane while its height records the step. The selected power is reduced using the group law."},
   {"Cyclotomic field symmetries","Gal(Q(zeta_n)/Q) is the unit group modulo n","For n=8 choose a nonidentity valid automorphism that fixes more than two roots.","Only coprime exponents define field automorphisms. Their composition multiplies exponents modulo n. Primitive roots are precisely the zeros of Phi_n; the linked polynomial plot shows its real and imaginary parts along the unit circle."}
+}};
+constexpr std::array<MathLesson,4> psdLessons{{
+  {"Matrices in the cone","PSD iff a>=0, c>=0 and a*c-b*b>=0","Place a nonzero matrix on the PSD boundary.","Three independent matrix entries become one point. Teal means inside, gold marks a PSD boundary and coral means outside. The tip is the zero matrix. All-positive entries can still give an indefinite matrix; try that preset."},
+  {"Eigenvalues and quadratic directions","lambda = t +/- sqrt(x*x+y*y); q(u)=u^T A u","Find a unit direction where q is less than -0.1.","The companion surface is q(u,v), drawn with height 0.3*q. A positive definite bowl becomes flat in one direction on the rank-one boundary. Indefinite matrices have both signs; negative definite matrices give a downward bowl. The eigenvector basis is one valid choice when eigenvalues repeat."},
+  {"Convex mixtures and cone rays","M = s*((1-alpha)*A + alpha*B), s>=0, 0<=alpha<=1","Mix two rank-one PSD endpoints to obtain a positive definite matrix.","B=2*v*v^T is always rank one. Move alpha along the blue-violet segment, then scale its gold point along a ray from zero. A remains editable: convexity requires both endpoints to be PSD. Nonparallel rank-one directions with an interior mixture give a positive definite result."},
+  {"Slices and supporting objectives","trace(A)=2*t; maximize cos(phi)*x + sin(phi)*y over x*x+y*y<=t*t","For a positive slice height, move the objective plane to its maximum feasible value.","The fixed-trace slice is a disk. The white ring is its edge; gold is the maximizing matrix, with value t. The violet rectangle is a movable objective plane, not an extra constraint. At fraction 1 it supports the disk at the optimum; beyond 1 it misses the disk. At t=0 the feasible set is a single point."}
+}};
+constexpr std::array<MathLesson,4> normLessons{{
+  {"Unit distance and shape","||x||_p = (sum |x_i|^p)^(1/p)","At p=1, put a vector with at least two nonzero components on the unit boundary.","The octahedron, sphere and infinity-norm cube all describe unit distance under different rules. Gold is x; the blue point normalizes a nonzero x onto the boundary. Choose open cross-sections to see points inside the body. Normalization is undefined at zero and its point is omitted."},
+  {"Triangle inequality","||x+y|| <= ||x|| + ||y||","Create a strict triangle inequality with both vectors nonzero.","Gold is x, violet is y translated to the tip of x, and teal is their sum. The unit body uses open cross-sections at the origin so it cannot hide the vector addition. Tables compare the same vectors under different norms; the plot compares both sides as finite p changes."},
+  {"The limit as p grows","max|x_i| <= ||x||_p <= 3^(1/p)*max|x_i|","With at least two nonzero components, use finite p>=8 and get within 0.05 of the max norm.","Keep x fixed while moving p. The wire cube is the exact limit. The two bounds squeeze the norm towards the largest component; dimension stays fixed at three. Exact infinity mode uses max directly and has no finite-p graph marker."},
+  {"Dual norms and supporting planes","max_{||x||_p<=1} w dot x = ||w||_q; 1/p+1/q=1","Choose nonzero w and move the plane to its tight support value.","The vector controls now specify w. The left body uses p; the wire body on the right uses its dual q. Gold is a maximizing x, and the right-hand point is w/||w||_q. Move the plane to fraction 1. At p=1 the dual is infinity, and at infinity it is 1. A zero w has no unique supporting direction; ties may have many maximizers."}
+}};
+constexpr std::array<MathLesson,4> curveLessons{{
+  {"Control points and interpolation","r(t) = (1-t)^3 P0 + 3t(1-t)^2 P1 + 3t^2(1-t) P2 + t^3 P3","Choose t between 0.2 and 0.8 and make the control tetrahedron non-coplanar.","The control polygon guides the curve. Blue points interpolate its edges, violet points interpolate those points, and gold is their final interpolation. With four non-coplanar controls and interior t, the positive Bernstein weights place r(t) inside their tetrahedron. Start by changing one handle's z coordinate."},
+  {"Tangents, speed and curvature","speed=|r'(t)|; curvature=|r'(t) cross r''(t)|/|r'(t)|^3","Find a regular point whose curvature is greater than 0.5.","Gold follows the tangent direction. The coral normal points towards the local bend, when curvature is nonzero. At a zero derivative the tangent and curvature are undefined; their arrows and curvature value are omitted. A straight regular curve has curvature zero and still has a tangent."},
+  {"Travel by distance","s(t)=integral[0,t] |r'(u)| du; equal-distance travel inverts s(t)","Use distance travel on a curve with unequal parameter-step distances; reduce relative distance spread below 0.0001.","The two copies compare eight equal parameter intervals with eight equal arc-length intervals. Their straight chords need not have equal lengths: the table measures distance along the curve. The moving probes use the same progress. Playback takes four seconds for a complete trip. A constant curve has no distance parameterization."},
+  {"Profiles, taper and twist","S(s,theta)=r(t(s)) + radius(s)*(u(theta)*N(s)+aspect*v(theta)*B(s))","Create a regular sweep with end radius at most one quarter of the start and at least 90 degrees of twist.","A transported frame carries the profile without the Frenet frame's flip at a straight point. Radius and added twist vary with distance. Circle, square and norm profiles reuse the norm-ball construction. The ribbon preset flattens a square section; the horn ends at a tip. Shape only hides the guides. Stationary tangents disable the sweep, while the curve remains editable."}
+}};
+constexpr std::array<MathLesson,4> latheLessons{{
+  {"Shape the profile","R(h) is a piecewise cubic Bezier profile","Make an interior radius at least 0.2 larger than both endpoint radii.","Seven profile points shape the base, belly, neck, stem and rim. Radius never becomes negative. Heights stay ordered; the first and last points stay at the endpoints. Blue is the outer profile, violet the cavity wall. Hollow interiors begin above the cavity floor."},
+  {"Revolve the profile","V(angle) = angle/(2*pi) * V(full turn)","Make a half revolution of a nonzero solid.","Play rotates the generating profile through a full turn in four seconds. Rings trace circles around the height axis. A partial revolution has two closing radial faces. Cutaway removes part of the view, while readouts keep the original angle's volume and surface area."},
+  {"Disks, washers and shells","V = integral pi*(R^2-r^2) dh = integral 2*pi*q*L(q) dq","Using at least 16 subdivisions, approximate a nonzero volume within 2 percent.","The highlighted element is a disk or washer at one height, or a shell at one radius. A shell may occupy several separate height intervals; all contribute. The table sums every midpoint element. The wire profile shows the full shape. The reference volume integrates each cubic piece's squared radius."},
+  {"Surface bands and normals","A_lateral = integral 2*pi*R(h)*sqrt(1+R'(h)^2) dh","With at least 16 subdivisions, approximate the boundary area within 1 percent at a regular surface point.","Gold highlights an outer band. Frustum bands approximate outer and inner lateral area; readouts also include the base, rim, cavity floor and any physical radial faces. The normal is perpendicular to the meridian and circular tangent. On the axis the parameterized normal is undefined. Cutaway faces are for viewing only."}
+}};
+constexpr std::array<MathLesson,4> booleanLessons{{
+  {"Inside and outside","F(p)<0: interior; F(p)=0: boundary; F(p)>0: exterior","With subtraction selected, put the probe strictly inside both A and B, in the removed material.","Move B or the gold probe. The graph is a line through the probe's y and z coordinates. Its three curves evaluate A, B and the result at the same points. Section view exposes the interior without changing the defining function. Cylinders and arch openings extrude along their local z axis; pitch is applied before yaw: R_y(yaw) R_x(pitch)."},
+  {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
+  {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
+  {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> patchLessons{{
+  {"Control net and blending","S(u,v) = sum B_i(u) B_j(v) P_ij; weights >= 0 and sum to 1","Select a corner control and move the UV probe onto that corner, so its weight becomes 1.","Click a control or choose P00 through P33; edit its XYZ row. The first index follows u and the second follows v. Interior controls influence the sheet without generally lying on it. Gold tint shows the selected control's influence; red and blue curves trace u and v through the gold probe."},
+  {"Tangents and normals","N = (S_u cross S_v) / |S_u cross S_v|","At a regular probe, make the unit normal nearly horizontal: |N_y| < 0.2.","Red is the u direction, blue is v and gold is the normal. Arrows use fixed display lengths; the table retains actual derivatives. The framed tangent plane uses an orthonormal basis. A singular probe has no normal or tangent plane. Try the Sail preset to inspect a nearly vertical sheet."},
+  {"Curvature and metric","K = (e*g-f*f)/(E*G-F*F); H = (e*G-2*f*F+g*E)/(2*(E*G-F*F))","Find a regular saddle point with Gaussian curvature below -0.03.","The first fundamental form measures tangent lengths; the second measures normal bending. Opposite principal-curvature signs identify a saddle. Coral marks negative K, teal positive K, grey near-zero or undefined K. H changes sign if normal orientation reverses; K does not. Curvature traces are omitted when any sampled point on their line is singular."},
+  {"Area and mesh refinement","Area = integral integral |S_u cross S_v| du dv","Use at least 24 subdivisions; make mesh area agree with the quadrature estimate within 0.5 percent, with fine/coarse quadrature agreement within 0.1 percent.","A parameter cell becomes two triangles. Gold edges mark the probe's cell; colour shows area density. The graph compares triangulated area as resolution increases. Quadrature uses separate 8- and 16-cell Gauss grids. Their agreement is not a certified error bound. Folded patches count overlapping sheets separately; collapsed triangles are omitted."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> patchPresetParameters{MathParameter::PatchControl,MathParameter::PatchP00X,MathParameter::PatchP00Y,MathParameter::PatchP00Z,MathParameter::PatchP01X,MathParameter::PatchP01Y,MathParameter::PatchP01Z,MathParameter::PatchP02X,MathParameter::PatchP02Y,MathParameter::PatchP02Z,MathParameter::PatchP03X,MathParameter::PatchP03Y,MathParameter::PatchP03Z,MathParameter::PatchP10X,MathParameter::PatchP10Y,MathParameter::PatchP10Z,MathParameter::PatchP11X,MathParameter::PatchP11Y,MathParameter::PatchP11Z,MathParameter::PatchP12X,MathParameter::PatchP12Y,MathParameter::PatchP12Z,MathParameter::PatchP13X,MathParameter::PatchP13Y,MathParameter::PatchP13Z,MathParameter::PatchP20X,MathParameter::PatchP20Y,MathParameter::PatchP20Z,MathParameter::PatchP21X,MathParameter::PatchP21Y,MathParameter::PatchP21Z,MathParameter::PatchP22X,MathParameter::PatchP22Y,MathParameter::PatchP22Z,MathParameter::PatchP23X,MathParameter::PatchP23Y,MathParameter::PatchP23Z,MathParameter::PatchP30X,MathParameter::PatchP30Y,MathParameter::PatchP30Z,MathParameter::PatchP31X,MathParameter::PatchP31Y,MathParameter::PatchP31Z,MathParameter::PatchP32X,MathParameter::PatchP32Y,MathParameter::PatchP32Z,MathParameter::PatchP33X,MathParameter::PatchP33Y,MathParameter::PatchP33Z,MathParameter::PatchU,MathParameter::PatchV,MathParameter::PatchResolution,MathParameter::PatchGuides};
+constexpr std::array<MathObjectPreset,4> patchPresets{{
+  {"Canopy",patchPresetParameters,{5,-1.5,0,1.5,-1.5,0.45,0.5,-1.5,0.45,-0.5,-1.5,0,-1.5,-0.5,0.65,1.5,-0.5,1.1,0.5,-0.5,1.1,-0.5,-0.5,0.65,-1.5,0.5,0.65,1.5,0.5,1.1,0.5,0.5,1.1,-0.5,0.5,0.65,-1.5,1.5,0,1.5,1.5,0.45,0.5,1.5,0.45,-0.5,1.5,0,-1.5,0.5,0.5,20,1},53},
+  {"Sail",patchPresetParameters,{5,-1.4,-1.3,0.1,-1.4,-0.43,0.1,-1.4,0.43,0.1,-1.4,1.3,0.1,-0.47,-1.3,0.1,-0.47,-0.43,1,-0.47,0.43,1,-0.47,1.3,0.1,0.47,-1.3,0.1,0.47,-0.43,1,0.47,0.43,1,0.47,1.3,0.1,1.4,-1.3,0.1,1.4,-0.43,0.1,1.4,0.43,0.1,1.4,1.3,0.1,0.5,0.5,20,1},53},
+  {"Curved ramp",patchPresetParameters,{5,-1.5,-0.9,1.5,-1.5,-0.9,0.5,-1.5,-0.9,-0.5,-1.5,-0.9,-1.5,-0.5,-0.9,1.5,-0.5,-0.9,0.5,-0.5,-0.9,-0.5,-0.5,-0.9,-1.5,0.5,0.9,1.5,0.5,0.9,0.5,0.5,0.9,-0.5,0.5,0.9,-1.5,1.5,0.9,1.5,1.5,0.9,0.5,1.5,0.9,-0.5,1.5,0.9,-1.5,0.5,0.5,20,1},53},
+  {"Saddle terrain",patchPresetParameters,{5,-1.5,0.9,1.5,-1.5,0.3,0.5,-1.5,-0.3,-0.5,-1.5,-0.9,-1.5,-0.5,0.3,1.5,-0.5,0.1,0.5,-0.5,-0.1,-0.5,-0.5,-0.3,-1.5,0.5,-0.3,1.5,0.5,-0.1,0.5,0.5,0.1,-0.5,0.5,0.3,-1.5,1.5,-0.9,1.5,1.5,-0.3,0.5,1.5,0.3,-0.5,1.5,0.9,-1.5,0.5,0.5,20,1},53}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> booleanPresetParameters{MathParameter::BooleanShapeA,MathParameter::BooleanShapeB,MathParameter::BooleanSizeA,MathParameter::BooleanSizeB,MathParameter::BooleanX,MathParameter::BooleanY,MathParameter::BooleanZ,MathParameter::BooleanYaw,MathParameter::BooleanPitch,MathParameter::BooleanOperation,MathParameter::BooleanBlend,MathParameter::BooleanProbeX,MathParameter::BooleanProbeY,MathParameter::BooleanProbeZ,MathParameter::BooleanResolution,MathParameter::BooleanGuides,MathParameter::BooleanSection,MathParameter::BooleanFit,MathParameter::BooleanClearance};
+constexpr std::array<MathObjectPreset,4> booleanPresets{{
+  {"Drilled block",booleanPresetParameters,{0,2,1,.55,0,0,0,0,0,2,.4,0,0,0,20,1,0,0,.08},19},
+  {"Archway",booleanPresetParameters,{0,3,1,.75,0,-.1,0,0,0,2,.4,0,0,0,20,1,0,0,.08},19},
+  {"Ball-and-socket",booleanPresetParameters,{0,1,1,.85,0,.2,.6,0,0,2,.4,.9,.2,.6,20,1,1,1,.08},19},
+  {"Blended stones",booleanPresetParameters,{1,1,.9,.9,1.2,0,0,0,0,3,.5,.6,.8,0,20,1,0,0,.08},19}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> lathePresetParameters{
+  MathParameter::LatheR0,MathParameter::LatheR1,MathParameter::LatheR2,MathParameter::LatheR3,MathParameter::LatheR4,MathParameter::LatheR5,MathParameter::LatheR6,
+  MathParameter::LatheH1,MathParameter::LatheH2,MathParameter::LatheH3,MathParameter::LatheH4,MathParameter::LatheH5,
+  MathParameter::LatheHeight,MathParameter::LatheHollow,MathParameter::LatheWall,MathParameter::LatheFloor,MathParameter::LatheTurn,MathParameter::LatheCut,MathParameter::LatheProbe,MathParameter::LatheSlices,MathParameter::LatheMethod,MathParameter::LatheGuides,MathParameter::LatheControl
+};
+constexpr std::array<MathObjectPreset,4> lathePresets{{
+  {"Vase",lathePresetParameters,{.65,.9,1.15,1,.55,.48,.62, .12,.35,.6,.8,.92, 3,1,.12,.08,360,25,.5,8,0,1,3},23},
+  {"Bottle",lathePresetParameters,{.65,.75,.75,.5,.25,.25,.32, .08,.55,.75,.83,.96, 3.5,1,.1,.06,360,25,.5,8,0,1,4},23},
+  {"Goblet",lathePresetParameters,{.9,.85,.18,.18,.55,.9,.85, .08,.18,.52,.64,.82, 3,1,.1,.6,360,25,.75,8,0,1,4},23},
+  {"Chess pawn",lathePresetParameters,{.95,1,.45,.25,.6,.68,0, .08,.22,.55,.65,.83, 3,0,.12,.08,360,0,.5,8,0,1,3},23}
+}};
+constexpr std::array<std::array<MathParameter,3>,4> curveCoordinates{{
+  {MathParameter::CurveP0X,MathParameter::CurveP0Y,MathParameter::CurveP0Z},
+  {MathParameter::CurveP1X,MathParameter::CurveP1Y,MathParameter::CurveP1Z},
+  {MathParameter::CurveP2X,MathParameter::CurveP2Y,MathParameter::CurveP2Z},
+  {MathParameter::CurveP3X,MathParameter::CurveP3Y,MathParameter::CurveP3Z}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> curvePresetParameters{
+  MathParameter::CurveP0X,MathParameter::CurveP0Y,MathParameter::CurveP0Z,
+  MathParameter::CurveP1X,MathParameter::CurveP1Y,MathParameter::CurveP1Z,
+  MathParameter::CurveP2X,MathParameter::CurveP2Y,MathParameter::CurveP2Z,
+  MathParameter::CurveP3X,MathParameter::CurveP3Y,MathParameter::CurveP3Z,
+  MathParameter::CurveProfile,MathParameter::CurveRadius,MathParameter::CurveAspect,
+  MathParameter::CurveEndScale,MathParameter::CurveTwist,MathParameter::CurveNormP,
+  MathParameter::CurveGuides,MathParameter::CurveTravel,MathParameter::CurveProgress,MathParameter::CurveControl
+};
+constexpr std::array<MathObjectPreset,4> curvePresets{{
+  {"Curved pipe",curvePresetParameters,{-1.5,0,0, -1,1.3,0, 1,1.3,0, 1.5,0,0, 0,.2,1,1,0,2, 1,0,.35,1},22},
+  {"Arched cable",curvePresetParameters,{-1.5,0,0, -1.4,1.8,0, -.6,1.8,.4, 1.5,0,.4, 0,.08,1,1,0,2, 1,0,.35,1},22},
+  {"Twisted ribbon",curvePresetParameters,{-1.5,0,0, -1,1.4,-.4, 1,-1,.6, 1.5,.2,.8, 1,.4,.1,1,180,2, 1,0,.35,1},22},
+  {"Tapered horn",curvePresetParameters,{-1.2,-.8,0, -1.1,.6,0, .2,1.4,.2, 1.5,1.1,1.1, 2,.4,1,0,0,1.5, 1,0,.35,1},22}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> psdEntries{MathParameter::PsdA,MathParameter::PsdB,MathParameter::PsdC};
+constexpr std::array<MathObjectPreset,6> psdPresets{{
+  {"Positive definite bowl",psdEntries,{1,0,1}},
+  {"Rank-one boundary",psdEntries,{1,1,1}},
+  {"Indefinite saddle",psdEntries,{1,0,-1}},
+  {"Zero / cone tip",psdEntries,{0,0,0}},
+  {"Positive entries, indefinite",psdEntries,{1,2,1}},
+  {"Negative definite bowl",psdEntries,{-1,0,-1}}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> normEntries{MathParameter::NormP,MathParameter::NormInfinity,MathParameter::Count};
+constexpr std::array<MathObjectPreset,4> normPresets{{
+  {"Octahedron: p=1",normEntries,{1,0,0},2},
+  {"Sphere: p=2",normEntries,{2,0,0},2},
+  {"Rounded cube: p=8",normEntries,{8,0,0},2},
+  {"Exact cube: infinity norm",normEntries,{2,1,0},2}
 }};
 constexpr std::array<MathParameter,9> matrixParameters{MathParameter::A00,MathParameter::Shear,MathParameter::A02,MathParameter::A10,MathParameter::Scale,MathParameter::A12,MathParameter::A20,MathParameter::A21,MathParameter::A22};
 constexpr std::array<std::string_view,8> nodeLabels{"A 000","B 001","C 010","D 011","E 100","F 101","G 110","H 111"};
@@ -760,6 +1031,43 @@ constexpr std::array<std::string_view,13> countLabels{"0","1","2","3","4","5","6
 constexpr std::array<std::string_view,8> cloudLabels{"P0","P1","P2","P3","P4","P5","P6","P7"},whitenLabels{"W0","W1","W2","W3","W4","W5","W6","W7"};
 constexpr std::array<std::string_view,12> residueLabels{"0","1","2","3","4","5","6","7","8","9","10","11"};
 constexpr std::array<Vec3,9> classColors{muted,teal,coral,gold,blue,violet,white,Vec3{.85F,.35F,.62F},Vec3{.6F,.85F,.3F}};
+// Symmetric 2x2 matrices form a three-dimensional vector space. These
+// coordinates turn its PSD condition into the circular cone t >= hypot(x,y).
+struct ConeMatrix { double a,b,c; };
+struct ConeSpectrum {
+  double x,y,t,lo,hi,tolerance;
+  unsigned rank;
+  bool psd;
+};
+ConeSpectrum coneSpectrum(ConeMatrix a) {
+  const double x=(a.a-a.c)/2,t=(a.a+a.c)/2,r=std::hypot(x,a.b);
+  const double tolerance=1e-10*std::max({std::fabs(a.a),std::fabs(a.b),std::fabs(a.c)});
+  const double lo=t-r,hi=t+r;
+  return {x,a.b,t,lo,hi,tolerance,static_cast<unsigned>(std::fabs(lo)>tolerance)+static_cast<unsigned>(std::fabs(hi)>tolerance),lo>=-tolerance};
+}
+Vec3 conePosition(ConeMatrix a) {const auto e=coneSpectrum(a);return {static_cast<float>(e.x),static_cast<float>(e.y),static_cast<float>(e.t)};}
+double quadratic2(ConeMatrix a,double u,double v) {return a.a*u*u+2*a.b*u*v+a.c*v*v;}
+// Scale before taking powers: stable for all supported p and bounded vectors.
+// Infinity is a distinct operation, never a numeric exponent or a large-p alias.
+double normLength(const Triple& x,double p,bool infinity=false) {
+  const double scale=std::max({std::fabs(x[0]),std::fabs(x[1]),std::fabs(x[2])});
+  if(scale==0||infinity)return scale;
+  double sum=0;for(double v:x)sum+=std::pow(std::fabs(v)/scale,p);
+  return scale*std::pow(sum,1/p);
+}
+Triple normBoundary(Triple direction,double p,bool infinity) {
+  const double length=normLength(direction,p,infinity);
+  if(length>0)for(auto& x:direction)x/=length;
+  return direction;
+}
+Triple normSupport(const Triple& w,double p,bool infinity) {
+  Triple result{};const double maximum=normLength(w,1,true);if(maximum==0)return result;
+  if(infinity){for(unsigned i=0;i<3;++i)result[i]=(w[i]>0)-(w[i]<0);return result;}
+  if(p==1){for(unsigned i=0;i<3;++i)if(std::fabs(w[i])==maximum){result[i]=(w[i]>0)?1:-1;break;}return result;}
+  const double q=p/(p-1),h=normLength(w,q);
+  for(unsigned i=0;i<3;++i)result[i]=((w[i]>0)-(w[i]<0))*std::pow(std::fabs(w[i])/h,q-1);
+  return result;
+}
 class SnapshotBuilder {
 public:
   explicit SnapshotBuilder(MathObjectSnapshot& snapshot):s(snapshot) {}
@@ -805,6 +1113,26 @@ public:
     if(s.matrixCount==s.matrices.size())throw std::logic_error("math matrix capacity exceeded");
     auto& view=s.matrices[s.matrixCount++];view={};view.name=name;view.values=values;view.editable=editable;view.parameters=matrixParameters;
   }
+  void matrix2(std::string_view name,std::array<double,4> values) {
+    if(s.matrixCount==s.matrices.size())throw std::logic_error("math matrix capacity exceeded");
+    auto& view=s.matrices[s.matrixCount++];view={};view.name=name;view.rows=view.columns=2;
+    view.parameters.fill(MathParameter::Count);std::copy(values.begin(),values.end(),view.values.begin());
+  }
+  void wireBox(Vec3 center,float radius,Vec3 color,std::string_view role) {
+    const auto vertex=[&](unsigned i){return center+Vec3{(i&1)?radius:-radius,(i&2)?radius:-radius,(i&4)?radius:-radius};};
+    for(unsigned i=0;i<8;++i)for(unsigned bit:{1U,2U,4U})if(!(i&bit))rod(vertex(i),vertex(i|bit),color,.012F,role);
+  }
+  void normWire(Vec3 center,double p,bool infinity,Vec3 color,std::string_view role) {
+    if(infinity){wireBox(center,1,color,role);return;}
+    for(unsigned axis=0;axis<3;++axis)for(unsigned i=0;i<24;++i) {
+      const auto at=[&](unsigned step){const double angle=2*pi*step/24;Triple d{};d[(axis+1)%3]=std::cos(angle);d[(axis+2)%3]=std::sin(angle);return center+tripleScene(normBoundary(d,p,false));};
+      rod(at(i),at(i+1),color,.015F,role);
+    }
+  }
+  void planeFrame(Vec3 center,Vec3 u,Vec3 v,Vec3 color,std::string_view role) {
+    const std::array<Vec3,4> corners{center-u-v,center+u-v,center+u+v,center-u+v};
+    for(unsigned i=0;i<4;++i)rod(corners[i],corners[(i+1)%4],color,.014F,role);
+  }
   void table(std::string_view title,std::array<std::string_view,4> columns,std::size_t count) {
     s.table={};s.table.title=title;s.table.columns=columns;s.table.columnCount=count;
   }
@@ -838,11 +1166,28 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Spherical:return sphericalLessons;
     case MathObjectKind::Quadratic:return quadraticLessons;
     case MathObjectKind::Roots:return rootsLessons;
+    case MathObjectKind::Psd:return psdLessons;
+    case MathObjectKind::Norm:return normLessons;
+    case MathObjectKind::Curve:return curveLessons;
+    case MathObjectKind::Lathe:return latheLessons;
+    case MathObjectKind::Boolean:return booleanLessons;
+    case MathObjectKind::Patch:return patchLessons;
     default:return {};
   }
 }
 std::span<const std::string_view> mathMatrixPresetNames() {
   static constexpr std::array<std::string_view,5> names{"Identity","Shear","Project onto xy","Stretch and reflect","Rotate 90 degrees about z"};return names;
+}
+std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned level) {
+  switch(kind) {
+    case MathObjectKind::Psd:return level<3?std::span<const MathObjectPreset>(psdPresets):std::span<const MathObjectPreset>{};
+    case MathObjectKind::Norm:return normPresets;
+    case MathObjectKind::Curve:return curvePresets;
+    case MathObjectKind::Lathe:return lathePresets;
+    case MathObjectKind::Boolean:return booleanPresets;
+    case MathObjectKind::Patch:return patchPresets;
+    default:return {};
+  }
 }
 MathObjects::MathObjects() {for(const auto& p:parameters)parameters_[index(p.id)]=p.initial;rebuild();}
 double MathObjects::parameter(MathParameter p) const {
@@ -854,6 +1199,9 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
   switch(p) {
+    case MathParameter::BooleanBlend:return parameter(MathParameter::BooleanOperation)==3;
+    case MathParameter::BooleanFit:return parameter(MathParameter::BooleanShapeB)==1&&parameter(MathParameter::BooleanOperation)==2;
+    case MathParameter::BooleanClearance:return parameter(MathParameter::BooleanShapeB)==1&&parameter(MathParameter::BooleanOperation)==2&&parameter(MathParameter::BooleanFit)==1;
     case MathParameter::SurfaceU:case MathParameter::SurfaceV:case MathParameter::DirectionAngle:case MathParameter::DescentRate:
       return parameter(MathParameter::Constraint)==0;
     case MathParameter::CircleAngle:return parameter(MathParameter::Constraint)!=0;
@@ -872,6 +1220,21 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
     case MathParameter::RootMultiplier:return snapshot_.level==1||snapshot_.level==2;
     case MathParameter::RootPower:return snapshot_.level==2;
     case MathParameter::CloudComponent:return snapshot_.level==2;
+    case MathParameter::PsdA:case MathParameter::PsdB:case MathParameter::PsdC:return snapshot_.level<3;
+    case MathParameter::PsdProbeAngle:return snapshot_.level==1;
+    case MathParameter::PsdMix:case MathParameter::PsdOtherAngle:case MathParameter::PsdRayScale:return snapshot_.level==2;
+    case MathParameter::NormP:return parameter(MathParameter::NormInfinity)==0;
+    case MathParameter::NormWire:return snapshot_.level!=1;
+    case MathParameter::LatheTurn:case MathParameter::LatheCut:return snapshot_.level>=1;
+    case MathParameter::LatheGuides:return snapshot_.level==1||snapshot_.level==3;
+    case MathParameter::LatheWall:case MathParameter::LatheFloor:return parameter(MathParameter::LatheHollow)==1;
+    case MathParameter::LatheSlices:return snapshot_.level>=2;
+    case MathParameter::LatheMethod:return snapshot_.level==2;
+    case MathParameter::CurveTravel:return snapshot_.level>=2;
+    case MathParameter::CurveProfile:case MathParameter::CurveRadius:case MathParameter::CurveAspect:
+    case MathParameter::CurveEndScale:case MathParameter::CurveTwist:case MathParameter::CurveGuides:return snapshot_.level==3;
+    case MathParameter::CurveNormP:return snapshot_.level==3&&parameter(MathParameter::CurveProfile)==2;
+    case MathParameter::NormOtherX:case MathParameter::NormOtherY:case MathParameter::NormOtherZ:return snapshot_.level==1;
     case MathParameter::CloudWhiten:return parameter(MathParameter::CloudX)>0&&parameter(MathParameter::CloudY)>0&&parameter(MathParameter::CloudZ)>0;
     case MathParameter::ProbabilitySeed:return snapshot_.level==0;
     case MathParameter::ProbabilityRow:return snapshot_.level==1;
@@ -891,6 +1254,8 @@ MathParameter MathObjects::playbackParameter() const {
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
+    case MathObjectKind::Curve:return MathParameter::CurveProgress;
+    case MathObjectKind::Lathe:return snapshot_.level==1?MathParameter::LatheTurn:MathParameter::Count;
     default:return MathParameter::Count;
   }
 }
@@ -908,10 +1273,23 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(p.owner!=snapshot_.kind)return {false,"parameter_not_owned_by_object"};
       if(!parameterAvailable(a.parameter))return {false,"parameter_not_available_at_this_level"};
       if(!std::isfinite(a.value)||a.value<p.minimum-1e-6||a.value>p.maximum+1e-6)return {false,"parameter_out_of_range"};
-      parameters_[index(a.parameter)]=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,p.maximum);
+      const double next=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,p.maximum);
+      if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
+      parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
+      if(snapshot_.kind==MathObjectKind::Curve||snapshot_.kind==MathObjectKind::Lathe)snapshot_.playing=false;
       if(a.parameter==MathParameter::MotionTime||a.parameter==MathParameter::HarmonicTime||a.parameter==MathParameter::FieldTime||a.parameter==MathParameter::FluxTime)snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
+      break;
+    }
+    case MathActionKind::ResetParameters: {
+      if(a.resetParameters.none())return {false,"empty_parameter_reset"};
+      auto next=parameters_;
+      for(const auto& p:parameters)if(a.resetParameters.test(index(p.id))){if(p.owner!=snapshot_.kind)return {false,"parameter_not_owned_by_object"};next[index(p.id)]=p.initial;}
+      if(snapshot_.kind==MathObjectKind::Lathe){double previous=0;for(unsigned i=index(MathParameter::LatheH1);i<=index(MathParameter::LatheH5);++i){if(next[i]<previous+.04-1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};previous=next[i];}if(previous>1-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
+      parameters_=next;snapshot_.playing=false;
+      if(a.resetParameters.test(index(MathParameter::Shortcut)))snapshot_.routeCount=1;
+      if(a.resetParameters.test(index(MathParameter::FieldPath))){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;}
       break;
     }
     case MathActionKind::Reset:
@@ -1028,24 +1406,32 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(!std::isfinite(a.value)||a.value<=0||a.value>12)return {false,"invalid_time_step"};
       const auto end=parameters[index(time)].maximum;
       if(parameter(time)>=end)return {false,"time_window_finished"};
-      parameters_[index(time)]=std::min(end,parameter(time)+a.value);
+      parameters_[index(time)]=std::min(end,parameter(time)+a.value*objects[index(snapshot_.kind)].playbackRate);
       if(parameter(time)>=end)snapshot_.playing=false;
+      break;
+    }
+    case MathActionKind::ObjectPreset: {
+      const auto presets=mathObjectPresets(snapshot_.kind,snapshot_.level);
+      if(a.vertex>=presets.size())return {false,"object_preset_not_available"};
+      const auto& preset=presets[a.vertex];snapshot_.playing=false;
+      for(unsigned i=0;i<preset.count;++i)parameters_[index(preset.parameters[i])]=preset.values[i];
       break;
     }
     case MathActionKind::Check:snapshot_.playing=false;check();return {true,"challenge_checked"};
     default:return {false,"unknown_action"};
   }
+  const auto touched=[&](MathParameter p){return (a.kind==MathActionKind::SetParameter&&a.parameter==p)||(a.kind==MathActionKind::ResetParameters&&a.resetParameters.test(index(p)));};
   if(a.kind==MathActionKind::Select||a.kind==MathActionKind::Reset||a.kind==MathActionKind::SetLevel||
-     (a.kind==MathActionKind::SetParameter&&(a.parameter==MathParameter::Modulus||a.parameter==MathParameter::ModValue||a.parameter==MathParameter::ModStep))) {
+     (touched(MathParameter::Modulus)||touched(MathParameter::ModValue)||touched(MathParameter::ModStep))) {
     modularWalkSteps_=0;modularVisitedMask_=1U<<remainder(static_cast<int>(parameter(MathParameter::ModValue)),static_cast<int>(parameter(MathParameter::Modulus)));
   }
   if(a.kind==MathActionKind::Select||a.kind==MathActionKind::Reset||a.kind==MathActionKind::SetLevel||a.kind==MathActionKind::ResetProbabilityWalk||
-     (a.kind==MathActionKind::SetParameter&&(a.parameter==MathParameter::ProbabilityRule||a.parameter==MathParameter::ProbabilityStay||a.parameter==MathParameter::ProbabilityStart||a.parameter==MathParameter::ProbabilitySeed))) {
+     (touched(MathParameter::ProbabilityRule)||touched(MathParameter::ProbabilityStay)||touched(MathParameter::ProbabilityStart)||touched(MathParameter::ProbabilitySeed))) {
     probabilityWalkCount_=1;probabilityWalk_[0]=static_cast<unsigned>(parameter(MathParameter::ProbabilityStart));
     probabilityRng_=static_cast<std::uint32_t>(parameter(MathParameter::ProbabilitySeed));if(!probabilityRng_)probabilityRng_=0x9e3779b9U;
   }
   if(a.kind==MathActionKind::Select||a.kind==MathActionKind::Reset||a.kind==MathActionKind::SetLevel||a.kind==MathActionKind::ResetBernoulli||
-     (a.kind==MathActionKind::SetParameter&&(a.parameter==MathParameter::BinomialTrials||a.parameter==MathParameter::BinomialChance||a.parameter==MathParameter::BinomialSeed))) {
+     (touched(MathParameter::BinomialTrials)||touched(MathParameter::BinomialChance)||touched(MathParameter::BinomialSeed))) {
     bernoulliSteps_=0;bernoulliPath_.fill(0);bernoulliRng_=static_cast<std::uint32_t>(parameter(MathParameter::BinomialSeed));if(!bernoulliRng_)bernoulliRng_=0x9e3779b9U;
   }
   if(a.kind!=MathActionKind::SwapBounds)reversedNegativeIntegral_=false;
@@ -1216,6 +1602,54 @@ void MathObjects::check() {
       }
       break;
     }
+    case MathObjectKind::Psd:
+      switch(snapshot_.level) {
+        case 0:solved=measured("PSD")==1&&measured("Rank")==1;good="Yes: a nonzero PSD boundary matrix has rank one.";bad="Try a=c=1 and move b to 1, or use the rank-one preset.";break;
+        case 1:solved=measured("Probe quadratic value")<-.1;good="Yes: this direction witnesses a negative quadratic value.";bad="Choose the saddle preset and move the probe angle to 90 degrees.";break;
+        case 2:solved=measured("Endpoint A PSD")==1&&measured("Endpoint A rank")==1&&measured("Smallest eigenvalue")>.1&&parameter(MathParameter::PsdMix)>0&&parameter(MathParameter::PsdMix)<1;good="Yes: the two rank-one directions combine into a positive definite matrix.";bad="Use the rank-one A preset, B angle 0, an interior mixture and positive ray scale.";break;
+        case 3:solved=parameter(MathParameter::PsdSlice)>0&&std::fabs(parameter(MathParameter::PsdObjective)-1)<1e-10;good="Yes: the objective plane supports the disk at its maximum.";bad="Keep the slice height positive and move the objective fraction to 1.";break;
+      }
+      break;
+    case MathObjectKind::Norm: {
+      unsigned nonzero=0;for(auto p:{MathParameter::NormX,MathParameter::NormY,MathParameter::NormZ})nonzero+=std::fabs(parameter(p))>1e-10;
+      switch(snapshot_.level) {
+        case 0:solved=parameter(MathParameter::NormInfinity)==0&&parameter(MathParameter::NormP)==1&&nonzero>=2&&std::fabs(measured("Vector norm")-1)<1e-10;good="Yes: this non-axis point is on the octahedron's unit boundary.";bad="Choose p=1 and set x=(0.5,0.5,0).";break;
+        case 1:solved=measured("Vector norm")>.1&&measured("Other vector norm")>.1&&measured("Triangle slack")>.05;good="Yes: the norm of the sum is strictly smaller than the sum of the norms.";bad="Choose two nonzero vectors that point in different directions, such as (1,0,0) and (0,1,0) at p=2.";break;
+        case 2:solved=parameter(MathParameter::NormInfinity)==0&&parameter(MathParameter::NormP)>=8&&nonzero>=2&&measured("Limit gap")<.05;good="Yes: a finite-p norm is now within 0.05 of the fixed vector's max norm.";bad="Keep two components nonzero and raise finite p to 8 or more.";break;
+        case 3:solved=measured("Support defined")==1&&std::fabs(parameter(MathParameter::NormSupport)-1)<1e-10;good="Yes: the plane is tight and the dual norm gives its support value.";bad="Choose a nonzero w and set the plane fraction to 1.";break;
+      }
+      break;
+    }
+    case MathObjectKind::Curve:
+      switch(snapshot_.level) {
+        case 0:solved=parameter(MathParameter::CurveProgress)>=.2&&parameter(MathParameter::CurveProgress)<=.8&&measured("Control tetrahedron volume")>.001&&measured("Smallest weight")>0;good="Yes: positive Bernstein weights place this curve point inside the control tetrahedron.";bad="Keep t between 0.2 and 0.8 and move one handle out of the controls' plane.";break;
+        case 1:solved=measured("Curvature defined")==1&&measured("Curvature")>.5;good="Yes: this regular point has curvature above 0.5.";bad="Use the curved pipe and move the position to 0.5, or bring its handles closer together.";break;
+        case 2:solved=measured("Distance travel defined")==1&&measured("Distance travel")==1&&measured("Parameter distance spread")>.1&&measured("Equal distance spread")<.0001;good="Yes: distance travel equalizes arc-length intervals despite the uneven parameter speed.";bad="Try the arched cable preset and choose equal distance steps.";break;
+        case 3:solved=measured("Sweep available")==1&&parameter(MathParameter::CurveEndScale)<=.25&&std::fabs(parameter(MathParameter::CurveTwist))>=90;good="Yes: the transported profile tapers and twists along a regular curve.";bad="Use a regular curve, reduce end scale to 0.25 or less and add at least 90 degrees of twist.";break;
+      }
+      break;
+    case MathObjectKind::Lathe:
+      switch(snapshot_.level) {
+        case 0:solved=measured("Interior bulge")>=.2-1e-12;good="Yes: an interior bulge is wider than both ends.";bad="Increase an interior point's radius or narrow both endpoint radii.";break;
+        case 1:solved=measured("Material volume")>1e-8&&std::fabs(parameter(MathParameter::LatheTurn)-180)<1e-10;good="Yes: a half revolution contains half the full-turn volume.";bad="Keep a nonzero profile and set the revolution angle to 180 degrees.";break;
+        case 2:solved=measured("Reference volume")>1e-8&&parameter(MathParameter::LatheSlices)>=16&&measured("Relative volume error")<.02;good="Yes: the midpoint sum is within two percent of the reference volume.";bad="Use at least 16 subdivisions and compare the errors from washers and shells.";break;
+        case 3:solved=measured("Boundary area reference")>1e-8&&parameter(MathParameter::LatheSlices)>=16&&measured("Relative area error")<.01&&measured("Normal defined")==1;good="Yes: the frustum bands approximate the boundary area within one percent at a regular point.";bad="Increase subdivisions to 16 or more and move the probe away from the axis.";break;
+      }
+      break;
+    case MathObjectKind::Boolean:
+      switch(snapshot_.level){
+        case 0:solved=parameter(MathParameter::BooleanOperation)==2&&measured("Field A")<-.01&&measured("Field B")<-.01&&measured("Result field")>.01;good="Yes: the cutter removed this point from the interior of A.";bad="Choose Drilled block and put the probe at (0,0,0).";break;
+        case 1:solved=parameter(MathParameter::BooleanOperation)==1&&measured("Field A")<-.01&&measured("Field B")<-.01;good="Yes: intersection retains points inside both inputs.";bad="Choose Drilled block, switch to Intersection and put the probe at the origin.";break;
+        case 2:solved=parameter(MathParameter::BooleanOperation)==3&&parameter(MathParameter::BooleanBlend)>0&&measured("Field A")>.001&&measured("Field B")>.001&&measured("Result field")<-.001&&measured("Surface normal defined")==1;good="Yes: the smooth blend adds material outside both inputs and has a regular sampled surface crossing.";bad="Choose Blended stones and keep the probe at (0.6,0.8,0) with blend width 0.5.";break;
+        case 3:solved=parameter(MathParameter::BooleanResolution)>=24&&measured("64-cell volume estimate")>1e-6&&measured("48/64 relative change")<.03;good="Yes: the two finer volume estimates agree within three percent. This is not an exact-error certificate.";bad="Try Drilled block with at least 24 requested cells; inspect the 48/64 comparison.";break;
+      }break;
+    case MathObjectKind::Patch:
+      switch(snapshot_.level){
+        case 0:solved=measured("Selected basis weight")>1-1e-9;good="Yes: the corner's Bernstein weight is 1, so the patch interpolates that control.";bad="Choose P00 and set the probe to u=0, v=0, or match another corner.";break;
+        case 1:solved=measured("Regular probe")==1&&std::fabs(measured("Normal y"))<.2;good="Yes: this regular sheet has a nearly horizontal unit normal.";bad="Try the Sail preset and inspect the normal near the centre.";break;
+        case 2:solved=measured("Regular probe")==1&&measured("Gaussian curvature")<-.03;good="Yes: negative Gaussian curvature identifies a saddle with opposite principal-curvature signs.";bad="Try Saddle terrain near u=0.5, v=0.5 and inspect K.";break;
+        case 3:solved=parameter(MathParameter::PatchResolution)>=24&&measured("Quadrature area")>.1&&measured("Mesh difference")<.5&&measured("Quadrature change")<.1;good="Yes: both comparisons agree at the requested tolerance. This is numerical evidence, not an exact error bound.";bad="Use Canopy with at least 24 subdivisions and inspect both percentage comparisons.";break;
+      }break;
     case MathObjectKind::Count:return;
   }
   snapshot_.feedback=solved?MathFeedback::Solved:MathFeedback::TryAgain;snapshot_.feedbackText=solved?good:bad;
@@ -1225,6 +1659,7 @@ void MathObjects::rebuild() {
   snapshot_.probabilityWalk=probabilityWalk_;snapshot_.probabilityWalkCount=probabilityWalkCount_;
   snapshot_.table.rowCount=0;snapshot_.table.columnCount=0;snapshot_.modularWalkSteps=modularWalkSteps_;snapshot_.modularVisitedMask=modularVisitedMask_;snapshot_.fieldPathReversed=fieldPathReversed_;
   snapshot_.partCount=0;snapshot_.labelCount=0;snapshot_.metricCount=0;snapshot_.allowedVertices.fill(false);
+  snapshot_.curve={};snapshot_.solid.vertexCount=snapshot_.solid.indexCount=0;
   snapshot_.plotCount=0;snapshot_.matrixCount=0;snapshot_.surface.rows=0;snapshot_.surface.columns=0;
   snapshot_.contours.count=0;snapshot_.contours.active=false;snapshot_.symmetry.active=false;
   SnapshotBuilder b(snapshot_);const auto value=[&](MathParameter p){return static_cast<float>(parameter(p));};
@@ -1989,6 +2424,450 @@ void MathObjects::rebuild() {
         auto& coefficients=b.plot("Exact integer coefficients of Phi_n");auto& series=coefficients.series[coefficients.seriesCount++];series.name="Coefficient of x^j";series.color=gold;series.stems=true;for(unsigned j=0;j<=polynomial.degree;++j)series.points[series.count++]={static_cast<double>(j),static_cast<double>(polynomial.coefficients[j])};
       }
       else {auto& plot=b.plot("Complex roots: real and imaginary coordinates");plot.equalAspect=true;auto& points=plot.series[plot.seriesCount++];points.name="Unit-circle roots";points.color=teal;for(unsigned j=0;j<=n;++j)points.points[points.count++]={std::cos(2*pi*j/n),std::sin(2*pi*j/n)};plot.hasMarker=true;const unsigned selectedPoint=level?selected:probe;plot.marker={std::cos(2*pi*selectedPoint/n),std::sin(2*pi*selectedPoint/n)};}
+      break;
+    }
+    case MathObjectKind::Psd: {
+      const unsigned level=snapshot_.level;
+      const ConeMatrix input{parameter(MathParameter::PsdA),parameter(MathParameter::PsdB),parameter(MathParameter::PsdC)};
+      ConeMatrix active=input,other{};double mixture=0,scale=1;
+      const double slice=parameter(MathParameter::PsdSlice),costAngle=parameter(MathParameter::PsdCostAngle)*pi/180;
+      const double costX=std::cos(costAngle),costY=std::sin(costAngle);
+      if(level==2) {
+        const double theta=parameter(MathParameter::PsdOtherAngle)*pi/180,u=std::cos(theta),v=std::sin(theta);
+        other={2*u*u,2*u*v,2*v*v};mixture=parameter(MathParameter::PsdMix);scale=parameter(MathParameter::PsdRayScale);
+        active={scale*((1-mixture)*input.a+mixture*other.a),scale*((1-mixture)*input.b+mixture*other.b),scale*((1-mixture)*input.c+mixture*other.c)};
+      }
+      if(level==3)active={slice*(1+costX),slice*costY,slice*(1-costX)};
+      const auto e=coneSpectrum(active);const auto point=conePosition(active);
+      const auto stateColor=e.psd?(e.rank<2?gold:teal):coral;
+      for(float height:{.6F,1.5F,3.0F})b.scaled(MathShape::Ring,{0,0,height},{height,height,height},muted,"psd_cone_ring");
+      for(unsigned i=0;i<8;++i){const double angle=2*pi*i/8;b.rod({},{static_cast<float>(3*std::cos(angle)),static_cast<float>(3*std::sin(angle)),3},muted,.012F,"psd_cone_ray");}
+      b.arrow({-2.2F,0,0},{2.3F,0,0},blue,"psd_x_axis");b.arrow({0,-2.2F,0},{0,2.3F,0},violet,"psd_y_axis");b.arrow({0,0,-2.2F},{0,0,3.4F},white,"psd_t_axis");
+      b.label("x=(a-c)/2",{2.3F,0,-.2F},blue);b.label("y=b",{0,2.4F,0},violet);b.label("t=(a+c)/2",{0,0,3.6F});
+      b.ball({},.045F,white,"psd_zero");b.ball(point,.105F,stateColor,"psd_matrix_point");
+      b.rod({},point,stateColor,.018F,"psd_selected_ray");
+      b.label(e.psd?(e.rank==0?"Zero matrix":e.rank==1?"PSD boundary: rank one":"Positive definite"):e.hi< -e.tolerance?"Negative definite":e.lo< -e.tolerance&&e.hi>e.tolerance?"Indefinite":"Negative semidefinite",point+Vec3{.14F,0,.2F},stateColor);
+      b.matrix2(level==2?"Mixture M":level==3?"Maximizing matrix A":"Symmetric matrix A",{active.a,active.b,active.b,active.c});
+      b.metric("Trace",active.a+active.c);b.metric("Determinant",active.a*active.c-active.b*active.b);
+      b.metric("Smallest eigenvalue",e.lo);b.metric("Largest eigenvalue",e.hi);b.metric("PSD",e.psd?1:0);b.metric("Rank",e.rank);
+      b.table("Matrix coefficients and principal minors",{"a","b","c","determinant"},4);
+      b.row(level==2?"M":level==3?"Optimum":"A",{active.a,active.b,active.c,active.a*active.c-active.b*active.b});
+      if(level==0) {
+        auto& plot=b.plot("Smallest eigenvalue as b changes",MathParameter::PsdB);
+        b.curve(plot,"Smallest eigenvalue",teal,-2,2,[&](double v){return coneSpectrum({input.a,v,input.c}).lo;});
+        b.curve(plot,"PSD threshold",muted,-2,2,[](double){return 0.0;});plot.hasMarker=true;plot.marker={input.b,e.lo};
+      }
+      if(level==1) {
+        const Vec3 offset{4.6F,0,0};const double theta=.5*std::atan2(2*input.b,input.a-input.c),c=std::cos(theta),d=std::sin(theta);
+        b.matrix2("Eigenvector columns: max, min",{c,-d,d,c});b.matrix2("Eigenvalues: max, min",{e.hi,0,0,e.lo});
+        auto& patch=snapshot_.surface;patch.rows=patch.columns=MathSurfacePatch::kResolution;
+        for(unsigned i=0;i<patch.rows;++i)for(unsigned j=0;j<patch.columns;++j) {
+          const double u=-1.2+2.4*j/(patch.columns-1),v=-1.2+2.4*i/(patch.rows-1),q=quadratic2(input,u,v);
+          const Vec3 pos=offset+Vec3{static_cast<float>(u),static_cast<float>(v),static_cast<float>(.3*q)};
+          const Vec3 normal=normalized(Vec3{static_cast<float>(-.6*(input.a*u+input.b*v)),static_cast<float>(-.6*(input.b*u+input.c*v)),1});
+          const float amount=static_cast<float>(std::clamp(std::fabs(q)/4,0.0,1.0));patch.vertices[i*patch.columns+j]={pos,normal,muted*(1-amount)+(q>=0?teal:coral)*amount};
+        }
+        const double angle=parameter(MathParameter::PsdProbeAngle)*pi/180,u=std::cos(angle),v=std::sin(angle),q=quadratic2(input,u,v);
+        const Vec3 probe=offset+Vec3{static_cast<float>(u),static_cast<float>(v),static_cast<float>(.3*q)};
+        b.ball(probe,.075F,gold,"psd_quadratic_probe");b.rod(offset+Vec3{static_cast<float>(u),static_cast<float>(v),0},probe,gold,.018F,"psd_quadratic_height");
+        b.arrow(offset,offset+Vec3{static_cast<float>(c),static_cast<float>(d),0},blue,"psd_max_eigenvector");
+        b.arrow(offset,offset+Vec3{static_cast<float>(-d),static_cast<float>(c),0},violet,"psd_min_eigenvector");
+        b.label("Height = 0.3 q(u,v)",offset+Vec3{-1,-1.6F,0});b.metric("Probe quadratic value",q);
+        auto& plot=b.plot("Quadratic value around the unit circle",MathParameter::PsdProbeAngle);
+        b.curve(plot,"q(cos(theta),sin(theta))",teal,0,180,[&](double degrees){return quadratic2(input,std::cos(degrees*pi/180),std::sin(degrees*pi/180));});
+        b.curve(plot,"Smallest eigenvalue",violet,0,180,[&](double){return e.lo;});b.curve(plot,"Largest eigenvalue",blue,0,180,[&](double){return e.hi;});plot.hasMarker=true;plot.marker={parameter(MathParameter::PsdProbeAngle),q};
+      }
+      if(level==2) {
+        const auto a=conePosition(input),c=conePosition(other);const auto unscaled=a*static_cast<float>(1-mixture)+c*static_cast<float>(mixture);
+        b.ball(a,.085F,blue,"psd_endpoint_a");b.ball(c,.085F,violet,"psd_endpoint_b");b.rod(a,c,blue,.02F,"psd_convex_segment");
+        b.ball(unscaled,.065F,white,"psd_unscaled_mixture");b.label("A",a+Vec3{0,0,.2F},blue);b.label("B",c+Vec3{0,0,.2F},violet);
+        b.matrix2("Endpoint A",{input.a,input.b,input.b,input.c});b.matrix2("Rank-one endpoint B",{other.a,other.b,other.b,other.c});
+        const auto ae=coneSpectrum(input);b.metric("Endpoint A PSD",ae.psd?1:0);b.metric("Endpoint A rank",ae.rank);b.metric("Mixture fraction",mixture);b.metric("Ray scale",scale);
+        b.row("A",{input.a,input.b,input.c,input.a*input.c-input.b*input.b});b.row("B",{other.a,other.b,other.c,other.a*other.c-other.b*other.b});
+        if(!ae.psd)b.label("A is outside: convexity premise fails",{-2,-2.4F,-.4F},coral);
+        auto& plot=b.plot("Smallest eigenvalue along the scaled mixture",MathParameter::PsdMix);
+        b.curve(plot,"lambda_min(M)",teal,0,1,[&](double f){return coneSpectrum({scale*((1-f)*input.a+f*other.a),scale*((1-f)*input.b+f*other.b),scale*((1-f)*input.c+f*other.c)}).lo;});
+        b.curve(plot,"PSD threshold",muted,0,1,[](double){return 0.0;});plot.hasMarker=true;plot.marker={mixture,e.lo};
+      }
+      if(level==3) {
+        const float t=static_cast<float>(slice);const Vec3 center{0,0,t},direction{static_cast<float>(costX),static_cast<float>(costY),0},tangent{-direction.y,direction.x,0};
+        const double fraction=parameter(MathParameter::PsdObjective),target=slice*fraction;
+        b.planeFrame(center,{2.2F,0,0},{0,2.2F,0},blue,"psd_trace_plane");
+        if(slice>0) {
+          b.scaled(MathShape::Ring,center,{t,t,1},white,"psd_feasible_slice");
+          for(unsigned i=0;i<8;++i){const double angle=2*pi*i/8;b.rod(center,center+Vec3{static_cast<float>(slice*std::cos(angle)),static_cast<float>(slice*std::sin(angle)),0},muted,.009F,"psd_feasible_disk");}
+        } else b.ball({},.09F,white,"psd_singleton_slice");
+        const Vec3 planeCenter=center+direction*static_cast<float>(target);
+        b.planeFrame(planeCenter,tangent*2.2F,{0,0,.7F},violet,"psd_objective_plane");
+        b.arrow(center,center+direction*.7F,gold,"psd_objective_direction");
+        if(std::fabs(fraction)<=1&&slice>0) {
+          const float half=static_cast<float>(slice*std::sqrt(std::max(0.0,1-fraction*fraction)));
+          b.rod(planeCenter-tangent*half,planeCenter+tangent*half,violet,.024F,"psd_objective_chord");
+        }
+        b.metric("Maximum objective",slice);b.metric("Plane objective",target);b.metric("Objective gap",slice-target);b.metric("Plane intersects disk",slice==0||std::fabs(fraction)<=1?1:0);
+        b.label("Fixed trace: disk in the cone",{-2,-2.4F,t},blue);b.label("Maximum",point+Vec3{.1F,0,-.25F},gold);
+        auto& plot=b.plot("Best objective versus moving plane",MathParameter::PsdObjective);
+        b.curve(plot,"Plane value",violet,-1.25,1.25,[&](double f){return slice*f;});b.curve(plot,"Maximum",gold,-1.25,1.25,[&](double){return slice;});plot.hasMarker=true;plot.marker={fraction,target};
+      }
+      break;
+    }
+    case MathObjectKind::Norm: {
+      const unsigned level=snapshot_.level;const double p=parameter(MathParameter::NormP);const bool infinity=parameter(MathParameter::NormInfinity)!=0;
+      const Triple x{parameter(MathParameter::NormX),parameter(MathParameter::NormY),parameter(MathParameter::NormZ)};
+      const double value=normLength(x,p,infinity),maximum=normLength(x,1,true);const Vec3 origin{};
+      if(level==1||parameter(MathParameter::NormWire)!=0)b.normWire(origin,p,infinity,teal,"norm_open_boundary");
+      else if(infinity)b.scaled(MathShape::Box,origin,{2,2,2},teal,"norm_exact_cube");
+      else {
+        auto& patch=snapshot_.surface;patch.rows=patch.columns=MathSurfacePatch::kResolution;
+        for(unsigned i=0;i<patch.rows;++i)for(unsigned j=0;j<patch.columns;++j) {
+          auto direction=sphereDirection(pi*i/(patch.rows-1),2*pi*j/(patch.columns-1));for(auto& v:direction)if(std::fabs(v)<1e-14)v=0;
+          const auto point=normBoundary(direction,p,false);Triple gradient{};
+          for(unsigned axis=0;axis<3;++axis)gradient[axis]=((point[axis]>0)-(point[axis]<0))*std::pow(std::fabs(point[axis]),p-1);
+          const Vec3 normal=normalized(tripleScene(gradient));const float shade=static_cast<float>(.2+.5*std::fabs(point[2]));
+          patch.vertices[i*patch.columns+j]={tripleScene(point),normal,teal*(1-shade)+blue*shade};
+        }
+      }
+      b.label(infinity?"Exact infinity-norm unit cube":p==1?"Unit octahedron":p==2?"Euclidean unit sphere":"Finite-p unit boundary",{-1.2F,-1.45F,0},teal);
+      b.metric("Infinity norm selected",infinity?1:0);if(!infinity)b.metric("Exponent p",p);
+      b.metric("Vector norm",value);b.metric("Max norm",maximum);b.metric("Normalization defined",value>0?1:0);
+      const auto normalizedPoint=normBoundary(x,p,infinity);if(value>0)b.metric("Unit boundary error",std::fabs(normLength(normalizedPoint,p,infinity)-1));
+      b.table(level==3?"Duality uses the vector controls as w":"One vector, several distance rules",{"1-norm","2-norm","selected norm","max norm"},4);
+      const auto addNormRow=[&](std::string_view label,const Triple& v){b.row(label,{normLength(v,1),normLength(v,2),normLength(v,p,infinity),normLength(v,1,true)});};
+      addNormRow(level==3?"w":"x",x);
+      if(level<3) {
+        b.arrow(origin,tripleScene(x),gold,"norm_vector_x");b.ball(tripleScene(x),.065F,gold,"norm_probe");b.label("x",tripleScene(x)+Vec3{.12F,0,.12F},gold);
+        if(value>0)b.ball(tripleScene(normalizedPoint),.055F,blue,"norm_normalized_probe");
+      }
+      if(level==0) {
+        auto& plot=b.plot("Unit boundary in the xy plane");plot.equalAspect=true;auto& line=plot.series[plot.seriesCount++];line.name="Norm one";line.color=teal;
+        for(unsigned i=0;i<=128;++i){const double t=2*pi*i/128;const auto v=normBoundary({std::cos(t),std::sin(t),0},p,infinity);line.points[line.count++]={v[0],v[1]};}
+      }
+      if(level==1) {
+        const Triple y{parameter(MathParameter::NormOtherX),parameter(MathParameter::NormOtherY),parameter(MathParameter::NormOtherZ)},sum{x[0]+y[0],x[1]+y[1],x[2]+y[2]};
+        const double second=normLength(y,p,infinity),total=normLength(sum,p,infinity);
+        b.arrow(tripleScene(x),tripleScene(sum),violet,"norm_translated_y");b.arrow(origin,tripleScene(sum),teal,"norm_sum");
+        b.ball(tripleScene(sum),.075F,teal,"norm_sum_tip");b.rod(origin,tripleScene(y),muted,.012F,"norm_y_at_origin");b.rod(tripleScene(y),tripleScene(sum),muted,.012F,"norm_parallelogram");
+        b.label("x+y",tripleScene(sum)+Vec3{.15F,0,.1F},teal);
+        b.metric("Other vector norm",second);b.metric("Sum norm",total);b.metric("Triangle slack",value+second-total);addNormRow("y",y);addNormRow("x+y",sum);
+        auto& plot=b.plot("Triangle inequality across finite p",infinity?MathParameter::Count:MathParameter::NormP);
+        b.curve(plot,"Norm of sum",teal,1,32,[&](double e){return normLength(sum,e);});b.curve(plot,"Sum of norms",violet,1,32,[&](double e){return normLength(x,e)+normLength(y,e);});
+        if(!infinity){plot.hasMarker=true;plot.marker={p,total};}
+      }
+      if(level==2) {
+        b.wireBox({},1,white,"norm_limit_cube");b.metric("Upper bound",infinity?maximum:std::pow(3.0,1/p)*maximum);b.metric("Limit gap",value-maximum);
+        auto& plot=b.plot("Fixed vector squeezed towards its max norm",infinity?MathParameter::Count:MathParameter::NormP);
+        b.curve(plot,"Finite p-norm",teal,1,32,[&](double e){return normLength(x,e);});b.curve(plot,"Max norm",gold,1,32,[&](double){return maximum;});b.curve(plot,"3^(1/p) times max",violet,1,32,[&](double e){return std::pow(3.0,1/e)*maximum;});
+        if(!infinity){plot.hasMarker=true;plot.marker={p,value};}
+      }
+      if(level==3) {
+        const bool dualInfinity=!infinity&&p==1;const double dualP=infinity?1:dualInfinity?1:p/(p-1);
+        const Vec3 dualCenter{3.5F,0,0};const double h=normLength(x,dualP,dualInfinity),fraction=parameter(MathParameter::NormSupport);
+        b.normWire(dualCenter,dualP,dualInfinity,violet,"norm_dual_boundary");
+        b.label(dualInfinity?"Dual: infinity-norm cube":dualP==1?"Dual: 1-norm octahedron":dualP==2?"Dual: Euclidean sphere":"Dual: q=p/(p-1)",dualCenter+Vec3{-1.2F,-1.45F,0},violet);
+        b.metric("Support value",h);b.metric("Support defined",h>0?1:0);b.metric("Plane fraction",fraction);
+        if(h>0) {
+          const auto contact=normSupport(x,p,infinity);const Vec3 point=tripleScene(contact),w=tripleScene(x),normal=normalized(w);
+          const auto u=normalized(cross(std::fabs(normal.z)>.9F?Vec3{0,1,0}:Vec3{0,0,1},normal)),v=cross(normal,u);
+          const auto planeCenter=normal*static_cast<float>(h*fraction/normLength(x,2));
+          b.planeFrame(planeCenter,u*1.45F,v*1.45F,gold,"norm_support_plane");b.arrow(point,point+normal*.65F,gold,"norm_support_normal");b.ball(point,.075F,gold,"norm_support_contact");
+          Triple dualPoint=x;for(auto& coordinate:dualPoint)coordinate/=h;
+          b.ball(dualCenter+tripleScene(dualPoint),.075F,gold,"norm_dual_contact");
+          b.metric("Contact norm",normLength(contact,p,infinity));b.metric("Pairing w dot contact",tripleDot(x,contact));b.metric("Dual point norm",normLength(dualPoint,dualP,dualInfinity));
+          b.label("Maximizing x",point+Vec3{.14F,0,.15F},gold);b.label("w / dual norm",dualCenter+tripleScene(dualPoint)+Vec3{0,0,.18F},gold);
+          auto& plot=b.plot("Support value and movable plane",MathParameter::NormSupport);
+          b.curve(plot,"Plane value",gold,0,1.4,[&](double f){return h*f;});b.curve(plot,"Dual norm: maximum",violet,0,1.4,[&](double){return h;});plot.hasMarker=true;plot.marker={fraction,h*fraction};
+        } else b.label("w=0: no supporting direction",{0,-1.8F,0},coral);
+      }
+      break;
+    }
+    case MathObjectKind::Curve: {
+      const unsigned level=snapshot_.level;
+      CubicBezier curve;for(unsigned i=0;i<4;++i)for(unsigned j=0;j<3;++j)curve.controls[i][j]=parameter(curveCoordinates[i][j]);
+      const auto arc=analyzeBezier(curve);const double progress=parameter(MathParameter::CurveProgress);
+      const bool distance=level>=2&&parameter(MathParameter::CurveTravel)==1;
+      const double t=distance?bezierParameterAtFraction(arc,progress):progress;
+      const auto sample=sampleBezier(curve,t);
+      const bool sweepAvailable=arc.regular&&arc.length()>0;
+      const bool guides=level!=3||parameter(MathParameter::CurveGuides)==1||!sweepAvailable;
+      const Vec3 left=level==2?Vec3{-2.6F,0,0}:Vec3{},right{2.6F,0,0};
+      const auto position=[&](double u){return tripleScene(sampleBezier(curve,u).position);};
+      snapshot_.curve.active=guides;snapshot_.curve.selected=static_cast<unsigned>(parameter(MathParameter::CurveControl));
+      constexpr std::array<std::string_view,4> controlNames{"P0","P1","P2","P3"};
+      for(unsigned i=0;i<4;++i) {
+        const auto p=left+tripleScene(curve.controls[i]);snapshot_.curve.controls[i]=p;
+        if(guides){const auto color=i==snapshot_.curve.selected?gold:muted;b.ball(p,.07F,color,"curve_control");b.label(controlNames[i],p+Vec3{0,0,.16F},color);}
+        if(guides&&i>0)b.rod(left+tripleScene(curve.controls[i-1]),p,muted,.012F,"curve_control_polygon");
+      }
+      const auto drawCurve=[&](Vec3 offset,unsigned segments,Vec3 color){for(unsigned i=0;i<segments;++i)b.rod(offset+position(static_cast<double>(i)/segments),offset+position(static_cast<double>(i+1)/segments),color,.02F,"bezier_curve");};
+      if(guides&&level!=2)drawCurve({},64,teal);
+      if(guides&&level!=2)b.ball(position(t),.09F,gold,"curve_probe");
+      b.metric("Parameter t",t);b.metric("Progress",progress);b.metric("Arc length estimate",arc.length());
+      b.metric("Length bound width",arc.bounds.upper-arc.bounds.lower);b.metric("Speed",sample.speed);b.metric("Tangent defined",sample.regular?1:0);
+      if(level==0) {
+        const auto construction=constructBezier(curve,t);
+        for(unsigned i=0;i<3;++i){b.ball(tripleScene(construction.first[i]),.06F,blue,"curve_first_interpolation");if(i)b.rod(tripleScene(construction.first[i-1]),tripleScene(construction.first[i]),blue,.014F,"curve_first_polygon");}
+        for(unsigned i=0;i<2;++i)b.ball(tripleScene(construction.second[i]),.07F,violet,"curve_second_interpolation");
+        b.rod(tripleScene(construction.second[0]),tripleScene(construction.second[1]),violet,.018F,"curve_second_polygon");
+        for(const auto edge:{std::array<unsigned,2>{0,2},{0,3},{1,3}})b.rod(tripleScene(curve.controls[edge[0]]),tripleScene(curve.controls[edge[1]]),muted,.008F,"curve_control_hull");
+        // Compute the certificate in double precision, independently of scene coordinates.
+        Triple da{},db{},dc{};for(unsigned j=0;j<3;++j){da[j]=curve.controls[1][j]-curve.controls[0][j];db[j]=curve.controls[2][j]-curve.controls[0][j];dc[j]=curve.controls[3][j]-curve.controls[0][j];}
+        const double determinant=da[0]*(db[1]*dc[2]-db[2]*dc[1])-da[1]*(db[0]*dc[2]-db[2]*dc[0])+da[2]*(db[0]*dc[1]-db[1]*dc[0]);
+        const std::array<double,4> weights{(1-t)*(1-t)*(1-t),3*t*(1-t)*(1-t),3*t*t*(1-t),t*t*t};
+        b.metric("Control tetrahedron volume",std::fabs(determinant)/6);b.metric("Weight sum",weights[0]+weights[1]+weights[2]+weights[3]);b.metric("Smallest weight",*std::min_element(weights.begin(),weights.end()));
+        b.table("Controls and Bernstein weights",{"x","y","z","weight"},4);for(unsigned i=0;i<4;++i)b.row(controlNames[i],{curve.controls[i][0],curve.controls[i][1],curve.controls[i][2],weights[i]});
+        auto& endpoints=b.plot("Endpoint influence",MathParameter::CurveProgress);
+        b.curve(endpoints,"P0 weight",blue,0,1,[](double u){return (1-u)*(1-u)*(1-u);});b.curve(endpoints,"P3 weight",teal,0,1,[](double u){return u*u*u;});endpoints.hasMarker=true;endpoints.marker={t,weights[0]};
+        auto& handles=b.plot("Handle influence",MathParameter::CurveProgress);
+        b.curve(handles,"P1 weight",violet,0,1,[](double u){return 3*u*(1-u)*(1-u);});b.curve(handles,"P2 weight",coral,0,1,[](double u){return 3*u*u*(1-u);});handles.hasMarker=true;handles.marker={t,weights[1]};
+      }
+      if(level==1) {
+        b.metric("Curvature defined",sample.regular?1:0);
+        if(sample.regular) {
+          b.metric("Curvature",sample.curvature);const auto tangent=tripleScene(sample.tangent);b.arrow(position(t),position(t)+tangent*.7F,gold,"curve_tangent");
+          Triple bend{};const double along=tripleDot(sample.second,sample.tangent);for(unsigned j=0;j<3;++j)bend[j]=sample.second[j]-along*sample.tangent[j];
+          if(normLength(bend,2)>1e-10){const auto normal=normalized(tripleScene(bend));b.arrow(position(t),position(t)+normal*.55F,coral,"curve_curvature_normal");}
+        } else b.label("Zero speed: tangent and curvature undefined",position(t)+Vec3{0,-.45F,0},coral);
+        b.table("Curve derivatives",{"x","y","z",{}},3);b.row("r(t)",{sample.position[0],sample.position[1],sample.position[2]});b.row("r'(t)",{sample.first[0],sample.first[1],sample.first[2]});b.row("r''(t)",{sample.second[0],sample.second[1],sample.second[2]});if(sample.regular)b.row("Unit tangent",{sample.tangent[0],sample.tangent[1],sample.tangent[2]});
+        auto& derivative=b.plot("Velocity components",MathParameter::CurveProgress);for(unsigned j=0;j<3;++j)b.curve(derivative,std::array<std::string_view,3>{"dx/dt","dy/dt","dz/dt"}[j],std::array{coral,teal,blue}[j],0,1,[&](double u){return sampleBezier(curve,u).first[j];});derivative.hasMarker=true;derivative.marker={t,sample.first[0]};
+        auto& speed=b.plot("Speed along the curve",MathParameter::CurveProgress);b.curve(speed,"Speed",gold,0,1,[&](double u){return sampleBezier(curve,u).speed;});speed.hasMarker=true;speed.marker={t,sample.speed};
+      }
+      if(level==2) {
+        drawCurve(left,48,blue);drawCurve(right,48,teal);
+        b.label("Equal parameter steps",left+Vec3{-1.6F,-2.35F,0},blue);b.label("Equal distance steps",right+Vec3{-1.6F,-2.35F,0},teal);
+        std::array<double,9> parameters{},equalArc{},uniformArc{};
+        for(unsigned i=0;i<=8;++i) {
+          const double f=i/8.0;parameters[i]=bezierParameterAtFraction(arc,f);equalArc[i]=bezierArcAt(arc,parameters[i]);uniformArc[i]=bezierArcAt(arc,f);
+          b.ball(left+position(f),.055F,blue,"curve_parameter_marker");b.ball(right+position(parameters[i]),.055F,teal,"curve_distance_marker");
+        }
+        b.ball(left+position(progress),.095F,distance?muted:gold,"curve_parameter_probe");b.ball(right+position(bezierParameterAtFraction(arc,progress)),.095F,distance?gold:muted,"curve_distance_probe");
+        b.table("Eight intervals: distance along the curve",{"progress","distance t","parameter ds","distance ds"},4);
+        double uniformMin=arc.length(),uniformMax=0,equalMin=arc.length(),equalMax=0;
+        for(unsigned i=1;i<=8;++i){const double u=uniformArc[i]-uniformArc[i-1],e=equalArc[i]-equalArc[i-1];uniformMin=std::min(uniformMin,u);uniformMax=std::max(uniformMax,u);equalMin=std::min(equalMin,e);equalMax=std::max(equalMax,e);b.row(std::array<std::string_view,8>{"1","2","3","4","5","6","7","8"}[i-1],{i/8.0,parameters[i],u,e});}
+        b.metric("Distance travel defined",arc.length()>0?1:0);b.metric("Distance travel",distance?1:0);
+        b.metric("Parameter distance spread",arc.length()>0?8*(uniformMax-uniformMin)/arc.length():0);b.metric("Equal distance spread",arc.length()>0?8*(equalMax-equalMin)/arc.length():0);
+        auto& travel=b.plot("Parameter selected by each travel rule",MathParameter::CurveProgress);
+        b.curve(travel,"Parameter travel",blue,0,1,[](double f){return f;});if(arc.length()>0)b.curve(travel,"Distance travel",teal,0,1,[&](double f){return bezierParameterAtFraction(arc,f);});travel.hasMarker=true;travel.marker={progress,t};
+        auto& lengths=b.plot("Distance in each of eight intervals");
+        b.curve(lengths,"Equal parameter steps",blue,1,8,[&](double x){const auto i=static_cast<unsigned>(std::round(x));return uniformArc[i]-uniformArc[i-1];});b.curve(lengths,"Equal distance steps",teal,1,8,[&](double x){const auto i=static_cast<unsigned>(std::round(x));return equalArc[i]-equalArc[i-1];});
+        if(arc.length()==0)b.label("Constant curve: distance travel undefined",{-.9F,1,0},coral);
+      }
+      if(level==3) {
+        const unsigned profile=static_cast<unsigned>(parameter(MathParameter::CurveProfile));const double exponent=profile==2?parameter(MathParameter::CurveNormP):2;
+        const double radius=parameter(MathParameter::CurveRadius),aspect=parameter(MathParameter::CurveAspect),endScale=parameter(MathParameter::CurveEndScale),twist=parameter(MathParameter::CurveTwist);
+        b.metric("Sweep available",sweepAvailable?1:0);b.metric("Start radius",radius);b.metric("End radius",radius*endScale);b.metric("Twist degrees",twist);b.metric("Section aspect",aspect);
+        const auto profileAt=[&](unsigned j){const double angle=2*pi*(j%16)/16;return normBoundary({std::cos(angle),std::sin(angle),0},exponent,profile==1);};
+        if(sweepAvailable) {
+          constexpr unsigned rings=21,columns=17;
+          std::array<Vec3,rings> centers{},tangents{},normals{},binormals{};
+          auto frame=seedBezierFrame(sampleBezier(curve,0).tangent);unsigned nextStep=1;
+          auto& patch=snapshot_.surface;patch.rows=rings+4;patch.columns=columns;
+          for(unsigned i=0;i<rings;++i) {
+            const double s=static_cast<double>(i)/(rings-1),u=bezierParameterAtFraction(arc,s);
+            // Fixed parameter anchors make the orientation independent of the
+            // probe, profile size and playback. Transport through each anchor.
+            while(nextStep<BezierArcTable::kKnots&&static_cast<double>(nextStep)/(BezierArcTable::kKnots-1)<u){frame=transportBezierFrame(frame,sampleBezier(curve,static_cast<double>(nextStep)/(BezierArcTable::kKnots-1)).tangent);++nextStep;}
+            const auto point=sampleBezier(curve,u);frame=transportBezierFrame(frame,point.tangent);
+            const double angle=twist*pi/180*s;Triple normal{},binormal{};
+            for(unsigned k=0;k<3;++k){normal[k]=std::cos(angle)*frame.normal[k]+std::sin(angle)*frame.binormal[k];binormal[k]=-std::sin(angle)*frame.normal[k]+std::cos(angle)*frame.binormal[k];}
+            centers[i]=tripleScene(point.position);tangents[i]=tripleScene(frame.tangent);normals[i]=tripleScene(normal);binormals[i]=tripleScene(binormal);
+            const double size=radius*((1-s)+s*endScale);const Vec3 color=teal*static_cast<float>(1-.45*s)+blue*static_cast<float>(.45*s);
+            for(unsigned j=0;j<columns;++j){const auto uv=profileAt(j);auto& vertex=patch.vertices[(i+2)*columns+j];vertex.position=centers[i]+normals[i]*static_cast<float>(size*uv[0])+binormals[i]*static_cast<float>(size*aspect*uv[1]);vertex.color=color;}
+          }
+          for(unsigned i=0;i<rings;++i)for(unsigned j=0;j<columns;++j) {
+            const unsigned k=j%16;const auto& previous=patch.vertices[(i+2)*columns+(k+15)%16].position;const auto& next=patch.vertices[(i+2)*columns+(k+1)%16].position;
+            const auto forward=patch.vertices[(std::min(i+1,rings-1)+2)*columns+k].position-patch.vertices[((i>0?i-1:0)+2)*columns+k].position;
+            const auto uv=profileAt(k);const auto radial=normalized(normals[i]*static_cast<float>(uv[0])+binormals[i]*static_cast<float>(uv[1]/aspect));
+            auto normal=cross(next-previous,forward);if(length(normal)<1e-7F)normal=radial;else normal=normalized(normal);if(dot(normal,radial)<0)normal=normal*-1;
+            patch.vertices[(i+2)*columns+j].normal=normal;
+          }
+          // Duplicate the rim for a hard cap normal. The centre rows collapse
+          // triangles deliberately, just as the sphere primitive's poles do.
+          for(unsigned j=0;j<columns;++j){const auto start=patch.vertices[2*columns+j],end=patch.vertices[(rings+1)*columns+j];patch.vertices[j]={centers.front(),tangents.front()*-1,teal};patch.vertices[columns+j]={start.position,tangents.front()*-1,teal};patch.vertices[(rings+2)*columns+j]={end.position,tangents.back(),blue};patch.vertices[(rings+3)*columns+j]={centers.back(),tangents.back(),blue};}
+        } else b.label("Sweep paused: move controls to remove a zero tangent",{-.9F,-1,0},coral);
+        auto& section=b.plot("Cross-section: start and end");
+        const auto outline=[&](std::string_view name,Vec3 color,double scale){auto& series=section.series[section.seriesCount++];series.name=name;series.color=color;series.count=65;for(unsigned j=0;j<series.count;++j){const double angle=2*pi*(j%64)/64;const auto uv=normBoundary({std::cos(angle),std::sin(angle),0},exponent,profile==1);series.points[j]={scale*uv[0],scale*aspect*uv[1]};}};
+        outline("Start profile",teal,radius);outline("End profile (before twist)",gold,radius*endScale);
+      }
+      break;
+    }
+    case MathObjectKind::Lathe: {
+      LatheInput input;
+      for(unsigned i=0;i<7;++i)input.radii[i]=parameter(static_cast<MathParameter>(index(MathParameter::LatheR0)+i));
+      for(unsigned i=1;i<6;++i)input.heights[i]=parameter(static_cast<MathParameter>(index(MathParameter::LatheH1)+i-1));
+      input.height=parameter(MathParameter::LatheHeight);input.hollow=parameter(MathParameter::LatheHollow)==1;input.wall=parameter(MathParameter::LatheWall);input.floor=parameter(MathParameter::LatheFloor);
+      const auto profile=prepareLathe(input);const unsigned level=snapshot_.level,n=static_cast<unsigned>(parameter(MathParameter::LatheSlices));
+      const double probe=parameter(MathParameter::LatheProbe),turn=level==0?1:parameter(MathParameter::LatheTurn)/360;
+      const auto measure=measureLathe(profile,turn);const unsigned selected=std::min(n-1,static_cast<unsigned>(probe*n));
+      LatheDisplay display{turn,parameter(MathParameter::LatheCut)/100};
+      if(level==3){display.bandFrom=static_cast<double>(selected)/n;display.bandTo=static_cast<double>(selected+1)/n;}
+      const bool shells=parameter(MathParameter::LatheMethod)==1;
+      const bool guides=level==0||level==2||parameter(MathParameter::LatheGuides)==1||measure.volume==0;
+      if(level==1||level==3)buildLatheSurface(profile,display,snapshot_.solid);
+      if(level==2)buildLatheElement(profile,display,n,shells,selected,snapshot_.solid);
+      const auto at=[&](double u,double angle=0,bool inside=false){const auto p=sampleLathe(profile,u);const double r=inside?p.inner:p.radius;return Vec3{static_cast<float>(r*std::cos(angle)),static_cast<float>(input.height*(u-.5)),static_cast<float>(r*std::sin(angle))};};
+      const auto wire=[&](double angle,unsigned steps,bool inside,Vec3 color){for(unsigned i=0;i<steps;++i){const double a=static_cast<double>(i)/steps,c=static_cast<double>(i+1)/steps;if(inside&&sampleLathe(profile,(a+c)/2).inner==0)continue;const double lo=inside?std::max(a,input.floor):a;if(lo>=c)continue;b.rod(at(lo,angle,inside),at(c,angle,inside),color,.013F,inside?"lathe_inner_profile":"lathe_outer_profile");}};
+      snapshot_.curve.active=guides;snapshot_.curve.count=7;snapshot_.curve.selectionParameter=MathParameter::LatheControl;snapshot_.curve.selected=static_cast<unsigned>(parameter(MathParameter::LatheControl));
+      constexpr std::array<std::string_view,7> names{"P0","P1","P2","P3","P4","P5","P6"};
+      for(unsigned i=0;i<7;++i){const auto point=at(input.heights[i]);snapshot_.curve.controls[i]=point;if(guides){const auto color=i==snapshot_.curve.selected?gold:blue;b.ball(point,.06F,color,"lathe_control");b.label(names[i],point+Vec3{.12F,0,0},color);}}
+      if(guides){b.rod({0,static_cast<float>(-input.height/2-.15),0},{0,static_cast<float>(input.height/2+.15),0},muted,.01F,"lathe_axis");wire(0,level==2?24:36,false,blue);}
+      if(level==0){wire(pi,36,false,muted);if(input.hollow)wire(0,36,true,violet);}
+      if(level==2){wire(pi,24,false,blue);if(input.hollow){wire(0,24,true,violet);wire(pi,24,true,violet);}}
+      const auto point=sampleLathe(profile,probe);b.metric("Height",input.height);if(level<3)b.metric("Maximum radius",profile.maximumRadius);
+      if(level==0){b.metric("Selected radius",input.radii[snapshot_.curve.selected]);b.metric("Selected height fraction",input.heights[snapshot_.curve.selected]);b.metric("Interior bulge",*std::max_element(input.radii.begin()+1,input.radii.end()-1)-std::max(input.radii.front(),input.radii.back()));b.metric("Full-turn material volume",measure.volume);b.metric("Cavity volume",measure.voidVolume);
+        b.table("Profile points",{"height fraction","height","outer radius","inner radius"},4);for(unsigned i=0;i<7;++i)b.row(names[i],{input.heights[i],input.height*input.heights[i],input.radii[i],sampleLathe(profile,input.heights[i]).inner});
+      }
+      if(level==0||level==1){auto& graph=b.plot("Outer and inner radius versus height fraction",MathParameter::LatheProbe);b.curve(graph,"Outer radius",blue,0,1,[&](double u){return sampleLathe(profile,u).radius;});if(input.hollow)b.curve(graph,"Inner radius",violet,0,1,[&](double u){return sampleLathe(profile,u).inner;});graph.hasMarker=true;graph.marker={probe,point.radius};}
+      if(level==1){const auto full=measureLathe(profile);b.metric("Revolution degrees",360*turn);b.metric("Material volume",measure.volume);b.metric("Full-turn volume",full.volume);b.metric("Cavity volume",measure.voidVolume);b.metric("Angular volume identity error",std::fabs(measure.volume-turn*full.volume));
+        if(guides){const double theta=2*pi*turn;wire(theta,24,false,gold);for(unsigned i=0;i<16;++i)b.rod(at(probe,theta*i/16),at(probe,theta*(i+1)/16),teal,.014F,"lathe_rotation_path");b.rod({0,static_cast<float>(input.height*(probe-.5)),0},at(probe,theta),gold,.015F,"lathe_generating_radius");}
+        auto& volume=b.plot("Volume grows with the revolution angle",MathParameter::LatheTurn);b.curve(volume,"Material volume",teal,0,360,[&](double degrees){return degrees/360*full.volume;});volume.hasMarker=true;volume.marker={360*turn,measure.volume};
+      }
+      if(level==2){const auto approximation=approximateLatheVolume(profile,n,shells,turn);b.metric("Reference volume",measure.volume);b.metric("Midpoint volume",approximation.volume);b.metric("Relative volume error",measure.volume>0?std::fabs(approximation.volume-measure.volume)/measure.volume:0);b.metric("Subdivisions",n);b.metric("Highlighted element",selected+1);b.metric("Element volume",approximation.elements[selected].volume);
+        if(shells)b.metric("Highlighted shell intervals",latheShell(profile,approximation.elements[selected].center).count);
+        b.table(shells?"All midpoint shells":"All midpoint disks / washers",{shells?"radius":"height",shells?"dr":"dh",shells?"total height":"section area","volume"},4);
+        constexpr std::array<std::string_view,32> rows{"1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32"};
+        for(unsigned i=0;i<n;++i){const auto& e=approximation.elements[i];b.row(rows[i],{e.center,e.step,e.section,e.volume});}
+        auto& density=b.plot(shells?"Shell integrand versus radius fraction":"Washer integrand versus height fraction",MathParameter::LatheProbe);
+        const auto integrand=[&](double u){if(shells){const double r=u*profile.maximumRadius;return turn*2*pi*r*latheShell(profile,r).height*profile.maximumRadius;}const auto q=sampleLathe(profile,u);return turn*pi*(q.radius*q.radius-q.inner*q.inner)*input.height;};
+        b.curve(density,"Volume density",teal,0,1,integrand);density.hasMarker=true;density.marker={probe,integrand(probe)};
+        auto& convergence=b.plot("Midpoint sums as subdivisions increase",MathParameter::LatheSlices);auto& estimates=convergence.series[convergence.seriesCount++];estimates.name="Midpoint sum";estimates.color=gold;estimates.count=29;for(unsigned i=4;i<=32;++i)estimates.points[i-4]={static_cast<double>(i),approximateLatheVolume(profile,i,shells,turn).volume};b.curve(convergence,"Reference",teal,4,32,[&](double){return measure.volume;});convergence.hasMarker=true;convergence.marker={static_cast<double>(n),approximation.volume};
+        b.label(shells?"Highlighted shell: all its height intervals":"Highlighted disk / washer",{-.9F,static_cast<float>(-input.height/2-.3),0},gold);
+      }
+      if(level==3){const double estimate=approximateLatheArea(profile,n,turn);const bool regular=point.radius>1e-10;const auto normal=normalized(Vec3{1,static_cast<float>(-point.slope),0}),meridian=normalized(Vec3{static_cast<float>(point.slope),1,0});const double residual=std::fabs(dot(normal,meridian));
+        b.metric("Outer lateral area",measure.outerArea);b.metric("Inner lateral area",measure.innerArea);b.metric("Base / rim / floor area",measure.closureArea);b.metric("Physical radial faces",measure.cutArea);b.metric("Boundary area reference",measure.area);b.metric("Frustum boundary area",estimate);b.metric("Relative area error",measure.area>0?std::fabs(estimate-measure.area)/measure.area:0);b.metric("Normal defined",regular?1:0);b.metric("Subdivisions",n);if(regular)b.metric("Normal orthogonality error",residual);
+        if(guides&&regular){const auto origin=at(probe);b.arrow(origin,origin+normal*.45F,gold,"lathe_normal");b.arrow(origin,origin+meridian*.45F,coral,"lathe_meridian_tangent");b.arrow(origin,origin+Vec3{0,0,.45F},violet,"lathe_circle_tangent");}
+        if(!regular)b.label("On the axis: parameter normal undefined",at(probe)+Vec3{.12F,0,0},coral);
+        auto& density=b.plot("Lateral area per unit height fraction",MathParameter::LatheProbe);b.curve(density,"Outer",teal,0,1,[&](double u){const auto q=sampleLathe(profile,u);return turn*2*pi*input.height*q.radius*std::hypot(1,q.slope);});if(input.hollow)b.curve(density,"Inner",violet,0,1,[&](double u){const auto q=sampleLathe(profile,u);return turn*2*pi*input.height*q.inner*std::hypot(1,q.slope);});density.hasMarker=true;density.marker={probe,turn*2*pi*input.height*point.radius*std::hypot(1,point.slope)};
+        auto& convergence=b.plot("Frustum bands approach the boundary area",MathParameter::LatheSlices);auto& estimates=convergence.series[convergence.seriesCount++];estimates.name="Frustum area";estimates.color=gold;estimates.count=5;constexpr std::array<unsigned,5> counts{4,8,16,24,32};for(unsigned i=0;i<counts.size();++i)estimates.points[i]={static_cast<double>(counts[i]),approximateLatheArea(profile,counts[i],turn)};b.curve(convergence,"Reference",teal,4,32,[&](double){return measure.area;});convergence.hasMarker=true;convergence.marker={static_cast<double>(n),estimate};
+      }
+      if(measure.volume==0&&level>0)b.label("No material volume at this setting",{-.8F,static_cast<float>(input.height/2+.3),0},coral);
+      break;
+    }
+    case MathObjectKind::Boolean: {
+      const auto v=[&](MathParameter p){return parameter(p);};BooleanInput input;
+      input.a.shape=static_cast<SolidShape>(static_cast<unsigned>(v(MathParameter::BooleanShapeA)));input.a.size=v(MathParameter::BooleanSizeA);
+      input.b.shape=static_cast<SolidShape>(static_cast<unsigned>(v(MathParameter::BooleanShapeB)));input.b.size=v(MathParameter::BooleanSizeB);input.b.center={v(MathParameter::BooleanX),v(MathParameter::BooleanY),v(MathParameter::BooleanZ)};input.b.yaw=v(MathParameter::BooleanYaw);input.b.pitch=v(MathParameter::BooleanPitch);
+      input.operation=static_cast<SolidOperation>(static_cast<unsigned>(v(MathParameter::BooleanOperation)));input.blend=v(MathParameter::BooleanBlend);
+      const auto solid=prepareBoolean(input);const unsigned level=snapshot_.level,n=static_cast<unsigned>(v(MathParameter::BooleanResolution));
+      const SolidPoint probe{v(MathParameter::BooleanProbeX),v(MathParameter::BooleanProbeY),v(MathParameter::BooleanProbeZ)};
+      const auto a=samplePrimitive(solid.a,probe),other=samplePrimitive(solid.b,probe),result=sampleBoolean(solid,probe);const bool boundary=std::fabs(a.value)<1e-9||std::fabs(other.value)<1e-9;
+      const auto surface=probeBooleanSurface(solid,probe);const bool section=v(MathParameter::BooleanSection)==1;
+      const auto mesh=buildBooleanSurface(solid,{n,section,probe[2]},snapshot_.solid);
+      const bool guides=v(MathParameter::BooleanGuides)==1||!snapshot_.solid.indexCount;
+      const auto outline=[&](const PreparedPrimitive& p,Vec3 color){
+        const auto world=[&](SolidPoint q){SolidPoint point=p.input.center;for(unsigned j=0;j<3;++j)for(unsigned k=0;k<3;++k)point[j]+=p.input.size*p.axes[k][j]*q[k];return tripleScene(point);};
+        const auto line=[&](SolidPoint x,SolidPoint y){b.rod(world(x),world(y),color,.009F,"boolean_input_outline");};
+        switch(p.input.shape){
+          case SolidShape::Box:{const auto corner=[](unsigned i){return SolidPoint{(i&1)?1.2:-1.2,(i&2)?1.1:-1.1,(i&4)?.7:-.7};};for(unsigned i=0;i<8;++i)for(unsigned bit:{1U,2U,4U})if(!(i&bit))line(corner(i),corner(i|bit));break;}
+          case SolidShape::Sphere:for(unsigned axis=0;axis<3;++axis)for(unsigned j=0;j<16;++j){SolidPoint x{},y{};x[(axis+1)%3]=std::cos(2*pi*j/16);x[(axis+2)%3]=std::sin(2*pi*j/16);y[(axis+1)%3]=std::cos(2*pi*(j+1)/16);y[(axis+2)%3]=std::sin(2*pi*(j+1)/16);line(x,y);}break;
+          case SolidShape::Cylinder:for(double z:{-3.0,3.0})for(unsigned j=0;j<16;++j)line({std::cos(2*pi*j/16),std::sin(2*pi*j/16),z},{std::cos(2*pi*(j+1)/16),std::sin(2*pi*(j+1)/16),z});for(unsigned j=0;j<4;++j)line({std::cos(pi*j/2),std::sin(pi*j/2),-3},{std::cos(pi*j/2),std::sin(pi*j/2),3});break;
+          case SolidShape::Arch:for(double z:{-3.0,3.0}){for(unsigned j=0;j<16;++j)line({std::cos(pi*j/16),.2+std::sin(pi*j/16),z},{std::cos(pi*(j+1)/16),.2+std::sin(pi*(j+1)/16),z});line({-1,.2,z},{-1,-2,z});line({-1,-2,z},{1,-2,z});line({1,-2,z},{1,.2,z});}for(double x:{-1.0,1.0})for(double y:{-2.0,.2})line({x,y,-3},{x,y,3});break;
+          case SolidShape::Count:break;
+        }
+      };
+      if(guides){outline(solid.a,teal);outline(solid.b,coral);const auto point=tripleScene(probe);b.ball(point,.055F,gold,"boolean_probe");b.label("Probe",point+Vec3{.1F,.13F,0},gold);
+        b.rod({static_cast<float>(solid.bounds.minimum[0]),point.y,point.z},{static_cast<float>(solid.bounds.maximum[0]),point.y,point.z},muted,.006F,"boolean_probe_line");
+        if(level==2&&surface.found){const auto at=tripleScene(surface.position);b.ball(at,.05F,violet,"boolean_surface_probe");if(surface.sample.regular){const auto normal=normalized(tripleScene(surface.sample.gradient));b.arrow(at,at+normal*.4F,gold,"boolean_surface_normal");}else b.label("Normal undefined here",at+Vec3{0,.2F,0},coral);}
+        if(level==3){SolidPoint lower{},upper{};for(unsigned j=0;j<3;++j){const double step=(solid.bounds.maximum[j]-solid.bounds.minimum[j])/n;const auto cell=static_cast<unsigned>(std::clamp(std::floor((probe[j]-solid.bounds.minimum[j])/step),0.0,static_cast<double>(n-1)));lower[j]=solid.bounds.minimum[j]+cell*step;upper[j]=lower[j]+step;}const auto corner=[&](unsigned i){return Vec3{static_cast<float>((i&1)?upper[0]:lower[0]),static_cast<float>((i&2)?upper[1]:lower[1]),static_cast<float>((i&4)?upper[2]:lower[2])};};for(unsigned i=0;i<8;++i)for(unsigned bit:{1U,2U,4U})if(!(i&bit))b.rod(corner(i),corner(i|bit),gold,.007F,"boolean_sample_cell");}
+        if(parameterAvailable(MathParameter::BooleanFit)&&v(MathParameter::BooleanFit)==1){const double radius=input.b.size-v(MathParameter::BooleanClearance);const Vec3 center{static_cast<float>(solid.a.bounds.maximum[0]+radius+.45),static_cast<float>(input.b.center[1]),static_cast<float>(input.b.center[2])};b.ball(center,static_cast<float>(radius),blue,"boolean_matching_ball");b.label("Matching ball (preview)",center+Vec3{0,static_cast<float>(radius+.15),0},blue);}
+      }
+      if(!snapshot_.solid.indexCount)b.label("No sampled material in this view",{0,2.2F,0},gold);
+      if(mesh.reduced)b.label("Mesh budget: resolution reduced",{0,2.5F,0},gold);
+      b.metric("Field A",a.value);b.metric("Field B",other.value);b.metric("Result field",result.value);
+      b.metric("Probe state (-1=in,0=edge,1=out)",std::fabs(result.value)<1e-9?0:result.value<0?-1:1);
+      if(level<3){b.metric("Requested mesh cells",n);b.metric("Actual mesh cells",mesh.cells);}
+      if(level==0){b.metric("Input boundary at probe",boundary);b.metric("Result gradient defined",result.regular);b.table("Probe classification: -1 interior, 0 boundary, 1 exterior",{"field","state",{},{}},2);const auto row=[&](std::string_view name,SolidSample q){b.row(name,{q.value,std::fabs(q.value)<1e-9?0.0:q.value<0?-1.0:1.0});};row("A",a);row("B",other);row("Result",result);}
+      if(level==1){b.metric("Input boundary at probe",boundary);b.metric("Hard Boolean result",booleanTruth(input.operation,a.value<0,other.value<0));b.metric("Result interior",result.value<0);b.metric("Blend added material",input.operation==SolidOperation::SmoothUnion&&a.value>0&&other.value>0&&result.value<0);
+        b.table(input.operation==SolidOperation::SmoothUnion?"Hard union truth table (blend baseline)":"Boolean truth table (interior points)",{"A","B","result","Probe match"},4);constexpr std::array<std::string_view,4> names{"Neither","B only","A only","Both"};for(unsigned i=0;i<4;++i){const bool ai=(i&2)!=0,bi=(i&1)!=0;b.row(names[i],{static_cast<double>(ai),static_cast<double>(bi),static_cast<double>(booleanTruth(input.operation,ai,bi)),static_cast<double>(!boundary&&ai==(a.value<0)&&bi==(other.value<0))});}}
+      if(level==2){b.metric("Blend added material",input.operation==SolidOperation::SmoothUnion&&a.value>0&&other.value>0&&result.value<0);b.metric("Surface crossing found",surface.found);b.metric("Surface normal defined",surface.found&&surface.sample.regular);if(surface.found){b.metric("Surface crossing residual",std::fabs(surface.sample.value));b.metric("Surface gradient magnitude",length(tripleScene(surface.sample.gradient)));}
+        b.table("Gradients at probe; last row at the surface crossing",{"dF/dx","dF/dy","dF/dz","defined"},4);const auto row=[&](std::string_view name,SolidSample q){b.row(name,{q.gradient[0],q.gradient[1],q.gradient[2],static_cast<double>(q.regular)});};row("A",a);row("B",other);row("Result",result);if(surface.found)row("Surface crossing",surface.sample);}
+      if(level<3){auto& plot=b.plot("Defining fields along the probe's x line",MathParameter::BooleanProbeX);const double left=std::max(-3.0,solid.bounds.minimum[0]),right=std::min(3.0,solid.bounds.maximum[0]);b.curve(plot,"A",teal,left,right,[&](double x){return samplePrimitive(solid.a,{x,probe[1],probe[2]}).value;});b.curve(plot,"B",coral,left,right,[&](double x){return samplePrimitive(solid.b,{x,probe[1],probe[2]}).value;});b.curve(plot,"Result",gold,left,right,[&](double x){return sampleBoolean(solid,{x,probe[1],probe[2]}).value;});plot.hasMarker=true;plot.marker={probe[0],result.value};}
+      if(level==3){constexpr std::array<unsigned,7> counts{12,16,20,24,28,48,64};std::array<SolidVolume,7> estimates{};for(unsigned i=0;i<counts.size();++i)estimates[i]=measureBooleanVolume(solid,counts[i]);const double fine=estimates.back().volume,change=std::fabs(fine-estimates[5].volume);const auto selected=measureBooleanVolume(solid,n);
+        b.metric("Midpoint full volume",selected.volume);b.metric("64-cell volume estimate",fine);b.metric("48/64 relative change",fine>0?change/fine:change==0?0:1);b.metric("Cell volume",selected.cellVolume);b.metric("Requested mesh cells",n);b.metric("Actual mesh cells",mesh.cells);b.metric("Visible mesh volume",mesh.volume);b.metric("Mesh field residual",mesh.maximumResidual);
+        b.table("Midpoint volume comparison (full solid)",{"cells/axis","occupied","volume","delta vs 64"},4);constexpr std::array<std::string_view,7> names{"12 cells","16 cells","20 cells","24 cells","28 cells","48 cells","64 cells"};for(unsigned i=0;i<counts.size();++i)b.row(names[i],{static_cast<double>(counts[i]),static_cast<double>(estimates[i].inside),estimates[i].volume,estimates[i].volume-fine});
+        auto& plot=b.plot("Volume estimates as sampling increases");auto& series=plot.series[plot.seriesCount++];series.name="Midpoint volume";series.color=gold;series.count=counts.size();for(unsigned i=0;i<counts.size();++i)series.points[i]={static_cast<double>(counts[i]),estimates[i].volume};b.curve(plot,"64-cell comparison",teal,12,64,[&](double){return fine;});plot.hasMarker=true;plot.marker={static_cast<double>(n),selected.volume};
+      }
+      break;
+    }
+    case MathObjectKind::Patch: {
+      BicubicPatch patch;
+      for(unsigned i=0;i<16;++i)for(unsigned k=0;k<3;++k)patch.controls[i][k]=parameter(static_cast<MathParameter>(index(MathParameter::PatchP00X)+3*i+k));
+      const unsigned level=snapshot_.level,selected=static_cast<unsigned>(parameter(MathParameter::PatchControl)),n=static_cast<unsigned>(parameter(MathParameter::PatchResolution));
+      const double u=parameter(MathParameter::PatchU),v=parameter(MathParameter::PatchV);const auto probe=samplePatch(patch,u,v);
+      constexpr std::array modes{PatchColour::Influence,PatchColour::Material,PatchColour::Gaussian,PatchColour::AreaDensity};
+      buildPatchSurface(patch,{n,selected,modes[level]},snapshot_.solid);const auto mesh=measurePatchMesh(patch,n);
+      const bool guides=parameter(MathParameter::PatchGuides)==1||!snapshot_.solid.indexCount;
+      constexpr std::array<std::string_view,16> names{"P00","P01","P02","P03","P10","P11","P12","P13","P20","P21","P22","P23","P30","P31","P32","P33"};
+      const auto at=[&](double a,double c){return tripleScene(samplePatch(patch,a,c).position);};
+      const auto point=tripleScene(probe.position),normal=tripleScene(probe.normal);
+      snapshot_.curve.active=guides;snapshot_.curve.count=16;snapshot_.curve.selected=selected;snapshot_.curve.selectionParameter=MathParameter::PatchControl;
+      for(unsigned i=0;i<16;++i)snapshot_.curve.controls[i]=tripleScene(patch.controls[i]);
+      if(guides) {
+        for(unsigned i=0;i<4;++i)for(unsigned j=0;j<4;++j){const unsigned k=4*i+j;const auto p=tripleScene(patch.controls[k]);
+          if(i<3)b.rod(p,tripleScene(patch.controls[k+4]),muted,.009F,"patch_control_u");
+          if(j<3)b.rod(p,tripleScene(patch.controls[k+1]),muted,.009F,"patch_control_v");
+          b.ball(p,k==selected?.065F:.04F,k==selected?gold:white,"patch_control_point");b.label(names[k],p+Vec3{0,.11F,0},k==selected?gold:white);
+        }
+        for(unsigned i=0;i<16;++i){const double a=static_cast<double>(i)/16,c=static_cast<double>(i+1)/16;
+          b.rod(at(a,v),at(c,v),coral,.012F,"patch_u_section");b.rod(at(u,a),at(u,c),blue,.012F,"patch_v_section");
+        }
+        b.ball(point,.05F,gold,"patch_probe");b.label("S(u,v)",point+Vec3{0,.15F,0},gold);
+        if(level>=1&&probe.regular) {
+          const auto du=normalized(tripleScene(probe.du)),dv=normalized(tripleScene(probe.dv));
+          b.arrow(point,point+du*.6F,coral,"patch_u_tangent");b.arrow(point,point+dv*.6F,blue,"patch_v_tangent");b.arrow(point,point+normal*.65F,gold,"patch_normal");
+          b.label("u",point+du*.7F,coral);b.label("v",point+dv*.7F,blue);b.label("N",point+normal*.78F,gold);
+          b.planeFrame(point,du*.32F,normalized(cross(normal,du))*.32F,white,"patch_tangent_plane");
+        }
+        if(level==3) {
+          const unsigned i=std::min(n-1,static_cast<unsigned>(u*n)),j=std::min(n-1,static_cast<unsigned>(v*n));
+          const double a=static_cast<double>(i)/n,c=static_cast<double>(i+1)/n,d=static_cast<double>(j)/n,e=static_cast<double>(j+1)/n;
+          const std::array corners{at(a,d),at(c,d),at(c,e),at(a,e)};
+          for(unsigned k=0;k<4;++k)b.rod(corners[k],corners[(k+1)%4],gold,.022F,"patch_area_cell");b.rod(corners[0],corners[2],gold,.012F,"patch_area_diagonal");
+        }
+      }
+      if(!probe.regular)b.label("Normal / curvature undefined",point+Vec3{0,.32F,0},gold);
+      const auto vectorRow=[&](std::string_view label,BezierPoint a){b.row(label,{a[0],a[1],a[2],std::hypot(a[0],a[1],a[2])});};
+      if(level==0) {
+        double weightSum=0;for(double weight:probe.weights)weightSum+=weight;
+        b.metric("Selected basis weight",probe.weights[selected]);b.metric("Weight sum",weightSum);b.metric("Triangulated area",mesh.area,"units^2");
+        b.table("Control positions and influence at the UV probe",{"x","y","z","weight"},4);
+        for(unsigned i=0;i<16;++i)b.row(names[i],{patch.controls[i][0],patch.controls[i][1],patch.controls[i][2],probe.weights[i]});
+        auto& plot=b.plot("Selected control influence along u",MathParameter::PatchU);b.curve(plot,"Bernstein weight",gold,0,1,[&](double t){return samplePatch(patch,t,v).weights[selected];});plot.hasMarker=true;plot.marker={u,probe.weights[selected]};
+      }
+      if(level==1) {
+        b.metric("Area density",probe.jacobian);b.metric("Regular probe",probe.regular);
+        if(probe.regular){b.metric("Normal y",probe.normal[1]);b.metric("Normal dot S_u",probe.normal[0]*probe.du[0]+probe.normal[1]*probe.du[1]+probe.normal[2]*probe.du[2]);b.metric("Normal dot S_v",probe.normal[0]*probe.dv[0]+probe.normal[1]*probe.dv[1]+probe.normal[2]*probe.dv[2]);b.metric("Tangent angle",std::acos(std::clamp(probe.F/std::sqrt(probe.E*probe.G),-1.0,1.0))*180/pi,"degrees");}
+        b.table(probe.regular?"Partial derivatives and oriented normal":"Partial derivatives; normal is undefined",{"x","y","z","length"},4);
+        vectorRow("S(u,v)",probe.position);vectorRow("S_u",probe.du);vectorRow("S_v",probe.dv);if(probe.regular)vectorRow("Unit normal",probe.normal);
+        auto& plot=b.plot("Area density along u",MathParameter::PatchU);b.curve(plot,"|S_u cross S_v|",gold,0,1,[&](double t){return samplePatch(patch,t,v).jacobian;});plot.hasMarker=true;plot.marker={u,probe.jacobian};
+      }
+      if(level<=1) {
+        auto& plot=b.plot("Surface height along v",MathParameter::PatchV);b.curve(plot,"World y at fixed u",blue,0,1,[&](double t){return samplePatch(patch,u,t).position[1];});plot.hasMarker=true;plot.marker={v,probe.position[1]};
+      }
+      if(level==2) {
+        if(probe.regular){b.metric("Gaussian curvature",probe.gaussian,"1/units^2");b.metric("Mean curvature",probe.mean,"1/units");}
+        b.metric("Regular probe",probe.regular);b.metric("Area density",probe.jacobian);
+        if(probe.regular){b.metric("Principal curvature min",probe.principalMin,"1/units");b.metric("Principal curvature max",probe.principalMax,"1/units");}
+        b.matrix2("First fundamental form",{probe.E,probe.F,probe.F,probe.G});
+        if(probe.regular)b.matrix2("Second fundamental form",{probe.e,probe.f,probe.f,probe.g});
+        b.table(probe.regular?"Surface derivatives at the probe":"Singular probe: curvature and normal unavailable",{"x","y","z","length"},4);
+        vectorRow("S_u",probe.du);vectorRow("S_v",probe.dv);vectorRow("S_uu",probe.duu);vectorRow("S_uv",probe.duv);vectorRow("S_vv",probe.dvv);
+        std::array<PatchSample,129> line{};bool regularLine=probe.regular;for(unsigned i=0;i<line.size();++i){line[i]=samplePatch(patch,static_cast<double>(i)/(line.size()-1),v);regularLine=regularLine&&line[i].regular;}
+        b.metric("Curvature trace available",regularLine);
+        if(regularLine)for(unsigned view=0;view<2;++view){auto& plot=b.plot(view?"Mean curvature along u":"Gaussian curvature along u",MathParameter::PatchU);auto& series=plot.series[plot.seriesCount++];series.name=view?"H":"K";series.color=view?teal:coral;series.count=line.size();
+          for(unsigned i=0;i<line.size();++i)series.points[i]={static_cast<double>(i)/(line.size()-1),view?line[i].mean:line[i].gaussian};plot.hasMarker=probe.regular;plot.marker={u,view?probe.mean:probe.gaussian};
+        }
+      }
+      if(level==3) {
+        const double coarse=integratePatchArea(patch,8),fine=integratePatchArea(patch,16);
+        const bool relative=fine>1e-12;const auto percentage=[&](double a){return relative?100*std::fabs(a-fine)/fine:std::fabs(a-fine);};
+        b.metric("Triangulated area",mesh.area,"units^2");b.metric("Quadrature area",fine,"units^2");b.metric(relative?"Mesh difference":"Absolute mesh difference",percentage(mesh.area),relative?"%":"units^2");b.metric(relative?"Quadrature change":"Absolute quadrature change",percentage(coarse),relative?"%":"units^2");
+        b.metric("Area density",probe.jacobian);b.metric("Mesh subdivisions",n);b.metric("Mesh triangles",snapshot_.solid.indexCount/3);b.metric("Skipped triangles",mesh.skipped);
+        b.table("Area convergence; quadrature is an estimate",{"cells/axis","triangle area",relative?"vs quadrature %":"absolute difference","triangles"},4);
+        auto& plot=b.plot("Area as mesh resolution increases",MathParameter::PatchResolution);auto& line=plot.series[plot.seriesCount++];line.name="Triangulated area";line.color=gold;line.count=8;
+        constexpr std::array<std::string_view,8> labels{"4 cells","8 cells","12 cells","16 cells","20 cells","24 cells","28 cells","32 cells"};
+        for(unsigned i=0;i<8;++i){const unsigned cells=4*(i+1);const auto estimate=measurePatchMesh(patch,cells);b.row(labels[i],{static_cast<double>(cells),estimate.area,percentage(estimate.area),static_cast<double>(estimate.triangles)});line.points[i]={static_cast<double>(cells),estimate.area};}
+        b.curve(plot,"Gauss comparison",teal,4,32,[&](double){return fine;});plot.hasMarker=true;plot.marker={static_cast<double>(n),mesh.area};
+      }
       break;
     }
     case MathObjectKind::Count:throw std::logic_error("invalid math object state");

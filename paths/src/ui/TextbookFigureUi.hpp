@@ -14,6 +14,11 @@ struct TextbookFigureUiState {
   RowPlaneAction pending{RowPlaneActionKind::Reset};
   bool hasSystemPending=false;
   SystemAction systemPending{SystemActionKind::ResetExploration};
+  bool hasObjectPending=false;
+  ObjectLessonAction objectPending{ObjectLessonActionKind::Reset};
+  unsigned objectSection=0;
+  std::string_view sceneId;
+  bool scenePractice=false;
   int prediction=-1,reason=-1;
   bool originalEquations=false;
   int target=0,other=1;
@@ -25,7 +30,8 @@ struct TextbookFigureUiState {
 // A topic plugs its model and controls into these shared title/viewport/control regions.
 // Returns true only when this frame actually supplies a scene to the native host.
 void applySystemLessonPending(SystemLesson&,TextbookFigureUiState&);
+void applyObjectLessonPending(Textbook&,TextbookFigureUiState&);
 void drawSystemExercise(SystemLesson&,TextbookFigureUiState&,MatrixBoardUiState&,NativeMath&);
-bool drawTextbookFigure(const BookFigureSpec&,Textbook&,MatrixBoardUiState&,
+bool drawTextbookFigure(const BookFigureSpec&,Textbook&,MatrixBoardUiState*,
                        TextbookFigureUiState&,NativeMath&,SceneViewport,float textScale);
 } // namespace paths

@@ -26,7 +26,7 @@ void nextControl(const char* label,float width){
   const float edge=ImGui::GetWindowPos().x+ImGui::GetCursorPosX()+width;
   if(ImGui::GetItemRectMax().x+ImGui::GetStyle().ItemSpacing.x+required<edge)ImGui::SameLine();
 }
-const NativeMath::Equation& equation(NativeMath& math,TextbookUiState& ui,const std::string& source){
+const NativeMath::Equation& equation(NativeMath& math,BookReadingUiState& ui,const std::string& source){
   const float pixels=ImGui::GetFontSize()*1.1f;
   if(pixels!=ui.equationPixels){ui.equations.clear();ui.equationPixels=pixels;}
   const auto found=std::find_if(ui.equations.begin(),ui.equations.end(),[&](const auto& e){return e.source==source;});
@@ -35,7 +35,7 @@ const NativeMath::Equation& equation(NativeMath& math,TextbookUiState& ui,const 
   if(ui.equations.size()==64)ui.equations.clear();
   ui.equations.push_back({source,math.layout(source,pixels,true)});return ui.equations.back().layout;
 }
-void passages(NativeMath& math,TextbookUiState& ui,std::span<const BookPassage> content,float width,const char* id){
+void passages(NativeMath& math,BookReadingUiState& ui,std::span<const BookPassage> content,float width,const char* id){
   ImGui::PushID(id);
   for(unsigned i=0;i<content.size();++i){
     const auto& p=content[i];ImGui::PushID(static_cast<int>(i));
@@ -44,9 +44,9 @@ void passages(NativeMath& math,TextbookUiState& ui,std::span<const BookPassage> 
       // Use the current reading size explicitly: display mathematics scales with prose.
       const auto& layout=equation(math,ui,p.text);
       if(!layout.error.empty()){
-        ImGui::TextWrapped("Equation source: %s",p.text.c_str());
+        ++ui.fallbacks;ImGui::TextWrapped("Equation source: %s",p.text.c_str());
       }else {
-        const std::string number=*p.number?"("+std::string(p.number)+")":"";
+        const std::string number=p.number.empty()?"":"("+p.number+")";
         const float labelWidth=number.empty()?0:ImGui::CalcTextSize(number.c_str()).x+24;
         const float inset=8;
         const bool overflow=layout.width+labelWidth+2*inset>width;
@@ -82,59 +82,65 @@ void figure(Textbook& book,TextbookUiState& ui,float width,const char* number=""
   ImGui::TextWrapped("%s",view.status.c_str());
 }
 void lesson(Textbook& book,TextbookUiState& ui,NativeMath& math,float width){
-  static constexpr std::array<const char*,7> names{"","Definition","Proposition","Example","Figure","Exercise",""};
-  static constexpr std::array<const char*,4> helpNames{"proof","hint","answer","solution"};
   const auto view=book.view();
   for(const auto& b:book.lessonView()){
-    ImGui::PushID(b.id);ImGui::Spacing();
-    const float blockTop=ImGui::GetCursorScreenPos().y-ImGui::GetWindowPos().y;
-    const std::string title=*b.number?std::string(names[static_cast<unsigned>(b.kind)])+" "+b.number+" / "+b.title:b.title;
-    heading(title.c_str());
     if(view.anchorRevision!=ui.seenAnchorRevision&&view.anchor==b.id){
-      ImGui::SetScrollFromPosY(blockTop,0.f);ui.seenAnchorRevision=view.anchorRevision;ui.restoreFrames=0;
+      ImGui::SetScrollFromPosY(ImGui::GetCursorScreenPos().y-ImGui::GetWindowPos().y,0.f);
+      ui.seenAnchorRevision=view.anchorRevision;ui.restoreFrames=0;
     }
-    passages(math,ui,b.body,width,"body");
-    if(b.kind==BookBlockKind::Figure){
+    const auto action=drawBookBlock(b,ui,math,width,[&]{
       if(matrixChapter()[view.section].figure.kind!=BookFigureKind::None){
         if(ImGui::Button("Explore this figure"))ui.presentation=LessonPresentation::Figure;
-        ImGui::TextWrapped("The live figure follows its example's matrix and row-operation history. Use Read + figure to keep it beside the explanation, or Figure only for a larger workspace.");
+        ImGui::TextWrapped("The live figure follows the current teaching example. Use Read + figure to keep it beside the explanation, or Figure only for a larger workspace.");
       }else figure(book,ui,width,b.number);
-    }
-    for(unsigned h=0;h<b.help.size();++h){
-      const auto& help=b.help[h];if(!help.available)continue;
-      ImGui::PushID(static_cast<int>(h));
-      const std::string label=std::string(help.open?"Hide ":"Show ")+helpNames[h];
-      if(ImGui::Button(label.c_str()))queue(ui,{BookActionKind::ToggleHelp,view.section,0,b.id,static_cast<BookHelp>(h)});
-      if(help.open){ImGui::Spacing();passages(math,ui,help.passages,width,"disclosure");}
-      ImGui::PopID();
-    }
-    if(!b.references.empty()){
-      ImGui::TextDisabled("Refer back to");
-      for(const auto& ref:b.references){
-        // A wrapped link remains usable with 200% text in a narrow column.
-        const auto size=ImGui::CalcTextSize(ref.label,nullptr,false,width-12);
-        ImGui::PushID(ref.target);
-        const auto start=ImGui::GetCursorScreenPos();
-        if(ImGui::Selectable("##reference",false,0,{width,size.y+10}))queue(ui,{BookActionKind::OpenBlock,view.section,0,ref.target});
-        ImGui::GetWindowDrawList()->AddText(nullptr,0,{start.x+5,start.y+5},ImGui::GetColorU32(ImVec4{.45f,.82f,.78f,1}),ref.label,nullptr,width-12);
-        ImGui::PopID();
-      }
-    }
-    ImGui::Spacing();ImGui::PopID();
+    });
+    if(action){auto a=*action;a.section=view.section;queue(ui,a);}
   }
 }
 }
+std::optional<BookAction> drawBookBlock(const BookBlockView& b,BookReadingUiState& ui,NativeMath& math,float width,const std::function<void()>& drawFigure){
+  static constexpr std::array<const char*,7> names{"","Definition","Proposition","Example","Figure","Exercise",""};
+  static constexpr std::array<const char*,4> helpNames{"proof","hint","answer","solution"};
+  std::optional<BookAction> action;
+  ImGui::PushID(b.id);ImGui::Spacing();
+  const std::string title=*b.number?std::string(names[static_cast<unsigned>(b.kind)])+" "+b.number+" / "+b.title:b.title;
+  heading(title.c_str());passages(math,ui,b.body,width,"body");
+  if(b.kind==BookBlockKind::Figure && drawFigure)drawFigure();
+  for(unsigned h=0;h<b.help.size();++h){
+    const auto& help=b.help[h];if(!help.available)continue;
+    ImGui::PushID(static_cast<int>(h));
+    const std::string label=std::string(help.open?"Hide ":"Show ")+helpNames[h];
+    if(ImGui::Button(label.c_str()))action=BookAction{BookActionKind::ToggleHelp,0,0,b.id,static_cast<BookHelp>(h)};
+    if(help.open){ImGui::Spacing();passages(math,ui,help.passages,width,"disclosure");}
+    ImGui::PopID();
+  }
+  if(!b.references.empty()){
+    ImGui::TextDisabled("Refer back to");
+    for(const auto& ref:b.references){
+      const auto size=ImGui::CalcTextSize(ref.label.c_str(),nullptr,false,std::max(1.f,width-12));
+      ImGui::PushID(ref.target.c_str());const auto start=ImGui::GetCursorScreenPos();
+      if(ImGui::Selectable("##reference",false,0,{width,size.y+10}))action=BookAction{BookActionKind::OpenBlock,0,0,ref.target};
+      ImGui::GetWindowDrawList()->AddText(nullptr,0,{start.x+5,start.y+5},ImGui::GetColorU32(ImVec4{.45f,.82f,.78f,1}),ref.label.c_str(),nullptr,std::max(1.f,width-12));
+      ImGui::PopID();
+    }
+  }
+  ImGui::Spacing();ImGui::PopID();return action;
+}
 bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame& presented){
   applySystemLessonPending(book.systems(),ui.figure);
-  applyMatrixBoardPending(book.board(),ui.boards[book.exerciseIndex()]);
+  applyObjectLessonPending(book,ui.figure);
+  if(book.hasBoard())applyMatrixBoardPending(book.board(),ui.boards.at(book.exerciseIndex()));
   if(ui.hasPending){const auto result=book.dispatch(ui.pending);ui.message=result.accepted?"":result.reason;ui.hasPending=false;}
   const auto v=book.view();const auto& sections=matrixChapter();const auto& section=sections[v.section];
   if(!v.anchor.empty()&&v.anchorRevision!=ui.seenAnchorRevision)ui.presentation=LessonPresentation::Together;
   const auto send=[&](BookAction a){queue(ui,a);};
   const auto screen=ImGui::GetIO().DisplaySize;
   const bool hasProvider=v.page==BookPage::Section&&section.figure.kind!=BookFigureKind::None;
-  const bool hasFigure=hasProvider&&v.mode==BookMode::Reading;
-  auto layout=planLessonSpread({screen.x,screen.y,ui.showContents,hasFigure,ui.presentation,ui.readingFraction});
+  const bool objectExercise=v.mode==BookMode::Exercise&&section.exercise==BookExerciseKind::Object;
+  const bool hasFigure=hasProvider&&(v.mode==BookMode::Reading||objectExercise);
+  const auto presentation=objectExercise?LessonPresentation::Figure:ui.presentation;
+  auto* boardUi=book.hasBoard()?&ui.boards.at(book.exerciseIndex()):nullptr;
+  auto layout=planLessonSpread({screen.x,screen.y,ui.showContents,hasFigure,presentation,ui.readingFraction});
   bool objects=false;
   window("Textbook header",{layout.header.x,layout.header.y},{layout.header.width,layout.header.height});
   ImGui::TextUnformatted("PATHS / INTERACTIVE MATHEMATICS");ImGui::Spacing();
@@ -149,11 +155,11 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
     if(ImGui::Button("Reading only")){ui.presentation=LessonPresentation::Reading;if(v.mode!=BookMode::Reading)send({BookActionKind::Read});}ImGui::SameLine();
     if(ImGui::Button("Figure only")){ui.presentation=LessonPresentation::Figure;if(v.mode!=BookMode::Reading)send({BookActionKind::Read});}
     ImGui::SameLine();if(ImGui::Button("Exercise"))send({BookActionKind::Exercise});
-    if(layout.compact&&ui.presentation==LessonPresentation::Together){ImGui::SameLine();ImGui::TextDisabled("Widen for split view");}
+    if(layout.compact&&!objectExercise&&ui.presentation==LessonPresentation::Together){ImGui::SameLine();ImGui::TextDisabled("Widen for split view");}
   }
   ImGui::End();
 
-  layout=planLessonSpread({screen.x,screen.y,ui.showContents,hasFigure,ui.presentation,ui.readingFraction});
+  layout=planLessonSpread({screen.x,screen.y,ui.showContents,hasFigure,objectExercise?LessonPresentation::Figure:ui.presentation,ui.readingFraction});
   if(layout.showContents){
   window("Textbook contents",{layout.contents.x,layout.contents.y},{layout.contents.width,layout.contents.height});
   ImGui::TextUnformatted("CONTENTS");ImGui::Spacing();
@@ -201,7 +207,7 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
       heading("An interactive textbook");
       ImGui::TextWrapped("Read an idea, explore its figure, and work through an exercise. The contents give you a sequence; the index lets you look up a term directly.");
       heading("Part IV / Linear Algebra");ImGui::TextUnformatted("Chapter 1 / Matrices and Elimination");
-      ImGui::TextWrapped("Begin with entries and dimensions, then develop row operations, solution sets, pivoting, LU factors, sparsity and block elimination. This first chapter has eight sections, six connected exercise cards, and a practice lesson on solution sets.");
+      ImGui::TextWrapped("Begin with entries and dimensions, then develop row operations, solution sets, factorizations and geometric maps. This chapter has %zu sections and %zu connected source exercise cards, alongside separate authored practice.",sections.size(),matrixCards().size());
       if(ImGui::Button("Begin chapter",{-1,36}))send({BookActionKind::OpenSection,0});
       if(ImGui::Button("Continue from reading bookmark",{-1,36}))send({BookActionKind::Resume});
       heading("How to use a section");
@@ -225,13 +231,21 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
       ImGui::TextDisabled("PART IV / LINEAR ALGEBRA / CHAPTER 1");heading(section.title);
       ImGui::TextWrapped("%s",section.purpose);ImGui::Spacing();
       if(ImGui::Button("Reading"))send({BookActionKind::Read});
-      char exerciseLabel[48];if(section.card)std::snprintf(exerciseLabel,sizeof(exerciseLabel),"Exercise / card %03u",section.card);else std::snprintf(exerciseLabel,sizeof(exerciseLabel),"Exercise / predict a solution set");
+      char exerciseLabel[64];
+      switch(section.exercise){
+        case BookExerciseKind::MatrixBoard:std::snprintf(exerciseLabel,sizeof(exerciseLabel),"Exercise / card %03u",section.card);break;
+        case BookExerciseKind::Systems:std::snprintf(exerciseLabel,sizeof(exerciseLabel),"Exercise / predict a solution set");break;
+        case BookExerciseKind::Object:std::snprintf(exerciseLabel,sizeof(exerciseLabel),"Exercise / manipulate the model");break;
+      }
       nextControl(exerciseLabel,column);if(ImGui::Button(exerciseLabel))send({BookActionKind::Exercise});
-      auto& board=book.board();auto& boardUi=ui.boards[book.exerciseIndex()];
       if(v.mode==BookMode::Exercise){
         ImGui::TextWrapped("%s",section.exercisePrompt);ImGui::Separator();
         ImGui::BeginChild("Section exercise",{0,0});
-        if(section.figure.kind==BookFigureKind::AffinePlanes)drawSystemExercise(book.systems(),ui.figure,boardUi,math);else drawMatrixBoardContents(board,boardUi,true);
+        switch(section.exercise){
+          case BookExerciseKind::MatrixBoard:drawMatrixBoardContents(book.board(),*boardUi,true);break;
+          case BookExerciseKind::Systems:drawSystemExercise(book.systems(),ui.figure,*boardUi,math);break;
+          case BookExerciseKind::Object:break; // The full figure pane owns this workspace.
+        }
         ImGui::EndChild();
       }else {
         if(!section.lesson.empty())lesson(book,ui,math,column);
@@ -271,7 +285,7 @@ bool drawTextbook(Textbook& book,TextbookUiState& ui,NativeMath& math,SceneFrame
     if(ImGui::IsItemActive())ui.readingFraction=std::clamp(ui.readingFraction+ImGui::GetIO().MouseDelta.x/(layout.reading.width+layout.figure.width),.3f,.7f);
     ImGui::End();ImGui::PopStyleVar();
   }
-  if(layout.showFigure&&drawTextbookFigure(section.figure,book,ui.boards[book.exerciseIndex()],ui.figure,math,layout.figure,static_cast<float>(v.textScale)))presented=ui.figure.scene.frame();
+  if(layout.showFigure&&drawTextbookFigure(section.figure,book,boardUi,ui.figure,math,layout.figure,static_cast<float>(v.textScale)))presented=ui.figure.scene.frame();
 
   window("Textbook navigation",{layout.footer.x,layout.footer.y},{layout.footer.width,layout.footer.height});
   ImGui::BeginDisabled(v.page!=BookPage::Section||v.section==0);if(ImGui::Button("< Previous"))send({BookActionKind::Previous});ImGui::EndDisabled();ImGui::SameLine();

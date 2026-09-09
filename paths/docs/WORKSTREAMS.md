@@ -1,5 +1,379 @@
 # Paths workstreams
 
+## Audit repair: public lesson figure placement
+
+`LearningDocuments` now rejects `@figure`, `@parameter` and `@caption` inside
+any `lesson.v2` textbook block, including its hint, answer, solution and proof
+sections. One compiler scope check closes the route that placed protected
+figure metadata in the public lesson. Diagnostics identify the original file,
+line and command, including included fragments, and explain that lesson figures
+are always public. Public diagrams remain valid outside `@block`; scoped figure
+disclosures are not implemented by this repair. The existing model and renderer
+owners are unchanged. [Authoring rules](LEARNING_DOCUMENTS.md#a-readable-lesson)
+record where the directives belong.
+
+Release `sorter` and `paths_learning_document_tests` builds pass. The new
+regression failed on the original importer, then passed with the scope check:
+30 invalid placements, four valid public arrangements, original source locations
+and atomic rejection. The same pure test retains its 64 matrix routes and
+save/replay checks. The rebuilt app rejects a solution figure at its exact
+directive, passes default startup validation, and imports the published store
+with the identical catalogue: 936 readings and 318 unchanged question stamps.
+
+Production change: two added C++ lines in one existing file; no new production
+files. Tests and authoring documentation use existing files. Changes remain
+uncommitted. No windows, images, captures, font probes or personal saves were
+used. Evidence: `build/lesson-disclosure-evidence/verification.json`.
+Next candidate: recovery from an abandoned temporary starter save; precise
+matrix-step diagnostics remain the other audit finding.
+
+## Source lesson 002: reviewed text into the existing textbook and solving game
+
+The [source lesson workflow](SOURCE_LESSON_WORKFLOW.md) is implemented and its
+first package, `source_002_textbook` version 1, is published in the normal
+`b/learning-store`. Library has **936 readings and 318 questions**. All prior
+316 Library question identities and stamps remain unchanged. The lesson reuses
+the current Claude 002 source, existing 13-step guided route and row-operation
+definitions. It adds nine textbook blocks and an explicitly separate four-level
+2x2 reduction exercise; the full polynomial problem remains a prepared route.
+
+`LearningDocuments` is the compiler, `BookBlock`/`bookLessonView` owns the shared
+reading structure and redaction, and both applications use `drawBookBlock` from
+one `paths_textbook_ui` library. Existing mathematical/checking and progress
+owners are unchanged. The producer uses the existing parser's public lossless
+audit with explicit reviewed selections and SHA-256 pins. Changed source,
+prepared route, definitions, presentation or template inputs fail before output
+installation. Unmapped source files and learner Attempt/Run fields stay outside
+runtime content. The raw page and full audit remain in authoring evidence.
+
+Release sorter and math_lab builds pass. The document model gate passes its
+existing 64 matrix routes plus thirteen new malformed textbook-block cases;
+the native textbook model passes 513 assertions. Source integration proves all
+13 prepared steps and 39 distractors, all four matrix levels, independent exact
+fraction arithmetic and the determinant, seven stale/draft/version rejections,
+deterministic output, actual publisher/startup integration, tamper rejection,
+saved drafts and retained Undo branches. The delivered default store also passes
+the old-save regression and all new source routes. No images, font probes,
+windows or personal progress files were used. The user accepted the format
+before requesting the repository audit.
+
+Production C++ is +207/-88 lines (net +119) across nine files, including one new
+40-line shared reading-data header. One 145-line Python producer was added;
+the existing publisher, answer kernels and 3D assets were preserved. Changes
+remain uncommitted. Evidence is `build/source-lesson-evidence/verification.json`.
+The next candidate is one more reviewed source card using this same format.
+
+## Current allocation: full textbook and learning application
+
+The user clarified that this worker owns the entire textbook and application
+learning experience. Contents, lessons, definitions, formatting, navigation,
+questions, support levels, checks, progress, the content pipeline and figure
+integration belong together. The other worker is strictly responsible for 3D
+assets/models. [AGENTS.md](../AGENTS.md#current-work-allocation) is the current
+allocation; this supersedes the earlier equation-only assignment. Existing
+mathematical owners and state boundaries remain in force.
+
+The first complete Claude-card lesson adaptation is recorded above: readable
+teaching and definitions plus a checked solving route in the established format.
+Ownership of the wider product does not start the separate lesson batch queue.
+
+## Equation solving: shared textbook presentation standard
+
+The user selected the existing researched textbook formatting and
+interactive models as the reference for equation solving. Source inspection
+traced typed reading blocks and disclosures through `TextbookUi`, the shared
+`LessonSpread`, and the row-plane, affine-system and object figure bindings.
+`NativeMath` is already shared; prepared question help has a limited connection
+to neutral textbook material. Four-level textbook references and figures bound
+to solving attempts remain future integration work.
+
+The textbook also has board bindings for source cards 001, 004, 018, 031, 044
+and 059, with explicit distinctions between printed data and chosen examples.
+The earlier two-card adaptation count referred only to regular question packs
+002/013. Board examples and invariant checks do not certify every source claim.
+
+The adopted [question presentation contract](QUESTION_PRACTICE_FORMAT.md#shared-textbook-presentation-standard)
+records layout, disclosure and ownership. The textbook worker now owns teaching,
+formatting, playable questions, four support levels, judgments, saved work and
+figure integration. The asset worker supplies 3D models; the existing code
+owners still connect through explicit bindings. Camera/reading actions cannot grade an
+answer, and an illustrative figure cannot silently expose a withheld solution.
+
+Four question/export/workstream documents record the decision, and the earlier
+source-card report now distinguishes regular packs from board bindings.
+Production code, cards and the other worker's implementation are unchanged;
+no build or visual test was needed for this source inspection. Changes remain uncommitted. The
+next candidate is one Claude equation-card mapping into the existing document
+pipeline using this standard and a supported mathematical checker.
+
+## Learning exports: authored chapter into a published library
+
+[LEARNING_EXPORTS.md](LEARNING_EXPORTS.md) is implemented for authored document
+packages on macOS/Linux. `tools/export_learning.py publish` captures a chapter,
+asks the app to validate it, exports the exact include closure with provenance,
+and activates a complete immutable library generation. The first package,
+`matrix_foundations` version 1, is published in `b/learning-store`; a normal
+sorter launch discovers it. Library now has 935 readings and 316 questions.
+
+`LearningDocuments` remains the compiler and import authority. It reports exact
+file hashes, declarations and canonical question-stamp digests, and verifies
+published generations before progress loads. The Python publisher owns locking,
+transport and atomic activation. Every existing question ID/stamp is retained;
+renamed files and reading-only updates remain compatible. Existing direct folder
+import is a live authoring route through the same compiler. No competing math,
+UI or save route was added or replaced. OpenSSL Crypto supplies SHA-256.
+
+Release sorter, gallery and paths builds pass. Three targeted CTest entries pass,
+including 16 publication regressions: exact/reproducible export, unchanged
+activation, source edits during export, diagnostics, bad mathematics, unsupported
+capabilities, provenance coverage, tampering, forged claims, cross-package links,
+collisions, combined capacity, symlinks, frozen-content removal/change rejection,
+interrupted activation and competing publishers. The published reader restores
+an earlier draft, help exposure and Undo branches without rewriting its save.
+Twelve actual headless UI routes solve the exported matrix in four modes at
+1440×860, 800×600 and 360×480, with no notation fallback. Existing document gates
+also pass: 64 matrix model routes and 30 document UI routes. The delivered store
+passed default-startup inspection and a fresh saved-draft/answer regression.
+
+Production C++ is +183/-33 lines (net +150) across three existing files. One
+497-line Python publisher was added. The new authoring package has a metadata
+file, a chapter and a shared include; one new Python test and two existing C++
+tests cover the handoff. This is a new capability, with no new production C++
+files. Existing source documents/cards/corpus and other owned areas are retained;
+concurrent P053 math-object/CMake/documentation changes are preserved. Evidence:
+`build/learning-export-evidence/verification.json`.
+
+Changes remain uncommitted. No window, screenshot or capture was used. Visual
+acceptance is pending: open the blue question link in **Matrix foundations: two
+equations**, check gold Given beside cyan Working, then the green `x=2, y=3`
+result waiting for Next. The next candidate is a Paths authoring adapter consuming
+immutable source bytes and the existing parser's audit to emit this same format.
+Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
+general save migration and rollback after play are outside this checkpoint.
+
+## P057: parametric patch assets
+
+The user accepted the compact controls and approved the next asset batch.
+[P057_PARAMETRIC_PATCHES.md](P057_PARAMETRIC_PATCHES.md) adds canopy, sail,
+curved ramp and saddle terrain through the 28th object, `patch`. Sixteen
+selectable controls share compact XYZ rows and a UV probe. Four layers expose
+Bernstein influence, tangents/normals, curvature/fundamental forms and surface
+area convergence. The existing document-figure registry discovers the provider;
+lesson integration remains with the textbook worker.
+
+The P057 document records the kernel contract and final build/check evidence.
+This is one asset checkpoint; membrane, rigid-body and simplex ideas remain
+future work. Source cards, teaching pipelines and learner attempts are preserved.
+No images or native windows are used for verification, and changes remain
+uncommitted. The user performs visual acceptance of the new patch presets.
+
+## P056: compact model workspace
+
+The user approved a control-density pass after visually accepting the Boolean
+Solids Lab. [P056_COMPACT_MODEL_WORKSPACE.md](P056_COMPACT_MODEL_WORKSPACE.md)
+adds searchable object/example/layer selection, compact shared scalar controls,
+grouped coordinate fields, remembered collapsible groups, a resizable inspector
+and a resizable Graph / Values / Math / Exercise drawer. A few key metrics stay
+above the model; optional labels use hover/selection. All 27 objects retain their
+existing mathematical owners and actions. The textbook reuses the scalar widget
+inside its existing authored object controls and learning modes.
+
+Validation status and the manual launch command are in the P056 document.
+The pass uses pure layout/model checks and reviewed text-only commands. Visual
+acceptance of this new layout remains with the user; changes are uncommitted.
+
+## P055: Boolean Solids Lab
+
+[P055_BOOLEAN_SOLIDS.md](P055_BOOLEAN_SOLIDS.md) adds the 27th object: drilled
+block, archway, ball-and-socket and blended stones. Four retained layers link
+inside/outside fields, Boolean truth tables, smooth blends/normals and numerical
+volume. Position, scale, rotation, operation, section and sampling controls use
+the existing semantic route. Pure kernels produce the same bounded indexed mesh;
+no renderer, source-card or learner-evidence changes are needed.
+
+Release math_lab and sorter compile. Sixteen focused CPU suites and 62 reviewed
+text-only CLI routes pass. The dedicated Boolean suite checks 2,705 numerical
+certificates and 377 mesh states, including rotated pairs, manifold edges,
+section caps, analytic volumes, gradients, truth rows and atomic actions. Its
+largest tested scene has 7,122 vertices and 30,936 indices. No images, windows
+or font-atlas tests were used. Changes remain uncommitted; the user will perform
+the visual check.
+
+## P054: Lathe Lab
+
+[P054_LATHE_LAB.md](P054_LATHE_LAB.md) adds the 26th math-lab object with four
+retained layers: editable profile, revolution, disk/washer/shell volume and
+surface bands/normals. Vase, bottle, goblet and pawn presets include solid or
+hollow interiors, radial wall thickness and a viewing cutaway. Pure kernels
+reuse the existing Bezier evaluator; one bounded indexed surface extends the
+existing scene contract without changing the native host or shader.
+
+Release math_lab and the shared sorter UI compile. Fifteen focused CPU suites
+and 58 text-only CLI routes pass. The lathe suite checks 1,705 numerical
+certificates and 243 mesh states, including independent volume/area integrals,
+disconnected shells, hollow floors, oriented volume and atomic editing.
+No windows, images or font-atlas tests were used. Changes are uncommitted;
+the user confirmed that the lathe works in the following manual test.
+
+## P053: curves and sweeps
+
+[P053_CURVES_AND_SWEEPS.md](P053_CURVES_AND_SWEEPS.md) adds the 25th math-lab
+object with four retained layers: Bézier construction, tangent/curvature,
+equal-distance travel and capped profile sweeps. Pipe, cable, ribbon and horn
+presets share editable controls, with profile, thickness, aspect, taper and
+twist. The existing model, scene and semantic actions remain the owners.
+
+Release math_lab and the shared sorter UI compile. Fourteen targeted pure-model
+suites and 54 text-only CLI checks pass. The curve suite verifies 599 numerical
+certificates and 183 mesh states, including independent arc integration,
+stationary points, transported sections, seams/caps and atomic control actions.
+No windows, images or font-atlas tests were used. Changes are uncommitted;
+visual acceptance awaits the user's manual test.
+
+## P052: convex geometry objects
+
+[P052_CONVEX_GEOMETRY.md](P052_CONVEX_GEOMETRY.md) adds the PSD cone and morphing
+norm balls to the math lab: 24 objects overall and eight new learning layers.
+Both use the existing model/action/snapshot/scene route. The cone connects
+matrix coefficients, eigenvalues, quadratic surfaces, convex mixtures and
+fixed-trace optimization. Norm balls connect distance, vector addition,
+finite-p convergence and dual supporting planes, with exact endpoint shapes.
+
+The Release math lab and shared sorter UI compile. Thirteen focused model and
+CPU-mesh suites and 50 text-only CLI routes pass. The dedicated suite checks
+principal-minor and spectral certificates, mesh equations, rank boundaries,
+convex closure, objective attainment, triangle inequalities, dual contacts,
+zero/tie cases and atomic rejection. No windows, images or font-atlas tests
+were used. Changes are uncommitted; visual acceptance is pending the user's
+manual test. The existing textbook queue remains available for later work.
+
+## Matrix documents through four support levels
+
+`content/write/matrix.paths.md` adds **Linear Algebra → Matrix rows from
+documents**: one reading and one three-step question. `@template matrix.v1`
+uses ordinary augmented-matrix text, numeric choices and a named `@operation`.
+The [authoring contract](LEARNING_DOCUMENTS.md#matrix-documents) lists the four
+supported row-addition/division commands and required teaching fields. The
+shipped Library now has 934 readings and 315 questions; four document templates
+are available. Further matrix content requires a document and relaunch.
+
+Learn presents explained symbolic row operations; Practice fills a multiplier
+or divisor; Solve and Write accept complete matrices, one per line. Given stays
+gold beside cyan working, and completion stays green until Next. The same
+support owner projects goals, input syntax and disclosures for both families.
+No new question session, UI solver or save format was added. Linear-only support
+nodes now use the existing typed `MathWorkingValue`; numeric TeX formatting is
+shared. The existing exact row kernel owns operations and matrix equivalence,
+with final substitution in both original equations.
+
+Release builds of sorter, gallery and paths pass. Seven targeted CTest entries
+and the document UI executable pass: 64 matrix model routes over 16 parameter
+sets (ten with fractional answers), 12 matrix UI routes within 30 document
+routes at 1440×860, 800×600 and 360×480, all without notation fallback. The
+existing linear, prepared/guided, row-move and progress checks remain green.
+Matrix checks cover wrong operands, zero divisors, exact arithmetic bounds,
+nonunique/changed solution sets, alternative written routes, atomic bad-line
+rejection, retained drafts, Undo branches, renamed documents and original-save
+protection. The final teaching text also passed the headless UI route.
+
+Four CLI checks confirm source/bundled import, a newly dropped matrix document
+without rebuilding, and rollback of a mathematically wrong authored answer key.
+Production C++: +231/-43 lines, net +188 across seven existing files, with no
+new production C++ files. One source document was added; three existing tests
+were extended. All 148 checked pre-existing content, textbook, matrix-board,
+object and scene files retain their pre-work bytes. Evidence:
+`build/matrix-document-evidence/verification.json`.
+
+Changes remain uncommitted; no windows or captures were used. Manual visual
+acceptance is pending. This first matrix template handles nonsingular 2×2 real
+systems; larger/complex matrices and general solution families need distinct
+response contracts. Written input is matrix notation, not symbolic row-command
+or proof prose. A direct final matrix is a verified answer, not evidence of a
+multi-step derivation. The next candidate is a small matrix repetition set
+authored through this same document template.
+
+## Learning documents: folder into the app
+
+[LEARNING_DOCUMENTS.md](LEARNING_DOCUMENTS.md) defines `.paths.md` source,
+includes, ToC declarations, stable links and three versioned templates:
+`lesson.v1`, `choices.v1` and `linear.v1`. The executable imports the complete
+chosen folder at startup. Authors add supported content without rebuilding;
+`--check-content --documents content/write` validates it headlessly, and
+`--document-capabilities` lists the templates and 22 registered diagram providers.
+
+`LearningDocuments` owns bounded parsing and atomic import, compiling through
+the existing corpus and question validators. `DocumentLessonUi` formats the
+result and passes diagram inputs to `MathObjects`; the existing scene and native
+renderer supply geometry. `LayeredQuestionSession` keeps all answer judgments,
+and `CorpusPractice` keeps question progress. The old file parser now delegates
+to the same question parser used by documents; no second answer route was added.
+
+Algebra, physics and biology examples add two subjects, three chapters, three
+readings and three questions: 933 readings and 314 Library questions overall.
+The algebra question uses all four support levels. The physics reading calls
+the existing harmonics provider; biology demonstrates ordinary text choices.
+Blue question links open the fixed solving workspace; explicit Method links
+read imported teaching. Completed questions remain until navigation.
+
+Release builds of sorter, gallery and paths pass. Eight targeted CTest entries
+pass, including six imported model routes, 18 real headless UI solving routes,
+three diagram-orbit routes at 1440×860, 800×600 and 360×480, plus the existing
+corpus, prepared, matrix and four-level regressions. A built-executable check
+discovers an additional lesson and question from a newly placed file without
+changing the binary. A broken template reports its file/line and commits no
+partial import. Renaming files, adding content and restoring written drafts
+pass; incompatible frozen content retains the original save.
+
+Production C++: +474/-16 lines, net +458, across nine existing files and four
+new files. This is new capability code. Two C++ tests, three entry documents
+and one shared include were added. All 55 existing files in the checked cards,
+corpus, references and source-snapshot roots retain their pre-work bytes.
+Concurrent work is preserved. Evidence: `build/document-pipeline-evidence/verification.json`.
+
+Changes remain uncommitted; no windows or captures were used. Manual visual
+acceptance remains pending. Imports require relaunch; arbitrary new response
+checkers and diagram providers still need implementation, and authored science
+answer keys are not automatically fact-checked. The next candidate is a matrix
+template through the same document pipeline and four-level question owner.
+
+## Four support levels: first linear family implemented
+
+[QUESTION_PRACTICE_FORMAT.md](QUESTION_PRACTICE_FORMAT.md) defines Learn,
+Practice, Solve and Independent around one unchanged mathematical question.
+[QUESTION_AUTHORING_WORKFLOW.md](QUESTION_AUTHORING_WORKFLOW.md) defines
+authoring, source provenance, independent verification, four-view disclosure
+and concrete implementation/content task packets. The golden example plus 24
+varied repetitions now run in the Library's existing workspace: explained
+symbols, a typed blank, equation checkpoints, and a blank multiline solution.
+Search **Linear practice**, then Focus. The fourth button is **4 Write**.
+
+`LayeredQuestionSession` remains the canonical owner. Supported questions reject
+the prepared answer-tile command route; typed submissions have their own guarded
+events. Exact linear checking accepts alternative equivalent routes and verifies
+the original substitution. Unsupported syntax retains the draft without a
+wrong-math mark. Help exposure, level changes, draft edits, Undo branches and
+archived runs survive `CorpusPractice` replay. Version-1 prepared saves still
+load; version 2 adds the named support records. Original incompatible saves remain.
+
+Release builds of sorter, gallery and paths pass. Eleven targeted CTest entries
+pass across the feature and regression gates: 100 model routes, 200 wrong
+responses, 12 actual headless UI routes at 1440×860, 800×600 and 360×480,
+250 native formulas without fallback, eight Python authoring tests, save
+compatibility and surviving prepared/guided/mathematical-move routes.
+Evidence: `build/four-level-evidence/verification.json`.
+
+Production C++ adds 515 net lines across ten existing files, with no new
+production C++ file; one generated runtime JSON pack and two C++ test files
+were added. The authoring ledger counts 25 integrated instances in one family,
+with the remaining 228 leaves unfilled in this four-level format. Taxonomy and
+visual acceptance remain pending. This checker handles bounded linear equation
+lines; general proofs, nonlinear work and free prose are not automatically
+verified. The inline teaching is frozen with its saved question stamp.
+
+The next candidate is one matrix family through the same four support levels,
+after the user's format check. Further question-linked 3D and Motion development
+are deferred. Changes remain uncommitted; no windows or captures were used.
+
 ## Regular questions with shared method reading
 
 [MATRIX_REASONING.md](MATRIX_REASONING.md) adds eight questions and 23 symbolic
@@ -166,7 +540,8 @@ review remains deferred, and changes are uncommitted.
 | P047 | [Interactive textbook](P047_INTERACTIVE_TEXTBOOK.md): Matrices and Elimination | Native build and 29 targeted text-only tests passed; user visual review pending; uncommitted | Seven sections; 21-term index; retained board work; reading bookmarks separate from exercise evidence; no images |
 | P048 | [Textbook section format](P048_TEXTBOOK_SECTION_FORMAT.md): Row operations and RREF | Native build and 30 targeted text-only tests passed; reading format accepted by user; uncommitted | Typed numbered blocks; stable references; typeset equations; separate redacted help; existing exercise evidence retained; no images |
 | P049 | [Live textbook figures](P049_LIVE_TEXTBOOK_FIGURES.md): reusable spread and RREF equation planes | Native build and 34 targeted text-only tests passed; layout and interaction accepted by user; uncommitted | One reusable shell; synchronized board and 3D geometry; all nullities; responsive panes; no images |
-| P050 | [System solution sets](P050_SYSTEM_SOLUTION_SETS.md): affine planes and prediction practice | Native build and 42 targeted text-only checks passed; user visual review pending; uncommitted | Reused four-view shell; explicit rhs; shared row kernel; all solution outcomes; redacted practice; bookmark migration; no images |
+| P050 | [System solution sets](P050_SYSTEM_SOLUTION_SETS.md): affine planes and prediction practice | Native build and 42 targeted text-only checks passed; user reported "looks good"; uncommitted | Reused four-view shell; explicit rhs; shared row kernel; all solution outcomes; redacted practice; bookmark migration; no images |
+| P051 | [Determinants as signed volume](P051_DETERMINANT_VOLUME.md) and reusable object lessons | Native build and 48 targeted text-only checks passed; user visual review pending; uncommitted | Five examples; independent practice; registry-driven navigation/bookmarks; generic controls/readouts; three ready batch briefs; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -189,22 +564,37 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-The regular-question workstream is [Matrix reasoning](MATRIX_REASONING.md),
-with the question session owning answers and progress. The teaching workstream
-continues independently below; its existing definitions are now reusable from
-the question workspace. Motion is shelved pending a later user decision.
+The regular-question priority is the [four-level format](QUESTION_PRACTICE_FORMAT.md)
+and its [authoring workflow](QUESTION_AUTHORING_WORKFLOW.md), with the question
+session owning answers, working and help exposure. The matrix questions remain
+available. The teaching workstream continues independently below; its existing
+definitions are reusable from the question workspace. Interactive 3D follows
+the question foundation, and Motion remains shelved.
+
+[P051](P051_DETERMINANT_VOLUME.md) is the current textbook checkpoint: section
+1.9 connects the existing linear cube to reading and separate practice. Its
+registry and object adapter support [Batch 01](lesson_tasks/BATCH_01.md), three
+prepared lessons with an explicit sequential start instruction. The pilot awaits
+the user's visual test; the queued lessons are not yet implemented. This teaching
+work remains separate from the regular-question workstream.
 
 [P050](P050_SYSTEM_SOLUTION_SETS.md) adds section 1.3 after RREF: one, infinitely
 many, or no solutions. It reuses the user-accepted four-view shell with movable
 affine equation planes, synchronized row operations, solution probes, and
 prediction practice. Existing section IDs and seven-section reading bookmarks
-remain usable. Verification is text-only; the user performs the visual check.
+remain usable. Verification is text-only; the user subsequently reported
+that P050 "looks good."
+
+The [lesson authoring workflow](LESSON_AUTHORING_WORKFLOW.md) describes the
+repetitive work and reusable task template. P051 implements its determinant
+pilot; Batch 01 contains the next three implementation briefs. Queue execution
+starts from the user's batch instruction.
 
 The user prohibits taking or viewing images. Do not capture, render, open
 image files or launch previews as part of this work. Use the pure-model/scene
-tests and `math_lab --validate` for text-only verification. Visual layout,
-pointer feel and swapchain acceptance remain unverified. Keep changes
-uncommitted.
+tests and `math_lab --validate` for text-only verification. Appearance and
+interaction acceptance are recorded per checkpoint from the user's feedback;
+agent checks do not establish them. Keep changes uncommitted.
 
 ## Previous cleanup checkpoint
 

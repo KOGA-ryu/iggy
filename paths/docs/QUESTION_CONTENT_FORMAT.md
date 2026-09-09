@@ -11,6 +11,20 @@ not solve equations or judge display text. It produces the existing question
 model; `LayeredQuestionSession` still owns correctness, attempts, collection,
 working-state changes and progression.
 
+The optional `support` field adds the bounded
+[four-level linear family](QUESTION_PRACTICE_FORMAT.md) without changing old
+prepared cards. It names `family: linear_balance_ax_b_v1`, the plain-text original
+`equation`, required `domain`, and two `steps`. Each support step has its exact
+resulting `equation`, `response_prefix`, numeric `responses` parallel to the
+prepared options, and current-step `definitions` and `teaching`. The canonical
+validator checks the subtract/divide route, nonzero coefficient, unique correct
+numeric response, equivalent-choice duplicates and native symbolic labels.
+The original display must match its typed equation. Plain typed mathematics is
+the answer authority; display TeX is never parsed as a submitted answer.
+`CorpusPractice` selects `QuestionInteraction::Supported` for opted-in rows.
+The same loader keeps old prepared cards on their existing interaction route.
+Use the authoring generator, not hand-edited runtime copies, for this family.
+
 ## Pack and launch
 
 `content/packs/gallery_foundation.json` lists five cards and four ordered

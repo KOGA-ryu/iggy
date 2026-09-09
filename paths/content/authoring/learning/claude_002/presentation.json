@@ -1,0 +1,205 @@
+{
+  "question_id": "source_002_full_problem",
+  "title": "002: Full problem, guided choices",
+  "domain": "Real coefficients a, b, c; x is the supplied function input. Find the linear system and its unique quadratic polynomial.",
+  "states": {
+    "100": "f(x)=ax^2+bx+c,\\quad (-1,1),\\ (0,0),\\ (1,2)",
+    "200": "f(x)=ax^2+bx+c",
+    "300": "f(x)=ax^2+bx+c,\\quad x\\in\\{-1,0,1\\}",
+    "400": "ax^2+bx+c",
+    "500": "a(0)^2+b(0)+c=0",
+    "600": "a(-1)^2+b(-1)+c=1",
+    "700": "a(1)^2+b(1)+c=2",
+    "800": "c=0,\\quad a-b=1,\\quad a+b=2",
+    "900": "2a=3",
+    "1000": "\\frac32+b=2",
+    "1100": "a=\\frac32,\\quad b=\\frac12,\\quad c=0,\\quad f(x)=ax^2+bx+c",
+    "1200": "f(-1)=1,\\quad f(0)=0,\\quad f(1)=2",
+    "1300": "M=\\begin{bmatrix}1&-1&1\\\\0&0&1\\\\1&1&1\\end{bmatrix},\\quad \\det M=-2",
+    "1400": "\\begin{gathered}a-b+c=1,\\ c=0,\\ a+b+c=2\\\\a-b=1,\\ a+b=2,\\ 2a=3\\\\a=\\frac32,\\ b=\\frac12,\\ c=0\\\\f(x)=\\frac32x^2+\\frac12x\\\\f(-1)=1,\\ f(0)=0,\\ f(1)=2,\\ \\det M=-2\\ne0\\end{gathered}"
+  },
+  "choices": {
+    "10": {
+      "101": {
+        "math": "x"
+      },
+      "108": {
+        "math": "a,\\ b,\\ c"
+      },
+      "115": {
+        "math": "-1,\\ 0,\\ 1"
+      },
+      "122": {
+        "text": "No quantities; all coefficients are already given"
+      }
+    },
+    "20": {
+      "101": {
+        "text": "An unknown coefficient to solve for"
+      },
+      "108": {
+        "text": "The output height at every point"
+      },
+      "115": {
+        "text": "The function input, supplied as -1, 0, and 1"
+      },
+      "122": {
+        "text": "The number of equations in the system"
+      }
+    },
+    "30": {
+      "101": {
+        "text": "Squaring x means that a is also squared"
+      },
+      "108": {
+        "text": "Every problem with three observations is linear"
+      },
+      "115": {
+        "text": "x is always the unknown in an equation"
+      },
+      "122": {
+        "text": "Each unknown coefficient appears only to the first power, multiplied by a known number"
+      }
+    },
+    "40": {
+      "101": {
+        "math": "1\\quad(c=1c)"
+      },
+      "108": {
+        "math": "0"
+      },
+      "115": {
+        "math": "x"
+      },
+      "122": {
+        "math": "x^2"
+      }
+    },
+    "50": {
+      "101": {
+        "math": "a=0"
+      },
+      "108": {
+        "math": "b=0"
+      },
+      "115": {
+        "math": "c=0"
+      },
+      "122": {
+        "math": "a+b+c=0"
+      }
+    },
+    "60": {
+      "101": {
+        "math": "a+b+c=1"
+      },
+      "108": {
+        "math": "a-b+c=1"
+      },
+      "115": {
+        "math": "-a-b+c=1"
+      },
+      "122": {
+        "math": "a-b+c=-1"
+      }
+    },
+    "70": {
+      "101": {
+        "math": "a+b+c=1"
+      },
+      "108": {
+        "math": "a-b+c=2"
+      },
+      "115": {
+        "math": "-a+b+c=2"
+      },
+      "122": {
+        "math": "a+b+c=2"
+      }
+    },
+    "80": {
+      "101": {
+        "text": "Adding equal quantities to equal quantities preserves equality, and -b + b = 0"
+      },
+      "108": {
+        "text": "The opposite input values force b = 0"
+      },
+      "115": {
+        "text": "A quadratic term is zero for every input"
+      },
+      "122": {
+        "text": "We may add the right sides while leaving the left sides unchanged"
+      }
+    },
+    "90": {
+      "101": {
+        "math": "a=3"
+      },
+      "108": {
+        "math": "a=\\frac12"
+      },
+      "115": {
+        "math": "a=\\frac32"
+      },
+      "122": {
+        "math": "a=2"
+      }
+    },
+    "100": {
+      "101": {
+        "math": "b=\\frac32"
+      },
+      "108": {
+        "math": "b=\\frac12"
+      },
+      "115": {
+        "math": "b=-\\frac12"
+      },
+      "122": {
+        "math": "b=2"
+      }
+    },
+    "110": {
+      "101": {
+        "math": "f(x)=\\frac32x^2+\\frac12x+1"
+      },
+      "108": {
+        "math": "f(x)=\\frac12x^2+\\frac32x"
+      },
+      "115": {
+        "math": "f(x)=3x^2+x"
+      },
+      "122": {
+        "math": "f(x)=\\frac32x^2+\\frac12x"
+      }
+    },
+    "120": {
+      "101": {
+        "text": "The recovered function passes through all three supplied points"
+      },
+      "108": {
+        "text": "No other function of any kind can pass through those points"
+      },
+      "115": {
+        "text": "Every numerical solver is stable on every matrix"
+      },
+      "122": {
+        "text": "The coefficient c still has to be determined"
+      }
+    },
+    "130": {
+      "101": {
+        "text": "Any number of unknown coefficients would be determined by these three points"
+      },
+      "108": {
+        "text": "The system has no solution because the determinant is negative"
+      },
+      "115": {
+        "text": "The matrix is invertible, so this model's coefficient vector is unique"
+      },
+      "122": {
+        "text": "The determinant must be zero for the three points to fit"
+      }
+    }
+  }
+}

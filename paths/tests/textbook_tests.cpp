@@ -11,7 +11,7 @@ unsigned checks=0;
 void require(bool value,const char* why){++checks;if(!value)throw std::runtime_error(why);}
 void act(Textbook& book,BookAction action){const auto result=book.dispatch(action);if(!result.accepted)throw std::runtime_error(result.reason);}
 void same(const BookView& a,const BookView& b){require(a.page==b.page&&a.mode==b.mode&&a.section==b.section&&a.scroll==b.scroll&&a.textScale==b.textScale&&a.anchor==b.anchor&&a.anchorRevision==b.anchorRevision,"Rejected navigation changed reading state");}
-void reject(Textbook& book,BookAction action){const auto before=book.view();const auto bookmark=book.bookmark();const auto steps=book.board().view().steps;require(!book.dispatch(action).accepted,"Invalid action accepted");same(before,book.view());require(book.bookmark()==bookmark&&book.board().view().steps==steps,"Rejected action changed bookmark or exercise");}
+void reject(Textbook& book,BookAction action){const auto before=book.view();const auto bookmark=book.bookmark();const auto evidence=book.hasBoard()?book.board().view().steps:book.objectLesson().snapshot(true).revision;require(!book.dispatch(action).accepted,"Invalid action accepted");same(before,book.view());require(book.bookmark()==bookmark&&(book.hasBoard()?book.board().view().steps:book.objectLesson().snapshot(true).revision)==evidence,"Rejected action changed bookmark or exercise");}
 std::string disclosures(const Textbook& book){
   std::string result;
   for(const auto& block:book.lessonView()){
@@ -37,17 +37,25 @@ struct Temporary {
 };
 }
 int main(){try{
-  Textbook book;const auto& sections=matrixChapter();require(sections.size()==8&&textbookParts().size()==7,"Book outline size");
+  Textbook book;const auto& sections=matrixChapter();require(sections.size()>=9&&textbookParts().size()==7,"Book outline size");
   std::set<std::string> ids,terms;std::set<unsigned> cards;
   const std::array<unsigned,8> order{4,4,0,31,18,44,1,59};
-  for(unsigned i=0;i<sections.size();++i){const auto& section=sections[i];require(ids.insert(section.id).second,"Duplicate stable section id");require(section.card==order[i],"Teaching sequence changed");cards.insert(section.card);
+  for(unsigned i=0;i<sections.size();++i){const auto& section=sections[i];require(ids.insert(section.id).second,"Duplicate stable section id");if(i<order.size())require(section.card==order[i],"Teaching sequence changed");cards.insert(section.card);
     require(std::string(section.purpose).size()>20&&(!section.lesson.empty()||std::string(section.figurePrompt).size()>20)&&std::string(section.exercisePrompt).size()>20&&std::string(section.reference).size()>20,"Incomplete section");
     for(const auto paragraph:section.explanation)require(std::string(paragraph).size()>40,"Missing explanation");
     for(const auto step:section.exampleSteps)require(std::string(step).size()>30,"Missing worked example step");
     for(const auto& term:section.terms){require(terms.insert(term.name).second,"Duplicate index term");require(std::string(term.definition).size()>20,"Missing definition");}
-    act(book,{BookActionKind::OpenSection,i});require(book.board().view().card==section.card,"Wrong exercise binding");require(!book.board().view().working&&!book.board().view().checked,"Reading marked an exercise as worked or checked");
+    act(book,{BookActionKind::OpenSection,i});
+    if(section.exercise==BookExerciseKind::Object){
+      require(!book.hasBoard()&&section.object&&section.figure.kind==BookFigureKind::Object,"Incomplete object exercise binding");
+      require(book.objectLesson().snapshot().feedback==MathFeedback::None&&book.objectLesson().snapshot(true).feedback==MathFeedback::None,"Reading created object feedback");
+      act(book,{BookActionKind::RememberScroll,i,123.5*(i+1)});act(book,{BookActionKind::Exercise});
+      require(book.objectLesson().snapshot(true).feedback==MathFeedback::None,"Opening object practice checked it");
+      act(book,{BookActionKind::Read});continue;
+    }
+    require(book.board().view().card==section.card,"Wrong exercise binding");require(!book.board().view().working&&!book.board().view().checked,"Reading marked an exercise as worked or checked");
     act(book,{BookActionKind::RememberScroll,i,123.5*(i+1)});act(book,{BookActionKind::Exercise});require(book.board().view().steps==0,"Opening an exercise performed a step");
-    if(section.card==0){
+    if(section.exercise==BookExerciseKind::Systems){
       require(book.systems().dispatch({SystemActionKind::Reveal}).accepted,"Cannot open practice explanation");
       require(book.systems().dispatch({SystemActionKind::RowOperation,0,0,0,{BoardActionKind::Step},true}).accepted,"Cannot reduce practice");
       act(book,{BookActionKind::Read});require(book.board().view().steps==0,"Practice changed exploration");
@@ -61,17 +69,34 @@ int main(){try{
     // The introductory section and RREF section intentionally share card 004.
     if(i==0){act(book,{BookActionKind::OpenSection,1});require(book.board().view().steps==1,"Same card has duplicate state");require(book.board().dispatch({BoardActionKind::Reset}).accepted,"Reset failed");}
   }
-  require(cards.size()==7&&terms.size()==29,"Chapter references/index coverage");
-  for(unsigned i=0;i<sections.size();++i){act(book,{BookActionKind::OpenSection,i});require(book.board().view().steps==(sections[i].card==0?0u:1u),"Cross-section exercise work not retained");require(!book.board().view().checked,"Reading created check evidence");}
-  reject(book,{BookActionKind::Next});reject(book,{BookActionKind::OpenSection,8});reject(book,{BookActionKind::RememberScroll,0,10});reject(book,{BookActionKind::RememberScroll,6,-1});reject(book,{BookActionKind::RememberScroll,6,std::numeric_limits<double>::infinity()});reject(book,{BookActionKind::SetTextScale,0,2.01});reject(book,{static_cast<BookActionKind>(999)});
+  require(cards.size()==7&&terms.size()>=33,"Chapter references/index coverage");
+  for(unsigned i=0;i<sections.size();++i){act(book,{BookActionKind::OpenSection,i});if(!book.hasBoard()){require(book.objectLesson().snapshot(true).feedback==MathFeedback::None,"Navigation checked object practice");continue;}require(book.board().view().steps==(sections[i].card==0?0u:1u),"Cross-section exercise work not retained");require(!book.board().view().checked,"Reading created check evidence");}
+  reject(book,{BookActionKind::Next});reject(book,{BookActionKind::OpenSection,static_cast<unsigned>(sections.size())});reject(book,{BookActionKind::RememberScroll,0,10});reject(book,{BookActionKind::RememberScroll,6,-1});reject(book,{BookActionKind::RememberScroll,6,std::numeric_limits<double>::infinity()});reject(book,{BookActionKind::SetTextScale,0,2.01});reject(book,{static_cast<BookActionKind>(999)});
   act(book,{BookActionKind::OpenSection,0});reject(book,{BookActionKind::Previous});act(book,{BookActionKind::Contents});reject(book,{BookActionKind::Exercise});reject(book,{BookActionKind::RememberScroll,0,1});
   act(book,{BookActionKind::OpenSection,5});act(book,{BookActionKind::SetTextScale,0,1.3});const auto bookmark=book.bookmark();
   Textbook restored;require(restored.restoreBookmark(bookmark).accepted,"Bookmark did not round trip");require(restored.bookmark()==bookmark&&restored.view().page==BookPage::Contents,"Bookmark changed on restore");act(restored,{BookActionKind::Resume});require(restored.view().section==5&&restored.view().scroll==741,"Continue reading did not restore place");
-  for(unsigned i=0;i<sections.size();++i){act(restored,{BookActionKind::OpenSection,i});require(restored.board().view().steps==0&&!restored.board().view().checked,"Bookmark restored fabricated exercise results");require(restored.view().scroll==123.5*(i+1),"Section scroll was not saved");}
-  auto legacy=bookmark;const auto newLine=legacy.find("matrix.solutions ");const auto newEnd=legacy.find('\n',newLine);legacy.erase(newLine,newEnd-newLine+1);
+  for(unsigned i=0;i<sections.size();++i){act(restored,{BookActionKind::OpenSection,i});require(restored.hasBoard()?(restored.board().view().steps==0&&!restored.board().view().checked):(restored.objectLesson().snapshot(true).feedback==MathFeedback::None),"Bookmark restored fabricated exercise results");require(restored.view().scroll==123.5*(i+1),"Section scroll was not saved");}
+  const std::string eight=R"(paths-textbook 1
+matrix.permutations
+1.3
+matrix.entries 123.5
+matrix.rref 247
+matrix.solutions 370.5
+matrix.partial-pivoting 494
+matrix.lu 617.5
+matrix.permutations 741
+matrix.bands 864.5
+matrix.schur 988
+)";
+  Textbook eightMigrated;require(eightMigrated.restoreBookmark(eight).accepted,"Eight-section bookmark failed to migrate");
+  act(eightMigrated,{BookActionKind::OpenSection,8});require(eightMigrated.view().scroll==0,"New object section inherited an old scroll");
+  auto legacy=eight;const auto newLine=legacy.find("matrix.solutions ");const auto newEnd=legacy.find('\n',newLine);legacy.erase(newLine,newEnd-newLine+1);
   Textbook migrated;require(migrated.restoreBookmark(legacy).accepted,"Seven-section bookmark failed to migrate");
   act(migrated,{BookActionKind::Resume});require(std::string_view(matrixChapter()[migrated.view().section].id)=="matrix.permutations"&&migrated.view().scroll==741,"Migration changed stable reading position");
   act(migrated,{BookActionKind::OpenSection,2});require(migrated.view().scroll==0,"New section inherited another section's scroll");
+  auto partial=eight;partial.erase(partial.find("matrix.rref 247\n"),16);badBookmark(book,partial);
+  badBookmark(book,eight+"matrix.determinant-volume 100\n"+"matrix.determinant-volume 100\n");
+  auto impossible=eight;impossible.replace(impossible.find("matrix.permutations"),19,"matrix.determinant-volume");badBookmark(book,impossible);
   // Reading and bookmark restoration must preserve an already checked result.
   require(book.board().dispatch({BoardActionKind::Step}).accepted,"Could not finish pivoted example");
   require(book.board().dispatch({BoardActionKind::Check}).accepted&&book.board().view().passed,"Could not check pivoted example");
@@ -90,7 +115,7 @@ int main(){try{
   const auto lesson=matrixChapter()[1].lesson;
   for(const auto& b:lesson){
     require(blockIds.insert(b.id).second,"Duplicate block reference");
-    if(*b.number)require(numbers.insert(b.number).second,"Duplicate block number");
+    if(!b.number.empty())require(numbers.insert(b.number).second,"Duplicate block number");
     require(!b.body.empty(),"A lesson block has no statement");
     if(b.kind==BookBlockKind::Exercise){
       ++exercises;require(!b.help[1].empty()&&!b.help[2].empty()&&!b.help[3].empty(),"Practice lacks separate hint, answer or solution");
@@ -154,5 +179,5 @@ int main(){try{
   const auto saved=bytes(path);require(!writeTextbookBookmark(path/"not-a-directory",book).accepted,"Invalid directory accepted");require(bytes(path)==saved,"Failed save damaged previous bookmark");
   {std::ofstream out(path);out<<"bad bookmark";}
   const auto unchanged=restored.bookmark();require(!readTextbookBookmark(path,restored).accepted&&restored.bookmark()==unchanged,"Bad file changed reader");require(bytes(path)=="bad bookmark","Reading rewrote malformed file");
-  std::printf("textbook: %u assertions passed; eight sections, six source boards plus independent systems practice, 29 index terms, navigation boundaries, read/exercise separation, stable block references, independent redacted help, 200 percent text and bookmark round trips.\n",checks);return 0;
+  std::printf("textbook: %u assertions passed; registry-driven sections, six source boards plus independent systems/object practice, index terms, navigation boundaries, read/exercise separation, stable block references, independent redacted help, 200 percent text and bookmark round trips.\n",checks);return 0;
 }catch(const std::exception& e){std::fprintf(stderr,"textbook test: %s\n",e.what());return 1;}}

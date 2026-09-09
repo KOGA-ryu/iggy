@@ -24,13 +24,18 @@ std::string folded(std::string_view value) {
 }
 constexpr std::array actions{
   fm::LayeredQuestionCommandKind::OpenQuestion,fm::LayeredQuestionCommandKind::SubmitOption,
-  fm::LayeredQuestionCommandKind::Continue,fm::LayeredQuestionCommandKind::RestartQuestion};
+  fm::LayeredQuestionCommandKind::Continue,fm::LayeredQuestionCommandKind::RestartQuestion,fm::LayeredQuestionCommandKind::Support};
+constexpr std::array supportActions{"level","draft","choice","blank","work","help","undo"};
 fm::LayeredQuestionSession session(const CorpusStarter& q) {
-  return fm::LayeredQuestionSession({q.question},fm::QuestionInteraction::ArcadeCollect,0,true);
+  return fm::LayeredQuestionSession({q.question},q.question.support?fm::QuestionInteraction::Supported:fm::QuestionInteraction::ArcadeCollect,0,true);
 }
 }
 std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path& path,const MathCorpus& corpus) {
-  const auto root=Json::parse(read(path));require(root.at("schema_version")==1,"Unknown starter schema");
+  return parseCorpusStarters(read(path),corpus,path);
+}
+std::vector<CorpusStarter> parseCorpusStarters(std::string_view text,const MathCorpus& corpus,const std::filesystem::path& path) {
+  require(text.size()<=maxBytes,"Starter file exceeds 8 MiB");
+  const auto root=Json::parse(text);require(root.at("schema_version")==1,"Unknown starter schema");
   const auto& rows=root.at("questions");require(rows.is_array() && !rows.empty() && rows.size()<=maxQuestions,"Invalid starter count");
   std::set<std::string> ids;std::vector<CorpusStarter> result;
   for(const auto& row:rows) {
@@ -81,7 +86,12 @@ std::vector<std::size_t> CorpusPractice::find(std::optional<std::size_t> subject
 void CorpusPractice::open(std::size_t index) {
   if(index>=questions_.size())return;
   if(!attempts_[index]) {
+    const auto level=active() && active()->currentRun().support?active()->currentRun().support->level:fm::SupportLevel::Learn;
     attempts_[index]=session(questions_[index]);
+    if(auto view=attempts_[index]->supportView()) {
+      fm::LayeredQuestionCommand command{fm::LayeredQuestionCommandKind::Support};command.support=view->command;
+      command.support.value=static_cast<std::uint32_t>(level);(void)attempts_[index]->dispatch(command);
+    }
     (void)attempts_[index]->dispatch({fm::LayeredQuestionCommandKind::OpenQuestion});
   }
   dirty_=dirty_ || selected_!=index;selected_=index;
@@ -91,7 +101,8 @@ const fm::LayeredQuestionSession* CorpusPractice::attempt(std::size_t index) con
   return index<attempts_.size() && attempts_[index]?&*attempts_[index]:nullptr;
 }
 bool CorpusPractice::dispatch(const fm::LayeredQuestionCommand& command) {
-  if(!active() || std::find(actions.begin(),actions.end(),command.kind)==actions.end() || command.questionIndex || command.archiveUnfinished)return false;
+  if(!active() || std::find(actions.begin(),actions.end(),command.kind)==actions.end() || command.questionIndex)return false;
+  if(command.archiveUnfinished && !(active()->currentRun().support && command.kind==fm::LayeredQuestionCommandKind::RestartQuestion))return false;
   const auto result=active()->dispatch(command);dirty_=dirty_ || result.changed;return result.accepted;
 }
 void CorpusPractice::loadProgress(const std::filesystem::path& path) {
@@ -99,7 +110,7 @@ void CorpusPractice::loadProgress(const std::filesystem::path& path) {
   try {
     if(!std::filesystem::exists(path)){message_="Starter progress saves automatically.";return;}
     disk_=read(path);const auto root=Json::parse(*disk_);
-    require(root.at("format")=="paths_corpus_starters" && root.at("version")==1,"Unknown starter save format");
+    require(root.at("format")=="paths_corpus_starters" && (root.at("version")==1 || root.at("version")==2),"Unknown starter save format");
     const auto& runs=root.at("runs");require(runs.is_array() && runs.size()<=questions_.size(),"Invalid starter save count");
     auto restored=attempts_;std::set<std::string> ids;std::size_t total=0;
     for(const auto& run:runs) {
@@ -110,10 +121,25 @@ void CorpusPractice::loadProgress(const std::filesystem::path& path) {
       const auto& commands=run.at("commands");require(commands.is_array(),"Invalid starter commands");total+=commands.size();
       require(total<=maxCommands,"Starter history exceeds limit");auto replay=session(*q);
       for(const auto& c:commands) {
-        require(c.is_array() && c.size()==2 && c[0].is_number_unsigned() && c[1].is_number_unsigned(),"Invalid starter command");
-        require(c[0].get<std::uint64_t>()<actions.size() && c[1].get<std::uint64_t>()<=UINT32_MAX,"Invalid starter command value");
-        fm::LayeredQuestionCommand command{actions[c[0].get<std::size_t>()]};command.option.value=c[1].get<std::uint32_t>();
-        require(command.kind==fm::LayeredQuestionCommandKind::SubmitOption || command.option.value==0,"Unexpected starter option");
+        fm::LayeredQuestionCommand command;
+        if(c.is_object()) {
+          require(root.at("version")==2 && c.size()==7 && c.at("kind")=="support" && c.at("schema")==1 && q->question.support.has_value(),"Invalid support command");
+          const auto key=c.at("action").get<std::string>();const auto action=std::find(supportActions.begin(),supportActions.end(),key);
+          require(action!=supportActions.end(),"Unknown saved support action");
+          for(const auto* field:{"value","run","revision"})require(c.at(field).is_number_unsigned(),"Invalid saved support integer");
+          require(c.at("value").get<std::uint64_t>()<=UINT32_MAX && c.at("run").get<std::uint64_t>()<=UINT32_MAX,"Saved support integer overflow");
+          command.kind=fm::LayeredQuestionCommandKind::Support;
+          command.support={static_cast<fm::SupportAction>(action-supportActions.begin()),c.at("value").get<std::uint32_t>(),c.at("text").get<std::string>(),q->id,q->question.version,c.at("run").get<std::uint32_t>(),c.at("revision").get<std::uint64_t>()};
+        } else {
+          require(c.is_array() && (c.size()==2 || (root.at("version")==2 && c.size()==3)) && c[0].is_number_unsigned() && c[1].is_number_unsigned(),"Invalid starter command");
+          require(c[0].get<std::uint64_t>()<4 && c[1].get<std::uint64_t>()<=UINT32_MAX,"Invalid starter command value");
+          command.kind=actions[c[0].get<std::size_t>()];command.option.value=c[1].get<std::uint32_t>();
+          require(command.kind==fm::LayeredQuestionCommandKind::SubmitOption || command.option.value==0,"Unexpected starter option");
+          if(c.size()==3) {
+            require(command.kind==fm::LayeredQuestionCommandKind::RestartQuestion && q->question.support && c[2].is_boolean(),"Invalid saved restart");
+            command.archiveUnfinished=c[2].get<bool>();
+          }
+        }
         require(replay.dispatch(command).accepted,"Saved starter command rejected: "+id);
       }
       require(replay.currentRun().phase!=fm::LayeredQuestionPhase::Grid,"Saved starter was never opened");
@@ -131,13 +157,18 @@ void CorpusPractice::loadProgress(const std::filesystem::path& path) {
 void CorpusPractice::saveProgress() {
   if(progressPath_.empty() || blocked_ || !dirty_)return;
   try {
-    Json root{{"format","paths_corpus_starters"},{"version",1},{"selected",selected_?Json(questions_[*selected_].id):Json(nullptr)},{"runs",Json::array()}};
+    Json root{{"format","paths_corpus_starters"},{"version",2},{"selected",selected_?Json(questions_[*selected_].id):Json(nullptr)},{"runs",Json::array()}};
     std::size_t total=0;
     for(std::size_t i=0;i<attempts_.size();++i)if(attempts_[i]) {
       Json commands=Json::array();
       for(const auto& c:attempts_[i]->journal()) {
         const auto action=std::find(actions.begin(),actions.end(),c.kind);require(action!=actions.end(),"Unsupported starter command");
-        commands.push_back({static_cast<std::size_t>(action-actions.begin()),c.option.value});
+        if(c.kind==fm::LayeredQuestionCommandKind::Support) {
+          const auto& s=c.support;
+          commands.push_back({{"kind","support"},{"action",supportActions[static_cast<std::size_t>(s.action)]},{"value",s.value},{"text",s.text},{"run",s.runNumber},{"revision",s.revision},{"schema",1}});
+        } else {
+          Json entry={static_cast<std::size_t>(action-actions.begin()),c.option.value};if(c.archiveUnfinished)entry.push_back(true);commands.push_back(std::move(entry));
+        }
       }
       total+=commands.size();require(total<=maxCommands,"Starter history exceeds limit");
       root["runs"].push_back({{"id",questions_[i].id},{"question",Json::parse(questions_[i].stamp)},{"commands",std::move(commands)}});

@@ -1,5 +1,66 @@
 # Paths
 
+The first [reviewed source-card lesson](docs/SOURCE_LESSON_WORKFLOW.md) connects
+Claude card 002 to the existing textbook formatting and regular solving game.
+In Library, open **Linear Algebra → Three points, one formula**: nine textbook
+blocks, the current 13-step guided problem and a separate four-level reduction
+exercise. Changed sources or mappings require review before preparation.
+
+The [learning publisher](docs/LEARNING_EXPORTS.md) now packages authored chapters
+and activates a complete checked library. With `b/sorter` built:
+
+```sh
+python3 tools/export_learning.py publish content/authoring/learning/matrix_foundations
+./b/sorter
+```
+
+In Library, search **Matrix foundations: two equations**, open the lesson and
+use the blue question link. Gold Given stays beside cyan Working; the green
+answer is `x=2, y=3` and waits for Next. The package has all four support modes.
+Publication retains existing questions and frozen stamps, checks the exact
+payload, and leaves the previous active library intact if activation has not
+completed. It requires no window or progress-file edits.
+
+The [learning-document pipeline](docs/LEARNING_DOCUMENTS.md) loads `.paths.md`
+files from a folder into the Library. Write subjects, chapters, learning text,
+questions and solving steps; use `@template`, `@include` and `@figure` to call
+the existing formats, shared prose and diagram providers. Algebra, physics and
+biology examples are in [content/write](content/write).
+
+```sh
+./b/sorter --check-content --documents content/write
+./b/sorter --documents content/write
+```
+
+The first command checks the folder without a window. The second reads it
+directly when launching. Adding supported content needs a relaunch, with no C++
+rebuild. **Open lesson** shows the reading and its diagram; blue question links
+open the existing solving workspace. Current templates are `lesson.v1`,
+`choices.v1` and the four-level `linear.v1` and `matrix.v1`.
+
+**Library → Questions → search `Document matrix` → Focus** opens the
+[matrix document example](content/write/matrix.paths.md). Learn has explained
+symbolic row operations; Practice fills a multiplier or divisor; Solve and Write
+accept complete matrices, one per line. Gold Given stays beside cyan Working,
+and the green result waits for Next. The [matrix authoring contract](docs/LEARNING_DOCUMENTS.md#matrix-documents)
+lists supported operations and exact input syntax. This first template handles
+two real unknowns with a unique solution; visual acceptance is pending.
+
+**Contents → Library → Questions → search `Linear practice` → Focus** opens
+25 [linear equations with four support levels](docs/QUESTION_PRACTICE_FORMAT.md).
+**1 Learn** uses explained symbolic choices; **2 Practice** has a typed blank;
+**3 Solve** accepts equation checkpoints; **4 Write** starts a blank multiline
+solution. Gold Given stays beside cyan Working, purple Help reads in place,
+and the green result waits for Next. Level, draft, help and checked history save
+automatically. The [authoring workflow](docs/QUESTION_AUTHORING_WORKFLOW.md)
+defines checked generation and a coverage ledger for 229 practice areas.
+This first family is implemented; visual acceptance and other families remain.
+
+For `3x+5=20`, levels 3–4 accept `3x=15` then `x=5`, one equation per line.
+**Enter** inserts a newline; **Check work** submits. Alternative valid routes
+and exact fractions are supported. This bounded linear checker does not check
+general proofs or arbitrary LaTeX input; unsupported text remains in the draft.
+
 **Contents → Library → Questions** now adds eight [Matrix reasoning](docs/MATRIX_REASONING.md)
 follow-ups in the regular symbolic-tile format. Search **Matrix reasoning**, then
 choose **Focus**: gold Given and cyan Working sit together above the choices.
@@ -16,10 +77,54 @@ symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
 
+[Parametric Patch Lab](docs/P057_PARAMETRIC_PATCHES.md) adds editable canopy,
+sail, curved-ramp and saddle-terrain surfaces. Open
+`./b/math_lab --object patch --level 0 --object-preset 0` to select one of sixteen
+controls and edit its XYZ position. Four layers connect surface blending,
+tangents/normals, curvature and triangulated area through the existing compact UI.
+
+The [compact model workspace](docs/P056_COMPACT_MODEL_WORKSPACE.md) replaces
+object-button rows with searchable object, example and layer selectors. Controls
+use inline sliders and numeric fields, grouped XYZ rows and remembered collapsible
+sections. Resize or hide Controls and the Graph / Values / Math / Exercise drawer.
+The textbook's authored object figures reuse the same compact scalar controls.
+
+[Boolean Solids Lab](docs/P055_BOOLEAN_SOLIDS.md) adds drilled block, archway,
+ball-and-socket and blended-stone presets. Open
+`./b/math_lab --object boolean --level 0 --object-preset 0` to move a cutter,
+combine solids, inspect a section and connect their fields to logic, normals
+and numerical volume. Four layers share the same editable object.
+
+[Lathe Lab](docs/P054_LATHE_LAB.md) adds vase, bottle, goblet and pawn presets.
+Open `./b/math_lab --object lathe --level 1` to edit a seven-point profile,
+revolve it, expose a hollow interior and adjust radial wall thickness. Its four
+layers connect the profile, revolution, disk/washer/shell volume and surface area.
+
+[Curves and sweeps](docs/P053_CURVES_AND_SWEEPS.md) adds editable pipe, cable,
+ribbon and horn examples. Open `./b/math_lab --object curve --level 3` and change
+control points, profile, thickness, taper and twist. Four linked layers connect
+interpolation, tangent/curvature, equal-distance travel and the finished sweep.
+
+[Convex geometry](docs/P052_CONVEX_GEOMETRY.md) adds two four-layer 3D objects.
+Open `./b/math_lab --object psd` for matrix boundaries, quadratic surfaces,
+convex mixtures and fixed-trace optimization; open `./b/math_lab --object norm`
+for norm balls, triangle inequalities, the infinity limit and dual supporting
+planes. Both have named examples, linked plots and a challenge in every layer.
+Norm balls offer solid and open views; the addition layer keeps vectors visible.
+
+[Determinants as signed volume](docs/P051_DETERMINANT_VOLUME.md) adds section 1.9:
+move a shear and scale, compare signed determinant with volume, and collapse a
+separate practice cube. Open `./b/math_lab --book --section 9`. The reusable object
+binding and [three-lesson Terra queue](docs/lesson_tasks/BATCH_01.md) are ready.
+
 [Solution sets](docs/P050_SYSTEM_SOLUTION_SETS.md) adds section 1.3 in the same
 four-view format: movable equation planes, one/infinite/no-solution examples,
 row reduction, and prediction practice. Open `./b/math_lab --book --section 3`.
 Use **Move the planes / edit givens** to change coefficients or right-hand sides.
+
+For building more lessons, use the [lesson authoring workflow](docs/LESSON_AUTHORING_WORKFLOW.md)
+and its reusable task template. The determinant pilot is implemented;
+Batch 01 supplies three further implementation briefs and a start instruction.
 
 [Live textbook figures](docs/P049_LIVE_TEXTBOOK_FIGURES.md) pair section 1.2 with
 an adjustable 3D view of equation planes and their shared solution set. Open
@@ -32,9 +137,9 @@ typeset mathematics, a captioned live figure, and practice with separate hints,
 answers and solutions. Open `./b/math_lab --book --section 2`.
 
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
-`math_lab` home. Its first chapter, **Matrices and Elimination**, has eight
+`math_lab` home. Its first chapter, **Matrices and Elimination**, has nine
 sections, an index, reading bookmarks and connected exercises. Run
-`./b/math_lab`; the existing 22 objects are under **Explore 3D objects**.
+`./b/math_lab`; the existing 27 objects are under **Explore 3D objects**.
 
 The [exercise matrix board](docs/P046_MATRIX_BOARD.md) connects cards 001, 004,
 018, 031, 044 and 059 with reusable indexed diagrams, row operations and numeric
@@ -61,7 +166,7 @@ cmake --build b --target sorter -j 6
 
 ## Interactive maths objects and linked diagrams
 
-The native `math_lab` now contains twenty-two objects. The original expansion cube,
+The native `math_lab` now contains twenty-eight objects. The original expansion cube,
 unit circle, integration disks and binary graph remain available. The matrix
 object now has four working learning layers, and the new function and surface
 laboratories connect their geometry to interactive diagrams. Symmetry, harmonics
@@ -69,7 +174,12 @@ and motion add three further families. Modular drums, the Gaussian lattice and
 the vector-field chamber add another three. Flux shells, tensor blocks and a
 probability network extend the collection. The new probability/statistics batch
 adds a binomial board, Bayesian cube and covariance cloud. Spherical harmonics,
-quadratic forms and roots of unity now add twelve more working layers.
+quadratic forms and roots of unity add twelve further layers. PSD cones and norm
+balls add eight layers of convex geometry. Curves and sweeps connect four more
+layers through editable pipes, cables, ribbons and horns. Lathe Lab adds four
+more through editable profiles, revolutions, volume elements and surface bands.
+Boolean Solids joins and cuts volumes; Patch Lab adds four layers through open
+bicubic surfaces, their differential geometry and area convergence.
 
 | Object | Learning layers |
 | --- | --- |
@@ -91,6 +201,12 @@ quadratic forms and roots of unity now add twelve more working layers.
 | Harmonic sphere | Spherical coordinates; 25 real harmonic modes; superposition/orthogonality; spherical heat diffusion |
 | Quadratic forms | Evaluation/sections; orthogonal diagonalization; inertia/zero sets; Rayleigh quotient extrema |
 | Roots of unity | Root constellation; complex power maps; cyclic subgroups; cyclotomic polynomials/Galois action |
+| PSD cone | Matrix membership; eigenvalues/quadratic directions; convex mixtures/rays; fixed-trace optimization |
+| Norm balls | Unit distance; triangle inequality; finite-p convergence to the max norm; dual norms/supporting planes |
+| Curves and sweeps | Control-point interpolation; tangent/speed/curvature; equal-distance travel; profiles/taper/twist |
+| Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
+| Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
+| Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |
 
 The level selector changes the available operations and challenge. Drag a
 plot to move its input, drag entries in the matrix diagram to edit A, or click
@@ -136,6 +252,8 @@ For a text-only run that creates no native host, window, rendering or images:
 ./b/math_lab --validate --object binomial --level 3 --set trials=12 --check
 ./b/math_lab --validate --object bayes --level 3 --check
 ./b/math_lab --validate --object covariance --level 3 --check
+./b/math_lab --validate --object psd --level 2 --object-preset 1 --check
+./b/math_lab --validate --object norm --level 3 --object-preset 3 --set norm_support=1 --check
 ./b/math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check
 ./b/math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check
 ./b/math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check
@@ -473,5 +591,7 @@ learning models can be built with `-DPATHS_BUILD_NATIVE=OFF`.
 - [Migration seed](docs/MIGRATION_SEED_MANIFEST.json) — where each borrowed file came from.
 
 The original `paths` startup builds with `cmake --build b -t paths -j4`.
-SDL3 and Vulkan are external SDK dependencies; the parent iggy3d checkout and
+SDL3, Vulkan and OpenSSL Crypto are external SDK dependencies. OpenSSL supplies
+SHA-256 for learning-package integrity checks; the publisher itself uses Python
+3.11+ and its standard library on macOS/Linux. The parent iggy3d checkout and
 build are not runtime dependencies.

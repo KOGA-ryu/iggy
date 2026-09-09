@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 #include <span>
 #include <string_view>
@@ -9,8 +10,8 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Count };
-enum class MathParameter : std::uint8_t {
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Count };
+enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
   A00, A02, A10, A12, A20, A21, A22, VectorX, VectorY, VectorZ, ComposeAngle, SvdStage,
@@ -30,9 +31,27 @@ enum class MathParameter : std::uint8_t {
   CloudX, CloudY, CloudZ, CloudYaw, CloudPitch, CloudShear, CloudMeanX, CloudMeanY, CloudMeanZ, CloudComponent, CloudWhiten,
   SphereTheta, SpherePhi, SphereMode, SphereSecond, SphereMix, SphereHeat,
   QuadLambdaX, QuadLambdaY, QuadLambdaZ, QuadYaw, QuadPitch, QuadX, QuadY, QuadZ,
-  RootN, RootIndex, RootMultiplier, RootPower, RootAutomorphism, Count
+  RootN, RootIndex, RootMultiplier, RootPower, RootAutomorphism,
+  PsdA, PsdB, PsdC, PsdProbeAngle, PsdMix, PsdOtherAngle, PsdRayScale, PsdSlice, PsdCostAngle, PsdObjective,
+  NormP, NormInfinity, NormX, NormY, NormZ, NormOtherX, NormOtherY, NormOtherZ, NormSupport, NormWire,
+  CurveControl, CurveP0X, CurveP0Y, CurveP0Z, CurveP1X, CurveP1Y, CurveP1Z,
+  CurveP2X, CurveP2Y, CurveP2Z, CurveP3X, CurveP3Y, CurveP3Z,
+  CurveProgress, CurveTravel, CurveProfile, CurveRadius, CurveAspect,
+  CurveEndScale, CurveTwist, CurveNormP, CurveGuides,
+  LatheControl, LatheR0, LatheR1, LatheR2, LatheR3, LatheR4, LatheR5, LatheR6,
+  LatheH1, LatheH2, LatheH3, LatheH4, LatheH5, LatheHeight, LatheHollow,
+  LatheWall, LatheFloor, LatheTurn, LatheCut, LatheProbe, LatheSlices, LatheMethod, LatheGuides,
+  BooleanShapeA, BooleanShapeB, BooleanSizeA, BooleanSizeB, BooleanX, BooleanY, BooleanZ,
+  BooleanYaw, BooleanPitch, BooleanOperation, BooleanBlend, BooleanProbeX, BooleanProbeY, BooleanProbeZ,
+  BooleanResolution, BooleanGuides, BooleanSection, BooleanFit, BooleanClearance,
+  PatchControl,
+  PatchP00X, PatchP00Y, PatchP00Z, PatchP01X, PatchP01Y, PatchP01Z, PatchP02X, PatchP02Y, PatchP02Z, PatchP03X, PatchP03Y, PatchP03Z,
+  PatchP10X, PatchP10Y, PatchP10Z, PatchP11X, PatchP11Y, PatchP11Z, PatchP12X, PatchP12Y, PatchP12Z, PatchP13X, PatchP13Y, PatchP13Z,
+  PatchP20X, PatchP20Y, PatchP20Z, PatchP21X, PatchP21Y, PatchP21Z, PatchP22X, PatchP22Y, PatchP22Z, PatchP23X, PatchP23Y, PatchP23Z,
+  PatchP30X, PatchP30Y, PatchP30Z, PatchP31X, PatchP31Y, PatchP31Z, PatchP32X, PatchP32Y, PatchP32Z, PatchP33X, PatchP33Y, PatchP33Z,
+  PatchU, PatchV, PatchResolution, PatchGuides, Count
 };
-enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli };
+enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };
 enum class MathFeedback : std::uint8_t { None, TryAgain, Solved };
 
@@ -50,12 +69,22 @@ struct MathObjectSpec {
   std::string_view key, name, title, relationship, challenge, convention;
   std::array<std::string_view,3> progression;
   iggy3d::Vec3 cameraDirection;
+  double playbackRate = 1; // Parameter units per second.
+  std::string_view playbackRestart = "Restart time", playbackEnd = "Time window complete. Restart or scrub time to explore again.";
 };
 [[nodiscard]] std::span<const MathObjectSpec> mathObjectSpecs();
 [[nodiscard]] std::span<const MathParameterSpec> mathParameterSpecs();
 struct MathLesson { std::string_view name, relationship, challenge, explanation; };
 [[nodiscard]] std::span<const MathLesson> mathLessons(MathObjectKind);
 [[nodiscard]] std::span<const std::string_view> mathMatrixPresetNames();
+struct MathObjectPreset {
+  std::string_view name;
+  static constexpr unsigned kCapacity = 64;
+  std::array<MathParameter,kCapacity> parameters;
+  std::array<double,kCapacity> values;
+  unsigned count = 3;
+};
+[[nodiscard]] std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind, unsigned level);
 
 struct MathAction {
   MathActionKind kind;
@@ -64,6 +93,7 @@ struct MathAction {
   double value = 0;
   unsigned vertex = 0;
   double secondary = 0;
+  std::bitset<static_cast<unsigned>(MathParameter::Count)> resetParameters{};
 };
 struct MathActionResult { bool accepted = false; std::string_view reason; };
 
@@ -102,6 +132,11 @@ struct MathMatrixView {
   bool editable = false;
 };
 struct MathSurfaceVertex { iggy3d::Vec3 position{}, normal{}, color{}; };
+struct MathTriangleSurface {
+  std::array<MathSurfaceVertex,4096> vertices{};
+  std::array<std::uint16_t,24576> indices{};
+  unsigned vertexCount=0,indexCount=0;
+};
 struct MathSurfacePatch {
   static constexpr unsigned kResolution = 21;
   std::array<MathSurfaceVertex,kResolution*kResolution> vertices{};
@@ -128,6 +163,12 @@ struct MathValueTable {
   std::array<std::array<double,4>,32> values{};
   std::size_t rowCount = 0, columnCount = 0;
 };
+struct MathCurveView {
+  bool active = false;
+  std::array<iggy3d::Vec3,16> controls{};
+  unsigned selected = 0, count = 4;
+  MathParameter selectionParameter = MathParameter::CurveControl;
+};
 struct MathObjectSnapshot {
   static constexpr std::size_t kPartCapacity = 192, kRouteCapacity = 64;
   MathObjectKind kind = MathObjectKind::Algebra;
@@ -144,8 +185,10 @@ struct MathObjectSnapshot {
   std::array<MathMatrixView,3> matrices{};
   std::size_t matrixCount = 0;
   MathSurfacePatch surface;
+  MathTriangleSurface solid;
   MathContourMap contours;
   MathSymmetryView symmetry;
+  MathCurveView curve;
   MathValueTable table;
   unsigned modularWalkSteps = 0, modularVisitedMask = 0;
   bool fieldPathReversed = false;

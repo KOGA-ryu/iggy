@@ -26,12 +26,23 @@ add_library(paths_matrix_board src/runtime/matrix_board/MatrixBoard.cpp)
 target_include_directories(paths_matrix_board PUBLIC src)
 
 add_library(paths_textbook src/runtime/textbook/Textbook.cpp src/runtime/textbook/MatrixChapter.cpp src/runtime/textbook/RrefLesson.cpp src/runtime/textbook/SystemsReading.cpp src/runtime/textbook/SystemLesson.cpp)
+target_sources(paths_textbook PRIVATE src/runtime/textbook/ObjectLesson.cpp src/runtime/textbook/DeterminantLesson.cpp)
 target_link_libraries(paths_textbook PUBLIC paths_matrix_board paths_textbook_figures)
 
 add_library(paths_math_objects
   src/runtime/math_objects/MathObjects.cpp
+  src/runtime/math_objects/BezierCurve.cpp
+  src/runtime/math_objects/BezierPatch.cpp
+  src/runtime/math_objects/PatchGeometry.cpp
+  src/runtime/math_objects/LatheProfile.cpp
+  src/runtime/math_objects/LatheGeometry.cpp
+  src/runtime/math_objects/BooleanSolid.cpp
+  src/runtime/math_objects/BooleanGeometry.cpp
   src/scene/MathObjectScene.cpp)
 target_link_libraries(paths_math_objects PUBLIC paths_scene)
+
+add_library(paths_math_object_layout src/ui/MathObjectLayout.cpp)
+target_link_libraries(paths_math_object_layout PUBLIC paths_math_objects)
 
 add_library(paths_textbook_figures
   src/runtime/textbook/RowPlaneFigure.cpp
@@ -56,6 +67,9 @@ target_include_directories(paths_math_corpus PUBLIC src)
 target_link_libraries(paths_math_corpus PUBLIC paths_model PRIVATE paths_json)
 add_library(paths_corpus_practice src/content/CorpusPractice.cpp)
 target_link_libraries(paths_corpus_practice PUBLIC paths_math_corpus paths_content PRIVATE paths_json)
+add_library(paths_learning_documents src/content/LearningDocuments.cpp)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+target_link_libraries(paths_learning_documents PUBLIC paths_corpus_practice paths_math_objects paths_textbook PRIVATE paths_json OpenSSL::Crypto)
 
 add_library(paths_sorter_model src/runtime/sorter/EquationSorterSession.cpp)
 target_include_directories(paths_sorter_model PUBLIC src)
@@ -135,16 +149,20 @@ if(PATHS_BUILD_NATIVE)
 
   add_executable(paths app/main.cpp)
   target_link_libraries(paths PRIVATE paths_ui paths_native)
-  add_executable(math_lab app/math_lab_main.cpp src/ui/MatrixBoardUi.cpp src/ui/TextbookUi.cpp src/ui/TextbookFigureUi.cpp)
-  target_link_libraries(math_lab PRIVATE paths_native_math paths_textbook paths_native paths_imgui SDL3::SDL3)
+  add_library(paths_math_control_ui src/ui/MathControlUi.cpp)
+  target_link_libraries(paths_math_control_ui PUBLIC paths_math_object_layout PRIVATE paths_imgui)
+  add_library(paths_textbook_ui src/ui/MatrixBoardUi.cpp src/ui/TextbookUi.cpp src/ui/TextbookFigureUi.cpp)
+  target_link_libraries(paths_textbook_ui PUBLIC paths_native_math paths_textbook paths_math_control_ui PRIVATE paths_imgui)
+  add_executable(math_lab app/math_lab_main.cpp)
+  target_link_libraries(math_lab PRIVATE paths_textbook_ui paths_native paths_imgui SDL3::SDL3)
   add_executable(gallery app/gallery_main.cpp)
   target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
   add_library(paths_notation_ui src/ui/MathNotationUi.cpp)
   target_link_libraries(paths_notation_ui PUBLIC paths_model PRIVATE paths_imgui)
-  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp src/ui/CorpusPracticeUi.cpp src/ui/MotionLessonUi.cpp)
-  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_corpus_practice paths_native_math paths_motion PRIVATE paths_imgui paths_textbook)
+  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp src/ui/CorpusPracticeUi.cpp src/ui/MotionLessonUi.cpp src/ui/DocumentLessonUi.cpp)
+  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_learning_documents paths_native_math paths_motion PRIVATE paths_imgui paths_textbook_ui)
   add_executable(sorter app/sorter_main.cpp)
-  target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_motion_progress paths_native paths_imgui paths_json SDL3::SDL3)
+  target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_motion_progress paths_learning_documents paths_native paths_imgui paths_json SDL3::SDL3)
   add_custom_target(paths_native_math_resources
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/third_party/microtex/res"
@@ -166,6 +184,9 @@ if(PATHS_BUILD_NATIVE)
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/content/corpus"
       "$<TARGET_FILE_DIR:sorter>/content/corpus"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/content/write"
+      "$<TARGET_FILE_DIR:sorter>/content/write"
     VERBATIM)
   add_dependencies(sorter paths_sorter_content_files)
   # Deploy editable content next to the executable, including multi-config builds.
@@ -177,6 +198,13 @@ if(PATHS_BUILD_NATIVE)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_learning_document_tests tests/learning_document_tests.cpp)
+  target_link_libraries(paths_learning_document_tests PRIVATE paths_learning_documents paths_json)
+  target_compile_definitions(paths_learning_document_tests PRIVATE
+    CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+    STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
+    DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
+  add_test(NAME paths_learning_document_tests COMMAND paths_learning_document_tests)
   add_executable(paths_motion_tests tests/motion_lesson_tests.cpp)
   target_link_libraries(paths_motion_tests PRIVATE paths_motion_progress paths_json)
   add_test(NAME paths_motion_tests COMMAND paths_motion_tests)
@@ -186,11 +214,36 @@ if(BUILD_TESTING)
     CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json")
   add_test(NAME paths_corpus_starter_tests COMMAND paths_corpus_starter_tests)
+  add_executable(paths_four_level_tests tests/four_level_tests.cpp)
+  target_link_libraries(paths_four_level_tests PRIVATE paths_corpus_practice paths_json)
+  target_compile_definitions(paths_four_level_tests PRIVATE
+    CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+    STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
+    SUPPORT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/linear_support.json")
+  add_test(NAME paths_four_level_tests COMMAND paths_four_level_tests)
   add_executable(paths_corpus_tests tests/math_corpus_tests.cpp)
   target_link_libraries(paths_corpus_tests PRIVATE paths_math_corpus paths_sorter_content paths_json)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_patch_tests tests/math_patch_tests.cpp)
+  target_link_libraries(paths_math_patch_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_patch_tests COMMAND paths_math_patch_tests)
+  add_executable(paths_math_object_layout_tests tests/math_object_layout_tests.cpp)
+  target_link_libraries(paths_math_object_layout_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_object_layout_tests COMMAND paths_math_object_layout_tests)
+  add_executable(paths_math_boolean_tests tests/math_boolean_tests.cpp)
+  target_link_libraries(paths_math_boolean_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_boolean_tests COMMAND paths_math_boolean_tests)
+  add_executable(paths_math_lathe_tests tests/math_lathe_tests.cpp)
+  target_link_libraries(paths_math_lathe_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_lathe_tests COMMAND paths_math_lathe_tests)
+  add_executable(paths_math_curve_tests tests/math_curve_tests.cpp)
+  target_link_libraries(paths_math_curve_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_curve_tests COMMAND paths_math_curve_tests)
+  add_executable(paths_math_convex_tests tests/math_convex_tests.cpp)
+  target_link_libraries(paths_math_convex_tests PRIVATE paths_math_objects)
+  add_test(NAME paths_math_convex_tests COMMAND paths_math_convex_tests)
   add_executable(paths_math_spectral_roots_tests tests/math_spectral_roots_tests.cpp)
   target_link_libraries(paths_math_spectral_roots_tests PRIVATE paths_math_objects)
   add_test(NAME paths_math_spectral_roots_tests COMMAND paths_math_spectral_roots_tests)
@@ -212,6 +265,10 @@ if(BUILD_TESTING)
   add_executable(paths_textbook_tests tests/textbook_tests.cpp)
   target_link_libraries(paths_textbook_tests PRIVATE paths_textbook)
   add_test(NAME paths_textbook_tests COMMAND paths_textbook_tests)
+
+  add_executable(paths_determinant_lesson_tests tests/determinant_lesson_tests.cpp)
+  target_link_libraries(paths_determinant_lesson_tests PRIVATE paths_textbook)
+  add_test(NAME paths_determinant_lesson_tests COMMAND paths_determinant_lesson_tests)
 
   add_executable(paths_system_lesson_tests tests/system_lesson_tests.cpp)
   target_link_libraries(paths_system_lesson_tests PRIVATE paths_textbook)
@@ -269,6 +326,10 @@ if(BUILD_TESTING)
     SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
   add_test(NAME paths_sorter_solve_tests COMMAND paths_sorter_solve_tests)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME paths_question_workflow_tests COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/question_workflow_tests.py")
+  add_test(NAME paths_four_level_publication COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/question_workflow.py" --check-runtime)
   add_test(NAME paths_matrix_reasoning_checks COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/matrix_reasoning_checks.py")
   add_test(NAME paths_corpus_starter_checks COMMAND "${Python3_EXECUTABLE}"
@@ -302,6 +363,27 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_executable(paths_learning_document_ui_tests tests/learning_document_ui_tests.cpp)
+    target_link_libraries(paths_learning_document_ui_tests PRIVATE paths_sorter_ui paths_imgui)
+    target_compile_definitions(paths_learning_document_ui_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+      STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
+      DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
+    add_dependencies(paths_learning_document_ui_tests paths_native_math_resources)
+    add_test(NAME paths_learning_document_ui_tests COMMAND paths_learning_document_ui_tests)
+    add_test(NAME paths_learning_export_tests COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/learning_export_tests.py"
+      --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>"
+      --ui "$<TARGET_FILE:paths_learning_document_ui_tests>")
+    add_executable(paths_four_level_ui_tests tests/four_level_ui_tests.cpp)
+    target_link_libraries(paths_four_level_ui_tests PRIVATE paths_sorter_ui paths_imgui)
+    target_compile_definitions(paths_four_level_ui_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+      SUPPORT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/linear_support.json")
+    add_dependencies(paths_four_level_ui_tests paths_native_math_resources)
+    add_test(NAME paths_four_level_ui_tests COMMAND paths_four_level_ui_tests)
     add_executable(paths_matrix_reasoning_tests tests/matrix_reasoning_tests.cpp)
     target_link_libraries(paths_matrix_reasoning_tests PRIVATE paths_sorter_ui paths_textbook paths_imgui paths_json)
     target_compile_definitions(paths_matrix_reasoning_tests PRIVATE
@@ -335,6 +417,14 @@ if(BUILD_TESTING)
     add_dependencies(paths_native_math_tests paths_native_math_resources)
     add_test(NAME paths_native_math_tests COMMAND paths_native_math_tests)
     add_test(NAME paths_math_system_point_cli COMMAND math_lab --validate --section 3)
+    add_test(NAME paths_math_determinant_split_cli COMMAND math_lab --validate --book --section 9 --book-view together)
+    set_tests_properties(paths_math_determinant_split_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1 practice=0 feedback=0 split=1 visible=1 vertices=[1-9]")
+    add_test(NAME paths_math_determinant_reading_cli COMMAND math_lab --validate --book --section 9 --book-view reading)
+    set_tests_properties(paths_math_determinant_reading_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1 practice=0 feedback=0 split=0 visible=0 vertices=0")
+    add_test(NAME paths_math_determinant_small_cli COMMAND math_lab --validate --book --section 9 --book-view figure --resolution 800x600)
+    set_tests_properties(paths_math_determinant_small_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1 practice=0 feedback=0 split=0 visible=1 vertices=[1-9]")
+    add_test(NAME paths_math_determinant_exercise_cli COMMAND math_lab --validate --book --section 9 --book-exercise)
+    set_tests_properties(paths_math_determinant_exercise_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1 practice=1 feedback=0 split=0 visible=1 vertices=[1-9]")
     set_tests_properties(paths_math_system_point_cli PROPERTIES PASS_REGULAR_EXPRESSION "outcome=1 rank=3 augmented_rank=3 nullity=0")
     add_test(NAME paths_math_system_line_cli COMMAND math_lab --validate --section 3 --system-example 2 --system-step)
     set_tests_properties(paths_math_system_line_cli PROPERTIES PASS_REGULAR_EXPRESSION "outcome=2 rank=2 augmented_rank=2 nullity=1")
@@ -392,6 +482,39 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_patch_blend_cli COMMAND math_lab --validate --object patch --level 0 --set patch_control=0 --set patch_u=0 --set patch_v=0 --check)
+    add_test(NAME paths_math_patch_normal_cli COMMAND math_lab --validate --object patch --level 1 --object-preset 1 --check)
+    add_test(NAME paths_math_patch_curvature_cli COMMAND math_lab --validate --object patch --level 2 --object-preset 3 --check)
+    add_test(NAME paths_math_patch_area_cli COMMAND math_lab --validate --object patch --level 3 --object-preset 0 --set patch_resolution=32 --check --resolution 800x600)
+    set_tests_properties(paths_math_patch_blend_cli paths_math_patch_normal_cli paths_math_patch_curvature_cli paths_math_patch_area_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_compact_boolean_small_cli COMMAND math_lab --validate --object boolean --resolution 800x600)
+    add_test(NAME paths_math_compact_curve_wide_cli COMMAND math_lab --validate --object curve --level 3 --resolution 1920x1080)
+    set_tests_properties(paths_math_compact_boolean_small_cli PROPERTIES PASS_REGULAR_EXPRESSION "toolbar_rows=2 overlay_controls=1")
+    set_tests_properties(paths_math_compact_curve_wide_cli PROPERTIES PASS_REGULAR_EXPRESSION "toolbar_rows=1 overlay_controls=0")
+    add_test(NAME paths_math_boolean_probe_cli COMMAND math_lab --validate --object boolean --object-preset 0 --check)
+    add_test(NAME paths_math_boolean_logic_cli COMMAND math_lab --validate --object boolean --level 1 --object-preset 0 --set boolean_operation=1 --check)
+    add_test(NAME paths_math_boolean_blend_cli COMMAND math_lab --validate --object boolean --level 2 --object-preset 3 --check)
+    add_test(NAME paths_math_boolean_sampling_cli COMMAND math_lab --validate --object boolean --level 3 --object-preset 0 --set boolean_resolution=24 --check)
+    set_tests_properties(paths_math_boolean_probe_cli paths_math_boolean_logic_cli paths_math_boolean_blend_cli paths_math_boolean_sampling_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_lathe_profile_cli COMMAND math_lab --validate --object lathe --object-preset 0 --check)
+    add_test(NAME paths_math_lathe_revolution_cli COMMAND math_lab --validate --object lathe --level 1 --set lathe_turn=180 --check)
+    add_test(NAME paths_math_lathe_volume_cli COMMAND math_lab --validate --object lathe --level 2 --object-preset 3 --set lathe_slices=32 --check)
+    add_test(NAME paths_math_lathe_area_cli COMMAND math_lab --validate --object lathe --level 3 --object-preset 3 --set lathe_slices=32 --check)
+    set_tests_properties(paths_math_lathe_profile_cli paths_math_lathe_revolution_cli paths_math_lathe_volume_cli paths_math_lathe_area_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_curve_interpolation_cli COMMAND math_lab --validate --object curve --set curve_p1_z=0.5 --check)
+    add_test(NAME paths_math_curve_curvature_cli COMMAND math_lab --validate --object curve --level 1 --set curve_progress=0.5 --check)
+    add_test(NAME paths_math_curve_distance_cli COMMAND math_lab --validate --object curve --level 2 --object-preset 1 --set curve_travel=1 --check)
+    add_test(NAME paths_math_curve_sweep_cli COMMAND math_lab --validate --object curve --level 3 --object-preset 3 --set curve_twist=90 --check)
+    set_tests_properties(paths_math_curve_interpolation_cli paths_math_curve_curvature_cli paths_math_curve_distance_cli paths_math_curve_sweep_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    add_test(NAME paths_math_psd_boundary_cli COMMAND math_lab --validate --object psd --object-preset 1 --check)
+    add_test(NAME paths_math_psd_quadratic_cli COMMAND math_lab --validate --object psd --level 1 --object-preset 2 --set psd_probe=90 --check)
+    add_test(NAME paths_math_psd_mixture_cli COMMAND math_lab --validate --object psd --level 2 --object-preset 1 --check)
+    add_test(NAME paths_math_psd_slice_cli COMMAND math_lab --validate --object psd --level 3 --set psd_objective=1 --check)
+    add_test(NAME paths_math_norm_boundary_cli COMMAND math_lab --validate --object norm --object-preset 0 --set norm_x=0.5 --set norm_y=0.5 --set norm_z=0 --check)
+    add_test(NAME paths_math_norm_triangle_cli COMMAND math_lab --validate --object norm --level 1 --check)
+    add_test(NAME paths_math_norm_limit_cli COMMAND math_lab --validate --object norm --level 2 --object-preset 2 --check)
+    add_test(NAME paths_math_norm_duality_cli COMMAND math_lab --validate --object norm --level 3 --object-preset 3 --set norm_support=1 --check)
+    set_tests_properties(paths_math_psd_boundary_cli paths_math_psd_quadratic_cli paths_math_psd_mixture_cli paths_math_psd_slice_cli paths_math_norm_boundary_cli paths_math_norm_triangle_cli paths_math_norm_limit_cli paths_math_norm_duality_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     set_tests_properties(paths_math_function_cli paths_math_matrix_cli paths_math_surface_cli paths_math_symmetry_cli paths_math_harmonics_cli paths_math_oscillator_cli paths_math_modular_cli paths_math_gaussian_cli paths_math_field_cli paths_math_flux_cli paths_math_tensor_cli paths_math_probability_cli paths_math_binomial_cli paths_math_bayes_cli paths_math_covariance_cli paths_math_spherical_cli paths_math_quadratic_cli paths_math_roots_cli
       PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_executable(paths_sorter_input_tests tests/equation_sorter_input_tests.cpp)

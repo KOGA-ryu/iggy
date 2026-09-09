@@ -86,7 +86,7 @@ void include(Aabb3& b,Vec3 p) {
 } // namespace
 
 MathObjectScene::MathObjectScene() {
-  frame_.vertices.reserve(kSceneVertexCapacity);frame_.indices.reserve(kSceneIndexCapacity);frame_.draws.reserve(MathObjectSnapshot::kPartCapacity+1);
+  frame_.vertices.reserve(kSceneVertexCapacity);frame_.indices.reserve(kSceneIndexCapacity);frame_.draws.reserve(MathObjectSnapshot::kPartCapacity+2);
 }
 void MathObjectScene::rebuild(const MathObjectSnapshot& snapshot) {
   frame_.vertices.clear();frame_.indices.clear();frame_.draws.clear();
@@ -135,6 +135,16 @@ void MathObjectScene::rebuild(const MathObjectSnapshot& snapshot) {
     for(unsigned row=0;row+1<patch.rows;++row)for(unsigned col=0;col+1<patch.columns;++col) {
       const unsigned a=row*patch.columns+col,b=a+patch.columns;triangle(a,b,a+1);triangle(a+1,b,b+1);
     }
+    frame_.draws.push_back(draw);
+  }
+  const auto& solid=snapshot.solid;
+  if(solid.indexCount) {
+    if(solid.vertexCount>solid.vertices.size()||solid.indexCount>solid.indices.size()||solid.indexCount%3)throw std::runtime_error("invalid indexed mathematical surface");
+    const auto base=frame_.vertices.size();
+    if(base+solid.vertexCount>kSceneVertexCapacity||frame_.indices.size()+solid.indexCount>kSceneIndexCapacity)throw std::runtime_error("indexed surface exceeds Paths scene buffer capacity");
+    SceneDraw draw{{static_cast<std::uint32_t>((static_cast<unsigned>(snapshot.kind)+1)*1000+998)},frame_.indices.size(),solid.indexCount,{solid.vertices[0].position,solid.vertices[0].position}};
+    for(unsigned i=0;i<solid.vertexCount;++i){const auto& v=solid.vertices[i];if(!isFinite(v.position)||!isFinite(v.normal)||!isFinite(v.color))throw std::runtime_error("nonfinite indexed surface vertex");const auto color=v.color*(.48F+.52F*std::max(0.0F,dot(v.normal,light)));frame_.vertices.push_back({{v.position.x,v.position.y,v.position.z},{color.x,color.y,color.z},{}});include(draw.bounds,v.position);}
+    for(unsigned i=0;i<solid.indexCount;++i){if(solid.indices[i]>=solid.vertexCount)throw std::runtime_error("indexed surface index out of range");frame_.indices.push_back(static_cast<std::uint16_t>(base+solid.indices[i]));}
     frame_.draws.push_back(draw);
   }
   if(frame_.vertices.empty())throw std::runtime_error("empty mathematical object");

@@ -1,0 +1,3106 @@
+{
+  "schema_version": 1,
+  "collection": "linear_support",
+  "questions": [
+    {
+      "id": "linear_balance_ax_b_v1_158d32f1bf49177b7ca51fea4cb164ba",
+      "title": "Linear practice 01",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_158d32f1bf49177b7ca51fea4cb164ba",
+        "content_version": 1,
+        "equation": "3x+5=20",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "3x+5=20"
+          },
+          {
+            "id": 2,
+            "display": "3x=15"
+          },
+          {
+            "id": 3,
+            "display": "x=5"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (5) on both sides. Complete 3x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "15"
+              },
+              {
+                "id": 2,
+                "label": "20"
+              },
+              {
+                "id": 3,
+                "label": "25"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "3x=15",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (3). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "5"
+              },
+              {
+                "id": 2,
+                "label": "15"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{20}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=5",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "3x+5=20",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "3x=15",
+              "response_prefix": "3x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=3 multiplies x, b=5 is the original added constant, and c=20 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "15",
+                "20",
+                "25"
+              ]
+            },
+            {
+              "equation": "x=5",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=3 multiplies x, b=5 is the original added constant, and c=20 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "5",
+                "15",
+                "20/3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_855138bfc1d6b5e2990645205326be24",
+      "title": "Linear practice 02",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_855138bfc1d6b5e2990645205326be24",
+        "content_version": 1,
+        "equation": "9x+9=36",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "9x+9=36"
+          },
+          {
+            "id": 2,
+            "display": "9x=27"
+          },
+          {
+            "id": 3,
+            "display": "x=3"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (9) on both sides. Complete 9x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "45"
+              },
+              {
+                "id": 2,
+                "label": "36"
+              },
+              {
+                "id": 3,
+                "label": "27"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "9x=27",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (9). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "4"
+              },
+              {
+                "id": 2,
+                "label": "3"
+              },
+              {
+                "id": 3,
+                "label": "27"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=3",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "9x+9=36",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "9x=27",
+              "response_prefix": "9x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=9 multiplies x, b=9 is the original added constant, and c=36 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "45",
+                "36",
+                "27"
+              ]
+            },
+            {
+              "equation": "x=3",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=9 multiplies x, b=9 is the original added constant, and c=36 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "4",
+                "3",
+                "27"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_8468547e3b86171e6ddf92947002e7f5",
+      "title": "Linear practice 03",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_8468547e3b86171e6ddf92947002e7f5",
+        "content_version": 1,
+        "equation": "5x+4=29",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "5x+4=29"
+          },
+          {
+            "id": 2,
+            "display": "5x=25"
+          },
+          {
+            "id": 3,
+            "display": "x=5"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (4) on both sides. Complete 5x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "33"
+              },
+              {
+                "id": 2,
+                "label": "25"
+              },
+              {
+                "id": 3,
+                "label": "29"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "5x=25",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (5). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "5"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{29}{5}"
+              },
+              {
+                "id": 3,
+                "label": "25"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=5",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "5x+4=29",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "5x=25",
+              "response_prefix": "5x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=5 multiplies x, b=4 is the original added constant, and c=29 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "33",
+                "25",
+                "29"
+              ]
+            },
+            {
+              "equation": "x=5",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=5 multiplies x, b=4 is the original added constant, and c=29 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "5",
+                "29/5",
+                "25"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_2478e9e3e3f7914d62dcb937fe8ab94b",
+      "title": "Linear practice 04",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_2478e9e3e3f7914d62dcb937fe8ab94b",
+        "content_version": 1,
+        "equation": "4x+4=40",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "4x+4=40"
+          },
+          {
+            "id": 2,
+            "display": "4x=36"
+          },
+          {
+            "id": 3,
+            "display": "x=9"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (4) on both sides. Complete 4x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "44"
+              },
+              {
+                "id": 2,
+                "label": "36"
+              },
+              {
+                "id": 3,
+                "label": "40"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "4x=36",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (4). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "10"
+              },
+              {
+                "id": 2,
+                "label": "36"
+              },
+              {
+                "id": 3,
+                "label": "9"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=9",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "4x+4=40",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "4x=36",
+              "response_prefix": "4x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=4 multiplies x, b=4 is the original added constant, and c=40 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "44",
+                "36",
+                "40"
+              ]
+            },
+            {
+              "equation": "x=9",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=4 multiplies x, b=4 is the original added constant, and c=40 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "10",
+                "36",
+                "9"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_d8a124f07435d2c950365121c1884382",
+      "title": "Linear practice 05",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_d8a124f07435d2c950365121c1884382",
+        "content_version": 1,
+        "equation": "3x+3=15",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "3x+3=15"
+          },
+          {
+            "id": 2,
+            "display": "3x=12"
+          },
+          {
+            "id": 3,
+            "display": "x=4"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (3) on both sides. Complete 3x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "18"
+              },
+              {
+                "id": 2,
+                "label": "12"
+              },
+              {
+                "id": 3,
+                "label": "15"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "3x=12",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (3). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "4"
+              },
+              {
+                "id": 2,
+                "label": "5"
+              },
+              {
+                "id": 3,
+                "label": "12"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=4",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "3x+3=15",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "3x=12",
+              "response_prefix": "3x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=3 multiplies x, b=3 is the original added constant, and c=15 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "18",
+                "12",
+                "15"
+              ]
+            },
+            {
+              "equation": "x=4",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=3 multiplies x, b=3 is the original added constant, and c=15 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "4",
+                "5",
+                "12"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_1dc7007bc50b48b3c227f5bcbe0cebef",
+      "title": "Linear practice 06",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_1dc7007bc50b48b3c227f5bcbe0cebef",
+        "content_version": 1,
+        "equation": "-6x+4=-14",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "-6x+4=-14"
+          },
+          {
+            "id": 2,
+            "display": "-6x=-18"
+          },
+          {
+            "id": 3,
+            "display": "x=3"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (4) on both sides. Complete -6x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-10"
+              },
+              {
+                "id": 2,
+                "label": "-18"
+              },
+              {
+                "id": 3,
+                "label": "-14"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "-6x=-18",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (-6). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-18"
+              },
+              {
+                "id": 2,
+                "label": "3"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{7}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=3",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "-6x+4=-14",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "-6x=-18",
+              "response_prefix": "-6x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=-6 multiplies x, b=4 is the original added constant, and c=-14 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-10",
+                "-18",
+                "-14"
+              ]
+            },
+            {
+              "equation": "x=3",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=-6 multiplies x, b=4 is the original added constant, and c=-14 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-18",
+                "3",
+                "7/3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_0863e846ebe1cb84b60ff833f43bbfc7",
+      "title": "Linear practice 07",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_0863e846ebe1cb84b60ff833f43bbfc7",
+        "content_version": 1,
+        "equation": "-4x+5=-23",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "-4x+5=-23"
+          },
+          {
+            "id": 2,
+            "display": "-4x=-28"
+          },
+          {
+            "id": 3,
+            "display": "x=7"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (5) on both sides. Complete -4x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-23"
+              },
+              {
+                "id": 2,
+                "label": "-18"
+              },
+              {
+                "id": 3,
+                "label": "-28"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "-4x=-28",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (-4). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-28"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{23}{4}"
+              },
+              {
+                "id": 3,
+                "label": "7"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=7",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "-4x+5=-23",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "-4x=-28",
+              "response_prefix": "-4x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=-4 multiplies x, b=5 is the original added constant, and c=-23 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-23",
+                "-18",
+                "-28"
+              ]
+            },
+            {
+              "equation": "x=7",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=-4 multiplies x, b=5 is the original added constant, and c=-23 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-28",
+                "23/4",
+                "7"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_444fb787fa4b66e2168f00838f1e528d",
+      "title": "Linear practice 08",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_444fb787fa4b66e2168f00838f1e528d",
+        "content_version": 1,
+        "equation": "-8x+5=-43",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "-8x+5=-43"
+          },
+          {
+            "id": 2,
+            "display": "-8x=-48"
+          },
+          {
+            "id": 3,
+            "display": "x=6"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (5) on both sides. Complete -8x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-38"
+              },
+              {
+                "id": 2,
+                "label": "-48"
+              },
+              {
+                "id": 3,
+                "label": "-43"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "-8x=-48",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (-8). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "\\frac{43}{8}"
+              },
+              {
+                "id": 2,
+                "label": "-48"
+              },
+              {
+                "id": 3,
+                "label": "6"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=6",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "-8x+5=-43",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "-8x=-48",
+              "response_prefix": "-8x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=-8 multiplies x, b=5 is the original added constant, and c=-43 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-38",
+                "-48",
+                "-43"
+              ]
+            },
+            {
+              "equation": "x=6",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=-8 multiplies x, b=5 is the original added constant, and c=-43 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "43/8",
+                "-48",
+                "6"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_e6ce9c1d403922fd91a886d291d62966",
+      "title": "Linear practice 09",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_e6ce9c1d403922fd91a886d291d62966",
+        "content_version": 1,
+        "equation": "-8x+2=-30",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "-8x+2=-30"
+          },
+          {
+            "id": 2,
+            "display": "-8x=-32"
+          },
+          {
+            "id": 3,
+            "display": "x=4"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (2) on both sides. Complete -8x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-32"
+              },
+              {
+                "id": 2,
+                "label": "-28"
+              },
+              {
+                "id": 3,
+                "label": "-30"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "-8x=-32",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (-8). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "\\frac{15}{4}"
+              },
+              {
+                "id": 2,
+                "label": "-32"
+              },
+              {
+                "id": 3,
+                "label": "4"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=4",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "-8x+2=-30",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "-8x=-32",
+              "response_prefix": "-8x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=-8 multiplies x, b=2 is the original added constant, and c=-30 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-32",
+                "-28",
+                "-30"
+              ]
+            },
+            {
+              "equation": "x=4",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=-8 multiplies x, b=2 is the original added constant, and c=-30 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "15/4",
+                "-32",
+                "4"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_1632b7c413d645500ba1c1d2837fa304",
+      "title": "Linear practice 10",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_1632b7c413d645500ba1c1d2837fa304",
+        "content_version": 1,
+        "equation": "6x-8=10",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "6x-8=10"
+          },
+          {
+            "id": 2,
+            "display": "6x=18"
+          },
+          {
+            "id": 3,
+            "display": "x=3"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (-8) on both sides. Complete 6x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "10"
+              },
+              {
+                "id": 2,
+                "label": "18"
+              },
+              {
+                "id": 3,
+                "label": "2"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "6x=18",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (6). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "\\frac{5}{3}"
+              },
+              {
+                "id": 2,
+                "label": "18"
+              },
+              {
+                "id": 3,
+                "label": "3"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=3",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "6x-8=10",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "6x=18",
+              "response_prefix": "6x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=6 multiplies x, b=-8 is the original added constant, and c=10 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "10",
+                "18",
+                "2"
+              ]
+            },
+            {
+              "equation": "x=3",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=6 multiplies x, b=-8 is the original added constant, and c=10 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "5/3",
+                "18",
+                "3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_8ced78eeee3258ed29fabfe81dd8b20b",
+      "title": "Linear practice 11",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_8ced78eeee3258ed29fabfe81dd8b20b",
+        "content_version": 1,
+        "equation": "4x-6=10",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "4x-6=10"
+          },
+          {
+            "id": 2,
+            "display": "4x=16"
+          },
+          {
+            "id": 3,
+            "display": "x=4"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (-6) on both sides. Complete 4x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "10"
+              },
+              {
+                "id": 2,
+                "label": "4"
+              },
+              {
+                "id": 3,
+                "label": "16"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "4x=16",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (4). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "16"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{5}{2}"
+              },
+              {
+                "id": 3,
+                "label": "4"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=4",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "4x-6=10",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "4x=16",
+              "response_prefix": "4x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=4 multiplies x, b=-6 is the original added constant, and c=10 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "10",
+                "4",
+                "16"
+              ]
+            },
+            {
+              "equation": "x=4",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=4 multiplies x, b=-6 is the original added constant, and c=10 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "16",
+                "5/2",
+                "4"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_c8cb9a09046cc61dbfb688a65361f5ba",
+      "title": "Linear practice 12",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_c8cb9a09046cc61dbfb688a65361f5ba",
+        "content_version": 1,
+        "equation": "7x-7=28",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "7x-7=28"
+          },
+          {
+            "id": 2,
+            "display": "7x=35"
+          },
+          {
+            "id": 3,
+            "display": "x=5"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (-7) on both sides. Complete 7x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "28"
+              },
+              {
+                "id": 2,
+                "label": "35"
+              },
+              {
+                "id": 3,
+                "label": "21"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "7x=35",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (7). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "35"
+              },
+              {
+                "id": 2,
+                "label": "5"
+              },
+              {
+                "id": 3,
+                "label": "4"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=5",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "7x-7=28",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "7x=35",
+              "response_prefix": "7x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=7 multiplies x, b=-7 is the original added constant, and c=28 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "28",
+                "35",
+                "21"
+              ]
+            },
+            {
+              "equation": "x=5",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=7 multiplies x, b=-7 is the original added constant, and c=28 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "35",
+                "5",
+                "4"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_4212b5a4daa755c0559c2106497c8566",
+      "title": "Linear practice 13",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_4212b5a4daa755c0559c2106497c8566",
+        "content_version": 1,
+        "equation": "5x-9=16",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "5x-9=16"
+          },
+          {
+            "id": 2,
+            "display": "5x=25"
+          },
+          {
+            "id": 3,
+            "display": "x=5"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (-9) on both sides. Complete 5x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "16"
+              },
+              {
+                "id": 2,
+                "label": "25"
+              },
+              {
+                "id": 3,
+                "label": "7"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "5x=25",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (5). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "5"
+              },
+              {
+                "id": 2,
+                "label": "25"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{16}{5}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=5",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "5x-9=16",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "5x=25",
+              "response_prefix": "5x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=5 multiplies x, b=-9 is the original added constant, and c=16 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "16",
+                "25",
+                "7"
+              ]
+            },
+            {
+              "equation": "x=5",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=5 multiplies x, b=-9 is the original added constant, and c=16 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "5",
+                "25",
+                "16/5"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_0f62352bbe4070df6d10acb532f7d530",
+      "title": "Linear practice 14",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_0f62352bbe4070df6d10acb532f7d530",
+        "content_version": 1,
+        "equation": "9x+4=-68",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "9x+4=-68"
+          },
+          {
+            "id": 2,
+            "display": "9x=-72"
+          },
+          {
+            "id": 3,
+            "display": "x=-8"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (4) on both sides. Complete 9x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-64"
+              },
+              {
+                "id": 2,
+                "label": "-72"
+              },
+              {
+                "id": 3,
+                "label": "-68"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "9x=-72",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (9). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-72"
+              },
+              {
+                "id": 2,
+                "label": "-8"
+              },
+              {
+                "id": 3,
+                "label": "-\\frac{68}{9}"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-8",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "9x+4=-68",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "9x=-72",
+              "response_prefix": "9x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=9 multiplies x, b=4 is the original added constant, and c=-68 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-64",
+                "-72",
+                "-68"
+              ]
+            },
+            {
+              "equation": "x=-8",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=9 multiplies x, b=4 is the original added constant, and c=-68 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-72",
+                "-8",
+                "-68/9"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_d008044cb7dba9b6fc531606776b44f5",
+      "title": "Linear practice 15",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_d008044cb7dba9b6fc531606776b44f5",
+        "content_version": 1,
+        "equation": "9x+1=-71",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "9x+1=-71"
+          },
+          {
+            "id": 2,
+            "display": "9x=-72"
+          },
+          {
+            "id": 3,
+            "display": "x=-8"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (1) on both sides. Complete 9x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-70"
+              },
+              {
+                "id": 2,
+                "label": "-71"
+              },
+              {
+                "id": 3,
+                "label": "-72"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "9x=-72",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (9). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-8"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{71}{9}"
+              },
+              {
+                "id": 3,
+                "label": "-72"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-8",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "9x+1=-71",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "9x=-72",
+              "response_prefix": "9x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=9 multiplies x, b=1 is the original added constant, and c=-71 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-70",
+                "-71",
+                "-72"
+              ]
+            },
+            {
+              "equation": "x=-8",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=9 multiplies x, b=1 is the original added constant, and c=-71 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-8",
+                "-71/9",
+                "-72"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_e3e1d306c142527299a371033fa1d539",
+      "title": "Linear practice 16",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_e3e1d306c142527299a371033fa1d539",
+        "content_version": 1,
+        "equation": "3x+1=-17",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "3x+1=-17"
+          },
+          {
+            "id": 2,
+            "display": "3x=-18"
+          },
+          {
+            "id": 3,
+            "display": "x=-6"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (1) on both sides. Complete 3x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-17"
+              },
+              {
+                "id": 2,
+                "label": "-16"
+              },
+              {
+                "id": 3,
+                "label": "-18"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "3x=-18",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (3). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-18"
+              },
+              {
+                "id": 2,
+                "label": "-6"
+              },
+              {
+                "id": 3,
+                "label": "-\\frac{17}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-6",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "3x+1=-17",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "3x=-18",
+              "response_prefix": "3x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=3 multiplies x, b=1 is the original added constant, and c=-17 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-17",
+                "-16",
+                "-18"
+              ]
+            },
+            {
+              "equation": "x=-6",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=3 multiplies x, b=1 is the original added constant, and c=-17 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-18",
+                "-6",
+                "-17/3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_f8661ccb39a5dac3e08a47ff20327174",
+      "title": "Linear practice 17",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_f8661ccb39a5dac3e08a47ff20327174",
+        "content_version": 1,
+        "equation": "8x+2=-54",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "8x+2=-54"
+          },
+          {
+            "id": 2,
+            "display": "8x=-56"
+          },
+          {
+            "id": 3,
+            "display": "x=-7"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (2) on both sides. Complete 8x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-56"
+              },
+              {
+                "id": 2,
+                "label": "-52"
+              },
+              {
+                "id": 3,
+                "label": "-54"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "8x=-56",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (8). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{27}{4}"
+              },
+              {
+                "id": 2,
+                "label": "-7"
+              },
+              {
+                "id": 3,
+                "label": "-56"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-7",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "8x+2=-54",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "8x=-56",
+              "response_prefix": "8x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=8 multiplies x, b=2 is the original added constant, and c=-54 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-56",
+                "-52",
+                "-54"
+              ]
+            },
+            {
+              "equation": "x=-7",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=8 multiplies x, b=2 is the original added constant, and c=-54 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-27/4",
+                "-7",
+                "-56"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_6b6dcaeb7a6138b4c65518ce961ce46c",
+      "title": "Linear practice 18",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_6b6dcaeb7a6138b4c65518ce961ce46c",
+        "content_version": 1,
+        "equation": "2x+4=4",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "2x+4=4"
+          },
+          {
+            "id": 2,
+            "display": "2x=0"
+          },
+          {
+            "id": 3,
+            "display": "x=0"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (4) on both sides. Complete 2x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "4"
+              },
+              {
+                "id": 2,
+                "label": "0"
+              },
+              {
+                "id": 3,
+                "label": "8"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "2x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (2). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "0"
+              },
+              {
+                "id": 2,
+                "label": "2"
+              },
+              {
+                "id": 3,
+                "label": "-2"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "2x+4=4",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "2x=0",
+              "response_prefix": "2x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=2 multiplies x, b=4 is the original added constant, and c=4 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "4",
+                "0",
+                "8"
+              ]
+            },
+            {
+              "equation": "x=0",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=2 multiplies x, b=4 is the original added constant, and c=4 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "0",
+                "2",
+                "-2"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_9d020c881bf273bbb442a0df24abb39b",
+      "title": "Linear practice 19",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_9d020c881bf273bbb442a0df24abb39b",
+        "content_version": 1,
+        "equation": "2x+7=7",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "2x+7=7"
+          },
+          {
+            "id": 2,
+            "display": "2x=0"
+          },
+          {
+            "id": 3,
+            "display": "x=0"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (7) on both sides. Complete 2x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "7"
+              },
+              {
+                "id": 2,
+                "label": "0"
+              },
+              {
+                "id": 3,
+                "label": "14"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "2x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (2). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{7}{2}"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{7}{2}"
+              },
+              {
+                "id": 3,
+                "label": "0"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "2x+7=7",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "2x=0",
+              "response_prefix": "2x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=2 multiplies x, b=7 is the original added constant, and c=7 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "7",
+                "0",
+                "14"
+              ]
+            },
+            {
+              "equation": "x=0",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=2 multiplies x, b=7 is the original added constant, and c=7 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-7/2",
+                "7/2",
+                "0"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_6fd91e01321c617e16bed73b9d1900f3",
+      "title": "Linear practice 20",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_6fd91e01321c617e16bed73b9d1900f3",
+        "content_version": 1,
+        "equation": "9x+5=5",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "9x+5=5"
+          },
+          {
+            "id": 2,
+            "display": "9x=0"
+          },
+          {
+            "id": 3,
+            "display": "x=0"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (5) on both sides. Complete 9x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "5"
+              },
+              {
+                "id": 2,
+                "label": "10"
+              },
+              {
+                "id": 3,
+                "label": "0"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "9x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (9). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{40}{9}"
+              },
+              {
+                "id": 2,
+                "label": "0"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{5}{9}"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "9x+5=5",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "9x=0",
+              "response_prefix": "9x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=9 multiplies x, b=5 is the original added constant, and c=5 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "5",
+                "10",
+                "0"
+              ]
+            },
+            {
+              "equation": "x=0",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=9 multiplies x, b=5 is the original added constant, and c=5 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-40/9",
+                "0",
+                "5/9"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_ef98a62d5b769f9629c03b1fa7ab9617",
+      "title": "Linear practice 21",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_ef98a62d5b769f9629c03b1fa7ab9617",
+        "content_version": 1,
+        "equation": "3x+9=9",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "3x+9=9"
+          },
+          {
+            "id": 2,
+            "display": "3x=0"
+          },
+          {
+            "id": 3,
+            "display": "x=0"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (9) on both sides. Complete 3x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "18"
+              },
+              {
+                "id": 2,
+                "label": "9"
+              },
+              {
+                "id": 3,
+                "label": "0"
+              }
+            ],
+            "accepted_option_ids": [
+              3
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "3x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (3). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-6"
+              },
+              {
+                "id": 2,
+                "label": "0"
+              },
+              {
+                "id": 3,
+                "label": "3"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=0",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "3x+9=9",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "3x=0",
+              "response_prefix": "3x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=3 multiplies x, b=9 is the original added constant, and c=9 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "18",
+                "9",
+                "0"
+              ]
+            },
+            {
+              "equation": "x=0",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=3 multiplies x, b=9 is the original added constant, and c=9 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-6",
+                "0",
+                "3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_4e918a51594be31d0612884381c801e5",
+      "title": "Linear practice 22",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_4e918a51594be31d0612884381c801e5",
+        "content_version": 1,
+        "equation": "9x+1=-\\frac{77}{4}",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "9x+1=-\\frac{77}{4}"
+          },
+          {
+            "id": 2,
+            "display": "9x=-\\frac{81}{4}"
+          },
+          {
+            "id": 3,
+            "display": "x=-\\frac{9}{4}"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (1) on both sides. Complete 9x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{81}{4}"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{73}{4}"
+              },
+              {
+                "id": 3,
+                "label": "-\\frac{77}{4}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "9x=-\\frac{81}{4}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (9). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{9}{4}"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{81}{4}"
+              },
+              {
+                "id": 3,
+                "label": "-\\frac{77}{36}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-\\frac{9}{4}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "9x+1=-77/4",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "9x=-81/4",
+              "response_prefix": "9x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=9 multiplies x, b=1 is the original added constant, and c=-77/4 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-81/4",
+                "-73/4",
+                "-77/4"
+              ]
+            },
+            {
+              "equation": "x=-9/4",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=9 multiplies x, b=1 is the original added constant, and c=-77/4 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-9/4",
+                "-81/4",
+                "-77/36"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_0c06f7f7e21899760d8471dff70e2822",
+      "title": "Linear practice 23",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_0c06f7f7e21899760d8471dff70e2822",
+        "content_version": 1,
+        "equation": "6x+5=\\frac{25}{2}",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "6x+5=\\frac{25}{2}"
+          },
+          {
+            "id": 2,
+            "display": "6x=\\frac{15}{2}"
+          },
+          {
+            "id": 3,
+            "display": "x=\\frac{5}{4}"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (5) on both sides. Complete 6x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "\\frac{15}{2}"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{35}{2}"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{25}{2}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "6x=\\frac{15}{2}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (6). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "\\frac{5}{4}"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{15}{2}"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{25}{12}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=\\frac{5}{4}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "6x+5=25/2",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "6x=15/2",
+              "response_prefix": "6x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=6 multiplies x, b=5 is the original added constant, and c=25/2 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "15/2",
+                "35/2",
+                "25/2"
+              ]
+            },
+            {
+              "equation": "x=5/4",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=6 multiplies x, b=5 is the original added constant, and c=25/2 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "5/4",
+                "15/2",
+                "25/12"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_bed0ee5f3aa882ce21ee065cbd834348",
+      "title": "Linear practice 24",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_bed0ee5f3aa882ce21ee065cbd834348",
+        "content_version": 1,
+        "equation": "8x+9=-\\frac{13}{3}",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "8x+9=-\\frac{13}{3}"
+          },
+          {
+            "id": 2,
+            "display": "8x=-\\frac{40}{3}"
+          },
+          {
+            "id": 3,
+            "display": "x=-\\frac{5}{3}"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (9) on both sides. Complete 8x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{40}{3}"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{13}{3}"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{14}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "8x=-\\frac{40}{3}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (8). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{13}{24}"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{5}{3}"
+              },
+              {
+                "id": 3,
+                "label": "-\\frac{40}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              2
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-\\frac{5}{3}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "8x+9=-13/3",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "8x=-40/3",
+              "response_prefix": "8x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=8 multiplies x, b=9 is the original added constant, and c=-13/3 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-40/3",
+                "-13/3",
+                "14/3"
+              ]
+            },
+            {
+              "equation": "x=-5/3",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=8 multiplies x, b=9 is the original added constant, and c=-13/3 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-13/24",
+                "-5/3",
+                "-40/3"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "linear_balance_ax_b_v1_56816280524bd739181b8f4d87ef083e",
+      "title": "Linear practice 25",
+      "level": "practice",
+      "subject": "algebra",
+      "topic": "topic_0003",
+      "question": {
+        "schema_version": 1,
+        "id": "linear_balance_ax_b_v1_56816280524bd739181b8f4d87ef083e",
+        "content_version": 1,
+        "equation": "4x+2=\\frac{4}{3}",
+        "skill": "solve_one_unknown_by_balance",
+        "description": "Solve for x.",
+        "working_states": [
+          {
+            "id": 1,
+            "display": "4x+2=\\frac{4}{3}"
+          },
+          {
+            "id": 2,
+            "display": "4x=-\\frac{2}{3}"
+          },
+          {
+            "id": 3,
+            "display": "x=-\\frac{1}{6}"
+          }
+        ],
+        "steps": [
+          {
+            "id": 1,
+            "layer_name": "Leave only the term containing x on the left.",
+            "prompt": "Subtract (2) on both sides. Complete 4x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{2}{3}"
+              },
+              {
+                "id": 2,
+                "label": "\\frac{10}{3}"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{4}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+            "hint": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+            "next_move": "4x=-\\frac{2}{3}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 1,
+              "after": 2
+            }
+          },
+          {
+            "id": 2,
+            "layer_name": "Make the coefficient of x equal to 1.",
+            "prompt": "Divide both sides by (4). Complete x = ?",
+            "options": [
+              {
+                "id": 1,
+                "label": "-\\frac{1}{6}"
+              },
+              {
+                "id": 2,
+                "label": "-\\frac{2}{3}"
+              },
+              {
+                "id": 3,
+                "label": "\\frac{1}{3}"
+              }
+            ],
+            "accepted_option_ids": [
+              1
+            ],
+            "wrong_hint": "Working retained. Check the sign and apply the operation to both sides.",
+            "explanation": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+            "hint": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+            "next_move": "x=-\\frac{1}{6}",
+            "semantics": {
+              "purpose": "calculation",
+              "completion": "any_accepted",
+              "before": 2,
+              "after": 3
+            }
+          }
+        ],
+        "support": {
+          "family": "linear_balance_ax_b_v1",
+          "equation": "4x+2=4/3",
+          "domain": "x is real.",
+          "steps": [
+            {
+              "equation": "4x=-2/3",
+              "response_prefix": "4x=",
+              "definitions": "Equality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "teaching": "Leave only the term containing x on the left.\n\nHere a=4 multiplies x, b=2 is the original added constant, and c=4/3 is the original right-hand side.\n\nThe constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.\n\nEquality\n\nThe expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.\n\n$$u=v\\iff u-k=v-k$$",
+              "responses": [
+                "-2/3",
+                "10/3",
+                "4/3"
+              ]
+            },
+            {
+              "equation": "x=-1/6",
+              "response_prefix": "x=",
+              "definitions": "Coefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "teaching": "Make the coefficient of x equal to 1.\n\nHere a=4 multiplies x, b=2 is the original added constant, and c=4/3 is the original right-hand side.\n\nThe remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.\n\nCoefficient\n\nIn ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.\n\n$$ax=a\\cdot x$$\n\nDividing an equality\n\nDivide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.\n\n$$u=v\\iff u/k=v/k,\\quad k\\ne0$$",
+              "responses": [
+                "-1/6",
+                "-2/3",
+                "1/3"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

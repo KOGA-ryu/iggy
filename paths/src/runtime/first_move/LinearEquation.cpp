@@ -24,6 +24,10 @@ ExactNumber divide(ExactNumber a,ExactNumber b) {return number(a.numerator*b.den
 std::string text(ExactNumber n) {
   return std::to_string(n.numerator)+(n.denominator==1?"":"/"+std::to_string(n.denominator));
 }
+std::string numberTex(ExactNumber v) {
+  if(v.denominator==1)return text(v);
+  return std::string(v.numerator<0?"-":"")+"\\frac{"+std::to_string(std::abs(v.numerator))+"}{"+std::to_string(v.denominator)+"}";
+}
 LinearExpression sum(LinearExpression a,LinearExpression b) {return {add(a.coefficient,b.coefficient),add(a.constant,b.constant)};}
 LinearExpression scale(LinearExpression a,ExactNumber n) {return {mul(a.coefficient,n),mul(a.constant,n)};}
 enum class Form { Number, Variable, Expression };
@@ -197,6 +201,15 @@ LinearEquationResult parseLinearEquation(std::string_view input) {
   try {return {Parser(input).equation(),{}};}
   catch(const MathError& error) {return {std::nullopt,error.message};}
 }
+std::string linearEquationTex(const LinearEquation& equation) {
+  const auto expression=[&](LinearExpression e) {
+    std::string out;
+    if(e.coefficient.numerator)out=(e.coefficient==ExactNumber{1,1}?"":e.coefficient==ExactNumber{-1,1}?"-":numberTex(e.coefficient))+"x";
+    if(e.constant.numerator || out.empty())out+=(!out.empty() && e.constant.numerator>0?"+":"")+numberTex(e.constant);
+    return out;
+  };
+  return expression(equation.left)+"="+expression(equation.right);
+}
 MathMoveCheck checkMathMove(const LinearEquation& before,MathOperation operation,
                            std::string_view operand,std::string_view entry) {
   try {
@@ -280,6 +293,61 @@ std::string verifyMathSolution(const LinearEquation& original,const LinearEquati
     return "x = "+text(x)+"; original equation: "+text(left)+" = "+text(right)+". Checked.";
   } catch(const MathError&) {return {};}
 }
+LinearWorkCheck checkLinearWork(const LinearEquation& original,std::string_view written) {
+  LinearWorkCheck result;
+  if(written.empty() || written.size()>8192){result.feedback="Write at most 32 equation lines (8 KiB).";return result;}
+  try {
+    const auto root=[](const LinearEquation& e) {
+      const auto a=add(e.left.coefficient,neg(e.right.coefficient));
+      if(!a.numerator)throw MathError{"This line does not preserve the original single solution."};
+      return divide(add(e.right.constant,neg(e.left.constant)),a);
+    };
+    const auto answer=root(original);
+    std::size_t start=0;
+    while(start<written.size()) {
+      const auto end=written.find('\n',start);auto line=written.substr(start,end==std::string_view::npos?written.size()-start:end-start);
+      ++result.line;
+      if(result.line>32){result.feedback="Use at most 32 equation lines.";return result;}
+      while(!line.empty() && (line.front()==' ' || line.front()=='\t'))line.remove_prefix(1);
+      while(!line.empty() && (line.back()==' ' || line.back()=='\r' || line.back()=='\t'))line.remove_suffix(1);
+      if(!line.empty()) {
+        const bool substitution=line.starts_with("check:");
+        if(substitution)line.remove_prefix(6);
+        auto parsed=Parser(line).equation();
+        if(substitution) {
+          if(!result.solved){result.feedback="Write an isolated value of x before its substitution check.";return result;}
+          if(parsed.left.coefficient.numerator || parsed.right.coefficient.numerator ||
+              parsed.left.constant!=add(mul(original.left.coefficient,answer),original.left.constant) ||
+              parsed.right.constant!=add(mul(original.right.coefficient,answer),original.right.constant)) {
+            result.status=WrittenCheckStatus::Incorrect;result.feedback="Check the candidate in both sides of the original equation.";return result;
+          }
+        } else {
+          const auto a=add(parsed.left.coefficient,neg(parsed.right.coefficient));
+          if(!a.numerator || root(parsed)!=answer) {
+            result.status=WrittenCheckStatus::Incorrect;result.feedback="This equation changes the original solution set.";return result;
+          }
+          const auto variable=[](const LinearExpression& e){return e.coefficient==ExactNumber{1,1} && !e.constant.numerator;};
+          const bool left=variable(parsed.left) && !parsed.right.coefficient.numerator;
+          const bool right=variable(parsed.right) && !parsed.left.coefficient.numerator;
+          result.solved=left || right;
+          if(result.solved) {
+            auto isolated=parsed;if(right)std::swap(isolated.left,isolated.right);isolated.isolated=true;
+            result.verification=verifyMathSolution(original,isolated);
+          } else result.verification.clear();
+          result.lines.push_back(std::move(parsed));
+        }
+      }
+      if(end==std::string_view::npos)break;start=end+1;
+    }
+    if(result.lines.empty()){result.feedback="Enter an equation before checking.";return result;}
+    result.status=WrittenCheckStatus::Correct;
+    result.feedback=result.solved?"Equation lines and original substitution checked.":"These lines preserve the solution. Continue until x is isolated.";
+  } catch(const MathError& error) {
+    result.status=error.message=="Division by zero is undefined."?WrittenCheckStatus::Incorrect:WrittenCheckStatus::Unsupported;
+    result.feedback=error.message;
+  }
+  return result;
+}
 namespace {
 std::string matrixText(const AugmentedMatrix& matrix) {
   std::array<std::array<std::string,3>,2> cells;
@@ -354,6 +422,77 @@ CheckedMathMove<AugmentedMatrix> transformMatrix(const AugmentedMatrix& before,M
 CheckedMathMove<AugmentedMatrix> parseAugmentedMatrix(std::string_view input) {
   try {return {readMatrix(input),{},{},{}};}
   catch(const MathError& error) {return {{},{},{},error.message};}
+}
+std::string matrixEquationTex(const AugmentedMatrix& matrix) {
+  std::string result="\\left[\\begin{array}{cc|c}";
+  for(std::size_t row=0;row<2;++row) {
+    if(row)result+="\\\\";
+    for(std::size_t col=0;col<3;++col){if(col)result+='&';result+=numberTex(matrix.rows[row][col]);}
+  }
+  return result+"\\end{array}\\right]";
+}
+std::string rowOperationTex(MathOperation operation,std::string_view operand) {
+  const auto found=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==operation;});
+  if(found==rowOperations.end())return {};
+  try {
+    const auto target="R_{"+std::to_string(found->target+1)+"}",source="R_{"+std::to_string(found->source+1)+"}";
+    const auto value=operand.empty()?ExactNumber{}:Parser(operand).operand();
+    switch(found->kind) {
+      case RowMove::Swap:return operand.empty()?target+"\\leftrightarrow "+source:std::string{};
+      case RowMove::Divide:return target+"\\leftarrow\\frac{"+target+"}{"+(operand.empty()?"?":numberTex(value))+"}";
+      case RowMove::Add:return target+"\\leftarrow "+target+(value.numerator<0?"-":"+")+"("+(operand.empty()?"?":numberTex(value.numerator<0?neg(value):value))+")"+source;
+    }
+  } catch(const MathError&) {}
+  return {};
+}
+MatrixWorkCheck checkMatrixResponse(const AugmentedMatrix& original,const AugmentedMatrix& before,
+    MathOperation operation,std::string_view operand) {
+  MatrixWorkCheck result;result.line=1;
+  try {
+    auto applied=transformMatrix(before,operation,operand);
+    result.verification=verifyMathSolution(original,*applied.result);result.solved=!result.verification.empty();
+    result.lines.push_back(std::move(*applied.result));result.status=WrittenCheckStatus::Correct;
+    result.feedback=result.solved?"Row operation and original substitution checked.":"Row operation checked. Continue to isolate x and y.";
+  } catch(const MathError& e) {
+    result.status=e.message=="A row divisor must be nonzero." || e.message=="Division by zero is undefined." ||
+        e.message=="Choose a row operation that changes the matrix."?WrittenCheckStatus::Incorrect:WrittenCheckStatus::Unsupported;
+    result.feedback=e.message;
+  }
+  return result;
+}
+MatrixWorkCheck checkMatrixWork(const AugmentedMatrix& original,std::string_view written) {
+  MatrixWorkCheck result;
+  if(written.empty() || written.size()>8192){result.feedback="Write at most 32 matrix lines (8 KiB).";return result;}
+  try {
+    const auto determinant=[](const AugmentedMatrix& m){return add(mul(m.rows[0][0],m.rows[1][1]),neg(mul(m.rows[0][1],m.rows[1][0])));};
+    const auto d=determinant(original);
+    if(!d.numerator){result.feedback="This checker requires a system with one solution.";return result;}
+    const auto& a=original.rows;
+    const auto x=divide(add(mul(a[0][2],a[1][1]),neg(mul(a[0][1],a[1][2]))),d);
+    const auto y=divide(add(mul(a[0][0],a[1][2]),neg(mul(a[0][2],a[1][0]))),d);
+    std::size_t start=0;
+    while(start<written.size()) {
+      const auto end=written.find('\n',start);auto line=written.substr(start,end==written.npos?written.size()-start:end-start);
+      ++result.line;if(result.line>32){result.feedback="Use at most 32 complete matrix lines.";return result;}
+      while(!line.empty() && (line.front()==' ' || line.front()=='\t'))line.remove_prefix(1);
+      while(!line.empty() && (line.back()==' ' || line.back()=='\r' || line.back()=='\t'))line.remove_suffix(1);
+      if(!line.empty()) {
+        auto matrix=readMatrix(line);
+        bool same=determinant(matrix).numerator!=0;
+        for(const auto& row:matrix.rows)same=same && add(mul(row[0],x),mul(row[1],y))==row[2];
+        if(!same){result.status=WrittenCheckStatus::Incorrect;result.feedback="This matrix changes the original solution set. Working retained.";return result;}
+        result.verification=verifyMathSolution(original,matrix);result.solved=!result.verification.empty();result.lines.push_back(std::move(matrix));
+      }
+      if(end==written.npos)break;start=end+1;
+    }
+    if(result.lines.empty()){result.feedback="Enter a complete matrix before checking.";return result;}
+    result.status=WrittenCheckStatus::Correct;
+    result.feedback=result.solved?"Matrix lines and substitution in both original equations checked.":"These matrices preserve the solution. Continue to the identity coefficient block.";
+  } catch(const MathError& e) {
+    result.status=e.message=="Division by zero is undefined."?WrittenCheckStatus::Incorrect:WrittenCheckStatus::Unsupported;
+    result.feedback=e.message;
+  }
+  return result;
 }
 std::optional<MathReferenceExample> mathReferenceExample(const MathReference& reference) {
   const auto found=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==reference.operation;});

@@ -4,9 +4,114 @@
 #include <bit>
 #include <cmath>
 #include <stdexcept>
+#include <type_traits>
 
 namespace iggy3d::first_move {
 namespace {
+
+bool sameEquation(const LinearEquation& a,const LinearEquation& b) {
+  return a.left==b.left && a.right==b.right;
+}
+MathWorkingValue supportValue(MathWorkingModel model,std::string_view text) {
+  switch(model) {
+    case MathWorkingModel::LinearEquation:if(auto p=parseLinearEquation(text);p.equation)return *p.equation;break;
+    case MathWorkingModel::RowReduction:if(auto p=parseAugmentedMatrix(text);p.result)return *p.result;break;
+  }
+  throw std::invalid_argument("Invalid supported working");
+}
+std::string supportTex(const MathWorkingValue& value) {
+  return std::visit([](const auto& v) {
+    if constexpr(std::is_same_v<std::decay_t<decltype(v)>,LinearEquation>)return linearEquationTex(v);
+    else return matrixEquationTex(v);
+  },value);
+}
+bool sameSupportWorking(const MathWorkingValue& a,const MathWorkingValue& b) {
+  if(a.index()!=b.index())return false;
+  return std::visit([&](const auto& v) {
+    using T=std::decay_t<decltype(v)>;
+    if constexpr(std::is_same_v<T,LinearEquation>)return sameEquation(v,std::get<T>(b));
+    else return v.rows==std::get<T>(b).rows;
+  },a);
+}
+std::optional<std::size_t> supportAnchor(const LayeredQuestionContent& content,const SupportRun& run) {
+  const auto& current=run.nodes[run.active].equation;
+  const auto& support=*content.support;
+  for(std::size_t i=0;i<support.steps.size();++i) {
+    const auto before=supportValue(support.model,i?support.steps[i-1].equation:support.equation);
+    if(sameSupportWorking(current,before))return i;
+  }
+  return {};
+}
+bool validLinearSupport(const LayeredQuestionContent& q) {
+  const auto& s=*q.support;
+  if(s.steps.size()!=2)return false;
+  const auto parsed=parseLinearEquation(s.equation);if(!parsed.equation)return false;
+  const auto original=*parsed.equation;
+  const auto a=original.left.coefficient,b=original.left.constant;
+  if(a.denominator!=1 || b.denominator!=1 || std::abs(a.numerator)<2 || std::abs(a.numerator)>9 ||
+      !b.numerator || std::abs(b.numerator)>9 || original.right.coefficient.numerator || q.equation!=linearEquationTex(original))return false;
+  auto before=original;
+  for(std::size_t i=0;i<2;++i) {
+    const auto& step=s.steps[i];const auto& prepared=q.steps[i];
+    if(step.responses.size()!=prepared.options.size() || step.teaching.empty() || step.definitions.empty() ||
+        step.teaching.size()>8000 || step.definitions.size()>8000 || step.responsePrefix.size()>80)return false;
+    const auto expected=checkMathMove(before,i?MathOperation::Divide:MathOperation::Subtract,
+        std::to_string(i?a.numerator:b.numerator),step.equation);
+    if(!expected.result)return false;
+    const auto prefix=parseLinearEquation(step.responsePrefix+"0");
+    if(!prefix.equation || prefix.equation->left!=expected.result->left || prefix.equation->right!=LinearExpression{})return false;
+    std::vector<ExactNumber> values;
+    for(std::size_t j=0;j<step.responses.size();++j) {
+      const auto response=parseLinearEquation(step.responsePrefix+step.responses[j]);
+      if(!response.equation || response.equation->left!=expected.result->left || response.equation->right.coefficient.numerator)return false;
+      const auto value=response.equation->right.constant;
+      if(std::find(values.begin(),values.end(),value)!=values.end())return false;values.push_back(value);
+      if(acceptsOption(prepared,j)!=sameEquation(*response.equation,*expected.result))return false;
+      auto label=linearEquationTex(*response.equation);label=label.substr(label.find('=')+1);
+      if(prepared.options[j].label!=label)return false;
+    }
+    before=*expected.result;
+  }
+  return !verifyMathSolution(original,before).empty();
+}
+bool validMatrixSupport(const LayeredQuestionContent& q) {
+  const auto& s=*q.support;const auto initial=prepareMathWorking(MathWorkingModel::RowReduction,s.equation);
+  if(!initial.result)return false;
+  const auto original=std::get<AugmentedMatrix>(*initial.result);auto before=original;
+  if(q.equation!=matrixEquationTex(original))return false;
+  for(std::size_t i=0;i<s.steps.size();++i) {
+    const auto& step=s.steps[i];const auto& prepared=q.steps[i];
+    const auto op=std::find_if(rowOperations.begin(),rowOperations.end(),[&](const auto& op){return op.operation==step.operation;});
+    if(op==rowOperations.end() || op->kind==RowMove::Swap || !step.responsePrefix.empty() ||
+        step.responses.size()!=prepared.options.size() || step.teaching.empty() || step.definitions.empty() ||
+        step.teaching.size()>8000 || step.definitions.size()>8000)return false;
+    const auto after=parseAugmentedMatrix(step.equation);if(!after.result)return false;
+    std::vector<ExactNumber> values;
+    for(std::size_t j=0;j<step.responses.size();++j) {
+      const auto response=parseLinearEquation("x="+step.responses[j]);
+      if(!response.equation || response.equation->right.coefficient.numerator)return false;
+      const auto value=response.equation->right.constant;
+      if(std::find(values.begin(),values.end(),value)!=values.end())return false;values.push_back(value);
+      const auto checked=checkMatrixResponse(original,before,step.operation,step.responses[j]);
+      if(checked.status==WrittenCheckStatus::Unsupported || prepared.options[j].label!=rowOperationTex(step.operation,step.responses[j]))return false;
+      const bool correct=checked.status==WrittenCheckStatus::Correct && checked.lines.back().rows==after.result->rows;
+      if(acceptsOption(prepared,j)!=correct)return false;
+    }
+    before=*after.result;
+    if(i+1<s.steps.size() && !verifyMathSolution(original,before).empty())return false;
+  }
+  return !verifyMathSolution(original,before).empty();
+}
+bool validSupport(const LayeredQuestionContent& q) {
+  const auto& s=*q.support;
+  if(s.steps.empty() || s.steps.size()>kQuestionStepCapacity || s.steps.size()!=q.steps.size() ||
+      s.domain.empty() || s.domain.size()>160 || q.supportsMathMoves || q.lineGraph)return false;
+  switch(s.model) {
+    case MathWorkingModel::LinearEquation:return validLinearSupport(q);
+    case MathWorkingModel::RowReduction:return validMatrixSupport(q);
+  }
+  return false;
+}
 
 const LayeredQuestionContent kQuestion=[] {
   LayeredQuestionContent question{
@@ -222,6 +327,16 @@ LayeredQuestionRunSummary summarizeLayeredQuestionRun(
     const LayeredQuestionRunRecord& run) noexcept {
   LayeredQuestionRunSummary summary;
   summary.completed = run.completed;
+  if(run.support) {
+    const auto& s=*run.support;summary.assisted=(s.exposure|s.priorExposure)!=0;
+    std::array<bool,kMathNodeCapacity> retried{};
+    for(const auto& e:s.submissions) {
+      if(e.action==SupportAction::Undo)continue;
+      if(e.status==WrittenCheckStatus::Incorrect){++summary.incorrectCheckedAttempts;retried[e.from]=true;}
+      if(e.status==WrittenCheckStatus::Correct){if(retried[e.from])++summary.correctedAfterRetry;else ++summary.correctOnFirstTry;}
+    }
+    summary.shownAnswers=(s.exposure&16)!=0;return summary;
+  }
   if(run.math) {
     std::array<bool,kMathNodeCapacity> retried{};
     for(const auto& event:run.math->events)if(event.kind==MathMoveKind::Submit) {
@@ -277,6 +392,7 @@ std::string_view QuestionValidationResult::reason() const noexcept {
     case QuestionValidationCode::BrokenStepChain:return "broken_step_chain";
     case QuestionValidationCode::InvalidMathMoves:return "invalid_math_moves";
     case QuestionValidationCode::InvalidMathReference:return "invalid_math_reference";
+    case QuestionValidationCode::InvalidSupport:return "invalid_question_support";
   }
   return "unknown_question_validation_code";
 }
@@ -284,7 +400,7 @@ std::string_view QuestionValidationResult::reason() const noexcept {
 QuestionValidationResult validateQuestion(const LayeredQuestionContent& question,
                                           QuestionInteraction interaction) noexcept {
   using Code = QuestionValidationCode;
-  if(interaction!=QuestionInteraction::Guided && interaction!=QuestionInteraction::ArcadeCollect && interaction!=QuestionInteraction::MathMoves)
+  if(interaction!=QuestionInteraction::Guided && interaction!=QuestionInteraction::ArcadeCollect && interaction!=QuestionInteraction::MathMoves && interaction!=QuestionInteraction::Supported)
     return {Code::InvalidInteraction,"interaction"};
   if(question.id.empty())return {Code::MissingQuestionId,"id",0};
   if(!question.version)return {Code::MissingQuestionVersion,"version",0};
@@ -322,7 +438,13 @@ QuestionValidationResult validateQuestion(const LayeredQuestionContent& question
         if(step.options[previous].id==option.id)return {Code::DuplicateOptionIdentity,"id",0,i,j};
     }
   }
-  return validateStepChain(question);
+  const auto chain=validateStepChain(question);if(!chain.valid())return chain;
+  if(interaction==QuestionInteraction::Supported && !question.support)return {Code::InvalidSupport,"support",0};
+  if(question.support) {
+    try {if(!validSupport(question))return {Code::InvalidSupport,"support",0};}
+    catch(...){return {Code::InvalidSupport,"support",0};}
+  }
+  return {};
 }
 
 QuestionValidationResult validateCatalog(std::span<const LayeredQuestionContent> catalog,
@@ -330,7 +452,7 @@ QuestionValidationResult validateCatalog(std::span<const LayeredQuestionContent>
   using Code = QuestionValidationCode;
   if(catalog.empty() || catalog.size()>kQuestionCatalogCapacity)
     return {Code::InvalidCatalogSize,"catalog"};
-  if(interaction!=QuestionInteraction::Guided && interaction!=QuestionInteraction::ArcadeCollect && interaction!=QuestionInteraction::MathMoves)
+  if(interaction!=QuestionInteraction::Guided && interaction!=QuestionInteraction::ArcadeCollect && interaction!=QuestionInteraction::MathMoves && interaction!=QuestionInteraction::Supported)
     return {Code::InvalidInteraction,"interaction"};
   for(std::size_t q=0;q<catalog.size();++q) {
     auto result=validateQuestion(catalog[q],interaction);
@@ -367,6 +489,7 @@ const LayeredQuestionRunRecord& LayeredQuestionSession::currentRun()
 
 QuestionProgress LayeredQuestionSession::progress() const noexcept {
   if(current_.completed)return QuestionProgress::Completed;
+  if(current_.support)return !current_.support->submissions.empty() || !current_.support->draft.empty()?QuestionProgress::InProgress:QuestionProgress::NotStarted;
   const bool started=current_.math?!current_.math->events.empty():
       std::any_of(current_.steps.begin(),current_.steps.end(),[](const auto& step) {
         return !step.attempts.empty() || step.hintRequested || step.nextMoveRequested || layeredQuestionStepResolved(step);
@@ -380,11 +503,13 @@ LayeredQuestionSession::archivedRuns() const noexcept {
 }
 
 WorkingStateId LayeredQuestionSession::visibleWorkingId() const noexcept {
+  if(current_.support)return current_.support->nodes[current_.support->active].working.id;
   if(current_.math)return current_.math->nodes[current_.math->active].working.id;
   const auto& semantics=content().steps[current_.currentStep].semantics;
   return current_.completed ? semantics.after : semantics.before;
 }
 const WorkingState& LayeredQuestionSession::visibleWorkingState() const noexcept {
+  if(current_.support)return current_.support->nodes[current_.support->active].working;
   if(current_.math)return current_.math->nodes[current_.math->active].working;
   const auto& states=content().workingStates;
   const auto id=visibleWorkingId();
@@ -444,6 +569,7 @@ std::optional<QuestionReview> LayeredQuestionSession::review(std::size_t runInde
   QuestionReview result;
   result.questionId=question.id;result.equation=question.equation;
   result.version=question.version;result.runNumber=run.runNumber;result.completed=run.completed;
+  if(run.support){result.support=&*run.support;result.wrongAttempts=summarizeLayeredQuestionRun(run).incorrectCheckedAttempts;return result;}
   if(run.math) {
     result.math=&*run.math;
     result.wrongAttempts=run.math->incorrectCheckedAttempts;
@@ -473,6 +599,7 @@ std::optional<QuestionReview> LayeredQuestionSession::review(std::size_t runInde
 void LayeredQuestionSession::beginRun(std::uint32_t runNumber,
                                       bool priorExposure,
                                       LayeredQuestionPhase phase) {
+  const auto supportLevel=current_.support?current_.support->level:SupportLevel::Learn;
   current_ = {};
   current_.questionId=content().id;current_.contentVersion=content().version;
   current_.steps.resize(content().steps.size());
@@ -480,6 +607,14 @@ void LayeredQuestionSession::beginRun(std::uint32_t runNumber,
   current_.runNumber = runNumber;
   current_.priorExposure = priorExposure;
   current_.phase = phase;
+  if(interaction_==QuestionInteraction::Supported) {
+    current_.steps.clear();auto& s=current_.support.emplace();s.level=supportLevel;
+    if(phase!=LayeredQuestionPhase::Grid && s.level<=SupportLevel::Practice)s.exposure|=1;
+    for(const auto& run:archived_)if(run.support && run.questionId==current_.questionId && run.contentVersion==current_.contentVersion)
+      s.priorExposure|=run.support->exposure|run.support->priorExposure;
+    auto original=supportValue(content().support->model,content().support->equation);
+    s.nodes.push_back({0,{{1},supportTex(original)},std::move(original)});
+  }
   if(interaction_==QuestionInteraction::MathMoves) {
     current_.steps.clear();
     current_.math.emplace();
@@ -495,6 +630,14 @@ void LayeredQuestionSession::beginRun(std::uint32_t runNumber,
 LayeredQuestionDispatchResult LayeredQuestionSession::dispatch(
     const LayeredQuestionCommand& command) {
   if(!recordProgress_)return apply(command);
+  // Draft edits are replaceable input, not submitted evidence. Their revision
+  // is unchanged, so coalescing keystrokes preserves exact replay guards.
+  if(command.kind==LayeredQuestionCommandKind::Support && command.support.action==SupportAction::EditDraft &&
+      !journal_.empty() && journal_.back().kind==command.kind && journal_.back().support.action==SupportAction::EditDraft &&
+      journal_.back().support.questionId==command.support.questionId && journal_.back().support.runNumber==command.support.runNumber &&
+      journal_.back().support.revision==command.support.revision) {
+    auto replacement=command;const auto result=apply(replacement);if(result.accepted && result.changed)journal_.back()=std::move(replacement);return result;
+  }
   // Allocate the journal entry before changing evidence, including its strings.
   journal_.push_back(command);
   try {
@@ -506,6 +649,10 @@ LayeredQuestionDispatchResult LayeredQuestionSession::dispatch(
 
 LayeredQuestionDispatchResult LayeredQuestionSession::apply(
     const LayeredQuestionCommand& command) {
+  if(command.kind==LayeredQuestionCommandKind::Support)return applySupport(command.support);
+  if(current_.support && command.kind!=LayeredQuestionCommandKind::OpenQuestion &&
+      command.kind!=LayeredQuestionCommandKind::RestartQuestion && command.kind!=LayeredQuestionCommandKind::BackToGrid)
+    return rejected("supported_question_requires_typed_action");
   if(current_.math) {
     switch(command.kind) {
       case LayeredQuestionCommandKind::OpenQuestion:case LayeredQuestionCommandKind::BackToGrid:
@@ -521,6 +668,7 @@ LayeredQuestionDispatchResult LayeredQuestionSession::apply(
     default:break;
   }
   switch (command.kind) {
+    case LayeredQuestionCommandKind::Support:break; // Handled through the same owner above.
     case LayeredQuestionCommandKind::MathematicalMove:return applyMathMove(command.math);
     case LayeredQuestionCommandKind::OpenQuestion: {
       if (current_.phase != LayeredQuestionPhase::Grid) {
@@ -528,6 +676,7 @@ LayeredQuestionDispatchResult LayeredQuestionSession::apply(
       }
       current_.phase = current_.completed ? LayeredQuestionPhase::Complete
                                           : LayeredQuestionPhase::Answering;
+      if(current_.support && current_.support->level<=SupportLevel::Practice)current_.support->exposure|=1;
       return accepted(true, current_.completed ? "summary_opened"
                                                : "question_opened");
     }
@@ -652,6 +801,143 @@ LayeredQuestionDispatchResult LayeredQuestionSession::apply(
     }
   }
   return rejected("command_unknown");
+}
+
+std::optional<SupportView> LayeredQuestionSession::supportView() const {
+  if(!current_.support)return {};
+  const auto& s=*current_.support;const auto& source=*content().support;
+  SupportView v;
+  v.command.questionId=current_.questionId;v.command.contentVersion=current_.contentVersion;
+  v.command.runNumber=current_.runNumber;v.command.revision=s.revision;
+  v.level=s.level;v.help=s.help;v.given=content().equation;v.domain=source.domain;v.draft=s.draft;
+  v.working=s.active?s.nodes[s.active].working.display:std::string{};
+  v.completed=current_.completed;v.canUndo=s.active!=0;v.assisted=(s.exposure|s.priorExposure)!=0;
+  v.seenBefore=current_.priorExposure;v.feedback=s.feedback;v.status=s.status;v.verification=s.verification;
+  const bool matrix=source.model==MathWorkingModel::RowReduction;
+  v.goal=matrix?"Solve for x and y.":"Solve for x.";
+  v.inputLabel=matrix?"One complete matrix per line":"One equation per line";
+  v.inputHelp=matrix?"Write both rows on each line: [a, b | c] [d, e | f]. Entries can be exact fractions. Enter adds a line; Check work submits. Finish with coefficients [1, 0] [0, 1].":
+      "Use x, numbers, () and + - * / =. Enter adds a line. Optional final substitution: check: 3*5+5=20. Other syntax stays in your draft as not checked.";
+  const auto anchor=supportAnchor(content(),s);
+  v.canRespond=!v.completed && (s.level>=SupportLevel::Solve || anchor.has_value());
+  if(!v.completed && s.level<=SupportLevel::Practice) {
+    if(anchor) {
+      v.prompt=content().steps[*anchor].prompt;
+      if(matrix && s.level==SupportLevel::Practice)v.responseCue=rowOperationTex(source.steps[*anchor].operation,{});
+      if(s.level==SupportLevel::Learn){v.choices=content().steps[*anchor].options;v.reading=source.steps[*anchor].teaching;}
+    } else v.prompt="Your working follows another route. Use Solve / Independent, or Again to retain this run and start a guided attempt.";
+  }
+  if(!v.completed && s.level==SupportLevel::Solve)v.prompt=matrix?"Write resulting matrices. Reduce the coefficient block to the identity to find x and y.":"Supply a resulting equation for x, with your working.";
+  if(!v.completed && (s.submissions.size()>=kSupportSubmissionCapacity || s.nodes.size()>=kMathNodeCapacity)) {
+    v.canRespond=false;v.prompt="This attempt has reached its history limit. Again keeps this run and draft, then opens a fresh attempt.";
+  }
+  switch(s.help) {
+    case SupportHelp::None:break;
+    case SupportHelp::Definitions:
+      v.reading=source.steps[anchor.value_or(0)].definitions;break;
+    case SupportHelp::Hint:
+      v.reading=anchor?source.steps[*anchor].teaching:matrix?"Use reversible row operations on all three entries of a row. Isolate x and y.":"Keep both sides equivalent to your original equation. Isolate x with reversible operations.";break;
+    case SupportHelp::NextLine:
+      v.reading=anchor?"One next line:\n\n$$"+supportTex(supportValue(source.model,source.steps[*anchor].equation))+"$$":"A prepared next line is unavailable for this working. Your draft is retained.";break;
+    case SupportHelp::Solution:
+      v.reading="Reference solution\n\n$$"+content().equation+"$$\n\n";
+      for(std::size_t i=0;i<source.steps.size();++i)v.reading+="$$"+supportTex(supportValue(source.model,source.steps[i].equation))+"$$\n\n"+content().steps[i].explanation+"\n\n";
+      break;
+  }
+  for(std::size_t node=s.active;node;node=s.nodes[node].parent){v.history.push_back(s.nodes[node].working.display);v.historyNotes.push_back(s.nodes[node].explanation);}
+  std::reverse(v.history.begin(),v.history.end());std::reverse(v.historyNotes.begin(),v.historyNotes.end());
+  return v;
+}
+
+LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const SupportCommand& command) {
+  if(!current_.support)return rejected("support_unavailable");
+  auto& s=*current_.support;
+  if(command.questionId!=current_.questionId || command.contentVersion!=current_.contentVersion ||
+      command.runNumber!=current_.runNumber || command.revision!=s.revision)return rejected("stale_support_input");
+  if(command.text.size()>kSupportDraftCapacity || command.text.find('\0')!=std::string::npos)return rejected("support_text_limit");
+  if(command.action!=SupportAction::EditDraft && command.action!=SupportAction::SubmitBlank &&
+      command.action!=SupportAction::CheckWork && !command.text.empty())return rejected("unexpected_support_text");
+  switch(command.action) {
+    case SupportAction::SelectLevel:
+      if(command.value>3)return rejected("unknown_support_level");
+      if(s.level==static_cast<SupportLevel>(command.value))return accepted(false,"support_unchanged");
+      s.level=static_cast<SupportLevel>(command.value);s.help=SupportHelp::None;
+      if(current_.phase!=LayeredQuestionPhase::Grid && s.level<=SupportLevel::Practice)s.exposure|=1;
+      ++s.revision;return accepted(true,"support_selected");
+    case SupportAction::ReadHelp:
+      if(command.value>4 || current_.phase==LayeredQuestionPhase::Grid)return rejected("unknown_help");
+      if(s.help==static_cast<SupportHelp>(command.value))return accepted(false,"help_unchanged");
+      s.help=static_cast<SupportHelp>(command.value);if(command.value)s.exposure|=1U<<command.value;
+      ++s.revision;return accepted(true,"help_selected");
+    case SupportAction::EditDraft:
+      if(current_.phase!=LayeredQuestionPhase::Answering || command.value)return rejected("draft_unavailable");
+      if(s.draft==command.text)return accepted(false,"draft_unchanged");
+      s.draft=command.text;return accepted(true,"draft_saved");
+    case SupportAction::Undo:
+      if(current_.phase==LayeredQuestionPhase::Grid || !s.active || command.value || s.submissions.size()>=kSupportSubmissionCapacity)return rejected("undo_unavailable");
+      s.submissions.push_back({command.action,s.level,{},"Earlier working restored; draft and all submissions retained.",WrittenCheckStatus::Unsupported,s.active,s.nodes[s.active].parent});
+      s.active=s.nodes[s.active].parent;s.feedback=s.submissions.back().feedback;s.verification.clear();s.status=WrittenCheckStatus::Unsupported;
+      s.help=SupportHelp::None;++s.revision;current_.completed=false;current_.phase=LayeredQuestionPhase::Answering;
+      return accepted(true,"support_undone");
+    case SupportAction::Choose:case SupportAction::SubmitBlank:case SupportAction::CheckWork:break;
+    default:return rejected("unknown_support_action");
+  }
+  if(current_.phase!=LayeredQuestionPhase::Answering || s.submissions.size()>=kSupportSubmissionCapacity)return rejected("support_submission_unavailable");
+  const auto& source=*content().support;std::string entry=command.text;const auto anchor=supportAnchor(content(),s);
+  if(command.action==SupportAction::Choose) {
+    if(s.level!=SupportLevel::Learn || !anchor)return rejected("choice_unavailable");
+    const auto& options=content().steps[*anchor].options;
+    const auto found=std::find_if(options.begin(),options.end(),[&](const auto& option){return option.id.value==command.value;});
+    if(found==options.end())return rejected("unknown_support_choice");
+    entry=source.steps[*anchor].responsePrefix+source.steps[*anchor].responses[found-options.begin()];
+  } else {
+    if(command.value || command.text!=s.draft)return rejected("stale_draft_submission");
+    if(command.action==SupportAction::SubmitBlank) {
+      if(s.level!=SupportLevel::Practice || !anchor)return rejected("blank_unavailable");
+      entry=source.steps[*anchor].responsePrefix+entry;
+    } else if(s.level<SupportLevel::Solve)return rejected("written_work_unavailable");
+  }
+  const auto erased=[](auto result) {
+    WrittenWorkCheck<MathWorkingValue> out{result.status,{},result.solved,result.line,std::move(result.feedback),std::move(result.verification)};
+    for(auto& line:result.lines)out.lines.emplace_back(std::move(line));return out;
+  };
+  auto checked=std::visit([&](const auto& original) {
+    using T=std::decay_t<decltype(original)>;
+    if constexpr(std::is_same_v<T,LinearEquation>)return erased(checkLinearWork(original,entry));
+    else return erased(command.action==SupportAction::CheckWork?checkMatrixWork(original,entry):
+        checkMatrixResponse(original,std::get<T>(s.nodes[s.active].equation),source.steps[*anchor].operation,entry));
+  },s.nodes.front().equation);
+  if(command.action!=SupportAction::CheckWork && checked.status==WrittenCheckStatus::Correct) {
+    const auto expected=supportValue(source.model,source.steps[*anchor].equation);
+    if(checked.lines.size()!=1 || !sameSupportWorking(checked.lines.back(),expected)) {
+      checked.status=WrittenCheckStatus::Incorrect;checked.feedback="This value does not complete the stated step. Working retained.";
+    }
+  }
+  if(checked.status==WrittenCheckStatus::Correct && s.nodes.size()+checked.lines.size()>kMathNodeCapacity) {
+    checked.status=WrittenCheckStatus::Unsupported;
+    checked.feedback="This submission exceeds the remaining working history. Again retains this run and draft, then opens a fresh attempt.";
+  }
+  // Stage node allocations before changing the canonical working or event log.
+  std::vector<SupportNode> appended;
+  auto parent=command.action==SupportAction::CheckWork?std::size_t{0}:s.active;
+  if(checked.status==WrittenCheckStatus::Correct)for(auto& line:checked.lines) {
+    const auto index=s.nodes.size()+appended.size();
+    appended.push_back({parent,{{static_cast<std::uint32_t>(index+1)},supportTex(line)},std::move(line),
+        command.action==SupportAction::CheckWork?"This line preserves the original problem's solution set.":content().steps[*anchor].explanation});parent=index;
+  }
+  const auto feedback=(checked.status==WrittenCheckStatus::Unsupported?"Not checked yet. ":"")+std::string("Line ")+std::to_string(checked.line)+": "+checked.feedback;
+  SupportSubmission event{command.action,s.level,command.action==SupportAction::Choose?entry:command.text,feedback,checked.status,s.active,appended.empty()?s.active:parent};
+  s.nodes.reserve(std::min(kMathNodeCapacity,std::bit_ceil(s.nodes.size()+appended.size())));
+  s.submissions.reserve(std::min(kSupportSubmissionCapacity,std::bit_ceil(s.submissions.size()+1)));
+  s.submissions.push_back(std::move(event));
+  for(auto& node:appended)s.nodes.push_back(std::move(node));
+  s.feedback=feedback;s.status=checked.status;++s.revision;
+  if(checked.status==WrittenCheckStatus::Correct) {
+    s.active=parent;s.help=SupportHelp::None;s.verification=checked.verification;
+    current_.completed=checked.solved;current_.phase=checked.solved?LayeredQuestionPhase::Complete:LayeredQuestionPhase::Answering;
+    if(command.action==SupportAction::SubmitBlank)s.draft.clear();
+  }
+  return accepted(true,"support_submission_recorded");
 }
 
 std::vector<MathMoveChoice> LayeredQuestionSession::mathMoveChoices() const {

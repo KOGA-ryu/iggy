@@ -4,10 +4,11 @@
 #include "content/CorpusPractice.hpp"
 #include "ui/MathNotationUi.hpp"
 #include "ui/NativeMath.hpp"
+#include "ui/DocumentLessonUi.hpp"
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, Count };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, CheckWork, UndoWork, OpenDocument, Count };
 struct NativeMathSample {const char* label;const char* title;const char* latex;};
 inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
   {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
@@ -32,11 +33,18 @@ struct MathCorpusUiState {
   CorpusPractice* practice=nullptr;
   bool questions=false;
   bool focusQuestion=false,readingOpen=false;
+  bool focusDocument=false;
+  std::string importMessage;
+  bool importFailed=false;
+  DocumentLessonUiState document;
   std::size_t readingIndex=0;
   std::string readingQuestion,readingSource;
   std::size_t readingFallbacks=0;
   NotationBounds currentWorking,readingBody;
   std::vector<NotationBounds> readingChoices;
+  std::array<NotationBounds,4> supportLevels{},supportHelp{};
+  std::array<char,iggy3d::first_move::kSupportDraftCapacity+1> supportDraft{};
+  NotationBounds supportEditor;
   std::vector<std::size_t> questionMatches;
   std::vector<NotationBounds> answerTiles;
   NotationBounds questionInk,choiceArea;

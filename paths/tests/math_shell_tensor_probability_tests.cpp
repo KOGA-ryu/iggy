@@ -114,7 +114,7 @@ void probability() {
   set(m,MathParameter::ProbabilityRule,2);set(m,MathParameter::ProbabilitySteps,64);near(metric(m,"Distance to pi"),2.0/3,1e-14,"periodic distribution falsely settled");near(metric(m,"Convergence to pi guaranteed"),0,0,"periodic convergence");
 }
 void boundaries() {
-  MathObjects m;MathObjectScene scene;require(mathObjectSpecs().size()==22,"wrong object count");std::set<std::string_view> keys;
+  MathObjects m;MathObjectScene scene;require(mathObjectSpecs().size()==static_cast<std::size_t>(MathObjectKind::Count),"wrong object count");std::set<std::string_view> keys;
   for(const auto& p:mathParameterSpecs())require(keys.insert(p.key).second,"duplicate CLI key");
   for(const auto kind:{MathObjectKind::Flux,MathObjectKind::Tensor,MathObjectKind::Probability})for(unsigned l=0;l<4;++l) {
     select(m,kind,l);require(mathLessons(kind).size()==4,"missing layer");inspect(m,scene);

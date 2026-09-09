@@ -67,6 +67,8 @@ void drawEquations(NativeMathPanelState& ui,NativeMath& math,bool blocked) {
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked) {
   auto& io=ImGui::GetIO();blocked=blocked || io.AppFocusLost;
   const bool narrow=io.DisplaySize.x<700;
+  const bool editing=io.WantTextInput; // Escape may deactivate an editor later in this frame.
+  ui.document.presented=false;
   ui.controls={};ui.rows.clear();ui.subjectRows.clear();ui.topicRows.clear();ui.relatedRows.clear();
   std::optional<std::size_t> linkedEntry;bool back=false;
   ImGui::SetNextWindowPos({0,0});ImGui::SetNextWindowSize(io.DisplaySize);
@@ -74,16 +76,33 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,{12,10});
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,{5,3});
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,{6,5});
-  ImGui::Begin("Math library",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings);
+  const bool document=ui.focusDocument && !ui.questions && ui.entry && corpus.entries[*ui.entry].document;
+  ImGui::Begin("Math library",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings|(document?ImGuiWindowFlags_NoBackground:0));
   ImGui::PushFont(nullptr,13);ImGui::BeginDisabled(blocked);
   const auto record=[&](CorpusControl control,bool enabled=true){ui.controls[static_cast<std::size_t>(control)]=item(enabled && !blocked);};
+  if(document) {
+    if(ImGui::Button("Browse",{66,22}))ui.focusDocument=false;record(CorpusControl::OpenDocument);
+    ImGui::SameLine();ImGui::TextColored(violet,"Lesson workspace");
+    if(auto id=drawDocumentLesson(corpus.entries[*ui.entry],*ui.math,ui.document,blocked);id && ui.practice) {
+      const auto& questions=ui.practice->questions();
+      const auto q=std::find_if(questions.begin(),questions.end(),[&](const auto& q){return q.id==*id;});
+      if(q!=questions.end()) {
+        ui.practice->open(q-questions.begin());ui.subject=q->subject;ui.topic=q->topic;ui.query={};
+        ui.questionMatches=ui.practice->find(ui.subject,ui.topic,"");ui.refresh=false;
+        ui.questions=true;ui.focusQuestion=true;
+      }
+    }
+    if(!blocked && !editing && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive())ui.focusDocument=false;
+    ImGui::EndDisabled();ImGui::PopFont();ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();return;
+  }
   if(ui.questions && ui.focusQuestion && ui.practice && ui.math) {
     if(ImGui::Button("Browse",{66,22}))ui.focusQuestion=false;
     record(CorpusControl::FocusQuestion);ImGui::SameLine();ImGui::TextColored(violet,"Question workspace");
     drawCorpusQuestions(ui,corpus,blocked);
-    if(ImGui::IsKeyPressed(ImGuiKey_Escape))ui.focusQuestion=false;
+    if(!blocked && !editing && ImGui::IsKeyPressed(ImGuiKey_Escape) && !ImGui::IsAnyItemActive())ui.focusQuestion=false;
     ImGui::EndDisabled();ImGui::PopFont();ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();return;
   }
+  if(ui.importFailed)ImGui::TextWrapped("%s",ui.importMessage.c_str());
   ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
   if(ImGui::Button("Practice",{68,22}))ui.open=false;
   record(CorpusControl::Practice);ImGui::PopStyleColor();ImGui::SameLine();
@@ -140,7 +159,7 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   record(CorpusControl::Clear);
   if(ui.questions && ui.practice && ui.math) {
     drawCorpusQuestions(ui,corpus,blocked);
-    if(!blocked && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive())ui.open=false;
+    if(!blocked && !editing && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive())ui.open=false;
     ImGui::EndDisabled();ImGui::PopFont();
     drawEquations(ui.equations,*ui.math,blocked);
     ui.equations.open=ImGui::IsPopupOpen("Native equations");
@@ -215,6 +234,11 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
     if(ImGui::Button(ui.raw?"Typeset###format":"Raw source###format",{84,22})){ui.raw=!ui.raw;ui.top=true;}
     record(CorpusControl::Format);ImGui::PopStyleColor();
   }
+  if(ui.math && ui.entry && corpus.entries[*ui.entry].document) {
+    ImGui::SameLine();ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
+    if(ImGui::Button("Open lesson",{92,22}))ui.focusDocument=true;
+    record(CorpusControl::OpenDocument);ImGui::PopStyleColor();
+  }
   if(ui.top){scroll=0;ui.restoreScroll.reset();ui.restoreHorizontal.reset();}
   if(scroll)ImGui::SetNextWindowScroll({ui.top?0.0F:-1.0F,*scroll});
   ImGui::BeginChild("Source notes",{0,0},ImGuiChildFlags_NavFlattened,ImGuiWindowFlags_HorizontalScrollbar);
@@ -271,7 +295,7 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   ui.scroll=ImGui::GetScrollY();ui.scrollMax=ImGui::GetScrollMaxY();ui.pageHeight=ui.reader.height;ui.top=false;
   ui.horizontal=ImGui::GetScrollX();ui.horizontalMax=ImGui::GetScrollMaxX();
   ImGui::EndChild();ImGui::EndChild();
-  if(!blocked && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive()) {
+  if(!blocked && !editing && !ui.equations.open && ImGui::IsKeyPressed(ImGuiKey_Escape,false) && !ImGui::IsAnyItemActive()) {
     if(!ui.trail.empty())back=true;else ui.open=false;
   }
   if(back) {

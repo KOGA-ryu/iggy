@@ -1,0 +1,18 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "matrix_foundations",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "matrix_foundations_original",
+      "kind": "original",
+      "title": "Matrix foundations: two equations, one solution",
+      "uri": "paths:authored/matrix_foundations",
+      "revision": "1",
+      "attribution": "Original Paths teaching and exercise; standard elementary row operations.",
+      "reuse": "Authored for this project. No external exercise text was copied.",
+      "content_ids": ["published_matrix_reading", "published_matrix_question"]
+    }
+  ]
+}

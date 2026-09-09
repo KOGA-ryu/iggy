@@ -93,6 +93,7 @@ ctest --test-dir /Users/kogaryu/iggy3d/paths/b \
   --output-on-failure
 ```
 
-The user accepted P049's layout and interaction before this work. P050's
-appearance and pointer interaction await the user's visual test. Changes remain
+The user accepted P049's layout and interaction before this work and
+subsequently reported that P050 "looks good." This records the user
+feedback; no agent visual inspection was performed. Changes remain
 uncommitted. No source problem page, Library or motion-lesson file is changed.

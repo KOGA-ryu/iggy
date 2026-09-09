@@ -71,6 +71,28 @@ struct LinearEquationResult {
 // implicit multiplication. Variable products/divisors are refused, even if
 // later cancellation would remove them. No evaluation of code or functions.
 [[nodiscard]] LinearEquationResult parseLinearEquation(std::string_view text);
+enum class WrittenCheckStatus : std::uint8_t { Correct, Incorrect, Unsupported };
+template<class Value> struct WrittenWorkCheck {
+  WrittenCheckStatus status=WrittenCheckStatus::Unsupported;
+  std::vector<Value> lines;
+  bool solved=false;
+  std::size_t line=0;
+  std::string feedback, verification;
+};
+using LinearWorkCheck=WrittenWorkCheck<LinearEquation>;
+using MatrixWorkCheck=WrittenWorkCheck<AugmentedMatrix>;
+// Bounded equation lines, checked by exact solution-set equivalence. No code,
+// LaTeX, nonlinear cancellation or general proof interpretation is performed.
+[[nodiscard]] LinearWorkCheck checkLinearWork(const LinearEquation& original,std::string_view written);
+[[nodiscard]] std::string linearEquationTex(const LinearEquation&);
+[[nodiscard]] std::string matrixEquationTex(const AugmentedMatrix&);
+// Empty operand denotes the learner's blank; invalid row syntax returns empty.
+[[nodiscard]] std::string rowOperationTex(MathOperation,std::string_view operand);
+// One complete two-row augmented matrix per line. Exact equivalence to the
+// original unique solution; completion requires an identity coefficient block.
+[[nodiscard]] MatrixWorkCheck checkMatrixWork(const AugmentedMatrix&,std::string_view written);
+[[nodiscard]] MatrixWorkCheck checkMatrixResponse(const AugmentedMatrix& original,
+    const AugmentedMatrix& before,MathOperation,std::string_view operand);
 template<class Value> struct CheckedMathMove {
   std::optional<Value> result;
   std::string operation, explanation;

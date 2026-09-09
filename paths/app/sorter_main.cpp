@@ -1,6 +1,7 @@
 #include "content/EquationSorterContentIO.hpp"
 #include "content/StudyProgressIO.hpp"
 #include "content/MotionProgressIO.hpp"
+#include "content/LearningDocuments.hpp"
 #include "platform/NativeVulkanHost.hpp"
 #include "ui/EquationSorterUi.hpp"
 
@@ -30,9 +31,9 @@ std::uint32_t positive(std::string_view text) {
 }
 struct Options {
   NativeLaunchConfig native;
-  std::filesystem::path content, library, script, report, capture, progress;
+  std::filesystem::path content, library, documents, documentStore, script, report, capture, progress;
   std::uint32_t frames = 0;
-  bool check = false, noProgress=false;
+  bool check = false, inspectDocuments=false, noProgress=false;
 };
 Options options(int argc, char** argv) {
   Options o;
@@ -42,13 +43,15 @@ Options options(int argc, char** argv) {
   o.content = std::filesystem::path(base) / "content/sorter/study_practice_v1.json";
   o.library = std::filesystem::path(base) / "content/corpus/toc.json";
   constexpr std::array pathOptions{
-      std::pair{"--content", &Options::content}, std::pair{"--library", &Options::library}, std::pair{"--script", &Options::script},
+      std::pair{"--content", &Options::content}, std::pair{"--library", &Options::library}, std::pair{"--documents", &Options::documents}, std::pair{"--script", &Options::script},
+      std::pair{"--document-store", &Options::documentStore},
       std::pair{"--report", &Options::report}, std::pair{"--capture", &Options::capture},
       std::pair{"--progress", &Options::progress}};
   for (int i = 1; i < argc; ++i) {
     const std::string_view arg = argv[i];
     if (arg == "--offscreen") { o.native.offscreen = true; continue; }
     if (arg == "--check-content") { o.check = true; continue; }
+    if (arg == "--inspect-documents") { o.inspectDocuments = true; continue; }
     if (arg == "--no-progress") {o.noProgress=true;continue;}
     if (i + 1 == argc) throw std::invalid_argument("missing value for " + std::string(arg));
     const std::string_view value = argv[++i];
@@ -67,6 +70,12 @@ Options options(int argc, char** argv) {
     throw std::invalid_argument("unknown option: " + std::string(arg));
   }
   if(o.noProgress && !o.progress.empty())throw std::invalid_argument("choose --progress or --no-progress");
+  if(!o.documents.empty() && !o.documentStore.empty())throw std::invalid_argument("choose --documents or --document-store");
+  if(o.documents.empty() && o.documentStore.empty()) {
+    const auto store=std::filesystem::path(base)/"learning-store";
+    if(std::filesystem::exists(store/"active.json") || std::filesystem::is_symlink(store) || std::filesystem::is_symlink(store/"active.json"))o.documentStore=store;
+    else o.documents=std::filesystem::path(base)/"content/write";
+  }
   return o;
 }
 using ScriptAction=std::variant<SorterAction,GalleryCommand,OptionId>;
@@ -183,6 +192,10 @@ void prepareOutputs(const Options& o) {
     for (const auto& source : {o.content, o.script, o.library})
       if (!source.empty() && resolved == resolve(source))
         throw std::invalid_argument("output would overwrite an input file");
+    for(const auto& source:{o.documents,o.documentStore})if(!source.empty()) {
+      const auto relative=resolved.lexically_relative(resolve(source));
+      if(!relative.empty() && *relative.begin()!="..")throw std::invalid_argument("progress and outputs must stay outside document libraries");
+    }
     for (std::size_t j = 0; j < i; ++j)
       if (resolved == resolve(outputs[j])) throw std::invalid_argument("output paths overlap");
     if (outputs[i]!=o.progress && !outputs[i].parent_path().empty()) std::filesystem::create_directories(outputs[i].parent_path());
@@ -242,21 +255,29 @@ void report(const std::filesystem::path& path, const EquationSorterSession& sess
 }
 int main(int argc, char** argv) {
   try {
+    if(argc==2 && std::string_view(argv[1])=="--document-capabilities"){std::cout<<learningDocumentCapabilities();return 0;}
     if (argc == 2 && std::string_view(argv[1]) == "--help") {
       std::cout << "sorter [--content FILE] [--check-content] [--offscreen] [--frames N]\n"
                    "       [--resolution WxH] [--script FILE] [--report FILE] [--capture PNG]\n"
-                   "       [--progress FILE | --no-progress] [--library FILE]\n";
+                   "       [--progress FILE | --no-progress] [--library FILE] [--documents FOLDER]\n"
+                   "       [--document-store FOLDER] [--inspect-documents] [--document-capabilities]\n";
       return 0;
     }
     auto o = options(argc, argv);
     EquationSorterSession session(loadSorterContent(o.content)); // Fail before creating the native host.
-    const auto corpus=loadMathCorpus(o.library);
+    auto corpus=loadMathCorpus(o.library);
     auto questions=loadCorpusStarters(o.library.parent_path()/"starters.json",corpus);
     auto followups=loadCorpusStarters(o.library.parent_path()/"matrix_reasoning.json",corpus);
     const auto starterCount=questions.size(),followupCount=followups.size();
     questions.insert(questions.end(),std::make_move_iterator(followups.begin()),std::make_move_iterator(followups.end()));
+    auto supported=loadCorpusStarters(o.library.parent_path()/"linear_support.json",corpus);const auto supportCount=supported.size();
+    questions.insert(questions.end(),std::make_move_iterator(supported.begin()),std::make_move_iterator(supported.end()));
+    const auto documents=o.documentStore.empty()?importLearningDocuments(o.documents,corpus,questions):importLearningStore(o.documentStore,corpus,questions);
+    if(o.inspectDocuments){std::cout<<documents.reportJson;return documents.accepted?0:1;}
+    if(!documents.accepted)std::cerr<<documents.message<<'\n';
+    if(!documents.accepted && !o.documentStore.empty())return 1; // Never load/save progress against a failed published library.
     CorpusPractice starters(std::move(questions));
-    if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries, " << starterCount << " starting questions and " << followupCount << " follow-up questions: " << o.content << '\n'; return 0; }
+    if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries, " << starterCount << " starting questions, " << followupCount << " follow-up questions and " << supportCount << " four-level questions: " << o.content << '\n' << documents.message << '\n'; return documents.accepted?0:1; }
     const auto commands = script(o.script);
     std::string progressLocationError;
     // Bounded runs and scripts never touch personal progress implicitly.
@@ -283,6 +304,7 @@ int main(int argc, char** argv) {
     ui.corpus=&corpus;
     ui.library.math=&math;
     ui.library.practice=&starters;
+    ui.library.importMessage=documents.message;ui.library.importFailed=!documents.accepted;
     ui.motion.lesson=&motion;ui.motion.math=&math;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
@@ -303,7 +325,12 @@ int main(int argc, char** argv) {
         // The host consumes this stable snapshot after the callback, even when
         // opening/closing the solver changed which session supplied the frame.
         const auto* active=session.activeSolve();
-        renderScene=ui.motion.presented?ui.motion.scene.frame():active && !active->question().content().lineGraph && !active->question().currentRun().math?active->scene().frame():SceneFrame{};
+        const std::array<const SceneFrame*,3> scenes{
+          ui.library.document.presented?&ui.library.document.scene.frame():nullptr,
+          ui.motion.presented?&ui.motion.scene.frame():nullptr,
+          active && !active->question().content().lineGraph && !active->question().currentRun().math?&active->scene().frame():nullptr};
+        const auto presented=std::find_if(scenes.begin(),scenes.end(),[](auto* frame){return frame!=nullptr;});
+        renderScene=presented==scenes.end()?SceneFrame{}:**presented;
       }, &renderScene);
       if (result.status == FrameStatus::Closed) break;
       if (result.status == FrameStatus::Failed) throw std::runtime_error(result.error);

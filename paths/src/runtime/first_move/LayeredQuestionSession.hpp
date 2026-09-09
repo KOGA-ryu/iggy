@@ -94,6 +94,17 @@ struct LayeredQuestionStepContent {
   std::string hint, nextMove;
 };
 
+struct SupportStepContent {
+  std::string equation, responsePrefix, definitions, teaching;
+  std::vector<std::string> responses; // Typed numeric responses in option order.
+  MathOperation operation=MathOperation::Simplify;
+};
+struct QuestionSupportContent {
+  std::string equation, domain;
+  std::vector<SupportStepContent> steps;
+  MathWorkingModel model=MathWorkingModel::LinearEquation;
+};
+
 struct LayeredQuestionContent {
   std::string id;
   std::uint32_t version = 0U;
@@ -107,6 +118,7 @@ struct LayeredQuestionContent {
   MathWorkingModel mathModel=MathWorkingModel::LinearEquation;
   std::vector<MathReference> references; // Resolved immutable copies from the pack's shared library.
   std::vector<NotationLesson> notation; // Optional read-only teaching material; never an answer rule.
+  std::optional<QuestionSupportContent> support;
 };
 
 [[nodiscard]] const LayeredQuestionContent& layeredQuestion() noexcept;
@@ -115,7 +127,7 @@ struct LayeredQuestionContent {
 // Content validation establishes a nonempty accepted set and a known rule.
 [[nodiscard]] bool answerSetComplete(const LayeredQuestionStepContent&, std::uint8_t collected) noexcept;
 [[nodiscard]] std::size_t requiredAnswerCount(const LayeredQuestionStepContent&) noexcept;
-enum class QuestionInteraction : std::uint8_t { Guided, ArcadeCollect, MathMoves };
+enum class QuestionInteraction : std::uint8_t { Guided, ArcadeCollect, MathMoves, Supported };
 
 enum class QuestionValidationCode : std::uint8_t {
   Valid, InvalidCatalogSize, InvalidInteraction, MissingQuestionId,
@@ -125,7 +137,7 @@ enum class QuestionValidationCode : std::uint8_t {
   MissingOptionId, MissingOptionLabel, DuplicateOptionIdentity,
   InvalidWorkingStateCount, MissingWorkingStateId, DuplicateWorkingStateIdentity,
   InvalidWorkingHighlight,
-  InvalidStepPurpose, InvalidCompletionRule, UnknownWorkingState, BrokenStepChain, InvalidGraph, InvalidMathMoves, InvalidMathReference,
+  InvalidStepPurpose, InvalidCompletionRule, UnknownWorkingState, BrokenStepChain, InvalidGraph, InvalidMathMoves, InvalidMathReference, InvalidSupport,
 };
 
 struct QuestionValidationResult {
@@ -141,7 +153,8 @@ struct QuestionValidationResult {
 
 // Read-only structural checks. Return the first failure; indices are zero-based
 // and absent where not applicable. A standalone question has index 0.
-// Success has no field or indices. No mathematical or display-text verification.
+// Success has no field or indices. Prepared text is not an answer oracle;
+// opted-in support content also checks its typed mathematics and symbolic labels.
 [[nodiscard]] QuestionValidationResult validateQuestion(
     const LayeredQuestionContent&, QuestionInteraction) noexcept;
 [[nodiscard]] QuestionValidationResult validateCatalog(
@@ -212,6 +225,48 @@ struct MathMoveRun {
     const LayeredQuestionStepRecord& step) noexcept;
 
 enum class QuestionProgress : std::uint8_t { NotStarted, InProgress, Completed };
+enum class SupportLevel : std::uint8_t { Learn, Practice, Solve, Independent };
+enum class SupportHelp : std::uint8_t { None, Definitions, Hint, NextLine, Solution };
+enum class SupportAction : std::uint8_t { SelectLevel, EditDraft, Choose, SubmitBlank, CheckWork, ReadHelp, Undo };
+inline constexpr std::size_t kSupportDraftCapacity=8192, kSupportSubmissionCapacity=256;
+struct SupportCommand {
+  SupportAction action=SupportAction::SelectLevel;
+  std::uint32_t value=0;
+  std::string text, questionId;
+  std::uint32_t contentVersion=0, runNumber=0;
+  std::uint64_t revision=0;
+};
+struct SupportNode {std::size_t parent=0;WorkingState working;MathWorkingValue equation;std::string explanation;};
+struct SupportSubmission {
+  SupportAction action;
+  SupportLevel level;
+  std::string text,feedback;
+  WrittenCheckStatus status;
+  std::size_t from=0,to=0;
+};
+struct SupportRun {
+  SupportLevel level=SupportLevel::Learn;
+  SupportHelp help=SupportHelp::None;
+  std::uint32_t exposure=0,priorExposure=0; // 1 guided; 2 definitions; 4 hint; 8 next line; 16 solution.
+  std::uint64_t revision=1;
+  std::string draft,feedback,verification;
+  WrittenCheckStatus status=WrittenCheckStatus::Unsupported;
+  std::vector<SupportNode> nodes;
+  std::vector<SupportSubmission> submissions;
+  std::size_t active=0;
+};
+struct SupportView {
+  SupportCommand command; // Frozen input guard; adapters fill action/value/text.
+  SupportLevel level;
+  SupportHelp help;
+  std::string given,working,domain,draft,prompt,reading,feedback,verification;
+  std::string goal, responseCue, inputLabel, inputHelp;
+  std::vector<LayeredQuestionOptionContent> choices;
+  std::vector<std::string> history;
+  std::vector<std::string> historyNotes;
+  bool completed=false,canRespond=false,canUndo=false,assisted=false,seenBefore=false;
+  WrittenCheckStatus status=WrittenCheckStatus::Unsupported;
+};
 struct LayeredQuestionRunRecord {
   std::string questionId;
   std::uint32_t contentVersion = 0;
@@ -222,6 +277,7 @@ struct LayeredQuestionRunRecord {
   bool completed = false;
   std::vector<LayeredQuestionStepRecord> steps;
   std::optional<MathMoveRun> math;
+  std::optional<SupportRun> support;
 };
 
 struct LayeredQuestionRunSummary {
@@ -254,6 +310,7 @@ struct QuestionReview {
   std::size_t wrongAttempts=0, stepsNeedingRetry=0;
   std::vector<QuestionReviewStep> steps;
   const MathMoveRun* math=nullptr; // Same frozen run evidence; no prepared answers for a mathematical-move run.
+  const SupportRun* support=nullptr;
 };
 
 enum class LayeredQuestionCommandKind : std::uint8_t {
@@ -270,6 +327,7 @@ enum class LayeredQuestionCommandKind : std::uint8_t {
   RevealNextMove,
   ApplyPreparedStep,
   MathematicalMove,
+  Support,
 };
 
 struct LayeredQuestionCommand {
@@ -279,6 +337,7 @@ struct LayeredQuestionCommand {
   std::optional<std::size_t> questionIndex;
   bool archiveUnfinished = false; // Explicit new-set action; ordinary replay still requires completion.
   MathMoveCommand math;
+  SupportCommand support;
 
   [[nodiscard]] static constexpr LayeredQuestionCommand selectOption(
       std::size_t index) noexcept {
@@ -326,6 +385,7 @@ public:
   [[nodiscard]] std::optional<CoordinateGraphView> coordinateGraph(float probeX=0) const noexcept;
   [[nodiscard]] std::vector<MathMoveChoice> mathMoveChoices() const;
   [[nodiscard]] const MathReference* mathReference(std::string_view conceptId) const noexcept;
+  [[nodiscard]] std::optional<SupportView> supportView() const;
 
   // 0 selects the current run; 1..N select archived runs in their stored order.
   // Invalid selection returns nullopt. This does not change progression or evidence.
@@ -339,6 +399,7 @@ private:
   [[nodiscard]] LayeredQuestionDispatchResult judgeOption(std::size_t index);
   [[nodiscard]] LayeredQuestionDispatchResult advanceResolvedStep();
   [[nodiscard]] LayeredQuestionDispatchResult applyMathMove(const MathMoveCommand&);
+  [[nodiscard]] LayeredQuestionDispatchResult applySupport(const SupportCommand&);
 
   std::shared_ptr<const std::vector<LayeredQuestionContent>> catalog_;
   std::size_t contentIndex_ = 0;

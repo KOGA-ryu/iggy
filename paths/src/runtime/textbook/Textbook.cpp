@@ -7,20 +7,29 @@
 #include <iomanip>
 #include <sstream>
 #include <system_error>
+#include <stdexcept>
 
 namespace paths {
 namespace {
 unsigned boardIndex(unsigned section) {
-  const auto card=matrixChapter()[section].card;
-  if(card==0)return 6;
+  const auto& definition=matrixChapter()[section];
+  if(definition.exercise==BookExerciseKind::Systems)return static_cast<unsigned>(matrixCards().size());
+  if(definition.exercise!=BookExerciseKind::MatrixBoard)throw std::logic_error("This lesson has no matrix-board binding");
+  const auto card=definition.card;
   const auto& cards=matrixCards();
   return static_cast<unsigned>(std::find_if(cards.begin(),cards.end(),[&](auto c){return c.id==card;})-cards.begin());
 }
 }
-Textbook::Textbook() {
+Textbook::Textbook():scrolls_(matrixChapter().size()),helpMasks_(matrixChapter().size()),objects_(matrixChapter().size()) {
   for(unsigned i=0;i<boards_.size();++i)
     static_cast<void>(boards_[i].dispatch({BoardActionKind::Select,matrixCards()[i].id}));
-  for(unsigned i=0;i<helpMasks_.size();++i)helpMasks_[i].resize(matrixChapter()[i].lesson.size());
+  for(unsigned i=0;i<helpMasks_.size();++i){
+    const auto& section=matrixChapter()[i];helpMasks_[i].resize(section.lesson.size());
+    if(section.exercise==BookExerciseKind::Object){
+      if(!section.object||section.figure.kind!=BookFigureKind::Object)throw std::logic_error("Object lesson binding is incomplete");
+      objects_[i]=std::make_unique<ObjectLesson>(*section.object);
+    }
+  }
 }
 BoardResult Textbook::dispatch(BookAction action) {
   switch(action.kind) {
@@ -72,13 +81,16 @@ BoardResult Textbook::dispatch(BookAction action) {
 }
 BookView Textbook::view()const {return {page_,mode_,section_,scrolls_[section_],textScale_,anchor_,anchorRevision_};}
 std::vector<BookBlockView> Textbook::lessonView()const {
+  if(page_!=BookPage::Section||mode_!=BookMode::Reading)return {};
+  return bookLessonView(matrixChapter()[section_].lesson,helpMasks_[section_]);
+}
+std::vector<BookBlockView> bookLessonView(std::span<const BookBlock> blocks,std::span<const std::uint8_t> helpMasks) {
   std::vector<BookBlockView> result;
-  if(page_!=BookPage::Section||mode_!=BookMode::Reading)return result;
-  const auto blocks=matrixChapter()[section_].lesson;result.reserve(blocks.size());
+  result.reserve(blocks.size());
   for(std::size_t i=0;i<blocks.size();++i){
-    const auto& b=blocks[i];BookBlockView v{b.id,b.kind,b.number,b.title,b.body,{},b.references};
+    const auto& b=blocks[i];BookBlockView v{b.id.c_str(),b.kind,b.number.c_str(),b.title.c_str(),b.body,{},b.references};
     for(unsigned h=0;h<b.help.size();++h){
-      const bool open=(helpMasks_[section_][i]&(1u<<h))!=0;
+      const bool open=!b.help[h].empty() && i<helpMasks.size() && (helpMasks[i]&(1u<<h))!=0;
       v.help[h]={!b.help[h].empty(),open,open?std::span<const BookPassage>(b.help[h]):std::span<const BookPassage>{}};
     }
     result.push_back(v);
@@ -86,8 +98,10 @@ std::vector<BookBlockView> Textbook::lessonView()const {
   return result;
 }
 unsigned Textbook::exerciseIndex()const{return boardIndex(section_);}
-MatrixBoard& Textbook::board(){return matrixChapter()[section_].card==0?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
-const MatrixBoard& Textbook::board()const{return matrixChapter()[section_].card==0?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
+MatrixBoard& Textbook::board(){return exerciseKind()==BookExerciseKind::Systems?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
+const MatrixBoard& Textbook::board()const{return exerciseKind()==BookExerciseKind::Systems?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
+ObjectLesson& Textbook::objectLesson(){if(!objects_[section_])throw std::logic_error("This section has no object lesson");return *objects_[section_];}
+const ObjectLesson& Textbook::objectLesson()const{if(!objects_[section_])throw std::logic_error("This section has no object lesson");return *objects_[section_];}
 std::string Textbook::bookmark()const {
   std::ostringstream out;out<<"paths-textbook 1\n"<<matrixChapter()[section_].id<<'\n'<<std::setprecision(17)<<textScale_<<'\n';
   for(unsigned i=0;i<scrolls_.size();++i)out<<matrixChapter()[i].id<<' '<<scrolls_[i]<<'\n';
@@ -100,19 +114,18 @@ BoardResult Textbook::restoreBookmark(std::string_view data) {
     return {false,"Unsupported reading bookmark."};
   const auto& sections=matrixChapter();auto section=std::find_if(sections.begin(),sections.end(),[&](auto s){return id==s.id;});
   if(section==sections.end())return {false,"Unknown bookmarked section."};
-  std::array<double,8> scrolls{};std::array<bool,8> seen{};
-  unsigned positions=0;
+  std::vector<double> scrolls(sections.size());std::vector<bool> seen(sections.size());
+  unsigned generation=0;
   while(in>>id) {
-    ++positions;double offset=0;if(!(in>>offset)||!std::isfinite(offset)||offset<0||offset>100000)return {false,"Invalid bookmarked position."};
+    double offset=0;if(!(in>>offset)||!std::isfinite(offset)||offset<0||offset>100000)return {false,"Invalid bookmarked position."};
     auto found=std::find_if(sections.begin(),sections.end(),[&](auto s){return id==s.id;});
     if(found==sections.end())return {false,"Unknown bookmarked position."};
     const auto index=static_cast<unsigned>(found-sections.begin());if(seen[index])return {false,"Duplicate bookmarked position."};
-    seen[index]=true;scrolls[index]=offset;
+    seen[index]=true;scrolls[index]=offset;generation=std::max(generation,found->bookmarkGeneration);
   }
-  // Version 1 bookmarks from the seven-section chapter migrate by stable IDs.
-  // Only the newly added systems position may be absent; duplicates/unknowns fail.
-  if(positions!=7&&positions!=8)return {false,"Missing bookmarked positions."};
-  for(unsigned i=0;i<seen.size();++i)if(!seen[i]&&std::string_view(sections[i].id)!="matrix.solutions")return {false,"Missing bookmarked position."};
+  // Accept complete older catalogues by stable IDs, never an arbitrary partial save.
+  if(!generation||!seen[static_cast<std::size_t>(section-sections.begin())])return {false,"Missing bookmarked section."};
+  for(unsigned i=0;i<seen.size();++i)if(!seen[i]&&sections[i].bookmarkGeneration<=generation)return {false,"Missing bookmarked position."};
   section_=static_cast<unsigned>(section-sections.begin());textScale_=scale;scrolls_=scrolls;
   // Restore reading only: exercise states and results are deliberately untouched.
   page_=BookPage::Contents;mode_=BookMode::Reading;anchor_={};return {true,{}};

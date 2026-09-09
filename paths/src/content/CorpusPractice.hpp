@@ -12,6 +12,7 @@ struct CorpusStarter {
   iggy3d::first_move::LayeredQuestionContent question;
 };
 std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path&,const MathCorpus&);
+std::vector<CorpusStarter> parseCorpusStarters(std::string_view,const MathCorpus&,const std::filesystem::path& source);
 
 // An unbounded-by-the-old-sorter reading collection of independently frozen
 // questions. All answer judgments, working and attempt evidence belong to the

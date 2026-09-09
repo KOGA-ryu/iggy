@@ -1,5 +1,64 @@
 # Paths architecture
 
+Work allocation follows [AGENTS.md](../AGENTS.md#current-work-allocation): the
+textbook worker owns the full textbook/application learning experience, including
+content, UI, solving, persistence, the content pipeline and figure integration.
+The separate worker builds 3D assets/models. This division assigns implementation
+responsibility; the canonical mathematical and state owners below remain intact.
+
+The [learning publisher](LEARNING_EXPORTS.md) adds a structured inspection report
+and verified published generations. `LearningDocuments` reports its consumed
+file bytes, catalogue declarations and canonical `CorpusStarter` stamp digests.
+Its store reader verifies inventory and imports the captured bytes through the
+same compiler before progress can load. OpenSSL Crypto supplies SHA-256 without
+introducing a renderer dependency. `tools/export_learning.py` owns transport,
+immutable package versions, publication locking and atomic activation; it asks
+the app to validate the full proposed library and preserves every existing
+question stamp. `tools/prepare_source_lesson.py` is now a producer of this same
+contract: it uses the existing source parser's public lossless audit, explicit
+hash-pinned source selections, current prepared routes and reviewed templates.
+It does not infer answers or grade prose. Source and draft rejections happen
+before output installation; publication remains owned by the existing exporter.
+
+Imported `lesson.v2` uses the native textbook's owned `BookBlock` passages,
+`bookLessonView` redaction and `drawBookBlock` rendering. Both applications link
+the same `paths_textbook_ui` implementation. `BookLesson.hpp` contains the shared
+reading data without pulling geometry or exercise owners into corpus parsing.
+Public reading references omit closed help; complete reading fingerprints include
+it. Question stamps and saved attempts remain owned by the existing question
+session and persistence routes. There is no second textbook renderer or judge.
+
+The [learning-document pipeline](LEARNING_DOCUMENTS.md) adds bounded `.paths.md`
+startup import. `LearningDocuments` compiles versioned templates through the
+existing corpus and question validators and appends the complete folder
+atomically. ToC records, includes and stable lesson/question references remain
+content data. `DocumentLessonUi` consumes the compiled reading and named figure
+configuration; the existing `MathObjects` and `MathObjectScene` own diagram
+behavior and geometry. The same `LayeredQuestionSession` and `CorpusPractice`
+own all imported question judgments and saved evidence. No document code runs,
+and neither the textbook nor native rendering ownership changes.
+
+`matrix.v1` extends that pipeline to the existing exact two-row matrix kernel.
+`QuestionSupportContent::model` selects the typed family; the same support nodes
+hold `MathWorkingValue` for linear or matrix working. The shared support action
+route keeps drafts, help exposure, branch history and save replay. The matrix
+kernel checks row-operation responses, exact solution-set equivalence for
+written matrices, and final substitution; the UI consumes its goal and input
+instructions. No separate matrix practice session or persistence format is added.
+
+The [four-level question contract](QUESTION_PRACTICE_FORMAT.md) and
+[authoring workflow](QUESTION_AUTHORING_WORKFLOW.md) now have one implemented
+linear family with 25 questions. Support is separate from mathematical complexity,
+taxonomy level and interaction mode. `LayeredQuestionSession` owns its typed
+responses, working, exposure and bounded native-input projection. The existing
+exact linear kernel verifies each equation's solution set and original
+substitution. `CorpusPractice` replays guarded semantic actions and draft edits
+from version-2 saves, while still reading version-1 prepared saves. UI adapters
+only collect input and display the owner projection. The authoring generator
+publishes the optional typed support content explicitly with `--publish`.
+No second answer owner or bulk catalogue loader was added. Interactive 3D
+follows this question foundation.
+
 [Matrix reasoning](MATRIX_REASONING.md) adds eight follow-up questions to the
 same `CorpusPractice` bank. `LayeredQuestionSession` remains the sole owner of
 accepted answers, prepared working and attempt history. Optional `reading_refs`
@@ -27,6 +86,64 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P057](P057_PARAMETRIC_PATCHES.md) adds the `patch` provider. `BezierPatch`
+owns bicubic evaluation, analytic derivatives, regularity, curvature and bounded
+area estimates; `PatchGeometry` produces an open indexed surface. `MathObjects`
+owns 53 named controls, four atomic presets, four layers and existing model
+checks. The shared control-point snapshot now holds up to 16 points; curves and
+lathes retain explicit counts. Parameter IDs widen to 16 bits without renumbering
+existing entries, and preset capacity becomes 64 to hold all patch coordinates.
+No serialized numeric parameter format is introduced. Compact rows show only the
+selected XYZ triple; selection does not mark an example Custom. The renderer,
+content pipeline and learner state keep their existing owners.
+
+[P056](P056_COMPACT_MODEL_WORKSPACE.md) separates pure `MathObjectLayout`
+rectangle planning and control metadata from native `MathControlUi` widgets.
+The lab owns panel sizes, search, selected label mode and session-only collapse
+memory per object/layer. Its widgets queue semantic actions before the next frame;
+all linked representations consume one model revision. The textbook reuses only
+the scalar row widget and retains its authored control whitelist and separate
+reading/practice route. `MathObjects::ResetParameters` restores a mask atomically,
+validates coupled profile heights before mutation, and invalidates affected walk
+history through the same parameter-touch rules as ordinary edits.
+
+[P055](P055_BOOLEAN_SOLIDS.md) adds `boolean` with pure defining-field and
+indexed-contour kernels. Primitive evaluation, Boolean composition, gradient
+regularity, probe intersections and midpoint volume share one prepared solid.
+A bounded surface builder publishes through the existing indexed mesh contract.
+`MathObjects` owns all controls, presets, linked tables/plots and challenges;
+the scene, renderer, question/content and document owners remain unchanged.
+
+[P054](P054_LATHE_LAB.md) adds `lathe` through pure profile/integration and
+geometry kernels. `MathObjects` retains the same semantic ownership and adds a
+bounded indexed surface alongside the existing grid. `MathObjectScene` validates
+and publishes that mesh through the existing shader/host. Profile selection now
+carries its explicit point count and action parameter; playback button text is
+object metadata. Presets and chapter/document providers use the same registry.
+
+[P053](P053_CURVES_AND_SWEEPS.md) adds the `curve` provider. A pure fixed-storage
+Bezier kernel owns interpolation, derivatives, arc-length bounds/inversion and
+frame transport. `MathObjects` owns its four layers and emits the same surface,
+primitive, plot and table snapshots. Presets now hold up to 24 atomic parameter
+updates. `MathCurveView` supplies control-point selection to the lab UI, which
+sends existing parameter actions. Playback rates are declarative per object;
+existing objects retain their original rates. Geometry and native ownership
+remain in the existing scene and host.
+
+[P052](P052_CONVEX_GEOMETRY.md) extends the existing `MathObjects` owner with
+PSD-cone and norm-ball models, four layers each. The same fixed snapshot carries
+all numerical values, plots, 2x2 matrices, surfaces and primitive placements.
+Object presets are declarative data applied by one atomic semantic action.
+The lab matrix adapter respects the declared dimensions. `MathObjectScene`,
+the renderer, textbook lesson owners and source cards remain unchanged.
+
+[P051](P051_DETERMINANT_VOLUME.md) adds the determinant lesson through a reusable
+`ObjectLessonSpec` and two retained MathObjects instances. Explicit exercise
+bindings separate source boards, systems and objects. The section registry drives
+navigation, storage and CLI bounds; immutable bookmark generations preserve
+complete older catalogues. The common figure UI consumes the active owner
+snapshot, controls and readout selections without recomputing mathematics.
 
 [P050](P050_SYSTEM_SOLUTION_SETS.md) reuses the spread and equation-plane provider
 for explicit Ax=b systems. `SystemLesson` owns authored givens and practice

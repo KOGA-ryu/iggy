@@ -7,8 +7,8 @@ const std::array<const char*,7>& textbookParts() {
     "VI. Probability and Statistics", "VII. Numerical Methods"};
   return parts;
 }
-const std::array<BookSection,8>& matrixChapter() {
-  static const std::array<BookSection,8> sections{{
+std::span<const BookSection> matrixChapter() {
+  static const BookSection sections[]{
     {"matrix.entries","1.1 Reading a matrix",
      "Read an entry, state the dimensions, and distinguish data from unknowns.",
      {"A matrix is an ordered rectangular array. In a matrix with m rows and n columns, a(i,j) means the entry in row i and column j. The order matters: a 2 by 3 matrix and a 3 by 2 matrix describe different arrangements.",
@@ -48,7 +48,7 @@ const std::array<BookSection,8>& matrixChapter() {
      "Predict the outcome of three authored systems, choose a mathematical reason, then reduce the equations and test a proposed solution point.",
      "Separately authored real three-variable systems. The rank criterion and affine solution-family argument are developed in this section; these examples are not printed source-card data.",0,systemsLesson(),
      {BookFigureKind::AffinePlanes,"systems.planes","Equation planes / Ax = b",
-      "Figure 1.3.8. Each coloured grid represents an equation. Gold marks their common solutions. Change givens to change the system; use row operations to preserve its solution set."}},
+      "Figure 1.3.8. Each coloured grid represents an equation. Gold marks their common solutions. Change givens to change the system; use row operations to preserve its solution set."},BookExerciseKind::Systems,nullptr,2},
     {"matrix.partial-pivoting","1.4 Systems and partial pivoting",
      "Keep the right-hand side synchronized and choose a usable pivot from the active column.",
      {"To reduce A x = b, carry b through every row operation. Swapping rows of A without swapping the matching entries of b changes the equations instead of merely rearranging them. The same rule applies to scaling and row addition.",
@@ -113,8 +113,9 @@ const std::array<BookSection,8>& matrixChapter() {
       "Solve 2*X=1, giving X=1/2. The Schur complement is 5 - 4*(1/2) = 3.",
       "Subtract twice row 1 from row 2 to obtain [[2, 1], [0, 3]]. Its trailing entry agrees with the block calculation."},
      "Card 059 asks you to verify the block identity and explain why scalar elimination gives the same trailing block. The board checks numerical agreement; the general block argument remains yours to write.",
-     "Card 059: Trefethen & Bau, Lecture 20, exercise 20.3. A11 and every required leading block are assumed nonsingular.",59}
-  }};
+     "Card 059: Trefethen & Bau, Lecture 20, exercise 20.3. A11 and every required leading block are assumed nonsingular.",59},
+    determinantSection()
+  };
   return sections;
 }
 } // namespace paths

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "question_support_authoring_pilot",
+  "publication": "authoring_only",
+  "profiles": [
+    {"id": "learn", "label": "1 Learn", "input": "symbol_choices", "show_goal": true, "show_why": true, "show_definitions": true, "show_step_prompt": true},
+    {"id": "practice", "label": "2 Practice", "input": "structured_blank", "show_goal": true, "show_why": false, "show_definitions": false, "show_step_prompt": true},
+    {"id": "solve", "label": "3 Solve", "input": "checkpoint_and_working", "show_goal": false, "show_why": false, "show_definitions": false, "show_step_prompt": false},
+    {"id": "independent", "label": "4 Independent", "input": "written_solution", "show_goal": false, "show_why": false, "show_definitions": false, "show_step_prompt": false}
+  ],
+  "family": {
+    "id": "linear_balance_ax_b",
+    "version": 1,
+    "subject": "algebra",
+    "topic": "topic_0003",
+    "subcategory": "topic_0003_sub_01",
+    "skill_id": "solve_one_unknown_by_balance",
+    "objective": "Solve ax+b=c over the real numbers and verify the result in the original equation.",
+    "domain": "x is real; a and b are integers; 2 <= |a| <= 9; 1 <= |b| <= 9; c is rational.",
+    "complexity_band": "foundation",
+    "prerequisites": ["signed_arithmetic", "exact_fractions", "meaning_of_equality"],
+    "excluded": ["a=0", "a=1", "a=-1", "b=0", "variable denominators", "nonlinear terms", "units", "inequalities"],
+    "seed": "paths-linear-balance-pilot-v1",
+    "strata": ["positive_integer", "negative_coefficient", "negative_offset", "negative_solution", "zero_solution", "fractional_solution"],
+    "golden_parameters": {"a": 3, "b": 5, "c": "20"},
+    "source": {
+      "kind": "original_generated",
+      "description": "Original bounded parameter construction and original teaching prose; online references check general equality rules only. No source exercise text is imported.",
+      "fact_references": [
+        "https://openstax.org/books/elementary-algebra-2e/pages/2-1-solve-equations-using-the-subtraction-and-addition-properties-of-equality",
+        "https://openstax.org/books/elementary-algebra-2e/pages/2-2-solve-equations-using-the-division-and-multiplication-properties-of-equality"
+      ],
+      "checked_on": "2026-09-08",
+      "reuse": "reference_only"
+    },
+    "review": {"arithmetic": "check_with_question_workflow", "teaching": "draft_for_format_review", "taxonomy": "provisional_source_map", "runtime_integration": "not_started"}
+  },
+  "definitions": {
+    "eq.balance": {
+      "version": 1,
+      "term": "Equality",
+      "meaning": "The expressions on the two sides have the same value. Subtracting the same real number from each side preserves exactly the solutions of the equation; adding it back reverses the step.",
+      "rule_tex": "u=v\\iff u-k=v-k"
+    },
+    "eq.coefficient": {
+      "version": 1,
+      "term": "Coefficient",
+      "meaning": "In ax, a is the factor multiplying the unknown x. For example, 3x means three times x, so adding or subtracting 3 does not undo this multiplication.",
+      "rule_tex": "ax=a\\cdot x"
+    },
+    "eq.nonzero_division": {
+      "version": 1,
+      "term": "Dividing an equality",
+      "meaning": "Divide the entire expression on each side by the same nonzero number. Multiplying back recovers the previous equation, so the set of solutions stays the same. Division by zero is undefined.",
+      "rule_tex": "u=v\\iff u/k=v/k,\\quad k\\ne0"
+    },
+    "eq.solution": {
+      "version": 1,
+      "term": "Solution",
+      "meaning": "A solution is a value of the unknown that makes the original equation true. Substitution checks that a candidate works. Here the nonzero coefficient also ensures there is only one solution.",
+      "rule_tex": "s\\text{ solves }ax+b=c\\iff as+b=c"
+    }
+  },
+  "teaching": {
+    "remove_offset": {
+      "goal": "Leave only the term containing x on the left.",
+      "prompt": "Subtract b from both sides. What remains on the right?",
+      "why": "The constant b is added to ax. Subtract b from both sides to undo that addition while preserving equality. The left becomes ax because b-b=0. If b is negative, subtracting b means adding its positive opposite. Calculate the right side as c-b; do not just erase b on the left.",
+      "definition_ids": ["eq.balance"],
+      "after": "The same subtraction was applied to both sides. The new equation has exactly the original solutions. Its left side is still a times x; x has not yet been isolated.",
+      "misconceptions": ["wrong_sign", "erase_only_left"]
+    },
+    "divide_coefficient": {
+      "goal": "Make the coefficient of x equal to 1.",
+      "prompt": "Divide both sides by a. What is x?",
+      "why": "The remaining left side is a times x. Divide both complete sides by a to undo multiplication. This is allowed because a is nonzero. Keep a negative sign when dividing by a negative coefficient. Write a fraction exactly rather than rounding it; a coefficient of 1 leaves x alone.",
+      "definition_ids": ["eq.coefficient", "eq.nonzero_division"],
+      "after": "The coefficient is now 1. The solution is (c-b)/a. Substitute this value into the original ax+b=c to check that both sides agree; do not check only the final line x=s.",
+      "misconceptions": ["missing_division", "ignore_offset", "wrong_sign", "subtract_after_dividing"]
+    }
+  }
+}

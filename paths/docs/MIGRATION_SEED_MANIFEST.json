@@ -1019,5 +1019,18 @@
         "LICENSE.txt": "9332252e9b9e46db8285d4a3f0bf25f139bf1dca6781b956d57f2302efca6432"
       }
     }
-  ]
+  ],
+  "source_lesson_parser": {
+    "source": "/Users/kogaryu/Documents/Codex/2026-09-07/referenced-chatgpt-conversation-this-is-an-2/outputs/transcript-parser",
+    "version": "0.8.0",
+    "consumer": "tools/prepare_source_lesson.py",
+    "boundary": "Public Parser, ParseOptions and ParseResult.to_dict; github profile; audit schema 1; no parser code vendored or runtime dependency added.",
+    "source_files_sha256": {
+      "pyproject.toml": "65abd06e0389feef3319325c747c275e5d57a465c9c7b034d0cd0c84624fdd96",
+      "transcript_parser/__init__.py": "1e667d14a9a8ef789c2f7b46eadccb080a6934998755f8e0c426f313bb0755fd",
+      "transcript_parser/engine.py": "a1c0ea227956b622ff4a185d6b248464b9556ab39351fd545f6c4005f86d582e",
+      "transcript_parser/models.py": "f37dbfcd0cb06e26ba50f5e8155c8fc6725ce3da8d2e67a56cdf4d8b3d3dc6e4"
+    },
+    "review_mapping": "content/authoring/learning/claude_002/review.json"
+  }
 }

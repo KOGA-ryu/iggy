@@ -1,3 +1,4 @@
+#include "MathControlUi.hpp"
 #include "TextbookFigureUi.hpp"
 #include "imgui.h"
 #include <algorithm>
@@ -13,6 +14,7 @@ void panel(const char* name,SceneViewport p,ImGuiWindowFlags extra=0){
 ImVec4 colour(iggy3d::Vec3 c){return {c.x,c.y,c.z,1};}
 void setting(TextbookFigureUiState& ui,RowPlaneParameter p,double value){if(!ui.hasPending){ui.pending={RowPlaneActionKind::Set,p,value};ui.hasPending=true;}}
 void systemAction(TextbookFigureUiState& ui,SystemAction a){if(!ui.hasSystemPending){ui.systemPending=a;ui.hasSystemPending=true;}}
+void objectAction(TextbookFigureUiState& ui,unsigned section,ObjectLessonAction a){if(!ui.hasObjectPending){ui.objectPending=a;ui.objectSection=section;ui.hasObjectPending=true;}}
 void action(MatrixBoardUiState& ui,BoardAction a){if(!ui.hasPending){ui.pending=a;ui.hasPending=true;}}
 void beside(const char* label){
   if(ImGui::GetItemRectMax().x+ImGui::GetStyle().ItemSpacing.x+ImGui::CalcTextSize(label).x+2*ImGui::GetStyle().FramePadding.x<ImGui::GetWindowPos().x+ImGui::GetWindowContentRegionMax().x)ImGui::SameLine();
@@ -156,8 +158,8 @@ void choice(const char* label,int& selected,const std::array<const char*,3>& val
     for(unsigned i=0;i<values.size();++i)if(ImGui::Selectable(values[i],selected==static_cast<int>(i)))selected=static_cast<int>(i);ImGui::EndCombo();
   }
 }
-void viewport(TextbookFigureUiState& ui,SceneViewport p){
-  static_cast<void>(ui.scene.publish(ui.model.geometry(),p));
+void viewport(TextbookFigureUiState& ui,const MathObjectSnapshot& geometry,SceneViewport p){
+  static_cast<void>(ui.scene.publish(geometry,p));
   if(ui.resetCamera){ui.scene.resetView();ui.resetCamera=false;}
   panel("Textbook 3D viewport",p,ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse);
   ImGui::SetCursorPos({0,0});ImGui::InvisibleButton("Explore figure",{p.width,p.height},ImGuiButtonFlags_MouseButtonLeft|ImGuiButtonFlags_MouseButtonRight);
@@ -167,9 +169,9 @@ void viewport(TextbookFigureUiState& ui,SceneViewport p){
     if(ImGui::IsMouseDragging(ImGuiMouseButton_Right))static_cast<void>(ui.scene.navigate(Navigation::Pan,io.MouseDelta.x,io.MouseDelta.y));
   }
   if(ImGui::IsItemHovered()&&io.MouseWheel!=0)static_cast<void>(ui.scene.navigate(Navigation::Dolly,0,io.MouseWheel));
-  ImGui::End();static_cast<void>(ui.scene.publish(ui.model.geometry(),p));
+  ImGui::End();static_cast<void>(ui.scene.publish(geometry,p));
   auto* overlay=ImGui::GetForegroundDrawList();overlay->PushClipRect({p.x,p.y},{p.x+p.width,p.y+p.height},true);
-  const auto& g=ui.model.geometry();
+  const auto& g=geometry;
   for(unsigned i=0;i<g.labelCount;++i){const auto& label=g.labels[i];const auto at=ui.scene.project(label.position);if(at.z<0)continue;
     const auto size=ImGui::CalcTextSize(label.text.data());const ImVec2 text{at.x-size.x*.5f,at.y-size.y*.5f};
     overlay->AddRectFilled({text.x-4,text.y-2},{text.x+size.x+4,text.y+size.y+2},IM_COL32(10,18,27,220),3);
@@ -177,6 +179,68 @@ void viewport(TextbookFigureUiState& ui,SceneViewport p){
   }
   overlay->AddText({p.x+10,p.y+p.height-25},IM_COL32(190,202,215,255),"Drag: orbit  /  Right drag: pan  /  Wheel: zoom");overlay->PopClipRect();
 }
+void objectMatrices(const MathObjectSnapshot& state,const ObjectLessonSpec& spec,TextbookFigureUiState& ui,NativeMath& math){
+  if(!ImGui::CollapsingHeader("Matrix values",ImGuiTreeNodeFlags_DefaultOpen))return;
+  for(unsigned i=0;i<state.matrixCount;++i){
+    const auto& matrix=state.matrices[i];
+    if(!spec.matrices.empty()&&std::find(spec.matrices.begin(),spec.matrices.end(),matrix.name)==spec.matrices.end())continue;
+    std::string source="\\text{"+std::string(matrix.name)+"}=\\begin{bmatrix}";
+    for(unsigned r=0;r<matrix.rows;++r){if(r)source+="\\\\";for(unsigned c=0;c<matrix.columns;++c){if(c)source+='&';source+=scalar(matrix.values[r*matrix.columns+c]);}}
+    source+="\\end{bmatrix}";
+    auto& entry=ui.equations[i];const auto pixels=ImGui::GetFontSize()*1.1f;
+    if(entry.latex!=source||entry.pixels!=pixels){entry.latex=source;entry.pixels=pixels;entry.layout=math.layout(source,pixels,true);}
+    ImGui::PushID(static_cast<int>(i));
+    if(entry.layout.error.empty()){
+      const float overflow=entry.layout.width+10>ImGui::GetContentRegionAvail().x?ImGui::GetStyle().ScrollbarSize+2:0;
+      ImGui::BeginChild("Object matrix",{0,entry.layout.height+10+overflow},0,ImGuiWindowFlags_HorizontalScrollbar|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoBackground);
+      const auto at=ImGui::GetCursorScreenPos();math.draw(entry.layout,at.x,at.y,ImGui::GetColorU32(ImGuiCol_Text));ImGui::Dummy({entry.layout.width,entry.layout.height});ImGui::EndChild();
+    }else ImGui::TextWrapped("%s",source.c_str());
+    ImGui::PopID();
+  }
+}
+void objectControls(Textbook& book,TextbookFigureUiState& ui,NativeMath& math){
+  auto& model=book.objectLesson();const auto& spec=model.spec();const auto view=book.view();const bool practice=view.mode==BookMode::Exercise;
+  const auto send=[&](ObjectLessonAction a){a.practice=practice;objectAction(ui,view.section,a);};
+  if(practice){
+    ImGui::TextWrapped("%s",spec.challenge);
+    if(ImGui::Button("Check"))send({ObjectLessonActionKind::Check});beside("Reset practice");
+    if(ImGui::Button("Reset practice"))send({ObjectLessonActionKind::Reset});
+    const auto& state=model.snapshot(true);
+    if(state.feedback!=MathFeedback::None)ImGui::TextWrapped("%s",state.feedbackText.data());
+    ImGui::TextWrapped("This practice example is separate from the teaching examples. Feedback is created only by Check and lasts for this session.");
+  }else {
+    ImGui::SetNextItemWidth(-1);
+    if(ImGui::BeginCombo("Teaching example",model.customized()?"Custom parameters":spec.examples[model.example()].title)){
+      for(unsigned i=0;i<spec.examples.size();++i)if(ImGui::Selectable(spec.examples[i].title,!model.customized()&&model.example()==i))send({ObjectLessonActionKind::SelectExample,i});
+      ImGui::EndCombo();
+    }
+    if(!model.customized())ImGui::TextWrapped("%s",spec.examples[model.example()].explanation);
+    if(ImGui::Button("Reset example"))send({ObjectLessonActionKind::Reset});
+  }
+  beside("Reset camera");if(ImGui::Button("Reset camera"))ui.resetCamera=true;
+  ImGui::Separator();
+  const auto parameters=mathParameterSpecs();
+  for(const auto& control:spec.controls){
+    const auto& p=parameters[static_cast<unsigned>(control.parameter)];
+    const auto edit=compactMathControl(p,control.label,model.parameter(control.parameter,practice),{p.minimum,p.maximum});
+    if(edit.changed)send({ObjectLessonActionKind::SetParameter,0,control.parameter,edit.value});
+  }
+  ImGui::Separator();ImGui::TextWrapped("%s",spec.relationship);
+  const auto& state=model.snapshot(practice);
+  for(unsigned i=0;i<state.metricCount;++i){const auto& value=state.metrics[i];
+    if(!spec.metrics.empty()&&std::find(spec.metrics.begin(),spec.metrics.end(),value.label)==spec.metrics.end())continue;
+    ImGui::TextWrapped("%s: %.5g %s",value.label.data(),value.value,value.suffix.data()?value.suffix.data():"");
+  }
+  objectMatrices(state,spec,ui,math);
+  ImGui::TextWrapped("%s",spec.convention);
+  if(!ui.message.empty())ImGui::TextWrapped("%s",ui.message.c_str());
+}
+}
+void applyObjectLessonPending(Textbook& book,TextbookFigureUiState& ui){
+  if(!ui.hasObjectPending)return;
+  if(book.view().section!=ui.objectSection||book.exerciseKind()!=BookExerciseKind::Object)ui.message="The object lesson changed before this action.";
+  else {const auto result=book.objectLesson().dispatch(ui.objectPending);ui.message=result.accepted?"":result.reason;}
+  ui.hasObjectPending=false;
 }
 void applySystemLessonPending(SystemLesson& model,TextbookFigureUiState& ui){
   if(!ui.hasSystemPending)return;
@@ -236,10 +300,25 @@ void drawSystemExercise(SystemLesson& model,TextbookFigureUiState& ui,MatrixBoar
   }
   if(!ui.message.empty())ImGui::TextWrapped("%s",ui.message.c_str());
 }
-bool drawTextbookFigure(const BookFigureSpec& spec,Textbook& book,MatrixBoardUiState& boardUi,
+bool drawTextbookFigure(const BookFigureSpec& spec,Textbook& book,MatrixBoardUiState* boardUi,
                        TextbookFigureUiState& ui,NativeMath& math,SceneViewport area,float textScale){
+  const bool practice=book.view().mode==BookMode::Exercise;
+  if(ui.sceneId!=spec.id||ui.scenePractice!=practice){
+    // Different owners can have the same local revision. Never reuse their mesh.
+    ui.scene=MathObjectScene{};ui.sceneId=spec.id;ui.scenePractice=practice;
+  }
+  if(spec.kind==BookFigureKind::Object){
+    const auto regions=planLessonFigureRegions(area);const auto& model=book.objectLesson();
+    panel("Textbook figure title",regions.title);ImGui::TextColored({.45f,.82f,.78f,1},"%s",spec.title);
+    ImGui::TextWrapped("%s",practice?"Exercise / your independent example":(model.customized()?"Teaching figure / custom parameters":model.spec().examples[model.example()].title));ImGui::End();
+    viewport(ui,model.snapshot(practice),regions.viewport);
+    panel("Textbook figure controls",regions.controls);ImGui::PushFont(nullptr,ImGui::GetFontSize()*textScale);
+    if(!practice){ImGui::TextWrapped("%s",spec.caption);ImGui::Separator();}
+    objectControls(book,ui,math);ImGui::PopFont();ImGui::End();return true;
+  }
   SystemLesson* systems=nullptr;
-  switch(spec.kind){case BookFigureKind::None:return false;case BookFigureKind::RowPlanes:break;case BookFigureKind::AffinePlanes:systems=&book.systems();break;}
+  switch(spec.kind){case BookFigureKind::None:case BookFigureKind::Object:return false;case BookFigureKind::RowPlanes:break;case BookFigureKind::AffinePlanes:systems=&book.systems();break;}
+  if(!boardUi)return false;
   auto& board=book.board();
   if(ui.hasPending){const auto result=ui.model.dispatch(ui.pending);ui.message=result.accepted?"":result.reason;ui.hasPending=false;}
   const auto& view=ui.model.publish(board.view());const auto regions=planLessonFigureRegions(area);
@@ -248,13 +327,13 @@ bool drawTextbookFigure(const BookFigureSpec& spec,Textbook& book,MatrixBoardUiS
   if(systems)ImGui::TextWrapped("Authored system / %s / %u operations",systems->view().customized?"edited givens":systemExamples()[systems->view().example].title,view.steps);
   else ImGui::TextWrapped("Card 004 / part (%c) / %s / %u operations",'a'+view.example,view.working?"current matrix":"original matrix",view.steps);
   ImGui::End();
-  if(view.available)viewport(ui,regions.viewport);
+  if(view.available)viewport(ui,ui.model.geometry(),regions.viewport);
   else {panel("Textbook 3D viewport",regions.viewport);ImGui::TextWrapped("%s",view.reason.c_str());ImGui::End();}
   panel("Textbook figure controls",regions.controls);
   ImGui::PushFont(nullptr,ImGui::GetFontSize()*textScale);
   ImGui::TextWrapped("%s",spec.caption);ImGui::Separator();
   if(systems)systemControls(*systems,ui);
-  rowPlaneControls(board,boardUi,ui,math,systems);
+  rowPlaneControls(board,*boardUi,ui,math,systems);
   ImGui::PopFont();ImGui::End();return view.available;
 }
 } // namespace paths

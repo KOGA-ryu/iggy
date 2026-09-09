@@ -1,5 +1,37 @@
 # Question content
 
+[`authoring/learning/claude_002`](authoring/learning/claude_002) is the reviewed
+source-lesson pilot: a pinned review manifest, explicit notation map and reusable
+textbook template. Follow the [source lesson workflow](../docs/SOURCE_LESSON_WORKFLOW.md)
+to prepare and publish it. Raw source pages and learner attempts are kept outside
+runtime documents; unselected and stale drafts are not imported.
+
+`authoring/learning/matrix_foundations/` is the first complete
+[publishable learning package](../docs/LEARNING_EXPORTS.md): `authoring.json`
+supplies permanent package identity and source records; `documents/` holds a
+matrix lesson, all four solving modes and a shared prose include. Run
+`python3 tools/export_learning.py publish content/authoring/learning/matrix_foundations`
+from the Paths root. The next normal sorter launch uses the published library.
+Existing document/question content remains available with unchanged save stamps.
+
+`write/*.paths.md` files are editable source for the
+[learning-document pipeline](../docs/LEARNING_DOCUMENTS.md). The executable reads
+them directly with `--documents content/write`, or loads the bundled copy when
+no published library is active. Includes, ToC records, lesson/question links, templates and registered
+diagram names are validated as one import. These source documents are separate
+from generated JSON packs and the read-only historical source snapshots.
+`write/matrix.paths.md` adds a four-level two-variable row-reduction question.
+Its numeric choices become symbolic row-operation tiles automatically. Use
+`@template matrix.v1` and the named operations in the authoring guide.
+
+The [four-level authoring workflow](../docs/QUESTION_AUTHORING_WORKFLOW.md)
+uses `authoring/question_layers_v1.json` and `tools/question_workflow.py` for a
+bounded, checked linear-equation family. Explicit publication produces
+`corpus/linear_support.json`: 25 questions using the existing question owner's
+Learn, Practice, Solve and Write modes. Authoring evidence remains separate
+under `build/question-format-evidence/`. The document pipeline can now feed that
+same runtime format with `@template linear.v1`.
+
 [Related Library notes](../docs/LINKED_CORPUS_NOTES.md) are explicitly connected
 by `reading_links` in `authoring/matrix_corpus_review.json`. Use permanent entry
 IDs; both ends must have reviewed adaptations. Navigation metadata is published
@@ -25,6 +57,7 @@ through a pack in **packs/**. The menu uses the three bundled packs below.
 
 | Location | Purpose | What to edit here |
 | --- | --- | --- |
+| [write/](write/) | Automatically discovered learning documents | ToC declarations, lessons, questions, shared includes and registered diagrams |
 | [cards/](cards/) | Playable questions in the current runtime JSON format | Prompts, working steps, choices and accepted answer IDs |
 | [references/](references/) | Shared versioned definitions, rules and example inputs | Reusable concept entries linked by ID from questions |
 | [packs/](packs/) | Explicit question-file lists and ordered practice decks | Which questions a practice type uses, and their order |

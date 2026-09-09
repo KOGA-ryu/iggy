@@ -62,7 +62,7 @@ MathCorpus parseMathCorpus(std::string_view text) {
   for(const auto& topic:list("topics",512))result.topics.push_back({id(topic),string(topic,"title",240),resolve(result.subjects,topic,"subject")});
   for(const auto& entry:list("entries",4096)) {
     CorpusEntry e{id(entry),string(entry,"title",1024),string(entry,"kind",16),string(entry,"body",32768),string(entry,"source",160)};
-    if(e.kind!="term" && e.kind!="theorem" && e.kind!="proof" && e.kind!="example")fail("kind");
+    if(e.kind!="term" && e.kind!="theorem" && e.kind!="proof" && e.kind!="example" && e.kind!="lesson")fail("kind");
     const std::filesystem::path source(e.source);
     if(source.is_absolute() || source.extension()!=".md")fail("source");
     for(const auto& part:source)if(part==".." || part==".")fail("source");
