@@ -5,6 +5,7 @@
 #include "runtime/math_objects/BooleanSolid.hpp"
 #include "runtime/math_objects/BezierPatch.hpp"
 #include "runtime/math_objects/PatchGeometry.hpp"
+#include "runtime/math_objects/Truss.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -351,7 +352,33 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::RigidSpinZ,MathObjectKind::Rigid,"rigid_spin_z","Initial spin Z",-4,4,0.01,0},
   {MathParameter::RigidTime,MathObjectKind::Rigid,"rigid_time","Time",0,12,0.01,0},
   {MathParameter::RigidAxis,MathObjectKind::Rigid,"rigid_axis","Track body axis",0,2,1,0,0,false,"Body X\0Body Y\0Body Z\0"},
-  {MathParameter::RigidGuides,MathObjectKind::Rigid,"rigid_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
+  {MathParameter::RigidGuides,MathObjectKind::Rigid,"rigid_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
+  {MathParameter::TrussShape,MathObjectKind::Truss,"truss_shape","Structure",0,3,1,0,0,false,"Triangular support\0Bridge\0Crane boom\0Roof truss\0"},
+  {MathParameter::TrussSpan,MathObjectKind::Truss,"truss_span","Span (m)",1,5,0.05,3},
+  {MathParameter::TrussHeight,MathObjectKind::Truss,"truss_height","Height (m)",0,3,0.05,1.5},
+  {MathParameter::TrussLean,MathObjectKind::Truss,"truss_lean","Crown shift / span",-0.15,0.15,0.01,0},
+  {MathParameter::TrussJoint,MathObjectKind::Truss,"truss_joint","Inspect joint",0,5,1,2,0,false,"A\0B\0C\0D\0E\0F\0"},
+  {MathParameter::TrussP0X,MathObjectKind::Truss,"truss_a_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP0Y,MathObjectKind::Truss,"truss_a_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP1X,MathObjectKind::Truss,"truss_b_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP1Y,MathObjectKind::Truss,"truss_b_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP2X,MathObjectKind::Truss,"truss_c_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP2Y,MathObjectKind::Truss,"truss_c_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP3X,MathObjectKind::Truss,"truss_d_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP3Y,MathObjectKind::Truss,"truss_d_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP4X,MathObjectKind::Truss,"truss_e_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP4Y,MathObjectKind::Truss,"truss_e_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP5X,MathObjectKind::Truss,"truss_f_x","Joint offset X (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussP5Y,MathObjectKind::Truss,"truss_f_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
+  {MathParameter::TrussPosition,MathObjectKind::Truss,"truss_position","Load position",0,1,0.01,0.5},
+  {MathParameter::TrussLoadX,MathObjectKind::Truss,"truss_load_x","Horizontal load (kN)",-5,5,0.1,0},
+  {MathParameter::TrussLoadY,MathObjectKind::Truss,"truss_load_y","Vertical load (kN)",-5,5,0.1,-1},
+  {MathParameter::TrussMember,MathObjectKind::Truss,"truss_member","Inspect member",0,8,1,2,0,false,"M1\0M2\0M3\0M4\0M5\0M6\0M7\0M8\0M9\0"},
+  {MathParameter::TrussBrace,MathObjectKind::Truss,"truss_brace","Test member",0,1,1,1,0,false,"Removed\0Installed\0"},
+  {MathParameter::TrussSupports,MathObjectKind::Truss,"truss_supports","Supports",0,2,1,0,0,false,"As designed\0Release restraint\0Add restraint\0"},
+  {MathParameter::TrussTensionLimit,MathObjectKind::Truss,"truss_tension_limit","Tension limit (kN)",0.25,10,0.05,2},
+  {MathParameter::TrussCompressionLimit,MathObjectKind::Truss,"truss_compression_limit","Compression limit (kN)",0.25,10,0.05,2},
+  {MathParameter::TrussGuides,MathObjectKind::Truss,"truss_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -485,6 +512,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
    "L = I*omega; E = omega dot L / 2","Turn a tracked body axis perpendicular to its release direction.",
    "Torque-free rotation about the centre of mass. Mass is in kg, dimensions in m, time in seconds, angular speed in rad/s. Playback runs at half speed. The same component assembly supplies geometry and inertia. No external torque, translation or collision is simulated.",
    {"Connect moving body frames, rotation matrices and quaternions.","Derive inertia from shape and mass distribution.","Explore free rotation, intermediate-axis flips and conservation."},{1,.7F,1},.5}
+,
+  {MathObjectKind::Truss,"truss","Bridge & Truss Lab","Follow a load through a structure",
+   "Sum of forces at each joint = 0; E*member_and_support_forces = -applied_loads","Apply horizontal and vertical load to a determinate truss.",
+   "Planar, weightless, pin-jointed bars shown in 3D. Tension is positive (teal), compression negative (coral). Loads transfer to adjacent joints along the gold path. Supports constrain both force senses. Play sweeps through static load positions; it does not simulate a moving vehicle. Member limits are specified force caps, without bending or buckling.",
+   {"Resolve loads and support reactions into vectors.","Inspect tension, compression and equilibrium at a joint.","Connect rank, mechanisms and force limits to a design."},{.35F,.3F,1},.12,"Restart load sweep","Load sweep complete. Restart or move the load position."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -623,6 +655,19 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> trussLessons{{
+  {"Geometry, loads and supports","load = Fx*e_x + Fy*e_y; sum F = 0; sum moments = 0","Apply at least 0.2 kN in both directions to a determinate structure.","Choose an example, click a joint or select A-F, then edit its XY offset. Span, height and crown shift change the template beneath those offsets. The gold load is split between adjacent path joints, preserving its force and moment. Gold arrows are applied loads; blue arrows are support reactions. The drawn arrows use a common bounded scale; tables retain kN. An edit pauses the static load sweep."},
+  {"Tension and compression","force at member start = N*n; force at end = -N*n","Select an active member carrying more than 0.25 kN in compression.","Teal members pull their ends together; coral members push their ends apart. Grey indicates zero force, a removed member, or an unavailable solution. Inspect member selects M1-M9; gold endpoint markers identify it. Test member removes one preset-specific brace, which is reported separately. The force-versus-position graph is an influence trace for the configured load, using the same equilibrium solution as the solid model."},
+  {"Equilibrium at a joint","sum member forces + applied load + support reaction = (0,0)","Inspect a loaded joint with at least three active members and a residual below 1e-8 kN.","The selected joint's table lists the actual force vectors acting on it. The force polygon places those vectors head to tail; a closed polygon shows balance. The selected member matrix gives its force on the two endpoints per +1 kN of tension. Equilibrium uses both directions at all six joints, with reaction forces as additional unknowns."},
+  {"Rank, mechanisms and force limits","motion freedoms = 12-rank(E); force freedoms = unknowns-rank(E)","Carry at least 1 kN over the entire load path, within force limits no greater than 2 kN, with a unique equilibrium.","Try the Bridge preset, then raise its height to 1.4 m. Remove the test member or release a restraint to expose a mechanism. Add a restraint to see forces that statics alone cannot determine; stiffness data would be needed. Even a load-compatible mechanism is not treated as a stable design. Coincident joints have no valid analysis. Force and moment residuals check equilibrium; the reciprocal infinity-norm condition number measures numerical sensitivity, not structural strength."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> trussPresetParameters{MathParameter::TrussShape,MathParameter::TrussSpan,MathParameter::TrussHeight,MathParameter::TrussLean,MathParameter::TrussJoint,MathParameter::TrussP0X,MathParameter::TrussP0Y,MathParameter::TrussP1X,MathParameter::TrussP1Y,MathParameter::TrussP2X,MathParameter::TrussP2Y,MathParameter::TrussP3X,MathParameter::TrussP3Y,MathParameter::TrussP4X,MathParameter::TrussP4Y,MathParameter::TrussP5X,MathParameter::TrussP5Y,MathParameter::TrussPosition,MathParameter::TrussLoadX,MathParameter::TrussLoadY,MathParameter::TrussMember,MathParameter::TrussBrace,MathParameter::TrussSupports,MathParameter::TrussTensionLimit,MathParameter::TrussCompressionLimit,MathParameter::TrussGuides};
+constexpr std::array<MathObjectPreset,4> trussPresets{{
+  {"Triangular support",trussPresetParameters,{0,3,1.5,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0.5,0,-1,2,1,0,2,2,1},26},
+  {"Bridge",trussPresetParameters,{1,4.2,0.7,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0.5,0,-2,8,1,0,2,2,1},26},
+  {"Crane boom",trussPresetParameters,{2,3.5,1.8,0,5,0,0,0,0,0,0,0,0,0,0,0,0,1,0,-1,1,1,0,2,2,1},26},
+  {"Roof truss",trussPresetParameters,{3,4.2,1.4,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0.5,0,-1,3,1,0,2,2,1},26}
 }};
 constexpr std::array<MathLesson,4> rigidLessons{{
   {"Orientation and frames","v_world = R(q) v_body; qdot = q*(0,omega_body)/2","Make the tracked axis perpendicular to its initial world direction.","Coral, teal and blue are body X,Y,Z; muted arrows are fixed world axes. The gold tip tracks the chosen body axis. Release angles apply fixed X, then Y, then Z; quaternion (w,x,y,z) maps body coordinates into world coordinates. R is a proper rotation. The trail covers recent motion. Shape markings carry no mass."},
@@ -1256,6 +1301,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Patch:return patchLessons;
     case MathObjectKind::Membrane:return membraneLessons;
     case MathObjectKind::Rigid:return rigidLessons;
+    case MathObjectKind::Truss:return trussLessons;
     default:return {};
   }
 }
@@ -1272,6 +1318,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Patch:return patchPresets;
     case MathObjectKind::Membrane:return membranePresets;
     case MathObjectKind::Rigid:return rigidPresets;
+    case MathObjectKind::Truss:return trussPresets;
     default:return {};
   }
 }
@@ -1340,6 +1387,7 @@ MathParameter MathObjects::playbackParameter() const {
     case MathObjectKind::Harmonics:return MathParameter::HarmonicTime;
     case MathObjectKind::Membrane:return MathParameter::MembraneTime;
     case MathObjectKind::Rigid:return MathParameter::RigidTime;
+    case MathObjectKind::Truss:return MathParameter::TrussPosition;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1366,7 +1414,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1752,6 +1800,13 @@ void MathObjects::check() {
         case 1:solved=measured("COM offset")>.05;good="Yes: the mass imbalance shifts the centre of mass while the total mass stays fixed.";bad="Choose Adjustable dumbbell and change Left mass share to 0.7.";break;
         case 2:solved=measured("Angular speed")>1e-8&&measured("Velocity-momentum angle")>10;good="Yes: angular velocity and momentum are not parallel for this rotation.";bad="Choose Adjustable dumbbell or Satellite and compare the two directions.";break;
         case 3:solved=measured("Distinct principal moments")==1&&measured("Tracked intermediate axis")==1&&measured("Initial momentum alignment")>.99&&measured("Momentum alignment")<-.8&&std::fabs(measured("Relative energy error"))<1e-5&&measured("Relative momentum error")<1e-5;good="Yes: the intermediate axis has flipped while the measured invariants remain within tolerance.";bad="Choose Tumbling book, keep body Z tracked, and advance model time to 4 seconds.";break;
+      }break;
+    case MathObjectKind::Truss:
+      switch(snapshot_.level){
+        case 0:solved=measured("Unique equilibrium")==1&&std::fabs(parameter(MathParameter::TrussLoadX))>=.2&&std::fabs(parameter(MathParameter::TrussLoadY))>=.2;good="Yes: both load components are balanced by the determinate structure and its supports.";bad="Use Triangular support and set horizontal load to 0.5 kN with vertical load -1 kN.";break;
+        case 1:solved=measured("Unique equilibrium")==1&&measured("Selected member active")==1&&measured("Selected member force")<-.25;good="Yes: the selected member is in compression and pushes on its two joints.";bad="Use Triangular support and select M3, with the load at the crown.";break;
+        case 2:solved=measured("Unique equilibrium")==1&&measured("Joint applied magnitude")>=.25&&measured("Active incident members")>=3&&measured("Joint residual")<1e-8;good="Yes: the loaded joint balances, and its force polygon closes.";bad="Use Bridge at load position 0.5 and inspect joint C.";break;
+        case 3:solved=measured("Unique equilibrium")==1&&std::hypot(parameter(MathParameter::TrussLoadX),parameter(MathParameter::TrussLoadY))>=1&&parameter(MathParameter::TrussTensionLimit)<=2&&parameter(MathParameter::TrussCompressionLimit)<=2&&measured("Worst sweep utilization")<=1+1e-10&&measured("Reciprocal condition")>1e-5;good="Yes: this determinate truss carries the load over the whole path within both specified force limits.";bad="Use Bridge with both force limits at 2 kN, then increase height to 1.4 m.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -3100,6 +3155,73 @@ void MathObjects::rebuild() {
         if(level==3){line(plot,momentum>0?"Axis dot L0/|L0|":"At rest: alignment undefined",gold,alignment);plot.hasMarker=true;plot.marker={time,alignment(state)};
           auto& errors=b.plot("Relative conservation errors (zero at exact rest)",MathParameter::RigidTime);line(errors,"Energy (signed)",coral,[](const RigidState& s){return s.energyError;});line(errors,"World momentum vector",blue,[](const RigidState& s){return s.momentumError;});
         }else{constexpr std::array<std::string_view,3> names{"X","Y","Z"};for(unsigned i=0;i<3;++i)line(plot,names[i],axisColors[i],[&](const RigidState& s){return level==0?rigidRotate(s.orientation,tracked)[i]:s.bodyOmega[i];});}
+      }
+      break;
+    }
+    case MathObjectKind::Truss: {
+      TrussInput input;input.shape=static_cast<TrussShape>(parameter(MathParameter::TrussShape));input.span=parameter(MathParameter::TrussSpan);input.height=parameter(MathParameter::TrussHeight);input.lean=parameter(MathParameter::TrussLean);input.position=parameter(MathParameter::TrussPosition);
+      input.load={parameter(MathParameter::TrussLoadX),parameter(MathParameter::TrussLoadY)};input.braced=parameter(MathParameter::TrussBrace)==1;input.supports=static_cast<TrussSupportMode>(parameter(MathParameter::TrussSupports));input.tensionLimit=parameter(MathParameter::TrussTensionLimit);input.compressionLimit=parameter(MathParameter::TrussCompressionLimit);
+      for(unsigned i=0;i<6;++i)for(unsigned axis=0;axis<2;++axis)input.offsets[i][axis]=parameters_[index(MathParameter::TrussP0X)+2*i+axis];
+      const auto structure=prepareTruss(input);const auto solution=sampleTruss(structure,input.position);const bool available=solution.forcesAvailable,guides=parameter(MathParameter::TrussGuides)==1,regular=structure.status!=TrussStatus::Degenerate;
+      const unsigned level=snapshot_.level,joint=static_cast<unsigned>(parameter(MathParameter::TrussJoint)),selected=static_cast<unsigned>(parameter(MathParameter::TrussMember));
+      constexpr std::array<std::string_view,6> nodeNames{"A","B","C","D","E","F"};constexpr std::array<std::string_view,9> memberNames{"M1","M2","M3","M4","M5","M6","M7","M8","M9"};
+      constexpr std::array<std::array<std::string_view,2>,6> reactionNames{{{"A reaction X","A reaction Y"},{"B reaction X","B reaction Y"},{"C reaction X","C reaction Y"},{"D reaction X","D reaction Y"},{"E reaction X","E reaction Y"},{"F reaction X","F reaction Y"}}};
+      const auto point=[&](TrussVector p){return Vec3{static_cast<float>(p[0]-input.span/2),static_cast<float>(p[1]),0};};
+      std::array<Vec3,6> nodes;for(unsigned i=0;i<6;++i)nodes[i]=point(structure.points[i]);
+      double maximum=0;unsigned tension=0,compression=0,incident=0;for(unsigned i=0;i<9;++i){maximum=std::max(maximum,std::fabs(solution.forces[i]));tension+=solution.forces[i]>1e-8;compression+=solution.forces[i]<-1e-8;const auto& bar=structure.bars[i];incident+=bar.active&&(bar.a==joint||bar.b==joint);}
+      const auto memberColor=[&](unsigned i){if(!available||std::fabs(solution.forces[i])<1e-8)return muted;return solution.forces[i]>0?teal:coral;};
+      for(unsigned i=0;i<9;++i){const auto& bar=structure.bars[i];const auto a=nodes[bar.a],c=nodes[bar.b];if(bar.active)b.rod(a,c,memberColor(i),.033F,"truss_member");else if(guides)for(unsigned j=0;j<4;++j)b.rod(a+(c-a)*(j/4.F),a+(c-a)*((j+.4F)/4),muted,.008F,"truss_removed_member");if(guides)b.label(memberNames[i],(a+c)*.5F+Vec3{0,.065F,.06F},bar.active?white:muted);}
+      for(unsigned i=0;i<6;++i){b.ball(nodes[i],guides&&i==joint?.075F:.05F,guides&&i==joint?gold:white,"truss_joint");if(guides)b.label(nodeNames[i],nodes[i]+Vec3{-.07F,.12F,.08F},i==joint?gold:white);}
+      for(unsigned i=0;i<structure.supportCount;++i){const auto support=structure.restraints[i];const Vec3 normal=support.axis==0?Vec3{1,0,0}:Vec3{0,1,0};b.rod(nodes[support.node],nodes[support.node]-normal*.17F,blue,.025F,"truss_support_link");b.scaled(MathShape::Box,nodes[support.node]-normal*.22F,support.axis==0?Vec3{.09F,.23F,.22F}:Vec3{.23F,.09F,.22F},blue,"truss_support");}
+      const auto loadPoint=point(solution.loadPoint);b.scaled(MathShape::Box,loadPoint+Vec3{0,0,.11F},{.11F,.11F,.11F},gold,"truss_load_marker");
+      if(guides){
+        snapshot_.curve.active=true;snapshot_.curve.count=6;snapshot_.curve.selected=joint;snapshot_.curve.selectionParameter=MathParameter::TrussJoint;for(unsigned i=0;i<6;++i)snapshot_.curve.controls[i]=nodes[i];
+        const auto& selectedBar=structure.bars[selected];for(unsigned node:{selectedBar.a,selectedBar.b})b.ball(nodes[node]+Vec3{0,0,.1F},.032F,gold,"truss_selected_member_endpoint");
+        for(unsigned i=0;i+1<structure.pathCount;++i)b.rod(nodes[structure.loadPath[i]]+Vec3{0,0,-.1F},nodes[structure.loadPath[i+1]]+Vec3{0,0,-.1F},gold,.009F,"truss_load_path");
+        double forceScale=std::max(1.,std::hypot(input.load[0],input.load[1]));for(double reaction:solution.reactions)forceScale=std::max(forceScale,std::fabs(reaction));if(level==2)forceScale=std::max(forceScale,maximum);forceScale=.7/forceScale;
+        const auto arrow=[&](Vec3 start,TrussVector force,Vec3 color,std::string_view role){b.arrow(start,start+Vec3{static_cast<float>(force[0]*forceScale),static_cast<float>(force[1]*forceScale),0},color,role);};
+        for(unsigned i=0;i<6;++i)arrow(nodes[i]+Vec3{0,0,.13F},solution.applied[i],gold,"truss_applied_force");
+        if(available){for(unsigned i=0;i<structure.supportCount;++i){TrussVector f{};f[structure.restraints[i].axis]=solution.reactions[i];arrow(nodes[structure.restraints[i].node]+Vec3{0,0,.16F},f,blue,"truss_reaction");}
+          if(level==2)for(unsigned i=0;i<9;++i){const auto& bar=structure.bars[i];if(bar.active&&(bar.a==joint||bar.b==joint)){const double sign=bar.a==joint?1:-1;arrow(nodes[joint]+Vec3{0,0,.19F},{sign*solution.forces[i]*bar.direction[0],sign*solution.forces[i]*bar.direction[1]},memberColor(i),"truss_joint_member_force");}}
+        }
+        b.label(trussStatusText(structure.status),{static_cast<float>(-input.span/2),-.6F,0},available?teal:coral);
+      }
+      b.metric("Unique equilibrium",available);
+      if(level==0){
+        b.metric("Load X",input.load[0],"kN");b.metric("Load Y",input.load[1],"kN");b.metric("Load position",input.position);b.metric("Load point X",solution.loadPoint[0],"m");b.metric("Load point Y",solution.loadPoint[1],"m");
+        b.table("Joint positions and transferred applied loads",{"x (m)","y (m)","Fx (kN)","Fy (kN)"},4);for(unsigned i=0;i<6;++i)b.row(nodeNames[i],{structure.points[i][0],structure.points[i][1],solution.applied[i][0],solution.applied[i][1]});
+        if(available){b.metric("Global force X",solution.resultant[0],"kN");b.metric("Global force Y",solution.resultant[1],"kN");b.metric("Global moment",solution.moment,"kN m");}
+      }
+      if(level==1){
+        b.metric("Selected member active",structure.bars[selected].active);b.metric("Selected length",structure.bars[selected].length,"m");b.metric("Test member number",structure.testMember+1);
+        if(available){b.metric("Selected member force",solution.forces[selected],"kN");b.metric("Selected utilization",solution.utilization[selected]);b.metric("Tension members",tension);b.metric("Compression members",compression);b.metric("Maximum absolute force",maximum,"kN");}
+        b.table(available?"Members: positive tension, negative compression":"Member geometry: forces unavailable",available?std::array<std::string_view,4>{"length (m)","N (kN)","utilization","active"}:std::array<std::string_view,4>{"length (m)","start joint","end joint","active"},4);
+        for(unsigned i=0;i<9;++i){const auto& bar=structure.bars[i];b.row(memberNames[i],available?std::array<double,4>{bar.length,solution.forces[i],solution.utilization[i],static_cast<double>(bar.active)}:std::array<double,4>{bar.length,static_cast<double>(bar.a+1),static_cast<double>(bar.b+1),static_cast<double>(bar.active)});}
+      }
+      if(level==2){
+        b.metric("Joint applied magnitude",std::hypot(solution.applied[joint][0],solution.applied[joint][1]),"kN");b.metric("Active incident members",incident);
+        b.table(available?"Forces acting on the selected joint":"Joint force solution unavailable",{"Fx (kN)","Fy (kN)","magnitude (kN)",""},3);
+        if(available){
+          b.metric("Joint residual",std::hypot(solution.jointResidual[joint][0],solution.jointResidual[joint][1]),"kN");
+          auto& polygon=b.plot("Selected joint: head-to-tail force polygon (kN)");polygon.equalAspect=true;auto& line=polygon.series[polygon.seriesCount++];line={};line.name="Force sum";line.color=gold;line.count=1;line.points[0]={0,0};
+          const auto term=[&](std::string_view name,TrussVector f){b.row(name,{f[0],f[1],std::hypot(f[0],f[1]),0});const auto previous=line.points[line.count-1];line.points[line.count++]={previous.x+f[0],previous.y+f[1]};};
+          for(unsigned i=0;i<9;++i){const auto& bar=structure.bars[i];if(bar.active&&(bar.a==joint||bar.b==joint)){const double f=solution.forces[i]*(bar.a==joint?1:-1);term(memberNames[i],{f*bar.direction[0],f*bar.direction[1]});}}
+          term("Applied load",solution.applied[joint]);for(unsigned i=0;i<structure.supportCount;++i){const auto support=structure.restraints[i];if(support.node==joint){TrussVector f{};f[support.axis]=solution.reactions[i];term(reactionNames[support.node][support.axis],f);}}
+          b.row("Sum",{solution.jointResidual[joint][0],solution.jointResidual[joint][1],std::hypot(solution.jointResidual[joint][0],solution.jointResidual[joint][1]),0});
+        }
+        const auto& bar=structure.bars[selected];if(bar.active&&bar.length>1e-9*input.span)b.matrix2("Selected member: columns are forces at start/end per +1 kN",{bar.direction[0],-bar.direction[0],bar.direction[1],-bar.direction[1]});
+      }
+      if(level==3){
+        b.metric("Equations",12);b.metric("Unknowns",structure.unknowns);b.metric("Load magnitude",std::hypot(input.load[0],input.load[1]),"kN");
+        if(regular){b.metric("Equilibrium rank",structure.rank);b.metric("Motion freedoms",12-structure.rank);b.metric("Force freedoms",structure.unknowns-structure.rank);b.metric("Load compatible",solution.loadCompatible);}
+        if(available){b.metric("Reciprocal condition",structure.reciprocalCondition);b.metric("Peak utilization",solution.maxUtilization);b.metric("Maximum joint residual",solution.residual,"kN");b.metric("Worst sweep utilization",inspectTrussSweep(structure).maxUtilization);}
+        b.table(trussStatusText(structure.status),{"length (m)",available?"force (kN)":"start joint",available?"utilization":"end joint","active"},4);for(unsigned i=0;i<9;++i){const auto& bar=structure.bars[i];b.row(memberNames[i],{bar.length,available?solution.forces[i]:static_cast<double>(bar.a+1),available?solution.utilization[i]:static_cast<double>(bar.b+1),static_cast<double>(bar.active)});}
+      }
+      if(available){
+        if(level==0)for(unsigned first=0;first<structure.supportCount;first+=3){auto& plot=b.plot("Support reactions as the load moves",MathParameter::TrussPosition);for(unsigned i=first;i<std::min(first+3,structure.supportCount);++i){const auto support=structure.restraints[i];b.curve(plot,reactionNames[support.node][support.axis],std::array{coral,blue,teal}[i%3],0,1,[&](double t){return sampleTruss(structure,t).reactions[i];});}}
+        if(level==1||level==2){auto& plot=b.plot("Selected member force as the load moves",MathParameter::TrussPosition);b.curve(plot,memberNames[selected],gold,0,1,[&](double t){return sampleTruss(structure,t).forces[selected];});plot.hasMarker=true;plot.marker={input.position,solution.forces[selected]};}
+        if(level==1){auto& plot=b.plot("Member forces (kN): teal tension, coral compression");for(unsigned sign=0;sign<2;++sign){auto& line=plot.series[plot.seriesCount++];line={};line.name=sign?"Compression":"Tension";line.color=sign?coral:teal;line.stems=true;line.count=9;for(unsigned i=0;i<9;++i)line.points[i]={static_cast<double>(i+1),sign?std::min(0.,solution.forces[i]):std::max(0.,solution.forces[i])};}}
+        if(level==3){auto& plot=b.plot("Peak force-limit utilization as the load moves",MathParameter::TrussPosition);b.curve(plot,"Peak utilization",gold,0,1,[&](double t){return sampleTruss(structure,t).maxUtilization;});b.curve(plot,"Specified limit",coral,0,1,[](double){return 1.;});plot.hasMarker=true;plot.marker={input.position,solution.maxUtilization};}
       }
       break;
     }

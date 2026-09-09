@@ -6,6 +6,102 @@ local app connection and reusable lesson bindings. It contains staged TODOs and
 acceptance checks. This is planning only; implementation has not started and the
 current question/audit queue is unchanged.
 
+## Editable reference: definitions, hints and worked fractions
+
+**Built and headlessly verified; user visual acceptance pending.** One original
+fractional-matrix reference now lives in
+`content/authoring/learning/matrix_reference/documents/reference.paths.md`.
+It has a neutral `lesson.v2` reading, a readable exercise title and three fully
+explained `matrix.v1` steps. The [field contract](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
+defines the reusable format and the gate before generating more cards.
+
+`LearningDocuments` connects optional `@hint` to the existing step hint field.
+`LayeredQuestionSession` separates Hint from worked teaching; the old
+Hint-to-teaching projection is removed. Terms supplies definitions, Next line
+one reached matrix, and Solution the full route with concise explanations.
+Learn expands definitions and detailed typeset teaching. Practice retains
+symbolic tiles and optional typing. The UI shows the existing catalogue title
+above the level controls and reuses its current math-document renderer.
+No checker, save schema, question schema, renderer or 3D asset model was added.
+
+Release `sorter`, `paths_learning_document_tests` and `paths_four_level_tests`
+build. Three selected CTest entries pass: documents, four-level sessions and the
+six-test question-batch suite. Reference evidence covers 48 disclosures across
+four levels, five solving routes, 18 wrong responses, Undo, hint/save replay,
+live hint edits and eight direct/include source-error cases. Independent exact
+arithmetic checks the givens, three reached matrices and all six distractors.
+TeX delimiters/grouping pass structural checks; appearance remains unverified.
+
+The existing exporter accepts the candidate in
+`build/reference-card-evidence/export`; **it is not published**. The active
+catalogue report remains byte-identical: 330 questions and 939 readings, including
+all existing stamps. The earlier 12-question generator is unchanged.
+
+Production C++ delta: +16/-5 lines, **net +11 across three existing files**, with
+no new runtime files. Two source authoring files were added; tests and docs use
+existing files. Changes remain uncommitted. Evidence:
+`build/reference-card-evidence/verification.json`. No windows, screenshots,
+captures, images, font probes or personal progress files were used.
+
+Manual check: launch `b/sorter --documents
+content/authoring/learning/matrix_reference/documents --watch-documents` and open
+**Linear Algebra → Matrix reference → Fractional solutions**, then its question.
+Check the gold Given beside cyan Working/choices. In purple Help, Terms, Hint,
+Next line and Solution should reveal progressively different material. Close
+help and select Learn to inspect the fractional calculations and matrices.
+Completion remains green until Next. Preview attempts are session-only. Next
+candidate: apply the visually accepted reference to a new batch version while
+preserving every published question identity and stamp.
+
+## Live authoring: save Markdown and refresh the open app
+
+**Built and headlessly verified; user visual acceptance pending.** Launch
+`b/sorter --documents content/write --watch-documents`. The explicit source
+preview opens Library, watches document/include bytes and compiles settled edits
+through `LearningDocuments`. Valid changes refresh the existing renderer and
+invalid changes keep the last accepted catalogue with a coral source error.
+The cyan preview status is visible in browsing, lessons and solving. Long errors
+have a bounded scroll area so they do not consume the entire workspace.
+
+`LearningDocumentPreview` owns capture/debounce inside the existing compiler
+module. One shared directory enumerator replaces the old inline scan.
+`CorpusPractice` remains the attempt/persistence adapter and reuses the original
+question sessions. Exact ID/stamp matches retain their journals, drafts, levels,
+Undo branches and completion. Changed questions start fresh at the selected level;
+up to 32 earlier attempted revisions are retained in memory and restored when
+their source returns. The owner rejects attachment to persistence-backed sessions.
+Live preview neither loads nor writes personal progress nor publishes packages.
+
+The UI remaps selected subjects, chapters, readings and bookmarks by stable ID.
+It retains reading position where possible and text scale, closes removed
+selections, refreshes lists and invalidates old lesson/figure bindings and input
+buffers. The existing source-keyed math renderer handles new text and equations.
+No renderer, mathematical checker, save schema or 3D asset model was added.
+
+Release sorter, document/model, starter/save and UI targets build. Four selected
+CTest entries pass: document/model regressions, starter/save regressions, batch
+publication and the new data-only UI reconciliation entry. After compacting the
+status/error presentation, the two directly affected entries pass again. The
+reconciliation entry creates no ImGui context, font atlas or window; the native
+rendering harness was not run. Five CLI cases verify valid source inspection,
+required source selection, rejection of saved/store modes and invalid-source
+diagnostics. The published catalogue report is byte-for-byte structurally
+identical: 330 questions and 939 readings.
+
+Production C++ delta: +160/-14 lines, **net +146 across eight existing files**.
+No production files were added. Tests, build registration and documentation use
+existing files. Changes remain uncommitted. Evidence:
+`build/live-authoring-evidence/verification.json`. No windows, screenshots,
+captures, images, font probes or personal progress were used.
+
+Manual check: open **Linear Algebra → Matrix rows from documents**, then its
+question in **2 Practice**. Change the `@step 10` prompt in the source Markdown
+and save: the cyan preview number and prompt should update in place beside the
+gold Given. A deliberately invalid `@after` should show a coral file/line error
+while preserving the prior question; undo that edit to recover. Next candidate:
+use this preview loop to finish one reference card's hint/solution separation,
+typeset explanations and readable titles before expanding production.
+
 ## Checked question batches: generate, verify and publish
 
 **Implemented and locally published; user visual acceptance pending.** The
@@ -260,6 +356,21 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P060: bridge and truss assets
+
+The user approved Bridge & Truss Lab as the next asset checkpoint.
+[P060_BRIDGE_TRUSS.md](P060_BRIDGE_TRUSS.md) adds triangular support, bridge,
+crane boom and roof truss through the 31st object, `truss`. Six editable joints,
+a moving static load, support choices and a removable member connect geometry,
+signed forces, joint equilibrium and rank/force limits. A bounded factorization
+serves every load position; the design check covers the complete load path.
+The packet records the model contract and build/check evidence.
+
+This is one asset family. Textbook/game integration remains with its current
+owner. Source cards and learner attempts are unchanged; changes remain
+uncommitted. Checks use CPU/text only, with no images, windows or font probes.
+The user performs visual review.
 
 ## P059: rigid-body rotation assets
 

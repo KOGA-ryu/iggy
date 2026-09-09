@@ -1,7 +1,8 @@
 # Learning documents: text into the app
 
 Status: implemented for five versioned templates, the existing diagram
-registry, and startup folder import. Manual visual acceptance is pending.
+registry, startup folder import and explicit live authoring preview. Manual
+visual acceptance is pending.
 
 The producer-side [exporter and publisher](LEARNING_EXPORTS.md) packages authored
 documents and activates a checked complete library. Direct folder import remains
@@ -89,7 +90,7 @@ Keep versioned source documents in `content/write/`. From the Paths root:
 The first command validates without opening a window or reading personal saves.
 The second opens the app using those source documents directly. Add or edit a
 file and relaunch with the same command; no rebuild or manifest edit is needed.
-Import happens at startup. There is no live folder watcher in this checkpoint.
+This direct mode imports at startup. Add `--watch-documents` for live preview.
 
 A normal launch uses `b/learning-store/active.json` when published content is
 active, or `b/content/write/` otherwise. Builds copy examples into the latter
@@ -97,6 +98,58 @@ folder. `--document-store FOLDER` selects an explicit published library, while
 `--documents FOLDER` selects direct authoring; the flags are mutually exclusive.
 Use the source-folder command above while authoring so rebuilds do not replace
 edits to bundled examples. Publication retains a captured baseline and adds packs.
+
+## Live Markdown preview
+
+Launch the source folder with the rebuilt app:
+
+```sh
+./b/sorter --documents content/write --watch-documents
+```
+
+The Library opens in preview mode. Edit a `.paths.md` file or one of its `.md`
+includes, then save. A watcher reads bounded source bytes every 250 milliseconds
+and waits for two matching observations before compiling an edit. Valid content
+replaces the preview on the UI thread, usually within half a second plus compile
+time. Byte comparisons detect edits even if their size and timestamp stay the
+same. Entry-file additions, renames and deletions participate in the same update.
+
+The **cyan Live preview** status identifies successful updates. Invalid document
+syntax, mathematics, references or source paths leave the last valid catalogue
+and working visible, with a **coral error** naming the source file and line when
+available. Saving a repair retries automatically. The compiler remains the
+authority; the watcher supplies a captured snapshot rather than another parser.
+Unsupported display LaTeX can still use the renderer's existing source fallback;
+compiler acceptance does not certify visual typesetting.
+
+Unchanged question IDs and content stamps keep their working, level, drafts,
+help exposure, Undo branches and completion. Reading titles and question-list
+titles can change without altering that question stamp. Changed question content,
+including its teaching, starts a fresh preview at the selected support level.
+The session retains up to 32 older attempted revisions: reverting the source
+recovers the matching earlier attempt. Exceeding the bound rejects the update
+before replacing the current preview; restarting preview clears this temporary
+history. Removed questions retain their attempts in that same bounded history.
+
+Preview is **session-only**. It does not load or write personal progress and
+rejects `--progress` and published-store selection. Closing preview discards its
+temporary attempts; normal launches continue using the existing saved library.
+No package is published automatically. Publish through the existing exporter
+when the authored content is ready. Edit source drafts, never immutable files
+inside `b/learning-store` or a generated/exported package.
+
+Selection follows stable reading/question identities through reordering.
+Reading scroll and text scale are retained where possible; deleting a selected
+entry returns to browsing. Lesson help disclosures and diagram bindings reset
+after an accepted reload so changed parameters cannot leave an old model visible.
+Question input widgets also rebind to the canonical draft. The math renderer's
+existing source-keyed caches handle changed prose and equations.
+
+The document/model test exercises real file edits and saves with an injected
+clock. The `paths_learning_document_reload_ui_tests` gate checks only navigation
+data and cache invalidation, without an ImGui context, fonts, images or a window.
+The native rendering harness is not part of this checkpoint's automated gate.
+Evidence: `build/live-authoring-evidence/verification.json`.
 
 Only filenames ending in `.paths.md` are entry documents. Other `.md` files
 can hold explicitly included fragments. Documents are processed in sorted
@@ -222,10 +275,33 @@ choice IDs are positive integers. There is one accepted answer ID per step in
 this document format. `@after` is the reached working, not a preview shown before
 answering. Wrong feedback and explanations are required.
 
-In `linear.v1` and `matrix.v1`, each step also has `@definitions` and `@teaching` sections.
-Their prose can span lines and include shared fragments. The complete algebra
-example specifies these fields and can be copied as the first four-level
-question template. General authoring standards remain in
+In `linear.v1` and `matrix.v1`, each step also has `@definitions` and `@teaching`
+sections. Their prose can span lines and include shared fragments. Use `$...$`
+for inline math and `$$...$$` for a displayed equation in these question passages.
+Keep `@why` as concise ordinary prose: it also appears in the working history.
+
+An optional `@hint` section supplies a direction without the worked answer.
+It belongs after `@step`, can continue across lines/includes, and may appear
+once per step with 1–8000 bytes of nonempty trimmed text. Other templates reject
+it; textbook `lesson.v2` uses its existing `@help hint` passage instead. Empty,
+oversized, duplicated or misplaced hints reject the import with the source file,
+line and `hint` field. `--document-capabilities` reports this contract.
+
+The question owner projects `@definitions` into **Terms**, `@hint` into **Hint**,
+and the canonical reached `@after` into **Next line**. **Solution** reveals the
+reference matrices/equations and their concise `@why` explanations. **Learn**
+opens the definitions together with detailed `@teaching`; other levels open
+help on request. Reading help records exposure without submitting an answer.
+When an older step has no hint, Hint gives a general reversible-operation prompt
+instead of exposing its worked teaching. The compiler checks hint structure,
+not whether its prose accidentally gives away the answer; authors review that.
+
+Omitting `@hint` leaves existing question stamps unchanged. Adding or editing a
+hint changes that question's content stamp and follows the normal revision rules.
+Readable question titles remain presentation metadata and now appear above the
+support controls in the solving workspace. Use the
+[editable reference and field roles](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
+for the current candidate format. General authoring standards remain in
 [QUESTION_AUTHORING_WORKFLOW.md](QUESTION_AUTHORING_WORKFLOW.md).
 
 ## Matrix documents

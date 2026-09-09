@@ -126,6 +126,30 @@ bool CorpusPractice::dispatch(const fm::LayeredQuestionCommand& command) {
   if(command.archiveUnfinished && !(active()->currentRun().support && command.kind==fm::LayeredQuestionCommandKind::RestartQuestion))return false;
   const auto result=active()->dispatch(command);dirty_=dirty_ || result.changed;return result.accepted;
 }
+void CorpusPractice::replacePreview(std::vector<CorpusStarter> questions) {
+  require(progressPath_.empty(),"Live preview cannot replace a session with saved progress");
+  CorpusPractice next(std::move(questions));next.previewRevisions_=previewRevisions_;
+  for(std::size_t i=0;i<attempts_.size();++i)if(attempts_[i])
+    next.previewRevisions_.insert_or_assign({questions_[i].id,questions_[i].stamp},*attempts_[i]);
+  for(std::size_t i=0;i<next.questions_.size();++i) {
+    const auto& q=next.questions_[i];const auto found=next.previewRevisions_.find({q.id,q.stamp});
+    if(found!=next.previewRevisions_.end()){next.attempts_[i]=std::move(found->second);next.previewRevisions_.erase(found);}
+    if(selected_ && q.id==questions_[*selected_].id)next.selected_=i;
+  }
+  require(next.previewRevisions_.size()<=32,"Preview retains at most 32 older attempted revisions; restart preview to clear its session history");
+  bool fresh=false;
+  if(next.selected_) {
+    const auto selected=*next.selected_;fresh=!next.attempts_[selected];
+    const auto level=active() && active()->currentRun().support?active()->currentRun().support->level:fm::SupportLevel::Learn;
+    if(fresh)next.selected_.reset();next.open(selected);
+    if(fresh)if(const auto view=next.active()->supportView()) {
+      fm::LayeredQuestionCommand command{fm::LayeredQuestionCommandKind::Support};command.support=view->command;
+      command.support.value=static_cast<std::uint32_t>(level);(void)next.dispatch(command);
+    }
+  }
+  next.message_=fresh?"Question changed: fresh preview. Revert its source to recover earlier working.":"Live preview: working stays in this session; personal saves are untouched.";
+  *this=std::move(next);
+}
 void CorpusPractice::loadProgress(const std::filesystem::path& path) {
   progressPath_=path;if(path.empty()){message_="Progress is kept for this session.";return;}
   try {

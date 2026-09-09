@@ -69,6 +69,7 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   };
   const auto record=[&](CorpusControl c,bool enabled=true){ui.controls[static_cast<std::size_t>(c)]=item(enabled && !blocked);};
   const float width=ImGui::GetContentRegionAvail().x;
+  ImGui::PushTextWrapPos(0);ImGui::TextDisabled("%s",practice.questions()[*practice.selected()].title.c_str());ImGui::PopTextWrapPos();
   constexpr std::array labels{"1 Learn","2 Practice","3 Solve","4 Write"};
   for(std::size_t i=0;i<labels.size();++i) {
     if(i)ImGui::SameLine();
@@ -96,6 +97,9 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   if(!v.prompt.empty()){ImGui::PushTextWrapPos(0);ImGui::TextUnformatted(v.prompt.c_str());ImGui::PopTextWrapPos();}
   if(!v.responseCue.empty())ink(math,equation(math,v.responseCue,width,17),v.responseCue,cyan);
   ui.supportEditor={};ui.supportHelp={};
+  // A reload retires active widget buffers; the canonical draft supplies the
+  // next widgets, including when the same question ID now has new mathematics.
+  ImGui::PushID(static_cast<int>(ui.previewRevision));
   if(!v.completed) {
     const auto p=ImGui::GetCursorScreenPos();
     ImGui::BeginDisabled(!v.canRespond);
@@ -139,6 +143,7 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
     }
     ImGui::EndDisabled();const auto end=ImGui::GetCursorScreenPos();ui.choiceArea={p.x,p.y,width,end.y-p.y,true};
   }
+  ImGui::PopID();
   ImGui::BeginChild("Reading and submissions",{0,0},ImGuiChildFlags_None,ImGuiWindowFlags_HorizontalScrollbar);
   if(v.completed) {
     ImGui::TextColored({.4F,.9F,.65F,1},"Complete");ImGui::TextWrapped("%s",v.verification.c_str());

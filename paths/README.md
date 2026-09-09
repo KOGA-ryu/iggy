@@ -1,5 +1,32 @@
 # Paths
 
+The [editable matrix reference](docs/QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
+now demonstrates a readable exercise title, typeset fractional working and
+separate **Terms / Hint / Next line / Solution** disclosures. Learn opens the
+definitions and worked step; Practice keeps the symbolic choices. Preview it:
+
+```sh
+./b/sorter --documents content/authoring/learning/matrix_reference/documents --watch-documents
+```
+
+Open **Linear Algebra → Matrix reference → Fractional solutions** and its
+exercise link. Edit the [source Markdown](content/authoring/learning/matrix_reference/documents/reference.paths.md)
+and save to refresh. This is one unpublished candidate awaiting visual acceptance;
+the published 330-question library and the existing batch generator are unchanged.
+
+For **save Markdown → refresh the open app**, use live authoring preview:
+
+```sh
+./b/sorter --documents content/write --watch-documents
+```
+
+Edit [matrix.paths.md](content/write/matrix.paths.md), save, and watch the cyan
+preview status change. Valid edits use the existing renderer; rejected edits
+show a coral error while retaining the last valid content. Preview attempts stay
+in memory and personal saves remain untouched. See the [preview workflow](docs/LEARNING_DOCUMENTS.md#live-markdown-preview)
+for revision recovery, limits and publication. No rebuild is needed for supported
+Markdown content edits after building this version of the app.
+
 The [checked batch command](docs/QUESTION_BATCHES.md) generates 12 matrix
 repetitions, independently checks each step and choice, replays all five answering
 routes with saves, then publishes through the existing learning pipeline:
@@ -99,6 +126,12 @@ symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
 
+[Bridge & Truss Lab](docs/P060_BRIDGE_TRUSS.md) adds triangular support, bridge,
+crane boom and roof truss presets. Open
+`./b/math_lab --object truss --level 0 --object-preset 1` and press Play to move
+the load. Select a joint and edit its offsets; inspect member forces, reactions,
+joint balance, rank and force limits through four layers.
+
 [Rigid-Body Rotation Lab](docs/P059_RIGID_BODY_ROTATION.md) adds flywheel,
 adjustable dumbbell, tumbling book and satellite presets. Open
 `./b/math_lab --object rigid --level 3 --object-preset 2` and press Play to
@@ -173,7 +206,7 @@ answers and solutions. Open `./b/math_lab --book --section 2`.
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
 `math_lab` home. Its first chapter, **Matrices and Elimination**, has nine
 sections, an index, reading bookmarks and connected exercises. Run
-`./b/math_lab`; the 30 objects are under **Explore 3D objects**.
+`./b/math_lab`; the 31 objects are under **Explore 3D objects**.
 
 The [exercise matrix board](docs/P046_MATRIX_BOARD.md) connects cards 001, 004,
 018, 031, 044 and 059 with reusable indexed diagrams, row operations and numeric
@@ -242,6 +275,7 @@ Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 | Curves and sweeps | Control-point interpolation; tangent/speed/curvature; equal-distance travel; profiles/taper/twist |
 | Membrane Lab | Displacement/motion; eigenmodes/nodal lines; superposition; energy and damping |
 | Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
+| Bridge & Truss Lab | Geometry/loads; tension/compression; joint equilibrium; rank and force limits |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
 | Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |

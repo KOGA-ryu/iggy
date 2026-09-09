@@ -18,6 +18,23 @@ std::vector<CorpusStarter> bank(MathCorpus& corpus) {
   const auto report=publishedStore.empty()?importLearningDocuments(DOCUMENT_FIXTURE,corpus,q):importLearningStore(publishedStore,corpus,q);
   expect(report.accepted,report.message);return q;
 }
+void reloadStateOnly() {
+  expect(!ImGui::GetCurrentContext(),"State reconciliation must not create an ImGui context or fonts");
+  MathCorpus corpus;corpus.subjects={{"b","B"},{"a","A"}};corpus.topics={{"tb","TB",0},{"ta","TA",1}};
+  CorpusEntry b;b.id="b";b.title="B";b.topic=0;CorpusEntry a;a.id="a";a.title="A";a.topic=1;corpus.entries={b,a};
+  MathCorpusUiState ui;ui.entry=0;ui.shown=0;ui.subject=0;ui.topic=0;ui.focusDocument=true;ui.scroll=123;ui.horizontal=7;ui.top=false;
+  ui.trail={{0,12,false},{1,24,true}};ui.document.entry="a";ui.document.textScale=1.4f;ui.document.helpMasks={15};ui.document.anchor="old";
+  DocumentRemap remap{{1,0},{1,0},{1,std::nullopt}};
+  refreshMathCorpusPreview(ui,corpus,remap);
+  expect(ui.entry==1 && ui.shown==1 && ui.subject==1 && ui.topic==1 && ui.focusDocument,"Stable selection remaps across reordered catalogues");
+  expect(ui.restoreScroll==123 && ui.restoreHorizontal==7 && !ui.top && ui.trail.size()==1 && ui.trail[0].entry==1,"Reading position and surviving bookmarks are preserved");
+  expect(ui.document.entry.empty() && ui.document.helpMasks.empty() && ui.document.anchor.empty() && ui.document.textScale==1.4f,"Reload invalidates lesson/figure bindings and hidden disclosures while keeping text size");
+  expect(!ui.refresh && ui.previewRevision==1 && ui.matches==std::vector<std::size_t>{1},"Visible lists refresh through the same corpus query");
+  refreshMathCorpusPreview(ui,corpus,DocumentRemap{{std::nullopt,std::nullopt},{std::nullopt,std::nullopt},{std::nullopt,std::nullopt}});
+  expect(!ui.focusDocument && !ui.subject && !ui.topic && ui.top && ui.previewRevision==2,"Removed selection falls back safely to browsing");
+  expect(!ImGui::GetCurrentContext(),"Reconciliation stayed data-only");
+  std::cout<<"LIVE_DOCUMENT_UI_STATE {\"identity_remap\":true,\"scroll_retained\":true,\"bindings_invalidated\":true,\"imgui_contexts\":0,\"font_probes\":0,\"windows\":0}\n";
+}
 struct Harness {
   MathCorpus corpus=loadMathCorpus(CORPUS_FIXTURE);
   CorpusPractice practice{bank(corpus)};
@@ -151,6 +168,7 @@ void matrix(ImVec2 size) {
 }
 int main(int argc,char** argv) {
   try {
+    if(argc==2 && std::string_view(argv[1])=="--reload-state-only"){reloadStateOnly();return 0;}
     if(argc==3 && std::string_view(argv[1])=="--published-store") {
       publishedStore=argv[2];for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}})matrix(size);
       std::cout<<"PUBLISHED_DOCUMENT_UI {\"matrix_routes\":12,\"sizes\":[[1440,860],[800,600],[360,480]],\"fallbacks\":0,\"native_windows\":0,\"captures\":0}\n";return 0;

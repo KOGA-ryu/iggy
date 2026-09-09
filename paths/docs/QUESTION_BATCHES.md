@@ -5,6 +5,13 @@ original questions, independently checks their mathematics, imports and plays
 them headlessly, then exports or publishes through the existing learning
 publisher. Appearance and interaction acceptance remain the user's visual check.
 
+The [editable matrix reference](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
+is the next format candidate: readable titles, separate hints and typeset worked
+arithmetic. It is one exported, unpublished card awaiting visual acceptance.
+The version-1 generator described below is unchanged. Do not regenerate it with
+different prose under the same immutable output/version; adopt the accepted
+format in a subsequent batch while retaining all published question stamps.
+
 ## Run a batch
 
 From `/Users/kogaryu/iggy3d/paths`, build the app and its pure route gate:

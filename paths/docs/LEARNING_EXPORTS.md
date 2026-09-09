@@ -5,7 +5,9 @@ Status: **implemented for authored `.paths.md` packages on macOS/Linux**.
 [learning-document importer](LEARNING_DOCUMENTS.md). The first package adds one
 matrix chapter, one reading and one question with all four support levels.
 Human visual acceptance remains separate. A prose-to-question parser adapter,
-archives, live reload and general question migration are future work.
+archives and general question migration are future work. Explicit source-folder
+[live preview](LEARNING_DOCUMENTS.md#live-markdown-preview) is available for
+authoring; published generations remain immutable and load on the next launch.
 
 ## Publish a chapter
 

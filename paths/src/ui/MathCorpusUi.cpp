@@ -64,6 +64,27 @@ void drawEquations(NativeMathPanelState& ui,NativeMath& math,bool blocked) {
   ImGui::EndDisabled();ImGui::PopFont();ImGui::EndPopup();
 }
 }
+void refreshMathCorpusPreview(MathCorpusUiState& ui,const MathCorpus& corpus,const DocumentRemap& remap) {
+  const auto mapped=[](std::optional<std::size_t> i,const auto& indices)->std::optional<std::size_t> {
+    return i && *i<indices.size()?indices[*i]:std::nullopt;
+  };
+  ui.subject=mapped(ui.subject,remap.subjects);ui.topic=mapped(ui.topic,remap.topics);
+  ui.entry=mapped(ui.entry,remap.entries);ui.shown=mapped(ui.shown,remap.entries);
+  std::erase_if(ui.trail,[&](auto& bookmark){const auto i=mapped(bookmark.entry,remap.entries);if(i)bookmark.entry=*i;return !i;});
+  ui.matches=corpus.find(ui.subject,ui.topic,ui.query.data());
+  if(ui.entry){ui.restoreScroll=ui.scroll;ui.restoreHorizontal=ui.horizontal;}
+  else {ui.focusDocument=false;ui.entry=ui.matches.empty()?std::nullopt:std::optional{ui.matches.front()};ui.top=true;ui.restoreScroll.reset();ui.restoreHorizontal.reset();}
+  if(ui.practice) {
+    ui.questionMatches=ui.practice->find(ui.subject,ui.topic,ui.query.data());
+    if(ui.focusQuestion && ui.practice->selected() && std::find(ui.questionMatches.begin(),ui.questionMatches.end(),*ui.practice->selected())==ui.questionMatches.end())
+      ui.questionMatches.push_back(*ui.practice->selected());
+    if(!ui.practice->active())ui.focusQuestion=false;
+  }
+  ui.document.entry.clear();ui.document.presented=false;ui.document.questionLinks.clear();ui.document.parameterControls.clear();
+  ui.document.helpMasks.clear();ui.document.anchor.clear();ui.readingChoices.clear();ui.readingSource.clear();
+  ui.rows.clear();ui.subjectRows.clear();ui.topicRows.clear();ui.relatedRows.clear();ui.answerTiles.clear();ui.controls={};
+  ui.supportLevels={};ui.supportHelp={};ui.supportEditor={};ui.refresh=false;ui.follow=true;++ui.previewRevision;
+}
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked) {
   auto& io=ImGui::GetIO();blocked=blocked || io.AppFocusLost;
   const bool narrow=io.DisplaySize.x<700;
@@ -79,6 +100,13 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   const bool document=ui.focusDocument && !ui.questions && ui.entry && corpus.entries[*ui.entry].document;
   ImGui::Begin("Math library",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings|(document?ImGuiWindowFlags_NoBackground:0));
   ImGui::PushFont(nullptr,13);ImGui::BeginDisabled(blocked);
+  if(ui.livePreview || ui.importFailed) {
+    if(ui.importFailed)ImGui::BeginChild("Document errors",{0,66},ImGuiChildFlags_Borders);
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextColored(ui.importFailed?ImVec4{1,.5F,.4F,1}:ImVec4{.35F,.85F,1,1},"%s",ui.importMessage.c_str());
+    ImGui::PopTextWrapPos();
+    if(ui.importFailed)ImGui::EndChild();
+  }
   const auto record=[&](CorpusControl control,bool enabled=true){ui.controls[static_cast<std::size_t>(control)]=item(enabled && !blocked);};
   if(document) {
     if(ImGui::Button("Browse",{66,22}))ui.focusDocument=false;record(CorpusControl::OpenDocument);
@@ -102,7 +130,6 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
     if(!blocked && !editing && ImGui::IsKeyPressed(ImGuiKey_Escape) && !ImGui::IsAnyItemActive())ui.focusQuestion=false;
     ImGui::EndDisabled();ImGui::PopFont();ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();return;
   }
-  if(ui.importFailed)ImGui::TextWrapped("%s",ui.importMessage.c_str());
   ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
   if(ImGui::Button("Practice",{68,22}))ui.open=false;
   record(CorpusControl::Practice);ImGui::PopStyleColor();ImGui::SameLine();

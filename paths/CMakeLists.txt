@@ -34,6 +34,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/BezierCurve.cpp
   src/runtime/math_objects/BezierPatch.cpp
   src/runtime/math_objects/PatchGeometry.cpp
+  src/runtime/math_objects/Truss.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -206,7 +207,8 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_learning_document_tests PRIVATE
     CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
-    DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
+    DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write"
+    REFERENCE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/matrix_reference/documents")
   add_test(NAME paths_learning_document_tests COMMAND paths_learning_document_tests)
   add_executable(paths_motion_tests tests/motion_lesson_tests.cpp)
   target_link_libraries(paths_motion_tests PRIVATE paths_motion_progress paths_json)
@@ -229,6 +231,10 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_truss_tests tests/math_truss_tests.cpp)
+  target_link_libraries(paths_math_truss_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_truss_tests COMMAND paths_math_truss_tests)
+
   add_executable(paths_math_rigid_tests tests/math_rigid_tests.cpp)
   target_link_libraries(paths_math_rigid_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_rigid_tests COMMAND paths_math_rigid_tests)
@@ -386,6 +392,7 @@ if(BUILD_TESTING)
       DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
     add_dependencies(paths_learning_document_ui_tests paths_native_math_resources)
     add_test(NAME paths_learning_document_ui_tests COMMAND paths_learning_document_ui_tests)
+    add_test(NAME paths_learning_document_reload_ui_tests COMMAND paths_learning_document_ui_tests --reload-state-only)
     add_test(NAME paths_learning_export_tests COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/learning_export_tests.py"
       --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>"
@@ -496,6 +503,11 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_truss_load_cli COMMAND math_lab --validate --object truss --level 0 --object-preset 0 --set truss_load_x=0.5 --check)
+    add_test(NAME paths_math_truss_compression_cli COMMAND math_lab --validate --object truss --level 1 --object-preset 0 --check)
+    add_test(NAME paths_math_truss_joint_cli COMMAND math_lab --validate --object truss --level 2 --object-preset 1 --check)
+    add_test(NAME paths_math_truss_design_cli COMMAND math_lab --validate --object truss --level 3 --object-preset 1 --set truss_height=1.4 --check --resolution 800x600)
+    set_tests_properties(paths_math_truss_load_cli paths_math_truss_compression_cli paths_math_truss_joint_cli paths_math_truss_design_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_rigid_orientation_cli COMMAND math_lab --validate --object rigid --level 0 --object-preset 0 --set rigid_time=0.52 --check)
     add_test(NAME paths_math_rigid_inertia_cli COMMAND math_lab --validate --object rigid --level 1 --object-preset 1 --set rigid_balance=0.7 --check)
     add_test(NAME paths_math_rigid_momentum_cli COMMAND math_lab --validate --object rigid --level 2 --object-preset 1 --check)

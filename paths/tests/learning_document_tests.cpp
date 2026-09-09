@@ -60,6 +60,142 @@ void routes(const Fixture& f) {
     expect(linear.active()->currentRun().completed && !linear.active()->supportView()->verification.empty(),"Each imported linear level reaches verified completion");
   }
 }
+void livePreview(const Path& folder) {
+  Fixture base;auto corpus=base.corpus;CorpusPractice p(base.bank);
+  const auto root=folder/"live",entry=root/"matrix.paths.md",fragment=root/"parts/matrix.inc.md";
+  const auto original=read(Path(DOCUMENT_FIXTURE)/"matrix.paths.md");write(fragment,original);write(entry,"@include parts/matrix.inc.md\n");
+  LearningDocumentPreview preview(root,base.corpus,base.bank);auto now=LearningDocumentPreview::Clock::time_point{};
+  const auto tick=[&]{now+=std::chrono::milliseconds(250);return preview.poll(corpus,p,now);};
+  const auto reload=[&]{expect(!tick(),"Edits wait for a stable second observation");return tick();};
+  expect(tick() && preview.revision()==1,"Initial preview uses the existing compiler");
+  p.open(question(p.questions(),"document_matrix_question"));
+  expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Preview can use Practice choices");
+  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},11)),"Wrong preview choice is recorded");
+  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},12)),"Correct preview choice advances");
+  expect(p.dispatch(support(p,fm::SupportAction::EditDraft,"-3")),"Preview retains optional typed draft");
+  expect(p.dispatch(support(p,fm::SupportAction::Undo)),"Preview records Undo branch");
+  const auto working=p.active()->supportView()->working,draft=p.active()->supportView()->draft;
+  const auto journal=p.active()->journal().size();const auto stamp=p.questions()[*p.selected()].stamp;
+  expect(!preview.poll(corpus,p,now+std::chrono::milliseconds(10)) && !tick(),"Unchanged snapshots do not compile or reset attempts");
+  const auto savedTime=std::filesystem::last_write_time(fragment);
+  const auto renamed=replace(original,"Document matrix practice","Document matrix preview!");
+  expect(renamed.size()==original.size(),"Same-size edit fixture");write(fragment,renamed);std::filesystem::last_write_time(fragment,savedTime);
+  expect(reload(),"Byte changes reload even with unchanged file size and timestamp");
+  expect(p.questions()[*p.selected()].title=="Document matrix preview!" && p.questions()[*p.selected()].stamp==stamp,"Title edit changes presentation without changing mathematics");
+  expect(p.active()->supportView()->working==working && p.active()->supportView()->draft==draft && p.active()->journal().size()==journal,"Unchanged mathematics retains working, drafts and Undo branches");
+  const auto oldEntry=static_cast<std::size_t>(&lesson(corpus,"document_matrix_reading")-corpus.entries.data());
+  write(root/"aaa.paths.md","@paths 1\n@subject algebra | Algebra\n@chapter preview_extra | Extra\n@lesson preview_intro | Extra reading\n@template lesson.v1\nBefore the matrix.\n@end\n");
+  expect(reload(),"New entry documents are discovered");
+  expect(preview.remap().entries[oldEntry] && corpus.entries[*preview.remap().entries[oldEntry]].id=="document_matrix_reading" && *preview.remap().entries[oldEntry]!=oldEntry,"Reading selection can follow stable identity after reordering");
+  write(fragment,replace(renamed,"@after [1, 1 | 3] [0, -3 | -6]","@after [1, 1 | 3] [0, -3 | -5]"));
+  const auto acceptedRevision=preview.revision();expect(!reload() && !preview.report().accepted,"Invalid edit rejects the entire candidate");
+  const auto diagnostic=Json::parse(preview.report().reportJson)["diagnostics"][0];
+  expect(diagnostic["file"]=="parts/matrix.inc.md" && diagnostic["field"]=="after" && diagnostic["line"].get<unsigned>()>0,"Live errors preserve original include location");
+  expect(preview.revision()==acceptedRevision && p.active()->supportView()->working==working && p.questions()[*p.selected()].stamp==stamp,"Rejected edits leave the active catalogue and attempt untouched");
+  expect(!tick(),"Unchanged invalid text is not repeatedly compiled");write(fragment,renamed);expect(reload(),"Repairing an error restores accepted status");
+  const auto taught=replace(renamed,"The entire first row stays as it was.","The whole first row remains unchanged.");write(fragment,taught);
+  expect(reload() && p.active()->supportView()->draft.empty() && p.active()->supportView()->level==fm::SupportLevel::Practice,"Changed teaching starts a fresh preview at the selected support level");
+  expect(p.active()->content().support->steps[0].teaching.find("whole first row")!=std::string::npos,"New teaching reaches the question owner");
+  auto changed=replace(renamed,"[2, -1 | 0]","[2, -1 | 1]");
+  for(const auto& [from,to]:std::array{std::pair{"[1, 1 | 3]","[1, 1 | 5]"},std::pair{"[0, -3 | -6]","[0, -3 | -9]"},std::pair{"[0, 1 | 2]","[0, 1 | 3]"},std::pair{"[1, 0 | 1]","[1, 0 | 2]"}})
+    while(changed.find(from)!=changed.npos)changed=replace(changed,from,to);
+  write(fragment,changed);expect(reload() && p.questions()[*p.selected()].stamp!=stamp,"Valid changed mathematics gets fresh working");
+  for(std::size_t i=0;i<3;++i) {
+    const auto& s=p.active()->content().steps[i];
+    expect(p.dispatch(support(p,fm::SupportAction::Choose,{},s.options[fm::firstAcceptedOption(s)].id.value)),"New matrix still solves through the existing choice route");
+  }
+  const auto completed=p.active()->supportView()->working;
+  expect(completed.find('3')!=completed.npos && !p.active()->supportView()->verification.empty(),"Changed problem reaches checked completion");
+  write(fragment,renamed);expect(reload() && p.active()->supportView()->working==working && p.active()->supportView()->draft==draft && p.active()->journal().size()==journal,"Reverting source recovers the exact earlier attempt and branch history");
+  write(fragment,changed);expect(reload() && p.active()->currentRun().completed && p.active()->supportView()->working==completed,"Revisiting the changed source recovers its separate completed attempt");
+  const auto finalQuestion=p.questions()[*p.selected()];
+  std::filesystem::rename(entry,root/"renamed.paths.md");expect(reload() && p.active()->currentRun().completed,"Atomic editor renames do not lose question identity");
+  std::filesystem::remove(root/"renamed.paths.md");expect(reload() && !p.active(),"Removed selection closes without binding to a different question");
+  write(entry,"@include parts/matrix.inc.md\n");expect(reload(),"Restored entry returns to the catalogue");p.open(question(p.questions(),"document_matrix_question"));
+  expect(p.active()->currentRun().completed,"Removed and restored question retains its attempt in memory");
+  std::filesystem::create_symlink(fragment,root/"bad-link.md");expect(!tick() && !preview.report().accepted,"Symbolic source paths are rejected without replacing content");
+  std::filesystem::remove(root/"bad-link.md");expect(reload() && preview.report().accepted,"Repairing a filesystem error recovers even when valid document bytes are unchanged");
+  write(root/"notes.md",std::string(128*1024+1,'x'));expect(!tick() && !preview.report().accepted,"Live capture enforces the file byte bound");
+  std::filesystem::remove(root/"notes.md");expect(reload(),"Bound failure can be repaired");
+  CorpusPractice saved(base.bank);const auto save=folder/"protected-progress.json";saved.loadProgress(save);saved.open(0);saved.saveProgress();const auto savedBytes=read(save);
+  auto protectedCorpus=base.corpus;LearningDocumentPreview refused(root,base.corpus,base.bank);
+  expect(!refused.poll(protectedCorpus,saved) && !refused.report().accepted && refused.revision()==0,"Watcher cannot attach to personal persistence");saved.saveProgress(true);
+  expect(read(save)==savedBytes && protectedCorpus.entries.size()==base.corpus.entries.size(),"Rejected attachment preserves both save bytes and current catalogue");
+  CorpusPractice bounded({finalQuestion});bounded.open(0);
+  for(unsigned i=0;i<32;++i) {
+    auto q=finalQuestion;q.question.description+=" "+std::to_string(i);auto data=Json::parse(q.stamp);data["description"]=q.question.description;q.stamp=data.dump();bounded.replacePreview({q});
+  }
+  bool rejected=false;
+  try{bounded.replacePreview({finalQuestion});}catch(const std::exception&){rejected=true;}
+  // Restoring an archived revision frees its slot; another new revision must fail.
+  expect(!rejected,"Restoring an older preview is allowed at the history bound");
+  auto extra=finalQuestion;extra.question.description+=" Extra revision";
+  auto extraJson=Json::parse(extra.stamp);extraJson["description"]=extra.question.description;extra.stamp=extraJson.dump();
+  try{bounded.replacePreview({extra});}catch(const std::exception&){rejected=true;}
+  expect(rejected && bounded.questions()[0].stamp==finalQuestion.stamp,"History bound rejects before replacing the current preview");
+  std::cout<<"LIVE_DOCUMENT_PREVIEW {\"stable_bytes\":true,\"invalid_retained\":true,\"source_locations\":true,\"revision_attempts\":true,\"save_protected\":true,\"windows\":0}\n";
+}
+Json referenceCard(const Path& source,const Path& folder) {
+  Fixture f;const auto imported=f.load(source);expect(imported.accepted,imported.message);
+  expect(imported.questions==1 && imported.lessons==1,"Reference contains one question and its neutral reading");
+  const auto& q=f.bank[question(f.bank,"matrix_reference_fraction_01")];const auto& steps=q.question.steps;const auto& supportSteps=q.question.support->steps;
+  expect(q.title=="Fractional solutions · Exercise 1","Reference title is a readable label, separate from stable identity");
+  std::vector<std::string> after;for(const auto& s:supportSteps)after.push_back(fm::matrixEquationTex(*fm::parseAugmentedMatrix(s.equation).result));
+  unsigned disclosureChecks=0;
+  for(unsigned level=0;level<4;++level) {
+    CorpusPractice p({q});const auto save=folder/("reference-help-"+std::to_string(level)+".json");p.loadProgress(save);p.open(0);
+    const auto send=[&](fm::SupportAction action,unsigned value=0,std::string text={}){expect(p.dispatch(support(p,action,std::move(text),value)),"Reference action reaches its existing owner");};
+    send(fm::SupportAction::SelectLevel,level);std::string working;
+    for(std::size_t i=0;i<steps.size();++i) {
+      const auto before=p.active()->supportView()->working;const auto submissions=p.active()->currentRun().support->submissions.size();
+      auto view=*p.active()->supportView();
+      expect(view.choices.empty()==(level>=2) && view.reading.empty()==(level!=0),"Support levels retain their response and disclosure contracts");
+      if(level==0)expect(view.reading.find(supportSteps[i].definitions)!=view.reading.npos && view.reading.find(supportSteps[i].teaching)!=view.reading.npos,"Learn opens definitions and the current worked explanation together");
+      if(level==3)expect(view.prompt.empty(),"Write does not reveal a step cue");
+      send(fm::SupportAction::ReadHelp,1);expect(p.active()->supportView()->reading==supportSteps[i].definitions,"Terms contains only the current definitions");
+      send(fm::SupportAction::ReadHelp,2);view=*p.active()->supportView();
+      expect(!steps[i].hint.empty() && view.reading==steps[i].hint && view.reading!=supportSteps[i].teaching,"Hint uses the authored direction, never the worked paragraph");
+      for(const auto& state:after)expect(view.reading.find(state)==view.reading.npos,"Hint does not contain a reached matrix");
+      if(i==0) {
+        p.saveProgress();CorpusPractice restored({q});restored.loadProgress(save);
+        expect(restored.active() && restored.active()->supportView()->reading==steps[0].hint && (restored.active()->currentRun().support->exposure&6)==6,"Hint disclosure and exposure survive save/reopen");p=std::move(restored);
+      }
+      send(fm::SupportAction::ReadHelp,3);view=*p.active()->supportView();expect(view.reading.find(after[i])!=view.reading.npos,"Next line reveals the current reached matrix");
+      for(std::size_t j=i+1;j<after.size();++j)expect(view.reading.find(after[j])==view.reading.npos,"Next line does not reveal later matrices");
+      send(fm::SupportAction::ReadHelp,4);view=*p.active()->supportView();for(const auto& state:after)expect(view.reading.find(state)!=view.reading.npos,"Solution reveals the complete reference route");
+      expect(view.working==before && p.active()->currentRun().support->submissions.size()==submissions,"Reading help never commits mathematical work");
+      send(fm::SupportAction::ReadHelp,0);view=*p.active()->supportView();expect(view.assisted && view.reading.empty()==(level!=0),"Closing help restores the default level view while retaining exposure");
+      disclosureChecks+=4;
+      if(level<2)send(fm::SupportAction::Choose,steps[i].options[fm::firstAcceptedOption(steps[i])].id.value);
+      else {working+=supportSteps[i].equation+"\n";send(fm::SupportAction::EditDraft,0,working);send(fm::SupportAction::CheckWork,0,working);}
+    }
+    expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Reference completes at every support level");
+    expect(!p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Reference completion waits for Next");
+  }
+  auto legacy=q;legacy.question.steps[0].hint.clear();CorpusPractice withoutHint({legacy});withoutHint.open(0);
+  expect(withoutHint.dispatch(support(withoutHint,fm::SupportAction::SelectLevel,{},1)) && withoutHint.dispatch(support(withoutHint,fm::SupportAction::ReadHelp,{},2)),"Older documents without @hint remain playable");
+  const auto fallback=withoutHint.active()->supportView()->reading;
+  expect(!fallback.empty() && fallback!=supportSteps[0].teaching && fallback.find(after[0])==fallback.npos,"Missing hint uses a general direction instead of revealing worked teaching");
+  const auto text=read(source/"reference.paths.md");const auto hintStart=text.find("@hint\n"),hintEnd=text.find("@wrong",hintStart);
+  expect(hintStart!=text.npos && hintEnd!=text.npos,"Reference authors a separate hint passage");
+  unsigned rejections=0;
+  for(bool included:{false,true})for(unsigned defect=0;defect<4;++defect) {
+    auto bad=text;
+    if(defect<3)bad.replace(hintStart,hintEnd-hintStart,defect==0?"@hint\n\n":defect==1?"@hint "+std::string(8001,'x')+"\n":"@hint First direction.\n@hint Repeated direction.\n");
+    else bad.insert(bad.find("@template lesson.v2")+std::string("@template lesson.v2").size(),"\n@hint Wrong scope.");
+    const auto root=folder/("bad-reference-"+std::to_string(rejections++));
+    if(included){write(root/"parts/card.inc.md",bad);write(root/"reference.paths.md","@include parts/card.inc.md\n");}else write(root/"reference.paths.md",bad);
+    Fixture rejected;const auto result=rejected.load(root);expect(!result.accepted,"Bad hint format rejects atomically");
+    const auto d=Json::parse(result.reportJson)["diagnostics"][0];expect(d["field"]=="hint" && d["file"]==(included?"parts/card.inc.md":"reference.paths.md") && d["line"].get<unsigned>()>0,"Hint rejection names the original directive, including includes");
+  }
+  const auto root=folder/"reference-preview";write(root/"reference.paths.md",text);Fixture seed;auto corpus=seed.corpus;CorpusPractice p(seed.bank);LearningDocumentPreview preview(root,seed.corpus,seed.bank);
+  auto now=LearningDocumentPreview::Clock::time_point{};expect(preview.poll(corpus,p,now),"Reference opens through live preview");p.open(question(p.questions(),q.id));
+  expect(p.dispatch(support(p,fm::SupportAction::ReadHelp,{},2)),"Reference hint opens in live preview");
+  auto edited=text;edited.replace(hintStart,hintEnd-hintStart,"@hint Compare the signs before choosing a cancelling multiple.\n");write(root/"reference.paths.md",edited);
+  now+=std::chrono::milliseconds(250);expect(!preview.poll(corpus,p,now),"Hint edit waits for stable source bytes");now+=std::chrono::milliseconds(250);
+  expect(preview.poll(corpus,p,now) && p.dispatch(support(p,fm::SupportAction::ReadHelp,{},2)) && p.active()->supportView()->reading=="Compare the signs before choosing a cancelling multiple.","Markdown hint edit reaches the live help projection");
+  return {{"accepted",true},{"question_id",q.id},{"title",q.title},{"support_levels",4},{"disclosure_checks",disclosureChecks},{"hint_format_rejections",rejections},{"hint_save_replay",true},{"live_hint_edit",true},{"question",Json::parse(q.stamp)},{"windows",0}};
+}
 void matrixDiagnostics(const Path& folder) {
   const auto original=read(Path(DOCUMENT_FIXTURE)/"matrix.paths.md");
   struct Case {std::string from,to,field,reason;};
@@ -502,6 +638,9 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==3 && std::string_view(argv[1])=="--reference-card") {
+      std::filesystem::create_directories(folder);const auto result=referenceCard(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==3 && std::string_view(argv[1])=="--question-batch") {
       std::filesystem::create_directories(folder);questionBatch(argv[2],folder);std::filesystem::remove_all(folder);return 0;
     }
@@ -513,7 +652,8 @@ int main(int argc,char** argv) {
     }
     expect(argc==1,"Use --published-store FOLDER or no arguments");
     const auto root=folder/"write";std::filesystem::create_directories(folder);std::filesystem::copy(DOCUMENT_FIXTURE,root,std::filesystem::copy_options::recursive);
-    imports(root);failures(root);matrixDiagnostics(folder);matrices(root,folder);persistence(root,folder);bookDocuments(folder);std::filesystem::remove_all(folder);
+    imports(root);failures(root);matrixDiagnostics(folder);matrices(root,folder);persistence(root,folder);bookDocuments(folder);livePreview(folder);
+    auto reference=referenceCard(REFERENCE_FIXTURE,folder);reference.erase("question");std::cout<<"REFERENCE_CARD "<<reference.dump()<<'\n';std::filesystem::remove_all(folder);
     std::cout<<"DOCUMENT_IMPORT {\"documents\":4,\"subjects_added\":2,\"lessons\":4,\"questions\":4,\"solving_routes\":6,\"atomic_import\":true,\"drop_file_discovery\":true,\"save_replay\":true,\"native_windows\":0,\"captures\":0}\n";
   } catch(const std::exception& e){std::filesystem::remove_all(folder);std::cerr<<e.what()<<'\n';return 1;}
 }

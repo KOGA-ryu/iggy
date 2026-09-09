@@ -33,7 +33,7 @@ struct Options {
   NativeLaunchConfig native;
   std::filesystem::path content, library, documents, documentStore, script, report, capture, progress;
   std::uint32_t frames = 0;
-  bool check = false, inspectDocuments=false, noProgress=false;
+  bool check = false, inspectDocuments=false, noProgress=false, watchDocuments=false;
 };
 Options options(int argc, char** argv) {
   Options o;
@@ -52,6 +52,7 @@ Options options(int argc, char** argv) {
     if (arg == "--offscreen") { o.native.offscreen = true; continue; }
     if (arg == "--check-content") { o.check = true; continue; }
     if (arg == "--inspect-documents") { o.inspectDocuments = true; continue; }
+    if (arg == "--watch-documents") { o.watchDocuments = true; continue; }
     if (arg == "--no-progress") {o.noProgress=true;continue;}
     if (i + 1 == argc) throw std::invalid_argument("missing value for " + std::string(arg));
     const std::string_view value = argv[++i];
@@ -71,6 +72,10 @@ Options options(int argc, char** argv) {
   }
   if(o.noProgress && !o.progress.empty())throw std::invalid_argument("choose --progress or --no-progress");
   if(!o.documents.empty() && !o.documentStore.empty())throw std::invalid_argument("choose --documents or --document-store");
+  if(o.watchDocuments) {
+    if(o.documents.empty() || !o.progress.empty())throw std::invalid_argument("--watch-documents requires --documents FOLDER and cannot use --progress; preview stays in memory");
+    o.noProgress=true;
+  }
   if(o.documents.empty() && o.documentStore.empty()) {
     const auto store=std::filesystem::path(base)/"learning-store";
     if(std::filesystem::exists(store/"active.json") || std::filesystem::is_symlink(store) || std::filesystem::is_symlink(store/"active.json"))o.documentStore=store;
@@ -260,7 +265,8 @@ int main(int argc, char** argv) {
       std::cout << "sorter [--content FILE] [--check-content] [--offscreen] [--frames N]\n"
                    "       [--resolution WxH] [--script FILE] [--report FILE] [--capture PNG]\n"
                    "       [--progress FILE | --no-progress] [--library FILE] [--documents FOLDER]\n"
-                   "       [--document-store FOLDER] [--inspect-documents] [--document-capabilities]\n";
+                   "       [--document-store FOLDER] [--inspect-documents] [--document-capabilities]\n"
+                   "       [--watch-documents]  Live --documents preview; no saved progress\n";
       return 0;
     }
     auto o = options(argc, argv);
@@ -272,11 +278,14 @@ int main(int argc, char** argv) {
     questions.insert(questions.end(),std::make_move_iterator(followups.begin()),std::make_move_iterator(followups.end()));
     auto supported=loadCorpusStarters(o.library.parent_path()/"linear_support.json",corpus);const auto supportCount=supported.size();
     questions.insert(questions.end(),std::make_move_iterator(supported.begin()),std::make_move_iterator(supported.end()));
-    const auto documents=o.documentStore.empty()?importLearningDocuments(o.documents,corpus,questions):importLearningStore(o.documentStore,corpus,questions);
+    std::optional<LearningDocumentPreview> preview;DocumentImport documents;
+    if(o.watchDocuments)preview.emplace(o.documents,corpus,questions);
+    else documents=o.documentStore.empty()?importLearningDocuments(o.documents,corpus,questions):importLearningStore(o.documentStore,corpus,questions);
+    CorpusPractice starters(std::move(questions));
+    if(preview){preview->poll(corpus,starters);documents=preview->report();}
     if(o.inspectDocuments){std::cout<<documents.reportJson;return documents.accepted?0:1;}
     if(!documents.accepted)std::cerr<<documents.message<<'\n';
     if(!documents.accepted && !o.documentStore.empty())return 1; // Never load/save progress against a failed published library.
-    CorpusPractice starters(std::move(questions));
     if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries, " << starterCount << " starting questions, " << followupCount << " follow-up questions and " << supportCount << " four-level questions: " << o.content << '\n' << documents.message << '\n'; return documents.accepted?0:1; }
     const auto commands = script(o.script);
     std::string progressLocationError;
@@ -305,11 +314,17 @@ int main(int argc, char** argv) {
     ui.library.math=&math;
     ui.library.practice=&starters;
     ui.library.importMessage=documents.message;ui.library.importFailed=!documents.accepted;
+    ui.library.livePreview=preview.has_value();
+    if(preview)ui.library.open=true;
     ui.motion.lesson=&motion;ui.motion.math=&math;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
     while (!o.frames || rendered < o.frames) {
       const auto result = host.frame([](const SDL_Event&) {}, [&] {
+        if(preview) {
+          if(preview->poll(corpus,starters))refreshMathCorpusPreview(ui.library,corpus,preview->remap());
+          ui.library.importMessage=preview->report().message;ui.library.importFailed=!preview->report().accepted;
+        }
         if (commandIndex < commands.size()) {
           if (auto action = commands[commandIndex++]) {
             applyScript(session,*action);

@@ -6,6 +6,25 @@ content, UI, solving, persistence, the content pipeline and figure integration.
 The separate worker builds 3D assets/models. This division assigns implementation
 responsibility; the canonical mathematical and state owners below remain intact.
 
+The [matrix reference](QUESTION_PRACTICE_FORMAT.md#editable-matrix-reference)
+connects optional document `@hint` to the existing question-step `hint` field.
+`LayeredQuestionSession::supportView` owns its disclosure separately from worked
+teaching; older steps without a hint receive a general direction. Learn combines
+the current definitions and teaching. The UI displays the catalogue title and
+uses its existing math-document renderer for the projected reading. No question
+schema, save schema, checker or renderer was added. Omitting `@hint` emits the
+same question data as before; the new reference remains an unpublished candidate.
+
+`LearningDocumentPreview`, inside the existing document module, captures bounded
+source bytes and sends settled snapshots through `LearningDocuments`. An explicit
+`--watch-documents` launch uses in-memory attempts only. `CorpusPractice` retains
+exact ID/stamp revisions and rejects replacement of persistence-backed sessions;
+no save migration or alternate grading route is introduced. Successful reloads
+remap navigation by stable IDs and invalidate lesson/figure bindings and active
+input buffers. The UI adapter retains reading position where possible, consumes
+compiler errors and keeps its existing source-keyed math renderer. Invalid edits
+do not replace the last accepted catalogue. Published generations are not watched.
+
 [Checked question batches](QUESTION_BATCHES.md) use one bounded Python matrix
 producer, the existing exact C++ question owner and the existing learning
 publisher. The producer supplies deterministic documents and an independent
@@ -106,6 +125,15 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P060](P060_BRIDGE_TRUSS.md) adds the `truss` provider. `Truss` owns planar
+joint geometry, member/support equilibrium, complete-pivot factorization and
+load sampling. Full-path force-cap maxima are evaluated at path vertices.
+`MathObjects` projects the same state into solid members, joint markers, force
+polygons, reaction plots and rank diagnostics. Twenty-six appended parameters
+use shared compact controls; the existing picker selects one of six joint-offset
+tuples. Sweep playback represents quasistatic loads. Content and learner-state
+owners, renderer and GPU capacities remain unchanged.
 
 [P059](P059_RIGID_BODY_ROTATION.md) adds the `rigid` provider. `RigidBody`
 owns component mass properties, principal moments, body-to-world orientation

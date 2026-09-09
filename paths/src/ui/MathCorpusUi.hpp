@@ -36,6 +36,8 @@ struct MathCorpusUiState {
   bool focusDocument=false;
   std::string importMessage;
   bool importFailed=false;
+  bool livePreview=false;
+  std::uint64_t previewRevision=0;
   DocumentLessonUiState document;
   std::size_t readingIndex=0;
   std::string readingQuestion,readingSource;
@@ -68,5 +70,7 @@ struct MathCorpusUiState {
   bool original=false, raw=false, reviewedVisible=false, focusReader=false;
 };
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
+// Data-only reconciliation; does not initialize ImGui, fonts, or a native host.
+void refreshMathCorpusPreview(MathCorpusUiState&,const MathCorpus&,const DocumentRemap&);
 void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 } // namespace paths

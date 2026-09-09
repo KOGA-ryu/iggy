@@ -3,7 +3,9 @@
 import argparse
 import copy
 import json
+from fractions import Fraction
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -121,6 +123,51 @@ class BatchTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(json.loads(result.stderr)['code'], 'batch.count')
         self.assertEqual(result.stdout, '')
+
+    def test_reference_card_arithmetic_and_authored_math(self):
+        source = ROOT / 'content/authoring/learning/matrix_reference/documents'
+        result = subprocess.run([str(OPTIONS.model), '--reference-card', str(source)],
+                                text=True, capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertEqual(report['disclosure_checks'], 48)
+        self.assertEqual(report['hint_format_rejections'], 8)
+        content = report['question']
+        def rows(text):
+            match = re.fullmatch(r'\[([^]]+)\]\s+\[([^]]+)\]', text)
+            self.assertIsNotNone(match)
+            values = [[str(Fraction(v.strip())) for v in re.split(r'[,|]', row)] for row in match.groups()]
+            self.assertTrue(all(len(row) == 3 for row in values))
+            return values
+        supplied = content['support']
+        steps = []
+        for step, details in zip(content['steps'], supplied['steps']):
+            accepted = [i for i, option in enumerate(step['options']) if option['id'] in step['accepted_option_ids']]
+            self.assertEqual(len(accepted), 1)
+            steps.append(dict(operation=details['operation'], choices=details['responses'], answer=details['responses'][accepted[0]]))
+            self.assertTrue(step['hint'])
+            self.assertNotIn('$$', step['hint'])
+            self.assertIn('$$', details['teaching'])
+            self.assertIn(r'\frac', details['teaching'])
+            self.assertIsNone(re.search(r'\[-?\d+\s*,', details['teaching']))
+            for prose in (details['definitions'], details['teaching']):
+                delimiter = None
+                for token in re.findall(r'(?<!\\)\$\$|(?<!\\)\$', prose):
+                    if delimiter is None:
+                        delimiter = token
+                    else:
+                        self.assertEqual(token, delimiter)
+                        delimiter = None
+                self.assertIsNone(delimiter, 'Math delimiters must be paired')
+                depth = 0
+                for c in prose:
+                    depth += (c == '{') - (c == '}')
+                    self.assertGreaterEqual(depth, 0)
+                self.assertEqual(depth, 0, 'TeX grouping must be balanced')
+        checked = batch.verify(dict(id=content['id'], answer=['-1/3', '-3/2'],
+            states=[rows(supplied['equation']), *[rows(step['equation']) for step in supplied['steps']]], steps=steps))
+        self.assertEqual(checked['determinant'], '-2')
+        self.assertEqual(checked['wrong_choices_checked'], 6)
 
 
 if __name__ == '__main__':

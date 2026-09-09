@@ -91,7 +91,7 @@ void practiceChoices(const std::vector<CorpusStarter>& bank,const std::filesyste
   sendP(fm::SupportAction::SelectLevel,1);
   expect(p.active()->supportView()->reading.empty() && !p.active()->supportView()->choices.empty(),"Practice choices do not automatically open teaching");
   sendP(fm::SupportAction::ReadHelp,1);expect(p.active()->supportView()->reading==q.support->steps[0].definitions,"Practice Terms reads the current definition");
-  sendP(fm::SupportAction::ReadHelp,2);expect(p.active()->supportView()->reading==q.support->steps[0].teaching,"Practice Hint opens the current explanation on demand");
+  sendP(fm::SupportAction::ReadHelp,2);expect(p.active()->supportView()->reading==first.hint && p.active()->supportView()->reading!=q.support->steps[0].teaching,"Practice Hint uses its own guidance instead of the worked teaching");
   sendP(fm::SupportAction::ReadHelp,0);expect(p.active()->supportView()->reading.empty(),"Closing Practice Help hides teaching again");
   sendP(fm::SupportAction::EditDraft,0,"unfinished optional input");
   auto stale=command(*p.active(),fm::SupportAction::Choose,first.options[correct].id.value);

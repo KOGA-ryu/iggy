@@ -838,7 +838,7 @@ std::optional<SupportView> LayeredQuestionSession::supportView() const {
       v.prompt=content().steps[*anchor].prompt;
       if(matrix && s.level==SupportLevel::Practice)v.responseCue=rowOperationTex(source.steps[*anchor].operation,{});
       v.choices=content().steps[*anchor].options;
-      if(s.level==SupportLevel::Learn)v.reading=source.steps[*anchor].teaching;
+      if(s.level==SupportLevel::Learn)v.reading=source.steps[*anchor].definitions+"\n\n"+source.steps[*anchor].teaching;
     } else v.prompt="Your working follows another route. Use Solve / Independent, or Again to retain this run and start a guided attempt.";
   }
   if(!v.completed && s.level==SupportLevel::Solve)v.prompt=matrix?"Write resulting matrices. Reduce the coefficient block to the identity to find x and y.":"Supply a resulting equation for x, with your working.";
@@ -850,7 +850,7 @@ std::optional<SupportView> LayeredQuestionSession::supportView() const {
     case SupportHelp::Definitions:
       v.reading=source.steps[anchor.value_or(0)].definitions;break;
     case SupportHelp::Hint:
-      v.reading=anchor?source.steps[*anchor].teaching:matrix?"Use reversible row operations on all three entries of a row. Isolate x and y.":"Keep both sides equivalent to your original equation. Isolate x with reversible operations.";break;
+      v.reading=anchor && !content().steps[*anchor].hint.empty()?content().steps[*anchor].hint:matrix?"Use reversible row operations on all three entries of a row. Isolate x and y.":"Keep both sides equivalent to your original equation. Isolate x with reversible operations.";break;
     case SupportHelp::NextLine:
       v.reading=anchor?"One next line:\n\n$$"+supportTex(supportValue(source.model,source.steps[*anchor].equation))+"$$":"A prepared next line is unavailable for this working. Your draft is retained.";break;
     case SupportHelp::Solution:

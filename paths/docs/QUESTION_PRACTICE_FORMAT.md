@@ -71,13 +71,12 @@ needs a supported alternative or a reported authoring gap.
 
 The current connection is partial: textbook and question surfaces use `NativeMath`,
 and prepared question help can show neutral RREF definitions/propositions and
-selected chapter prose. Four-level templates currently use step
-`@definitions`/`@teaching` and reject `@read`. Document lessons can embed
-registered figures, but a live figure bound to a regular solving attempt and
-general textbook-block export are not implemented. The full textbook block
-renderer is currently internal to `TextbookUi`; do not claim it is already a
-shared question component or clone it into an adapter. Establish the smallest
-shared interface when the first concrete solver consumer requires it.
+selected chapter prose. Four-level templates use step
+`@definitions`/`@hint`/`@teaching` and reject `@read`. Document `lesson.v2` shares
+the native textbook block renderer and can embed registered figures. A live
+figure bound to a regular solving attempt is still not implemented. Question
+support passages use the existing math-document renderer; do not clone the
+textbook renderer into that adapter.
 
 ## The four levels
 
@@ -139,10 +138,79 @@ Explain what, why and when the operation is valid. A restatement such as
 "This is the correct setup" is not teaching content. Avoid an arbitrary word
 quota: a beginner should not need an unstated prerequisite or unexplained jump.
 
-Keep three disclosures separate: a general definition; a hint pointing toward
-this problem's next action; and the actual next line/solution. The last two
-cannot be silently included in an unassisted projection. A separate worked
+Keep four disclosures separate: **Terms** for definitions, **Hint** for a
+direction, **Next line** for one reached state, and **Solution** for the complete
+reference route. Assistance cannot be silently included in an unassisted
+projection. A separate worked
 example can be opened on request, with distinct givens and an exposure record.
+
+## Editable matrix reference
+
+**Implemented and headlessly verified; visual acceptance pending.** The source
+is `content/authoring/learning/matrix_reference/documents/reference.paths.md`,
+with package provenance one directory above. It contains one neutral `lesson.v2`
+reading and one three-step `matrix.v1` question, **Fractional solutions · Exercise 1**.
+The original system is `[1, 2 | -10/3] [-3, -8 | 13]`; its unique solution is
+`x=-1/3, y=-3/2`. Each step explains its notation, reversible operation and all
+three column calculations. The last step substitutes into both original equations.
+
+From the Paths root, after building `sorter`:
+
+```sh
+./b/sorter --documents content/authoring/learning/matrix_reference/documents --watch-documents
+```
+
+Open **Linear Algebra → Matrix reference → Fractional solutions** and its
+exercise link. The readable title appears above the four level controls. Gold
+Given and cyan Working/choices remain together; purple Help opens reading in
+the same workspace. The green completed result stays until Next. Preview uses
+temporary in-memory attempts; close/reopen persistence belongs to normal app
+launches, not `--watch-documents`.
+
+Use these roles when adapting an accepted reference into more cards:
+
+| Source field | Author's responsibility | Learner disclosure |
+| --- | --- | --- |
+| Question ID and title | Permanent identity; a short topic and exercise label without a hash suffix | Catalogue and workspace title; title alone does not change the mathematical stamp |
+| `@goal`, `@domain`, `@given` | Complete task, assumptions and exact starting state | Essential problem data; the supported owner supplies its family goal and input instructions |
+| `@step`, `@operation`, `@choice`, `@answer` | One small decision, supported operation, distinct plausible operands and exactly one correct choice | Learn and Practice symbolic controls; written levels use the existing editor |
+| `@definitions` | Explain notation and the applicable rule, including its conditions, without solving the current numbers | Terms; also expanded in Learn |
+| `@hint` | Point to the next action without giving the chosen operand or reached answer | Hint only; absent hints use a general direction |
+| `@teaching` | Work the actual numbers, explain why the operation is valid, and show the result with `$...$` / `$$...$$` | Current step expanded in Learn |
+| `@after` | Exact reached equation/matrix in the existing plain input syntax | Accepted Working, Next line, and the complete Solution route |
+| `@why` | Concise prose explaining the accepted transition | Reached history and Solution; do not place display LaTeX in this history field |
+| `@wrong` | Explain a likely misconception and how to recheck it | Wrong-response feedback; the current template has one shared correction per step |
+
+Keep plain numeric inputs separate from display LaTeX. For matrices, retain
+`[a, b | c] [d, e | f]` and exact fraction operands such as `-3/2`; put typeset
+arrays and fractions in the explanatory passages. Use one workflow for all four
+levels. Practice choices remain the default fast response; typing is optional.
+Learn exposes the current definitions and worked teaching. Solve and Write keep
+their established written-input contracts and can explicitly request help.
+
+Before producing a batch from this format:
+
+1. Read the whole source as a learner. Terms must be neutral, Hint must not be
+   the worked answer, and teaching must explain every needed operation. The
+   compiler can check structure and arithmetic, not pedagogical quality.
+2. Check the original givens independently, every intermediate matrix, each
+   distractor, and substitution into both equations. Do not use the declared
+   answer to certify itself.
+3. Compile through `LearningDocuments` and replay Learn, both Practice inputs,
+   Solve and Write through the existing question owner. Check wrong answers,
+   Undo, save replay and completion waiting for Next. Help must not commit work.
+4. Use live preview for source edits and let the user inspect typesetting and
+   readability. Structural TeX checks do not establish visual acceptance.
+5. Export through the existing publisher. Promote the approved format into a
+   new batch version while retaining every published question identity/stamp.
+   Never overwrite immutable generated output to make a quick formatting edit.
+
+Evidence is in `build/reference-card-evidence/verification.json`, including 48
+disclosure checks, five answer routes, 18 wrong responses, hint save replay and
+live source editing. Eight malformed-hint direct/include cases identify their
+source locations. The reference is exported but **not published**. The earlier
+12-question generator and the active 330-question library remain unchanged;
+applying the visually accepted reference to generated questions is the next step.
 
 ## Fully specified example: 3x + 5 = 20
 

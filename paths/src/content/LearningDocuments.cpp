@@ -23,14 +23,14 @@ constexpr std::array blockKinds{std::pair{"introduction",BookBlockKind::Introduc
   std::pair{"proposition",BookBlockKind::Proposition},std::pair{"example",BookBlockKind::Example},std::pair{"figure",BookBlockKind::Figure},
   std::pair{"exercise",BookBlockKind::Exercise},std::pair{"summary",BookBlockKind::Summary}};
 constexpr std::array helpKinds{std::pair{"proof",BookHelp::Proof},std::pair{"hint",BookHelp::Hint},std::pair{"answer",BookHelp::Answer},std::pair{"solution",BookHelp::Solution}};
-enum class Command { Paths,Subject,Chapter,Lesson,Question,Template,Version,Goal,Given,Domain,Step,Choice,TextChoice,Answer,After,Why,Wrong,Definitions,Teaching,Read,Figure,Parameter,Caption,Practice,Text,End,Operation,Block,Prose,Display,Help,Body,Reference,EndBlock };
+enum class Command { Paths,Subject,Chapter,Lesson,Question,Template,Version,Goal,Given,Domain,Step,Choice,TextChoice,Answer,After,Why,Wrong,Definitions,Teaching,Read,Figure,Parameter,Caption,Practice,Text,End,Operation,Block,Prose,Display,Help,Body,Reference,EndBlock,Hint };
 constexpr std::array commands{
   std::pair{"paths",Command::Paths},std::pair{"subject",Command::Subject},std::pair{"chapter",Command::Chapter},
   std::pair{"lesson",Command::Lesson},std::pair{"question",Command::Question},std::pair{"template",Command::Template},
   std::pair{"version",Command::Version},std::pair{"goal",Command::Goal},std::pair{"given",Command::Given},std::pair{"domain",Command::Domain},
   std::pair{"step",Command::Step},std::pair{"choice",Command::Choice},std::pair{"textchoice",Command::TextChoice},
   std::pair{"answer",Command::Answer},std::pair{"after",Command::After},std::pair{"why",Command::Why},std::pair{"wrong",Command::Wrong},
-  std::pair{"definitions",Command::Definitions},std::pair{"teaching",Command::Teaching},std::pair{"read",Command::Read},
+  std::pair{"definitions",Command::Definitions},std::pair{"teaching",Command::Teaching},std::pair{"hint",Command::Hint},std::pair{"read",Command::Read},
   std::pair{"figure",Command::Figure},std::pair{"parameter",Command::Parameter},std::pair{"caption",Command::Caption},
   std::pair{"practice",Command::Practice},std::pair{"text",Command::Text},std::pair{"end",Command::End},std::pair{"operation",Command::Operation},
   std::pair{"block",Command::Block},std::pair{"prose",Command::Prose},std::pair{"display",Command::Display},std::pair{"help",Command::Help},
@@ -158,7 +158,7 @@ struct Expander {
     stack.erase(file);return lines;
   }
 };
-struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;Line source;std::map<std::string,Line> fields;std::vector<Line> choiceSources;};
+struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::optional<std::string> hint;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;Line source;std::map<std::string,Line> fields;std::vector<Line> choiceSources;};
 struct Block {
   bool question=false;std::string id,title,goal,given,domain,body;std::uint32_t version=0;
   std::optional<Template> format;std::vector<Step> steps;std::optional<CorpusFigure> figure;
@@ -258,6 +258,11 @@ struct Compiler {
         steps.push_back({{"id",st.id},{"layer_name","Step "+std::to_string(i+1)},{"prompt",st.prompt},{"options",options},
           {"accepted_option_ids",Json::array({st.answer})},{"wrong_hint",trim(st.wrong)},{"explanation",trim(st.why)},
           {"semantics",{{"purpose","calculation"},{"completion","any_accepted"},{"before",i+1},{"after",i+2}}}});
+        if(st.hint) {
+          auto hint=trim(*st.hint);const auto& at=st.fields.at("hint");
+          if(hint.empty() || hint.size()>8000)throw DocumentError(at.file,at.number,"hint","document.content","@hint needs 1-8000 bytes of guidance; reserve the reached answer for @after/@teaching");
+          steps.back()["hint"]=std::move(hint);
+        }
         if(typed) {
           support.push_back({{"equation",st.after},{"response_prefix",prefix},{"responses",responses},{"definitions",trim(st.definitions)},{"teaching",trim(st.teaching)}});
           if(matrix)support.back()["operation"]=fm::rowOperations[*st.operation].key;
@@ -360,6 +365,10 @@ struct Compiler {
         case Command::Wrong:field(step().wrong,value);break;
         case Command::Definitions:field(step().definitions,value);break;
         case Command::Teaching:field(step().teaching,value);break;
+        case Command::Hint: {
+          auto& s=step();require((current().format==Template::Linear || current().format==Template::Matrix) && !s.hint,"One @hint per linear.v1 or matrix.v1 step");
+          s.hint.emplace();field(*s.hint,value);break;
+        }
         case Command::Read:require(current().question,"@read belongs to a question");identity(value);require(block->links.size()<8,"At most eight reading references");block->links.push_back(value);break;
         case Command::Practice:require(!current().question && !block->bookBlock,"@practice belongs outside a textbook block");identity(value);require(block->links.size()<16,"At most sixteen question links");block->links.push_back(value);if(block->format==Template::Lesson)prose=&block->body;break;
         case Command::Text:require(!current().question && current().format==Template::Lesson && value.empty(),"@text resumes a lesson.v1 body and takes no arguments");prose=&block->body;break;
@@ -422,20 +431,25 @@ MathObjects instantiateDocumentFigure(const CorpusFigure& f) {
   return model;
 }
 namespace {
+std::vector<Path> documentFiles(const Path& folder) {
+  realPath(folder);require(std::filesystem::is_directory(folder),"Document folder must be a real directory: "+folder.string());
+  std::vector<Path> files;std::size_t entries=0;
+  for(const auto& entry:std::filesystem::recursive_directory_iterator(folder)) {
+    require(++entries<=2048,"Document folder has more than 2048 filesystem entries");
+    require(!entry.is_symlink(),"Document folder contains a symlink: "+entry.path().filename().string());
+    if(entry.is_regular_file() && entry.path().extension()==".md")files.push_back(entry.path().lexically_relative(folder));
+  }
+  std::sort(files.begin(),files.end());return files;
+}
 DocumentImport importSnapshot(const Path& folder,MathCorpus& corpus,std::vector<CorpusStarter>& questions,
-                              const std::map<Path,std::string>* snapshot=nullptr) {
+                              const std::map<Path,std::string>* snapshot=nullptr,bool exactClosure=true) {
   DocumentImport result;auto detail=emptyReport();
   try {
-    Expander reader{folder};reader.snapshot=snapshot;std::vector<Path> files;std::size_t entries=0;
+    Expander reader{folder};reader.snapshot=snapshot;std::vector<Path> files;
     if(snapshot) {
       for(const auto& [path,bytes]:*snapshot)if(path.filename().string().ends_with(".paths.md"))files.push_back(path);
     } else {
-      realPath(folder);require(std::filesystem::is_directory(folder),"Document folder must be a real directory: "+folder.string());
-      for(const auto& entry:std::filesystem::recursive_directory_iterator(folder)) {
-        require(++entries<=2048,"Document folder has more than 2048 filesystem entries");
-        require(!entry.is_symlink(),"Document folder contains a symlink: "+entry.path().filename().string());
-        if(entry.is_regular_file() && entry.path().filename().string().ends_with(".paths.md"))files.push_back(entry.path().lexically_relative(folder));
-      }
+      for(const auto& file:documentFiles(folder))if(file.filename().string().ends_with(".paths.md"))files.push_back(file);
     }
     require(files.size()<=maxDocuments,"At most 128 .paths.md documents per folder");std::sort(files.begin(),files.end());
     detail["base_catalogue_sha256"]=digest(catalogue(corpus,questions).dump());
@@ -456,7 +470,7 @@ DocumentImport importSnapshot(const Path& folder,MathCorpus& corpus,std::vector<
     }
     (void)CorpusPractice(stagedQuestions);
     for(const auto& [path,bytes]:reader.consumed)detail["files"].push_back({{"path",path.generic_string()},{"bytes",bytes.size()},{"sha256",digest(bytes)}});
-    if(snapshot)require(reader.consumed==*snapshot,"Published documents differ from the compiler's include closure");
+    if(snapshot && exactClosure)require(reader.consumed==*snapshot,"Published documents differ from the compiler's include closure");
     detail["catalogue"]=catalogue(stagedCorpus,stagedQuestions);
     result.message="Documents loaded: "+std::to_string(result.files)+" files, "+std::to_string(result.lessons)+" lessons, "+std::to_string(result.questions)+" questions.";
     detail["accepted"]=true;detail["message"]=result.message;result.reportJson=detail.dump(2)+"\n";
@@ -467,6 +481,44 @@ DocumentImport importSnapshot(const Path& folder,MathCorpus& corpus,std::vector<
 }
 DocumentImport importLearningDocuments(const Path& folder,MathCorpus& corpus,std::vector<CorpusStarter>& questions) {
   return importSnapshot(folder,corpus,questions);
+}
+LearningDocumentPreview::LearningDocumentPreview(Path folder,const MathCorpus& corpus,const std::vector<CorpusStarter>& questions)
+  :folder_(std::move(folder)),baseline_(corpus),questions_(questions) {}
+bool LearningDocumentPreview::poll(MathCorpus& corpus,CorpusPractice& practice,Clock::time_point now) {
+  if(now<nextPoll_)return false;
+  nextPoll_=now+std::chrono::milliseconds(250);
+  bool captured=false;
+  try {
+    std::map<Path,std::string> bytes;std::size_t total=0;
+    for(const auto& file:documentFiles(folder_)) {
+      auto text=readBytes(folder_/file,maxFile);total+=text.size();
+      require(total<=maxExpanded,"Preview Markdown exceeds 2 MiB");bytes.emplace(file,std::move(text));
+    }
+    captured=true;
+    const bool initial=!observed_ && !revision_;
+    if(!observed_ || bytes!=*observed_) {
+      observed_=std::move(bytes);handled_=false;
+      if(!initial)return false; // Two identical observations allow atomic editor saves to settle.
+    }
+    if(handled_)return false;
+    handled_=true;auto staged=baseline_;auto questions=questions_;
+    report_=importSnapshot(folder_,staged,questions,&*observed_,false);
+    if(!report_.accepted){report_.message+=" Last valid preview retained.";return false;}
+    const auto mapping=[](const auto& before,const auto& after) {
+      std::vector<std::optional<std::size_t>> result;
+      for(const auto& old:before) {
+        const auto found=std::find_if(after.begin(),after.end(),[&](const auto& value){return value.id==old.id;});
+        result.push_back(found==after.end()?std::nullopt:std::optional<std::size_t>(found-after.begin()));
+      }
+      return result;
+    };
+    DocumentRemap remap{mapping(corpus.subjects,staged.subjects),mapping(corpus.topics,staged.topics),mapping(corpus.entries,staged.entries)};
+    practice.replacePreview(std::move(questions));corpus=std::move(staged);remap_=std::move(remap);++revision_;
+    report_.message="Live preview #"+std::to_string(revision_)+" · Session only";return true;
+  } catch(const std::exception& e) {
+    if(!captured){observed_.reset();handled_=false;}
+    report_=failedReport(e,"document.preview");report_.message+=" Last valid preview retained.";return false;
+  }
 }
 DocumentImport importLearningStore(const Path& store,MathCorpus& corpus,std::vector<CorpusStarter>& questions) {
   try {
@@ -510,6 +562,7 @@ std::string learningDocumentCapabilities() {
   Json result{{"format_version",1},{"document_format","paths.md v1"},{"templates",Json::array()},{"figures",Json::array()}};
   result["limits"]={{"documents",maxDocuments},{"file_bytes",maxFile},{"expanded_bytes",maxExpanded},{"filesystem_entries",2048},{"include_depth",8},{"subjects",32},{"chapters",512},{"readings",4096},{"questions",1024},{"steps",32},{"choices",8}};
   for(const auto& [key,kind]:templates)result["templates"].push_back(key);
+  result["step_hint"]={{"templates",{"linear.v1","matrix.v1"}},{"directive","hint"},{"optional",true},{"bytes",8000}};
   result["book_template"]={{"blocks",64},{"passages_per_body_or_help",64},{"passage_bytes",8192},{"references_per_block",16},
     {"kinds",Json::array()},{"help",Json::array()}};
   for(const auto& [key,kind]:blockKinds)result["book_template"]["kinds"].push_back(key);

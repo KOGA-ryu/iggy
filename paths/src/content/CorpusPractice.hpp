@@ -2,6 +2,7 @@
 #include "content/MathCorpus.hpp"
 #include "runtime/first_move/LayeredQuestionSession.hpp"
 #include <chrono>
+#include <map>
 #include <memory>
 
 namespace paths {
@@ -31,6 +32,9 @@ public:
   bool dispatch(const iggy3d::first_move::LayeredQuestionCommand&);
   void loadProgress(const std::filesystem::path&);
   void saveProgress(bool closing=false);
+  // Live authoring only: retain attempts by exact identity/stamp in memory.
+  // Refuses a persistence-backed session; old revisions return on source revert.
+  void replacePreview(std::vector<CorpusStarter>);
   const std::string& message() const { return message_; }
 private:
   std::vector<CorpusStarter> questions_;
@@ -41,5 +45,6 @@ private:
   bool dirty_=false,loadBlocked_=false;
   std::chrono::steady_clock::time_point retryAfter_{};
   std::string message_;
+  std::map<std::pair<std::string,std::string>,iggy3d::first_move::LayeredQuestionSession> previewRevisions_;
 };
 }
