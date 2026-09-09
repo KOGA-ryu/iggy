@@ -78,6 +78,43 @@ references, checks the complete folder, and feeds the existing app models.
 The reader, typesetter, question session and diagram provider supply the layout
 and behavior. Adding content in an existing template requires no new C++.
 
+## Feedback for an individual wrong choice
+
+All three question templates accept optional `@feedback CHOICE_ID | prose`
+inside a step. Use the choice ID, not its position:
+
+```text
+@choice 11 | 45
+@choice 12 | 36
+@choice 13 | 27
+@answer 13
+@feedback 11 | 45 adds 9. Cancel the added 9 by subtracting it from both sides.
+@feedback 12 | The right side was left unchanged. Subtract 9 there too.
+@wrong Subtract the added constant from both complete sides.
+```
+
+Continuation lines belong to the correction until the next directive. Each
+correction must contain 1–2000 trimmed bytes of ordinary prose. Unknown IDs,
+duplicates, empty/oversized text, correct-option corrections and wrong scope
+reject the document with the original file, line and `feedback` field, including
+through includes. `@wrong` remains required as the step-level fallback.
+
+The directive emits optional `options[].wrong_feedback`. The question owner
+validates it and exposes it only after that wrong choice is checked. Linear and
+matrix answers still pass through their exact mathematical checker; the prose
+does not determine correctness. Typed work retains the mathematical checker's
+feedback. Prepared choices use the authored answer key and expose the selected
+correction through the existing review projection. The UI displays wrong-response
+feedback in coral and retains the current working.
+
+Omitting the directive preserves the previous question JSON and stamps. Adding
+or changing it changes a question's content stamp: use live preview for edits,
+and new identities when replacing already published question content. The
+existing publisher continues to reject changed frozen questions.
+
+See the [linear teaching sequence](LINEAR_TEACHING_SEQUENCE.md) for a complete
+example with reasoning, method selection, error repair and fewer cues.
+
 ## Write, check, launch
 
 Keep versioned source documents in `content/write/`. From the Paths root:

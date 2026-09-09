@@ -1,0 +1,72 @@
+{
+  "format": "paths_learning_draft",
+  "format_version": 1,
+  "note": "Origin snapshot only, not validation of later edits. Preview does not publish or load personal progress.",
+  "origin_files": [
+    {
+      "bytes": 8804,
+      "path": "documents/fractional_solution.paths.md",
+      "sha256": "be048d8fe733456bd61d11d394f431798e528ae8d26decda8892fa3d82950e8b"
+    },
+    {
+      "bytes": 8573,
+      "path": "documents/negative_coefficient.paths.md",
+      "sha256": "185a20f5862b19435caf1a8a5b4272e1384f264c0d5ca3fc292b9c2725b53229"
+    },
+    {
+      "bytes": 8503,
+      "path": "documents/negative_offset.paths.md",
+      "sha256": "db5f511d0088b37163255988eae10f609e752fcea4504944c035f41a5c599fee"
+    },
+    {
+      "bytes": 8537,
+      "path": "documents/negative_solution.paths.md",
+      "sha256": "477d48e7fb9b551bafb89a2885528696616769953bd59e6852521d7b026a916c"
+    },
+    {
+      "bytes": 8485,
+      "path": "documents/positive_integer.paths.md",
+      "sha256": "0b9e3372f88aae4a7b131f24e043d13060f509bd36791d75bd5846e3c4af08d2"
+    },
+    {
+      "bytes": 8456,
+      "path": "documents/zero_solution.paths.md",
+      "sha256": "24663507f7a42f9ae09861600a212c6a211262c6c696f1faf9fad669ba19e002"
+    }
+  ],
+  "package_id": "linear_repetitions",
+  "package_version": 1,
+  "preview_only": true,
+  "source": "/Users/kogaryu/iggy3d/paths/build/question-batches/linear_repetitions/1/authoring",
+  "sources": [
+    {
+      "attribution": "Original Paths questions and teaching; reuses the checked linear_balance_ax_b recipe.",
+      "content_ids": [
+        "linear_worked_v1_855138bfc1d6b5e2990645205326be24",
+        "linear_worked_v1_1dc7007bc50b48b3c227f5bcbe0cebef",
+        "linear_worked_v1_1632b7c413d645500ba1c1d2837fa304",
+        "linear_worked_v1_0f62352bbe4070df6d10acb532f7d530",
+        "linear_worked_v1_6b6dcaeb7a6138b4c65518ce961ce46c",
+        "linear_worked_v1_4e918a51594be31d0612884381c801e5",
+        "linear_worked_v1_8468547e3b86171e6ddf92947002e7f5",
+        "linear_worked_v1_0863e846ebe1cb84b60ff833f43bbfc7",
+        "linear_worked_v1_8ced78eeee3258ed29fabfe81dd8b20b",
+        "linear_worked_v1_d008044cb7dba9b6fc531606776b44f5",
+        "linear_worked_v1_9d020c881bf273bbb442a0df24abb39b",
+        "linear_worked_v1_0c06f7f7e21899760d8471dff70e2822",
+        "linear_worked_v1_positive_integer_reading",
+        "linear_worked_v1_negative_coefficient_reading",
+        "linear_worked_v1_negative_offset_reading",
+        "linear_worked_v1_negative_solution_reading",
+        "linear_worked_v1_zero_solution_reading",
+        "linear_worked_v1_fractional_solution_reading"
+      ],
+      "id": "linear_worked_v1",
+      "kind": "generated",
+      "reuse": "Generated for this project. No external exercise text copied.",
+      "revision": "1",
+      "title": "Original worked linear-equation practice",
+      "uri": "paths:generated/linear_worked_v1"
+    }
+  ]
+}

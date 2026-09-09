@@ -23,7 +23,7 @@ constexpr std::array blockKinds{std::pair{"introduction",BookBlockKind::Introduc
   std::pair{"proposition",BookBlockKind::Proposition},std::pair{"example",BookBlockKind::Example},std::pair{"figure",BookBlockKind::Figure},
   std::pair{"exercise",BookBlockKind::Exercise},std::pair{"summary",BookBlockKind::Summary}};
 constexpr std::array helpKinds{std::pair{"proof",BookHelp::Proof},std::pair{"hint",BookHelp::Hint},std::pair{"answer",BookHelp::Answer},std::pair{"solution",BookHelp::Solution}};
-enum class Command { Paths,Subject,Chapter,Lesson,Question,Template,Version,Goal,Given,Domain,Step,Choice,TextChoice,Answer,After,Why,Wrong,Definitions,Teaching,Read,Figure,Parameter,Caption,Practice,Text,End,Operation,Block,Prose,Display,Help,Body,Reference,EndBlock,Hint };
+enum class Command { Paths,Subject,Chapter,Lesson,Question,Template,Version,Goal,Given,Domain,Step,Choice,TextChoice,Answer,After,Why,Wrong,Definitions,Teaching,Read,Figure,Parameter,Caption,Practice,Text,End,Operation,Block,Prose,Display,Help,Body,Reference,EndBlock,Hint,Feedback };
 constexpr std::array commands{
   std::pair{"paths",Command::Paths},std::pair{"subject",Command::Subject},std::pair{"chapter",Command::Chapter},
   std::pair{"lesson",Command::Lesson},std::pair{"question",Command::Question},std::pair{"template",Command::Template},
@@ -34,7 +34,7 @@ constexpr std::array commands{
   std::pair{"figure",Command::Figure},std::pair{"parameter",Command::Parameter},std::pair{"caption",Command::Caption},
   std::pair{"practice",Command::Practice},std::pair{"text",Command::Text},std::pair{"end",Command::End},std::pair{"operation",Command::Operation},
   std::pair{"block",Command::Block},std::pair{"prose",Command::Prose},std::pair{"display",Command::Display},std::pair{"help",Command::Help},
-  std::pair{"body",Command::Body},std::pair{"reference",Command::Reference},std::pair{"endblock",Command::EndBlock}};
+  std::pair{"body",Command::Body},std::pair{"reference",Command::Reference},std::pair{"endblock",Command::EndBlock},std::pair{"feedback",Command::Feedback}};
 void require(bool ok,const std::string& why){if(!ok)throw std::invalid_argument(why);}
 struct DocumentError : std::invalid_argument {
   std::string file,field,code;std::size_t line;
@@ -158,7 +158,7 @@ struct Expander {
     stack.erase(file);return lines;
   }
 };
-struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::optional<std::string> hint;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;Line source;std::map<std::string,Line> fields;std::vector<Line> choiceSources;};
+struct Step {std::uint32_t id=0,answer=0;std::string prompt,after,why,wrong,definitions,teaching;std::optional<std::string> hint;std::vector<std::pair<std::uint32_t,std::string>> choices;std::optional<std::size_t> operation;Line source;std::map<std::string,Line> fields;std::vector<Line> choiceSources;std::map<std::uint32_t,std::pair<std::string,Line>> feedback;};
 struct Block {
   bool question=false;std::string id,title,goal,given,domain,body;std::uint32_t version=0;
   std::optional<Template> format;std::vector<Step> steps;std::optional<CorpusFigure> figure;
@@ -247,12 +247,19 @@ struct Compiler {
         Json options=Json::array(),responses=Json::array();std::string prefix;
         require(!matrix || st.operation.has_value(),"Each matrix step needs @operation");
         if(linear){const auto at=st.after.find('=');require(at!=std::string::npos,"Linear @after needs '='");prefix=st.after.substr(0,at+1);}
+        for(const auto& [id,feedback]:st.feedback)if(std::none_of(st.choices.begin(),st.choices.end(),[&](const auto& c){return c.first==id;}))
+          throw DocumentError(feedback.second.file,feedback.second.number,"feedback","document.content","@feedback names an unknown choice in this step");
         for(std::size_t j=0;j<st.choices.size();++j) {
           const auto& [id,value]=st.choices[j];
           auto label=value;
           if(linear){label=tex(prefix+value,st.choiceSources[j],"choice");label=label.substr(label.find('=')+1);responses.push_back(value);}
           if(matrix){label=fm::rowOperationTex(fm::rowOperations[*st.operation].operation,value);require(!label.empty(),"Matrix choices need exact numeric operands");responses.push_back(value);}
           options.push_back({{"id",id},{"label",label}});
+          if(const auto found=st.feedback.find(id);found!=st.feedback.end()) {
+            const auto& [text,at]=found->second;const auto feedback=trim(text);
+            if(feedback.empty())throw DocumentError(at.file,at.number,"feedback","document.content","@feedback needs a correction for this wrong choice");
+            options.back()["wrong_feedback"]=feedback;
+          }
         }
         states.push_back({{"id",i+2},{"display",tex(st.after,st.fields.at("after"),"after")}});
         steps.push_back({{"id",st.id},{"layer_name","Step "+std::to_string(i+1)},{"prompt",st.prompt},{"options",options},
@@ -279,11 +286,12 @@ struct Compiler {
       catch(const QuestionContentError& e) {
         if(!e.validation)throw;
         const auto& v=*e.validation;const Step* st=v.stepIndex && *v.stepIndex<b.steps.size()?&b.steps[*v.stepIndex]:nullptr;
-        const std::map<std::string_view,std::string_view> names{{"equation",st?"after":"given"},{"responses","choice"},{"acceptedOptions","answer"},{"options","choice"},{"support","template"}};
+        const std::map<std::string_view,std::string_view> names{{"equation",st?"after":"given"},{"responses","choice"},{"acceptedOptions","answer"},{"options","choice"},{"support","template"},{"wrong_feedback","feedback"}};
         const auto name=names.find(v.field);const std::string key(name==names.end()?v.field:name->second);
         const auto& fields=st?st->fields:b.fields;const auto found=fields.find(key);
         auto source=found!=fields.end()?found->second:st?st->source:b.source;
         if(st && key=="choice" && v.optionIndex && *v.optionIndex<st->choiceSources.size())source=st->choiceSources[*v.optionIndex];
+        if(st && key=="feedback" && v.optionIndex)source=st->feedback.at(st->choices[*v.optionIndex].first).second;
         throw DocumentError(source.file,source.number,key,"document.math",b.id+(st?" step "+std::to_string(st->id):"")+": "+std::string(v.reason()));
       }
       questions.push_back(std::move(parsed.front()));questionSources.emplace(b.id,b.source);++report.questions;
@@ -363,6 +371,12 @@ struct Compiler {
         case Command::After:field(step().after,value);break;
         case Command::Why:field(step().why,value);break;
         case Command::Wrong:field(step().wrong,value);break;
+        case Command::Feedback: {
+          auto& s=step();const auto [id,text]=split(value,'|');
+          require(s.feedback.size()<8,"A step has at most eight choice corrections");
+          const auto [at,inserted]=s.feedback.emplace(integer(id),std::pair{text,line});
+          require(inserted,"One @feedback per choice ID in a step");prose=&at->second.first;break;
+        }
         case Command::Definitions:field(step().definitions,value);break;
         case Command::Teaching:field(step().teaching,value);break;
         case Command::Hint: {
@@ -563,6 +577,7 @@ std::string learningDocumentCapabilities() {
   result["limits"]={{"documents",maxDocuments},{"file_bytes",maxFile},{"expanded_bytes",maxExpanded},{"filesystem_entries",2048},{"include_depth",8},{"subjects",32},{"chapters",512},{"readings",4096},{"questions",1024},{"steps",32},{"choices",8}};
   for(const auto& [key,kind]:templates)result["templates"].push_back(key);
   result["step_hint"]={{"templates",{"linear.v1","matrix.v1"}},{"directive","hint"},{"optional",true},{"bytes",8000}};
+  result["choice_feedback"]={{"templates",{"choices.v1","linear.v1","matrix.v1"}},{"directive","feedback"},{"optional",true},{"bytes",2000},{"wrong_choices_only",true}};
   result["book_template"]={{"blocks",64},{"passages_per_body_or_help",64},{"passage_bytes",8192},{"references_per_block",16},
     {"kinds",Json::array()},{"help",Json::array()}};
   for(const auto& [key,kind]:blockKinds)result["book_template"]["kinds"].push_back(key);

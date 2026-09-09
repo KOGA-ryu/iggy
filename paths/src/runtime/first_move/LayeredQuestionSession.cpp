@@ -394,6 +394,7 @@ std::string_view QuestionValidationResult::reason() const noexcept {
     case QuestionValidationCode::MissingOptionId:
     case QuestionValidationCode::MissingOptionLabel:return "invalid_option";
     case QuestionValidationCode::DuplicateOptionIdentity:return "duplicate_option_identity";
+    case QuestionValidationCode::InvalidOptionFeedback:return "invalid_option_feedback";
     case QuestionValidationCode::InvalidWorkingStateCount:return "invalid_working_state_count";
     case QuestionValidationCode::MissingWorkingStateId:return "invalid_working_state";
     case QuestionValidationCode::DuplicateWorkingStateIdentity:return "duplicate_working_state_identity";
@@ -447,6 +448,9 @@ QuestionValidationResult validateQuestion(const LayeredQuestionContent& question
       const auto& option=step.options[j];
       if(!option.id.value)return {Code::MissingOptionId,"id",0,i,j};
       if(option.label.empty())return {Code::MissingOptionLabel,"label",0,i,j};
+      if(!option.wrongFeedback.empty() && (option.wrongFeedback.size()>2000 ||
+          option.wrongFeedback.find_first_not_of(" \t\r\n")==std::string::npos || acceptsOption(step,j)))
+        return {Code::InvalidOptionFeedback,"wrong_feedback",0,i,j,{},"Wrong-choice feedback needs 1-2000 bytes and a rejected option."};
       for(std::size_t previous=0;previous<j;++previous)
         if(step.options[previous].id==option.id)return {Code::DuplicateOptionIdentity,"id",0,i,j};
     }
@@ -603,7 +607,9 @@ std::optional<QuestionReview> LayeredQuestionSession::review(std::size_t runInde
     result.wrongAttempts+=record.incorrectCheckedAttempts;
     if(record.incorrectCheckedAttempts>0)++result.stepsNeedingRetry;
     for(const auto& attempt:record.attempts)
-      step.attempts.push_back({content.options[attempt.optionIndex].label,attempt.correct});
+      step.attempts.push_back({content.options[attempt.optionIndex].label,attempt.correct,
+          attempt.correct?std::string_view{}:content.options[attempt.optionIndex].wrongFeedback.empty()?
+              std::string_view(content.wrongHint):std::string_view(content.options[attempt.optionIndex].wrongFeedback)});
     result.steps.push_back(std::move(step));
   }
   return result;
@@ -898,11 +904,13 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const Support
   }
   if(current_.phase!=LayeredQuestionPhase::Answering || s.submissions.size()>=kSupportSubmissionCapacity)return rejected("support_submission_unavailable");
   const auto& source=*content().support;std::string entry=command.text;const auto anchor=supportAnchor(content(),s);
+  const LayeredQuestionOptionContent* chosen=nullptr;
   if(command.action==SupportAction::Choose) {
     if(s.level>SupportLevel::Practice || !anchor)return rejected("choice_unavailable");
     const auto& options=content().steps[*anchor].options;
     const auto found=std::find_if(options.begin(),options.end(),[&](const auto& option){return option.id.value==command.value;});
     if(found==options.end())return rejected("unknown_support_choice");
+    chosen=&*found;
     entry=source.steps[*anchor].responsePrefix+source.steps[*anchor].responses[found-options.begin()];
   } else {
     if(command.value || command.text!=s.draft)return rejected("stale_draft_submission");
@@ -931,6 +939,8 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const Support
     checked.status=WrittenCheckStatus::Unsupported;
     checked.feedback="This submission exceeds the remaining working history. Again retains this run and draft, then opens a fresh attempt.";
   }
+  if(checked.status==WrittenCheckStatus::Incorrect && chosen && !chosen->wrongFeedback.empty())
+    checked.feedback=chosen->wrongFeedback;
   // Stage node allocations before changing the canonical working or event log.
   std::vector<SupportNode> appended;
   auto parent=command.action==SupportAction::CheckWork?std::size_t{0}:s.active;

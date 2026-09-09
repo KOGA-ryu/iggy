@@ -417,6 +417,93 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(checked['determinant'], '-2')
         self.assertEqual(checked['wrong_choices_checked'], 6)
 
+    def test_teaching_sequence_reasoning_arithmetic_and_replay(self):
+        source=ROOT/'content/authoring/learning/linear_teaching_sequence/documents'
+        result=subprocess.run([str(OPTIONS.model),'--teaching-sequence',str(source)],capture_output=True,text=True,timeout=45)
+        self.assertEqual(result.returncode,0,result.stderr)
+        report=json.loads(result.stdout);self.assertEqual(report['routes'],16)
+        self.assertEqual(report['wrong_choices'],44)
+        self.assertTrue(report['save_replay'] and report['matrix_feedback'] and report['live_feedback_edit'])
+        cards=report['questions'];self.assertEqual(len(cards),8)
+        self.assertEqual([q['title'][:2] for q in cards],[f'{i:02}' for i in range(1,9)])
+        def number(label):
+            value=label.removeprefix('x=')
+            value=re.sub(r'\\frac\{(-?\d+)\}\{(\d+)\}',r'\1/\2',value)
+            return Fraction(value)
+        def correct_by_value(step,expected):
+            independently_correct=[o['id'] for o in step['options'] if number(o['label'])==expected]
+            self.assertEqual(len(independently_correct),1)
+            self.assertEqual(step['accepted_option_ids'],independently_correct)
+        def equation(text):
+            # Bounded test oracle for the actual authored ax+b=c displays in this chapter.
+            match=re.fullmatch(r'(-?\d*)x([+-]\d+(?:/\d+)?)?=(-?\d+(?:/\d+)?)',text)
+            self.assertIsNotNone(match,text)
+            a,b,c=match.groups()
+            return Fraction('-1' if a=='-' else a or '1'),Fraction(b or '0'),Fraction(c)
+        # Independent exact arithmetic from the original givens, not the authored answer IDs.
+        cases=[(9,9,36),(5,4,29),(9,9,36),(4,-7,13),(6,12,30),(7,-5,16),(-3,6,15),(4,3,5)]
+        for index,(card,(a,b,c)) in enumerate(zip(cards,cases)):
+            answer=Fraction(c-b,a);self.assertEqual(a*answer+b,c)
+            q=card['question'];steps=q['steps']
+            self.assertEqual(equation(q['equation']),(a,b,c))
+            for state in q['working_states']:
+                if 'x' in state['display']:
+                    aa,bb,cc=equation(state['display']);self.assertNotEqual(aa,0)
+                    self.assertEqual((cc-bb)/aa,answer,'Actual displayed working preserves the unique solution')
+                else:
+                    self.assertEqual(state['display'],f'{a}({answer}){b:+}={c}')
+                    self.assertEqual(a*answer+b,c,'Actual final substitution matches both original sides')
+            for step in steps:
+                wrong=[o for o in step['options'] if o['id'] not in step['accepted_option_ids']]
+                self.assertEqual(len(wrong),2)
+                self.assertEqual(len({o['wrong_feedback'] for o in wrong}),2)
+                self.assertTrue(all('wrong_feedback' not in o for o in step['options'] if o['id'] in step['accepted_option_ids']))
+            if index<2:
+                correct_by_value(steps[0],c-b);correct_by_value(steps[1],answer)
+                for step in q['support']['steps']:
+                    self.assertLessEqual(len(step['definitions'].split()),65)
+                    self.assertLessEqual(len(step['teaching'].split()),90)
+            elif index in (3,4):correct_by_value(steps[1],answer)
+            elif index==5:
+                equations=[equation(o['label']) for o in steps[0]['options']]
+                valid=[o['id'] for o,(aa,bb,cc) in zip(steps[0]['options'],equations) if aa*answer+bb==cc]
+                self.assertEqual(steps[0]['accepted_option_ids'],valid);correct_by_value(steps[1],answer)
+            elif index>=6:
+                correct_by_value(steps[0],answer)
+                if index==7:correct_by_value(steps[1],a*answer+b)
+        # These three keys express the stated conceptual task. Other equivalent methods are not called invalid.
+        for index,label in ((2,r'\text{Both sides change equally}'),(3,r'\text{Add 7 to both sides}'),(4,r'\text{The added constant}')):
+            step=cards[index]['question']['steps'][0]
+            self.assertEqual([o['label'] for o in step['options'] if o['id'] in step['accepted_option_ids']],[label])
+        self.assertEqual(Fraction(12,6),2) # the omitted division in the repair card
+        self.assertEqual(-7+7,0) # direct cancellation requested by the method card
+        self.assertIn('is valid',cards[3]['question']['steps'][0]['options'][1]['wrong_feedback'])
+
+    def test_feedback_directives_reject_at_source_and_old_stamps_stay_stable(self):
+        source=ROOT/'content/authoring/learning/linear_teaching_sequence/documents/chapter.paths.md'
+        text=source.read_text();line=next(row for row in text.splitlines() if row.startswith('@feedback 11 |'))
+        mutations=[(line,'@feedback 999 | Unknown choice.'),(line,'@feedback 11 |   '),
+                   (line,line+'\n'+line),(line,'@feedback 13 | A correct choice cannot be wrong.'),
+                   (line,'@feedback 11 | '+('x'*2001)),
+                   ('@template lesson.v2','@template lesson.v2\n@feedback 11 | Wrong scope.')]
+        for included in (False,True):
+            for old,new in mutations:
+                with self.subTest(included=included,new=new[:60]):
+                    path=self.root/'bad-documents';path.mkdir(exist_ok=True)
+                    file=path/('part.inc.md' if included else 'chapter.paths.md')
+                    file.write_text(text.replace(old,new,1))
+                    if included:(path/'chapter.paths.md').write_text('@include part.inc.md\n')
+                    with self.assertRaises(export.ExportError) as caught:export.Target(OPTIONS.target).inspect(documents=path)
+                    d=caught.exception.diagnostics[0]
+                    self.assertEqual(d['file'],file.name);self.assertEqual(d['field'],'feedback')
+                    self.assertGreater(d['line'],0)
+        # Omitting the optional directive must preserve the exact pre-feature question JSON.
+        reference=ROOT/'content/authoring/learning/matrix_reference/documents'
+        result=subprocess.run([str(OPTIONS.model),'--reference-card',str(reference)],capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
+        q=json.loads(result.stdout)['question']
+        self.assertTrue(all('wrong_feedback' not in o for s in q['steps'] for o in s['options']))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -6,6 +6,71 @@ local app connection and reusable lesson bindings. It contains staged TODOs and
 acceptance checks. This is planning only; implementation has not started and the
 current question/audit queue is unchanged.
 
+## A complete linear teaching sequence with specific corrections
+
+**Built and locally published; visual and teaching acceptance await the user.**
+Package `linear_teaching_sequence` version 1 adds eight questions and one textbook
+overview under **Algebra → Linear equations: understand each move**. The sequence
+covers a worked example, guided practice, explaining equality, choosing a useful
+operation, repairing a division error, equivalent-line selection, a signed
+equation and a fractional return-later exercise. Every card can be completed
+with buttons. The two numerical practice cards retain the existing four support
+levels; the six reasoning/transfer cards use the existing prepared-choice route.
+
+Short teaching passages explain the current operation and actual numbers. Every
+distractor has its own correction through optional `@feedback ID | prose`. A
+valid alternative method is explicitly distinguished from the direct cancellation
+requested by the method question. The overview states prerequisites, explains
+the roles of the cards and distinguishes assisted completion from independent
+evidence. Returning later is a suggested exercise, not a scheduled reminder or
+mastery calculation.
+
+`LearningDocuments` remains the compiler; `QuestionContentIO` decodes the optional
+choice field; `LayeredQuestionSession` validates and projects it after rejection.
+Exact linear/matrix checks still determine correctness. Prepared feedback comes
+from the existing review projection, replacing the retry-only display in the
+solver UI. The UI wraps prompts and displays wrong-response corrections in coral.
+`CorpusPractice` retains all persistence and replay ownership. No alternate
+grading, save schema, parser or runtime file was added.
+
+Release `sorter`, `gallery`, `paths`, and the required model/content test binaries
+build. Four targeted CTest entries pass: document/model, four-level sessions,
+question-content loading and the shared batch suite. After strengthening the
+independent test oracle to check the actual displayed givens and working, the
+15-test batch suite passes again. The new sequence completes 16 answering routes
+and 44 wrong-tile checks with save/reopen, catalogue reorder, supported Undo and
+completion held until Next. Matrix correction reuse and live Markdown feedback
+edits pass through the actual model. Twelve direct/include malformed-feedback
+cases identify the original directive; JSON field and option-reorder cases pass.
+
+The independent Fraction-based oracle checks actual givens, intermediate displays,
+arithmetic choices and original substitution. The three conceptual keys have
+explicit rationale/task checks; this is not an automatic verifier of arbitrary
+mathematical prose. No learner retention or teaching-effectiveness study has
+been performed. Human checks remain separate from functional test results.
+
+The rebuilt app first loaded the complete old library unchanged. Publication
+then added this chapter through the existing exporter. All 354 earlier question
+records and 948 reading records remain identical. The library now has 362
+questions, 949 readings, 188 chapters and eight subjects. Existing generated
+packages and the earlier editable draft remain byte-identical. No personal save
+was read or written; save checks used temporary fixtures.
+
+Production C++ delta: **+50/-12 lines (net +38) across five existing files, zero
+new runtime files**. Three test files are extended. Two original authoring files
+and [one reusable authoring guide](LINEAR_TEACHING_SEQUENCE.md) are added. Existing
+3D-worker changes are preserved. Everything remains uncommitted. Evidence:
+`build/linear-teaching-evidence/verification.json`. No windows, screenshots,
+captures, images or font probes were used.
+
+Manual check: launch `b/sorter` and open the new chapter. On 01, choose 36 then
+45: their coral corrections should differ and cyan Working should stay unchanged.
+On 04, choosing Divide both sides by 4 should acknowledge a valid alternative
+that does not directly cancel the added term. Try the repair and fewer-cue cards;
+gold Given stays beside cyan Working, and green completion waits for Next.
+Close and reopen once to check resume. Next candidate: use the user's feedback
+to settle one explanation or distractor before generating more repetitions.
+
 ## Editable chapter drafts through the existing exporter
 
 **Built; a 12-question linear draft is ready for the user's visual check.**
@@ -504,6 +569,19 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P063: polar decomposition assets
+
+The user authorized continuing the math assets after Distance Geometry Lab.
+[Polar Decomposition Lab](P063_POLAR_DECOMPOSITION.md), based on card 089, is
+the 34th object. Four layers connect matrix deformation, positive stretch,
+rotation/reflection, inverse-transpose iteration and singular extensions.
+A marked block and tetrahedron share six complete examples. The packet records
+the numerical, geometry and verification contracts.
+
+This checkpoint is one asset family. Textbook integration remains with its
+current owner. Source cards and learner state stay read-only. Work remains
+uncommitted, with CPU/text checks only and visual review left to the user.
 
 ## P062: distance geometry assets
 

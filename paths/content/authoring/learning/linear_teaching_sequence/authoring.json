@@ -1,0 +1,28 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "linear_teaching_sequence",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "linear_teaching_original_v1",
+      "kind": "original",
+      "title": "Balance, choose, explain: an original linear teaching sequence",
+      "uri": "paths:original/linear_teaching_sequence/v1",
+      "revision": "1",
+      "attribution": "Original Paths exercises, explanations and misconception feedback.",
+      "reuse": "Original project material. No textbook exercises or external prose copied.",
+      "content_ids": [
+        "linear_teaching_overview",
+        "linear_teach_01_worked",
+        "linear_teach_02_guided",
+        "linear_teach_03_reason",
+        "linear_teach_04_method",
+        "linear_teach_05_repair",
+        "linear_teach_06_less_cued",
+        "linear_teach_07_mixed",
+        "linear_teach_08_return"
+      ]
+    }
+  ]
+}

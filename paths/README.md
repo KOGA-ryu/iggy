@@ -1,5 +1,19 @@
 # Paths
 
+**Library → Algebra → Linear equations: understand each move** adds an
+[eight-card teaching sequence](docs/LINEAR_TEACHING_SEQUENCE.md): read a worked
+example, practise the steps, explain a rule, choose an operation, repair a
+mistake, then solve with fewer cues. All eight can be completed with buttons.
+Wrong tiles now show their own coral correction while keeping working intact.
+The local library has **362 questions and 949 readings**; earlier questions are
+unchanged. Launch `./b/sorter` normally for saved progress.
+
+For wording edits, [chapter.paths.md](content/authoring/learning/linear_teaching_sequence/documents/chapter.paths.md)
+is the source. Preview it with
+`./b/sorter --documents content/authoring/learning/linear_teaching_sequence/documents --watch-documents`.
+Preview is session-only. Rebuilding is unnecessary for supported Markdown edits;
+publishing changed frozen questions still requires new content identities.
+
 An [editable chapter draft](docs/LEARNING_EXPORTS.md#create-an-editable-preview-draft)
 is ready for **save Markdown → refresh the open app**:
 
@@ -19,8 +33,8 @@ more drafts and refuses to overwrite existing ones.
 template-driven format. Choose positive integers, negative coefficients, negative
 offsets, negative answers, zero as the answer, or fractions. Learn explains both
 balanced operations and checks the original equation; Practice uses symbolic
-choices with separate Terms, Hint, Next line and Solution. The normal library now
-has **354 questions and 948 readings**, with all 342 earlier questions unchanged.
+choices with separate Terms, Hint, Next line and Solution. That batch brought the
+library to **354 questions and 948 readings**, with all 342 earlier questions unchanged.
 
 The [linear Markdown template](content/authoring/learning/linear_reference/question.paths.md.in)
 reuses the existing exact recipe and checker. Build and publish through the same
@@ -164,6 +178,11 @@ one for each of six subjects, 178 chapters and 94 named subcategories. Choose
 symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
+
+[Polar Decomposition Lab](docs/P063_POLAR_DECOMPOSITION.md) separates a matrix
+into stretch and rotation or reflection. Compare deformed solids, remove shear
+with the inverse-transpose iteration, and explore collapsed dimensions. Open
+`./b/math_lab --object polar --level 2 --object-preset 0` and press Play.
 
 [Distance Geometry Lab](docs/P062_DISTANCE_GEOMETRY.md) reconstructs four-point
 shapes from six lengths, explains mirror ambiguity and rank, and identifies
@@ -329,6 +348,7 @@ Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 | Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
 | Bridge & Truss Lab | Geometry/loads; tension/compression; joint equilibrium; rank and force limits |
 | Probability Simplex Lab | Distributions; entropy/variance; convex mixtures; information divergence |
+| Polar Decomposition Lab | Linear deformation; stretch/orientation; inverse-transpose iteration; reflection and null-space extensions |
 | Distance Geometry Lab | Distances; reconstruction/reflection; dimension/feasibility; the distance-matrix cone |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |

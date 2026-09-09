@@ -8,6 +8,7 @@
 #include "runtime/math_objects/Truss.hpp"
 #include "runtime/math_objects/Simplex.hpp"
 #include "runtime/math_objects/DistanceGeometry.hpp"
+#include "runtime/math_objects/PolarDecomposition.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -402,7 +403,21 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::DistanceSecond,MathObjectKind::Distance,"distance_second","Second distance matrix",0,4,1,3,0,false,"Regular tetrahedron\0Square\0Line\0Different line\0Coincident points\0"},
   {MathParameter::DistanceMix,MathObjectKind::Distance,"distance_mix","Mixture toward second",0,1,.01,0},
   {MathParameter::DistanceScale,MathObjectKind::Distance,"distance_scale","Squared-distance multiplier",0,4,.05,1},
-  {MathParameter::DistanceGuides,MathObjectKind::Distance,"distance_guides","Construction guides",0,1,1,1,0,false,"Object only\0Show construction\0"}
+  {MathParameter::DistanceGuides,MathObjectKind::Distance,"distance_guides","Construction guides",0,1,1,1,0,false,"Object only\0Show construction\0"},
+  {MathParameter::PolarA00,MathObjectKind::Polar,"polar_a00","A row 1, column 1",-3,3,.05,1,0,true},
+  {MathParameter::PolarA01,MathObjectKind::Polar,"polar_a01","A row 1, column 2",-3,3,.05,1,0,true},
+  {MathParameter::PolarA02,MathObjectKind::Polar,"polar_a02","A row 1, column 3",-3,3,.05,0,0,true},
+  {MathParameter::PolarA10,MathObjectKind::Polar,"polar_a10","A row 2, column 1",-3,3,.05,0,0,true},
+  {MathParameter::PolarA11,MathObjectKind::Polar,"polar_a11","A row 2, column 2",-3,3,.05,1,0,true},
+  {MathParameter::PolarA12,MathObjectKind::Polar,"polar_a12","A row 2, column 3",-3,3,.05,0,0,true},
+  {MathParameter::PolarA20,MathObjectKind::Polar,"polar_a20","A row 3, column 1",-3,3,.05,0,0,true},
+  {MathParameter::PolarA21,MathObjectKind::Polar,"polar_a21","A row 3, column 2",-3,3,.05,0,0,true},
+  {MathParameter::PolarA22,MathObjectKind::Polar,"polar_a22","A row 3, column 3",-3,3,.05,1,0,true},
+  {MathParameter::PolarShape,MathObjectKind::Polar,"polar_shape","Source solid",0,1,1,0,0,false,"Marked block\0Tetrahedron\0"},
+  {MathParameter::PolarAmount,MathObjectKind::Polar,"polar_amount","Deformation amount",0,1,.01,1},
+  {MathParameter::PolarIteration,MathObjectKind::Polar,"polar_iteration","Iteration k",0,32,1,0},
+  {MathParameter::PolarExtension,MathObjectKind::Polar,"polar_extension","Null-space extension",0,1,1,0,0,false,"Canonical\0Reverse one null direction\0"},
+  {MathParameter::PolarGuides,MathObjectKind::Polar,"polar_guides","Construction guides",0,1,1,1,0,false,"Solid and landmarks\0Show reference frames\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -548,7 +563,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Distance,"distance","Distance Geometry Lab","Reconstruct shape from distances",
    "D_ij = length(i,j)^2; G_ij = (D_Ai + D_Aj - D_ij)/2","Build a nonflat tetrahedron whose six lengths agree with its reconstruction.",
    "Four labelled points and six ordinary length controls. The matrix stores SQUARED lengths. A positive semidefinite anchored Gram matrix gives a Euclidean reconstruction; its numerical rank gives the minimum dimension. Distances leave translations, rotations and reflections undetermined. An invalid request shows six separate length bars, never a fabricated tetrahedron.",
-   {"Connect lengths, a distance matrix and a tetrahedron.","Reconstruct coordinates and explore rank and mirror ambiguity.","Find impossible distances and mix matrices inside a convex cone."},{1,.7F,1},.12,"Restart distance mixture","Mixture reached the second matrix. Restart or scrub the mixture."}
+   {"Connect lengths, a distance matrix and a tetrahedron.","Reconstruct coordinates and explore rank and mirror ambiguity.","Find impossible distances and mix matrices inside a convex cone."},{1,.7F,1},.12,"Restart distance mixture","Mixture reached the second matrix. Restart or scrub the mixture."},
+  {MathObjectKind::Polar,"polar","Polar Decomposition Lab","Separate stretch from orientation",
+   "A = W P; W^T W = I; P = sqrt(A^T A)","Fully deform a solid using a nonorthogonal invertible matrix.",
+   "Edit a real 3x3 matrix. Teal is stretch P, violet is the orthogonal factor W and coral is the full deformation A. W can include a reflection. Panels use a common display scale; matrix values retain their original units. At numerical rank loss the orthogonal extension is not unique. Higham's iteration requires an invertible matrix and the stated numerical safety threshold.",
+   {"Deform a marked solid with a matrix.","Separate positive stretch from rotation or reflection.","Remove shear iteratively and explore singular extensions."},{.7F,.55F,1},.5,"Restart deformation / iteration","End reached. Restart or scrub the active control."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -687,6 +706,21 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> polarLessons{{
+  {"Linear deformation","x(t) = [(1-t)I + t A] x","At t=1, use a full-rank A with ||A^T A-I|| > 0.25.","The block has unequal side lengths, coloured faces and a gold corner landmark. The tetrahedron provides another orientation marker. Reference wires show the undeformed source. Play moves t from 0 to 1. This is a straight matrix blend, not a rigid rotation path; intermediate shapes can collapse, even when the endpoint is invertible."},
+  {"Stretch and orientation","A = W P; P = V Sigma V^T; W = U V^T","Find both nontrivial stretch and orientation, with relative reconstruction error below 1e-10.","Left: apply P. Middle: apply W alone to the source. Right: apply W after P, giving A. P stretches along perpendicular principal directions; W preserves lengths and angles and may reverse handedness. All panels share a display scale. Matrices act on column vectors, so the rightmost factor acts first."},
+  {"Removing shear by iteration","X_(k+1) = (X_k + X_k^(-T))/2","From a nonorthogonal input, advance k until ||X_k^T X_k-I|| < 1e-9.","Left: A. Middle: the current iterate. Right: W. Play advances discrete iterations. In the SVD basis each singular value follows d_next=(d+1/d)/2. Values below 1 can grow sharply on the first step before approaching 1 from above. The graph shows log10 of the orthogonality residual, floored at -16 for display. It is not physical motion. The inverse-based trace is unavailable at numerical rank loss or sigma_min below 1e-8."},
+  {"Reflections and collapsed dimensions","P is unique; W can vary on null directions when A is singular","Collapse at least one dimension, then reverse a null direction while keeping A = W P.","For invertible A, det(W) has the sign of det(A); det(W)=-1 means a reflection is included. At rank loss the alternate extension reverses one null direction of W, giving a different orthogonal matrix with the same WP. Edges and landmarks remain for collapsed solids. Numerical rank uses sigma > 1e-12*sigma_max; discarded values are zeroed and the reconstruction residual reports their effect."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> polarPresetParameters{MathParameter::PolarA00,MathParameter::PolarA01,MathParameter::PolarA02,MathParameter::PolarA10,MathParameter::PolarA11,MathParameter::PolarA12,MathParameter::PolarA20,MathParameter::PolarA21,MathParameter::PolarA22,MathParameter::PolarShape,MathParameter::PolarAmount,MathParameter::PolarIteration,MathParameter::PolarExtension,MathParameter::PolarGuides};
+constexpr std::array<MathObjectPreset,6> polarPresets{{
+  {"Sheared block",polarPresetParameters,{1,1,0,0,1,0,0,0,1,0,1,0,0,1},14},
+  {"Quarter-turn and stretch",polarPresetParameters,{0,-.5,0,2,0,0,0,0,1,0,1,0,0,1},14},
+  {"Pure rotation",polarPresetParameters,{0,-1,0,1,0,0,0,0,1,1,1,0,0,1},14},
+  {"Mirror and stretch",polarPresetParameters,{-1.5,.5,0,0,1,0,0,0,.5,1,1,0,0,1},14},
+  {"Collapsed sheet",polarPresetParameters,{1,1,0,0,1,0,0,0,0,0,1,0,0,1},14},
+  {"Thin direction",polarPresetParameters,{2,0,0,0,1,0,0,0,.05,0,1,0,0,1},14}
 }};
 constexpr std::array<MathLesson,4> distanceLessons{{
   {"Lengths and squared distances","D_ij=||x_i-x_j||^2; D_ii=0; D_ij=D_ji","Build a realizable three-dimensional tetrahedron with volume above 0.1 and reconstruction error below 1e-8.","Change any of the six lengths. The gold edge follows Inspect edge. The table stores each length squared, with zero diagonal and matching entries across it. Six arbitrary lengths need not fit together: if they do not, the scene shows separate requested lengths. Coincident labels are allowed, so zero lengths can describe valid lower-dimensional configurations."},
@@ -1386,6 +1420,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Truss:return trussLessons;
     case MathObjectKind::Simplex:return simplexLessons;
     case MathObjectKind::Distance:return distanceLessons;
+    case MathObjectKind::Polar:return polarLessons;
     default:return {};
   }
 }
@@ -1405,6 +1440,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Truss:return trussPresets;
     case MathObjectKind::Simplex:return simplexPresets;
     case MathObjectKind::Distance:return distancePresets;
+    case MathObjectKind::Polar:return polarPresets;
     default:return {};
   }
 }
@@ -1418,6 +1454,13 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
   switch(p) {
+    case MathParameter::PolarAmount:return snapshot_.level==0;
+    case MathParameter::PolarIteration:{
+      if(snapshot_.level!=2)return false;
+      PolarMatrix a{};for(unsigned i=0;i<9;++i)a[i]=parameter(static_cast<MathParameter>(index(MathParameter::PolarA00)+i));
+      return analyzePolar(a).iterationAvailable;
+    }
+    case MathParameter::PolarExtension:return snapshot_.level==3;
     case MathParameter::DistanceSecond:case MathParameter::DistanceMix:case MathParameter::DistanceScale:return snapshot_.level==3;
     case MathParameter::SimplexFunction:return snapshot_.level==1||snapshot_.level==2;
     case MathParameter::RigidBalance:return parameter(MathParameter::RigidShape)==1||parameter(MathParameter::RigidShape)==3;
@@ -1478,6 +1521,7 @@ MathParameter MathObjects::playbackParameter() const {
     case MathObjectKind::Truss:return MathParameter::TrussPosition;
     case MathObjectKind::Simplex:return MathParameter::SimplexMix;
     case MathObjectKind::Distance:return snapshot_.level==3?MathParameter::DistanceMix:MathParameter::Count;
+    case MathObjectKind::Polar:return snapshot_.level==0?MathParameter::PolarAmount:snapshot_.level==2?MathParameter::PolarIteration:MathParameter::Count;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1505,7 +1549,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1913,6 +1957,13 @@ void MathObjects::check() {
         case 1:solved=measured("Realizable")==1&&measured("Embedding dimension")==3&&parameter(MathParameter::DistanceMirror)==1&&measured("Squared-distance residual")<1e-8;good="Yes: the reflection preserves every distance while changing handedness.";bad="Choose a nonflat tetrahedron and set Reconstruction side to Reflected.";break;
         case 2:solved=measured("Realizable")==0&&measured("Face triangles pass")==1&&measured("Witness x^T D x")>1e-8;good="Yes: each face is a valid triangle, but the positive zero-sum witness rules out a common Euclidean shape.";bad="Choose Impossible tetrahedron and inspect the negative Gram eigenvalue.";break;
         case 3:solved=measured("First realizable")==1&&measured("Second realizable")==1&&measured("First dimension")==1&&measured("Second dimension")==1&&measured("Realizable")==1&&measured("Embedding dimension")==2&&parameter(MathParameter::DistanceMix)>0&&parameter(MathParameter::DistanceMix)<1&&parameter(MathParameter::DistanceScale)>0;good="Yes: this interior mixture of line distance matrices requires a plane.";bad="Choose Dimension from mixing, keep a positive multiplier and move between the endpoints.";break;
+      }break;
+    case MathObjectKind::Polar:
+      switch(snapshot_.level){
+        case 0:solved=parameter(MathParameter::PolarAmount)==1&&measured("Numerical rank")==3&&measured("Input orthogonality error")>.25;good="Yes: this invertible deformation changes lengths or angles.";bad="Choose Sheared block and move Deformation amount to 1.";break;
+        case 1:solved=measured("Stretch from identity")>.1&&measured("Orientation from identity")>.1&&measured("Relative reconstruction error")<1e-10;good="Yes: nontrivial stretch and orientation multiply back to A.";bad="Try Quarter-turn and stretch and inspect the three matrices.";break;
+        case 2:solved=measured("Iteration available")==1&&measured("Input orthogonality error")>.25&&measured("Iteration k")>0&&measured("Iterate orthogonality error")<1e-9;good="Yes: the iterate now preserves lengths and angles to the stated tolerance.";bad="Use Sheared block and advance to iteration 7, or continue until the residual is below 1e-9.";break;
+        case 3:solved=measured("Numerical rank")<3&&parameter(MathParameter::PolarExtension)==1&&measured("Relative reconstruction error")<1e-10&&measured("W orthogonality error")<1e-10;good="Yes: reversing a null direction changes W while preserving WP.";bad="Choose Collapsed sheet and reverse one null direction.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -3457,6 +3508,67 @@ void MathObjects::rebuild() {
         auto& plot=b.plot("Gram eigenvalues through the squared-distance mixture",P::DistanceMix);plot.seriesCount=3;constexpr std::array<std::string_view,3> eigenNames{"Largest","Middle","Smallest"};for(unsigned k=0;k<3;++k){plot.series[k]={};plot.series[k].name=eigenNames[k];plot.series[k].color=colors[k];plot.series[k].count=129;}
         for(unsigned i=0;i<=128;++i){const double u=i/128.;const auto sample=analyzeDistances(mixDistances(first,second,u,scale));for(unsigned k=0;k<3;++k)plot.series[k].points[i]={u,sample.eigenvalues[k]};}plot.hasMarker=true;plot.marker={t,analysis.eigenvalues[2]};
         auto& edgePlot=b.plot("Selected SQUARED distance is affine in mixture amount",P::DistanceMix);b.curve(edgePlot,edges[selected],gold,0,1,[&](double u){return scale*((1-u)*first[selected]+u*second[selected]);});edgePlot.hasMarker=true;edgePlot.marker={t,distances[selected]};
+      }
+      break;
+    }
+    case MathObjectKind::Polar: {
+      using P=MathParameter;const unsigned level=snapshot_.level,shape=static_cast<unsigned>(parameter(P::PolarShape));
+      const bool guides=parameter(P::PolarGuides)==1;Matrix a{};for(unsigned i=0;i<9;++i)a[i]=parameter(static_cast<P>(index(P::PolarA00)+i));
+      const auto analysis=analyzePolar(a);const bool alternate=level==3&&parameter(P::PolarExtension)==1;
+      const auto& w=alternate?analysis.alternateW:analysis.w;
+      const unsigned step=static_cast<unsigned>(std::floor(parameter(P::PolarIteration)+1e-9));
+      const auto distanceFromIdentity=[&](const Matrix& m){double sum=0;for(unsigned i=0;i<9;++i){const double x=m[i]-identity[i];sum+=x*x;}return std::sqrt(sum);};
+      const double inputError=distanceFromIdentity(multiply(transpose(a),a));
+      b.metric("Numerical rank",analysis.rank);b.metric("det A",analysis.detA);b.metric("det W",determinant(w));
+      b.metric("Relative reconstruction error",analysis.reconstructionError);b.metric("W orthogonality error",analysis.orthogonalityError);
+      b.metric("Input orthogonality error",inputError);
+      b.matrix("A: editable input",a,level>0);for(unsigned i=0;i<9;++i)snapshot_.matrices[0].parameters[i]=static_cast<P>(index(P::PolarA00)+i);
+      Matrix shown=a;
+      if(level==0){const double t=parameter(P::PolarAmount);for(unsigned i=0;i<9;++i)shown[i]=(1-t)*identity[i]+t*a[i];b.metric("Deformation amount",t);b.metric("Shown determinant",determinant(shown));}
+      if(level==1){b.metric("Stretch from identity",distanceFromIdentity(analysis.p));b.metric("Orientation from identity",distanceFromIdentity(w));}
+      if(level==2){b.metric("Iteration available",analysis.iterationAvailable);if(analysis.iterationAvailable){shown=analysis.iterates[step];b.metric("Iteration k",step);b.metric("Iterate orthogonality error",analysis.iterationError[step]);b.matrix("X_k: current iterate",shown);}else b.label("Inverse iteration unavailable: rank loss or sigma_min < 1e-8",{0,2.6F,0},coral);}
+      else if(level>0)b.matrix("P: symmetric positive stretch",analysis.p);
+      if(level>0)b.matrix(alternate?"W: alternate null extension":"W: orthogonal factor",w);
+      const std::array<Vec3,3> colors{coral,teal,blue};
+      const std::array<Vec3,8> block{{{-.85F,-.55F,-.35F},{.85F,-.55F,-.35F},{-.85F,.55F,-.35F},{.85F,.55F,-.35F},{-.85F,-.55F,.35F},{.85F,-.55F,.35F},{-.85F,.55F,.35F},{.85F,.55F,.35F}}};
+      const std::array<Vec3,4> tetra{{{-.7F,-.5F,-.4F},{.9F,-.5F,-.4F},{-.4F,.9F,-.3F},{-.2F,-.1F,.8F}}};
+      const std::array<std::array<unsigned,3>,12> blockFaces{{{0,1,3},{0,3,2},{4,6,7},{4,7,5},{0,4,5},{0,5,1},{2,3,7},{2,7,6},{0,2,6},{0,6,4},{1,5,7},{1,7,3}}};
+      const std::array<std::array<unsigned,3>,4> tetraFaces{{{0,2,1},{0,1,3},{0,3,2},{1,2,3}}};
+      const unsigned count=shape?4:8;const auto source=[&](unsigned i){return shape?tetra[i]:block[i];};
+      // Fixed panel centres and one common scale keep every extreme matrix in
+      // view. Only display positions are scaled; all metrics remain unscaled.
+      double largest=1;for(const auto& m:std::array<Matrix,4>{a,shown,analysis.p,w}){double n=0;for(double x:m)n=std::hypot(n,x);largest=std::max(largest,n);}
+      const float scale=static_cast<float>(1.7/largest);b.metric("Common display scale",scale);
+      const auto solid=[&](const Matrix& transform,Vec3 centre,Vec3 color,std::string_view title){
+        const auto place=[&](unsigned i){return centre+mapped(transform,source(i))*scale;};
+        Vec3 centroid{};for(unsigned i=0;i<count;++i)centroid=centroid+place(i)*(1.F/count);
+        const auto triangle=[&](std::array<unsigned,3> face,unsigned n){
+          auto x=place(face[0]),y=place(face[1]),z=place(face[2]);auto normal=cross(y-x,z-x);
+          if(length(normal)<1e-9F)return;
+          if(dot(normal,(x+y+z)*(1.F/3)-centroid)<0){std::swap(y,z);normal=normal*-1;}
+          normal=normalized(normal);auto& mesh=snapshot_.solid;
+          if(mesh.vertexCount+3>mesh.vertices.size()||mesh.indexCount+3>mesh.indices.size())throw std::logic_error("polar mesh capacity");
+          const Vec3 faceColor=color*(n%2?.78F:1.F);for(const auto pos:{x,y,z}){mesh.indices[mesh.indexCount++]=static_cast<std::uint16_t>(mesh.vertexCount);mesh.vertices[mesh.vertexCount++]={pos,normal,faceColor};}
+        };
+        // A collapsed solid has no volume. Publish its exact edges/landmark,
+        // avoiding singular primitive transforms and overlapping surface faces.
+        if(std::fabs(determinant(transform))*scale*scale*scale>1e-10){if(shape)for(unsigned n=0;n<4;++n)triangle(tetraFaces[n],n);else for(unsigned n=0;n<12;++n)triangle(blockFaces[n],n/2);}
+        for(unsigned i=0;i<count;++i)for(unsigned j=i+1;j<count;++j)if(shape||((i^j)==1||(i^j)==2||(i^j)==4)){b.rod(place(i),place(j),color,.012F,"polar_solid_edge");if(guides)b.rod(centre+source(i)*scale,centre+source(j)*scale,muted,.007F,"polar_source_edge");}
+        b.ball(place(count-1),.06F,gold,"polar_landmark");
+        if(guides)for(unsigned axis=0;axis<3;++axis){Vec3 unit{};if(axis==0)unit.x=1;else if(axis==1)unit.y=1;else unit.z=1;b.arrow(centre,centre+mapped(transform,unit)*scale,colors[axis],"polar_basis_axis");}
+        b.label(title,centre+Vec3{0,-1.65F,0},color);
+      };
+      if(level==0)solid(shown,{},coral,"(1-t)I + tA: deform the source");
+      else if(level==2){solid(a,{-3.6F,0,0},coral,"A: original deformation");if(analysis.iterationAvailable)solid(shown,{},teal,"X_k: current iterate");solid(w,{3.6F,0,0},violet,"W: orthogonal limit");}
+      else {solid(analysis.p,{-3.6F,0,0},teal,"P: stretch the source");solid(w,{},violet,"W: orient the source");solid(multiply(w,analysis.p),{3.6F,0,0},coral,"WP = A: stretch, then orient");}
+      if(level>0)b.label(analysis.rank<3?"Rank loss: W is one of several valid orthogonal extensions":analysis.detW<0?"det W = -1: orientation includes a reflection":"det W = +1: orientation is a proper rotation",{0,2.1F,0},analysis.rank<3?gold:violet);
+      b.table(level==2&&analysis.iterationAvailable?"Singular values: mode identity follows the initial SVD":"Principal stretches",{"sigma(A)","sigma(X_k)","target",""},level==2&&analysis.iterationAvailable?3:1);
+      constexpr std::array<std::string_view,3> names{"Mode 1","Mode 2","Mode 3"};
+      for(unsigned i=0;i<3;++i)b.row(names[i],{analysis.singular[i],analysis.iterationAvailable?analysis.iterationSingular[step][i]:0,1,0});
+      auto& stretches=b.plot("Principal stretches of A");auto& values=stretches.series[stretches.seriesCount++];values={};values.name="Singular values";values.color=teal;values.stems=true;values.count=3;for(unsigned i=0;i<3;++i)values.points[i]={static_cast<double>(i+1),analysis.singular[i]};
+      if(level==2&&analysis.iterationAvailable){
+        auto& residual=b.plot("log10 ||X_k^T X_k-I|| (display floor -16)",P::PolarIteration);auto& line=residual.series[residual.seriesCount++];line={};line.name="Orthogonality residual";line.color=gold;line.count=polarMaxSteps+1;for(unsigned i=0;i<=polarMaxSteps;++i)line.points[i]={static_cast<double>(i),std::log10(std::max(1e-16,analysis.iterationError[i]))};residual.hasMarker=true;residual.marker=line.points[step];
+        auto& convergence=b.plot("Singular modes approaching one (initial mode order)",P::PolarIteration);convergence.seriesCount=3;for(unsigned mode=0;mode<3;++mode){auto& series=convergence.series[mode];series={};series.name=names[mode];series.color=colors[mode];series.count=polarMaxSteps+1;for(unsigned i=0;i<=polarMaxSteps;++i)series.points[i]={static_cast<double>(i),analysis.iterationSingular[i][mode]};}convergence.hasMarker=true;convergence.marker={static_cast<double>(step),analysis.iterationSingular[step][2]};
       }
       break;
     }

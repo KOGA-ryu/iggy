@@ -37,6 +37,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/Truss.cpp
   src/runtime/math_objects/Simplex.cpp
   src/runtime/math_objects/DistanceGeometry.cpp
+  src/runtime/math_objects/PolarDecomposition.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -233,6 +234,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_polar_tests tests/math_polar_tests.cpp)
+  target_link_libraries(paths_math_polar_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_polar_tests COMMAND paths_math_polar_tests)
   add_executable(paths_math_distance_tests tests/math_distance_tests.cpp)
   target_link_libraries(paths_math_distance_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_distance_tests COMMAND paths_math_distance_tests)
@@ -511,6 +515,12 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_polar_deform_cli COMMAND math_lab --validate --object polar --level 0 --object-preset 0 --check)
+    add_test(NAME paths_math_polar_factors_cli COMMAND math_lab --validate --object polar --level 1 --object-preset 1 --check)
+    add_test(NAME paths_math_polar_iteration_cli COMMAND math_lab --validate --object polar --level 2 --object-preset 0 --set polar_iteration=7 --check)
+    add_test(NAME paths_math_polar_singular_cli COMMAND math_lab --validate --object polar --level 3 --object-preset 4 --set polar_extension=1 --check)
+    add_test(NAME paths_math_polar_reflection_cli COMMAND math_lab --validate --object polar --level 3 --object-preset 3 --resolution 800x600)
+    set_tests_properties(paths_math_polar_deform_cli paths_math_polar_factors_cli paths_math_polar_iteration_cli paths_math_polar_singular_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_distance_lengths_cli COMMAND math_lab --validate --object distance --level 0 --object-preset 0 --check)
     add_test(NAME paths_math_distance_mirror_cli COMMAND math_lab --validate --object distance --level 1 --object-preset 0 --set distance_mirror=1 --check)
     add_test(NAME paths_math_distance_impossible_cli COMMAND math_lab --validate --object distance --level 2 --object-preset 4 --check)

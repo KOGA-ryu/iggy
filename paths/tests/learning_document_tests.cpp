@@ -135,6 +135,72 @@ void livePreview(const Path& folder) {
   expect(rejected && bounded.questions()[0].stamp==finalQuestion.stamp,"History bound rejects before replacing the current preview");
   std::cout<<"LIVE_DOCUMENT_PREVIEW {\"stable_bytes\":true,\"invalid_retained\":true,\"source_locations\":true,\"revision_attempts\":true,\"save_protected\":true,\"windows\":0}\n";
 }
+Json teachingSequence(const Path& source,const Path& folder) {
+  Fixture f;const auto first=f.bank.size();const auto loaded=f.load(source);expect(loaded.accepted,loaded.message);
+  expect(loaded.questions==8 && loaded.lessons==1,"Teaching sequence contains eight questions and its overview");
+  const std::vector<CorpusStarter> cards(f.bank.begin()+first,f.bank.end());Json content=Json::array();unsigned routes=0,wrongs=0;
+  for(const auto& q:cards) {
+    content.push_back({{"id",q.id},{"title",q.title},{"question",Json::parse(q.stamp)}});
+    for(unsigned route=0;route<(q.question.support?5U:1U);++route) {
+      CorpusPractice p(cards);const auto save=folder/(q.id+"-"+std::to_string(route)+".json");p.loadProgress(save);p.open(question(cards,q.id));
+      const bool supported=q.question.support.has_value();
+      const auto feedback=[&]{return supported?p.active()->supportView()->feedback:std::string(p.active()->review()->steps[p.active()->currentRun().currentStep].attempts.back().feedback);};
+      const auto replay=[&] {
+        const auto working=std::string(p.active()->visibleWorking());const auto commands=p.active()->journal().size();
+        p.saveProgress();const auto bytes=read(save);auto reordered=cards;std::reverse(reordered.begin(),reordered.end());
+        CorpusPractice reopened(reordered);reopened.loadProgress(save);
+        expect(reopened.active() && reopened.questions()[*reopened.selected()].id==q.id && reopened.active()->visibleWorking()==working && reopened.active()->journal().size()==commands,"Teaching save restores selection, working and exact commands after reorder");
+        reopened.saveProgress();expect(read(save)==bytes,"Teaching save reopens without rewriting its bytes");p=std::move(reopened);
+      };
+      if(supported)expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},route==4?1:route)),"Support level selected");
+      if(supported && (route==2 || route==3)) {
+        const std::string solution=q.id=="linear_teach_01_worked"?"x=3":"x=5";
+        expect(p.dispatch(support(p,fm::SupportAction::EditDraft,solution)),"Written route retains draft");
+        expect(p.dispatch(support(p,fm::SupportAction::CheckWork,solution)),"Existing exact checker accepts independent written solution");
+      } else for(const auto& step:q.question.steps) {
+        const auto before=std::string(p.active()->visibleWorking());
+        for(std::size_t i=0;i<step.options.size();++i)if(!fm::acceptsOption(step,i)) {
+          const auto& option=step.options[i];expect(!option.wrongFeedback.empty(),"Every teaching distractor has its own correction");
+          if(supported)expect(p.dispatch(support(p,fm::SupportAction::Choose,{},option.id.value)),"Supported wrong tile dispatches");
+          else expect(p.dispatch(fm::LayeredQuestionCommand::submitOption(option.id)),"Reasoning wrong tile dispatches");
+          expect(p.active()->visibleWorking()==before && !p.active()->currentRun().completed,"Wrong choice preserves the current problem state");
+          expect(feedback().find(option.wrongFeedback)!=std::string::npos,"Actual projection contains the selected misconception correction");
+          const auto shown=feedback();replay();expect(feedback()==shown,"Wrong-choice feedback survives save replay");++wrongs;
+        }
+        const auto correct=fm::firstAcceptedOption(step);
+        if(supported && route==4) {
+          const auto index=static_cast<std::size_t>(&step-q.question.steps.data());const auto text=q.question.support->steps[index].responses[correct];
+          expect(p.dispatch(support(p,fm::SupportAction::EditDraft,text)),"Optional Practice typing remains available");
+          expect(p.dispatch(support(p,fm::SupportAction::SubmitBlank,text)),"Optional answer uses the mathematical checker");
+        } else if(supported)expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[correct].id.value)),"Correct tile advances supported work");
+        else {
+          expect(p.dispatch(fm::LayeredQuestionCommand::submitOption(step.options[correct].id)),"Correct reasoning tile dispatches");
+          expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Prepared route advances in the same workspace");
+        }
+      }
+      expect(p.active()->currentRun().completed,"Every teaching route completes");replay();
+      expect(p.active()->currentRun().completed && !p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Completion restores and stays until explicit Next");
+      if(supported) {
+        const auto nodes=p.active()->currentRun().support->nodes.size();
+        expect(p.dispatch(support(p,fm::SupportAction::Undo)),"Supported completion can be undone");
+        expect(!p.active()->currentRun().completed && p.active()->currentRun().support->nodes.size()==nodes,"Undo preserves the completed branch");replay();
+      }
+      ++routes;
+    }
+  }
+  // The same optional correction works for the third supported document template.
+  const auto matrixRoot=folder/"matrix-feedback";const auto matrixText=read(Path(DOCUMENT_FIXTURE)/"matrix.paths.md");
+  write(matrixRoot/"matrix.paths.md",replace(matrixText,"@choice 11 |","@feedback 11 | Compare the first coefficients before selecting this multiplier.\n@choice 11 |"));
+  Fixture matrix;expect(matrix.load(matrixRoot).accepted,"Matrix feedback uses the same document contract");CorpusPractice mp(matrix.bank);mp.open(question(matrix.bank,"document_matrix_question"));
+  expect(mp.dispatch(support(mp,fm::SupportAction::Choose,{},11)) && mp.active()->supportView()->feedback.find("Compare the first coefficients")!=std::string::npos,"Matrix wrong choice shows its authored correction after exact checking");
+  const auto live=folder/"live-teaching";const auto original=read(source/"chapter.paths.md");write(live/"chapter.paths.md",original);
+  Fixture seed;auto corpus=seed.corpus;CorpusPractice p(seed.bank);LearningDocumentPreview preview(live,seed.corpus,seed.bank);auto now=LearningDocumentPreview::Clock::time_point{};
+  expect(preview.poll(corpus,p,now),"Teaching chapter opens in live preview");p.open(question(p.questions(),cards.front().id));
+  const auto old=cards.front().question.steps.front().options.front().wrongFeedback;const std::string changed="Draft correction: subtract the added constant from both sides.";
+  write(live/"chapter.paths.md",replace(original,old,changed));now+=std::chrono::milliseconds(250);expect(!preview.poll(corpus,p,now),"Feedback edits settle before reload");now+=std::chrono::milliseconds(250);
+  expect(preview.poll(corpus,p,now) && p.dispatch(support(p,fm::SupportAction::Choose,{},11)) && p.active()->supportView()->feedback.find(changed)!=std::string::npos,"Saving Markdown changes the feedback projected by the live app model");
+  return {{"accepted",true},{"questions",content},{"routes",routes},{"wrong_choices",wrongs},{"save_replay",true},{"matrix_feedback",true},{"live_feedback_edit",true},{"windows",0}};
+}
 Json draftPreview(const Path& source,const Path& folder) {
   const auto root=folder/"draft";std::filesystem::copy(source,root,std::filesystem::copy_options::recursive);
   Fixture base;auto corpus=base.corpus;CorpusPractice p(base.bank);LearningDocumentPreview preview(root,base.corpus,base.bank);
@@ -707,6 +773,9 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==3 && std::string_view(argv[1])=="--teaching-sequence") {
+      std::filesystem::create_directories(folder);const auto result=teachingSequence(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==3 && std::string_view(argv[1])=="--draft-preview") {
       std::filesystem::create_directories(folder);const auto result=draftPreview(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
     }

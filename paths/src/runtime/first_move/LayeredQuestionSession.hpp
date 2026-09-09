@@ -80,6 +80,7 @@ struct StepSemantics {
 struct LayeredQuestionOptionContent {
   std::string label;
   OptionId id;
+  std::string wrongFeedback{};
 };
 
 struct LayeredQuestionStepContent {
@@ -134,7 +135,7 @@ enum class QuestionValidationCode : std::uint8_t {
   MissingQuestionVersion, InvalidStepCount, DuplicateQuestionIdentity,
   MissingStepId, MissingPrompt, InvalidOptionCount, EmptyAcceptedOptions,
   AcceptedOptionsOutOfRange, GuidedRequiresSingleAnswer, DuplicateStepIdentity,
-  MissingOptionId, MissingOptionLabel, DuplicateOptionIdentity,
+  MissingOptionId, MissingOptionLabel, DuplicateOptionIdentity, InvalidOptionFeedback,
   InvalidWorkingStateCount, MissingWorkingStateId, DuplicateWorkingStateIdentity,
   InvalidWorkingHighlight,
   InvalidStepPurpose, InvalidCompletionRule, UnknownWorkingState, BrokenStepChain, InvalidGraph, InvalidMathMoves, InvalidMathReference, InvalidSupport,
@@ -296,7 +297,7 @@ struct LayeredQuestionRunSummary {
 // Review text borrows this session's frozen catalog. Only attempted answers and
 // reached steps are exposed; explanations stay empty until that step resolves.
 enum class QuestionReviewOutcome { InProgress, CorrectFirstTry, CorrectAfterRetry, AnswerShown };
-struct QuestionReviewAttempt { std::string_view label; bool correct; };
+struct QuestionReviewAttempt { std::string_view label; bool correct; std::string_view feedback{}; };
 struct QuestionReviewStep {
   QuestionStepId id;
   std::string_view name, prompt, working, explanation;

@@ -336,6 +336,10 @@ fm::LayeredQuestionContent parseQuestionContent(std::string_view json, const std
     for(std::size_t j = 0; j < optionCount; ++j) {
       const auto option = options.element(j);
       step.options.push_back({option.member("label").string(), {option.member("id").integer()}});
+      if(option.value.contains("wrong_feedback")) {
+        auto feedback=option.member("wrong_feedback");step.options.back().wrongFeedback=feedback.string();
+        if(step.options.back().wrongFeedback.empty())feedback.fail("wrong feedback must not be empty");
+      }
     }
     step.acceptedOptions = resolveAcceptedOptions(step.options, source.member("accepted_option_ids"));
     const auto semantics = source.member("semantics");

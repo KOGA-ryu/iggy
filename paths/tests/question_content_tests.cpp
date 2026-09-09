@@ -107,6 +107,39 @@ void testCardsAndSharedValidation() {
   expectError([&]{static_cast<void>(parseQuestionContent(std::string(1024*1024+1, ' '), source));}, source, "", "1 MiB");
 }
 
+void testWrongChoiceFeedback() {
+  auto json=card("foundation_equality_24");
+  const auto original=parseQuestionContent(json.dump(),"feedback.json");
+  const auto& step=original.steps.front();
+  const auto wrong=static_cast<std::size_t>(std::find_if(step.options.begin(),step.options.end(),[&](const auto& option){
+    return !fm::acceptsOption(step,&option-step.options.data());})-step.options.begin());
+  const std::string field="/steps/0/options/"+std::to_string(wrong)+"/wrong_feedback";
+  for(const auto& value:std::vector<Json>{"", "   ",std::string(2001,'x'),42}) {
+    json["steps"][0]["options"][wrong]["wrong_feedback"]=value;
+    bool rejected=false;try{(void)parseQuestionContent(json.dump(),"feedback.json");}
+    catch(const QuestionContentError& e){rejected=std::string(e.what()).find(field)!=std::string::npos;}
+    expect(rejected,"Invalid option feedback names its exact JSON field");
+  }
+  json["steps"][0]["options"][wrong]["wrong_feedback"]="Recheck this specific choice.";
+  auto q=parseQuestionContent(json.dump(),"feedback.json");
+  fm::LayeredQuestionSession session({q},fm::QuestionInteraction::ArcadeCollect);
+  (void)session.dispatch({fm::LayeredQuestionCommandKind::OpenQuestion});
+  expect(session.review()->steps.front().attempts.empty(),"Wrong-choice feedback is not exposed before an attempt");
+  (void)session.dispatch(fm::LayeredQuestionCommand::submitOption(q.steps[0].options[wrong].id));
+  expect(session.review()->steps.front().attempts.back().feedback=="Recheck this specific choice.","Review owns the selected correction");
+  std::reverse(json["steps"][0]["options"].begin(),json["steps"][0]["options"].end());
+  const auto reordered=parseQuestionContent(json.dump(),"feedback.json");
+  const auto option=std::find_if(reordered.steps[0].options.begin(),reordered.steps[0].options.end(),[&](const auto& o){return o.id==q.steps[0].options[wrong].id;});
+  expect(option->wrongFeedback=="Recheck this specific choice.","Feedback follows stable option identity through authoring reorder");
+  json=card("foundation_equality_24");json["steps"][0]["options"][fm::firstAcceptedOption(step)]["wrong_feedback"]="Incorrect.";
+  bool rejected=false;try{(void)parseQuestionContent(json.dump(),"feedback.json");}catch(const QuestionContentError&){rejected=true;}
+  expect(rejected,"A correct option cannot carry wrong-choice feedback");
+  fm::LayeredQuestionSession legacy({original},fm::QuestionInteraction::ArcadeCollect);
+  (void)legacy.dispatch({fm::LayeredQuestionCommandKind::OpenQuestion});
+  (void)legacy.dispatch(fm::LayeredQuestionCommand::submitOption(step.options[wrong].id));
+  expect(legacy.review()->steps[0].attempts.back().feedback==step.wrongHint,"Existing prepared cards retain their step correction");
+}
+
 void testOptionIdentityAndInteraction() {
   auto json = card("foundation_equality_24");
   std::reverse(json["steps"][0]["options"].begin(), json["steps"][0]["options"].end());
@@ -416,7 +449,7 @@ void testSource013Adaptation() {
 
 int main() {
   try {
-    testCardsAndSharedValidation(); testOptionIdentityAndInteraction(); testPackFailures(); testEditablePackAndFrozenRun();
+    testCardsAndSharedValidation(); testOptionIdentityAndInteraction(); testWrongChoiceFeedback(); testPackFailures(); testEditablePackAndFrozenRun();
     testSource002Adaptation(); testSource013Adaptation(); testSharedRowReferences(); testMathNotation();
   } catch(const std::exception& error) { ++failures; std::cerr << "Unexpected: " << error.what() << '\n'; }
   if(!failures) std::cout << "Question content loader tests passed\n";

@@ -11,7 +11,7 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -61,7 +61,8 @@ enum class MathParameter : std::uint16_t {
   RigidShape, RigidWidth, RigidHeight, RigidDepth, RigidMass, RigidBalance, RigidRotX, RigidRotY, RigidRotZ, RigidSpinX, RigidSpinY, RigidSpinZ, RigidTime, RigidAxis, RigidGuides,
   TrussShape, TrussSpan, TrussHeight, TrussLean, TrussJoint, TrussP0X, TrussP0Y, TrussP1X, TrussP1Y, TrussP2X, TrussP2Y, TrussP3X, TrussP3Y, TrussP4X, TrussP4Y, TrussP5X, TrussP5Y, TrussPosition, TrussLoadX, TrussLoadY, TrussMember, TrussBrace, TrussSupports, TrussTensionLimit, TrussCompressionLimit, TrussGuides,
   SimplexP0, SimplexP1, SimplexQ0, SimplexQ1, SimplexValue0, SimplexValue1, SimplexValue2, SimplexFunction, SimplexMix, SimplexGuides,
-  DistanceAB, DistanceAC, DistanceAD, DistanceBC, DistanceBD, DistanceCD, DistanceEdge, DistanceMirror, DistanceSecond, DistanceMix, DistanceScale, DistanceGuides, Count
+  DistanceAB, DistanceAC, DistanceAD, DistanceBC, DistanceBD, DistanceCD, DistanceEdge, DistanceMirror, DistanceSecond, DistanceMix, DistanceScale, DistanceGuides,
+  PolarA00, PolarA01, PolarA02, PolarA10, PolarA11, PolarA12, PolarA20, PolarA21, PolarA22, PolarShape, PolarAmount, PolarIteration, PolarExtension, PolarGuides, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };

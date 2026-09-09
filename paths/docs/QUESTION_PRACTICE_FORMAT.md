@@ -2,8 +2,8 @@
 
 Status: **implemented for linear equations and bounded two-variable matrix
 row reduction, with all four levels, written work, help exposure and save/resume**.
-The generated linear pack has 25 questions; documents add one linear and one
-matrix example. Visual acceptance is pending. Other families still need their
+The original generated linear pack has 25 questions; authored chapters add
+linear, matrix and reasoning activities. Visual acceptance is pending. Other families still need their
 own checked responses. Motion and further
 interactive 3D integration are deferred. Existing prepared questions retain
 their current format.
@@ -23,6 +23,22 @@ The original 25 linear cards remain unchanged. Practice still defaults to symbol
 choices; written input is optional. Generated appearance remains a manual check.
 
 ## Shared textbook presentation standard
+
+The [eight-card linear teaching sequence](LINEAR_TEACHING_SEQUENCE.md) is the
+current authored example for teaching across cards. Its two numerical practice
+cards retain all four support levels. Six reasoning/transfer activities use
+`choices.v1` and the existing Method disclosure; they do not pretend to offer
+the four-level written-work contract. The chapter separates worked examples,
+guided calculation, reasoning, method choice, mistake repair and fewer-cue
+checks. Completing an activity is not a mastery judgment.
+
+Each distractor has optional `@feedback ID | prose` that explains that particular
+choice after rejection. The mathematical checker and answer key still decide
+correctness. Keep the first teaching paragraph short, explain the relevant
+numbers, and reserve unrelated fraction/sign definitions for questions that need
+them. The authoring checklist in that guide must be followed before expanding
+this example into generated families. Human visual and teaching review remain
+pending for this new sequence.
 
 The user has selected the existing textbook work as the presentation standard
 for equation solving. The inspected references are
@@ -187,7 +203,8 @@ Use these roles when adapting an accepted reference into more cards:
 | `@teaching` | Work the actual numbers, explain why the operation is valid, and show the result with `$...$` / `$$...$$` | Current step expanded in Learn |
 | `@after` | Exact reached equation/matrix in the existing plain input syntax | Accepted Working, Next line, and the complete Solution route |
 | `@why` | Concise prose explaining the accepted transition | Reached history and Solution; do not place display LaTeX in this history field |
-| `@wrong` | Explain a likely misconception and how to recheck it | Wrong-response feedback; the current template has one shared correction per step |
+| `@wrong` | Explain the general step error and how to recheck it | Shared fallback for prepared wrong choices |
+| `@feedback ID` | Explain the misconception illustrated by one wrong option | Selected-choice correction, shown only after that option is rejected |
 
 Keep plain numeric inputs separate from display LaTeX. For matrices, retain
 `[a, b | c] [d, e | f]` and exact fraction operands such as `-3/2`; put typeset
@@ -220,7 +237,7 @@ source locations. The standalone reference is exported but **not published**.
 The [worked batch](QUESTION_BATCHES.md) now applies this format to 12 new card
 identities while retaining the original questions and saves. Its wording comes
 from `content/authoring/learning/matrix_reference/question.paths.md.in`; the active
-library has 342 questions. Generated variations still await a visual check.
+library had 342 questions at that checkpoint. Generated variations still await a visual check.
 
 ## Fully specified example: 3x + 5 = 20
 

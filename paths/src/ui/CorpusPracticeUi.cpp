@@ -148,7 +148,11 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   if(v.completed) {
     ImGui::TextColored({.4F,.9F,.65F,1},"Complete");ImGui::TextWrapped("%s",v.verification.c_str());
   }
-  if(!v.feedback.empty())ImGui::TextWrapped("%s",v.feedback.c_str());
+  if(!v.feedback.empty()) {
+    const bool wrong=v.status==fm::WrittenCheckStatus::Incorrect;
+    if(wrong)ImGui::PushStyleColor(ImGuiCol_Text,{1,.6F,.4F,1});
+    ImGui::TextWrapped("%s",v.feedback.c_str());if(wrong)ImGui::PopStyleColor();
+  }
   if(v.assisted || v.seenBefore)ImGui::TextDisabled("%s%s",v.assisted?"Guidance used":"",v.seenBefore?"  Seen before":"");
   if(v.help!=fm::SupportHelp::None) {
     constexpr std::array helpLabels{"Terms","Hint","Next line","Solution"};
@@ -274,7 +278,7 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
   if(complete)ImGui::TextColored({.4F,.9F,.65F,1},"Complete");else ImGui::TextDisabled("%zu / %zu · %s",stepIndex+1,q.question.steps.size(),step.layerName.c_str());
   std::optional<fm::OptionId> choice;
   if(!complete) {
-    ImGui::TextUnformatted(step.prompt.c_str());
+    ImGui::TextWrapped("%s",step.prompt.c_str());
     std::vector<NativeMath::Equation> tiles;float height=0,rowHeight=0,x=0;
     for(const auto& option:step.options) {
       auto e=equation(math,option.label,width-24,16);const float w=std::max(70.0F,e.width+20),h=std::max(32.0F,e.height+12);
@@ -301,12 +305,16 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
   ImGui::BeginChild("Starter working",{0,0},ImGuiChildFlags_None,ImGuiWindowFlags_HorizontalScrollbar);
   if(ui.readingOpen && !q.readingRefs.empty())drawReading(ui,q,corpus,blocked);
   else {
-  if(!complete && !run.steps[stepIndex].attempts.empty() && !run.steps[stepIndex].attempts.back().correct)
-    ImGui::TextColored({1,.6F,.4F,1},"Try another tile. Working retained.");
+  const auto review=session.review();
+  if(!complete && !review->steps[stepIndex].attempts.empty() && !review->steps[stepIndex].attempts.back().correct) {
+    const auto feedback=review->steps[stepIndex].attempts.back().feedback;
+    ImGui::PushStyleColor(ImGuiCol_Text,{1,.6F,.4F,1});
+    ImGui::TextWrapped("%.*s",static_cast<int>(feedback.size()),feedback.data());ImGui::PopStyleColor();
+    ImGui::TextDisabled("Working retained. Choose another tile.");
+  }
   if((stepIndex || complete) && q.level!="practice") {
     const auto working=session.visibleWorking();ink(math,equation(math,working,width),working,complete?green:cyan);
   }
-  const auto review=session.review();
   for(std::size_t i=0;i<review->steps.size();++i)if(!review->steps[i].explanation.empty()) {
     ImGui::TextDisabled("%zu · %s",i+1,q.question.steps[i].layerName.c_str());
     if(complete && i+1<q.question.steps.size()) {

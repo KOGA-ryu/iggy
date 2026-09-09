@@ -14,6 +14,19 @@ locations are rejected. Draft creation does not load an active store, and its
 printed launch command uses the existing session-only `LearningDocumentPreview`
 route. No runtime owner, parser, checker or persistence route was added.
 
+Per-choice correction text is optional immutable question content:
+`LayeredQuestionOptionContent::wrongFeedback`, decoded from `wrong_feedback`.
+The same question validator rejects corrections on accepted choices and bounds
+their text. `LearningDocuments` maps `@feedback ID | prose` to this field and
+keeps diagnostics at the original directive. Omitted fields do not change old
+question JSON or stamps. Supported choices receive their correction only after
+the exact checker rejects the response; prepared attempts expose it through
+`QuestionReviewAttempt::feedback`, with the existing step correction as fallback.
+`CorpusPracticeUi` consumes these projections and wraps prompts/feedback. No new
+answer policy or save record was introduced; journal replay reproduces feedback
+from the frozen question content. The new linear teaching sequence uses the
+existing linear and prepared-choice templates, plus one textbook overview.
+
 The batch producer now selects matrix or linear authoring through a small family
 table, then runs one shared compiler/model/export path. Linear authoring reuses
 `question_workflow.py` for bounded instance construction and independent arithmetic
@@ -150,6 +163,14 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P063](P063_POLAR_DECOMPOSITION.md) adds `polar`. `PolarDecomposition` owns
+a bounded one-sided 3x3 SVD, orthogonal/PSD factors, numerical rank, null-space
+extensions and the Higham iteration trace. `MathObjects` projects that state
+into marked solids, comparative panels, matrices and convergence graphs.
+Fourteen appended controls reuse the inspector and playback routes. Geometry
+handles reflections and rank loss without changing the renderer or learning
+state owners.
 
 [P062](P062_DISTANCE_GEOMETRY.md) adds `distance`. `DistanceGeometry` owns
 four-point squared-distance matrices, normalized Gram analysis, reconstruction,

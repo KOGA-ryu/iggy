@@ -2,8 +2,8 @@
 
 **Linear practice now uses this same workflow.** Package `linear_repetitions`
 version 1 adds 12 questions and six readings under **Algebra → Worked linear
-practice**. The library has 354 questions and 948 readings. All 342 earlier
-question records and 942 reading records remain unchanged. Both families use
+practice**. That batch brought the library to 354 questions and 948 readings,
+preserving all 342 earlier question records and 942 reading records. Both families use
 one compilation, model-replay and publication path; generated appearance still
 awaits the user's visual check.
 
