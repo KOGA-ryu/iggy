@@ -6,6 +6,7 @@ import json
 from fractions import Fraction
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,105 @@ class BatchTests(unittest.TestCase):
         return argparse.Namespace(count=count, version=version, publish=publish, format_version=format_version, family=family,
             target=OPTIONS.target, model=OPTIONS.model, output=self.root / 'batches' / str(version),
             store=self.store, base_documents=ROOT / 'content/write')
+
+    def draft_args(self, family='linear'):
+        source=self.root/(family+' release')/'authoring'
+        if not source.exists():
+            version=2 if family=='matrix' else 1
+            args=self.args(family=family,version=version,format_version=version)
+            _,_,docs,author,audit=batch.BUILDERS[family](args)
+            export.write_tree(source,{'authoring.json':export.encoded(author),'audit.json':export.encoded(audit),
+                                     **{'documents/'+p:data for p,data in docs.items()}})
+        return argparse.Namespace(command='draft',source=source,target=OPTIONS.target,library=None,
+                                  output=self.root/(family+' editable draft'))
+
+    def test_drafts_copy_generated_families_and_reach_live_preview(self):
+        for family,questions in (('linear',12),('matrix',24)):
+            with self.subTest(family=family):
+                args=self.draft_args(family)
+                # An unused Markdown note and an old audit must not become runtime input or current evidence.
+                (args.source/'documents/unused.md').write_text('Not included in this chapter.\n')
+                source=export.capture(args.source)
+                if family=='linear':
+                    command=[sys.executable,'-B',str(ROOT/'tools/export_learning.py'),'draft',str(args.source),
+                             '--output',str(args.output),'--target',str(OPTIONS.target)]
+                    result=subprocess.run(command,capture_output=True,text=True,timeout=30)
+                    self.assertEqual(result.returncode,0,result.stderr)
+                    report=json.loads(result.stdout)
+                else:
+                    report=export.run(args)
+                self.assertFalse(report['published'])
+                self.assertTrue(report['preview_only'])
+                self.assertEqual(report['questions'],questions)
+                self.assertEqual(shlex.split(report['preview_command']),report['preview_argv'])
+                self.assertEqual(report['preview_argv'],[str(OPTIONS.target.resolve()),'--documents',
+                                 str(args.output/'documents'),'--watch-documents'])
+                copied=export.capture(args.output)
+                self.assertEqual(set(copied),{'draft.json'} | {p for p in source if p.startswith('documents/') and p!='documents/unused.md'})
+                for p,data in copied.items():
+                    if p!='draft.json':self.assertEqual(data,source[p])
+                origin=json.loads(copied['draft.json'])
+                self.assertEqual(origin['sources'],json.loads(source['authoring.json'])['sources'])
+                self.assertEqual(origin['origin_files'],export.inventory({p:d for p,d in copied.items() if p!='draft.json'}))
+                model=subprocess.run([str(OPTIONS.model),'--draft-preview',report['documents']],
+                                     capture_output=True,text=True,timeout=30)
+                self.assertEqual(model.returncode,0,model.stderr)
+                self.assertTrue(json.loads(model.stdout)['hint_reloaded'])
+                self.assertEqual(export.capture(args.source),source)
+                edited=Path(report['edit_files'][0]);edited.write_bytes(edited.read_bytes()+b'\n')
+                kept=export.capture(args.output)
+                with self.assertRaises(export.ExportError) as caught:export.run(args)
+                self.assertEqual(caught.exception.code,'draft.exists')
+                self.assertEqual(export.capture(args.output),kept)
+                self.assertFalse(self.store.exists())
+
+    def test_draft_includes_and_rejected_source_leave_inputs_intact(self):
+        args=self.draft_args()
+        file=args.source/'documents/positive_integer.paths.md';original=file.read_bytes()
+        fragment=file.parent/'parts/positive.inc.md';fragment.parent.mkdir()
+        fragment.write_bytes(original);file.write_text('@include parts/positive.inc.md\n')
+        report=export.run(args)
+        self.assertEqual((Path(report['documents'])/'parts/positive.inc.md').read_bytes(),original)
+        args.output=self.root/'invalid draft'
+        fragment.write_bytes(original.replace(b'@template linear.v1',b'@template linear.v99',1))
+        with self.assertRaises(export.ExportError) as caught:export.run(args)
+        self.assertEqual(caught.exception.code,'target.rejected')
+        self.assertEqual(caught.exception.diagnostics[0]['file'],'linear_repetitions/parts/positive.inc.md')
+        self.assertGreater(caught.exception.diagnostics[0]['line'],0)
+        self.assertFalse(args.output.exists())
+        fragment.write_bytes(original)
+        outside=self.root/'outside.md';outside.write_bytes(original);fragment.unlink();fragment.symlink_to(outside)
+        with self.assertRaises(export.ExportError) as caught:export.run(args)
+        self.assertEqual(caught.exception.code,'path.inventory')
+        self.assertFalse(args.output.exists())
+        self.assertEqual(outside.read_bytes(),original)
+
+    def test_draft_destination_guards_and_snapshot_capture(self):
+        args=self.draft_args();source=export.capture(args.source)
+        for output,code in ((args.source/'draft','path.overlap'),(args.source.parent/'draft','draft.location'),
+                            (ROOT/'build/question-batches/draft-guard','path.overlap'),
+                            (self.root/'custom store/generations/draft','draft.location')):
+            with self.subTest(output=output):
+                if 'custom store' in str(output):
+                    export.write_tree(self.root/'custom store',{'active.json':b'unchanged store sentinel'})
+                args.output=output
+                with self.assertRaises(export.ExportError) as caught:export.run(args)
+                self.assertEqual(caught.exception.code,code)
+                self.assertFalse(output.exists())
+                self.assertEqual(export.capture(args.source),source)
+        self.assertEqual((self.root/'custom store/active.json').read_bytes(),b'unchanged store sentinel')
+        alias=self.root/'alias';alias.symlink_to(self.root,target_is_directory=True);args.output=alias/'new draft'
+        with self.assertRaises(export.ExportError) as caught:export.run(args)
+        self.assertEqual(caught.exception.code,'path.symlink')
+        args.output=self.root/'captured draft';inspect=export.Target.inspect_bytes
+        entry=args.source/'documents/positive_integer.paths.md';original=entry.read_bytes()
+        def inspect_then_edit(target,documents):
+            result=inspect(target,documents)
+            entry.write_bytes(original.replace(b'@template linear.v1',b'@template linear.v99',1))
+            return result
+        with patch.object(export.Target,'inspect_bytes',inspect_then_edit):report=export.run(args)
+        self.assertEqual((Path(report['documents'])/entry.name).read_bytes(),original)
+        self.assertNotEqual(entry.read_bytes(),original)
 
     def test_arithmetic_diversity_and_stable_extension(self):
         questions = batch.generate(12)

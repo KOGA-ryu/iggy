@@ -1,5 +1,20 @@
 # Paths
 
+An [editable chapter draft](docs/LEARNING_EXPORTS.md#create-an-editable-preview-draft)
+is ready for **save Markdown → refresh the open app**:
+
+```sh
+./b/sorter --documents content/authoring/drafts/linear_practice/documents --watch-documents
+```
+
+Open **Algebra → Worked linear practice → Positive integers** and its first
+exercise. Edit the [draft Markdown](content/authoring/drafts/linear_practice/documents/positive_integer.paths.md),
+save, and open **purple Help → Hint** to check a changed `@hint` sentence.
+The cyan preview status confirms reload; invalid edits show a coral source error.
+Preview is session-only. Normal published questions and saved progress stay intact.
+The new `tools/export_learning.py draft SOURCE --output NEW_FOLDER` command creates
+more drafts and refuses to overwrite existing ones.
+
 **Library → Algebra → Worked linear practice** now adds 12 questions in the same
 template-driven format. Choose positive integers, negative coefficients, negative
 offsets, negative answers, zero as the answer, or fractions. Learn explains both
@@ -150,6 +165,12 @@ symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
 
+[Distance Geometry Lab](docs/P062_DISTANCE_GEOMETRY.md) reconstructs four-point
+shapes from six lengths, explains mirror ambiguity and rank, and identifies
+impossible distance combinations. Open
+`./b/math_lab --object distance --level 3 --object-preset 5 --set distance_mix=0`
+and press Play to see two line configurations mix into a planar one.
+
 [Probability Simplex Lab](docs/P061_PROBABILITY_SIMPLEX.md) turns three-outcome
 distributions into an editable triangle, entropy/variance surfaces, mixture
 chords and KL-divergence geometry. Open
@@ -264,7 +285,7 @@ cmake --build b --target sorter -j 6
 
 ## Interactive maths objects and linked diagrams
 
-The native `math_lab` now contains thirty-two objects. The original expansion cube,
+The native `math_lab` now contains thirty-three objects. The original expansion cube,
 unit circle, integration disks and binary graph remain available. The matrix
 object now has four working learning layers, and the new function and surface
 laboratories connect their geometry to interactive diagrams. Symmetry, harmonics
@@ -308,6 +329,7 @@ Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 | Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
 | Bridge & Truss Lab | Geometry/loads; tension/compression; joint equilibrium; rank and force limits |
 | Probability Simplex Lab | Distributions; entropy/variance; convex mixtures; information divergence |
+| Distance Geometry Lab | Distances; reconstruction/reflection; dimension/feasibility; the distance-matrix cone |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |
 | Boolean Solids Lab | Inside/outside fields; union/intersection/subtraction; smooth blends/normals; mesh and volume sampling |
 | Lathe Lab | Shape-preserving profiles; partial revolutions; disks/washers/shells; surface bands/normals |

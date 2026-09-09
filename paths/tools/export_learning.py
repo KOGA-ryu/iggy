@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -424,9 +425,45 @@ def disjoint(destination, inputs):
                     "path.overlap", f"Output and input roots overlap: {destination}, {source}")
 
 
+def draft(source, target, destination):
+    """Create a mutable preview from one independently compilable authoring package."""
+    destination = real_path(destination)
+    require(not destination.exists(), "draft.exists", f"Draft already exists; keep editing it or choose a new output: {destination}")
+    disjoint(destination, [source, target.path, target.library, ROOT / "build/question-batches",
+                          ROOT / "build/exports", ROOT / "content/write",
+                          target.path.parent / "content", target.path.parent / "learning-store"])
+    for parent in destination.parents:
+        require(not any((parent / name).exists() for name in
+                        ("authoring.json", "authoring/authoring.json", "bundle.json", "library.json", "active.json")),
+                "draft.location", f"Keep drafts outside authoring releases, exports and library stores: {parent}")
+    # The same compiler selects the complete include closure; no Markdown parser
+    # or published-library dependency is introduced for a session-only preview.
+    pack = prepare_pack(source, target, {})
+    bundle = decoded(pack["bundle.json"])
+    documents = {name: data for name, data in pack.items() if name.startswith("documents/")}
+    origin = dict(format="paths_learning_draft", format_version=1, preview_only=True,
+                  source=str(source), package_id=bundle["package_id"], package_version=bundle["package_version"],
+                  origin_files=inventory(documents), sources=decoded(pack["provenance.json"])["records"],
+                  note="Origin snapshot only, not validation of later edits. Preview does not publish or load personal progress.")
+    with locked(ROOT / "build/draft-locks" / (sha(str(destination).encode("utf-8")) + ".lock")):
+        require(not destination.exists(), "draft.exists", f"Draft already exists; it was not overwritten: {destination}")
+        immutable_directory(destination, {**documents, "draft.json": encoded(origin)})
+    command = [str(target.path), "--documents", str(destination / "documents"), "--watch-documents"]
+    if target.library:
+        command += ["--library", str(target.library)]
+    return dict(accepted=True, published=False, preview_only=True, draft=str(destination),
+                documents=str(destination / "documents"),
+                edit_files=[str(destination / name) for name in bundle["entry_documents"]],
+                questions=sum(e["kind"] == "question" for e in bundle["provides"]),
+                readings=sum(e["kind"] == "lesson" for e in bundle["provides"]),
+                target_sha256=target.fingerprint, preview_argv=command, preview_command=shlex.join(command))
+
+
 def run(args):
     target = Target(args.target, args.library)
     source = real_path(args.source)
+    if args.command == "draft":
+        return draft(source, target, args.output)
     store = real_path(args.store or target.path.parent / "learning-store")
     baseline = real_path(args.base_documents or target.path.parent / "content/write")
     disjoint(store, [source, baseline, target.library])
@@ -473,11 +510,14 @@ def run(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     subcommands = parser.add_subparsers(dest="command", required=True)
-    for verb in ("export", "publish", "install"):
+    for verb in ("export", "publish", "install", "draft"):
         command = subcommands.add_parser(verb)
         command.add_argument("source", type=Path, help="authoring folder" if verb != "install" else "portable export directory")
         command.add_argument("--target", type=Path, default=ROOT / "b/sorter")
         command.add_argument("--library", type=Path, help="explicit target base catalogue")
+        if verb == "draft":
+            command.add_argument("--output", type=Path, required=True, help="new editable preview folder; existing folders are never overwritten")
+            continue
         command.add_argument("--store", type=Path, help="defaults to learning-store beside the target")
         command.add_argument("--base-documents", type=Path, help="documents to retain on first publication")
         if verb != "install":

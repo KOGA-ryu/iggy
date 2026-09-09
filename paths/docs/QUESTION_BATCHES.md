@@ -7,6 +7,25 @@ question records and 942 reading records remain unchanged. Both families use
 one compilation, model-replay and publication path; generated appearance still
 awaits the user's visual check.
 
+## Edit generated wording in live preview
+
+The [draft command](LEARNING_EXPORTS.md#create-an-editable-preview-draft) copies
+one generated authoring package into a separate editable folder:
+
+```sh
+python3 -B tools/export_learning.py draft build/question-batches/linear_repetitions/1/authoring \
+  --output content/authoring/drafts/linear_practice
+./b/sorter --documents content/authoring/drafts/linear_practice/documents --watch-documents
+```
+
+This linear draft is already present; launch it with the second command.
+Edit its six `.paths.md` files, not the immutable files under
+`build/question-batches/`. Repeating draft creation never overwrites edits.
+The command prints absolute edit paths and the launch command, preserves source
+attribution, and copies only the compiler's entry/include closure. Preview is
+session-only; it does not publish or load personal progress. Once a wording
+change is approved, it can be applied to the shared template for future batches.
+
 ## Linear equations
 
 Build and publish from the Paths root:

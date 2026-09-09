@@ -7,6 +7,7 @@
 #include "runtime/math_objects/PatchGeometry.hpp"
 #include "runtime/math_objects/Truss.hpp"
 #include "runtime/math_objects/Simplex.hpp"
+#include "runtime/math_objects/DistanceGeometry.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -389,7 +390,19 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::SimplexValue2,MathObjectKind::Simplex,"simplex_value_c","Outcome C value",-3,3,.1,1},
   {MathParameter::SimplexFunction,MathObjectKind::Simplex,"simplex_function","Surface function",0,3,1,1,0,false,"Expected value\0Entropy\0Negative entropy\0Variance\0"},
   {MathParameter::SimplexMix,MathObjectKind::Simplex,"simplex_mix","Mixture toward Q",0,1,.01,.5},
-  {MathParameter::SimplexGuides,MathObjectKind::Simplex,"simplex_guides","Construction guides",0,1,1,1,0,false,"Surface and markers\0Show construction\0"}
+  {MathParameter::SimplexGuides,MathObjectKind::Simplex,"simplex_guides","Construction guides",0,1,1,1,0,false,"Surface and markers\0Show construction\0"},
+  {MathParameter::DistanceAB,MathObjectKind::Distance,"distance_ab","Length AB",0,4,.01,2},
+  {MathParameter::DistanceAC,MathObjectKind::Distance,"distance_ac","Length AC",0,4,.01,2},
+  {MathParameter::DistanceAD,MathObjectKind::Distance,"distance_ad","Length AD",0,4,.01,2},
+  {MathParameter::DistanceBC,MathObjectKind::Distance,"distance_bc","Length BC",0,4,.01,2},
+  {MathParameter::DistanceBD,MathObjectKind::Distance,"distance_bd","Length BD",0,4,.01,2},
+  {MathParameter::DistanceCD,MathObjectKind::Distance,"distance_cd","Length CD",0,4,.01,2},
+  {MathParameter::DistanceEdge,MathObjectKind::Distance,"distance_edge","Inspect edge",0,5,1,0,0,false,"AB\0AC\0AD\0BC\0BD\0CD\0"},
+  {MathParameter::DistanceMirror,MathObjectKind::Distance,"distance_mirror","Reconstruction side",0,1,1,0,0,false,"Canonical\0Reflected\0"},
+  {MathParameter::DistanceSecond,MathObjectKind::Distance,"distance_second","Second distance matrix",0,4,1,3,0,false,"Regular tetrahedron\0Square\0Line\0Different line\0Coincident points\0"},
+  {MathParameter::DistanceMix,MathObjectKind::Distance,"distance_mix","Mixture toward second",0,1,.01,0},
+  {MathParameter::DistanceScale,MathObjectKind::Distance,"distance_scale","Squared-distance multiplier",0,4,.05,1},
+  {MathParameter::DistanceGuides,MathObjectKind::Distance,"distance_guides","Construction guides",0,1,1,1,0,false,"Object only\0Show construction\0"}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -531,7 +544,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Simplex,"simplex","Probability Simplex Lab","Explore distributions as geometry",
    "p_A + p_B + p_C = 1; r(t) = (1-t)*P + t*Q","Make the mixture uniform across the three outcomes.",
    "The horizontal triangle is the complete three-outcome probability simplex. A and B are editable; C is the remainder. Teal is P, violet is Q, gold is their mixture. Height represents the selected function with the stated display scale. Logs are natural; entropy and KL use nats. Play changes mixture amount, not random samples or physical time.",
-   {"Represent probability distributions with barycentric coordinates.","Compare expectation, entropy, variance and convex mixtures.","Explore relative entropy, supporting planes and zero-probability boundaries."},{.45F,1.1F,1},.12,"Restart mixture","Mixture reached Q. Restart or scrub the mixture amount."}
+   {"Represent probability distributions with barycentric coordinates.","Compare expectation, entropy, variance and convex mixtures.","Explore relative entropy, supporting planes and zero-probability boundaries."},{.45F,1.1F,1},.12,"Restart mixture","Mixture reached Q. Restart or scrub the mixture amount."},
+  {MathObjectKind::Distance,"distance","Distance Geometry Lab","Reconstruct shape from distances",
+   "D_ij = length(i,j)^2; G_ij = (D_Ai + D_Aj - D_ij)/2","Build a nonflat tetrahedron whose six lengths agree with its reconstruction.",
+   "Four labelled points and six ordinary length controls. The matrix stores SQUARED lengths. A positive semidefinite anchored Gram matrix gives a Euclidean reconstruction; its numerical rank gives the minimum dimension. Distances leave translations, rotations and reflections undetermined. An invalid request shows six separate length bars, never a fabricated tetrahedron.",
+   {"Connect lengths, a distance matrix and a tetrahedron.","Reconstruct coordinates and explore rank and mirror ambiguity.","Find impossible distances and mix matrices inside a convex cone."},{1,.7F,1},.12,"Restart distance mixture","Mixture reached the second matrix. Restart or scrub the mixture."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -670,6 +687,21 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> distanceLessons{{
+  {"Lengths and squared distances","D_ij=||x_i-x_j||^2; D_ii=0; D_ij=D_ji","Build a realizable three-dimensional tetrahedron with volume above 0.1 and reconstruction error below 1e-8.","Change any of the six lengths. The gold edge follows Inspect edge. The table stores each length squared, with zero diagonal and matching entries across it. Six arbitrary lengths need not fit together: if they do not, the scene shows separate requested lengths. Coincident labels are allowed, so zero lengths can describe valid lower-dimensional configurations."},
+  {"Coordinates and mirror ambiguity","G_ij=x_i dot x_j=(D_Ai+D_Aj-D_ij)/2, with A=0","Reflect a nonflat tetrahedron while keeping all six reconstructed squared distances within 1e-8 of the inputs.","The three-by-three Gram matrix uses B,C,D relative to A. Its square root reconstructs coordinates; the point table is shown as a second matrix with B,C,D rows and XYZ columns. Axes follow a deterministic pivot convention, so a pivot change may change the displayed orientation. Reflected flips Z. With guides on, the alternative embedding appears in violet. Distances cannot determine handedness."},
+  {"Dimension and impossible distances","Euclidean distances iff G is positive semidefinite; minimum dimension=rank(G)","Find lengths that pass every face triangle inequality but have no common Euclidean embedding.","Regular tetrahedron, square, line and coincident points have dimensions three, two, one and zero. The feasibility test uses a relative eigenvalue tolerance; reconstruction error exposes discarded numerical modes. Impossible tetrahedron passes the face inequalities but has a negative Gram direction. A unit zero-sum witness x gives x^T D x>0, contradicting the distance-matrix condition. Its four coefficients are shown in the plot."},
+  {"The convex cone of distance matrices","D(t)=s*((1-t)*D_first+t*D_second), with s>=0","Mix two realizable one-dimensional configurations into a two-dimensional one at an interior mixture and positive scale.","Controls edit the FIRST matrix's ordinary lengths. Second matrix selects another configuration. The table and shape show the scaled mixture of SQUARED distances; lengths follow its square roots. Play changes t. The convex-cone guarantee applies when both inputs are realizable. Scaling squared distances by s scales lengths by sqrt(s). Zero scale collapses all points. Mixing can increase the embedding dimension; two distinct line configurations can form a plane."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> distancePresetParameters{MathParameter::DistanceAB,MathParameter::DistanceAC,MathParameter::DistanceAD,MathParameter::DistanceBC,MathParameter::DistanceBD,MathParameter::DistanceCD,MathParameter::DistanceEdge,MathParameter::DistanceMirror,MathParameter::DistanceSecond,MathParameter::DistanceMix,MathParameter::DistanceScale,MathParameter::DistanceGuides};
+constexpr std::array<MathObjectPreset,6> distancePresets{{
+  {"Regular tetrahedron",distancePresetParameters,{2,2,2,2,2,2,0,0,3,0,1,1},12},
+  {"Planar square",distancePresetParameters,{2,2.8284271247461903,2,2,2.8284271247461903,2,0,0,0,0,1,1},12},
+  {"Collinear points",distancePresetParameters,{1,2,3,1,2,1,0,0,3,0,1,1},12},
+  {"Coincident points",distancePresetParameters,{0,0,0,0,0,0,0,0,0,0,1,1},12},
+  {"Impossible tetrahedron",distancePresetParameters,{2,2,1.1,2,1.1,1.1,2,0,0,0,1,1},12},
+  {"Dimension from mixing",distancePresetParameters,{1,2,3,1,2,1,0,0,3,.5,1,1},12}
 }};
 constexpr std::array<MathLesson,4> simplexLessons{{
   {"Distributions as positions","p_A+p_B+p_C=1; E[X]=sum p_i*a_i","Make all three mixture probabilities equal within 0.005.","Each corner assigns probability one to a named outcome; an edge excludes one outcome. Set A and B with the paired controls; C is their remainder. Each slider stops where A+B=1. The table lists P, Q and their gold mixture. Outcome values affect expectation and variance; equal values are allowed, and entropy still describes the three named categories."},
@@ -1353,6 +1385,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Rigid:return rigidLessons;
     case MathObjectKind::Truss:return trussLessons;
     case MathObjectKind::Simplex:return simplexLessons;
+    case MathObjectKind::Distance:return distanceLessons;
     default:return {};
   }
 }
@@ -1371,6 +1404,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Rigid:return rigidPresets;
     case MathObjectKind::Truss:return trussPresets;
     case MathObjectKind::Simplex:return simplexPresets;
+    case MathObjectKind::Distance:return distancePresets;
     default:return {};
   }
 }
@@ -1384,6 +1418,7 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
   switch(p) {
+    case MathParameter::DistanceSecond:case MathParameter::DistanceMix:case MathParameter::DistanceScale:return snapshot_.level==3;
     case MathParameter::SimplexFunction:return snapshot_.level==1||snapshot_.level==2;
     case MathParameter::RigidBalance:return parameter(MathParameter::RigidShape)==1||parameter(MathParameter::RigidShape)==3;
     case MathParameter::BooleanBlend:return parameter(MathParameter::BooleanOperation)==3;
@@ -1442,6 +1477,7 @@ MathParameter MathObjects::playbackParameter() const {
     case MathObjectKind::Rigid:return MathParameter::RigidTime;
     case MathObjectKind::Truss:return MathParameter::TrussPosition;
     case MathObjectKind::Simplex:return MathParameter::SimplexMix;
+    case MathObjectKind::Distance:return snapshot_.level==3?MathParameter::DistanceMix:MathParameter::Count;
     case MathObjectKind::Oscillator:return MathParameter::MotionTime;
     case MathObjectKind::VectorField:return MathParameter::FieldTime;
     case MathObjectKind::Flux:return MathParameter::FluxTime;
@@ -1469,7 +1505,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1870,6 +1906,13 @@ void MathObjects::check() {
         case 1:solved=parameter(MathParameter::SimplexFunction)==1&&measured("Entropy")>=.99*std::log(3.);good="Yes: uncertainty is near its maximum at the uniform distribution.";bad="Choose Entropy and move the mixture close to the triangle centre.";break;
         case 2:solved=parameter(MathParameter::SimplexFunction)==2&&parameter(MathParameter::SimplexMix)>0&&parameter(MathParameter::SimplexMix)<1&&measured("Chord - surface")>.1;good="Yes: the convex negative-entropy surface lies strictly below this chord.";bad="Choose Mix two certainties and keep the mixture between its endpoints.";break;
         case 3:solved=measured("KL(P||Q) finite")==1&&measured("KL(Q||P) finite")==1&&std::fabs(measured("KL(P||Q)")-measured("KL(Q||P)"))>.1;good="Yes: swapping the distributions changes KL, even though both values are finite.";bad="Try Asymmetric information. Both distributions must give finite KL in each direction.";break;
+      }break;
+    case MathObjectKind::Distance:
+      switch(snapshot_.level){
+        case 0:solved=measured("Realizable")==1&&measured("Embedding dimension")==3&&measured("Tetrahedron volume")>.1&&measured("Squared-distance residual")<1e-8;good="Yes: the reconstructed tetrahedron realizes all six requested distances.";bad="Use Regular tetrahedron or find another nonflat realizable shape.";break;
+        case 1:solved=measured("Realizable")==1&&measured("Embedding dimension")==3&&parameter(MathParameter::DistanceMirror)==1&&measured("Squared-distance residual")<1e-8;good="Yes: the reflection preserves every distance while changing handedness.";bad="Choose a nonflat tetrahedron and set Reconstruction side to Reflected.";break;
+        case 2:solved=measured("Realizable")==0&&measured("Face triangles pass")==1&&measured("Witness x^T D x")>1e-8;good="Yes: each face is a valid triangle, but the positive zero-sum witness rules out a common Euclidean shape.";bad="Choose Impossible tetrahedron and inspect the negative Gram eigenvalue.";break;
+        case 3:solved=measured("First realizable")==1&&measured("Second realizable")==1&&measured("First dimension")==1&&measured("Second dimension")==1&&measured("Realizable")==1&&measured("Embedding dimension")==2&&parameter(MathParameter::DistanceMix)>0&&parameter(MathParameter::DistanceMix)<1&&parameter(MathParameter::DistanceScale)>0;good="Yes: this interior mixture of line distance matrices requires a plane.";bad="Choose Dimension from mixing, keep a positive multiplier and move between the endpoints.";break;
       }break;
     case MathObjectKind::Count:return;
   }
@@ -3367,6 +3410,53 @@ void MathObjects::rebuild() {
           tangent.hasMarker=true;tangent.marker={t,simplexFunction(F::NegativeEntropy,mix,outcomes)};
           b.metric("Surface - tangent",simplexFunction(F::NegativeEntropy,mix,outcomes)-simplexEntropyTangent(mix,q),"nats");
         }else b.label("No full-simplex tangent at boundary Q",{0,3.2F,0},white);
+      }
+      break;
+    }
+    case MathObjectKind::Distance: {
+      using P=MathParameter;const unsigned level=snapshot_.level,selected=static_cast<unsigned>(parameter(P::DistanceEdge));
+      const bool guides=parameter(P::DistanceGuides)==1,mirror=parameter(P::DistanceMirror)==1;
+      DistanceEdges first{};for(unsigned i=0;i<6;++i){const double length=parameter(static_cast<P>(index(P::DistanceAB)+i));first[i]=length*length;}
+      const auto second=distanceExample(static_cast<unsigned>(parameter(P::DistanceSecond)));
+      const double t=level==3?parameter(P::DistanceMix):0,scale=level==3?parameter(P::DistanceScale):1;
+      const auto distances=level==3?mixDistances(first,second,t,scale):first;
+      const auto analysis=analyzeDistances(distances,mirror);
+      constexpr std::array<std::string_view,4> names{"A","B","C","D"};
+      constexpr std::array<std::string_view,6> edges{"AB","AC","AD","BC","BD","CD"};
+      constexpr std::array<Vec3,4> colors{coral,teal,blue,violet};
+      b.table(level==3?"Mixed SQUARED-distance matrix":"SQUARED-distance matrix (controls are ordinary lengths)",names,4);
+      for(unsigned i=0;i<4;++i)b.row(names[i],{analysis.squared[4*i],analysis.squared[4*i+1],analysis.squared[4*i+2],analysis.squared[4*i+3]});
+      b.metric("Realizable",analysis.realizable);b.metric("Face triangles pass",analysis.trianglesPass);b.metric("Smallest Gram eigenvalue",analysis.eigenvalues[2]);b.metric("Rank tolerance",analysis.tolerance);
+      if(level>=1)b.matrix("Anchored Gram G: B,C,D relative to A",analysis.gram);
+      if(analysis.realizable){
+        b.metric("Embedding dimension",analysis.dimension);b.metric("Tetrahedron volume",analysis.volume);b.metric("Squared-distance residual",analysis.reconstructionError);
+        std::array<Vec3,4> points{};Vec3 centre{};for(unsigned i=0;i<4;++i){const auto& p=analysis.points[i];points[i]={static_cast<float>(p[0]),static_cast<float>(p[1]),static_cast<float>(p[2])};centre=centre+points[i]*.25F;}for(auto& point:points)point=point-centre;
+        if(analysis.dimension==3){
+          auto& mesh=snapshot_.solid;constexpr std::array<std::array<unsigned,3>,4> faces{{{0,1,2},{0,1,3},{0,2,3},{1,2,3}}};
+          for(unsigned f=0;f<4;++f){auto face=faces[f];auto normal=cross(points[face[1]]-points[face[0]],points[face[2]]-points[face[0]]);const auto midpoint=(points[face[0]]+points[face[1]]+points[face[2]])*(1/3.F);if(dot(normal,midpoint)<0){std::swap(face[1],face[2]);normal=normal*-1;}normal=length(normal)>1e-12F?normalized(normal):Vec3{0,1,0};for(auto v:face){mesh.vertices[mesh.vertexCount]={points[v],normal,colors[f]*.62F+white*.12F};mesh.indices[mesh.indexCount++]=static_cast<std::uint16_t>(mesh.vertexCount++);}}
+        }
+        for(unsigned e=0;e<6;++e){const auto ij=distancePairs[e];b.rod(points[ij[0]],points[ij[1]],e==selected?gold:muted,e==selected?.035F:.018F,"distance_edge");if(guides&&e==selected)b.label(edges[e],(points[ij[0]]+points[ij[1]])*.5F+Vec3{0,.16F,0},gold);}
+        for(unsigned i=0;i<4;++i){b.scaled(MathShape::Sphere,points[i],{.12F,.12F,.12F},colors[i],"distance_point");if(analysis.dimension)b.label(names[i],points[i]+Vec3{0,.2F,0},colors[i]);}
+        if(!analysis.dimension)b.label("A = B = C = D",{0,.25F,0},gold);
+        if(level==1){Matrix coordinates{};for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)coordinates[3*i+j]=analysis.points[i+1][j];b.matrix("Coordinates: B,C,D rows; X,Y,Z columns; A=0",coordinates);b.metric("Eigenpair residual",analysis.eigenResidual);
+          if(guides&&analysis.dimension==3){const auto opposite=analyzeDistances(distances,!mirror);for(unsigned e=0;e<6;++e){const auto ij=distancePairs[e];Vec3 a{},c{};const auto place=[&](unsigned i){const auto& p=opposite.points[i];return Vec3{static_cast<float>(p[0]),static_cast<float>(p[1]),static_cast<float>(p[2])}-centre;};a=place(ij[0]);c=place(ij[1]);if(length(a-points[ij[0]])+length(c-points[ij[1]])>1e-6F)b.rod(a,c,violet,.015F,"distance_mirror_edge");}b.label("Violet: same distances, opposite reflection",{0,2.5F,0},violet);}
+          if(guides){const float extent=.35F*static_cast<float>(std::sqrt(analysis.scale));b.arrow(points[0],points[0]+Vec3{extent,0,0},coral,"reconstruction_x");b.arrow(points[0],points[0]+Vec3{0,extent,0},teal,"reconstruction_y");b.arrow(points[0],points[0]+Vec3{0,0,extent},blue,"reconstruction_z");}
+        }
+      }else{
+        b.label("No common Euclidean embedding",{0,2.6F,0},coral);b.label("Six separate requested lengths",{0,2.25F,0},white);
+        for(unsigned e=0;e<6;++e){const float y=1.65F-.6F*e;const Vec3 a{-2,y,0},c{-2+static_cast<float>(std::sqrt(distances[e])),y,0};b.rod(a,c,e==selected?gold:coral,.026F,"unassembled_distance");b.scaled(MathShape::Sphere,a,{.065F,.065F,.065F},muted,"length_endpoint");b.scaled(MathShape::Sphere,c,{.065F,.065F,.065F},coral,"length_endpoint");b.label(edges[e],a+Vec3{-.3F,0,0},white);}
+        b.metric("Witness x^T D x",analysis.witnessValue);
+      }
+      if(level==2){b.metric("Minimum triangle slack",analysis.minTriangleSlack);if(!analysis.realizable){double sum=0;for(double x:analysis.witness)sum+=x;b.metric("Witness sum",sum);auto& plot=b.plot("Zero-sum impossibility witness: A B C D");auto& line=plot.series[plot.seriesCount++];line={};line.name="Witness coefficients";line.color=coral;line.count=4;line.stems=true;for(unsigned i=0;i<4;++i)line.points[i]={static_cast<double>(i+1),analysis.witness[i]};}}
+      auto& lengthPlot=b.plot("Six ordinary lengths: AB AC AD BC BD CD");auto& line=lengthPlot.series[lengthPlot.seriesCount++];line={};line.name="Lengths";line.color=gold;line.count=6;line.stems=true;for(unsigned e=0;e<6;++e)line.points[e]={static_cast<double>(e+1),std::sqrt(distances[e])};lengthPlot.hasMarker=true;lengthPlot.marker={static_cast<double>(selected+1),std::sqrt(distances[selected])};
+      if(level==0){auto& plot=b.plot("Six squared lengths: entries of D");auto& series=plot.series[plot.seriesCount++];series={};series.name="Squared lengths";series.color=blue;series.count=6;series.stems=true;for(unsigned e=0;e<6;++e)series.points[e]={static_cast<double>(e+1),distances[e]};}
+      if(level==2){auto& plot=b.plot("Eigenvalues of the anchored Gram matrix");auto& series=plot.series[plot.seriesCount++];series={};series.name="Gram eigenvalues";series.color=blue;series.count=3;series.stems=true;for(unsigned i=0;i<3;++i)series.points[i]={static_cast<double>(i+1),analysis.eigenvalues[i]};}
+      if(level==3){
+        const auto a=analyzeDistances(first),c=analyzeDistances(second);b.metric("First realizable",a.realizable);b.metric("Second realizable",c.realizable);if(a.realizable)b.metric("First dimension",a.dimension);if(c.realizable)b.metric("Second dimension",c.dimension);b.metric("Squared-distance multiplier",scale);
+        b.label(a.realizable&&c.realizable?"Both inputs lie in the distance-matrix cone":"First input is outside the cone; closure guarantee does not apply",{0,2.9F,0},a.realizable&&c.realizable?teal:coral);
+        auto& plot=b.plot("Gram eigenvalues through the squared-distance mixture",P::DistanceMix);plot.seriesCount=3;constexpr std::array<std::string_view,3> eigenNames{"Largest","Middle","Smallest"};for(unsigned k=0;k<3;++k){plot.series[k]={};plot.series[k].name=eigenNames[k];plot.series[k].color=colors[k];plot.series[k].count=129;}
+        for(unsigned i=0;i<=128;++i){const double u=i/128.;const auto sample=analyzeDistances(mixDistances(first,second,u,scale));for(unsigned k=0;k<3;++k)plot.series[k].points[i]={u,sample.eigenvalues[k]};}plot.hasMarker=true;plot.marker={t,analysis.eigenvalues[2]};
+        auto& edgePlot=b.plot("Selected SQUARED distance is affine in mixture amount",P::DistanceMix);b.curve(edgePlot,edges[selected],gold,0,1,[&](double u){return scale*((1-u)*first[selected]+u*second[selected]);});edgePlot.hasMarker=true;edgePlot.marker={t,distances[selected]};
       }
       break;
     }

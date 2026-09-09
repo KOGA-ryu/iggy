@@ -6,6 +6,14 @@ content, UI, solving, persistence, the content pipeline and figure integration.
 The separate worker builds 3D assets/models. This division assigns implementation
 responsibility; the canonical mathematical and state owners below remain intact.
 
+`export_learning.py draft` reuses the package capture, compiler-selected include
+closure and staged directory writer to create a fresh editable preview. Its
+origin record preserves attribution and original file hashes; old audit and
+publication receipts are excluded. Existing destinations and release/store
+locations are rejected. Draft creation does not load an active store, and its
+printed launch command uses the existing session-only `LearningDocumentPreview`
+route. No runtime owner, parser, checker or persistence route was added.
+
 The batch producer now selects matrix or linear authoring through a small family
 table, then runs one shared compiler/model/export path. Linear authoring reuses
 `question_workflow.py` for bounded instance construction and independent arithmetic
@@ -142,6 +150,14 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P062](P062_DISTANCE_GEOMETRY.md) adds `distance`. `DistanceGeometry` owns
+four-point squared-distance matrices, normalized Gram analysis, reconstruction,
+rank and zero-sum impossibility certificates. `MathObjects` projects valid
+embeddings or explicitly separate requested-length bars. The cone layer mixes
+squared-distance matrices through the same kernel. Twelve appended controls
+reuse the existing compact rows and playback route; no renderer or learning-state
+ownership changes.
 
 [P061](P061_PROBABILITY_SIMPLEX.md) adds `simplex`. `Simplex` owns normalized
 three-outcome mixtures, moments, entropy and support-aware relative entropy.

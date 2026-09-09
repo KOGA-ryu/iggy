@@ -6,6 +6,60 @@ local app connection and reusable lesson bindings. It contains staged TODOs and
 acceptance checks. This is planning only; implementation has not started and the
 current question/audit queue is unchanged.
 
+## Editable chapter drafts through the existing exporter
+
+**Built; a 12-question linear draft is ready for the user's visual check.**
+`export_learning.py draft SOURCE --output NEW_FOLDER` captures an authoring
+package through the existing compiler, copies its entry/include closure and
+prints absolute edit paths plus the shell-quoted live-preview command. It
+preserves source attribution in an origin snapshot, without carrying forward a
+generator audit or publication receipt. Existing drafts are never overwritten.
+Source overlap, symlinks and destinations inside releases/stores are rejected.
+
+The canonical transport owner remains `export_learning.py`; it reuses
+`prepare_pack`, `Target`, capture, locking and staged directory writing.
+`LearningDocuments`, `LearningDocumentPreview` and `CorpusPractice` retain all
+compilation, reload, answer and session ownership. No competing parser or runtime
+route was added, and no existing live route needed deletion.
+
+The draft lives at `content/authoring/drafts/linear_practice`: six editable
+Markdown documents with 12 questions, plus `draft.json` recording the original
+source and attribution. It is an independent preview, not a publishable release.
+Changes to teaching start separate in-memory revisions; reverting source restores
+the matching preview attempt. Normal published progress is not read or written.
+
+Release `sorter` and `paths_learning_document_tests` build. The targeted document
+test passes, and the final shared batch suite passes all 13 tests. One new matrix
+fixture initially supplied package version 1 for format 2; correcting that test
+setup produced a passing rerun. An existing export/publish/reinstall regression
+also passes. No native UI or font-rasterization test was run.
+
+New checks cover both generated families, include closure, old-audit exclusion,
+source attribution, shell quoting, edited-draft preservation, rejected source
+locations, source/output boundaries, symlinks and capture consistency. The real
+watcher/model verifies a saved Hint edit, retention on rejection, error recovery,
+earlier choices/Undo restoration and checked completion held until Next. The
+actual created linear draft also passes this probe using an isolated temporary
+copy. Its on-disk source still exactly matches the generated originals.
+
+All bytes in the active library store and both source releases remain unchanged.
+The published catalogue is still 354 questions, 948 readings, 187 chapters and
+8 subjects. Runtime C++ delta is zero; authoring Python changes +41/-1 lines
+(net +40) in one existing file, with no new production code files. Two existing
+test files gain 142 lines. Seven editable content/origin files add 1,248 lines.
+Changes remain uncommitted. Evidence: `build/chapter-draft-evidence/verification.json`.
+No windows, screenshots, captures, images or font probes were used.
+
+Manual check: launch `b/sorter --documents
+content/authoring/drafts/linear_practice/documents --watch-documents`, open
+**Algebra → Worked linear practice → Positive integers** and Exercise 1. Edit
+the first `@hint` sentence in `documents/positive_integer.paths.md` and save.
+The cyan preview status should refresh, and purple Help → Hint should show the
+new words. Gold Given and cyan Working/choices stay beside one another. Preview
+attempts are session-only; launch normally to resume published progress.
+Next candidate: use the draft to settle one wording/layout improvement, then
+apply the accepted wording to the reusable template for future questions.
+
 ## Worked linear practice through the shared batch pipeline
 
 **Built and locally published; generated appearance awaits the user's visual check.**
@@ -450,6 +504,20 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## P062: distance geometry assets
+
+The user authorized continuing the math assets after the simplex.
+[Distance Geometry Lab](P062_DISTANCE_GEOMETRY.md), based on card 099, is the
+33rd object. Four layers connect six lengths, the distance matrix, reconstructed
+coordinates, reflection, rank, feasibility and convex-cone mixing. Six examples
+include valid faces that cannot assemble into a tetrahedron and two line
+configurations whose mixture needs a plane. The packet records the bounded
+numerical contract and verification.
+
+This is one asset family. Textbook integration remains with its current owner;
+source cards and learner state are unchanged. Work stays uncommitted and checks
+use CPU/text only, with no images or windows.
 
 ## P061: probability simplex assets
 

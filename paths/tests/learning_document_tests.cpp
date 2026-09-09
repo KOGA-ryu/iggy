@@ -135,6 +135,45 @@ void livePreview(const Path& folder) {
   expect(rejected && bounded.questions()[0].stamp==finalQuestion.stamp,"History bound rejects before replacing the current preview");
   std::cout<<"LIVE_DOCUMENT_PREVIEW {\"stable_bytes\":true,\"invalid_retained\":true,\"source_locations\":true,\"revision_attempts\":true,\"save_protected\":true,\"windows\":0}\n";
 }
+Json draftPreview(const Path& source,const Path& folder) {
+  const auto root=folder/"draft";std::filesystem::copy(source,root,std::filesystem::copy_options::recursive);
+  Fixture base;auto corpus=base.corpus;CorpusPractice p(base.bank);LearningDocumentPreview preview(root,base.corpus,base.bank);
+  auto now=LearningDocumentPreview::Clock::time_point{};
+  const auto tick=[&]{now+=std::chrono::milliseconds(250);return preview.poll(corpus,p,now);};
+  const auto reload=[&]{expect(!tick(),"Draft edit waits for settled bytes");return tick();};
+  expect(tick(),"Copied draft compiles through the live watcher");
+  std::string id;Path file;const auto report=Json::parse(preview.report().reportJson);
+  for(const auto& e:report["entities"])if(e["kind"]=="question") {
+    const auto& q=p.questions()[question(p.questions(),e["id"])];
+    if(q.question.support && !q.question.steps.front().hint.empty()){id=q.id;file=root/e["source"]["file"].get<std::string>();break;}
+  }
+  expect(!id.empty(),"Generated draft contains authored support");p.open(question(p.questions(),id));
+  const auto q=p.active()->content();const auto original=read(file);
+  const auto send=[&](fm::SupportAction action,unsigned value=0){expect(p.dispatch(support(p,action,{},value)),"Draft action reaches canonical session");};
+  send(fm::SupportAction::SelectLevel,1);const auto& first=q.steps.front();const auto correct=fm::firstAcceptedOption(first);
+  send(fm::SupportAction::Choose,first.options[(correct+1)%first.options.size()].id.value);
+  send(fm::SupportAction::Choose,first.options[correct].id.value);send(fm::SupportAction::Undo);
+  const auto journal=p.active()->journal().size();const auto working=p.active()->supportView()->working;
+  const std::string hint="Draft check: compare both sides before choosing the operation.";
+  const auto edited=replace(original,first.hint,hint);write(file,edited);
+  expect(reload() && p.active()->supportView()->level==fm::SupportLevel::Practice,"Edited teaching starts a separate preview at the selected level");
+  send(fm::SupportAction::ReadHelp,2);expect(p.active()->supportView()->reading==hint,"Saved Markdown reaches the actual Hint projection");
+  send(fm::SupportAction::Choose,first.options[correct].id.value);
+  const auto changedWorking=p.active()->supportView()->working;const auto changedJournal=p.active()->journal().size();
+  write(file,replace(edited,"@template ","@template invalid_"));
+  expect(!reload() && !preview.report().accepted,"Malformed draft is rejected");
+  const auto diagnostic=Json::parse(preview.report().reportJson)["diagnostics"][0];
+  expect(diagnostic["file"]==file.lexically_relative(root).generic_string() && diagnostic["line"].get<unsigned>()>0,"Draft rejection identifies the editable source line");
+  expect(p.active()->supportView()->working==changedWorking && p.active()->journal().size()==changedJournal,"Rejected draft retains the usable working and attempt");
+  write(file,edited);expect(reload(),"Correcting the draft clears the error");
+  write(file,original);expect(reload(),"Restoring source reopens the original preview revision");
+  expect(p.active()->journal().size()==journal && p.active()->supportView()->working==working,"Original choices and Undo branch return with their revision");
+  for(const auto& step:q.steps)send(fm::SupportAction::Choose,step.options[fm::firstAcceptedOption(step)].id.value);
+  expect(p.active()->currentRun().completed && !p.active()->supportView()->verification.empty(),"Restored draft solves to checked completion");
+  expect(!p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Draft completion waits for Next");
+  return {{"accepted",true},{"question_id",id},{"hint_reloaded",true},{"invalid_retained",true},
+          {"revision_restored",true},{"completed",true},{"windows",0}};
+}
 Json referenceCard(const Path& source,const Path& folder) {
   Fixture f;const auto imported=f.load(source);expect(imported.accepted,imported.message);
   expect(imported.questions==1 && imported.lessons==1,"Reference contains one question and its neutral reading");
@@ -668,6 +707,9 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==3 && std::string_view(argv[1])=="--draft-preview") {
+      std::filesystem::create_directories(folder);const auto result=draftPreview(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==4 && std::string_view(argv[1])=="--question-batch-upgrade") {
       std::filesystem::create_directories(folder);questionBatchUpgrade(argv[2],argv[3],folder);std::filesystem::remove_all(folder);return 0;
     }

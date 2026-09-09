@@ -14,7 +14,7 @@ const auto& metadata(){
     for(const auto& p:mathParameterSpecs())result[index(p.id)]={p.minimumLevel>=2?G::Advanced:G::Shape,p.label};
     const auto range=[&](P a,P b,G g){for(unsigned i=index(a);i<=index(b);++i)result[i].group=g;};
     const auto group=[&](G g,std::initializer_list<P> params){for(auto p:params)result[index(p)].group=g;};
-    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides,P::TrussGuides,P::SimplexGuides});
+    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides,P::TrussGuides,P::SimplexGuides,P::DistanceGuides});
     group(G::Sampling,{P::Slices,P::Sample,P::DeltaX,P::TaylorDegree,P::HarmonicTerms,P::FluxResolution,P::ProbabilitySeed,P::BinomialSeed,P::LatheSlices,P::LatheMethod,P::BooleanResolution,P::PatchResolution,P::MembraneResolution});
     group(G::Operation,{P::Shortcut,P::IntegralStart,P::ComposeAngle,P::SvdStage,P::DescentRate,P::Constraint,P::GaussianOperation,P::GaussianQuotient,P::FluxOrientation,P::TensorBasis,P::CloudWhiten,P::NormSupport,P::BooleanOperation,P::BooleanBlend});
     range(P::VectorX,P::VectorZ,G::Probe);range(P::SurfaceU,P::DirectionAngle,G::Probe);range(P::FieldX,P::FieldPitch,G::Probe);
@@ -31,6 +31,7 @@ const auto& metadata(){
     range(P::RigidRotX,P::RigidRotZ,G::Transform);range(P::RigidSpinX,P::RigidTime,G::Animation);group(G::Probe,{P::RigidAxis});
     range(P::TrussJoint,P::TrussP5Y,G::Profile);group(G::Animation,{P::TrussPosition});range(P::TrussLoadX,P::TrussLoadY,G::Operation);group(G::Operation,{P::TrussBrace,P::TrussSupports});group(G::Probe,{P::TrussMember});range(P::TrussTensionLimit,P::TrussCompressionLimit,G::Advanced);
     range(P::SimplexP0,P::SimplexP1,G::ShapeA);range(P::SimplexQ0,P::SimplexQ1,G::ShapeB);range(P::SimplexValue0,P::SimplexValue2,G::Shape);group(G::Operation,{P::SimplexFunction});group(G::Animation,{P::SimplexMix});
+    range(P::DistanceAB,P::DistanceCD,G::Shape);group(G::Probe,{P::DistanceEdge});group(G::Transform,{P::DistanceMirror});group(G::Operation,{P::DistanceSecond,P::DistanceScale});group(G::Animation,{P::DistanceMix});
     const auto label=[&](P p,std::string_view text){result[index(p)].label=text;};
     label(P::MembraneSlot,"Mode slot");label(P::MembraneResolution,"Subdivisions");label(P::MembraneGuides,"Guides");
     label(P::PatchControl,"Control point");label(P::PatchResolution,"Subdivisions");label(P::PatchGuides,"Guides");
@@ -43,6 +44,7 @@ const auto& metadata(){
 }
 struct Tuple { P first;unsigned count;std::string_view label;std::array<std::string_view,3> components{"X","Y","Z"}; };
 constexpr std::array tuples{
+  Tuple{P::DistanceAB,3,"Lengths from A",{"AB","AC","AD"}},Tuple{P::DistanceBC,3,"Other lengths",{"BC","BD","CD"}},
   Tuple{P::SimplexP0,2,"Distribution P",{"A","B",""}},Tuple{P::SimplexQ0,2,"Distribution Q",{"A","B",""}},Tuple{P::SimplexValue0,3,"Outcome values",{"A","B","C"}},
   Tuple{P::TrussSpan,2,"Dimensions (m)",{"W","H",""}},Tuple{P::TrussLoadX,2,"Applied load (kN)",{"X","Y",""}},
   Tuple{P::TrussP0X,2,"Joint offset (m)",{"X","Y",""}},

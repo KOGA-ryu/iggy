@@ -9,6 +9,53 @@ archives and general question migration are future work. Explicit source-folder
 [live preview](LEARNING_DOCUMENTS.md#live-markdown-preview) is available for
 authoring; published generations remain immutable and load on the next launch.
 
+## Create an editable preview draft
+
+Copy a generated authoring package into a fresh folder:
+
+```sh
+python3 -B tools/export_learning.py draft build/question-batches/linear_repetitions/1/authoring \
+  --output content/authoring/drafts/linear_practice
+./b/sorter --documents content/authoring/drafts/linear_practice/documents --watch-documents
+```
+
+The linear draft above is already created. Use the second command to continue
+editing it. Open **Algebra → Worked linear practice → Positive integers**, then
+its first exercise. Edit `documents/positive_integer.paths.md` inside the draft.
+Change the sentence after the first `@hint` and save; **purple Help → Hint**
+should display it after the **cyan preview status** refreshes. No rebuild is
+needed for supported Markdown changes. Invalid edits show a **coral** source
+file/line diagnostic and retain the last valid catalogue and working.
+
+The command accepts an authoring folder with `authoring.json` and `documents/`.
+It copies all entry documents in that package and their compiler-resolved include
+closure, preserving bytes, relative paths and IDs. It does not select individual
+chapters inside a package: matrix version 2 includes both its retained and worked
+chapters. Unused notes, generator audits and export receipts are not copied.
+`draft.json` records the original source, attribution and byte inventory; it is
+an origin snapshot, not a claim that later edits have passed validation.
+
+The JSON result lists absolute `edit_files`, `documents`, question/reading counts,
+`preview_argv` and a shell-quoted `preview_command`. The command never launches
+the app. An existing destination is rejected with `draft.exists`, including an
+unchanged copy; keep editing that folder or choose a new output. Source overlap,
+symlinks and destinations inside releases, exports or library stores are rejected.
+
+Draft validation uses the built app and its base catalogue. A package requiring
+another published package must first be made independently compilable; missing
+links produce the normal source diagnostics. No active store is loaded or changed.
+The draft uses the validated snapshot even if source files change after capture.
+Draft creation never modifies those source files.
+
+Live preview keeps attempts in memory and does not read or write personal saves.
+Changes to teaching or mathematics start a separate preview revision; restoring
+the original bytes recovers that revision's earlier attempt during the same
+session. Close the preview and launch normally to resume published progress.
+The draft is not a publishable release: it carries no `authoring.json`, audit,
+bundle or receipt. Accepted wording can subsequently be applied to the reusable
+template and checked as a new batch; existing publication identity rules still
+apply. This command does not promote edits or rewrite published questions.
+
 ## Publish a chapter
 
 From the Paths root, with `b/sorter` built:
