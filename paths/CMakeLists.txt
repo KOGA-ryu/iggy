@@ -19,16 +19,24 @@ add_library(paths_scene
   vendor/iggy3d/src/app/iggy3d/creative/play/RuntimeMovingPlatforms.cpp)
 target_include_directories(paths_scene PUBLIC src vendor/iggy3d/src)
 
+add_library(paths_motion src/runtime/motion/MotionLesson.cpp src/scene/MotionScene.cpp)
+target_link_libraries(paths_motion PUBLIC paths_scene)
+
 add_library(paths_matrix_board src/runtime/matrix_board/MatrixBoard.cpp)
 target_include_directories(paths_matrix_board PUBLIC src)
 
-add_library(paths_textbook src/runtime/textbook/Textbook.cpp src/runtime/textbook/MatrixChapter.cpp src/runtime/textbook/RrefLesson.cpp)
-target_link_libraries(paths_textbook PUBLIC paths_matrix_board)
+add_library(paths_textbook src/runtime/textbook/Textbook.cpp src/runtime/textbook/MatrixChapter.cpp src/runtime/textbook/RrefLesson.cpp src/runtime/textbook/SystemsReading.cpp src/runtime/textbook/SystemLesson.cpp)
+target_link_libraries(paths_textbook PUBLIC paths_matrix_board paths_textbook_figures)
 
 add_library(paths_math_objects
   src/runtime/math_objects/MathObjects.cpp
   src/scene/MathObjectScene.cpp)
 target_link_libraries(paths_math_objects PUBLIC paths_scene)
+
+add_library(paths_textbook_figures
+  src/runtime/textbook/RowPlaneFigure.cpp
+  src/runtime/textbook/LessonSpread.cpp)
+target_link_libraries(paths_textbook_figures PUBLIC paths_math_objects paths_matrix_board)
 
 add_library(paths_model
   src/runtime/first_move/HuntSession.cpp
@@ -39,6 +47,8 @@ target_include_directories(paths_model PUBLIC src)
 
 add_library(paths_json INTERFACE)
 target_include_directories(paths_json SYSTEM INTERFACE third_party)
+add_library(paths_motion_progress src/content/MotionProgressIO.cpp)
+target_link_libraries(paths_motion_progress PUBLIC paths_motion PRIVATE paths_json)
 add_library(paths_content src/content/QuestionContentIO.cpp)
 target_link_libraries(paths_content PUBLIC paths_model PRIVATE paths_json)
 add_library(paths_math_corpus src/content/MathCorpus.cpp)
@@ -125,16 +135,16 @@ if(PATHS_BUILD_NATIVE)
 
   add_executable(paths app/main.cpp)
   target_link_libraries(paths PRIVATE paths_ui paths_native)
-  add_executable(math_lab app/math_lab_main.cpp src/ui/MatrixBoardUi.cpp src/ui/TextbookUi.cpp)
-  target_link_libraries(math_lab PRIVATE paths_native_math paths_textbook paths_matrix_board paths_math_objects paths_native paths_imgui SDL3::SDL3)
+  add_executable(math_lab app/math_lab_main.cpp src/ui/MatrixBoardUi.cpp src/ui/TextbookUi.cpp src/ui/TextbookFigureUi.cpp)
+  target_link_libraries(math_lab PRIVATE paths_native_math paths_textbook paths_native paths_imgui SDL3::SDL3)
   add_executable(gallery app/gallery_main.cpp)
   target_link_libraries(gallery PRIVATE paths_native paths_gallery_menu paths_imgui SDL3::SDL3)
   add_library(paths_notation_ui src/ui/MathNotationUi.cpp)
   target_link_libraries(paths_notation_ui PUBLIC paths_model PRIVATE paths_imgui)
-  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp src/ui/CorpusPracticeUi.cpp)
-  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_corpus_practice paths_native_math PRIVATE paths_imgui)
+  add_library(paths_sorter_ui src/ui/EquationSorterUi.cpp src/ui/MathCorpusUi.cpp src/ui/CorpusPracticeUi.cpp src/ui/MotionLessonUi.cpp)
+  target_link_libraries(paths_sorter_ui PUBLIC paths_sorter_model paths_notation_ui paths_corpus_practice paths_native_math paths_motion PRIVATE paths_imgui paths_textbook)
   add_executable(sorter app/sorter_main.cpp)
-  target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_native paths_imgui paths_json SDL3::SDL3)
+  target_link_libraries(sorter PRIVATE paths_sorter_ui paths_sorter_content paths_motion_progress paths_native paths_imgui paths_json SDL3::SDL3)
   add_custom_target(paths_native_math_resources
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/third_party/microtex/res"
@@ -167,6 +177,9 @@ if(PATHS_BUILD_NATIVE)
 endif()
 
 if(BUILD_TESTING)
+  add_executable(paths_motion_tests tests/motion_lesson_tests.cpp)
+  target_link_libraries(paths_motion_tests PRIVATE paths_motion_progress paths_json)
+  add_test(NAME paths_motion_tests COMMAND paths_motion_tests)
   add_executable(paths_corpus_starter_tests tests/corpus_starter_tests.cpp)
   target_link_libraries(paths_corpus_starter_tests PRIVATE paths_corpus_practice paths_json)
   target_compile_definitions(paths_corpus_starter_tests PRIVATE
@@ -199,6 +212,14 @@ if(BUILD_TESTING)
   add_executable(paths_textbook_tests tests/textbook_tests.cpp)
   target_link_libraries(paths_textbook_tests PRIVATE paths_textbook)
   add_test(NAME paths_textbook_tests COMMAND paths_textbook_tests)
+
+  add_executable(paths_system_lesson_tests tests/system_lesson_tests.cpp)
+  target_link_libraries(paths_system_lesson_tests PRIVATE paths_textbook)
+  add_test(NAME paths_system_lesson_tests COMMAND paths_system_lesson_tests)
+  add_executable(paths_textbook_figure_tests tests/textbook_figure_tests.cpp)
+  target_link_libraries(paths_textbook_figure_tests PRIVATE paths_textbook)
+  add_test(NAME paths_textbook_figure_tests COMMAND paths_textbook_figure_tests)
+
 
   add_executable(paths_matrix_board_tests tests/matrix_board_tests.cpp)
   target_link_libraries(paths_matrix_board_tests PRIVATE paths_matrix_board)
@@ -248,6 +269,8 @@ if(BUILD_TESTING)
     SORTER_MIXED_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/mixed_foundations_v1.json")
   add_test(NAME paths_sorter_solve_tests COMMAND paths_sorter_solve_tests)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME paths_matrix_reasoning_checks COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/matrix_reasoning_checks.py")
   add_test(NAME paths_corpus_starter_checks COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/corpus_starter_checks.py")
   add_test(NAME paths_corpus_toc_tests COMMAND "${Python3_EXECUTABLE}"
@@ -279,6 +302,23 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_content_tests PRIVATE PATHS_TEST_PACK="${CMAKE_CURRENT_SOURCE_DIR}/content/packs/gallery_foundation.json")
   add_test(NAME paths_content_tests COMMAND paths_content_tests)
   if(PATHS_BUILD_NATIVE)
+    add_executable(paths_matrix_reasoning_tests tests/matrix_reasoning_tests.cpp)
+    target_link_libraries(paths_matrix_reasoning_tests PRIVATE paths_sorter_ui paths_textbook paths_imgui paths_json)
+    target_compile_definitions(paths_matrix_reasoning_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+      STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
+      REASONING_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/matrix_reasoning.json")
+    add_dependencies(paths_matrix_reasoning_tests paths_native_math_resources)
+    add_test(NAME paths_matrix_reasoning_tests COMMAND paths_matrix_reasoning_tests)
+    add_executable(paths_motion_ui_tests tests/motion_lesson_ui_tests.cpp)
+    target_link_libraries(paths_motion_ui_tests PRIVATE paths_sorter_ui paths_sorter_content paths_imgui)
+    target_compile_definitions(paths_motion_ui_tests PRIVATE
+      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
+      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
+      SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
+    add_dependencies(paths_motion_ui_tests paths_native_math_resources)
+    add_test(NAME paths_motion_ui_tests COMMAND paths_motion_ui_tests)
     add_executable(paths_corpus_starter_ui_tests tests/corpus_starter_ui_tests.cpp)
     target_link_libraries(paths_corpus_starter_ui_tests PRIVATE paths_sorter_ui paths_imgui paths_json)
     target_compile_definitions(paths_corpus_starter_ui_tests PRIVATE
@@ -294,12 +334,32 @@ if(BUILD_TESTING)
       CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json")
     add_dependencies(paths_native_math_tests paths_native_math_resources)
     add_test(NAME paths_native_math_tests COMMAND paths_native_math_tests)
+    add_test(NAME paths_math_system_point_cli COMMAND math_lab --validate --section 3)
+    set_tests_properties(paths_math_system_point_cli PROPERTIES PASS_REGULAR_EXPRESSION "outcome=1 rank=3 augmented_rank=3 nullity=0")
+    add_test(NAME paths_math_system_line_cli COMMAND math_lab --validate --section 3 --system-example 2 --system-step)
+    set_tests_properties(paths_math_system_line_cli PROPERTIES PASS_REGULAR_EXPRESSION "outcome=2 rank=2 augmented_rank=2 nullity=1")
+    add_test(NAME paths_math_system_none_cli COMMAND math_lab --validate --section 3 --system-example 5 --system-step --system-step --system-step)
+    set_tests_properties(paths_math_system_none_cli PROPERTIES PASS_REGULAR_EXPRESSION "consistent=0 augmented_rank=3")
+    add_test(NAME paths_math_system_edit_cli COMMAND math_lab --validate --section 3 --system-example 2 --system-rhs 3 3)
+    set_tests_properties(paths_math_system_edit_cli PROPERTIES PASS_REGULAR_EXPRESSION "outcome=0 rank=2 augmented_rank=3 nullity=1")
+    add_test(NAME paths_math_system_practice_hidden_cli COMMAND math_lab --validate --section 3 --book-exercise)
+    set_tests_properties(paths_math_system_practice_hidden_cli PROPERTIES PASS_REGULAR_EXPRESSION "practice=1 revealed=0 attempts=0")
+    add_test(NAME paths_math_system_prediction_cli COMMAND math_lab --validate --section 3 --book-exercise --system-challenge 2 --system-predict 1 1)
+    set_tests_properties(paths_math_system_prediction_cli PROPERTIES PASS_REGULAR_EXPRESSION "practice=1 revealed=1 attempts=1 outcome=1")
+    add_test(NAME paths_math_system_small_cli COMMAND math_lab --validate --section 3 --system-example 4 --book-view figure --resolution 800x600)
+    set_tests_properties(paths_math_system_small_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1.*rank=1.*nullity=2.*split=0.*visible=1.*vertices=[1-9]")
+    add_test(NAME paths_math_book_split_cli COMMAND math_lab --validate --book --section 2)
+    set_tests_properties(paths_math_book_split_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1.*rank=2.*nullity=1.*agrees=1.*split=1.*visible=1.*vertices=[1-9]")
+    add_test(NAME paths_math_book_figure_small_cli COMMAND math_lab --validate --book --section 2 --book-view figure --resolution 800x600)
+    set_tests_properties(paths_math_book_figure_small_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1.*split=0.*visible=1.*vertices=[1-9]")
+    add_test(NAME paths_math_book_reading_cli COMMAND math_lab --validate --book --section 2 --book-view reading)
+    set_tests_properties(paths_math_book_reading_cli PROPERTIES PASS_REGULAR_EXPRESSION "available=1.*split=0.*visible=0.*vertices=0")
     add_test(NAME paths_math_book_rref_cli COMMAND math_lab --validate --book --section 2)
     set_tests_properties(paths_math_book_rref_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=2.*card=004.*working=0.*checked=0.*blocks=12.*open_help=0.*bookmark_io=0")
     add_test(NAME paths_math_book_cli COMMAND math_lab --validate --book --section 2 --book-next --book-exercise)
-    set_tests_properties(paths_math_book_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=3.*card=031.*working=0.*checked=0.*bookmark_io=0")
-    add_test(NAME paths_math_book_last_cli COMMAND math_lab --validate --section 6 --book-next --book-read)
-    set_tests_properties(paths_math_book_last_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=7.*card=059.*bookmark_io=0")
+    set_tests_properties(paths_math_book_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=3.*card=000.*working=0.*checked=0.*bookmark_io=0")
+    add_test(NAME paths_math_book_last_cli COMMAND math_lab --validate --section 7 --book-next --book-read)
+    set_tests_properties(paths_math_book_last_cli PROPERTIES PASS_REGULAR_EXPRESSION "section=8.*card=059.*bookmark_io=0")
     add_test(NAME paths_math_book_index_cli COMMAND math_lab --validate --book-index)
     set_tests_properties(paths_math_book_index_cli PROPERTIES PASS_REGULAR_EXPRESSION "page=2.*bookmark_io=0")
     add_test(NAME paths_math_board001_cli COMMAND math_lab --validate --card 001 --board-step 6 --board-check)

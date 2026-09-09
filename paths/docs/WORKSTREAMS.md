@@ -1,5 +1,31 @@
 # Paths workstreams
 
+## Regular questions with shared method reading
+
+[MATRIX_REASONING.md](MATRIX_REASONING.md) adds eight questions and 23 symbolic
+decisions: row operations, REF/RREF, fractional pivots and system solution sets.
+Focus keeps gold Given and cyan Working above the choices; purple Method reads
+existing textbook definitions without changing attempts or disclosing the
+textbook's exercise answers. The question session remains the answer owner.
+Release sorter and four targeted checks pass, including independent exact
+arithmetic, 24 UI routes at three sizes and unchanged-question save migration.
+Evidence: `build/matrix-reasoning-evidence/verification.json`. No windows or
+captures were used. Changes remain uncommitted; visual review is deferred until
+the user is ready. A later candidate is a read-only figure linked to the active
+question's canonical working, using the boundary documented in the checkpoint.
+
+## Shelved: Drive the velocity graph, chapters 1–5
+
+[MOTION_LESSONS.md](MOTION_LESSONS.md) introduces five playable questions from
+position to acceleration and braking. An actual 3D cart, editable graph,
+symbolic plan tiles, working and prior attempts share the fixed workspace.
+Release sorter and three targeted headless tests pass, including 1,021
+independently checked plans, 20 real UI solving routes, and in-flight save/resume.
+Evidence: `build/motion-lessons-evidence/verification.json`. No windows or
+captures were used. Changes remain uncommitted. The user saw the direction but
+asked to shelve the design; this is not full visual acceptance. Further chapters
+and design decisions are deferred. The prototype and saved work remain available.
+
 ## Representative questions across the Library
 
 [CORPUS_STARTERS.md](CORPUS_STARTERS.md) adds one starting question for every
@@ -138,7 +164,9 @@ review remains deferred, and changes are uncommitted.
 | P045 | Explore spherical harmonics, quadratic forms and roots of unity | Native build and twenty-six targeted text-only checks passed; user visual review pending; uncommitted | Real orthonormal modes; heat diffusion; signed/singular forms; Rayleigh bounds; exact cyclotomic action; no images |
 | P046 | [Reusable matrix board](P046_MATRIX_BOARD.md) for six exercise cards | Native build and 33 targeted text-only checks passed; user visual review pending; uncommitted | Complex/rectangular matrices; row operations; pivot and block traces; setup disclosure; read-only source cards; no images |
 | P047 | [Interactive textbook](P047_INTERACTIVE_TEXTBOOK.md): Matrices and Elimination | Native build and 29 targeted text-only tests passed; user visual review pending; uncommitted | Seven sections; 21-term index; retained board work; reading bookmarks separate from exercise evidence; no images |
-| P048 | [Textbook section format](P048_TEXTBOOK_SECTION_FORMAT.md): Row operations and RREF | Native build and 30 targeted text-only tests passed; user visual review pending; uncommitted | Typed numbered blocks; stable references; typeset equations; separate redacted help; existing exercise evidence retained; no images |
+| P048 | [Textbook section format](P048_TEXTBOOK_SECTION_FORMAT.md): Row operations and RREF | Native build and 30 targeted text-only tests passed; reading format accepted by user; uncommitted | Typed numbered blocks; stable references; typeset equations; separate redacted help; existing exercise evidence retained; no images |
+| P049 | [Live textbook figures](P049_LIVE_TEXTBOOK_FIGURES.md): reusable spread and RREF equation planes | Native build and 34 targeted text-only tests passed; layout and interaction accepted by user; uncommitted | One reusable shell; synchronized board and 3D geometry; all nullities; responsive panes; no images |
+| P050 | [System solution sets](P050_SYSTEM_SOLUTION_SETS.md): affine planes and prediction practice | Native build and 42 targeted text-only checks passed; user visual review pending; uncommitted | Reused four-view shell; explicit rhs; shared row kernel; all solution outcomes; redacted practice; bookmark migration; no images |
 
 Local commit `2308995` records the standalone project foundation through P013;
 no push was made. Historical checkpoint sections below retain their original
@@ -161,16 +189,16 @@ capabilities. This does not mark P001 through P004 complete.
 
 ## Current priority
 
-[P048](P048_TEXTBOOK_SECTION_FORMAT.md) refines section 1.2, Row operations and
-RREF, into the reference format for later textbook sections. It adds typed and
-numbered definitions, a proposition and proof, typeset working, a captioned
-interactive figure, and three practice questions with independent hints,
-answers and solutions. Stable links return to definitions and examples. The
-reader offers a narrower prose column, optional contents and text up to 200%.
-The seven-section chapter, six retained boards and 22 objects remain available.
-Reading, references and disclosures do not change exercise evidence. Source
-pages and sorter/Library owners are unchanged. Native appearance and scrolling
-await the user's manual test.
+The regular-question workstream is [Matrix reasoning](MATRIX_REASONING.md),
+with the question session owning answers and progress. The teaching workstream
+continues independently below; its existing definitions are now reusable from
+the question workspace. Motion is shelved pending a later user decision.
+
+[P050](P050_SYSTEM_SOLUTION_SETS.md) adds section 1.3 after RREF: one, infinitely
+many, or no solutions. It reuses the user-accepted four-view shell with movable
+affine equation planes, synchronized row operations, solution probes, and
+prediction practice. Existing section IDs and seven-section reading bookmarks
+remain usable. Verification is text-only; the user performs the visual check.
 
 The user prohibits taking or viewing images. Do not capture, render, open
 image files or launch previews as part of this work. Use the pure-model/scene

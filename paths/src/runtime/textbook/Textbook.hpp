@@ -1,5 +1,6 @@
 #pragma once
 #include "runtime/matrix_board/MatrixBoard.hpp"
+#include "SystemLesson.hpp"
 #include <array>
 #include <filesystem>
 #include <cstdint>
@@ -40,6 +41,14 @@ struct BookBlockView {
   std::span<const BookReference> references;
 };
 const std::vector<BookBlock>& rrefLesson();
+const std::vector<BookBlock>& systemsLesson();
+enum class BookFigureKind { None, RowPlanes, AffinePlanes };
+struct BookFigureSpec {
+  BookFigureKind kind=BookFigureKind::None;
+  const char* id="";
+  const char* title="";
+  const char* caption="";
+};
 struct BookSection {
   const char* id;
   const char* title;
@@ -53,8 +62,9 @@ struct BookSection {
   const char* reference;
   unsigned card;
   std::span<const BookBlock> lesson{};
+  BookFigureSpec figure{};
 };
-const std::array<BookSection,7>& matrixChapter();
+const std::array<BookSection,8>& matrixChapter();
 const std::array<const char*,7>& textbookParts();
 enum class BookPage { Contents, Section, Index };
 enum class BookMode { Reading, Exercise };
@@ -84,6 +94,8 @@ public:
   // Only open disclosures in the current reading section publish their text.
   std::vector<BookBlockView> lessonView()const;
   unsigned exerciseIndex()const;
+  SystemLesson& systems(){return systems_;}
+  const SystemLesson& systems()const{return systems_;}
   MatrixBoard& board();
   const MatrixBoard& board()const;
   std::string bookmark()const;
@@ -93,9 +105,10 @@ private:
   BookMode mode_=BookMode::Reading;
   unsigned section_=0;
   double textScale_=1;
-  std::array<double,7> scrolls_{};
+  std::array<double,8> scrolls_{};
   std::array<MatrixBoard,6> boards_;
-  std::array<std::vector<std::uint8_t>,7> helpMasks_;
+  SystemLesson systems_;
+  std::array<std::vector<std::uint8_t>,8> helpMasks_;
   std::string_view anchor_;
   std::uint64_t anchorRevision_=0;
 };

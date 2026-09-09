@@ -3,6 +3,7 @@
 #include "runtime/sorter/EquationSorterSession.hpp"
 #include "ui/MathNotationUi.hpp"
 #include "ui/MathCorpusUi.hpp"
+#include "ui/MotionLessonUi.hpp"
 #include <variant>
 
 namespace paths {
@@ -18,6 +19,8 @@ struct SorterCardBounds {
 struct EquationSorterUiState {
   const MathCorpus* corpus=nullptr;
   MathCorpusUiState library;
+  MotionLessonUiState motion;
+  SorterCardBounds motionEntry;
   SorterCardBounds libraryEntry;
   MathNotationUiState notation;
   std::string progressMessage;

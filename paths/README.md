@@ -1,10 +1,30 @@
 # Paths
 
+**Contents → Library → Questions** now adds eight [Matrix reasoning](docs/MATRIX_REASONING.md)
+follow-ups in the regular symbolic-tile format. Search **Matrix reasoning**, then
+choose **Focus**: gold Given and cyan Working sit together above the choices.
+The purple **Method** button reads the textbook's existing definitions in place.
+Completed questions stay green until **Next**; earlier question saves still resume.
+
+[Drive the velocity graph](docs/MOTION_LESSONS.md) is shelved at the user's
+request while the question work continues. Its five chapters remain available
+under **Contents → Motion** for a later return to the design.
+
 **Contents → Library → Questions** now contains [278 representative starters](docs/CORPUS_STARTERS.md):
 one for each of six subjects, 178 chapters and 94 named subcategories. Choose
 symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
+
+[Solution sets](docs/P050_SYSTEM_SOLUTION_SETS.md) adds section 1.3 in the same
+four-view format: movable equation planes, one/infinite/no-solution examples,
+row reduction, and prediction practice. Open `./b/math_lab --book --section 3`.
+Use **Move the planes / edit givens** to change coefficients or right-hand sides.
+
+[Live textbook figures](docs/P049_LIVE_TEXTBOOK_FIGURES.md) pair section 1.2 with
+an adjustable 3D view of equation planes and their shared solution set. Open
+`./b/math_lab --book --section 2`; use the divider, **Read + figure**, or
+**Figure only**. The layout is shared so later topics can reuse the same shell.
 
 [Section 1.2, Row operations and RREF](docs/P048_TEXTBOOK_SECTION_FORMAT.md),
 now demonstrates the textbook format: numbered definitions and reasoning,
@@ -12,7 +32,7 @@ typeset mathematics, a captioned live figure, and practice with separate hints,
 answers and solutions. Open `./b/math_lab --book --section 2`.
 
 The [interactive textbook](docs/P047_INTERACTIVE_TEXTBOOK.md) is now the default
-`math_lab` home. Its first chapter, **Matrices and Elimination**, has seven
+`math_lab` home. Its first chapter, **Matrices and Elimination**, has eight
 sections, an index, reading bookmarks and connected exercises. Run
 `./b/math_lab`; the existing 22 objects are under **Explore 3D objects**.
 

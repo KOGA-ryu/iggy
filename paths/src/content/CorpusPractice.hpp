@@ -8,6 +8,7 @@ struct CorpusStarter {
   std::string id,title,level,stamp;
   std::size_t subject=0;
   std::optional<std::size_t> topic;
+  std::vector<std::string> readingRefs;
   iggy3d::first_move::LayeredQuestionContent question;
 };
 std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path&,const MathCorpus&);

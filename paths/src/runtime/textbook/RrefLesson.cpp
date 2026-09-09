@@ -56,9 +56,9 @@ const std::vector<BookBlock>& rrefLesson(){
         math(R"(A\sim\begin{bmatrix}1&0\\0&1\end{bmatrix}=I_2)","1.2.1"),
         prose("In Equation (1.2.1), the pivots move right as we move down, both pivots equal 1, and each is the only nonzero entry in its column. These are precisely the RREF conditions. This separately authored example does not operate on your exercise board.")}),
       {{"Definition 1.2.4 / check the result","rref.reduced"}}},
-    {"rref.figure",BookBlockKind::Figure,"1.2.7","A matrix changing under elimination",
+    {"rref.figure",BookBlockKind::Figure,"1.2.7","Equation planes and their common solutions",
       {prose("Predict: identify the next usable pivot and the entries its elimination should clear. Operate: perform one guided pivot, or open the full exercise to choose a manual row operation. Explain: identify which REF or RREF conditions now hold."),
-       prose("The board begins with part (a) of card 004. The full exercise selects the other printed parts and provides Undo. A guided pivot may combine a swap, normalization, and several row additions. All columns of these printed matrices belong to the matrix; none is an attached right-hand side.")}, {},
+       prose("The live figure begins with part (a) of card 004. Its three columns are the coefficients of x, y and z in the homogeneous system Ax = 0. Each nonzero row is a plane through the origin, and their common intersection is the solution set. A zero row imposes no constraint. All printed columns still belong to A; the zero right-hand side is an explicit geometric interpretation.")}, {},
       {{"Definition 1.2.4 / what to inspect","rref.reduced"}}},
     {"rref.practice.recognize",BookBlockKind::Exercise,"1.2.8","Recognize the form",
       {prose("Is this matrix in REF? Is it in RREF? Give a reason for each answer."),
@@ -88,7 +88,7 @@ const std::vector<BookBlock>& rrefLesson(){
       {{"Proposition 1.2.5 / why reversibility matters","rref.preservation"}}},
     {"rref.summary",BookBlockKind::Summary,"","What to carry forward",
       {prose("Choose reversible row operations, check echelon order, normalize each pivot, and clear the rest of each pivot column. Keep any right-hand side attached to every move. A correct final matrix and an explanation of why the moves are valid answer different mathematical questions."),
-       prose("The three practice questions above are for written or mental work. Hints, short answers, and full solutions open independently. Reading or revealing them creates no score. Next, use card 004 for the six printed reductions, or continue to Section 1.3 to study systems and partial pivoting.")}}
+       prose("The three practice questions above are for written or mental work. Hints, short answers, and full solutions open independently. Reading or revealing them creates no score. Next, use card 004 for the six printed reductions, or continue to Section 1.3 to study one, infinitely many, or no solutions.")}}
   };
   return blocks;
 }

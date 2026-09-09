@@ -37,7 +37,7 @@ std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path& path,
     CorpusStarter q;q.id=row.at("id");q.title=row.at("title");q.level=row.at("level");
     require(!q.id.empty() && q.id.size()<=80 && ids.insert(q.id).second,"Duplicate or invalid starter ID");
     require(!q.title.empty() && q.title.size()<=240,"Invalid starter title");
-    require(q.level=="subject" || q.level=="chapter" || q.level=="subcategory","Invalid starter level");
+    require(q.level=="subject" || q.level=="chapter" || q.level=="subcategory" || q.level=="practice","Invalid question level");
     const auto subjectId=row.at("subject").get<std::string>();
     const auto subject=std::find_if(corpus.subjects.begin(),corpus.subjects.end(),[&](const auto& s){return s.id==subjectId;});
     require(subject!=corpus.subjects.end(),"Unknown starter subject");q.subject=subject-corpus.subjects.begin();
@@ -47,6 +47,13 @@ std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path& path,
       require(topic!=corpus.topics.end() && topic->subject==q.subject,"Unknown or mismatched starter chapter");q.topic=topic-corpus.topics.begin();
     }
     require(q.topic.has_value()==(q.level!="subject"),"Starter level and chapter disagree");
+    if(row.contains("reading_refs")) {
+      const auto& refs=row.at("reading_refs");require(refs.is_array() && refs.size()<=8,"Invalid reading reference count");
+      std::set<std::string> unique;
+      for(const auto& ref:refs) {
+        const auto id=ref.get<std::string>();require(!id.empty() && id.size()<=80 && unique.insert(id).second,"Invalid or repeated reading reference");q.readingRefs.push_back(id);
+      }
+    }
     q.stamp=row.at("question").dump();q.question=parseQuestionContent(q.stamp,path);
     require(q.question.id==q.id,"Starter and question identities disagree");
     const auto valid=fm::validateQuestion(q.question,fm::QuestionInteraction::ArcadeCollect);
@@ -55,7 +62,11 @@ std::vector<CorpusStarter> loadCorpusStarters(const std::filesystem::path& path,
   }
   return result;
 }
-CorpusPractice::CorpusPractice(std::vector<CorpusStarter> questions):questions_(std::move(questions)),attempts_(questions_.size()) {}
+CorpusPractice::CorpusPractice(std::vector<CorpusStarter> questions):questions_(std::move(questions)),attempts_(questions_.size()) {
+  require(questions_.size()<=maxQuestions,"Combined question collection exceeds its limit");
+  std::set<std::string> ids;
+  for(const auto& q:questions_)require(ids.insert(q.id).second,"Repeated question identity across collections: "+q.id);
+}
 std::vector<std::size_t> CorpusPractice::find(std::optional<std::size_t> subject,std::optional<std::size_t> topic,std::string_view query) const {
   const auto needle=folded(query);std::vector<std::size_t> matches;
   for(std::size_t i=0;i<questions_.size();++i) {

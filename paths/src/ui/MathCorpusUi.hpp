@@ -7,7 +7,7 @@
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, Count };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, Count };
 struct NativeMathSample {const char* label;const char* title;const char* latex;};
 inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
   {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
@@ -31,6 +31,12 @@ struct MathCorpusUiState {
   NativeMath* math=nullptr;
   CorpusPractice* practice=nullptr;
   bool questions=false;
+  bool focusQuestion=false,readingOpen=false;
+  std::size_t readingIndex=0;
+  std::string readingQuestion,readingSource;
+  std::size_t readingFallbacks=0;
+  NotationBounds currentWorking,readingBody;
+  std::vector<NotationBounds> readingChoices;
   std::vector<std::size_t> questionMatches;
   std::vector<NotationBounds> answerTiles;
   NotationBounds questionInk,choiceArea;

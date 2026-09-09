@@ -2,12 +2,13 @@
 #include "runtime/textbook/Textbook.hpp"
 #include "MatrixBoardUi.hpp"
 #include "NativeMath.hpp"
+#include "TextbookFigureUi.hpp"
 #include <limits>
 namespace paths {
 struct TextbookUiState {
   bool hasPending=false;
   BookAction pending{BookActionKind::Contents};
-  std::array<MatrixBoardUiState,6> boards;
+  std::array<MatrixBoardUiState,7> boards;
   char search[128]{};
   unsigned displayedSection=std::numeric_limits<unsigned>::max();
   bool wasReading=false;
@@ -18,7 +19,10 @@ struct TextbookUiState {
   float equationPixels=0;
   std::vector<Equation> equations;
   std::string message;
+  LessonPresentation presentation=LessonPresentation::Together;
+  float readingFraction=.46f;
+  TextbookFigureUiState figure;
 };
 // Returns a transient request to visit the object collection.
-bool drawTextbook(Textbook&,TextbookUiState&,NativeMath&);
+bool drawTextbook(Textbook&,TextbookUiState&,NativeMath&,SceneFrame&);
 }

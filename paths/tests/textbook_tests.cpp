@@ -37,9 +37,9 @@ struct Temporary {
 };
 }
 int main(){try{
-  Textbook book;const auto& sections=matrixChapter();require(sections.size()==7&&textbookParts().size()==7,"Book outline size");
+  Textbook book;const auto& sections=matrixChapter();require(sections.size()==8&&textbookParts().size()==7,"Book outline size");
   std::set<std::string> ids,terms;std::set<unsigned> cards;
-  const std::array<unsigned,7> order{4,4,31,18,44,1,59};
+  const std::array<unsigned,8> order{4,4,0,31,18,44,1,59};
   for(unsigned i=0;i<sections.size();++i){const auto& section=sections[i];require(ids.insert(section.id).second,"Duplicate stable section id");require(section.card==order[i],"Teaching sequence changed");cards.insert(section.card);
     require(std::string(section.purpose).size()>20&&(!section.lesson.empty()||std::string(section.figurePrompt).size()>20)&&std::string(section.exercisePrompt).size()>20&&std::string(section.reference).size()>20,"Incomplete section");
     for(const auto paragraph:section.explanation)require(std::string(paragraph).size()>40,"Missing explanation");
@@ -47,6 +47,13 @@ int main(){try{
     for(const auto& term:section.terms){require(terms.insert(term.name).second,"Duplicate index term");require(std::string(term.definition).size()>20,"Missing definition");}
     act(book,{BookActionKind::OpenSection,i});require(book.board().view().card==section.card,"Wrong exercise binding");require(!book.board().view().working&&!book.board().view().checked,"Reading marked an exercise as worked or checked");
     act(book,{BookActionKind::RememberScroll,i,123.5*(i+1)});act(book,{BookActionKind::Exercise});require(book.board().view().steps==0,"Opening an exercise performed a step");
+    if(section.card==0){
+      require(book.systems().dispatch({SystemActionKind::Reveal}).accepted,"Cannot open practice explanation");
+      require(book.systems().dispatch({SystemActionKind::RowOperation,0,0,0,{BoardActionKind::Step},true}).accepted,"Cannot reduce practice");
+      act(book,{BookActionKind::Read});require(book.board().view().steps==0,"Practice changed exploration");
+      act(book,{BookActionKind::Exercise});require(book.board().view().steps==1,"Practice work was lost");
+      act(book,{BookActionKind::Read});continue;
+    }
     require(book.board().dispatch({BoardActionKind::Step}).accepted,"Exercise cannot step");
     act(book,{BookActionKind::Read});act(book,{BookActionKind::Contents});act(book,{BookActionKind::Index});act(book,{BookActionKind::Resume});
     require(book.view().section==i&&book.view().scroll==123.5*(i+1)&&book.view().mode==BookMode::Reading,"Reading trail lost position");
@@ -54,17 +61,21 @@ int main(){try{
     // The introductory section and RREF section intentionally share card 004.
     if(i==0){act(book,{BookActionKind::OpenSection,1});require(book.board().view().steps==1,"Same card has duplicate state");require(book.board().dispatch({BoardActionKind::Reset}).accepted,"Reset failed");}
   }
-  require(cards.size()==6&&terms.size()==23,"Chapter references/index coverage");
-  for(unsigned i=0;i<sections.size();++i){act(book,{BookActionKind::OpenSection,i});require(book.board().view().steps==1,"Cross-section exercise work not retained");require(!book.board().view().checked,"Reading created check evidence");}
-  reject(book,{BookActionKind::Next});reject(book,{BookActionKind::OpenSection,7});reject(book,{BookActionKind::RememberScroll,0,10});reject(book,{BookActionKind::RememberScroll,6,-1});reject(book,{BookActionKind::RememberScroll,6,std::numeric_limits<double>::infinity()});reject(book,{BookActionKind::SetTextScale,0,2.01});reject(book,{static_cast<BookActionKind>(999)});
+  require(cards.size()==7&&terms.size()==29,"Chapter references/index coverage");
+  for(unsigned i=0;i<sections.size();++i){act(book,{BookActionKind::OpenSection,i});require(book.board().view().steps==(sections[i].card==0?0u:1u),"Cross-section exercise work not retained");require(!book.board().view().checked,"Reading created check evidence");}
+  reject(book,{BookActionKind::Next});reject(book,{BookActionKind::OpenSection,8});reject(book,{BookActionKind::RememberScroll,0,10});reject(book,{BookActionKind::RememberScroll,6,-1});reject(book,{BookActionKind::RememberScroll,6,std::numeric_limits<double>::infinity()});reject(book,{BookActionKind::SetTextScale,0,2.01});reject(book,{static_cast<BookActionKind>(999)});
   act(book,{BookActionKind::OpenSection,0});reject(book,{BookActionKind::Previous});act(book,{BookActionKind::Contents});reject(book,{BookActionKind::Exercise});reject(book,{BookActionKind::RememberScroll,0,1});
-  act(book,{BookActionKind::OpenSection,4});act(book,{BookActionKind::SetTextScale,0,1.3});const auto bookmark=book.bookmark();
-  Textbook restored;require(restored.restoreBookmark(bookmark).accepted,"Bookmark did not round trip");require(restored.bookmark()==bookmark&&restored.view().page==BookPage::Contents,"Bookmark changed on restore");act(restored,{BookActionKind::Resume});require(restored.view().section==4&&restored.view().scroll==617.5,"Continue reading did not restore place");
+  act(book,{BookActionKind::OpenSection,5});act(book,{BookActionKind::SetTextScale,0,1.3});const auto bookmark=book.bookmark();
+  Textbook restored;require(restored.restoreBookmark(bookmark).accepted,"Bookmark did not round trip");require(restored.bookmark()==bookmark&&restored.view().page==BookPage::Contents,"Bookmark changed on restore");act(restored,{BookActionKind::Resume});require(restored.view().section==5&&restored.view().scroll==741,"Continue reading did not restore place");
   for(unsigned i=0;i<sections.size();++i){act(restored,{BookActionKind::OpenSection,i});require(restored.board().view().steps==0&&!restored.board().view().checked,"Bookmark restored fabricated exercise results");require(restored.view().scroll==123.5*(i+1),"Section scroll was not saved");}
+  auto legacy=bookmark;const auto newLine=legacy.find("matrix.solutions ");const auto newEnd=legacy.find('\n',newLine);legacy.erase(newLine,newEnd-newLine+1);
+  Textbook migrated;require(migrated.restoreBookmark(legacy).accepted,"Seven-section bookmark failed to migrate");
+  act(migrated,{BookActionKind::Resume});require(std::string_view(matrixChapter()[migrated.view().section].id)=="matrix.permutations"&&migrated.view().scroll==741,"Migration changed stable reading position");
+  act(migrated,{BookActionKind::OpenSection,2});require(migrated.view().scroll==0,"New section inherited another section's scroll");
   // Reading and bookmark restoration must preserve an already checked result.
   require(book.board().dispatch({BoardActionKind::Step}).accepted,"Could not finish pivoted example");
   require(book.board().dispatch({BoardActionKind::Check}).accepted&&book.board().view().passed,"Could not check pivoted example");
-  act(book,{BookActionKind::OpenSection,2});act(book,{BookActionKind::OpenSection,4});
+  act(book,{BookActionKind::OpenSection,2});act(book,{BookActionKind::OpenSection,5});
   require(book.board().view().passed&&book.board().view().steps==2,"Navigation lost a checked exercise result");
   badBookmark(book,"");badBookmark(book,std::string(4097,'x'));badBookmark(book,bookmark+"unexpected");
   auto corrupt=bookmark;corrupt.replace(corrupt.find("paths-textbook 1"),16,"paths-textbook 9\n");badBookmark(book,corrupt);
@@ -143,5 +154,5 @@ int main(){try{
   const auto saved=bytes(path);require(!writeTextbookBookmark(path/"not-a-directory",book).accepted,"Invalid directory accepted");require(bytes(path)==saved,"Failed save damaged previous bookmark");
   {std::ofstream out(path);out<<"bad bookmark";}
   const auto unchanged=restored.bookmark();require(!readTextbookBookmark(path,restored).accepted&&restored.bookmark()==unchanged,"Bad file changed reader");require(bytes(path)=="bad bookmark","Reading rewrote malformed file");
-  std::printf("textbook: %u assertions passed; seven sections, six retained boards, 23 index terms, navigation boundaries, read/exercise separation, stable block references, independent redacted help, 200 percent text and bookmark round trips.\n",checks);return 0;
+  std::printf("textbook: %u assertions passed; eight sections, six source boards plus independent systems practice, 29 index terms, navigation boundaries, read/exercise separation, stable block references, independent redacted help, 200 percent text and bookmark round trips.\n",checks);return 0;
 }catch(const std::exception& e){std::fprintf(stderr,"textbook test: %s\n",e.what());return 1;}}

@@ -36,6 +36,9 @@ class MatrixBoard {
 public:
   static constexpr unsigned maxSize=32, maxHistory=128;
   MatrixBoard();
+  // Separately authored real Ax=b examples use the same row-operation/history owner.
+  // Loading a valid example resets only this board; no source card is modified.
+  BoardResult loadSystem(const BoardMatrix& coefficients,const BoardMatrix& rhs);
   BoardResult dispatch(const BoardAction& action);
   MatrixBoardView view()const;
 private:
@@ -48,11 +51,14 @@ private:
   unsigned card_=1,example_=0,size_=6,band_=1,partition_=2;
   std::vector<State> history_;
   bool checked_=false,passed_=false;
+  bool customSystem_=false;
+  BoardMatrix systemA_,systemB_;
   double residual_=0;
   std::string evidence_;
   void initialize();
   BoardResult mutate(const BoardAction&);
   void step();
   void check();
+  void cleanSystemRoundoff();
 };
 } // namespace paths

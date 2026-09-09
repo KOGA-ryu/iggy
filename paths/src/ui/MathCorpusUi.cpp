@@ -77,6 +77,13 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
   ImGui::Begin("Math library",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings);
   ImGui::PushFont(nullptr,13);ImGui::BeginDisabled(blocked);
   const auto record=[&](CorpusControl control,bool enabled=true){ui.controls[static_cast<std::size_t>(control)]=item(enabled && !blocked);};
+  if(ui.questions && ui.focusQuestion && ui.practice && ui.math) {
+    if(ImGui::Button("Browse",{66,22}))ui.focusQuestion=false;
+    record(CorpusControl::FocusQuestion);ImGui::SameLine();ImGui::TextColored(violet,"Question workspace");
+    drawCorpusQuestions(ui,corpus,blocked);
+    if(ImGui::IsKeyPressed(ImGuiKey_Escape))ui.focusQuestion=false;
+    ImGui::EndDisabled();ImGui::PopFont();ImGui::End();ImGui::PopStyleVar(3);ImGui::PopStyleColor();return;
+  }
   ImGui::PushStyleColor(ImGuiCol_Button,{.15F,.27F,.46F,1});
   if(ImGui::Button("Practice",{68,22}))ui.open=false;
   record(CorpusControl::Practice);ImGui::PopStyleColor();ImGui::SameLine();
@@ -93,6 +100,10 @@ void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked)
       ui.questions=!ui.questions;ui.refresh=true;ui.query={};
     }
     record(CorpusControl::Questions);ImGui::PopStyleColor();
+    if(ui.questions) {
+      ImGui::SameLine();if(ImGui::Button("Focus",{56,22}))ui.focusQuestion=true;
+      record(CorpusControl::FocusQuestion);
+    }
   }
   ui.equations.open=ImGui::IsPopupOpen("Native equations");
   const float available=ImGui::GetContentRegionAvail().x,half=(available-6)*.5F;

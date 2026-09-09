@@ -810,6 +810,14 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
   beginSolvePanel("Study heading",{0,0,io.DisplaySize.x,top},flags);
   ImGui::PushFont(nullptr,20);ImGui::TextColored({1,.78F,.3F,1},"Table of contents");ImGui::PopFont();
   ui.libraryEntry={};
+  ui.motionEntry={};
+  if(ui.motion.lesson) {
+    const auto cursor=ImGui::GetCursorPos();ImGui::SameLine(ImGui::GetWindowWidth()-(ui.corpus?158:82));
+    ImGui::PushStyleColor(ImGuiCol_Button,{.10F,.34F,.40F,1});
+    if(ImGui::Button("Motion",{70,22}))ui.motion.open=true;
+    ui.motionEntry=itemBounds(!io.AppFocusLost && !ui.solvePointerHeld);
+    ImGui::PopStyleColor();ImGui::SetCursorPos(cursor);
+  }
   if(ui.corpus) {
     const auto cursor=ImGui::GetCursorPos();ImGui::SameLine(ImGui::GetWindowWidth()-82);
     ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
@@ -935,6 +943,13 @@ void drawStudySelection(EquationSorterUiState& ui,const SorterView& view,std::sp
 }
 void beginEquationSorterFrame(EquationSorterUiState& ui, EquationSorterSession& session, float seconds) {
   if(!ImGui::IsMouseDown(ImGuiMouseButton_Left))ui.solvePointerHeld=false;
+  if(ui.motion.open && ui.motion.lesson) {
+    ui.pending.reset();ui.shootAvailable=false;
+    auto& lesson=*ui.motion.lesson;const auto& io=ImGui::GetIO();
+    if(io.AppFocusLost && lesson.playing())(void)lesson.dispatch({MotionActionKind::Pause});
+    if(!io.AppFocusLost)(void)lesson.dispatch({MotionActionKind::Tick,0,seconds<0?std::clamp(static_cast<double>(io.DeltaTime),0.0,.25):std::clamp(static_cast<double>(seconds),0.0,.25)});
+    return;
+  }
   if (ImGui::GetIO().AppFocusLost) {
     ui.pending.reset();
     if(auto* game=session.activeSolve())(void)game->dispatch(GalleryPause{true});
@@ -966,6 +981,7 @@ void beginEquationSorterFrame(EquationSorterUiState& ui, EquationSorterSession& 
 void drawEquationSorter(EquationSorterUiState& ui, const SorterView& view,
                         std::span<const SorterEquation> content, const GallerySession* game) {
   auto& io = ImGui::GetIO();
+  ui.motion.presented=false;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
   io.ConfigNavCursorVisibleAlways = true;
   if(view.solving && game) {
@@ -973,6 +989,10 @@ void drawEquationSorter(EquationSorterUiState& ui, const SorterView& view,
     drawSolving(ui,view,*game);return;
   }
   if(view.studying) {
+    if(ui.motion.open && ui.motion.lesson) {
+      ui.shootAvailable=false;ui.solveButton={};ui.cardCount=0;
+      drawMotionLesson(ui.motion);return;
+    }
     if(ui.library.open && ui.corpus) {
       ui.shootAvailable=false;ui.solveButton={};ui.cardCount=0;
       drawMathCorpus(ui.library,*ui.corpus,ui.solvePointerHeld);return;

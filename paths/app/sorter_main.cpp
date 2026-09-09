@@ -1,5 +1,6 @@
 #include "content/EquationSorterContentIO.hpp"
 #include "content/StudyProgressIO.hpp"
+#include "content/MotionProgressIO.hpp"
 #include "platform/NativeVulkanHost.hpp"
 #include "ui/EquationSorterUi.hpp"
 
@@ -11,6 +12,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -167,7 +169,10 @@ void prepareOutputs(const Options& o) {
     return error?std::filesystem::absolute(path).lexically_normal():resolved;
   };
   std::vector<std::filesystem::path> outputs;
-  if (!o.progress.empty()) outputs.push_back(o.progress);
+  if (!o.progress.empty()) {
+    outputs.push_back(o.progress);
+    outputs.push_back(o.progress.parent_path()/"motion-lessons-v1.json");
+  }
   if (!o.report.empty()) outputs.push_back(o.report);
   if (!o.capture.empty()) {
     const auto c = capturePaths(o.capture);
@@ -175,7 +180,7 @@ void prepareOutputs(const Options& o) {
   }
   for (std::size_t i = 0; i < outputs.size(); ++i) {
     const auto resolved = resolve(outputs[i]);
-    for (const auto& source : {o.content, o.script})
+    for (const auto& source : {o.content, o.script, o.library})
       if (!source.empty() && resolved == resolve(source))
         throw std::invalid_argument("output would overwrite an input file");
     for (std::size_t j = 0; j < i; ++j)
@@ -246,8 +251,12 @@ int main(int argc, char** argv) {
     auto o = options(argc, argv);
     EquationSorterSession session(loadSorterContent(o.content)); // Fail before creating the native host.
     const auto corpus=loadMathCorpus(o.library);
-    CorpusPractice starters(loadCorpusStarters(o.library.parent_path()/"starters.json",corpus));
-    if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries and " << starters.questions().size() << " starting questions: " << o.content << '\n'; return 0; }
+    auto questions=loadCorpusStarters(o.library.parent_path()/"starters.json",corpus);
+    auto followups=loadCorpusStarters(o.library.parent_path()/"matrix_reasoning.json",corpus);
+    const auto starterCount=questions.size(),followupCount=followups.size();
+    questions.insert(questions.end(),std::make_move_iterator(followups.begin()),std::make_move_iterator(followups.end()));
+    CorpusPractice starters(std::move(questions));
+    if (o.check) { std::cout << "Validated 100 sortable cards, " << corpus.entries.size() << " library entries, " << starterCount << " starting questions and " << followupCount << " follow-up questions: " << o.content << '\n'; return 0; }
     const auto commands = script(o.script);
     std::string progressLocationError;
     // Bounded runs and scripts never touch personal progress implicitly.
@@ -259,6 +268,9 @@ int main(int argc, char** argv) {
     prepareOutputs(o);
     StudyProgressFile progress(o.progress);progress.load(session);
     starters.loadProgress(o.progress.empty()?std::filesystem::path{}:o.progress.parent_path()/"corpus-starters-v1.json");
+    MotionLesson motion;
+    MotionProgressFile motionProgress(o.progress.empty()?std::filesystem::path{}:o.progress.parent_path()/"motion-lessons-v1.json");
+    motionProgress.load(motion);
     if(progress.failed())std::cerr << progress.message() << '\n';
     if(!progressLocationError.empty())std::cerr << progressLocationError << '\n';
     if(commands.empty() && !session.view().study.types.empty())
@@ -271,6 +283,7 @@ int main(int argc, char** argv) {
     ui.corpus=&corpus;
     ui.library.math=&math;
     ui.library.practice=&starters;
+    ui.motion.lesson=&motion;ui.motion.math=&math;
     SceneFrame renderScene;
     std::size_t rendered = 0, commandIndex = 0;
     while (!o.frames || rendered < o.frames) {
@@ -283,12 +296,14 @@ int main(int argc, char** argv) {
         beginEquationSorterFrame(ui, session, commands.empty()?-1.0F:0.0F);
         progress.save(session);ui.progressMessage=progressLocationError.empty()?progress.message():progressLocationError;
         ui.progressFailed=progress.failed() || !progressLocationError.empty();
+        ui.motion.progressMessage=motionProgress.message();ui.motion.progressFailed=motionProgress.failed();
         drawEquationSorter(ui, session.view(), session.content(), session.activeSolve());
         starters.saveProgress();
+        motionProgress.save(motion);
         // The host consumes this stable snapshot after the callback, even when
         // opening/closing the solver changed which session supplied the frame.
         const auto* active=session.activeSolve();
-        renderScene=active && !active->question().content().lineGraph && !active->question().currentRun().math?active->scene().frame():SceneFrame{};
+        renderScene=ui.motion.presented?ui.motion.scene.frame():active && !active->question().content().lineGraph && !active->question().currentRun().math?active->scene().frame():SceneFrame{};
       }, &renderScene);
       if (result.status == FrameStatus::Closed) break;
       if (result.status == FrameStatus::Failed) throw std::runtime_error(result.error);
@@ -296,6 +311,8 @@ int main(int argc, char** argv) {
     }
     progress.save(session);
     starters.saveProgress();
+    motionProgress.save(motion,true);
+    if(motionProgress.failed())std::cerr << motionProgress.message() << '\n';
     if(progress.failed())std::cerr << progress.message() << '\n';
     if (!o.capture.empty()) {
       std::string error;

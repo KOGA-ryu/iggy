@@ -12,6 +12,7 @@ namespace paths {
 namespace {
 unsigned boardIndex(unsigned section) {
   const auto card=matrixChapter()[section].card;
+  if(card==0)return 6;
   const auto& cards=matrixCards();
   return static_cast<unsigned>(std::find_if(cards.begin(),cards.end(),[&](auto c){return c.id==card;})-cards.begin());
 }
@@ -85,8 +86,8 @@ std::vector<BookBlockView> Textbook::lessonView()const {
   return result;
 }
 unsigned Textbook::exerciseIndex()const{return boardIndex(section_);}
-MatrixBoard& Textbook::board(){return boards_.at(boardIndex(section_));}
-const MatrixBoard& Textbook::board()const{return boards_.at(boardIndex(section_));}
+MatrixBoard& Textbook::board(){return matrixChapter()[section_].card==0?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
+const MatrixBoard& Textbook::board()const{return matrixChapter()[section_].card==0?systems_.board(mode_==BookMode::Exercise):boards_.at(boardIndex(section_));}
 std::string Textbook::bookmark()const {
   std::ostringstream out;out<<"paths-textbook 1\n"<<matrixChapter()[section_].id<<'\n'<<std::setprecision(17)<<textScale_<<'\n';
   for(unsigned i=0;i<scrolls_.size();++i)out<<matrixChapter()[i].id<<' '<<scrolls_[i]<<'\n';
@@ -99,15 +100,19 @@ BoardResult Textbook::restoreBookmark(std::string_view data) {
     return {false,"Unsupported reading bookmark."};
   const auto& sections=matrixChapter();auto section=std::find_if(sections.begin(),sections.end(),[&](auto s){return id==s.id;});
   if(section==sections.end())return {false,"Unknown bookmarked section."};
-  std::array<double,7> scrolls{};std::array<bool,7> seen{};
-  for(unsigned i=0;i<scrolls.size();++i) {
-    double offset=0;if(!(in>>id>>offset)||!std::isfinite(offset)||offset<0||offset>100000)return {false,"Invalid bookmarked position."};
+  std::array<double,8> scrolls{};std::array<bool,8> seen{};
+  unsigned positions=0;
+  while(in>>id) {
+    ++positions;double offset=0;if(!(in>>offset)||!std::isfinite(offset)||offset<0||offset>100000)return {false,"Invalid bookmarked position."};
     auto found=std::find_if(sections.begin(),sections.end(),[&](auto s){return id==s.id;});
     if(found==sections.end())return {false,"Unknown bookmarked position."};
     const auto index=static_cast<unsigned>(found-sections.begin());if(seen[index])return {false,"Duplicate bookmarked position."};
     seen[index]=true;scrolls[index]=offset;
   }
-  std::string trailing;if(in>>trailing)return {false,"Unexpected bookmark content."};
+  // Version 1 bookmarks from the seven-section chapter migrate by stable IDs.
+  // Only the newly added systems position may be absent; duplicates/unknowns fail.
+  if(positions!=7&&positions!=8)return {false,"Missing bookmarked positions."};
+  for(unsigned i=0;i<seen.size();++i)if(!seen[i]&&std::string_view(sections[i].id)!="matrix.solutions")return {false,"Missing bookmarked position."};
   section_=static_cast<unsigned>(section-sections.begin());textScale_=scale;scrolls_=scrolls;
   // Restore reading only: exercise states and results are deliberately untouched.
   page_=BookPage::Contents;mode_=BookMode::Reading;anchor_={};return {true,{}};

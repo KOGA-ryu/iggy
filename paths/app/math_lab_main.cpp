@@ -33,6 +33,8 @@ struct Options {
   bool board=false,book=false;
   LabPage page=LabPage::Textbook;
   std::vector<BookAction> bookActions;
+  std::vector<SystemAction> systemActions;
+  LessonPresentation bookPresentation=LessonPresentation::Together;
 };
 double number(std::string_view text) {
   double result=0;const auto parsed=std::from_chars(text.data(),text.data()+text.size(),result);
@@ -41,16 +43,16 @@ double number(std::string_view text) {
 unsigned integer(std::string_view text,unsigned minimum,unsigned maximum) {
   const double result=number(text);if(result<minimum||result>maximum||std::floor(result)!=result)throw std::invalid_argument("Integer option out of range");return static_cast<unsigned>(result);
 }
-enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Turn,UndoTurn,Identity,Advance,ModularStep,ResetWalk,ReversePath,WalkStep,ResetProbability,TrialStep,ResetTrials,Card,BoardCase,BoardSize,BoardStep,BoardUndo,BoardCheck,Book,Section,BookNext,BookPrevious,BookExercise,BookRead,BookIndex,Help };
+enum class Flag { Offscreen,Frames,Capture,Resolution,Object,Set,Route,Check,Level,Preset,Descent,Swap,Validate,Turn,UndoTurn,Identity,Advance,ModularStep,ResetWalk,ReversePath,WalkStep,ResetProbability,TrialStep,ResetTrials,Card,BoardCase,BoardSize,BoardStep,BoardUndo,BoardCheck,Book,Section,BookNext,BookPrevious,BookExercise,BookRead,BookIndex,BookView,SystemExample,SystemRhs,SystemStep,SystemChallenge,SystemPredict,Help };
 Options parse(int argc,char** argv) {
-  constexpr std::array<std::pair<std::string_view,Flag>,38> flags{{
+  constexpr std::array<std::pair<std::string_view,Flag>,44> flags{{
     {"--offscreen",Flag::Offscreen},{"--frames",Flag::Frames},{"--capture",Flag::Capture},
     {"--resolution",Flag::Resolution},{"--object",Flag::Object},{"--set",Flag::Set},
     {"--route",Flag::Route},{"--check",Flag::Check},{"--level",Flag::Level},
     {"--preset",Flag::Preset},{"--descent",Flag::Descent},{"--swap-bounds",Flag::Swap},
     {"--validate",Flag::Validate},{"--turn",Flag::Turn},{"--undo-turn",Flag::UndoTurn},
     {"--identity",Flag::Identity},{"--advance",Flag::Advance},{"--step",Flag::ModularStep},
-    {"--reset-walk",Flag::ResetWalk},{"--reverse-path",Flag::ReversePath},{"--walk-step",Flag::WalkStep},{"--reset-probability-walk",Flag::ResetProbability},{"--trial-step",Flag::TrialStep},{"--reset-trials",Flag::ResetTrials},{"--card",Flag::Card},{"--board-case",Flag::BoardCase},{"--board-size",Flag::BoardSize},{"--board-step",Flag::BoardStep},{"--board-undo",Flag::BoardUndo},{"--board-check",Flag::BoardCheck},{"--book",Flag::Book},{"--section",Flag::Section},{"--book-next",Flag::BookNext},{"--book-previous",Flag::BookPrevious},{"--book-exercise",Flag::BookExercise},{"--book-read",Flag::BookRead},{"--book-index",Flag::BookIndex},{"--help",Flag::Help}}};
+    {"--reset-walk",Flag::ResetWalk},{"--reverse-path",Flag::ReversePath},{"--walk-step",Flag::WalkStep},{"--reset-probability-walk",Flag::ResetProbability},{"--trial-step",Flag::TrialStep},{"--reset-trials",Flag::ResetTrials},{"--card",Flag::Card},{"--board-case",Flag::BoardCase},{"--board-size",Flag::BoardSize},{"--board-step",Flag::BoardStep},{"--board-undo",Flag::BoardUndo},{"--board-check",Flag::BoardCheck},{"--book",Flag::Book},{"--section",Flag::Section},{"--book-next",Flag::BookNext},{"--book-previous",Flag::BookPrevious},{"--book-exercise",Flag::BookExercise},{"--book-read",Flag::BookRead},{"--book-index",Flag::BookIndex},{"--book-view",Flag::BookView},{"--system-example",Flag::SystemExample},{"--system-rhs",Flag::SystemRhs},{"--system-step",Flag::SystemStep},{"--system-challenge",Flag::SystemChallenge},{"--system-predict",Flag::SystemPredict},{"--help",Flag::Help}}};
   Options options;
   for(int i=1;i<argc;++i) {
     const std::string_view name=argv[i];const auto flag=std::find_if(flags.begin(),flags.end(),[&](const auto& item){return item.first==name;});
@@ -109,14 +111,26 @@ Options parse(int argc,char** argv) {
       case Flag::BoardUndo:options.boardActions.push_back({BoardActionKind::Undo});break;
       case Flag::BoardCheck:options.boardActions.push_back({BoardActionKind::Check});break;
       case Flag::Book:options.book=true;options.bookActions.push_back({BookActionKind::Resume});break;
-      case Flag::Section:options.bookActions.push_back({BookActionKind::OpenSection,integer(next(),1,7)-1});break;
+      case Flag::Section:options.bookActions.push_back({BookActionKind::OpenSection,integer(next(),1,8)-1});break;
       case Flag::BookNext:options.bookActions.push_back({BookActionKind::Next});break;
       case Flag::BookPrevious:options.bookActions.push_back({BookActionKind::Previous});break;
       case Flag::BookExercise:options.bookActions.push_back({BookActionKind::Exercise});break;
       case Flag::BookRead:options.bookActions.push_back({BookActionKind::Read});break;
       case Flag::BookIndex:options.bookActions.push_back({BookActionKind::Index});break;
+      case Flag::BookView:{
+        static constexpr std::array<std::string_view,3> views{"together","reading","figure"};
+        const auto name=next();const auto found=std::find(views.begin(),views.end(),name);
+        if(found==views.end())throw std::invalid_argument("Use --book-view together, reading, or figure");
+        options.book=true;options.bookPresentation=static_cast<LessonPresentation>(found-views.begin());break;
+      }
+      case Flag::SystemExample:options.systemActions.push_back({SystemActionKind::SelectExample,integer(next(),1,5)-1});break;
+      case Flag::SystemRhs:{const auto row=integer(next(),1,3)-1;options.systemActions.push_back({SystemActionKind::SetRightHandSide,row,0,number(next())});break;}
+      case Flag::SystemStep:options.systemActions.push_back({SystemActionKind::RowOperation,0,0,0,{BoardActionKind::Step}});break;
+      case Flag::SystemChallenge:options.systemActions.push_back({SystemActionKind::SelectChallenge,integer(next(),1,3)-1});break;
+      case Flag::SystemPredict:{const auto outcome=integer(next(),0,2);const auto reason=integer(next(),0,2);options.systemActions.push_back({SystemActionKind::Predict,outcome,reason});break;}
       case Flag::Help:
-        std::puts("Textbook (default): [--book] [--section 1..7] [--book-next] [--book-previous] [--book-exercise] [--book-read] [--book-index] [--validate]\n--validate never reads or writes a reading bookmark.");
+        std::puts("Textbook (default): [--book] [--section 1..8] [--book-next] [--book-previous] [--book-exercise] [--book-read] [--book-index] [--book-view together|reading|figure] [--validate]\n--validate never reads or writes a reading bookmark.");
+        std::puts("Systems lesson (section 3): --system-example 1..5; --system-rhs ROW VALUE; --system-step; --system-challenge 1..3; --system-predict OUTCOME REASON. Outcomes: 0 none, 1 one, 2 infinite. Reasons: 0 contradiction, 1 full pivots, 2 free variables.");
         std::puts("Matrix board: --card 001|004|018|031|044|059 [--board-case 0..5] [--board-size SIZE BAND CUT] [--board-step N] [--board-undo] [--board-check] [--validate]");
         std::puts("math_lab [--object algebra|trig|calculus|linear|discrete|function|surface|symmetry|harmonics|oscillator|modular|gaussian|field|flux|tensor|probability|binomial|bayes|covariance|spherical|quadratic|roots] [--level 0..3]\n         [--set key=value] [--preset 0..4] [--descent] [--swap-bounds] [--route BDH] [--check]\n         [--turn x|y|z|x-inverse|y-inverse|z-inverse] [--undo-turn] [--identity] [--advance duration]\n         [--step 1|-1] [--reset-walk] [--reverse-path] [--walk-step] [--reset-probability-walk] [--trial-step] [--reset-trials]\n         [--validate] [--offscreen] [--frames N] [--resolution 1440x900] [--capture /path/view.png]\n--validate computes geometry and prints measurements without creating a native host or images.\nArguments apply in order: select the object and level before setting its parameters.\nMatrix presets: 0 identity, 1 shear, 2 xy projection, 3 stretch/reflection, 4 z rotation.");
         for(const auto& p:mathParameterSpecs())std::printf("  %s [%g,%g]  %s (level %u+)\n",p.key.data(),p.minimum,p.maximum,p.label.data(),p.minimumLevel);
@@ -449,15 +463,30 @@ int main(int argc,char** argv) {
     const auto options=parse(argc,argv);MathObjects model;for(const auto& action:options.actions)apply(model,action);
     MathObjectScene scene;UiState ui;
     MatrixBoard board;MatrixBoardUiState boardUi;LabPage page=options.page;
-    Textbook book;TextbookUiState bookUi;
+    Textbook book;TextbookUiState bookUi;bookUi.presentation=options.bookPresentation;
     const auto applyBookActions=[&]{for(const auto action:options.bookActions){const auto result=book.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}};
     if(options.validate&&page==LabPage::Textbook){
-      applyBookActions();const auto v=book.view();const auto matrix=book.board().view();
+      applyBookActions();for(const auto& action:options.systemActions){const auto result=book.systems().dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}
+      const auto v=book.view();const auto matrix=book.board().view();
       std::size_t terms=0,openHelp=0;for(const auto& section:matrixChapter())terms+=section.terms.size();
       const auto lesson=book.lessonView();for(const auto& block:lesson)for(const auto& help:block.help)openHelp+=help.open;
       std::printf("textbook text validation: sections=%zu terms=%zu section=%u id=%s page=%u mode=%u card=%03u working=%d checked=%d blocks=%zu open_help=%zu bookmark_io=0\n",matrixChapter().size(),terms,v.section+1,matrixChapter()[v.section].id,static_cast<unsigned>(v.page),static_cast<unsigned>(v.mode),matrix.card,matrix.working,matrix.checked,lesson.size(),openHelp);
+      const bool hasFigure=v.page==BookPage::Section&&v.mode==BookMode::Reading&&matrixChapter()[v.section].figure.kind!=BookFigureKind::None;
+      const auto spread=planLessonSpread({static_cast<float>(options.native.width),static_cast<float>(options.native.height),true,hasFigure,bookUi.presentation});
+      if(matrixChapter()[v.section].figure.kind==BookFigureKind::AffinePlanes){
+        const auto state=book.systems().view(v.mode==BookMode::Exercise);
+        std::printf("systems lesson text validation: practice=%d revealed=%d attempts=%zu",state.practice,state.revealed,state.attempts.size());
+        if(state.solution)std::printf(" outcome=%u rank=%u augmented_rank=%u nullity=%u",static_cast<unsigned>(systemOutcome(*state.solution)),state.solution->rank,state.solution->augmentedRank,state.solution->dimension);
+        std::putchar('\n');
+      }
+      if(hasFigure){
+        const auto& figure=bookUi.figure.model.publish(matrix);std::size_t vertices=0,indices=0;
+        if(figure.available&&spread.showFigure){const auto regions=planLessonFigureRegions(spread.figure);const auto& frame=bookUi.figure.scene.publish(bookUi.figure.model.geometry(),regions.viewport);vertices=frame.vertices.size();indices=frame.indices.size();}
+        std::printf("lesson figure text validation: available=%d rows=%u rank=%u nullity=%u agrees=%d split=%d visible=%d vertices=%zu indices=%zu consistent=%d augmented_rank=%u\n",figure.available,figure.rows,figure.rank,figure.dimension,figure.agrees,spread.split,spread.showFigure,vertices,indices,figure.consistent,figure.augmentedRank);
+      }
       return 0;
     }
+    for(const auto& action:options.systemActions){const auto result=book.systems().dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}
     for(const auto& action:options.boardActions){const auto result=board.dispatch(action);if(!result.accepted)throw std::invalid_argument(result.reason);}
     if(options.validate&&page==LabPage::MatrixBoard){
       const auto v=board.view();std::printf("matrix_board text validation: card=%03u case=%u rows=%u cols=%u steps=%u working=%d complete=%d blocked=%d checked=%d passed=%d residual=%.12g tolerance=%.12g\n",v.card,v.example,v.given.rows,v.given.cols,v.steps,v.working,v.complete,v.blocked,v.checked,v.passed,v.residual,v.tolerance);
@@ -481,13 +510,17 @@ int main(int argc,char** argv) {
     NativeMath math(std::filesystem::path(SDL_GetBasePath())/"math_typesetter");
     auto& style=ImGui::GetStyle();style.WindowPadding={15,13};style.FramePadding={8,5};style.ItemSpacing={7,8};style.FrameRounding=4;
     style.Colors[ImGuiCol_WindowBg]={.035F,.055F,.08F,1};style.Colors[ImGuiCol_Button]={.12F,.26F,.30F,1};
+    // The host reads this stable packet after the UI callback chooses the active pane.
+    SceneFrame presented;presented.vertices.reserve(kSceneVertexCapacity);presented.indices.reserve(kSceneIndexCapacity);presented.draws.reserve(MathObjectSnapshot::kPartCapacity);
     unsigned frames=0,skipped=0;
     while(!ui.quit&&(!options.frames||frames<options.frames)) {
-      const auto result=host.frame([&](const SDL_Event& event){if(event.type==SDL_EVENT_QUIT)ui.quit=true;},[&]{switch(page){
-        case LabPage::Textbook:if(drawTextbook(book,bookUi,math))page=LabPage::Objects;break;
-        case LabPage::Objects:draw(model,scene,ui,page);break;
+      const auto result=host.frame([&](const SDL_Event& event){if(event.type==SDL_EVENT_QUIT)ui.quit=true;},[&]{
+        presented.vertices.clear();presented.indices.clear();presented.draws.clear();
+        switch(page){
+        case LabPage::Textbook:if(drawTextbook(book,bookUi,math,presented))page=LabPage::Objects;break;
+        case LabPage::Objects:draw(model,scene,ui,page);presented=scene.frame();break;
         case LabPage::MatrixBoard:{bool stay=true;drawMatrixBoard(board,boardUi,stay,"Textbook");if(!stay)page=LabPage::Textbook;break;}
-      }},page==LabPage::Objects?&scene.frame():nullptr);
+      }},&presented);
       if(result.status==FrameStatus::Failed)throw std::runtime_error(result.error);if(result.status==FrameStatus::Closed)break;
       if(result.status==FrameStatus::Skipped){if(++skipped>1000)throw std::runtime_error("Too many skipped native frames");continue;}
       skipped=0;++frames;

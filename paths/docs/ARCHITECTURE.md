@@ -1,5 +1,24 @@
 # Paths architecture
 
+[Matrix reasoning](MATRIX_REASONING.md) adds eight follow-up questions to the
+same `CorpusPractice` bank. `LayeredQuestionSession` remains the sole owner of
+accepted answers, prepared working and attempt history. Optional `reading_refs`
+identify existing textbook definitions and propositions; `CorpusPracticeUi`
+projects their neutral bodies without constructing a textbook or exercise
+session. Focus and Method change only presentation. Reading metadata is outside
+the mathematical save stamp. The regular question and textbook/lab exercise
+owners remain distinct; any future figure bridge must consume the question's
+canonical matrix and explicit right-hand side, not create a second judge.
+
+[Motion lessons](MOTION_LESSONS.md) adds `paths_motion` for five authored
+kinematics chapters. `MotionLesson` owns the analytic journey, goal checks,
+clock and attempt records; `MotionScene` uses those coordinates in the existing
+SceneFrame contract. `MotionLessonUi` sends semantic actions from graph handles,
+sliders and symbolic tiles. `MotionProgressFile` validates and saves this
+independent state. Contents opens the module without changing existing question
+or practice-save owners, the native host, or the separate math lab. Further
+Motion development is shelved at the user's request.
+
 [Corpus starters](CORPUS_STARTERS.md) connects 278 authored questions to the
 six-subject Library hierarchy. `CorpusPractice` selects independently frozen
 `LayeredQuestionSession` instances and persists their canonical command journals;
@@ -8,6 +27,20 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+[P050](P050_SYSTEM_SOLUTION_SETS.md) reuses the spread and equation-plane provider
+for explicit Ax=b systems. `SystemLesson` owns authored givens and practice
+judgments; two retained `MatrixBoard` instances own exploration and practice row
+history. The shared affine-space analysis publishes numerical rank, consistency
+and solution families. Prediction results stay redacted until Submit or Reveal.
+Existing reading bookmarks migrate by stable section IDs.
+
+[P049](P049_LIVE_TEXTBOOK_FIGURES.md) adds the reusable `LessonSpread` layout
+and topic figure bindings. `RowPlaneFigure` projects the existing MatrixBoard
+into equation planes and a numerical null space; its exploration settings never
+edit the board. `TextbookFigureUi` consumes that projection through the existing
+MathObjectScene/NativeMath adapters. The active pane supplies one SceneFrame
+packet to the unchanged native host after the UI callback selects its scene.
 
 [P048](P048_TEXTBOOK_SECTION_FORMAT.md) adds variable-length typed lesson blocks
 and stable internal references. `Textbook` owns independent help disclosures

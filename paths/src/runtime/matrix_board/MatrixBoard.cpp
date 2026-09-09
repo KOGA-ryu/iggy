@@ -56,10 +56,18 @@ const std::array<MatrixCardSpec,6>& matrixCards(){
   }};return cards;
 }
 MatrixBoard::MatrixBoard(){initialize();}
+BoardResult MatrixBoard::loadSystem(const BoardMatrix& a,const BoardMatrix& b){
+  if(a.rows<1||a.rows>3||a.cols!=3||a.values.size()!=a.rows*3||b.rows!=a.rows||b.cols!=1||b.values.size()!=b.rows)
+    return {false,"A lesson system requires one to three real equations in three variables and an explicit right-hand side."};
+  for(const auto* m:{&a,&b})for(const auto z:m->values)
+    if(!std::isfinite(z.real())||z.imag()!=0||std::abs(z.real())>100)return {false,"Lesson givens must be finite real numbers with magnitude at most 100."};
+  customSystem_=true;card_=0;example_=0;systemA_=a;systemB_=b;initialize();return {true,{}};
+}
 void MatrixBoard::initialize(){
   state_=State{};history_.clear();checked_=passed_=false;residual_=0;evidence_.clear();
   auto& s=state_;
   switch(card_){
+    case 0:s.a=systemA_;s.b=systemB_;break;
     case 4: {
       static const std::array<BoardMatrix,6> a{{matrix(2,3,{-2,0,1,1,3,-4}),matrix(3,5,{2,3,4,-1,1,1,0,-1,0,3,2,2,2,-1,2}),matrix(3,2,{-2,1,0,3,1,-4}),matrix(3,3,{1,2,-3,4,-5,6,7,-8,9}),matrix(4,4,{1,1,1,1,1,2,2,2,1,2,3,3,1,2,3,4}),matrix(4,5,{-1,2,1,0,1,2,3,1,-1,1,-1,-2,0,2,-1,2,2,1,0,1})}};
       s.a=a[example_];break;
@@ -80,14 +88,33 @@ void MatrixBoard::initialize(){
 BoardResult MatrixBoard::dispatch(const BoardAction& action){
   // Commit only a fully valid candidate, including all state/history/feedback.
   MatrixBoard candidate=*this;const auto result=candidate.mutate(action);if(!result.accepted)return result;
+  if(candidate.customSystem_)switch(action.kind){
+    case BoardActionKind::Step:case BoardActionKind::SwapRows:case BoardActionKind::ScaleRow:case BoardActionKind::AddRow:candidate.cleanSystemRoundoff();break;
+    default:break;
+  }
   for(const auto* a:{&candidate.state_.u,&candidate.state_.y,&candidate.state_.l,&candidate.state_.p,&candidate.state_.e})if(!finite(*a))return {false,"Operation exceeds the finite numeric range; no state changed."};
   *this=std::move(candidate);return result;
 }
+void MatrixBoard::cleanSystemRoundoff(){
+  // The recorded row transform supplies a scale for cancellation in each entry.
+  // A small but deliberately scaled equation survives: its bound scales with E.
+  // This bounded lesson policy never changes printed source-card matrices.
+  auto& s=state_;bool cleaned=false;
+  const double factor=8*static_cast<double>(history_.size()+1)*std::numeric_limits<double>::epsilon();
+  const auto clean=[&](BoardMatrix& current,const BoardMatrix& given){
+    for(unsigned r=0;r<current.rows;++r)for(unsigned c=0;c<current.cols;++c){
+      double magnitude=0;for(unsigned k=0;k<given.rows;++k)magnitude+=std::abs(s.e.at(r,k))*std::abs(given.at(k,c));
+      if(current.at(r,c)!=MatrixScalar{}&&std::isfinite(magnitude)&&std::abs(current.at(r,c))<=factor*magnitude){current.at(r,c)=0.;cleaned=true;}
+    }
+  };
+  clean(s.u,s.a);clean(s.y,s.b);
+  if(cleaned)s.status+=" Tiny cancellation residues were treated as zero using the recorded row-transform scale.";
+}
 BoardResult MatrixBoard::mutate(const BoardAction& a){
   switch(a.kind){
-    case BoardActionKind::Select:{auto it=std::find_if(matrixCards().begin(),matrixCards().end(),[&](auto c){return c.id==a.first;});if(it==matrixCards().end()||a.second>=it->cases)return {false,"Unknown card or example."};card_=a.first;example_=a.second;initialize();return {true,{}};}
+    case BoardActionKind::Select:{auto it=std::find_if(matrixCards().begin(),matrixCards().end(),[&](auto c){return c.id==a.first;});if(it==matrixCards().end()||a.second>=it->cases)return {false,"Unknown card or example."};customSystem_=false;card_=a.first;example_=a.second;initialize();return {true,{}};}
     case BoardActionKind::Configure:
-      if(card_==4||card_==44)return {false,"Printed matrix dimensions are fixed."};
+      if(customSystem_||card_==4||card_==44)return {false,"This example has fixed matrix dimensions."};
       if(a.first<2||a.first>maxSize||a.second>=a.first||a.third<1||(card_==18?a.third>a.first:a.third>=a.first))return {false,"Require 2<=size<=32, 0<=band<size, 1<=cut<size (leading-block inspection also permits cut=size)."};
       size_=a.first;band_=a.second;partition_=a.third;initialize();return {true,{}};
     case BoardActionKind::Reset:initialize();return {true,{}};
@@ -95,7 +122,7 @@ BoardResult MatrixBoard::mutate(const BoardAction& a){
     case BoardActionKind::Check:if(!state_.working)return {false,"Begin working before checking."};check();return {true,{}};
     case BoardActionKind::Step:if(state_.complete||state_.blocked)return {false,"This trace is complete or blocked. Undo or reset to continue."};break;
     case BoardActionKind::SwapRows:case BoardActionKind::ScaleRow:case BoardActionKind::AddRow:
-      if(card_!=4&&card_!=31)return {false,"Manual row operations are available on cards 004 and 031."};
+      if(!customSystem_&&card_!=4&&card_!=31)return {false,"Manual row operations are available on cards 004 and 031 and authored systems."};
       if(a.first>=state_.u.rows||a.second>=state_.u.rows)return {false,"Row index out of bounds."};
       if(!std::isfinite(a.value.real())||!std::isfinite(a.value.imag())||std::abs(a.value)>1e6)return {false,"Multiplier must be finite with magnitude <= 1e6."};
       if(a.kind==BoardActionKind::ScaleRow&&std::abs(a.value)<=eps)return {false,"A row scale must be nonzero (magnitude > 1e-12)."};
@@ -116,7 +143,7 @@ BoardResult MatrixBoard::mutate(const BoardAction& a){
 }
 void MatrixBoard::step(){
   auto& s=state_;unsigned r=s.pivotRow,c=s.pivotCol;
-  const bool reduction=card_==4,normalized=card_==31,pivoting=reduction||normalized||card_==44;
+  const bool reduction=customSystem_||card_==4,normalized=card_==31,pivoting=reduction||normalized||card_==44;
   if(reduction){while(c<s.u.cols){unsigned p=r;for(unsigned i=r;i<s.u.rows;++i)if(std::abs(s.u.at(i,c))>std::abs(s.u.at(p,c)))p=i;if(std::abs(s.u.at(p,c))>eps)break;++c;}}
   if(r>=s.u.rows||c>=s.u.cols){s.complete=true;s.status="Elimination trace complete.";return;}
   unsigned p=r;if(pivoting)for(unsigned i=r+1;i<s.u.rows;++i)if(std::abs(s.u.at(i,c))>std::abs(s.u.at(p,c)))p=i;
@@ -130,6 +157,7 @@ void MatrixBoard::step(){
 void MatrixBoard::check(){
   const auto& s=state_;checked_=true;residual_=difference(multiply(s.e,s.a),s.u);bool goal=false;
   switch(card_){
+    case 0:residual_=std::max(residual_,difference(multiply(s.e,s.b),s.y));goal=rref(s.u);evidence_="E*A equals the reduced coefficients and E*b equals the working right-hand side. Coefficient pivots are reduced; a zero coefficient row with nonzero rhs is a contradiction.";break;
     case 4:goal=rref(s.u);evidence_="Invariant check: E*A equals the working matrix; independently test the RREF definition. This is not a source-page solve record.";break;
     case 31:{
       residual_=std::max(residual_,difference(multiply(s.e,s.b),s.y));double shape=0,plant=0;
