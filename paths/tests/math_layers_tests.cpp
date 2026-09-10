@@ -124,6 +124,25 @@ void surfaces() {
 }
 using Matrix=std::array<double,9>;
 void setMatrix(MathObjects& m,const Matrix& a){const auto keys=m.snapshot().matrices[0].parameters;for(unsigned i=0;i<9;++i)set(m,keys[i],a[i]);}
+// Check the displayed construction against P v, including collapsed vectors.
+void projectionGeometry(const MathObjects& m) {
+  const auto& s=m.snapshot();const auto& p=s.matrices[1].values;
+  const iggy3d::Vec3 v{static_cast<float>(m.parameter(MathParameter::VectorX)),static_cast<float>(m.parameter(MathParameter::VectorY)),static_cast<float>(m.parameter(MathParameter::VectorZ))};
+  const iggy3d::Vec3 fit{static_cast<float>(p[0]*v.x+p[1]*v.y+p[2]*v.z),static_cast<float>(p[3]*v.x+p[4]*v.y+p[5]*v.z),static_cast<float>(p[6]*v.x+p[7]*v.y+p[8]*v.z)};
+  const auto same=[&](iggy3d::Vec3 a,iggy3d::Vec3 b){near(iggy3d::length(a-b),0,1e-5,"projection geometry endpoint");};
+  unsigned tips=0,residuals=0,labels=0,inputTips=0,inputLabels=0;
+  for(unsigned i=0;i<s.partCount;++i){const auto& part=s.parts[i];
+    if(part.role=="input_vector"&&part.shape==MathShape::Cone){same(part.center+part.y*.5F,v);++inputTips;}
+    if(part.role=="projection"&&part.shape==MathShape::Cone){same(part.center+part.y*.5F,fit);++tips;}
+    if(part.role=="projection_residual"){require(part.shape==MathShape::Rod,"residual must be a segment");same(part.center-part.y*.5F,fit);same(part.center+part.y*.5F,v);++residuals;}
+  }
+  for(unsigned i=0;i<s.labelCount;++i)if(s.labels[i].text=="projection"){same(s.labels[i].position,fit+iggy3d::Vec3{0,.15F,0});++labels;}
+  require(tips==(iggy3d::length(fit)>=1e-6F),"zero projection arrow contract");
+  require(residuals==(iggy3d::length(v-fit)>=1e-6F),"zero residual segment contract");
+  require(labels==1,"collapsed projection lost its label");
+  for(unsigned i=0;i<s.labelCount;++i)if(s.labels[i].text=="v"){same(s.labels[i].position,v+iggy3d::Vec3{0,.15F,0});++inputLabels;}
+  require(inputTips==(iggy3d::length(v)>=1e-6F)&&inputLabels==1,"collapsed labelled vector contract");
+}
 void matrices() {
   MathObjects m;MathObjectScene scene;select(m,MathObjectKind::Linear,1);
   action(m,{MathActionKind::MatrixPreset,{},{},0,3});set(m,MathParameter::ComposeAngle,90);
@@ -132,10 +151,11 @@ void matrices() {
   set(m,MathParameter::VectorY,0);set(m,MathParameter::VectorZ,0);checked(m,true);set(m,MathParameter::VectorX,0);checked(m,false);
   action(m,{MathActionKind::SetLevel,{},{},2});action(m,{MathActionKind::MatrixPreset,{},{},0,0});
   set(m,MathParameter::VectorX,1);set(m,MathParameter::VectorY,1);set(m,MathParameter::VectorZ,1);
-  near(metric(m,"Residual length"),1,1e-6,"projection residual");near(metric(m,"Orthogonality error"),0,1e-6,"projection orthogonality");checked(m,false);
-  set(m,MathParameter::VectorZ,0);checked(m,true);
-  setMatrix(m,{1,1,0,0,0,0,0,0,1});near(metric(m,"Subspace dimension"),1,0,"dependent column span");near(metric(m,"Residual length"),1,1e-6,"line projection");
-  setMatrix(m,{0,0,0,0,0,0,0,0,1});near(metric(m,"Subspace dimension"),0,0,"zero column span");inspect(m,scene);
+  projectionGeometry(m);near(metric(m,"Residual length"),1,1e-6,"projection residual");near(metric(m,"Orthogonality error"),0,1e-6,"projection orthogonality");checked(m,false);
+  set(m,MathParameter::VectorZ,0);projectionGeometry(m);checked(m,true);
+  setMatrix(m,{1,1,0,0,0,0,0,0,1});near(metric(m,"Subspace dimension"),1,0,"dependent column span");near(metric(m,"Residual length"),1,1e-6,"line projection");projectionGeometry(m);
+  setMatrix(m,{0,0,0,0,0,0,0,0,1});near(metric(m,"Subspace dimension"),0,0,"zero column span");inspect(m,scene);projectionGeometry(m);
+  set(m,MathParameter::VectorX,0);set(m,MathParameter::VectorY,0);projectionGeometry(m);
   action(m,{MathActionKind::SetLevel,{},{},3});
   std::uint32_t seed=923871;const auto random=[&](){seed=seed*1664525U+1013904223U;return seed;};
   for(unsigned trial=0;trial<48;++trial) {

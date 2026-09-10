@@ -28,6 +28,13 @@ PROBABILITY_ROOT = ROOT / 'content/authoring/learning/probability_reference'
 PROBABILITY_FAMILY = 'finite_probability_v1'
 PROBABILITY_GROUPS = ('event', 'complement', 'boundary')
 PROBABILITY_TITLES = ('Count an event', 'Count its complement', 'Impossible or certain')
+REASONING_ROOT = ROOT / 'content/authoring/learning/probability_reasoning'
+# Authoring roles describe the decision and required certificate, not a new runtime solver.
+EXERCISE_ROLES = {
+    'read_notation':'notation_interpretation', 'worked_check':'worked_example',
+    'choose_next_step':'method_condition', 'explain_step':'justification',
+    'repair_error':'first_error', 'independent':'fresh_context',
+}
 
 
 def require(ok, message):
@@ -211,10 +218,13 @@ def choices_text(values, accepted_index, step, render=str):
                      +[f"@answer {base+accepted_index+1}"])
 
 
+def chapter_text(values):
+    return fill_template(export.read_bytes(CHAPTER_TEMPLATE,128*1024).decode('utf-8'),values,CHAPTER_TEMPLATE)
+
+
 def teaching_documents(questions, *, groups, titles, group_key, subject, chapter,
                        reading_prefix, question_template, lesson_template, fields, filename_prefix="", numbered_files=False):
     """Use the existing document grammar and textbook block types for every family."""
-    wrapper=export.read_bytes(CHAPTER_TEMPLATE,128*1024).decode('utf-8')
     lesson_path=lesson_template
     lesson=export.read_bytes(lesson_path,128*1024).decode('utf-8')
     question=export.read_bytes(question_template,128*1024).decode('utf-8')
@@ -229,7 +239,7 @@ def teaching_documents(questions, *, groups, titles, group_key, subject, chapter
         values['questions']='\n'.join(fill_template(question,dict(fields(q,n),reading_id=reading_id),question_template)
                                      for n,q in enumerate(selected,1))
         prefix=f'{section:02}_' if numbered_files else filename_prefix
-        docs[prefix+group+'.paths.md']=fill_template(wrapper,values,CHAPTER_TEMPLATE).encode()
+        docs[prefix+group+'.paths.md']=chapter_text(values).encode()
     return docs,reading_ids
 
 
@@ -408,11 +418,162 @@ def probability_fields(q, number):
     return fields
 
 
+def validate_role_sequence(sequence, source):
+    """Shared authoring contract; family-specific mathematics supplies the certificates."""
+    def check(ok,field,message):
+        export.require(ok,'batch.role',f'{source}:{field}: {message}')
+    check(type(sequence) is dict and set(sequence)=={'format','format_version','questions'},'/', 'Expected the exercise-role sequence fields')
+    check(sequence['format']=='paths_exercise_roles' and type(sequence['format_version']) is int and sequence['format_version']==1,'/format','Unsupported exercise-role format')
+    questions=sequence['questions']
+    check(type(questions) is list and len(questions)==len(EXERCISE_ROLES),'/questions','Supply one question for each of the six exercise roles')
+    for i,q in enumerate(questions):
+        field=f'/questions/{i}'
+        check(type(q) is dict and set(q)=={'id','role','title','objective','prerequisites','case'},field,'Each role needs id, role, title, objective, prerequisites and a family case')
+        for name in ('id','role','title','objective','prerequisites'):
+            check(type(q[name]) is str and 0<len(q[name].strip())<=1000,field+'/'+name,'Expected a nonempty bounded string')
+        check(q['role'] in EXERCISE_ROLES,field+'/role','Unknown exercise role')
+        check(type(q['case']) is dict and bool(q['case']),field+'/case','Supply original inputs for the family checker')
+    check(len({q['id'] for q in questions})==len(questions),'/questions','Repeated question identity')
+    check([q['role'] for q in questions]==list(EXERCISE_ROLES),'/questions','Use each role once in teaching order')
+    return questions
+
+
+def verify_role_content(questions, compiled, certificates):
+    """A common certificate boundary for authored multiple-choice role sequences."""
+    def check(ok,q,field,message):
+        export.require(ok,'batch.role',f"{q['id']} ({q['role']}) {field}: {message}")
+    by_id={q['id']:q['question'] for q in compiled};checks={q['id']:q for q in certificates}
+    export.require(len(by_id)==len(compiled)==len(questions)==len(checks)==len(certificates)
+                   and set(by_id)==set(checks)=={q['id'] for q in questions},
+                   'batch.role','Role questions, compiled questions and certificates must have identical unique identities')
+    for q in questions:
+        actual=by_id[q['id']];certificate=checks[q['id']];expected=certificate['expected']
+        check(certificate['accepted'] is True and certificate['role']==q['role']
+              and certificate['evidence']['kind']==EXERCISE_ROLES[q['role']] and bool(certificate['evidence']['facts']),
+              q,'certificate','Missing the mathematical evidence required by this role')
+        check('support' not in actual and actual['description'].startswith(q['objective']+' '),q,'goal','Role objective or response mode differs from the checked sequence')
+        check(actual['equation']==expected['given'] and [s['display'] for s in actual['working_states']]==[expected['given'],*expected['after']],
+              q,'given/after','Compiled givens or working disagree with the independent certificate')
+        check(len(actual['steps'])==len(expected['steps']),q,'steps','Unexpected step count')
+        for i,(step,certified) in enumerate(zip(actual['steps'],expected['steps']),1):
+            labels=[o['label'] for o in step['options']]
+            accepted=[o['label'] for o in step['options'] if o['id'] in step['accepted_option_ids']]
+            check(len(labels)==len(set(labels)) and sorted(labels)==sorted(certified['choices']) and accepted==[certified['answer']],
+                  q,f'step {i}','Compiled choices or key disagree with the checked decision')
+            check(all(o.get('wrong_feedback','').strip() for o in step['options'] if o['id'] not in step['accepted_option_ids']),
+                  q,f'step {i}','Each distractor needs its own correction')
+        if q['role']=='independent':
+            check(len(actual['steps'])==1 and all(not s.get('hint') for s in actual['steps']),q,'guidance','The fresh problem must remain one uncued choice; linked reading is optional')
+
+
+def finite_case(q, keys):
+    case=q['case'];require(set(case)==set(keys),f"{q['id']}: unexpected original case fields")
+    return case
+
+
+def finite_set(values):
+    return r'\{'+','.join(map(str,values))+r'\}' if values else r'\varnothing'
+
+
+def uniform_case(q, keys=('n','event')):
+    case=finite_case(q,keys);n=case['n']
+    require(type(n) is int and 3<=n<=32,f"{q['id']}: expected 3 through 32 equally likely outcomes")
+    outcomes=list(range(1,n+1))
+    if 'divisor' in case:
+        d=case['divisor'];require(type(d) is int and 2<=d<=n,'Invalid divisor')
+        event=[v for v in outcomes if v%d==0]
+    else:event=case['event']
+    require(type(event) is list and all(type(v) is int and v in outcomes for v in event) and len(event)==len(set(event)),'Event must contain distinct permitted labels')
+    return n,sorted(event),sum((Fraction(1,n) for _ in event),Fraction(0))
+
+
+def notation_certificate(q):
+    n,divisible,_=uniform_case(q,('n','divisor'));d=q['case']['divisor']
+    event=[v for v in range(1,n+1) if v not in divisible]
+    given=rf'\Omega=\{{1,2,\ldots,{n}\}},\quad E=\{{j\in\Omega:{d}\nmid j\}}'
+    return given,[f'E={finite_set(event)}'],[(list(map(finite_set,(event,divisible,[0,*divisible[:-1]]))),finite_set(event))],{'event':event,'excluded':divisible}
+
+
+def worked_certificate(q):
+    n,event,probability=uniform_case(q);k=len(event)
+    given=rf'\Omega=\{{1,2,\ldots,{n}\}},\quad E={finite_set(event)},\quad P(E)=\frac{{{k}}}{{\square}}'
+    return given,[rf'P(E)=\frac{{{k}}}{{{n}}}={tex(probability)}'],[([str(n-k),str(n),str(k)],str(n))],{'event_count':k,'sample_count':n,'probability':str(probability)}
+
+
+def method_certificate(q):
+    case=finite_case(q,('weights','event'));event=case['event']
+    require(type(case['weights']) is dict and list(case['weights'])==['a','b','c'] and event==['a','b'],'This bounded contrast uses outcomes a, b, c and event a or b')
+    require(all(type(v) is str for v in case['weights'].values()),'Outcome weights must be exact fraction strings')
+    weights={k:Fraction(v) for k,v in case['weights'].items()}
+    require(all(0<w<1 for w in weights.values()) and sum(weights.values())==1 and len(set(weights.values()))>1,'Contrast needs positive unequal weights summing to one')
+    probability=sum(weights[k] for k in event);counting=Fraction(len(event),len(weights))
+    require(probability!=counting,'Avoid a counting shortcut that accidentally gives the same answer')
+    given=rf'P(a)={tex(weights["a"])},\quad P(b)={tex(weights["b"])},\quad P(c)={tex(weights["c"])},\quad E=\{{a,b\}}'
+    answer=tex(weights['a'])+'+'+tex(weights['b'])
+    return given,[rf'P(E)={answer}={tex(probability)}'],[([tex(counting),tex(weights['c']),answer],answer)],{'weights':{k:str(v) for k,v in weights.items()},'weighted_sum':str(probability),'counting_shortcut':str(counting)}
+
+
+def explanation_certificate(q):
+    n,event,probability=uniform_case(q);outside=[v for v in range(1,n+1) if v not in event]
+    require(bool(event) and bool(outside) and len(event)!=len(outside),'Complement contrast needs distinct nonempty event sizes')
+    given=rf'\Omega=\{{1,2,\ldots,{n}\}},\quad E={finite_set(event)},\quad P(E^c)=1-P(E)'
+    answer=r'E\cap E^c=\varnothing,\quad E\cup E^c=\Omega'
+    return given,[rf'P(E^c)=1-{tex(probability)}={tex(1-probability)}'],[([r'|E|=|E^c|',answer,r'E^c\subseteq E'],answer)],{'event':event,'complement':outside,'intersection':[],'union':list(range(1,n+1))}
+
+
+def repair_certificate(q):
+    n,event,probability=uniform_case(q,('n','divisor'));d=q['case']['divisor'];wrong=[0,*event];k=len(wrong)
+    given=(rf'\begin{{gathered}}\Omega=\{{1,2,\ldots,{n}\}},\quad E=\{{j\in\Omega:{d}\mid j\}}\\'
+           rf'\begin{{aligned}}L_1 &: E={finite_set(wrong)}\\L_2 &: |E|={k}\\L_3 &: P(E)=\frac{{{k}}}{{{n}}}\end{{aligned}}\end{{gathered}}')
+    after=[r'L_1:\quad 0\notin\Omega',rf'E={finite_set(event)},\quad P(E)=\frac{{{len(event)}}}{{{n}}}={tex(probability)}']
+    return given,after,[(['L_2','L_1','L_3'],'L_1'),([tex(Fraction(k,n)),tex(Fraction(1,len(event)+1)),tex(probability)],tex(probability))],{'first_error':'L_1','excluded_label':0,'event':event,'probability':str(probability)}
+
+
+def transfer_certificate(q):
+    case=finite_case(q,('blue','red','green'));require(all(type(v) is int and 1<=v<=10 for v in case.values()),'Token counts must be positive integers at most ten')
+    # Enumerate physical tokens: colours are events, not equally likely outcomes.
+    tokens=[(colour,i) for colour,count in case.items() for i in range(1,count+1)];event=[t for t in tokens if t[0]!='red'];n=len(tokens)
+    probability=sum((Fraction(1,n) for _ in event),Fraction(0))
+    given=rf'B={case["blue"]},\quad R={case["red"]},\quad G={case["green"]}'
+    return given,[rf'P(\mathrm{{not\ red}})=\frac{{{len(event)}}}{{{n}}}={tex(probability)}'],[([tex(Fraction(case['red'],n)),tex(probability),tex(Fraction(case['blue'],n))],tex(probability))],{'tokens':tokens,'event_tokens':event,'probability':str(probability)}
+
+
+ROLE_CHECKERS={
+    'read_notation':notation_certificate, 'worked_check':worked_certificate,
+    'choose_next_step':method_certificate, 'explain_step':explanation_certificate,
+    'repair_error':repair_certificate, 'independent':transfer_certificate,
+}
+
+
+def reasoning_certificate(q):
+    given,after,steps,facts=ROLE_CHECKERS[q['role']](q)
+    require(len(after)==len(steps) and all(len(choices)==3 and len(set(choices))==3 and choices.count(answer)==1 for choices,answer in steps),f"{q['id']}: ambiguous reasoning choices")
+    return dict(id=q['id'],role=q['role'],accepted=True,steps_checked=len(steps),wrong_choices_checked=2*len(steps),
+        evidence=dict(kind=EXERCISE_ROLES[q['role']],facts=facts),
+        expected=dict(given=given,after=after,steps=[dict(choices=choices,answer=answer) for choices,answer in steps]))
+
+
+def reasoning_documents():
+    source=REASONING_ROOT/'sequence.json';raw=export.read_bytes(source,128*1024)
+    questions=validate_role_sequence(export.decoded(raw),source);certificates=[reasoning_certificate(q) for q in questions]
+    values=dict(subject='probability_statistics',subject_title='Probability and Statistics',
+        chapter='finite_probability_practice',chapter_title='Finite probability: count and compare',
+        reading_id='probability_reasoning_v1_reading',reading_title='Reason about probability')
+    for q in questions:
+        for key in ('id','title','objective'):values[q['role']+'_'+key]=q[key]
+    values['practice_links']=''.join(f"@practice {q['id']}\n" for q in questions)
+    for field,name in (('lesson_blocks','lesson.md.in'),('questions','questions.paths.md.in')):
+        path=REASONING_ROOT/name;values[field]=fill_template(export.read_bytes(path,128*1024).decode('utf-8'),values,path)
+    return questions,certificates,{'04_reasoning.paths.md':chapter_text(values).encode()},values['reading_id'],export.sha(raw)
+
+
 def verify_probability_compiled(questions, compiled):
     """Check what the real compiler will grade, not just the producer's in-memory keys."""
     by_id={q['id']:q for q in compiled}
     require(len(by_id)==len(compiled) and set(by_id)=={q['id'] for q in questions},'Compiled probability identities differ')
-    for q in questions:
+    roles=[q for q in questions if 'role' in q]
+    if roles:verify_role_content(roles,[by_id[q['id']] for q in roles],[reasoning_certificate(q) for q in roles])
+    for q in (q for q in questions if 'role' not in q):
         oracle=verify_probability(q);actual=by_id[q['id']]['question'];params=q['parameters']
         n=len(oracle['outcomes']);k=len(oracle['event']);symbol=r'\nmid' if params['complement'] else r'\mid'
         given=rf"\Omega=\{{1,2,\ldots,{n}\}},\quad E=\{{j\in\Omega:{params['divisor']}{symbol} j\}}"
@@ -430,7 +591,8 @@ def verify_probability_compiled(questions, compiled):
 
 
 def probability_batch(args):
-    export.require(args.format_version==1,'batch.format','Finite probability currently uses format version 1')
+    export.require(args.format_version in (1,2),'batch.format','Finite probability uses format version 1 or 2')
+    export.require(args.format_version==1 or args.version>=2,'batch.version','Exercise roles require package version 2 or later')
     recipe_bytes=export.read_bytes(PROBABILITY_ROOT/'recipe.json',128*1024)
     questions=probability_questions(args.count,export.decoded(recipe_bytes))
     results=[verify_probability(q) for q in questions]
@@ -449,6 +611,16 @@ def probability_batch(args):
                          (('chapter',CHAPTER_TEMPLATE),('question',PROBABILITY_ROOT/'question.paths.md.in'),('lesson',PROBABILITY_ROOT/'lesson.md.in'))},
         response_mode='choices.v1',written_checker=False,worked_questions=len(questions),retained_questions=0,
         teaching_review='Original finite counting lesson; user visual acceptance pending')
+    if args.format_version==2:
+        roles,certificates,role_docs,reading_id,manifest_hash=reasoning_documents()
+        questions=questions+roles;results=results+certificates;docs.update(role_docs)
+        author['sources'].append(dict(id='probability_reasoning_v1',kind='generated',title='Original probability reasoning sequence',
+            uri='paths:generated/probability_reasoning_v1',revision='1',attribution=author['sources'][0]['attribution']
+                +' Addition of disjoint outcome probabilities checked against section 3.3: https://openstax.org/books/introductory-statistics-2e/pages/3-3-two-basic-rules-of-probability',
+            reuse='Original Paths questions, explanations and exact finite-outcome certificates.',content_ids=[q['id'] for q in roles]+[reading_id]))
+        audit.update(format_version=2,count=len(questions),questions=questions,mathematical_checks=results,
+                     retained_questions=args.count,worked_questions=len(roles),exercise_roles=list(EXERCISE_ROLES),role_manifest_sha256=manifest_hash,
+                     role_template_sha256={name:export.sha(export.read_bytes(REASONING_ROOT/name,128*1024)) for name in ('lesson.md.in','questions.paths.md.in')})
     return questions,results,docs,author,audit
 
 
@@ -461,7 +633,8 @@ def authoring_inputs(family):
     paths={
         'matrix':(REFERENCE_TEMPLATE,ROOT/'content/authoring/learning/matrix_reference/lesson.md.in'),
         'linear':(LINEAR_TEMPLATE,ROOT/'content/authoring/learning/linear_reference/lesson.md.in',linear.SPEC,Path(linear.__file__)),
-        'probability':tuple(PROBABILITY_ROOT/name for name in ('recipe.json','question.paths.md.in','lesson.md.in')),
+        'probability':tuple(PROBABILITY_ROOT/name for name in ('recipe.json','question.paths.md.in','lesson.md.in'))
+                      +tuple(REASONING_ROOT/name for name in ('sequence.json','questions.paths.md.in','lesson.md.in')),
     }[family]
     return {str(p.relative_to(ROOT) if p.is_relative_to(ROOT) else p):export.sha(export.read_bytes(p,128*1024))
             for p in (Path(__file__),CHAPTER_TEMPLATE,*paths)}
@@ -510,7 +683,7 @@ def main():
     cli.add_argument('--family', choices=tuple(BUILDERS), default='matrix')
     cli.add_argument('--count', type=int, default=12, help='3..36 in multiples of 3 for matrix/probability, 6..36 in multiples of 6 for linear')
     cli.add_argument('--version', type=int, help='immutable package version; increase when extending a batch')
-    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix defaults to 2, linear/probability to 1')
+    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix/probability default to 2, linear to 1')
     cli.add_argument('--target', type=Path, default=ROOT / 'b/sorter')
     cli.add_argument('--model', type=Path, default=ROOT / 'b/paths_learning_document_tests')
     cli.add_argument('--output', type=Path)
@@ -519,7 +692,7 @@ def main():
     cli.add_argument('--publish', action='store_true', help='activate through the existing publisher; otherwise export only')
     try:
         args = cli.parse_args()
-        default={"matrix":2,"linear":1,"probability":1}[args.family]
+        default={"matrix":2,"linear":1,"probability":2}[args.family]
         if args.version is None:args.version=default
         if args.format_version is None:args.format_version=default
         export.require(0 < args.version <= 2**32-1, 'batch.version', 'Version must be a positive 32-bit integer')

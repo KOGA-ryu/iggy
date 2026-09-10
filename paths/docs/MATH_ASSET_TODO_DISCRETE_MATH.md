@@ -3,14 +3,14 @@
 Source: [Discrete Math notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/discrete_math.md>).
 
 - [ ] **119 — Logic and Proof** — **D:** Truth tables, logical equivalences, implication chains, and contradiction trees. **M:** Logic-gate and proof-step sandbox with selectable valuations.
-- [ ] **120 — Set Theory Foundations** — **D:** Venn regions, Cartesian products, function arrows, and quotient partitions. **M:** Finite sets/maps explorer; reuse Boolean solids for spatial set examples.
+- [ ] **120 — Set Theory Foundations** — **D:** Venn regions, Cartesian products, function arrows, and quotient partitions. **M:** Finite sets/maps explorer; reuse Boolean solids for spatial set examples. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite-set maps, fibers and quotient-class foundations; the full chapter remains open.
 - [ ] **121 — Counting and Combinatorics** — **D:** Permutation/combination trees, Pascal layers, inclusion–exclusion, and Catalan paths. **M:** Counting lab with selectable arrangements, lattice paths, and generating counts.
 - [ ] **122 — Graph Theory** — **D:** Adjacency, degree, subgraphs, Euler trails, and Hamiltonian routes. **M:** Editable graph lab extending the existing cube-route model.
 - [ ] **123 — Number Theory** — **D:** Prime factors, divisor lattices, totients, and modular cycles. **M:** Extend Modular drums with exact integer number-theory presets.
 - [ ] **124 — Recursion and Sequences** — **D:** Recursion trees, recurrence tables, induction ladders, and lattice dependencies. **M:** Sequence builder with stepwise recurrence and two-index examples.
 - [ ] **125 — Algorithms and Complexity** — **D:** Growth curves, operation counts, and input-size comparisons. **M:** Algorithm-trace lab with measured/count-based growth views kept distinct.
 - [ ] **126 — Boolean Algebra and Logic Circuits** — **D:** Gate circuits, truth tables, Boolean expression trees, and equivalence routes. **M:** Editable circuit/valuation lab linked to set and Boolean-solid truth tables.
-- [ ] **127 — Theorems** — **D:** Pigeonholes, incidence counts, matching witnesses, and modular theorem examples. **M:** Reuse counting, graph, and modular models with theorem-specific presets.
+- [ ] **127 — Theorems** — **D:** Pigeonholes, incidence counts, matching witnesses, and modular theorem examples. **M:** Reuse counting, graph, and modular models with theorem-specific presets. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite pigeonhole/collision examples; the full chapter remains open.
 - [ ] **128 — Worked examples** — **D:** Occupancy, inclusion–exclusion counts, modular powers, and handshaking traces. **M:** Small presets for existing/shared counting and graph models.
 - [ ] **129 — Proof sketches** — **D:** Counting proof steps, graph assumptions, and induction witnesses. **M:** Replay chapter examples and counterexamples through shared graph/set tools.
 - [ ] **130 — Advanced Discrete Topics** — **D:** Bipartite matching, SCC condensation, topological order, and generating functions. **M:** Graph lab plus sequence/coefficient views with shared combinatorial examples.

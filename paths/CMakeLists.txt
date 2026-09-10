@@ -39,6 +39,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/DistanceGeometry.cpp
   src/runtime/math_objects/PolarDecomposition.cpp
   src/runtime/math_objects/QrLeastSquares.cpp
+  src/runtime/math_objects/FiniteMaps.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -237,6 +238,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_maps_tests tests/math_maps_tests.cpp)
+  target_link_libraries(paths_math_maps_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_maps_tests COMMAND paths_math_maps_tests)
   add_executable(paths_math_qr_tests tests/math_qr_tests.cpp)
   target_link_libraries(paths_math_qr_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_qr_tests COMMAND paths_math_qr_tests)
@@ -504,6 +508,15 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_maps_injection_cli COMMAND math_lab --validate --object maps --level 0 --object-preset 1 --check)
+    add_test(NAME paths_math_maps_fibers_cli COMMAND math_lab --validate --object maps --level 1 --object-preset 3 --check)
+    add_test(NAME paths_math_maps_composition_cli COMMAND math_lab --validate --object maps --level 2 --object-preset 4 --advance 4 --check)
+    add_test(NAME paths_math_maps_weighted_cli COMMAND math_lab --validate --object maps --level 3 --object-preset 6 --set maps_condition=1 --check)
+    add_test(NAME paths_math_maps_zero_event_cli COMMAND math_lab --validate --object maps --level 3 --object-preset 7)
+    add_test(NAME paths_math_maps_zero_weights_cli COMMAND math_lab --validate --object maps --level 3 --object-preset 8)
+    set_tests_properties(paths_math_maps_injection_cli paths_math_maps_fibers_cli paths_math_maps_composition_cli paths_math_maps_weighted_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
+    set_tests_properties(paths_math_maps_zero_event_cli PROPERTIES PASS_REGULAR_EXPRESSION "Conditional probability defined = 0")
+    set_tests_properties(paths_math_maps_zero_weights_cli PROPERTIES PASS_REGULAR_EXPRESSION "Probability defined = 0")
     add_test(NAME paths_math_qr_frame_cli COMMAND math_lab --validate --object qr --level 0 --set qr_stage=3 --check)
     add_test(NAME paths_math_qr_factors_cli COMMAND math_lab --validate --object qr --level 1 --object-preset 0 --check)
     add_test(NAME paths_math_qr_fit_cli COMMAND math_lab --validate --object qr --level 2 --object-preset 0 --set qr_c0=1 --set qr_c1=1 --check)

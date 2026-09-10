@@ -10,6 +10,7 @@
 #include "runtime/math_objects/DistanceGeometry.hpp"
 #include "runtime/math_objects/PolarDecomposition.hpp"
 #include "runtime/math_objects/QrLeastSquares.hpp"
+#include "runtime/math_objects/FiniteMaps.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -435,7 +436,32 @@ constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::C
   {MathParameter::QrUseSolution,MathObjectKind::Qr,"qr_solution","Coefficient source",0,1,1,0,0,false,"Your coefficients\0Minimum-norm fit\0",{.group=MathControlGroup::Operation, .layers=4}},
   {MathParameter::QrNull0,MathObjectKind::Qr,"qr_null0","First null offset",-3,3,.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=8}},
   {MathParameter::QrNull1,MathObjectKind::Qr,"qr_null1","Second null offset",-3,3,.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=8}},
-  {MathParameter::QrGuides,MathObjectKind::Qr,"qr_guides","Construction guides",0,1,1,1,0,false,"Vectors and landmarks\0Show span and construction\0",{.group=MathControlGroup::Display}}
+  {MathParameter::QrGuides,MathObjectKind::Qr,"qr_guides","Construction guides",0,1,1,1,0,false,"Vectors and landmarks\0Show span and construction\0",{.group=MathControlGroup::Display}},
+  {MathParameter::MapsA,MathObjectKind::Maps,"maps_a","Elements in A",1,4,1,4,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MapsB,MathObjectKind::Maps,"maps_b","Elements in B",1,4,1,4,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MapsC,MathObjectKind::Maps,"maps_c","Elements in C",1,4,1,4,0,false,{},{.group=MathControlGroup::Shape, .layers=4}},
+  {MathParameter::MapsSource,MathObjectKind::Maps,"maps_source","Edit / follow input A",0,3,1,0,0,false,"A0\0A1\0A2\0A3\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::MapsMiddle,MathObjectKind::Maps,"maps_middle","Edit input B for g",0,3,1,0,0,false,"B0\0B1\0B2\0B3\0",{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::MapsFiber,MathObjectKind::Maps,"maps_fiber","Inspect output B",0,3,1,0,0,false,"B0\0B1\0B2\0B3\0",{.group=MathControlGroup::Probe, .layers=10}},
+  {MathParameter::MapsF0,MathObjectKind::Maps,"maps_f0","f(A0): destination B",0,3,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=0}},
+  {MathParameter::MapsF1,MathObjectKind::Maps,"maps_f1","f(A1): destination B",0,3,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=1}},
+  {MathParameter::MapsF2,MathObjectKind::Maps,"maps_f2","f(A2): destination B",0,3,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=2}},
+  {MathParameter::MapsF3,MathObjectKind::Maps,"maps_f3","f(A3): destination B",0,3,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=3}},
+  {MathParameter::MapsG0,MathObjectKind::Maps,"maps_g0","g(B0): destination C",0,3,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsMiddle, .selectedValue=0, .layers=4}},
+  {MathParameter::MapsG1,MathObjectKind::Maps,"maps_g1","g(B1): destination C",0,3,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsMiddle, .selectedValue=1, .layers=4}},
+  {MathParameter::MapsG2,MathObjectKind::Maps,"maps_g2","g(B2): destination C",0,3,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsMiddle, .selectedValue=2, .layers=4}},
+  {MathParameter::MapsG3,MathObjectKind::Maps,"maps_g3","g(B3): destination C",0,3,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsMiddle, .selectedValue=3, .layers=4}},
+  {MathParameter::MapsH0,MathObjectKind::Maps,"maps_h0","h(A0): direct destination C",0,3,1,0,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=0, .layers=4}},
+  {MathParameter::MapsH1,MathObjectKind::Maps,"maps_h1","h(A1): direct destination C",0,3,1,1,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=1, .layers=4}},
+  {MathParameter::MapsH2,MathObjectKind::Maps,"maps_h2","h(A2): direct destination C",0,3,1,2,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=2, .layers=4}},
+  {MathParameter::MapsH3,MathObjectKind::Maps,"maps_h3","h(A3): direct destination C",0,3,1,3,0,false,{},{.group=MathControlGroup::Operation, .selector=MathParameter::MapsSource, .selectedValue=3, .layers=4}},
+  {MathParameter::MapsW0,MathObjectKind::Maps,"maps_w0","Weight of A0",0,12,0.1,1,0,false,{},{.group=MathControlGroup::Sampling, .selector=MathParameter::MapsSource, .selectedValue=0, .layers=8}},
+  {MathParameter::MapsW1,MathObjectKind::Maps,"maps_w1","Weight of A1",0,12,0.1,1,0,false,{},{.group=MathControlGroup::Sampling, .selector=MathParameter::MapsSource, .selectedValue=1, .layers=8}},
+  {MathParameter::MapsW2,MathObjectKind::Maps,"maps_w2","Weight of A2",0,12,0.1,1,0,false,{},{.group=MathControlGroup::Sampling, .selector=MathParameter::MapsSource, .selectedValue=2, .layers=8}},
+  {MathParameter::MapsW3,MathObjectKind::Maps,"maps_w3","Weight of A3",0,12,0.1,1,0,false,{},{.group=MathControlGroup::Sampling, .selector=MathParameter::MapsSource, .selectedValue=3, .layers=8}},
+  {MathParameter::MapsGroup,MathObjectKind::Maps,"maps_group","Group by common output",0,1,0.01,0,0,false,{},{.group=MathControlGroup::Display, .layers=2}},
+  {MathParameter::MapsTime,MathObjectKind::Maps,"maps_time","Follow the maps",0,2,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=4, .playbackLayers=4}},
+  {MathParameter::MapsCondition,MathObjectKind::Maps,"maps_condition","Probability view",0,1,1,0,0,false,"All outcomes\0Condition on f(A)=selected B\0",{.group=MathControlGroup::Operation, .layers=8}}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -589,7 +615,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Qr,"qr","QR & Least Squares Lab","Build a frame and find the closest fit",
    "A Pi = Q R; p = Q_active Q_active^T b; A^T(b-p) = 0","Turn two independent columns into an orthonormal frame.",
    "Two editable columns in real 3D. Column pivoting puts the longer column first; Pi records that order. Gram-Schmidt subtracts the projection twice for numerical stability. Inactive Q columns are zero, not invented basis directions. Teal is the closest point, gold the target, coral your fit. Numerical rank loss gives a family of least-squares solutions.",
-   {"Normalize, subtract a shadow, then normalize again.","Reconstruct columns and inspect an orthogonal residual.","Explore least-squares errors, null directions and minimum coefficient norm."},{.8F,.6F,1},.5,"Restart Gram-Schmidt","Orthonormalization complete. Restart or scrub the construction."}
+   {"Normalize, subtract a shadow, then normalize again.","Reconstruct columns and inspect an orthogonal residual.","Explore least-squares errors, null directions and minimum coefficient norm."},{.8F,.6F,1},.5,"Restart Gram-Schmidt","Orthonormalization complete. Restart or scrub the construction."},
+  {MathObjectKind::Maps,"maps","Sets & Maps Lab","Follow elements through sets and maps",
+   "f: A -> B; (g o f)(a) = g(f(a)); P(B=j) = sum[f(i)=j] P(A=i)","Make f injective without being surjective.",
+   "Finite labelled sets contain one to four elements. Every active input has exactly one output. Set sizes and destinations are editable; shrinking a codomain clamps removed destinations to its last element. Trays are a diagram layout, not metric spaces. Zero total weight and conditioning on a zero-weight fiber are undefined.",
+   {"Edit arrows and distinguish injection from surjection.","Group fibers and compare composed maps.","Push probability mass through a map and condition on a fiber."},{.25F,.3F,1},.5,"Restart route","Route complete. Restart or scrub to follow it again."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -729,11 +759,29 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
 }};
+constexpr std::array<MathLesson,4> mapsLessons{{
+  {"Maps and destinations","injective: at most one preimage; surjective: every output is reached","Make f injective without being surjective.","Click an A bead or choose its index, then edit its B destination. Empty outputs are muted. Change the set sizes from one to four. Shrinking B or C retargets removed destinations to the last remaining element; shrinking A hides its extra inputs. A bijection has both properties."},
+  {"Fibers and partitions","i ~ j iff f(i)=f(j); A/~ corresponds to image(f)","Find a fiber with at least two inputs, and fully group the beads.","Choose an output B to highlight its entire preimage, including an empty fiber. Group by common output rearranges A without changing f. Nonempty fibers partition A; unused outputs do not create extra equivalence classes. The table records class indices ordered by reached B indices."},
+  {"Composition and competing routes","(g o f)(a)=g(f(a)); compare with h(a)","Make h agree with g o f for every A input, using a nonconstant composite.","Edit f and h using the A selector; edit g using the B selector. Gold follows the selected input through B into C. Violet follows the direct h route above the trays; disagreement is coral. Play animates the two routes over four seconds. Intermediate bead positions illustrate traversal only; finite maps have no intermediate values. Agreement is checked on every active A input."},
+  {"Weighted outcomes","P(f(A)=j)=sum[f(i)=j] w_i / sum_i w_i","Condition on a fiber containing two positive-weight inputs with event probability strictly between zero and one.","Weights are nonnegative and need not sum to one. The plots show the normalized source and output masses. Conditioning retains only inputs mapping to the selected B and renormalizes their weights. Zero total weight or a zero-weight event has no conditional distribution; the model reports undefined and draws no probability plot. Empty and zero-mass outputs remain visible as small markers."}
+}};
 constexpr std::array<MathLesson,4> qrLessons{{
   {"Building an orthonormal frame","q0 = c0/||c0||; v = c1 - (q0 dot c1) q0; q1 = v/||v||","With numerical rank 2, reach stage 3 and an orthogonality error below 1e-10.","Click a vector endpoint or choose Edit vector, then drag/type its XYZ components. The longer column is first; equal lengths retain input order. Stage 0 shows the pivoted columns; stage 1 normalizes the first; stage 2 subtracts its shadow from the second; stage 3 normalizes the remainder. A dependent remainder is never divided by zero. Target b is a reference for later layers. Play is a construction animation, not physical motion."},
   {"QR and reconstruction","A Pi = Q R; c0 = r00 q0; c1 = r01 q0 + r11 q1","Use rank 2 and a nonzero r01; reconstruct both columns with relative error below 1e-10.","Left: original columns. Right: their reconstruction from the active Q directions and R coefficients. The matrix drawer shows pivoted A, thin Q and triangular R. Swapping the pivot order changes the factorization convention, not the map. At rank loss unused Q columns and R diagonal entries are zero. The reported residual includes numerical rank truncation."},
   {"Projection and least squares","min_x ||Ax-b||^2; at a minimum, A^T(b-Ax) = 0","Find a nonzero least-squares residual with normal-equation residual below 1e-9.","Teal is the closest point in the column span; the gold segment to b is perpendicular to that span. Coral is the fit using your two trial coefficients. Choose Minimum-norm fit to inspect the computed solution, including values beyond the trial controls' range. The two graphs vary one coefficient around the current pair while keeping the other fixed. Rank 2 has a unique answer; a dependent matrix can have many answers."},
   {"Null directions and minimum norm","x = x_min + N t; A N = 0; ||x||^2 = ||x_min||^2 + ||t||^2","Use rank 1 and a nonzero null offset while preserving the minimum residual.","Left: the same target and fitted point as coefficients move along null directions. Right: excess squared error ||A delta||^2 with delta = x-x_min, over [-3,3]^2; height is scaled to fit. Full rank gives a bowl, rank 1 a trough, rank 0 a flat plane. Gold marks the minimum-norm solution at delta=0; violet moves within the minimizing family. The family is for the numerical-rank model; actual-input residuals remain visible."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> mapsPresetParameters{MathParameter::MapsA,MathParameter::MapsB,MathParameter::MapsC,MathParameter::MapsSource,MathParameter::MapsMiddle,MathParameter::MapsFiber,MathParameter::MapsF0,MathParameter::MapsF1,MathParameter::MapsF2,MathParameter::MapsF3,MathParameter::MapsG0,MathParameter::MapsG1,MathParameter::MapsG2,MathParameter::MapsG3,MathParameter::MapsH0,MathParameter::MapsH1,MathParameter::MapsH2,MathParameter::MapsH3,MathParameter::MapsW0,MathParameter::MapsW1,MathParameter::MapsW2,MathParameter::MapsW3,MathParameter::MapsGroup,MathParameter::MapsTime,MathParameter::MapsCondition};
+constexpr std::array<MathObjectPreset,9> mapsPresets{{
+  {"Permutation",mapsPresetParameters,{4,4,4,0,0,0,1,0,3,2,0,1,2,3,1,0,3,2,1,1,1,1,0,0,0},25},
+  {"Injection with unused outputs",mapsPresetParameters,{2,4,4,0,0,0,0,2,0,0,0,1,2,3,0,1,2,3,1,1,1,1,0,0,0},25},
+  {"Surjection with a collision",mapsPresetParameters,{4,3,4,0,0,0,0,0,1,2,0,1,2,3,0,1,2,3,1,1,1,1,0,0,0},25},
+  {"Grouped fibers",mapsPresetParameters,{4,4,4,0,0,2,0,2,0,2,0,1,2,3,0,1,2,3,1,1,1,1,1,0,0},25},
+  {"Commuting routes",mapsPresetParameters,{4,4,4,0,0,0,0,0,1,2,2,1,3,0,2,2,1,3,1,1,1,1,0,0,0},25},
+  {"One disagreeing route",mapsPresetParameters,{4,4,4,0,0,0,0,0,1,2,2,1,3,0,0,2,1,3,1,1,1,1,0,0,0},25},
+  {"Weighted outcomes",mapsPresetParameters,{4,4,4,0,0,0,0,0,1,2,0,1,2,3,0,1,2,3,1,3,2,2,0,0,0},25},
+  {"Zero-mass event",mapsPresetParameters,{4,4,4,0,0,0,0,0,1,2,0,1,2,3,0,1,2,3,0,0,2,2,0,0,1},25},
+  {"Zero total weight",mapsPresetParameters,{4,4,4,0,0,0,0,1,2,3,0,1,2,3,0,1,2,3,0,0,0,0,0,0,0},25}
 }};
 constexpr std::array<MathParameter,MathObjectPreset::kCapacity> qrPresetParameters{MathParameter::QrA0X,MathParameter::QrA0Y,MathParameter::QrA0Z,MathParameter::QrA1X,MathParameter::QrA1Y,MathParameter::QrA1Z,MathParameter::QrBX,MathParameter::QrBY,MathParameter::QrBZ,MathParameter::QrVector,MathParameter::QrStage,MathParameter::QrC0,MathParameter::QrC1,MathParameter::QrUseSolution,MathParameter::QrNull0,MathParameter::QrNull1,MathParameter::QrGuides};
 constexpr std::array<MathObjectPreset,7> qrPresets{{
@@ -1328,6 +1376,21 @@ Triple normSupport(const Triple& w,double p,bool infinity) {
   for(unsigned i=0;i<3;++i)result[i]=((w[i]>0)-(w[i]<0))*std::pow(std::fabs(w[i])/h,q-1);
   return result;
 }
+struct MapParameterBinding {MathParameter first;unsigned count;MathParameter sourceSize,targetSize;};
+constexpr std::array<MapParameterBinding,7> mapParameterBindings{{
+  {MathParameter::MapsF0,4,MathParameter::MapsA,MathParameter::MapsB},
+  {MathParameter::MapsG0,4,MathParameter::MapsB,MathParameter::MapsC},
+  {MathParameter::MapsH0,4,MathParameter::MapsA,MathParameter::MapsC},
+  {MathParameter::MapsW0,4,MathParameter::MapsA,MathParameter::Count},
+  {MathParameter::MapsSource,1,MathParameter::Count,MathParameter::MapsA},
+  {MathParameter::MapsMiddle,1,MathParameter::Count,MathParameter::MapsB},
+  {MathParameter::MapsFiber,1,MathParameter::Count,MathParameter::MapsB}
+}};
+const MapParameterBinding* mapBinding(MathParameter p){for(const auto& binding:mapParameterBindings)if(index(p)>=index(binding.first)&&index(p)<index(binding.first)+binding.count)return &binding;return nullptr;}
+FiniteMapsInput mapInput(const MathObjects& model){
+  using P=MathParameter;FiniteMapsInput in;in.a=static_cast<unsigned>(model.parameter(P::MapsA));in.b=static_cast<unsigned>(model.parameter(P::MapsB));in.c=static_cast<unsigned>(model.parameter(P::MapsC));in.fiber=static_cast<unsigned>(model.parameter(P::MapsFiber));
+  for(unsigned i=0;i<4;++i){in.f[i]=static_cast<unsigned>(model.parameter(static_cast<P>(index(P::MapsF0)+i)));in.g[i]=static_cast<unsigned>(model.parameter(static_cast<P>(index(P::MapsG0)+i)));in.h[i]=static_cast<unsigned>(model.parameter(static_cast<P>(index(P::MapsH0)+i)));in.weights[i]=model.parameter(static_cast<P>(index(P::MapsW0)+i));}return in;
+}
 class SnapshotBuilder {
 public:
   explicit SnapshotBuilder(MathObjectSnapshot& snapshot):s(snapshot) {}
@@ -1355,6 +1418,14 @@ public:
   void label(std::string_view text,Vec3 pos,Vec3 color=white) {
     if(s.labelCount==s.labels.size())throw std::logic_error("math label capacity exceeded");
     s.labels[s.labelCount++]={text,pos,color};
+  }
+  // Placement only: callers supply the mathematical endpoint and label position.
+  // A zero vector keeps its label even when arrow() omits its geometry.
+  void labelledArrow(Vec3 a,Vec3 end,Vec3 color,std::string_view role,std::string_view text,Vec3 labelPosition) {
+    arrow(a,end,color,role);label(text,labelPosition,color);
+  }
+  void vectorResidual(Vec3 origin,Vec3 fit,Vec3 target,Vec3 vectorColor,std::string_view vectorRole,Vec3 residualColor,float radius,std::string_view residualRole) {
+    arrow(origin,fit,vectorColor,vectorRole);rod(fit,target,residualColor,radius,residualRole);
   }
   void metric(std::string_view text,double value,std::string_view suffix={}) {
     if(s.metricCount==s.metrics.size())throw std::logic_error("math metric capacity exceeded");
@@ -1464,6 +1535,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Distance:return distanceLessons;
     case MathObjectKind::Polar:return polarLessons;
     case MathObjectKind::Qr:return qrLessons;
+    case MathObjectKind::Maps:return mapsLessons;
     default:return {};
   }
 }
@@ -1485,6 +1557,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Distance:return distancePresets;
     case MathObjectKind::Polar:return polarPresets;
     case MathObjectKind::Qr:return qrPresets;
+    case MathObjectKind::Maps:return mapsPresets;
     default:return {};
   }
 }
@@ -1493,10 +1566,16 @@ double MathObjects::parameter(MathParameter p) const {
   if(index(p)>=parameters_.size())throw std::invalid_argument("unknown math parameter");
   return parameters_[index(p)];
 }
+double MathObjects::parameterMaximum(MathParameter p) const {
+  if(index(p)>=parameters.size())throw std::invalid_argument("unknown math parameter");
+  if(const auto* binding=mapBinding(p);binding&&binding->targetSize!=MathParameter::Count)return parameter(binding->targetSize)-1;
+  return parameters[index(p)].maximum;
+}
 bool MathObjects::parameterAvailable(MathParameter p) const {
   if(index(p)>=parameters.size())return false;
   const auto& spec=parameters[index(p)];
   if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level||!(spec.control.layers&(1U<<snapshot_.level)))return false;
+  if(const auto* binding=mapBinding(p);binding&&binding->sourceSize!=MathParameter::Count&&index(p)-index(binding->first)>=parameter(binding->sourceSize))return false;
   switch(p) {
     case MathParameter::QrC0:case MathParameter::QrC1:return parameter(MathParameter::QrUseSolution)==0;
     case MathParameter::QrNull0:case MathParameter::QrNull1:{
@@ -1576,13 +1655,13 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       const auto& p=parameters[index(a.parameter)];
       if(p.owner!=snapshot_.kind)return {false,"parameter_not_owned_by_object"};
       if(!parameterAvailable(a.parameter))return {false,"parameter_not_available_at_this_level"};
-      if(!std::isfinite(a.value)||a.value<p.minimum-1e-6||a.value>p.maximum+1e-6)return {false,"parameter_out_of_range"};
-      double next=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,p.maximum);
+      if(!std::isfinite(a.value)||a.value<p.minimum-1e-6||a.value>parameterMaximum(a.parameter)+1e-6)return {false,"parameter_out_of_range"};
+      double next=std::clamp(std::round(a.value/p.step)*p.step,p.minimum,parameterMaximum(a.parameter));
       if(a.parameter>=MathParameter::LatheH1&&a.parameter<=MathParameter::LatheH5){const auto i=index(a.parameter);const double below=a.parameter==MathParameter::LatheH1?0:parameters_[i-1],above=a.parameter==MathParameter::LatheH5?1:parameters_[i+1];if(next<below+.04-1e-12||next>above-.04+1e-12)return {false,"profile heights must remain ordered with a 0.04 gap"};}
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:case MathObjectKind::Maps:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1726,6 +1805,8 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
     case MathActionKind::Check:snapshot_.playing=false;check();return {true,"challenge_checked"};
     default:return {false,"unknown_action"};
   }
+  if(snapshot_.kind==MathObjectKind::Maps)for(const auto& binding:mapParameterBindings)if(binding.targetSize!=MathParameter::Count)
+    for(unsigned i=0;i<binding.count;++i){const auto p=static_cast<MathParameter>(index(binding.first)+i);parameters_[index(p)]=std::min(parameters_[index(p)],parameterMaximum(p));}
   const auto touched=[&](MathParameter p){return (a.kind==MathActionKind::SetParameter&&a.parameter==p)||(a.kind==MathActionKind::ResetParameters&&a.resetParameters.test(index(p)));};
   if(a.kind==MathActionKind::Select||a.kind==MathActionKind::Reset||a.kind==MathActionKind::SetLevel||
      (touched(MathParameter::Modulus)||touched(MathParameter::ModValue)||touched(MathParameter::ModStep))) {
@@ -2005,6 +2086,15 @@ void MathObjects::check() {
         case 2:solved=measured("Numerical rank")>0&&measured("Trial squared error")>.01&&measured("Trial normal residual")<1e-9;good="Yes: the remaining nonzero residual is perpendicular to both columns.";bad="Choose Tilted plane with coefficients (1,1), or inspect Minimum-norm fit.";break;
         case 3:solved=measured("Numerical rank")==1&&std::fabs(parameter(MathParameter::QrNull0))>.5&&std::fabs(measured("Family squared error")-measured("Minimum squared error"))<1e-9;good="Yes: the coefficient vector changed along the null space while the fit stayed optimal.";bad="Choose Dependent columns and move the first null offset beyond 0.5.";break;
       }break;
+    case MathObjectKind::Maps:{
+      const auto in=mapInput(*this);const auto result=analyzeFiniteMaps(in);
+      switch(snapshot_.level){
+        case 0:solved=result.injective&&!result.surjective;good="Yes: distinct inputs reach distinct outputs, while an output is unused.";bad="Choose Injection with unused outputs, or use fewer inputs than outputs and distinct destinations.";break;
+        case 1:solved=result.fiberSizes[in.fiber]>=2&&parameter(MathParameter::MapsGroup)==1;good="Yes: this class contains multiple inputs with the same output.";bad="Choose Grouped fibers and inspect output B2.";break;
+        case 2:{bool nonconstant=false;for(unsigned i=1;i<in.a;++i)nonconstant|=result.composed[i]!=result.composed[0];solved=result.commutes&&nonconstant;good="Yes: both routes agree on every input, with more than one output.";bad="Choose Commuting routes, or make each h destination equal g(f(A)).";break;}
+        case 3:{unsigned positive=0;for(unsigned i=0;i<in.a;++i)positive+=in.f[i]==in.fiber&&in.weights[i]>0;solved=parameter(MathParameter::MapsCondition)==1&&result.conditionalDefined&&positive>=2&&result.eventProbability>0&&result.eventProbability<1;good="Yes: the selected event has two positive-weight inputs, renormalized to total probability one.";bad="Choose Weighted outcomes, select B0, and switch to conditioning.";break;}
+      }break;
+    }
     case MathObjectKind::Count:return;
   }
   snapshot_.feedback=solved?MathFeedback::Solved:MathFeedback::TryAgain;snapshot_.feedbackText=solved?good:bad;
@@ -2087,20 +2177,19 @@ void MathObjects::rebuild() {
       }
       const std::array<Vec3,3> basis{{{1,0,0},{0,1,0},{0,0,1}}},colors{coral,teal,violet};
       const std::array<std::string_view,3> names{"A e1","A e2","A e3"};
-      for(unsigned i=0;i<3;++i) {b.arrow({},transformed(basis[i]),colors[i],names[i]);b.label(names[i],transformed(basis[i])+Vec3{.05F,.12F,.05F},colors[i]);}
+      for(unsigned i=0;i<3;++i) {b.labelledArrow({},transformed(basis[i]),colors[i],names[i],names[i],transformed(basis[i])+Vec3{.05F,.12F,.05F});}
       b.ball({},.03F,white,"origin");
       const double d=determinant(a);b.metric("Signed determinant",d);b.metric("Volume",std::fabs(d),"units^3");b.metric("Rank",rank(a));
       b.matrix("A",a,snapshot_.level>0);
       if(snapshot_.level==0)break;
       const Vec3 v{value(MathParameter::VectorX),value(MathParameter::VectorY),value(MathParameter::VectorZ)},av=transformed(v);
-      b.arrow({},v,gold,"input_vector");b.label("v",v+Vec3{0,.15F,0},gold);b.metric("Vector length",length(v));
+      b.labelledArrow({},v,gold,"input_vector","v",v+Vec3{0,.15F,0});b.metric("Vector length",length(v));
       switch(snapshot_.level) {
         case 1: {
           const double angle=parameter(MathParameter::ComposeAngle)*pi/180,c=std::cos(angle),s=std::sin(angle);
           const Matrix rotation{c,-s,0,s,c,0,0,0,1},ba=multiply(rotation,a),ab=multiply(a,rotation);
           b.matrix("B A",ba);b.matrix("A B",ab);cage(ba,violet,.012F,"composed_cube");
-          const Vec3 bav=mapped(ba,v);b.arrow({},av,teal,"mapped_vector");b.arrow({},bav,violet,"composed_vector");
-          b.label("A v",av+Vec3{0,.15F,0},teal);b.label("B A v",bav+Vec3{0,.15F,0},violet);
+          const Vec3 bav=mapped(ba,v);b.labelledArrow({},av,teal,"mapped_vector","A v",av+Vec3{0,.15F,0});b.labelledArrow({},bav,violet,"composed_vector","B A v",bav+Vec3{0,.15F,0});
           const double norm2=dot(v,v),lambda=norm2>1e-12?dot(v,av)/norm2:0;
           b.metric("Length of A v",length(av));b.metric("Eigenvalue candidate",lambda);b.metric("Eigenvector residual",length(av-v*static_cast<float>(lambda)));
           double orderError=0;for(unsigned i=0;i<9;++i)orderError+=(ba[i]-ab[i])*(ba[i]-ab[i]);b.metric("Composition order difference",std::sqrt(orderError));break;
@@ -2117,7 +2206,7 @@ void MathObjects::rebuild() {
             for(unsigned r=0;r<3;++r)for(unsigned c=0;c<3;++c)projection[3*r+c]+=coordinates[r]*coordinates[c];
             b.rod(q[i]*-2,q[i]*2,blue,.012F,"column_span");
           }
-          const Vec3 residual=v-projected;b.arrow({},projected,teal,"projection");b.rod(projected,v,gold,.022F,"projection_residual");
+          const Vec3 residual=v-projected;b.vectorResidual({},projected,v,teal,"projection",gold,.022F,"projection_residual");
           b.label("projection",projected+Vec3{0,.15F,0},teal);b.matrix("Projection P",projection);
           b.metric("Subspace dimension",count);b.metric("Residual length",length(residual));b.metric("Projected length",length(projected));
           double error=0;for(unsigned i=0;i<count;++i)error=std::max(error,static_cast<double>(std::fabs(dot(residual,q[i]))));b.metric("Orthogonality error",error);break;
@@ -2127,7 +2216,7 @@ void MathObjects::rebuild() {
           const auto vt=transpose(decomposition.v),stretch=multiply(sigma,vt),reconstructed=multiply(decomposition.u,stretch);
           const std::array<Matrix,4> stages{identity,vt,stretch,reconstructed};const auto& transform=stages[static_cast<unsigned>(parameter(MathParameter::SvdStage))];
           const std::array<std::string_view,3> stageNames{"stage e1","stage e2","stage e3"};
-          for(unsigned i=0;i<3;++i) {const auto tip=mapped(transform,basis[i]);b.arrow({},tip,colors[i],stageNames[i]);b.label(stageNames[i],tip+Vec3{.1F,.15F,.1F},colors[i]);}
+          for(unsigned i=0;i<3;++i) {const auto tip=mapped(transform,basis[i]);b.labelledArrow({},tip,colors[i],stageNames[i],stageNames[i],tip+Vec3{.1F,.15F,.1F});}
           b.matrix("U",decomposition.u);b.matrix("V transpose",vt);
           b.metric("Singular value 1",decomposition.sigma[0]);b.metric("Singular value 2",decomposition.sigma[1]);b.metric("Singular value 3",decomposition.sigma[2]);
           double error=0;for(unsigned i=0;i<9;++i)error=std::max(error,std::fabs(reconstructed[i]-a[i]));b.metric("SVD reconstruction error",error);
@@ -2611,7 +2700,7 @@ void MathObjects::rebuild() {
         }
         if(third)b.label(sliceNames[k],{1.7F,.8F,static_cast<float>(k*gap)},white);
       }
-      const Vec3 origin{-1.6F,-.4F,0};unsigned vectorLabel=0;const auto arrow=[&](const Triple& x,Vec3 color,std::string_view name){const Vec3 end=origin+Vec3{static_cast<float>(x[0]*.35),static_cast<float>(x[1]*.35),static_cast<float>(x[2]*.35)};b.arrow(origin,end,color,name);b.label(name,end+Vec3{0,.1F+.12F*vectorLabel++,.1F},color);};arrow(u,coral,"u");arrow(v,teal,"v");if(third)arrow(w,violet,"w");
+      const Vec3 origin{-1.6F,-.4F,0};unsigned vectorLabel=0;const auto arrow=[&](const Triple& x,Vec3 color,std::string_view name){const Vec3 end=origin+Vec3{static_cast<float>(x[0]*.35),static_cast<float>(x[1]*.35),static_cast<float>(x[2]*.35)};b.labelledArrow(origin,end,color,name,name,end+Vec3{0,.1F+.12F*vectorLabel++,.1F});};arrow(u,coral,"u");arrow(v,teal,"v");if(third)arrow(w,violet,"w");
       b.metric("Selected component",shown[3*selectedI+selectedJ]*(third?w[selectedK]:1));b.metric("Tensor norm",std::sqrt(tensorNorm));b.metric("u norm",std::sqrt(tripleDot(u,u)));b.metric("v norm",std::sqrt(tripleDot(v,v)));b.metric("Component height scale",heightScale);
       if(third){b.metric("w norm",std::sqrt(tripleDot(w,w)));if(level==2){b.metric("v dot w",contractionScale);b.metric("Contraction x",u[0]*contractionScale);b.metric("Contraction y",u[1]*contractionScale);b.metric("Contraction z",u[2]*contractionScale);b.metric("Contraction norm",std::sqrt(tripleDot(u,u))*std::fabs(contractionScale));if(level==2){Triple contracted=u;for(auto& x:contracted)x*=contractionScale;const double length=std::sqrt(tripleDot(contracted,contracted));if(length>0)for(auto& x:contracted)x/=std::max(1.0,length);arrow(contracted,blue,"contraction (scaled)");}}}
       else {b.metric("Trace",a[0]+a[4]+a[8]);if(level==3){Matrix difference{};for(unsigned i=0;i<9;++i)difference[i]=changed[i]-a[i];b.metric("Component change",frobenius(difference));b.metric("Trace error",std::fabs(a[0]+a[4]+a[8]-changed[0]-changed[4]-changed[8]));b.metric("Norm error",std::fabs(frobenius(a)-frobenius(changed)));b.matrix("World components A",a);b.matrix("New basis components Q^T A Q",changed);b.matrix("Basis columns Q",q);for(unsigned j=0;j<2;++j){Triple axis{};for(unsigned i=0;i<3;++i)axis[i]=q[3*i+j];arrow(axis,j?blue:gold,j?"basis 2":"basis 1");}
@@ -2732,7 +2821,7 @@ void MathObjects::rebuild() {
         else {v={-2+4.0*j/(surface.columns-1),-2+4.0*i/(surface.rows-1),x[2]};height=evaluate(v);const auto gradient=tripleTransform(a,v);position={static_cast<float>(v[0]),static_cast<float>(v[1]),static_cast<float>(.15*height)};normal=normalized(Vec3{static_cast<float>(-.3*gradient[0]),static_cast<float>(-.3*gradient[1]),1});}
         const float amount=static_cast<float>(std::clamp(std::fabs(height)/(level==3?2:8),0.0,1.0));surface.vertices[i*surface.columns+j]={position,normal,muted*(1-amount)+(height>=0?teal:coral)*amount};
       }
-      for(unsigned i=0;i<3;++i){const Vec3 axis{static_cast<float>(q[i]),static_cast<float>(q[3+i]),static_cast<float>(q[6+i])};const Vec3 color=i==0?teal:i==1?coral:blue;b.arrow({},axis*1.65F,color,"principal_direction");b.label(axes[i],axis*1.8F,color);}
+      for(unsigned i=0;i<3;++i){const Vec3 axis{static_cast<float>(q[i]),static_cast<float>(q[3+i]),static_cast<float>(q[6+i])};const Vec3 color=i==0?teal:i==1?coral:blue;b.labelledArrow({},axis*1.65F,color,"principal_direction",axes[i],axis*1.8F);}
       if(level<3){const Vec3 probe{static_cast<float>(x[0]),static_cast<float>(x[1]),static_cast<float>(.15*value)};b.ball(probe,.07F,gold,"quadratic_graph_probe");b.rod({probe.x,probe.y,0},probe,gold);b.label("Height = 0.15 q(x,y,z0)",{-1.8F,-2.2F,0});}
       else {if(norm>0)b.ball(tripleScene(x)*static_cast<float>(1/std::sqrt(norm)),.07F,gold,"rayleigh_probe");else b.label("Rayleigh quotient undefined at x=0",{0,-1.6F,0},coral);b.label("Unit sphere colored by q",{0,-1.6F,-.4F});}
       b.metric("Quadratic value",value);b.metric("Principal sum",sum);b.metric("Coordinate identity error",std::fabs(value-sum));b.metric("Trace",lambda[0]+lambda[1]+lambda[2]);b.metric("Determinant",lambda[0]*lambda[1]*lambda[2]);
@@ -2791,8 +2880,7 @@ void MathObjects::rebuild() {
       const auto stateColor=e.psd?(e.rank<2?gold:teal):coral;
       for(float height:{.6F,1.5F,3.0F})b.scaled(MathShape::Ring,{0,0,height},{height,height,height},muted,"psd_cone_ring");
       for(unsigned i=0;i<8;++i){const double angle=2*pi*i/8;b.rod({},{static_cast<float>(3*std::cos(angle)),static_cast<float>(3*std::sin(angle)),3},muted,.012F,"psd_cone_ray");}
-      b.arrow({-2.2F,0,0},{2.3F,0,0},blue,"psd_x_axis");b.arrow({0,-2.2F,0},{0,2.3F,0},violet,"psd_y_axis");b.arrow({0,0,-2.2F},{0,0,3.4F},white,"psd_t_axis");
-      b.label("x=(a-c)/2",{2.3F,0,-.2F},blue);b.label("y=b",{0,2.4F,0},violet);b.label("t=(a+c)/2",{0,0,3.6F});
+      b.labelledArrow({-2.2F,0,0},{2.3F,0,0},blue,"psd_x_axis","x=(a-c)/2",{2.3F,0,-.2F});b.labelledArrow({0,-2.2F,0},{0,2.3F,0},violet,"psd_y_axis","y=b",{0,2.4F,0});b.labelledArrow({0,0,-2.2F},{0,0,3.4F},white,"psd_t_axis","t=(a+c)/2",{0,0,3.6F});
       b.ball({},.045F,white,"psd_zero");b.ball(point,.105F,stateColor,"psd_matrix_point");
       b.rod({},point,stateColor,.018F,"psd_selected_ray");
       b.label(e.psd?(e.rank==0?"Zero matrix":e.rank==1?"PSD boundary: rank one":"Positive definite"):e.hi< -e.tolerance?"Negative definite":e.lo< -e.tolerance&&e.hi>e.tolerance?"Indefinite":"Negative semidefinite",point+Vec3{.14F,0,.2F},stateColor);
@@ -3155,8 +3243,7 @@ void MathObjects::rebuild() {
         b.ball(point,.05F,gold,"patch_probe");b.label("S(u,v)",point+Vec3{0,.15F,0},gold);
         if(level>=1&&probe.regular) {
           const auto du=normalized(tripleScene(probe.du)),dv=normalized(tripleScene(probe.dv));
-          b.arrow(point,point+du*.6F,coral,"patch_u_tangent");b.arrow(point,point+dv*.6F,blue,"patch_v_tangent");b.arrow(point,point+normal*.65F,gold,"patch_normal");
-          b.label("u",point+du*.7F,coral);b.label("v",point+dv*.7F,blue);b.label("N",point+normal*.78F,gold);
+          b.labelledArrow(point,point+du*.6F,coral,"patch_u_tangent","u",point+du*.7F);b.labelledArrow(point,point+dv*.6F,blue,"patch_v_tangent","v",point+dv*.7F);b.labelledArrow(point,point+normal*.65F,gold,"patch_normal","N",point+normal*.78F);
           b.planeFrame(point,du*.32F,normalized(cross(normal,du))*.32F,white,"patch_tangent_plane");
         }
         if(level==3) {
@@ -3297,7 +3384,7 @@ void MathObjects::rebuild() {
       const double releaseAlignment=tripleDot(direction,releaseDirection);
       if(guides){
         constexpr std::array<std::string_view,3> names{"Body X","Body Y","Body Z"},worldNames{"World X","World Y","World Z"};
-        for(unsigned i=0;i<3;++i){RigidVector e{};e[i]=axisLength;const auto end=place(e);b.arrow({},end,axisColors[i],"rigid_body_axis");b.label(names[i],end*1.1F,axisColors[i]);const auto fixed=tripleScene(e)*1.1F;b.rod({},fixed,muted,.009F,"rigid_world_axis");b.label(worldNames[i],fixed*1.1F,muted);}
+        for(unsigned i=0;i<3;++i){RigidVector e{};e[i]=axisLength;const auto end=place(e);b.labelledArrow({},end,axisColors[i],"rigid_body_axis",names[i],end*1.1F);const auto fixed=tripleScene(e)*1.1F;b.rod({},fixed,muted,.009F,"rigid_world_axis");b.label(worldNames[i],fixed*1.1F,muted);}
         const auto tip=tripleScene(direction)*axisLength;b.ball(tip,.045F,gold,"rigid_tracked_tip");b.ball({},.04F,gold,"rigid_center_of_mass");
         if(level==1){const auto origin=place({-body.center[0],-body.center[1],-body.center[2]});b.ball(origin,.032F,muted,"rigid_assembly_origin");b.rod({},origin,gold,.014F,"rigid_com_offset");for(unsigned i=0;i<body.count;++i)b.ball(place(body.parts[i].center),static_cast<float>(.035+.045*std::cbrt(body.parts[i].mass/body.mass)),gold,"rigid_component_com");}
         if(level>=2){const auto arrow=[&](const RigidVector& v,Vec3 color,std::string_view role){const double magnitude=rigidMagnitude(v);if(magnitude>0)b.arrow({},tripleScene(v)*static_cast<float>(1.38*radius/magnitude),color,role);};arrow(state.worldMomentum,gold,"rigid_world_momentum");arrow(state.worldOmega,teal,"rigid_world_velocity");}
@@ -3634,7 +3721,7 @@ void MathObjects::rebuild() {
         if(level==0){const double stage=parameter(P::QrStage);auto first=a[qr.order[0]],second=a[qr.order[1]];
           for(unsigned i=0;i<3;++i){const double t=std::min(1.,stage);first[i]=(1-t)*first[i]+t*qr.q[0][i];if(stage>1){const double u=std::min(1.,stage-1);second[i]=(1-u)*second[i]+u*qr.remainder[i];}if(stage>2)second[i]=(3-stage)*second[i]+(stage-2)*qr.q[1][i];}
           arrow(first,right,teal,"qr_first_stage");arrow(second,right,coral,"qr_second_stage");
-          if(guides){arrow(qr.removed,right,muted,"qr_removed_shadow");b.rod(right+asVec(qr.removed)*scale,right+asVec(a[qr.order[1]])*scale,gold,.012F,"qr_remainder_guide");}
+          if(guides){b.vectorResidual(right,right+asVec(qr.removed)*scale,right+asVec(a[qr.order[1]])*scale,muted,"qr_removed_shadow",gold,.012F,"qr_remainder_guide");}
           constexpr std::array<std::string_view,4> stages{"0: pivoted input columns","1: normalize first column","2: remove its shadow","3: normalize the remainder"};b.label(stages[std::min(3U,static_cast<unsigned>(stage))],right+Vec3{0,-2.3F,0},teal);
         }else{
           for(unsigned j=0;j<2;++j){QrVector first{},second{};for(unsigned i=0;i<3;++i){first[i]=qr.q[0][i]*qr.r[j];second[i]=qr.q[1][i]*qr.r[2+j];}const auto start=right+Vec3{0,0,j?.3F:-.3F};arrow(first,start,teal,"qr_reconstruction_first");arrow(second,start+asVec(first)*scale,coral,"qr_reconstruction_second");b.rod(start,start+(asVec(first)+asVec(second))*scale,j?violet:blue,.01F,"qr_reconstructed_column");}
@@ -3643,7 +3730,7 @@ void MathObjects::rebuild() {
         b.label(qr.order[0]==0?"Pivot order: a0 then a1":"Pivot order: a1 then a0",origin+Vec3{0,-2.3F,0},white);
       }else{
         arrow(qr.projected,origin,teal,"qr_best_fit");b.ball(point(qr.projected),.08F,teal,"qr_projection");b.rod(point(qr.projected),point(target),gold,.024F,"qr_best_residual");
-        arrow(shownFit,origin,level==3?violet:coral,"qr_shown_fit");b.rod(point(shownFit),point(target),level==3?violet:coral,.013F,"qr_shown_residual");
+        b.vectorResidual(origin,point(shownFit),point(target),level==3?violet:coral,"qr_shown_fit",level==3?violet:coral,.013F,"qr_shown_residual");
         if(guides&&vnorm(qr.residual)>1e-9&&qr.rank){const auto r=asVec(qr.residual)*static_cast<float>(.17/vnorm(qr.residual)),q=asVec(qr.q[0])*.17F,p=point(qr.projected);b.rod(p+q,p+q+r,white,.007F,"qr_right_angle");b.rod(p+q+r,p+r,white,.007F,"qr_right_angle");}
         b.label("Teal: projection; gold: target",origin+Vec3{0,-2.3F,0},teal);
       }
@@ -3662,6 +3749,73 @@ void MathObjects::rebuild() {
         b.label("Coefficient offsets: delta x0, delta x1",center+Vec3{0,-.35F,2},white);b.metric("Error surface height scale",height);
         if(qr.rank<2){b.linkedPlot("Coefficient norm squared along first null direction",MathParameter::Count,{parameter(P::QrNull0),family[0]*family[0]+family[1]*family[1]},"||x_min + t n0 + offset1 n1||^2",violet,-3,3,[&](double t){auto c=qr.solution;for(unsigned i=0;i<2;++i)c[i]+=t*qr.nullBasis[0][i]+parameter(P::QrNull1)*qr.nullBasis[1][i];return c[0]*c[0]+c[1]*c[1];});}
         else {b.linkedPlot("Excess squared error along delta x0; delta x1=0",MathParameter::Count,{0,0},"||A delta||^2",teal,-3,3,[&](double x){return excess(x,0);});}
+      }
+      break;
+    }
+    case MathObjectKind::Maps: {
+      using P=MathParameter;const auto in=mapInput(*this);const auto analysis=analyzeFiniteMaps(in);
+      const unsigned level=snapshot_.level,selected=static_cast<unsigned>(parameter(P::MapsSource));
+      const bool compose=level==2,condition=level==3&&parameter(P::MapsCondition)==1;
+      const bool massDefined=level==3&&analysis.probabilityDefined&&(!condition||analysis.conditionalDefined);
+      const auto& sourceMass=condition?analysis.conditionalSource:analysis.sourceMass;
+      const auto& outputMass=condition?analysis.conditionalOutput:analysis.outputMass;
+      constexpr std::array<Vec3,4> colors{teal,coral,blue,violet};
+      constexpr std::array<std::string_view,4> aNames{"A0","A1","A2","A3"},bNames{"B0","B1","B2","B3"},cNames{"C0","C1","C2","C3"};
+      const auto at=[](float x,unsigned i,unsigned n){return Vec3{x,(static_cast<float>(n)-1)*.5F-static_cast<float>(i),0};};
+      const float left=compose?-3.2F:-1.8F,middle=compose?0:1.8F;
+      std::array<Vec3,4> a{},dest{},c{};
+      for(unsigned i=0;i<in.a;++i){unsigned order=0;for(unsigned j=0;j<in.a;++j)order+=in.f[j]<in.f[i]||(in.f[j]==in.f[i]&&j<i);
+        const auto ordinary=at(left,i,in.a),grouped=at(left,order,in.a);const float mix=level==1?static_cast<float>(parameter(P::MapsGroup)):0;a[i]=ordinary*(1-mix)+grouped*mix;
+      }
+      for(unsigned j=0;j<in.b;++j)dest[j]=at(middle,j,in.b);
+      for(unsigned j=0;j<in.c;++j)c[j]=at(3.2F,j,in.c);
+      const auto tray=[&](float x,std::string_view name){b.scaled(MathShape::Box,{x,0,-.24F},{1.15F,4.55F,.06F},muted*.28F,"maps_set_tray");b.label(name,{x-.35F,2.4F,0},white);};
+      tray(left,"A: inputs");tray(middle,"B: outputs");if(compose)tray(3.2F,"C: outputs");
+      snapshot_.curve.active=true;snapshot_.curve.count=in.a;snapshot_.curve.selected=selected;snapshot_.curve.selectionParameter=P::MapsSource;
+      for(unsigned i=0;i<in.a;++i){snapshot_.curve.controls[i]=a[i];const bool highlighted=(level==1||level==3)?in.f[i]==in.fiber:i==selected;
+        const auto color=highlighted?gold:colors[in.f[i]];const float radius=massDefined?(sourceMass[i]>0?static_cast<float>(.24*std::cbrt(sourceMass[i])):.035F):.12F;
+        b.ball(a[i],radius,massDefined&&sourceMass[i]==0?muted:color,"maps_input");b.label(aNames[i],a[i]+Vec3{-.38F,.13F,.08F},color);
+        b.arrow(a[i]+Vec3{.25F,0,0},dest[in.f[i]]-Vec3{.25F,0,0},highlighted?gold:colors[in.f[i]]*.65F,"maps_f");
+      }
+      for(unsigned j=0;j<in.b;++j){const auto color=j==in.fiber&&(level==1||level==3)?gold:analysis.fiberSizes[j]?colors[j]:muted;
+        const float radius=massDefined?(outputMass[j]>0?static_cast<float>(.24*std::cbrt(outputMass[j])):.035F):.12F;
+        b.ball(dest[j],radius,massDefined&&outputMass[j]==0?muted:color,"maps_output");b.label(bNames[j],dest[j]+Vec3{.18F,.15F,.08F},color);
+        if(compose)b.arrow(dest[j]+Vec3{.25F,0,0},c[in.g[j]]-Vec3{.25F,0,0},j==in.f[selected]?gold:muted,"maps_g");
+      }
+      if(level==1&&parameter(P::MapsGroup)==1)for(unsigned j=0;j<in.b;++j)if(analysis.fiberSizes[j]){
+        float top=-10,bottom=10;for(unsigned i=0;i<in.a;++i)if(in.f[i]==j){top=std::max(top,a[i].y);bottom=std::min(bottom,a[i].y);}
+        b.planeFrame({left,(top+bottom)*.5F,-.07F},{.35F,0,0},{0,(top-bottom)*.5F+.35F,0},j==in.fiber?gold:colors[j],"maps_fiber_group");
+      }
+      b.metric("Inputs in A",in.a);b.metric("Outputs in B",in.b);b.metric("Image size",analysis.imageSize);b.metric("Repeated inputs",analysis.collisions);
+      b.metric("Injective",analysis.injective);b.metric("Surjective",analysis.surjective);b.metric("Bijective",analysis.bijective);
+      if(level==1||level==3)b.metric("Selected fiber size",analysis.fiberSizes[in.fiber]);
+      if(compose){
+        for(unsigned j=0;j<in.c;++j){b.ball(c[j],.12F,j==analysis.composed[selected]?gold:blue,"maps_composed_output");b.label(cNames[j],c[j]+Vec3{.18F,.15F,.08F},white);}
+        const auto from=a[selected],to=c[in.h[selected]];const auto direct=[&](float t){return from*(1-t)+to*t+Vec3{0,0,1.4F*4*t*(1-t)};};
+        const auto directColor=in.h[selected]==analysis.composed[selected]?violet:coral;
+        for(unsigned i=0;i<11;++i)b.rod(direct(i/12.F),direct((i+1)/12.F),directColor,.014F,"maps_direct_h");
+        b.arrow(direct(11/12.F),direct(1),directColor,"maps_direct_h");
+        const float t=static_cast<float>(parameter(P::MapsTime));const auto via=dest[in.f[selected]];
+        const auto trace=t<=1?from*(1-t)+via*t:via*(2-t)+c[analysis.composed[selected]]*(t-1);
+        b.ball(trace+Vec3{0,0,.1F},.07F,gold,"maps_composed_tracer");b.ball(direct(t*.5F)+Vec3{0,0,.1F},.065F,directColor,"maps_direct_tracer");
+        b.label("Gold: g after f; raised arc: selected h",{-2.5F,-2.6F,0},white);
+        b.metric("Outputs in C",in.c);b.metric("Agreeing inputs",analysis.agreement);b.metric("Diagram commutes",analysis.commutes);
+        b.table("Compare every input",{"f(A)","g(f(A))","h(A)","Agrees"},4);
+        for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{static_cast<double>(in.f[i]),static_cast<double>(analysis.composed[i]),static_cast<double>(in.h[i]),analysis.composed[i]==in.h[i]?1.:0.});
+      }else if(level==3){
+        b.metric("Probability defined",analysis.probabilityDefined);b.metric("Conditional probability defined",analysis.conditionalDefined);b.metric("Selected event probability",analysis.eventProbability);
+        if(analysis.conditionalDefined){b.table("Weights and source probabilities",{"Weight","P(A)","P(A | event)","f(A)"},4);for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{in.weights[i],analysis.sourceMass[i],analysis.conditionalSource[i],static_cast<double>(in.f[i])});}
+        else if(analysis.probabilityDefined){b.table("Conditional probability undefined for this event",{"Weight","P(A)","f(A)",{}},3);for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{in.weights[i],analysis.sourceMass[i],static_cast<double>(in.f[i]),0});}
+        else {b.table("Probability undefined: zero total weight",{"Weight","f(A)",{},{}},2);for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{in.weights[i],static_cast<double>(in.f[i]),0,0});}
+        if(massDefined){
+          const auto bars=[&](std::string_view title,std::string_view name,const std::array<double,4>& mass,unsigned count,Vec3 color){auto& plot=b.plot(title);auto& series=plot.series[plot.seriesCount++];series={};series.name=name;series.color=color;series.stems=true;series.count=count;for(unsigned i=0;i<count;++i)series.points[i]={static_cast<double>(i),mass[i]};};
+          bars(condition?"Conditional source mass on A":"Source probability on A","Probability",sourceMass,in.a,gold);
+          bars(condition?"Conditional output mass on B":"Pushforward probability on B","Probability",outputMass,in.b,teal);
+        }else b.label(!analysis.probabilityDefined?"Undefined: all source weights are zero":"Undefined: selected event has zero probability",{-2.5F,-2.6F,0},coral);
+      }else{
+        b.table("Map and quotient classes",{"f(A)","Class","Fiber size","Selected fiber"},4);
+        for(unsigned i=0;i<in.a;++i)b.row(aNames[i],{static_cast<double>(in.f[i]),static_cast<double>(analysis.classOf[i]),static_cast<double>(analysis.fiberSizes[in.f[i]]),in.f[i]==in.fiber?1.:0.});
+        b.label(analysis.bijective?"Bijection: one input per output":analysis.injective?"Injection: distinct outputs, some unused":analysis.surjective?"Surjection: all outputs reached, with a collision":"Neither: collisions and unused outputs",{-2.5F,-2.6F,0},white);
       }
       break;
     }

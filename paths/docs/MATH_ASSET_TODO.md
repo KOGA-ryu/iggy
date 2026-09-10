@@ -1,20 +1,20 @@
 # Math diagrams and model assets — to-do list
 
-Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 35 existing Math Lab models (updated through P064).**
+Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 36 existing Math Lab models (updated through P065).**
 
 This is the complete chapter-level scope for the current learning library, not a separate new engine for every chapter. Each chapter gets a concise diagram brief and an interactive-model brief. Subcategories sit within their parent chapter; repeated material shares a model or preset. The broader unread book shelf is not counted as additional chapters here.
 
 **D = diagrams and linked plots. M = interactive models/assets.** A model can be 2D or 3D. Abstract topics use finite examples and labelled diagrams where those explain the idea better. All boxes below mean chapter/family work remains to be organized and delivered; references to existing models mean reuse or extension, not that every chapter is already integrated.
 
-**Latest asset: [P064 — QR and Least Squares Lab](P064_QR_LEAST_SQUARES.md).** The real 3x2 model now covers Gram–Schmidt, QR reconstruction, projection, residuals and minimum-norm/null-space examples. Chapter integration and broader matrix sizes remain open. Suggested next family: subspaces/conditioning, followed by complex analysis/Fourier and stochastic paths.
+**Latest asset: [P065 — Sets and Maps Lab](P065_SETS_AND_MAPS.md).** Four layers cover editable finite maps, fibers, composition and weighted outcomes, including conditional probability. These are shared foundations for algebra, discrete math and probability; chapter integration and larger/general constructions remain open.
 
 ## Existing models to reuse
 
-These 35 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
+These 36 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
 
 | Area | Existing models |
 | --- | --- |
-| Algebra and sets | Algebra blocks; Symmetry; Modular drums; Gaussian lattice; Roots of unity; Boolean Solids Lab |
+| Algebra and sets | Algebra blocks; Symmetry; Modular drums; Gaussian lattice; Roots of unity; Boolean Solids Lab; Sets and Maps Lab |
 | Trigonometry and harmonics | Trigonometry; Harmonics; Harmonic sphere |
 | Calculus and geometry | Calculus; Functions; Surfaces; Vector fields; Flux shells; Curves and sweeps; Lathe Lab; Patch Lab |
 | Linear algebra | Linear algebra; Tensor blocks; Covariance cloud; Quadratic forms; PSD cone; Norm balls; Distance Geometry Lab; Polar Decomposition Lab; QR and Least Squares Lab |
@@ -30,7 +30,7 @@ These **26 shared families** collect the work below. Several extend existing lab
 - [ ] **QR and least squares** — Orthogonal frames, projections, residuals, QR stages, and rank-deficient/minimum-norm examples. **P064:** real 3x2 asset delivered; general-size extensions and chapter integration remain.
 - [ ] **Matrix factorizations and numerical work** — LU/Cholesky/Schur/Jordan/Smith stages, sparsity, pivoting, roundoff, work counts, and iterative solvers.
 - [ ] **Subspaces and sensitivity** — Fundamental subspaces, principal angles, conditioning, perturbations, and Procrustes alignment.
-- [ ] **Sets, maps, and logic** — Finite sets, quotients, function arrows, truth tables, circuits, and proof dependencies.
+- [ ] **Sets, maps, and logic** — Finite sets, quotients, function arrows, truth tables, circuits, and proof dependencies. **P065:** finite maps, fiber partitions, competing compositions and weighted pushforwards delivered; broader logic and chapter integration remain.
 - [ ] **Finite algebra** — Groups, rings, ideals, modules, finite fields, extensions, and automorphism actions.
 - [ ] **Categories and homological algebra** — Commutative diagrams, exact sequences, complexes, resolutions, filtrations, and spectral-sequence pages.
 - [ ] **Polynomials and complex analysis** — Roots, rational functions, complex-function views, contours, residues, and algebraic-curve examples.
@@ -64,7 +64,7 @@ Source: [Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and definit
 
 - [ ] **001 — Algebraic Structures** — **D:** Sets, structure hierarchy, operation tables, and maps between groups/rings/fields. **M:** Finite-set and operation-table explorer; reuse the symmetry and Gaussian-integer labs.
 - [ ] **002 — Number Systems and Divisibility** — **D:** Number-set nesting, divisibility trees, Euclidean steps, and residue cycles. **M:** Extend modular drums with GCD, prime factors, and linked remainder views.
-- [ ] **003 — Equations and Relations** — **D:** Function arrows, equivalence classes, and equation-versus-identity comparisons. **M:** Mapping machine with injection, surjection, bijection, composition, and quotient settings.
+- [ ] **003 — Equations and Relations** — **D:** Function arrows, equivalence classes, and equation-versus-identity comparisons. **M:** Mapping machine with injection, surjection, bijection, composition, and quotient settings. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite maps, injection/surjection, fibers and composition; the full chapter remains open.
 - [ ] **004 — Polynomials and Rational Expressions** — **D:** Coefficient strips, factor trees, repeated roots, poles, and excluded inputs. **M:** Extend Functions with draggable polynomial roots and rational-function holes/asymptotes.
 - [ ] **005 — Inequalities and Expressions** — **D:** Number-line intervals, absolute-value distances, and AM–GM rectangle comparisons. **M:** Norm-ball comparisons plus an adjustable fixed-area rectangle/box.
 - [ ] **006 — Symmetry and Group Actions** — **D:** Permutation cycles, orbit graphs, stabilizers, and coset partitions. **M:** Extend Symmetry with labelled polygons, cube actions, and noncommuting moves.
@@ -77,9 +77,9 @@ Source: [Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and definit
 - [ ] **013 — Algebraic and Module Extensions** — **D:** Fraction/localization maps, radical membership, and factorization comparisons. **M:** Finite examples of radicals and localization; labelled algebraic-set slices where useful.
 - [ ] **014 — Advanced Module Theory** — **D:** Module/submodule inclusions, homomorphisms, exactness, and tensor grids. **M:** Lattice and torsion modules plus editable kernel/image diagrams; reuse Tensor blocks.
 - [ ] **015 — Homological and Categorical Additions** — **D:** Lifting/extension diagrams, free generators, and torsion decomposition. **M:** Small module examples showing projective, injective, and flat behavior under stated assumptions.
-- [ ] **016 — Homological Constructions** — **D:** Short exact sequences, direct sums/products, and pullback/pushout squares. **M:** Editable finite-set and vector-space constructions with synchronized element maps.
+- [ ] **016 — Homological Constructions** — **D:** Short exact sequences, direct sums/products, and pullback/pushout squares. **M:** Editable finite-set and vector-space constructions with synchronized element maps. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite-set maps and composition foundations; the full chapter remains open.
 - [ ] **017 — Galois and Homological Structures** — **D:** Extension towers, conjugate roots, splitting fields, and subgroup/field correspondence. **M:** Extend Roots of unity with finite Galois examples and automorphism permutations.
-- [ ] **018 — Category-Theoretic Extensions** — **D:** Category arrows, functor images, naturality squares, and adjunction correspondences. **M:** Composable finite-category diagram explorer, including representable-functor examples.
+- [ ] **018 — Category-Theoretic Extensions** — **D:** Category arrows, functor images, naturality squares, and adjunction correspondences. **M:** Composable finite-category diagram explorer, including representable-functor examples. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite commuting-route examples; the full chapter remains open.
 - [ ] **019 — Algebraic Geometry Bridges** — **D:** Prime/ideal specialization diagrams, radicals, and equations versus zero sets. **M:** Finite-ring spectrum examples and simple algebraic curves; distinguish point sets from prime spectra.
 - [ ] **020 — Advanced Homological Algebra** — **D:** Split sequences, lifting squares, and extension diagrams. **M:** Small exact-sequence and resolution explorer with kernel/image overlays.
 - [ ] **021 — Homological and Derived Structures** — **D:** Chain complexes, projective resolutions, homology, Ext, and Tor stages. **M:** Bounded matrix complexes with cycles, boundaries, and surviving homology classes.
@@ -201,14 +201,14 @@ Source: [Linear Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and 
 Source: [Discrete Math notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/discrete_math.md>).
 
 - [ ] **119 — Logic and Proof** — **D:** Truth tables, logical equivalences, implication chains, and contradiction trees. **M:** Logic-gate and proof-step sandbox with selectable valuations.
-- [ ] **120 — Set Theory Foundations** — **D:** Venn regions, Cartesian products, function arrows, and quotient partitions. **M:** Finite sets/maps explorer; reuse Boolean solids for spatial set examples.
+- [ ] **120 — Set Theory Foundations** — **D:** Venn regions, Cartesian products, function arrows, and quotient partitions. **M:** Finite sets/maps explorer; reuse Boolean solids for spatial set examples. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite-set maps, fibers and quotient-class foundations; the full chapter remains open.
 - [ ] **121 — Counting and Combinatorics** — **D:** Permutation/combination trees, Pascal layers, inclusion–exclusion, and Catalan paths. **M:** Counting lab with selectable arrangements, lattice paths, and generating counts.
 - [ ] **122 — Graph Theory** — **D:** Adjacency, degree, subgraphs, Euler trails, and Hamiltonian routes. **M:** Editable graph lab extending the existing cube-route model.
 - [ ] **123 — Number Theory** — **D:** Prime factors, divisor lattices, totients, and modular cycles. **M:** Extend Modular drums with exact integer number-theory presets.
 - [ ] **124 — Recursion and Sequences** — **D:** Recursion trees, recurrence tables, induction ladders, and lattice dependencies. **M:** Sequence builder with stepwise recurrence and two-index examples.
 - [ ] **125 — Algorithms and Complexity** — **D:** Growth curves, operation counts, and input-size comparisons. **M:** Algorithm-trace lab with measured/count-based growth views kept distinct.
 - [ ] **126 — Boolean Algebra and Logic Circuits** — **D:** Gate circuits, truth tables, Boolean expression trees, and equivalence routes. **M:** Editable circuit/valuation lab linked to set and Boolean-solid truth tables.
-- [ ] **127 — Theorems** — **D:** Pigeonholes, incidence counts, matching witnesses, and modular theorem examples. **M:** Reuse counting, graph, and modular models with theorem-specific presets.
+- [ ] **127 — Theorems** — **D:** Pigeonholes, incidence counts, matching witnesses, and modular theorem examples. **M:** Reuse counting, graph, and modular models with theorem-specific presets. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite pigeonhole/collision examples; the full chapter remains open.
 - [ ] **128 — Worked examples** — **D:** Occupancy, inclusion–exclusion counts, modular powers, and handshaking traces. **M:** Small presets for existing/shared counting and graph models.
 - [ ] **129 — Proof sketches** — **D:** Counting proof steps, graph assumptions, and induction witnesses. **M:** Replay chapter examples and counterexamples through shared graph/set tools.
 - [ ] **130 — Advanced Discrete Topics** — **D:** Bipartite matching, SCC condensation, topological order, and generating functions. **M:** Graph lab plus sequence/coefficient views with shared combinatorial examples.
@@ -235,14 +235,14 @@ Source: [Discrete Math notes](</Users/kogaryu/Documents/ChatGPT/math terms and d
 
 Source: [Probability and Statistics notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/probability_statistics.md>).
 
-- [ ] **149 — Probability Foundations** — **D:** Sample spaces, event intersections, conditioning, and Bayes trees. **M:** Reuse Bayesian cube; add general finite-event partitions and weighted outcomes.
-- [ ] **150 — Random Variables** — **D:** Outcome-to-value maps, PMF/PDF/CDF links, moments, and generating functions. **M:** Distribution lab with linked probability bars/density, cumulative area, and moment controls.
+- [ ] **149 — Probability Foundations** — **D:** Sample spaces, event intersections, conditioning, and Bayes trees. **M:** Reuse Bayesian cube; add general finite-event partitions and weighted outcomes. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies weighted finite outcomes and conditioning on fibers; the full chapter remains open.
+- [ ] **150 — Random Variables** — **D:** Outcome-to-value maps, PMF/PDF/CDF links, moments, and generating functions. **M:** Distribution lab with linked probability bars/density, cumulative area, and moment controls. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite outcome-to-value maps and pushforward mass; the full chapter remains open.
 - [ ] **151 — Distribution Theory** — **D:** Bernoulli/binomial/normal comparisons, sample means, LLN, and CLT panels. **M:** Extend Binomial board with repeated sampling and standardized-sum convergence.
 - [ ] **152 — Statistical Inference** — **D:** Likelihood profiles, estimator sampling distributions, and null/tail regions. **M:** Inference lab with sample size, parameters, estimator, and test-statistic controls.
 - [ ] **153 — Stochastic Processes** — **D:** Markov transitions, stationary mass, Brownian paths, Itô sums, and measure changes. **M:** Extend Probability network; add stochastic paths with linked time slices and histograms.
 - [ ] **154 — Foundational Probability and Inference** — **D:** Random walks, covariance ellipses, Poisson counts, and entropy bars. **M:** Reuse Covariance/Simplex; add Poisson arrivals and repeated-walk distributions.
 - [ ] **155 — Risk and Learning Core Terms** — **D:** Variance decompositions, covariance directions, and characteristic-function traces. **M:** Extend Covariance cloud with complex characteristic functions and distribution comparisons.
-- [ ] **156 — Decision and Concentration** — **D:** Conditional partitions, conditional means, total probability, and Chebyshev tails. **M:** Finite-event/conditional-expectation lab with synchronized cubes and bound plots.
+- [ ] **156 — Decision and Concentration** — **D:** Conditional partitions, conditional means, total probability, and Chebyshev tails. **M:** Finite-event/conditional-expectation lab with synchronized cubes and bound plots. **Asset progress:** [P065](P065_SETS_AND_MAPS.md) supplies finite event/fiber conditioning and renormalization; the full chapter remains open.
 - [ ] **157 — Estimation and Testing Extensions** — **D:** Repeated confidence intervals, distributional convergence, and KL comparisons. **M:** Sampling/inference lab linked to Simplex's relative-entropy geometry.
 - [ ] **158 — Bayesian Foundations** — **D:** Prior × likelihood → posterior, evidence normalization, and MAP markers. **M:** Extend Bayesian cube into finite-grid and conjugate posterior update examples.
 - [ ] **159 — Time Series and Risk** — **D:** Autocovariance lags, AR dependence, quantile tails, and expected shortfall. **M:** Time-series/risk lab with lag, coefficient, sample, and tail-level controls.

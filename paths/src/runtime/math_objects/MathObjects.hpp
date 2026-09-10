@@ -11,7 +11,7 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Qr, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Qr, Maps, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -63,7 +63,8 @@ enum class MathParameter : std::uint16_t {
   SimplexP0, SimplexP1, SimplexQ0, SimplexQ1, SimplexValue0, SimplexValue1, SimplexValue2, SimplexFunction, SimplexMix, SimplexGuides,
   DistanceAB, DistanceAC, DistanceAD, DistanceBC, DistanceBD, DistanceCD, DistanceEdge, DistanceMirror, DistanceSecond, DistanceMix, DistanceScale, DistanceGuides,
   PolarA00, PolarA01, PolarA02, PolarA10, PolarA11, PolarA12, PolarA20, PolarA21, PolarA22, PolarShape, PolarAmount, PolarIteration, PolarExtension, PolarGuides,
-  QrA0X, QrA0Y, QrA0Z, QrA1X, QrA1Y, QrA1Z, QrBX, QrBY, QrBZ, QrVector, QrStage, QrC0, QrC1, QrUseSolution, QrNull0, QrNull1, QrGuides, Count
+  QrA0X, QrA0Y, QrA0Z, QrA1X, QrA1Y, QrA1Z, QrBX, QrBY, QrBZ, QrVector, QrStage, QrC0, QrC1, QrUseSolution, QrNull0, QrNull1, QrGuides,
+  MapsA, MapsB, MapsC, MapsSource, MapsMiddle, MapsFiber, MapsF0, MapsF1, MapsF2, MapsF3, MapsG0, MapsG1, MapsG2, MapsG3, MapsH0, MapsH1, MapsH2, MapsH3, MapsW0, MapsW1, MapsW2, MapsW3, MapsGroup, MapsTime, MapsCondition, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };
@@ -240,6 +241,7 @@ public:
   [[nodiscard]] MathActionResult dispatch(const MathAction&);
   [[nodiscard]] double parameter(MathParameter p) const;
   [[nodiscard]] bool parameterAvailable(MathParameter p) const;
+  [[nodiscard]] double parameterMaximum(MathParameter p) const;
   [[nodiscard]] MathParameter playbackParameter() const;
   [[nodiscard]] const MathObjectSnapshot& snapshot() const { return snapshot_; }
 private:

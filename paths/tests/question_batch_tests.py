@@ -37,7 +37,8 @@ class BatchTests(unittest.TestCase):
         # Frozen before consolidation, including every document, author manifest and audit.
         expected={('matrix',1):'079b6e2590aa8b2454ae9ecd93b4c99ff22cfaf39513cb2f983dc57314c59c83',
                   ('matrix',2):'b49288700619c5bcb21959966a437c683a286787aa84ebeafbed3aba5caf1862',
-                  ('linear',1):'58b9a20a486cb8d1ccac087b3f641dd342a55e018eb3836b15a2c37032297c9c'}
+                  ('linear',1):'58b9a20a486cb8d1ccac087b3f641dd342a55e018eb3836b15a2c37032297c9c',
+                  ('probability',1):'d82d29f1dbf3cf43d143f1cf60d4caac7f29e337e3a0a8020819027030fe6b7b'}
         for (family,fmt),fingerprint in expected.items():
             _,_,docs,author,audit=batch.BUILDERS[family](self.args(family=family,format_version=fmt,version=fmt))
             files={**docs,'authoring.json':export.encoded(author),'audit.json':export.encoded(audit)}
@@ -105,8 +106,115 @@ class BatchTests(unittest.TestCase):
         with patch.object(batch,'probability_fields',side_effect=wrong_labels),self.assertRaisesRegex(export.ExportError,'answer key or choices'):
             batch.run(self.args(family='probability',publish=True))
         self.assertFalse((self.root/'batches/1').exists())
-        with self.assertRaisesRegex(export.ExportError,'format version 1'):
-            batch.run(self.args(family='probability',format_version=2,publish=True))
+        with self.assertRaisesRegex(export.ExportError,'format version 1 or 2'):
+            batch.run(self.args(family='probability',format_version=3,publish=True))
+
+    def test_exercise_role_contract_and_independent_certificates(self):
+        source=batch.REASONING_ROOT/'sequence.json';sequence=export.decoded(source.read_bytes())
+        questions=batch.validate_role_sequence(sequence,source)
+        checked={q['role']:batch.reasoning_certificate(q) for q in questions}
+        self.assertEqual(checked['read_notation']['evidence']['facts']['event'],[1,3,5,7])
+        self.assertEqual(checked['worked_check']['evidence']['facts']['sample_count'],6)
+        self.assertEqual(checked['choose_next_step']['evidence']['facts']['weighted_sum'],'3/4')
+        self.assertEqual(checked['choose_next_step']['evidence']['facts']['counting_shortcut'],'2/3')
+        self.assertEqual(checked['explain_step']['evidence']['facts']['complement'],list(range(4,11)))
+        self.assertEqual(checked['repair_error']['evidence']['facts']['first_error'],'L_1')
+        self.assertEqual(checked['repair_error']['evidence']['facts']['event'],[3,6,9])
+        self.assertEqual(checked['independent']['evidence']['facts']['probability'],'3/4')
+        self.assertEqual(len(checked['independent']['evidence']['facts']['tokens']),12)
+        for defect in ('missing','unknown','repeated','order','objective','prerequisites','case'):
+            data=copy.deepcopy(sequence)
+            if defect=='missing':data['questions'].pop()
+            elif defect=='unknown':data['questions'][0]['role']='invented_solver'
+            elif defect=='repeated':data['questions'][1]['id']=data['questions'][0]['id']
+            elif defect=='order':data['questions'].reverse()
+            elif defect=='case':data['questions'][0]['case']={}
+            else:data['questions'][0][defect]=' '
+            with self.assertRaises(export.ExportError) as caught:batch.validate_role_sequence(data,source)
+            self.assertEqual(caught.exception.code,'batch.role')
+            self.assertIn('sequence.json:/questions',str(caught.exception))
+        weighted=copy.deepcopy(questions[2]);weighted['case']['weights']['a']='3/4'
+        with self.assertRaisesRegex(export.ExportError,'summing to one'):batch.reasoning_certificate(weighted)
+        weighted['case']['weights']={'a':'1/3','b':'1/3','c':'1/3'}
+        with self.assertRaises(export.ExportError):batch.reasoning_certificate(weighted)
+
+    def test_role_markdown_defects_fail_before_output(self):
+        original=batch.REASONING_ROOT
+        edited=self.root/'role-authoring';export.write_tree(edited,export.capture(original))
+        path=edited/'questions.paths.md.in';text=path.read_text()
+        defects=[('@choice 11 | \\{1,3,5,7\\}','@choice 11 | \\{1,3,5\\}'),
+                 ('@after E=\\{1,3,5,7\\}','@after E=\\{1,3,5\\}'),
+                 ('P(a)=\\frac{1}{2}','P(a)=\\frac{3}{4}'),
+                 ('@step 10 | Choose the exact probability that the token is not red.',
+                  '@step 10 | Choose the exact probability that the token is not red.\n@hint The answer is three quarters.')]
+        for old,new in defects:
+            with self.subTest(defect=old):
+                self.assertIn(old,text);path.write_text(text.replace(old,new,1))
+                with patch.object(batch,'REASONING_ROOT',edited),self.assertRaises(export.ExportError) as caught:
+                    batch.run(self.args(family='probability',format_version=2,version=2,publish=True))
+                if '@hint' in new:
+                    self.assertEqual(caught.exception.code,'target.rejected')
+                    self.assertEqual(caught.exception.diagnostics[0]['file'],'04_reasoning.paths.md')
+                    self.assertEqual(caught.exception.diagnostics[0]['field'],'hint')
+                else:
+                    self.assertEqual(caught.exception.code,'batch.role',str(caught.exception))
+                    self.assertIn('probability_reasoning_v1_',str(caught.exception))
+                self.assertFalse((self.root/'batches/2').exists())
+                self.assertFalse((self.store/'active.json').exists())
+        path.write_text('{{missing_role_field}}\n')
+        with patch.object(batch,'REASONING_ROOT',edited),self.assertRaisesRegex(export.ExportError,'questions.paths.md.in:1: Unknown field missing_role_field'):
+            batch.run(self.args(family='probability',format_version=2,version=2,publish=True))
+
+    def test_probability_roles_upgrade_and_extend_without_changing_prior_questions(self):
+        first=batch.run(self.args(family='probability',publish=True))
+        before=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        result=batch.run(self.args(family='probability',version=2,format_version=2,publish=True))
+        self.assertEqual(result['count'],18);self.assertEqual(result['retained_questions'],12)
+        self.assertEqual(result['route_checks']['routes'],18);self.assertEqual(result['route_checks']['wrong_choices'],62)
+        old_docs=export.capture(Path(first['generated_authoring'])/'documents')
+        docs=export.capture(Path(result['generated_authoring'])/'documents')
+        self.assertTrue(all(docs[name]==data for name,data in old_docs.items()))
+        after=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']
+        for kind,rows in before.items():
+            by_id={row['id']:row for row in after[kind]}
+            self.assertTrue(all(by_id[row['id']]==row for row in rows))
+        self.assertEqual(len(after['questions']),len(before['questions'])+6)
+        self.assertEqual(len(after['readings']),len(before['readings'])+1)
+        questions,certificates,_,_,_=batch.reasoning_documents()
+        roles={q['id'] for q in questions};compiled=[q for q in result['route_checks']['questions'] if q['id'] in roles]
+        batch.verify_role_content(questions,compiled,certificates)
+        positions=[next(i for i,o in enumerate(q['question']['steps'][0]['options']) if o['id'] in q['question']['steps'][0]['accepted_option_ids']) for q in compiled]
+        self.assertEqual(sorted(positions),[0,0,1,1,2,2])
+        # A valid document with a different accepted ID must fail the shared certificate boundary.
+        damaged=copy.deepcopy(compiled);damaged[0]['question']['steps'][0]['accepted_option_ids']=[12]
+        with self.assertRaisesRegex(export.ExportError,'choices or key'):batch.verify_role_content(questions,damaged,certificates)
+        bad_cert=copy.deepcopy(certificates);bad_cert[0]['evidence']['kind']='worked_example'
+        with self.assertRaisesRegex(export.ExportError,'required by this role'):batch.verify_role_content(questions,compiled,bad_cert)
+        with self.assertRaisesRegex(export.ExportError,'unique identities'):batch.verify_role_content(questions,compiled,certificates+[certificates[0]])
+        active=(self.store/'active.json').read_bytes()
+        repeated=batch.run(self.args(family='probability',version=2,format_version=2,publish=True))
+        self.assertTrue(repeated['publication']['unchanged']);self.assertEqual((self.store/'active.json').read_bytes(),active)
+        more=batch.run(self.args(family='probability',count=24,version=3,format_version=2,publish=True))
+        self.assertEqual(more['count'],30)
+        updated=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']['questions'];by_id={q['id']:q for q in updated}
+        self.assertTrue(all(by_id[q['id']]==q for q in after['questions']))
+        for old,new in ((first,result),(result,more)):
+            command=[str(OPTIONS.model),'--question-batch-upgrade',str(Path(old['generated_authoring'])/'documents'),str(Path(new['generated_authoring'])/'documents')]
+            check=subprocess.run(command,capture_output=True,text=True,timeout=30)
+            self.assertEqual(check.returncode,0,check.stderr);self.assertTrue(json.loads(check.stdout)['save_replay'])
+        active=(self.store/'active.json').read_bytes()
+        with self.assertRaisesRegex(export.ExportError,'Existing question must remain unchanged'):
+            batch.run(self.args(family='probability',count=24,version=4,format_version=1,publish=True))
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+
+    def test_probability_cli_defaults_to_six_roles_with_the_twelve_repetitions(self):
+        command=[sys.executable,'-B',str(ROOT/'tools/build_question_batch.py'),'--family','probability',
+                 '--target',str(OPTIONS.target),'--model',str(OPTIONS.model),'--output',str(self.root/'cli-output'),
+                 '--store',str(self.store),'--base-documents',str(ROOT/'content/write')]
+        result=subprocess.run(command,capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
+        report=json.loads(result.stdout);self.assertEqual(report['format_version'],2);self.assertEqual(report['count'],18)
+        self.assertFalse(report['publication']['published'])
 
     def test_probability_publishes_repeats_and_preserves_saves_on_extension(self):
         first=batch.run(self.args(family='probability',publish=True))

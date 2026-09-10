@@ -118,6 +118,18 @@ existing linear/matrix families replay five supported input routes. All use
 the same `CorpusPractice` save/history owner. The batch records source digests
 and refuses to publish if an authoring input changes during verification.
 
+The six exercise roles are an authoring contract in `build_question_batch.py`.
+`validate_role_sequence()` checks the ordered role manifest and prerequisites;
+`verify_role_content()` compares compiled prepared questions with a family's
+independent mathematical certificates. `chapter_text()` supplies the common
+chapter wrapper for generated repetitions and authored role questions alike.
+The probability role sequence keeps its wording in ordinary Markdown and its
+original cases in `sequence.json`; the certificates enumerate finite outcomes,
+sum exact weights and verify set relationships. Role names do not create runtime
+solvers, mastery scores or new save records. Format 2 appends six questions and
+one reading while retaining format-1 probability content verbatim. The builder
+contract is documented in [EXERCISE_ROLES.md](EXERCISE_ROLES.md).
+
 Practice now consumes the same symbolic choices and `SupportAction::Choose`
 route as Learn. `LayeredQuestionSession` still gates responses by level, anchor
 and revision and checks the exact mathematics. Its projection keeps Practice
@@ -209,6 +221,15 @@ This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
 
+`FiniteMapsInput` / `analyzeFiniteMaps` supply the Sets and Maps Lab with
+bounded finite-map truth: fibers, composition, classifications and probability
+pushforwards. The model constructs trays, element beads, arrows, grouping and
+route animation from that analysis. One binding table owns active input counts
+and destination bounds. `MathObjects::parameterMaximum` serves both action
+validation and inspector ranges; shared dropdowns omit out-of-range choices.
+The model explicitly distinguishes undefined probability from a zero mass.
+See [P065](P065_SETS_AND_MAPS.md) for its four layers and reuse boundaries.
+
 `SnapshotBuilder::linkedPlot` assembles a sampled series, its scrubbing
 parameter and an explicit current-value marker in one call. Forty constructions
 across 17 asset families use it. The existing bounded sampler still generates
@@ -220,8 +241,18 @@ case handling, colours and series ordering retain their existing owners.
 Discrete traces and parametric loops continue to use their existing builders.
 No renderer or input route changes are needed.
 
-`MathParameterSpec::control` owns static inspector metadata for all 35 assets
-and 409 parameters: required group, optional short label, coordinate row and
+`SnapshotBuilder::labelledArrow` pairs a vector with its explicit label position
+and colour. `vectorResidual` pairs a vector with the segment from its endpoint
+to a target. Fourteen labelled-vector sites and three residual constructions
+share these helpers across Linear, Tensor, Quadratic, PSD, Patch, Rigid and QR.
+Callers own mathematical endpoints, display scales, label text, semantic roles
+and residual widths. Rank, regularity and perpendicularity remain model decisions;
+the builders do not infer them. Zero vectors keep their labels while the existing
+primitive threshold omits zero-length arrows and segments. Part and label order,
+IDs and picker bindings are preserved.
+
+`MathParameterSpec::control` owns static inspector metadata for all 36 assets
+and 434 parameters: required group, optional short label, coordinate row and
 component labels, and selected-point or mode-slot binding. The inspector consumes
 those definitions directly; its separate metadata, tuple and selected-range
 registries are removed. New controls declare their bindings beside their limits

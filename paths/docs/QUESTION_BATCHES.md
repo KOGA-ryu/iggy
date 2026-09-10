@@ -3,8 +3,14 @@
 **Linear, matrix and finite probability now share chapter assembly as well as
 compilation, model replay and publication.** Subject-specific templates supply
 the teaching; the existing native textbook supplies its presentation. The
-probability pilot supplies 12 questions and three readings. The earlier linear
-and matrix documents, manifests and audits reproduce byte for byte.
+probability chapter now supplies 12 numerical repetitions, six reasoning
+questions and four readings. The earlier linear, matrix and probability
+format-1 documents, manifests and audits reproduce byte for byte.
+
+The [exercise-role contract](EXERCISE_ROLES.md) makes the six decisions reusable
+across authoring families: read notation, follow a worked example, choose a
+step, explain a step, repair a mistake and solve in a fresh setting. The contract
+is authoring metadata; the emitted questions still use ordinary `.paths.md`.
 
 ## The reusable authoring boundary
 
@@ -48,6 +54,14 @@ independent mastery claims. There are two steps per exercise: count the event,
 then choose its exact probability. Answers and worked examples use the existing
 native LaTeX renderer and symbolic buttons.
 
+The fourth reading, **Reason about probability**, adds six distinct decisions:
+interpret the event, complete a worked denominator, choose a calculation for
+unequal chances, justify a complement, repair the first incorrect line, and
+solve an uncued token problem. The original three readings keep their original
+uniform-draw scope. All six role questions remain multiple choice and include
+specific corrections. The first correct button appears twice in each position
+across the six cards. See [the source, certificates and authoring rules](EXERCISE_ROLES.md).
+
 The question defines one equally likely draw from labels 1 through n. The event
 selects labels divisible, or not divisible, by a given positive integer. The
 recipe fixes 12 ordinary cases; the boundary variants use divisor n+1. The pool
@@ -63,8 +77,9 @@ certificate. Incorrect mathematics in an otherwise valid document therefore
 cannot pass this producer by relying on the structural `choices.v1` compiler.
 
 Probability uses **multiple choice only**. It does not claim the linear/matrix
-written checker, four support levels, arbitrary-event validation, biased draws,
-conditional probability or simulation. An arbitrary hand-edited `choices.v1`
+written checker, four support levels, arbitrary-event validation, conditional
+probability or simulation. The reasoning sequence includes one bounded example
+with explicit unequal outcome weights. An arbitrary hand-edited `choices.v1`
 file outside this producer still has an authored answer key; the importer does
 not independently prove its science or mathematics.
 
@@ -83,14 +98,18 @@ python3 -B tools/build_question_batch.py --family probability --publish
 ./b/sorter
 ```
 
-The initial package is `finite_probability_practice` version 1. Omit `--publish`
-for export only. Use `--count 24 --version 2` to extend it after authoring review.
+The current package is `finite_probability_practice` version 2, using format 2.
+It retains all twelve format-1 questions and adds the six role questions. Omit
+`--publish` for export only. `--count` still counts numerical repetitions; the
+six role questions are appended once. Use `--count 24 --version 3` to produce
+30 questions. `--format-version 1 --version 1` reproduces the frozen original
+authoring files; it cannot replace an installed version containing the roles.
 Draft the published source to a fresh folder for live editing:
 
 ```sh
-python3 -B tools/export_learning.py draft build/question-batches/finite_probability_practice/1/authoring \
-  --output content/authoring/drafts/finite_probability
-./b/sorter --documents content/authoring/drafts/finite_probability/documents --watch-documents
+python3 -B tools/export_learning.py draft build/question-batches/finite_probability_practice/2/authoring \
+  --output content/authoring/drafts/probability_roles
+./b/sorter --documents content/authoring/drafts/probability_roles/documents --watch-documents
 ```
 
 Draft creation refuses an existing destination. Saving its Markdown refreshes

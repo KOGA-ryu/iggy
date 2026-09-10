@@ -1,5 +1,67 @@
 # Paths workstreams
 
+## Probability reasoning through reusable exercise roles
+
+**Built and locally published; visual and teaching acceptance remain with the
+user.** The finite-probability chapter now has **18 questions and four readings**:
+the original 12 numerical repetitions plus six role questions in **Reason about
+probability**. They interpret an event, complete a worked denominator, check
+unequal chances, justify a complement, repair the first incorrect line and
+solve a fresh token problem with fewer cues. The correct first button is spread
+evenly across all three positions. Every wrong option has its own correction.
+
+The shared authoring contract is `validate_role_sequence()` plus
+`verify_role_content()` in the existing batch tool. A six-card manifest names
+each role, objective, prerequisites and original mathematical case. The family
+supplies independent certificates; the shared boundary compares the actual
+compiled givens, working, choices and answer keys with those certificates.
+`chapter_text()` reuses the same native chapter wrapper for authored role text
+and generated repetitions. Unknown/missing roles, absent prerequisites,
+duplicate certificates and changed mathematics fail before output/publication.
+The existing compiler supplies original file/line diagnostics for malformed
+Markdown and unsupported directives.
+
+The questions stay in ordinary Markdown, with numeric inputs separately checked
+by finite-outcome enumeration, exact probability sums and set relationships.
+The role registry creates no new runtime solver, save field, UI layout or
+mastery score. The final role remains multiple choice with optional linked
+reading. Its label does not claim independently written work or proven retention.
+Full role requirements and the answer sheet are in
+[EXERCISE_ROLES.md](EXERCISE_ROLES.md).
+
+Package `finite_probability_practice` version 2 retains all format-1 documents,
+manifest/audit reproduction and question stamps. The installed catalogue is
+**383 questions, 954 readings, 190 chapters and eight subjects**, mapped to
+**1,265 native textbook sections**. Every earlier catalogue record compares
+unchanged. Generation:
+`16e64a5f5ccd33da628150210f9a22528f9388c0c5be739aaebaff7357898607`.
+
+Release builds of `sorter`, `paths_learning_document_tests` and the pure textbook
+adapter pass. The document model passes, all **25** pipeline tests pass, and the
+certificate/upgrade test passes again after the duplicate-certificate check was
+strengthened. The installed chapter completes **18 solving routes and 62 wrong
+choices**. The six new cards account for six routes, seven steps and 14 wrong
+choices. Tests cover malformed roles, mathematical changes, explicit Next,
+save/reopen, reordered catalogues, archives, repeat publication, format-1 to
+format-2 migration and later numerical extension. The published textbook adapter
+confirms all questions/readings are reachable, disclosures begin closed and
+reading bookmarks survive changes.
+
+There are **zero runtime C++ edits and zero new runtime files**. One authoring
+tool changes by +180/-7 lines (net +173); one existing test file grows by 108 net
+lines. Three role-authoring sources and one handoff document are added. The
+native textbook and 3D worker's assets remain their existing owners. Work stays
+uncommitted. Evidence is `build/probability-roles-evidence/verification.json`.
+No windows, images, screenshots, captures, ImGui contexts or font probes were
+used. Actual text fit, pointer behavior and instructional clarity await the user.
+
+Manual check: open the new reading's Exercise area. In 03, try two thirds and
+read the unequal-chance correction. In 05, inspect the deliberately incorrect
+three-line **gold Given**; repair L1 and then choose one third. **Cyan working**
+should retain accepted steps, and **green completion** should stay until Next.
+Close/reopen once during a question. The next candidate is the same six roles
+for matrix row operations, using their existing exact checker and textbook.
+
 ## Shared question-family authoring and finite probability
 
 **Built and locally published; visual and teaching acceptance remain with the
@@ -702,8 +764,56 @@ original Release trace byte-for-byte.
 
 One production file changes, with no new production files and 12 fewer lines.
 Changes stay uncommitted. All verification is CPU/text only; no images, native
-windows, screenshots, captures or font probes are used. Vector and projection
-construction is the next shared-component candidate.
+windows, screenshots, captures or font probes are used. The vector-construction
+checkpoint below follows this consolidation.
+
+## P065 — Sets and Maps Lab
+
+The 36th asset (`maps`) has four layers: finite total maps, fiber partitions,
+composition versus a direct route, and weighted outcomes with conditioning.
+It uses one to four elements per set, 25 controls, nine presets, source-bead
+selection, grouping, and four-second route playback. Finite-map math lives in
+`FiniteMaps.hpp/.cpp`; the existing inspector, plot/table and CPU scene contracts
+present it. Shared dropdowns now honor model-owned dynamic bounds.
+
+Release builds of `math_lab` and `sorter` pass, with the existing duplicate
+`libpaths_imgui.a` linker warning. All 14 selected checks pass (five CPU suites
+and nine text-only CLI cases). The new suite covers 133,300 finite-map pairs and
+860 CPU scenes, capped at 2,573 vertices / 11,868 indices; it checks partitions,
+classification, composition, probability, zero/invalid weights, resized bounds,
+atomic edits, selector wiring, grouping, playback and challenge outcomes.
+No images, native windows, screenshots, captures or font probes are used.
+
+[P065_SETS_AND_MAPS.md](P065_SETS_AND_MAPS.md) records controls, conventions,
+launch instructions and interfaces. The three relevant category checklists
+mark reusable foundations while leaving chapter integration open. Source cards,
+learner state and textbook integration remain untouched. Work is uncommitted.
+
+## Shared vector and residual construction
+
+`SnapshotBuilder::labelledArrow` centralizes fourteen labelled-vector sites:
+linear maps and SVD frames, tensor vectors, quadratic principal directions,
+PSD axes, patch tangent/normal frames and rigid-body axes. `vectorResidual`
+centralizes three constructions in Linear projection and QR, including trial
+fits which need not be orthogonal projections. Mathematical endpoints and
+rank/regularity predicates stay with each asset. The existing QR perpendicular
+marker remains local to its mathematical validity check. Both helpers live in
+`MathObjects.cpp`; no new production file or public control is needed.
+
+The installed Release primitive/label trace matches the original byte-for-byte
+across all 35 assets: 5,678 states, 295,783 parts and 42,781 labels. It includes
+presets, available discrete choices, continuous limits at defaults and playback,
+recording affine placements, semantic roles/IDs, label positions/colours,
+metrics, matrices and picker bindings (69,939,395 bytes). The layers suite now
+checks displayed projection endpoints against P v for plane, line, zero-span,
+zero-residual and zero-input cases, including retention of collapsed labels.
+
+Release builds of `math_lab` and `sorter` passed. All 17 selected checks passed:
+eight CPU suites for layers, QR, rigid bodies, patches, tensor/probability,
+spectral roots, convex geometry and layout; nine text-only CLI cases covering
+all seven affected asset families. The linker reported its existing duplicate
+`libpaths_imgui.a` warning. No images, native windows, screenshots, captures or
+font probes were used. Changes remain uncommitted.
 
 ## Shared math asset control bindings
 

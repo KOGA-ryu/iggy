@@ -54,7 +54,7 @@ MathControlRows mathControlRows(const MathObjects& m){
 }
 MathControlRange mathControlRange(const MathObjects& m,P p){
   if(p>=P::Count)throw std::invalid_argument("unknown control range");
-  const auto& spec=mathParameterSpecs()[index(p)];MathControlRange range{spec.minimum,spec.maximum};
+  const auto& spec=mathParameterSpecs()[index(p)];MathControlRange range{spec.minimum,m.parameterMaximum(p)};
   if(p>=P::SimplexP0&&p<=P::SimplexQ1){const auto offset=index(p)-index(P::SimplexP0);range.maximum=std::max(0.,1-m.parameter(static_cast<P>(index(P::SimplexP0)+(offset^1U))));}
   if(p>=P::LatheH1&&p<=P::LatheH5){range.minimum=(p==P::LatheH1?0:m.parameter(static_cast<P>(index(p)-1)))+.04;range.maximum=(p==P::LatheH5?1:m.parameter(static_cast<P>(index(p)+1)))-.04;}return range;
 }
