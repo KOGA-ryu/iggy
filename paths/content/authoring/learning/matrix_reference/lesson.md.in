@@ -1,0 +1,11 @@
+@block introduction | {{group}}_start | 1 | Solve two equations together
+@prose Find the pair of values that satisfies both equations. Keep every fraction exact. These exercises revisit the earlier matrix repetitions with expanded explanations.
+@endblock
+@block definition | {{group}}_rows | 1.1 | Read an augmented matrix
+@prose The first two columns contain the coefficients of the unknowns. The column after the bar contains the constants. A row operation acts on every entry, including its constant.
+@display
+\left[\begin{array}{cc|c}a&b&c\end{array}\right]\quad\longleftrightarrow\quad ax+by=c
+@endblock
+@block introduction | {{group}}_help | 1.2 | Choose your support
+@prose Learn opens definitions and the worked step. Practice keeps the symbolic choices. Terms defines notation; Hint gives a direction; Next line reveals one reached matrix; Solution reveals the complete route. Solve and Write accept your own working. Completion stays until Next.
+@endblock

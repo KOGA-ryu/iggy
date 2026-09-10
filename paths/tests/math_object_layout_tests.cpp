@@ -32,6 +32,44 @@ void layoutChecks(){
   const auto narrow=planMathLabLayout({{0,0,800,600},1,360,200,true,true});require(narrow.toolbarRows==2&&narrow.overlayInspector,"narrow inspector should overlay rather than shrink the model");
   for(auto bad:{MathLabLayoutRequest{{0,0,0,600}},MathLabLayoutRequest{{0,0,800,600},0},MathLabLayoutRequest{{0,0,800,600},std::numeric_limits<float>::quiet_NaN()}}){bool rejected=false;try{(void)planMathLabLayout(bad);}catch(const std::invalid_argument&){rejected=true;}require(rejected,"invalid bounds accepted");}
 }
+void bindingChecks(){
+  const auto specs=mathParameterSpecs();
+  std::array<std::array<unsigned,4>,static_cast<unsigned>(K::Count)> playback{};
+  for(const auto& p:specs){
+    const auto& binding=p.control;
+    require(binding.layers>0&&(binding.layers&~15U)==0&&(binding.playbackLayers&~15U)==0,"invalid layer mask");
+    for(unsigned level=0;level<4;++level)if(binding.playbackLayers&(1U<<level))
+      require(++playback[static_cast<unsigned>(p.owner)][level]==1,"ambiguous playback owner");
+    require(binding.group<G::Count&&binding.rowCount>=1&&binding.rowCount<=3,"invalid control binding");
+    if(binding.rowCount>1){
+      require(!binding.rowLabel.empty(),"coordinate tuple has no label");
+      for(unsigned j=0;j<binding.rowCount;++j){
+        const unsigned index=static_cast<unsigned>(p.id)+j;
+        require(index<specs.size(),"coordinate tuple exceeds registry");
+        const auto& component=specs[index];
+        require(component.owner==p.owner&&component.control.group==binding.group,"coordinate tuple crosses ownership or group");
+        require(!binding.components[j].empty(),"coordinate tuple has an unnamed component");
+        require(component.control.selector==binding.selector&&component.control.selectedValue==binding.selectedValue,"coordinate tuple has inconsistent selection");
+      }
+    }
+    if(binding.selector!=P::Count){
+      require(static_cast<unsigned>(binding.selector)<specs.size(),"selector is outside registry");
+      const auto& selector=specs[static_cast<unsigned>(binding.selector)];
+      require(selector.owner==p.owner&&!selector.choices.empty(),"selection crosses ownership or lacks choices");
+      require(binding.selectedValue>=selector.minimum&&binding.selectedValue<=selector.maximum,"selected value outside selector range");
+    }
+  }
+  MathObjects model;MathInspectorMemory memory;
+  select(model,K::Qr);act(model,{MathActionKind::ObjectPreset,{},{},0,0});memory.visit(model);
+  const auto name=memory.exampleTitle(model);
+  for(double vector:{0.,1.,2.}){
+    set(model,P::QrVector,vector);
+    require(memory.exampleTitle(model)==name,"selecting a QR vector changed the preset name");
+  }
+  set(model,P::QrA0X,1);set(model,P::QrBX,2);
+  act(model,mathResetControlGroup(model,G::Shape));
+  require(model.parameter(P::QrA0X)==2&&model.parameter(P::QrBX)==1.5,"group reset missed unselected coordinates");
+}
 void controlChecks(){
   MathObjects model;MathInspectorMemory memory;
   for(auto object:mathObjectSpecs()){
@@ -43,6 +81,7 @@ void controlChecks(){
       require(rows.count==0||open,"all controls initially hidden");
       for(const auto& p:mathParameterSpecs())if(model.parameterAvailable(p.id)){
         bool expected=!(p.matrixEntry&&level>0);
+        if(p.id>=P::QrA0X&&p.id<=P::QrBZ)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::QrA0X))/3==static_cast<unsigned>(model.parameter(P::QrVector));
         if(p.id>=P::TrussP0X&&p.id<=P::TrussP5Y)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::TrussP0X))/2==static_cast<unsigned>(model.parameter(P::TrussJoint));
         if(p.id>=P::MembraneM0&&p.id<=P::MembraneV3)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::MembraneM0))/4==static_cast<unsigned>(model.parameter(P::MembraneSlot));
         if(p.id>=P::PatchP00X&&p.id<=P::PatchP33Z)expected=expected&&(static_cast<unsigned>(p.id)-static_cast<unsigned>(P::PatchP00X))/3==static_cast<unsigned>(model.parameter(P::PatchControl));
@@ -59,7 +98,7 @@ void controlChecks(){
   act(model,{MathActionKind::ObjectPreset,{},{},0,0});memory.rememberExample(model,mathObjectPresets(K::Boolean,0)[0].name);const auto name=memory.exampleTitle(model);require(name!="Custom","selected example reported Custom");set(model,P::BooleanSizeA,model.parameter(P::BooleanSizeA)+.1);require(memory.exampleTitle(model)=="Custom","edited example name stayed stale");
   select(model,K::Curve);memory.visit(model);act(model,{MathActionKind::ObjectPreset,{},{},0,0});memory.rememberExample(model,mathObjectPresets(K::Curve,0)[0].name);const auto curve=memory.exampleTitle(model);set(model,P::CurveControl,2);require(memory.exampleTitle(model)==curve,"selecting a handle changed the example name");
   MathInspectorMemory fresh;set(model,P::CurveP0Y,model.parameter(P::CurveP0Y)+.05);fresh.visit(model);require(fresh.exampleTitle(model)=="Custom","preset detection ignored an edited parameter");
-  // The shared selection table must retain the older curve/lathe control rules.
+  // Declarative bindings retain the curve/lathe selection and endpoint rules.
   for(auto kind:{K::Curve,K::Lathe}){select(model,kind);const bool lathe=kind==K::Lathe;for(unsigned chosen=0;chosen<(lathe?7U:4U);++chosen){set(model,lathe?P::LatheControl:P::CurveControl,chosen);const auto rows=mathControlRows(model);unsigned coordinates=0,heights=0;for(unsigned i=0;i<rows.count;++i)for(unsigned j=0;j<rows.rows[i].count;++j){const auto p=rows.rows[i].parameters[j];if(lathe&&p>=P::LatheR0&&p<=P::LatheR6){require(static_cast<unsigned>(p)-static_cast<unsigned>(P::LatheR0)==chosen,"lathe selected radius");++coordinates;}if(lathe&&p>=P::LatheH1&&p<=P::LatheH5){require(static_cast<unsigned>(p)-static_cast<unsigned>(P::LatheH1)+1==chosen,"lathe selected height");++heights;}if(!lathe&&p>=P::CurveP0X&&p<=P::CurveP3Z){require((static_cast<unsigned>(p)-static_cast<unsigned>(P::CurveP0X))/3==chosen,"curve selected coordinates");++coordinates;}}require(coordinates==(lathe?1U:3U),"selected coordinate count");require(heights==(lathe&&chosen>0&&chosen<6?1U:0U),"lathe endpoint height rule");}}
 }
 void resetChecks(){
@@ -75,4 +114,4 @@ void resetChecks(){
   select(m,K::Symmetry);act(m,{MathActionKind::SymmetryTurn,{},{},0,0});act(m,reset({P::SymmetryVertex}));require(m.snapshot().symmetry.moveCount==1,"probe reset erased unrelated symmetry moves");
 }
 }
-int main(){try{layoutChecks();controlChecks();resetChecks();std::printf("compact lab CPU checks: %u assertions, %u layouts, %u object/layer states; no host, fonts, or images\n",checks,layouts,states);return 0;}catch(const std::exception& e){std::fprintf(stderr,"compact lab failure: %s\n",e.what());return 1;}}
+int main(){try{layoutChecks();bindingChecks();controlChecks();resetChecks();std::printf("compact lab CPU checks: %u assertions, %u layouts, %u object/layer states; no host, fonts, or images\n",checks,layouts,states);return 0;}catch(const std::exception& e){std::fprintf(stderr,"compact lab failure: %s\n",e.what());return 1;}}

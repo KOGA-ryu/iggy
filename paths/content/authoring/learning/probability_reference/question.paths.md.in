@@ -1,0 +1,22 @@
+@question {{id}} | {{title}}
+@template choices.v1
+@version 1
+@goal Find the exact probability of event E.
+@given {{given}}
+@domain Draw one label from 1 through {{n}}, with every label equally likely. E means the label is {{relation}} by {{divisor}}. Divisible means a whole-number multiple, with no remainder. Keep fractions exact.
+@read {{reading_id}}
+
+@step 10 | Count the labels from 1 through {{n}} that are {{relation}} by {{divisor}}. Choose the number in E.
+{{choices_1}}
+{{feedback_1}}
+@after {{after_1}}
+@wrong {{complement_note}} Do not count zero, repeated labels, or labels beyond {{n}}.
+@why {{count_reason}} This is a count of outcomes, not yet a probability. The vertical bars around E mean its number of members.
+
+@step 20 | Divide the event count {{count}} by all {{n}} equally likely labels. Choose P(E).
+{{choices_2}}
+{{feedback_2}}
+@after {{after_2}}
+@wrong Keep the established event count in the numerator and the total number of possible labels in the denominator. Simplifying a fraction changes neither its value nor the event.
+@why Each of the {{n}} labels contributes the same probability, one divided by {{n}}. Add that contribution for each of the {{count}} event labels. Zero labels gives probability zero; all labels gives one. The event and its complement together account for the entire sample space.
+@end

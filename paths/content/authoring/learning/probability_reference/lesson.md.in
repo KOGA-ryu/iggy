@@ -1,0 +1,58 @@
+@block introduction | {{group}}_start | 1 | From a set of outcomes to a probability
+@prose Learn to identify an event, count its outcomes, and express its probability as an exact fraction. You need whole-number counting and equivalent fractions. These exercises make one draw from a finite list with equal chances. They do not involve repeated draws, conditional probability or unequal weights.
+@endblock
+@block definition | {{group}}_terms | 1.1 | Read the symbols before calculating
+@prose An outcome is one possible result. The sample space, written as capital omega, lists every possible result. An event E is a subset of that list: it contains precisely the outcomes meeting the stated condition. The symbol j represents a label; membership says that j belongs to the sample space. The bars around a set mean its number of members, called its cardinality.
+@display
+\Omega=\{1,2,\ldots,n\},\qquad j\in\Omega,\qquad E\subseteq\Omega,\qquad |\Omega|=n
+@prose Divisibility asks whether one integer is a whole-number multiple of another. The vertical bar between two numbers means divides; a crossed bar means does not divide. Its position distinguishes divisibility from the two bars enclosing a set. For example, 3 divides 6 because 6 is 3 times 2, but 3 does not divide 7.
+@display
+3\mid6,\qquad 3\nmid7,\qquad |\{3,6\}|=2
+@endblock
+@block proposition | {{group}}_rule | 1.2 | The counting rule and its condition
+@prose When every outcome has the same chance, divide the number in the event by the number in the whole sample space. The numerator counts successful outcomes; the denominator counts every possible outcome, including unsuccessful ones. This rule requires equal chances and a nonempty sample space.
+@display 1.1
+P(E)=\frac{|E|}{|\Omega|}=\frac{k}{n},\qquad n>0,\quad 0\leq k\leq n
+@help proof
+@prose Equal chances assign each of the n outcomes a probability of one divided by n, since their total is one. The event contains k distinct outcomes. Adding their equal contributions gives k divided by n.
+@display
+P(E)=\underbrace{\frac{1}{n}+\cdots+\frac{1}{n}}_{k\text{ terms}}=\frac{k}{n}
+@body
+@prose If the outcomes have unequal chances, counting alone can give the wrong answer. Then add the individual probabilities of the event outcomes. No unequal-weight cases are included in this practice family.
+@endblock
+@block example | {{group}}_example | 1.3 | A complete example with lettered tokens
+@prose A bag has five tokens labelled a, b, c, d and e. Each token has the same chance of being drawn. Event A means drawing a vowel. List the labels meeting that condition, then count and divide. This example uses letters so you can practise the numerical questions separately.
+@display
+\Omega=\{a,b,c,d,e\},\qquad A=\{a,e\}
+@help hint
+@prose The vowels in this list are a and e. Count tokens, not categories of letters. The three other tokens still belong in the denominator.
+@help answer
+@display
+P(A)=\frac{2}{5}
+@help solution
+@prose There are two favourable tokens and five possible tokens. Each favourable token contributes one fifth. Adding the two contributions gives two fifths. The remaining three tokens account for the other three fifths, so the probabilities add to one.
+@display
+|A|=2,\quad |\Omega|=5,\quad P(A)=\frac{1}{5}+\frac{1}{5}=\frac{2}{5},\quad \frac{2}{5}+\frac{3}{5}=1
+@endblock
+@block definition | {{group}}_complement | 1.4 | The complement keeps the same sample space
+@prose The complement contains the outcomes outside the named event, while remaining inside the original sample space. A superscript c denotes the complement. In a question about labels not divisible by a number, count everything except that number's multiples. You may subtract the count of multiples from the total. Do not replace the denominator with the number remaining.
+@display
+A^c=\Omega\setminus A,\qquad |A^c|=n-|A|,\qquad P(A^c)=1-P(A)
+@help solution
+@prose In the token example, the complement is b, c and d. It has three of the five equally likely outcomes. The event and its complement have no overlap and together exhaust all five tokens.
+@display
+A^c=\{b,c,d\},\qquad P(A^c)=\frac{3}{5}=1-\frac{2}{5}
+@endblock
+@block example | {{group}}_boundary | 1.5 | Empty and certain events
+@prose The empty set, shown below, contains no outcomes. In this finite equal-chance model it has probability zero. The entire sample space has probability one. For labels from 1 through n, no label is a multiple of n plus one: the first positive multiple already lies outside the list. Every label is therefore not divisible by n plus one. These are valid events, not errors or undefined fractions.
+@display
+|\varnothing|=0,\quad P(\varnothing)=\frac{0}{n}=0,\qquad P(\Omega)=\frac{n}{n}=1\quad(n>0)
+@endblock
+@block exercise | {{group}}_practice | 1.6 | {{reading_title}}
+@prose Open an exercise and first choose how many labels meet its condition. The next step asks for the fraction of the whole sample space. A wrong choice keeps your working and explains the mistake. The completed result stays until Next. Related reading returns to these definitions and the separate worked example.
+@help hint
+@prose List the permitted labels once. Mark those that meet the exact wording, especially the word not. Check that your count is between zero and the total. Divide by the total only after the event is settled.
+@endblock
+@block summary | {{group}}_summary | 1.7 | Check the meaning as well as the fraction
+@prose State the sample space and event before counting. Check equal chances. Count each qualifying outcome once; zero is not a label in these lists. Divide by the whole sample space and keep the fraction exact. Check that the result is between zero and one and that the complement accounts for the remaining probability. Definitions and the counting condition were checked against OpenStax, Introductory Statistics 2e, section 3.1, Terminology. All examples and practice questions here are original Paths material.
+@endblock

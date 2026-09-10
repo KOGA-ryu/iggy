@@ -1,23 +1,23 @@
 # Math diagrams and model assets — to-do list
 
-Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 34 existing Math Lab models.**
+Planning snapshot: 9 September 2026. **Six subjects, 178 chapters/topics, 930 source entries, 135 exercise cards, and 35 existing Math Lab models (updated through P064).**
 
 This is the complete chapter-level scope for the current learning library, not a separate new engine for every chapter. Each chapter gets a concise diagram brief and an interactive-model brief. Subcategories sit within their parent chapter; repeated material shares a model or preset. The broader unread book shelf is not counted as additional chapters here.
 
 **D = diagrams and linked plots. M = interactive models/assets.** A model can be 2D or 3D. Abstract topics use finite examples and labelled diagrams where those explain the idea better. All boxes below mean chapter/family work remains to be organized and delivered; references to existing models mean reuse or extension, not that every chapter is already integrated.
 
-**Suggested next build: QR and Least Squares Lab.** Start with vectors becoming an orthonormal frame, then show projection, residual, and reconstruction. It extends the linear/polar work and serves several chapters and exercise cards. Follow with subspaces/conditioning, complex analysis/Fourier, and stochastic paths.
+**Latest asset: [P064 — QR and Least Squares Lab](P064_QR_LEAST_SQUARES.md).** The real 3x2 model now covers Gram–Schmidt, QR reconstruction, projection, residuals and minimum-norm/null-space examples. Chapter integration and broader matrix sizes remain open. Suggested next family: subspaces/conditioning, followed by complex analysis/Fourier and stochastic paths.
 
 ## Existing models to reuse
 
-These 34 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
+These 35 model families are present in the current source registry. The list is an implementation inventory, not a new visual-acceptance claim.
 
 | Area | Existing models |
 | --- | --- |
 | Algebra and sets | Algebra blocks; Symmetry; Modular drums; Gaussian lattice; Roots of unity; Boolean Solids Lab |
 | Trigonometry and harmonics | Trigonometry; Harmonics; Harmonic sphere |
 | Calculus and geometry | Calculus; Functions; Surfaces; Vector fields; Flux shells; Curves and sweeps; Lathe Lab; Patch Lab |
-| Linear algebra | Linear algebra; Tensor blocks; Covariance cloud; Quadratic forms; PSD cone; Norm balls; Distance Geometry Lab; Polar Decomposition Lab |
+| Linear algebra | Linear algebra; Tensor blocks; Covariance cloud; Quadratic forms; PSD cone; Norm balls; Distance Geometry Lab; Polar Decomposition Lab; QR and Least Squares Lab |
 | Discrete math and probability | Discrete maths; Probability network; Binomial board; Bayesian cube; Probability Simplex Lab |
 | Applied dynamics | Motion; Membrane Lab; Rigid-Body Rotation Lab; Bridge & Truss Lab |
 
@@ -27,7 +27,7 @@ Existing matrix boards, linear-system figures, and determinant-volume figures al
 
 These **26 shared families** collect the work below. Several extend existing labs; each can be delivered in small batches.
 
-- [ ] **QR and least squares** — Orthogonal frames, projections, residuals, QR stages, and rank-deficient/minimum-norm examples.
+- [ ] **QR and least squares** — Orthogonal frames, projections, residuals, QR stages, and rank-deficient/minimum-norm examples. **P064:** real 3x2 asset delivered; general-size extensions and chapter integration remain.
 - [ ] **Matrix factorizations and numerical work** — LU/Cholesky/Schur/Jordan/Smith stages, sparsity, pivoting, roundoff, work counts, and iterative solvers.
 - [ ] **Subspaces and sensitivity** — Fundamental subspaces, principal angles, conditioning, perturbations, and Procrustes alignment.
 - [ ] **Sets, maps, and logic** — Finite sets, quotients, function arrows, truth tables, circuits, and proof dependencies.
@@ -171,17 +171,17 @@ Source: [Linear Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and 
 - [ ] **092 — Matrix Algebra** — **D:** Row/column multiplication, transpose, inverse composition, and orthogonality. **M:** Reuse matrix boards, Linear maps, and Polar; add paired transformation stages.
 - [ ] **093 — Determinants** — **D:** Signed areas/volumes, cofactor pieces, and multiplicative transformation stages. **M:** Reuse determinant volume figures; extend to cofactor and composition examples.
 - [ ] **094 — Linear Systems** — **D:** Pivot paths, row operations, echelon structure, rank, and free variables. **M:** Reuse matrix board and plane-intersection figures with linked row-operation states.
-- [ ] **095 — Orthogonality** — **D:** Projection triangles, residual orthogonality, and Gram–Schmidt stages. **M:** QR and least-squares lab with draggable columns and stepwise orthonormal frames.
+- [ ] **095 — Orthogonality** — **D:** Projection triangles, residual orthogonality, and Gram–Schmidt stages. **M:** QR and least-squares lab with draggable columns and stepwise orthonormal frames. **Asset progress:** [P064](P064_QR_LEAST_SQUARES.md) supplies real 3x2 QR/projection/minimum-norm foundations; the full chapter remains open.
 - [ ] **096 — Spectral Theory** — **D:** Invariant directions, eigenvalue multiplicity, SVD axes, and null-space collapse. **M:** Extend Linear maps with paired spectral and SVD comparisons.
 - [ ] **097 — Theorems** — **D:** Rank-nullity, basis extraction, Cauchy–Schwarz, and determinant identities. **M:** Reuse vectors, determinant volumes, spectra, and subspace models as theorem presets.
 - [ ] **098 — Worked examples** — **D:** Inverse, rank/nullity, dot-product, and eigenpair worked sequences. **M:** Existing linear/matrix models with frozen example data and step markers.
 - [ ] **099 — Proof sketches** — **D:** Basis, rank, determinant, and spectral proof dependency diagrams. **M:** Small witness/counterexample presets using existing vector and matrix models.
 - [ ] **100 — Extended Linear Concepts** — **D:** Four fundamental subspaces, affine offsets, and orthogonal complements. **M:** Subspace geometry lab with separate domain/codomain panels and solution fibers.
 - [ ] **101 — Further Linear Algebra Terms** — **D:** Adjugate geometry, trace, Gram matrices, bilinear forms, and Jordan chains. **M:** Extend Quadratic/Tensor views; add a Jordan shear-and-chain model.
-- [ ] **102 — Advanced Linear Operators** — **D:** QR/SVD stages, pseudoinverse solutions, and spectral-radius evolution. **M:** QR/least-squares lab plus minimum-norm and rank-deficient cases.
+- [ ] **102 — Advanced Linear Operators** — **D:** QR/SVD stages, pseudoinverse solutions, and spectral-radius evolution. **M:** QR/least-squares lab plus minimum-norm and rank-deficient cases. **Asset progress:** [P064](P064_QR_LEAST_SQUARES.md) supplies real 3x2 QR/projection/minimum-norm foundations; the full chapter remains open.
 - [ ] **103 — Advanced Linear Operator Extensions** — **D:** Dual vectors, adjoints, bilinear pairings, quadratic forms, and tensor products. **M:** Extend Tensor blocks and Quadratic forms with primal/dual coordinate views.
 - [ ] **104 — Structured Linear Spaces** — **D:** Norm/inner-product comparisons, completion sequences, and compact-operator examples. **M:** Finite normed-space and singular-value-decay models; label infinite-dimensional analogies.
-- [ ] **105 — Operator Decompositions** — **D:** LU, QR, Cholesky, SVD, and polar factor diagrams. **M:** Factorization lab sharing input matrices with existing Polar and SVD models.
+- [ ] **105 — Operator Decompositions** — **D:** LU, QR, Cholesky, SVD, and polar factor diagrams. **M:** Factorization lab sharing input matrices with existing Polar and SVD models. **Asset progress:** [P064](P064_QR_LEAST_SQUARES.md) supplies real 3x2 QR/projection/minimum-norm foundations; the full chapter remains open.
 - [ ] **106 — High-Order Operator Structures** — **D:** Normal/self-adjoint/unitary comparisons, projections, and spectral functions. **M:** Operator lab with eigenvalue maps, invariant axes, and matrix-function controls.
 - [ ] **107 — Spectral and Operator Analysis** — **D:** Operator norms, spectra, resolvents, and kernel/cokernel/index bookkeeping. **M:** Resolvent/pseudospectrum lab plus explicitly finite operator examples.
 - [ ] **108 — Tensor, Bilinear and Multilinear Forms** — **D:** Tensor products, alternating areas/volumes, symmetric powers, and contractions. **M:** Extend Tensor blocks with wedge products, oriented cells, and symmetry controls.
@@ -303,6 +303,6 @@ The imported notes are marked unreviewed. Advanced diagrams are illustrations, n
 - [Current chapter catalogue](/Users/kogaryu/iggy3d/paths/content/corpus/toc.json): 178 chapter/topic IDs and 930 source entries.
 - [Math exercise cards](/Users/kogaryu/devil/99-red-booleans/problems/math) and [book order](/Users/kogaryu/devil/99-red-booleans/problems/ORDER.md): 135 current cards.
 - [Existing graphics map](/Users/kogaryu/iggy3d/paths/content/authoring/exercise_graphics_map.json): the earlier 95-card grouping.
-- [Current model registry](/Users/kogaryu/iggy3d/paths/src/runtime/math_objects/MathObjects.cpp): 34 registered model families.
+- [Current model registry](/Users/kogaryu/iggy3d/paths/src/runtime/math_objects/MathObjects.cpp): 35 registered model families.
 
 Planning only: no application code, source notes, exercise state, images, or other worker’s files are changed.

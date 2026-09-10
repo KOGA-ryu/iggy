@@ -11,7 +11,7 @@
 
 namespace paths {
 
-enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Count };
+enum class MathObjectKind : std::uint8_t { Algebra, Trig, Calculus, Linear, Discrete, Function, Surface, Symmetry, Harmonics, Oscillator, Modular, Gaussian, VectorField, Flux, Tensor, Probability, Binomial, Bayes, Covariance, Spherical, Quadratic, Roots, Psd, Norm, Curve, Lathe, Boolean, Patch, Membrane, Rigid, Truss, Simplex, Distance, Polar, Qr, Count };
 enum class MathParameter : std::uint16_t {
   X, Gap, Angle, Slices, SliceGap, Sample, Shear, Scale, Depth, Shortcut,
   FunctionRule, FunctionX, DeltaX, IntegralStart, TaylorCenter, TaylorDegree,
@@ -62,12 +62,24 @@ enum class MathParameter : std::uint16_t {
   TrussShape, TrussSpan, TrussHeight, TrussLean, TrussJoint, TrussP0X, TrussP0Y, TrussP1X, TrussP1Y, TrussP2X, TrussP2Y, TrussP3X, TrussP3Y, TrussP4X, TrussP4Y, TrussP5X, TrussP5Y, TrussPosition, TrussLoadX, TrussLoadY, TrussMember, TrussBrace, TrussSupports, TrussTensionLimit, TrussCompressionLimit, TrussGuides,
   SimplexP0, SimplexP1, SimplexQ0, SimplexQ1, SimplexValue0, SimplexValue1, SimplexValue2, SimplexFunction, SimplexMix, SimplexGuides,
   DistanceAB, DistanceAC, DistanceAD, DistanceBC, DistanceBD, DistanceCD, DistanceEdge, DistanceMirror, DistanceSecond, DistanceMix, DistanceScale, DistanceGuides,
-  PolarA00, PolarA01, PolarA02, PolarA10, PolarA11, PolarA12, PolarA20, PolarA21, PolarA22, PolarShape, PolarAmount, PolarIteration, PolarExtension, PolarGuides, Count
+  PolarA00, PolarA01, PolarA02, PolarA10, PolarA11, PolarA12, PolarA20, PolarA21, PolarA22, PolarShape, PolarAmount, PolarIteration, PolarExtension, PolarGuides,
+  QrA0X, QrA0Y, QrA0Z, QrA1X, QrA1Y, QrA1Z, QrBX, QrBY, QrBZ, QrVector, QrStage, QrC0, QrC1, QrUseSolution, QrNull0, QrNull1, QrGuides, Count
 };
 enum class MathActionKind : std::uint8_t { Select, SetParameter, Reset, VisitVertex, UndoRoute, ResetRoute, Check, SetLevel, SwapBounds, DescentStep, MatrixPreset, MoveSurfacePoint, SymmetryTurn, SymmetryUndo, SymmetryIdentity, TogglePlayback, AdvanceTime, ModularStep, ResetModularWalk, ReverseFieldPath, ProbabilityStep, ResetProbabilityWalk, BernoulliStep, ResetBernoulli, ObjectPreset, ResetParameters };
 enum class MathShape : std::uint8_t { Box, Rod, Disk, Sphere, Ring, Cone, Count };
 enum class MathFeedback : std::uint8_t { None, TryAgain, Solved };
 
+enum class MathControlGroup : unsigned { Shape, ShapeA, ShapeB, Profile, Transform, Operation, Probe, Animation, Sampling, Display, Advanced, Count };
+// Static asset wiring. Layer masks use bit 0 through bit 3; numerical
+// availability remains with the model. Every parameter declares a valid group.
+struct MathControlBinding {
+  MathControlGroup group=MathControlGroup::Count;
+  std::string_view label{}, rowLabel{};
+  unsigned rowCount=1;
+  std::array<std::string_view,3> components{"X","Y","Z"};
+  MathParameter selector=MathParameter::Count;
+  unsigned selectedValue=0, layers=15, playbackLayers=0;
+};
 struct MathParameterSpec {
   MathParameter id;
   MathObjectKind owner;
@@ -76,6 +88,7 @@ struct MathParameterSpec {
   unsigned minimumLevel = 0;
   bool matrixEntry = false;
   std::string_view choices{}; // Null-separated labels for a discrete control.
+  MathControlBinding control{};
 };
 struct MathObjectSpec {
   MathObjectKind id;

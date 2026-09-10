@@ -1,11 +1,137 @@
 # Checked question batches
 
-**Linear practice now uses this same workflow.** Package `linear_repetitions`
-version 1 adds 12 questions and six readings under **Algebra → Worked linear
-practice**. That batch brought the library to 354 questions and 948 readings,
-preserving all 342 earlier question records and 942 reading records. Both families use
-one compilation, model-replay and publication path; generated appearance still
-awaits the user's visual check.
+**Linear, matrix and finite probability now share chapter assembly as well as
+compilation, model replay and publication.** Subject-specific templates supply
+the teaching; the existing native textbook supplies its presentation. The
+probability pilot supplies 12 questions and three readings. The earlier linear
+and matrix documents, manifests and audits reproduce byte for byte.
+
+## The reusable authoring boundary
+
+| Write once | Supply for each mathematical family |
+| --- | --- |
+| `content/authoring/learning/chapter.paths.md.in`: subject/chapter, numbered lesson, practice links and question placement | Stable subject/chapter IDs, ordered groups, titles and reading IDs |
+| `teaching_documents()` and `fill_template()` in `tools/build_question_batch.py`: bounded text substitution and precise unknown-field diagnostics | `lesson.md.in`, `question.paths.md.in` and the adapter that supplies their fields |
+| `choices_text()`: numeric choice IDs, symbolic labels and accepted-choice directive | Checked exact values, deterministic order and one accepted index |
+| Existing `LearningDocuments` compiler and `LayeredQuestionSession` | A supported response template and a mathematical certificate for every answer |
+| Existing `export_learning.py`: capture, immutable package, validation and atomic activation | Original-source attribution, package identity and revision |
+
+This is the existing `.paths.md` grammar, not another parser. Reading templates
+use `lesson.v2` blocks: introduction, definition, proposition, example, exercise
+and summary. Proof, Hint, Answer and Solution remain separate closed disclosures.
+Layout, typography, navigation, exercise placement and 3D providers stay with
+the existing native textbook. No family supplies its own screen implementation.
+
+The shared chapter template emits the same wrapper for all three current
+families. The two old reading introductions have moved out of Python into
+`linear_reference/lesson.md.in` and `matrix_reference/lesson.md.in`. Their
+question templates retain the previously authored explanations. Frozen matrix
+format 1 remains reproducible because published packages and upgrade checks
+still consume it; the shared template serves matrix format 2.
+
+A shared template edit affects **future generation**, not already installed
+immutable packages. Use an editable draft for live Markdown preview. The batch
+report fingerprints the generator, recipe and template inputs and rejects edits
+that occur during verification. Historical audit bytes remain unchanged.
+Never overwrite a published question or silently regenerate it with new teaching
+under its old identity. Changed question content needs a new identity/version
+and a package retaining old questions; increasing the package number alone does
+not authorize changing an old question's content stamp.
+
+## Finite probability pilot
+
+Open **Library → Probability and Statistics → Finite probability: count and
+compare**. The readings progress through **Count an event**, **Count its
+complement**, and **Impossible or certain**. Each has four linked exercises.
+These are repetitions of one counting skill with three case groups, not three
+independent mastery claims. There are two steps per exercise: count the event,
+then choose its exact probability. Answers and worked examples use the existing
+native LaTeX renderer and symbolic buttons.
+
+The question defines one equally likely draw from labels 1 through n. The event
+selects labels divisible, or not divisible, by a given positive integer. The
+recipe fixes 12 ordinary cases; the boundary variants use divisor n+1. The pool
+contains 36 questions, with a stable interleaved prefix for counts 3 through 36
+in multiples of three. The initial 12 include probability zero and one.
+
+Construction uses integer division to count multiples. An independent oracle
+enumerates the original labels, selects the event, and sums exact `Fraction(1,n)`
+weights. It checks both step keys, all distractors and total probability one.
+After the actual C++ compiler and model replay, another check compares the
+compiled givens, reached states, choice labels and accepted IDs with that
+certificate. Incorrect mathematics in an otherwise valid document therefore
+cannot pass this producer by relying on the structural `choices.v1` compiler.
+
+Probability uses **multiple choice only**. It does not claim the linear/matrix
+written checker, four support levels, arbitrary-event validation, biased draws,
+conditional probability or simulation. An arbitrary hand-edited `choices.v1`
+file outside this producer still has an authored answer key; the importer does
+not independently prove its science or mathematics.
+
+The original lesson explains each symbol, cardinality, divisibility, equal
+chances, the counting condition, complements, exact fractions and boundary
+cases. Its worked example uses lettered tokens distinct from the numerical
+practice questions. Definitions were checked against
+[OpenStax, Introductory Statistics 2e, section 3.1](https://openstax.org/books/introductory-statistics-2e/pages/3-1-terminology).
+No exercise text was copied. Source attribution is retained in `authoring.json`.
+
+From the Paths root:
+
+```sh
+cmake --build b --target sorter paths_learning_document_tests --parallel 4
+python3 -B tools/build_question_batch.py --family probability --publish
+./b/sorter
+```
+
+The initial package is `finite_probability_practice` version 1. Omit `--publish`
+for export only. Use `--count 24 --version 2` to extend it after authoring review.
+Draft the published source to a fresh folder for live editing:
+
+```sh
+python3 -B tools/export_learning.py draft build/question-batches/finite_probability_practice/1/authoring \
+  --output content/authoring/drafts/finite_probability
+./b/sorter --documents content/authoring/drafts/finite_probability/documents --watch-documents
+```
+
+Draft creation refuses an existing destination. Saving its Markdown refreshes
+the preview; the preview uses no personal progress and does not publish.
+
+## Contract for the next family builder
+
+1. Name one learning outcome and the existing response checker. Supply the
+   domain, exact inputs, ordinary/contrast/boundary cases, expected answers and
+   original-source attribution before generating repetitions. Do not infer a
+   new solver from a subject name.
+2. Reuse the shared chapter wrapper and native lesson blocks. Write the family
+   reading and question templates in its authoring folder. Explain notation,
+   assumptions and why each operation is valid; use a separate worked example.
+   Keep full solutions inside disclosures or the already accepted Learn route.
+3. Supply a bounded deterministic recipe, stable IDs and a field adapter.
+   Keep earlier instances and their display numbers unchanged when extending
+   the pool. Every distractor must be mathematically false and have a useful
+   correction; avoid numerically equivalent choices.
+4. Supply a genuinely separate mathematical check from the original givens.
+   Check the compiled content as well when using authored answer keys. The
+   producer refusing a bad certificate is part of the release gate; runtime
+   choice replay alone cannot establish mathematical correctness.
+5. Register the builder and its route/check/input metadata in the existing batch
+   tool. Reuse compiler, model gate and exporter. Do not add a parallel parser,
+   renderer, save path or automatic promotion around them. A new 3D interaction
+   requires an explicit existing-provider binding with the asset worker.
+6. Run the two focused model/pipeline tests below, verify a repeat and an additive
+   upgrade, then publish the bounded pilot through the existing command. Record
+   preserved catalogue stamps and the exact checks. Finish with the user's
+   visual/teaching check before treating the content as accepted.
+
+```sh
+ctest --test-dir b -R '^(paths_learning_document_tests|paths_question_batch_tests)$' --output-on-failure
+```
+
+These tests create no windows, images, ImGui contexts or fonts. They cover the
+three-family template edit, historical byte preservation, every generated
+response, wrong-answer preservation, explicit Next, save replay, reordering,
+archive retention, package extension and rejected mathematical/template edits.
+Actual text fit and instructional clarity still require the user's review.
 
 ## Edit generated wording in live preview
 

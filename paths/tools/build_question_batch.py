@@ -21,8 +21,13 @@ CHAPTER = "matrix_repetitions"
 REFERENCE_TEMPLATE = ROOT / "content/authoring/learning/matrix_reference/question.paths.md.in"
 WORKED_FAMILY = "matrix_reps_v2"
 LINEAR_TEMPLATE = ROOT / "content/authoring/learning/linear_reference/question.paths.md.in"
+CHAPTER_TEMPLATE = ROOT / "content/authoring/learning/chapter.paths.md.in"
 LINEAR_TITLES = ("Positive integers", "Negative coefficients", "Negative offsets",
                  "Negative solutions", "Zero as the solution", "Fractional solutions")
+PROBABILITY_ROOT = ROOT / 'content/authoring/learning/probability_reference'
+PROBABILITY_FAMILY = 'finite_probability_v1'
+PROBABILITY_GROUPS = ('event', 'complement', 'boundary')
+PROBABILITY_TITLES = ('Count an event', 'Count its complement', 'Impossible or certain')
 
 
 def require(ok, message):
@@ -166,9 +171,8 @@ def worked_fields(q, number):
                   given=matrix(states[0]), p=tex(p), k=tex(k), d=tex(d), minus_p=tex(-p), minus_k=tex(-k),
                   x=tex(q['answer'][0]), y=tex(q['answer'][1]))
     for i, step in enumerate(q['steps']):
-        base=(i+1)*10; before=states[i]; after=states[i+1]
-        choices=[f"@choice {base+j+1} | {v}" for j,v in enumerate(step['choices'])]
-        choices.append(f"@answer {base+step['choices'].index(step['answer'])+1}")
+        before=states[i]; after=states[i+1]
+        choices=choices_text(step['choices'],step['choices'].index(step['answer']),i+1)
         destination, source = (0,1) if i==2 else (1,0)
         if i==1:
             operation=rf"R_2\leftarrow {tex(Fraction(1,d))}R_2."
@@ -178,7 +182,7 @@ def worked_fields(q, number):
             operation=add_tex(rf"R_{destination+1}\leftarrow R_{destination+1}",operand,rf"R_{source+1}")+"."
             calculations=[add_tex(tex(a),operand,rf"\left({tex(b)}\right)")+"&="+tex(c)
                           for a,b,c in zip(before[destination],before[source],after[destination])]
-        fields.update({f'choices_{i+1}':"\n".join(choices),f'after_{i+1}':matrix(after),f'matrix_{i+1}':matrix_tex(after)+'.',
+        fields.update({f'choices_{i+1}':choices,f'after_{i+1}':matrix(after),f'matrix_{i+1}':matrix_tex(after)+'.',
                        f'operation_{i+1}':operation,f'calculation_{i+1}':r"\begin{aligned}"+r"\\".join(calculations)+r".\end{aligned}"})
     fields['matrix_3']=matrix_tex(states[3])
     for i,(a,b,c) in enumerate(states[0],1):
@@ -199,23 +203,41 @@ def fill_template(template, fields, source=None):
     return filled
 
 
-def worked_documents(questions, template):
-    result={}
-    for group,title in zip(GROUPS,TITLES):
-        selected=[q for q in questions if q['group']==group]
-        text=("@paths 1\n@subject linear_algebra | Linear Algebra\n@chapter worked_matrix_practice | Worked matrix practice\n\n"
-              f"@lesson {WORKED_FAMILY}_{group}_reading | {title}\n@template lesson.v2\n"
-              f"@block introduction | {group}_start | 1 | Solve two equations together\n"
-              "@prose Find the pair of values that satisfies both equations. Keep every fraction exact. These exercises revisit the earlier matrix repetitions with expanded explanations.\n@endblock\n"
-              f"@block definition | {group}_rows | 1.1 | Read an augmented matrix\n"
-              "@prose The first two columns contain the coefficients of the unknowns. The column after the bar contains the constants. A row operation acts on every entry, including its constant.\n@display\n"
-              r"\left[\begin{array}{cc|c}a&b&c\end{array}\right]\quad\longleftrightarrow\quad ax+by=c"+"\n@endblock\n"
-              f"@block introduction | {group}_help | 1.2 | Choose your support\n"
-              "@prose Learn opens definitions and the worked step. Practice keeps the symbolic choices. Terms defines notation; Hint gives a direction; Next line reveals one reached matrix; Solution reveals the complete route. Solve and Write accept your own working. Completion stays until Next.\n@endblock\n")
-        text+=''.join(f"@practice {q['id']}\n" for q in selected)+"@end\n\n"
-        text+='\n'.join(fill_template(template,worked_fields(q,n)) for n,q in enumerate(selected,1))
-        result['worked_'+group+'.paths.md']=text.encode()
-    return result
+def choices_text(values, accepted_index, step, render=str):
+    """One directive writer; the family checker establishes the accepted index."""
+    require(type(accepted_index) is int and 0<=accepted_index<len(values),'Choice writer needs a checked accepted index')
+    base=step*10
+    return "\n".join([f"@choice {base+j+1} | {render(v)}" for j,v in enumerate(values)]
+                     +[f"@answer {base+accepted_index+1}"])
+
+
+def teaching_documents(questions, *, groups, titles, group_key, subject, chapter,
+                       reading_prefix, question_template, lesson_template, fields, filename_prefix="", numbered_files=False):
+    """Use the existing document grammar and textbook block types for every family."""
+    wrapper=export.read_bytes(CHAPTER_TEMPLATE,128*1024).decode('utf-8')
+    lesson_path=lesson_template
+    lesson=export.read_bytes(lesson_path,128*1024).decode('utf-8')
+    question=export.read_bytes(question_template,128*1024).decode('utf-8')
+    docs={};reading_ids=[]
+    for section,(group,title) in enumerate(zip(groups,titles),1):
+        selected=[q for q in questions if q[group_key]==group]
+        reading_id=reading_prefix+'_'+group+'_reading';reading_ids.append(reading_id)
+        values=dict(group=group,reading_id=reading_id,reading_title=title,
+                    subject=subject[0],subject_title=subject[1],chapter=chapter[0],chapter_title=chapter[1])
+        values['lesson_blocks']=fill_template(lesson,values,lesson_path)
+        values['practice_links']=''.join(f"@practice {q['id']}\n" for q in selected)
+        values['questions']='\n'.join(fill_template(question,dict(fields(q,n),reading_id=reading_id),question_template)
+                                     for n,q in enumerate(selected,1))
+        prefix=f'{section:02}_' if numbered_files else filename_prefix
+        docs[prefix+group+'.paths.md']=fill_template(wrapper,values,CHAPTER_TEMPLATE).encode()
+    return docs,reading_ids
+
+
+def worked_documents(questions):
+    return teaching_documents(questions,groups=GROUPS,titles=TITLES,group_key='group',
+        subject=('linear_algebra','Linear Algebra'),chapter=('worked_matrix_practice','Worked matrix practice'),
+        reading_prefix=WORKED_FAMILY,question_template=REFERENCE_TEMPLATE,
+        lesson_template=ROOT/'content/authoring/learning/matrix_reference/lesson.md.in',fields=worked_fields,filename_prefix='worked_')[0]
 
 
 def linear_questions(count, spec):
@@ -240,10 +262,9 @@ def linear_fields(q, number):
                 remove_left=left+rf' -\left({tex(b)}\right)',remove_right=tex(c)+rf' -\left({tex(b)}\right)',
                 check=tex(a)+rf'\left({tex(answer)}\right)'+('+' if b>0 else '-')+tex(abs(b))+'='+tex(c))
     for i,step in enumerate(q['steps'],1):
-        base=i*10
-        choices=[f"@choice {base+j+1} | {o['value']}" for j,o in enumerate(step['choices'])]
-        choices += [f"@answer {base+j+1}" for j,o in enumerate(step['choices']) if o['id']=='correct']
-        fields.update({f'choices_{i}':'\n'.join(choices),f'after_{i}':linear.equation(q['states'][i],typeset=False),
+        values=[o['value'] for o in step['choices']]
+        choices=choices_text(values,next(j for j,o in enumerate(step['choices']) if o['id']=='correct'),i)
+        fields.update({f'choices_{i}':choices,f'after_{i}':linear.equation(q['states'][i],typeset=False),
                        f'equation_{i}':linear.equation(q['states'][i])})
     return fields
 
@@ -258,21 +279,10 @@ def linear_batch(args):
         q['source_id']=q['id'];q['id']='linear_worked_v1_'+linear.digest(q['parameters'])[:32]
         results.append(dict(id=q['id'],accepted=True,answer=q['answer']['value'],steps_checked=2,
                             wrong_choices_checked=4,original_substitution=q['verification']))
-    docs={};reading_ids=[]
-    for group,title in zip(linear.STRATA,LINEAR_TITLES):
-        selected=[q for q in questions if q['stratum']==group];reading='linear_worked_v1_'+group+'_reading';reading_ids.append(reading)
-        text=("@paths 1\n@subject algebra | Algebra\n@chapter worked_linear_practice | Worked linear practice\n\n"
-              f"@lesson {reading} | {title}\n@template lesson.v2\n"
-              f"@block introduction | {group}_start | 1 | One unknown, balanced operations\n"
-              "@prose Find the real value that makes the original equation true. Apply the same operation to both sides and keep fractions exact.\n@endblock\n"
-              f"@block definition | {group}_terms | 1.1 | Coefficient and constant\n"
-              "@prose A coefficient multiplies the unknown. The added constant is a separate term. A nonzero coefficient gives a unique solution.\n@display\n"
-              r"ax+b=c,\qquad a\ne0"+"\n@endblock\n"
-              f"@block introduction | {group}_controls | 1.2 | Choose your support\n"
-              "@prose Learn explains each balanced step. Practice keeps the symbolic choices and opens help on request. Terms defines notation; Hint gives a direction; Next line reveals one equation; Solution reveals the full route. Solve and Write accept your own working. Completion stays until Next.\n@endblock\n")
-        text+=''.join(f"@practice {q['id']}\n" for q in selected)+'@end\n\n'
-        text+='\n'.join(fill_template(template.decode('utf-8'),linear_fields(q,n),LINEAR_TEMPLATE) for n,q in enumerate(selected,1))
-        docs[group+'.paths.md']=text.encode()
+    docs,reading_ids=teaching_documents(questions,groups=linear.STRATA,titles=LINEAR_TITLES,group_key='stratum',
+        subject=('algebra','Algebra'),chapter=('worked_linear_practice','Worked linear practice'),
+        reading_prefix='linear_worked_v1',question_template=LINEAR_TEMPLATE,
+        lesson_template=ROOT/'content/authoring/learning/linear_reference/lesson.md.in',fields=linear_fields)
     author=dict(format='paths_learning_authoring',format_version=1,package_id='linear_repetitions',package_version=args.version,
                 sources=[dict(id='linear_worked_v1',kind='generated',title='Original worked linear-equation practice',
                               uri='paths:generated/linear_worked_v1',revision='1',
@@ -294,7 +304,7 @@ def matrix_batch(args):
         # Retain the published v1 questions verbatim; new teaching requires new IDs.
         worked=[dict(q,id=q['id'].replace(FAMILY,WORKED_FAMILY,1)) for q in questions]
         template=export.read_bytes(REFERENCE_TEMPLATE,128*1024)
-        docs.update(worked_documents(worked,template.decode('utf-8')))
+        docs.update(worked_documents(worked))
         questions+=worked
     results, failures = [], []
     for q in questions:
@@ -318,10 +328,147 @@ def matrix_batch(args):
     return questions, results, docs, author, audit
 
 
-BUILDERS={'matrix':matrix_batch,'linear':linear_batch}
+def probability_questions(count, recipe):
+    export.require(type(count) is int and 3<=count<=36 and count%3==0,
+                   'batch.count','Probability count must be a multiple of 3 from 3 through 36')
+    require(set(recipe)=={'family','cases'} and recipe['family']==PROBABILITY_FAMILY,
+            'Use the finite-probability version-1 recipe')
+    require(len(recipe['cases'])==12 and len({tuple(c) for c in recipe['cases']})==12,
+            'The fixed probability pool needs twelve distinct cases')
+    groups=[]
+    for group in PROBABILITY_GROUPS:
+        pool=[]
+        for i,(n,divisor) in enumerate(recipe['cases']):
+            require(type(n) is int and type(divisor) is int and 4<=n<=15 and 2<=divisor<=n,
+                    'Probability cases require integers 4 <= n <= 15 and 2 <= divisor <= n')
+            complement=group=='complement' or (group=='boundary' and i%2==1)
+            if group=='boundary':divisor=n+1
+            params=dict(n=n,divisor=divisor,complement=complement)
+            identity=PROBABILITY_FAMILY+'_'+export.sha(export.encoded(params))[:24]
+            # Construction uses integer division. The oracle enumerates the original outcomes.
+            k=n-n//divisor if complement else n//divisor
+            counts=[k]+sorted((v for v in range(n+1) if v!=k),key=lambda v:(abs(v-k),v))[:2]
+            steps=[]
+            for step,values in enumerate((list(map(str,counts)),[str(Fraction(v,n)) for v in counts]),1):
+                answer=values[0];values.sort(key=lambda v:export.sha(export.encoded([identity,step,v])))
+                steps.append(dict(choices=values,answer=answer))
+            pool.append(dict(id=identity,group=group,parameters=params,count=k,answer=str(Fraction(k,n)),steps=steps))
+        groups.append(pool[:count//3])
+    return [q for row in zip(*groups) for q in row]
+
+
+def verify_probability(q):
+    """An exact finite-measure oracle, independent of the integer-division constructor."""
+    p=q['parameters'];n=p['n'];d=p['divisor'];complement=p['complement']
+    require(type(n) is int and 4<=n<=15 and type(d) is int and 2<=d<=n+1
+            and type(complement) is bool,'Invalid uniform finite sample space or event')
+    outcomes=list(range(1,n+1))
+    members=[v for v in outcomes if (v%d!=0 if complement else v%d==0)]
+    probability=sum((Fraction(1,n) for _ in members),Fraction(0))
+    require(type(q['count']) is int and q['count']==len(members) and Fraction(q['answer'])==probability,
+            f"{q['id']}: declared answer disagrees with enumeration of the original outcomes")
+    require(len(q['steps'])==2,'Finite probability has two checked steps')
+    for i,(step,answer) in enumerate(zip(q['steps'],(Fraction(len(members)),probability))):
+        values=list(map(Fraction,step['choices']))
+        require(len(values)==3 and len(set(values))==3 and values.count(answer)==1
+                and Fraction(step['answer'])==answer,f"{q['id']}: step {i+1} needs one correct and two distinct incorrect choices")
+        require(all(0<=v<=n and v.denominator==1 for v in values) if i==0 else all(0<=v<=1 for v in values),
+                f"{q['id']}: choices are outside the count/probability domain")
+    return dict(id=q['id'],accepted=True,outcomes=outcomes,event=members,answer=str(probability),
+                total_mass=str(sum((Fraction(1,n) for _ in outcomes),Fraction(0))),steps_checked=2,wrong_choices_checked=4)
+
+
+def probability_fields(q, number):
+    p=q['parameters'];n=p['n'];d=p['divisor'];k=q['count']
+    relation='not divisible' if p['complement'] else 'divisible'
+    symbol=r'\nmid' if p['complement'] else r'\mid'
+    members=[v for v in range(1,n+1) if (v%d!=0 if p['complement'] else v%d==0)]
+    event=r'\varnothing' if not members else r'\{'+','.join(map(str,members))+r'\}'
+    fields=dict(id=q['id'],title=f"{PROBABILITY_TITLES[PROBABILITY_GROUPS.index(q['group'])]} · Exercise {number}",
+                n=str(n),divisor=str(d),relation=relation,count=str(k),answer=tex(q['answer']),
+                given=rf"\Omega=\{{1,2,\ldots,{n}\}},\quad E=\{{j\in\Omega:{d}{symbol} j\}}",
+                after_1=rf"E={event},\quad |E|={k}",after_2=rf"P(E)=\frac{{{k}}}{{{n}}}={tex(q['answer'])}",
+                count_reason=f"The event contains {k} of the {n} labels: "+(', '.join(map(str,members)) if members else 'none')+'.',
+                complement_note=('Count the labels outside the multiples. Subtract the number of multiples from the total; the sample space still has the same size.'
+                                 if p['complement'] else 'Count the multiples in the stated range, including the final label if it qualifies.'))
+    for i,step in enumerate(q['steps'],1):
+        values=step['choices'];correct=values.index(step['answer'])
+        fields[f'choices_{i}']=choices_text(values,correct,i,tex)
+        corrections=[]
+        for j,v in enumerate(values):
+            if j==correct:continue
+            if i==1:
+                direction='too many' if Fraction(v)>k else 'too few'
+                reason=f"This counts {direction} labels. Test each label once against '{relation} by {d}'; zero is outside the sample space."
+            else:
+                implied=Fraction(v)*n
+                reason=f"This fraction would assign the event {implied} of the {n} equally likely labels. Use the event count already established, and divide by the total."
+            corrections.append(f'@feedback {i*10+j+1} | {reason}')
+        fields[f'feedback_{i}']='\n'.join(corrections)
+    return fields
+
+
+def verify_probability_compiled(questions, compiled):
+    """Check what the real compiler will grade, not just the producer's in-memory keys."""
+    by_id={q['id']:q for q in compiled}
+    require(len(by_id)==len(compiled) and set(by_id)=={q['id'] for q in questions},'Compiled probability identities differ')
+    for q in questions:
+        oracle=verify_probability(q);actual=by_id[q['id']]['question'];params=q['parameters']
+        n=len(oracle['outcomes']);k=len(oracle['event']);symbol=r'\nmid' if params['complement'] else r'\mid'
+        given=rf"\Omega=\{{1,2,\ldots,{n}\}},\quad E=\{{j\in\Omega:{params['divisor']}{symbol} j\}}"
+        members=r'\{'+','.join(map(str,oracle['event']))+r'\}' if k else r'\varnothing'
+        # Do not call the rendering adapter here: a bad adapter must fail before export.
+        states=[given,rf"E={members},\quad |E|={k}",rf"P(E)=\frac{{{k}}}{{{n}}}={tex(oracle['answer'])}"]
+        require(actual['equation']==given and len(actual['steps'])==2
+                and [s['display'] for s in actual['working_states']]==states,
+                f"{q['id']}: compiled givens or working differ from the independently checked problem")
+        for i,(step,answer) in enumerate(zip(actual['steps'],(str(len(oracle['event'])),oracle['answer']))):
+            expected=q['steps'][i];accepted=step['accepted_option_ids']
+            require([o['label'] for o in step['options']]==[tex(v) for v in expected['choices']]
+                    and accepted==[10*(i+1)+expected['choices'].index(answer)+1],
+                    f"{q['id']}: compiled step {i+1} answer key or choices disagree with the enumerated event")
+
+
+def probability_batch(args):
+    export.require(args.format_version==1,'batch.format','Finite probability currently uses format version 1')
+    recipe_bytes=export.read_bytes(PROBABILITY_ROOT/'recipe.json',128*1024)
+    questions=probability_questions(args.count,export.decoded(recipe_bytes))
+    results=[verify_probability(q) for q in questions]
+    docs,readings=teaching_documents(questions,groups=PROBABILITY_GROUPS,titles=PROBABILITY_TITLES,group_key='group',
+        subject=('probability_statistics','Probability and Statistics'),
+        chapter=('finite_probability_practice','Finite probability: count and compare'),reading_prefix=PROBABILITY_FAMILY,
+        question_template=PROBABILITY_ROOT/'question.paths.md.in',lesson_template=PROBABILITY_ROOT/'lesson.md.in',fields=probability_fields,numbered_files=True)
+    author=dict(format='paths_learning_authoring',format_version=1,package_id='finite_probability_practice',package_version=args.version,
+        sources=[dict(id=PROBABILITY_FAMILY,kind='generated',title='Original uniform finite-probability practice',
+            uri='paths:generated/'+PROBABILITY_FAMILY,revision='1',
+            attribution='Original Paths questions and explanations. Counting and complement definitions checked against OpenStax Introductory Statistics 2e, section 3.1: https://openstax.org/books/introductory-statistics-2e/pages/3-1-terminology',
+            reuse='Original examples; no external exercise text copied.',content_ids=[q['id'] for q in questions]+readings)])
+    audit=dict(family=PROBABILITY_FAMILY,family_version=1,format_version=1,count=len(questions),questions=questions,
+        mathematical_checks=results,recipe_sha256=export.sha(recipe_bytes),
+        template_sha256={role:export.sha(export.read_bytes(p,128*1024)) for role,p in
+                         (('chapter',CHAPTER_TEMPLATE),('question',PROBABILITY_ROOT/'question.paths.md.in'),('lesson',PROBABILITY_ROOT/'lesson.md.in'))},
+        response_mode='choices.v1',written_checker=False,worked_questions=len(questions),retained_questions=0,
+        teaching_review='Original finite counting lesson; user visual acceptance pending')
+    return questions,results,docs,author,audit
+
+
+BUILDERS={'matrix':matrix_batch,'linear':linear_batch,'probability':probability_batch}
+COMPILED_CHECKS={'probability':verify_probability_compiled}
+ROUTES_PER_QUESTION={'matrix':5,'linear':5,'probability':1}
+
+
+def authoring_inputs(family):
+    paths={
+        'matrix':(REFERENCE_TEMPLATE,ROOT/'content/authoring/learning/matrix_reference/lesson.md.in'),
+        'linear':(LINEAR_TEMPLATE,ROOT/'content/authoring/learning/linear_reference/lesson.md.in',linear.SPEC,Path(linear.__file__)),
+        'probability':tuple(PROBABILITY_ROOT/name for name in ('recipe.json','question.paths.md.in','lesson.md.in')),
+    }[family]
+    return {str(p.relative_to(ROOT) if p.is_relative_to(ROOT) else p):export.sha(export.read_bytes(p,128*1024))
+            for p in (Path(__file__),CHAPTER_TEMPLATE,*paths)}
 
 
 def run(args):
+    inputs=authoring_inputs(args.family)
     questions, results, docs, author, audit = BUILDERS[args.family](args)
     export.require(len({q['id'] for q in questions}) == len(questions), "batch.duplicate", "Duplicate question identity")
     target = export.Target(args.target)
@@ -334,9 +481,12 @@ def run(args):
         export.require(played.returncode == 0, "batch.routes", played.stderr or played.stdout)
         routes = export.decoded(played.stdout)
         export.require(routes['accepted'] is True and set(routes['question_ids']) == {q['id'] for q in questions}
-                       and routes['routes'] == len(questions) * 5, "batch.routes", "Model gate did not exercise every generated question")
+                       and routes['routes'] == len(questions) * ROUTES_PER_QUESTION[args.family], "batch.routes", "Model gate did not exercise every generated question")
+        if args.family in COMPILED_CHECKS:COMPILED_CHECKS[args.family](questions,routes['questions'])
     export.require(export.sha(export.read_bytes(model, 64 * 1024 * 1024)) == model_hash,
                    "batch.model_changed", "Model executable changed during verification; rerun the batch")
+    export.require(authoring_inputs(args.family)==inputs,'batch.source_changed',
+                   'Authoring input changed during verification; rerun the batch before publishing')
     files = {"authoring.json": export.encoded(author), "audit.json": export.encoded(audit),
              **{"documents/" + name: data for name, data in docs.items()}}
     output = export.real_path(args.output or ROOT / "build/question-batches" / author["package_id"] / str(args.version))
@@ -352,15 +502,15 @@ def run(args):
                 retained_questions=audit.get("retained_questions",0),
                 worked_questions=audit.get("worked_questions",0), generated_authoring=str(authoring),
                 mathematical_checks=results, route_checks=routes, model_sha256=model_hash,
-                publication=published, visual_acceptance="pending_user")
+                authoring_inputs_sha256=inputs,publication=published, visual_acceptance="pending_user")
 
 
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument('--family', choices=tuple(BUILDERS), default='matrix')
-    cli.add_argument('--count', type=int, default=12, help='3..36 in multiples of 3 for matrix, 6..36 in multiples of 6 for linear')
+    cli.add_argument('--count', type=int, default=12, help='3..36 in multiples of 3 for matrix/probability, 6..36 in multiples of 6 for linear')
     cli.add_argument('--version', type=int, help='immutable package version; increase when extending a batch')
-    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix defaults to 2, linear to 1')
+    cli.add_argument('--format-version', type=int, choices=(1,2), help='matrix defaults to 2, linear/probability to 1')
     cli.add_argument('--target', type=Path, default=ROOT / 'b/sorter')
     cli.add_argument('--model', type=Path, default=ROOT / 'b/paths_learning_document_tests')
     cli.add_argument('--output', type=Path)
@@ -369,7 +519,7 @@ def main():
     cli.add_argument('--publish', action='store_true', help='activate through the existing publisher; otherwise export only')
     try:
         args = cli.parse_args()
-        default={"matrix":2,"linear":1}[args.family]
+        default={"matrix":2,"linear":1,"probability":1}[args.family]
         if args.version is None:args.version=default
         if args.format_version is None:args.format_version=default
         export.require(0 < args.version <= 2**32-1, 'batch.version', 'Version must be a positive 32-bit integer')

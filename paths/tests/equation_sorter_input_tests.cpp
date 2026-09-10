@@ -1479,110 +1479,12 @@ void longHistoryControls(void (*observe)(const Harness&,const char*)=nullptr) {
   }
 }
 
-void corpusContentsControls() {
-  const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
-  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
-    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false,true);
-    h.ui.corpus=&corpus;h.action(SorterActionKind::OpenStudy);
-    h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Start)]);
-    h.click(h.ui.solveControls[3]);h.click(h.ui.solveControls[0]);
-    expect(h.session.view().studying && h.session.view().study.canResume,"prepared question awaits Resume before library browsing");
-    const auto before=h.session.studyProgress();const auto revision=h.session.progressRevision();
-    const auto* saved=h.session.savedSolve();const auto step=saved->view().step;
-    const auto rect=[](const NotationBounds& b){return SorterCardBounds{0,b.x,b.y,b.width,b.height,b.available};};
-    const auto control=[&](CorpusControl c){return rect(h.ui.library.controls[static_cast<std::size_t>(c)]);};
-    const SorterCardBounds window{0,0,0,size.x,size.y,true};
-    expect(contains(window,h.ui.libraryEntry),"Library fits beside Contents heading");
-    h.click(h.ui.libraryEntry);h.frame(3);
-    auto& ui=h.ui.library;auto& io=ImGui::GetIO();
-    expect(ui.open && ui.matches.size()==930 && ui.entry,"Library exposes the entire corpus");
-    expect(control(CorpusControl::Format).available,"the real sorter Library exposes presentation controls");
-    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("Quadratic Formula");h.frame(3);
-    expect(ui.bodyEquations==2 && ui.bodyFallbacks==0,"the real sorter Library typesets both quadratic formulas");
-    const auto equations=ui.bodyEquations;h.click(control(CorpusControl::Format));
-    expect(ui.raw && ui.bodyEquations==0,"Raw source is available inside the live practice session");
-    h.click(control(CorpusControl::Format));expect(!ui.raw && ui.bodyEquations==equations,"Typeset restores the same formulas");
-    h.click(control(CorpusControl::Clear));
-    expect(contains(window,rect(ui.list)) && contains(window,rect(ui.reader)) && ui.reader.height>80,"list and reading area fit the viewport");
-    for(const auto c:{CorpusControl::Practice,CorpusControl::Subject,CorpusControl::Topic,CorpusControl::Search,CorpusControl::Clear,CorpusControl::Next})
-      expect(control(c).available && contains(window,control(c)),"primary library controls remain visible");
-    const auto first=*ui.entry;h.click(control(CorpusControl::Next));
-    expect(*ui.entry!=first,"next source entry opens through actual input");
-    h.click(control(CorpusControl::Previous));expect(*ui.entry==first,"previous source entry returns");
-    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("QR decomposition");h.frame(3);
-    expect(ui.matches.size()==4,"search exposes four separate QR source occurrences");
-    h.click(rect(ui.rows.back().second));
-    expect(corpus.entries[*ui.entry].title=="QR Decomposition","a source row opens by pointer");
-    h.click(control(CorpusControl::Next));h.click(control(CorpusControl::Clear));
-    expect(ui.matches.size()==930,"Clear restores the current subject pool");
-    h.click(control(CorpusControl::Subject));h.frame(2);
-    expect(ui.subjectRows.size()==7,"all six subjects and the all-subjects choice are reachable");
-    h.click(rect(ui.subjectRows.back().second));h.frame(3);
-    expect(ui.subject==5 && ui.matches.size()==126,"probability subject is independently selectable");
-    h.click(control(CorpusControl::Topic));h.frame(2);
-    expect(ui.topicRows.size()>1,"subject supplies its own topics");
-    const auto topic=ui.topicRows[1].first;h.click(rect(ui.topicRows[1].second));h.frame(3);
-    expect(ui.topic==topic && !ui.matches.empty(),"topic choice filters the source list");
-    for(const auto i:ui.matches)expect(corpus.entries[i].topic==topic,"every shown entry belongs to the selected topic");
-    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("no-such-entry-123");h.frame(3);
-    expect(ui.matches.empty() && !ui.entry && !control(CorpusControl::Next).available,"empty search clears stale reading and disables next");
-    h.click(control(CorpusControl::Clear));
-    h.click(control(CorpusControl::Subject));h.frame(2);h.click(rect(ui.subjectRows.front().second));h.frame(3);
-    expect(!ui.subject && !ui.topic && ui.matches.size()==930,"All subjects resets the topic filter");
-    // Enter on the search is harmless; Tab reaches the clear button and activates it once.
-    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("Gaussian");h.frame(3);
-    expect(ui.matches.size()>=1 && ui.matches.size()<930,"search accepts an additional subject's title");
-    h.press(ImGuiKey_Tab);h.press(ImGuiKey_Enter);
-    expect(ui.query[0]=='\0',"Clear is reachable and usable from the search by keyboard");
-    h.click(control(CorpusControl::Search));io.AddInputCharactersUTF8("Theorem");h.frame(3);
-    h.press(ImGuiKey_Tab); // end text editing before testing reader paging and Escape
-    bool paged=false;
-    for(int i=0;i<30 && !paged;++i) {
-      h.frame(3);
-      if(ui.scrollMax>0){h.click(control(CorpusControl::Down));h.frame(3);paged=ui.scroll>0;}
-      else if(control(CorpusControl::Next).available)h.click(control(CorpusControl::Next));
-      else break;
-    }
-    if(size.x==360)expect(paged,"compact reader can page long notes with pinned controls");
-    if(paged){h.click(control(CorpusControl::Up));h.frame(3);expect(ui.scroll==0,"Up returns to the top of the source notes");}
-    const auto entry=ui.entry;io.AddFocusEvent(false);io.AddKeyEvent(ImGuiKey_Enter,true);h.frame(3);
-    io.AddKeyEvent(ImGuiKey_Enter,false);h.frame(3);expect(ui.entry==entry && ui.open,"focus loss discards library activation");
-    io.AddFocusEvent(true);h.frame(3);h.press(ImGuiKey_Escape);
-    expect(!ui.open && h.session.view().studying,"Escape returns to the existing Contents");
-    h.click(h.ui.libraryEntry);h.frame(3);expect(ui.entry==entry,"library return retains reading location");
-    h.click(control(CorpusControl::Practice));
-    const auto after=h.session.studyProgress();
-    expect(!ui.open && before.selected==after.selected && before.queue==after.queue && revision==h.session.progressRevision(),"browsing preserves selection, saved queue and progress revision");
-    h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Resume)]);
-    expect(h.session.activeSolve()==saved && saved->view().step==step,"Resume returns to the exact unfinished question");
-  }
-}
 void reviewedMatrixControls() {
   const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
   for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
     Harness h(size.x,size.y,SORTER_STUDY_FIXTURE);h.ui.corpus=&corpus;
-    h.action(SorterActionKind::OpenStudy);h.click(h.ui.libraryEntry);h.frame(3);
     const auto rect=[](const NotationBounds& b){return SorterCardBounds{0,b.x,b.y,b.width,b.height,b.available};};
-    const auto control=[&](CorpusControl c){return rect(h.ui.library.controls[static_cast<std::size_t>(c)]);};
-    const SorterCardBounds window{0,0,0,size.x,size.y,true};
-    for(const auto* key:{"corpus_00511","corpus_00512","corpus_00513","corpus_00514"}) {
-      const auto entry=std::find_if(corpus.entries.begin(),corpus.entries.end(),[&](const auto& e){return e.id==key;});
-      expect(entry!=corpus.entries.end(),"reviewed entry exists");
-      h.click(control(CorpusControl::Clear));h.click(control(CorpusControl::Search));
-      ImGui::GetIO().AddInputCharactersUTF8(entry->title.c_str());h.frame(3);
-      for(std::size_t n=0;n<h.ui.library.matches.size() && h.ui.library.entry && corpus.entries[*h.ui.library.entry].id!=key;++n)
-        h.click(control(CorpusControl::Next));
-      expect(h.ui.library.entry && corpus.entries[*h.ui.library.entry].id==key && h.ui.library.reviewedVisible,"selected reviewed teaching note is visible among same-title matches");
-      expect(control(CorpusControl::Source).available && contains(window,control(CorpusControl::Source)),"Original control fits beside pinned reading controls");
-      h.click(control(CorpusControl::Source));expect(h.ui.library.original && !h.ui.library.reviewedVisible,"Original reveals preserved unreviewed source");
-      h.click(control(CorpusControl::Source));expect(!h.ui.library.original && h.ui.library.reviewedVisible,"Reviewed restores the distinct teaching adaptation");
-      for(int n=0;n<80 && h.ui.library.scroll<h.ui.library.scrollMax;++n){h.click(control(CorpusControl::Down));h.frame(2);}
-      expect(h.ui.library.scroll>=h.ui.library.scrollMax-.5F,"citations at the end of a reviewed note are reachable");
-    }
-    h.click(control(CorpusControl::Clear));h.click(control(CorpusControl::Search));
-    ImGui::GetIO().AddInputCharactersUTF8("QR Decomposition");h.frame(3);
-    expect(!h.ui.library.reviewedVisible && !control(CorpusControl::Source).available,"unreviewed entries cannot inherit a reviewed marker or adaptation");
-    h.click(control(CorpusControl::Practice));h.action(SorterActionKind::CloseStudy);h.action(SorterActionKind::OpenSolve,6001);
+    h.action(SorterActionKind::OpenSolve,6001);
     auto* game=h.session.activeSolve();const auto nodes=game->question().currentRun().math->nodes.size();
     h.click(rect(h.ui.notation.toggle));h.frame(3);
     for(int i=0;i<4;++i)h.click(rect(h.ui.notation.controls[static_cast<std::size_t>(NotationControl::Next)]));
@@ -1600,104 +1502,8 @@ void reviewedMatrixControls() {
     h.press(ImGuiKey_Escape);expect(h.session.activeSolve()==game && !h.ui.notation.open,"closing the reviewed explanation keeps the same working question");
   }
 }
-void linkedCorpusControls() {
-  const auto corpus=loadMathCorpus(CORPUS_FIXTURE);
-  for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
-    Harness h(size.x,size.y,SORTER_BRACKET_FIXTURE,false,true);h.ui.corpus=&corpus;
-    h.action(SorterActionKind::OpenStudy);h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Start)]);
-    h.click(h.ui.solveControls[3]);h.click(h.ui.solveControls[0]);
-    const auto before=h.session.studyProgress();const auto revision=h.session.progressRevision();
-    const auto* saved=h.session.savedSolve();const auto step=saved->view().step;
-    h.click(h.ui.libraryEntry);auto& ui=h.ui.library;
-    const auto rect=[](const NotationBounds& b){return SorterCardBounds{0,b.x,b.y,b.width,b.height,b.available};};
-    const auto control=[&](CorpusControl c){return rect(ui.controls[static_cast<std::size_t>(c)]);};
-    const auto current=[&]{return ui.entry?corpus.entries[*ui.entry].id:std::string{};};
-    const auto link=[&](const char* key) {
-      for(const auto& [target,bounds]:ui.relatedRows)if(corpus.entries[target].id==key)return rect(bounds);
-      return SorterCardBounds{};
-    };
-    const auto reveal=[&](const char* key) {
-      for(int n=0;n<100 && (!link(key).available || !contains(rect(ui.reader),link(key)));++n) {
-        if(control(CorpusControl::Down).available)h.click(control(CorpusControl::Down));else h.press(ImGuiKey_Tab);
-      }
-      expect(link(key).available && contains(rect(ui.reader),link(key)),"related note fits and is reachable by reading controls");
-    };
-    const SorterCardBounds window{0,0,0,size.x,size.y,true};
-    h.click(control(CorpusControl::Subject));
-    const auto subject=std::find_if(ui.subjectRows.begin(),ui.subjectRows.end(),[](const auto& row){return row.first==3;});
-    expect(subject!=ui.subjectRows.end(),"linear algebra subject exists");h.click(rect(subject->second));
-    h.click(control(CorpusControl::Search));ImGui::GetIO().AddInputCharactersUTF8("Nullity");h.frame(3);
-    expect(current()=="corpus_00514","search opens the intended reviewed Nullity occurrence");
-    const auto matches=ui.matches;const auto query=ui.query;const auto selectedSubject=ui.subject,topic=ui.topic;
-    reveal("corpus_00513");const auto nullityScroll=ui.scroll;
-    h.click(link("corpus_00513"));h.frame(3);
-    expect(current()=="corpus_00513" && ui.trail.size()==1 && ui.reviewedVisible,"link opens reviewed Rank outside the active title filter");
-    expect(ui.matches==matches && ui.query==query && ui.subject==selectedSubject && ui.topic==topic,"following a note preserves the exact browsing filters");
-    expect(control(CorpusControl::Back).available && contains(window,control(CorpusControl::Back)),"Back fits beside the pinned reader controls");
-    expect(!control(CorpusControl::Next).available && !control(CorpusControl::Previous).available,"unmatched linked note does not masquerade as a filtered result");
-    reveal("corpus_00512");const auto rankScroll=ui.scroll;
-    h.click(link("corpus_00512"));h.frame(3);
-    expect(current()=="corpus_00512" && ui.trail.size()==2,"a second link extends the reading trail");
-    h.click(control(CorpusControl::Back));h.frame(3);
-    expect(current()=="corpus_00513" && std::abs(ui.scroll-rankScroll)<1,"Back restores the first linked note's reading position");
-    h.click(control(CorpusControl::Source));h.frame(3);
-    expect(ui.original && !ui.reviewedVisible,"linked entry also exposes its preserved original");
-    h.press(ImGuiKey_Escape);h.frame(3);
-    expect(current()=="corpus_00514" && !ui.original && ui.trail.empty() && ui.open && std::abs(ui.scroll-nullityScroll)<1,
-        "Escape restores the longer reviewed origin after leaving a short original note");
-    h.click(control(CorpusControl::Source));h.click(control(CorpusControl::Format));reveal("corpus_00513");
-    expect(ui.raw,"raw presentation can be selected independently of Original/Reviewed");
-    const auto originalScroll=ui.scroll;h.click(link("corpus_00513"));h.frame(3);
-    h.click(control(CorpusControl::Source));h.click(control(CorpusControl::Format));
-    expect(!ui.raw,"a linked entry can change its presentation");
-    h.click(control(CorpusControl::Back));h.frame(3);
-    expect(ui.original && ui.raw && current()=="corpus_00514" && std::abs(ui.scroll-originalScroll)<1,"Back preserves the source presentation and Original-view bookmark");
-    h.click(control(CorpusControl::Source));reveal("corpus_00513");
-    const auto focused=[&] {
-      if(!GImGui->NavWindow || !GImGui->NavId)return false;
-      const auto r=ImGui::WindowRectRelToAbs(GImGui->NavWindow,GImGui->NavWindow->NavRectRel[GImGui->NavLayer]);
-      const auto b=link("corpus_00513");
-      return std::abs(r.Min.x-b.x)<1 && std::abs(r.Min.y-b.y)<1 && b.available;
-    };
-    for(int n=0;n<120 && !focused();++n)h.press(ImGuiKey_Tab);
-    if(!focused()) {
-      const auto b=link("corpus_00513");
-      const auto r=GImGui->NavWindow?ImGui::WindowRectRelToAbs(GImGui->NavWindow,GImGui->NavWindow->NavRectRel[GImGui->NavLayer]):ImRect{};
-      std::cerr<<"Link focus at "<<size.x<<'x'<<size.y<<" entry="<<current()<<" target="<<b.x<<','<<b.y<<' '<<b.width<<'x'<<b.height
-        <<" available="<<b.available<<" nav="<<r.Min.x<<','<<r.Min.y<<' '<<r.GetWidth()<<'x'<<r.GetHeight()
-        <<" window="<<(GImGui->NavWindow?GImGui->NavWindow->Name:"none")<<" scroll="<<ui.scroll<<'/'<<ui.scrollMax<<'\n';
-    }
-    expect(focused(),"Tab reaches the Rank link");
-    auto& io=ImGui::GetIO();io.AddFocusEvent(false);io.AddKeyEvent(ImGuiKey_Enter,true);h.frame();
-    io.AddKeyEvent(ImGuiKey_Enter,false);io.AddFocusEvent(true);h.frame(3);
-    expect(current()=="corpus_00514" && ui.trail.empty(),"focus loss suppresses linked-note activation");
-    for(int n=0;n<120 && !focused();++n)h.press(ImGuiKey_Tab);
-    h.press(ImGuiKey_Enter);h.frame(3);
-    expect(current()=="corpus_00513" && ui.trail.size()==1,"Enter follows the focused link once");
-    if(size.x==1440) {
-      for(int n=0;n<19;++n) {
-        const auto* target=current()=="corpus_00513"?"corpus_00514":"corpus_00513";
-        reveal(target);h.click(link(target));h.frame(3);
-      }
-      expect(ui.trail.size()==16,"cyclic reading is bounded to the sixteen latest return points");
-      for(int n=0;n<16;++n){h.click(control(CorpusControl::Back));h.frame(3);}
-      expect(ui.trail.empty() && !control(CorpusControl::Back).available,"bounded trail unwinds without a stale Back action");
-      reveal(current()=="corpus_00513"?"corpus_00514":"corpus_00513");
-      h.click(link(current()=="corpus_00513"?"corpus_00514":"corpus_00513"));h.frame(3);
-    }
-    h.click(control(CorpusControl::Clear));h.click(control(CorpusControl::Search));
-    io.AddInputCharactersUTF8("QR Decomposition");h.frame(3);
-    expect(ui.trail.empty() && ui.relatedRows.empty() && !control(CorpusControl::Back).available && !ui.reviewedVisible,
-        "a new search starts fresh and unreviewed notes acquire no links or review status");
-    h.click(control(CorpusControl::Practice));
-    const auto after=h.session.studyProgress();
-    expect(before.selected==after.selected && before.queue==after.queue && revision==h.session.progressRevision(),"linked reading preserves saved selection, queue and progress revision");
-    h.click(h.ui.studyControls[static_cast<std::size_t>(StudyControl::Resume)]);
-    expect(h.session.activeSolve()==saved && saved->view().step==step,"Resume returns to the exact unfinished question after linked reading");
-  }
-}
 int main() {
-  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixChapterFractionControls(); matrixReferenceControls(); restoredPracticeControls(); notationControls(); corpusContentsControls(); reviewedMatrixControls(); linkedCorpusControls(); longHistoryControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, notation definitions and practice, linked reading, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
+  try { pointer(); keyboardAndFocus(); layoutAndScroll(); inventoryNavigationAndEmpty(); mixedNotationAndRecovery(); autoSortAndHintControls(); solveControlsAndTargets(); switchPreparedCards(); responsiveWorkspace(); continuousWorkspace(); studySelectionControls(); coordinateBoardControls(); simultaneousBoardControls(); linkedValueControls(); mathematicalMoveControls(); matrixMoveControls(); matrixChapterFractionControls(); matrixReferenceControls(); restoredPracticeControls(); notationControls(); reviewedMatrixControls(); longHistoryControls(); std::cout << "Actual visual moves, saved practice Resume, shared references, notation definitions and practice, example navigation, both solution routes, Undo, inspection, keyboard, focus, graphs, fixed workspace and explicit Next passed\n"; }
   catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
   return 0;
 }

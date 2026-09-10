@@ -27,7 +27,7 @@ choices; written input is optional. Generated appearance remains a manual check.
 The [eight-card linear teaching sequence](LINEAR_TEACHING_SEQUENCE.md) is the
 current authored example for teaching across cards. Its two numerical practice
 cards retain all four support levels. Six reasoning/transfer activities use
-`choices.v1` and the existing Method disclosure; they do not pretend to offer
+`choices.v1` and the native Reading/Exercise navigation; they do not pretend to offer
 the four-level written-work contract. The chapter separates worked examples,
 guided calculation, reasoning, method choice, mistake repair and fewer-cue
 checks. Completing an activity is not a mastery judgment.
@@ -48,8 +48,9 @@ for equation solving. The inspected references are
 [P051's object binding](P051_DETERMINANT_VOLUME.md), and the
 [lesson authoring workflow](LESSON_AUTHORING_WORKFLOW.md). P048 records the
 formatting research that informed its hierarchy, equations and disclosures.
-This decision establishes the target; it does not claim the current question
-workspace already implements every textbook feature.
+The Library now calls that exact `drawTextbook` screen. The independent browser,
+Focus layout, standalone reading component and question/textbook table are
+removed. `CorpusTextbook` supplies content; it must not introduce page geometry.
 
 - Use the textbook's semantic structure: introductions, definitions,
   propositions, worked examples, captioned figures and exercises. Preserve
@@ -59,11 +60,10 @@ workspace already implements every textbook feature.
   with text. The reader's reference is about 72 average character widths with
   90–200% text zoom. Preserve compact default controls; let wide equations
   scroll in their own rows instead of shrinking them or widening all prose.
-- Apply that reading/figure structure inside the fixed solving workspace.
-  Gold Given, cyan Working and the current response remain adjacent. Reading,
-  history and an optional figure use the remaining space. Narrow layouts must
-  retain the problem and response while opening supporting material in place.
-  Completion remains green until Next; a step never triggers a screen change.
+- Use the actual native Reading/Exercise pages and figure regions. Question
+  controls belong inside its Exercise area. Gold Given, cyan Working and the
+  current response remain adjacent there. Returning to Reading preserves the
+  attempt. Completion remains green until Next; solving a step stays in Exercise.
 - Treat definitions, hints, answers, solutions and proofs as distinct material.
   The textbook's Read/Figure/Exercise views are presentation choices; they are
   not the solver's Learn/Practice/Solve/Write support levels. The question owner
@@ -135,7 +135,7 @@ branches remain in the existing question owner and save journal.
 
 ## One workspace: read, act, continue
 
-Keep this order in the current Focus workspace:
+Keep this order inside the native textbook Exercise area:
 
 1. A compact breadcrumb and the four level controls.
 2. **Gold Given**, pinned beside **cyan Working**, directly above the active response.
@@ -147,13 +147,11 @@ Keep this order in the current Focus workspace:
 5. The **green finished result**, retained until explicit **Next**. An optional
    review can expand in place. It never blocks the next question.
 
-Give the response and its explanation a common alignment. On a wide window,
-the reading can occupy an adjacent column; on a narrow window, it expands below
-the response in the same space. Given and the active response stay visible;
-long history and long explanations scroll in their own area. Retain the
-existing compact font/button scale, text zoom and horizontal equation scrolling.
-Do not shrink a large formula to illegibility or consume the window with a
-permanent navigation sidebar. Use text labels as well as colour.
+Give the response and its explanation a common alignment. Full chapter reading
+uses the native Reading page; current-step help and history remain inside
+Exercise. Do not add a question/reading split table or a separate Focus screen.
+Use the native Contents, Index, page footer and text-size controls. Preserve
+horizontal scrolling for wide equations and text labels alongside colour.
 
 "Lots of description" belongs in the content, attached to the exact step where
 it helps. Each step must have: goal; prerequisite references; definitions for

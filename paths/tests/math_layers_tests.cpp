@@ -37,6 +37,37 @@ void inspect(const MathObjects& m,MathObjectScene& scene) {
   for(std::size_t i=0;i<s.metricCount;++i)require(std::isfinite(s.metrics[i].value),"nonfinite metric");
   for(std::size_t i=0;i<s.matrixCount;++i)for(double v:s.matrices[i].values)require(std::isfinite(v),"nonfinite matrix");
 }
+std::size_t plotStates=0,plotViews=0,plotSamples=0;
+void plotContracts(){
+  const auto parameters=mathParameterSpecs();
+  for(const auto& object:mathObjectSpecs()){
+    const unsigned levels=std::max<std::size_t>(1,mathLessons(object.id).size());
+    for(unsigned level=0;level<levels;++level){
+      const auto presets=mathObjectPresets(object.id,level);
+      for(unsigned example=0;example<=presets.size();++example){
+        MathObjects m;select(m,object.id,level);
+        if(example<presets.size())action(m,{MathActionKind::ObjectPreset,{},{},0,example});
+        const auto& state=m.snapshot();++plotStates;
+        require(state.plotCount<=state.plots.size(),"plot capacity exceeded");
+        for(unsigned i=0;i<state.plotCount;++i){
+          const auto& plot=state.plots[i];++plotViews;
+          require(!plot.title.empty()&&plot.seriesCount>0&&plot.seriesCount<=plot.series.size(),"invalid plot declaration");
+          if(plot.scrubParameter!=MathParameter::Count){
+            const auto index=static_cast<unsigned>(plot.scrubParameter);
+            require(index<parameters.size()&&parameters[index].owner==object.id,"plot scrubs another model's parameter");
+          }
+          if(plot.hasMarker)require(std::isfinite(plot.marker.x)&&std::isfinite(plot.marker.y),"nonfinite plot marker");
+          for(unsigned j=0;j<plot.seriesCount;++j){
+            const auto& series=plot.series[j];plotSamples+=series.count;
+            require(!series.name.empty()&&series.count<=series.points.size(),"invalid plot series");
+            require(iggy3d::isFinite(series.color),"nonfinite plot colour");
+            for(unsigned k=0;k<series.count;++k)require(std::isfinite(series.points[k].x)&&std::isfinite(series.points[k].y),"nonfinite plot sample");
+          }
+        }
+      }
+    }
+  }
+}
 void functions() {
   MathObjects m;MathObjectScene scene;select(m,MathObjectKind::Function,0);
   reject(m,{MathActionKind::SetParameter,{},MathParameter::DeltaX,.1});reject(m,{MathActionKind::SetLevel,{},{},1.5});reject(m,{MathActionKind::SetLevel,{},{},4});
@@ -140,4 +171,4 @@ void envelopes() {
   }
 }
 }
-int main(){try{functions();surfaces();matrices();envelopes();std::printf("math layers passed: analytic calculus, linked plots, surface contours, descent, constraints, matrix composition, projection, SVD and validation; %zu frames; maxima %zu vertices / %zu indices / %zu contours\n",frames,maxVertices,maxIndices,maxContours);return 0;}catch(const std::exception& e){std::fprintf(stderr,"FAIL: %s\n",e.what());return 1;}}
+int main(){try{functions();surfaces();matrices();envelopes();plotContracts();std::printf("math layers passed: analytic calculus, linked plots, surface contours, descent, constraints, matrix composition, projection, SVD and validation; %zu frames; maxima %zu vertices / %zu indices / %zu contours\n",frames,maxVertices,maxIndices,maxContours);std::printf("plot contracts passed: %zu states, %zu plots, %zu samples\n",plotStates,plotViews,plotSamples);return 0;}catch(const std::exception& e){std::fprintf(stderr,"FAIL: %s\n",e.what());return 1;}}

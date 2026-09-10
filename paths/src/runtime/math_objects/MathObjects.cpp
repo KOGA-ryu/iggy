@@ -9,6 +9,7 @@
 #include "runtime/math_objects/Simplex.hpp"
 #include "runtime/math_objects/DistanceGeometry.hpp"
 #include "runtime/math_objects/PolarDecomposition.hpp"
+#include "runtime/math_objects/QrLeastSquares.hpp"
 #include "runtime/math_objects/Membrane.hpp"
 #include "runtime/math_objects/MembraneGeometry.hpp"
 #include "runtime/math_objects/BooleanGeometry.hpp"
@@ -25,399 +26,416 @@ constexpr double pi = 3.14159265358979323846;
 constexpr Vec3 teal{.19F,.72F,.65F}, blue{.34F,.56F,.91F}, coral{.96F,.57F,.39F},
   gold{.97F,.79F,.35F}, violet{.68F,.52F,.89F}, muted{.43F,.52F,.61F}, white{.85F,.91F,.94F};
 constexpr std::array<MathParameterSpec,static_cast<std::size_t>(MathParameter::Count)> parameters{{
-  {MathParameter::X,MathObjectKind::Algebra,"x","Variable x",.5,2.5,.1,1.6},
-  {MathParameter::Gap,MathObjectKind::Algebra,"gap","Separate pieces",0,.6,.02,.24},
-  {MathParameter::Angle,MathObjectKind::Trig,"angle","Angle (degrees)",0,360,1,45},
-  {MathParameter::Slices,MathObjectKind::Calculus,"slices","Number of slices",3,64,1,8},
-  {MathParameter::SliceGap,MathObjectKind::Calculus,"slice_gap","Separate slices",0,.12,.01,0},
-  {MathParameter::Sample,MathObjectKind::Calculus,"sample","Sampling",0,2,1,1,0,false,"Left sample\0Midpoint sample\0Right sample\0"},
-  {MathParameter::Shear,MathObjectKind::Linear,"shear","A[0,1] / shear k",-1.2,1.2,.1,.6,0,true},
-  {MathParameter::Scale,MathObjectKind::Linear,"scale","A[1,1] / vertical scale",-2,2,.1,1,0,true},
-  {MathParameter::Depth,MathObjectKind::Discrete,"depth","Layer spacing",.3,1.5,.1,1},
-  {MathParameter::Shortcut,MathObjectKind::Discrete,"shortcut","Add A-H shortcut",0,1,1,0},
-  {MathParameter::FunctionRule,MathObjectKind::Function,"function","Function",0,3,1,0,0,false,"x^2\0x^3 - 3x\0sin(x)\0exp(x) - 1\0"},
-  {MathParameter::FunctionX,MathObjectKind::Function,"at","Input x",-2,2,.005,.75},
-  {MathParameter::DeltaX,MathObjectKind::Function,"h","Secant step h",-1,1,.005,.5,1},
-  {MathParameter::IntegralStart,MathObjectKind::Function,"from","Integral start a",-2,2,.005,0,2},
-  {MathParameter::TaylorCenter,MathObjectKind::Function,"center","Taylor centre c",-1,1,.05,0,3},
-  {MathParameter::TaylorDegree,MathObjectKind::Function,"degree","Taylor degree",0,5,1,1,3},
-  {MathParameter::A00,MathObjectKind::Linear,"a00","A[0,0]",-2,2,.1,1,1,true},
-  {MathParameter::A02,MathObjectKind::Linear,"a02","A[0,2]",-2,2,.1,0,1,true},
-  {MathParameter::A10,MathObjectKind::Linear,"a10","A[1,0]",-2,2,.1,0,1,true},
-  {MathParameter::A12,MathObjectKind::Linear,"a12","A[1,2]",-2,2,.1,0,1,true},
-  {MathParameter::A20,MathObjectKind::Linear,"a20","A[2,0]",-2,2,.1,0,1,true},
-  {MathParameter::A21,MathObjectKind::Linear,"a21","A[2,1]",-2,2,.1,0,1,true},
-  {MathParameter::A22,MathObjectKind::Linear,"a22","A[2,2]",-2,2,.1,1,1,true},
-  {MathParameter::VectorX,MathObjectKind::Linear,"vx","Vector x",-2,2,.05,1,1},
-  {MathParameter::VectorY,MathObjectKind::Linear,"vy","Vector y",-2,2,.05,1,1},
-  {MathParameter::VectorZ,MathObjectKind::Linear,"vz","Vector z",-2,2,.05,1,1},
-  {MathParameter::ComposeAngle,MathObjectKind::Linear,"rotate","B: rotation about z (degrees)",-180,180,1,30,1},
-  {MathParameter::SvdStage,MathObjectKind::Linear,"svd_stage","SVD stage",0,3,1,3,3,false,"Unit sphere\0Apply V transpose\0Then apply Sigma\0Then apply U\0"},
-  {MathParameter::SurfaceRule,MathObjectKind::Surface,"surface","Surface",0,2,1,0,0,false,"Bowl: (u^2 + v^2)/2\0Saddle: (u^2 - v^2)/2\0Wave: sin(u) cos(v)\0"},
-  {MathParameter::SurfaceU,MathObjectKind::Surface,"u","Input u",-2,2,.025,.75},
-  {MathParameter::SurfaceV,MathObjectKind::Surface,"v","Input v",-2,2,.025,.5},
-  {MathParameter::DirectionAngle,MathObjectKind::Surface,"direction","Direction (degrees)",0,360,1,45,1},
-  {MathParameter::DescentRate,MathObjectKind::Surface,"rate","Descent step size",.05,1,.05,.25,2},
-  {MathParameter::Constraint,MathObjectKind::Surface,"constraint","Constrain to unit circle",0,1,1,0,3,false,"Free point\0Unit circle\0"},
-  {MathParameter::CircleAngle,MathObjectKind::Surface,"circle_angle","Position on circle (degrees)",0,360,1,45,3},
-  {MathParameter::SymmetryFirst,MathObjectKind::Symmetry,"first_turn","First turn",0,5,1,0,1,false,"X +90\0Y +90\0Z +90\0X -90\0Y -90\0Z -90\0"},
-  {MathParameter::SymmetrySecond,MathObjectKind::Symmetry,"second_turn","Second turn",0,5,1,1,1,false,"X +90\0Y +90\0Z +90\0X -90\0Y -90\0Z -90\0"},
-  {MathParameter::SymmetryGenerator,MathObjectKind::Symmetry,"generator","Cyclic generator",0,2,1,0,2,false,"X quarter turn\0X half turn\0Body diagonal: (x,y,z) to (z,x,y)\0"},
-  {MathParameter::SymmetryPower,MathObjectKind::Symmetry,"power","Generator power",0,12,1,1,2},
-  {MathParameter::SymmetryElement,MathObjectKind::Symmetry,"rotation","Cube rotation",0,23,1,0,3},
-  {MathParameter::SymmetryVertex,MathObjectKind::Symmetry,"probe_vertex","Track labelled vertex",0,7,1,0,3,false,"A\0B\0C\0D\0E\0F\0G\0H\0"},
-  {MathParameter::HarmonicTime,MathObjectKind::Harmonics,"phase_time","Time t (radians at unit frequency)",0,2*pi,.005,.75},
-  {MathParameter::Amplitude1,MathObjectKind::Harmonics,"amplitude1","First amplitude",0,1.5,.05,1},
-  {MathParameter::Frequency1,MathObjectKind::Harmonics,"frequency1","First frequency",1,5,1,1},
-  {MathParameter::Phase1,MathObjectKind::Harmonics,"phase1","First phase (degrees)",-180,180,1,0},
-  {MathParameter::Amplitude2,MathObjectKind::Harmonics,"amplitude2","Second amplitude",0,1.5,.05,1,1},
-  {MathParameter::Frequency2,MathObjectKind::Harmonics,"frequency2","Second frequency",1,5,1,2,1},
-  {MathParameter::Phase2,MathObjectKind::Harmonics,"phase2","Second phase (degrees)",-180,180,1,0,1},
-  {MathParameter::Waveform,MathObjectKind::Harmonics,"waveform","Target waveform",0,2,1,0,2,false,"Square wave\0Sawtooth\0Triangle wave\0"},
-  {MathParameter::HarmonicTerms,MathObjectKind::Harmonics,"terms","Nonzero Fourier terms",1,8,1,1,2},
-  {MathParameter::ProbeFrequency,MathObjectKind::Harmonics,"probe_frequency","Sine basis frequency",1,16,1,1,3},
-  {MathParameter::MotionSystem,MathObjectKind::Oscillator,"system","System",0,1,1,0,0,false,"Unit-mass spring\0Unit-inertia pendulum\0"},
-  {MathParameter::InitialPosition,MathObjectKind::Oscillator,"initial_position","Initial displacement / angle (rad)",-1.2,1.2,.05,.7},
-  {MathParameter::InitialVelocity,MathObjectKind::Oscillator,"initial_velocity","Initial velocity / angular velocity",-2,2,.05,0},
-  {MathParameter::Stiffness,MathObjectKind::Oscillator,"stiffness","Restoring coefficient k = omega0^2",.25,4,.25,1},
-  {MathParameter::MotionTime,MathObjectKind::Oscillator,"time","Time (seconds)",0,12,.025,0},
-  {MathParameter::Damping,MathObjectKind::Oscillator,"damping","Damping coefficient c",0,3,.05,.5,2},
-  {MathParameter::DriveAmplitude,MathObjectKind::Oscillator,"drive","Driving force / torque amplitude",0,1,.05,.5,3},
-  {MathParameter::DriveFrequency,MathObjectKind::Oscillator,"drive_frequency","Drive angular frequency",.5,3,.05,1,3},
-  {MathParameter::Modulus,MathObjectKind::Modular,"modulus","First modulus n",2,12,1,8},
-  {MathParameter::ModValue,MathObjectKind::Modular,"integer","Integer / first residue",-48,48,1,-3},
-  {MathParameter::ModStep,MathObjectKind::Modular,"step","Step / multiplier k",0,12,1,2,1},
-  {MathParameter::InverseGuess,MathObjectKind::Modular,"inverse","Your inverse",0,11,1,0,2},
-  {MathParameter::SecondModulus,MathObjectKind::Modular,"modulus2","Second modulus m",2,12,1,5,3},
-  {MathParameter::SecondResidue,MathObjectKind::Modular,"residue2","Second residue",-12,12,1,2,3},
-  {MathParameter::CrtGuess,MathObjectKind::Modular,"crt","Your simultaneous solution",0,143,1,0,3},
-  {MathParameter::GaussianReal,MathObjectKind::Gaussian,"real","z: real part",-3,3,1,1},
-  {MathParameter::GaussianImag,MathObjectKind::Gaussian,"imag","z: imaginary part",-3,3,1,1},
-  {MathParameter::GaussianOtherReal,MathObjectKind::Gaussian,"other_real","w: real part",-2,2,1,1},
-  {MathParameter::GaussianOtherImag,MathObjectKind::Gaussian,"other_imag","w: imaginary part",-2,2,1,1},
-  {MathParameter::GaussianOperation,MathObjectKind::Gaussian,"operation","Operation",0,1,1,1,0,false,"Add\0Multiply\0"},
-  {MathParameter::GaussianHeight,MathObjectKind::Gaussian,"norm_height","Height view",0,1,1,0,0,false,"Complex plane\0Height = 0.12 * squared magnitude\0"},
-  {MathParameter::GaussianQuotient,MathObjectKind::Gaussian,"quotient","Quotient ring",0,2,1,1,3,false,"Z[i] / (2): four classes\0Z[i] / (2+i): five classes\0Z[i] / (3): nine classes\0"},
-  {MathParameter::FieldRule,MathObjectKind::VectorField,"field","Vector field",0,2,1,1,0,false,"Constant: (1, 0.5, -0.25)\0Radial: (x,y,z)\0Vortex: (-y,x,0)\0"},
-  {MathParameter::FieldX,MathObjectKind::VectorField,"field_x","Probe x",-1.5,1.5,.05,.75},
-  {MathParameter::FieldY,MathObjectKind::VectorField,"field_y","Probe y",-1.5,1.5,.05,.5},
-  {MathParameter::FieldZ,MathObjectKind::VectorField,"field_z","Probe z",-1.5,1.5,.05,.25},
-  {MathParameter::FieldYaw,MathObjectKind::VectorField,"direction_yaw","Direction yaw (degrees)",0,360,1,45},
-  {MathParameter::FieldPitch,MathObjectKind::VectorField,"direction_pitch","Direction pitch (degrees)",-90,90,1,0},
-  {MathParameter::FieldPath,MathObjectKind::VectorField,"path","Probe path",0,4,1,0,1,false,"Straight segment\0Upper semicircle\0Lower semicircle\0Nonplanar arch\0Closed circle\0"},
-  {MathParameter::FieldTime,MathObjectKind::VectorField,"path_time","Path parameter t",0,1,.005,.3,1},
-  {MathParameter::FluxShape,MathObjectKind::Flux,"flux_shape","Surface",0,2,1,0,0,false,"Sphere\0Box\0Open disk\0"},
-  {MathParameter::FluxField,MathObjectKind::Flux,"flux_field","Field",0,3,1,1,0,false,"Constant: (0,0,1)\0Radial: (x,y,z)\0Vortex: (-y,x,0)\0Twist: (-y,x,z)\0"},
-  {MathParameter::FluxRadius,MathObjectKind::Flux,"flux_radius","Radius / box half-width",0.5,1.5,0.05,1,0},
-  {MathParameter::FluxTilt,MathObjectKind::Flux,"flux_tilt","Tilt about x (degrees)",0,180,1,0,0},
-  {MathParameter::FluxOrientation,MathObjectKind::Flux,"flux_orientation","Orientation",0,1,1,0,0,false,"Outward / positive normal\0Inward / reversed normal\0"},
-  {MathParameter::FluxProbe,MathObjectKind::Flux,"flux_probe","Surface probe",0,1,0.005,0.5,0},
-  {MathParameter::FluxResolution,MathObjectKind::Flux,"flux_resolution","Integration resolution",2,12,1,4,1},
-  {MathParameter::FluxTime,MathObjectKind::Flux,"boundary_time","Boundary parameter t",0,1,0.005,0.2,3},
-  {MathParameter::TensorU0,MathObjectKind::Tensor,"tensor_u0","u: 1 component",-2,2,0.1,1,0},
-  {MathParameter::TensorU1,MathObjectKind::Tensor,"tensor_u1","u: 2 component",-2,2,0.1,1,0},
-  {MathParameter::TensorU2,MathObjectKind::Tensor,"tensor_u2","u: 3 component",-2,2,0.1,0,0},
-  {MathParameter::TensorV0,MathObjectKind::Tensor,"tensor_v0","v: 1 component",-2,2,0.1,1,0},
-  {MathParameter::TensorV1,MathObjectKind::Tensor,"tensor_v1","v: 2 component",-2,2,0.1,-1,0},
-  {MathParameter::TensorV2,MathObjectKind::Tensor,"tensor_v2","v: 3 component",-2,2,0.1,1,0},
-  {MathParameter::TensorW0,MathObjectKind::Tensor,"tensor_w0","w: 1 component",-2,2,0.1,1,1},
-  {MathParameter::TensorW1,MathObjectKind::Tensor,"tensor_w1","w: 2 component",-2,2,0.1,0.5,1},
-  {MathParameter::TensorW2,MathObjectKind::Tensor,"tensor_w2","w: 3 component",-2,2,0.1,-1,1},
-  {MathParameter::TensorI,MathObjectKind::Tensor,"tensor_i","Inspect index i",0,2,1,0,0,false,"Index 1\0Index 2\0Index 3\0"},
-  {MathParameter::TensorJ,MathObjectKind::Tensor,"tensor_j","Inspect index j",0,2,1,0,0,false,"Index 1\0Index 2\0Index 3\0"},
-  {MathParameter::TensorK,MathObjectKind::Tensor,"tensor_k","Inspect index k",0,2,1,0,1,false,"Index 1\0Index 2\0Index 3\0"},
-  {MathParameter::TensorGap,MathObjectKind::Tensor,"tensor_gap","Separate tensor slices",0,0.6,0.05,0.25,0},
-  {MathParameter::TensorBasis,MathObjectKind::Tensor,"basis_angle","Rotate coordinate basis (degrees)",-180,180,1,45,3},
-  {MathParameter::ProbabilityRule,MathObjectKind::Probability,"chain","Transition rule",0,3,1,0,0,false,"Lazy directed cycle\0Weighted mixing\0Periodic cycle\0Absorbing chain\0"},
-  {MathParameter::ProbabilityStay,MathObjectKind::Probability,"stay","Self-loop / retention probability",0,1,0.05,0.5,0},
-  {MathParameter::ProbabilityStart,MathObjectKind::Probability,"start_state","Initial state",0,2,1,0,0,false,"A\0B\0C\0"},
-  {MathParameter::ProbabilityMix,MathObjectKind::Probability,"initial_mix","Mix initial state with uniform",0,1,0.05,0,2},
-  {MathParameter::ProbabilitySeed,MathObjectKind::Probability,"walk_seed","Reproducible walk seed",0,65535,1,7,0},
-  {MathParameter::ProbabilityRow,MathObjectKind::Probability,"transition_row","Inspect outgoing row",0,2,1,0,1,false,"A\0B\0C\0"},
-  {MathParameter::ProbabilitySteps,MathObjectKind::Probability,"chain_steps","Number of transitions",0,64,1,0,2},
-  {MathParameter::BinomialTrials,MathObjectKind::Binomial,"trials","Number of independent trials n",1,12,1,6,0},
-  {MathParameter::BinomialChance,MathObjectKind::Binomial,"success_chance","Success probability p",0,1,0.05,0.5,0},
-  {MathParameter::BinomialCut,MathObjectKind::Binomial,"count_cut","Count threshold k",0,12,1,3,1},
-  {MathParameter::BinomialSeed,MathObjectKind::Binomial,"trial_seed","Reproducible trial seed",0,65535,1,11,0},
-  {MathParameter::BayesPrior,MathObjectKind::Bayes,"prior_h","Prior P(H)",0,1,0.05,0.3,0},
-  {MathParameter::BayesHit,MathObjectKind::Bayes,"e_given_h","P(E | H)",0,1,0.05,0.8,0},
-  {MathParameter::BayesFalse,MathObjectKind::Bayes,"e_given_other","P(E | not H)",0,1,0.05,0.2,0},
-  {MathParameter::BayesEvent,MathObjectKind::Bayes,"evidence","Condition on",0,1,1,0,1,false,"Event E\0Complement of E\0"},
-  {MathParameter::BayesPositive,MathObjectKind::Bayes,"positive_evidence","Observed E outcomes",0,8,1,3,3},
-  {MathParameter::BayesNegative,MathObjectKind::Bayes,"negative_evidence","Observed not-E outcomes",0,8,1,0,3},
-  {MathParameter::CloudX,MathObjectKind::Covariance,"cloud_x","x stretch",0,2,0.1,1.4,0},
-  {MathParameter::CloudY,MathObjectKind::Covariance,"cloud_y","y stretch",0,2,0.1,0.8,0},
-  {MathParameter::CloudZ,MathObjectKind::Covariance,"cloud_z","z stretch",0,2,0.1,0.4,0},
-  {MathParameter::CloudYaw,MathObjectKind::Covariance,"cloud_yaw","Rotate about z (degrees)",-180,180,1,30,0},
-  {MathParameter::CloudPitch,MathObjectKind::Covariance,"cloud_pitch","Rotate about y (degrees)",-90,90,1,20,0},
-  {MathParameter::CloudShear,MathObjectKind::Covariance,"cloud_shear","x from y shear",-1,1,0.1,0.5,1},
-  {MathParameter::CloudMeanX,MathObjectKind::Covariance,"mean_x","Mean x",-1,1,0.1,0,0},
-  {MathParameter::CloudMeanY,MathObjectKind::Covariance,"mean_y","Mean y",-1,1,0.1,0,0},
-  {MathParameter::CloudMeanZ,MathObjectKind::Covariance,"mean_z","Mean z",-1,1,0.1,0,0},
-  {MathParameter::CloudComponent,MathObjectKind::Covariance,"principal_axis","Project onto principal axis",0,2,1,0,2,false,"Largest variance\0Middle variance\0Smallest variance\0"},
-  {MathParameter::CloudWhiten,MathObjectKind::Covariance,"whiten","Move towards whitened coordinates",0,1,0.05,1,3},
-  {MathParameter::SphereTheta,MathObjectKind::Spherical,"polar","Polar angle theta (degrees)",0,180,1,60,0},
-  {MathParameter::SpherePhi,MathObjectKind::Spherical,"azimuth","Azimuth phi (degrees)",0,360,1,45,0},
-  {MathParameter::SphereMode,MathObjectKind::Spherical,"sphere_mode","First real harmonic",0,24,1,6,1,false,"l=0, m=+0\0l=1, m=-1\0l=1, m=+0\0l=1, m=+1\0l=2, m=-2\0l=2, m=-1\0l=2, m=+0\0l=2, m=+1\0l=2, m=+2\0l=3, m=-3\0l=3, m=-2\0l=3, m=-1\0l=3, m=+0\0l=3, m=+1\0l=3, m=+2\0l=3, m=+3\0l=4, m=-4\0l=4, m=-3\0l=4, m=-2\0l=4, m=-1\0l=4, m=+0\0l=4, m=+1\0l=4, m=+2\0l=4, m=+3\0l=4, m=+4\0"},
-  {MathParameter::SphereSecond,MathObjectKind::Spherical,"sphere_second","Second real harmonic",0,24,1,3,2,false,"l=0, m=+0\0l=1, m=-1\0l=1, m=+0\0l=1, m=+1\0l=2, m=-2\0l=2, m=-1\0l=2, m=+0\0l=2, m=+1\0l=2, m=+2\0l=3, m=-3\0l=3, m=-2\0l=3, m=-1\0l=3, m=+0\0l=3, m=+1\0l=3, m=+2\0l=3, m=+3\0l=4, m=-4\0l=4, m=-3\0l=4, m=-2\0l=4, m=-1\0l=4, m=+0\0l=4, m=+1\0l=4, m=+2\0l=4, m=+3\0l=4, m=+4\0"},
-  {MathParameter::SphereMix,MathObjectKind::Spherical,"sphere_mix","Second coefficient",-1,1,0.05,0.6,2},
-  {MathParameter::SphereHeat,MathObjectKind::Spherical,"heat_time","Heat diffusion time",0,1,0.005,0.25,3},
-  {MathParameter::QuadLambdaX,MathObjectKind::Quadratic,"lambda_x","Principal value 1",-2,2,0.25,1.5,0},
-  {MathParameter::QuadLambdaY,MathObjectKind::Quadratic,"lambda_y","Principal value 2",-2,2,0.25,1,0},
-  {MathParameter::QuadLambdaZ,MathObjectKind::Quadratic,"lambda_z","Principal value 3",-2,2,0.25,0.5,0},
-  {MathParameter::QuadYaw,MathObjectKind::Quadratic,"form_yaw","Basis rotation about z (degrees)",-180,180,1,30,1},
-  {MathParameter::QuadPitch,MathObjectKind::Quadratic,"form_pitch","Basis rotation about y (degrees)",-90,90,1,20,1},
-  {MathParameter::QuadX,MathObjectKind::Quadratic,"form_x","Probe x",-2,2,0.05,1,0},
-  {MathParameter::QuadY,MathObjectKind::Quadratic,"form_y","Probe y",-2,2,0.05,0.5,0},
-  {MathParameter::QuadZ,MathObjectKind::Quadratic,"form_z","Probe z / height-map section",-1.5,1.5,0.05,0,0},
-  {MathParameter::RootN,MathObjectKind::Roots,"root_n","Number of roots n",3,12,1,7,0},
-  {MathParameter::RootIndex,MathObjectKind::Roots,"root_index","Probe exponent (reduced modulo n)",0,11,1,1,0},
-  {MathParameter::RootMultiplier,MathObjectKind::Roots,"root_multiplier","Power-map exponent / subgroup generator",0,12,1,2,1},
-  {MathParameter::RootPower,MathObjectKind::Roots,"root_power","Generator power",0,12,1,1,2},
-  {MathParameter::RootAutomorphism,MathObjectKind::Roots,"root_auto","Candidate automorphism exponent a",1,11,1,2,3},
-  {MathParameter::PsdA,MathObjectKind::Psd,"psd_a","Matrix entry a",-2,2,.05,1},
-  {MathParameter::PsdB,MathObjectKind::Psd,"psd_b","Symmetric off-diagonal b",-2,2,.05,.5},
-  {MathParameter::PsdC,MathObjectKind::Psd,"psd_c","Matrix entry c",-2,2,.05,1},
-  {MathParameter::PsdProbeAngle,MathObjectKind::Psd,"psd_probe","Quadratic probe angle (degrees)",0,180,1,0,1},
-  {MathParameter::PsdMix,MathObjectKind::Psd,"psd_mix","Mix from A to B",0,1,.05,.5,2},
-  {MathParameter::PsdOtherAngle,MathObjectKind::Psd,"psd_other_angle","Rank-one B direction (degrees)",0,180,1,0,2},
-  {MathParameter::PsdRayScale,MathObjectKind::Psd,"psd_ray_scale","Scale the mixture along its ray",0,1.5,.05,1,2},
-  {MathParameter::PsdSlice,MathObjectKind::Psd,"psd_slice","Trace / 2: slice height t",0,2,.05,1,3},
-  {MathParameter::PsdCostAngle,MathObjectKind::Psd,"psd_cost_angle","Objective direction (degrees)",-180,180,1,30,3},
-  {MathParameter::PsdObjective,MathObjectKind::Psd,"psd_objective","Objective plane: fraction of best value",-1.25,1.25,.05,0,3},
-  {MathParameter::NormP,MathObjectKind::Norm,"norm_p","Exponent p",1,32,.25,2},
-  {MathParameter::NormInfinity,MathObjectKind::Norm,"norm_infinity","Norm family",0,1,1,0,0,false,"Finite p-norm\0Exact infinity norm\0"},
-  {MathParameter::NormX,MathObjectKind::Norm,"norm_x","Vector x: first component",-1.5,1.5,.05,.8},
-  {MathParameter::NormY,MathObjectKind::Norm,"norm_y","Vector x: second component",-1.5,1.5,.05,.6},
-  {MathParameter::NormZ,MathObjectKind::Norm,"norm_z","Vector x: third component",-1.5,1.5,.05,.4},
-  {MathParameter::NormOtherX,MathObjectKind::Norm,"norm_other_x","Vector y: first component",-1.5,1.5,.05,-.3,1},
-  {MathParameter::NormOtherY,MathObjectKind::Norm,"norm_other_y","Vector y: second component",-1.5,1.5,.05,.6,1},
-  {MathParameter::NormOtherZ,MathObjectKind::Norm,"norm_other_z","Vector y: third component",-1.5,1.5,.05,.2,1},
-  {MathParameter::NormSupport,MathObjectKind::Norm,"norm_support","Plane: fraction of support value",0,1.4,.05,.7,3},
-  {MathParameter::NormWire,MathObjectKind::Norm,"norm_wire","Boundary style",0,1,1,0,0,false,"Solid boundary\0Open cross-sections\0"},
-  {MathParameter::CurveControl,MathObjectKind::Curve,"curve_control","Selected control point",0,3,1,1,0,false,"P0: start\0P1: first handle\0P2: second handle\0P3: end\0"},
-  {MathParameter::CurveP0X,MathObjectKind::Curve,"curve_p0_x","P0: x coordinate",-2,2,.05,-1.5},
-  {MathParameter::CurveP0Y,MathObjectKind::Curve,"curve_p0_y","P0: y coordinate",-2,2,.05,0},
-  {MathParameter::CurveP0Z,MathObjectKind::Curve,"curve_p0_z","P0: z coordinate",-2,2,.05,0},
-  {MathParameter::CurveP1X,MathObjectKind::Curve,"curve_p1_x","P1: x coordinate",-2,2,.05,-1},
-  {MathParameter::CurveP1Y,MathObjectKind::Curve,"curve_p1_y","P1: y coordinate",-2,2,.05,1.3},
-  {MathParameter::CurveP1Z,MathObjectKind::Curve,"curve_p1_z","P1: z coordinate",-2,2,.05,0},
-  {MathParameter::CurveP2X,MathObjectKind::Curve,"curve_p2_x","P2: x coordinate",-2,2,.05,1},
-  {MathParameter::CurveP2Y,MathObjectKind::Curve,"curve_p2_y","P2: y coordinate",-2,2,.05,1.3},
-  {MathParameter::CurveP2Z,MathObjectKind::Curve,"curve_p2_z","P2: z coordinate",-2,2,.05,0},
-  {MathParameter::CurveP3X,MathObjectKind::Curve,"curve_p3_x","P3: x coordinate",-2,2,.05,1.5},
-  {MathParameter::CurveP3Y,MathObjectKind::Curve,"curve_p3_y","P3: y coordinate",-2,2,.05,0},
-  {MathParameter::CurveP3Z,MathObjectKind::Curve,"curve_p3_z","P3: z coordinate",-2,2,.05,0},
-  {MathParameter::CurveProgress,MathObjectKind::Curve,"curve_progress","Position along the curve",0,1,.005,.35},
-  {MathParameter::CurveTravel,MathObjectKind::Curve,"curve_travel","Travel rule",0,1,1,0,0,false,"Equal parameter steps\0Equal distance steps\0"},
-  {MathParameter::CurveProfile,MathObjectKind::Curve,"curve_profile","Cross-section",0,2,1,0,0,false,"Circle\0Square\0Norm profile\0"},
-  {MathParameter::CurveRadius,MathObjectKind::Curve,"curve_radius","Starting radius / half width",.05,.45,.01,.2},
-  {MathParameter::CurveAspect,MathObjectKind::Curve,"curve_aspect","Cross-section height / width",.05,1,.05,1},
-  {MathParameter::CurveEndScale,MathObjectKind::Curve,"curve_end_scale","End radius / start radius",0,1,.05,1},
-  {MathParameter::CurveTwist,MathObjectKind::Curve,"curve_twist","Total twist (degrees)",-360,360,5,0},
-  {MathParameter::CurveNormP,MathObjectKind::Curve,"curve_norm_p","Norm profile exponent p",1,16,.25,2},
-  {MathParameter::CurveGuides,MathObjectKind::Curve,"curve_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::LatheControl,MathObjectKind::Lathe,"lathe_control","Selected profile point",0,6,1,3,0,false,"P0: base\0P1\0P2\0P3\0P4\0P5\0P6: top\0"},
-  {MathParameter::LatheR0,MathObjectKind::Lathe,"lathe_r0","P0: radius",0,1.5,.01,0.65},
-  {MathParameter::LatheR1,MathObjectKind::Lathe,"lathe_r1","P1: radius",0,1.5,.01,0.9},
-  {MathParameter::LatheR2,MathObjectKind::Lathe,"lathe_r2","P2: radius",0,1.5,.01,1.15},
-  {MathParameter::LatheR3,MathObjectKind::Lathe,"lathe_r3","P3: radius",0,1.5,.01,1},
-  {MathParameter::LatheR4,MathObjectKind::Lathe,"lathe_r4","P4: radius",0,1.5,.01,0.55},
-  {MathParameter::LatheR5,MathObjectKind::Lathe,"lathe_r5","P5: radius",0,1.5,.01,0.48},
-  {MathParameter::LatheR6,MathObjectKind::Lathe,"lathe_r6","P6: radius",0,1.5,.01,0.62},
-  {MathParameter::LatheH1,MathObjectKind::Lathe,"lathe_h1","P1: height fraction",.04,.96,.01,0.12},
-  {MathParameter::LatheH2,MathObjectKind::Lathe,"lathe_h2","P2: height fraction",.04,.96,.01,0.35},
-  {MathParameter::LatheH3,MathObjectKind::Lathe,"lathe_h3","P3: height fraction",.04,.96,.01,0.6},
-  {MathParameter::LatheH4,MathObjectKind::Lathe,"lathe_h4","P4: height fraction",.04,.96,.01,0.8},
-  {MathParameter::LatheH5,MathObjectKind::Lathe,"lathe_h5","P5: height fraction",.04,.96,.01,0.92},
-  {MathParameter::LatheHeight,MathObjectKind::Lathe,"lathe_height","Total height",1,4,.05,3},
-  {MathParameter::LatheHollow,MathObjectKind::Lathe,"lathe_hollow","Interior",0,1,1,1,0,false,"Solid\0Hollow\0"},
-  {MathParameter::LatheWall,MathObjectKind::Lathe,"lathe_wall","Radial wall thickness",.03,.35,.01,.12},
-  {MathParameter::LatheFloor,MathObjectKind::Lathe,"lathe_floor","Cavity floor: height fraction",.04,.8,.01,.08},
-  {MathParameter::LatheTurn,MathObjectKind::Lathe,"lathe_turn","Revolution angle (degrees)",0,360,1,360},
-  {MathParameter::LatheCut,MathObjectKind::Lathe,"lathe_cut","Cutaway (% hidden)",0,75,5,25},
-  {MathParameter::LatheProbe,MathObjectKind::Lathe,"lathe_probe","Probe / highlighted element",0,1,.005,.5},
-  {MathParameter::LatheSlices,MathObjectKind::Lathe,"lathe_slices","Integration subdivisions",4,32,1,8},
-  {MathParameter::LatheMethod,MathObjectKind::Lathe,"lathe_method","Volume approximation",0,1,1,0,0,false,"Disks / washers\0Cylindrical shells\0"},
-  {MathParameter::LatheGuides,MathObjectKind::Lathe,"lathe_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::BooleanShapeA,MathObjectKind::Boolean,"boolean_shape_a","Shape A",0,3,1,0,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0"},
-  {MathParameter::BooleanShapeB,MathObjectKind::Boolean,"boolean_shape_b","Shape B / cutter",0,3,1,2,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0"},
-  {MathParameter::BooleanSizeA,MathObjectKind::Boolean,"boolean_size_a","Size A",0.2,1.5,0.05,1},
-  {MathParameter::BooleanSizeB,MathObjectKind::Boolean,"boolean_size_b","Size B",0.2,1.5,0.05,0.55},
-  {MathParameter::BooleanX,MathObjectKind::Boolean,"boolean_x","B: x position",-1.5,1.5,0.05,0},
-  {MathParameter::BooleanY,MathObjectKind::Boolean,"boolean_y","B: y position",-1.5,1.5,0.05,0},
-  {MathParameter::BooleanZ,MathObjectKind::Boolean,"boolean_z","B: z position",-1.5,1.5,0.05,0},
-  {MathParameter::BooleanYaw,MathObjectKind::Boolean,"boolean_yaw","B: yaw (degrees)",-180,180,5,0},
-  {MathParameter::BooleanPitch,MathObjectKind::Boolean,"boolean_pitch","B: pitch (degrees)",-180,180,5,0},
-  {MathParameter::BooleanOperation,MathObjectKind::Boolean,"boolean_operation","Combine A and B",0,3,1,2,0,false,"Union\0Intersection\0A minus B\0Smooth union\0"},
-  {MathParameter::BooleanBlend,MathObjectKind::Boolean,"boolean_blend","Blend width",0,0.6,0.02,0.4},
-  {MathParameter::BooleanProbeX,MathObjectKind::Boolean,"boolean_probe_x","Probe: x",-3,3,0.01,0},
-  {MathParameter::BooleanProbeY,MathObjectKind::Boolean,"boolean_probe_y","Probe: y",-3,3,0.01,0},
-  {MathParameter::BooleanProbeZ,MathObjectKind::Boolean,"boolean_probe_z","Probe: z / section plane",-3,3,0.01,0},
-  {MathParameter::BooleanResolution,MathObjectKind::Boolean,"boolean_resolution","Requested cells per axis",12,28,4,20},
-  {MathParameter::BooleanGuides,MathObjectKind::Boolean,"boolean_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::BooleanSection,MathObjectKind::Boolean,"boolean_section","Solid view",0,1,1,0,0,false,"Full solid\0Section at probe z\0"},
-  {MathParameter::BooleanFit,MathObjectKind::Boolean,"boolean_fit","Matching ball preview",0,1,1,0,0,false,"Hidden\0Show beside socket\0"},
-  {MathParameter::BooleanClearance,MathObjectKind::Boolean,"boolean_clearance","Ball radial clearance",0.02,0.15,0.01,0.08},
-  {MathParameter::PatchControl,MathObjectKind::Patch,"patch_control","Control point",0,15,1,5,0,false,"P00\0P01\0P02\0P03\0P10\0P11\0P12\0P13\0P20\0P21\0P22\0P23\0P30\0P31\0P32\0P33\0"},
-  {MathParameter::PatchP00X,MathObjectKind::Patch,"patch_p00x","P00: x",-2,2,0.01,-1.5},
-  {MathParameter::PatchP00Y,MathObjectKind::Patch,"patch_p00y","P00: y",-2,2,0.01,0},
-  {MathParameter::PatchP00Z,MathObjectKind::Patch,"patch_p00z","P00: z",-2,2,0.01,1.5},
-  {MathParameter::PatchP01X,MathObjectKind::Patch,"patch_p01x","P01: x",-2,2,0.01,-1.5},
-  {MathParameter::PatchP01Y,MathObjectKind::Patch,"patch_p01y","P01: y",-2,2,0.01,0.45},
-  {MathParameter::PatchP01Z,MathObjectKind::Patch,"patch_p01z","P01: z",-2,2,0.01,0.5},
-  {MathParameter::PatchP02X,MathObjectKind::Patch,"patch_p02x","P02: x",-2,2,0.01,-1.5},
-  {MathParameter::PatchP02Y,MathObjectKind::Patch,"patch_p02y","P02: y",-2,2,0.01,0.45},
-  {MathParameter::PatchP02Z,MathObjectKind::Patch,"patch_p02z","P02: z",-2,2,0.01,-0.5},
-  {MathParameter::PatchP03X,MathObjectKind::Patch,"patch_p03x","P03: x",-2,2,0.01,-1.5},
-  {MathParameter::PatchP03Y,MathObjectKind::Patch,"patch_p03y","P03: y",-2,2,0.01,0},
-  {MathParameter::PatchP03Z,MathObjectKind::Patch,"patch_p03z","P03: z",-2,2,0.01,-1.5},
-  {MathParameter::PatchP10X,MathObjectKind::Patch,"patch_p10x","P10: x",-2,2,0.01,-0.5},
-  {MathParameter::PatchP10Y,MathObjectKind::Patch,"patch_p10y","P10: y",-2,2,0.01,0.65},
-  {MathParameter::PatchP10Z,MathObjectKind::Patch,"patch_p10z","P10: z",-2,2,0.01,1.5},
-  {MathParameter::PatchP11X,MathObjectKind::Patch,"patch_p11x","P11: x",-2,2,0.01,-0.5},
-  {MathParameter::PatchP11Y,MathObjectKind::Patch,"patch_p11y","P11: y",-2,2,0.01,1.1},
-  {MathParameter::PatchP11Z,MathObjectKind::Patch,"patch_p11z","P11: z",-2,2,0.01,0.5},
-  {MathParameter::PatchP12X,MathObjectKind::Patch,"patch_p12x","P12: x",-2,2,0.01,-0.5},
-  {MathParameter::PatchP12Y,MathObjectKind::Patch,"patch_p12y","P12: y",-2,2,0.01,1.1},
-  {MathParameter::PatchP12Z,MathObjectKind::Patch,"patch_p12z","P12: z",-2,2,0.01,-0.5},
-  {MathParameter::PatchP13X,MathObjectKind::Patch,"patch_p13x","P13: x",-2,2,0.01,-0.5},
-  {MathParameter::PatchP13Y,MathObjectKind::Patch,"patch_p13y","P13: y",-2,2,0.01,0.65},
-  {MathParameter::PatchP13Z,MathObjectKind::Patch,"patch_p13z","P13: z",-2,2,0.01,-1.5},
-  {MathParameter::PatchP20X,MathObjectKind::Patch,"patch_p20x","P20: x",-2,2,0.01,0.5},
-  {MathParameter::PatchP20Y,MathObjectKind::Patch,"patch_p20y","P20: y",-2,2,0.01,0.65},
-  {MathParameter::PatchP20Z,MathObjectKind::Patch,"patch_p20z","P20: z",-2,2,0.01,1.5},
-  {MathParameter::PatchP21X,MathObjectKind::Patch,"patch_p21x","P21: x",-2,2,0.01,0.5},
-  {MathParameter::PatchP21Y,MathObjectKind::Patch,"patch_p21y","P21: y",-2,2,0.01,1.1},
-  {MathParameter::PatchP21Z,MathObjectKind::Patch,"patch_p21z","P21: z",-2,2,0.01,0.5},
-  {MathParameter::PatchP22X,MathObjectKind::Patch,"patch_p22x","P22: x",-2,2,0.01,0.5},
-  {MathParameter::PatchP22Y,MathObjectKind::Patch,"patch_p22y","P22: y",-2,2,0.01,1.1},
-  {MathParameter::PatchP22Z,MathObjectKind::Patch,"patch_p22z","P22: z",-2,2,0.01,-0.5},
-  {MathParameter::PatchP23X,MathObjectKind::Patch,"patch_p23x","P23: x",-2,2,0.01,0.5},
-  {MathParameter::PatchP23Y,MathObjectKind::Patch,"patch_p23y","P23: y",-2,2,0.01,0.65},
-  {MathParameter::PatchP23Z,MathObjectKind::Patch,"patch_p23z","P23: z",-2,2,0.01,-1.5},
-  {MathParameter::PatchP30X,MathObjectKind::Patch,"patch_p30x","P30: x",-2,2,0.01,1.5},
-  {MathParameter::PatchP30Y,MathObjectKind::Patch,"patch_p30y","P30: y",-2,2,0.01,0},
-  {MathParameter::PatchP30Z,MathObjectKind::Patch,"patch_p30z","P30: z",-2,2,0.01,1.5},
-  {MathParameter::PatchP31X,MathObjectKind::Patch,"patch_p31x","P31: x",-2,2,0.01,1.5},
-  {MathParameter::PatchP31Y,MathObjectKind::Patch,"patch_p31y","P31: y",-2,2,0.01,0.45},
-  {MathParameter::PatchP31Z,MathObjectKind::Patch,"patch_p31z","P31: z",-2,2,0.01,0.5},
-  {MathParameter::PatchP32X,MathObjectKind::Patch,"patch_p32x","P32: x",-2,2,0.01,1.5},
-  {MathParameter::PatchP32Y,MathObjectKind::Patch,"patch_p32y","P32: y",-2,2,0.01,0.45},
-  {MathParameter::PatchP32Z,MathObjectKind::Patch,"patch_p32z","P32: z",-2,2,0.01,-0.5},
-  {MathParameter::PatchP33X,MathObjectKind::Patch,"patch_p33x","P33: x",-2,2,0.01,1.5},
-  {MathParameter::PatchP33Y,MathObjectKind::Patch,"patch_p33y","P33: y",-2,2,0.01,0},
-  {MathParameter::PatchP33Z,MathObjectKind::Patch,"patch_p33z","P33: z",-2,2,0.01,-1.5},
-  {MathParameter::PatchU,MathObjectKind::Patch,"patch_u","Probe u",0,1,0.01,0.5},
-  {MathParameter::PatchV,MathObjectKind::Patch,"patch_v","Probe v",0,1,0.01,0.5},
-  {MathParameter::PatchResolution,MathObjectKind::Patch,"patch_resolution","Subdivisions / axis",4,32,4,20},
-  {MathParameter::PatchGuides,MathObjectKind::Patch,"patch_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"}
+  {MathParameter::X,MathObjectKind::Algebra,"x","Variable x",.5,2.5,.1,1.6,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Gap,MathObjectKind::Algebra,"gap","Separate pieces",0,.6,.02,.24,0,false,{},{.group=MathControlGroup::Display}},
+  {MathParameter::Angle,MathObjectKind::Trig,"angle","Angle (degrees)",0,360,1,45,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::Slices,MathObjectKind::Calculus,"slices","Number of slices",3,64,1,8,0,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::SliceGap,MathObjectKind::Calculus,"slice_gap","Separate slices",0,.12,.01,0,0,false,{},{.group=MathControlGroup::Display}},
+  {MathParameter::Sample,MathObjectKind::Calculus,"sample","Sampling",0,2,1,1,0,false,"Left sample\0Midpoint sample\0Right sample\0",{.group=MathControlGroup::Sampling}},
+  {MathParameter::Shear,MathObjectKind::Linear,"shear","A[0,1] / shear k",-1.2,1.2,.1,.6,0,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Scale,MathObjectKind::Linear,"scale","A[1,1] / vertical scale",-2,2,.1,1,0,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Depth,MathObjectKind::Discrete,"depth","Layer spacing",.3,1.5,.1,1,0,false,{},{.group=MathControlGroup::Display}},
+  {MathParameter::Shortcut,MathObjectKind::Discrete,"shortcut","Add A-H shortcut",0,1,1,0,0,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::FunctionRule,MathObjectKind::Function,"function","Function",0,3,1,0,0,false,"x^2\0x^3 - 3x\0sin(x)\0exp(x) - 1\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::FunctionX,MathObjectKind::Function,"at","Input x",-2,2,.005,.75,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::DeltaX,MathObjectKind::Function,"h","Secant step h",-1,1,.005,.5,1,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::IntegralStart,MathObjectKind::Function,"from","Integral start a",-2,2,.005,0,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::TaylorCenter,MathObjectKind::Function,"center","Taylor centre c",-1,1,.05,0,3,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::TaylorDegree,MathObjectKind::Function,"degree","Taylor degree",0,5,1,1,3,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::A00,MathObjectKind::Linear,"a00","A[0,0]",-2,2,.1,1,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A02,MathObjectKind::Linear,"a02","A[0,2]",-2,2,.1,0,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A10,MathObjectKind::Linear,"a10","A[1,0]",-2,2,.1,0,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A12,MathObjectKind::Linear,"a12","A[1,2]",-2,2,.1,0,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A20,MathObjectKind::Linear,"a20","A[2,0]",-2,2,.1,0,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A21,MathObjectKind::Linear,"a21","A[2,1]",-2,2,.1,0,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::A22,MathObjectKind::Linear,"a22","A[2,2]",-2,2,.1,1,1,true,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::VectorX,MathObjectKind::Linear,"vx","Vector x",-2,2,.05,1,1,false,{},{.group=MathControlGroup::Probe, .rowLabel="Vector", .rowCount=3}},
+  {MathParameter::VectorY,MathObjectKind::Linear,"vy","Vector y",-2,2,.05,1,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::VectorZ,MathObjectKind::Linear,"vz","Vector z",-2,2,.05,1,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::ComposeAngle,MathObjectKind::Linear,"rotate","B: rotation about z (degrees)",-180,180,1,30,1,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::SvdStage,MathObjectKind::Linear,"svd_stage","SVD stage",0,3,1,3,3,false,"Unit sphere\0Apply V transpose\0Then apply Sigma\0Then apply U\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::SurfaceRule,MathObjectKind::Surface,"surface","Surface",0,2,1,0,0,false,"Bowl: (u^2 + v^2)/2\0Saddle: (u^2 - v^2)/2\0Wave: sin(u) cos(v)\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::SurfaceU,MathObjectKind::Surface,"u","Input u",-2,2,.025,.75,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Surface point", .rowCount=2, .components={"U","V",""}}},
+  {MathParameter::SurfaceV,MathObjectKind::Surface,"v","Input v",-2,2,.025,.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::DirectionAngle,MathObjectKind::Surface,"direction","Direction (degrees)",0,360,1,45,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::DescentRate,MathObjectKind::Surface,"rate","Descent step size",.05,1,.05,.25,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::Constraint,MathObjectKind::Surface,"constraint","Constrain to unit circle",0,1,1,0,3,false,"Free point\0Unit circle\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::CircleAngle,MathObjectKind::Surface,"circle_angle","Position on circle (degrees)",0,360,1,45,3,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::SymmetryFirst,MathObjectKind::Symmetry,"first_turn","First turn",0,5,1,0,1,false,"X +90\0Y +90\0Z +90\0X -90\0Y -90\0Z -90\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::SymmetrySecond,MathObjectKind::Symmetry,"second_turn","Second turn",0,5,1,1,1,false,"X +90\0Y +90\0Z +90\0X -90\0Y -90\0Z -90\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::SymmetryGenerator,MathObjectKind::Symmetry,"generator","Cyclic generator",0,2,1,0,2,false,"X quarter turn\0X half turn\0Body diagonal: (x,y,z) to (z,x,y)\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::SymmetryPower,MathObjectKind::Symmetry,"power","Generator power",0,12,1,1,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::SymmetryElement,MathObjectKind::Symmetry,"rotation","Cube rotation",0,23,1,0,3,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::SymmetryVertex,MathObjectKind::Symmetry,"probe_vertex","Track labelled vertex",0,7,1,0,3,false,"A\0B\0C\0D\0E\0F\0G\0H\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::HarmonicTime,MathObjectKind::Harmonics,"phase_time","Time t (radians at unit frequency)",0,2*pi,.005,.75,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::Amplitude1,MathObjectKind::Harmonics,"amplitude1","First amplitude",0,1.5,.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Frequency1,MathObjectKind::Harmonics,"frequency1","First frequency",1,5,1,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Phase1,MathObjectKind::Harmonics,"phase1","First phase (degrees)",-180,180,1,0,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Amplitude2,MathObjectKind::Harmonics,"amplitude2","Second amplitude",0,1.5,.05,1,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Frequency2,MathObjectKind::Harmonics,"frequency2","Second frequency",1,5,1,2,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Phase2,MathObjectKind::Harmonics,"phase2","Second phase (degrees)",-180,180,1,0,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Waveform,MathObjectKind::Harmonics,"waveform","Target waveform",0,2,1,0,2,false,"Square wave\0Sawtooth\0Triangle wave\0",{.group=MathControlGroup::Advanced}},
+  {MathParameter::HarmonicTerms,MathObjectKind::Harmonics,"terms","Nonzero Fourier terms",1,8,1,1,2,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::ProbeFrequency,MathObjectKind::Harmonics,"probe_frequency","Sine basis frequency",1,16,1,1,3,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::MotionSystem,MathObjectKind::Oscillator,"system","System",0,1,1,0,0,false,"Unit-mass spring\0Unit-inertia pendulum\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::InitialPosition,MathObjectKind::Oscillator,"initial_position","Initial displacement / angle (rad)",-1.2,1.2,.05,.7,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::InitialVelocity,MathObjectKind::Oscillator,"initial_velocity","Initial velocity / angular velocity",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::Stiffness,MathObjectKind::Oscillator,"stiffness","Restoring coefficient k = omega0^2",.25,4,.25,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MotionTime,MathObjectKind::Oscillator,"time","Time (seconds)",0,12,.025,0,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::Damping,MathObjectKind::Oscillator,"damping","Damping coefficient c",0,3,.05,.5,2,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::DriveAmplitude,MathObjectKind::Oscillator,"drive","Driving force / torque amplitude",0,1,.05,.5,3,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::DriveFrequency,MathObjectKind::Oscillator,"drive_frequency","Drive angular frequency",.5,3,.05,1,3,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::Modulus,MathObjectKind::Modular,"modulus","First modulus n",2,12,1,8,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::ModValue,MathObjectKind::Modular,"integer","Integer / first residue",-48,48,1,-3,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::ModStep,MathObjectKind::Modular,"step","Step / multiplier k",0,12,1,2,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::InverseGuess,MathObjectKind::Modular,"inverse","Your inverse",0,11,1,0,2,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::SecondModulus,MathObjectKind::Modular,"modulus2","Second modulus m",2,12,1,5,3,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::SecondResidue,MathObjectKind::Modular,"residue2","Second residue",-12,12,1,2,3,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::CrtGuess,MathObjectKind::Modular,"crt","Your simultaneous solution",0,143,1,0,3,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::GaussianReal,MathObjectKind::Gaussian,"real","z: real part",-3,3,1,1,0,false,{},{.group=MathControlGroup::ShapeA, .rowLabel="Real / imag", .rowCount=2, .components={"Re","Im",""}}},
+  {MathParameter::GaussianImag,MathObjectKind::Gaussian,"imag","z: imaginary part",-3,3,1,1,0,false,{},{.group=MathControlGroup::ShapeA}},
+  {MathParameter::GaussianOtherReal,MathObjectKind::Gaussian,"other_real","w: real part",-2,2,1,1,0,false,{},{.group=MathControlGroup::ShapeB, .rowLabel="Real / imag", .rowCount=2, .components={"Re","Im",""}}},
+  {MathParameter::GaussianOtherImag,MathObjectKind::Gaussian,"other_imag","w: imaginary part",-2,2,1,1,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::GaussianOperation,MathObjectKind::Gaussian,"operation","Operation",0,1,1,1,0,false,"Add\0Multiply\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::GaussianHeight,MathObjectKind::Gaussian,"norm_height","Height view",0,1,1,0,0,false,"Complex plane\0Height = 0.12 * squared magnitude\0",{.group=MathControlGroup::Display}},
+  {MathParameter::GaussianQuotient,MathObjectKind::Gaussian,"quotient","Quotient ring",0,2,1,1,3,false,"Z[i] / (2): four classes\0Z[i] / (2+i): five classes\0Z[i] / (3): nine classes\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::FieldRule,MathObjectKind::VectorField,"field","Vector field",0,2,1,1,0,false,"Constant: (1, 0.5, -0.25)\0Radial: (x,y,z)\0Vortex: (-y,x,0)\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::FieldX,MathObjectKind::VectorField,"field_x","Probe x",-1.5,1.5,.05,.75,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Probe position", .rowCount=3}},
+  {MathParameter::FieldY,MathObjectKind::VectorField,"field_y","Probe y",-1.5,1.5,.05,.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::FieldZ,MathObjectKind::VectorField,"field_z","Probe z",-1.5,1.5,.05,.25,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::FieldYaw,MathObjectKind::VectorField,"direction_yaw","Direction yaw (degrees)",0,360,1,45,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Direction", .rowCount=2, .components={"Yaw","Pitch",""}}},
+  {MathParameter::FieldPitch,MathObjectKind::VectorField,"direction_pitch","Direction pitch (degrees)",-90,90,1,0,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::FieldPath,MathObjectKind::VectorField,"path","Probe path",0,4,1,0,1,false,"Straight segment\0Upper semicircle\0Lower semicircle\0Nonplanar arch\0Closed circle\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::FieldTime,MathObjectKind::VectorField,"path_time","Path parameter t",0,1,.005,.3,1,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::FluxShape,MathObjectKind::Flux,"flux_shape","Surface",0,2,1,0,0,false,"Sphere\0Box\0Open disk\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::FluxField,MathObjectKind::Flux,"flux_field","Field",0,3,1,1,0,false,"Constant: (0,0,1)\0Radial: (x,y,z)\0Vortex: (-y,x,0)\0Twist: (-y,x,z)\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::FluxRadius,MathObjectKind::Flux,"flux_radius","Radius / box half-width",0.5,1.5,0.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::FluxTilt,MathObjectKind::Flux,"flux_tilt","Tilt about x (degrees)",0,180,1,0,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::FluxOrientation,MathObjectKind::Flux,"flux_orientation","Orientation",0,1,1,0,0,false,"Outward / positive normal\0Inward / reversed normal\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::FluxProbe,MathObjectKind::Flux,"flux_probe","Surface probe",0,1,0.005,0.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::FluxResolution,MathObjectKind::Flux,"flux_resolution","Integration resolution",2,12,1,4,1,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::FluxTime,MathObjectKind::Flux,"boundary_time","Boundary parameter t",0,1,0.005,0.2,3,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::TensorU0,MathObjectKind::Tensor,"tensor_u0","u: 1 component",-2,2,0.1,1,0,false,{},{.group=MathControlGroup::ShapeA, .rowLabel="Vector u", .rowCount=3, .components={"0","1","2"}}},
+  {MathParameter::TensorU1,MathObjectKind::Tensor,"tensor_u1","u: 2 component",-2,2,0.1,1,0,false,{},{.group=MathControlGroup::ShapeA}},
+  {MathParameter::TensorU2,MathObjectKind::Tensor,"tensor_u2","u: 3 component",-2,2,0.1,0,0,false,{},{.group=MathControlGroup::ShapeA}},
+  {MathParameter::TensorV0,MathObjectKind::Tensor,"tensor_v0","v: 1 component",-2,2,0.1,1,0,false,{},{.group=MathControlGroup::ShapeB, .rowLabel="Vector v", .rowCount=3, .components={"0","1","2"}}},
+  {MathParameter::TensorV1,MathObjectKind::Tensor,"tensor_v1","v: 2 component",-2,2,0.1,-1,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::TensorV2,MathObjectKind::Tensor,"tensor_v2","v: 3 component",-2,2,0.1,1,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::TensorW0,MathObjectKind::Tensor,"tensor_w0","w: 1 component",-2,2,0.1,1,1,false,{},{.group=MathControlGroup::Shape, .rowLabel="Vector w", .rowCount=3, .components={"0","1","2"}}},
+  {MathParameter::TensorW1,MathObjectKind::Tensor,"tensor_w1","w: 2 component",-2,2,0.1,0.5,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::TensorW2,MathObjectKind::Tensor,"tensor_w2","w: 3 component",-2,2,0.1,-1,1,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::TensorI,MathObjectKind::Tensor,"tensor_i","Inspect index i",0,2,1,0,0,false,"Index 1\0Index 2\0Index 3\0",{.group=MathControlGroup::Probe, .rowLabel="Indices i/j/k", .rowCount=3, .components={"i","j","k"}}},
+  {MathParameter::TensorJ,MathObjectKind::Tensor,"tensor_j","Inspect index j",0,2,1,0,0,false,"Index 1\0Index 2\0Index 3\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::TensorK,MathObjectKind::Tensor,"tensor_k","Inspect index k",0,2,1,0,1,false,"Index 1\0Index 2\0Index 3\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::TensorGap,MathObjectKind::Tensor,"tensor_gap","Separate tensor slices",0,0.6,0.05,0.25,0,false,{},{.group=MathControlGroup::Display}},
+  {MathParameter::TensorBasis,MathObjectKind::Tensor,"basis_angle","Rotate coordinate basis (degrees)",-180,180,1,45,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::ProbabilityRule,MathObjectKind::Probability,"chain","Transition rule",0,3,1,0,0,false,"Lazy directed cycle\0Weighted mixing\0Periodic cycle\0Absorbing chain\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::ProbabilityStay,MathObjectKind::Probability,"stay","Self-loop / retention probability",0,1,0.05,0.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::ProbabilityStart,MathObjectKind::Probability,"start_state","Initial state",0,2,1,0,0,false,"A\0B\0C\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::ProbabilityMix,MathObjectKind::Probability,"initial_mix","Mix initial state with uniform",0,1,0.05,0,2,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::ProbabilitySeed,MathObjectKind::Probability,"walk_seed","Reproducible walk seed",0,65535,1,7,0,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::ProbabilityRow,MathObjectKind::Probability,"transition_row","Inspect outgoing row",0,2,1,0,1,false,"A\0B\0C\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::ProbabilitySteps,MathObjectKind::Probability,"chain_steps","Number of transitions",0,64,1,0,2,false,{},{.group=MathControlGroup::Animation}},
+  {MathParameter::BinomialTrials,MathObjectKind::Binomial,"trials","Number of independent trials n",1,12,1,6,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::BinomialChance,MathObjectKind::Binomial,"success_chance","Success probability p",0,1,0.05,0.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::BinomialCut,MathObjectKind::Binomial,"count_cut","Count threshold k",0,12,1,3,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::BinomialSeed,MathObjectKind::Binomial,"trial_seed","Reproducible trial seed",0,65535,1,11,0,false,{},{.group=MathControlGroup::Sampling}},
+  {MathParameter::BayesPrior,MathObjectKind::Bayes,"prior_h","Prior P(H)",0,1,0.05,0.3,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::BayesHit,MathObjectKind::Bayes,"e_given_h","P(E | H)",0,1,0.05,0.8,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::BayesFalse,MathObjectKind::Bayes,"e_given_other","P(E | not H)",0,1,0.05,0.2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::BayesEvent,MathObjectKind::Bayes,"evidence","Condition on",0,1,1,0,1,false,"Event E\0Complement of E\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::BayesPositive,MathObjectKind::Bayes,"positive_evidence","Observed E outcomes",0,8,1,3,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::BayesNegative,MathObjectKind::Bayes,"negative_evidence","Observed not-E outcomes",0,8,1,0,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::CloudX,MathObjectKind::Covariance,"cloud_x","x stretch",0,2,0.1,1.4,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Spread", .rowCount=3}},
+  {MathParameter::CloudY,MathObjectKind::Covariance,"cloud_y","y stretch",0,2,0.1,0.8,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::CloudZ,MathObjectKind::Covariance,"cloud_z","z stretch",0,2,0.1,0.4,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::CloudYaw,MathObjectKind::Covariance,"cloud_yaw","Rotate about z (degrees)",-180,180,1,30,0,false,{},{.group=MathControlGroup::Transform, .rowLabel="Rotation", .rowCount=2, .components={"Yaw","Pitch",""}}},
+  {MathParameter::CloudPitch,MathObjectKind::Covariance,"cloud_pitch","Rotate about y (degrees)",-90,90,1,20,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::CloudShear,MathObjectKind::Covariance,"cloud_shear","x from y shear",-1,1,0.1,0.5,1,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::CloudMeanX,MathObjectKind::Covariance,"mean_x","Mean x",-1,1,0.1,0,0,false,{},{.group=MathControlGroup::Transform, .rowLabel="Mean", .rowCount=3}},
+  {MathParameter::CloudMeanY,MathObjectKind::Covariance,"mean_y","Mean y",-1,1,0.1,0,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::CloudMeanZ,MathObjectKind::Covariance,"mean_z","Mean z",-1,1,0.1,0,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::CloudComponent,MathObjectKind::Covariance,"principal_axis","Project onto principal axis",0,2,1,0,2,false,"Largest variance\0Middle variance\0Smallest variance\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::CloudWhiten,MathObjectKind::Covariance,"whiten","Move towards whitened coordinates",0,1,0.05,1,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::SphereTheta,MathObjectKind::Spherical,"polar","Polar angle theta (degrees)",0,180,1,60,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::SpherePhi,MathObjectKind::Spherical,"azimuth","Azimuth phi (degrees)",0,360,1,45,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::SphereMode,MathObjectKind::Spherical,"sphere_mode","First real harmonic",0,24,1,6,1,false,"l=0, m=+0\0l=1, m=-1\0l=1, m=+0\0l=1, m=+1\0l=2, m=-2\0l=2, m=-1\0l=2, m=+0\0l=2, m=+1\0l=2, m=+2\0l=3, m=-3\0l=3, m=-2\0l=3, m=-1\0l=3, m=+0\0l=3, m=+1\0l=3, m=+2\0l=3, m=+3\0l=4, m=-4\0l=4, m=-3\0l=4, m=-2\0l=4, m=-1\0l=4, m=+0\0l=4, m=+1\0l=4, m=+2\0l=4, m=+3\0l=4, m=+4\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::SphereSecond,MathObjectKind::Spherical,"sphere_second","Second real harmonic",0,24,1,3,2,false,"l=0, m=+0\0l=1, m=-1\0l=1, m=+0\0l=1, m=+1\0l=2, m=-2\0l=2, m=-1\0l=2, m=+0\0l=2, m=+1\0l=2, m=+2\0l=3, m=-3\0l=3, m=-2\0l=3, m=-1\0l=3, m=+0\0l=3, m=+1\0l=3, m=+2\0l=3, m=+3\0l=4, m=-4\0l=4, m=-3\0l=4, m=-2\0l=4, m=-1\0l=4, m=+0\0l=4, m=+1\0l=4, m=+2\0l=4, m=+3\0l=4, m=+4\0",{.group=MathControlGroup::Advanced}},
+  {MathParameter::SphereMix,MathObjectKind::Spherical,"sphere_mix","Second coefficient",-1,1,0.05,0.6,2,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::SphereHeat,MathObjectKind::Spherical,"heat_time","Heat diffusion time",0,1,0.005,0.25,3,false,{},{.group=MathControlGroup::Animation}},
+  {MathParameter::QuadLambdaX,MathObjectKind::Quadratic,"lambda_x","Principal value 1",-2,2,0.25,1.5,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Eigenvalues", .rowCount=3}},
+  {MathParameter::QuadLambdaY,MathObjectKind::Quadratic,"lambda_y","Principal value 2",-2,2,0.25,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::QuadLambdaZ,MathObjectKind::Quadratic,"lambda_z","Principal value 3",-2,2,0.25,0.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::QuadYaw,MathObjectKind::Quadratic,"form_yaw","Basis rotation about z (degrees)",-180,180,1,30,1,false,{},{.group=MathControlGroup::Transform, .rowLabel="Rotation", .rowCount=2, .components={"Yaw","Pitch",""}}},
+  {MathParameter::QuadPitch,MathObjectKind::Quadratic,"form_pitch","Basis rotation about y (degrees)",-90,90,1,20,1,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::QuadX,MathObjectKind::Quadratic,"form_x","Probe x",-2,2,0.05,1,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Probe", .rowCount=3}},
+  {MathParameter::QuadY,MathObjectKind::Quadratic,"form_y","Probe y",-2,2,0.05,0.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::QuadZ,MathObjectKind::Quadratic,"form_z","Probe z / height-map section",-1.5,1.5,0.05,0,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::RootN,MathObjectKind::Roots,"root_n","Number of roots n",3,12,1,7,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::RootIndex,MathObjectKind::Roots,"root_index","Probe exponent (reduced modulo n)",0,11,1,1,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::RootMultiplier,MathObjectKind::Roots,"root_multiplier","Power-map exponent / subgroup generator",0,12,1,2,1,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::RootPower,MathObjectKind::Roots,"root_power","Generator power",0,12,1,1,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::RootAutomorphism,MathObjectKind::Roots,"root_auto","Candidate automorphism exponent a",1,11,1,2,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::PsdA,MathObjectKind::Psd,"psd_a","Matrix entry a",-2,2,.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::PsdB,MathObjectKind::Psd,"psd_b","Symmetric off-diagonal b",-2,2,.05,.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::PsdC,MathObjectKind::Psd,"psd_c","Matrix entry c",-2,2,.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::PsdProbeAngle,MathObjectKind::Psd,"psd_probe","Quadratic probe angle (degrees)",0,180,1,0,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::PsdMix,MathObjectKind::Psd,"psd_mix","Mix from A to B",0,1,.05,.5,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::PsdOtherAngle,MathObjectKind::Psd,"psd_other_angle","Rank-one B direction (degrees)",0,180,1,0,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::PsdRayScale,MathObjectKind::Psd,"psd_ray_scale","Scale the mixture along its ray",0,1.5,.05,1,2,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::PsdSlice,MathObjectKind::Psd,"psd_slice","Trace / 2: slice height t",0,2,.05,1,3,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::PsdCostAngle,MathObjectKind::Psd,"psd_cost_angle","Objective direction (degrees)",-180,180,1,30,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::PsdObjective,MathObjectKind::Psd,"psd_objective","Objective plane: fraction of best value",-1.25,1.25,.05,0,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::NormP,MathObjectKind::Norm,"norm_p","Exponent p",1,32,.25,2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::NormInfinity,MathObjectKind::Norm,"norm_infinity","Norm family",0,1,1,0,0,false,"Finite p-norm\0Exact infinity norm\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::NormX,MathObjectKind::Norm,"norm_x","Vector x: first component",-1.5,1.5,.05,.8,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Vector x", .rowCount=3}},
+  {MathParameter::NormY,MathObjectKind::Norm,"norm_y","Vector x: second component",-1.5,1.5,.05,.6,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::NormZ,MathObjectKind::Norm,"norm_z","Vector x: third component",-1.5,1.5,.05,.4,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::NormOtherX,MathObjectKind::Norm,"norm_other_x","Vector y: first component",-1.5,1.5,.05,-.3,1,false,{},{.group=MathControlGroup::Probe, .rowLabel="Vector y", .rowCount=3}},
+  {MathParameter::NormOtherY,MathObjectKind::Norm,"norm_other_y","Vector y: second component",-1.5,1.5,.05,.6,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::NormOtherZ,MathObjectKind::Norm,"norm_other_z","Vector y: third component",-1.5,1.5,.05,.2,1,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::NormSupport,MathObjectKind::Norm,"norm_support","Plane: fraction of support value",0,1.4,.05,.7,3,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::NormWire,MathObjectKind::Norm,"norm_wire","Boundary style",0,1,1,0,0,false,"Solid boundary\0Open cross-sections\0",{.group=MathControlGroup::Display}},
+  {MathParameter::CurveControl,MathObjectKind::Curve,"curve_control","Selected control point",0,3,1,1,0,false,"P0: start\0P1: first handle\0P2: second handle\0P3: end\0",{.group=MathControlGroup::Profile, .label="Control point"}},
+  {MathParameter::CurveP0X,MathObjectKind::Curve,"curve_p0_x","P0: x coordinate",-2,2,.05,-1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::CurveControl, .selectedValue=0}},
+  {MathParameter::CurveP0Y,MathObjectKind::Curve,"curve_p0_y","P0: y coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=0}},
+  {MathParameter::CurveP0Z,MathObjectKind::Curve,"curve_p0_z","P0: z coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=0}},
+  {MathParameter::CurveP1X,MathObjectKind::Curve,"curve_p1_x","P1: x coordinate",-2,2,.05,-1,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::CurveControl, .selectedValue=1}},
+  {MathParameter::CurveP1Y,MathObjectKind::Curve,"curve_p1_y","P1: y coordinate",-2,2,.05,1.3,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=1}},
+  {MathParameter::CurveP1Z,MathObjectKind::Curve,"curve_p1_z","P1: z coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=1}},
+  {MathParameter::CurveP2X,MathObjectKind::Curve,"curve_p2_x","P2: x coordinate",-2,2,.05,1,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::CurveControl, .selectedValue=2}},
+  {MathParameter::CurveP2Y,MathObjectKind::Curve,"curve_p2_y","P2: y coordinate",-2,2,.05,1.3,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=2}},
+  {MathParameter::CurveP2Z,MathObjectKind::Curve,"curve_p2_z","P2: z coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=2}},
+  {MathParameter::CurveP3X,MathObjectKind::Curve,"curve_p3_x","P3: x coordinate",-2,2,.05,1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::CurveControl, .selectedValue=3}},
+  {MathParameter::CurveP3Y,MathObjectKind::Curve,"curve_p3_y","P3: y coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=3}},
+  {MathParameter::CurveP3Z,MathObjectKind::Curve,"curve_p3_z","P3: z coordinate",-2,2,.05,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::CurveControl, .selectedValue=3}},
+  {MathParameter::CurveProgress,MathObjectKind::Curve,"curve_progress","Position along the curve",0,1,.005,.35,0,false,{},{.group=MathControlGroup::Animation, .label="Position", .playbackLayers=15}},
+  {MathParameter::CurveTravel,MathObjectKind::Curve,"curve_travel","Travel rule",0,1,1,0,0,false,"Equal parameter steps\0Equal distance steps\0",{.group=MathControlGroup::Animation, .layers=12}},
+  {MathParameter::CurveProfile,MathObjectKind::Curve,"curve_profile","Cross-section",0,2,1,0,0,false,"Circle\0Square\0Norm profile\0",{.group=MathControlGroup::Shape, .label="Profile", .layers=8}},
+  {MathParameter::CurveRadius,MathObjectKind::Curve,"curve_radius","Starting radius / half width",.05,.45,.01,.2,0,false,{},{.group=MathControlGroup::Shape, .label="Radius", .layers=8}},
+  {MathParameter::CurveAspect,MathObjectKind::Curve,"curve_aspect","Cross-section height / width",.05,1,.05,1,0,false,{},{.group=MathControlGroup::Shape, .label="Aspect", .layers=8}},
+  {MathParameter::CurveEndScale,MathObjectKind::Curve,"curve_end_scale","End radius / start radius",0,1,.05,1,0,false,{},{.group=MathControlGroup::Shape, .label="End scale", .layers=8}},
+  {MathParameter::CurveTwist,MathObjectKind::Curve,"curve_twist","Total twist (degrees)",-360,360,5,0,0,false,{},{.group=MathControlGroup::Shape, .label="Twist (deg)", .layers=8}},
+  {MathParameter::CurveNormP,MathObjectKind::Curve,"curve_norm_p","Norm profile exponent p",1,16,.25,2,0,false,{},{.group=MathControlGroup::Shape, .label="Exponent p", .layers=8}},
+  {MathParameter::CurveGuides,MathObjectKind::Curve,"curve_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display, .label="Guides", .layers=8}},
+  {MathParameter::LatheControl,MathObjectKind::Lathe,"lathe_control","Selected profile point",0,6,1,3,0,false,"P0: base\0P1\0P2\0P3\0P4\0P5\0P6: top\0",{.group=MathControlGroup::Profile, .label="Profile point"}},
+  {MathParameter::LatheR0,MathObjectKind::Lathe,"lathe_r0","P0: radius",0,1.5,.01,0.65,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=0}},
+  {MathParameter::LatheR1,MathObjectKind::Lathe,"lathe_r1","P1: radius",0,1.5,.01,0.9,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=1}},
+  {MathParameter::LatheR2,MathObjectKind::Lathe,"lathe_r2","P2: radius",0,1.5,.01,1.15,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=2}},
+  {MathParameter::LatheR3,MathObjectKind::Lathe,"lathe_r3","P3: radius",0,1.5,.01,1,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=3}},
+  {MathParameter::LatheR4,MathObjectKind::Lathe,"lathe_r4","P4: radius",0,1.5,.01,0.55,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=4}},
+  {MathParameter::LatheR5,MathObjectKind::Lathe,"lathe_r5","P5: radius",0,1.5,.01,0.48,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=5}},
+  {MathParameter::LatheR6,MathObjectKind::Lathe,"lathe_r6","P6: radius",0,1.5,.01,0.62,0,false,{},{.group=MathControlGroup::Profile, .label="Radius", .selector=MathParameter::LatheControl, .selectedValue=6}},
+  {MathParameter::LatheH1,MathObjectKind::Lathe,"lathe_h1","P1: height fraction",.04,.96,.01,0.12,0,false,{},{.group=MathControlGroup::Profile, .label="Height fraction", .selector=MathParameter::LatheControl, .selectedValue=1}},
+  {MathParameter::LatheH2,MathObjectKind::Lathe,"lathe_h2","P2: height fraction",.04,.96,.01,0.35,0,false,{},{.group=MathControlGroup::Profile, .label="Height fraction", .selector=MathParameter::LatheControl, .selectedValue=2}},
+  {MathParameter::LatheH3,MathObjectKind::Lathe,"lathe_h3","P3: height fraction",.04,.96,.01,0.6,0,false,{},{.group=MathControlGroup::Profile, .label="Height fraction", .selector=MathParameter::LatheControl, .selectedValue=3}},
+  {MathParameter::LatheH4,MathObjectKind::Lathe,"lathe_h4","P4: height fraction",.04,.96,.01,0.8,0,false,{},{.group=MathControlGroup::Profile, .label="Height fraction", .selector=MathParameter::LatheControl, .selectedValue=4}},
+  {MathParameter::LatheH5,MathObjectKind::Lathe,"lathe_h5","P5: height fraction",.04,.96,.01,0.92,0,false,{},{.group=MathControlGroup::Profile, .label="Height fraction", .selector=MathParameter::LatheControl, .selectedValue=5}},
+  {MathParameter::LatheHeight,MathObjectKind::Lathe,"lathe_height","Total height",1,4,.05,3,0,false,{},{.group=MathControlGroup::Profile}},
+  {MathParameter::LatheHollow,MathObjectKind::Lathe,"lathe_hollow","Interior",0,1,1,1,0,false,"Solid\0Hollow\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::LatheWall,MathObjectKind::Lathe,"lathe_wall","Radial wall thickness",.03,.35,.01,.12,0,false,{},{.group=MathControlGroup::Shape, .label="Wall thickness"}},
+  {MathParameter::LatheFloor,MathObjectKind::Lathe,"lathe_floor","Cavity floor: height fraction",.04,.8,.01,.08,0,false,{},{.group=MathControlGroup::Shape, .label="Cavity floor"}},
+  {MathParameter::LatheTurn,MathObjectKind::Lathe,"lathe_turn","Revolution angle (degrees)",0,360,1,360,0,false,{},{.group=MathControlGroup::Animation, .label="Angle (deg)", .playbackLayers=2}},
+  {MathParameter::LatheCut,MathObjectKind::Lathe,"lathe_cut","Cutaway (% hidden)",0,75,5,25,0,false,{},{.group=MathControlGroup::Display, .label="Cutaway (%)"}},
+  {MathParameter::LatheProbe,MathObjectKind::Lathe,"lathe_probe","Probe / highlighted element",0,1,.005,.5,0,false,{},{.group=MathControlGroup::Probe, .label="Probe"}},
+  {MathParameter::LatheSlices,MathObjectKind::Lathe,"lathe_slices","Integration subdivisions",4,32,1,8,0,false,{},{.group=MathControlGroup::Sampling, .label="Subdivisions"}},
+  {MathParameter::LatheMethod,MathObjectKind::Lathe,"lathe_method","Volume approximation",0,1,1,0,0,false,"Disks / washers\0Cylindrical shells\0",{.group=MathControlGroup::Sampling, .label="Method"}},
+  {MathParameter::LatheGuides,MathObjectKind::Lathe,"lathe_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display, .label="Guides"}},
+  {MathParameter::BooleanShapeA,MathObjectKind::Boolean,"boolean_shape_a","Shape A",0,3,1,0,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0",{.group=MathControlGroup::ShapeA, .label="Shape"}},
+  {MathParameter::BooleanShapeB,MathObjectKind::Boolean,"boolean_shape_b","Shape B / cutter",0,3,1,2,0,false,"Box\0Sphere\0Cylinder\0Arch opening\0",{.group=MathControlGroup::ShapeB, .label="Shape"}},
+  {MathParameter::BooleanSizeA,MathObjectKind::Boolean,"boolean_size_a","Size A",0.2,1.5,0.05,1,0,false,{},{.group=MathControlGroup::ShapeA, .label="Size"}},
+  {MathParameter::BooleanSizeB,MathObjectKind::Boolean,"boolean_size_b","Size B",0.2,1.5,0.05,0.55,0,false,{},{.group=MathControlGroup::ShapeB, .label="Size"}},
+  {MathParameter::BooleanX,MathObjectKind::Boolean,"boolean_x","B: x position",-1.5,1.5,0.05,0,0,false,{},{.group=MathControlGroup::ShapeB, .rowLabel="Position", .rowCount=3}},
+  {MathParameter::BooleanY,MathObjectKind::Boolean,"boolean_y","B: y position",-1.5,1.5,0.05,0,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::BooleanZ,MathObjectKind::Boolean,"boolean_z","B: z position",-1.5,1.5,0.05,0,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::BooleanYaw,MathObjectKind::Boolean,"boolean_yaw","B: yaw (degrees)",-180,180,5,0,0,false,{},{.group=MathControlGroup::ShapeB, .rowLabel="Yaw / pitch", .rowCount=2, .components={"Yaw","Pitch",""}}},
+  {MathParameter::BooleanPitch,MathObjectKind::Boolean,"boolean_pitch","B: pitch (degrees)",-180,180,5,0,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::BooleanOperation,MathObjectKind::Boolean,"boolean_operation","Combine A and B",0,3,1,2,0,false,"Union\0Intersection\0A minus B\0Smooth union\0",{.group=MathControlGroup::Operation, .label="Combine"}},
+  {MathParameter::BooleanBlend,MathObjectKind::Boolean,"boolean_blend","Blend width",0,0.6,0.02,0.4,0,false,{},{.group=MathControlGroup::Operation, .label="Blend"}},
+  {MathParameter::BooleanProbeX,MathObjectKind::Boolean,"boolean_probe_x","Probe: x",-3,3,0.01,0,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Probe position", .rowCount=3}},
+  {MathParameter::BooleanProbeY,MathObjectKind::Boolean,"boolean_probe_y","Probe: y",-3,3,0.01,0,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::BooleanProbeZ,MathObjectKind::Boolean,"boolean_probe_z","Probe: z / section plane",-3,3,0.01,0,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::BooleanResolution,MathObjectKind::Boolean,"boolean_resolution","Requested cells per axis",12,28,4,20,0,false,{},{.group=MathControlGroup::Sampling, .label="Cells / axis"}},
+  {MathParameter::BooleanGuides,MathObjectKind::Boolean,"boolean_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display, .label="Guides"}},
+  {MathParameter::BooleanSection,MathObjectKind::Boolean,"boolean_section","Solid view",0,1,1,0,0,false,"Full solid\0Section at probe z\0",{.group=MathControlGroup::Display, .label="Section"}},
+  {MathParameter::BooleanFit,MathObjectKind::Boolean,"boolean_fit","Matching ball preview",0,1,1,0,0,false,"Hidden\0Show beside socket\0",{.group=MathControlGroup::ShapeB, .label="Fit preview"}},
+  {MathParameter::BooleanClearance,MathObjectKind::Boolean,"boolean_clearance","Ball radial clearance",0.02,0.15,0.01,0.08,0,false,{},{.group=MathControlGroup::ShapeB, .label="Clearance"}},
+  {MathParameter::PatchControl,MathObjectKind::Patch,"patch_control","Control point",0,15,1,5,0,false,"P00\0P01\0P02\0P03\0P10\0P11\0P12\0P13\0P20\0P21\0P22\0P23\0P30\0P31\0P32\0P33\0",{.group=MathControlGroup::Profile}},
+  {MathParameter::PatchP00X,MathObjectKind::Patch,"patch_p00x","P00: x",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=0}},
+  {MathParameter::PatchP00Y,MathObjectKind::Patch,"patch_p00y","P00: y",-2,2,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=0}},
+  {MathParameter::PatchP00Z,MathObjectKind::Patch,"patch_p00z","P00: z",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=0}},
+  {MathParameter::PatchP01X,MathObjectKind::Patch,"patch_p01x","P01: x",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=1}},
+  {MathParameter::PatchP01Y,MathObjectKind::Patch,"patch_p01y","P01: y",-2,2,0.01,0.45,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=1}},
+  {MathParameter::PatchP01Z,MathObjectKind::Patch,"patch_p01z","P01: z",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=1}},
+  {MathParameter::PatchP02X,MathObjectKind::Patch,"patch_p02x","P02: x",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=2}},
+  {MathParameter::PatchP02Y,MathObjectKind::Patch,"patch_p02y","P02: y",-2,2,0.01,0.45,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=2}},
+  {MathParameter::PatchP02Z,MathObjectKind::Patch,"patch_p02z","P02: z",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=2}},
+  {MathParameter::PatchP03X,MathObjectKind::Patch,"patch_p03x","P03: x",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=3}},
+  {MathParameter::PatchP03Y,MathObjectKind::Patch,"patch_p03y","P03: y",-2,2,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=3}},
+  {MathParameter::PatchP03Z,MathObjectKind::Patch,"patch_p03z","P03: z",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=3}},
+  {MathParameter::PatchP10X,MathObjectKind::Patch,"patch_p10x","P10: x",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=4}},
+  {MathParameter::PatchP10Y,MathObjectKind::Patch,"patch_p10y","P10: y",-2,2,0.01,0.65,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=4}},
+  {MathParameter::PatchP10Z,MathObjectKind::Patch,"patch_p10z","P10: z",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=4}},
+  {MathParameter::PatchP11X,MathObjectKind::Patch,"patch_p11x","P11: x",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=5}},
+  {MathParameter::PatchP11Y,MathObjectKind::Patch,"patch_p11y","P11: y",-2,2,0.01,1.1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=5}},
+  {MathParameter::PatchP11Z,MathObjectKind::Patch,"patch_p11z","P11: z",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=5}},
+  {MathParameter::PatchP12X,MathObjectKind::Patch,"patch_p12x","P12: x",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=6}},
+  {MathParameter::PatchP12Y,MathObjectKind::Patch,"patch_p12y","P12: y",-2,2,0.01,1.1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=6}},
+  {MathParameter::PatchP12Z,MathObjectKind::Patch,"patch_p12z","P12: z",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=6}},
+  {MathParameter::PatchP13X,MathObjectKind::Patch,"patch_p13x","P13: x",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=7}},
+  {MathParameter::PatchP13Y,MathObjectKind::Patch,"patch_p13y","P13: y",-2,2,0.01,0.65,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=7}},
+  {MathParameter::PatchP13Z,MathObjectKind::Patch,"patch_p13z","P13: z",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=7}},
+  {MathParameter::PatchP20X,MathObjectKind::Patch,"patch_p20x","P20: x",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=8}},
+  {MathParameter::PatchP20Y,MathObjectKind::Patch,"patch_p20y","P20: y",-2,2,0.01,0.65,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=8}},
+  {MathParameter::PatchP20Z,MathObjectKind::Patch,"patch_p20z","P20: z",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=8}},
+  {MathParameter::PatchP21X,MathObjectKind::Patch,"patch_p21x","P21: x",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=9}},
+  {MathParameter::PatchP21Y,MathObjectKind::Patch,"patch_p21y","P21: y",-2,2,0.01,1.1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=9}},
+  {MathParameter::PatchP21Z,MathObjectKind::Patch,"patch_p21z","P21: z",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=9}},
+  {MathParameter::PatchP22X,MathObjectKind::Patch,"patch_p22x","P22: x",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=10}},
+  {MathParameter::PatchP22Y,MathObjectKind::Patch,"patch_p22y","P22: y",-2,2,0.01,1.1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=10}},
+  {MathParameter::PatchP22Z,MathObjectKind::Patch,"patch_p22z","P22: z",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=10}},
+  {MathParameter::PatchP23X,MathObjectKind::Patch,"patch_p23x","P23: x",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=11}},
+  {MathParameter::PatchP23Y,MathObjectKind::Patch,"patch_p23y","P23: y",-2,2,0.01,0.65,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=11}},
+  {MathParameter::PatchP23Z,MathObjectKind::Patch,"patch_p23z","P23: z",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=11}},
+  {MathParameter::PatchP30X,MathObjectKind::Patch,"patch_p30x","P30: x",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=12}},
+  {MathParameter::PatchP30Y,MathObjectKind::Patch,"patch_p30y","P30: y",-2,2,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=12}},
+  {MathParameter::PatchP30Z,MathObjectKind::Patch,"patch_p30z","P30: z",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=12}},
+  {MathParameter::PatchP31X,MathObjectKind::Patch,"patch_p31x","P31: x",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=13}},
+  {MathParameter::PatchP31Y,MathObjectKind::Patch,"patch_p31y","P31: y",-2,2,0.01,0.45,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=13}},
+  {MathParameter::PatchP31Z,MathObjectKind::Patch,"patch_p31z","P31: z",-2,2,0.01,0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=13}},
+  {MathParameter::PatchP32X,MathObjectKind::Patch,"patch_p32x","P32: x",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=14}},
+  {MathParameter::PatchP32Y,MathObjectKind::Patch,"patch_p32y","P32: y",-2,2,0.01,0.45,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=14}},
+  {MathParameter::PatchP32Z,MathObjectKind::Patch,"patch_p32z","P32: z",-2,2,0.01,-0.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=14}},
+  {MathParameter::PatchP33X,MathObjectKind::Patch,"patch_p33x","P33: x",-2,2,0.01,1.5,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Position", .rowCount=3, .selector=MathParameter::PatchControl, .selectedValue=15}},
+  {MathParameter::PatchP33Y,MathObjectKind::Patch,"patch_p33y","P33: y",-2,2,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=15}},
+  {MathParameter::PatchP33Z,MathObjectKind::Patch,"patch_p33z","P33: z",-2,2,0.01,-1.5,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::PatchControl, .selectedValue=15}},
+  {MathParameter::PatchU,MathObjectKind::Patch,"patch_u","Probe u",0,1,0.01,0.5,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Probe UV", .rowCount=2, .components={"U","V",""}}},
+  {MathParameter::PatchV,MathObjectKind::Patch,"patch_v","Probe v",0,1,0.01,0.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::PatchResolution,MathObjectKind::Patch,"patch_resolution","Subdivisions / axis",4,32,4,20,0,false,{},{.group=MathControlGroup::Sampling, .label="Subdivisions"}},
+  {MathParameter::PatchGuides,MathObjectKind::Patch,"patch_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display, .label="Guides"}}
 ,
-  {MathParameter::MembraneSlot,MathObjectKind::Membrane,"membrane_slot","Mode slot",0,3,1,0,0,false,"Slot 1\0Slot 2\0Slot 3\0Slot 4\0"},
-  {MathParameter::MembraneM0,MathObjectKind::Membrane,"membrane_m0","m",1,6,1,1},
-  {MathParameter::MembraneN0,MathObjectKind::Membrane,"membrane_n0","n",1,6,1,1},
-  {MathParameter::MembraneA0,MathObjectKind::Membrane,"membrane_a0","Initial displacement",-0.6,0.6,0.01,0.35},
-  {MathParameter::MembraneV0,MathObjectKind::Membrane,"membrane_v0","Initial velocity",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneM1,MathObjectKind::Membrane,"membrane_m1","m",1,6,1,2},
-  {MathParameter::MembraneN1,MathObjectKind::Membrane,"membrane_n1","n",1,6,1,1},
-  {MathParameter::MembraneA1,MathObjectKind::Membrane,"membrane_a1","Initial displacement",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneV1,MathObjectKind::Membrane,"membrane_v1","Initial velocity",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneM2,MathObjectKind::Membrane,"membrane_m2","m",1,6,1,1},
-  {MathParameter::MembraneN2,MathObjectKind::Membrane,"membrane_n2","n",1,6,1,2},
-  {MathParameter::MembraneA2,MathObjectKind::Membrane,"membrane_a2","Initial displacement",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneV2,MathObjectKind::Membrane,"membrane_v2","Initial velocity",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneM3,MathObjectKind::Membrane,"membrane_m3","m",1,6,1,2},
-  {MathParameter::MembraneN3,MathObjectKind::Membrane,"membrane_n3","n",1,6,1,2},
-  {MathParameter::MembraneA3,MathObjectKind::Membrane,"membrane_a3","Initial displacement",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneV3,MathObjectKind::Membrane,"membrane_v3","Initial velocity",-0.6,0.6,0.01,0},
-  {MathParameter::MembraneWidth,MathObjectKind::Membrane,"membrane_width","Width",1,4,0.05,3},
-  {MathParameter::MembraneDepth,MathObjectKind::Membrane,"membrane_depth","Depth",1,4,0.05,3},
-  {MathParameter::MembraneTension,MathObjectKind::Membrane,"membrane_tension","Tension",0.25,4,0.05,1},
-  {MathParameter::MembraneDensity,MathObjectKind::Membrane,"membrane_density","Areal density",0.5,2,0.05,1},
-  {MathParameter::MembraneDamping,MathObjectKind::Membrane,"membrane_damping","Damping gamma",0,2,0.05,0},
-  {MathParameter::MembraneTime,MathObjectKind::Membrane,"membrane_time","Time",0,12,0.01,0},
-  {MathParameter::MembraneU,MathObjectKind::Membrane,"membrane_u","Probe u",0,1,0.01,0.5},
-  {MathParameter::MembraneV,MathObjectKind::Membrane,"membrane_v","Probe v",0,1,0.01,0.5},
-  {MathParameter::MembraneResolution,MathObjectKind::Membrane,"membrane_resolution","Subdivisions / axis",12,48,4,32},
-  {MathParameter::MembraneGuides,MathObjectKind::Membrane,"membrane_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::MembraneView,MathObjectKind::Membrane,"membrane_view","Surface",0,1,1,0,0,false,"Combined surface\0Selected slot\0"},
-  {MathParameter::RigidShape,MathObjectKind::Rigid,"rigid_shape","Body",0,3,1,0,0,false,"Flywheel\0Dumbbell\0Book\0Satellite\0"},
-  {MathParameter::RigidWidth,MathObjectKind::Rigid,"rigid_width","Width",0.2,3.5,0.05,2.4},
-  {MathParameter::RigidHeight,MathObjectKind::Rigid,"rigid_height","Height",0.2,3.5,0.05,0.3},
-  {MathParameter::RigidDepth,MathObjectKind::Rigid,"rigid_depth","Depth",0.2,3.5,0.05,2.4},
-  {MathParameter::RigidMass,MathObjectKind::Rigid,"rigid_mass","Total mass",0.2,5,0.1,1},
-  {MathParameter::RigidBalance,MathObjectKind::Rigid,"rigid_balance","Left mass share",0.2,0.8,0.01,0.5},
-  {MathParameter::RigidRotX,MathObjectKind::Rigid,"rigid_rot_x","Release X (deg)",-180,180,1,0},
-  {MathParameter::RigidRotY,MathObjectKind::Rigid,"rigid_rot_y","Release Y (deg)",-180,180,1,0},
-  {MathParameter::RigidRotZ,MathObjectKind::Rigid,"rigid_rot_z","Release Z (deg)",-180,180,1,0},
-  {MathParameter::RigidSpinX,MathObjectKind::Rigid,"rigid_spin_x","Initial spin X",-4,4,0.01,0},
-  {MathParameter::RigidSpinY,MathObjectKind::Rigid,"rigid_spin_y","Initial spin Y",-4,4,0.01,3},
-  {MathParameter::RigidSpinZ,MathObjectKind::Rigid,"rigid_spin_z","Initial spin Z",-4,4,0.01,0},
-  {MathParameter::RigidTime,MathObjectKind::Rigid,"rigid_time","Time",0,12,0.01,0},
-  {MathParameter::RigidAxis,MathObjectKind::Rigid,"rigid_axis","Track body axis",0,2,1,0,0,false,"Body X\0Body Y\0Body Z\0"},
-  {MathParameter::RigidGuides,MathObjectKind::Rigid,"rigid_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::TrussShape,MathObjectKind::Truss,"truss_shape","Structure",0,3,1,0,0,false,"Triangular support\0Bridge\0Crane boom\0Roof truss\0"},
-  {MathParameter::TrussSpan,MathObjectKind::Truss,"truss_span","Span (m)",1,5,0.05,3},
-  {MathParameter::TrussHeight,MathObjectKind::Truss,"truss_height","Height (m)",0,3,0.05,1.5},
-  {MathParameter::TrussLean,MathObjectKind::Truss,"truss_lean","Crown shift / span",-0.15,0.15,0.01,0},
-  {MathParameter::TrussJoint,MathObjectKind::Truss,"truss_joint","Inspect joint",0,5,1,2,0,false,"A\0B\0C\0D\0E\0F\0"},
-  {MathParameter::TrussP0X,MathObjectKind::Truss,"truss_a_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP0Y,MathObjectKind::Truss,"truss_a_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP1X,MathObjectKind::Truss,"truss_b_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP1Y,MathObjectKind::Truss,"truss_b_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP2X,MathObjectKind::Truss,"truss_c_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP2Y,MathObjectKind::Truss,"truss_c_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP3X,MathObjectKind::Truss,"truss_d_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP3Y,MathObjectKind::Truss,"truss_d_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP4X,MathObjectKind::Truss,"truss_e_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP4Y,MathObjectKind::Truss,"truss_e_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP5X,MathObjectKind::Truss,"truss_f_x","Joint offset X (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussP5Y,MathObjectKind::Truss,"truss_f_y","Joint offset Y (m)",-0.5,0.5,0.01,0},
-  {MathParameter::TrussPosition,MathObjectKind::Truss,"truss_position","Load position",0,1,0.01,0.5},
-  {MathParameter::TrussLoadX,MathObjectKind::Truss,"truss_load_x","Horizontal load (kN)",-5,5,0.1,0},
-  {MathParameter::TrussLoadY,MathObjectKind::Truss,"truss_load_y","Vertical load (kN)",-5,5,0.1,-1},
-  {MathParameter::TrussMember,MathObjectKind::Truss,"truss_member","Inspect member",0,8,1,2,0,false,"M1\0M2\0M3\0M4\0M5\0M6\0M7\0M8\0M9\0"},
-  {MathParameter::TrussBrace,MathObjectKind::Truss,"truss_brace","Test member",0,1,1,1,0,false,"Removed\0Installed\0"},
-  {MathParameter::TrussSupports,MathObjectKind::Truss,"truss_supports","Supports",0,2,1,0,0,false,"As designed\0Release restraint\0Add restraint\0"},
-  {MathParameter::TrussTensionLimit,MathObjectKind::Truss,"truss_tension_limit","Tension limit (kN)",0.25,10,0.05,2},
-  {MathParameter::TrussCompressionLimit,MathObjectKind::Truss,"truss_compression_limit","Compression limit (kN)",0.25,10,0.05,2},
-  {MathParameter::TrussGuides,MathObjectKind::Truss,"truss_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0"},
-  {MathParameter::SimplexP0,MathObjectKind::Simplex,"simplex_p_a","P: probability of A",0,1,.01,1./3},
-  {MathParameter::SimplexP1,MathObjectKind::Simplex,"simplex_p_b","P: probability of B",0,1,.01,1./3},
-  {MathParameter::SimplexQ0,MathObjectKind::Simplex,"simplex_q_a","Q: probability of A",0,1,.01,1./3},
-  {MathParameter::SimplexQ1,MathObjectKind::Simplex,"simplex_q_b","Q: probability of B",0,1,.01,1./3},
-  {MathParameter::SimplexValue0,MathObjectKind::Simplex,"simplex_value_a","Outcome A value",-3,3,.1,-1},
-  {MathParameter::SimplexValue1,MathObjectKind::Simplex,"simplex_value_b","Outcome B value",-3,3,.1,0},
-  {MathParameter::SimplexValue2,MathObjectKind::Simplex,"simplex_value_c","Outcome C value",-3,3,.1,1},
-  {MathParameter::SimplexFunction,MathObjectKind::Simplex,"simplex_function","Surface function",0,3,1,1,0,false,"Expected value\0Entropy\0Negative entropy\0Variance\0"},
-  {MathParameter::SimplexMix,MathObjectKind::Simplex,"simplex_mix","Mixture toward Q",0,1,.01,.5},
-  {MathParameter::SimplexGuides,MathObjectKind::Simplex,"simplex_guides","Construction guides",0,1,1,1,0,false,"Surface and markers\0Show construction\0"},
-  {MathParameter::DistanceAB,MathObjectKind::Distance,"distance_ab","Length AB",0,4,.01,2},
-  {MathParameter::DistanceAC,MathObjectKind::Distance,"distance_ac","Length AC",0,4,.01,2},
-  {MathParameter::DistanceAD,MathObjectKind::Distance,"distance_ad","Length AD",0,4,.01,2},
-  {MathParameter::DistanceBC,MathObjectKind::Distance,"distance_bc","Length BC",0,4,.01,2},
-  {MathParameter::DistanceBD,MathObjectKind::Distance,"distance_bd","Length BD",0,4,.01,2},
-  {MathParameter::DistanceCD,MathObjectKind::Distance,"distance_cd","Length CD",0,4,.01,2},
-  {MathParameter::DistanceEdge,MathObjectKind::Distance,"distance_edge","Inspect edge",0,5,1,0,0,false,"AB\0AC\0AD\0BC\0BD\0CD\0"},
-  {MathParameter::DistanceMirror,MathObjectKind::Distance,"distance_mirror","Reconstruction side",0,1,1,0,0,false,"Canonical\0Reflected\0"},
-  {MathParameter::DistanceSecond,MathObjectKind::Distance,"distance_second","Second distance matrix",0,4,1,3,0,false,"Regular tetrahedron\0Square\0Line\0Different line\0Coincident points\0"},
-  {MathParameter::DistanceMix,MathObjectKind::Distance,"distance_mix","Mixture toward second",0,1,.01,0},
-  {MathParameter::DistanceScale,MathObjectKind::Distance,"distance_scale","Squared-distance multiplier",0,4,.05,1},
-  {MathParameter::DistanceGuides,MathObjectKind::Distance,"distance_guides","Construction guides",0,1,1,1,0,false,"Object only\0Show construction\0"},
-  {MathParameter::PolarA00,MathObjectKind::Polar,"polar_a00","A row 1, column 1",-3,3,.05,1,0,true},
-  {MathParameter::PolarA01,MathObjectKind::Polar,"polar_a01","A row 1, column 2",-3,3,.05,1,0,true},
-  {MathParameter::PolarA02,MathObjectKind::Polar,"polar_a02","A row 1, column 3",-3,3,.05,0,0,true},
-  {MathParameter::PolarA10,MathObjectKind::Polar,"polar_a10","A row 2, column 1",-3,3,.05,0,0,true},
-  {MathParameter::PolarA11,MathObjectKind::Polar,"polar_a11","A row 2, column 2",-3,3,.05,1,0,true},
-  {MathParameter::PolarA12,MathObjectKind::Polar,"polar_a12","A row 2, column 3",-3,3,.05,0,0,true},
-  {MathParameter::PolarA20,MathObjectKind::Polar,"polar_a20","A row 3, column 1",-3,3,.05,0,0,true},
-  {MathParameter::PolarA21,MathObjectKind::Polar,"polar_a21","A row 3, column 2",-3,3,.05,0,0,true},
-  {MathParameter::PolarA22,MathObjectKind::Polar,"polar_a22","A row 3, column 3",-3,3,.05,1,0,true},
-  {MathParameter::PolarShape,MathObjectKind::Polar,"polar_shape","Source solid",0,1,1,0,0,false,"Marked block\0Tetrahedron\0"},
-  {MathParameter::PolarAmount,MathObjectKind::Polar,"polar_amount","Deformation amount",0,1,.01,1},
-  {MathParameter::PolarIteration,MathObjectKind::Polar,"polar_iteration","Iteration k",0,32,1,0},
-  {MathParameter::PolarExtension,MathObjectKind::Polar,"polar_extension","Null-space extension",0,1,1,0,0,false,"Canonical\0Reverse one null direction\0"},
-  {MathParameter::PolarGuides,MathObjectKind::Polar,"polar_guides","Construction guides",0,1,1,1,0,false,"Solid and landmarks\0Show reference frames\0"}
+  {MathParameter::MembraneSlot,MathObjectKind::Membrane,"membrane_slot","Mode slot",0,3,1,0,0,false,"Slot 1\0Slot 2\0Slot 3\0Slot 4\0",{.group=MathControlGroup::Profile}},
+  {MathParameter::MembraneM0,MathObjectKind::Membrane,"membrane_m0","m",1,6,1,1,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Mode numbers", .rowCount=2, .components={"m","n",""}, .selector=MathParameter::MembraneSlot, .selectedValue=0}},
+  {MathParameter::MembraneN0,MathObjectKind::Membrane,"membrane_n0","n",1,6,1,1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=0}},
+  {MathParameter::MembraneA0,MathObjectKind::Membrane,"membrane_a0","Initial displacement",-0.6,0.6,0.01,0.35,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Release state", .rowCount=2, .components={"q0","v0",""}, .selector=MathParameter::MembraneSlot, .selectedValue=0}},
+  {MathParameter::MembraneV0,MathObjectKind::Membrane,"membrane_v0","Initial velocity",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=0}},
+  {MathParameter::MembraneM1,MathObjectKind::Membrane,"membrane_m1","m",1,6,1,2,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Mode numbers", .rowCount=2, .components={"m","n",""}, .selector=MathParameter::MembraneSlot, .selectedValue=1}},
+  {MathParameter::MembraneN1,MathObjectKind::Membrane,"membrane_n1","n",1,6,1,1,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=1}},
+  {MathParameter::MembraneA1,MathObjectKind::Membrane,"membrane_a1","Initial displacement",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Release state", .rowCount=2, .components={"q0","v0",""}, .selector=MathParameter::MembraneSlot, .selectedValue=1}},
+  {MathParameter::MembraneV1,MathObjectKind::Membrane,"membrane_v1","Initial velocity",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=1}},
+  {MathParameter::MembraneM2,MathObjectKind::Membrane,"membrane_m2","m",1,6,1,1,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Mode numbers", .rowCount=2, .components={"m","n",""}, .selector=MathParameter::MembraneSlot, .selectedValue=2}},
+  {MathParameter::MembraneN2,MathObjectKind::Membrane,"membrane_n2","n",1,6,1,2,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=2}},
+  {MathParameter::MembraneA2,MathObjectKind::Membrane,"membrane_a2","Initial displacement",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Release state", .rowCount=2, .components={"q0","v0",""}, .selector=MathParameter::MembraneSlot, .selectedValue=2}},
+  {MathParameter::MembraneV2,MathObjectKind::Membrane,"membrane_v2","Initial velocity",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=2}},
+  {MathParameter::MembraneM3,MathObjectKind::Membrane,"membrane_m3","m",1,6,1,2,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Mode numbers", .rowCount=2, .components={"m","n",""}, .selector=MathParameter::MembraneSlot, .selectedValue=3}},
+  {MathParameter::MembraneN3,MathObjectKind::Membrane,"membrane_n3","n",1,6,1,2,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=3}},
+  {MathParameter::MembraneA3,MathObjectKind::Membrane,"membrane_a3","Initial displacement",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Release state", .rowCount=2, .components={"q0","v0",""}, .selector=MathParameter::MembraneSlot, .selectedValue=3}},
+  {MathParameter::MembraneV3,MathObjectKind::Membrane,"membrane_v3","Initial velocity",-0.6,0.6,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::MembraneSlot, .selectedValue=3}},
+  {MathParameter::MembraneWidth,MathObjectKind::Membrane,"membrane_width","Width",1,4,0.05,3,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Dimensions", .rowCount=2, .components={"W","D",""}}},
+  {MathParameter::MembraneDepth,MathObjectKind::Membrane,"membrane_depth","Depth",1,4,0.05,3,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MembraneTension,MathObjectKind::Membrane,"membrane_tension","Tension",0.25,4,0.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MembraneDensity,MathObjectKind::Membrane,"membrane_density","Areal density",0.5,2,0.05,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::MembraneDamping,MathObjectKind::Membrane,"membrane_damping","Damping gamma",0,2,0.05,0,0,false,{},{.group=MathControlGroup::Animation}},
+  {MathParameter::MembraneTime,MathObjectKind::Membrane,"membrane_time","Time",0,12,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::MembraneU,MathObjectKind::Membrane,"membrane_u","Probe u",0,1,0.01,0.5,0,false,{},{.group=MathControlGroup::Probe, .rowLabel="Probe UV", .rowCount=2, .components={"U","V",""}}},
+  {MathParameter::MembraneV,MathObjectKind::Membrane,"membrane_v","Probe v",0,1,0.01,0.5,0,false,{},{.group=MathControlGroup::Probe}},
+  {MathParameter::MembraneResolution,MathObjectKind::Membrane,"membrane_resolution","Subdivisions / axis",12,48,4,32,0,false,{},{.group=MathControlGroup::Sampling, .label="Subdivisions"}},
+  {MathParameter::MembraneGuides,MathObjectKind::Membrane,"membrane_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display, .label="Guides"}},
+  {MathParameter::MembraneView,MathObjectKind::Membrane,"membrane_view","Surface",0,1,1,0,0,false,"Combined surface\0Selected slot\0",{.group=MathControlGroup::Display}},
+  {MathParameter::RigidShape,MathObjectKind::Rigid,"rigid_shape","Body",0,3,1,0,0,false,"Flywheel\0Dumbbell\0Book\0Satellite\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::RigidWidth,MathObjectKind::Rigid,"rigid_width","Width",0.2,3.5,0.05,2.4,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Dimensions (m)", .rowCount=3, .components={"W","H","D"}}},
+  {MathParameter::RigidHeight,MathObjectKind::Rigid,"rigid_height","Height",0.2,3.5,0.05,0.3,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::RigidDepth,MathObjectKind::Rigid,"rigid_depth","Depth",0.2,3.5,0.05,2.4,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::RigidMass,MathObjectKind::Rigid,"rigid_mass","Total mass",0.2,5,0.1,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::RigidBalance,MathObjectKind::Rigid,"rigid_balance","Left mass share",0.2,0.8,0.01,0.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::RigidRotX,MathObjectKind::Rigid,"rigid_rot_x","Release X (deg)",-180,180,1,0,0,false,{},{.group=MathControlGroup::Transform, .rowLabel="Release angles (deg)", .rowCount=3}},
+  {MathParameter::RigidRotY,MathObjectKind::Rigid,"rigid_rot_y","Release Y (deg)",-180,180,1,0,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::RigidRotZ,MathObjectKind::Rigid,"rigid_rot_z","Release Z (deg)",-180,180,1,0,0,false,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::RigidSpinX,MathObjectKind::Rigid,"rigid_spin_x","Initial spin X",-4,4,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .rowLabel="Initial spin (rad/s)", .rowCount=3}},
+  {MathParameter::RigidSpinY,MathObjectKind::Rigid,"rigid_spin_y","Initial spin Y",-4,4,0.01,3,0,false,{},{.group=MathControlGroup::Animation}},
+  {MathParameter::RigidSpinZ,MathObjectKind::Rigid,"rigid_spin_z","Initial spin Z",-4,4,0.01,0,0,false,{},{.group=MathControlGroup::Animation}},
+  {MathParameter::RigidTime,MathObjectKind::Rigid,"rigid_time","Time",0,12,0.01,0,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::RigidAxis,MathObjectKind::Rigid,"rigid_axis","Track body axis",0,2,1,0,0,false,"Body X\0Body Y\0Body Z\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::RigidGuides,MathObjectKind::Rigid,"rigid_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display}},
+  {MathParameter::TrussShape,MathObjectKind::Truss,"truss_shape","Structure",0,3,1,0,0,false,"Triangular support\0Bridge\0Crane boom\0Roof truss\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::TrussSpan,MathObjectKind::Truss,"truss_span","Span (m)",1,5,0.05,3,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Dimensions (m)", .rowCount=2, .components={"W","H",""}}},
+  {MathParameter::TrussHeight,MathObjectKind::Truss,"truss_height","Height (m)",0,3,0.05,1.5,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::TrussLean,MathObjectKind::Truss,"truss_lean","Crown shift / span",-0.15,0.15,0.01,0,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::TrussJoint,MathObjectKind::Truss,"truss_joint","Inspect joint",0,5,1,2,0,false,"A\0B\0C\0D\0E\0F\0",{.group=MathControlGroup::Profile}},
+  {MathParameter::TrussP0X,MathObjectKind::Truss,"truss_a_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=0}},
+  {MathParameter::TrussP0Y,MathObjectKind::Truss,"truss_a_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=0}},
+  {MathParameter::TrussP1X,MathObjectKind::Truss,"truss_b_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=1}},
+  {MathParameter::TrussP1Y,MathObjectKind::Truss,"truss_b_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=1}},
+  {MathParameter::TrussP2X,MathObjectKind::Truss,"truss_c_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=2}},
+  {MathParameter::TrussP2Y,MathObjectKind::Truss,"truss_c_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=2}},
+  {MathParameter::TrussP3X,MathObjectKind::Truss,"truss_d_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=3}},
+  {MathParameter::TrussP3Y,MathObjectKind::Truss,"truss_d_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=3}},
+  {MathParameter::TrussP4X,MathObjectKind::Truss,"truss_e_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=4}},
+  {MathParameter::TrussP4Y,MathObjectKind::Truss,"truss_e_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=4}},
+  {MathParameter::TrussP5X,MathObjectKind::Truss,"truss_f_x","Joint offset X (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .rowLabel="Joint offset (m)", .rowCount=2, .components={"X","Y",""}, .selector=MathParameter::TrussJoint, .selectedValue=5}},
+  {MathParameter::TrussP5Y,MathObjectKind::Truss,"truss_f_y","Joint offset Y (m)",-0.5,0.5,0.01,0,0,false,{},{.group=MathControlGroup::Profile, .selector=MathParameter::TrussJoint, .selectedValue=5}},
+  {MathParameter::TrussPosition,MathObjectKind::Truss,"truss_position","Load position",0,1,0.01,0.5,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::TrussLoadX,MathObjectKind::Truss,"truss_load_x","Horizontal load (kN)",-5,5,0.1,0,0,false,{},{.group=MathControlGroup::Operation, .rowLabel="Applied load (kN)", .rowCount=2, .components={"X","Y",""}}},
+  {MathParameter::TrussLoadY,MathObjectKind::Truss,"truss_load_y","Vertical load (kN)",-5,5,0.1,-1,0,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::TrussMember,MathObjectKind::Truss,"truss_member","Inspect member",0,8,1,2,0,false,"M1\0M2\0M3\0M4\0M5\0M6\0M7\0M8\0M9\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::TrussBrace,MathObjectKind::Truss,"truss_brace","Test member",0,1,1,1,0,false,"Removed\0Installed\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::TrussSupports,MathObjectKind::Truss,"truss_supports","Supports",0,2,1,0,0,false,"As designed\0Release restraint\0Add restraint\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::TrussTensionLimit,MathObjectKind::Truss,"truss_tension_limit","Tension limit (kN)",0.25,10,0.05,2,0,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::TrussCompressionLimit,MathObjectKind::Truss,"truss_compression_limit","Compression limit (kN)",0.25,10,0.05,2,0,false,{},{.group=MathControlGroup::Advanced}},
+  {MathParameter::TrussGuides,MathObjectKind::Truss,"truss_guides","Construction guides",0,1,1,1,0,false,"Shape only\0Show construction\0",{.group=MathControlGroup::Display}},
+  {MathParameter::SimplexP0,MathObjectKind::Simplex,"simplex_p_a","P: probability of A",0,1,.01,1./3,0,false,{},{.group=MathControlGroup::ShapeA, .rowLabel="Distribution P", .rowCount=2, .components={"A","B",""}}},
+  {MathParameter::SimplexP1,MathObjectKind::Simplex,"simplex_p_b","P: probability of B",0,1,.01,1./3,0,false,{},{.group=MathControlGroup::ShapeA}},
+  {MathParameter::SimplexQ0,MathObjectKind::Simplex,"simplex_q_a","Q: probability of A",0,1,.01,1./3,0,false,{},{.group=MathControlGroup::ShapeB, .rowLabel="Distribution Q", .rowCount=2, .components={"A","B",""}}},
+  {MathParameter::SimplexQ1,MathObjectKind::Simplex,"simplex_q_b","Q: probability of B",0,1,.01,1./3,0,false,{},{.group=MathControlGroup::ShapeB}},
+  {MathParameter::SimplexValue0,MathObjectKind::Simplex,"simplex_value_a","Outcome A value",-3,3,.1,-1,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Outcome values", .rowCount=3, .components={"A","B","C"}}},
+  {MathParameter::SimplexValue1,MathObjectKind::Simplex,"simplex_value_b","Outcome B value",-3,3,.1,0,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::SimplexValue2,MathObjectKind::Simplex,"simplex_value_c","Outcome C value",-3,3,.1,1,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::SimplexFunction,MathObjectKind::Simplex,"simplex_function","Surface function",0,3,1,1,0,false,"Expected value\0Entropy\0Negative entropy\0Variance\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::SimplexMix,MathObjectKind::Simplex,"simplex_mix","Mixture toward Q",0,1,.01,.5,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=15}},
+  {MathParameter::SimplexGuides,MathObjectKind::Simplex,"simplex_guides","Construction guides",0,1,1,1,0,false,"Surface and markers\0Show construction\0",{.group=MathControlGroup::Display}},
+  {MathParameter::DistanceAB,MathObjectKind::Distance,"distance_ab","Length AB",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Lengths from A", .rowCount=3, .components={"AB","AC","AD"}}},
+  {MathParameter::DistanceAC,MathObjectKind::Distance,"distance_ac","Length AC",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::DistanceAD,MathObjectKind::Distance,"distance_ad","Length AD",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::DistanceBC,MathObjectKind::Distance,"distance_bc","Length BC",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Other lengths", .rowCount=3, .components={"BC","BD","CD"}}},
+  {MathParameter::DistanceBD,MathObjectKind::Distance,"distance_bd","Length BD",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::DistanceCD,MathObjectKind::Distance,"distance_cd","Length CD",0,4,.01,2,0,false,{},{.group=MathControlGroup::Shape}},
+  {MathParameter::DistanceEdge,MathObjectKind::Distance,"distance_edge","Inspect edge",0,5,1,0,0,false,"AB\0AC\0AD\0BC\0BD\0CD\0",{.group=MathControlGroup::Probe}},
+  {MathParameter::DistanceMirror,MathObjectKind::Distance,"distance_mirror","Reconstruction side",0,1,1,0,0,false,"Canonical\0Reflected\0",{.group=MathControlGroup::Transform}},
+  {MathParameter::DistanceSecond,MathObjectKind::Distance,"distance_second","Second distance matrix",0,4,1,3,0,false,"Regular tetrahedron\0Square\0Line\0Different line\0Coincident points\0",{.group=MathControlGroup::Operation}},
+  {MathParameter::DistanceMix,MathObjectKind::Distance,"distance_mix","Mixture toward second",0,1,.01,0,0,false,{},{.group=MathControlGroup::Animation, .playbackLayers=8}},
+  {MathParameter::DistanceScale,MathObjectKind::Distance,"distance_scale","Squared-distance multiplier",0,4,.05,1,0,false,{},{.group=MathControlGroup::Operation}},
+  {MathParameter::DistanceGuides,MathObjectKind::Distance,"distance_guides","Construction guides",0,1,1,1,0,false,"Object only\0Show construction\0",{.group=MathControlGroup::Display}},
+  {MathParameter::PolarA00,MathObjectKind::Polar,"polar_a00","A row 1, column 1",-3,3,.05,1,0,true,{},{.group=MathControlGroup::Transform, .rowLabel="A row 1", .rowCount=3, .components={"1","2","3"}}},
+  {MathParameter::PolarA01,MathObjectKind::Polar,"polar_a01","A row 1, column 2",-3,3,.05,1,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarA02,MathObjectKind::Polar,"polar_a02","A row 1, column 3",-3,3,.05,0,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarA10,MathObjectKind::Polar,"polar_a10","A row 2, column 1",-3,3,.05,0,0,true,{},{.group=MathControlGroup::Transform, .rowLabel="A row 2", .rowCount=3, .components={"1","2","3"}}},
+  {MathParameter::PolarA11,MathObjectKind::Polar,"polar_a11","A row 2, column 2",-3,3,.05,1,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarA12,MathObjectKind::Polar,"polar_a12","A row 2, column 3",-3,3,.05,0,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarA20,MathObjectKind::Polar,"polar_a20","A row 3, column 1",-3,3,.05,0,0,true,{},{.group=MathControlGroup::Transform, .rowLabel="A row 3", .rowCount=3, .components={"1","2","3"}}},
+  {MathParameter::PolarA21,MathObjectKind::Polar,"polar_a21","A row 3, column 2",-3,3,.05,0,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarA22,MathObjectKind::Polar,"polar_a22","A row 3, column 3",-3,3,.05,1,0,true,{},{.group=MathControlGroup::Transform}},
+  {MathParameter::PolarShape,MathObjectKind::Polar,"polar_shape","Source solid",0,1,1,0,0,false,"Marked block\0Tetrahedron\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::PolarAmount,MathObjectKind::Polar,"polar_amount","Deformation amount",0,1,.01,1,0,false,{},{.group=MathControlGroup::Animation, .layers=1, .playbackLayers=1}},
+  {MathParameter::PolarIteration,MathObjectKind::Polar,"polar_iteration","Iteration k",0,32,1,0,0,false,{},{.group=MathControlGroup::Animation, .layers=4, .playbackLayers=4}},
+  {MathParameter::PolarExtension,MathObjectKind::Polar,"polar_extension","Null-space extension",0,1,1,0,0,false,"Canonical\0Reverse one null direction\0",{.group=MathControlGroup::Operation, .layers=8}},
+  {MathParameter::PolarGuides,MathObjectKind::Polar,"polar_guides","Construction guides",0,1,1,1,0,false,"Solid and landmarks\0Show reference frames\0",{.group=MathControlGroup::Display}},
+  {MathParameter::QrA0X,MathObjectKind::Qr,"qr_a0x","Column a0 X",-3,3,.05,2,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Column a0", .rowCount=3, .selector=MathParameter::QrVector, .selectedValue=0}},
+  {MathParameter::QrA0Y,MathObjectKind::Qr,"qr_a0y","Column a0 Y",-3,3,.05,0,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=0}},
+  {MathParameter::QrA0Z,MathObjectKind::Qr,"qr_a0z","Column a0 Z",-3,3,.05,1,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=0}},
+  {MathParameter::QrA1X,MathObjectKind::Qr,"qr_a1x","Column a1 X",-3,3,.05,0,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Column a1", .rowCount=3, .selector=MathParameter::QrVector, .selectedValue=1}},
+  {MathParameter::QrA1Y,MathObjectKind::Qr,"qr_a1y","Column a1 Y",-3,3,.05,1,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=1}},
+  {MathParameter::QrA1Z,MathObjectKind::Qr,"qr_a1z","Column a1 Z",-3,3,.05,1,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=1}},
+  {MathParameter::QrBX,MathObjectKind::Qr,"qr_bx","Target b X",-3,3,.05,1.5,0,false,{},{.group=MathControlGroup::Shape, .rowLabel="Target b", .rowCount=3, .selector=MathParameter::QrVector, .selectedValue=2}},
+  {MathParameter::QrBY,MathObjectKind::Qr,"qr_by","Target b Y",-3,3,.05,0,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=2}},
+  {MathParameter::QrBZ,MathObjectKind::Qr,"qr_bz","Target b Z",-3,3,.05,3,0,false,{},{.group=MathControlGroup::Shape, .selector=MathParameter::QrVector, .selectedValue=2}},
+  {MathParameter::QrVector,MathObjectKind::Qr,"qr_vector","Edit vector",0,2,1,0,0,false,"Column a0\0Column a1\0Target b\0",{.group=MathControlGroup::Shape}},
+  {MathParameter::QrStage,MathObjectKind::Qr,"qr_stage","Gram-Schmidt stage",0,3,.01,0,0,false,{},{.group=MathControlGroup::Animation, .layers=1, .playbackLayers=1}},
+  {MathParameter::QrC0,MathObjectKind::Qr,"qr_c0","Trial coefficient x0",-64,64,.01,0,0,false,{},{.group=MathControlGroup::Operation, .rowLabel="Trial x", .rowCount=2, .components={"0","1",""}, .layers=4}},
+  {MathParameter::QrC1,MathObjectKind::Qr,"qr_c1","Trial coefficient x1",-64,64,.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::QrUseSolution,MathObjectKind::Qr,"qr_solution","Coefficient source",0,1,1,0,0,false,"Your coefficients\0Minimum-norm fit\0",{.group=MathControlGroup::Operation, .layers=4}},
+  {MathParameter::QrNull0,MathObjectKind::Qr,"qr_null0","First null offset",-3,3,.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=8}},
+  {MathParameter::QrNull1,MathObjectKind::Qr,"qr_null1","Second null offset",-3,3,.01,0,0,false,{},{.group=MathControlGroup::Operation, .layers=8}},
+  {MathParameter::QrGuides,MathObjectKind::Qr,"qr_guides","Construction guides",0,1,1,1,0,false,"Vectors and landmarks\0Show span and construction\0",{.group=MathControlGroup::Display}}
 }};
 constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Count)> objects{{
   {MathObjectKind::Algebra,"algebra","Algebra","A cube full of algebra",
@@ -567,7 +585,11 @@ constexpr std::array<MathObjectSpec,static_cast<std::size_t>(MathObjectKind::Cou
   {MathObjectKind::Polar,"polar","Polar Decomposition Lab","Separate stretch from orientation",
    "A = W P; W^T W = I; P = sqrt(A^T A)","Fully deform a solid using a nonorthogonal invertible matrix.",
    "Edit a real 3x3 matrix. Teal is stretch P, violet is the orthogonal factor W and coral is the full deformation A. W can include a reflection. Panels use a common display scale; matrix values retain their original units. At numerical rank loss the orthogonal extension is not unique. Higham's iteration requires an invertible matrix and the stated numerical safety threshold.",
-   {"Deform a marked solid with a matrix.","Separate positive stretch from rotation or reflection.","Remove shear iteratively and explore singular extensions."},{.7F,.55F,1},.5,"Restart deformation / iteration","End reached. Restart or scrub the active control."}
+   {"Deform a marked solid with a matrix.","Separate positive stretch from rotation or reflection.","Remove shear iteratively and explore singular extensions."},{.7F,.55F,1},.5,"Restart deformation / iteration","End reached. Restart or scrub the active control."},
+  {MathObjectKind::Qr,"qr","QR & Least Squares Lab","Build a frame and find the closest fit",
+   "A Pi = Q R; p = Q_active Q_active^T b; A^T(b-p) = 0","Turn two independent columns into an orthonormal frame.",
+   "Two editable columns in real 3D. Column pivoting puts the longer column first; Pi records that order. Gram-Schmidt subtracts the projection twice for numerical stability. Inactive Q columns are zero, not invented basis directions. Teal is the closest point, gold the target, coral your fit. Numerical rank loss gives a family of least-squares solutions.",
+   {"Normalize, subtract a shadow, then normalize again.","Reconstruct columns and inspect an orthogonal residual.","Explore least-squares errors, null directions and minimum coefficient norm."},{.8F,.6F,1},.5,"Restart Gram-Schmidt","Orthonormalization complete. Restart or scrub the construction."}
 }};
 constexpr std::array<MathLesson,4> functionLessons{{
   {"Inputs and roots","y = f(x)","Find an input where f(x) = 0.","Move the point or scrub a graph. The selected function owns every linked value."},
@@ -706,6 +728,22 @@ constexpr std::array<MathLesson,4> booleanLessons{{
   {"Sets and Boolean logic","Union: A OR B; intersection: A AND B; difference: A AND NOT B","Choose intersection and put the probe strictly inside both inputs.","The table lists all four input combinations; Probe match selects the current row away from boundaries. On an input boundary there is no active binary row. Smooth union uses the hard-union table as a baseline: blending can add material outside both inputs. The displayed surface encloses the sampled negative region, so isolated zero-thickness contacts have no material volume."},
   {"Blends and surface normals","smin(a,b)=h*a+(1-h)*b-k*h*(1-h); h=clamp(1/2+(b-a)/(2k),0,1)","Use a positive smooth blend to add material outside both inputs; find a regular surface on the probe line.","Blend width k rounds the meeting region; k=0 gives ordinary union. The gradient points toward increasing field values. A unit surface normal is shown at the nearest detected crossing on the x-directed probe line, when regular. Sharp switches, primitive ridges and zero gradients do not have a unique normal. The table keeps the gradient magnitude instead of treating the field as an exact distance."},
   {"Sampling solids","V_n = occupied midpoint cells * cell volume","Request at least 24 cells per axis for a nonzero solid; make the 48- and 64-cell volume estimates agree within 3 percent.","The mesh and the midpoint volume sum are separate approximations in the same fixed domain. The table compares increasingly fine grids with the 64-cell estimate. Agreement is evidence, not a certified error bound, and errors need not decrease at every count. A gold cell follows the probe. Requested and actual mesh counts are shown if the fixed mesh budget reduces resolution. Section view changes visible mesh volume only."}
+}};
+constexpr std::array<MathLesson,4> qrLessons{{
+  {"Building an orthonormal frame","q0 = c0/||c0||; v = c1 - (q0 dot c1) q0; q1 = v/||v||","With numerical rank 2, reach stage 3 and an orthogonality error below 1e-10.","Click a vector endpoint or choose Edit vector, then drag/type its XYZ components. The longer column is first; equal lengths retain input order. Stage 0 shows the pivoted columns; stage 1 normalizes the first; stage 2 subtracts its shadow from the second; stage 3 normalizes the remainder. A dependent remainder is never divided by zero. Target b is a reference for later layers. Play is a construction animation, not physical motion."},
+  {"QR and reconstruction","A Pi = Q R; c0 = r00 q0; c1 = r01 q0 + r11 q1","Use rank 2 and a nonzero r01; reconstruct both columns with relative error below 1e-10.","Left: original columns. Right: their reconstruction from the active Q directions and R coefficients. The matrix drawer shows pivoted A, thin Q and triangular R. Swapping the pivot order changes the factorization convention, not the map. At rank loss unused Q columns and R diagonal entries are zero. The reported residual includes numerical rank truncation."},
+  {"Projection and least squares","min_x ||Ax-b||^2; at a minimum, A^T(b-Ax) = 0","Find a nonzero least-squares residual with normal-equation residual below 1e-9.","Teal is the closest point in the column span; the gold segment to b is perpendicular to that span. Coral is the fit using your two trial coefficients. Choose Minimum-norm fit to inspect the computed solution, including values beyond the trial controls' range. The two graphs vary one coefficient around the current pair while keeping the other fixed. Rank 2 has a unique answer; a dependent matrix can have many answers."},
+  {"Null directions and minimum norm","x = x_min + N t; A N = 0; ||x||^2 = ||x_min||^2 + ||t||^2","Use rank 1 and a nonzero null offset while preserving the minimum residual.","Left: the same target and fitted point as coefficients move along null directions. Right: excess squared error ||A delta||^2 with delta = x-x_min, over [-3,3]^2; height is scaled to fit. Full rank gives a bowl, rank 1 a trough, rank 0 a flat plane. Gold marks the minimum-norm solution at delta=0; violet moves within the minimizing family. The family is for the numerical-rank model; actual-input residuals remain visible."}
+}};
+constexpr std::array<MathParameter,MathObjectPreset::kCapacity> qrPresetParameters{MathParameter::QrA0X,MathParameter::QrA0Y,MathParameter::QrA0Z,MathParameter::QrA1X,MathParameter::QrA1Y,MathParameter::QrA1Z,MathParameter::QrBX,MathParameter::QrBY,MathParameter::QrBZ,MathParameter::QrVector,MathParameter::QrStage,MathParameter::QrC0,MathParameter::QrC1,MathParameter::QrUseSolution,MathParameter::QrNull0,MathParameter::QrNull1,MathParameter::QrGuides};
+constexpr std::array<MathObjectPreset,7> qrPresets{{
+  {"Tilted plane",qrPresetParameters,{2,0,1,0,1,1,1.5,0,3,0,0,0,0,0,0,0,1},17},
+  {"Orthogonal columns",qrPresetParameters,{2,0,0,0,1,0,1,1,1,0,0,0,0,0,0,0,1},17},
+  {"Exact fit",qrPresetParameters,{1,0,1,0,2,0,2,2,2,0,0,0,0,0,0,0,1},17},
+  {"Dependent columns",qrPresetParameters,{1,0,1,2,0,2,1,1,1,0,0,0,0,0,0,0,1},17},
+  {"Zero first column",qrPresetParameters,{0,0,0,0,2,1,1,2,1,0,0,0,0,0,0,0,1},17},
+  {"Zero matrix",qrPresetParameters,{0,0,0,0,0,0,1,2,1,0,0,0,0,0,0,0,1},17},
+  {"Almost parallel",qrPresetParameters,{2,0,0,2,0.05,0,0,1,1,0,0,0,0,0,0,0,1},17}
 }};
 constexpr std::array<MathLesson,4> polarLessons{{
   {"Linear deformation","x(t) = [(1-t)I + t A] x","At t=1, use a full-rank A with ||A^T A-I|| > 0.25.","The block has unequal side lengths, coloured faces and a gold corner landmark. The tetrahedron provides another orientation marker. Reference wires show the undeformed source. Play moves t from 0 to 1. This is a straight matrix blend, not a rigid rotation path; intermediate shapes can collapse, even when the endpoint is invertible."},
@@ -1331,6 +1369,10 @@ public:
     auto& line=p.series[p.seriesCount++];line={};line.name=name;line.color=color;line.count=line.points.size();line.signedFill=filled;
     for(std::size_t i=0;i<line.count;++i) {const double x=from+(to-from)*i/(line.count-1);line.points[i]={x,f(x)};}
   }
+  template<class F> MathPlot& linkedPlot(std::string_view title,MathParameter scrub,MathPlotPoint marker,std::string_view name,Vec3 color,double from,double to,F sample,bool filled=false) {
+    auto& p=plot(title,scrub);curve(p,name,color,from,to,sample,filled);
+    p.marker=marker;p.hasMarker=true;return p;
+  }
   void matrix(std::string_view name,const Matrix& values,bool editable=false) {
     if(s.matrixCount==s.matrices.size())throw std::logic_error("math matrix capacity exceeded");
     auto& view=s.matrices[s.matrixCount++];view={};view.name=name;view.values=values;view.editable=editable;view.parameters=matrixParameters;
@@ -1421,6 +1463,7 @@ std::span<const MathLesson> mathLessons(MathObjectKind kind) {
     case MathObjectKind::Simplex:return simplexLessons;
     case MathObjectKind::Distance:return distanceLessons;
     case MathObjectKind::Polar:return polarLessons;
+    case MathObjectKind::Qr:return qrLessons;
     default:return {};
   }
 }
@@ -1441,6 +1484,7 @@ std::span<const MathObjectPreset> mathObjectPresets(MathObjectKind kind,unsigned
     case MathObjectKind::Simplex:return simplexPresets;
     case MathObjectKind::Distance:return distancePresets;
     case MathObjectKind::Polar:return polarPresets;
+    case MathObjectKind::Qr:return qrPresets;
     default:return {};
   }
 }
@@ -1452,15 +1496,17 @@ double MathObjects::parameter(MathParameter p) const {
 bool MathObjects::parameterAvailable(MathParameter p) const {
   if(index(p)>=parameters.size())return false;
   const auto& spec=parameters[index(p)];
-  if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level)return false;
+  if(spec.owner!=snapshot_.kind||spec.minimumLevel>snapshot_.level||!(spec.control.layers&(1U<<snapshot_.level)))return false;
   switch(p) {
-    case MathParameter::PolarAmount:return snapshot_.level==0;
+    case MathParameter::QrC0:case MathParameter::QrC1:return parameter(MathParameter::QrUseSolution)==0;
+    case MathParameter::QrNull0:case MathParameter::QrNull1:{
+      QrColumns a{};for(unsigned j=0;j<2;++j)for(unsigned i=0;i<3;++i)a[j][i]=parameter(static_cast<MathParameter>(index(MathParameter::QrA0X)+3*j+i));
+      return analyzeQr(a,{}).rank<(p==MathParameter::QrNull0?2U:1U);
+    }
     case MathParameter::PolarIteration:{
-      if(snapshot_.level!=2)return false;
       PolarMatrix a{};for(unsigned i=0;i<9;++i)a[i]=parameter(static_cast<MathParameter>(index(MathParameter::PolarA00)+i));
       return analyzePolar(a).iterationAvailable;
     }
-    case MathParameter::PolarExtension:return snapshot_.level==3;
     case MathParameter::DistanceSecond:case MathParameter::DistanceMix:case MathParameter::DistanceScale:return snapshot_.level==3;
     case MathParameter::SimplexFunction:return snapshot_.level==1||snapshot_.level==2;
     case MathParameter::RigidBalance:return parameter(MathParameter::RigidShape)==1||parameter(MathParameter::RigidShape)==3;
@@ -1495,10 +1541,7 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
     case MathParameter::LatheWall:case MathParameter::LatheFloor:return parameter(MathParameter::LatheHollow)==1;
     case MathParameter::LatheSlices:return snapshot_.level>=2;
     case MathParameter::LatheMethod:return snapshot_.level==2;
-    case MathParameter::CurveTravel:return snapshot_.level>=2;
-    case MathParameter::CurveProfile:case MathParameter::CurveRadius:case MathParameter::CurveAspect:
-    case MathParameter::CurveEndScale:case MathParameter::CurveTwist:case MathParameter::CurveGuides:return snapshot_.level==3;
-    case MathParameter::CurveNormP:return snapshot_.level==3&&parameter(MathParameter::CurveProfile)==2;
+    case MathParameter::CurveNormP:return parameter(MathParameter::CurveProfile)==2;
     case MathParameter::NormOtherX:case MathParameter::NormOtherY:case MathParameter::NormOtherZ:return snapshot_.level==1;
     case MathParameter::CloudWhiten:return parameter(MathParameter::CloudX)>0&&parameter(MathParameter::CloudY)>0&&parameter(MathParameter::CloudZ)>0;
     case MathParameter::ProbabilitySeed:return snapshot_.level==0;
@@ -1514,21 +1557,11 @@ bool MathObjects::parameterAvailable(MathParameter p) const {
   }
 }
 MathParameter MathObjects::playbackParameter() const {
-  switch(snapshot_.kind) {
-    case MathObjectKind::Harmonics:return MathParameter::HarmonicTime;
-    case MathObjectKind::Membrane:return MathParameter::MembraneTime;
-    case MathObjectKind::Rigid:return MathParameter::RigidTime;
-    case MathObjectKind::Truss:return MathParameter::TrussPosition;
-    case MathObjectKind::Simplex:return MathParameter::SimplexMix;
-    case MathObjectKind::Distance:return snapshot_.level==3?MathParameter::DistanceMix:MathParameter::Count;
-    case MathObjectKind::Polar:return snapshot_.level==0?MathParameter::PolarAmount:snapshot_.level==2?MathParameter::PolarIteration:MathParameter::Count;
-    case MathObjectKind::Oscillator:return MathParameter::MotionTime;
-    case MathObjectKind::VectorField:return MathParameter::FieldTime;
-    case MathObjectKind::Flux:return MathParameter::FluxTime;
-    case MathObjectKind::Curve:return MathParameter::CurveProgress;
-    case MathObjectKind::Lathe:return snapshot_.level==1?MathParameter::LatheTurn:MathParameter::Count;
-    default:return MathParameter::Count;
-  }
+  static constexpr auto bindings=[] {std::array<std::array<MathParameter,4>,static_cast<unsigned>(MathObjectKind::Count)> result{};
+    for(auto& object:result)object.fill(MathParameter::Count);
+    for(const auto& p:parameters)for(unsigned level=0;level<4;++level)if(p.control.playbackLayers&(1U<<level))result[static_cast<unsigned>(p.owner)][level]=p.id;
+    return result;
+  }();return bindings[index(snapshot_.kind)][snapshot_.level];
 }
 MathActionResult MathObjects::dispatch(const MathAction& a) {
   switch(a.kind) {
@@ -1549,7 +1582,7 @@ MathActionResult MathObjects::dispatch(const MathAction& a) {
       if(a.parameter>=MathParameter::SimplexP0&&a.parameter<=MathParameter::SimplexQ1){const auto offset=index(a.parameter)-index(MathParameter::SimplexP0);const auto other=index(MathParameter::SimplexP0)+(offset^1U);if(a.value+parameters_[other]>1+1e-12)return {false,"probabilities A+B must not exceed one"};next=std::min(next,1-parameters_[other]);}
       parameters_[index(a.parameter)]=next;
       if(a.parameter==MathParameter::Shortcut)snapshot_.routeCount=1;
-      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:snapshot_.playing=false;break;default:break;}
+      switch(snapshot_.kind){case MathObjectKind::Curve:case MathObjectKind::Lathe:case MathObjectKind::Membrane:case MathObjectKind::Rigid:case MathObjectKind::Truss:case MathObjectKind::Simplex:case MathObjectKind::Distance:case MathObjectKind::Polar:case MathObjectKind::Qr:snapshot_.playing=false;break;default:break;}
       if(a.parameter==playbackParameter())snapshot_.playing=false;
       if(a.parameter==MathParameter::FieldPath){fieldPathReversed_=false;parameters_[index(MathParameter::FieldTime)]=0;snapshot_.playing=false;}
       break;
@@ -1965,6 +1998,13 @@ void MathObjects::check() {
         case 2:solved=measured("Iteration available")==1&&measured("Input orthogonality error")>.25&&measured("Iteration k")>0&&measured("Iterate orthogonality error")<1e-9;good="Yes: the iterate now preserves lengths and angles to the stated tolerance.";bad="Use Sheared block and advance to iteration 7, or continue until the residual is below 1e-9.";break;
         case 3:solved=measured("Numerical rank")<3&&parameter(MathParameter::PolarExtension)==1&&measured("Relative reconstruction error")<1e-10&&measured("W orthogonality error")<1e-10;good="Yes: reversing a null direction changes W while preserving WP.";bad="Choose Collapsed sheet and reverse one null direction.";break;
       }break;
+    case MathObjectKind::Qr:
+      switch(snapshot_.level){
+        case 0:solved=measured("Numerical rank")==2&&parameter(MathParameter::QrStage)==3&&measured("Active Q orthogonality error")<1e-10;good="Yes: both active directions are unit length and perpendicular.";bad="Choose Tilted plane and advance the construction to stage 3.";break;
+        case 1:solved=measured("Numerical rank")==2&&std::fabs(measured("r01"))>.1&&measured("Relative QR residual")<1e-10;good="Yes: R combines the orthonormal directions back into both pivoted columns.";bad="Choose Tilted plane and inspect the nonzero projection coefficient r01.";break;
+        case 2:solved=measured("Numerical rank")>0&&measured("Trial squared error")>.01&&measured("Trial normal residual")<1e-9;good="Yes: the remaining nonzero residual is perpendicular to both columns.";bad="Choose Tilted plane with coefficients (1,1), or inspect Minimum-norm fit.";break;
+        case 3:solved=measured("Numerical rank")==1&&std::fabs(parameter(MathParameter::QrNull0))>.5&&std::fabs(measured("Family squared error")-measured("Minimum squared error"))<1e-9;good="Yes: the coefficient vector changed along the null space while the fit stayed optimal.";bad="Choose Dependent columns and move the first null offset beyond 0.5.";break;
+      }break;
     case MathObjectKind::Count:return;
   }
   snapshot_.feedback=solved?MathFeedback::Solved:MathFeedback::TryAgain;snapshot_.feedbackText=solved?good:bad;
@@ -2133,7 +2173,7 @@ void MathObjects::rebuild() {
       const auto f=[&](double t){return functionDerivative(rule,t);};
       const auto derivative=[&](double t){return functionDerivative(rule,t,1);};
       const double fx=f(x),slope=derivative(x),secant=h==0?slope:(f(x+h)-fx)/h;
-      auto& graph=b.plot("Function f(x)",MathParameter::FunctionX);b.curve(graph,"f",teal,-3,3,f);graph.marker={x,fx};graph.hasMarker=true;
+      auto& graph=b.linkedPlot("Function f(x)",MathParameter::FunctionX,{x,fx},"f",teal,-3,3,f);
       for(unsigned i=0;i<128;i+=2) {
         const auto p=graph.series[0].points[i],q=graph.series[0].points[i+2];
         b.rod({static_cast<float>(p.x),static_cast<float>(p.y),0},{static_cast<float>(q.x),static_cast<float>(q.y),0},teal,.022F,"function_curve");
@@ -2144,12 +2184,12 @@ void MathObjects::rebuild() {
       if(snapshot_.level>=1) {
         b.rod({static_cast<float>(x-.5),static_cast<float>(fx-.5*slope),.025F},{static_cast<float>(x+.5),static_cast<float>(fx+.5*slope),.025F},coral,.024F,"tangent");
         const Vec3 end{static_cast<float>(x+h),static_cast<float>(f(x+h)),.07F};b.ball(end,.05F,blue,"secant_point");b.rod(point,end,gold,.019F,"secant");
-        auto& plot=b.plot("Derivative f'(x)",MathParameter::FunctionX);b.curve(plot,"f'",coral,-3,3,derivative);plot.marker={x,slope};plot.hasMarker=true;
+        b.linkedPlot("Derivative f'(x)",MathParameter::FunctionX,{x,slope},"f'",coral,-3,3,derivative);
         b.metric("Secant slope",secant);b.metric("Secant error",std::fabs(secant-slope));
       }
       if(snapshot_.level>=2) {
         const auto accumulated=[&](double t){return primitive(rule,t)-primitive(rule,a);};
-        auto& plot=b.plot("Accumulation F(x)",MathParameter::FunctionX);b.curve(plot,"Integral from a",blue,-3,3,accumulated);plot.marker={x,accumulated(x)};plot.hasMarker=true;
+        b.linkedPlot("Accumulation F(x)",MathParameter::FunctionX,{x,accumulated(x)},"Integral from a",blue,-3,3,accumulated);
         b.curve(graph,"Between bounds",blue,std::min(a,x),std::max(a,x),f,true);
         b.metric("Signed integral",accumulated(x));b.metric("F'(x) = f(x)",fx);
         if(std::fabs(x-a)>1e-9) {
@@ -2200,10 +2240,8 @@ void MathObjects::rebuild() {
       }
       const Vec3 point{static_cast<float>(u),static_cast<float>(sample.height+.04),static_cast<float>(v)};
       b.ball(point,.08F,gold,"surface_point");b.label("f(u,v)",point+Vec3{0,.2F,0},gold);
-      auto& uPlot=b.plot("u section: v fixed",constrained?MathParameter::Count:MathParameter::SurfaceU);
-      b.curve(uPlot,"f(u,v0)",coral,-2,2,[&](double t){return surfaceValue(rule,t,v).height;});uPlot.marker={u,sample.height};uPlot.hasMarker=true;
-      auto& vPlot=b.plot("v section: u fixed",constrained?MathParameter::Count:MathParameter::SurfaceV);
-      b.curve(vPlot,"f(u0,v)",violet,-2,2,[&](double t){return surfaceValue(rule,u,t).height;});vPlot.marker={v,sample.height};vPlot.hasMarker=true;
+      b.linkedPlot("u section: v fixed",constrained?MathParameter::Count:MathParameter::SurfaceU,{u,sample.height},"f(u,v0)",coral,-2,2,[&](double t){return surfaceValue(rule,t,v).height;});
+      b.linkedPlot("v section: u fixed",constrained?MathParameter::Count:MathParameter::SurfaceV,{v,sample.height},"f(u0,v)",violet,-2,2,[&](double t){return surfaceValue(rule,u,t).height;});
       for(unsigned i=0;i<32;++i) {
         const double a=-2+i*.125,c=a+.125;
         b.rod({static_cast<float>(a),static_cast<float>(surfaceValue(rule,a,v).height+.012),static_cast<float>(v)},{static_cast<float>(c),static_cast<float>(surfaceValue(rule,c,v).height+.012),static_cast<float>(v)},coral,.017F,"u_section");
@@ -2290,7 +2328,7 @@ void MathObjects::rebuild() {
           for(unsigned i=0;i<64;++i){const double u=2*pi*i/64,v=2*pi*(i+1)/64;b.rod({2+static_cast<float>(u)*.6F,static_cast<float>(y(u)),0},{2+static_cast<float>(v)*.6F,static_cast<float>(y(v)),0},teal,.014F,"sine_trace");}
           b.ball({2+static_cast<float>(t)*.6F,static_cast<float>(y(t)),0},.07F,gold,"time_marker");
           b.label("Complex rotor",{0,1.85F,0});b.label("Sine projection over time",{3.8F,1.85F,0},teal);
-          auto& plot=b.plot("Sine projection",MathParameter::HarmonicTime);b.curve(plot,"a sin(n t + phase)",teal,0,2*pi,y);plot.hasMarker=true;plot.marker={t,y(t)};
+          b.linkedPlot("Sine projection",MathParameter::HarmonicTime,{t,y(t)},"a sin(n t + phase)",teal,0,2*pi,y);
         } else {
           const double a2=parameter(MathParameter::Amplitude2),n2=parameter(MathParameter::Frequency2),p2=parameter(MathParameter::Phase2)*pi/180;
           const auto secondY=[&](double time){return a2*std::sin(n2*time+p2);};
@@ -2299,8 +2337,8 @@ void MathObjects::rebuild() {
           b.ball(wire(t),.08F,gold,"time_marker");
           b.arrow({-1.7F,0,-1},{1.8F,0,-1},muted,"x_axis");b.arrow({0,-1.7F,-1},{0,1.8F,-1},muted,"y_axis");b.arrow({1.7F,0,-1},{1.7F,0,1.2F},muted,"time_axis");
           b.label("Time axis",{1.7F,0,1.35F});
-          auto& xp=b.plot("First coordinate x(t)",MathParameter::HarmonicTime);b.curve(xp,"x",coral,0,2*pi,x);xp.hasMarker=true;xp.marker={t,x(t)};
-          auto& yp=b.plot("Second coordinate y(t)",MathParameter::HarmonicTime);b.curve(yp,"y",teal,0,2*pi,secondY);yp.hasMarker=true;yp.marker={t,secondY(t)};
+          b.linkedPlot("First coordinate x(t)",MathParameter::HarmonicTime,{t,x(t)},"x",coral,0,2*pi,x);
+          b.linkedPlot("Second coordinate y(t)",MathParameter::HarmonicTime,{t,secondY(t)},"y",teal,0,2*pi,secondY);
           auto& xy=b.plot("Lissajous x-y projection");xy.equalAspect=true;auto& line=xy.series[xy.seriesCount++];line={};line.name="x-y";line.color=gold;line.count=129;
           for(unsigned i=0;i<line.count;++i){const double time=2*pi*i/(line.count-1);line.points[i]={x(time),secondY(time)};}xy.hasMarker=true;xy.marker={x(t),secondY(t)};
           b.metric("Second y",secondY(t));b.metric("Shared period",2*pi/gcd(static_cast<unsigned>(n),static_cast<unsigned>(n2)));
@@ -2317,7 +2355,7 @@ void MathObjects::rebuild() {
         for(unsigned i=0;i<64;++i){const double u=2*pi*i/64,v=2*pi*(i+1)/64;b.rod({2+static_cast<float>(u)*.6F,static_cast<float>(sum(u)),0},{2+static_cast<float>(v)*.6F,static_cast<float>(sum(v)),0},teal,.014F,"fourier_signal");}
         b.ball({2+static_cast<float>(t)*.6F,static_cast<float>(sum(t)),0},.075F,gold,"time_marker");
         b.arrow({2,0,0},{6,0,0},muted,"time_axis");
-        auto& signal=b.plot("Target and Fourier sum",MathParameter::HarmonicTime);b.curve(signal,"target",muted,0,2*pi,target);b.curve(signal,"sum",teal,0,2*pi,sum);signal.hasMarker=true;signal.marker={t,sum(t)};
+        auto& signal=b.linkedPlot("Target and Fourier sum",MathParameter::HarmonicTime,{t,sum(t)},"target",muted,0,2*pi,target);b.curve(signal,"sum",teal,0,2*pi,sum);
         auto& spectrum=b.plot("Signed sine coefficients");auto& line=spectrum.series[spectrum.seriesCount++];line={};line.name="included b_n";line.color=coral;line.count=17;line.stems=true;
         for(unsigned i=0;i<line.count;++i)line.points[i]={static_cast<double>(i),0};
         for(unsigned i=0;i<terms;++i){const auto term=fourierTerm(waveform,i);line.points[term.frequency].y=term.coefficient;}
@@ -2326,7 +2364,7 @@ void MathObjects::rebuild() {
         if(level==3) {
           const auto product=[&](double u){return target(u)*std::sin(probe*u);};double numerical=0;
           for(unsigned i=0;i<1024;++i)numerical+=product(2*pi*(i+.5)/1024)*2/1024;
-          auto& projection=b.plot("Target times selected sine",MathParameter::HarmonicTime);b.curve(projection,"f(t) sin(n t)",violet,0,2*pi,product);projection.hasMarker=true;projection.marker={t,product(t)};
+          b.linkedPlot("Target times selected sine",MathParameter::HarmonicTime,{t,product(t)},"f(t) sin(n t)",violet,0,2*pi,product);
           b.metric("Analytic coefficient",coefficient(waveform,probe));b.metric("Midpoint coefficient",numerical);b.metric("Coefficient error",std::fabs(numerical-coefficient(waveform,probe)));
         }
       }
@@ -2359,11 +2397,9 @@ void MathObjects::rebuild() {
       for(unsigned i=0;i<trace.size();++i)qLine.points[i]={12.0*i/(trace.size()-1),trace[i].q};motion.hasMarker=true;motion.marker={time,current.q};
       if(level>=1) {
         if(level==3&&!c.pendulum) {
-          auto& response=b.plot("Impulse and response decomposition",MathParameter::MotionTime);
-          b.curve(response,"h(t)",muted,0,12,[&](double t){return impulse(c,t);});
+          auto& response=b.linkedPlot("Impulse and response decomposition",MathParameter::MotionTime,{time,convolutionResponse(c,time)},"h(t)",muted,0,12,[&](double t){return impulse(c,t);});
           b.curve(response,"free",violet,0,12,[&](double t){return freeResponse(c,t);});
           b.curve(response,"convolution",gold,0,12,[&](double t){return convolutionResponse(c,t);});
-          response.hasMarker=true;response.marker={time,convolutionResponse(c,time)};
         } else {
           auto& phase=b.plot("Phase: displacement / velocity");auto& path=phase.series[phase.seriesCount++];path={};path.name="(q,v)";path.color=violet;path.count=trace.size();
           for(unsigned i=0;i<trace.size();++i)path.points[i]={trace[i].q,trace[i].v};phase.hasMarker=true;phase.marker={current.q,current.v};
@@ -2498,10 +2534,10 @@ void MathObjects::rebuild() {
         for(unsigned i=0;i<64;++i)b.rod(sceneVector(fieldPath(path,i/64.0,reversed).position),sceneVector(fieldPath(path,(i+1)/64.0,reversed).position),violet,.015F,"integration_path");
         if(level==3)for(unsigned i=0;i<12;++i)b.rod(sceneVector(a+(end-a)*(i/12.0)),sceneVector(a+(end-a)*((i+.5)/12.0)),white,.01F,"comparison_path");
         b.label("Start",sceneVector(a)+Vec3{-.12F,-.2F,.1F},violet);if(fieldLength(end-a)>.01)b.label("End",sceneVector(end)+Vec3{.12F,-.2F,.1F},violet);
-        auto& coordinates=b.plot("Path coordinates",MathParameter::FieldTime);b.curve(coordinates,"x",coral,0,1,[&](double u){return fieldPath(path,u,reversed).position.x;});b.curve(coordinates,"y",teal,0,1,[&](double u){return fieldPath(path,u,reversed).position.y;});b.curve(coordinates,"z",blue,0,1,[&](double u){return fieldPath(path,u,reversed).position.z;});coordinates.hasMarker=true;coordinates.marker={t,p.x};
-        if(level==1){auto& velocity=b.plot("Speed along the path",MathParameter::FieldTime);b.curve(velocity,"|r'(t)|",gold,0,1,[&](double u){return fieldLength(fieldPath(path,u,reversed).velocity);});velocity.hasMarker=true;velocity.marker={t,speed};}
+        auto& coordinates=b.linkedPlot("Path coordinates",MathParameter::FieldTime,{t,p.x},"x",coral,0,1,[&](double u){return fieldPath(path,u,reversed).position.x;});b.curve(coordinates,"y",teal,0,1,[&](double u){return fieldPath(path,u,reversed).position.y;});b.curve(coordinates,"z",blue,0,1,[&](double u){return fieldPath(path,u,reversed).position.z;});
+        if(level==1){b.linkedPlot("Speed along the path",MathParameter::FieldTime,{t,speed},"|r'(t)|",gold,0,1,[&](double u){return fieldLength(fieldPath(path,u,reversed).velocity);});}
         else {
-          auto& integrand=b.plot("Work rate",MathParameter::FieldTime);b.curve(integrand,"F dot r'(t)",gold,0,1,[&](double u){return fieldIntegrand(rule,path,u,reversed);});integrand.hasMarker=true;integrand.marker={t,fieldIntegrand(rule,path,t,reversed)};
+          b.linkedPlot("Work rate",MathParameter::FieldTime,{t,fieldIntegrand(rule,path,t,reversed)},"F dot r'(t)",gold,0,1,[&](double u){return fieldIntegrand(rule,path,u,reversed);});
           auto& accumulation=b.plot("Accumulated work",MathParameter::FieldTime);b.curve(accumulation,"selected path",violet,0,1,[&](double u){return exactFieldIntegral(rule,path,u,reversed);});
           if(level==3)b.curve(accumulation,"straight comparison",white,0,1,[&](double u){return comparisonWork(rule,a,a+(end-a)*u);});accumulation.hasMarker=true;accumulation.marker={t,fieldIntegral(rule,path,t,reversed)};
         }
@@ -2540,7 +2576,7 @@ void MathObjects::rebuild() {
         const auto boundary=fluxBoundary(t,r,tilt,sign);point=boundary.position;direction=boundary.velocity*(1/fieldLength(boundary.velocity));
         for(unsigned i=0;i<48;++i)b.rod(sceneVector(fluxBoundary(i/48.0,r,tilt,sign).position),sceneVector(fluxBoundary((i+1)/48.0,r,tilt,sign).position),violet,.022F,"stokes_boundary");
         b.arrow(sceneVector(point),sceneVector(point+direction*.45),violet,"boundary_tangent");
-        auto& work=b.plot("Boundary circulation",MathParameter::FluxTime);b.curve(work,"accumulated line integral",violet,0,1,[&](double u){return boundaryIntegral(rule,n,u,r,tilt,sign);});work.hasMarker=true;work.marker={t,boundaryIntegral(rule,n,t,r,tilt,sign)};
+        b.linkedPlot("Boundary circulation",MathParameter::FluxTime,{t,boundaryIntegral(rule,n,t,r,tilt,sign)},"accumulated line integral",violet,0,1,[&](double u){return boundaryIntegral(rule,n,u,r,tilt,sign);});
       } else {b.arrow(sceneVector(point),sceneVector(point+direction*.6),gold,"probe_normal");}
       b.ball(sceneVector(point),.065F,white,"surface_probe");b.arrow(sceneVector(point),sceneVector(point+fluxField(rule,point)*.25),coral,"probe_flux_field");b.label("Probe",sceneVector(point)+Vec3{.08F,.13F,.1F});
       b.table("Surface probe vectors",{"x","y","z",""},3);const auto row=[&](std::string_view name,FieldVector p){b.row(name,{p.x,p.y,p.z,0});};row("Position",point);row("Field",fluxField(rule,point));row(level==3?"Disk normal":"Unit normal",level==3?normal:sample.normal);if(level==3)row("Unit tangent",direction);
@@ -2667,10 +2703,8 @@ void MathObjects::rebuild() {
       }
       const auto direction=sphereDirection(theta,phi);const auto probe=point(theta,phi);b.ball(probe,.065F,gold,"sphere_probe");b.arrow({},probe,gold,"sphere_direction");
       b.rod({-1.6F,0,0},{1.6F,0,0},muted);b.rod({0,-1.6F,0},{0,1.6F,0},muted);b.rod({0,0,-1.6F},{0,0,1.6F},muted);b.label("z / north",{0,0,1.75F});
-      auto& meridian=b.plot(level?"Function along the selected meridian":"Coordinates along the selected meridian",MathParameter::SphereTheta);
-      b.curve(meridian,level?"f(theta, phi)":"z = cos(theta)",teal,0,180,[&](double degrees){return level?f(degrees*pi/180,phi):std::cos(degrees*pi/180);});meridian.hasMarker=true;meridian.marker={theta*180/pi,level?f(theta,phi):direction[2]};
-      auto& latitude=b.plot(level?"Function along the selected latitude":"Coordinates along the selected latitude",MathParameter::SpherePhi);
-      b.curve(latitude,level?"f(theta, phi)":"y = sin(theta) sin(phi)",coral,0,360,[&](double degrees){return level?f(theta,degrees*pi/180):std::sin(theta)*std::sin(degrees*pi/180);});latitude.hasMarker=true;latitude.marker={phi*180/pi,level?f(theta,phi):direction[1]};
+      b.linkedPlot(level?"Function along the selected meridian":"Coordinates along the selected meridian",MathParameter::SphereTheta,{theta*180/pi,level?f(theta,phi):direction[2]},level?"f(theta, phi)":"z = cos(theta)",teal,0,180,[&](double degrees){return level?f(degrees*pi/180,phi):std::cos(degrees*pi/180);});
+      b.linkedPlot(level?"Function along the selected latitude":"Coordinates along the selected latitude",MathParameter::SpherePhi,{phi*180/pi,level?f(theta,phi):direction[1]},level?"f(theta, phi)":"y = sin(theta) sin(phi)",coral,0,360,[&](double degrees){return level?f(theta,degrees*pi/180):std::sin(theta)*std::sin(degrees*pi/180);});
       if(level==0){b.metric("Direction x",direction[0]);b.metric("Direction y",direction[1]);b.metric("Direction z",direction[2]);b.metric("Squared radius",tripleDot(direction,direction));b.label("Unit sphere",{0,-1.5F,-1.5F},blue);}
       else {
         const double crossInner=sphereInner(a,other),same=a==other?1:0,energy=ca*ca+cb*cb+2*ca*cb*same,numeric=ca*ca*sphereInner(a,a)+cb*cb*sphereInner(other,other)+2*ca*cb*crossInner,initial=1+c*c+2*c*same;
@@ -2679,7 +2713,7 @@ void MathObjects::rebuild() {
         b.row("First mode",{static_cast<double>(ma.degree),static_cast<double>(ma.order),ca,ca*sphereInner(a,a)+cb*crossInner});
         if(level>=2){b.row("Second mode",{static_cast<double>(mb.degree),static_cast<double>(mb.order),cb,cb*sphereInner(other,other)+ca*crossInner});b.metric("Cross inner product",crossInner);b.metric("Initial energy",initial);}
         if(level==3){b.metric("Heat time",t);b.metric("First eigenvalue",-la);b.metric("Laplacian residual",sphereLaplaceError(a));b.metric("Energy lost",initial-energy);
-          auto& heat=b.plot("Energy during spherical heat flow",MathParameter::SphereHeat);b.curve(heat,"Integral f(t)^2",gold,0,1,[&](double time){const double x=std::exp(-la*time),y=c*std::exp(-lb*time);return x*x+y*y+2*x*y*same;});heat.hasMarker=true;heat.marker={t,energy};}
+          b.linkedPlot("Energy during spherical heat flow",MathParameter::SphereHeat,{t,energy},"Integral f(t)^2",gold,0,1,[&](double time){const double x=std::exp(-la*time),y=c*std::exp(-lb*time);return x*x+y*y+2*x*y*same;});}
         b.label("Teal + / coral - / gold probe",{0,-1.5F,-1.5F});
       }
       break;
@@ -2768,9 +2802,8 @@ void MathObjects::rebuild() {
       b.table("Matrix coefficients and principal minors",{"a","b","c","determinant"},4);
       b.row(level==2?"M":level==3?"Optimum":"A",{active.a,active.b,active.c,active.a*active.c-active.b*active.b});
       if(level==0) {
-        auto& plot=b.plot("Smallest eigenvalue as b changes",MathParameter::PsdB);
-        b.curve(plot,"Smallest eigenvalue",teal,-2,2,[&](double v){return coneSpectrum({input.a,v,input.c}).lo;});
-        b.curve(plot,"PSD threshold",muted,-2,2,[](double){return 0.0;});plot.hasMarker=true;plot.marker={input.b,e.lo};
+        auto& plot=b.linkedPlot("Smallest eigenvalue as b changes",MathParameter::PsdB,{input.b,e.lo},"Smallest eigenvalue",teal,-2,2,[&](double v){return coneSpectrum({input.a,v,input.c}).lo;});
+        b.curve(plot,"PSD threshold",muted,-2,2,[](double){return 0.0;});
       }
       if(level==1) {
         const Vec3 offset{4.6F,0,0};const double theta=.5*std::atan2(2*input.b,input.a-input.c),c=std::cos(theta),d=std::sin(theta);
@@ -2788,9 +2821,8 @@ void MathObjects::rebuild() {
         b.arrow(offset,offset+Vec3{static_cast<float>(c),static_cast<float>(d),0},blue,"psd_max_eigenvector");
         b.arrow(offset,offset+Vec3{static_cast<float>(-d),static_cast<float>(c),0},violet,"psd_min_eigenvector");
         b.label("Height = 0.3 q(u,v)",offset+Vec3{-1,-1.6F,0});b.metric("Probe quadratic value",q);
-        auto& plot=b.plot("Quadratic value around the unit circle",MathParameter::PsdProbeAngle);
-        b.curve(plot,"q(cos(theta),sin(theta))",teal,0,180,[&](double degrees){return quadratic2(input,std::cos(degrees*pi/180),std::sin(degrees*pi/180));});
-        b.curve(plot,"Smallest eigenvalue",violet,0,180,[&](double){return e.lo;});b.curve(plot,"Largest eigenvalue",blue,0,180,[&](double){return e.hi;});plot.hasMarker=true;plot.marker={parameter(MathParameter::PsdProbeAngle),q};
+        auto& plot=b.linkedPlot("Quadratic value around the unit circle",MathParameter::PsdProbeAngle,{parameter(MathParameter::PsdProbeAngle),q},"q(cos(theta),sin(theta))",teal,0,180,[&](double degrees){return quadratic2(input,std::cos(degrees*pi/180),std::sin(degrees*pi/180));});
+        b.curve(plot,"Smallest eigenvalue",violet,0,180,[&](double){return e.lo;});b.curve(plot,"Largest eigenvalue",blue,0,180,[&](double){return e.hi;});
       }
       if(level==2) {
         const auto a=conePosition(input),c=conePosition(other);const auto unscaled=a*static_cast<float>(1-mixture)+c*static_cast<float>(mixture);
@@ -2800,9 +2832,8 @@ void MathObjects::rebuild() {
         const auto ae=coneSpectrum(input);b.metric("Endpoint A PSD",ae.psd?1:0);b.metric("Endpoint A rank",ae.rank);b.metric("Mixture fraction",mixture);b.metric("Ray scale",scale);
         b.row("A",{input.a,input.b,input.c,input.a*input.c-input.b*input.b});b.row("B",{other.a,other.b,other.c,other.a*other.c-other.b*other.b});
         if(!ae.psd)b.label("A is outside: convexity premise fails",{-2,-2.4F,-.4F},coral);
-        auto& plot=b.plot("Smallest eigenvalue along the scaled mixture",MathParameter::PsdMix);
-        b.curve(plot,"lambda_min(M)",teal,0,1,[&](double f){return coneSpectrum({scale*((1-f)*input.a+f*other.a),scale*((1-f)*input.b+f*other.b),scale*((1-f)*input.c+f*other.c)}).lo;});
-        b.curve(plot,"PSD threshold",muted,0,1,[](double){return 0.0;});plot.hasMarker=true;plot.marker={mixture,e.lo};
+        auto& plot=b.linkedPlot("Smallest eigenvalue along the scaled mixture",MathParameter::PsdMix,{mixture,e.lo},"lambda_min(M)",teal,0,1,[&](double f){return coneSpectrum({scale*((1-f)*input.a+f*other.a),scale*((1-f)*input.b+f*other.b),scale*((1-f)*input.c+f*other.c)}).lo;});
+        b.curve(plot,"PSD threshold",muted,0,1,[](double){return 0.0;});
       }
       if(level==3) {
         const float t=static_cast<float>(slice);const Vec3 center{0,0,t},direction{static_cast<float>(costX),static_cast<float>(costY),0},tangent{-direction.y,direction.x,0};
@@ -2821,8 +2852,7 @@ void MathObjects::rebuild() {
         }
         b.metric("Maximum objective",slice);b.metric("Plane objective",target);b.metric("Objective gap",slice-target);b.metric("Plane intersects disk",slice==0||std::fabs(fraction)<=1?1:0);
         b.label("Fixed trace: disk in the cone",{-2,-2.4F,t},blue);b.label("Maximum",point+Vec3{.1F,0,-.25F},gold);
-        auto& plot=b.plot("Best objective versus moving plane",MathParameter::PsdObjective);
-        b.curve(plot,"Plane value",violet,-1.25,1.25,[&](double f){return slice*f;});b.curve(plot,"Maximum",gold,-1.25,1.25,[&](double){return slice;});plot.hasMarker=true;plot.marker={fraction,target};
+        auto& plot=b.linkedPlot("Best objective versus moving plane",MathParameter::PsdObjective,{fraction,target},"Plane value",violet,-1.25,1.25,[&](double f){return slice*f;});b.curve(plot,"Maximum",gold,-1.25,1.25,[&](double){return slice;});
       }
       break;
     }
@@ -2889,8 +2919,7 @@ void MathObjects::rebuild() {
           b.ball(dualCenter+tripleScene(dualPoint),.075F,gold,"norm_dual_contact");
           b.metric("Contact norm",normLength(contact,p,infinity));b.metric("Pairing w dot contact",tripleDot(x,contact));b.metric("Dual point norm",normLength(dualPoint,dualP,dualInfinity));
           b.label("Maximizing x",point+Vec3{.14F,0,.15F},gold);b.label("w / dual norm",dualCenter+tripleScene(dualPoint)+Vec3{0,0,.18F},gold);
-          auto& plot=b.plot("Support value and movable plane",MathParameter::NormSupport);
-          b.curve(plot,"Plane value",gold,0,1.4,[&](double f){return h*f;});b.curve(plot,"Dual norm: maximum",violet,0,1.4,[&](double){return h;});plot.hasMarker=true;plot.marker={fraction,h*fraction};
+          auto& plot=b.linkedPlot("Support value and movable plane",MathParameter::NormSupport,{fraction,h*fraction},"Plane value",gold,0,1.4,[&](double f){return h*f;});b.curve(plot,"Dual norm: maximum",violet,0,1.4,[&](double){return h;});
         } else b.label("w=0: no supporting direction",{0,-1.8F,0},coral);
       }
       break;
@@ -2930,10 +2959,8 @@ void MathObjects::rebuild() {
         const std::array<double,4> weights{(1-t)*(1-t)*(1-t),3*t*(1-t)*(1-t),3*t*t*(1-t),t*t*t};
         b.metric("Control tetrahedron volume",std::fabs(determinant)/6);b.metric("Weight sum",weights[0]+weights[1]+weights[2]+weights[3]);b.metric("Smallest weight",*std::min_element(weights.begin(),weights.end()));
         b.table("Controls and Bernstein weights",{"x","y","z","weight"},4);for(unsigned i=0;i<4;++i)b.row(controlNames[i],{curve.controls[i][0],curve.controls[i][1],curve.controls[i][2],weights[i]});
-        auto& endpoints=b.plot("Endpoint influence",MathParameter::CurveProgress);
-        b.curve(endpoints,"P0 weight",blue,0,1,[](double u){return (1-u)*(1-u)*(1-u);});b.curve(endpoints,"P3 weight",teal,0,1,[](double u){return u*u*u;});endpoints.hasMarker=true;endpoints.marker={t,weights[0]};
-        auto& handles=b.plot("Handle influence",MathParameter::CurveProgress);
-        b.curve(handles,"P1 weight",violet,0,1,[](double u){return 3*u*(1-u)*(1-u);});b.curve(handles,"P2 weight",coral,0,1,[](double u){return 3*u*u*(1-u);});handles.hasMarker=true;handles.marker={t,weights[1]};
+        auto& endpoints=b.linkedPlot("Endpoint influence",MathParameter::CurveProgress,{t,weights[0]},"P0 weight",blue,0,1,[](double u){return (1-u)*(1-u)*(1-u);});b.curve(endpoints,"P3 weight",teal,0,1,[](double u){return u*u*u;});
+        auto& handles=b.linkedPlot("Handle influence",MathParameter::CurveProgress,{t,weights[1]},"P1 weight",violet,0,1,[](double u){return 3*u*(1-u)*(1-u);});b.curve(handles,"P2 weight",coral,0,1,[](double u){return 3*u*u*(1-u);});
       }
       if(level==1) {
         b.metric("Curvature defined",sample.regular?1:0);
@@ -2944,7 +2971,7 @@ void MathObjects::rebuild() {
         } else b.label("Zero speed: tangent and curvature undefined",position(t)+Vec3{0,-.45F,0},coral);
         b.table("Curve derivatives",{"x","y","z",{}},3);b.row("r(t)",{sample.position[0],sample.position[1],sample.position[2]});b.row("r'(t)",{sample.first[0],sample.first[1],sample.first[2]});b.row("r''(t)",{sample.second[0],sample.second[1],sample.second[2]});if(sample.regular)b.row("Unit tangent",{sample.tangent[0],sample.tangent[1],sample.tangent[2]});
         auto& derivative=b.plot("Velocity components",MathParameter::CurveProgress);for(unsigned j=0;j<3;++j)b.curve(derivative,std::array<std::string_view,3>{"dx/dt","dy/dt","dz/dt"}[j],std::array{coral,teal,blue}[j],0,1,[&](double u){return sampleBezier(curve,u).first[j];});derivative.hasMarker=true;derivative.marker={t,sample.first[0]};
-        auto& speed=b.plot("Speed along the curve",MathParameter::CurveProgress);b.curve(speed,"Speed",gold,0,1,[&](double u){return sampleBezier(curve,u).speed;});speed.hasMarker=true;speed.marker={t,sample.speed};
+        b.linkedPlot("Speed along the curve",MathParameter::CurveProgress,{t,sample.speed},"Speed",gold,0,1,[&](double u){return sampleBezier(curve,u).speed;});
       }
       if(level==2) {
         drawCurve(left,48,blue);drawCurve(right,48,teal);
@@ -3034,7 +3061,7 @@ void MathObjects::rebuild() {
       if(level==0||level==1){auto& graph=b.plot("Outer and inner radius versus height fraction",MathParameter::LatheProbe);b.curve(graph,"Outer radius",blue,0,1,[&](double u){return sampleLathe(profile,u).radius;});if(input.hollow)b.curve(graph,"Inner radius",violet,0,1,[&](double u){return sampleLathe(profile,u).inner;});graph.hasMarker=true;graph.marker={probe,point.radius};}
       if(level==1){const auto full=measureLathe(profile);b.metric("Revolution degrees",360*turn);b.metric("Material volume",measure.volume);b.metric("Full-turn volume",full.volume);b.metric("Cavity volume",measure.voidVolume);b.metric("Angular volume identity error",std::fabs(measure.volume-turn*full.volume));
         if(guides){const double theta=2*pi*turn;wire(theta,24,false,gold);for(unsigned i=0;i<16;++i)b.rod(at(probe,theta*i/16),at(probe,theta*(i+1)/16),teal,.014F,"lathe_rotation_path");b.rod({0,static_cast<float>(input.height*(probe-.5)),0},at(probe,theta),gold,.015F,"lathe_generating_radius");}
-        auto& volume=b.plot("Volume grows with the revolution angle",MathParameter::LatheTurn);b.curve(volume,"Material volume",teal,0,360,[&](double degrees){return degrees/360*full.volume;});volume.hasMarker=true;volume.marker={360*turn,measure.volume};
+        b.linkedPlot("Volume grows with the revolution angle",MathParameter::LatheTurn,{360*turn,measure.volume},"Material volume",teal,0,360,[&](double degrees){return degrees/360*full.volume;});
       }
       if(level==2){const auto approximation=approximateLatheVolume(profile,n,shells,turn);b.metric("Reference volume",measure.volume);b.metric("Midpoint volume",approximation.volume);b.metric("Relative volume error",measure.volume>0?std::fabs(approximation.volume-measure.volume)/measure.volume:0);b.metric("Subdivisions",n);b.metric("Highlighted element",selected+1);b.metric("Element volume",approximation.elements[selected].volume);
         if(shells)b.metric("Highlighted shell intervals",latheShell(profile,approximation.elements[selected].center).count);
@@ -3146,17 +3173,17 @@ void MathObjects::rebuild() {
         b.metric("Selected basis weight",probe.weights[selected]);b.metric("Weight sum",weightSum);b.metric("Triangulated area",mesh.area,"units^2");
         b.table("Control positions and influence at the UV probe",{"x","y","z","weight"},4);
         for(unsigned i=0;i<16;++i)b.row(names[i],{patch.controls[i][0],patch.controls[i][1],patch.controls[i][2],probe.weights[i]});
-        auto& plot=b.plot("Selected control influence along u",MathParameter::PatchU);b.curve(plot,"Bernstein weight",gold,0,1,[&](double t){return samplePatch(patch,t,v).weights[selected];});plot.hasMarker=true;plot.marker={u,probe.weights[selected]};
+        b.linkedPlot("Selected control influence along u",MathParameter::PatchU,{u,probe.weights[selected]},"Bernstein weight",gold,0,1,[&](double t){return samplePatch(patch,t,v).weights[selected];});
       }
       if(level==1) {
         b.metric("Area density",probe.jacobian);b.metric("Regular probe",probe.regular);
         if(probe.regular){b.metric("Normal y",probe.normal[1]);b.metric("Normal dot S_u",probe.normal[0]*probe.du[0]+probe.normal[1]*probe.du[1]+probe.normal[2]*probe.du[2]);b.metric("Normal dot S_v",probe.normal[0]*probe.dv[0]+probe.normal[1]*probe.dv[1]+probe.normal[2]*probe.dv[2]);b.metric("Tangent angle",std::acos(std::clamp(probe.F/std::sqrt(probe.E*probe.G),-1.0,1.0))*180/pi,"degrees");}
         b.table(probe.regular?"Partial derivatives and oriented normal":"Partial derivatives; normal is undefined",{"x","y","z","length"},4);
         vectorRow("S(u,v)",probe.position);vectorRow("S_u",probe.du);vectorRow("S_v",probe.dv);if(probe.regular)vectorRow("Unit normal",probe.normal);
-        auto& plot=b.plot("Area density along u",MathParameter::PatchU);b.curve(plot,"|S_u cross S_v|",gold,0,1,[&](double t){return samplePatch(patch,t,v).jacobian;});plot.hasMarker=true;plot.marker={u,probe.jacobian};
+        b.linkedPlot("Area density along u",MathParameter::PatchU,{u,probe.jacobian},"|S_u cross S_v|",gold,0,1,[&](double t){return samplePatch(patch,t,v).jacobian;});
       }
       if(level<=1) {
-        auto& plot=b.plot("Surface height along v",MathParameter::PatchV);b.curve(plot,"World y at fixed u",blue,0,1,[&](double t){return samplePatch(patch,u,t).position[1];});plot.hasMarker=true;plot.marker={v,probe.position[1]};
+        b.linkedPlot("Surface height along v",MathParameter::PatchV,{v,probe.position[1]},"World y at fixed u",blue,0,1,[&](double t){return samplePatch(patch,u,t).position[1];});
       }
       if(level==2) {
         if(probe.regular){b.metric("Gaussian curvature",probe.gaussian,"1/units^2");b.metric("Mean curvature",probe.mean,"1/units");}
@@ -3218,8 +3245,8 @@ void MathObjects::rebuild() {
       if(level==1){
         b.metric("Selected spatial weight",probe.weights[selected]);b.metric("Natural frequency",slot.omega/(2*pi),"Hz");b.metric("Internal nodal lines",slot.m+slot.n-2);b.metric("Selected excitation",std::hypot(slot.initialDisplacement,slot.initialVelocity));b.metric("Damping ratio",input.damping/slot.omega);
         b.table("Mode slots: undamped natural frequencies",{"m","n","natural Hz","q(t)"},4);for(unsigned i=0;i<4;++i){const auto& mode=state.slots[i];b.row(names[i],{static_cast<double>(mode.m),static_cast<double>(mode.n),mode.omega/(2*pi),mode.q});}
-        auto& horizontal=b.plot("Selected spatial basis along u",MathParameter::MembraneU);b.curve(horizontal,"sin(m*pi*u) sin(n*pi*v)",coral,0,1,[&](double a){return sampleMembrane(state,a,v).weights[selected];});horizontal.hasMarker=true;horizontal.marker={u,probe.weights[selected]};
-        auto& vertical=b.plot("Selected spatial basis along v",MathParameter::MembraneV);b.curve(vertical,"sin(m*pi*u) sin(n*pi*v)",blue,0,1,[&](double c){return sampleMembrane(state,u,c).weights[selected];});vertical.hasMarker=true;vertical.marker={v,probe.weights[selected]};
+        b.linkedPlot("Selected spatial basis along u",MathParameter::MembraneU,{u,probe.weights[selected]},"sin(m*pi*u) sin(n*pi*v)",coral,0,1,[&](double a){return sampleMembrane(state,a,v).weights[selected];});
+        b.linkedPlot("Selected spatial basis along v",MathParameter::MembraneV,{v,probe.weights[selected]},"sin(m*pi*u) sin(n*pi*v)",blue,0,1,[&](double c){return sampleMembrane(state,u,c).weights[selected];});
       }
       if(level==2){
         b.metric("Combined displacement",probe.displacement);b.metric("Cancellation magnitude",std::max(0.0,probe.absoluteContributions-std::fabs(probe.displacement)));b.metric("Distinct active modes",state.activeModes);b.metric("Absolute pair contributions",probe.absoluteContributions);b.metric("Time",time,"s");
@@ -3245,8 +3272,7 @@ void MathObjects::rebuild() {
         }plot.hasMarker=true;
       }
       if(level==0||level==2){
-        auto& plot=b.plot("Combined and component heights along u",MathParameter::MembraneU);
-        b.curve(plot,"Combined",gold,0,1,[&](double a){return sampleMembrane(state,a,v).displacement;});b.curve(plot,"Selected slot",coral,0,1,[&](double a){return sampleMembrane(state,a,v).contributions[selected];});b.curve(plot,"Other slots",blue,0,1,[&](double a){const auto p=sampleMembrane(state,a,v);return p.displacement-p.contributions[selected];});plot.hasMarker=true;plot.marker={u,probe.displacement};
+        auto& plot=b.linkedPlot("Combined and component heights along u",MathParameter::MembraneU,{u,probe.displacement},"Combined",gold,0,1,[&](double a){return sampleMembrane(state,a,v).displacement;});b.curve(plot,"Selected slot",coral,0,1,[&](double a){return sampleMembrane(state,a,v).contributions[selected];});b.curve(plot,"Other slots",blue,0,1,[&](double a){const auto p=sampleMembrane(state,a,v);return p.displacement-p.contributions[selected];});
       }
       break;
     }
@@ -3376,9 +3402,9 @@ void MathObjects::rebuild() {
       }
       if(available){
         if(level==0)for(unsigned first=0;first<structure.supportCount;first+=3){auto& plot=b.plot("Support reactions as the load moves",MathParameter::TrussPosition);for(unsigned i=first;i<std::min(first+3,structure.supportCount);++i){const auto support=structure.restraints[i];b.curve(plot,reactionNames[support.node][support.axis],std::array{coral,blue,teal}[i%3],0,1,[&](double t){return sampleTruss(structure,t).reactions[i];});}}
-        if(level==1||level==2){auto& plot=b.plot("Selected member force as the load moves",MathParameter::TrussPosition);b.curve(plot,memberNames[selected],gold,0,1,[&](double t){return sampleTruss(structure,t).forces[selected];});plot.hasMarker=true;plot.marker={input.position,solution.forces[selected]};}
+        if(level==1||level==2){b.linkedPlot("Selected member force as the load moves",MathParameter::TrussPosition,{input.position,solution.forces[selected]},memberNames[selected],gold,0,1,[&](double t){return sampleTruss(structure,t).forces[selected];});}
         if(level==1){auto& plot=b.plot("Member forces (kN): teal tension, coral compression");for(unsigned sign=0;sign<2;++sign){auto& line=plot.series[plot.seriesCount++];line={};line.name=sign?"Compression":"Tension";line.color=sign?coral:teal;line.stems=true;line.count=9;for(unsigned i=0;i<9;++i)line.points[i]={static_cast<double>(i+1),sign?std::min(0.,solution.forces[i]):std::max(0.,solution.forces[i])};}}
-        if(level==3){auto& plot=b.plot("Peak force-limit utilization as the load moves",MathParameter::TrussPosition);b.curve(plot,"Peak utilization",gold,0,1,[&](double t){return sampleTruss(structure,t).maxUtilization;});b.curve(plot,"Specified limit",coral,0,1,[](double){return 1.;});plot.hasMarker=true;plot.marker={input.position,solution.maxUtilization};}
+        if(level==3){auto& plot=b.linkedPlot("Peak force-limit utilization as the load moves",MathParameter::TrussPosition,{input.position,solution.maxUtilization},"Peak utilization",gold,0,1,[&](double t){return sampleTruss(structure,t).maxUtilization;});b.curve(plot,"Specified limit",coral,0,1,[](double){return 1.;});}
       }
       break;
     }
@@ -3455,10 +3481,8 @@ void MathObjects::rebuild() {
         for(unsigned direction=0;direction<2;++direction){auto& line=plot.series[plot.seriesCount++];line={};line.name=direction?"D(r || P)":"D(r || Q)";line.color=direction?teal:violet;for(unsigned i=0;i<=128;++i){const double u=i/128.,value=simplexKl(mixSimplex(p,q,u),direction?p:q);if(std::isfinite(value))line.points[line.count++]={u,value};}}
         if(std::isfinite(current)){plot.hasMarker=true;plot.marker={t,current};}
         if(support==3){
-          auto& tangent=b.plot("Information inequality: surface above supporting plane",P::SimplexMix);
-          b.curve(tangent,"Negative entropy",gold,0,1,[&](double u){return simplexFunction(F::NegativeEntropy,mixSimplex(p,q,u),outcomes);});
+          auto& tangent=b.linkedPlot("Information inequality: surface above supporting plane",P::SimplexMix,{t,simplexFunction(F::NegativeEntropy,mix,outcomes)},"Negative entropy",gold,0,1,[&](double u){return simplexFunction(F::NegativeEntropy,mixSimplex(p,q,u),outcomes);});
           b.curve(tangent,"Supporting plane at Q",blue,0,1,[&](double u){return simplexEntropyTangent(mixSimplex(p,q,u),q);});
-          tangent.hasMarker=true;tangent.marker={t,simplexFunction(F::NegativeEntropy,mix,outcomes)};
           b.metric("Surface - tangent",simplexFunction(F::NegativeEntropy,mix,outcomes)-simplexEntropyTangent(mix,q),"nats");
         }else b.label("No full-simplex tangent at boundary Q",{0,3.2F,0},white);
       }
@@ -3507,7 +3531,7 @@ void MathObjects::rebuild() {
         b.label(a.realizable&&c.realizable?"Both inputs lie in the distance-matrix cone":"First input is outside the cone; closure guarantee does not apply",{0,2.9F,0},a.realizable&&c.realizable?teal:coral);
         auto& plot=b.plot("Gram eigenvalues through the squared-distance mixture",P::DistanceMix);plot.seriesCount=3;constexpr std::array<std::string_view,3> eigenNames{"Largest","Middle","Smallest"};for(unsigned k=0;k<3;++k){plot.series[k]={};plot.series[k].name=eigenNames[k];plot.series[k].color=colors[k];plot.series[k].count=129;}
         for(unsigned i=0;i<=128;++i){const double u=i/128.;const auto sample=analyzeDistances(mixDistances(first,second,u,scale));for(unsigned k=0;k<3;++k)plot.series[k].points[i]={u,sample.eigenvalues[k]};}plot.hasMarker=true;plot.marker={t,analysis.eigenvalues[2]};
-        auto& edgePlot=b.plot("Selected SQUARED distance is affine in mixture amount",P::DistanceMix);b.curve(edgePlot,edges[selected],gold,0,1,[&](double u){return scale*((1-u)*first[selected]+u*second[selected]);});edgePlot.hasMarker=true;edgePlot.marker={t,distances[selected]};
+        b.linkedPlot("Selected SQUARED distance is affine in mixture amount",P::DistanceMix,{t,distances[selected]},edges[selected],gold,0,1,[&](double u){return scale*((1-u)*first[selected]+u*second[selected]);});
       }
       break;
     }
@@ -3569,6 +3593,75 @@ void MathObjects::rebuild() {
       if(level==2&&analysis.iterationAvailable){
         auto& residual=b.plot("log10 ||X_k^T X_k-I|| (display floor -16)",P::PolarIteration);auto& line=residual.series[residual.seriesCount++];line={};line.name="Orthogonality residual";line.color=gold;line.count=polarMaxSteps+1;for(unsigned i=0;i<=polarMaxSteps;++i)line.points[i]={static_cast<double>(i),std::log10(std::max(1e-16,analysis.iterationError[i]))};residual.hasMarker=true;residual.marker=line.points[step];
         auto& convergence=b.plot("Singular modes approaching one (initial mode order)",P::PolarIteration);convergence.seriesCount=3;for(unsigned mode=0;mode<3;++mode){auto& series=convergence.series[mode];series={};series.name=names[mode];series.color=colors[mode];series.count=polarMaxSteps+1;for(unsigned i=0;i<=polarMaxSteps;++i)series.points[i]={static_cast<double>(i),analysis.iterationSingular[i][mode]};}convergence.hasMarker=true;convergence.marker={static_cast<double>(step),analysis.iterationSingular[step][2]};
+      }
+      break;
+    }
+    case MathObjectKind::Qr: {
+      using P=MathParameter;const unsigned level=snapshot_.level,selected=static_cast<unsigned>(parameter(P::QrVector));const bool guides=parameter(P::QrGuides)==1;
+      QrColumns a{};QrVector target{};for(unsigned j=0;j<3;++j)for(unsigned i=0;i<3;++i){const double x=parameter(static_cast<P>(index(P::QrA0X)+3*j+i));if(j<2)a[j][i]=x;else target[i]=x;}
+      const auto qr=analyzeQr(a,target);
+      QrCoefficients coefficients{parameter(P::QrC0),parameter(P::QrC1)};
+      if(level==2&&parameter(P::QrUseSolution)==1)coefficients=qr.solution;
+      QrCoefficients offset{},family=qr.solution;for(unsigned k=0;k<2-qr.rank;++k)for(unsigned i=0;i<2;++i)offset[i]+=parameter(k?P::QrNull1:P::QrNull0)*qr.nullBasis[k][i];
+      for(unsigned i=0;i<2;++i)family[i]+=offset[i];
+      const auto trial=evaluateQrTrial(a,target,coefficients),member=evaluateQrTrial(a,target,family);
+      const auto vnorm=[](const QrVector& v){return std::hypot(v[0],v[1],v[2]);};
+      b.metric("Numerical rank",qr.rank);b.metric("Relative QR residual",qr.reconstructionError);b.metric("Active Q orthogonality error",qr.orthogonalityError);b.metric("r01",qr.r[1]);b.metric("Minimum squared error",qr.residualSquared);
+      if(level==0)b.metric("Construction stage",parameter(P::QrStage));
+      if(level==2){b.metric("Trial squared error",trial.squaredError);b.metric("Trial normal residual",trial.normalResidual);b.metric("Minimum normal residual",qr.normalResidual);}
+      if(level==3){b.metric("Nullity",2-qr.rank);b.metric("Family squared error",member.squaredError);b.metric("Minimum coefficient norm",std::hypot(qr.solution[0],qr.solution[1]));b.metric("Family coefficient norm",std::hypot(family[0],family[1]));}
+      const auto matrix32=[&](std::string_view name,const QrColumns& cols){Matrix values{};for(unsigned i=0;i<3;++i)for(unsigned j=0;j<2;++j)values[2*i+j]=cols[j][i];b.matrix(name,values);auto& view=snapshot_.matrices[snapshot_.matrixCount-1];view.rows=3;view.columns=2;view.parameters.fill(P::Count);};
+      matrix32(qr.order[0]==0?"A Pi: columns a0, a1":"A Pi: columns a1, a0",{a[qr.order[0]],a[qr.order[1]]});matrix32("Q: active unit columns; unused columns are zero",qr.q);b.matrix2("R: upper triangular",qr.r);
+      b.table(level>=2?"Coefficients are in ORIGINAL column order":"Pivot and column construction",level>=2?std::array<std::string_view,4>{"x_min","shown x","null 0","null 1"}:std::array<std::string_view,4>{"original column","r0j","r1j","active Q"},4);
+      if(level>=2)for(unsigned i=0;i<2;++i)b.row(i?"x1":"x0",{qr.solution[i],level==3?family[i]:coefficients[i],qr.nullBasis[0][i],qr.nullBasis[1][i]});
+      else for(unsigned i=0;i<2;++i)b.row(i?"Second pivot":"First pivot",{static_cast<double>(qr.order[i]),qr.r[i],qr.r[2+i],i<qr.rank?1.:0.});
+      const auto shownFit=level==3?member.fitted:trial.fitted;
+      const float scale=static_cast<float>(2/std::max({1.,vnorm(a[0]),vnorm(a[1]),vnorm(target),level>=2?vnorm(shownFit):0.}));
+      b.metric("Vector display scale",scale);
+      const Vec3 origin=level<=1?Vec3{-2.6F,0,0}:level==3?Vec3{-3,0,0}:Vec3{};
+      const auto asVec=[](const QrVector& v){return Vec3{static_cast<float>(v[0]),static_cast<float>(v[1]),static_cast<float>(v[2])};};
+      const auto point=[&](const QrVector& v){return origin+asVec(v)*scale;};
+      const auto arrow=[&](const QrVector& v,Vec3 center,Vec3 color,std::string_view role){b.arrow(center,center+asVec(v)*scale,color,role);};
+      const auto triangle=[&](Vec3 x,Vec3 y,Vec3 z,Vec3 color){auto normal=cross(y-x,z-x);if(length(normal)<1e-9F)return;normal=normalized(normal);auto& mesh=snapshot_.solid;for(auto p:{x,y,z}){mesh.indices[mesh.indexCount++]=static_cast<std::uint16_t>(mesh.vertexCount);mesh.vertices[mesh.vertexCount++]={p,normal,color};}};
+      if(guides&&qr.rank==2){const auto x=asVec(qr.q[0])*1.6F,y=asVec(qr.q[1])*1.6F;triangle(origin-x-y,origin+x-y,origin+x+y,muted*.55F);triangle(origin-x-y,origin+x+y,origin-x+y,muted*.55F);for(int k=-2;k<=2;++k){b.rod(origin+x*(k*.5F)-y,origin+x*(k*.5F)+y,muted,.006F,"qr_span_grid");b.rod(origin+y*(k*.5F)-x,origin+y*(k*.5F)+x,muted,.006F,"qr_span_grid");}}
+      if(guides&&qr.rank==1)b.rod(origin-asVec(qr.q[0])*2,origin+asVec(qr.q[0])*2,muted,.012F,"qr_span_line");
+      b.ball(origin,.04F,white,"qr_origin");
+      constexpr std::array<Vec3,3> colors{blue,violet,gold};constexpr std::array<std::string_view,3> names{"a0","a1","b"};
+      snapshot_.curve.active=true;snapshot_.curve.count=3;snapshot_.curve.selected=selected;snapshot_.curve.selectionParameter=P::QrVector;
+      for(unsigned j=0;j<3;++j){const auto& v=j<2?a[j]:target;arrow(v,origin,colors[j],"qr_input_vector");const auto p=point(v);snapshot_.curve.controls[j]=p;b.ball(p,j==selected?.09F:.06F,colors[j],"qr_input_endpoint");b.label(names[j],p+Vec3{0,.14F,0},colors[j]);}
+      if(level<=1){
+        const Vec3 right{2.6F,0,0};b.ball(right,.04F,white,"qr_construction_origin");
+        if(level==0){const double stage=parameter(P::QrStage);auto first=a[qr.order[0]],second=a[qr.order[1]];
+          for(unsigned i=0;i<3;++i){const double t=std::min(1.,stage);first[i]=(1-t)*first[i]+t*qr.q[0][i];if(stage>1){const double u=std::min(1.,stage-1);second[i]=(1-u)*second[i]+u*qr.remainder[i];}if(stage>2)second[i]=(3-stage)*second[i]+(stage-2)*qr.q[1][i];}
+          arrow(first,right,teal,"qr_first_stage");arrow(second,right,coral,"qr_second_stage");
+          if(guides){arrow(qr.removed,right,muted,"qr_removed_shadow");b.rod(right+asVec(qr.removed)*scale,right+asVec(a[qr.order[1]])*scale,gold,.012F,"qr_remainder_guide");}
+          constexpr std::array<std::string_view,4> stages{"0: pivoted input columns","1: normalize first column","2: remove its shadow","3: normalize the remainder"};b.label(stages[std::min(3U,static_cast<unsigned>(stage))],right+Vec3{0,-2.3F,0},teal);
+        }else{
+          for(unsigned j=0;j<2;++j){QrVector first{},second{};for(unsigned i=0;i<3;++i){first[i]=qr.q[0][i]*qr.r[j];second[i]=qr.q[1][i]*qr.r[2+j];}const auto start=right+Vec3{0,0,j?.3F:-.3F};arrow(first,start,teal,"qr_reconstruction_first");arrow(second,start+asVec(first)*scale,coral,"qr_reconstruction_second");b.rod(start,start+(asVec(first)+asVec(second))*scale,j?violet:blue,.01F,"qr_reconstructed_column");}
+          b.label("QR: combine orthogonal components",right+Vec3{0,-2.3F,0},teal);
+        }
+        b.label(qr.order[0]==0?"Pivot order: a0 then a1":"Pivot order: a1 then a0",origin+Vec3{0,-2.3F,0},white);
+      }else{
+        arrow(qr.projected,origin,teal,"qr_best_fit");b.ball(point(qr.projected),.08F,teal,"qr_projection");b.rod(point(qr.projected),point(target),gold,.024F,"qr_best_residual");
+        arrow(shownFit,origin,level==3?violet:coral,"qr_shown_fit");b.rod(point(shownFit),point(target),level==3?violet:coral,.013F,"qr_shown_residual");
+        if(guides&&vnorm(qr.residual)>1e-9&&qr.rank){const auto r=asVec(qr.residual)*static_cast<float>(.17/vnorm(qr.residual)),q=asVec(qr.q[0])*.17F,p=point(qr.projected);b.rod(p+q,p+q+r,white,.007F,"qr_right_angle");b.rod(p+q+r,p+r,white,.007F,"qr_right_angle");}
+        b.label("Teal: projection; gold: target",origin+Vec3{0,-2.3F,0},teal);
+      }
+      b.label(qr.rank==2?"Two independent columns: unique least-squares coefficients":qr.rank==1?"One independent direction: a line of coefficient solutions":"Zero map: every coefficient pair gives the same fit",{0,2.65F,0},qr.rank==2?teal:gold);
+      if(level==2){
+        for(unsigned j=0;j<2;++j){b.linkedPlot(j?"Squared error vs x1; x0 fixed":"Squared error vs x0; x1 fixed",parameter(P::QrUseSolution)==0?(j?P::QrC1:P::QrC0):P::Count,{coefficients[j],trial.squaredError},"Actual-input squared residual",coral,parameter(P::QrUseSolution)==0?std::max(-64.,coefficients[j]-3):coefficients[j]-3,parameter(P::QrUseSolution)==0?std::min(64.,coefficients[j]+3):coefficients[j]+3,[&](double x){auto c=coefficients;c[j]=x;return evaluateQrTrial(a,target,c).squaredError;});}
+      }
+      if(level==3){
+        const Vec3 center{3,0,0};const auto excess=[&](double x,double y){return evaluateQrTrial(a,{},QrCoefficients{x,y}).squaredError;};
+        double maximum=0;for(double x:{-3.,3.})for(double y:{-3.,3.})maximum=std::max(maximum,excess(x,y));const double height=maximum>0?2/maximum:1;
+        auto& surface=snapshot_.surface;surface.rows=surface.columns=21;
+        const auto location=[&](double x,double y){return center+Vec3{static_cast<float>(.65*x),static_cast<float>(height*excess(x,y)),static_cast<float>(-.65*y)};};
+        for(unsigned i=0;i<21;++i)for(unsigned j=0;j<21;++j){const double x=-3+.3*j,y=-3+.3*i;const auto delta=evaluateQrTrial(a,{},QrCoefficients{x,y});double gx=0,gy=0;for(unsigned k=0;k<3;++k){gx+=2*a[0][k]*delta.fitted[k];gy+=2*a[1][k]*delta.fitted[k];}const Vec3 normal=normalized(Vec3{static_cast<float>(-height*gx/.65),1,static_cast<float>(height*gy/.65)});surface.vertices[i*21+j]={location(x,y),normal,teal*.65F};}
+        b.ball(location(0,0)+Vec3{0,.05F,0},.07F,gold,"qr_minimum_norm");b.ball(location(offset[0],offset[1])+Vec3{0,.05F,0},.075F,violet,"qr_null_family_point");
+        if(guides)for(unsigned k=0;k<2-qr.rank;++k){const auto n=qr.nullBasis[k];for(unsigned i=0;i<24;++i){const double from=-3+i*.25,to=from+.25;b.rod(location(from*n[0],from*n[1])+Vec3{0,.035F,0},location(to*n[0],to*n[1])+Vec3{0,.035F,0},violet,.012F,"qr_null_trough");}}
+        b.label("Coefficient offsets: delta x0, delta x1",center+Vec3{0,-.35F,2},white);b.metric("Error surface height scale",height);
+        if(qr.rank<2){b.linkedPlot("Coefficient norm squared along first null direction",MathParameter::Count,{parameter(P::QrNull0),family[0]*family[0]+family[1]*family[1]},"||x_min + t n0 + offset1 n1||^2",violet,-3,3,[&](double t){auto c=qr.solution;for(unsigned i=0;i<2;++i)c[i]+=t*qr.nullBasis[0][i]+parameter(P::QrNull1)*qr.nullBasis[1][i];return c[0]*c[0]+c[1]*c[1];});}
+        else {b.linkedPlot("Excess squared error along delta x0; delta x1=0",MathParameter::Count,{0,0},"||A delta||^2",teal,-3,3,[&](double x){return excess(x,0);});}
       }
       break;
     }

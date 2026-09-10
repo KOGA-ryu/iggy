@@ -1,49 +1,113 @@
 # Paths workstreams
 
-## A textbook companion beside linear solving
+## Shared question-family authoring and finite probability
 
-**Built and locally published; teaching and visual acceptance await the user.**
-The user's inspection of `math_lab` establishes its textbook as the standard
-for explanation depth and layout. Package `linear_textbook` version 1 adds
-**Algebra → Linear equations: a textbook companion**, one thirteen-block lesson
-with fifteen references and eight independent disclosures, and three connected
-questions. The two numerical questions retain all four support levels and button
-answers in Learn/Practice; the third checks the reason for an equivalent step.
+**Built and locally published; visual and teaching acceptance remain with the
+user.** Linear and worked-matrix authoring now use `teaching_documents()` and
+one chapter template for subject/chapter placement, lesson blocks, practice
+links and questions. Their reading prose lives in family Markdown templates;
+`choices_text()` writes their common choice/answer directives. The frozen
+matrix format-1 route remains a live reproduction/upgrade consumer. All earlier
+linear and matrix document, manifest and audit bytes remain identical.
 
-`drawDocumentReading` is the shared owner of imported reading presentation in
-overview and question views. The former overview-only formatting loop is removed;
-both routes use the existing textbook block renderer. `@read` now also attaches
-lessons to supported linear/matrix questions. Wide question workspaces show a
-resizable reading column beside the fixed question and choices; narrower ones
-show reading below them. Compact current-step Help remains available.
+The third-family proof is **Probability and Statistics → Finite probability:
+count and compare**, with 12 questions and three readings in teaching order:
+Count an event, Count its complement, Impossible or certain. The native textbook
+provides definitions, a counting proposition with closed proof, an independent
+letter-token example with separate help, complement/boundary explanations,
+practice and summary. The questions use two steps with symbolic choices and the
+existing `choices.v1` owner. They do not claim four support levels or a written
+probability checker. Linear and matrix retain their existing modes.
 
-The existing question owner records `ReadReference` through guarded commands,
-using separate reference-exposure bits. Reading never grades, changes working,
-opens an unrelated question solution, or counts a related example as the active
-question's answer being shown. Support-level changes close disclosures while
-retaining guidance history. A reading-only Markdown edit preserves the matching
-question attempt and updates the structured text through the existing watcher.
+The producer counts multiples by integer division. Its independent certificate
+enumerates the original outcomes and sums exact equal weights. Before export,
+the actual compiled givens, working states, choice labels and accepted IDs must
+match that certificate. The shared model gate exercises supported and prepared
+questions through their existing owners, including wrong feedback, save/reopen,
+reordering, retained archives, additive publication and explicit Next. Source
+fingerprints guard against edits during verification. The existing exporter
+remains the only activation route.
 
-Release builds of sorter, gallery and paths pass. Five targeted CTest entries
-pass, including eleven complete reference solving routes, twenty-six wrong-choice
-checks, save/reorder replay, Undo, completion until Next, live proof edits and
-sixteen data-only guidance checks. Independent fraction arithmetic verifies all
-numerical choices, the reasoning transformation and the written counterexample.
-No windows, screenshots, captures or font probes were used.
+The installed catalogue now has **377 questions, 953 readings, 190 chapters and
+eight subjects**, exposed as **1,264 native textbook sections**. All 365 earlier
+question records, 950 reading records, 189 chapters and eight subjects compare
+unchanged. Local generation:
+`30c769a578e8747432e4dd9915eb2b4e881d7cba19fa91a3bc8f0e9f8e12d7b9`.
 
-The published catalogue now has **365 questions, 950 readings, 189 chapters and
-8 subjects**. All 362 earlier questions and 949 earlier readings are unchanged.
-Existing source packages and question saves are not rewritten. Changes remain
-uncommitted, and concurrent 3D work is preserved. The reusable authoring standard
-is [LINEAR_TEXTBOOK_REFERENCE.md](LINEAR_TEXTBOOK_REFERENCE.md); detailed evidence
-and the scoped production delta are in `build/textbook-reference-evidence/verification.json`.
+Release `sorter`, the pure document-model executable and the pure textbook
+adapter executable build. `paths_learning_document_tests` passes; all **21**
+batch tests pass. The installed pilot passes **12 complete solving routes and
+48 wrong-choice checks**. The full 36-question recipe pool passes exact
+arithmetic checks. The published textbook adapter confirms all entries and
+exercises are reachable, optional answers start closed and bookmarks survive
+reordering/additions. No windows, images, screenshots, captures, ImGui contexts
+or font probes were used. Actual typography, pointer use and teaching quality
+still require the user's check.
 
-Manual check: launch `b/sorter`, open the new chapter and its reading, then
-Question 1. Inspect teal headings, independent proof/hint/answer/solution controls,
-reference links and text sizing. Gold Given and cyan Working/choices should stay
-nearby while reading scrolls. Practice closes guidance; purple Textbook reopens
-it. Wrong feedback stays coral and completed working stays green until Next.
-Next candidate after acceptance: apply this depth standard to the matrix reference.
+Scope against the saved starting state: **zero runtime C++ changes and zero new
+runtime files**; one existing authoring tool is +197/-47 lines (net +150), two
+existing test files grow by 157 net lines, and six text/recipe authoring files
+are added. No UI layout, native 3D asset, source-card, CMake or parent-repository
+changes were made in this workstream. All changes remain uncommitted.
+
+The reusable builder contract and commands are in
+[QUESTION_BATCHES.md](QUESTION_BATCHES.md); the completion record is
+`build/family-workflow-evidence/verification.json`. Manual check: launch
+`b/sorter`, open the chapter above and try Exercise. **Gold Given** stays beside
+**cyan Working/choices**; a wrong tile retains working, and **green completed
+working** stays until Next. Open the token example's separate Answer/Solution
+disclosures, then close/reopen once to confirm progress. The next candidate is
+one additional subject family against this contract, after the user judges the
+pilot's explanation depth.
+
+## Adopt the native textbook screen for the whole Library
+
+**Built; headless verification passed; visual acceptance remains with the user.**
+The user rejected the previous hybrid layout. Library now calls the exact
+`drawTextbook` used by `math_lab`, supplying content through `CorpusTextbook`.
+The separate Library browser, Focus pages, standalone imported reader and
+question/textbook split table are deleted, including their obsolete UI state.
+There is one page-layout owner for Contents, Index, reading measure, spacing,
+numbered blocks, Reading/Exercise, figures, text size and footer navigation.
+
+The existing **950 readings and 365 questions** map to **1,261 native sections**.
+Questions explicitly attached to a lesson stay in its Exercise area; the others
+receive question sections in their original subject/chapter. Older native
+matrix references retain their actual definitions and propositions. One
+registered imported figure uses the existing model and native figure regions.
+The catalogue inspection report is identical before and after this change.
+No content package or question stamp was rewritten.
+
+`Textbook` owns reading position, size, disclosures and bookmarks. Imported
+bookmarks use stable identities and an explicit saved-row count: additions and
+reordering preserve position, while truncated or duplicate rows fail without
+mutating reading state. The native `math_lab` generation-based bookmarks retain
+their existing format. Preview remaps the book by ID and resets stale disclosures.
+`CorpusPractice` and `LayeredQuestionSession` retain selection, grading, attempts,
+Undo and saved working. A completed question waits for explicit Next.
+
+Release builds of **sorter and math_lab** pass, as do eight targeted model and
+adapter CTest entries plus the published-catalogue adapter check. These cover
+native navigation/figures, complete solving routes, wrong choices, all four
+support levels, guidance evidence, save replay, Undo, independent disclosures,
+references, Markdown reload and bookmark migration. Numerical page regions are
+checked at 1440×860, 800×600 and 360×480. No ImGui contexts, fonts, windows,
+screenshots or captures were initialized by these verification runs.
+
+Tests tied to the deleted browser/focus/panel controls are retired; valid
+question-model, notation-engine and sorter-input tests remain. The updated
+notation and sorter-input binaries compile but were not run: pointer behavior,
+actual text fit and appearance still require the user's visual confirmation.
+Detailed evidence and the scoped delta are in
+`build/textbook-adoption-evidence/verification.json`. Changes remain uncommitted.
+
+Manual check: launch `b/sorter` and open Library. Compare the Contents tree,
+Index, teal headings, A-/A+, Reading/Exercise areas and footer with `math_lab`.
+Try **Algebra → Linear equations: a textbook companion → From equal values to
+an unknown → Exercise**. Gold Given and cyan Working/choices should stay nearby;
+wrong feedback should be coral, and completed working green until Next. Return
+to Reading, scroll, then reopen to check the reading bookmark. Next candidate
+after acceptance: apply the established explanation depth to the matrix reference.
 
 Deferred project: [Standalone calculator and connected tutoring](CALCULATOR_TUTOR_PROJECT.md)
 records the future independent calculator, Eigen backend, named-control guidance,
@@ -614,6 +678,72 @@ result waiting for Next. The next candidate is a Paths authoring adapter consumi
 immutable source bytes and the existing parser's audit to emit this same format.
 Prose-to-question generation, arbitrary new answer checkers, archives, live reload,
 general save migration and rollback after play are outside this checkpoint.
+
+## Shared linked-plot construction
+
+The user approved consolidating sampled plots after the inspector migration.
+`SnapshotBuilder::linkedPlot` now creates a plot with its first sampled series,
+scrubbing binding and explicit mathematical marker. Forty construction sites
+across 17 families use this shared call, including Function, Surface, Harmonics,
+Oscillator, VectorField, Flux, Spherical, PSD, Norm, Curve, Lathe, Patch, Membrane,
+Truss, Simplex, Distance and QR. Existing comparison-series calls, domain bounds,
+read-only states and special/discrete traces remain intact. No new numerical
+formula, renderer behavior, input route or public asset identifier is introduced.
+
+The before/after Release traces are byte-identical across all 35 assets: 5,678
+states, 8,157 plots and 1,374,426 sampled points. The trace checks presets,
+discrete choices, continuous-control bounds and playback, recording every point,
+marker, label, colour, series flag and scrub binding. The persistent plot-contract
+suite covers 370 states, 499 plots and 81,884 samples, checking capacities, finite
+values and parameter ownership. Release builds of `math_lab` and `sorter`
+passed, along with all 19 selected CTest checks (eight CPU suites and eleven
+text-only CLI cases). The installed 44,250,074-byte plot trace also matches the
+original Release trace byte-for-byte.
+
+One production file changes, with no new production files and 12 fewer lines.
+Changes stay uncommitted. All verification is CPU/text only; no images, native
+windows, screenshots, captures or font probes are used. Vector and projection
+construction is the next shared-component candidate.
+
+## Shared math asset control bindings
+
+The user approved finishing the inspector consolidation across the library.
+All 409 parameters in 35 assets now declare static editor bindings beside their
+limits and defaults in `MathParameterSpec::control`. This checkpoint migrates the
+remaining 356 parameters, including 64 coordinate tuples and 88 fields filtered
+by point/mode selection. The inspector's parallel metadata, tuple and selected-
+range registries and their fallback branches are deleted. Playback continues to
+use the registry's constexpr lookup. Existing numerical predicates, dynamic
+ranges, semantic actions, calculations and geometry are unchanged.
+
+The expanded before/after trace is byte-identical across 3,592 sampled states:
+control labels/groups/rows, parameter availability, presets, discrete selections,
+playback, preset titles, group-open defaults, changed counts and group-reset
+membership. The trace contains 4,836,355 bytes. The installed layout suite passed
+157,338 assertions across 6,480 layouts and 128 object/layer states. Binding
+validity checks now cover the complete registry without a legacy exemption.
+Release builds of `math_lab` and `sorter` passed. All 19 selected CTest
+checks passed (nine CPU suites and ten text-only CLI cases), as did the installed
+before/after parity comparison. Verification opened no native windows and
+produced no screenshots, captures or font probes.
+
+Three production files change, with no new production files and 56 fewer lines.
+No images or windows are used. Changes stay uncommitted; textbook integration,
+source cards and learner state remain with their existing owners. The linked-plot
+consolidation is recorded in the checkpoint above.
+
+## P064: QR and least-squares assets
+
+The user approved building the next shared family from the six category
+checklists. [QR and Least Squares Lab](P064_QR_LEAST_SQUARES.md) is the 35th
+object, with four layers, seven examples and seventeen controls. It connects
+orthonormal frames, factor reconstruction, closest fits and coefficient-space
+null families through a fixed real 3x2 kernel. Checklist notes record partial
+chapter coverage; chapter integration and broader matrix sizes remain open.
+
+This checkpoint is one asset family. Existing source cards and learner state
+remain untouched, and textbook integration stays with its owner. Changes are
+uncommitted; only CPU/text checks are used, with visual review by the user.
 
 ## P063: polar decomposition assets
 

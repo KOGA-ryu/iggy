@@ -8,82 +8,16 @@ namespace paths {
 namespace {
 using P=MathParameter;using G=MathControlGroup;
 constexpr unsigned index(P p){return static_cast<unsigned>(p);}
-const auto& metadata(){
-  static const auto data=[] {
-    std::array<MathControlMetadata,index(P::Count)> result{};
-    for(const auto& p:mathParameterSpecs())result[index(p.id)]={p.minimumLevel>=2?G::Advanced:G::Shape,p.label};
-    const auto range=[&](P a,P b,G g){for(unsigned i=index(a);i<=index(b);++i)result[i].group=g;};
-    const auto group=[&](G g,std::initializer_list<P> params){for(auto p:params)result[index(p)].group=g;};
-    group(G::Display,{P::Gap,P::SliceGap,P::Depth,P::GaussianHeight,P::TensorGap,P::NormWire,P::CurveGuides,P::LatheCut,P::LatheGuides,P::BooleanGuides,P::BooleanSection,P::PatchGuides,P::MembraneGuides,P::MembraneView,P::RigidGuides,P::TrussGuides,P::SimplexGuides,P::DistanceGuides,P::PolarGuides});
-    group(G::Sampling,{P::Slices,P::Sample,P::DeltaX,P::TaylorDegree,P::HarmonicTerms,P::FluxResolution,P::ProbabilitySeed,P::BinomialSeed,P::LatheSlices,P::LatheMethod,P::BooleanResolution,P::PatchResolution,P::MembraneResolution});
-    group(G::Operation,{P::Shortcut,P::IntegralStart,P::ComposeAngle,P::SvdStage,P::DescentRate,P::Constraint,P::GaussianOperation,P::GaussianQuotient,P::FluxOrientation,P::TensorBasis,P::CloudWhiten,P::NormSupport,P::BooleanOperation,P::BooleanBlend});
-    range(P::VectorX,P::VectorZ,G::Probe);range(P::SurfaceU,P::DirectionAngle,G::Probe);range(P::FieldX,P::FieldPitch,G::Probe);
-    group(G::Probe,{P::Angle,P::FunctionX,P::TaylorCenter,P::CircleAngle,P::SymmetryVertex,P::SymmetryElement,P::ProbeFrequency,P::InverseGuess,P::CrtGuess,P::FluxProbe,P::ProbabilityRow,P::BinomialCut,P::CloudComponent,P::SphereTheta,P::SpherePhi,P::RootIndex,P::PsdProbeAngle,P::LatheProbe});
-    range(P::SymmetryFirst,P::SymmetryPower,G::Operation);range(P::TensorI,P::TensorK,G::Probe);range(P::QuadX,P::QuadZ,G::Probe);range(P::NormX,P::NormOtherZ,G::Probe);range(P::BooleanProbeX,P::BooleanProbeZ,G::Probe);
-    range(P::BayesEvent,P::BayesNegative,G::Operation);range(P::RootMultiplier,P::RootAutomorphism,G::Operation);range(P::PsdMix,P::PsdRayScale,G::Operation);range(P::PsdCostAngle,P::PsdObjective,G::Operation);
-    group(G::Animation,{P::HarmonicTime,P::MotionTime,P::FieldTime,P::FluxTime,P::ProbabilitySteps,P::SphereHeat,P::CurveProgress,P::CurveTravel,P::LatheTurn});
-    range(P::CloudYaw,P::CloudMeanZ,G::Transform);range(P::QuadYaw,P::QuadPitch,G::Transform);group(G::Transform,{P::FluxTilt});
-    range(P::GaussianReal,P::GaussianImag,G::ShapeA);range(P::GaussianOtherReal,P::GaussianOtherImag,G::ShapeB);range(P::TensorU0,P::TensorU2,G::ShapeA);range(P::TensorV0,P::TensorV2,G::ShapeB);
-    range(P::CurveControl,P::CurveP3Z,G::Profile);range(P::CurveProfile,P::CurveNormP,G::Shape);range(P::LatheControl,P::LatheHeight,G::Profile);range(P::LatheHollow,P::LatheFloor,G::Shape);
-    group(G::ShapeA,{P::BooleanShapeA,P::BooleanSizeA});group(G::ShapeB,{P::BooleanShapeB,P::BooleanSizeB,P::BooleanX,P::BooleanY,P::BooleanZ,P::BooleanYaw,P::BooleanPitch,P::BooleanFit,P::BooleanClearance});
-    range(P::PatchControl,P::PatchP33Z,G::Profile);range(P::PatchU,P::PatchV,G::Probe);
-    range(P::MembraneSlot,P::MembraneV3,G::Profile);range(P::MembraneU,P::MembraneV,G::Probe);group(G::Animation,{P::MembraneDamping,P::MembraneTime});
-    range(P::RigidRotX,P::RigidRotZ,G::Transform);range(P::RigidSpinX,P::RigidTime,G::Animation);group(G::Probe,{P::RigidAxis});
-    range(P::TrussJoint,P::TrussP5Y,G::Profile);group(G::Animation,{P::TrussPosition});range(P::TrussLoadX,P::TrussLoadY,G::Operation);group(G::Operation,{P::TrussBrace,P::TrussSupports});group(G::Probe,{P::TrussMember});range(P::TrussTensionLimit,P::TrussCompressionLimit,G::Advanced);
-    range(P::SimplexP0,P::SimplexP1,G::ShapeA);range(P::SimplexQ0,P::SimplexQ1,G::ShapeB);range(P::SimplexValue0,P::SimplexValue2,G::Shape);group(G::Operation,{P::SimplexFunction});group(G::Animation,{P::SimplexMix});
-    range(P::DistanceAB,P::DistanceCD,G::Shape);group(G::Probe,{P::DistanceEdge});group(G::Transform,{P::DistanceMirror});group(G::Operation,{P::DistanceSecond,P::DistanceScale});group(G::Animation,{P::DistanceMix});
-    range(P::PolarA00,P::PolarA22,G::Transform);group(G::Animation,{P::PolarAmount,P::PolarIteration});group(G::Operation,{P::PolarExtension});
-    const auto label=[&](P p,std::string_view text){result[index(p)].label=text;};
-    label(P::MembraneSlot,"Mode slot");label(P::MembraneResolution,"Subdivisions");label(P::MembraneGuides,"Guides");
-    label(P::PatchControl,"Control point");label(P::PatchResolution,"Subdivisions");label(P::PatchGuides,"Guides");
-    label(P::BooleanShapeA,"Shape");label(P::BooleanShapeB,"Shape");label(P::BooleanSizeA,"Size");label(P::BooleanSizeB,"Size");label(P::BooleanOperation,"Combine");label(P::BooleanBlend,"Blend");label(P::BooleanResolution,"Cells / axis");label(P::BooleanGuides,"Guides");label(P::BooleanSection,"Section");label(P::BooleanFit,"Fit preview");label(P::BooleanClearance,"Clearance");
-    label(P::CurveControl,"Control point");label(P::CurveProgress,"Position");label(P::CurveProfile,"Profile");label(P::CurveRadius,"Radius");label(P::CurveAspect,"Aspect");label(P::CurveEndScale,"End scale");label(P::CurveTwist,"Twist (deg)");label(P::CurveNormP,"Exponent p");label(P::CurveGuides,"Guides");label(P::CurveTravel,"Travel rule");
-    label(P::LatheControl,"Profile point");for(unsigned p=index(P::LatheR0);p<=index(P::LatheR6);++p)result[p].label="Radius";for(unsigned p=index(P::LatheH1);p<=index(P::LatheH5);++p)result[p].label="Height fraction";
-    label(P::LatheHeight,"Total height");label(P::LatheWall,"Wall thickness");label(P::LatheFloor,"Cavity floor");label(P::LatheTurn,"Angle (deg)");label(P::LatheCut,"Cutaway (%)");label(P::LatheProbe,"Probe");label(P::LatheSlices,"Subdivisions");label(P::LatheMethod,"Method");label(P::LatheGuides,"Guides");
+bool selectionControl(P p){
+  static const auto selectors=[] {std::bitset<index(P::Count)> result;
+    for(const auto& spec:mathParameterSpecs())if(spec.control.selector!=P::Count)result.set(index(spec.control.selector));
     return result;
-  }();return data;
+  }();return selectors.test(index(p));
 }
-struct Tuple { P first;unsigned count;std::string_view label;std::array<std::string_view,3> components{"X","Y","Z"}; };
-constexpr std::array tuples{
-  Tuple{P::PolarA00,3,"A row 1",{"1","2","3"}},Tuple{P::PolarA10,3,"A row 2",{"1","2","3"}},Tuple{P::PolarA20,3,"A row 3",{"1","2","3"}},
-  Tuple{P::DistanceAB,3,"Lengths from A",{"AB","AC","AD"}},Tuple{P::DistanceBC,3,"Other lengths",{"BC","BD","CD"}},
-  Tuple{P::SimplexP0,2,"Distribution P",{"A","B",""}},Tuple{P::SimplexQ0,2,"Distribution Q",{"A","B",""}},Tuple{P::SimplexValue0,3,"Outcome values",{"A","B","C"}},
-  Tuple{P::TrussSpan,2,"Dimensions (m)",{"W","H",""}},Tuple{P::TrussLoadX,2,"Applied load (kN)",{"X","Y",""}},
-  Tuple{P::TrussP0X,2,"Joint offset (m)",{"X","Y",""}},
-  Tuple{P::TrussP1X,2,"Joint offset (m)",{"X","Y",""}},
-  Tuple{P::TrussP2X,2,"Joint offset (m)",{"X","Y",""}},
-  Tuple{P::TrussP3X,2,"Joint offset (m)",{"X","Y",""}},
-  Tuple{P::TrussP4X,2,"Joint offset (m)",{"X","Y",""}},
-  Tuple{P::TrussP5X,2,"Joint offset (m)",{"X","Y",""}},
-
-  Tuple{P::RigidWidth,3,"Dimensions (m)",{"W","H","D"}},Tuple{P::RigidRotX,3,"Release angles (deg)"},Tuple{P::RigidSpinX,3,"Initial spin (rad/s)"},
-  Tuple{P::MembraneM0,2,"Mode numbers",{"m","n",""}},
-  Tuple{P::MembraneM1,2,"Mode numbers",{"m","n",""}},
-  Tuple{P::MembraneM2,2,"Mode numbers",{"m","n",""}},
-  Tuple{P::MembraneM3,2,"Mode numbers",{"m","n",""}},
-  Tuple{P::MembraneA0,2,"Release state",{"q0","v0",""}},Tuple{P::MembraneA1,2,"Release state",{"q0","v0",""}},
-  Tuple{P::MembraneA2,2,"Release state",{"q0","v0",""}},Tuple{P::MembraneA3,2,"Release state",{"q0","v0",""}},
-  Tuple{P::MembraneWidth,2,"Dimensions",{"W","D",""}},Tuple{P::MembraneU,2,"Probe UV",{"U","V",""}},
-  Tuple{P::VectorX,3,"Vector"},Tuple{P::SurfaceU,2,"Surface point",{"U","V",""}},Tuple{P::GaussianReal,2,"Real / imag",{"Re","Im",""}},Tuple{P::GaussianOtherReal,2,"Real / imag",{"Re","Im",""}},
-  Tuple{P::FieldX,3,"Probe position"},Tuple{P::FieldYaw,2,"Direction",{"Yaw","Pitch",""}},Tuple{P::TensorU0,3,"Vector u",{"0","1","2"}},Tuple{P::TensorV0,3,"Vector v",{"0","1","2"}},Tuple{P::TensorW0,3,"Vector w",{"0","1","2"}},Tuple{P::TensorI,3,"Indices i/j/k",{"i","j","k"}},
-  Tuple{P::CloudX,3,"Spread"},Tuple{P::CloudMeanX,3,"Mean"},Tuple{P::CloudYaw,2,"Rotation",{"Yaw","Pitch",""}},Tuple{P::QuadLambdaX,3,"Eigenvalues"},Tuple{P::QuadYaw,2,"Rotation",{"Yaw","Pitch",""}},Tuple{P::QuadX,3,"Probe"},
-  Tuple{P::NormX,3,"Vector x"},Tuple{P::NormOtherX,3,"Vector y"},Tuple{P::CurveP0X,3,"Position"},Tuple{P::CurveP1X,3,"Position"},Tuple{P::CurveP2X,3,"Position"},Tuple{P::CurveP3X,3,"Position"},
-  Tuple{P::PatchP00X,3,"Position"},Tuple{P::PatchP01X,3,"Position"},Tuple{P::PatchP02X,3,"Position"},Tuple{P::PatchP03X,3,"Position"},
-  Tuple{P::PatchP10X,3,"Position"},Tuple{P::PatchP11X,3,"Position"},Tuple{P::PatchP12X,3,"Position"},Tuple{P::PatchP13X,3,"Position"},
-  Tuple{P::PatchP20X,3,"Position"},Tuple{P::PatchP21X,3,"Position"},Tuple{P::PatchP22X,3,"Position"},Tuple{P::PatchP23X,3,"Position"},
-  Tuple{P::PatchP30X,3,"Position"},Tuple{P::PatchP31X,3,"Position"},Tuple{P::PatchP32X,3,"Position"},Tuple{P::PatchP33X,3,"Position"},
-  Tuple{P::PatchU,2,"Probe UV",{"U","V",""}},Tuple{P::BooleanX,3,"Position"},Tuple{P::BooleanYaw,2,"Yaw / pitch",{"Yaw","Pitch",""}},Tuple{P::BooleanProbeX,3,"Probe position"}};
-struct SelectedRange {P first,last,selector;unsigned stride=1,offset=0;};
-constexpr std::array selectedRanges{
-  SelectedRange{P::TrussP0X,P::TrussP5Y,P::TrussJoint,2},
-  SelectedRange{P::CurveP0X,P::CurveP3Z,P::CurveControl,3},SelectedRange{P::PatchP00X,P::PatchP33Z,P::PatchControl,3},
-  SelectedRange{P::LatheR0,P::LatheR6,P::LatheControl},SelectedRange{P::LatheH1,P::LatheH5,P::LatheControl,1,1},
-  SelectedRange{P::MembraneM0,P::MembraneV3,P::MembraneSlot,4}};
-bool selectionControl(P p){return std::any_of(selectedRanges.begin(),selectedRanges.end(),[&](const auto& range){return range.selector==p;});}
 bool visible(const MathObjects& m,P p){
   const auto& state=m.snapshot();const auto& spec=mathParameterSpecs()[index(p)];
   if(!m.parameterAvailable(p)||(spec.matrixEntry&&state.level>0))return false;
-  for(const auto& range:selectedRanges)if(p>=range.first&&p<=range.last)return (index(p)-index(range.first))/range.stride+range.offset==static_cast<unsigned>(m.parameter(range.selector));
+  if(spec.control.selector!=P::Count&&m.parameter(spec.control.selector)!=spec.control.selectedValue)return false;
   return true;
 }
 bool defaultOpen(G group,unsigned level){
@@ -93,13 +27,28 @@ bool contains(std::string_view hay,std::string_view needle){
   return std::search(hay.begin(),hay.end(),needle.begin(),needle.end(),[](unsigned char a,unsigned char b){return std::tolower(a)==std::tolower(b);})!=hay.end();
 }
 }
-MathControlMetadata mathControlMetadata(P p){if(p>=P::Count)throw std::invalid_argument("unknown control metadata");return metadata()[index(p)];}
+MathControlMetadata mathControlMetadata(P p){
+  if(p>=P::Count)throw std::invalid_argument("unknown control metadata");
+  const auto& spec=mathParameterSpecs()[index(p)];
+  return {spec.control.group,spec.control.label.empty()?spec.label:spec.control.label};
+}
 std::string_view mathControlGroupName(G g){constexpr std::array<std::string_view,static_cast<unsigned>(G::Count)> names{"Shape","Shape A","Shape B","Profile","Transform","Operation","Probe","Animation","Sampling","Display","Advanced"};return names.at(static_cast<unsigned>(g));}
 MathControlRows mathControlRows(const MathObjects& m){
   MathControlRows out;std::bitset<index(P::Count)> consumed;
   for(const auto& p:mathParameterSpecs())if(visible(m,p.id)&&!consumed[index(p.id)]){
     const auto meta=mathControlMetadata(p.id);MathControlRow row{meta.group,meta.label,{p.id},1};
-    for(const auto& tuple:tuples)if(tuple.first==p.id){bool complete=true;for(unsigned j=0;j<tuple.count;++j){const auto q=static_cast<P>(index(p.id)+j);complete=complete&&visible(m,q)&&mathControlMetadata(q).group==meta.group;}if(complete){row.count=tuple.count;row.label=tuple.label;row.components=tuple.components;for(unsigned j=0;j<tuple.count;++j)row.parameters[j]=static_cast<P>(index(p.id)+j);}break;}
+    const auto& binding=p.control;
+    if(binding.rowCount>1){
+      bool complete=true;
+      for(unsigned j=0;j<binding.rowCount;++j){
+        const auto q=static_cast<P>(index(p.id)+j);
+        complete=complete&&visible(m,q)&&mathControlMetadata(q).group==meta.group;
+      }
+      if(complete){
+        row.count=binding.rowCount;row.label=binding.rowLabel;row.components=binding.components;
+        for(unsigned j=0;j<row.count;++j)row.parameters[j]=static_cast<P>(index(p.id)+j);
+      }
+    }
     for(unsigned j=0;j<row.count;++j)consumed.set(index(row.parameters[j]));out.rows[out.count++]=row;
   }return out;
 }

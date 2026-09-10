@@ -28,9 +28,17 @@ struct TextbookUiState : BookReadingUiState {
   float readingFraction=.46f;
   TextbookFigureUiState figure;
 };
+// Content adapters use the complete native textbook screen. They supply content
+// and exercise/figure owners, never a second page layout.
+struct TextbookContentUi {
+  const char* exitLabel="Practice";
+  std::function<void(unsigned,float)> reading,exercise;
+  std::function<void(unsigned,SceneViewport,float)> figure;
+  std::function<void(const BookAction&)> action;
+};
 // One block renderer for compiled textbook sections and imported lessons.
 std::optional<BookAction> drawBookBlock(const BookBlockView&,BookReadingUiState&,NativeMath&,float width,
     const std::function<void()>& figure={});
 // Returns a transient request to visit the object collection.
-bool drawTextbook(Textbook&,TextbookUiState&,NativeMath&,SceneFrame&);
+bool drawTextbook(Textbook&,TextbookUiState&,NativeMath&,SceneFrame&,const TextbookContentUi* content=nullptr);
 }

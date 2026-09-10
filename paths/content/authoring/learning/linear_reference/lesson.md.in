@@ -1,0 +1,11 @@
+@block introduction | {{group}}_start | 1 | One unknown, balanced operations
+@prose Find the real value that makes the original equation true. Apply the same operation to both sides and keep fractions exact.
+@endblock
+@block definition | {{group}}_terms | 1.1 | Coefficient and constant
+@prose A coefficient multiplies the unknown. The added constant is a separate term. A nonzero coefficient gives a unique solution.
+@display
+ax+b=c,\qquad a\ne0
+@endblock
+@block introduction | {{group}}_controls | 1.2 | Choose your support
+@prose Learn explains each balanced step. Practice keeps the symbolic choices and opens help on request. Terms defines notation; Hint gives a direction; Next line reveals one equation; Solution reveals the full route. Solve and Write accept your own working. Completion stays until Next.
+@endblock

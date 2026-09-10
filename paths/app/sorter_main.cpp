@@ -313,6 +313,7 @@ int main(int argc, char** argv) {
     ui.corpus=&corpus;
     ui.library.math=&math;
     ui.library.practice=&starters;
+    ui.library.bookmarkPath=o.progress.empty()?std::filesystem::path{}:o.progress.parent_path()/"library-textbook-v1.txt";
     ui.library.importMessage=documents.message;ui.library.importFailed=!documents.accepted;
     ui.library.livePreview=preview.has_value();
     if(preview)ui.library.open=true;
@@ -322,7 +323,7 @@ int main(int argc, char** argv) {
     while (!o.frames || rendered < o.frames) {
       const auto result = host.frame([](const SDL_Event&) {}, [&] {
         if(preview) {
-          if(preview->poll(corpus,starters))refreshMathCorpusPreview(ui.library,corpus,preview->remap());
+          if(preview->poll(corpus,starters))refreshMathCorpusPreview(ui.library,corpus);
           ui.library.importMessage=preview->report().message;ui.library.importFailed=!preview->report().accepted;
         }
         if (commandIndex < commands.size()) {

@@ -1,0 +1,23 @@
+{
+  "format": "paths_learning_authoring",
+  "format_version": 1,
+  "package_id": "linear_textbook",
+  "package_version": 1,
+  "sources": [
+    {
+      "id": "linear_textbook_original_v1",
+      "kind": "original",
+      "title": "From equal values to an unknown: a textbook companion",
+      "uri": "paths:original/linear_textbook/v1",
+      "revision": "1",
+      "attribution": "Original Paths explanations, examples and exercises. Structure follows the existing Paths math_lab textbook blocks.",
+      "reuse": "Original project material; no external textbook exercises or prose copied.",
+      "content_ids": [
+        "linear_textbook_reading",
+        "linear_book_worked",
+        "linear_book_guided",
+        "linear_book_reason"
+      ]
+    }
+  ]
+}

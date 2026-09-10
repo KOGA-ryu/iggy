@@ -4,7 +4,6 @@
 #include <bitset>
 
 namespace paths {
-enum class MathControlGroup : unsigned { Shape, ShapeA, ShapeB, Profile, Transform, Operation, Probe, Animation, Sampling, Display, Advanced, Count };
 struct MathControlMetadata { MathControlGroup group=MathControlGroup::Shape; std::string_view label; };
 struct MathControlRow { MathControlGroup group; std::string_view label; std::array<MathParameter,3> parameters{}; unsigned count=1; std::array<std::string_view,3> components{"X","Y","Z"}; };
 struct MathControlRows { std::array<MathControlRow,static_cast<unsigned>(MathParameter::Count)> rows{};unsigned count=0; };

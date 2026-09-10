@@ -179,6 +179,11 @@ symbolic Setup and Result tiles in the native workspace. The finished result
 waits for **Next**, and progress saves automatically. See the
 [complete category and question sheet](docs/CORPUS_STARTER_COVERAGE.md).
 
+[QR and Least Squares Lab](docs/P064_QR_LEAST_SQUARES.md) turns two vectors
+into an orthonormal frame, reconstructs their QR factors, and compares a target
+with its best fit. Explore dependent columns through an error trough and
+minimum-norm solution. Open `./b/math_lab --object qr --level 0` and press Play.
+
 [Polar Decomposition Lab](docs/P063_POLAR_DECOMPOSITION.md) separates a matrix
 into stretch and rotation or reflection. Compare deformed solids, remove shear
 with the inverse-transpose iteration, and explore collapsed dimensions. Open
@@ -348,6 +353,7 @@ Rotation Lab adds frames/quaternions, inertia, free rotation and axis stability.
 | Rigid-Body Rotation Lab | Orientation/frames; mass/inertia; angular motion; stability/conservation |
 | Bridge & Truss Lab | Geometry/loads; tension/compression; joint equilibrium; rank and force limits |
 | Probability Simplex Lab | Distributions; entropy/variance; convex mixtures; information divergence |
+| QR and Least Squares Lab | Orthonormal frames; QR reconstruction; projection/residuals; null directions and minimum norm |
 | Polar Decomposition Lab | Linear deformation; stretch/orientation; inverse-transpose iteration; reflection and null-space extensions |
 | Distance Geometry Lab | Distances; reconstruction/reflection; dimension/feasibility; the distance-matrix cone |
 | Patch Lab | Sixteen control points; tangents/normals; curvature/fundamental forms; area and mesh refinement |

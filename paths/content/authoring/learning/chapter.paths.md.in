@@ -1,0 +1,9 @@
+@paths 1
+@subject {{subject}} | {{subject_title}}
+@chapter {{chapter}} | {{chapter_title}}
+
+@lesson {{reading_id}} | {{reading_title}}
+@template lesson.v2
+{{lesson_blocks}}{{practice_links}}@end
+
+{{questions}}

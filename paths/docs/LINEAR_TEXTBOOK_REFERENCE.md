@@ -39,17 +39,19 @@ templates can attach it with `@read lesson_id`; `linear.v1` and `matrix.v1` stil
 require their current-step definitions and teaching. These serve the compact
 solving help while the linked textbook supplies the full context.
 
-The overview and question share `drawDocumentReading`, which delegates to the
-existing `drawBookBlock` and `bookLessonView` used by `math_lab`. Reading uses a
-bounded centred column, wrapped left-aligned prose, teal headings, separate
-equation rows, 90–200% text size and a jump control. Wide question workspaces
-place reading beside solving with a movable divider. Narrow workspaces place
-it below the fixed problem and choices. No separate exercise or figure session
-is constructed.
+The entire Library calls the actual `drawTextbook` screen used by `math_lab`.
+Do not recreate its geometry or add a separate browser, Focus page, standalone
+reader or question/textbook table. Imported sections supply content to that
+screen's Contents/Index tree, bounded reading column, teal numbered headings,
+centred equation rows, Reading/Exercise areas, native figure panels, A-/A+
+controls and footer. On small windows, its Contents tree occupies the main page
+when the sidebar cannot fit.
 
-Learn opens the textbook. Changing support level or attempt closes disclosures;
-Practice, Solve and Write leave it closed until requested. Closing guidance
-does not erase its recorded use. The guarded `ReadReference` question action
+Attach questions with `@practice`. Select Exercise in the section to use their
+existing button controls; a section with several questions provides a selector.
+Returning to Reading preserves working. The textbook retains disclosure state
+while reading; a source reload closes old disclosures. The guarded
+`ReadReference` question action
 records the kind of reading opened without selecting the active question's Help
 tab, revealing that question's solution, changing working or grading an answer.
 Its journal uses the existing version-2 save format with action `reference`.
@@ -77,8 +79,10 @@ replay/reordering, Undo, completion until Next, independent disclosures,
 references, support levels and live proof edits. The reading-state check does
 not initialize ImGui, fonts or a native host.
 
-Visual acceptance belongs to the user. Open **Algebra → Linear equations: a
-textbook companion → From equal values to an unknown**, then Question 1. Check
-the teal headings and proof/solution controls. Keep gold Given and cyan Working
-and choices visible while scrolling. Try Practice and the purple Textbook
-button. Green completion should remain until Next.
+Visual acceptance belongs to the user. Open **Library → Algebra → Linear
+equations: a textbook companion → From equal values to an unknown**. Compare
+its Contents, teal headings, Reading/Exercise controls, text size and footer
+with `math_lab`. Open Exercise and use Question 1: gold Given, cyan Working and
+symbol choices should be together, with green completion retained until Next.
+Return to Reading and reopen the app to inspect the native reading bookmark.
+The old adjacent companion layout was rejected and has been removed.

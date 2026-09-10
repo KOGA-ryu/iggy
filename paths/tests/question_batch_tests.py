@@ -33,6 +33,116 @@ class BatchTests(unittest.TestCase):
             target=OPTIONS.target, model=OPTIONS.model, output=self.root / 'batches' / str(version),
             store=self.store, base_documents=ROOT / 'content/write')
 
+    def test_shared_authoring_preserves_historical_documents_and_audits(self):
+        # Frozen before consolidation, including every document, author manifest and audit.
+        expected={('matrix',1):'079b6e2590aa8b2454ae9ecd93b4c99ff22cfaf39513cb2f983dc57314c59c83',
+                  ('matrix',2):'b49288700619c5bcb21959966a437c683a286787aa84ebeafbed3aba5caf1862',
+                  ('linear',1):'58b9a20a486cb8d1ccac087b3f641dd342a55e018eb3836b15a2c37032297c9c'}
+        for (family,fmt),fingerprint in expected.items():
+            _,_,docs,author,audit=batch.BUILDERS[family](self.args(family=family,format_version=fmt,version=fmt))
+            files={**docs,'authoring.json':export.encoded(author),'audit.json':export.encoded(audit)}
+            self.assertEqual(export.sha(export.encoded({p:export.sha(v) for p,v in files.items()})),fingerprint)
+
+    def test_one_chapter_template_edit_reaches_all_three_families(self):
+        marker='@block introduction | common_marker | - | Shared teaching note\n@prose One chapter assembly serves all three subjects.\n@endblock\n'
+        shared=self.root/'shared-chapter.md.in'
+        shared.write_text(batch.CHAPTER_TEMPLATE.read_text().replace('{{lesson_blocks}}',marker+'{{lesson_blocks}}'))
+        for family,fmt in (('matrix',2),('linear',1),('probability',1)):
+            args=self.args(family=family,version=fmt,format_version=fmt)
+            original=batch.BUILDERS[family](args)[2]
+            with patch.object(batch,'CHAPTER_TEMPLATE',shared):docs=batch.BUILDERS[family](args)[2]
+            for name,text in docs.items():
+                if family=='matrix' and not name.startswith('worked_'):
+                    self.assertEqual(text,original[name]) # Live frozen version-1 consumer.
+                else:self.assertIn(marker.encode(),text)
+            before=export.Target(OPTIONS.target).inspect_bytes(original)['catalogue']['questions']
+            after=export.Target(OPTIONS.target).inspect_bytes(docs)['catalogue']['questions']
+            self.assertEqual(before,after,'A shared reading edit does not change any question record')
+        shared.write_text('@paths 1\n{{unknown_chapter_field}}\n')
+        with patch.object(batch,'CHAPTER_TEMPLATE',shared),self.assertRaisesRegex(export.ExportError,'shared-chapter.md.in:2: Unknown field'):
+            batch.linear_batch(self.args(family='linear'))
+
+    def test_probability_pool_has_exact_answers_complements_and_boundaries(self):
+        recipe=export.decoded((batch.PROBABILITY_ROOT/'recipe.json').read_bytes())
+        questions=batch.probability_questions(36,recipe)
+        self.assertEqual(questions[:12],batch.probability_questions(12,recipe))
+        self.assertEqual(len({q['id'] for q in questions}),36)
+        self.assertEqual([q['answer'] for q in questions[:12]],['1/2','1/2','0','1/4','3/4','1','4/9','5/9','0','3/10','7/10','1'])
+        positions=set()
+        for q in questions:
+            checked=batch.verify_probability(q)
+            self.assertEqual(checked['total_mass'],'1')
+            self.assertEqual(Fraction(checked['answer']),Fraction(len(checked['event']),len(checked['outcomes'])))
+            positions.update(step['choices'].index(step['answer']) for step in q['steps'])
+        self.assertEqual(positions,{0,1,2})
+        for i in range(0,36,3):self.assertEqual(Fraction(questions[i]['answer'])+Fraction(questions[i+1]['answer']),1)
+        for defect in ('count','answer','duplicate','key','domain'):
+            q=copy.deepcopy(questions[0])
+            if defect=='count':q['count']+=1
+            elif defect=='answer':q['answer']='999'
+            elif defect=='duplicate':q['steps'][0]['choices'][1]=q['steps'][0]['choices'][0]
+            elif defect=='key':q['steps'][1]['answer']='0'
+            else:q['parameters']['n']=0
+            with self.assertRaises(export.ExportError):batch.verify_probability(q)
+        for count in (0,4,39):
+            with self.assertRaises(export.ExportError):batch.probability_questions(count,recipe)
+
+    def test_probability_checks_compiled_math_before_writing_or_publishing(self):
+        fields=batch.probability_fields
+        for field,value in (('after_1',r'E=\varnothing,\quad |E|=0'),
+                            ('after_2',r'P(E)=0'),('given',r'\Omega=\{1,2\}')):
+            def damaged(q,n):
+                result=fields(q,n);result[field]=value;return result
+            with patch.object(batch,'probability_fields',side_effect=damaged),self.assertRaisesRegex(export.ExportError,'compiled givens or working'):
+                batch.run(self.args(family='probability',publish=True))
+            self.assertFalse((self.store/'active.json').exists())
+            self.assertFalse((self.root/'batches/1').exists())
+        def wrong_labels(q,n):
+            result=fields(q,n)
+            # Still valid document structure; the compiled mathematical value is false.
+            result['choices_2']=result['choices_2'].replace(' | '+batch.tex(q['steps'][1]['answer']),r' | \frac{99}{100}',1)
+            return result
+        with patch.object(batch,'probability_fields',side_effect=wrong_labels),self.assertRaisesRegex(export.ExportError,'answer key or choices'):
+            batch.run(self.args(family='probability',publish=True))
+        self.assertFalse((self.root/'batches/1').exists())
+        with self.assertRaisesRegex(export.ExportError,'format version 1'):
+            batch.run(self.args(family='probability',format_version=2,publish=True))
+
+    def test_probability_publishes_repeats_and_preserves_saves_on_extension(self):
+        first=batch.run(self.args(family='probability',publish=True))
+        self.assertEqual(sorted(p.name for p in (Path(first['generated_authoring'])/'documents').iterdir()),
+                         ['01_event.paths.md','02_complement.paths.md','03_boundary.paths.md'])
+        self.assertEqual(first['route_checks']['routes'],12)
+        self.assertEqual(first['route_checks']['wrong_choices'],48)
+        self.assertTrue(first['route_checks']['save_replay'])
+        self.assertTrue(all('support' not in q['question'] for q in first['route_checks']['questions']))
+        active=(self.store/'active.json').read_bytes()
+        again=batch.run(self.args(family='probability',publish=True))
+        self.assertTrue(again['publication']['unchanged'])
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+        before=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']['questions']
+        more=batch.run(self.args(family='probability',count=24,version=2,publish=True))
+        after=export.Target(OPTIONS.target).inspect(store=self.store)['catalogue']['questions']
+        by_id={q['id']:q for q in after}
+        self.assertTrue(all(by_id[q['id']]==q for q in before))
+        self.assertEqual(len(after),len(before)+12)
+        command=[str(OPTIONS.model),'--question-batch-upgrade',str(Path(first['generated_authoring'])/'documents'),str(Path(more['generated_authoring'])/'documents')]
+        migration=subprocess.run(command,text=True,capture_output=True,timeout=30)
+        self.assertEqual(migration.returncode,0,migration.stderr)
+        self.assertTrue(json.loads(migration.stdout)['save_replay'])
+        active=(self.store/'active.json').read_bytes()
+        bad=batch.probability_questions(12,export.decoded((batch.PROBABILITY_ROOT/'recipe.json').read_bytes()));bad[0]['answer']='0'
+        with patch.object(batch,'probability_questions',return_value=bad),self.assertRaises(export.ExportError):
+            batch.run(self.args(family='probability',count=12,version=3,publish=True))
+        self.assertEqual((self.store/'active.json').read_bytes(),active)
+
+    def test_template_change_during_verification_cannot_publish(self):
+        snapshot=batch.authoring_inputs('probability');changed=dict(snapshot,chapter='changed')
+        with patch.object(batch,'authoring_inputs',side_effect=(snapshot,changed)),self.assertRaisesRegex(export.ExportError,'Authoring input changed'):
+            batch.run(self.args(family='probability',publish=True))
+        self.assertFalse((self.root/'batches/1').exists())
+        self.assertFalse((self.store/'active.json').exists())
+
     def draft_args(self, family='linear'):
         source=self.root/(family+' release')/'authoring'
         if not source.exists():

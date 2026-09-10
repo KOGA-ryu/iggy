@@ -1,13 +1,28 @@
 # Paths architecture
 
-The [linear textbook companion](LINEAR_TEXTBOOK_REFERENCE.md) connects
-`lesson.v2` to all three question templates through the existing `@read` field.
-`drawDocumentReading` now supplies one imported-reading presentation to overview
-and solving surfaces; both delegate typed blocks to `drawBookBlock` and
-`bookLessonView`, as the native textbook does. The displaced overview-only
-formatting loop is removed. Question reading uses no figure/exercise session.
-The question UI keeps work and choices together, with a resizable adjacent
-textbook on wide workspaces and reading below them on narrower workspaces.
+The Library uses the **same `drawTextbook` screen as `math_lab`**. This replaces
+its separate browser, focus pages, imported document reader and adjacent
+question/textbook table. `CorpusTextbook` adapts corpus entries and questions
+into stable `BookSection` data; it does not own page geometry. `Textbook` owns
+Contents/Index navigation, Reading/Exercise mode, numbered-block references,
+disclosures, text size and reading bookmarks. `TextbookUi` owns the page layout,
+72-character reading measure, typography, native figure regions and footer.
+
+`CorpusPracticeUi` supplies only question controls inside the native Exercise
+area. `CorpusPractice` still selects and saves questions; `LayeredQuestionSession`
+still grades them. Explicit Next retains that route and moves to the following
+question section when the current section's questions are exhausted. Document
+figures use existing registered models and `planLessonFigureRegions`; the
+3D worker's geometry and controls remain authoritative.
+
+The adapter owns copied strings and lesson blocks for the lifetime of the
+borrowed `BookSection` spans. A Markdown preview rebuild remaps reading by
+stable section ID and closes old disclosures. Native bookmarks keep their
+version-1 generation contract. Imported reading bookmarks use version 2 with
+an explicit saved row count, allowing catalogue additions/reordering while
+rejecting truncation and duplicate rows atomically. Neither format contains
+question attempts. The Library uses `library-textbook-v1.txt` beside the existing
+question progress file; preview and `--no-progress` never touch it.
 
 `LayeredQuestionSession::ReadReference` records reference guidance through the
 existing guarded command route. It uses separate exposure bits 5–8, while the
@@ -45,8 +60,11 @@ answer policy or save record was introduced; journal replay reproduces feedback
 from the frozen question content. The new linear teaching sequence uses the
 existing linear and prepared-choice templates, plus one textbook overview.
 
-The batch producer now selects matrix or linear authoring through a small family
-table, then runs one shared compiler/model/export path. Linear authoring reuses
+The batch producer selects matrix, linear or finite-probability authoring through
+a small family table. `teaching_documents()` assembles the same chapter wrapper,
+family lesson blocks, practice links and question templates; `choices_text()`
+owns the shared choice/answer directive formatting. One compiler/model/export
+path verifies and publishes every family. Linear authoring reuses
 `question_workflow.py` for bounded instance construction and independent arithmetic
 checks, and one Markdown template for prose. That recipe's equation formatter now
 serves both typeset and plain output; its duplicate nested plain formatter was
@@ -81,15 +99,24 @@ input buffers. The UI adapter retains reading position where possible, consumes
 compiler errors and keeps its existing source-keyed math renderer. Invalid edits
 do not replace the last accepted catalogue. Published generations are not watched.
 
-[Checked question batches](QUESTION_BATCHES.md) use one bounded Python matrix
-producer, the existing exact C++ question owner and the existing learning
-publisher. The producer supplies deterministic documents and an independent
+[Checked question batches](QUESTION_BATCHES.md) use one Python authoring tool,
+the existing C++ question owners and the existing learning publisher. Each
+bounded family supplies deterministic documents and an independent
 arithmetic audit; a pure model gate must replay every generated question before
 export/publication. Matrix validation returns static reasons with step/option
 locations, which content decoding preserves and the document compiler maps back
 to directive lines. No parallel mathematical validator or library store is added
 to the runtime. The authoring Practice projection now matches the app's choices
 and optional blank without changing any published linear question stamp.
+
+Finite probability emits `choices.v1`. Its producer counts by integer division;
+an independent exact oracle enumerates the original finite sample space and
+sums equal outcome weights. Before export, compiled givens, working and choice
+keys must match that certificate. This is an authoring check, not a new runtime
+probability solver. Prepared questions replay one multiple-choice route; the
+existing linear/matrix families replay five supported input routes. All use
+the same `CorpusPractice` save/history owner. The batch records source digests
+and refuses to publish if an authoring input changes during verification.
 
 Practice now consumes the same symbolic choices and `SupportAction::Choose`
 route as Learn. `LayeredQuestionSession` still gates responses by level, anchor
@@ -181,6 +208,41 @@ the existing question owner alone judges answers and publishes working/history.
 This collection consumes no sorter slots and leaves the old catalogue and
 practice-save owner unchanged. The explicit authoring map and generator prove
 subject/chapter/subcategory coverage without modifying pinned source notes.
+
+`SnapshotBuilder::linkedPlot` assembles a sampled series, its scrubbing
+parameter and an explicit current-value marker in one call. Forty constructions
+across 17 asset families use it. The existing bounded sampler still generates
+129 points; additional comparison series use the same `curve` method. The model
+supplies the marker from its mathematical state, so the marker need not lie on
+the first series (for example, a Fourier target/sum comparison). Read-only plots
+pass `MathParameter::Count`. Sampling domains, parameter availability, undefined-
+case handling, colours and series ordering retain their existing owners.
+Discrete traces and parametric loops continue to use their existing builders.
+No renderer or input route changes are needed.
+
+`MathParameterSpec::control` owns static inspector metadata for all 35 assets
+and 409 parameters: required group, optional short label, coordinate row and
+component labels, and selected-point or mode-slot binding. The inspector consumes
+those definitions directly; its separate metadata, tuple and selected-range
+registries are removed. New controls declare their bindings beside their limits
+and defaults without another inspector registration. A tuple is declared on its
+first parameter; all selected components name the selector and selected value.
+The registry checks reject missing groups, invalid rows and cross-owner bindings.
+
+Playback bindings for every asset also live beside their parameter definitions.
+A constexpr owner/layer lookup selects the animation parameter; the existing
+semantic dispatcher still owns play, pause, advance and parameter mutation.
+Layer masks use bits 0–3 (1, 2, 4, 8). Numerical predicates such as QR rank,
+Polar iteration availability and Curve profile validity stay in `MathObjects`.
+No calculation, geometry, preset, renderer or learning-state behavior changes.
+
+[P064](P064_QR_LEAST_SQUARES.md) adds `qr`. `QrLeastSquares` owns a bounded
+real 3x2 column-pivoted Gram-Schmidt factorization, projection, minimum-norm
+coefficients and null directions. `MathObjects` projects the state into linked
+vectors, rectangular matrices, error graphs and a coefficient-space surface.
+Seventeen appended controls reuse the compact selected-vector row, endpoint
+picker and construction playback route. No renderer or learning-state owner
+changed.
 
 [P063](P063_POLAR_DECOMPOSITION.md) adds `polar`. `PolarDecomposition` owns
 a bounded one-sided 3x3 SVD, orthogonal/PSD factors, numerical rank, null-space

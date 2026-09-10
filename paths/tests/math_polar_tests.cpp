@@ -72,7 +72,7 @@ void inspect(MathObjects& m,MathObjectScene& scene){
   for(unsigned i=0;i<s.solid.indexCount;i+=3){const auto& a=s.solid.vertices[s.solid.indices[i]];const auto& b=s.solid.vertices[s.solid.indices[i+1]];const auto& c=s.solid.vertices[s.solid.indices[i+2]];require(iggy3d::dot(iggy3d::cross(b.position-a.position,c.position-a.position),a.normal)>0,"triangle winding disagrees with normal");}
 }
 void integration(){
-  require(static_cast<unsigned>(K::Distance)==32&&static_cast<unsigned>(K::Polar)==33,"appended object changed stable IDs");require(mathObjectSpecs().size()==34,"object registry size");MathObjects m;MathObjectScene scene;act(m,{MathActionKind::Select,K::Polar});require(mathLessons(K::Polar).size()==4,"four layers");
+  require(static_cast<unsigned>(K::Distance)==32&&static_cast<unsigned>(K::Polar)==33,"appended object changed stable IDs");require(mathObjectSpecs().size()>=34,"object registry size");MathObjects m;MathObjectScene scene;act(m,{MathActionKind::Select,K::Polar});require(mathLessons(K::Polar).size()==4,"four layers");
   for(unsigned l=0;l<4;++l){level(m,l);for(unsigned p=0;p<6;++p){preset(m,p);for(unsigned shape=0;shape<2;++shape){set(m,P::PolarShape,shape);for(unsigned guides=0;guides<2;++guides){set(m,P::PolarGuides,guides);inspect(m,scene);}}}}
   level(m,2);for(unsigned p:{0U,3U,5U}){preset(m,p);for(unsigned step=0;step<=32;++step){set(m,P::PolarIteration,step);inspect(m,scene);}}
   // Every supported coefficient extreme, including reflection and rank loss.

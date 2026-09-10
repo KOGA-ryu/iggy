@@ -327,9 +327,44 @@ void matrixDiagnostics(const Path& folder) {
 }
 void questionBatch(const Path& root,const Path& folder) {
   Fixture f;const auto first=f.bank.size();const auto loaded=f.load(root);expect(loaded.accepted,loaded.message);
-  expect(f.bank.size()>first,"Batch must add questions");Json ids=Json::array();std::size_t routes=0,wrongs=0,disclosures=0;
+  expect(f.bank.size()>first,"Batch must add questions");Json ids=Json::array(),content=Json::array();std::size_t routes=0,wrongs=0,disclosures=0;
+  const std::vector<CorpusStarter> cards(f.bank.begin()+first,f.bank.end());
   for(std::size_t n=first;n<f.bank.size();++n) {
-    const auto& q=f.bank[n];expect(q.question.support.has_value(),"Batch uses an existing supported checker");ids.push_back(q.id);
+    const auto& q=f.bank[n];ids.push_back(q.id);
+    content.push_back({{"id",q.id},{"question",Json::parse(q.stamp)}});
+    if(!q.question.support) {
+      CorpusPractice p(cards);const auto save=folder/(q.id+"-choices.json");p.loadProgress(save);p.open(question(cards,q.id));
+      const auto replay=[&] {
+        const auto working=std::string(p.active()->visibleWorking());const auto commands=p.active()->journal().size();
+        const auto step=p.active()->currentRun().currentStep,archives=p.active()->archivedRuns().size();
+        const auto phase=p.active()->currentRun().phase;
+        p.saveProgress();const auto bytes=read(save);auto reordered=cards;std::reverse(reordered.begin(),reordered.end());
+        CorpusPractice resumed(reordered);resumed.loadProgress(save);
+        expect(resumed.active() && resumed.questions()[*resumed.selected()].id==q.id && resumed.active()->visibleWorking()==working
+          && resumed.active()->journal().size()==commands && resumed.active()->currentRun().phase==phase
+          && resumed.active()->currentRun().currentStep==step && resumed.active()->archivedRuns().size()==archives,
+          "Prepared batch reopens its selection, state, attempts and archives after reordering");
+        resumed.saveProgress();expect(read(save)==bytes,"Prepared reopen leaves the original save bytes intact");p=std::move(resumed);
+      };
+      for(const auto& step:q.question.steps) {
+        const auto before=std::string(p.active()->visibleWorking());
+        for(std::size_t j=0;j<step.options.size();++j)if(!fm::acceptsOption(step,j)) {
+          const auto& option=step.options[j];expect(!option.wrongFeedback.empty(),"Prepared batch distractors explain their mistake");
+          expect(p.dispatch(fm::LayeredQuestionCommand::submitOption(option.id)),"Prepared wrong tile reaches the existing owner");
+          expect(p.active()->visibleWorking()==before && !p.active()->currentRun().completed,"Wrong prepared choice retains working");
+          const auto feedback=std::string(p.active()->review()->steps[p.active()->currentRun().currentStep].attempts.back().feedback);
+          expect(feedback.find(option.wrongFeedback)!=feedback.npos,"Prepared feedback identifies the selected mistake");replay();
+          expect(p.active()->review()->steps[p.active()->currentRun().currentStep].attempts.back().feedback==feedback,"Prepared wrong feedback survives replay");++wrongs;
+        }
+        expect(p.dispatch(fm::LayeredQuestionCommand::submitOption(step.options[fm::firstAcceptedOption(step)].id)),"Prepared correct tile is accepted");
+        replay();expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Prepared step advances in its current workspace");
+      }
+      expect(p.active()->currentRun().completed && !p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Prepared completion waits for explicit Next");replay();
+      expect(p.active()->currentRun().completed,"Prepared completion survives reopen");
+      expect(p.dispatch({fm::LayeredQuestionCommandKind::RestartQuestion}) && p.active()->archivedRuns().size()==1
+             && p.active()->archivedRuns().front().completed,"Prepared replay archives its completed run");replay();
+      ++routes;continue;
+    }
     for(unsigned route=0;route<5;++route) {
       const auto level=route==4?1U:route;CorpusPractice p({q});const auto save=folder/(q.id+"-"+std::to_string(route)+".json");p.loadProgress(save);p.open(0);
       const auto send=[&](fm::SupportAction a,std::string text={},unsigned value=0){expect(p.dispatch(support(p,a,std::move(text),value)),"Batch response reaches its canonical owner");};
@@ -368,24 +403,36 @@ void questionBatch(const Path& root,const Path& folder) {
       CorpusPractice restored({q});restored.loadProgress(save);expect(restored.active() && restored.active()->currentRun().completed,"Generated completed state survives reopen");++routes;
     }
   }
-  std::cout<<Json{{"accepted",true},{"question_ids",ids},{"routes",routes},{"wrong_choices",wrongs},{"disclosure_checks",disclosures},{"save_replay",true},{"windows",0}}.dump()<<'\n';
+  std::cout<<Json{{"accepted",true},{"question_ids",ids},{"questions",content},{"routes",routes},{"wrong_choices",wrongs},{"disclosure_checks",disclosures},{"save_replay",true},{"windows",0}}.dump()<<'\n';
 }
 void questionBatchUpgrade(const Path& before,const Path& after,const Path& folder) {
   Fixture old;const auto first=old.bank.size();expect(old.load(before).accepted,"Original batch imports");
   expect(old.bank.size()>=first+2,"Upgrade needs two original questions");CorpusPractice p(old.bank);
   const auto save=folder/"upgrade.json";p.loadProgress(save);p.open(first);
-  for(const auto& step:old.bank[first].question.steps)expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[fm::firstAcceptedOption(step)].id.value)),"Complete original question");
-  p.open(first+1);expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Original Practice opens");
+  const bool supported=old.bank[first].question.support.has_value();
+  const auto choose=[&](fm::OptionId id){expect(p.dispatch(supported?support(p,fm::SupportAction::Choose,{},id.value):fm::LayeredQuestionCommand::submitOption(id)),"Upgrade choice reaches its original owner");};
+  for(const auto& step:old.bank[first].question.steps) {
+    choose(step.options[fm::firstAcceptedOption(step)].id);
+    if(!supported)expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Original prepared question advances");
+  }
+  p.open(first+1);if(supported)expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Original Practice opens");
   const auto& step=old.bank[first+1].question.steps[0];const auto correct=fm::firstAcceptedOption(step);
-  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[(correct+1)%step.options.size()].id.value)),"Original wrong response retained");
-  expect(p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[correct].id.value)) && p.dispatch(support(p,fm::SupportAction::Undo)) && p.dispatch(support(p,fm::SupportAction::Choose,{},step.options[correct].id.value)),"Original Undo branch retained");
-  expect(p.dispatch(support(p,fm::SupportAction::EditDraft,"unfinished fraction")) && p.dispatch(support(p,fm::SupportAction::ReadHelp,{},1)),"Original draft and help retained");p.saveProgress();
+  choose(step.options[(correct+1)%step.options.size()].id);choose(step.options[correct].id);
+  if(supported) {
+    expect(p.dispatch(support(p,fm::SupportAction::Undo)),"Original Undo branch retained");choose(step.options[correct].id);
+    expect(p.dispatch(support(p,fm::SupportAction::EditDraft,"unfinished fraction")) && p.dispatch(support(p,fm::SupportAction::ReadHelp,{},1)),"Original draft and help retained");
+  } else expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Original prepared working is reached before upgrade");
+  p.saveProgress();
   Fixture next;expect(next.load(after).accepted,"Updated batch imports");
   for(const auto& q:old.bank)expect(next.bank[question(next.bank,q.id)].stamp==q.stamp,"Upgrade preserves every old question stamp");
   CorpusPractice restored(next.bank);restored.loadProgress(save);
   expect(restored.active() && restored.questions()[*restored.selected()].id==old.bank[first+1].id,"Upgrade reopens the original selected question");
-  const auto a=p.active()->supportView(),b=restored.active()->supportView();
-  expect(a->working==b->working && a->draft==b->draft && a->reading==b->reading && a->level==b->level && p.active()->journal().size()==restored.active()->journal().size() && p.active()->currentRun().support->nodes.size()==restored.active()->currentRun().support->nodes.size(),"Upgrade retains working, draft, help, level and branch journal");
+  expect(p.active()->visibleWorking()==restored.active()->visibleWorking() && p.active()->journal().size()==restored.active()->journal().size()
+         && p.active()->currentRun().currentStep==restored.active()->currentRun().currentStep,"Upgrade retains working, step and attempts");
+  if(supported) {
+    const auto a=p.active()->supportView(),b=restored.active()->supportView();
+    expect(a->draft==b->draft && a->reading==b->reading && a->level==b->level && p.active()->currentRun().support->nodes.size()==restored.active()->currentRun().support->nodes.size(),"Upgrade retains draft, help, level and branch journal");
+  }
   expect(restored.attempt(question(next.bank,old.bank[first].id))->currentRun().completed,"Completed original still waits for Next");
   std::cout<<Json{{"accepted",true},{"save_replay",true},{"old_questions",old.bank.size()-first},{"new_questions",next.bank.size()-old.bank.size()},{"windows",0}}.dump()<<'\n';
 }

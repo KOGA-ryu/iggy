@@ -1,4 +1,6 @@
-#include "ui/MathCorpusUi.hpp"
+#include "ui/NativeMath.hpp"
+#include "ui/MathNotationUi.hpp"
+#include "content/MathCorpus.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +14,13 @@
 
 using namespace paths;
 namespace {
+struct NativeMathSample {const char* label;const char* title;const char* latex;};
+inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
+  {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
+  {"Root","A nested root",R"(\sqrt{1+\sqrt{1+x^{2}}})"},
+  {"Matrix","A matrix with a fractional entry",R"(A=\begin{bmatrix}1&\frac{1}{2}&0\\-2&3&1\\0&-1&4\end{bmatrix})"},
+  {"095","095 · Eigenmodes of a lopsided drum",R"(\Delta u=-\lambda^{2}\left(1+\frac{x}{2}\right)u)"}
+}};
 void expect(bool value,const char* message){if(!value)throw std::runtime_error(message);}
 bool contains(const NotationBounds& a,const NotationBounds& b) {
   return b.x>=a.x-.5F && b.y>=a.y-.5F && b.x+b.width<=a.x+a.width+.5F && b.y+b.height<=a.y+a.height+.5F;
@@ -20,12 +29,11 @@ struct Harness {
   bool dynamic=false;
   std::unique_ptr<NativeMath> math;
   MathCorpus corpus=loadMathCorpus(CORPUS_FIXTURE);
-  MathCorpusUiState ui;
   Harness(float width,float height,bool dynamicAtlas=false):dynamic(dynamicAtlas) {
     ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;
     io.ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;io.DisplaySize={width,height};io.DeltaTime=1.0F/60;
     if(dynamic)io.BackendFlags|=ImGuiBackendFlags_RendererHasTextures|ImGuiBackendFlags_RendererHasVtxOffset;
-    math=std::make_unique<NativeMath>(MATH_RESOURCES);ui.math=math.get();ui.open=true;frame(3);
+    math=std::make_unique<NativeMath>(MATH_RESOURCES);frame(3);
   }
   ~Harness(){math.reset();ImGui::DestroyContext();}
   void begin() {
@@ -53,19 +61,7 @@ struct Harness {
         if(command.ElemCount)expect(command.GetTexID()!=ImTextureID_Invalid,"native draw commands resolve an updated atlas texture");
     }
   }
-  void frame(int count=1){for(int i=0;i<count;++i){begin();drawMathCorpus(ui,corpus,false);end();}}
-  void click(const NotationBounds& bounds) {
-    expect(bounds.available,"requested control is available");auto& io=ImGui::GetIO();
-    io.AddMousePosEvent(bounds.x+bounds.width*.5F,bounds.y+bounds.height*.5F);frame();
-    io.AddMouseButtonEvent(0,true);frame();io.AddMouseButtonEvent(0,false);frame(3);
-  }
-  void press(ImGuiKey key){ImGui::GetIO().AddKeyEvent(key,true);frame();ImGui::GetIO().AddKeyEvent(key,false);frame(3);}
-  NotationBounds control(MathPanelControl c) const {return ui.equations.controls[static_cast<std::size_t>(c)];}
-  NotationBounds control(CorpusControl c) const {return ui.controls[static_cast<std::size_t>(c)];}
-  void search(const char* title) {
-    click(control(CorpusControl::Clear));click(control(CorpusControl::Search));
-    ImGui::GetIO().AddInputCharactersUTF8(title);frame(3);
-  }
+  void frame(int count=1){for(int i=0;i<count;++i){begin();end();}}
 };
 struct Ink {std::vector<NotationBounds> glyphs;std::vector<ImVec2> rules;};
 Ink observe(Harness& h,std::string_view source,float pixels) {
@@ -189,92 +185,15 @@ void corpusCompatibility(Harness& h) {
   report["widest"]={{"id",widestEntry},{"pixels",widest}};
   std::cout<<"CORPUS_COMPATIBILITY "<<report.dump()<<'\n';h.frame(3);
 }
-void libraryEntries(Harness& h) {
-  h.search("Quadratic Formula");
-  expect(h.ui.entry && h.corpus.entries[*h.ui.entry].id=="corpus_00038" && h.ui.bodyEquations==2 && h.ui.bodyFallbacks==0,"real Quadratic Formula entry typesets both formulas");
-  const auto entry=h.ui.entry;const auto matches=h.ui.matches;const auto typeset=h.ui.body;
-  h.click(h.control(CorpusControl::Format));
-  expect(h.ui.raw && h.ui.bodyEquations==0 && h.ui.bodyFallbacks==0 && h.ui.entry==entry && h.ui.matches==matches,"Raw source changes presentation without changing selection");
-  h.click(h.control(CorpusControl::Format));
-  expect(!h.ui.raw && h.ui.bodyEquations==2 && std::abs(h.ui.body.height-typeset.height)<.1F,"Typeset restores the entry layout");
-  h.search("Bayes' Theorem");
-  expect(h.ui.entry && h.corpus.entries[*h.ui.entry].id=="corpus_00809" && h.ui.bodyEquations==3 && h.ui.bodyFallbacks==0,"Bayes entry combines prose, inline symbols and its displayed fraction");
-  const auto display=ImGui::GetIO().DisplaySize;const NotationBounds window{0,0,display.x,display.y,true};
-  expect(contains(window,h.ui.reader) && h.ui.reader.height>80,"typeset reading area fits the window");
-  expect(contains(window,h.control(CorpusControl::Format)),"compact source toggle remains pinned and reachable");
-  h.search("Splitting Field");
-  expect(h.ui.bodyFallbacks>0 && h.ui.bodyEquations>0,"an actual malformed source visibly falls back while valid formulas survive");
-  h.click(h.control(CorpusControl::Format));expect(h.ui.raw && h.ui.bodyFallbacks==0,"the full untouched source is also available for malformed entries");
-  h.click(h.control(CorpusControl::Format));
-  h.search("Euler-Maclaurin Formula");
-  expect(h.ui.bodyEquations==2 && h.ui.bodyFallbacks==0,"the longest real formula typesets without shrinking");
-  const auto bodyWidth=h.ui.body.width,bodyHeight=h.ui.body.height;
-  if(display.x<=800) {
-    expect(h.ui.horizontalMax>0,"a long Library equation has horizontal overflow on a smaller window");
-    auto& io=ImGui::GetIO();io.AddMousePosEvent(h.ui.reader.x+h.ui.reader.width*.5F,h.ui.reader.y+h.ui.reader.height*.5F);h.frame();
-    for(int i=0;i<30 && h.ui.horizontal<h.ui.horizontalMax;++i){io.AddMouseWheelEvent(-3,0);h.frame(3);}
-    expect(h.ui.horizontal>0 && h.ui.body.x+h.ui.body.width<=h.ui.reader.x+h.ui.reader.width+.1F,"horizontal wheel reaches the formula's final term");
-    expect(h.ui.body.width==bodyWidth && h.ui.body.height==bodyHeight,"horizontal scrolling cannot change wrapping or formula size");
-    h.click(h.control(CorpusControl::Format));expect(h.ui.raw && h.ui.horizontal==0,"format switching resets horizontal reading position");
-    h.click(h.control(CorpusControl::Format));
-  }
-  std::cout<<"Library entries, mixed layout, malformed-source recovery and format controls passed at "<<display.x<<'x'<<display.y<<'\n';
-}
-void panel(Harness& h) {
-  const auto entry=h.ui.entry;const auto matches=h.ui.matches;
-  const auto libraryOpen=[&]{h.click(h.ui.controls[static_cast<std::size_t>(CorpusControl::Equations)]);};
-  libraryOpen();expect(h.ui.equations.open,"real Library button opens native equation panel");
-  const auto display=ImGui::GetIO().DisplaySize;const NotationBounds window{0,0,display.x,display.y,true};
-  for(std::size_t i=0;i<nativeMathSamples.size();++i) {
-    h.click(h.ui.equations.samples[i]);
-    expect(h.ui.equations.sample==i && h.ui.equations.error.empty(),"each selector draws its equation without fallback");
-    expect(contains(window,h.ui.equations.viewport),"equation viewport fits the window");
-    expect(contains(h.ui.equations.viewport,h.ui.equations.ink) || h.ui.equations.horizontalScrollMax>0,"equation fits or has accessible horizontal scrolling");
-    for(const auto& b:h.ui.equations.samples)expect(contains(window,b),"sample buttons fit");
-    for(const auto& b:h.ui.equations.controls)expect(contains(window,b),"size, source and close controls fit");
-  }
-  h.click(h.control(MathPanelControl::Larger));expect(h.ui.equations.pixels==26,"A+ increases math size");
-  h.click(h.control(MathPanelControl::Smaller));expect(h.ui.equations.pixels==24,"A- restores math size");
-  h.click(h.control(MathPanelControl::Source));expect(h.ui.equations.source,"source toggle reveals retained LaTeX");
-  expect(contains(window,h.control(MathPanelControl::Close)),"close remains visible with source shown");
-  h.click(h.ui.controls[static_cast<std::size_t>(CorpusControl::Practice)]);
-  expect(h.ui.open && h.ui.equations.open,"modal input cannot activate underlying Practice");
-  h.press(ImGuiKey_Escape);expect(!h.ui.equations.open && h.ui.open,"Escape closes just the equation panel");
-  expect(h.ui.entry==entry && h.ui.matches==matches,"reader selection and filters survive the panel");
-  libraryOpen();h.click(h.control(MathPanelControl::Close));expect(!h.ui.equations.open,"Close button closes the panel");
-  libraryOpen();
-  const auto closeId=ImGui::FindWindowByName("Native equations")->GetID("Close");
-  for(int i=0;i<24 && GImGui->NavId!=closeId;++i)h.press(ImGuiKey_Tab);
-  expect(GImGui->NavId==closeId,"Close is reachable with Tab");h.press(ImGuiKey_Enter);
-  expect(!h.ui.equations.open,"keyboard activation closes the panel");
-}
-void dynamicAtlas() {
-  Harness h(1440,860,true);typography(h);documents(h);libraryEntries(h);panel(h);
-  h.click(h.ui.controls[static_cast<std::size_t>(CorpusControl::Equations)]);
-  h.click(h.ui.equations.samples[3]);
-  while(h.ui.equations.pixels<40)h.click(h.control(MathPanelControl::Larger));
-  expect(!h.control(MathPanelControl::Larger).available,"maximum text size is bounded");
-  ImGui::GetIO().DisplaySize={360,480};h.frame(4);
-  expect(h.ui.equations.open && h.ui.equations.sample==3 && h.ui.equations.pixels==40,"live resize preserves the selected equation and size");
-  expect(h.ui.equations.horizontalScrollMax>0,"large equation gains horizontal scrolling on a narrow window");
-  ImGuiWindow* viewport=nullptr;
-  for(auto* candidate:GImGui->Windows)if(candidate->ParentWindow && std::string_view(candidate->ParentWindow->Name)=="Native equations" && candidate->ChildId==candidate->ParentWindow->GetID("Equation viewport"))viewport=candidate;
-  expect(viewport!=nullptr,"equation scroll viewport exists");
-  ImGui::SetScrollX(viewport,h.ui.equations.horizontalScrollMax);h.frame(3);
-  expect(h.ui.equations.ink.x+h.ui.equations.ink.width<=h.ui.equations.viewport.x+h.ui.equations.viewport.width,"horizontal scrolling reaches the end of the equation");
-  while(h.ui.equations.pixels>16)h.click(h.control(MathPanelControl::Smaller));
-  expect(!h.control(MathPanelControl::Smaller).available,"minimum text size is bounded");
-  h.click(h.control(MathPanelControl::Close));
-  expect(h.ui.entry && h.corpus.entries[*h.ui.entry].id=="corpus_00433" && h.ui.bodyEquations==2 && !h.ui.raw && h.ui.horizontalMax>0,"the cached Library document survives live resize and dynamic atlas changes");
-  std::cout<<"Native dynamic-atlas requests, cached glyph UVs, live resize and horizontal scrolling passed\n";
-}
 } // namespace
 int main() {
   try {
-    for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
-      Harness h(size.x,size.y);if(size.x==1440){typography(h);documents(h);corpusCompatibility(h);}libraryEntries(h);panel(h);
-      std::cout<<"Native math geometry and panel controls passed at "<<size.x<<'x'<<size.y<<'\n';
+    // These optional typesetter probes do not exercise the retired Library
+    // screen. Textbook navigation is verified separately without any fonts.
+    for(bool dynamic:{false,true})for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}}) {
+      Harness h(size.x,size.y,dynamic);typography(h);documents(h);
+      if(!dynamic && size.x==1440)corpusCompatibility(h);
     }
-    dynamicAtlas();
+    std::cout<<"Native math geometry, mixed documents and dynamic atlas checks passed\n";
   } catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}
 }

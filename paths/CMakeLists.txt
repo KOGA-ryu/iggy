@@ -38,6 +38,7 @@ add_library(paths_math_objects
   src/runtime/math_objects/Simplex.cpp
   src/runtime/math_objects/DistanceGeometry.cpp
   src/runtime/math_objects/PolarDecomposition.cpp
+  src/runtime/math_objects/QrLeastSquares.cpp
   src/runtime/math_objects/RigidBody.cpp
   src/runtime/math_objects/Membrane.cpp
   src/runtime/math_objects/MembraneGeometry.cpp
@@ -236,6 +237,9 @@ if(BUILD_TESTING)
   target_compile_definitions(paths_corpus_tests PRIVATE CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
     SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
   add_test(NAME paths_corpus_tests COMMAND paths_corpus_tests)
+  add_executable(paths_math_qr_tests tests/math_qr_tests.cpp)
+  target_link_libraries(paths_math_qr_tests PRIVATE paths_math_object_layout)
+  add_test(NAME paths_math_qr_tests COMMAND paths_math_qr_tests)
   add_executable(paths_math_polar_tests tests/math_polar_tests.cpp)
   target_link_libraries(paths_math_polar_tests PRIVATE paths_math_object_layout)
   add_test(NAME paths_math_polar_tests COMMAND paths_math_polar_tests)
@@ -400,11 +404,9 @@ if(BUILD_TESTING)
     add_executable(paths_learning_document_ui_tests tests/learning_document_ui_tests.cpp)
     target_link_libraries(paths_learning_document_ui_tests PRIVATE paths_sorter_ui paths_imgui)
     target_compile_definitions(paths_learning_document_ui_tests PRIVATE
-      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
       CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
       STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
       DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write")
-    add_dependencies(paths_learning_document_ui_tests paths_native_math_resources)
     add_test(NAME paths_learning_document_ui_tests COMMAND paths_learning_document_ui_tests)
     add_test(NAME paths_learning_document_reload_ui_tests COMMAND paths_learning_document_ui_tests --reload-state-only)
     add_test(NAME paths_textbook_reading_state_tests COMMAND paths_learning_document_ui_tests
@@ -413,22 +415,13 @@ if(BUILD_TESTING)
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/learning_export_tests.py"
       --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>"
       --ui "$<TARGET_FILE:paths_learning_document_ui_tests>")
-    add_executable(paths_four_level_ui_tests tests/four_level_ui_tests.cpp)
-    target_link_libraries(paths_four_level_ui_tests PRIVATE paths_sorter_ui paths_imgui)
-    target_compile_definitions(paths_four_level_ui_tests PRIVATE
-      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
-      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
-      SUPPORT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/linear_support.json")
-    add_dependencies(paths_four_level_ui_tests paths_native_math_resources)
-    add_test(NAME paths_four_level_ui_tests COMMAND paths_four_level_ui_tests)
     add_executable(paths_matrix_reasoning_tests tests/matrix_reasoning_tests.cpp)
-    target_link_libraries(paths_matrix_reasoning_tests PRIVATE paths_sorter_ui paths_textbook paths_imgui paths_json)
+    target_link_libraries(paths_matrix_reasoning_tests PRIVATE paths_corpus_practice paths_textbook paths_json)
     target_compile_definitions(paths_matrix_reasoning_tests PRIVATE
       MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
       CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
       STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json"
       REASONING_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/matrix_reasoning.json")
-    add_dependencies(paths_matrix_reasoning_tests paths_native_math_resources)
     add_test(NAME paths_matrix_reasoning_tests COMMAND paths_matrix_reasoning_tests)
     add_executable(paths_motion_ui_tests tests/motion_lesson_ui_tests.cpp)
     target_link_libraries(paths_motion_ui_tests PRIVATE paths_sorter_ui paths_sorter_content paths_imgui)
@@ -438,14 +431,6 @@ if(BUILD_TESTING)
       SORTER_STUDY_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/sorter/study_practice_v1.json")
     add_dependencies(paths_motion_ui_tests paths_native_math_resources)
     add_test(NAME paths_motion_ui_tests COMMAND paths_motion_ui_tests)
-    add_executable(paths_corpus_starter_ui_tests tests/corpus_starter_ui_tests.cpp)
-    target_link_libraries(paths_corpus_starter_ui_tests PRIVATE paths_sorter_ui paths_imgui paths_json)
-    target_compile_definitions(paths_corpus_starter_ui_tests PRIVATE
-      MATH_RESOURCES="$<TARGET_FILE_DIR:sorter>/math_typesetter"
-      CORPUS_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/toc.json"
-      STARTER_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/corpus/starters.json")
-    add_dependencies(paths_corpus_starter_ui_tests paths_native_math_resources)
-    add_test(NAME paths_corpus_starter_ui_tests COMMAND paths_corpus_starter_ui_tests)
     add_executable(paths_native_math_tests tests/native_math_tests.cpp)
     target_link_libraries(paths_native_math_tests PRIVATE paths_sorter_ui paths_imgui paths_json)
     target_compile_definitions(paths_native_math_tests PRIVATE
@@ -519,6 +504,12 @@ if(BUILD_TESTING)
     add_test(NAME paths_math_spherical_cli COMMAND math_lab --validate --object spherical --level 3 --set heat_time=0.5 --check)
     add_test(NAME paths_math_quadratic_cli COMMAND math_lab --validate --object quadratic --level 3 --set form_yaw=0 --set form_pitch=0 --set form_x=0 --set form_y=0 --set form_z=1 --check)
     add_test(NAME paths_math_roots_cli COMMAND math_lab --validate --object roots --level 3 --set root_n=8 --set root_auto=5 --check)
+    add_test(NAME paths_math_qr_frame_cli COMMAND math_lab --validate --object qr --level 0 --set qr_stage=3 --check)
+    add_test(NAME paths_math_qr_factors_cli COMMAND math_lab --validate --object qr --level 1 --object-preset 0 --check)
+    add_test(NAME paths_math_qr_fit_cli COMMAND math_lab --validate --object qr --level 2 --object-preset 0 --set qr_c0=1 --set qr_c1=1 --check)
+    add_test(NAME paths_math_qr_family_cli COMMAND math_lab --validate --object qr --level 3 --object-preset 3 --set qr_null0=1 --check)
+    add_test(NAME paths_math_qr_zero_cli COMMAND math_lab --validate --object qr --level 3 --object-preset 5 --set qr_null0=1 --set qr_null1=2)
+    set_tests_properties(paths_math_qr_frame_cli paths_math_qr_factors_cli paths_math_qr_fit_cli paths_math_qr_family_cli PROPERTIES PASS_REGULAR_EXPRESSION "feedback=2")
     add_test(NAME paths_math_polar_deform_cli COMMAND math_lab --validate --object polar --level 0 --object-preset 0 --check)
     add_test(NAME paths_math_polar_factors_cli COMMAND math_lab --validate --object polar --level 1 --object-preset 1 --check)
     add_test(NAME paths_math_polar_iteration_cli COMMAND math_lab --validate --object polar --level 2 --object-preset 0 --set polar_iteration=7 --check)
