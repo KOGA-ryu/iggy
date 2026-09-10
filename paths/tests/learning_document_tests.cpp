@@ -135,9 +135,9 @@ void livePreview(const Path& folder) {
   expect(rejected && bounded.questions()[0].stamp==finalQuestion.stamp,"History bound rejects before replacing the current preview");
   std::cout<<"LIVE_DOCUMENT_PREVIEW {\"stable_bytes\":true,\"invalid_retained\":true,\"source_locations\":true,\"revision_attempts\":true,\"save_protected\":true,\"windows\":0}\n";
 }
-Json teachingSequence(const Path& source,const Path& folder) {
+Json teachingSequence(const Path& source,const Path& folder,unsigned expectedQuestions=8) {
   Fixture f;const auto first=f.bank.size();const auto loaded=f.load(source);expect(loaded.accepted,loaded.message);
-  expect(loaded.questions==8 && loaded.lessons==1,"Teaching sequence contains eight questions and its overview");
+  expect(loaded.questions==expectedQuestions && loaded.lessons==1,"Teaching sequence contains the expected questions and its overview");
   const std::vector<CorpusStarter> cards(f.bank.begin()+first,f.bank.end());Json content=Json::array();unsigned routes=0,wrongs=0;
   for(const auto& q:cards) {
     content.push_back({{"id",q.id},{"title",q.title},{"question",Json::parse(q.stamp)}});
@@ -154,7 +154,7 @@ Json teachingSequence(const Path& source,const Path& folder) {
       };
       if(supported)expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},route==4?1:route)),"Support level selected");
       if(supported && (route==2 || route==3)) {
-        const std::string solution=q.id=="linear_teach_01_worked"?"x=3":"x=5";
+        const std::string solution=q.question.support->steps.back().equation;
         expect(p.dispatch(support(p,fm::SupportAction::EditDraft,solution)),"Written route retains draft");
         expect(p.dispatch(support(p,fm::SupportAction::CheckWork,solution)),"Existing exact checker accepts independent written solution");
       } else for(const auto& step:q.question.steps) {
@@ -773,6 +773,50 @@ void sourceLesson(const Path& root,const Path& folder,bool store) {
 int main(int argc,char** argv) {
   const auto folder=std::filesystem::canonical(std::filesystem::temp_directory_path())/("paths-documents-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   try {
+    if(argc==3 && std::string_view(argv[1])=="--textbook-companion") {
+      std::filesystem::create_directories(folder);auto result=teachingSequence(argv[2],folder,3);
+      Fixture f;const auto originalBank=f.bank;const auto loaded=f.load(argv[2]);expect(loaded.accepted,loaded.message);
+      const auto& e=lesson(f.corpus,"linear_textbook_reading");
+      expect(e.lesson.size()==13,"Reference section retains thirteen distinct textbook blocks");
+      unsigned references=0,disclosures=0;
+      for(const auto& b:bookLessonView(e.lesson,{})) {
+        references+=b.references.size();
+        for(const auto& h:b.help){expect(!h.open && h.passages.empty(),"Linked lesson withholds every unopened disclosure");disclosures+=h.available;}
+      }
+      expect(references>=10 && disclosures>=8,"Reference section retains its explanations, cross references and independent help");
+      for(const auto& old:originalBank)expect(old.stamp==f.bank[question(f.bank,old.id)].stamp,"Existing question stamps are unchanged");
+      const auto text=read(Path(argv[2])/"chapter.paths.md");const auto without=folder/"without-links";
+      std::string stripped=text;const std::string link="@read linear_textbook_reading\n";
+      for(auto pos=stripped.find(link);pos!=stripped.npos;pos=stripped.find(link))stripped.erase(pos,link.size());
+      write(without/"chapter.paths.md",stripped);Fixture legacy;expect(legacy.load(without).accepted,"Same question compiles without its optional reading attachment");
+      for(const auto* id:{"linear_book_worked","linear_book_guided","linear_book_reason"}) {
+        const auto& q=f.bank[question(f.bank,id)];
+        expect(q.readingRefs==std::vector<std::string>{e.id} && q.stamp==legacy.bank[question(legacy.bank,id)].stamp,"Reading attachment is resolved and remains outside mathematical save identity");
+      }
+      const auto invalid=folder/"bad-link";write(invalid/"chapter.paths.md",replace(text,"@read linear_textbook_reading","@read absent_reading"));
+      Fixture rejected;const auto before=rejected.bank.size();const auto bad=rejected.load(invalid);
+      expect(!bad.accepted && rejected.bank.size()==before,"Unresolved supported reading rejects atomically");
+      expect(Json::parse(bad.reportJson)["diagnostics"][0]["field"]=="read","Missing supported reading identifies the reference field");
+      result["textbook_blocks"]=e.lesson.size();result["references"]=references;result["disclosures"]=disclosures;
+      result["reading_attachment_preserves_stamps"]=true;
+      const auto live=folder/"live-textbook";write(live/"chapter.paths.md",text);
+      Fixture base;auto corpus=base.corpus;CorpusPractice practice(base.bank);
+      LearningDocumentPreview preview(live,base.corpus,base.bank);auto now=LearningDocumentPreview::Clock::time_point{};
+      expect(preview.poll(corpus,practice,now),"Textbook opens through the real Markdown preview");
+      practice.open(question(practice.questions(),"linear_book_worked"));
+      expect(practice.dispatch(support(practice,fm::SupportAction::Choose,{},12)),"Initial checked working exists before the reading edit");
+      const auto working=std::string(practice.active()->visibleWorking());const auto commands=practice.active()->journal().size();
+      const std::string revised="Subtracting equal amounts from equal values leaves equal values.";
+      write(live/"chapter.paths.md",replace(text,"If u equals v, subtracting k from each produces equal values.",revised));
+      now+=std::chrono::milliseconds(250);expect(!preview.poll(corpus,practice,now),"Reading edit settles before replacing content");
+      now+=std::chrono::milliseconds(250);expect(preview.poll(corpus,practice,now),"Edited proof reaches the accepted live catalogue");
+      expect(practice.active()->visibleWorking()==working && practice.active()->journal().size()==commands,"Reading-only edits preserve the exact question attempt");
+      const auto& revisedLesson=lesson(corpus,"linear_textbook_reading");
+      const auto proof=std::find_if(revisedLesson.lesson.begin(),revisedLesson.lesson.end(),[](const auto& b){return b.id=="balance";});
+      expect(proof->help[0].front().text.find(revised)!=std::string::npos,"The structured proof retains its edited words");
+      result["live_textbook_edit_retains_work"]=true;
+      std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
+    }
     if(argc==3 && std::string_view(argv[1])=="--teaching-sequence") {
       std::filesystem::create_directories(folder);const auto result=teachingSequence(argv[2],folder);std::cout<<result.dump()<<'\n';std::filesystem::remove_all(folder);return 0;
     }

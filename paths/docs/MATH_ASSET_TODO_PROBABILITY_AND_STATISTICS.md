@@ -1,0 +1,35 @@
+### Probability and Statistics — 30 chapters
+
+Source: [Probability and Statistics notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/probability_statistics.md>).
+
+- [ ] **149 — Probability Foundations** — **D:** Sample spaces, event intersections, conditioning, and Bayes trees. **M:** Reuse Bayesian cube; add general finite-event partitions and weighted outcomes.
+- [ ] **150 — Random Variables** — **D:** Outcome-to-value maps, PMF/PDF/CDF links, moments, and generating functions. **M:** Distribution lab with linked probability bars/density, cumulative area, and moment controls.
+- [ ] **151 — Distribution Theory** — **D:** Bernoulli/binomial/normal comparisons, sample means, LLN, and CLT panels. **M:** Extend Binomial board with repeated sampling and standardized-sum convergence.
+- [ ] **152 — Statistical Inference** — **D:** Likelihood profiles, estimator sampling distributions, and null/tail regions. **M:** Inference lab with sample size, parameters, estimator, and test-statistic controls.
+- [ ] **153 — Stochastic Processes** — **D:** Markov transitions, stationary mass, Brownian paths, Itô sums, and measure changes. **M:** Extend Probability network; add stochastic paths with linked time slices and histograms.
+- [ ] **154 — Foundational Probability and Inference** — **D:** Random walks, covariance ellipses, Poisson counts, and entropy bars. **M:** Reuse Covariance/Simplex; add Poisson arrivals and repeated-walk distributions.
+- [ ] **155 — Risk and Learning Core Terms** — **D:** Variance decompositions, covariance directions, and characteristic-function traces. **M:** Extend Covariance cloud with complex characteristic functions and distribution comparisons.
+- [ ] **156 — Decision and Concentration** — **D:** Conditional partitions, conditional means, total probability, and Chebyshev tails. **M:** Finite-event/conditional-expectation lab with synchronized cubes and bound plots.
+- [ ] **157 — Estimation and Testing Extensions** — **D:** Repeated confidence intervals, distributional convergence, and KL comparisons. **M:** Sampling/inference lab linked to Simplex's relative-entropy geometry.
+- [ ] **158 — Bayesian Foundations** — **D:** Prior × likelihood → posterior, evidence normalization, and MAP markers. **M:** Extend Bayesian cube into finite-grid and conjugate posterior update examples.
+- [ ] **159 — Time Series and Risk** — **D:** Autocovariance lags, AR dependence, quantile tails, and expected shortfall. **M:** Time-series/risk lab with lag, coefficient, sample, and tail-level controls.
+- [ ] **160 — Learning Geometry** — **D:** Log-likelihood curvature, Fisher information, Cramér–Rao bounds, and Bregman gaps. **M:** Likelihood-surface lab linked to convex tangent-plane geometry.
+- [ ] **161 — Computational Methods** — **D:** Monte Carlo errors, importance weights, Markov proposals, and mixing diagnostics. **M:** Sampling lab with target/proposal controls and repeatable chains.
+- [ ] **162 — Estimator Quality** — **D:** Bias/variance/MSE decomposition, consistency plots, and transformed expectations. **M:** Estimator comparison lab with repeated samples and known population truth.
+- [ ] **163 — Dependence and Tail Risk** — **D:** Joint versus marginal ranks, copula surfaces, and joint-tail events. **M:** Dependence lab with adjustable copula parameters and simultaneous extremes.
+- [ ] **164 — Stochastic Calculus Core** — **D:** Filtrations, martingale increments, quadratic variation, and left-point stochastic sums. **M:** Brownian/Itô path lab with shared increments and refinement controls.
+- [ ] **165 — Mathematical Finance Mechanics** — **D:** GBM paths, drift changes, replication flows, and Black–Scholes surfaces. **M:** Toy pricing/diffusion model with explicit assumptions and linked payoff/PDE views.
+- [ ] **166 — Inferential Learning for Time-Dependent Data** — **D:** Information revealed over time, density reweighting, cross-entropy, and transport comparisons. **M:** Finite filtered-probability examples linked to information and transport labs.
+- [ ] **167 — Decision and Estimation Tradeoffs** — **D:** Loss tables, utility curves, Bayes-risk envelopes, and cumulative regret. **M:** Decision sandbox with adjustable actions, outcomes, costs, and repeated choices.
+- [ ] **168 — Sequential and Online Learning** — **D:** MDP graphs, Bellman backups, value tables, and temporal-difference errors. **M:** Small gridworld/graph lab with policy, reward, discount, and transition controls.
+- [ ] **169 — Modern Risk Measures** — **D:** Peak-to-trough drawdowns, equity paths, and return/risk comparisons. **M:** Synthetic-path risk lab with drawdown, Sharpe, and Calmar readouts.
+- [ ] **170 — Optimization and Risk Measures** — **D:** Acceptance sets, entropic/CVaR objectives, and mean–variance frontiers. **M:** Convex portfolio/risk model linked to PSD, Simplex, and optimization views.
+- [ ] **171 — Information and Generalization** — **D:** Hypothesis shattering, Rademacher signs, PAC-Bayes terms, and information tradeoffs. **M:** Finite learning-class lab with sample size, noise, prior, and complexity controls.
+- [ ] **172 — Financial Time-Series Dynamics** — **D:** ARCH/GARCH variance recursion, volatility clustering, and scaling plots. **M:** Synthetic time-series lab with conditional variance and roughness comparisons.
+- [ ] **173 — Detection and Filtering** — **D:** CUSUM paths, likelihood ratios, recursive updates, and Kalman covariance ellipses. **M:** Tracking/filtering lab with noisy motion, sensor, and process controls.
+- [ ] **174 — Robustness and Misspecification** — **D:** Influence curves, outlier leverage, Huber loss, and decision margins. **M:** Robust-fit lab with draggable outliers and linked loss/fit changes.
+- [ ] **175 — Bayesian Computation** — **D:** HMC trajectories, Gibbs coordinate steps, variational contours, and autocorrelation/ESS. **M:** Posterior-sampling lab with target density, step size, and sampler controls.
+- [ ] **176 — Extreme-Value Theory** — **D:** Block maxima, threshold exceedances, tail fits, and extreme-value scaling. **M:** Extreme-value lab with sample, block/threshold, tail-index, and fit controls.
+- [ ] **177 — Optimal Transport and Generative Learning** — **D:** Transport couplings, mass movement, dual potentials, MMD, and entropic smoothing. **M:** Optimal-transport lab between point clouds/histograms with cost and regularization controls.
+- [ ] **178 — Stochastic Models for Finance and AI** — **D:** Jump paths, diffusion versus Lévy increments, time changes, and policy-gradient estimates. **M:** Jump-process and small-policy experiments sharing stochastic-path/MDP components.
+

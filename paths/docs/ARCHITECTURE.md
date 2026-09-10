@@ -1,5 +1,23 @@
 # Paths architecture
 
+The [linear textbook companion](LINEAR_TEXTBOOK_REFERENCE.md) connects
+`lesson.v2` to all three question templates through the existing `@read` field.
+`drawDocumentReading` now supplies one imported-reading presentation to overview
+and solving surfaces; both delegate typed blocks to `drawBookBlock` and
+`bookLessonView`, as the native textbook does. The displaced overview-only
+formatting loop is removed. Question reading uses no figure/exercise session.
+The question UI keeps work and choices together, with a resizable adjacent
+textbook on wide workspaces and reading below them on narrower workspaces.
+
+`LayeredQuestionSession::ReadReference` records reference guidance through the
+existing guarded command route. It uses separate exposure bits 5–8, while the
+existing question-help bits 1–4 retain their meaning. Reading a related example
+does not claim that the active question's answer was shown, select its Help
+tab, create working, or grade a response. `CorpusPractice` journals the added
+`reference` action; all earlier action names/ordinals and question stamps remain
+unchanged. Reading-only Markdown edits retain matching attempts. The pure
+reading-state regression initializes neither ImGui nor fonts.
+
 Work allocation follows [AGENTS.md](../AGENTS.md#current-work-allocation): the
 textbook worker owns the full textbook/application learning experience, including
 content, UI, solving, persistence, the content pipeline and figure integration.

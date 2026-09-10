@@ -213,6 +213,8 @@ if(BUILD_TESTING)
     DOCUMENT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/write"
     REFERENCE_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/matrix_reference/documents")
   add_test(NAME paths_learning_document_tests COMMAND paths_learning_document_tests)
+  add_test(NAME paths_textbook_companion_tests COMMAND paths_learning_document_tests
+    --textbook-companion "${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/linear_textbook/documents")
   add_executable(paths_motion_tests tests/motion_lesson_tests.cpp)
   target_link_libraries(paths_motion_tests PRIVATE paths_motion_progress paths_json)
   add_test(NAME paths_motion_tests COMMAND paths_motion_tests)
@@ -405,6 +407,8 @@ if(BUILD_TESTING)
     add_dependencies(paths_learning_document_ui_tests paths_native_math_resources)
     add_test(NAME paths_learning_document_ui_tests COMMAND paths_learning_document_ui_tests)
     add_test(NAME paths_learning_document_reload_ui_tests COMMAND paths_learning_document_ui_tests --reload-state-only)
+    add_test(NAME paths_textbook_reading_state_tests COMMAND paths_learning_document_ui_tests
+      --textbook-reading-state "${CMAKE_CURRENT_SOURCE_DIR}/content/authoring/learning/linear_textbook/documents")
     add_test(NAME paths_learning_export_tests COMMAND "${Python3_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/learning_export_tests.py"
       --target "$<TARGET_FILE:sorter>" --model "$<TARGET_FILE:paths_learning_document_tests>"

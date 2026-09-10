@@ -889,6 +889,10 @@ LayeredQuestionDispatchResult LayeredQuestionSession::applySupport(const Support
       if(s.help==static_cast<SupportHelp>(command.value))return accepted(false,"help_unchanged");
       s.help=static_cast<SupportHelp>(command.value);if(command.value)s.exposure|=1U<<command.value;
       ++s.revision;return accepted(true,"help_selected");
+    case SupportAction::ReadReference:
+      if(!command.value || command.value>4 || current_.phase==LayeredQuestionPhase::Grid)return rejected("unknown_reference_help");
+      if(s.exposure&(1U<<(command.value+4)))return accepted(false,"reference_already_seen");
+      s.exposure|=1U<<(command.value+4);++s.revision;return accepted(true,"reference_read");
     case SupportAction::EditDraft:
       if(current_.phase!=LayeredQuestionPhase::Answering || command.value)return rejected("draft_unavailable");
       if(s.draft==command.text)return accepted(false,"draft_unchanged");

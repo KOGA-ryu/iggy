@@ -34,11 +34,12 @@ checks. Completing an activity is not a mastery judgment.
 
 Each distractor has optional `@feedback ID | prose` that explains that particular
 choice after rejection. The mathematical checker and answer key still decide
-correctness. Keep the first teaching paragraph short, explain the relevant
-numbers, and reserve unrelated fraction/sign definitions for questions that need
-them. The authoring checklist in that guide must be followed before expanding
-this example into generated families. Human visual and teaching review remain
-pending for this new sequence.
+correctness. The user's subsequent review found that the teaching needed more
+detail. The [linear textbook companion](LINEAR_TEXTBOOK_REFERENCE.md) now sets
+the depth standard: explain notation, conditions, intermediate arithmetic,
+reversibility and checks, with linked definitions and examples. Compact controls
+must not compress those explanations. Human teaching and visual review remain
+required before expanding this reference into generated families.
 
 The user has selected the existing textbook work as the presentation standard
 for equation solving. The inspected references are
@@ -93,11 +94,11 @@ completion into the question. Bind A and b explicitly and preserve the solver's
 number system, dimensions and accuracy contract. An unsupported representation
 needs a supported alternative or a reported authoring gap.
 
-The current connection is partial: textbook and question surfaces use `NativeMath`,
-and prepared question help can show neutral RREF definitions/propositions and
-selected chapter prose. Four-level templates use step
-`@definitions`/`@hint`/`@teaching` and reject `@read`. Document `lesson.v2` shares
-the native textbook block renderer and can embed registered figures. A live
+Textbook and question surfaces share `NativeMath` and the textbook block renderer.
+All question templates accept `@read`; structured lessons retain definitions,
+examples, references and independent disclosures inside the solving workspace.
+Four-level templates also retain their current-step
+`@definitions`/`@hint`/`@teaching`. Document `lesson.v2` can embed registered figures. A live
 figure bound to a regular solving attempt is still not implemented. Question
 support passages use the existing math-document renderer; do not clone the
 textbook renderer into that adapter.

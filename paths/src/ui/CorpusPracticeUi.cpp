@@ -27,8 +27,8 @@ void ink(NativeMath& math,const NativeMath::Equation& e,std::string_view source,
   if(!e.error.empty()){ImGui::TextColored({1,.65F,.3F,1},"%.*s",static_cast<int>(source.size()),source.data());return;}
   const auto p=ImGui::GetCursorScreenPos();math.draw(e,p.x,p.y,colour);ImGui::Dummy({e.width,e.height});
 }
-// A reading projection only. Exercise answers, solutions, board state and
-// automatic figure disclosures never cross into this question-help surface.
+// Legacy references expose public prose only. Structured document disclosures
+// are rendered separately, without constructing an exercise or figure session.
 std::pair<std::string,std::string> reading(std::string_view id,const MathCorpus& corpus) {
   for(const auto& entry:corpus.entries)if(entry.id==id)return {entry.title,entry.body};
   for(const auto& block:rrefLesson())if(id==block.id &&
@@ -55,12 +55,24 @@ void drawReading(MathCorpusUiState& ui,const CorpusStarter& question,const MathC
     }
     ImGui::EndCombo();
   }
-  ui.readingSource=reading(question.readingRefs[ui.readingIndex],corpus).second;
+  const auto& id=question.readingRefs[ui.readingIndex];
+  ui.readingSource=reading(id,corpus).second;
+  const auto entry=std::find_if(corpus.entries.begin(),corpus.entries.end(),[&](const auto& e){return e.id==id;});
+  if(entry!=corpus.entries.end() && !entry->lesson.empty()) {
+    const auto action=drawDocumentReading(*entry,*ui.math,ui.questionReading,blocked);
+    ui.readingBody=ui.questionReading.reading;ui.readingFallbacks=ui.questionReading.fallbacks;
+    if(action && action->kind==BookActionKind::ToggleHelp && ui.practice->active()->currentRun().questionId==question.id && question.question.support) {
+      const auto block=std::find_if(entry->lesson.begin(),entry->lesson.end(),[&](const auto& b){return b.id==action->target;});
+      const bool opened=(ui.questionReading.helpMasks[block-entry->lesson.begin()]&(1u<<static_cast<unsigned>(action->help)))!=0;
+      if(opened)(void)recordQuestionReadingHelp(ui,action->help);
+    }
+    return;
+  }
   const auto& document=ui.math->layoutDocument(ui.readingSource,std::max(1.0F,ImGui::GetContentRegionAvail().x));
   const auto p=ImGui::GetCursorScreenPos();ui.math->draw(document,p.x,p.y,IM_COL32(221,221,226,255),cyan,gold);
   ImGui::Dummy({document.width,document.height});ui.readingBody=item();ui.readingFallbacks=document.fallbacks;
 }
-void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t> next) {
+void drawSupported(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked,std::optional<std::size_t> next,bool inlineReading) {
   auto& practice=*ui.practice;auto& math=*ui.math;const auto v=*practice.active()->supportView();
   ImGui::PushID(v.command.questionId.c_str());ImGui::PushID(static_cast<int>(v.command.runNumber));
   const auto send=[&](fm::SupportAction action,std::uint32_t value=0,std::string text={}) {
@@ -92,7 +104,10 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   ImGui::SameLine();ImGui::BeginDisabled(!v.canUndo);
   if(ImGui::Button("Undo",{48,22}))send(fm::SupportAction::Undo);record(CorpusControl::UndoWork,v.canUndo);ImGui::EndDisabled();ImGui::SameLine();
   ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
-  if(ImGui::Button(v.help==fm::SupportHelp::None?"Help":"Close help",{76,22}))send(fm::SupportAction::ReadHelp,v.help==fm::SupportHelp::None?1:0);
+  if(ImGui::Button(v.help==fm::SupportHelp::None?"Help":"Close help",{76,22})) {
+    send(fm::SupportAction::ReadHelp,v.help==fm::SupportHelp::None?1:0);
+    if(inlineReading)ui.readingOpen=false;
+  }
   record(CorpusControl::Method);ImGui::PopStyleColor();
   if(!v.prompt.empty()){ImGui::PushTextWrapPos(0);ImGui::TextUnformatted(v.prompt.c_str());ImGui::PopTextWrapPos();}
   if(!v.responseCue.empty())ink(math,equation(math,v.responseCue,width,17),v.responseCue,cyan);
@@ -158,12 +173,15 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
     constexpr std::array helpLabels{"Terms","Hint","Next line","Solution"};
     for(std::size_t i=0;i<helpLabels.size();++i) {
       if(i)ImGui::SameLine();
-      if(ImGui::Button(helpLabels[i],{std::min(92.0F,(width-18)/4),22}))send(fm::SupportAction::ReadHelp,i+1);
+      if(ImGui::Button(helpLabels[i],{std::min(92.0F,(width-18)/4),22})) {
+        send(fm::SupportAction::ReadHelp,i+1);if(inlineReading)ui.readingOpen=false;
+      }
       ui.supportHelp[i]=item(!blocked);
     }
   }
   ui.readingSource=v.reading;
-  if(!v.reading.empty()) {
+  if(inlineReading)drawReading(ui,practice.questions()[*practice.selected()],corpus,blocked);
+  else if(!v.reading.empty()) {
     const auto& document=math.layoutDocument(v.reading,std::max(1.0F,ImGui::GetContentRegionAvail().x));
     const auto p=ImGui::GetCursorScreenPos();math.draw(document,p.x,p.y,IM_COL32(221,221,226,255),cyan,gold);
     ImGui::Dummy({document.width,document.height});ui.readingBody=item();ui.readingFallbacks=document.fallbacks;
@@ -188,6 +206,20 @@ void drawSupported(MathCorpusUiState& ui,bool blocked,std::optional<std::size_t>
   if(restart){fm::LayeredQuestionCommand c{fm::LayeredQuestionCommandKind::RestartQuestion};c.archiveUnfinished=true;(void)practice.dispatch(c);}
   if(advance && next)practice.open(*next);
 }
+}
+bool recordQuestionReadingHelp(MathCorpusUiState& ui,BookHelp opened) {
+  constexpr std::array help{fm::SupportHelp::Definitions,fm::SupportHelp::Hint,fm::SupportHelp::Solution,fm::SupportHelp::Solution};
+  if(static_cast<unsigned>(opened)>=help.size() || !ui.practice || !ui.practice->active() || !ui.practice->active()->supportView())return false;
+  fm::LayeredQuestionCommand command{fm::LayeredQuestionCommandKind::Support};command.support=ui.practice->active()->supportView()->command;
+  command.support.action=fm::SupportAction::ReadReference;command.support.value=static_cast<unsigned>(help[static_cast<unsigned>(opened)]);
+  return ui.practice->dispatch(command);
+}
+void refreshQuestionReading(MathCorpusUiState& ui,const CorpusStarter& q,const fm::LayeredQuestionSession& session,bool structured) {
+  const auto& run=session.currentRun();const int level=run.support?static_cast<int>(run.support->level):-1;
+  if(ui.readingQuestion==q.id && ui.readingRun==run.runNumber && ui.readingLevel==level)return;
+  ui.readingQuestion=q.id;ui.readingRun=run.runNumber;ui.readingLevel=level;ui.readingIndex=0;
+  ui.readingOpen=structured && (level<0 || level==static_cast<int>(fm::SupportLevel::Learn));
+  ui.questionReading.entry.clear();ui.questionReading.helpMasks.clear();ui.questionReading.anchor.clear();
 }
 void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked) {
   auto& practice=*ui.practice;auto& math=*ui.math;
@@ -237,12 +269,41 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
     ImGui::TextWrapped("No matching questions. Clear the search or choose another chapter.");ImGui::EndChild();return;
   }
   auto& session=*practice.active();const auto selected=*practice.selected();const auto& q=questions[selected];
+  const bool structured=std::any_of(q.readingRefs.begin(),q.readingRefs.end(),[&](const auto& id){
+    return std::any_of(corpus.entries.begin(),corpus.entries.end(),[&](const auto& e){return e.id==id && !e.lesson.empty();});
+  });
+  refreshQuestionReading(ui,q,session,structured);
+  if(structured) {
+    ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
+    if(ImGui::Button(ui.readingOpen?"Close textbook":"Textbook",{112,22})) {
+      ui.readingOpen=!ui.readingOpen;
+      if(ui.readingOpen && q.question.support) {
+        fm::LayeredQuestionCommand c{fm::LayeredQuestionCommandKind::Support};c.support=session.supportView()->command;
+        c.support.action=fm::SupportAction::ReadReference;c.support.value=static_cast<unsigned>(fm::SupportHelp::Definitions);(void)practice.dispatch(c);
+      }
+    }
+    ui.controls[static_cast<std::size_t>(CorpusControl::Lesson)]=item(!blocked);ImGui::PopStyleColor();
+  }
+  const auto space=ImGui::GetContentRegionAvail();
+  const bool split=structured && ui.readingOpen && space.x>=900 && space.y>=360 &&
+    ImGui::BeginTable("Question and textbook",2,ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingStretchProp|ImGuiTableFlags_BordersInnerV|ImGuiTableFlags_NoSavedSettings);
+  if(split) {
+    ImGui::TableSetupColumn("Question",ImGuiTableColumnFlags_WidthStretch,.44f);
+    ImGui::TableSetupColumn("Textbook",ImGuiTableColumnFlags_WidthStretch,.56f);
+    ImGui::TableNextRow();ImGui::TableNextColumn();ImGui::BeginChild("Question side",{0,space.y-4});
+  }
+  const auto finish=[&] {
+    if(split) {
+      ImGui::EndChild();ImGui::TableNextColumn();ImGui::BeginChild("Textbook side",{0,space.y-4});
+      drawReading(ui,q,corpus,blocked);ImGui::EndChild();ImGui::EndTable();
+    }
+    ImGui::EndChild();
+  };
   if(q.question.support) {
     const auto position=std::find(ui.questionMatches.begin(),ui.questionMatches.end(),selected);
     const auto next=position!=ui.questionMatches.end() && position+1!=ui.questionMatches.end()?std::optional<std::size_t>(*(position+1)):std::nullopt;
-    ImGui::TextDisabled("%s",q.title.c_str());drawSupported(ui,blocked,next);ImGui::EndChild();return;
+    drawSupported(ui,corpus,blocked,next,structured && ui.readingOpen && !split);finish();return;
   }
-  if(ui.readingQuestion!=q.id){ui.readingQuestion=q.id;ui.readingOpen=false;ui.readingIndex=0;}
   const auto& run=session.currentRun();const auto stepIndex=run.currentStep;const auto& step=q.question.steps[stepIndex];
   const bool complete=run.completed;
   const float width=ImGui::GetContentRegionAvail().x;
@@ -270,7 +331,7 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
   bool next=ImGui::Button("Next",{50,22});record(CorpusControl::NextStarter,complete && hasNext);ImGui::EndDisabled();ImGui::SameLine();
   ImGui::BeginDisabled(!complete);bool replay=ImGui::Button("Again",{50,22});record(CorpusControl::ReplayStarter,complete);ImGui::EndDisabled();
   ImGui::PopStyleColor();ImGui::SameLine();
-  if(!q.readingRefs.empty()) {
+  if(!structured && !q.readingRefs.empty()) {
     ImGui::PushStyleColor(ImGuiCol_Button,{.30F,.20F,.46F,1});
     if(ImGui::Button(ui.readingOpen?"Working###method":"Method###method",{66,22}))ui.readingOpen=!ui.readingOpen;
     record(CorpusControl::Method,true);ImGui::PopStyleColor();ImGui::SameLine();
@@ -303,8 +364,6 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
     ImGui::EndChild();
   }
   ImGui::BeginChild("Starter working",{0,0},ImGuiChildFlags_None,ImGuiWindowFlags_HorizontalScrollbar);
-  if(ui.readingOpen && !q.readingRefs.empty())drawReading(ui,q,corpus,blocked);
-  else {
   const auto review=session.review();
   if(!complete && !review->steps[stepIndex].attempts.empty() && !review->steps[stepIndex].attempts.back().correct) {
     const auto feedback=review->steps[stepIndex].attempts.back().feedback;
@@ -312,6 +371,8 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
     ImGui::TextWrapped("%.*s",static_cast<int>(feedback.size()),feedback.data());ImGui::PopStyleColor();
     ImGui::TextDisabled("Working retained. Choose another tile.");
   }
+  if(!split && ui.readingOpen && !q.readingRefs.empty())drawReading(ui,q,corpus,blocked);
+  else {
   if((stepIndex || complete) && q.level!="practice") {
     const auto working=session.visibleWorking();ink(math,equation(math,working,width),working,complete?green:cyan);
   }
@@ -324,7 +385,7 @@ void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blo
   }
   if(!practice.message().empty())ImGui::TextWrapped("%s",practice.message().c_str());
   }
-  ImGui::EndChild();ImGui::EndChild();
+  ImGui::EndChild();finish();
   if(choice) {
     (void)practice.dispatch(fm::LayeredQuestionCommand::submitOption(*choice));
     if(fm::layeredQuestionStepResolved(session.currentRun().steps[stepIndex]))

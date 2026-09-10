@@ -8,7 +8,7 @@
 #include <array>
 
 namespace paths {
-enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, CheckWork, UndoWork, OpenDocument, TypeAnswer, Count };
+enum class CorpusControl : std::size_t { Practice, Subject, Topic, Search, Clear, Previous, Next, Up, Down, Source, Back, Equations, Format, Questions, NextStarter, ReplayStarter, FocusQuestion, Method, CheckWork, UndoWork, OpenDocument, TypeAnswer, Lesson, Count };
 struct NativeMathSample {const char* label;const char* title;const char* latex;};
 inline constexpr std::array<NativeMathSample,4> nativeMathSamples{{
   {"Fraction","A fraction",R"(\frac{a+b}{c+d})"},
@@ -39,6 +39,9 @@ struct MathCorpusUiState {
   bool livePreview=false;
   std::uint64_t previewRevision=0;
   DocumentLessonUiState document;
+  DocumentReadingUiState questionReading;
+  int readingLevel=-1;
+  unsigned readingRun=0;
   std::size_t readingIndex=0;
   std::string readingQuestion,readingSource;
   std::size_t readingFallbacks=0;
@@ -72,5 +75,8 @@ struct MathCorpusUiState {
 void drawMathCorpus(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 // Data-only reconciliation; does not initialize ImGui, fonts, or a native host.
 void refreshMathCorpusPreview(MathCorpusUiState&,const MathCorpus&,const DocumentRemap&);
+// Resets only reading presentation when the question, attempt or support level changes.
+void refreshQuestionReading(MathCorpusUiState&,const CorpusStarter&,const iggy3d::first_move::LayeredQuestionSession&,bool structured);
+bool recordQuestionReadingHelp(MathCorpusUiState&,BookHelp);
 void drawCorpusQuestions(MathCorpusUiState& ui,const MathCorpus& corpus,bool blocked);
 } // namespace paths

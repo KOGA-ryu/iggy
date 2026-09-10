@@ -35,6 +35,67 @@ void reloadStateOnly() {
   expect(!ImGui::GetCurrentContext(),"Reconciliation stayed data-only");
   std::cout<<"LIVE_DOCUMENT_UI_STATE {\"identity_remap\":true,\"scroll_retained\":true,\"bindings_invalidated\":true,\"imgui_contexts\":0,\"font_probes\":0,\"windows\":0}\n";
 }
+void textbookReadingState(const std::filesystem::path& source) {
+  expect(!ImGui::GetCurrentContext(),"Textbook integration check must remain data-only");
+  auto corpus=loadMathCorpus(CORPUS_FIXTURE);auto questions=loadCorpusStarters(STARTER_FIXTURE,corpus);
+  const auto loaded=importLearningDocuments(source,corpus,questions);expect(loaded.accepted,loaded.message);
+  const auto at=std::find_if(questions.begin(),questions.end(),[](const auto& q){return q.id=="linear_book_worked";});
+  expect(at!=questions.end(),"Reference question exists");
+  const auto entry=std::find_if(corpus.entries.begin(),corpus.entries.end(),[](const auto& e){return e.id=="linear_textbook_reading";});
+  expect(entry!=corpus.entries.end(),"Reference textbook exists");
+  const auto save=std::filesystem::temp_directory_path()/("paths-book-help-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())+".json");
+  CorpusPractice practice(questions);practice.loadProgress(save);practice.open(at-questions.begin());
+  MathCorpusUiState ui;ui.practice=&practice;
+  refreshQuestionReading(ui,*at,*practice.active(),true);
+  expect(ui.readingOpen,"Learn opens a linked textbook automatically");
+  ui.questionReading.entry=entry->id;ui.questionReading.textScale=1.4f;
+  BookAction hint{BookActionKind::ToggleHelp,0,0,"worked",BookHelp::Hint};
+  expect(applyDocumentReadingAction(ui.questionReading,*entry,hint),"Shared reading action opens a real hint");
+  const auto blocks=bookLessonView(entry->lesson,ui.questionReading.helpMasks);
+  const auto worked=std::find_if(blocks.begin(),blocks.end(),[](const auto& b){return std::string_view(b.id)=="worked";});
+  expect(worked->help[1].open && !worked->help[2].open && !worked->help[3].open && worked->help[3].passages.empty(),"Opening a hint does not expose an answer or full solution");
+  expect(applyDocumentReadingAction(ui.questionReading,*entry,{BookActionKind::OpenBlock,0,0,"balance"}) && ui.questionReading.anchor=="balance","Cross reference resolves to the existing definition");
+  expect(!applyDocumentReadingAction(ui.questionReading,*entry,{BookActionKind::ToggleHelp,0,0,"worked",BookHelp::Proof}),"Unavailable disclosure cannot be opened");
+  expect(!applyDocumentReadingAction(ui.questionReading,*entry,{BookActionKind::OpenBlock,0,0,"missing"}),"Stale reference cannot navigate");
+  const auto masks=ui.questionReading.helpMasks;
+  refreshQuestionReading(ui,*at,*practice.active(),true);
+  expect(ui.questionReading.helpMasks==masks && ui.questionReading.anchor=="balance","Ordinary frames retain disclosure and reference state");
+  unsigned checks=0;
+  for(unsigned level=0;level<4;++level) {
+    fm::LayeredQuestionCommand c{fm::LayeredQuestionCommandKind::Support};c.support=practice.active()->supportView()->command;
+    c.support.action=fm::SupportAction::SelectLevel;c.support.value=level;expect(practice.dispatch(c),"Support level changes through the owner");
+    refreshQuestionReading(ui,*at,*practice.active(),true);
+    expect(ui.readingOpen==(level==0),"Only Learn automatically opens the textbook");
+    if(level)expect(ui.questionReading.helpMasks.empty() && ui.questionReading.anchor.empty() && ui.questionReading.textScale==1.4f,"Less guidance closes reveals but retains the user's reading size");
+    const auto working=practice.active()->visibleWorking();const auto nodes=practice.active()->currentRun().support->nodes.size();
+    const auto reading=practice.active()->supportView()->reading;const auto selectedHelp=practice.active()->supportView()->help;
+    for(const auto h:{BookHelp::Proof,BookHelp::Hint,BookHelp::Answer,BookHelp::Solution}) {
+      expect(recordQuestionReadingHelp(ui,h),"Textbook help uses existing guarded guidance commands at every support level");
+      expect(practice.active()->visibleWorking()==working && !practice.active()->currentRun().completed && practice.active()->currentRun().support->nodes.size()==nodes,"Reading never advances or grades the question");
+      expect(practice.active()->supportView()->reading==reading && practice.active()->supportView()->help==selectedHelp,"A separate example reveal never opens the active question's solution or changes its help tab");
+      ++checks;
+    }
+  }
+  expect(!recordQuestionReadingHelp(ui,BookHelp::Count),"Unknown reading guidance is rejected");
+  const auto journal=practice.active()->journal().size();
+  for(unsigned value:{0U,5U}) {
+    fm::LayeredQuestionCommand c{fm::LayeredQuestionCommandKind::Support};c.support=practice.active()->supportView()->command;
+    c.support.action=fm::SupportAction::ReadReference;c.support.value=value;
+    expect(!practice.dispatch(c) && practice.active()->journal().size()==journal,"Invalid reference exposure creates no history");
+  }
+  fm::LayeredQuestionCommand stale{fm::LayeredQuestionCommandKind::Support};stale.support=practice.active()->supportView()->command;
+  stale.support.action=fm::SupportAction::ReadReference;stale.support.value=1;--stale.support.revision;
+  expect(!practice.dispatch(stale) && practice.active()->journal().size()==journal,"Stale textbook commands cannot mark a newer attempt");
+  const auto exposure=practice.active()->currentRun().support->exposure;
+  expect((exposure&32) && (exposure&64) && (exposure&256),"Reference definitions, hints and solutions are recorded separately");
+  const auto summary=fm::summarizeLayeredQuestionRun(practice.active()->currentRun());
+  expect(summary.assisted && !summary.shownAnswers && !(exposure&16),"A reference example counts as guidance without claiming the question's answer was shown");
+  practice.saveProgress();CorpusPractice restored(questions);restored.loadProgress(save);
+  expect(restored.active() && restored.active()->currentRun().support->exposure==exposure && !restored.active()->currentRun().completed,"Guidance history survives reopening without completing the question");
+  std::filesystem::remove(save);std::filesystem::remove(save.string()+".lock");
+  expect(!ImGui::GetCurrentContext(),"No ImGui context or fonts were initialized");
+  std::cout<<"TEXTBOOK_READING_STATE {\"guidance_checks\":"<<checks<<",\"disclosures_independent\":true,\"references\":true,\"save_replay\":true,\"windows\":0,\"font_probes\":0}\n";
+}
 struct Harness {
   MathCorpus corpus=loadMathCorpus(CORPUS_FIXTURE);
   CorpusPractice practice{bank(corpus)};
@@ -168,6 +229,7 @@ void matrix(ImVec2 size) {
 }
 int main(int argc,char** argv) {
   try {
+    if(argc==3 && std::string_view(argv[1])=="--textbook-reading-state"){textbookReadingState(argv[2]);return 0;}
     if(argc==2 && std::string_view(argv[1])=="--reload-state-only"){reloadStateOnly();return 0;}
     if(argc==3 && std::string_view(argv[1])=="--published-store") {
       publishedStore=argv[2];for(const auto size:{ImVec2{1440,860},ImVec2{800,600},ImVec2{360,480}})matrix(size);

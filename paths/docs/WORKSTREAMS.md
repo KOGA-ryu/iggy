@@ -1,5 +1,50 @@
 # Paths workstreams
 
+## A textbook companion beside linear solving
+
+**Built and locally published; teaching and visual acceptance await the user.**
+The user's inspection of `math_lab` establishes its textbook as the standard
+for explanation depth and layout. Package `linear_textbook` version 1 adds
+**Algebra → Linear equations: a textbook companion**, one thirteen-block lesson
+with fifteen references and eight independent disclosures, and three connected
+questions. The two numerical questions retain all four support levels and button
+answers in Learn/Practice; the third checks the reason for an equivalent step.
+
+`drawDocumentReading` is the shared owner of imported reading presentation in
+overview and question views. The former overview-only formatting loop is removed;
+both routes use the existing textbook block renderer. `@read` now also attaches
+lessons to supported linear/matrix questions. Wide question workspaces show a
+resizable reading column beside the fixed question and choices; narrower ones
+show reading below them. Compact current-step Help remains available.
+
+The existing question owner records `ReadReference` through guarded commands,
+using separate reference-exposure bits. Reading never grades, changes working,
+opens an unrelated question solution, or counts a related example as the active
+question's answer being shown. Support-level changes close disclosures while
+retaining guidance history. A reading-only Markdown edit preserves the matching
+question attempt and updates the structured text through the existing watcher.
+
+Release builds of sorter, gallery and paths pass. Five targeted CTest entries
+pass, including eleven complete reference solving routes, twenty-six wrong-choice
+checks, save/reorder replay, Undo, completion until Next, live proof edits and
+sixteen data-only guidance checks. Independent fraction arithmetic verifies all
+numerical choices, the reasoning transformation and the written counterexample.
+No windows, screenshots, captures or font probes were used.
+
+The published catalogue now has **365 questions, 950 readings, 189 chapters and
+8 subjects**. All 362 earlier questions and 949 earlier readings are unchanged.
+Existing source packages and question saves are not rewritten. Changes remain
+uncommitted, and concurrent 3D work is preserved. The reusable authoring standard
+is [LINEAR_TEXTBOOK_REFERENCE.md](LINEAR_TEXTBOOK_REFERENCE.md); detailed evidence
+and the scoped production delta are in `build/textbook-reference-evidence/verification.json`.
+
+Manual check: launch `b/sorter`, open the new chapter and its reading, then
+Question 1. Inspect teal headings, independent proof/hint/answer/solution controls,
+reference links and text sizing. Gold Given and cyan Working/choices should stay
+nearby while reading scrolls. Practice closes guidance; purple Textbook reopens
+it. Wrong feedback stays coral and completed working stays green until Next.
+Next candidate after acceptance: apply this depth standard to the matrix reference.
+
 Deferred project: [Standalone calculator and connected tutoring](CALCULATOR_TUTOR_PROJECT.md)
 records the future independent calculator, Eigen backend, named-control guidance,
 local app connection and reusable lesson bindings. It contains staged TODOs and

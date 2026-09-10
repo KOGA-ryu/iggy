@@ -82,6 +82,7 @@ void refreshMathCorpusPreview(MathCorpusUiState& ui,const MathCorpus& corpus,con
   }
   ui.document.entry.clear();ui.document.presented=false;ui.document.questionLinks.clear();ui.document.parameterControls.clear();
   ui.document.helpMasks.clear();ui.document.anchor.clear();ui.readingChoices.clear();ui.readingSource.clear();
+  ui.questionReading.entry.clear();ui.questionReading.helpMasks.clear();ui.questionReading.anchor.clear();
   ui.rows.clear();ui.subjectRows.clear();ui.topicRows.clear();ui.relatedRows.clear();ui.answerTiles.clear();ui.controls={};
   ui.supportLevels={};ui.supportHelp={};ui.supportEditor={};ui.refresh=false;ui.follow=true;++ui.previewRevision;
 }

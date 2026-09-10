@@ -229,7 +229,6 @@ struct Compiler {
       b.goal=trim(b.goal);b.given=trim(b.given);b.domain=trim(b.domain);
       require(b.version && !b.goal.empty() && !b.given.empty() && !b.domain.empty(),"Question needs @version, @goal, @given and @domain");
       require(!b.steps.empty(),"Question needs at least one @step");const bool linear=*b.format==Template::Linear,matrix=*b.format==Template::Matrix,typed=linear || matrix;
-      require(!typed || b.links.empty(),"Four-level templates use step @definitions/@teaching, not @read");
       const auto tex=[&](const std::string& raw,const Line& source,std::string_view field)->std::string {
         try {switch(*b.format) {
           case Template::Linear: {
@@ -578,6 +577,7 @@ std::string learningDocumentCapabilities() {
   for(const auto& [key,kind]:templates)result["templates"].push_back(key);
   result["step_hint"]={{"templates",{"linear.v1","matrix.v1"}},{"directive","hint"},{"optional",true},{"bytes",8000}};
   result["choice_feedback"]={{"templates",{"choices.v1","linear.v1","matrix.v1"}},{"directive","feedback"},{"optional",true},{"bytes",2000},{"wrong_choices_only",true}};
+  result["question_reading"]={{"templates",{"choices.v1","linear.v1","matrix.v1"}},{"directive","read"},{"references",8},{"structured_template","lesson.v2"}};
   result["book_template"]={{"blocks",64},{"passages_per_body_or_help",64},{"passage_bytes",8192},{"references_per_block",16},
     {"kinds",Json::array()},{"help",Json::array()}};
   for(const auto& [key,kind]:blockKinds)result["book_template"]["kinds"].push_back(key);

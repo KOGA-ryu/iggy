@@ -46,7 +46,7 @@ std::string folded(std::string_view value) {
 constexpr std::array actions{
   fm::LayeredQuestionCommandKind::OpenQuestion,fm::LayeredQuestionCommandKind::SubmitOption,
   fm::LayeredQuestionCommandKind::Continue,fm::LayeredQuestionCommandKind::RestartQuestion,fm::LayeredQuestionCommandKind::Support};
-constexpr std::array supportActions{"level","draft","choice","blank","work","help","undo"};
+constexpr std::array supportActions{"level","draft","choice","blank","work","help","undo","reference"};
 fm::LayeredQuestionSession session(const CorpusStarter& q) {
   return fm::LayeredQuestionSession({q.question},q.question.support?fm::QuestionInteraction::Supported:fm::QuestionInteraction::ArcadeCollect,0,true);
 }

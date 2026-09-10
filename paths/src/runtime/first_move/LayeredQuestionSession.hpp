@@ -229,7 +229,7 @@ struct MathMoveRun {
 enum class QuestionProgress : std::uint8_t { NotStarted, InProgress, Completed };
 enum class SupportLevel : std::uint8_t { Learn, Practice, Solve, Independent };
 enum class SupportHelp : std::uint8_t { None, Definitions, Hint, NextLine, Solution };
-enum class SupportAction : std::uint8_t { SelectLevel, EditDraft, Choose, SubmitBlank, CheckWork, ReadHelp, Undo };
+enum class SupportAction : std::uint8_t { SelectLevel, EditDraft, Choose, SubmitBlank, CheckWork, ReadHelp, Undo, ReadReference };
 inline constexpr std::size_t kSupportDraftCapacity=8192, kSupportSubmissionCapacity=256;
 struct SupportCommand {
   SupportAction action=SupportAction::SelectLevel;
@@ -249,7 +249,7 @@ struct SupportSubmission {
 struct SupportRun {
   SupportLevel level=SupportLevel::Learn;
   SupportHelp help=SupportHelp::None;
-  std::uint32_t exposure=0,priorExposure=0; // 1 guided; 2 definitions; 4 hint; 8 next line; 16 solution.
+  std::uint32_t exposure=0,priorExposure=0; // 1 guided; bits 1-4 question help; bits 5-8 reference help.
   std::uint64_t revision=1;
   std::string draft,feedback,verification;
   WrittenCheckStatus status=WrittenCheckStatus::Unsupported;

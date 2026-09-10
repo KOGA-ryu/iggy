@@ -419,9 +419,13 @@ same question owner and progress journal as linear questions.
 
 - `@practice question_id` inside a lesson creates a blue **Question N** button.
   It opens or resumes that exact question in the existing workspace.
-- `@read lesson_id` inside a `choices.v1` question supplies its explicit Method
-  reading. It can reference an imported lesson or a current Library entry.
-  This does not open a separate textbook exercise or use its answer state.
+- `@read lesson_id` is available in `choices.v1`, `linear.v1` and `matrix.v1`.
+  It attaches an imported lesson or Library entry. A `lesson.v2` retains its
+  structured blocks, local references and independent disclosures inside the
+  question workspace. Supported questions still require their step definitions
+  and teaching. Opening a textbook never creates a separate exercise session.
+  The [linear textbook reference](LINEAR_TEXTBOOK_REFERENCE.md) documents the
+  layout, disclosure rules and complete authoring example.
 - `@include shared/equality.inc.md` expands a relative fragment in place.
   It is relative to the including file. A fragment is not independently loaded.
 - `@text` resumes the body of a lesson after another prose section, such as

@@ -51,11 +51,13 @@ even when a prompt has fewer cues.
    answer key, not the truth of arbitrary reasoning. Review those claims manually
    and add an independent arithmetic/logic test. Do not relabel a conceptual
    choice as independently written work or invent an unsupported checker.
-4. **Start teaching with one short direction.** Explain only the definitions
-   needed now, then show the actual arithmetic and why it works. Keep Terms
-   neutral and Hint directional. Learn may reveal the worked step intentionally;
-   do not count clicking that revealed result as an independent check. Put
-   detailed typeset work in teaching/readings and concise ordinary prose in why.
+4. **Explain the whole step.** Follow the newer
+   [textbook depth standard](LINEAR_TEXTBOOK_REFERENCE.md): introduce terms,
+   explain the operation and its conditions, show intermediate arithmetic, and
+   interpret the resulting line. Keep Terms neutral and Hint directional.
+   Learn may reveal the worked step intentionally; clicking that result is not
+   an independent check. Use concise ordinary prose only for the `@why` history
+   summary; retain the full explanation in teaching and the linked textbook.
 5. **Design and explain each distractor.** Every wrong tile in this chapter has
    `@feedback ID | correction`. Tie it to a recognisable error, avoid claiming
    certainty about the learner's thought process, and explain how to recheck.

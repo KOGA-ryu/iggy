@@ -1,0 +1,34 @@
+### Algebra — 29 chapters
+
+Source: [Algebra notes](</Users/kogaryu/Documents/ChatGPT/math terms and definitions/sections/algebra.md>).
+
+- [ ] **001 — Algebraic Structures** — **D:** Sets, structure hierarchy, operation tables, and maps between groups/rings/fields. **M:** Finite-set and operation-table explorer; reuse the symmetry and Gaussian-integer labs.
+- [ ] **002 — Number Systems and Divisibility** — **D:** Number-set nesting, divisibility trees, Euclidean steps, and residue cycles. **M:** Extend modular drums with GCD, prime factors, and linked remainder views.
+- [ ] **003 — Equations and Relations** — **D:** Function arrows, equivalence classes, and equation-versus-identity comparisons. **M:** Mapping machine with injection, surjection, bijection, composition, and quotient settings.
+- [ ] **004 — Polynomials and Rational Expressions** — **D:** Coefficient strips, factor trees, repeated roots, poles, and excluded inputs. **M:** Extend Functions with draggable polynomial roots and rational-function holes/asymptotes.
+- [ ] **005 — Inequalities and Expressions** — **D:** Number-line intervals, absolute-value distances, and AM–GM rectangle comparisons. **M:** Norm-ball comparisons plus an adjustable fixed-area rectangle/box.
+- [ ] **006 — Symmetry and Group Actions** — **D:** Permutation cycles, orbit graphs, stabilizers, and coset partitions. **M:** Extend Symmetry with labelled polygons, cube actions, and noncommuting moves.
+- [ ] **007 — Algebraic Methodology** — **D:** Substitution chains, reversible equation steps, and contradiction dependencies. **M:** Small composition/substitution sandbox; reuse existing equation and function models.
+- [ ] **008 — Theorems** — **D:** Bézout, remainder, coset, factorization, CRT, and interpolation proof figures. **M:** Reuse modular, finite-group, polynomial, and interpolation models as theorem examples.
+- [ ] **009 — Worked examples** — **D:** Step-by-step Euclidean, factorization, and cyclic-subgroup traces. **M:** Presets for the preceding algebra models; no separate model family.
+- [ ] **010 — Proof sketches** — **D:** Assumption-to-conclusion maps and highlighted witnesses/counterexamples. **M:** Replay the chapter's small integer, polynomial, and subgroup examples.
+- [ ] **011 — Algebraic Structures and Quotients** — **D:** Ideal lattices, quotient classes, and nilpotent multiplication chains. **M:** Extend Gaussian lattice and finite-ring tables with ideals and quotient projections.
+- [ ] **012 — Advanced Ring-Theoretic Terms** — **D:** Ideal chains, Euclidean descent, and maximal-ideal quotient diagrams. **M:** Integer/polynomial ring examples with division steps and quotient-field checks.
+- [ ] **013 — Algebraic and Module Extensions** — **D:** Fraction/localization maps, radical membership, and factorization comparisons. **M:** Finite examples of radicals and localization; labelled algebraic-set slices where useful.
+- [ ] **014 — Advanced Module Theory** — **D:** Module/submodule inclusions, homomorphisms, exactness, and tensor grids. **M:** Lattice and torsion modules plus editable kernel/image diagrams; reuse Tensor blocks.
+- [ ] **015 — Homological and Categorical Additions** — **D:** Lifting/extension diagrams, free generators, and torsion decomposition. **M:** Small module examples showing projective, injective, and flat behavior under stated assumptions.
+- [ ] **016 — Homological Constructions** — **D:** Short exact sequences, direct sums/products, and pullback/pushout squares. **M:** Editable finite-set and vector-space constructions with synchronized element maps.
+- [ ] **017 — Galois and Homological Structures** — **D:** Extension towers, conjugate roots, splitting fields, and subgroup/field correspondence. **M:** Extend Roots of unity with finite Galois examples and automorphism permutations.
+- [ ] **018 — Category-Theoretic Extensions** — **D:** Category arrows, functor images, naturality squares, and adjunction correspondences. **M:** Composable finite-category diagram explorer, including representable-functor examples.
+- [ ] **019 — Algebraic Geometry Bridges** — **D:** Prime/ideal specialization diagrams, radicals, and equations versus zero sets. **M:** Finite-ring spectrum examples and simple algebraic curves; distinguish point sets from prime spectra.
+- [ ] **020 — Advanced Homological Algebra** — **D:** Split sequences, lifting squares, and extension diagrams. **M:** Small exact-sequence and resolution explorer with kernel/image overlays.
+- [ ] **021 — Homological and Derived Structures** — **D:** Chain complexes, projective resolutions, homology, Ext, and Tor stages. **M:** Bounded matrix complexes with cycles, boundaries, and surviving homology classes.
+- [ ] **022 — Spectral and Category Extensions** — **D:** Ascending/descending chains, composition series, and simple-factor comparisons. **M:** Finite module/subspace filtration explorer with rearrangeable composition series.
+- [ ] **023 — Adjunctions and Representability** — **D:** Hom-set correspondences, adjunction units, representable functors, and torsion pairs. **M:** Finite-category examples linked to existing map and submodule diagrams.
+- [ ] **024 — Topos-like Limits and Constructions** — **D:** Inverse/direct systems, compatible tuples, and limit/colimit constructions. **M:** Finite inverse-system and pullback examples; finite truncations for infinite constructions.
+- [ ] **025 — Spectral Sequences and Filtrations** — **D:** Filtration stacks, associated graded pieces, exact couples, and spectral-sequence pages. **M:** Page-by-page finite spectral-sequence board with differential arrows and surviving classes.
+- [ ] **026 — Derived Category Stability** — **D:** Distinguished triangles, degree truncations, hearts, and long exact sequences. **M:** Small chain-complex examples with shifts, cohomology, and truncation controls.
+- [ ] **027 — Higher Categorical Constructions** — **D:** Subcategory inclusions, localization arrows, and quotient/derived-equivalence diagrams. **M:** Finite diagram examples of killed objects and changed morphisms; no literal 3D quotient claim.
+- [ ] **028 — Higher Homological and Noncommutative Constructions** — **D:** Tensor and Quillen adjunction diagrams, compactness patterns, and abelianization maps. **M:** Finite group abelianization and tensor examples; schematic diagrams for general categorical claims.
+- [ ] **029 — Homological Stability and Higher Algebra** — **D:** Monoidal coherence, Koszul differentials, Ext stages, and Morita correspondences. **M:** Small Koszul complexes and matrix-ring/module examples, linked to the diagram workbench.
+
