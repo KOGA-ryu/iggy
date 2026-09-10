@@ -102,10 +102,10 @@ def explain_step(question):
     batch.require(a != 0, "Division has no inverse when the coefficient is zero")
     facts = {
         "given": rf"{_tex(a)}x={_tex(rhs)}",
-        "inverse_operation": "divide both complete sides by -4",
+        "inverse_operation": "multiply both complete sides by -4",
         "recovered_right_hand_side": str(recovered),
         "zero_scaling_failure": "Multiplying by zero erases the restriction and cannot be inverted.",
-        "repeat_scaling_failure": "Multiplying by -4 repeats rather than reverses the division.",
+        "repeat_scaling_failure": "Dividing by -4 repeats rather than reverses the division.",
         "nonzero_condition": "-4 is nonzero, so division by -4 is defined and reversible.",
     }
     given = rf"{_tex(a)}x={_tex(rhs)}"
@@ -130,7 +130,7 @@ def repair_error(question):
     })
     given = (r"\begin{gathered}3x-5=7\\"
              r"\begin{aligned}L_1 &: 3x=7-5\\L_2 &: 3x=2\\L_3 &: x=\frac{2}{3}\end{aligned}\end{gathered}")
-    return given, [r"L_1:\quad 7-(-5)=12", r"3x=12"], [
+    return given, [r"L_1:\quad 7-(-5)", r"3x=12"], [
         ([r"L_1", r"L_2", r"L_3"], r"L_1"),
         (["2", "7", "12"], "12"),
     ], facts

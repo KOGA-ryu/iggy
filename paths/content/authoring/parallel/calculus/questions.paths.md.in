@@ -6,9 +6,9 @@
 @domain f is a real-valued function of the real input x. The number 3 is the fixed input a. The increment h is real and nonzero in a difference quotient; h approaches zero only when taking its limit. f(3) is a function value, while f'(3) is an instantaneous slope.
 @read {{reading_id}}
 @step 10 | Which limit is the definition of f'(3)?
-@choice 11 | \lim_{h\to0}\frac{f(3+h)-f(3)}{h}
-@choice 12 | \lim_{h\to0}\frac{h}{f(3+h)-f(3)}
 @choice 13 | f(3)
+@choice 12 | \lim_{h\to0}\frac{h}{f(3+h)-f(3)}
+@choice 11 | \lim_{h\to0}\frac{f(3+h)-f(3)}{h}
 @answer 11
 @feedback 12 | This reverses the difference quotient. The derivative compares the output change f(3+h)-f(3) to the input increment h, not the increment to the output change.
 @feedback 13 | f(3)=9 is the function value at input 3. It does not take nearby slopes or a limit, so it is not f'(3).
@@ -25,9 +25,9 @@
 @domain x, a and h are real. The shown quotient has already been simplified only for h not equal to zero. The limit asks what 4+h approaches as h approaches zero; it does not assert that the original quotient has a value at h=0.
 @read {{reading_id}}
 @step 10 | What is the limit of the simplified quotient as h approaches zero?
-@choice 11 | 0
 @choice 12 | 4
 @choice 13 | 4+h
+@choice 11 | 0
 @answer 12
 @feedback 11 | Zero is the value approached by h, not the value of 4+h. The constant term 4 remains when h approaches zero.
 @feedback 13 | 4+h is the simplified expression before the limit. The question asks for its single limiting value as h approaches zero.
@@ -44,9 +44,9 @@
 @domain x, a and h are real. The quotient is considered for h not equal to zero. Expand the numerator completely and factor its common increment before cancellation; a factor that is not present in every numerator term cannot be cancelled.
 @read {{reading_id}}
 @step 10 | After expanding, which factored quotient displays the common increment needed before cancellation?
-@choice 11 | \frac{6+h}{h}
-@choice 12 | 6h+h^2
 @choice 13 | \frac{h(6+h)}{h}
+@choice 12 | 6h+h^2
+@choice 11 | \frac{6+h}{h}
 @answer 13
 @feedback 11 | This omits the factor h from the numerator and therefore is not equal to the original quotient. Cancelling must follow a displayed common nonzero factor.
 @feedback 12 | 6h+h^2 is the expanded numerator, not the quotient; the denominator h has been lost. Factor the numerator while keeping the quotient visible.
@@ -60,12 +60,12 @@
 @version 1
 @goal {{explain_step_objective}}
 @given \frac{h(6+h)}{h}=6+h
-@domain h is real. The displayed equality is a cancellation statement about a quotient, not an identity at h=0. The derivative limit may examine values with h arbitrarily close to zero while excluding zero itself from the quotient's domain.
+@domain h is real. The displayed equality is a cancellation statement about a quotient, not an identity at h=0. State the domain condition under which both displayed expressions have the same value.
 @read {{reading_id}}
 @step 10 | Which condition permits this cancellation?
+@choice 13 | h\ne0
 @choice 11 | h=0
 @choice 12 | \text{all real }h
-@choice 13 | h\ne0
 @answer 13
 @feedback 11 | At h=0 the original denominator is zero, so the quotient is undefined. Zero is the limit target, not a permitted value for this cancellation.
 @feedback 12 | The equality fails as a statement about the original quotient at h=0 because division by zero is undefined. It holds for the nonzero h values used to approach zero.
@@ -79,12 +79,12 @@
 @version 1
 @goal {{repair_error_objective}}
 @given \begin{gathered}f(x)=2x^2+x,\quad a=1\\\begin{aligned}L_1 &: f(1+h)=2(1+2h+h^2)+1+h\\L_2 &: f(1+h)=3+4h+2h^2\\L_3 &: f'(1)=\lim_{h\to0}\frac{4h+2h^2}{h}=4\end{aligned}\end{gathered}
-@domain x and h are real. The labelled lines are a deliberately incorrect student attempt, not accepted working. L1 expands the square correctly. A difference quotient requires h not equal to zero before cancellation, and f(1)=3.
+@domain x and h are real. The labelled lines are a deliberately incorrect student attempt, not accepted working. A difference quotient requires h not equal to zero before cancellation, and f(1)=3.
 @read {{reading_id}}
 @step 10 | Which line is the first incorrect line in the deliberately incorrect attempt?
+@choice 13 | L3
 @choice 11 | L2
 @choice 12 | L1
-@choice 13 | L3
 @answer 11
 @feedback 12 | L1 is correct: (1+h)^2=1+2h+h^2, so substituting gives 2(1+2h+h^2)+1+h. The first error occurs after this line.
 @feedback 13 | L3 follows the bad coefficient from L2 using the correct value f(1)=3. Repair the earlier expansion before judging its later derivative.
@@ -92,8 +92,8 @@
 @wrong Check the lines in order. The linear term x becomes 1+h and contributes its own h; an error in that expansion changes every later quotient.
 @why Expanding L1 gives 2+4h+2h^2+1+h=3+5h+2h^2. L2 drops the extra h from the linear term and is the first error. L3 is consequently based on a changed numerator, even though it correctly subtracts f(1)=3 from the student's expression.
 @step 20 | From the corrected quotient 5+2h for h not equal to zero, what is f'(1)?
-@choice 21 | 4
 @choice 22 | 3
+@choice 21 | 4
 @choice 23 | 5
 @answer 23
 @feedback 21 | Four is the derivative carried forward from the dropped linear h in L2. The corrected quotient is 5+2h, whose constant term is 5.
@@ -111,9 +111,9 @@
 @domain x is a real input and the requested value is an instantaneous slope at the real input 2. The choices are possible values of f'(2), not function values. No intermediate method or answer is supplied before the response.
 @read {{reading_id}}
 @step 10 | Find f'(2).
-@choice 11 | 9
 @choice 12 | 10
 @choice 13 | 12
+@choice 11 | 9
 @answer 12
 @feedback 11 | Nine is f(2)=3(2)^2-2(2)+1, a function value. The question asks for a rate of change, so differentiate before evaluating.
 @feedback 13 | Twelve differentiates 3x^2 to 6x at x=2 but omits the derivative -2 of the linear term. Keep every term when differentiating the polynomial.

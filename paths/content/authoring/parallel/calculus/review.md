@@ -1,5 +1,11 @@
 # Calculus pilot review: Build a derivative from a difference quotient
 
+Coordinator update, 2026-09-10: this pilot has been corrected, jointly checked
+and locally published. See the [integrated subject review](../../../../docs/SUBJECT_PILOT_REVIEW.md)
+for current status and review overrides. Visual acceptance remains with the
+user. The worker delivery record below describes the earlier candidate and
+retains its original hashes and pending-review statements as history.
+
 ## Scope and status
 
 This candidate authors exactly one reading and six `choices.v1` questions for

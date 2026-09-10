@@ -91,6 +91,53 @@ class BatchTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code,'pilot.source_changed')
             self.assertFalse(self.store.exists())
 
+    def test_reviewed_subject_wave_disclosure_and_additive_publication(self):
+        documents={};patterns=[];candidates=[]
+        for assignment in pilot.packet()['assignments']:
+            result=pilot.check_assignment(assignment,OPTIONS.target,OPTIONS.model)
+            self.assertEqual(result['route_checks']['routes'],6)
+            self.assertEqual(result['route_checks']['wrong_choices'],14)
+            candidates.append((assignment,Path(result['authoring'])))
+            documents[assignment['subject']+'.paths.md']=(Path(result['authoring'])/'documents/chapter.paths.md').read_bytes()
+            pattern=[]
+            for q in result['route_checks']['questions']:
+                step=q['question']['steps'][0]
+                pattern.append([o['id'] for o in step['options']].index(step['accepted_option_ids'][0]))
+            patterns.append(tuple(pattern))
+        self.assertEqual(len(set(patterns)),4,'The four pilots must not share the same answer-position sequence')
+        combined=self.root/'combined';export.write_tree(combined,documents)
+        lesson_run=subprocess.run([str(OPTIONS.model),'--subject-pilot-lessons',str(combined)],capture_output=True,text=True,timeout=60)
+        self.assertEqual(lesson_run.returncode,0,lesson_run.stderr)
+        self.assertEqual(json.loads(lesson_run.stdout)['independent_worked_disclosures'],12)
+        # An extra public result display must fail the actual lesson projection gate.
+        file=combined/'calculus.paths.md';original=file.read_bytes()
+        file.write_bytes(original.replace(b'@help hint',b'@display\nf\'(1)=3\n@help hint',1))
+        leaked=subprocess.run([str(OPTIONS.model),'--subject-pilot-lessons',str(combined)],capture_output=True,text=True,timeout=60)
+        self.assertNotEqual(leaked.returncode,0);self.assertIn('public worked example',leaked.stderr)
+        file.write_bytes(original)
+        baseline=OPTIONS.target.parent/'content/write';target=export.Target(OPTIONS.target)
+        before=target.inspect(documents=baseline)['catalogue']['questions']
+        for assignment,source in candidates:
+            args=argparse.Namespace(command='publish',source=source,target=OPTIONS.target,library=None,
+                store=self.store,base_documents=baseline,output=self.root/'exports'/assignment['subject'])
+            published=export.run(args)
+            self.assertTrue(published['published'])
+            self.assertTrue(export.run(args)['unchanged'])
+        state=export.read_state(target,self.store,baseline)
+        after=state[3]['catalogue']['questions']
+        self.assertEqual(len(after)-len(before),24)
+        self.assertTrue(all(row in after for row in before),'Every earlier question record survives the additive wave')
+        proposed=self.store/'generations'/export.decoded(state[0])['generation']/'documents'
+        replay=subprocess.run([str(OPTIONS.model),'--question-batch-upgrade',str(baseline),str(proposed)],capture_output=True,text=True,timeout=60)
+        self.assertEqual(replay.returncode,0,replay.stderr)
+        self.assertTrue(json.loads(replay.stdout)['save_replay'])
+        # A failed subsequent import may not replace the active good library.
+        broken=self.root/'broken';export.write_tree(broken,export.capture(candidates[-1][1]))
+        bad=broken/'documents/chapter.paths.md';bad.write_text(bad.read_text().replace('@template choices.v1','@template choices.v99',1))
+        args.source=broken;args.output=self.root/'broken-export'
+        with self.assertRaises(export.ExportError):export.run(args)
+        self.assertEqual((self.store/'active.json').read_bytes(),state[0])
+
     def args(self, count=12, version=1, publish=False, format_version=1, family='matrix'):
         return argparse.Namespace(count=count, version=version, publish=publish, format_version=format_version, family=family,
             target=OPTIONS.target, model=OPTIONS.model, output=self.root / 'batches' / str(version),

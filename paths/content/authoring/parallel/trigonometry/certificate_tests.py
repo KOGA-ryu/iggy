@@ -4,6 +4,7 @@ from fractions import Fraction
 import json
 from pathlib import Path
 import sys
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools'))
 from build_question_batch import reasoning_certificate, validate_role_sequence
@@ -62,10 +63,21 @@ def main():
     unsupported = deepcopy(by_role('worked_check'))
     unsupported['case']['sine'] = '3/5'
     rejects(unsupported, 'Unsupported sine level')
-    duplicate = [Fraction(1, 6), Fraction(1, 6)]
-    assert len(set(duplicate)) != len(duplicate), 'Sanity check: duplicate angles must be rejected by set comparison'
+    for answers in ([Fraction(7,6)], [Fraction(7,6),Fraction(7,6)], [Fraction(7,6),Fraction(23,6)]):
+        with patch('certificates._solutions',return_value=answers):
+            try: certified(by_role('independent'))
+            except ExportError: pass
+            else: raise AssertionError('Missing, duplicated or out-of-interval solution accepted')
+    for field,bad in (('lower_pi','1'),('upper_pi','3'),('lower_closed',False),('upper_closed',True)):
+        q=deepcopy(by_role('choose_next_step'));q['case'][field]=bad
+        rejects(q,'exactly the radian interval')
+    q=deepcopy(by_role('independent'));q['case']['constant']=True
+    rejects(q,'integer equation coefficients')
+    top=certificates._solutions(Fraction(1),Fraction(0),Fraction(2))
+    certificates._verify_membership(Fraction(1),top)
+    assert top==[Fraction(1,2)], 'Separate worked example has one permitted angle'
 
-    print('trigonometry certificate tests: 6 certificates, 7 decisions, 14 wrong choices, 5 rejection cases passed')
+    print('trigonometry certificate tests: 6 certificates, 7 decisions, 14 wrong choices, branch/endpoint/type mutations and top-point boundary passed')
 
 
 if __name__ == '__main__':

@@ -405,28 +405,63 @@ void questionBatch(const Path& root,const Path& folder) {
   }
   std::cout<<Json{{"accepted",true},{"question_ids",ids},{"questions",content},{"routes",routes},{"wrong_choices",wrongs},{"disclosure_checks",disclosures},{"save_replay",true},{"windows",0}}.dump()<<'\n';
 }
+void subjectPilotLessons(const Path& source) {
+  Fixture f;const auto imported=f.load(source);expect(imported.accepted,imported.message);
+  expect(imported.lessons==4 && imported.questions==24,"Reviewed pilot wave has four readings and twenty-four questions");
+  unsigned disclosures=0;
+  for(const auto* id:{"pilot_alg_balance_v1_reading","pilot_trig_sine_v1_reading","pilot_calc_derivative_v1_reading","pilot_la_rows_v1_reading"}) {
+    const auto& blocks=lesson(f.corpus,id).lesson;
+    for(const auto* required:{"start","terms","rule","condition","worked","errors","practice","summary"})
+      expect(std::any_of(blocks.begin(),blocks.end(),[&](const auto& b){return b.id==required;}),std::string(id)+": missing teaching block "+required);
+    const auto worked=std::find_if(blocks.begin(),blocks.end(),[](const auto& b){return b.id=="worked";});
+    const auto index=static_cast<std::size_t>(worked-blocks.begin());
+    // The reviewed public worked-example surface presents one original given.
+    // A calculation/result display belongs in its independent disclosure.
+    expect(std::count_if(worked->body.begin(),worked->body.end(),[](const auto& p){return p.kind==BookPassage::Kind::DisplayMath;})==1,
+           std::string(id)+": public worked example must not disclose solving steps");
+    const auto closed=bookLessonView(blocks,{});
+    for(const auto& b:closed)for(const auto& h:b.help) {
+      expect(!h.open && h.passages.empty(),"Closed textbook help supplies no passages");disclosures+=h.available;
+    }
+    for(auto kind:{BookHelp::Hint,BookHelp::Answer,BookHelp::Solution}) {
+      const auto selected=static_cast<unsigned>(kind);std::vector<std::uint8_t> masks(blocks.size());masks[index]=1U<<selected;
+      const auto opened=bookLessonView(blocks,masks);
+      for(unsigned k=0;k<static_cast<unsigned>(BookHelp::Count);++k) {
+        const auto& help=opened[index].help[k];
+        if(k==selected)expect(help.available && help.open && !help.passages.empty(),"Each worked-example disclosure opens independently");
+        else expect(!help.open && help.passages.empty(),"Opening one worked-example disclosure does not disclose another");
+      }
+    }
+  }
+  std::cout<<Json{{"accepted",true},{"readings",4},{"questions",24},{"closed_disclosures",disclosures},
+                  {"independent_worked_disclosures",12},{"windows",0}}.dump()<<'\n';
+}
 void questionBatchUpgrade(const Path& before,const Path& after,const Path& folder) {
   Fixture old;const auto first=old.bank.size();expect(old.load(before).accepted,"Original batch imports");
   expect(old.bank.size()>=first+2,"Upgrade needs two original questions");CorpusPractice p(old.bank);
+  const auto partial=std::find_if(old.bank.begin()+first+1,old.bank.end(),[](const auto& q){return q.question.steps.size()>1;});
+  expect(partial!=old.bank.end(),"Upgrade needs an original question with unfinished working");
+  const auto unfinished=static_cast<std::size_t>(partial-old.bank.begin());
   const auto save=folder/"upgrade.json";p.loadProgress(save);p.open(first);
-  const bool supported=old.bank[first].question.support.has_value();
-  const auto choose=[&](fm::OptionId id){expect(p.dispatch(supported?support(p,fm::SupportAction::Choose,{},id.value):fm::LayeredQuestionCommand::submitOption(id)),"Upgrade choice reaches its original owner");};
+  const auto choose=[&](fm::OptionId id){expect(p.dispatch(p.active()->content().support?support(p,fm::SupportAction::Choose,{},id.value):fm::LayeredQuestionCommand::submitOption(id)),"Upgrade choice reaches its original owner");};
   for(const auto& step:old.bank[first].question.steps) {
     choose(step.options[fm::firstAcceptedOption(step)].id);
-    if(!supported)expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Original prepared question advances");
+    if(!old.bank[first].question.support)expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Original prepared question advances");
   }
-  p.open(first+1);if(supported)expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Original Practice opens");
-  const auto& step=old.bank[first+1].question.steps[0];const auto correct=fm::firstAcceptedOption(step);
+  const bool supported=partial->question.support.has_value();
+  p.open(unfinished);if(supported)expect(p.dispatch(support(p,fm::SupportAction::SelectLevel,{},1)),"Original Practice opens");
+  const auto& step=partial->question.steps[0];const auto correct=fm::firstAcceptedOption(step);
   choose(step.options[(correct+1)%step.options.size()].id);choose(step.options[correct].id);
   if(supported) {
     expect(p.dispatch(support(p,fm::SupportAction::Undo)),"Original Undo branch retained");choose(step.options[correct].id);
     expect(p.dispatch(support(p,fm::SupportAction::EditDraft,"unfinished fraction")) && p.dispatch(support(p,fm::SupportAction::ReadHelp,{},1)),"Original draft and help retained");
   } else expect(p.dispatch({fm::LayeredQuestionCommandKind::Continue}),"Original prepared working is reached before upgrade");
+  expect(!p.active()->currentRun().completed,"Upgrade exercises genuinely unfinished working");
   p.saveProgress();
   Fixture next;expect(next.load(after).accepted,"Updated batch imports");
   for(const auto& q:old.bank)expect(next.bank[question(next.bank,q.id)].stamp==q.stamp,"Upgrade preserves every old question stamp");
   CorpusPractice restored(next.bank);restored.loadProgress(save);
-  expect(restored.active() && restored.questions()[*restored.selected()].id==old.bank[first+1].id,"Upgrade reopens the original selected question");
+  expect(restored.active() && restored.questions()[*restored.selected()].id==partial->id,"Upgrade reopens the original selected question");
   expect(p.active()->visibleWorking()==restored.active()->visibleWorking() && p.active()->journal().size()==restored.active()->journal().size()
          && p.active()->currentRun().currentStep==restored.active()->currentRun().currentStep,"Upgrade retains working, step and attempts");
   if(supported) {
@@ -878,6 +913,9 @@ int main(int argc,char** argv) {
     }
     if(argc==3 && std::string_view(argv[1])=="--question-batch") {
       std::filesystem::create_directories(folder);questionBatch(argv[2],folder);std::filesystem::remove_all(folder);return 0;
+    }
+    if(argc==3 && std::string_view(argv[1])=="--subject-pilot-lessons") {
+      subjectPilotLessons(argv[2]);return 0;
     }
     if(argc==3 && std::string_view(argv[1])=="--published-store") {
       std::filesystem::create_directories(folder);published(argv[2],folder);std::filesystem::remove_all(folder);return 0;

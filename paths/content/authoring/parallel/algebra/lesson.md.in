@@ -10,7 +10,7 @@ ax+b=c
 @prose A solution is a real value of x that makes the original equality true after substitution. For a candidate r, substitute r for x and calculate ar+b. If that value equals c, r is a solution; otherwise it is not. Equality is the relation that the two complete expressions have the same value, not a permission to change only one expression.
 @endblock
 
-@block proposition | balance | 1.2 | A balanced operation preserves equality
+@block proposition | rule | 1.2 | A balanced operation preserves equality
 @prose If u=v, subtracting the same number d from both complete sides gives u-d=v-d. Adding d to both complete sides reverses that operation. This inverse-operation pair explains why balance is preserved in both directions: no solution is lost and no new solution is introduced.
 @display balance_rule
 u=v\quad\Longrightarrow\quad u-d=v-d
@@ -28,7 +28,7 @@ ax+b=c\quad\Longrightarrow\quad ax=c-b
 @prose In contrast, writing 7-5=2 treats the added constant as +5 and changes the problem. Applying a move to only the left side is also invalid: it breaks the equality relation instead of producing an equivalent equation.
 @endblock
 
-@block proposition | division | 1.4 | A nonzero coefficient has an inverse
+@block proposition | condition | 1.4 | A nonzero coefficient has an inverse
 @prose Once ax=d, divide both complete sides by a to isolate x. Division is valid here only when a is nonzero. Multiplying both sides by the same nonzero a reverses the division, so the solution set is preserved in both directions.
 @display divide_rule
 ax=d,\quad a\ne0\quad\Longrightarrow\quad x=\frac{d}{a}

@@ -11,6 +11,7 @@ def _fields(question, names):
 
 
 def _fraction(value, label):
+    require(type(value) is str and len(value) <= 20, f'{label} must be bounded exact rational text')
     try:
         result = Fraction(value)
     except (TypeError, ValueError, ZeroDivisionError) as error:
@@ -46,12 +47,12 @@ def _set_pi(values):
     return r'\left\{'+','.join(_pi(value) for value in values)+r'\right\}'
 
 
-def _interval(case, *, sine=None):
-    required = ('lower_pi', 'upper_pi', 'lower_closed', 'upper_closed')
-    if sine is not None:
-        required = ('sine',) + required
-    fields = _fields(case, required) if isinstance(case, dict) else None
-    return fields
+def _bounds(question, case):
+    lower = _fraction(case['lower_pi'], f"{question['id']} lower_pi")
+    upper = _fraction(case['upper_pi'], f"{question['id']} upper_pi")
+    require(lower == 0 and upper == 2 and case['lower_closed'] is True and case['upper_closed'] is False,
+            f"{question['id']}: this pilot is exactly the radian interval [0,2pi)")
+    return lower, upper
 
 
 def _checked_interval(question, *, sine=None):
@@ -59,10 +60,7 @@ def _checked_interval(question, *, sine=None):
     if sine is not None:
         names = ('sine',) + names
     case = _fields(question, names)
-    lower = _fraction(case['lower_pi'], f"{question['id']} lower_pi")
-    upper = _fraction(case['upper_pi'], f"{question['id']} upper_pi")
-    require(lower == 0 and upper == 2 and case['lower_closed'] is True and case['upper_closed'] is False,
-            f"{question['id']}: this pilot is exactly the radian interval [0,2pi)")
+    lower, upper = _bounds(question, case)
     level = _fraction(case['sine'], f"{question['id']} sine") if sine is not None else None
     return case, lower, upper, level
 
@@ -108,8 +106,13 @@ def _special_sine(angle):
 
 
 def _verify_membership(level, answers):
+    require(len(answers) == len(set(answers)) and all(0 <= angle < 2 for angle in answers),
+            'Solution set must have distinct angles inside [0,2pi)')
     require(all(_special_sine(angle) == level for angle in answers),
             'Exact special-angle membership failed')
+    # The horizontal line meets the unit circle twice for -1<level<1,
+    # and once at level 1. Membership plus that proved cardinality is complete.
+    require(len(answers) == (1 if level == 1 else 2), 'Solution set is missing a valid branch')
 
 
 def _completeness(level, branches, answers):
@@ -122,9 +125,10 @@ def _completeness(level, branches, answers):
 
 def read_notation(question):
     _, lower, upper, _ = _checked_interval(question)
-    given = rf'{_tex(lower)}\le\theta<{_tex(upper)}\pi'
-    choices = [given, rf'{_tex(lower)}<\theta\le{_tex(upper)}\pi', rf'{_tex(lower)}<\theta<{_tex(upper)}\pi']
-    return given, [given], [(choices, given)], dict(
+    given = rf'\theta\in[{_tex(lower)},{_tex(upper)}\pi)'
+    answer = rf'{_tex(lower)}\le\theta<{_tex(upper)}\pi'
+    choices = [answer, rf'{_tex(lower)}<\theta\le{_tex(upper)}\pi', rf'{_tex(lower)}<\theta<{_tex(upper)}\pi']
+    return given, [answer], [(choices, answer)], dict(
         radians=True, lower_included=True, upper_excluded=True,
         interval_units='theta/pi', endpoint_direction_deduplicated=True)
 
@@ -132,10 +136,7 @@ def read_notation(question):
 def worked_check(question):
     # The worked case has one additional original input: its supplied first angle.
     case = _fields(question, ('sine', 'known_pi', 'lower_pi', 'upper_pi', 'lower_closed', 'upper_closed'))
-    lower = _fraction(case['lower_pi'], f"{question['id']} lower_pi")
-    upper = _fraction(case['upper_pi'], f"{question['id']} upper_pi")
-    require(lower == 0 and upper == 2 and case['lower_closed'] is True and case['upper_closed'] is False,
-            f"{question['id']}: this pilot is exactly the radian interval [0,2pi)")
+    lower, upper = _bounds(question, case)
     level = _fraction(case['sine'], f"{question['id']} sine")
     known = _fraction(case['known_pi'], f"{question['id']} known_pi")
     branches = _branches(level); answers = _solutions(level, lower, upper)
@@ -152,6 +153,8 @@ def worked_check(question):
 
 def choose_next_step(question):
     case = _fields(question, ('coefficient', 'constant', 'rhs', 'lower_pi', 'upper_pi', 'lower_closed', 'upper_closed'))
+    _bounds(question, case)
+    require(all(type(case[name]) is int for name in ('coefficient', 'constant', 'rhs')), 'Expected integer equation coefficients')
     a, b, rhs = (Fraction(case[name]) for name in ('coefficient', 'constant', 'rhs'))
     require(a == 2 and b == -1 and rhs == 0, f"{question['id']}: expected 2sin(theta)-1=0")
     isolated = (rhs - b) / a
@@ -198,8 +201,9 @@ def repair_error(question):
 
 def independent(question):
     case = _fields(question, ('coefficient', 'constant', 'rhs', 'lower_pi', 'upper_pi', 'lower_closed', 'upper_closed'))
+    lower, upper = _bounds(question, case)
+    require(all(type(case[name]) is int for name in ('coefficient', 'constant', 'rhs')), 'Expected integer equation coefficients')
     a, b, rhs = (Fraction(case[name]) for name in ('coefficient', 'constant', 'rhs'))
-    lower, upper = _fraction(case['lower_pi'], 'lower_pi'), _fraction(case['upper_pi'], 'upper_pi')
     require(a == 2 and b == 1 and rhs == 0 and lower == 0 and upper == 2 and case['lower_closed'] is True and case['upper_closed'] is False,
             f"{question['id']}: expected the fresh 2sin(theta)+1=0 case on [0,2pi)")
     level = (rhs - b) / a; branches = _branches(level); answers = _solutions(level, lower, upper)

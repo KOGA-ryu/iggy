@@ -21,7 +21,7 @@ f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}
 @endblock
 
 @block proposition | condition | 1.3 | Why cancellation comes before the limit
-@prose For a polynomial f(x)=Ax^2+Bx+C, expand at a real a. The constants cancel in the output difference, leaving a factor h.
+@prose In f(x)=Ax^2+Bx+C, A and B are the real coefficients of x squared and x, and C is the real constant term. These capital letters describe the function; the lowercase a is the particular input where we evaluate its derivative. Expand the function at a+h and at a. The constants cancel in the output difference, leaving a factor h.
 @display eq4
 \begin{aligned}f(a+h)-f(a)&=A(a+h)^2+B(a+h)+C-(Aa^2+Ba+C)\\&=Ah^2+(2Aa+B)h\\&=h\bigl(Ah+2Aa+B\bigr)\end{aligned}
 @prose When h is nonzero, the quotient equals Ah+2Aa+B after cancelling its common factor h. The original quotient is still undefined at h=0, because its denominator is zero. The simplified polynomial is defined and continuous at zero, so its limit may be found by evaluating that simplified expression at zero.
@@ -32,19 +32,22 @@ f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}
 @endblock
 
 @block example | worked | 1.4 | A complete difference-quotient calculation
-@prose Work this separate example from start to finish: f(x)=x^2+x at a=1. First distinguish the value f(1)=2 from the derivative we seek. Substituting 1+h into the whole function, including its linear term, gives the next value.
+@prose Find the derivative at input 1 for this separate example. Evaluate the whole function at 1 and at 1+h, form their difference quotient for nonzero h, and take its limit. The function value and the derivative answer different questions.
 @display eq6
-\begin{aligned}f(1)&=1^2+1=2\\f(1+h)&=(1+h)^2+(1+h)=2+3h+h^2\end{aligned}
-@prose Subtract f(1), factor the increment, and cancel only while h is nonzero. Then take the limit of the simplified polynomial.
-@display eq7
-\begin{aligned}\frac{f(1+h)-f(1)}{h}&=\frac{(2+3h+h^2)-2}{h}\\&=\frac{h(3+h)}{h}=3+h\quad(h\ne0)\\f'(1)&=\lim_{h\to0}(3+h)=3\end{aligned}
+f(x)=x^2+x,\quad a=1
 @help hint
-@prose Evaluate f(1+h) by replacing every x in x^2+x with 1+h. Keep h nonzero while cancelling, then ask what the simplified expression approaches as h approaches zero.
+@prose Replace every x in x^2+x with 1+h, including the linear term. Subtract f(1), factor the numerator, and keep h nonzero while cancelling. Then take the limit of the simplified expression.
 @help answer
 @display eq8
 f'(1)=3
 @help solution
-@prose The square expands as (1+h)^2=1+2h+h^2, and the linear term contributes another 1+h. Their sum is 2+3h+h^2. Subtracting f(1)=2 leaves 3h+h^2=h(3+h). Cancellation is valid only for h not equal to zero, where the quotient becomes 3+h. That simplified polynomial is continuous, so its limit at zero is 3. As an independent coefficient check, differentiating x^2+x gives 2x+1, and (2x+1) at x=1 is also 3.
+@prose The original function value is f(1)=1+1=2. The square expands to 1+2h+h^2, and the linear term contributes 1+h. Combine constants and like powers of h before subtracting f(1).
+@display expanded_example
+\begin{aligned}f(1)&=1^2+1=2\\f(1+h)&=(1+h)^2+(1+h)=2+3h+h^2\end{aligned}
+@prose Subtracting the original value 2 leaves 3h+h^2. Factor out h from both terms. The quotient can cancel that factor only when h is nonzero.
+@display eq7
+\begin{aligned}\frac{f(1+h)-f(1)}{h}&=\frac{(2+3h+h^2)-2}{h}\\&=\frac{h(3+h)}{h}=3+h\quad(h\ne0)\\f'(1)&=\lim_{h\to0}(3+h)=3\end{aligned}
+@prose The simplified polynomial 3+h is continuous, so its limit is 3. The original quotient still has no value at h=0. As a separate check using polynomial differentiation, the derivative of x^2+x is 2x+1, which has value 3 at x=1.
 @endblock
 
 @block example | errors | 1.5 | Two different zero claims to reject

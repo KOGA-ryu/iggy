@@ -1,5 +1,11 @@
 # Algebra pilot review: Understand each balanced move
 
+Coordinator update, 2026-09-10: this pilot has been corrected, jointly checked
+and locally published. See the [integrated subject review](../../../../docs/SUBJECT_PILOT_REVIEW.md)
+for current status and review overrides. Visual acceptance remains with the
+user. The worker delivery record below describes the earlier candidate and
+retains its original hashes and pending-review statements as history.
+
 ## Scope and status
 
 - **Authored:** candidate source written for `pilot_algebra_balance` version 1: one `lesson.v2` reading, six `choices.v1` cards, seven decisions and fourteen diagnosed distractors.

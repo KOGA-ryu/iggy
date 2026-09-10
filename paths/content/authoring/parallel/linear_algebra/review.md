@@ -1,5 +1,11 @@
 # Linear Algebra pilot review
 
+Coordinator update, 2026-09-10: this pilot has been corrected, jointly checked
+and locally published. See the [integrated subject review](../../../../docs/SUBJECT_PILOT_REVIEW.md)
+for current status and review overrides. Visual acceptance remains with the
+user. The worker delivery record below describes the earlier candidate and
+retains its original hashes and pending-review statements as history.
+
 ## Scope and instructions loaded
 
 This is the one bounded `pilot_linear_algebra_rows` candidate: one `lesson.v2` reading and six `choices.v1` questions in fixed role order. I loaded these instruction sources in full before authoring:

@@ -25,11 +25,15 @@ def _polynomial_value(a, b, c, x):
 
 def _difference_coefficients(a, b, c, point):
     """Expand f(point+h)-f(point) as constant, h, h^2 coefficients."""
-    constant = _polynomial_value(a, b, c, point) - _polynomial_value(a, b, c, point)
-    linear = 2 * a * point + b
-    quadratic = a
-    require(constant == 0, 'calculus.expansion', 'A difference quotient numerator must have zero constant term')
-    return constant, linear, quadratic
+    shift = (point, 1)  # The polynomial point+h, in ascending powers of h.
+    expanded = [0, 0, 0]
+    for i, left in enumerate(shift):
+        for j, right in enumerate(shift):
+            expanded[i+j] += a * left * right
+    for i, value in enumerate(shift):
+        expanded[i] += b * value
+    expanded[0] += c - _polynomial_value(a, b, c, point)
+    return tuple(expanded)
 
 
 def _quotient_data(record):
@@ -37,8 +41,12 @@ def _quotient_data(record):
     constant, linear, quadratic = _difference_coefficients(a, b, c, point)
     require(constant == 0, 'calculus.expansion', 'The difference must factor by h')
     derivative_from_expansion = linear
-    derivative_from_coefficients = 2 * a * point + b
-    require(derivative_from_expansion == derivative_from_coefficients, 'calculus.derivative', 'Expansion and coefficient differentiation disagree')
+    # Differentiate [C,B,A] by degree, then evaluate. This does not use the
+    # shifted-product expansion above, so either path can catch the other's error.
+    derivative_from_coefficients = sum(degree * coefficient * point**(degree-1)
+        for degree, coefficient in enumerate((c, b, a)) if degree)
+    require(derivative_from_expansion == derivative_from_coefficients and quadratic == a,
+            'calculus.derivative', 'Expansion and coefficient differentiation disagree')
     return a, b, c, point, linear, quadratic
 
 

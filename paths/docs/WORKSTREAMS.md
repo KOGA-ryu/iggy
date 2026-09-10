@@ -1,6 +1,40 @@
 # Paths workstreams
 
-## A reusable teaching brief with a checked linear family
+## Four reviewed subject pilots in the local Library
+
+**Built, checked together and locally published; visual acceptance is pending.**
+The [coordinator review](SUBJECT_PILOT_REVIEW.md) applies the accepted family
+teaching brief to all four returned pilots. Algebra, trigonometry, calculus and
+linear algebra each add one reading and six multiple-choice questions. The
+Library now has 413 questions, 959 readings, 190 chapters and eight subjects.
+All earlier question/reading records and published payload bytes are unchanged.
+
+Corrections cover misleading inverse/sign explanations, disclosure of worked
+calculations, bracket translation, missing symbol definitions and repeated
+answer-position sequences. Trigonometry now checks complete distinct branches
+and interval endpoints; calculus compares actual polynomial expansion with a
+separate derivative calculation across 48,013 coefficient/point combinations.
+The original four sequence manifests and all 30 pinned references are unchanged.
+
+The existing compiler, question model, textbook presentation and exporter remain
+canonical. Release builds and four certificate suites pass, as do the combined
+24-route/56-wrong-choice gate, independent Help disclosure checks, isolated
+publication/failure checks and save replay against the actual installed Library.
+The native adapter's data-only catalogue/copy/reload checks also pass. The mixed
+Library save-test assumption was corrected in test code only. No production
+runtime C++ or 3D asset file changed; no new production code file was added.
+
+Evidence: `build/subject-pilot-review/verification.json`. Changes remain
+uncommitted. No windows, screenshots, captures, font probes or ImGui contexts
+were used. Launch `b/sorter` and follow the review's four Library paths. Check
+separate Hint/Answer/Solution controls, **gold Given**, **cyan Working** retained
+after a wrong choice, and **green completion** held until Next.
+
+Next candidate: one bounded practice/fresh-check set after subject acceptance;
+start from the existing linear-family generator. Broader subject coverage still
+requires its own parameter plan and independent mathematical checks.
+
+## Earlier checkpoint: a reusable teaching brief with a checked linear family
 
 **Built as an authoring example and editable preview; not published.** The
 [reusable family brief](templates/QUESTION_FAMILY.md) and
@@ -59,9 +93,10 @@ and template review is complete; native visual/teaching acceptance and learner
 effectiveness evidence remain separate. Next candidate: coordinator review of
 the returned subject pilots against this teaching brief before scaling them.
 
-## Parallel subject authoring packets
+## Historical checkpoint: parallel subject authoring packets
 
-**Prepared and verified; no subject workers have been launched.** The
+**Status when this packet was prepared: verified, with no workers launched.**
+The returned pilots have since been reviewed and published as recorded above. The
 [shared contract](PARALLEL_QUESTION_AUTHORING.md) and four subject-local
 AGENTS.md/PILOT.md packets reserve one reading and six choice questions each
 for algebra, trigonometry, calculus and linear algebra. Fixed sequence manifests

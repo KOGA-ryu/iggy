@@ -10,7 +10,7 @@
       "title": "Original Paths sine-equation reasoning pilot",
       "uri": "paths:original/pilot_trigonometry_sine/v1",
       "revision": "1",
-      "attribution": "Original Paths lesson, worked example, questions, distractors, feedback, and exact certificates. Definitions and interval/period conventions were checked against OpenStax Precalculus 2e, section 7.5, Solving Trigonometric Equations: https://openstax.org/books/precalculus-2e/pages/7-5-solving-trigonometric-equations (accessed 2026-09-10).",
+      "attribution": "Original Paths lesson, worked example, questions, distractors, feedback, and exact certificates. Definitions and interval/period conventions were checked against OpenStax Precalculus 2e, section 7.5, Solving Trigonometric Equations: https://openstax.org/books/precalculus-2e/pages/7-5-solving-trigonometric-equations (accessed 2026-09-10). Coordinator review also checked radian measure, unit-circle coordinates and sine height against sections 5.1 and 5.2: https://openstax.org/books/precalculus-2e/pages/5-1-angles and https://openstax.org/books/precalculus-2e/pages/5-2-unit-circle-sine-and-cosine-functions (accessed 2026-09-10).",
       "reuse": "Original authoring; no external exercise text, figure, or solution prose copied.",
       "content_ids": [
         "pilot_trig_sine_v1_reading",

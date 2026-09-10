@@ -4,14 +4,15 @@
 @endblock
 
 @block definition | terms | 1.2 | Angles, radians, and height
-@prose A radian is an angle unit. Pi, written pi, is the exact constant for a half-turn, so 2pi radians is one complete turn. Theta is the variable angle measured in radians. In this lesson theta is real: it may be any real-number angle before an interval restricts it.
+@prose A radian measures an angle by arc length divided by radius. On a circle of radius 1, an arc of length 1 subtends one radian. Pi is the ratio of a circle's circumference to its diameter; pi radians is a half-turn and 2pi radians is a complete turn. Theta names the real angle measured in radians.
+@prose The unit circle has radius 1 and centre (0,0). Measure theta from the positive horizontal axis, with positive angles turning counterclockwise. A point on the circle has horizontal coordinate x and vertical coordinate y. Sine gives that point's vertical coordinate.
 @display unit_circle_height
-\sin(\theta)=\text{the vertical coordinate, or height, of the point on the unit circle at angle }\theta
+x^2+y^2=1,\qquad\sin\theta=y
 @prose Thus sine is positive above the horizontal axis, zero on that axis, and negative below it. For the special heights in this pilot, sin(pi/6)=1/2, sin(5pi/6)=1/2, sin(7pi/6)=-1/2, sin(11pi/6)=-1/2, sin(0)=sin(pi)=0, and sin(pi/2)=1.
 @endblock
 
 @block definition | interval | 1.3 | Read both endpoints before solving
-@prose The notation 0<=theta<2pi is an interval condition. The left inequality includes theta=0 because it uses <=. The right inequality excludes theta=2pi because it uses <. Although 0 and 2pi point in the same direction, this interval records that direction once, at 0.
+@prose The interval notation [0,2pi) uses a square bracket to include its left endpoint and a round bracket to exclude its right endpoint. The symbol in between theta and the interval means belongs to. The equivalent inequality 0<=theta<2pi states the same condition. The left inequality includes theta=0 because it uses <=. The right inequality excludes theta=2pi because it uses <. Although 0 and 2pi point in the same direction, this interval records that direction once, at 0.
 @display interval_rule
 0\le\theta<2\pi
 @prose An integer parameter is a whole number k: it may be negative, zero, or positive. It describes repeated turns. After an interval is imposed, keep only the integer values that make the corresponding angle meet both endpoint conditions.
@@ -33,15 +34,17 @@
 @prose The restriction that 2 is nonzero matters: division by zero is undefined and cannot undo a multiplication. Once sine is isolated, use the unit-circle branches and the interval; algebra alone does not decide how many angles have that height.
 @endblock
 
-@block example | worked | 1.6 | Worked example: the top point occurs once
-@prose Solve the separate example sin(theta)=1 with 0<=theta<2pi. Height 1 is the top of the unit circle, so the only point in one turn is theta=pi/2. A reflected angle would be pi-pi/2=pi/2, the same angle rather than a second answer.
+@block example | worked | 1.6 | Worked example: check every angle in the interval
+@prose Solve this separate example in radians. Find all unit-circle points at the required height, and then check the interval. If two descriptions name the same permitted angle, include it only once.
+@display worked_given
+\sin\theta=1,\quad0\le\theta<2\pi
 @help hint
 @prose Ask which unit-circle point has vertical coordinate 1. Then check whether adding or subtracting one whole turn can remain in the stated interval.
 @help answer
 @display worked_answer
 \theta\in\left\{\frac{\pi}{2}\right\}
 @help solution
-@prose The top point has angle pi/2, so sin(pi/2)=1. Its periodic copies are pi/2+2kpi for integer k. The interval test is 0<=1/2+2k<2 when angles are divided by pi. Only k=0 works: k=-1 is below 0 and k=1 is at least 2. Therefore theta=pi/2 is the one permitted solution.
+@prose Height 1 occurs at the top point of the unit circle, at angle pi/2. Its reflected description is pi-pi/2=pi/2, the same angle. The periodic copies are pi/2+2kpi for integer k. Dividing the interval test by positive pi gives 0<=1/2+2k<2. Only k=0 works: every k<=-1 is below 0, and every k>=1 is above 2. Thus there is exactly one permitted angle.
 @display worked_check
 \sin\left(\frac{\pi}{2}\right)=1,\qquad0\le\frac{\pi}{2}<2\pi
 @endblock

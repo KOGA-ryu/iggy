@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Independent rejection tests for the quadratic difference-quotient pilot."""
 import copy
+import itertools
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import build_question_batch as batch
 from build_question_batch import require as _batch_require
@@ -75,6 +77,17 @@ def main():
         require(linear == derivative_by_coefficients([a, b, c], point), 'calculus.derivative', f"{record['id']}: independent derivative disagreement")
         require(_polynomial_value(a, b, c, point) == a * point * point + b * point + c, 'calculus.value', 'Direct polynomial evaluation disagreement')
 
+    # Check the whole declared polynomial domain, not only its six frozen cards.
+    for a,b,c,point in itertools.product(range(-9,10),range(-9,10),range(-9,10),range(-3,4)):
+        record=dict(case=dict(coefficients=[a,b,c],at=point))
+        *_, linear, quadratic = _quotient_data(record)
+        require((linear,quadratic)==(2*a*point+b,a),'calculus.domain','Full coefficient identity disagrees')
+    # These faults reach the actual provider comparison, including an error in
+    # h^2 which leaves the derivative coefficient unchanged.
+    for bad in ((1,6,1),(0,5,1),(0,6,2)):
+        with patch('certificates._difference_coefficients',return_value=bad):
+            expect_rejected('mutated expansion path',lambda:_quotient_data(records[2]))
+
     compiled = compiled_mock(records)
     batch.verify_role_content(records, compiled, certificates)
 
@@ -110,7 +123,7 @@ def main():
     malformed = copy.deepcopy(records[0]); malformed['case']['at'] = 4
     expect_rejected('point outside bound', lambda: CHECKERS['read_notation'](malformed))
 
-    print('calculus certificate tests: 6 roles, 7 decisions, 14 distractors, worked example and rejection mutations passed')
+    print('calculus certificate tests: 6 roles, 7 decisions, 14 distractors, 48013 coefficient cases and 3 expansion-path mutations passed')
 
 
 if __name__ == '__main__':
